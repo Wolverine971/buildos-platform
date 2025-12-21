@@ -174,6 +174,34 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ============================================
+-- MILESTONES - GOAL 2: Pre-Launch Events (Grace Coercion Arc)
+-- ============================================
+('33333333-0002-0006-0000-000000000001', '33333333-3333-3333-3333-333333333333',
+ 'Grace Recruited by Stratt', 'milestone.personnel.recruitment', 'completed', '2024-02-15'::timestamptz,
+ '{"recruiter": "Eva Stratt (Petrova Taskforce Director)", "location": "Grace''s middle school classroom", "offer": "Join as Astrophage biology expert", "grace_background": "Former molecular biologist, now teaching science", "previous_career": "Left research after controversial theories about extraterrestrial life", "initial_response": "Reluctant but intrigued by scientific challenge", "stratt_method": "Appeals to his scientific curiosity and duty to humanity"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0007-0000-000000000001', '33333333-3333-3333-3333-333333333333',
+ 'DuBois and Shapiro Killed in Explosion', 'milestone.crisis.tragedy', 'completed', '2024-09-04'::timestamptz,
+ '{"incident": "Catastrophic explosion during Astrophage testing", "timing": "9 days before scheduled launch", "cause": "Technician error - administered 1 milligram instead of 1 nanogram", "energy_release": "10^15 J/kg - facility vaporized instantly", "victims": ["Dr. Martin DuBois - original science lead", "Annie Shapiro - backup science specialist"], "consequence": "No trained science specialist available for mission", "stratt_response": "Grace becomes only qualified replacement", "moral_weight": "Their deaths sealed Grace''s fate"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0008-0000-000000000001', '33333333-3333-3333-3333-333333333333',
+ 'Grace Refuses Mission', 'milestone.personal.crisis', 'completed', '2024-09-05'::timestamptz,
+ '{"context": "Stratt demands Grace replace DuBois as science specialist", "grace_response": "Absolute refusal - will not go on suicide mission", "reasoning": "Fear of death, attachment to his students and normal life", "threat": "Grace threatens to sabotage mission rather than board ship", "stratt_quote": "You are the only person who can do this", "grace_quote": "Find someone else. I am not going to die in space.", "moral_complexity": "Is cowardice refusing to sacrifice yourself for strangers?", "consequence": "Stratt decides to force compliance"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0009-0000-000000000001', '33333333-3333-3333-3333-333333333333',
+ 'Crew Suicide Methods Selected', 'milestone.personnel.preparation', 'completed', '2024-09-06'::timestamptz,
+ '{"requirement": "Each crew member must document preferred death method", "rationale": "One-way mission - no return fuel, eventual death certain", "yao_choice": "Firearm - maintain control until final moment", "ilyukhina_choice": "Heroin overdose - I want to feel pleasure before I die, spent life being good", "grace_status": "Never asked - was unconscious during selection", "psychological_weight": "Forces crew to confront mortality directly", "stratt_quote": "You will die out there. Best to choose how.", "humanity": "Even in facing death, people express who they are"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0010-0000-000000000001', '33333333-3333-3333-3333-333333333333',
+ 'Grace Drugged and Loaded onto Hail Mary', 'milestone.ethics.violation', 'completed', '2024-09-12'::timestamptz,
+ '{"perpetrator": "Eva Stratt", "method": "French amnesia-inducing compound administered without consent", "purpose": "Ensure Grace cannot refuse or sabotage mission", "physical_transport": "Grace physically carried onto spacecraft while unconscious", "coma_induction": "Placed in hibernation pod before regaining consciousness", "memory_effect": "Complete retrograde amnesia upon awakening", "ethical_violation": "Fundamental human rights stripped for species survival", "stratt_justification": "Billions of lives outweigh one person''s consent", "irony": "The coward who refused becomes the only survivor"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
 -- MILESTONES - GOAL 3: Reach Tau Ceti
 -- ============================================
 ('33333333-0003-0001-0000-000000000001', '33333333-3333-3333-3333-333333333333',
@@ -689,6 +717,31 @@ INSERT INTO onto_decisions (id, project_id, title, decision_at, rationale, props
  'Conduct Directed Evolution Despite Risks', '2030-05-10'::timestamptz,
  'Without adaptation, both civilizations die anyway - the risk is acceptable',
  '{"type": "decision.research.ethics", "state": "decided", "decider": "Grace and Rocky (jointly)", "problem": "Natural Taumoeba dies in nitrogen - useless for Venus and Threeworld", "proposed_solution": "Directed evolution to create nitrogen-tolerant strains", "risk_identified": "Evolution might create dangerous new capabilities", "risk_realized": "Taumoeba-82.5 gained xenonite permeation ability", "outcome": "Success with serious side effect (xenonite contamination)"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Additional Decisions for Pre-Launch and Character Arc
+('33333333-0002-0003-0001-000000000003', '33333333-3333-3333-3333-333333333333',
+ 'Grace Initial Refusal of Mission', '2024-09-05'::timestamptz,
+ 'Fear of death and attachment to normal life outweigh duty to strangers',
+ '{"type": "decision.personal.refusal", "state": "overridden", "decider": "Dr. Ryland Grace", "context": "Asked to replace DuBois as science specialist on one-way mission", "reasoning": ["Fear of death", "Attachment to students and teaching career", "Belief someone else could do it"], "statement": "Find someone else. I will not die in space.", "threat": "Will sabotage mission if forced to board", "moral_weight": "Is refusing to sacrifice yourself cowardice?", "consequence": "Stratt decides to force compliance", "character_significance": "Sets up redemption arc - coward becomes hero"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0004-0001-000000000003', '33333333-3333-3333-3333-333333333333',
+ 'Stratt Orders Grace Drugged and Loaded', '2024-09-12'::timestamptz,
+ 'Billions of lives outweigh one person''s consent - species survival justifies any action',
+ '{"type": "decision.ethics.coercion", "state": "decided", "decider": "Eva Stratt", "context": "Grace refuses mission, threatens sabotage", "action": "Administer French amnesia-inducing compound without consent", "method": "Drug Grace, physically carry him onto spacecraft, induce coma", "ethical_violation": "Strips fundamental human rights", "justification": "He is the only person who can do this", "stratt_philosophy": "I will do whatever it takes", "moral_question": "When is violating consent justified?", "irony": "The coward becomes the sole survivor and hero"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0005-0002-000000000003', '33333333-3333-3333-3333-333333333333',
+ 'Implement Crew Suicide Protocol', '2024-09-06'::timestamptz,
+ 'One-way mission means certain death - crew deserves to choose their end',
+ '{"type": "decision.ethics.mortality", "state": "decided", "decider": "Eva Stratt with crew input", "context": "No return fuel - crew will eventually die in space", "requirement": "Each crew member documents preferred death method", "yao_choice": "Firearm - maintain control", "ilyukhina_choice": "Heroin overdose - experience pleasure finally", "grace_exception": "Never asked - unconscious", "psychological_purpose": "Forces confrontation with mortality", "humanity": "Even facing death, people express individuality", "stratt_quote": "You will die out there. Best to choose how."}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0001-0002-0001-000000000003', '33333333-3333-3333-3333-333333333333',
+ 'Recruit Redell Despite Criminal Past', '2024-03-15'::timestamptz,
+ 'Expertise in Astrophage production outweighs past transgressions',
+ '{"type": "decision.personnel.ethics", "state": "decided", "decider": "Eva Stratt", "candidate": "Dr. Redell - imprisoned for past incident", "expertise": "Large-scale biological processing, critical for Astrophage production", "risk": "Past behavior suggests unreliability", "decision": "Recruit from prison, put under supervision", "justification": "Species survival requires best available talent", "consequence": "Facility under his oversight later explodes, killing DuBois and Shapiro", "moral_complexity": "Right decision with tragic outcome"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -765,6 +818,22 @@ INSERT INTO onto_risks (id, project_id, title, type_key, probability, impact, st
 ('33333333-0006-0006-0001-000000000001', '33333333-3333-3333-3333-333333333333',
  'Memory Loss from Coma Drugs', 'risk.medical.cognition', 0.8, 'high', 'occurred',
  '{"hazard": "Coma drugs cause permanent retrograde amnesia", "occurrence": "Grace awakens with no memory of mission, identity, or skills", "severity": "Complete memory loss initially", "recovery": "Gradual flashbacks triggered by environmental cues", "timeline": "Days to weeks for full memory recovery", "purpose": "Plot device, but also represents Stratt''s ethical violation", "implications": "Grace must rediscover his mission while alone in space"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Pre-Launch Risks
+('33333333-0002-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333',
+ 'Astrophage Testing Explosion', 'risk.engineering.catastrophic', 0.2, 'critical', 'occurred',
+ '{"hazard": "Astrophage energy release during testing (10^15 J/kg)", "occurrence": "Technician error - 1 milligram instead of 1 nanogram administered", "date": "9 days before scheduled launch", "casualties": ["Dr. Martin DuBois - science lead", "Annie Shapiro - backup science specialist"], "facility_impact": "Complete vaporization of testing facility", "mission_impact": "Created personnel crisis requiring Grace recruitment", "cascade": "Stratt forced to coerce Grace onto mission", "lesson": "Working with Astrophage requires extreme precision"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0003-0001-000000000004', '33333333-3333-3333-3333-333333333333',
+ 'Science Specialist Refuses Mission', 'risk.personnel.refusal', 0.3, 'high', 'occurred',
+ '{"hazard": "Only qualified replacement (Grace) refuses suicide mission", "context": "Grace terrified of death, threatens sabotage", "mitigation_attempted": "Appeals to duty, patriotism, scientific curiosity", "mitigation_failed": "Grace maintains refusal", "escalation": "Stratt decides to use coercion", "solution_implemented": "Drug Grace, physically load onto spacecraft", "ethical_cost": "Fundamental violation of consent", "outcome": "Mission proceeds, but at moral cost"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0004-0001-000000000004', '33333333-3333-3333-3333-333333333333',
+ 'Coerced Crew Member Sabotage', 'risk.security.sabotage', 0.4, 'critical', 'mitigated',
+ '{"hazard": "Grace threatens to sabotage mission if forced to participate", "threat_credibility": "Grace has scientific expertise to damage mission", "mitigation": "Memory-affecting drugs ensure Grace cannot remember refusal or sabotage plans", "secondary_mitigation": "Coma induction before consciousness returns", "ethical_violation": "Complete elimination of agency", "justification": "Humanity''s survival outweighs one person''s rights", "irony": "Grace loses memory of his refusal, becomes willing participant"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -846,6 +915,82 @@ INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, c
 ('33333333-0006-0005-0001-000000000005', '33333333-3333-3333-3333-333333333333',
  'Erid Habitat Construction Plans', 'document.engineering.construction', 'published',
  '{"purpose": "Human-habitable dome on Erid for Grace", "material": "Xenonite (Eridian construction)", "internal_atmosphere": "1 atm oxygen, Earth-normal composition", "lighting": "Artificial full-spectrum (Erid is pitch black)", "temperature": "Comfortable human range despite 210°C external", "food_production": "Synthesis from Hail Mary knowledge archives", "innovations": "Cloned human muscle tissue for meburgers", "size": "Classroom plus living quarters", "builders": "Eridian engineers supervised by Rocky"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
+-- CHARACTER PROFILE DOCUMENTS
+-- ============================================
+('33333333-0002-0003-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Commander Yáo Li-Jie Profile', 'document.personnel.profile', 'published',
+ '{"role": "Mission Commander, Hail Mary", "nationality": "Chinese", "background": "Military officer with extensive command experience", "personality": "Disciplined, pragmatic, willing to make difficult decisions", "selection_reason": "Leadership under extreme stress, rare coma-resistant gene marker", "suicide_method_chosen": "Firearm - to maintain control until final moment", "coma_fate": "Died during 4-year transit, body preserved aboard Hail Mary", "last_request": "That mission succeed regardless of personal cost", "grace_memory": "Respected commander, strict but fair"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0004-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Engineer Olesya Ilyukhina Profile', 'document.personnel.profile', 'published',
+ '{"role": "Spacecraft Systems Engineer, Hail Mary", "nationality": "Russian", "background": "Expert in spacecraft mechanical and electrical systems", "personality": "Straightforward, blunt, refreshingly honest about her fears", "selection_reason": "Engineering expertise, psychological resilience, coma-resistant gene", "suicide_method_chosen": "Heroin overdose - openly stated she wanted to experience pleasure after a life of being good", "coma_fate": "Died during 4-year transit alongside Yáo", "philosophy": "No pretense of false nobility", "grace_memory": "Appreciated her honesty in facing mortality"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0005-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Dr. Martin DuBois and Annie Shapiro Memorial', 'document.personnel.memorial', 'published',
+ '{"role": "Original Science Specialists, Hail Mary Mission", "tragedy_date": "9 days before launch", "incident": "Catastrophic explosion during Astrophage testing", "cause": "Technician administered 1 milligram instead of 1 nanogram of Astrophage", "energy_release": "Facility vaporized instantly - 10^15 J/kg energy density", "consequence": "Created vacancy that forced Grace into mission", "victims": ["Dr. Martin DuBois - original science lead", "Annie Shapiro - backup science specialist"], "legacy": "Their deaths made Grace the only qualified replacement"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0006-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Steve Hatch - Beetle Probe Designer', 'document.personnel.profile', 'published',
+ '{"role": "Lead Engineer, Beetle Probe Design", "specialty": "Autonomous spacecraft and communication systems", "optimism": "Saw Astrophage not just as threat but as clean energy revolution", "beetle_names": "Named probes John, Paul, George, Ringo (Beatles tribute)", "design_features": ["Astrophage-powered mini-drives", "Interstellar range capability", "Autonomous navigation", "Sample collection with xenonite chain extension"], "grace_friction": "His optimism irritated the more pessimistic Grace", "legacy": "Beetle design enabled solution to reach Earth despite crew fate"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0001-0003-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Dimitri Komorov - Astrophage Fuel Discovery', 'document.personnel.profile', 'published',
+ '{"role": "Russian Scientist, Petrova Taskforce", "breakthrough": "First to recognize Astrophage could power spacecraft", "insight": "10^15 J/kg energy density far exceeds any known fuel", "mechanism": "Heat Astrophage to trigger IR emission, use mirrors to direct thrust", "irony": "The organism consuming our Sun becomes our only hope for travel", "contribution": "Made Tau Ceti mission physically possible", "quote": "The threat is also the solution"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0007-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Dr. Lokken - Centrifuge Design', 'document.personnel.profile', 'published',
+ '{"role": "Norwegian Scientist, Spacecraft Design", "specialty": "Human physiology in space environments", "innovation": "Proposed centrifuge design for Hail Mary", "problem_solved": "Extended weightlessness causes muscle atrophy and bone loss", "solution": "Two rotating segments connected by cables generate artificial gravity", "mechanism": "Centrifugal force provides 1g equivalent during journey", "benefit": "Crew maintains physical capability for mission execution", "design_adopted": "Became standard for Hail Mary construction"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0008-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Dr. Lamai - Coma Technology', 'document.personnel.profile', 'published',
+ '{"role": "Thai Medical Scientist, Petrova Taskforce", "specialty": "Extended medical hibernation", "innovation": "Developed coma pods for multi-year space travel", "mechanism": "Medically induced hibernation with life support automation", "drug_components": ["Metabolic suppressants", "Memory-affecting compounds", "Neural preservatives"], "ethical_issue": "Memory-affecting drugs used to ensure Grace compliance", "risk_acknowledged": "Multi-year coma inherently risky - 2 of 3 crew died", "legacy": "Technology enabled interstellar mission despite human limitations"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0002-0009-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Dr. Redell - Astrophage Mass Production', 'document.personnel.profile', 'published',
+ '{"role": "Engineer, Astrophage Production Facility", "background": "Recruited from prison by Stratt - disgraced for past incident", "expertise": "Large-scale biological and chemical processing", "task": "Scale up Astrophage production for spacecraft fuel", "challenge": "Working with organisms that release 10^15 J/kg when mishandled", "safety_record": "Facility where DuBois/Shapiro died was under his oversight", "stratt_decision": "Recruited despite criminal past - expertise outweighed risk", "moral_complexity": "Brilliant but dangerous, necessary for mission"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0001-0004-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Eva Stratt Authority and Ethics Report', 'document.administrative.analysis', 'published',
+ '{"subject": "Eva Stratt - Director, Petrova Taskforce", "nationality": "Dutch", "previous_role": "European Space Agency administrator", "authority_granted": "Unprecedented unlimited global power over all nations", "justification": "Existential threat requires unified response without bureaucracy", "powers": ["Commandeer any facility worldwide", "Draft any personnel", "Unlimited budget access", "Override national sovereignty"], "ethical_violations": ["Forced Grace onto mission against will", "Used memory-affecting drugs without consent", "Recruited criminals for expertise"], "stratt_philosophy": "Will do whatever it takes - billions of lives vs individual rights", "moral_question": "Do the ends justify the means when species survival is at stake?"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
+-- TECHNICAL SPECIFICATION DOCUMENTS
+-- ============================================
+('33333333-0002-0010-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Coma Pod Technical Specifications', 'document.engineering.specification', 'published',
+ '{"system": "Hail Mary Crew Hibernation System", "developer": "Dr. Lamai and medical team", "pods": 3, "duration_capacity": "4+ years continuous operation", "features": ["Metabolic suppression", "Automated nutrition delivery", "Waste processing", "Health monitoring", "Emergency revival protocols"], "drugs_administered": ["Metabolic suppressants", "Memory-affecting compounds (controversial)", "Neural preservatives"], "survival_rate": "1 of 3 crew survived (33%)", "failures": "Yáo and Ilyukhina died - coma system maintained bodies but consciousness lost", "ethical_note": "Memory drugs used to ensure Grace compliance without his consent"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0003-0005-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Threeworld Planetary Analysis', 'document.scientific.survey', 'published',
+ '{"planet": "Threeworld (Eridian designation)", "system": "40 Eridani (16.3 light-years from Earth)", "role": "Astrophage breeding planet for 40 Eridani system (equivalent to Venus for Sol)", "atmosphere": "Contains 8% nitrogen (higher than Venus 3.5%)", "challenge": "Natural Taumoeba dies in nitrogen - cannot deploy standard strain", "solution_required": "Taumoeba-82.5 strain (tolerates 8.25% nitrogen)", "significance": "Saving Erid requires nitrogen-resistant Taumoeba", "rocky_mission": "Return with Taumoeba-82.5 to deploy at Threeworld", "outcome": "40 Eridani saved, Rocky confirms success 16 years later"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0003-0006-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Eridian Numbering System Analysis', 'document.scientific.linguistics', 'published',
+ '{"subject": "Eridian Mathematical Notation", "base": "Base-6 (heximal) number system", "contrast": "Humans use base-10 (decimal)", "reason_inferred": "Rocky has 5 limbs - may count with appendages differently", "discovery_method": "Grace observed Rocky time-keeping devices", "implications": "All shared calculations require base conversion", "scientific_universality": "Despite base difference, mathematics describes same physical reality", "communication_breakthrough": "Math became bridge language before words", "grace_quote": "Physics works the same everywhere - that is how we trust each other"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0003-0007-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Grace Memory Recovery Log', 'document.medical.log', 'published',
+ '{"patient": "Dr. Ryland Grace", "condition": "Complete retrograde amnesia upon awakening", "cause": "Coma drugs included memory-affecting compounds", "recovery_timeline": "Days to weeks for full memory return", "trigger_mechanism": "Environmental cues spark flashback memories", "key_memories_recovered": ["Identity as science teacher", "Astrophage research with Stratt", "Crew selection and training", "His initial refusal and coercion", "Eva Stratt forcing him onto mission"], "emotional_journey": "From confusion to purpose to guilt to redemption", "revelation": "Grace tried to back out - was drugged to ensure compliance", "psychological_impact": "Initial resentment, eventual acceptance and transformation"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('33333333-0004-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333',
+ 'Rocky Trust Ritual Documentation', 'document.anthropological.observation', 'published',
+ '{"subject": "Eridian Trust and Sleep Customs", "observer": "Dr. Ryland Grace", "behavior": "Rocky insists on watching over Grace while he sleeps", "eridian_context": "Sleep is vulnerable time - watching over sleeper is profound trust gesture", "frequency": "Every time Grace sleeps, Rocky positions himself nearby", "communication": "Rocky says only this word when starting watch", "grace_interpretation": "Initially confusing, then deeply moving", "reciprocity": "Grace comes to watch over Rocky during Eridian rest periods", "significance": "Demonstrates friendship transcends species boundaries", "quote": "Sleep is trust. I watch."}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -1047,7 +1192,85 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 -- Sacrifice led to confirmation
 ('milestone', '33333333-0005-0001-0000-000000000001', 'led_to', 'milestone', '33333333-0005-0004-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "Grace staying enabled both stars to be saved"}'::jsonb),
 -- Confirmation led to new life
-('milestone', '33333333-0005-0004-0000-000000000001', 'led_to', 'milestone', '33333333-0005-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "Mission success allowed Grace to find new purpose"}'::jsonb)
+('milestone', '33333333-0005-0004-0000-000000000001', 'led_to', 'milestone', '33333333-0005-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "Mission success allowed Grace to find new purpose"}'::jsonb),
+
+-- ============================================
+-- NEW EDGES: Goal 2 → Pre-Launch Milestones
+-- ============================================
+('goal', '33333333-0002-0000-0000-000000000001', 'has', 'milestone', '33333333-0002-0006-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('goal', '33333333-0002-0000-0000-000000000001', 'has', 'milestone', '33333333-0002-0007-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('goal', '33333333-0002-0000-0000-000000000001', 'has', 'milestone', '33333333-0002-0008-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('goal', '33333333-0002-0000-0000-000000000001', 'has', 'milestone', '33333333-0002-0009-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('goal', '33333333-0002-0000-0000-000000000001', 'has', 'milestone', '33333333-0002-0010-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+
+-- ============================================
+-- NEW EDGES: Pre-Launch Milestones → Documents
+-- ============================================
+-- Crew profiles linked to crew selection milestone
+('milestone', '33333333-0002-0004-0000-000000000001', 'has', 'document', '33333333-0002-0003-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+('milestone', '33333333-0002-0004-0000-000000000001', 'has', 'document', '33333333-0002-0004-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- DuBois/Shapiro memorial linked to explosion milestone
+('milestone', '33333333-0002-0007-0000-000000000001', 'has', 'document', '33333333-0002-0005-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Steve Hatch linked to construction milestone
+('milestone', '33333333-0002-0003-0000-000000000001', 'has', 'document', '33333333-0002-0006-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Dimitri Komorov linked to fuel discovery
+('milestone', '33333333-0002-0002-0000-000000000001', 'has', 'document', '33333333-0001-0003-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Lokken linked to construction
+('milestone', '33333333-0002-0003-0000-000000000001', 'has', 'document', '33333333-0002-0007-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Lamai linked to crew selection (coma tech)
+('milestone', '33333333-0002-0004-0000-000000000001', 'has', 'document', '33333333-0002-0008-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Redell linked to construction (mass production)
+('milestone', '33333333-0002-0003-0000-000000000001', 'has', 'document', '33333333-0002-0009-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Stratt ethics linked to coercion milestone
+('milestone', '33333333-0002-0010-0000-000000000001', 'has', 'document', '33333333-0001-0004-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Coma pod specs linked to crew selection
+('milestone', '33333333-0002-0004-0000-000000000001', 'has', 'document', '33333333-0002-0010-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Threeworld analysis linked to nitrogen milestone
+('milestone', '33333333-0005-0001-0000-000000000001', 'has', 'document', '33333333-0003-0005-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Eridian numbering linked to first contact
+('milestone', '33333333-0003-0005-0000-000000000001', 'has', 'document', '33333333-0003-0006-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Memory recovery log linked to awakening milestone
+('milestone', '33333333-0003-0001-0000-000000000001', 'has', 'document', '33333333-0003-0007-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Rocky trust ritual linked to partnership milestone
+('milestone', '33333333-0004-0001-0000-000000000001', 'has', 'document', '33333333-0004-0002-0001-000000000005', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+
+-- ============================================
+-- NEW EDGES: Pre-Launch Milestones → Decisions
+-- ============================================
+-- Grace refusal decision linked to refusal milestone
+('milestone', '33333333-0002-0008-0000-000000000001', 'has', 'decision', '33333333-0002-0003-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Stratt coercion decision linked to drugging milestone
+('milestone', '33333333-0002-0010-0000-000000000001', 'has', 'decision', '33333333-0002-0004-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Suicide protocol decision linked to suicide methods milestone
+('milestone', '33333333-0002-0009-0000-000000000001', 'has', 'decision', '33333333-0002-0005-0002-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Redell recruitment decision linked to taskforce formation
+('milestone', '33333333-0002-0001-0000-000000000001', 'has', 'decision', '33333333-0001-0002-0001-000000000003', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+
+-- ============================================
+-- NEW EDGES: Pre-Launch Milestones → Risks
+-- ============================================
+-- Explosion milestone linked to explosion risk
+('milestone', '33333333-0002-0007-0000-000000000001', 'has', 'risk', '33333333-0002-0002-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Refusal milestone linked to refusal risk
+('milestone', '33333333-0002-0008-0000-000000000001', 'has', 'risk', '33333333-0002-0003-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+-- Coercion milestone linked to sabotage risk
+('milestone', '33333333-0002-0010-0000-000000000001', 'has', 'risk', '33333333-0002-0004-0001-000000000004', '33333333-3333-3333-3333-333333333333', '{}'::jsonb),
+
+-- ============================================
+-- NEW EDGES: Pre-Launch Causal Relationships
+-- ============================================
+-- Recruitment enabled mission participation
+('milestone', '33333333-0002-0006-0000-000000000001', 'enabled', 'milestone', '33333333-0002-0004-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "Grace recruitment led to eventual crew participation"}'::jsonb),
+-- Explosion caused Grace forced participation
+('milestone', '33333333-0002-0007-0000-000000000001', 'caused', 'milestone', '33333333-0002-0008-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "DuBois/Shapiro deaths forced Grace into mission"}'::jsonb),
+-- Refusal led to coercion
+('milestone', '33333333-0002-0008-0000-000000000001', 'led_to', 'milestone', '33333333-0002-0010-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "Grace refusal prompted Stratt to use force"}'::jsonb),
+-- Suicide methods selection happened during preparations
+('milestone', '33333333-0002-0004-0000-000000000001', 'enabled', 'milestone', '33333333-0002-0009-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "Crew training included mortality preparation"}'::jsonb),
+-- Coercion enabled launch
+('milestone', '33333333-0002-0010-0000-000000000001', 'enabled', 'milestone', '33333333-0002-0005-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "Drugging Grace allowed mission to proceed"}'::jsonb),
+-- Memory recovery connected to awakening
+('milestone', '33333333-0003-0001-0000-000000000001', 'led_to', 'milestone', '33333333-0003-0002-0000-000000000001', '33333333-3333-3333-3333-333333333333', '{"context": "Awakening with amnesia led to gradual memory recovery"}'::jsonb)
 ;
 
 -- ============================================
@@ -1056,7 +1279,7 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 DO $$
 BEGIN
   RAISE NOTICE '==============================================';
-  RAISE NOTICE 'Project Hail Mary: Save Two Worlds - v3.0';
+  RAISE NOTICE 'Project Hail Mary: Save Two Worlds - v4.0';
   RAISE NOTICE 'COMPREHENSIVE HARD SCIENCE FICTION ONTOLOGY';
   RAISE NOTICE 'Based on the novel by Andy Weir (2021)';
   RAISE NOTICE '==============================================';
@@ -1065,6 +1288,7 @@ BEGIN
   RAISE NOTICE 'STORY PHASES:';
   RAISE NOTICE '  1. Discovery: Petrova Line → Astrophage identified (2K, 10^15 J/kg)';
   RAISE NOTICE '  2. Construction: Hail Mary built with Astrophage spin drive';
+  RAISE NOTICE '  2a. PRE-LAUNCH: Grace coerced, DuBois/Shapiro explosion, crew preparations';
   RAISE NOTICE '  3. Journey: Grace awakens alone at Tau Ceti with amnesia';
   RAISE NOTICE '  4. First Contact: Meets Rocky the Eridian engineer';
   RAISE NOTICE '  5. Collaboration: Joint research, mutual rescues, xenonite tunnel';
@@ -1079,9 +1303,19 @@ BEGIN
   RAISE NOTICE '  - Tau Ceti: 12 light-years (real star)';
   RAISE NOTICE '  - 40 Eridani: 16.3 light-years (real triple star system)';
   RAISE NOTICE '  - Eridian environment: 29 atm ammonia, ~290K, 2x Earth gravity';
-  RAISE NOTICE '  - Rocky: ~400kg mass, xenonite exoskeleton, echolocation';
+  RAISE NOTICE '  - Rocky: ~400kg mass, xenonite exoskeleton, echolocation, base-6 math';
   RAISE NOTICE '  - Beetle probes: John, Paul, George, Ringo';
   RAISE NOTICE '  - Taumoeba strains: Taumoeba-35 (Venus), Taumoeba-82.5 (Threeworld)';
+  RAISE NOTICE '';
+  RAISE NOTICE 'CHARACTER PROFILES:';
+  RAISE NOTICE '  - Dr. Ryland Grace (protagonist, science teacher → interstellar hero)';
+  RAISE NOTICE '  - Rocky (Eridian engineer, 400kg, ammonia-breathing, chord-speaking friend)';
+  RAISE NOTICE '  - Eva Stratt (ruthless director with unlimited authority)';
+  RAISE NOTICE '  - Commander Yao (mission commander, died in coma)';
+  RAISE NOTICE '  - Olesya Ilyukhina (engineer, chose heroin for death method)';
+  RAISE NOTICE '  - DuBois & Shapiro (killed in pre-launch explosion)';
+  RAISE NOTICE '  - Steve Hatch (beetle probe designer, Beatles fan)';
+  RAISE NOTICE '  - Supporting scientists: Komorov, Lokken, Lamai, Redell';
   RAISE NOTICE '';
   RAISE NOTICE 'THEMES:';
   RAISE NOTICE '  - Science as universal language';
@@ -1090,30 +1324,37 @@ BEGIN
   RAISE NOTICE '  - The threat becomes the solution (Astrophage as fuel)';
   RAISE NOTICE '  - Redemption (coward becomes hero)';
   RAISE NOTICE '  - Friendship transcends species';
+  RAISE NOTICE '  - Ethics of coercion in existential crisis';
   RAISE NOTICE '';
   RAISE NOTICE 'ENTITY COUNTS:';
   RAISE NOTICE '  - 6 Goals (Discovery → Mission → Journey → Solution → Nitrogen → Salvation)';
-  RAISE NOTICE '  - 32 Milestones (comprehensive story coverage)';
+  RAISE NOTICE '  - 37 Milestones (+5 pre-launch events: coercion arc)';
   RAISE NOTICE '  - 15 Plans (research, engineering, emergency, survival)';
   RAISE NOTICE '  - 40 Tasks (EVA, lab work, rescues, teaching)';
-  RAISE NOTICE '  - 11 Decisions (ethical dilemmas, survival choices)';
-  RAISE NOTICE '  - 14 Risks (mission failure, contamination, EVA dangers)';
-  RAISE NOTICE '  - 15 Documents (papers, logs, manuals, surveys)';
-  RAISE NOTICE '  - 130+ Graph Edges (hierarchical + causal relationships)';
+  RAISE NOTICE '  - 15 Decisions (+4: refusal, coercion, suicide protocol, Redell)';
+  RAISE NOTICE '  - 17 Risks (+3: explosion, refusal, sabotage)';
+  RAISE NOTICE '  - 28 Documents (+13: character profiles, tech specs, analysis)';
+  RAISE NOTICE '  - 170+ Graph Edges (hierarchical + causal relationships)';
   RAISE NOTICE '';
   RAISE NOTICE 'KEY QUOTES:';
-  RAISE NOTICE '  "I penetrate the ridiculous, the absurd, and the impossible."';
+  RAISE NOTICE '  "Find someone else. I will not die in space." - Grace (refusing)';
+  RAISE NOTICE '  "I will do whatever it takes." - Stratt (forcing him)';
   RAISE NOTICE '  "You and me...same same. Save star. Save people." - Rocky';
-  RAISE NOTICE '  "I am the teacher. This is what I do." - Grace';
+  RAISE NOTICE '  "Sleep is trust. I watch." - Rocky (Eridian custom)';
+  RAISE NOTICE '  "I am the teacher. This is what I do." - Grace (final)';
   RAISE NOTICE '';
   RAISE NOTICE 'BOOK READER COVERAGE:';
+  RAISE NOTICE '  - Complete pre-launch coercion storyline (DuBois death → drugging)';
+  RAISE NOTICE '  - Crew profiles with suicide method selections';
   RAISE NOTICE '  - Complete nitrogen crisis storyline';
   RAISE NOTICE '  - Beetle conversion emergency (John, Paul, George sacrifice)';
   RAISE NOTICE '  - Xenonite permeation discovery and consequences';
-  RAISE NOTICE '  - Eridian biology and Blip-A spacecraft details';
-  RAISE NOTICE '  - Adrian planetary survey and sampling chain';
+  RAISE NOTICE '  - Eridian biology, base-6 math, and Blip-A spacecraft details';
+  RAISE NOTICE '  - Adrian and Threeworld planetary surveys';
   RAISE NOTICE '  - Taumoeba evolution log with strain milestones';
+  RAISE NOTICE '  - Rocky trust ritual (watching over sleep)';
   RAISE NOTICE '  - Full rescue operation and survival on Erid';
+  RAISE NOTICE '  - Memory recovery narrative arc';
   RAISE NOTICE '';
   RAISE NOTICE 'Note: Project is marked as is_public = TRUE for display';
   RAISE NOTICE '==============================================';

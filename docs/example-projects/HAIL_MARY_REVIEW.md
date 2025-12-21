@@ -6,17 +6,59 @@
 **UUID:** `33333333-3333-3333-3333-333333333333`
 **Migration File:** `supabase/migrations/20251220_seed_hail_mary_example_project.sql`
 
-## ✅ FIXED (2024-12-21)
+## ✅ FIXED & ENHANCED (2024-12-21) - v4.0
 
-All data consistency issues have been resolved:
-
+### Data Consistency Fixes:
 1. **Goals**: Added `state_key = 'achieved'` to all 6 goal INSERT statements
-2. **Milestones**: Added `state_key = 'completed'` to all 26 milestone INSERT statements
+2. **Milestones**: Added `state_key = 'completed'` to all milestone INSERT statements
 3. **Date Consistency**: Fixed chronological timeline:
     - Discovery/Launch phase: 2024
     - Tau Ceti arrival and events: 2028-2029 (after 4-year journey)
     - Journey to Erid: ~2033 (another ~4 years)
     - Epilogue (16 years later): 2045
+
+### Comprehensive Content Enhancements:
+
+**New Character Profile Documents (+9):**
+- Commander Yáo Li-Jie (mission commander, chose firearm for death)
+- Engineer Olesya Ilyukhina (chose heroin, brutally honest personality)
+- Dr. Martin DuBois & Annie Shapiro Memorial (killed in explosion)
+- Steve Hatch (beetle probe designer, named them after Beatles)
+- Dimitri Komorov (discovered Astrophage as fuel)
+- Dr. Lokken (centrifuge design)
+- Dr. Lamai (coma technology developer)
+- Dr. Redell (mass production, recruited from prison)
+- Eva Stratt Authority and Ethics Report
+
+**New Technical Documents (+4):**
+- Coma Pod Technical Specifications
+- Threeworld Planetary Analysis
+- Eridian Numbering System Analysis (base-6)
+- Grace Memory Recovery Log
+- Rocky Trust Ritual Documentation
+
+**New Pre-Launch Milestones (+5):**
+- Grace Recruited by Stratt
+- DuBois and Shapiro Killed in Explosion
+- Grace Refuses Mission
+- Crew Suicide Methods Selected
+- Grace Drugged and Loaded onto Hail Mary
+
+**New Decisions (+4):**
+- Grace Initial Refusal of Mission
+- Stratt Orders Grace Drugged and Loaded
+- Implement Crew Suicide Protocol
+- Recruit Redell Despite Criminal Past
+
+**New Risks (+3):**
+- Astrophage Testing Explosion
+- Science Specialist Refuses Mission
+- Coerced Crew Member Sabotage
+
+**New Causal Edges (+25):**
+- Complete pre-launch storyline connected
+- Memory recovery narrative connected
+- All new documents/decisions/risks linked to milestones
 
 ---
 
@@ -26,19 +68,19 @@ Based on Andy Weir's 2021 hard science fiction novel. This migration seeds a fic
 
 ---
 
-## Entity Counts
+## Entity Counts (v4.0)
 
 | Entity Type | Count | Status |
 | ----------- | ----- | ------ |
 | Project     | 1     | ✓      |
 | Goals       | 6     | ✓      |
-| Milestones  | 40+   | ✓      |
-| Plans       | 10+   | ✓      |
-| Tasks       | 15+   | ✓      |
-| Decisions   | 8+    | ✓      |
-| Risks       | 10+   | ✓      |
-| Documents   | 8+    | ✓      |
-| Edges       | 200+  | ✓      |
+| Milestones  | 37    | ✓ (+5 pre-launch) |
+| Plans       | 15    | ✓      |
+| Tasks       | 40    | ✓      |
+| Decisions   | 15    | ✓ (+4 new) |
+| Risks       | 17    | ✓ (+3 new) |
+| Documents   | 28    | ✓ (+13 character profiles & tech specs) |
+| Edges       | 170+  | ✓ (+25 new causal/hierarchical) |
 
 ---
 

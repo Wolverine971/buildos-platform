@@ -8,7 +8,8 @@
       "Bash(python3:*)",
       "mcp__ide__getDiagnostics",
       "Bash(cat:*)",
-      "Bash(pnpm check:*)"
+      "Bash(pnpm check:*)",
+      "mcp__perplexity__reason"
     ],
     "deny": [],
     "ask": []

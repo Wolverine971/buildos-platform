@@ -104,7 +104,7 @@
 	];
 
 	const loadingAccentClass =
-		'animate-pulse-accent ring-1 ring-indigo-300/60 dark:ring-indigo-500/40 shadow-[0_12px_32px_-18px_rgba(99,102,241,0.45)]';
+		'animate-pulse-accent ring-1 ring-accent/60 shadow-ink-strong';
 
 	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
 	const onboardingUrgent = $derived(user && onboardingProgress < 50);
@@ -496,7 +496,7 @@
 								>{userName}</span
 							>
 							{#if user?.is_admin}
-								<Shield class="w-4 h-4 text-red-500" />
+								<Shield class="w-4 h-4 text-destructive" />
 							{/if}
 							{#if needsOnboarding}
 								<div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
@@ -607,7 +607,7 @@
 										<a
 											href="/admin"
 											onclick={() => handleMenuItemClick('/admin')}
-											class="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<Shield class="w-4 h-4 mr-3" />
@@ -765,7 +765,7 @@
 							{user?.name || 'User'}
 							{#if user?.is_admin}
 								<span
-									class="ml-2 px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full dark:bg-red-900/40 dark:text-red-300"
+									class="ml-2 px-2 py-1 text-xs bg-destructive/15 text-destructive rounded-full font-semibold"
 								>
 									Admin
 								</span>
@@ -833,7 +833,7 @@
 							<a
 								href="/admin"
 								onclick={() => handleMenuItemClick('/admin')}
-								class="flex items-center px-3 py-1.5 text-base font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base font-medium text-destructive hover:text-destructive/80 hover:bg-destructive/10 rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<Shield class="w-5 h-5 mr-3" />

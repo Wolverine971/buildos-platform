@@ -213,31 +213,31 @@
 	);
 
 	const avatarClasses =
-		'flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold uppercase text-white dark:bg-slate-100 dark:text-slate-900';
+		'flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-sm font-semibold uppercase text-background';
 </script>
 
 <div
-	class="admin-shell relative flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 text-slate-900 transition-colors dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100"
+	class="admin-shell relative flex min-h-screen bg-background text-foreground transition-colors"
 >
 	<!-- Desktop sidebar -->
 	<aside
-		class="relative hidden w-72 shrink-0 border-r border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-slate-800/50 dark:bg-slate-950/80 lg:flex lg:flex-col"
+		class="relative hidden w-72 shrink-0 border-r border-border bg-card/95 backdrop-blur-xl lg:flex lg:flex-col tx tx-frame tx-weak"
 	>
 		<!-- Logo Section -->
-		<div class="border-b border-slate-200/80 px-6 py-6 dark:border-slate-800/50">
+		<div class="border-b border-border px-6 py-6">
 			<div class="flex items-center gap-4">
 				<div
-					class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/20"
+					class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-ink"
 				>
 					<Layers class="h-5 w-5" />
 				</div>
 				<div>
 					<p
-						class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500"
+						class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-muted-foreground"
 					>
 						BuildOS
 					</p>
-					<p class="text-base font-bold text-slate-900 dark:text-white">Admin Console</p>
+					<p class="text-base font-bold text-foreground">Admin Console</p>
 				</div>
 			</div>
 		</div>
@@ -246,20 +246,20 @@
 		<AdminSidebar groups={navGroups} {pathname} />
 
 		<!-- User Profile -->
-		<div class="mt-auto border-t border-slate-200/80 px-6 py-5 dark:border-slate-800/50">
+		<div class="mt-auto border-t border-border px-6 py-5">
 			<div class="flex items-center gap-3">
 				<div class="relative">
 					<div class={avatarClasses}>{initials}</div>
 					<span
-						class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-950"
+						class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-emerald-500"
 					></span>
 				</div>
 				<div class="flex-1 min-w-0">
-					<p class="text-sm font-semibold text-slate-900 dark:text-white truncate">
+					<p class="text-sm font-semibold text-foreground truncate">
 						{user?.name || 'Admin'}
 					</p>
 					{#if user?.email}
-						<p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+						<p class="text-xs text-muted-foreground truncate">
 							{user.email}
 						</p>
 					{/if}
@@ -277,7 +277,7 @@
 			<div class="min-h-full">
 				{#if $$slots.hero}
 					<div
-						class="border-b border-slate-200/60 bg-gradient-to-b from-white to-slate-50/50 dark:border-slate-800/50 dark:from-slate-950 dark:to-slate-900/50"
+						class="border-b border-border bg-muted/30"
 					>
 						<div class="px-4 py-6 sm:px-6 lg:px-8">
 							<slot name="hero" />
@@ -297,30 +297,30 @@
 	{#if mobileOpen}
 		<div id="admin-mobile-nav" class="fixed inset-0 z-50 flex lg:hidden">
 			<button
-				class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
+				class="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
 				onclick={() => (mobileOpen = false)}
 				aria-label="Close menu"
 			/>
 			<div
-				class="relative ml-auto flex h-full w-80 flex-col bg-white shadow-2xl dark:bg-slate-950 animate-slide-in"
+				class="relative ml-auto flex h-full w-80 flex-col bg-card shadow-ink-strong animate-slide-in tx tx-frame tx-weak"
 			>
 				<!-- Mobile Header -->
 				<div
-					class="flex items-center justify-between border-b border-slate-200/80 px-6 py-5 dark:border-slate-800/50"
+					class="flex items-center justify-between border-b border-border px-6 py-5"
 				>
 					<div class="flex items-center gap-3">
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/20"
+							class="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-ink"
 						>
 							<Layers class="h-5 w-5" />
 						</div>
 						<div>
 							<p
-								class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-500"
+								class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-muted-foreground"
 							>
 								BuildOS
 							</p>
-							<p class="text-sm font-bold text-slate-900 dark:text-white">
+							<p class="text-sm font-bold text-foreground">
 								Admin Menu
 							</p>
 						</div>
@@ -331,7 +331,7 @@
 						icon={X}
 						iconPosition="left"
 						onclick={() => (mobileOpen = false)}
-						class="!p-2"
+						class="!p-2 text-muted-foreground hover:text-foreground"
 					>
 						<span class="sr-only">Close</span>
 					</Button>
@@ -343,22 +343,22 @@
 				</div>
 
 				<!-- Mobile User Profile -->
-				<div class="border-t border-slate-200/80 px-6 py-5 dark:border-slate-800/50">
+				<div class="border-t border-border px-6 py-5">
 					<div class="flex items-center gap-3">
 						<div class="relative">
 							<div class={avatarClasses}>{initials}</div>
 							<span
-								class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-950"
+								class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-emerald-500"
 							></span>
 						</div>
 						<div class="flex-1 min-w-0">
 							<p
-								class="text-sm font-semibold text-slate-900 dark:text-white truncate"
+								class="text-sm font-semibold text-foreground truncate"
 							>
 								{user?.name || 'Admin'}
 							</p>
 							{#if user?.email}
-								<p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+								<p class="text-xs text-muted-foreground truncate">
 									{user.email}
 								</p>
 							{/if}
@@ -372,26 +372,16 @@
 
 <style>
 	:global(.admin-shell) {
-		background-color: #f8fafc;
-	}
-
-	:global(.dark .admin-shell) {
-		background-color: #020617;
+		background-color: hsl(var(--background));
 	}
 
 	:global(.admin-shell .admin-panel) {
 		position: relative;
 		border-radius: 0.875rem;
-		background: rgba(255, 255, 255, 0.97);
-		border: 1px solid rgba(148, 163, 184, 0.35);
-		box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+		background: hsl(var(--card) / 0.97);
+		border: 1px solid hsl(var(--border));
+		box-shadow: var(--shadow-ink);
 		backdrop-filter: blur(10px);
-	}
-
-	:global(.dark .admin-shell .admin-panel) {
-		background: rgba(2, 6, 23, 0.92);
-		border-color: rgba(71, 85, 105, 0.65);
-		box-shadow: 0 20px 40px rgba(2, 6, 23, 0.75);
 	}
 
 	:global(.admin-shell .admin-panel--tinted) {
@@ -402,10 +392,9 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(135deg, rgba(59, 130, 246, 0.07), rgba(14, 165, 233, 0.05));
+		background: linear-gradient(135deg, hsl(var(--accent) / 0.07), hsl(var(--accent) / 0.04));
 		opacity: 0.45;
 		pointer-events: none;
-		/* Note: This is a background tint overlay, not a standalone gradient - no dithering needed */
 	}
 
 	:global(.dark .admin-shell .admin-panel--tinted::after) {

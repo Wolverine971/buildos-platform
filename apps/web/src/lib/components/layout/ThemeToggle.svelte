@@ -53,6 +53,6 @@
 	variant="ghost"
 	size="sm"
 	icon={isDark ? Sun : Moon}
-	class="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white min-h-0"
+	class="p-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 min-h-0 rounded-lg transition-colors"
 	aria-label="Toggle theme"
 ></Button>

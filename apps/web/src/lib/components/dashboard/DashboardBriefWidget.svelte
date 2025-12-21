@@ -231,36 +231,36 @@
 </script>
 
 <!-- Fixed-height container prevents layout shift during state transitions -->
-<div class="w-full min-h-[60px]">
+<div class="w-full min-h-[48px] sm:min-h-[60px]">
 	{#if isLoading}
-		<!-- Skeleton Loading State - matches dimensions of brief card -->
+		<!-- Skeleton Loading State - more compact on mobile -->
 		<div
-			class="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 animate-pulse"
+			class="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-border bg-card/50 animate-pulse"
 			aria-hidden="true"
 		>
-			<div class="p-2 rounded-lg bg-muted">
-				<div class="h-4 w-4 bg-muted-foreground/20 rounded"></div>
+			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-muted">
+				<div class="h-3 w-3 sm:h-4 sm:w-4 bg-muted-foreground/20 rounded"></div>
 			</div>
-			<div class="flex-1 space-y-2">
-				<div class="h-4 bg-muted rounded w-24"></div>
-				<div class="h-3 bg-muted rounded w-48"></div>
+			<div class="flex-1 space-y-1.5 sm:space-y-2">
+				<div class="h-3 sm:h-4 bg-muted rounded w-20 sm:w-24"></div>
+				<div class="h-2.5 sm:h-3 bg-muted rounded w-32 sm:w-48"></div>
 			</div>
 		</div>
 	{:else if isGenerating}
-		<!-- Generating State -->
-		<div class="p-3 rounded-lg border border-accent/30 bg-accent/5 tx tx-pulse tx-weak">
-			<div class="flex items-center gap-3 mb-2">
-				<div class="p-2 rounded-lg bg-accent/10 border border-accent/20">
-					<Loader2 class="h-4 w-4 text-accent animate-spin" />
+		<!-- Generating State - compact on mobile -->
+		<div class="p-2 sm:p-3 rounded-lg border border-accent/30 bg-accent/5 tx tx-pulse tx-weak">
+			<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+				<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20">
+					<Loader2 class="h-3 w-3 sm:h-4 sm:w-4 text-accent animate-spin" />
 				</div>
 				<div class="flex-1 min-w-0">
-					<p class="text-sm font-medium text-foreground">Generating your brief</p>
-					<p class="text-xs text-muted-foreground truncate">{statusMessage}</p>
+					<p class="text-xs sm:text-sm font-medium text-foreground">Generating brief</p>
+					<p class="text-[10px] sm:text-xs text-muted-foreground truncate">{statusMessage}</p>
 				</div>
-				<span class="text-xs font-bold text-accent">{progress}%</span>
+				<span class="text-[10px] sm:text-xs font-bold text-accent">{progress}%</span>
 			</div>
 			<!-- Progress bar -->
-			<div class="h-1 bg-accent/20 rounded-full overflow-hidden">
+			<div class="h-0.5 sm:h-1 bg-accent/20 rounded-full overflow-hidden">
 				<div
 					class="h-full bg-accent rounded-full transition-all duration-300"
 					style="width: {progress}%"
@@ -268,42 +268,51 @@
 			</div>
 		</div>
 	{:else if error}
-		<!-- Error State -->
-		<div class="flex items-center gap-3 p-3 rounded-lg border border-red-500/30 bg-red-500/5">
-			<div class="p-2 rounded-lg bg-red-500/10">
-				<AlertCircle class="h-4 w-4 text-red-500" />
+		<!-- Error State - compact on mobile -->
+		<div class="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-red-500/30 bg-red-500/5">
+			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-red-500/10">
+				<AlertCircle class="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
 			</div>
 			<div class="flex-1">
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+				<p class="text-xs sm:text-sm text-red-600 dark:text-red-400">{error}</p>
 			</div>
-			<button onclick={generateBrief} class="text-xs font-medium text-accent hover:underline">
+			<button onclick={generateBrief} class="text-[10px] sm:text-xs font-medium text-accent hover:underline">
 				Retry
 			</button>
 		</div>
 	{:else if brief}
-		<!-- Brief Available - Clickable Card -->
+		<!-- Brief Available - Compact card on mobile -->
 		<button
 			onclick={handleClick}
-			class="w-full text-left p-3 rounded-lg border border-border bg-card shadow-ink hover:border-accent hover:shadow-ink-strong transition-all duration-200 pressable tx tx-frame tx-weak group"
+			class="w-full text-left p-2 sm:p-3 rounded-lg border border-border bg-card shadow-ink hover:border-accent hover:shadow-ink-strong transition-all duration-200 pressable tx tx-frame tx-weak group"
 		>
-			<div class="flex items-start gap-3">
+			<div class="flex items-center sm:items-start gap-2 sm:gap-3">
 				<div
-					class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors"
+					class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors flex-shrink-0"
 				>
-					<Sun class="h-4 w-4 text-amber-600 dark:text-amber-400" />
+					<Sun class="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
 				</div>
 				<div class="flex-1 min-w-0">
-					<div class="flex items-center justify-between gap-2 mb-1">
-						<h3 class="text-sm font-semibold text-foreground">Today's Brief</h3>
+					<div class="flex items-center justify-between gap-1.5 sm:gap-2">
+						<h3 class="text-xs sm:text-sm font-semibold text-foreground">Today's Brief</h3>
+						<!-- Mobile: Show priority count inline if exists -->
+						{#if brief.priority_actions && brief.priority_actions.length > 0}
+							<span
+								class="sm:hidden px-1 py-0.5 text-[8px] font-bold rounded bg-accent/10 text-accent"
+							>
+								{brief.priority_actions.length}
+							</span>
+						{/if}
 						<ChevronRight
-							class="h-4 w-4 text-muted-foreground/50 group-hover:text-accent transition-colors"
+							class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/50 group-hover:text-accent transition-colors flex-shrink-0"
 						/>
 					</div>
-					<p class="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+					<!-- Desktop: Show snippet and priority actions -->
+					<p class="hidden sm:block text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1">
 						{briefSnippet || 'Your daily brief is ready'}
 					</p>
 					{#if brief.priority_actions && brief.priority_actions.length > 0}
-						<div class="mt-2 flex items-center gap-1.5">
+						<div class="hidden sm:flex mt-2 items-center gap-1.5">
 							<span
 								class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-accent/10 text-accent border border-accent/20"
 							>
@@ -318,25 +327,25 @@
 			</div>
 		</button>
 	{:else}
-		<!-- No Brief - Generate CTA -->
+		<!-- No Brief - Compact Generate CTA on mobile -->
 		<button
 			onclick={generateBrief}
 			disabled={isGenerating}
-			class="w-full flex items-center gap-3 p-3 rounded-lg border-2 border-dashed border-accent/40 bg-accent/5 hover:border-accent hover:bg-accent/10 transition-all duration-200 pressable group"
+			class="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-dashed border-accent/40 bg-accent/5 hover:border-accent hover:bg-accent/10 transition-all duration-200 pressable group"
 		>
 			<div
-				class="p-2 rounded-lg bg-accent/10 border border-accent/20 group-hover:bg-accent group-hover:border-accent transition-colors"
+				class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20 group-hover:bg-accent group-hover:border-accent transition-colors flex-shrink-0"
 			>
 				<Sparkles
-					class="h-4 w-4 text-accent group-hover:text-accent-foreground transition-colors"
+					class="h-3 w-3 sm:h-4 sm:w-4 text-accent group-hover:text-accent-foreground transition-colors"
 				/>
 			</div>
-			<div class="flex-1 text-left">
-				<h3 class="text-sm font-semibold text-foreground">Generate Today's Brief</h3>
-				<p class="text-xs text-muted-foreground">Get your AI-powered daily overview</p>
+			<div class="flex-1 text-left min-w-0">
+				<h3 class="text-xs sm:text-sm font-semibold text-foreground">Generate Brief</h3>
+				<p class="hidden sm:block text-xs text-muted-foreground">Get your AI-powered daily overview</p>
 			</div>
 			<ChevronRight
-				class="h-4 w-4 text-accent/50 group-hover:text-accent transition-colors"
+				class="h-3 w-3 sm:h-4 sm:w-4 text-accent/50 group-hover:text-accent transition-colors flex-shrink-0"
 			/>
 		</button>
 	{/if}

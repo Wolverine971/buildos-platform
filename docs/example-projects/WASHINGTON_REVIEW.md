@@ -261,3 +261,115 @@ The redundant column addition blocks (lines 27-49) can be removed for cleanlines
 - All goal `state_key` values use valid enum: `'achieved'`
 - All milestone `state_key` values use valid enum: `'completed'` (NOT 'achieved')
 - SQL syntax verified - column counts match value counts in all INSERT statements
+
+---
+
+## V4.0 Expansion Applied ✅
+
+**Date:** 2025-12-21
+
+### New Goal Added:
+
+- **Goal 9:** Defend the Frontier from British-Allied Raids (Sullivan Expedition)
+
+### New Milestones Added (18):
+
+**Hardship & Disaster:**
+- Morristown Hard Winter (1779-1780) - Worse than Valley Forge
+- Fort Washington Disaster (November 1776) - 2,800 captured
+
+**Naval Warfare:**
+- Battle of Valcour Island (October 1776) - Arnold delays invasion
+- Battle of the Chesapeake (September 1781) - De Grasse seals Yorktown
+
+**Northern Campaigns:**
+- Quebec Expedition (1775-1776) - Arnold/Montgomery invasion
+- Siege of Savannah (October 1779) - Franco-American defeat
+
+**Frontier Warfare:**
+- Battle of Oriskany (August 1777) - Bloodiest battle
+- Cherry Valley Massacre (November 1778) - Prompted retaliation
+- Wyoming Valley Massacre (July 1778) - Frontier atrocity
+- Sullivan Expedition (1779) - Punitive campaign
+- Battle of Newtown (August 1779) - Expedition's victory
+- 40 Iroquois Villages Destroyed (1779) - Expedition result
+
+**Financing:**
+- Robert Morris Appointed (1781) - Superintendent of Finance
+- Haym Salomon Financing (1781) - Critical fundraising
+
+**Diversity & Alliance:**
+- 1st Rhode Island Regiment (1778) - First integrated Black regiment
+- Battle of Rhode Island (August 1778) - Black soldiers prove valor
+- Oneida Nation Alliance (1777) - Only Iroquois allies
+- Oneida Valley Forge Aid (1778) - Food saves army
+
+### New Plans Added (4):
+- Sullivan Campaign Plan
+- Robert Morris Financial Plan
+- Kosciuszko Fortification Plan
+- Rhode Island Recruitment Plan
+
+### New Tasks Added (12):
+- Sullivan Expedition operational tasks (3)
+- Fort Washington defense tasks (2)
+- Financial tasks (2)
+- Valcour Island construction tasks (3)
+- 1st Rhode Island recruitment tasks (2)
+
+### New Decisions Added (4):
+- Authorize Sullivan Expedition
+- Appoint Morris as Superintendent
+- Recruit enslaved for freedom
+- Accept de Grasse's plan
+
+### New Risks Added (4):
+- Frontier settlements vulnerable
+- Morristown starvation
+- Rhode Island regiment resistance
+- French fleet availability
+
+### New Documents Added (6):
+- Sullivan Expedition Report
+- 1st Rhode Island Roster
+- Kosciuszko West Point Plans
+- Pulaski Cavalry Manual
+- Kosciuszko Fortification Treatise
+- De Kalb Camden Battle Notes
+
+### New Cross-Cutting Edges Added:
+
+| From | Relation | To | Context |
+|------|----------|-----|---------|
+| Cherry Valley | led_to | Sullivan Expedition | Massacre prompted punitive expedition |
+| Wyoming Valley | led_to | Sullivan Expedition | Atrocity demanded response |
+| Battle of Newtown | enabled | Village Destruction | Victory broke resistance |
+| Valcour Island | enabled | Saratoga | Delayed invasion by one year |
+| Battle of Chesapeake | enabled | Yorktown | French naval victory blocked relief |
+| Morris Financing | enabled | Yorktown | Personal credit funded march/siege |
+| Oneida Aid | enabled | Valley Forge | Food sustained starving army |
+| Oriskany | enabled | Saratoga | Stopped St. Leger, concentrated forces |
+| 1st Rhode Island | enabled | Yorktown | Black soldiers served in assault |
+
+### Updated Entity Counts:
+
+| Entity Type | Previous | New | Total |
+|-------------|----------|-----|-------|
+| Goals | 8 | +1 | 9 |
+| Milestones | 48+ | +18 | 66+ |
+| Plans | 21+ | +4 | 25+ |
+| Tasks | 68+ | +12 | 80+ |
+| Decisions | 16 | +4 | 20 |
+| Risks | 16 | +4 | 20 |
+| Documents | 16 | +6 | 22 |
+| Edges | 180+ | +40 | 220+ |
+
+### V4.0 Themes Covered:
+
+1. **Frontier Warfare:** Complete Sullivan Expedition arc with causes and outcomes
+2. **Naval Warfare:** Valcour Island strategic delay, Chesapeake decisive victory
+3. **Financial Crisis:** Robert Morris and Haym Salomon's critical role
+4. **Diversity:** 1st Rhode Island Regiment (Black soldiers) and Oneida Nation alliance
+5. **Foreign Volunteers:** Documents for Pulaski, Kosciuszko, and de Kalb
+6. **Hardship:** Morristown Hard Winter (worse than Valley Forge)
+7. **Disasters:** Fort Washington catastrophe, Quebec expedition failure

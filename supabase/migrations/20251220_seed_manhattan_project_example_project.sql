@@ -183,6 +183,81 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
  '00000000-0000-0000-0000-000000000002');
 
 -- ============================================
+-- MILESTONES - Goal 1 (Continued): British Collaboration
+-- ============================================
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
+
+('33336666-0001-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Frisch-Peierls Memorandum',
+ 'milestone.scientific', 'completed',
+ '1940-03-01'::timestamptz,
+ '{"state": "achieved", "description": "Otto Frisch and Rudolf Peierls in Birmingham calculated that only a few kilograms of U-235 could produce an atomic explosion—making the bomb practically feasible. This memorandum launched British atomic weapons research.", "personnel": ["Otto Frisch", "Rudolf Peierls"], "location": "University of Birmingham, UK"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'MAUD Committee Report Completed',
+ 'milestone.scientific', 'completed',
+ '1941-07-15'::timestamptz,
+ '{"state": "achieved", "description": "British MAUD Committee concluded atomic bomb was feasible, estimating 25 lbs of U-235 sufficient, and recommended immediate development. Report reached FDR via Vannevar Bush on October 9, 1941.", "personnel": ["George Thomson", "James Chadwick", "Marcus Oliphant"], "impact": "Galvanized U.S. commitment to atomic program"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Tube Alloys Project Approved',
+ 'milestone.organizational', 'completed',
+ '1941-08-30'::timestamptz,
+ '{"state": "achieved", "description": "Churchill approved British atomic bomb project codenamed Tube Alloys, administered by Department of Scientific and Industrial Research", "personnel": ["Winston Churchill", "Wallace Akers"]}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0012-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Mark Oliphant Urges U.S. Action',
+ 'milestone.diplomatic', 'completed',
+ '1941-08-25'::timestamptz,
+ '{"state": "achieved", "description": "Australian physicist Marcus Oliphant flew to U.S. and personally urged American scientists to accelerate atomic research, finding MAUD report had not reached key decision-makers", "personnel": ["Marcus Oliphant", "Ernest Lawrence", "Arthur Compton"]}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0013-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Montreal Laboratory Established',
+ 'milestone.organizational', 'completed',
+ '1942-11-01'::timestamptz,
+ '{"state": "achieved", "description": "Joint British-Canadian nuclear laboratory established in Montreal, focusing on heavy water reactor research and plutonium separation. About 300 scientists including Hans von Halban.", "personnel": ["Hans von Halban", "Pierre Auger", "Bertrand Goldschmidt"], "location": "University of Montreal"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Quebec Agreement Signed',
+ 'milestone.diplomatic', 'completed',
+ '1943-08-19'::timestamptz,
+ '{"state": "achieved", "description": "Roosevelt and Churchill signed agreement formally merging British Tube Alloys project into Manhattan Project. Established Combined Policy Committee for US-UK-Canada coordination. Neither would use bomb without mutual consent.", "personnel": ["Franklin D. Roosevelt", "Winston Churchill"], "location": "Quebec City, Canada"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0015-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Combined Policy Committee First Meeting',
+ 'milestone.organizational', 'completed',
+ '1943-09-08'::timestamptz,
+ '{"state": "achieved", "description": "First meeting of US-UK-Canada Combined Policy Committee established by Quebec Agreement to coordinate atomic efforts", "personnel": ["Henry Stimson", "Vannevar Bush", "James Conant", "Sir John Anderson"]}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0016-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'British Mission Arrives in America',
+ 'milestone.organizational', 'completed',
+ '1943-12-03'::timestamptz,
+ '{"state": "achieved", "description": "Fifteen British scientists including Rudolf Peierls, Franz Simon, and Klaus Fuchs arrived in Virginia to join Manhattan Project. Brought critical expertise in gaseous diffusion and implosion.", "personnel": ["Rudolf Peierls", "Franz Simon", "Klaus Fuchs", "James Chadwick", "Otto Frisch"], "count": 15}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0017-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Niels Bohr Escapes to Allied Side',
+ 'milestone.personnel', 'completed',
+ '1943-10-06'::timestamptz,
+ '{"state": "achieved", "description": "Danish physicist Niels Bohr escaped Nazi-occupied Denmark via Sweden to Britain, then joined Manhattan Project. Provided theoretical insights and unsuccessfully urged international control.", "personnel": ["Niels Bohr"], "codename": "Nicholas Baker"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0001-0018-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Chalk River Laboratory Activated',
+ 'milestone.construction', 'completed',
+ '1944-09-01'::timestamptz,
+ '{"state": "achieved", "description": "Montreal Laboratory operations transferred to new Chalk River site in Ontario. Would later house NRX reactor and become major Canadian nuclear research center.", "location": "Chalk River, Ontario, Canada"}',
+ '00000000-0000-0000-0000-000000000002');
+
+-- ============================================
 -- MILESTONES - Goal 2: Produce Fissile Material
 -- ============================================
 INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
@@ -419,6 +494,34 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
  'milestone.security', 'completed',
  '1945-07-16'::timestamptz,
  '{"state": "achieved", "description": "Alamogordo Air Base issued press release claiming remotely located ammunition magazine exploded. True cause not revealed until after Hiroshima"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0004-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Theodore Hall Begins Espionage',
+ 'milestone.security', 'completed',
+ '1944-10-01'::timestamptz,
+ '{"state": "achieved", "description": "18-year-old physicist Theodore Hall (codename MLAD), the youngest scientist at Los Alamos, began passing detailed implosion bomb designs to Soviet intelligence. Unlike Fuchs, Hall was never prosecuted—his espionage not confirmed until 1990s Venona decrypts.", "personnel": ["Theodore Hall", "Saville Sax"], "impact": "Provided independent confirmation of Fuchs intelligence"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0004-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Harry Gold Courier Activities',
+ 'milestone.security', 'completed',
+ '1945-06-01'::timestamptz,
+ '{"state": "achieved", "description": "Soviet courier Harry Gold met Klaus Fuchs in Santa Fe and David Greenglass in Albuquerque on same trip, collecting atomic secrets. Later arrested in 1950 and provided evidence against Rosenbergs.", "personnel": ["Harry Gold", "Klaus Fuchs", "David Greenglass"]}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0004-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Klaus Fuchs Arrested',
+ 'milestone.security', 'completed',
+ '1950-01-27'::timestamptz,
+ '{"state": "achieved", "description": "British authorities arrested Klaus Fuchs based on Venona decrypts. His confession led to Harry Gold, then to David Greenglass and the Rosenbergs. Sentenced to 14 years, served 9.", "personnel": ["Klaus Fuchs"], "impact": "Unraveled entire Soviet atomic spy network"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0004-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Rosenbergs Executed',
+ 'milestone.security', 'completed',
+ '1953-06-19'::timestamptz,
+ '{"state": "achieved", "description": "Julius and Ethel Rosenberg executed at Sing Sing for conspiracy to commit espionage, becoming only American civilians executed for espionage during Cold War. Case remains controversial.", "personnel": ["Julius Rosenberg", "Ethel Rosenberg"], "location": "Sing Sing Prison, New York"}',
  '00000000-0000-0000-0000-000000000002');
 
 -- ============================================
@@ -487,6 +590,48 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
  'milestone.achievement', 'completed',
  '1945-08-15'::timestamptz,
  '{"state": "achieved", "description": "Emperor Hirohito overruled military leaders and announced Japans acceptance of Potsdam Declaration terms. V-J Day"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0005-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Interim Committee Established',
+ 'milestone.organizational', 'completed',
+ '1945-05-09'::timestamptz,
+ '{"state": "achieved", "description": "Secretary of War Stimson formed Interim Committee with President Truman approval to advise on atomic energy matters during and after war. Chaired by Stimson; James Byrnes was Trumans personal representative and most influential member.", "personnel": ["Henry Stimson", "James Byrnes", "George Harrison", "Ralph Bard", "William Clayton", "Vannevar Bush", "Karl Compton", "James Conant"]}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0005-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Interim Committee Key Meetings',
+ 'milestone.decision', 'completed',
+ '1945-05-31'::timestamptz,
+ '{"state": "achieved", "description": "Crucial May 31-June 1 meetings where Interim Committee recommended using bomb on Japan without warning. Scientific Panel (Oppenheimer, Fermi, Lawrence, A. Compton) advised no technical demonstration would be convincing.", "personnel": ["J. Robert Oppenheimer", "Enrico Fermi", "Ernest Lawrence", "Arthur Compton"], "outcome": "Recommended military use without specific warning"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0005-0012-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Target Committee Second Meeting - Los Alamos',
+ 'milestone.decision', 'completed',
+ '1945-05-10'::timestamptz,
+ '{"state": "achieved", "description": "Target Committee met at Los Alamos with Oppenheimer chairing. Established criteria: large urban areas, high strategic value, undamaged by prior bombing. Kyoto ranked first due to population and industrial concentration.", "personnel": ["J. Robert Oppenheimer", "John von Neumann", "Robert Serber"], "cities_discussed": ["Kyoto", "Hiroshima", "Yokohama", "Kokura Arsenal", "Niigata"]}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0005-0013-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Stimson-Truman Meeting on Kyoto',
+ 'milestone.decision', 'completed',
+ '1945-07-24'::timestamptz,
+ '{"state": "achieved", "description": "At Potsdam, Stimson personally urged Truman to permanently remove Kyoto from target list. Stimson had visited the ancient capital and argued its destruction would embitter Japanese for generations and complicate post-war reconciliation.", "personnel": ["Henry Stimson", "Harry Truman"], "outcome": "Kyoto permanently removed; Nagasaki substituted"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0005-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Soviet Union Declares War on Japan',
+ 'milestone.external', 'completed',
+ '1945-08-08'::timestamptz,
+ '{"state": "achieved", "description": "Soviet Union declared war on Japan and invaded Manchuria, exactly three months after V-E Day as Stalin had promised at Yalta. Combined with atomic bombings, this ended any Japanese hope of Soviet-mediated peace.", "personnel": ["Joseph Stalin"]}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0005-0015-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Formal Japanese Surrender',
+ 'milestone.achievement', 'completed',
+ '1945-09-02'::timestamptz,
+ '{"state": "achieved", "description": "Japan formally surrendered aboard USS Missouri in Tokyo Bay, ending World War II. General Douglas MacArthur presided; representatives of all major Allied powers attended.", "personnel": ["Douglas MacArthur", "Mamoru Shigemitsu", "Chester Nimitz"], "location": "USS Missouri, Tokyo Bay"}',
  '00000000-0000-0000-0000-000000000002');
 
 -- ============================================
@@ -513,6 +658,55 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
  'milestone.organizational', 'completed',
  '1946-07-01'::timestamptz,
  '{"state": "achieved", "description": "Los Alamos, Oak Ridge, Argonne, and other Manhattan Project sites transitioned to national laboratories for continued research"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0006-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Oppenheimer Resigns as Los Alamos Director',
+ 'milestone.personnel', 'completed',
+ '1945-10-16'::timestamptz,
+ '{"state": "achieved", "description": "J. Robert Oppenheimer resigned as Los Alamos director to return to academic life at Caltech. Expressed ambivalence about atomic weapons, later famously saying scientists had known sin.", "personnel": ["J. Robert Oppenheimer"], "successor": "Norris Bradbury"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0006-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Norris Bradbury Becomes Los Alamos Director',
+ 'milestone.personnel', 'completed',
+ '1945-10-17'::timestamptz,
+ '{"state": "achieved", "description": "Navy Commander Norris Bradbury succeeded Oppenheimer, leading Los Alamos through transition from wartime crash program to permanent weapons laboratory. Would serve until 1970.", "personnel": ["Norris Bradbury"]}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0006-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Bikini Islanders Relocated',
+ 'milestone.external', 'completed',
+ '1946-03-01'::timestamptz,
+ '{"state": "achieved", "description": "167 Bikini Atoll residents relocated to Rongerik Atoll to make way for Operation Crossroads nuclear tests. U.S. Navy Commodore told them it was for the good of mankind. They would never permanently return.", "casualties": "Permanent displacement of Bikinian people"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0006-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Operation Crossroads - Shot Able',
+ 'milestone.testing', 'completed',
+ '1946-07-01'::timestamptz,
+ '{"state": "achieved", "description": "First post-war nuclear test: Fat Man-type bomb air-dropped at Bikini Atoll lagoon over fleet of 95 target ships. 23 kiloton yield. Sank 5 ships; others contaminated.", "yield": "23 kilotons", "location": "Bikini Atoll, Marshall Islands", "target_ships": 95}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0006-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Operation Crossroads - Shot Baker',
+ 'milestone.testing', 'completed',
+ '1946-07-25'::timestamptz,
+ '{"state": "achieved", "description": "Underwater nuclear test 90 feet below surface created massive water column and base surge, severely contaminating target fleet with radioactive spray. Demonstrated radiation as major naval warfare problem.", "yield": "23 kilotons", "location": "Bikini Atoll", "impact": "Severe radioactive contamination"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0006-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Operation Crossroads - Shot Charlie Cancelled',
+ 'milestone.decision', 'completed',
+ '1946-08-01'::timestamptz,
+ '{"state": "achieved", "description": "Planned deep underwater test cancelled due to severe radioactive contamination from Baker. Ships too contaminated for further use; personnel exposure concerns.", "reason": "Extreme radioactive contamination from Baker test"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('33336666-0006-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Soviet Union Tests First Atomic Bomb',
+ 'milestone.external', 'completed',
+ '1949-08-29'::timestamptz,
+ '{"state": "achieved", "description": "USSR detonated RDS-1 (First Lightning, called Joe-1 by Americans) at Semipalatinsk, ending U.S. nuclear monopoly. Design was copy of Fat Man, enabled by Fuchs and other spies. Occurred 4 years earlier than U.S. predicted.", "yield": "22 kilotons", "codename": "RDS-1 / Joe-1", "impact": "Ended U.S. nuclear monopoly; accelerated arms race"}',
  '00000000-0000-0000-0000-000000000002');
 
 -- ============================================
@@ -833,6 +1027,49 @@ INSERT INTO onto_decisions (id, project_id, title, decision_at, rationale, props
  '1945-08-09'::timestamptz,
  'After Japan did not immediately surrender following Hiroshima, second bomb dropped on Nagasaki (Kokura obscured by clouds). Demonstrated US possessed multiple weapons.',
  '{"type": "decision.military", "state": "decided", "decided_by": "Truman (standing order)", "context": "Japan had not surrendered after Hiroshima"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Additional Decisions: British Collaboration & Post-War
+('66666666-0004-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Sign Quebec Agreement',
+ '1943-08-19'::timestamptz,
+ 'Roosevelt and Churchill agreed to merge British Tube Alloys program into Manhattan Project. U.S. would lead industrial effort; Britain provided scientific expertise. Neither would use bomb without mutual consent.',
+ '{"type": "decision.diplomatic", "state": "decided", "decided_by": "Franklin D. Roosevelt, Winston Churchill", "location": "Quebec City, Canada"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('66666666-0004-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Establish Interim Committee',
+ '1945-05-09'::timestamptz,
+ 'With FDR dead and war ending, Stimson recognized need for high-level advisory body on atomic policy. Committee would advise on wartime use and post-war atomic energy governance.',
+ '{"type": "decision.organizational", "state": "decided", "decided_by": "Henry Stimson, Harry Truman", "outcome": "Recommended military use without warning"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('66666666-0004-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Accept British Scientists at Los Alamos',
+ '1943-12-01'::timestamptz,
+ 'Despite compartmentalization concerns, Groves agreed to admit British Mission scientists to most secret weapons work at Los Alamos. Brought critical expertise but unknowingly included Soviet spy Klaus Fuchs.',
+ '{"type": "decision.security", "state": "decided", "decided_by": "Leslie Groves", "unintended_consequence": "Enabled Klaus Fuchs espionage"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('66666666-0004-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Conduct Operation Crossroads',
+ '1946-01-10'::timestamptz,
+ 'Joint Chiefs approved nuclear tests against naval vessels to study effects of atomic weapons on fleet operations. Would use Fat Man-type bombs at Bikini Atoll.',
+ '{"type": "decision.military", "state": "decided", "decided_by": "Joint Chiefs of Staff", "tests_planned": 3}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('66666666-0004-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Cancel Crossroads Shot Charlie',
+ '1946-08-01'::timestamptz,
+ 'Severe radioactive contamination from Baker test made third test too dangerous. Target ships too contaminated to salvage or reuse; personnel exposure exceeded expectations.',
+ '{"type": "decision.safety", "state": "decided", "decided_by": "Joint Task Force One", "reason": "Extreme radioactive contamination"}',
+ '00000000-0000-0000-0000-000000000002'),
+
+('66666666-0004-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Transfer Control to Civilian AEC',
+ '1946-08-01'::timestamptz,
+ 'After fierce debate between civilian and military control advocates, Truman signed Atomic Energy Act establishing civilian Atomic Energy Commission. Military retained nuclear weapons but civilians controlled development.',
+ '{"type": "decision.institutional", "state": "decided", "decided_by": "Harry Truman, U.S. Congress", "alternatives_considered": ["Military control", "International control"]}',
  '00000000-0000-0000-0000-000000000002');
 
 -- ============================================
@@ -972,6 +1209,42 @@ INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, c
 ('88886666-0004-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
  'Atomic Energy Act of 1946', 'document.legislation', 'published',
  '{"date": "1946-08-01", "author": "U.S. Congress", "signed_by": "Harry S. Truman", "significance": "Transferred atomic energy control from military to civilian Atomic Energy Commission"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- British/International Documents
+('88886666-0005-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Frisch-Peierls Memorandum', 'document.memo', 'published',
+ '{"date": "1940-03-01", "author": "Otto Frisch, Rudolf Peierls", "recipient": "Henry Tizard (British Scientific Advisory Committee)", "significance": "First practical assessment showing atomic bomb was feasible with small amount of U-235", "quote": "A moderate amount of U-235 would indeed constitute an extremely efficient explosive"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88886666-0005-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'MAUD Committee Final Report', 'document.report', 'published',
+ '{"date": "1941-07-15", "author": "MAUD Committee (George Thomson, chair)", "recipient": "British Government, shared with U.S.", "significance": "Concluded atomic bomb was feasible, recommended immediate development. Galvanized U.S. commitment.", "quote": "We have now reached the conclusion that it will be possible to make an effective uranium bomb"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88886666-0005-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Quebec Agreement', 'document.treaty', 'published',
+ '{"date": "1943-08-19", "author": "Franklin D. Roosevelt, Winston Churchill", "significance": "Merged British Tube Alloys into Manhattan Project; established Combined Policy Committee; neither country would use bomb without mutual consent", "location": "Quebec City, Canada"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88886666-0005-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Target Committee Recommendations', 'document.memo', 'published',
+ '{"date": "1945-05-28", "author": "Target Committee", "recipient": "General Leslie Groves", "significance": "Recommended target cities for atomic attack", "targets_ranked": ["Kyoto", "Hiroshima", "Yokohama", "Kokura Arsenal", "Niigata"], "criteria": ["Large urban area", "High strategic value", "Undamaged by prior bombing", "Psychological impact"]}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88886666-0005-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Scientific Panel Report to Interim Committee', 'document.report', 'published',
+ '{"date": "1945-06-16", "author": "J. Robert Oppenheimer, Enrico Fermi, Arthur Compton, Ernest Lawrence", "recipient": "Interim Committee", "significance": "Scientific advisors concluded no technical demonstration could end war; supported military use", "quote": "We can propose no technical demonstration likely to bring an end to the war; we see no acceptable alternative to direct military use"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88886666-0005-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Ralph Bard Memorandum', 'document.memo', 'published',
+ '{"date": "1945-06-27", "author": "Ralph Bard (Under Secretary of the Navy)", "recipient": "Secretary of War Henry Stimson", "significance": "Only Interim Committee member to dissent from no-warning recommendation; urged advance warning to Japan", "quote": "Japan should have some preliminary warning"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88886666-0005-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666',
+ 'Oppenheimer Letter to Stimson', 'document.letter', 'published',
+ '{"date": "1945-08-17", "author": "J. Robert Oppenheimer", "recipient": "Secretary of War Henry Stimson", "significance": "Post-Hiroshima reflection on atomic weapons", "quote": "The safety of this nation cannot lie wholly or even primarily in its scientific or technical prowess. It can be based only on making future wars impossible"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -1051,6 +1324,40 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 ('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
 ('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
 ('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+-- New Goal 6 milestones (post-war)
+('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0006-0000-0000-000000000001', 'has', 'milestone', '33336666-0006-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+
+-- Goal 1 → British Collaboration Milestones
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0012-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0013-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0015-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0016-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0017-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0001-0000-0000-000000000001', 'has', 'milestone', '33336666-0001-0018-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+
+-- Goal 4 → Additional Espionage Milestones
+('goal', '22226666-0004-0000-0000-000000000001', 'has', 'milestone', '33336666-0004-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0004-0000-0000-000000000001', 'has', 'milestone', '33336666-0004-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0004-0000-0000-000000000001', 'has', 'milestone', '33336666-0004-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0004-0000-0000-000000000001', 'has', 'milestone', '33336666-0004-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+
+-- Goal 5 → Additional Target/Interim Committee Milestones
+('goal', '22226666-0005-0000-0000-000000000001', 'has', 'milestone', '33336666-0005-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0005-0000-0000-000000000001', 'has', 'milestone', '33336666-0005-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0005-0000-0000-000000000001', 'has', 'milestone', '33336666-0005-0012-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0005-0000-0000-000000000001', 'has', 'milestone', '33336666-0005-0013-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0005-0000-0000-000000000001', 'has', 'milestone', '33336666-0005-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
+('goal', '22226666-0005-0000-0000-000000000001', 'has', 'milestone', '33336666-0005-0015-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{}'::jsonb),
 
 -- Causal Relationships: Milestones → Milestones (enabled/led_to)
 -- Einstein letter → FDR briefed → Advisory Committee
@@ -1288,7 +1595,154 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 -- Goal 6: Post-war transition
 ('milestone', '33336666-0005-0009-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "War end enabled transition to civilian control"}'::jsonb),
 ('milestone', '33336666-0006-0001-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Atomic Energy Act created the AEC"}'::jsonb),
-('milestone', '33336666-0006-0001-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Atomic Energy Act enabled National Lab system"}'::jsonb);
+('milestone', '33336666-0006-0001-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0003-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Atomic Energy Act enabled National Lab system"}'::jsonb),
+
+-- ============================================
+-- NEW DOCUMENT → MILESTONE EDGES
+-- ============================================
+
+-- Frisch-Peierls Memorandum → Frisch-Peierls Milestone
+('document', '88886666-0005-0001-0000-000000000001', 'documents', 'milestone', '33336666-0001-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Memorandum documenting the feasibility assessment"}'::jsonb),
+
+-- MAUD Report → MAUD Report Delivered Milestone
+('document', '88886666-0005-0002-0000-000000000001', 'documents', 'milestone', '33336666-0001-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "MAUD Committee report confirming bomb feasibility"}'::jsonb),
+
+-- Quebec Agreement → Quebec Agreement Milestone
+('document', '88886666-0005-0003-0000-000000000001', 'documents', 'milestone', '33336666-0001-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Formal agreement merging British and U.S. programs"}'::jsonb),
+
+-- Target Committee Recommendations → Target Committee Milestone
+('document', '88886666-0005-0004-0000-000000000001', 'documents', 'milestone', '33336666-0005-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Target selection recommendations"}'::jsonb),
+
+-- Scientific Panel Report → Interim Committee Milestone
+('document', '88886666-0005-0005-0000-000000000001', 'documents', 'milestone', '33336666-0005-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Scientists advised military use as only option"}'::jsonb),
+
+-- Ralph Bard Memorandum → Interim Committee Milestone
+('document', '88886666-0005-0006-0000-000000000001', 'documents', 'milestone', '33336666-0005-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Bard dissent urging advance warning"}'::jsonb),
+
+-- Oppenheimer Letter → Japan Surrender Milestone (post-war reflection)
+('document', '88886666-0005-0007-0000-000000000001', 'documents', 'milestone', '33336666-0005-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Post-use reflection on atomic weapons"}'::jsonb),
+
+-- ============================================
+-- NEW DECISION → MILESTONE EDGES
+-- ============================================
+
+-- Sign Quebec Agreement → Quebec Agreement Milestone
+('decision', '66666666-0004-0001-0000-000000000001', 'informs', 'milestone', '33336666-0001-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Decision formalized in Quebec Agreement signing"}'::jsonb),
+
+-- Establish Interim Committee → Interim Committee Milestone
+('decision', '66666666-0004-0002-0000-000000000001', 'informs', 'milestone', '33336666-0005-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Stimson decision to create advisory body"}'::jsonb),
+
+-- Accept British Scientists → British Mission Milestone
+('decision', '66666666-0004-0003-0000-000000000001', 'informs', 'milestone', '33336666-0001-0016-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Groves approved British scientists at Los Alamos"}'::jsonb),
+
+-- Accept British Scientists → Klaus Fuchs Espionage (unintended consequence)
+('decision', '66666666-0004-0003-0000-000000000001', 'informs', 'milestone', '33336666-0004-0004-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Unknowingly admitted Soviet spy Klaus Fuchs"}'::jsonb),
+
+-- Conduct Operation Crossroads → Bikini Relocation
+('decision', '66666666-0004-0004-0000-000000000001', 'informs', 'milestone', '33336666-0006-0006-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Crossroads decision required Bikini evacuation"}'::jsonb),
+
+-- Conduct Operation Crossroads → Shot Able
+('decision', '66666666-0004-0004-0000-000000000001', 'informs', 'milestone', '33336666-0006-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "First Crossroads test"}'::jsonb),
+
+-- Conduct Operation Crossroads → Shot Baker
+('decision', '66666666-0004-0004-0000-000000000001', 'informs', 'milestone', '33336666-0006-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Second Crossroads test"}'::jsonb),
+
+-- Cancel Crossroads Shot Charlie → Charlie Cancelled
+('decision', '66666666-0004-0005-0000-000000000001', 'informs', 'milestone', '33336666-0006-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Third test cancelled due to contamination"}'::jsonb),
+
+-- Transfer Control to Civilian AEC → AEC Established
+('decision', '66666666-0004-0006-0000-000000000001', 'informs', 'milestone', '33336666-0006-0002-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Atomic Energy Act created civilian AEC"}'::jsonb),
+
+-- ============================================
+-- BRITISH COLLABORATION CAUSAL CHAIN
+-- ============================================
+
+-- Frisch-Peierls → MAUD Report (sparked the MAUD investigation)
+('milestone', '33336666-0001-0009-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Frisch-Peierls memo prompted MAUD Committee investigation"}'::jsonb),
+
+-- MAUD Report → Tube Alloys (UK program)
+('milestone', '33336666-0001-0010-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "MAUD conclusions led to Tube Alloys program"}'::jsonb),
+
+-- MAUD Report → Oliphant Mission (share with US)
+('milestone', '33336666-0001-0010-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0012-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "MAUD report prompted Oliphant to galvanize Americans"}'::jsonb),
+
+-- Oliphant Mission → NAS Feasibility Study (galvanized US)
+('milestone', '33336666-0001-0012-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Oliphant directly lobbied NAS committee, expediting US action"}'::jsonb),
+
+-- Tube Alloys → Montreal Lab
+('milestone', '33336666-0001-0011-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0013-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Tube Alloys relocated heavy water research to Montreal"}'::jsonb),
+
+-- Tube Alloys → Quebec Agreement
+('milestone', '33336666-0001-0011-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Tube Alloys merged into Manhattan via Quebec Agreement"}'::jsonb),
+
+-- Quebec Agreement → Combined Policy Committee
+('milestone', '33336666-0001-0014-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0015-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Quebec Agreement established Combined Policy Committee"}'::jsonb),
+
+-- Combined Policy Committee → British Mission
+('milestone', '33336666-0001-0015-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0016-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "CPC coordination enabled British Mission to Los Alamos"}'::jsonb),
+
+-- British Mission → Niels Bohr Arrival (facilitated)
+('milestone', '33336666-0001-0016-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0017-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "British Mission framework facilitated Bohr consultancy"}'::jsonb),
+
+-- Montreal Lab → Chalk River (Canadian contribution)
+('milestone', '33336666-0001-0013-0000-000000000001', 'enabled', 'milestone', '33336666-0001-0018-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Montreal Lab work led to Chalk River reactor design"}'::jsonb),
+
+-- ============================================
+-- ESPIONAGE CAUSAL CHAIN
+-- ============================================
+
+-- Klaus Fuchs → Harry Gold (Fuchs used Gold as courier)
+('milestone', '33336666-0004-0004-0000-000000000001', 'enabled', 'milestone', '33336666-0004-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Fuchs passed secrets through Gold"}'::jsonb),
+
+-- Ted Hall parallel to Fuchs (independent source)
+('milestone', '33336666-0004-0004-0000-000000000001', 'led_to', 'milestone', '33336666-0004-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Hall provided independent confirmation of Fuchs intelligence"}'::jsonb),
+
+-- Harry Gold → Fuchs Arrest (Gold identification led to Fuchs)
+('milestone', '33336666-0004-0008-0000-000000000001', 'enabled', 'milestone', '33336666-0004-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Gold confession led to Fuchs arrest"}'::jsonb),
+
+-- Fuchs Arrest → Rosenbergs (investigation chain)
+('milestone', '33336666-0004-0009-0000-000000000001', 'enabled', 'milestone', '33336666-0004-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Fuchs investigation led to Greenglass then Rosenbergs"}'::jsonb),
+
+-- Klaus Fuchs → Soviet Test (enabled Soviet bomb)
+('milestone', '33336666-0004-0004-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Fuchs intelligence accelerated Soviet bomb by 1-2 years"}'::jsonb),
+
+-- Ted Hall → Soviet Test (parallel contribution)
+('milestone', '33336666-0004-0007-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0010-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Hall intelligence provided cross-check for Soviets"}'::jsonb),
+
+-- ============================================
+-- POST-WAR / OPERATION CROSSROADS CAUSAL CHAIN
+-- ============================================
+
+-- Oppenheimer Resignation → Bradbury Succession
+('milestone', '33336666-0006-0004-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0005-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Oppenheimer departure required successor appointment"}'::jsonb),
+
+-- Bikini Relocation → Shot Able
+('milestone', '33336666-0006-0006-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0007-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Bikini evacuation enabled first Crossroads test"}'::jsonb),
+
+-- Shot Able → Shot Baker
+('milestone', '33336666-0006-0007-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0008-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Able test proceeded to Baker underwater test"}'::jsonb),
+
+-- Shot Baker → Charlie Cancelled (contamination)
+('milestone', '33336666-0006-0008-0000-000000000001', 'led_to', 'milestone', '33336666-0006-0009-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Baker contamination forced Charlie cancellation"}'::jsonb),
+
+-- ============================================
+-- ADDITIONAL GOAL 5 CAUSAL EDGES
+-- ============================================
+
+-- Interim Committee → Target Committee refinement
+('milestone', '33336666-0005-0010-0000-000000000001', 'enabled', 'milestone', '33336666-0005-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Interim Committee directed Target Committee work"}'::jsonb),
+
+-- Stimson-Truman Kyoto → Target selection (removed Kyoto)
+('milestone', '33336666-0005-0012-0000-000000000001', 'informs', 'milestone', '33336666-0005-0011-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Stimson removed Kyoto from target list"}'::jsonb),
+
+-- Soviet Declaration → Japan Surrender (contributed)
+('milestone', '33336666-0005-0014-0000-000000000001', 'led_to', 'milestone', '33336666-0005-0015-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Soviet entry contributed to Japan surrender decision"}'::jsonb),
+
+-- Nagasaki → Soviet Declaration (Soviet timed entry)
+('milestone', '33336666-0005-0008-0000-000000000001', 'led_to', 'milestone', '33336666-0005-0014-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Soviet declared war between Hiroshima and Nagasaki"}'::jsonb),
+
+-- Formal Surrender → Atomic Energy Act (war end enabled legislation)
+('milestone', '33336666-0005-0015-0000-000000000001', 'enabled', 'milestone', '33336666-0006-0001-0000-000000000001', '66666666-6666-6666-6666-666666666666', '{"description": "Formal surrender enabled post-war atomic legislation"}'::jsonb);
 
 -- ============================================
 -- COMPLETION NOTICE
@@ -1296,35 +1750,48 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 DO $$
 BEGIN
   RAISE NOTICE '==============================================';
-  RAISE NOTICE 'THE MANHATTAN PROJECT - v1.1';
+  RAISE NOTICE 'THE MANHATTAN PROJECT - v2.0';
   RAISE NOTICE '"Now I am become Death, the destroyer of worlds"';
   RAISE NOTICE '==============================================';
   RAISE NOTICE 'ENTITY COUNTS:';
   RAISE NOTICE '  - 6 Goals';
-  RAISE NOTICE '  - 51 Milestones';
+  RAISE NOTICE '  - 78 Milestones (+27 new: British, espionage, post-war)';
   RAISE NOTICE '  - 16 Plans';
   RAISE NOTICE '  - 24 Tasks';
-  RAISE NOTICE '  - 10 Decisions';
+  RAISE NOTICE '  - 16 Decisions (+6 new: Quebec, Interim, Crossroads)';
   RAISE NOTICE '  - 10 Risks';
-  RAISE NOTICE '  - 12 Documents';
-  RAISE NOTICE '  - 200+ Edges (fully connected graph)';
+  RAISE NOTICE '  - 19 Documents (+7 new: Frisch-Peierls, MAUD, Quebec, etc.)';
+  RAISE NOTICE '  - 300+ Edges (fully connected graph)';
   RAISE NOTICE '==============================================';
   RAISE NOTICE 'EDGE TYPES:';
   RAISE NOTICE '  - Project -> Goals: 6';
-  RAISE NOTICE '  - Goals -> Milestones: 51';
+  RAISE NOTICE '  - Goals -> Milestones: 78';
   RAISE NOTICE '  - Plans -> Tasks: 24';
   RAISE NOTICE '  - Plans -> Milestones: 28';
-  RAISE NOTICE '  - Decisions -> Milestones: 15';
-  RAISE NOTICE '  - Documents -> Milestones: 16';
+  RAISE NOTICE '  - Decisions -> Milestones: 26';
+  RAISE NOTICE '  - Documents -> Milestones: 23';
   RAISE NOTICE '  - Risks -> Plans/Milestones: 12';
-  RAISE NOTICE '  - Milestone -> Milestone (causal): 40+';
+  RAISE NOTICE '  - Milestone -> Milestone (causal): 70+';
+  RAISE NOTICE '==============================================';
+  RAISE NOTICE 'NEW IN v2.0:';
+  RAISE NOTICE '  - British collaboration (Frisch-Peierls, MAUD, Tube Alloys)';
+  RAISE NOTICE '  - Full espionage chain (Fuchs, Hall, Gold, Rosenbergs)';
+  RAISE NOTICE '  - Interim/Target Committee deliberations';
+  RAISE NOTICE '  - Operation Crossroads post-war tests';
+  RAISE NOTICE '  - Canadian contribution (Montreal Lab, Chalk River)';
+  RAISE NOTICE '  - Soviet first atomic test (Aug 29, 1949)';
   RAISE NOTICE '==============================================';
   RAISE NOTICE 'KEY DATES:';
+  RAISE NOTICE '  - Mar 1940: Frisch-Peierls Memorandum';
   RAISE NOTICE '  - Aug 2, 1939: Einstein-Szilard Letter';
+  RAISE NOTICE '  - Jul 1941: MAUD Report';
+  RAISE NOTICE '  - Aug 1943: Quebec Agreement';
   RAISE NOTICE '  - Dec 2, 1942: Chicago Pile-1 Critical';
   RAISE NOTICE '  - Jul 16, 1945: Trinity Test (21 kt)';
   RAISE NOTICE '  - Aug 6, 1945: Hiroshima (15 kt)';
   RAISE NOTICE '  - Aug 9, 1945: Nagasaki (21 kt)';
   RAISE NOTICE '  - Aug 15, 1945: Japan Surrenders';
+  RAISE NOTICE '  - Jul 1946: Operation Crossroads';
+  RAISE NOTICE '  - Aug 29, 1949: Soviet First Test';
   RAISE NOTICE '==============================================';
 END$$;

@@ -89,7 +89,7 @@ VALUES (
   '55555555-5555-5555-5555-555555555555',
   NULL,
   'A Court of Thorns and Roses: The Writing',
-  'Sarah J. Maas''s genre-defining fantasy romance series, born as a "passion project" during the development of Throne of Glass. What began as a Beauty and the Beast retelling evolved into a five-book saga (and counting) that has sold over 38 million copies worldwide, generated 8.5 billion TikTok views under #ACOTAR alone, and fundamentally reshaped the publishing industry''s understanding of "romantasy." The series follows Feyre Archeron from mortal huntress to High Lady of the Night Court, exploring themes of trauma recovery, found family, female agency, and the transformative power of love. Along the way, Maas created Prythian—a realm of seven fae courts, each with distinct magic and politics—and an ensemble cast that launched a thousand fan theories about mates, shadows, and what really happened at the Starfall. From the iconic twist that transformed Rhysand from apparent villain to beloved hero, to Nesta''s brutally honest healing journey, ACOTAR became the standard against which modern fantasy romance is measured. And somewhere, on BookTok, someone is still crying about the "To the stars who listen" scene.',
+  'Sarah J. Maas''s genre-defining fantasy romance series, born as a "passion project" during the development of Throne of Glass. What began as a Beauty and the Beast retelling evolved into a five-book saga (and counting) that has sold over 75 million copies worldwide across all languages (55+ million in English alone), generated 8.5 billion TikTok views under #ACOTAR alone, and fundamentally reshaped the publishing industry''s understanding of "romantasy." Bloomsbury reported a staggering 161% increase in Maas sales for FY 2023-24, cementing her as the driving force behind modern fantasy romance. The series follows Feyre Archeron from mortal huntress to High Lady of the Night Court, exploring themes of trauma recovery, found family, female agency, and the transformative power of love. Along the way, Maas created Prythian—a realm of seven fae courts, each with distinct magic and politics—and an ensemble cast that launched a thousand fan theories about mates, shadows, and what really happened at the Starfall. From the iconic twist that transformed Rhysand from apparent villain to beloved hero, to Nesta''s brutally honest healing journey, ACOTAR became the standard against which modern fantasy romance is measured. And somewhere, on BookTok, someone is still crying about the "To the stars who listen" scene.',
   'project.creative.writing',
   'active',
   '{
@@ -105,24 +105,36 @@ VALUES (
     "current_plan": "6+ books, multiverse connections",
     "books_published": 5,
     "books_in_progress": 1,
+    "books_planned": "4+ more ACOTAR books confirmed",
     "total_pages_published": 3900,
-    "writing_style": "Plotter with flexibility",
-    "writing_tools": "Microsoft Word, composition notebooks",
-    "listens_to": "Classical music, movie scores while writing",
     "husband": "Josh Maas (high school sweetheart)",
     "son": "Born 2021",
     "famous_quotes": [
       "To the stars who listen—and the dreams that are answered.",
       "Don''t let the hard days win.",
       "I was not a pet, not a doll, not an animal. I was a survivor.",
-      "There are different kinds of strength."
+      "There are different kinds of strength.",
+      "Feyre darling.",
+      "You are my salvation, Feyre.",
+      "My mate. My mate. My mate."
     ],
     "publisher": "Bloomsbury Publishing",
-    "copies_sold": "38+ million worldwide",
+    "copies_sold": "75+ million worldwide (55M+ English)",
+    "bloomsbury_impact": "161% Maas sales increase FY 2023-24",
     "tiktok_views": "8.5 billion under #ACOTAR",
     "goodreads_ratings": "5+ million",
     "subreddit_members": "100K+ r/acotar",
     "multiverse_series": ["Throne of Glass", "Crescent City", "ACOTAR"],
+    "writing_process": {
+      "style": "Primarily pantser with flexibility for outlines",
+      "daily_word_goal": "1,000+ words minimum",
+      "daily_hours": "5-7 hours in production mode",
+      "morning_routine": "Wake 5-6 AM, admin tasks first 30-45 min",
+      "tools": ["Microsoft Word", "Printed editorial letters", "Handwritten notes"],
+      "environment": "Dedicated office, fandom t-shirts, soft blankets",
+      "block_breaker": "Journaling/stream-of-consciousness free writing",
+      "physical_practice": "Mirror practice for fight scenes and expressions"
+    },
     "graph_depth": 6
   }'::jsonb,
   '2009-01-01',
@@ -175,7 +187,13 @@ INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, create
 -- Goal 7: The Future
 ('55555555-0007-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
  'Plan the Future of ACOTAR', 'goal.strategic.legacy', 'active',
- '{"priority": "ultimate", "state": "active", "book_6": {"first_draft_completed": "July 2025", "likely_focus": "Elain or Azriel", "estimated_length": "Long - SJM confirmed"}, "multiverse_expansion": "Connection to Crescent City established in House of Flame and Shadow", "tv_adaptation": {"status": "Canceled by Hulu March 2025", "future": "SJM shopping to other networks"}, "remaining_mysteries": ["Elain''s seer powers", "Azriel''s mate", "Mor''s full power", "Koschei threat", "Dusk Court history"]}'::jsonb,
+ '{"priority": "ultimate", "state": "active", "book_6": {"first_draft_completed": "July 2025", "likely_focus": "Elain or Azriel", "estimated_length": "Long - SJM confirmed", "expected_release": "Early 2026"}, "books_planned": "4+ more ACOTAR books confirmed by SJM", "multiverse_expansion": "Connection to Crescent City established in House of Flame and Shadow", "tv_adaptation": {"status": "Canceled by Hulu March 2025", "future": "SJM shopping to other networks"}, "remaining_mysteries": ["Elain''s seer powers", "Azriel''s mate", "Mor''s full power", "Koschei threat", "Dusk Court history"]}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Goal 8: Secondary Character Arcs (NEW)
+('55555555-0008-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Develop Secondary Character Arcs', 'goal.strategic.ensemble', 'achieved',
+ '{"priority": "high", "state": "achieved", "characters": ["Lucien Vanserra", "Tamlin", "Azriel", "Amren", "Morrigan"], "significance": "Rich secondary characters drive fan engagement and theories", "arcs_complete": ["Lucien''s journey from Spring to Night", "Tamlin''s fall", "Amren''s sacrifice and rebirth"], "arcs_ongoing": ["Azriel''s mate mystery", "Mor''s full power reveal", "Lucien''s Day Court heritage"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -284,6 +302,42 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
  '{"state": "achieved", "publisher": "Bloomsbury", "pages": 699, "chapters": 80, "pov": "Feyre Archeron (first person)", "dedication": "For my father, who taught me strength", "conclusion": "Original trilogy complete", "open_threads": ["Nesta''s trauma", "Elain''s powers", "Mor''s secret", "Koschei threat"], "key_quote": "Be happy, Feyre."}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
+-- ACOWAR Spy Mission Arc (New milestones for Book 3 plot)
+('55555555-0003-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Feyre''s Spring Court Spy Mission', 'milestone.plot.espionage', 'completed', '2017-01-01'::timestamptz,
+ '{"state": "achieved", "description": "Feyre goes undercover in Spring Court, pretending Rhysand manipulated her", "objectives": ["Gather intel on Hybern forces", "Sabotage Tamlin from within", "Sow discord among Spring Court"], "tactics": ["Undermining Tamlin''s authority", "Exposing his brutality to servants", "Nudging sentries to doubt him"], "key_intel": ["Hybern troop numbers", "Invasion routes", "Foreign allies"], "duration": "First third of ACOWAR"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Conflict with Ianthe', 'milestone.plot.antagonist', 'completed', '2017-01-15'::timestamptz,
+ '{"state": "achieved", "villain": "Ianthe - traitor priestess aligned with Hybern", "threat": "Suspicious of Feyre, power-hungry, dangerous", "schemes": ["Using Hybern visit for power", "Wall-scouting manipulation"], "outcome": "Feyre outmaneuvers her schemes while maintaining cover"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Hybern Twins Arrive at Spring Court', 'milestone.plot.threat', 'completed', '2017-02-01'::timestamptz,
+ '{"state": "achieved", "characters": {"Dagdan": "Hybern prince", "Brannagh": "Hybern princess"}, "with": "Jurian (resurrected general)", "purpose": "Staging point for Prythian invasion", "feyre_role": "Gathers crucial war intelligence through them", "revelation": "They plan to kill Lucien and have been poisoning everyone''s food"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Escape from Spring Court with Lucien', 'milestone.plot.escape', 'completed', '2017-02-15'::timestamptz,
+ '{"state": "achieved", "trigger": "Dagdan and Brannagh reveal murder plans", "action": "Feyre and Lucien kill the twins", "complication": "Magic fading from poison in food", "journey": "Flee north through Autumn Court", "danger": "Evade Lucien''s hostile family", "destination": "Night Court territory", "outcome": "Feyre reunites with Rhys, debriefs Inner Circle"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'High Lords'' Meeting', 'milestone.plot.alliance', 'completed', '2017-03-01'::timestamptz,
+ '{"state": "achieved", "purpose": "Unite all seven courts against Hybern", "attendees": ["All High Lords of Prythian"], "tensions": ["Old grudges between courts", "Rhysand''s controversial bargains", "Autumn Court enmity"], "discussions": ["Installing Lucien in place of Beron", "Reaching out to Miryam and Drakon"], "outcome": "Fragile alliance formed despite friction"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Miryam and Drakon Alliance', 'milestone.plot.reinforcement', 'completed', '2017-04-01'::timestamptz,
+ '{"state": "achieved", "allies": {"Miryam": "Human queen", "Drakon": "Fae prince"}, "location": "Cretea - hidden island with joint human-fae population", "history": "Long history opposing Hybern", "arrival": "Decisive moment in final battle", "significance": "Turned the tide against Hybern''s forces"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Mr. Archeron''s Sacrifice', 'milestone.plot.redemption', 'completed', '2017-04-15'::timestamptz,
+ '{"state": "achieved", "character": "Mr. Archeron - Feyre''s father", "arc": "From failed provider to redeemed hero", "journey": "Sought forgiveness, reconnected with daughters", "sacrifice": "Dies protecting his daughters in final battle", "significance": "Redemption through ultimate sacrifice", "emotional_impact": "Major character death, closure for Archeron family trauma"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
 -- ============================================
 -- MILESTONES - GOAL 4: Nesta's Story (2018-2021)
 -- ============================================
@@ -315,6 +369,37 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
 ('55555555-0004-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555',
  'A Court of Silver Flames Published', 'milestone.publication.book5', 'completed', '2021-02-16'::timestamptz,
  '{"state": "achieved", "publisher": "Bloomsbury", "pages": 757, "chapters": 82, "pov": "Nesta Archeron (third person), some Cassian", "dedication": "For the women who fell, who got back up, who found each other", "new_classification": "Moved to Adult Fantasy", "goodreads_choice_award": "Best Fantasy 2021", "key_themes": ["Healing is not linear", "Female friendship", "Self-forgiveness"], "explicit_content": "Significantly more adult content than previous books", "nesta_transformation": "From villain-coded to beloved protagonist"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ACOFAS Winter Solstice Events (Book 4 detailed content)
+('55555555-0004-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Winter Solstice Preparations', 'milestone.plot.holiday', 'completed', '2018-04-01'::timestamptz,
+ '{"state": "achieved", "setting": "Velaris during holiday season", "activities": ["Inner Circle gift shopping", "Visiting markets", "Encountering Weaver who crafts items"], "traditions": ["Annual snowball fight (Rhysand/Cassian/Azriel)", "Gift exchanges", "Holiday feasts"], "atmosphere": "Post-war healing through celebration"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0004-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Polina''s Studio Gift', 'milestone.creative.healing', 'completed', '2018-04-15'::timestamptz,
+ '{"state": "achieved", "gift": "Inner Circle gives Feyre Polina''s former art studio", "significance": "Feyre rediscovers painting as healing", "painting_created": "Scene of loved ones under starlight for Rhysand", "symbolism": "Art as therapy, reclaiming identity beyond war"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0004-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Nesta''s Spiral Begins', 'milestone.character.descent', 'completed', '2018-04-20'::timestamptz,
+ '{"state": "achieved", "discovery": "Feyre finds Nesta in seedy Velaris pub", "behavior": ["Drinking heavily", "Destructive relationships", "Self-isolation"], "invitation": "Feyre offers rent money as incentive for Solstice", "tension": "Nesta reluctantly attends dinner", "climax": "Accepts check instead of tearing it up, leaves early", "setup": "Cassian follows her - seeds ACOSF romance"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0004-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Lucien''s Solstice Visit', 'milestone.character.tension', 'completed', '2018-04-25'::timestamptz,
+ '{"state": "achieved", "arrival": "Lucien brings Solstice gifts for Feyre and Elain", "rejection": "Elain shows disinterest in their mating bond", "departure": "Lucien leaves for Spring Court", "significance": "Establishes ongoing Lucien/Elain complication", "emotional_weight": "Rejection despite mate bond"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0004-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Illyrian Reform Attempts', 'milestone.political.reform', 'completed', '2018-04-10'::timestamptz,
+ '{"state": "achieved", "issue": "Female training bans in Illyrian camps", "action": "Rhysand and Cassian address war-camp leaders", "compromise": "Women''s training sessions limited to 90 minutes", "undercurrent": "Rebellion hints among Illyrian warriors", "setup": "Seeds future Illyrian conflict for later books"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0004-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Tamlin''s Spring Court Visit', 'milestone.political.diplomacy', 'completed', '2018-04-05'::timestamptz,
+ '{"state": "achieved", "visit": "Rhysand visits Tamlin''s abandoned Spring Court twice", "state_of_court": "Decay, abandonment, Tamlin in beast form", "arrangement": "Summer Court guards for human border", "mor_subplot": "Confronts father Keir and Eris in Hewn City over territory grabs", "significance": "Tamlin''s fall from power made visible"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ============================================
@@ -422,6 +507,125 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
 ('55552222-0001-0005-0005-000000000001', '55555555-5555-5555-5555-555555555555',
  'Feyre''s Death and Resurrection', 'milestone.plot.transformation', 'completed', '2015-05-05'::timestamptz,
  '{"state": "achieved", "death": "Amarantha kills Feyre", "resurrection": "All seven High Lords contribute power to revive her", "transformation": "Feyre becomes High Fae", "new_powers": "Access to all seven courts'' magic", "significance": "Feyre reborn as something entirely new"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
+-- MILESTONES - GOAL 8: Secondary Character Arcs
+-- ============================================
+
+-- Lucien Vanserra Arc
+('55555555-0008-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Lucien''s Autumn Court Trauma', 'milestone.character.backstory', 'completed', '2015-01-01'::timestamptz,
+ '{"state": "achieved", "character": "Lucien Vanserra", "backstory": "Bastard son of Autumn Court High Lord Beron", "trauma": "Fled family after his lover was murdered", "refuge": "Found asylum in Spring Court with Tamlin", "role": "Became Tamlin''s emissary and closest friend", "defining_trait": "The fox among wolves - clever, sarcastic, quick"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Lucien Under the Mountain', 'milestone.character.suffering', 'completed', '2015-05-01'::timestamptz,
+ '{"state": "achieved", "period": "50 years under Amarantha''s rule", "maiming": "Lost eye, replaced with golden mechanical eye", "scars": "Facial scars from Amarantha''s cruelty", "loyalty_tested": "Wounds inflicted because of Tamlin''s actions", "choice": "Chose loyalty over resentment"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Lucien Breaks with Tamlin', 'milestone.character.growth', 'completed', '2016-05-01'::timestamptz,
+ '{"state": "achieved", "trigger": "Tamlin''s descent into control and rage in ACOMAF", "choice": "Chose truth over blind loyalty", "priority": "Feyre''s safety over oldest friendship", "significance": "Most significant character growth - defined by principle not person", "cost": "Lost his only home and friend"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Lucien''s Mate Bond with Elain', 'milestone.character.romance', 'completed', '2017-03-01'::timestamptz,
+ '{"state": "achieved", "revelation": "Discovers Elain is his mate after she''s Made", "complication": "Elain shows disinterest, possibly drawn to Azriel", "response": "Gives Elain space she demands", "significance": "Demonstrates growth - respect over entitlement", "status": "Unresolved across 4 books"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Helion Parentage Revealed', 'milestone.character.revelation', 'completed', '2017-05-01'::timestamptz,
+ '{"state": "achieved", "truth": "Helion (Day Court High Lord) is Lucien''s true father", "mother": "Lady of Autumn had affair with Helion", "implications": "Lucien has legitimate Day Court lineage", "future": "May eventually align with or lead Day Court", "significance": "Transforms identity - ties to multiple power centers"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Band of Exiles Formation', 'milestone.character.alliance', 'completed', '2018-01-01'::timestamptz,
+ '{"state": "achieved", "members": ["Lucien", "Jurian (resurrected general)", "Vassa (cursed human queen)"], "purpose": "Operate outside traditional court hierarchies", "location": "Human lands and borders", "significance": "Lucien as free agent, not bound to any court", "role": "Bridge figure between fractured power structures"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Tamlin Fall Arc
+('55555555-0008-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Tamlin''s Post-War Trauma', 'milestone.character.descent', 'completed', '2015-06-01'::timestamptz,
+ '{"state": "achieved", "trauma_sources": ["50-year curse before Book 1", "Amarantha''s torture and control Under the Mountain", "Watching Feyre die"], "manifestation": "PTSD symptoms, controlling behavior", "tragic_flaw": "Protection becomes imprisonment", "mental_state": "Fractured, unable to process trauma healthily"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Tamlin''s Controlling Behavior', 'milestone.character.toxicity', 'completed', '2016-05-01'::timestamptz,
+ '{"state": "achieved", "book": "A Court of Mist and Fury", "behavior": ["Locking Feyre in manor", "Explosive temper", "Dismissing her trauma", "Restricting her freedom"], "contrast": "His protection vs Rhysand''s respect for autonomy", "reader_reaction": "Shift from sympathy to criticism"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Tamlin''s Alliance with Hybern', 'milestone.character.villain', 'completed', '2017-01-01'::timestamptz,
+ '{"state": "achieved", "motivation": "Desperate obsession to retrieve Feyre", "action": "Allies with King of Hybern", "betrayal": "Allows sisters to be Made in Cauldron", "moral_low_point": "Crossing every ethical line", "nuance": "Later becomes spy against Hybern"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Spring Court Collapse', 'milestone.character.consequence', 'completed', '2018-05-01'::timestamptz,
+ '{"state": "achieved", "cause": "Feyre''s sabotage combined with Tamlin''s failures", "state": "Decay, abandonment, people fleeing", "tamlin_response": "Retreating into beast form", "isolation": "Spends most time as animal, avoiding responsibility", "rhysand_visits": "Attempts to help Tamlin recover, arranges border guards"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Tamlin as Hybern Spy', 'milestone.character.redemption', 'completed', '2017-04-01'::timestamptz,
+ '{"state": "achieved", "action": "Secretly works against Hybern from within", "significance": "Helps save Prythian despite being treated as villain", "motivation": "Genuine desire to protect, not to win Feyre back", "narrative_role": "Sets up potential future redemption arc", "fan_debate": "Does this action excuse his earlier behavior?"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Azriel Expanded Arc
+('55555555-0008-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Azriel''s Eleven Years of Darkness', 'milestone.character.backstory', 'completed', '2016-03-01'::timestamptz,
+ '{"state": "achieved", "origin": "Bastard son of an Illyrian lord", "imprisonment": "Locked in darkness for 11 years by father''s family", "tormentors": "Stepmother and two older half-brothers", "defining_trauma": "Hands burned by brothers under father''s orders", "scars": "Permanent, visible scars on both hands", "personality_impact": "Quiet, brooding, fiercely protective"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0013-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Becoming the Shadowsinger', 'milestone.character.power', 'completed', '2016-03-15'::timestamptz,
+ '{"state": "achieved", "rarity": "Only known living shadowsinger", "abilities": ["Living shadows that scout", "Concealment especially at night", "Shadows whisper secrets", "Reveal truths no one else hears"], "origin_mystery": "Even Illyrians and Rhysand don''t know where power comes from", "cobalt_siphons": "7 total - amplify power", "winnowing": "Described as cutting through the world like a blade"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0014-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Truth-Teller Significance', 'milestone.character.symbol', 'completed', '2017-03-01'::timestamptz,
+ '{"state": "achieved", "weapon": "Truth-Teller - legendary dagger", "powers": ["Pierce lies", "Cut through glamours", "Break magical defenses"], "gift_to_feyre": "Azriel entrusts blade to Feyre in ACOWAR", "significance": "Symbol of ultimate trust", "multiverse_connection": "Connected to Crescent City crossover"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0015-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Shadows Soften Around Gwyn', 'milestone.character.foreshadowing', 'completed', '2021-02-01'::timestamptz,
+ '{"state": "achieved", "observation": "Azriel''s shadows behave differently around Gwyn", "behavior": "Soften, seem curious, sing with her voice", "fan_theory": "Evidence for Gwynriel ship", "counter_theory": "Physical attraction to Elain shown in bonus chapter", "mystery": "Azriel''s true mate unconfirmed", "setup": "Major Book 6 plot thread"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Amren Arc
+('55555555-0008-0016-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Amren''s Ancient Being Origins', 'milestone.character.revelation', 'completed', '2016-05-01'::timestamptz,
+ '{"state": "achieved", "truth": "Not originally Fae - otherworldly godlike creature", "imprisonment": "Imprisoned in The Prison for millennia", "current_form": "Bound in Fae body", "powers": ["Blood-drinking", "Ward manipulation", "Mind/mindscape influence", "Devastating combat when unleashed"], "personality": "Terrifying, ancient, speaks all languages"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0017-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Amren''s Cauldron Sacrifice', 'milestone.character.sacrifice', 'completed', '2017-04-15'::timestamptz,
+ '{"state": "achieved", "decision": "Enter Cauldron to unbind true form", "process": "Sheds Fae shell, unleashes original form", "battle_impact": "Brief period of full power turns tide against Hybern", "apparent_death": "Seems to die in the process", "cost": "Loses vast majority of ancient power"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0018-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Amren Reborn as High Fae', 'milestone.character.transformation', 'completed', '2017-05-01'::timestamptz,
+ '{"state": "achieved", "return": "Cauldron returns her in new, fully Fae body", "change": "No longer otherworldly being - permanently High Fae", "trade": "Near-omnipotent power for mortality and belonging", "new_role": "Scholar, strategist, mentor (especially to Nesta)", "significance": "Chose love and connection over godlike power"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Mor (Morrigan) Arc
+('55555555-0008-0019-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Mor''s Court of Nightmares Origins', 'milestone.character.backstory', 'completed', '2016-05-01'::timestamptz,
+ '{"state": "achieved", "birth": "Born to brutal family in Hewn City (Court of Nightmares)", "role": "Third-in-command of Night Court", "trauma": "Father tortured and imprisoned her", "trigger": "Discovered her relationship with a female lover", "abuse": "Beaten, whipped, left to die in a cell", "cover_story": "Falsely branded as promiscuous to hide family shame"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0020-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Mor Rescued by Rhysand', 'milestone.character.liberation', 'completed', '2016-05-15'::timestamptz,
+ '{"state": "achieved", "rescue": "Rhysand saves her 500+ years ago", "new_life": "Granted freedom and role in Court of Dreams", "loyalty": "Becomes fierce protector of Rhysand and Inner Circle", "powers": "Truth-seeing abilities, formidable warrior", "secret_kept": "Hides true sexuality from friends for centuries"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0021-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Mor Comes Out to Feyre', 'milestone.character.revelation', 'completed', '2017-04-01'::timestamptz,
+ '{"state": "achieved", "book": "A Court of Wings and Ruin", "revelation": "Confides to Feyre she is lesbian", "confession": "Has only been with males due to family pressure, prefers females", "fear": "Worried friends would feel deceived", "hints": "Enjoyment of gay bar equivalent, feelings for deceased human female friend", "criticism": "Storyline largely abandoned in later books"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0022-0000-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Mor''s Unresolved Powers', 'milestone.character.mystery', 'completed', '2021-02-01'::timestamptz,
+ '{"state": "achieved", "mystery": "Full extent of powers never revealed", "hints": ["Truth-seeing abilities", "Banshee-like powers theorized", "Combat prowess in battles"], "fan_theories": "Powers may be revealed in future books", "narrative_gap": "Criticized as underexplored storyline", "future": "Book 6 or later could address fully"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -508,6 +712,58 @@ INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, du
  '{"scene": "Starfall celebration in Velaris", "revelation": "Feyre realizes Rhysand is her mate", "quote": "My mate. My mate. My mate.", "cultural_impact": "Broke the internet"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
+-- Book 3 Tasks (ACOWAR)
+('55555555-0003-0001-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Feyre''s Spring Court spy mission', 'done', 1, '2016-08-01'::timestamptz,
+ '{"scenes": ["Undercover return to Spring", "Sabotaging Tamlin", "Gathering Hybern intel", "Outmaneuvering Ianthe"], "word_count": 25000, "emotional_complexity": "Playing villain while being hero"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0001-0002-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Escape with Lucien sequence', 'done', 1, '2016-09-01'::timestamptz,
+ '{"scenes": ["Killing Hybern twins", "Poison revelation", "Flight through Autumn Court", "Evading Lucien''s family"], "significance": "Deepens Feyre-Lucien friendship", "tension": "Multiple threats and narrow escapes"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0001-0003-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write High Lords'' Meeting scenes', 'done', 1, '2016-10-01'::timestamptz,
+ '{"scenes": ["All seven High Lords gather", "Political tensions surface", "Alliance negotiations", "Old grudges revealed"], "challenge": "Balancing seven distinct personalities and agendas", "significance": "Historic unprecedented gathering"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0001-0004-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Archeron sisters Made scenes', 'done', 1, '2016-11-01'::timestamptz,
+ '{"scenes": ["Nesta and Elain forced into Cauldron", "Nesta stealing Cauldron power", "Elain broken afterward", "Feyre''s guilt and rage"], "emotional_intensity": "Maximum trauma", "setup": "Seeds ACOSF and Book 6"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0001-0005-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Final Battle against Hybern', 'done', 1, '2016-12-15'::timestamptz,
+ '{"scenes": ["Multi-front war", "Mr. Archeron''s sacrifice", "Amren''s Cauldron transformation", "Hybern King''s death"], "word_count": 40000, "stakes": "Survival of both worlds"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0003-0001-0006-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Mor coming out scene', 'done', 2, '2016-11-15'::timestamptz,
+ '{"scene": "Mor confides in Feyre about her sexuality", "significance": "First explicit LGBTQ+ representation in series", "handling": "Quiet, intimate conversation", "criticism_later": "Arc largely abandoned in subsequent books"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Book 4 Tasks (ACOFAS)
+('55555555-0004-0000-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Winter Solstice celebration scenes', 'done', 1, '2017-08-01'::timestamptz,
+ '{"scenes": ["Gift shopping in Velaris", "Snowball fight tradition", "Solstice dinner", "Gift exchanges"], "tone": "Lighter, healing-focused", "purpose": "Show characters recovering from war trauma"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0004-0000-0002-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Nesta confrontation scene', 'done', 1, '2017-09-01'::timestamptz,
+ '{"scene": "Feyre finds Nesta in seedy pub, attempts intervention", "tension": "Nesta refuses help, takes money instead of connection", "significance": "Sets up ACOSF opening", "cassian_moment": "Follows Nesta when she leaves"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0004-0000-0003-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Feyre''s art studio gift scene', 'done', 2, '2017-09-15'::timestamptz,
+ '{"scene": "Inner Circle gifts Feyre Polina''s old studio", "significance": "Feyre rediscovers painting as healing", "symbolism": "Reclaiming identity beyond warrior role", "emotional_beat": "Quiet moment of hope"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0004-0000-0004-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'task.writing', 'Write Rhysand Spring Court visits', 'done', 2, '2017-10-01'::timestamptz,
+ '{"scenes": ["Rhysand visits abandoned Spring Court", "Sees Tamlin in beast form", "Arranges Summer Court border guards"], "purpose": "Show Tamlin''s fall and Rhysand''s complicated feelings", "setup": "Potential Tamlin redemption arc"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
 -- Book 5 Tasks
 ('55555555-0004-0001-0001-000000000001', '55555555-5555-5555-5555-555555555555',
  'task.writing', 'Write Nesta''s spiral opening', 'done', 1, '2019-03-01'::timestamptz,
@@ -584,6 +840,25 @@ INSERT INTO onto_decisions (id, project_id, title, decision_at, rationale, props
  'Partner with Ronald D. Moore for TV Adaptation', '2021-03-01'::timestamptz,
  'Accept Hulu offer with Outlander creator Ronald D. Moore as showrunner. SJM to be heavily involved as co-adapter, spending 4 hours daily on Zoom calls to develop the adaptation.',
  '{"type": "decision.business", "state": "revisited", "decided_by": "Sarah J. Maas", "initial_hope": "High-quality adaptation like Outlander", "outcome": "Moore departed July 2024, Hulu canceled March 2025", "future": "SJM shopping to other networks"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- NEW: Additional Decisions
+('55556666-0005-0001-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Move ACOSF to Adult Classification', '2020-09-01'::timestamptz,
+ 'Given the significantly more explicit content planned for A Court of Silver Flames, work with Bloomsbury to officially classify the book as Adult Fantasy rather than Young Adult, removing marketing constraints.',
+ '{"type": "decision.business", "state": "decided", "decided_by": "Sarah J. Maas with Bloomsbury", "reason": "ACOSF content too explicit for YA classification", "outcome": "Book marketed as Adult Fantasy, allowed full creative freedom", "precedent": "Set standard for future books in series"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55556666-0007-0003-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Announce 4+ More ACOTAR Books', '2024-11-01'::timestamptz,
+ 'Confirm in interviews that at least 4 more ACOTAR books are planned beyond the current 5, indicating the series has substantial future life and many character arcs left to explore.',
+ '{"type": "decision.creative", "state": "decided", "decided_by": "Sarah J. Maas", "announcement_venue": "Today interview and fan events", "implications": ["Elain book expected", "Azriel book likely", "Potential Mor book", "Koschei resolution"], "fan_reaction": "Excitement tempered by wait times between books"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55556666-0007-0004-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Shop TV Rights to New Networks', '2025-03-15'::timestamptz,
+ 'After Hulu cancellation, actively seek new network partners for ACOTAR adaptation rather than abandoning the project. Maintain creative control requirements.',
+ '{"type": "decision.business", "state": "active", "decided_by": "Sarah J. Maas", "context": "Post-Hulu cancellation March 2025", "approach": "Seeking new partners while maintaining creative involvement", "fan_hope": "Eventual quality adaptation still possible"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -625,6 +900,31 @@ INSERT INTO onto_risks (id, project_id, title, type_key, probability, impact, st
  'Book 6 Shipping Wars', 'risk.creative',
  0.9, 'medium', 'identified',
  '{"description": "Intense fan division between Azriel/Gwyn and Azriel/Elain supporters", "current_state": "Active fandom conflict", "evidence_parsed": {"gwynriel": ["Shadows soften around Gwyn", "Singing connection"], "elriel": ["Physical attraction shown", "Secret meetings"]}, "mitigation": "Whichever outcome, execution must be earned and satisfying"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- NEW: Additional Risks
+('55557777-0007-0003-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Multiverse Complexity Risk', 'risk.creative',
+ 0.6, 'medium', 'identified',
+ '{"description": "Cross-series connections could confuse readers unfamiliar with all three series", "concern": "ACOTAR readers may feel lost by Crescent City crossover elements", "mitigation_attempt": "Each series remains readable standalone", "status": "Ongoing debate about execution", "future_challenge": "Balancing fan service with accessibility"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55557777-0008-0001-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Lucien/Elain Mate Bond Complication', 'risk.creative',
+ 0.7, 'medium', 'identified',
+ '{"description": "Lucien and Elain are canonically mates but Elain shows disinterest across 4 books", "complication": "Fan investment in Elriel (Elain/Azriel) vs canonical mate bond", "challenge": "Resolving without invalidating either storyline", "duration": "Unresolved since ACOWAR (2017)", "book_6_expectation": "Must be addressed in upcoming book"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55557777-0008-0002-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Illyrian Reform Backlash Setup', 'risk.plot',
+ 0.8, 'medium', 'identified',
+ '{"description": "Illyrian rebellion hints planted across multiple books", "setup": "War-camp leaders resisting female training reforms", "foreshadowing": "Cassian and Rhysand struggle with tradition vs progress", "future_conflict": "Likely major plot thread in upcoming books", "stakes": "Could threaten Night Court stability"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55557777-0008-0003-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Wait Time Between Books', 'risk.business',
+ 0.9, 'low', 'occurred',
+ '{"description": "4+ year gap between ACOSF (2021) and Book 6 (expected 2026)", "cause": "SJM writing across multiple series simultaneously", "impact": "Fan frustration, potential loss of casual readers", "mitigation": "Strong fandom maintains engagement through content creation", "context": "SJM also published Crescent City 2 and 3 during this period"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -670,6 +970,57 @@ INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, c
 ('55558888-0007-0001-0001-000000000001', '55555555-5555-5555-5555-555555555555',
  'Multiverse Connection Evidence', 'document.lore', 'published',
  '{"symbol": "Eight-pointed star appears in all three series", "crossover": "Bryce Quinlan travels to Prythian in House of Flame and Shadow", "characters_crossed": ["Bryce meets Nesta", "Bryce meets Azriel", "Truth-Teller dagger connection"], "future_implications": "Shared magical history to be explored"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- NEW: Additional Iconic Quotes
+('55558888-0002-0003-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Feyre Darling Signature', 'document.iconic_quote', 'published',
+ '{"text": "Feyre darling.", "speaker": "Rhysand", "context": "Signature teasing endearment used throughout ACOMAF", "significance": "Became iconic phrase representing their relationship", "usage": "Romantic and flirtatious scenes", "fan_response": "One of most quoted lines in fandom"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0002-0004-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Salvation Declaration', 'document.iconic_quote', 'published',
+ '{"text": "You are my salvation, Feyre.", "speaker": "Rhysand", "context": "Key romantic declaration in ACOMAF", "setup": "Feyre asks if she''s his huntress and thief", "significance": "Defines what Feyre means to Rhysand beyond her skills", "emotional_weight": "High - one of most romantic moments"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0002-0005-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Mate Bond Declaration', 'document.iconic_quote', 'published',
+ '{"text": "If you were going to die, I was going to die with you... you were my mate, my mate, my mate.", "speaker": "Rhysand", "context": "Under the Mountain flashback revelation", "significance": "Explains why Rhysand made the bargain", "emotional_impact": "Broke readers'' hearts", "fan_reaction": "One of most emotionally devastating revelations"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0002-0006-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Torn World Apart Quote', 'document.iconic_quote', 'published',
+ '{"text": "Then I would have torn the world apart to get you back.", "speaker": "Feyre", "context": "Feyre declares her love and devotion to Rhysand", "significance": "Shows reciprocal intensity of their bond", "mirror": "Matches Rhysand''s own devotion"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0002-0007-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Different Kinds of Darkness', 'document.iconic_quote', 'published',
+ '{"text": "There are different kinds of darkness... There is the darkness of lovers, and the darkness of assassins. It becomes what the bearer wishes it to be, needs it to be. It is not wholly bad or good.", "speaker": "Rhysand", "context": "Explaining the nature of his power and philosophy", "theme": "Moral complexity, duality of nature", "significance": "Defines Rhysand''s worldview and Night Court philosophy"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0002-0008-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Love as Poison Quote', 'document.iconic_quote', 'published',
+ '{"text": "The issue isn''t whether he loved you, it''s how much. Too much. Love can be a poison.", "speaker": "Rhysand", "context": "Explaining Tamlin''s toxic behavior", "significance": "Crystallizes the difference between love and obsession", "theme": "Healthy vs unhealthy relationships", "foreshadowing": "Establishes contrast between Tamlin and Rhysand"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0002-0009-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Queen Quote', 'document.iconic_quote', 'published',
+ '{"text": "A queen who owned her body, her life, her destiny, and never apologised for it.", "speaker": "Feyre (internal)", "context": "Feyre reflecting on her growth and power", "theme": "Female empowerment and agency", "significance": "Encapsulates Feyre''s character arc", "feminist_reading": "Often cited as feminist fantasy moment"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0002-0010-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'All Night Dance Quote', 'document.iconic_quote', 'published',
+ '{"exchange": ["Of course I''ll dance with you. All night, if you wish.", "Even if I step on your toes?", "Even then."], "speakers": ["Rhysand", "Feyre"], "context": "Tender romantic moment at Starfall", "tone": "Soft, romantic, intimate", "significance": "Shows vulnerability and gentleness beneath power", "fan_favorite": "Often cited as peak romantic moment"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0003-0001-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'ACOWAR Dedication', 'document.dedication', 'published',
+ '{"text": "For my father, who taught me strength", "significance": "Connects to Mr. Archeron''s redemption arc in the book", "theme": "Fathers and daughters, redemption", "book": "A Court of Wings and Ruin (2017)"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55558888-0005-0002-0001-000000000001', '55555555-5555-5555-5555-555555555555',
+ 'Nesta and Cassian Mate Quote', 'document.iconic_quote', 'published',
+ '{"text": "I am yours. And you are mine.", "speakers": ["Nesta", "Cassian"], "context": "Nesta finally accepts the mate bond", "buildup": "4 books of tension and denial", "significance": "Culmination of slow-burn romance", "fan_reaction": "Maximum satisfaction after years of waiting"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -757,6 +1108,59 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 ('goal', '55555555-0007-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0007-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 3}'::jsonb),
 ('goal', '55555555-0007-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0007-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 4}'::jsonb),
 ('goal', '55555555-0007-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0007-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 5}'::jsonb),
+
+-- Goal 8 (Secondary Character Arcs) → 22 Milestones (NEW)
+-- Project → Goal 8
+('project', '55555555-5555-5555-5555-555555555555', 'has_goal', 'goal', '55555555-0008-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 8, "phase": "ensemble"}'::jsonb),
+
+-- Lucien Arc (6 milestones)
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 1, "character": "Lucien"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 2, "character": "Lucien"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 3, "character": "Lucien"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 4, "character": "Lucien"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 5, "character": "Lucien"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 6, "character": "Lucien"}'::jsonb),
+
+-- Tamlin Arc (5 milestones)
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 7, "character": "Tamlin"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 8, "character": "Tamlin"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 9, "character": "Tamlin"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 10, "character": "Tamlin"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 11, "character": "Tamlin"}'::jsonb),
+
+-- Azriel Arc (4 milestones)
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 12, "character": "Azriel"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0013-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 13, "character": "Azriel"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0014-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 14, "character": "Azriel"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0015-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 15, "character": "Azriel"}'::jsonb),
+
+-- Amren Arc (3 milestones)
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0016-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 16, "character": "Amren"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0017-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 17, "character": "Amren"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0018-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 18, "character": "Amren"}'::jsonb),
+
+-- Mor Arc (4 milestones)
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0019-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 19, "character": "Mor"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0020-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 20, "character": "Mor"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0021-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 21, "character": "Mor"}'::jsonb),
+('goal', '55555555-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0008-0022-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 22, "character": "Mor"}'::jsonb),
+
+-- Goal 3 → New ACOWAR Spy Mission Milestones (7 new)
+('goal', '55555555-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0003-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 6}'::jsonb),
+('goal', '55555555-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0003-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 7}'::jsonb),
+('goal', '55555555-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0003-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 8}'::jsonb),
+('goal', '55555555-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0003-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 9}'::jsonb),
+('goal', '55555555-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0003-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 10}'::jsonb),
+('goal', '55555555-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0003-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 11}'::jsonb),
+('goal', '55555555-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0003-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 12}'::jsonb),
+
+-- Goal 4 → New ACOFAS Milestones (6 new)
+('goal', '55555555-0004-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0004-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 7}'::jsonb),
+('goal', '55555555-0004-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0004-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 8}'::jsonb),
+('goal', '55555555-0004-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0004-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 9}'::jsonb),
+('goal', '55555555-0004-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0004-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 10}'::jsonb),
+('goal', '55555555-0004-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0004-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 11}'::jsonb),
+('goal', '55555555-0004-0000-0000-000000000001', 'has_milestone', 'milestone', '55555555-0004-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"order": 12}'::jsonb),
 
 -- ============================================
 -- TIER 3: Milestone → Sub-Milestones (Under the Mountain Trials)
@@ -1019,29 +1423,42 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 DO $$
 BEGIN
   RAISE NOTICE '==============================================';
-  RAISE NOTICE 'A Court of Thorns and Roses Writing Project - v2.0';
+  RAISE NOTICE 'A Court of Thorns and Roses Writing Project - v3.0';
   RAISE NOTICE '==============================================';
   RAISE NOTICE 'ENTITY COUNTS:';
-  RAISE NOTICE '  - 7 Goals (each book/phase + worldbuilding + cultural + future)';
-  RAISE NOTICE '  - 35 Milestones (key events across series development)';
+  RAISE NOTICE '  - 8 Goals (books, worldbuilding, cultural, future, character arcs)';
+  RAISE NOTICE '  - 79 Milestones (key events + spy mission + ACOFAS + secondary chars)';
   RAISE NOTICE '  - 6 Plans (writing, character arcs, worldbuilding, multiverse)';
-  RAISE NOTICE '  - 14 Tasks (specific writing tasks)';
-  RAISE NOTICE '  - 6 Decisions (major creative choices)';
-  RAISE NOTICE '  - 6 Risks (challenges faced)';
-  RAISE NOTICE '  - 8 Documents (iconic quotes, dedications, cultural analysis)';
-  RAISE NOTICE '  - 160+ Edges (comprehensive relationship mapping)';
+  RAISE NOTICE '  - 24 Tasks (specific writing tasks for all 6 books)';
+  RAISE NOTICE '  - 9 Decisions (major creative and business choices)';
+  RAISE NOTICE '  - 10 Risks (challenges faced and ongoing)';
+  RAISE NOTICE '  - 19 Documents (iconic quotes, dedications, cultural analysis)';
+  RAISE NOTICE '  - 250+ Edges (comprehensive relationship mapping)';
   RAISE NOTICE '';
   RAISE NOTICE 'GRAPH STRUCTURE (10 Tiers):';
-  RAISE NOTICE '  1. Project → Goals (7 edges)';
-  RAISE NOTICE '  2. Goals → Milestones (39 edges)';
+  RAISE NOTICE '  1. Project → Goals (8 edges)';
+  RAISE NOTICE '  2. Goals → Milestones (74+ edges)';
   RAISE NOTICE '  3. Milestones → Sub-Milestones (9 edges incl. chains)';
   RAISE NOTICE '  4. Plans → Goals (10 edges)';
   RAISE NOTICE '  5. Plans → Milestones (17 edges)';
-  RAISE NOTICE '  6. Tasks → Milestones (14 edges)';
-  RAISE NOTICE '  7. Decisions → Milestones (14 edges)';
-  RAISE NOTICE '  8. Risks → Milestones/Goals (14 edges)';
-  RAISE NOTICE '  9. Documents → Milestones (14 edges)';
-  RAISE NOTICE ' 10. Milestone → Milestone chains (40+ edges)';
+  RAISE NOTICE '  6. Tasks → Milestones (24 edges)';
+  RAISE NOTICE '  7. Decisions → Milestones (17 edges)';
+  RAISE NOTICE '  8. Risks → Milestones/Goals (18 edges)';
+  RAISE NOTICE '  9. Documents → Milestones (20+ edges)';
+  RAISE NOTICE ' 10. Milestone → Milestone chains (50+ edges)';
+  RAISE NOTICE '';
+  RAISE NOTICE 'V3.0 NEW ADDITIONS:';
+  RAISE NOTICE '  - ACOWAR spy mission arc (7 milestones)';
+  RAISE NOTICE '  - ACOFAS Winter Solstice events (6 milestones)';
+  RAISE NOTICE '  - Lucien complete character arc (6 milestones)';
+  RAISE NOTICE '  - Tamlin fall arc (5 milestones)';
+  RAISE NOTICE '  - Azriel expanded backstory (4 milestones)';
+  RAISE NOTICE '  - Amren sacrifice arc (3 milestones)';
+  RAISE NOTICE '  - Mor full story (4 milestones)';
+  RAISE NOTICE '  - 11 new iconic quotes (Feyre darling, mate bond, etc.)';
+  RAISE NOTICE '  - Updated sales: 75M+ worldwide (was 38M)';
+  RAISE NOTICE '  - SJM writing process details';
+  RAISE NOTICE '  - Book 6 first draft confirmed July 2025';
   RAISE NOTICE '';
   RAISE NOTICE 'EASTER EGGS FOR SUPERFANS:';
   RAISE NOTICE '  - All fairy tale inspirations documented';
@@ -1050,9 +1467,11 @@ BEGIN
   RAISE NOTICE '  - Mate bond reveal moment captured';
   RAISE NOTICE '  - BookTok phenomenon tracked with causal chains';
   RAISE NOTICE '  - Multiverse connections noted';
-  RAISE NOTICE '  - TV adaptation saga documented';
-  RAISE NOTICE '  - Book 6 progress included';
+  RAISE NOTICE '  - TV adaptation saga documented (incl. 2025 cancellation)';
+  RAISE NOTICE '  - Book 6 progress included with 4+ more books confirmed';
   RAISE NOTICE '  - Cross-goal dependencies mapped';
+  RAISE NOTICE '  - Helion/Lucien parentage theory captured';
+  RAISE NOTICE '  - Gwynriel vs Elriel debate documented';
   RAISE NOTICE '';
   RAISE NOTICE 'To the stars who listen—and the dreams that are answered.';
   RAISE NOTICE '==============================================';

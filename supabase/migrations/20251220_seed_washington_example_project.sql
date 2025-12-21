@@ -1019,22 +1019,22 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 -- NEW GOALS (Goals 6, 7, 8)
 -- ============================================
 
-INSERT INTO onto_goals (id, project_id, name, type_key, props, created_by) VALUES
+INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, created_by) VALUES
 -- Goal 6: Win the Intelligence War
 ('22221111-0006-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Win the Intelligence War', 'goal.strategic.intelligence',
+ 'Win the Intelligence War', 'goal.strategic.intelligence', 'achieved',
  '{"priority": "high", "state": "achieved", "quote": "The necessity of procuring good intelligence is apparent and need not be further urged.", "key_network": "Culper Ring", "spymaster": "Benjamin Tallmadge"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 7: Manage Logistics and Supply
 ('22221111-0007-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Solve the Logistics Crisis', 'goal.strategic.logistics',
+ 'Solve the Logistics Crisis', 'goal.strategic.logistics', 'achieved',
  '{"priority": "critical", "state": "achieved", "quote": "An army marches on its stomach.", "key_challenges": ["feed army", "clothe army", "pay army", "prevent disease"], "revolutionary_decision": "Mass smallpox inoculation"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- Goal 8: Win Hearts and Minds
 ('22221111-0008-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
- 'Win Hearts and Minds', 'goal.strategic.moral',
+ 'Win Hearts and Minds', 'goal.strategic.moral', 'achieved',
  '{"priority": "high", "state": "achieved", "quote": "The cause of America is the cause of all mankind.", "principles": ["treat prisoners humanely", "protect civilian property", "maintain moral high ground"]}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
@@ -1663,18 +1663,467 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 ;
 
 -- ============================================
+-- VERSION 4.0 EXPANSION - COMPREHENSIVE ADDITIONS
+-- ============================================
+-- This expansion adds:
+-- - Goal 9: Defend the Frontier (Sullivan Expedition)
+-- - Morristown Hard Winter (1779-1780) - worse than Valley Forge
+-- - Battle of the Chesapeake (de Grasse naval victory)
+-- - Fort Washington disaster (1776)
+-- - Valcour Island (Arnold's delaying action)
+-- - Foreign volunteers: Pulaski, Kosciuszko, de Kalb
+-- - Robert Morris war financing
+-- - 1st Rhode Island Regiment (Black soldiers)
+-- - Oneida Nation alliance
+-- - Arnold's Quebec Expedition
+-- ============================================
+
+-- ============================================
+-- GOAL 9: Defend the Frontier
+-- ============================================
+
+INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, created_by) VALUES
+('22221111-0009-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Defend the Frontier from British-Allied Raids', 'goal.strategic.territorial', 'achieved',
+ '{"priority": "high", "state": "achieved", "threat": "British-allied Iroquois raids on settlements", "key_operation": "Sullivan Expedition 1779", "outcome": "Broke Iroquois Confederacy power", "quote": "The total destruction and devastation of their settlements"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- MORRISTOWN HARD WINTER (1779-1780)
+-- Worse than Valley Forge!
+-- ============================================
+
+INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at, props, created_by) VALUES
+-- Under Goal 1: Preserve Army
+('33331111-0001-0008-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Morristown Hard Winter - Worst Winter of the War', 'milestone.military.encampment', 'completed',
+ '1780-06-15'::timestamptz,
+ '{"state": "achieved", "location": "Jockey Hollow near Morristown, NJ", "duration": "December 1779 - June 1780", "troops": 12000, "huts_built": 1200, "blizzards": 28, "snow_depth_feet": 4, "significance": "Worse than Valley Forge - coldest winter on record", "quote": "We have never experienced a like extremity at any period of the war"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Fort Washington Disaster (adds to Goal 3: Independence - as setback)
+('33331111-0003-0017-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Fort Washington Disaster', 'milestone.military.defeat', 'completed',
+ '1776-11-16'::timestamptz,
+ '{"state": "achieved", "outcome": "Catastrophic American defeat", "location": "Northern Manhattan", "americans_captured": 2800, "supplies_lost": "Significant artillery and stores", "british_commander": "Wilhelm von Knyphausen", "significance": "Secured British control of New York Island"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Valcour Island (Arnold's delaying action)
+('33331111-0005-0008-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Battle of Valcour Island - Arnold''s Delaying Action', 'milestone.naval.battle', 'completed',
+ '1776-10-11'::timestamptz,
+ '{"state": "achieved", "outcome": "Tactical defeat but strategic success", "location": "Lake Champlain, NY", "commander": "Benedict Arnold", "american_vessels": 16, "british_vessels": 25, "american_losses": 11, "significance": "Delayed British invasion by one year - enabled Saratoga 1777"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Battle of the Chesapeake (Critical!)
+('33331111-0002-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Battle of the Chesapeake - French Naval Victory', 'milestone.naval.decisive', 'completed',
+ '1781-09-05'::timestamptz,
+ '{"state": "achieved", "outcome": "French victory - decisive for Yorktown", "location": "Off Virginia Capes", "french_commander": "Admiral de Grasse", "british_commander": "Admiral Thomas Graves", "french_ships": 24, "british_ships": 19, "british_damaged": 6, "significance": "Denied British relief of Cornwallis - enabled Yorktown surrender"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Arnold's Quebec Expedition
+('33331111-0003-0018-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Arnold''s Quebec Expedition - Heroic Failure', 'milestone.military.campaign', 'completed',
+ '1775-12-31'::timestamptz,
+ '{"state": "achieved", "outcome": "Failed assault on Quebec", "route": "Through Maine wilderness", "distance_miles": 350, "troops_started": 1100, "troops_arrived": 600, "commander_killed": "Richard Montgomery", "arnold_wounded": true, "significance": "Demonstrated American audacity despite failure"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Siege of Savannah (Pulaski's Death)
+('33331111-0003-0019-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Siege of Savannah - Pulaski Falls', 'milestone.military.siege', 'completed',
+ '1779-10-09'::timestamptz,
+ '{"state": "achieved", "outcome": "Franco-American defeat", "location": "Savannah, GA", "french_commander": "Count d''Estaing", "american_commander": "Benjamin Lincoln", "casualties": 800, "pulaski_killed": true, "d_estaing_wounded": true, "significance": "Failed to retake Georgia - Pulaski martyrdom"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Battle of Oriskany
+('33331111-0009-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Battle of Oriskany - Bloodiest by Percentage', 'milestone.military.battle', 'completed',
+ '1777-08-06'::timestamptz,
+ '{"state": "achieved", "outcome": "Pyrrhic American victory", "location": "Oriskany, NY", "american_commander": "Nicholas Herkimer", "british_commander": "Joseph Brant", "american_forces": 800, "oneida_allies": 60, "casualties_percent": 50, "herkimer_wounded": "Mortally", "oneida_contribution": "Key American allies", "significance": "Bloodiest battle by percentage - contributed to Saratoga campaign"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Cherry Valley Massacre
+('33331111-0009-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Cherry Valley Massacre', 'milestone.crisis.raid', 'completed',
+ '1778-11-11'::timestamptz,
+ '{"state": "achieved", "outcome": "Devastating British-Iroquois raid", "location": "Cherry Valley, NY", "british_commander": "Walter Butler", "mohawk_commander": "Joseph Brant", "civilians_killed": 32, "soldiers_killed": 16, "buildings_burned": 40, "significance": "Prompted Washington to order Sullivan Expedition"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Wyoming Valley Massacre
+('33331111-0009-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Wyoming Valley Massacre', 'milestone.crisis.raid', 'completed',
+ '1778-07-03'::timestamptz,
+ '{"state": "achieved", "outcome": "British-Iroquois victory", "location": "Wyoming Valley, PA", "british_commander": "John Butler", "american_casualties": 300, "settlers_killed": 200, "significance": "Major frontier atrocity - strengthened case for Sullivan Expedition"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Sullivan Expedition Ordered
+('33331111-0009-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Sullivan Expedition Ordered by Washington', 'milestone.military.directive', 'completed',
+ '1779-05-31'::timestamptz,
+ '{"state": "achieved", "commander": "Major General John Sullivan", "objective": "Total destruction and devastation of Iroquois settlements", "forces": 4000, "washington_quote": "The total destruction and devastation of their settlements and the capture of as many prisoners of every age and sex as possible"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Battle of Newtown
+('33331111-0009-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Battle of Newtown - Sullivan Defeats Brant', 'milestone.military.battle', 'completed',
+ '1779-08-29'::timestamptz,
+ '{"state": "achieved", "outcome": "Decisive American victory", "location": "Near Elmira, NY", "sullivan_forces": 4000, "british_iroquois_forces": 1000, "british_commander": "Joseph Brant", "iroquois_casualties": 40, "american_casualties": 5, "significance": "Broke organized resistance - enabled village destruction"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- 40 Iroquois Villages Destroyed
+('33331111-0009-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ '40 Iroquois Villages Destroyed', 'milestone.military.operation', 'completed',
+ '1779-09-15'::timestamptz,
+ '{"state": "achieved", "villages_destroyed": 40, "crops_destroyed": "160000 bushels of corn", "orchards_destroyed": true, "refugees_created": 5000, "destination": "British Fort Niagara", "winter_starvation": "Many died", "significance": "Broke Iroquois Confederacy power permanently"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Robert Morris Appointed
+('33331111-0007-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Robert Morris Becomes Superintendent of Finance', 'milestone.organizational.appointment', 'completed',
+ '1781-02-20'::timestamptz,
+ '{"state": "achieved", "appointee": "Robert Morris", "title": "Superintendent of Finance", "challenge": "Treasury empty, army unpaid", "solution": "Personal credit and creative financing", "yorktown_funding": "Raised funds for final campaign", "significance": "Financier of the Revolution - made Yorktown possible"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Haym Salomon Financing
+('33331111-0007-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Haym Salomon Raises Yorktown Funds', 'milestone.logistics.finance', 'completed',
+ '1781-08-15'::timestamptz,
+ '{"state": "achieved", "financier": "Haym Salomon", "role": "Broker to Office of Finance", "contribution": "Sold government securities, arranged loans, personal advances", "yorktown_campaign": "Critical funding secured", "officers_paid": "Advanced own funds to pay French and American officers", "significance": "Jewish patriot whose financial genius helped fund victory"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- 1st Rhode Island Regiment
+('33331111-0008-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ '1st Rhode Island Regiment Formed - Black Soldiers', 'milestone.organizational.formation', 'completed',
+ '1778-02-14'::timestamptz,
+ '{"state": "achieved", "regiment": "1st Rhode Island Regiment", "composition": "140 of 225 soldiers were Black", "enslaved_recruited": 88, "promise": "Emancipation for service", "uniqueness": "Only Continental regiment with segregated Black companies", "significance": "First African American military unit in US history"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Battle of Rhode Island (Black soldiers fight)
+('33331111-0008-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Battle of Rhode Island - 1st Rhode Island Proves Valor', 'milestone.military.battle', 'completed',
+ '1778-08-29'::timestamptz,
+ '{"state": "achieved", "outcome": "Successful American withdrawal", "location": "Aquidneck Island, RI", "1st_ri_performance": "Repulsed three Hessian attacks", "hessian_commander": "Count von Donop", "significance": "Black soldiers proved combat effectiveness"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Oneida Alliance
+('33331111-0008-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Oneida Nation Alliance with Americans', 'milestone.diplomatic.alliance', 'completed',
+ '1777-01-01'::timestamptz,
+ '{"state": "achieved", "ally": "Oneida Nation", "uniqueness": "Only Iroquois nation to ally with Americans", "contribution": "Warriors, scouts, intelligence", "valley_forge_aid": "Brought food to starving army", "oriskany": "60 Oneida fought alongside Americans", "sacrifice": "Suffered British/Loyalist retaliation", "significance": "Critical Native American ally - broke Iroquois neutrality"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Oneida Aid at Valley Forge
+('33331111-0008-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Oneida Bring Food to Valley Forge', 'milestone.logistics.aid', 'completed',
+ '1778-02-01'::timestamptz,
+ '{"state": "achieved", "ally": "Oneida Nation", "aid_type": "Corn and other provisions", "destination": "Valley Forge", "army_condition": "Starving", "oneida_sacrifice": "Long journey through winter", "polly_cooper": "Oneida woman who stayed to cook for soldiers", "significance": "Indigenous allies sustained the army in darkest hour"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- NEW PLANS
+-- ============================================
+
+INSERT INTO onto_plans (id, project_id, name, type_key, state_key, props, created_by) VALUES
+-- Sullivan Expedition Plan
+('44441111-0009-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Sullivan Expedition Campaign', 'plan.campaign.punitive', 'completed',
+ '{"facets": {"scale": "large"}, "commander": "John Sullivan", "co_commander": "James Clinton", "objective": "Destroy Iroquois capability to raid", "start_date": "1779-08-26", "end_date": "1779-09-30"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Morristown Encampment Plan
+('44441111-0001-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Morristown Winter Encampment 1779-1780', 'plan.logistics.encampment', 'completed',
+ '{"facets": {"scale": "large"}, "location": "Jockey Hollow", "duration_months": 6, "challenges": ["worst winter on record", "supply crisis", "mutiny threats"]}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- War Financing Plan
+('44441111-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Morris-Salomon War Financing Operation', 'plan.logistics.finance', 'completed',
+ '{"facets": {"scale": "large"}, "superintendent": "Robert Morris", "broker": "Haym Salomon", "objective": "Fund Yorktown campaign", "methods": ["personal credit", "securities sales", "French loans"]}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Valcour Island Defense Plan
+('44441111-0005-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Lake Champlain Delaying Action', 'plan.tactical.delay', 'completed',
+ '{"facets": {"scale": "medium"}, "commander": "Benedict Arnold", "objective": "Delay British invasion from Canada", "outcome": "Bought one year - enabled Saratoga"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- NEW TASKS
+-- ============================================
+
+INSERT INTO onto_tasks (id, project_id, type_key, title, state_key, priority, due_at, props, created_by) VALUES
+-- Sullivan Expedition Tasks
+('55555555-0009-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ 'March 4000 Troops into Iroquois Territory', 'done', 1, '1779-08-26'::timestamptz,
+ '{"facets": {"scale": "large"}, "troops": 4000, "artillery": "heavy", "route": "From Wyoming Valley north"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0009-0005-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ 'Defeat Brant''s Force at Newtown', 'done', 1, '1779-08-29'::timestamptz,
+ '{"facets": {"scale": "medium"}, "enemy_force": 1000, "outcome": "Decisive victory"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0009-0006-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ 'Destroy 40 Iroquois Villages', 'done', 1, '1779-09-15'::timestamptz,
+ '{"facets": {"scale": "large"}, "villages_burned": 40, "crops_destroyed": "160000 bushels corn", "orchards_cut": "Thousands of fruit trees"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Morristown Tasks
+('55555555-0001-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.create',
+ 'Build 1200 Log Huts at Jockey Hollow', 'done', 1, '1779-12-20'::timestamptz,
+ '{"facets": {"scale": "large"}, "huts": 1200, "troops_per_hut": 12, "conditions": "Blizzards and sub-zero temperatures"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0001-0008-0002-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ 'Survive 28 Blizzards', 'done', 1, '1780-03-15'::timestamptz,
+ '{"facets": {"scale": "large"}, "blizzards": 28, "snow_depth_feet": 4, "quote": "We have never experienced a like extremity"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Financing Tasks
+('55555555-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ 'Morris Uses Personal Credit for Army', 'done', 1, '1781-08-01'::timestamptz,
+ '{"facets": {"scale": "large"}, "method": "Personal notes backed by own fortune", "purpose": "Pay troops for Yorktown march"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0007-0005-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ 'Salomon Sells Government Securities', 'done', 1, '1781-08-15'::timestamptz,
+ '{"facets": {"scale": "medium"}, "method": "Brokered sales at personal risk", "purpose": "Raise cash for Yorktown"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Valcour Island Tasks
+('55555555-0005-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ 'Build Fleet from Scratch on Lake Champlain', 'done', 1, '1776-08-01'::timestamptz,
+ '{"facets": {"scale": "medium"}, "vessels_built": 16, "time_weeks": 8, "location": "Skenesborough"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0005-0008-0002-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ 'Fight Delaying Action Against British Fleet', 'done', 1, '1776-10-11'::timestamptz,
+ '{"facets": {"scale": "medium"}, "american_vessels": 16, "british_vessels": 25, "outcome": "Lost most ships but delayed invasion"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- 1st Rhode Island Tasks
+('55555555-0008-0001-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.admin',
+ 'Authorize Enlistment of Enslaved Men', 'done', 1, '1778-02-14'::timestamptz,
+ '{"facets": {"scale": "medium"}, "state": "Rhode Island", "promise": "Emancipation upon discharge", "compensation_to_owners": "Up to £120"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('55555555-0008-0002-0001-000000000001', '11111111-1111-1111-1111-111111111111', 'task.execute',
+ '1st Rhode Island Repulses Hessian Attacks', 'done', 1, '1778-08-29'::timestamptz,
+ '{"facets": {"scale": "medium"}, "attacks_repulsed": 3, "enemy": "Hessians under Count von Donop", "outcome": "Held line, enabled withdrawal"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- NEW DECISIONS
+-- ============================================
+
+INSERT INTO onto_decisions (id, project_id, title, decision_at, rationale, props, created_by) VALUES
+('66661111-0009-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Decision to Launch Sullivan Expedition', '1779-05-31'::timestamptz,
+ 'Frontier settlements devastated by British-Iroquois raids. Punitive expedition would eliminate threat and free resources for main war.',
+ '{"targets": "Iroquois villages and crops", "severity": "Total destruction ordered", "outcome": "Broke Iroquois power"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('66661111-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Decision to Appoint Robert Morris Superintendent of Finance', '1781-02-20'::timestamptz,
+ 'Treasury empty, no one else willing. Morris alone had the personal credit and financial genius to save the army.',
+ '{"alternatives_considered": "None - only Morris had the capacity", "outcome": "Yorktown campaign funded"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('66661111-0008-0001-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Decision to Enlist Enslaved Men in Rhode Island', '1778-02-14'::timestamptz,
+ 'Desperate need for soldiers. Rhode Island authorized enlistment of enslaved men with promise of freedom upon discharge.',
+ '{"revolutionary_nature": "First to promise emancipation for service", "precedent_set": "Military service as path to freedom"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('66661111-0002-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'De Grasse Decision to Bring Entire Fleet to Chesapeake', '1781-08-15'::timestamptz,
+ 'Washington requested naval support. De Grasse decided to bring his entire fleet rather than a token force, making Yorktown victory possible.',
+ '{"alternatives": "Send only part of fleet", "risk": "Exposed Caribbean possessions", "outcome": "Decisive naval superiority at Yorktown"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- NEW RISKS
+-- ============================================
+
+INSERT INTO onto_risks (id, project_id, title, type_key, probability, impact, state_key, props, created_by) VALUES
+('77771111-0009-0002-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Frontier Settlements Overrun by Raids', 'risk.strategic.territorial', 0.8, 'high', 'mitigated',
+ '{"threat": "British-Iroquois raids depopulating frontier", "mitigation": "Sullivan Expedition destroyed Iroquois villages"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('77771111-0001-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Army Collapse During Hard Winter', 'risk.logistics.critical', 0.7, 'critical', 'mitigated',
+ '{"threat": "Starvation and freezing at Morristown", "conditions": "28 blizzards, 4ft snow", "mitigation": "Army survived but mutiny threats emerged"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('77771111-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Yorktown Campaign Unfunded', 'risk.logistics.critical', 0.9, 'critical', 'mitigated',
+ '{"threat": "No money to march or siege", "mitigation": "Morris personal credit and Salomon securities sales"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('77771111-0002-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'British Fleet Relieves Cornwallis', 'risk.naval.critical', 0.6, 'critical', 'mitigated',
+ '{"threat": "British navy rescues Cornwallis from Yorktown", "mitigation": "De Grasse victory at Battle of Chesapeake"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- NEW DOCUMENTS
+-- ============================================
+
+INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, created_by) VALUES
+('88881111-0009-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Washington''s Orders to Sullivan', 'document.military.orders', 'published',
+ '{"date": "1779-05-31", "quote": "The immediate objects are the total destruction and devastation of their settlements", "significance": "Most controversial orders of the war"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88881111-0008-0001-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Rhode Island Slave Enlistment Act', 'document.founding.legislation', 'published',
+ '{"date": "1778-02-14", "provision": "Enslaved men promised freedom for enlistment", "compensation": "Owners paid up to £120", "significance": "First legislation linking military service to emancipation"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88881111-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Morris Notes and Personal Guarantees', 'document.financial.instrument', 'published',
+ '{"issuer": "Robert Morris", "purpose": "Fund Yorktown campaign", "backed_by": "Morris personal fortune", "significance": "Private wealth funded public victory"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Foreign Volunteer Documents
+('88881111-0003-0020-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Casimir Pulaski Commission as Cavalry Commander', 'document.military.commission', 'published',
+ '{"date": "1777-09-15", "appointee": "Casimir Pulaski", "title": "Commander of Horse", "significance": "Father of American Cavalry", "death": "Savannah, October 11, 1779"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88881111-0003-0021-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Thaddeus Kosciuszko Engineering Reports', 'document.military.report', 'published',
+ '{"engineer": "Thaddeus Kosciuszko", "accomplishments": ["Fortified Saratoga position", "Designed West Point defenses"], "nationality": "Polish", "significance": "Engineering genius saved key positions"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('88881111-0003-0022-0001-000000000001', '11111111-1111-1111-1111-111111111111',
+ 'Johann de Kalb Service Record', 'document.military.personnel', 'published',
+ '{"officer": "Johann de Kalb", "nationality": "Bavarian-French", "service": "1777-1780", "rank": "Major General", "death": "Battle of Camden, August 16, 1780", "wounds": 11, "significance": "Gave life for American cause"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================
+-- NEW EDGES FOR VERSION 4.0
+-- ============================================
+
+INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, props) VALUES
+-- Project → Goal 9
+('project', '11111111-1111-1111-1111-111111111111', 'has_goal', 'goal', '22221111-0009-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 9}'::jsonb),
+
+-- Goal 1 → Morristown milestone
+('goal', '22221111-0001-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0001-0008-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 8}'::jsonb),
+
+-- Goal 2 → Battle of Chesapeake
+('goal', '22221111-0002-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0002-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 4}'::jsonb),
+
+-- Goal 3 → Fort Washington, Quebec, Savannah
+('goal', '22221111-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0003-0017-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 17}'::jsonb),
+('goal', '22221111-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0003-0018-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 18}'::jsonb),
+('goal', '22221111-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0003-0019-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 19}'::jsonb),
+
+-- Goal 5 → Valcour Island
+('goal', '22221111-0005-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0005-0008-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 8}'::jsonb),
+
+-- Goal 7 → Robert Morris and Salomon
+('goal', '22221111-0007-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0007-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 4}'::jsonb),
+('goal', '22221111-0007-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0007-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 5}'::jsonb),
+
+-- Goal 8 → 1st Rhode Island, Oneida
+('goal', '22221111-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0008-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 1}'::jsonb),
+('goal', '22221111-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0008-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 2}'::jsonb),
+('goal', '22221111-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0008-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 3}'::jsonb),
+('goal', '22221111-0008-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0008-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 4}'::jsonb),
+
+-- Goal 9 → Frontier milestones
+('goal', '22221111-0009-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0009-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 1}'::jsonb),
+('goal', '22221111-0009-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0009-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 2}'::jsonb),
+('goal', '22221111-0009-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0009-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 3}'::jsonb),
+('goal', '22221111-0009-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0009-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 4}'::jsonb),
+('goal', '22221111-0009-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0009-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 5}'::jsonb),
+('goal', '22221111-0009-0000-0000-000000000001', 'has_milestone', 'milestone', '33331111-0009-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 6}'::jsonb),
+
+-- Milestone → Plans
+('milestone', '33331111-0009-0004-0000-000000000001', 'has_plan', 'plan', '44441111-0009-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0001-0008-0000-000000000001', 'has_plan', 'plan', '44441111-0001-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0007-0004-0000-000000000001', 'has_plan', 'plan', '44441111-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0005-0008-0000-000000000001', 'has_plan', 'plan', '44441111-0005-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+
+-- Plan → Tasks
+('plan', '44441111-0009-0004-0001-000000000001', 'has_task', 'task', '55555555-0009-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 1}'::jsonb),
+('plan', '44441111-0009-0004-0001-000000000001', 'has_task', 'task', '55555555-0009-0005-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 2}'::jsonb),
+('plan', '44441111-0009-0004-0001-000000000001', 'has_task', 'task', '55555555-0009-0006-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 3}'::jsonb),
+('plan', '44441111-0001-0008-0001-000000000001', 'has_task', 'task', '55555555-0001-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 1}'::jsonb),
+('plan', '44441111-0001-0008-0001-000000000001', 'has_task', 'task', '55555555-0001-0008-0002-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 2}'::jsonb),
+('plan', '44441111-0007-0004-0001-000000000001', 'has_task', 'task', '55555555-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 1}'::jsonb),
+('plan', '44441111-0007-0004-0001-000000000001', 'has_task', 'task', '55555555-0007-0005-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 2}'::jsonb),
+('plan', '44441111-0005-0008-0001-000000000001', 'has_task', 'task', '55555555-0005-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 1}'::jsonb),
+('plan', '44441111-0005-0008-0001-000000000001', 'has_task', 'task', '55555555-0005-0008-0002-000000000001', '11111111-1111-1111-1111-111111111111', '{"order": 2}'::jsonb),
+
+-- Milestone → Tasks (direct)
+('milestone', '33331111-0008-0001-0000-000000000001', 'has_task', 'task', '55555555-0008-0001-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0008-0002-0000-000000000001', 'has_task', 'task', '55555555-0008-0002-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+
+-- Milestone → Decisions
+('milestone', '33331111-0009-0004-0000-000000000001', 'has_decision', 'decision', '66661111-0009-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0007-0004-0000-000000000001', 'has_decision', 'decision', '66661111-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0008-0001-0000-000000000001', 'has_decision', 'decision', '66661111-0008-0001-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0002-0004-0000-000000000001', 'has_decision', 'decision', '66661111-0002-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+
+-- Milestone → Risks
+('milestone', '33331111-0009-0002-0000-000000000001', 'has_risk', 'risk', '77771111-0009-0002-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0001-0008-0000-000000000001', 'has_risk', 'risk', '77771111-0001-0008-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0007-0004-0000-000000000001', 'has_risk', 'risk', '77771111-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0002-0004-0000-000000000001', 'has_risk', 'risk', '77771111-0002-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+
+-- Milestone → Documents
+('milestone', '33331111-0009-0004-0000-000000000001', 'has_document', 'document', '88881111-0009-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0008-0001-0000-000000000001', 'has_document', 'document', '88881111-0008-0001-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0007-0004-0000-000000000001', 'has_document', 'document', '88881111-0007-0004-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+('milestone', '33331111-0003-0019-0000-000000000001', 'has_document', 'document', '88881111-0003-0020-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{}'::jsonb),
+
+-- Cross-cutting relationships
+-- Cherry Valley → Sullivan Expedition
+('milestone', '33331111-0009-0002-0000-000000000001', 'led_to', 'milestone', '33331111-0009-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Massacre prompted punitive expedition"}'::jsonb),
+-- Wyoming Valley → Sullivan Expedition
+('milestone', '33331111-0009-0003-0000-000000000001', 'led_to', 'milestone', '33331111-0009-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Atrocity demanded response"}'::jsonb),
+-- Battle of Newtown → Village destruction
+('milestone', '33331111-0009-0005-0000-000000000001', 'enabled', 'milestone', '33331111-0009-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Victory broke resistance"}'::jsonb),
+-- Valcour Island → Saratoga (delayed invasion by one year)
+('milestone', '33331111-0005-0008-0000-000000000001', 'enabled', 'milestone', '33331111-0002-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Delayed British invasion - enabled Saratoga victory"}'::jsonb),
+-- Battle of Chesapeake → Yorktown
+('milestone', '33331111-0002-0004-0000-000000000001', 'enabled', 'milestone', '33331111-0003-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "French naval victory blocked British relief - sealed Yorktown"}'::jsonb),
+-- Morris Financing → Yorktown
+('milestone', '33331111-0007-0004-0000-000000000001', 'enabled', 'milestone', '33331111-0003-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Personal credit funded the march and siege"}'::jsonb),
+-- Oneida aid → Valley Forge survival
+('milestone', '33331111-0008-0004-0000-000000000001', 'enabled', 'milestone', '33331111-0001-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Food from allies sustained starving army"}'::jsonb),
+-- Oriskany → Saratoga (tied up British forces)
+('milestone', '33331111-0009-0001-0000-000000000001', 'enabled', 'milestone', '33331111-0002-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Stopped St. Leger, concentrated forces against Burgoyne"}'::jsonb),
+-- 1st Rhode Island → Yorktown assault
+('milestone', '33331111-0008-0001-0000-000000000001', 'enabled', 'milestone', '33331111-0003-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Black soldiers served in Yorktown assault"}'::jsonb)
+;
+
+-- ============================================
 -- COMPLETION NOTICE
 -- ============================================
 
 DO $$
 BEGIN
   RAISE NOTICE '==============================================';
-  RAISE NOTICE 'Operation American Independence - v3.0 COMPREHENSIVE';
+  RAISE NOTICE 'Operation American Independence - v4.0 COMPREHENSIVE';
   RAISE NOTICE 'FULL REVOLUTIONARY WAR ONTOLOGY GRAPH';
   RAISE NOTICE '==============================================';
   RAISE NOTICE 'Project ID: 11111111-1111-1111-1111-111111111111';
   RAISE NOTICE '';
-  RAISE NOTICE 'GOALS (8):';
+  RAISE NOTICE 'GOALS (9):';
   RAISE NOTICE '  1. Preserve Continental Army';
   RAISE NOTICE '  2. Secure French Alliance';
   RAISE NOTICE '  3. Achieve Independence';
@@ -1683,20 +2132,48 @@ BEGIN
   RAISE NOTICE '  6. Win the Intelligence War';
   RAISE NOTICE '  7. Solve the Logistics Crisis';
   RAISE NOTICE '  8. Win Hearts and Minds';
+  RAISE NOTICE '  9. Defend the Frontier';
   RAISE NOTICE '';
   RAISE NOTICE 'CAMPAIGN HIGHLIGHTS:';
   RAISE NOTICE '  Boston (1775-1776): Siege, Knox artillery train, British evacuation';
-  RAISE NOTICE '  New York/New Jersey (1776-1777): Long Island, Trenton, Princeton';
+  RAISE NOTICE '  Quebec (1775-1776): Arnold/Montgomery invasion, disaster at Quebec City';
+  RAISE NOTICE '  New York/New Jersey (1776-1777): Long Island, Fort Washington, Trenton, Princeton';
   RAISE NOTICE '  Philadelphia (1777-1778): Brandywine, Germantown, Valley Forge';
-  RAISE NOTICE '  Saratoga (1777): Freeman Farm, Bemis Heights, Burgoyne surrender';
+  RAISE NOTICE '  Saratoga (1777): Oriskany, Freeman Farm, Bemis Heights, Burgoyne surrender';
+  RAISE NOTICE '  Lake Champlain (1776): Valcour Island - delayed British one year';
   RAISE NOTICE '  Southern (1780-1781): Kings Mountain, Cowpens, Guilford Courthouse';
-  RAISE NOTICE '  Yorktown (1781): Franco-American siege, Cornwallis surrender';
+  RAISE NOTICE '  Yorktown (1781): Battle of Chesapeake, Franco-American siege';
   RAISE NOTICE '';
-  RAISE NOTICE 'MARINE CORPS HIGHLIGHTS:';
-  RAISE NOTICE '  - Founded November 10, 1775 at Tun Tavern';
-  RAISE NOTICE '  - First Commandant: Captain Samuel Nicholas';
-  RAISE NOTICE '  - First Amphibious Assault: Nassau Raid (March 1776)';
-  RAISE NOTICE '  - Bonhomme Richard victory (September 1779)';
+  RAISE NOTICE 'FRONTIER WAR HIGHLIGHTS:';
+  RAISE NOTICE '  - Battle of Oriskany (August 1777): Bloodiest battle of war';
+  RAISE NOTICE '  - Cherry Valley Massacre (November 1778): Prompted retaliation';
+  RAISE NOTICE '  - Wyoming Valley Massacre (July 1778): Frontier atrocity';
+  RAISE NOTICE '  - Sullivan Expedition (1779): 40 Iroquois villages destroyed';
+  RAISE NOTICE '  - Battle of Newtown (August 1779): Expedition decisive victory';
+  RAISE NOTICE '';
+  RAISE NOTICE 'NAVAL WARFARE HIGHLIGHTS:';
+  RAISE NOTICE '  - Valcour Island (October 1776): Arnold delays British invasion';
+  RAISE NOTICE '  - Battle of Chesapeake (September 1781): De Grasse seals Yorktown';
+  RAISE NOTICE '  - Nassau Raid (March 1776): First Marine amphibious assault';
+  RAISE NOTICE '  - Bonhomme Richard (September 1779): "I have not yet begun to fight"';
+  RAISE NOTICE '';
+  RAISE NOTICE 'FINANCING HIGHLIGHTS:';
+  RAISE NOTICE '  - Robert Morris appointed Superintendent of Finance (1781)';
+  RAISE NOTICE '  - Haym Salomon raises critical funds through personal credit';
+  RAISE NOTICE '  - Morris personal credit funds Yorktown march and siege';
+  RAISE NOTICE '';
+  RAISE NOTICE 'DIVERSITY & ALLIANCE HIGHLIGHTS:';
+  RAISE NOTICE '  - 1st Rhode Island Regiment (1778): First integrated Black regiment';
+  RAISE NOTICE '  - Battle of Rhode Island (August 1778): Black soldiers prove valor';
+  RAISE NOTICE '  - Oneida Nation Alliance: Only Iroquois nation to back Patriots';
+  RAISE NOTICE '  - Oneida Valley Forge Aid: Food saves starving army';
+  RAISE NOTICE '';
+  RAISE NOTICE 'FOREIGN VOLUNTEERS:';
+  RAISE NOTICE '  - Marquis de Lafayette: French noble, major general';
+  RAISE NOTICE '  - Baron von Steuben: Prussian drillmaster, reformed army';
+  RAISE NOTICE '  - Casimir Pulaski: Polish cavalry commander, "Father of American Cavalry"';
+  RAISE NOTICE '  - Thaddeus Kosciuszko: Polish engineer, fortified West Point';
+  RAISE NOTICE '  - Baron de Kalb: German-born French officer, died at Camden';
   RAISE NOTICE '';
   RAISE NOTICE 'INTELLIGENCE HIGHLIGHTS:';
   RAISE NOTICE '  - Nathan Hale martyrdom (September 1776)';
@@ -1705,14 +2182,14 @@ BEGIN
   RAISE NOTICE '  - Yorktown deception operation (August 1781)';
   RAISE NOTICE '';
   RAISE NOTICE 'ENTITY COUNTS:';
-  RAISE NOTICE '  - 8 Goals';
-  RAISE NOTICE '  - 48+ Milestones';
-  RAISE NOTICE '  - 21+ Plans';
-  RAISE NOTICE '  - 68+ Tasks';
-  RAISE NOTICE '  - 16 Decisions';
-  RAISE NOTICE '  - 16 Risks';
-  RAISE NOTICE '  - 16 Documents';
-  RAISE NOTICE '  - 180+ Graph Edges';
+  RAISE NOTICE '  - 9 Goals';
+  RAISE NOTICE '  - 66+ Milestones';
+  RAISE NOTICE '  - 25+ Plans';
+  RAISE NOTICE '  - 80+ Tasks';
+  RAISE NOTICE '  - 20 Decisions';
+  RAISE NOTICE '  - 20 Risks';
+  RAISE NOTICE '  - 22 Documents';
+  RAISE NOTICE '  - 220+ Graph Edges';
   RAISE NOTICE '';
   RAISE NOTICE 'GRAPH DEPTH: 6 levels';
   RAISE NOTICE '  Project → Goals → Milestones → Plans → Sub-Plans → Tasks';
@@ -1721,6 +2198,10 @@ BEGIN
   RAISE NOTICE '  - Causal chains (Kings Mountain → Cowpens → Guilford → Yorktown)';
   RAISE NOTICE '  - Intelligence enabling operations (Culper Ring → Arnold capture)';
   RAISE NOTICE '  - Logistics supporting campaigns (Smallpox inoculation → Valley Forge)';
+  RAISE NOTICE '  - Frontier warfare chains (Cherry Valley → Sullivan Expedition)';
+  RAISE NOTICE '  - Naval enabling (Valcour Island → Saratoga; Chesapeake → Yorktown)';
+  RAISE NOTICE '  - Financing enabling (Morris credit → Yorktown march)';
+  RAISE NOTICE '  - Alliance enabling (Oneida aid → Valley Forge survival)';
   RAISE NOTICE '';
   RAISE NOTICE 'Note: Project is marked as is_public = TRUE for display on homepage';
   RAISE NOTICE '==============================================';

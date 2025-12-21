@@ -3,10 +3,26 @@
  * Ontology Badge Style Utilities
  *
  * Centralized styling functions for entity state badges across the ontology system.
- * Provides consistent color schemes for different entity types and their states.
+ * Uses Inkprint semantic color tokens for consistent theming.
+ *
+ * Color Semantics:
+ * - muted: Default/neutral states (draft, unknown)
+ * - accent: Planning/pending states (todo, planning, active tracking)
+ * - emerald: Active/progress states (in_progress, active, on_track)
+ * - indigo: Success states (completed, done, achieved, published)
+ * - amber: Warning states (review, at_risk, medium priority)
+ * - destructive: Error/blocked states (blocked, missed, urgent)
  *
  * @module ontology-badge-styles
  */
+
+// Reusable badge class patterns
+const BADGE_MUTED = 'bg-muted text-muted-foreground border-border';
+const BADGE_ACCENT = 'bg-accent/15 text-accent border-accent/30';
+const BADGE_PROGRESS = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
+const BADGE_SUCCESS = 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-500/30';
+const BADGE_WARNING = 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30';
+const BADGE_DANGER = 'bg-destructive/15 text-destructive border-destructive/30';
 
 /**
  * Get Tailwind CSS classes for project state badges
@@ -16,18 +32,18 @@ export function getProjectStateBadgeClass(stateKey: string): string {
 
 	switch (normalized) {
 		case 'draft':
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 		case 'todo':
 		case 'planning':
-			return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+			return BADGE_ACCENT;
 		case 'active':
 		case 'in_progress':
-			return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+			return BADGE_PROGRESS;
 		case 'completed':
 		case 'done':
-			return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400';
+			return BADGE_SUCCESS;
 		default:
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 	}
 }
 
@@ -39,16 +55,16 @@ export function getTaskStateBadgeClass(stateKey: string): string {
 
 	switch (normalized) {
 		case 'todo':
-			return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+			return BADGE_ACCENT;
 		case 'in_progress':
-			return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+			return BADGE_PROGRESS;
 		case 'done':
 		case 'completed':
-			return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400';
+			return BADGE_SUCCESS;
 		case 'blocked':
-			return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+			return BADGE_DANGER;
 		default:
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 	}
 }
 
@@ -60,15 +76,15 @@ export function getOutputStateBadgeClass(stateKey: string): string {
 
 	switch (normalized) {
 		case 'draft':
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 		case 'review':
-			return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400';
+			return BADGE_WARNING;
 		case 'approved':
-			return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+			return BADGE_PROGRESS;
 		case 'published':
-			return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400';
+			return BADGE_SUCCESS;
 		default:
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 	}
 }
 
@@ -80,15 +96,15 @@ export function getPlanStateBadgeClass(stateKey: string): string {
 
 	switch (normalized) {
 		case 'draft':
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 		case 'planning':
-			return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400';
+			return BADGE_WARNING;
 		case 'active':
-			return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+			return BADGE_PROGRESS;
 		case 'completed':
-			return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400';
+			return BADGE_SUCCESS;
 		default:
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 	}
 }
 
@@ -100,19 +116,19 @@ export function getGoalStateBadgeClass(stateKey: string): string {
 
 	switch (normalized) {
 		case 'draft':
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 		case 'active':
-			return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+			return BADGE_ACCENT;
 		case 'on_track':
-			return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+			return BADGE_PROGRESS;
 		case 'at_risk':
-			return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400';
+			return BADGE_WARNING;
 		case 'achieved':
-			return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400';
+			return BADGE_SUCCESS;
 		case 'missed':
-			return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+			return BADGE_DANGER;
 		default:
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 	}
 }
 
@@ -125,12 +141,12 @@ export function getPriorityBadgeClass(priority?: string): string {
 	switch (normalized) {
 		case 'urgent':
 		case 'high':
-			return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
+			return BADGE_DANGER;
 		case 'medium':
-			return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400';
+			return BADGE_WARNING;
 		case 'low':
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 		default:
-			return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+			return BADGE_MUTED;
 	}
 }

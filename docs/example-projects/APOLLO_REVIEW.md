@@ -5,13 +5,21 @@
 **Project:** Project Apollo: Race to the Moon
 **UUID:** `22222222-2222-2222-2222-222222222222`
 **Migration File:** `supabase/migrations/20251220_seed_apollo_program_example_project.sql`
-**Status:** ✅ FIXED (2024-12-21)
+**Status:** ✅ COMPLETE v4.0 (2024-12-21)
 
 ---
 
 ## Overview
 
-This is the most comprehensive example project, covering NASA's Apollo Program from Mercury (1958) through Apollo 17 (1972). It demonstrates deeply nested graph structures with extensive historical detail.
+This is the most comprehensive example project, covering NASA's Apollo Program from Mercury (1958) through Apollo-Soyuz (1975). It demonstrates deeply nested graph structures with extensive historical detail, including:
+
+- **Mercury, Gemini, Apollo** core programs
+- **Skylab** space station and all 3 crewed missions
+- **Apollo-Soyuz Test Project** (first international crewed mission)
+- **Cancelled missions** (Apollo 18, 19, 20)
+- **Budget history** and program wind-down
+- **Diplomacy** (Giant Leap World Tour, Moon Rock gifts)
+- **Key personnel** (Margaret Hamilton, Katherine Johnson)
 
 ---
 
@@ -20,14 +28,14 @@ This is the most comprehensive example project, covering NASA's Apollo Program f
 | Entity Type | Count | Status |
 | ----------- | ----- | ------ |
 | Project     | 1     | ✓      |
-| Goals       | 6     | ✓      |
-| Milestones  | 50+   | ✓      |
-| Plans       | 10+   | ✓      |
-| Tasks       | 15+   | ✓      |
-| Decisions   | 10+   | ✓      |
-| Risks       | 10+   | ✓      |
-| Documents   | 10+   | ✓      |
-| Edges       | 300+  | ✓      |
+| Goals       | 7     | ✓      |
+| Milestones  | 63+   | ✓      |
+| Plans       | 11    | ✓      |
+| Tasks       | 45+   | ✓      |
+| Decisions   | 18    | ✓      |
+| Risks       | 19    | ✓      |
+| Documents   | 23    | ✓      |
+| Edges       | 230+  | ✓      |
 
 ---
 
@@ -146,7 +154,7 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 
 ## Completeness Analysis
 
-### Goals (6):
+### Goals (7):
 
 1. "Prove Human Spaceflight is Possible" (Mercury) - achieved ✓
 2. "Master Orbital Operations" (Gemini) - achieved ✓
@@ -154,6 +162,7 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 4. "Return Astronauts Safely to Earth" - achieved ✓
 5. "Conduct Lunar Science" - achieved ✓
 6. "Win the Space Race" - achieved ✓
+7. "Establish Apollo Legacy" (Skylab + ASTP) - achieved ✓ **NEW**
 
 ### Milestone Categories:
 
@@ -166,14 +175,21 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 - Infrastructure: 4 milestones
 - Robotic Precursors: 3 milestones
 - Training & Testing: 5 milestones
+- **Cancelled Missions: 2 milestones (Apollo 18/19/20)** **NEW**
+- **Skylab Program: 5 milestones (Launch + 3 crews + ASTP)** **NEW**
+- **Budget History: 2 milestones (Peak + Decline)** **NEW**
+- **Diplomacy: 2 milestones (World Tour + Moon Rocks)** **NEW**
+- **Key Personnel: 2 milestones (Hamilton + Johnson)** **NEW**
 
-### Potentially Missing:
+### Previously Missing (Now Added ✅):
 
-- [ ] Apollo 18, 19, 20 cancellation milestones
-- [ ] Budget milestones (annual appropriations)
-- [ ] Individual contractor milestones
+- [x] Apollo 18, 19, 20 cancellation milestones ✅
+- [x] Budget milestones (Peak FY1966, Decline) ✅
+- [x] Skylab & Apollo-Soyuz legacy milestones ✅
+- [x] Diplomacy milestones (World Tour, Moon Rocks) ✅
+- [x] Key personnel (Hamilton, Johnson) ✅
 
-### Documents to Add:
+### Documents to Add (Future Enhancement):
 
 - [ ] Kennedy's Rice University Speech text
 - [ ] Apollo 1 Review Board Report
@@ -185,18 +201,27 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 
 ### Edge Structure Verified:
 
-- [x] Project → Goals (6 edges)
+- [x] Project → Goals (7 edges)
 - [x] Goals → Milestones (nested correctly)
 - [x] Milestones → Plans
 - [x] Plans → Tasks
 - [x] Milestones → Decisions
 - [x] Milestones → Risks
 - [x] Milestones → Documents
+- [x] Causal relationships (`enabled`, `led_to`) between milestones
 
-### Potential Issues:
+### New Edges Added (v4.0):
 
-- [ ] Verify all Soviet competition milestones connect to Goal 6
-- [ ] Check infrastructure milestones have proper goal connections
+- [x] Goal 3 → Cancelled mission milestones (0014-*)
+- [x] Goal 7 → Skylab & ASTP milestones (0015-*)
+- [x] Goal 7 → Budget milestones (0016-*)
+- [x] Goal 6 → Diplomacy milestones (0017-*)
+- [x] Goal 3 → Personnel milestones (0018-*)
+- [x] Cancellation → Skylab causal link
+- [x] Budget decline → Cancellation causal link
+- [x] Apollo 11 → World Tour → Moon Rocks causal chain
+- [x] Software → Apollo 11 enabling link (Hamilton)
+- [x] Human computers → Glenn orbit enabling link (Johnson)
 
 ---
 
@@ -207,10 +232,24 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 | Entity     | Type Key Examples                                                                                                                                                                                       |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Project    | `project.government.space`                                                                                                                                                                              |
-| Goals      | `goal.strategic.foundation`, `goal.strategic.capability`, `goal.strategic.primary`, `goal.strategic.safety`, `goal.strategic.science`, `goal.strategic.political`                                       |
-| Milestones | `milestone.program.*`, `milestone.mission.*`, `milestone.disaster.*`, `milestone.engineering.*`, `milestone.competition.*`, `milestone.infrastructure.*`, `milestone.robotic.*`, `milestone.training.*` |
+| Goals      | `goal.strategic.foundation`, `goal.strategic.capability`, `goal.strategic.primary`, `goal.strategic.safety`, `goal.strategic.science`, `goal.strategic.political`, `goal.strategic.legacy`              |
+| Milestones | `milestone.program.*`, `milestone.mission.*`, `milestone.disaster.*`, `milestone.engineering.*`, `milestone.competition.*`, `milestone.infrastructure.*`, `milestone.robotic.*`, `milestone.training.*`, `milestone.budget.*`, `milestone.diplomacy.*` |
 | Plans      | `plan.engineering.*`, `plan.personnel.*`, `plan.operations.*`, `plan.mission.*`, `plan.safety.*`, `plan.emergency.*`                                                                                    |
 | Tasks      | `task.engineering.*`, `task.training.*`, `task.operations.*`, `task.infrastructure.*`, `task.testing.*`                                                                                                 |
+
+### New Type Keys Added (v4.0):
+
+- `goal.strategic.legacy` - Post-Apollo legacy programs
+- `milestone.program.cancellation` - Cancelled missions
+- `milestone.program.station` - Skylab launch
+- `milestone.mission.station` - Skylab crewed missions
+- `milestone.mission.international` - Apollo-Soyuz
+- `milestone.budget.peak` - Peak funding
+- `milestone.budget.decline` - Budget reduction
+- `milestone.diplomacy.goodwill` - World tour
+- `milestone.diplomacy.science` - Moon rock gifts
+- `milestone.engineering.software` - Software development (Hamilton)
+- `milestone.engineering.computation` - Human computers (Johnson)
 
 ---
 
@@ -218,17 +257,30 @@ All milestones have `props.state = 'achieved'` but no `state_key` column in INSE
 
 ### Priority 1 (Data Integrity): ✅ COMPLETED
 
-1. ✅ Added `state_key = 'achieved'` to all goal INSERT statements (6 goals)
-2. ✅ Added `state_key = 'completed'` to all milestone INSERT statements (50 milestones)
+1. ✅ Added `state_key = 'achieved'` to all goal INSERT statements (7 goals)
+2. ✅ Added `state_key = 'completed'` to all milestone INSERT statements (63+ milestones)
 
-### Priority 2 (Completeness):
+### Priority 2 (Completeness): ✅ COMPLETED
 
-3. Verify all dates against NASA historical records
-4. Add Apollo cancellation milestones (18-20)
-5. Add key document texts
+3. ✅ Added Apollo cancellation milestones (18, 19, 20)
+4. ✅ Added budget/funding milestones (Peak FY1966, Decline)
+5. ✅ Added post-Apollo legacy milestones (Skylab, Apollo-Soyuz)
+6. ✅ Added diplomacy milestones (World Tour, Moon Rocks)
+7. ✅ Added key personnel milestones (Hamilton, Johnson)
+8. ✅ Added Goal 7: "Establish Apollo Legacy"
+9. ✅ Added 30+ new graph edges with causal relationships
 
-### Priority 3 (Enhancements):
+### Priority 3 (Future Enhancements):
 
-6. Add more granular contractor milestones
-7. Add budget/funding milestones
-8. Add post-Apollo legacy milestones (Skylab, Apollo-Soyuz)
+10. Verify all dates against NASA historical records
+11. Add key document texts (Kennedy speeches, mission reports)
+12. Add more granular contractor milestones
+
+---
+
+## Version History
+
+| Version | Date       | Changes                                                      |
+| ------- | ---------- | ------------------------------------------------------------ |
+| v3.0    | 2024-12-21 | Fixed state_key columns for goals and milestones             |
+| v4.0    | 2024-12-21 | Added Skylab, ASTP, cancellations, budget, diplomacy, personnel |

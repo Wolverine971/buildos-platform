@@ -1161,10 +1161,10 @@
 				</div>
 			</div>
 
-			<!-- Project Description - Full width below title -->
+			<!-- Project Description - Full width below title, clamped to 2 lines -->
 			{#if project?.description}
 				<div
-					class="prose prose-sm sm:prose-base prose-gray dark:prose-invert max-w-none dark:text-white mb-4"
+					class="prose prose-sm sm:prose-base prose-gray dark:prose-invert max-w-none dark:text-white mb-4 description-clamp"
 					role="region"
 					aria-label="Project description"
 				>
@@ -1539,6 +1539,28 @@
 {/if}
 
 <style>
+	/* Description clamp - limit to 2 lines with ellipsis */
+	.description-clamp {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	/* Also clamp any nested elements (like <p> from markdown) */
+	.description-clamp :global(p) {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		margin: 0;
+	}
+
+	/* Hide any additional paragraphs beyond the first */
+	.description-clamp :global(p:not(:first-child)) {
+		display: none;
+	}
+
 	/* Custom scrollbar styling for the timeline */
 	.scrollbar-custom {
 		scrollbar-width: thin;

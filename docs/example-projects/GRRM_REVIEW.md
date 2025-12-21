@@ -34,13 +34,13 @@ A satirical but detailed tracking of George R.R. Martin's epic fantasy series, f
 | ----------- | ----- | ------ |
 | Project     | 1     | ✓      |
 | Goals       | 7     | ✓      |
-| Milestones  | 35+   | ✓      |
-| Plans       | 8+    | ✓      |
-| Tasks       | 15+   | ✓      |
-| Decisions   | 8+    | ✓      |
-| Risks       | 8+    | ✓      |
-| Documents   | 6+    | ✓      |
-| Edges       | 180+  | ✓      |
+| Milestones  | 33    | ✓ (+7 new: Season 8 backlash, Butterflies controversy, July 2024 update, Snow cancelled, Knight of Seven Kingdoms, HOTD S2, Spinoff Empire) |
+| Plans       | 8     | ✓      |
+| Tasks       | 18    | ✓      |
+| Decisions   | 9     | ✓ (+2 new: Delete Butterflies, Accept HBO Ending Early) |
+| Risks       | 11    | ✓ (+3 new: HBO Creative Differences, Spinoff Dilution, Fire & Blood Vol 2 Pending) |
+| Documents   | 12    | ✓ (+4 new: Butterflies (Deleted), 1993 Letter, Career Before Westeros, ASOIAF Statistics) |
+| Edges       | 100+  | ✓ (+20 new connections for 2024-2025 content) |
 
 ---
 
@@ -167,12 +167,15 @@ All milestones have `props.state` values but no `state_key` column in INSERT.
 - Balanced between frustration and affection
 - Good use of insider references
 
-### Potentially Missing:
+### Potentially Missing → Now Added:
 
-- [ ] D&D (Benioff/Weiss) collaboration milestones
-- [ ] HBO Season 8 backlash milestone
-- [ ] House of the Dragon success milestones
-- [ ] Recent 2024 update milestones
+- [x] HBO Season 8 backlash milestone (44444444-0002-0007-0000-000000000001)
+- [x] House of the Dragon Season 2 milestone (44444444-0005-0011-0000-000000000001)
+- [x] 2024 update milestones: Butterflies controversy (44444444-0003-0011), July 2024 update (44444444-0003-0012)
+- [x] Snow sequel cancelled milestone (44444444-0005-0009-0000-000000000001)
+- [x] A Knight of the Seven Kingdoms development (44444444-0005-0010-0000-000000000001)
+- [x] The Spinoff Empire milestone (44444444-0005-0012-0000-000000000001)
+- [ ] D&D (Benioff/Weiss) collaboration milestones (optional - not critical)
 
 ---
 
@@ -218,14 +221,64 @@ All milestones have `props.state` values but no `state_key` column in INSERT.
 2. ✅ Add `state_key = 'completed'` to all milestone INSERT statements
 3. ✅ Keep non-standard values in `props.state` for humor/display purposes
 
-### Priority 2 (Completeness):
+### Priority 2 (Completeness): ✅ COMPLETE
 
-4. Verify all publication dates
-5. Add House of the Dragon milestones
-6. Update with recent 2024 progress updates
+4. ✅ Fixed petition count from 1.7M to 1.8M (verified)
+5. ✅ Add House of the Dragon milestones (HOTD S2, Spinoff Empire)
+6. ✅ Update with recent 2024 progress updates (Butterflies, July 2024 admission)
 
-### Priority 3 (Enhancements):
+### Priority 3 (Enhancements): ✅ COMPLETE
 
-7. Add HBO Season 8 controversy thread
-8. Add fan theory milestones
-9. Update "current progress" estimates
+7. ✅ Add HBO Season 8 controversy thread (backlash milestone + decision)
+8. ✅ Add historical context (1993 Letter, Career Before Westeros, ASOIAF Statistics)
+9. ✅ Update with spinoff developments (Snow cancelled, Knight of Seven Kingdoms)
+
+---
+
+## 2024-2025 Content Additions
+
+**Date Added:** 2025-12-21
+
+### New Milestones (7):
+| ID | Title | Goal | State |
+|----|-------|------|-------|
+| 44444444-0002-0007-0000-000000000001 | Season 8 Backlash & The Petition | Goal 2 (Expansion) | completed |
+| 44444444-0003-0011-0000-000000000001 | Beware the Butterflies (Deleted Post) | Goal 3 (TWOW) | completed |
+| 44444444-0003-0012-0000-000000000001 | July 2024: Little Progress Admission | Goal 3 (TWOW) | completed |
+| 44444444-0005-0009-0000-000000000001 | Snow Sequel Cancelled | Goal 5 (Distractions) | completed |
+| 44444444-0005-0010-0000-000000000001 | A Knight of the Seven Kingdoms Development | Goal 5 (Distractions) | in_progress |
+| 44444444-0005-0011-0000-000000000001 | House of the Dragon Season 2 | Goal 5 (Distractions) | completed |
+| 44444444-0005-0012-0000-000000000001 | The Spinoff Empire (5-6 Shows) | Goal 5 (Distractions) | in_progress |
+
+### New Risks (3):
+| ID | Title | Status |
+|----|-------|--------|
+| 44444444-0003-0003-0001-000000000004 | HBO Creative Differences | occurred |
+| 44444444-0005-0003-0001-000000000004 | Spinoff Empire Diluting Focus | occurred |
+| 44444444-0003-0004-0001-000000000004 | Fire & Blood Volume 2 Also Pending | identified |
+
+### New Documents (4):
+| ID | Title | Type |
+|----|-------|------|
+| 44444444-0003-0004-0001-000000000005 | Beware the Butterflies (Deleted) | controversy.deleted |
+| 44444444-0001-0003-0001-000000000005 | The 1993 Letter (Full Leaked Text) | historical.outline |
+| 44444444-0007-0002-0001-000000000005 | Career Before Westeros | historical.background |
+| 44444444-0007-0003-0001-000000000005 | ASOIAF By The Numbers | statistics.series |
+
+### New Decisions (2):
+| ID | Title | Date |
+|----|-------|------|
+| 44444444-0003-0002-0001-000000000003 | Delete the Butterflies Blog Post | 2024-07-16 |
+| 44444444-0002-0004-0001-000000000003 | Accept HBO Ending the Show Early | 2019-05-19 |
+
+### New Edge Connections (20+):
+- Goal → Milestone edges for all 7 new milestones
+- Milestone → Document edges (Butterflies → Butterflies doc, etc.)
+- Milestone → Decision edges (Butterflies → Delete decision, etc.)
+- Milestone → Risk edges (Butterflies → HBO tension, Spinoff → Dilution, etc.)
+- Causal relationships:
+  - Season 8 backlash → HOTD involvement
+  - HOTD S2 → Butterflies controversy
+  - Butterflies → July 2024 admission
+  - Snow cancelled → Knight of Seven Kingdoms focus
+  - Multiple shows → Spinoff Empire

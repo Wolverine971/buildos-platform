@@ -213,7 +213,12 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
 
 ('44444444-0002-0006-0000-000000000001', '44444444-4444-4444-4444-444444444444',
  'Game of Thrones TV Premiere', 'milestone.adaptation.premiere', 'completed', '2011-04-17'::timestamptz,
- '{"state": "achieved", "network": "HBO", "episode": "Winter Is Coming", "budget": "$6M per episode (Season 1)", "cast": ["Sean Bean (Ned)", "Peter Dinklage (Tyrion)", "Emilia Clarke (Dany)", "Kit Harington (Jon)"], "reception": "Critical acclaim, massive viewership", "total_run": {"seasons": 8, "episodes": 73, "years": "2011-2019"}, "impact_on_writing": "Catastrophic distraction - GRRM involved in production", "episodes_written_by_grrm": ["The Pointy End (S1)", "Blackwater (S2)", "The Bear and the Maiden Fair (S3)", "The Lion and the Rose (S4)"], "ending_controversy": {"season_8_rating": "Lowest rated season", "petition_signatures": "1.7 million demanded remake", "bran_king_reaction": "Widespread disbelief"}, "grrm_quote_on_ending": "I do not want to repeat what happened with Game of Thrones"}'::jsonb,
+ '{"state": "achieved", "network": "HBO", "episode": "Winter Is Coming", "budget": "$6M per episode (Season 1)", "cast": ["Sean Bean (Ned)", "Peter Dinklage (Tyrion)", "Emilia Clarke (Dany)", "Kit Harington (Jon)"], "reception": "Critical acclaim, massive viewership", "total_run": {"seasons": 8, "episodes": 73, "years": "2011-2019"}, "impact_on_writing": "Catastrophic distraction - GRRM involved in production", "episodes_written_by_grrm": ["The Pointy End (S1)", "Blackwater (S2)", "The Bear and the Maiden Fair (S3)", "The Lion and the Rose (S4)"], "ending_controversy": {"season_8_rating": "Lowest rated season", "petition_signatures": "1.8 million demanded remake", "bran_king_reaction": "Widespread disbelief"}, "grrm_quote_on_ending": "I do not want to repeat what happened with Game of Thrones"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0002-0007-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+ 'Season 8 Backlash & The Petition', 'milestone.adaptation.backlash', 'completed', '2019-05-19'::timestamptz,
+ '{"state": "achieved", "petition_launched": "May 9, 2019", "petition_creator": "Dylan D. (Dyson Lovell)", "petition_title": "Remake Game of Thrones Season 8 with competent writers", "signatures": "1.8+ million", "peak_velocity": "500,000 signatures in 24 hours", "criticisms": ["Rushed pacing (6 episodes for final season)", "Daenerys heel-turn too abrupt", "Night King defeated too easily", "Bran the Broken as king unexplained", "Character arcs abandoned (Jaime, Jon)"], "cast_reactions": {"jacob_anderson": "Called petition rude and dismissive of crew efforts", "isaac_hempstead_wright": "Deemed it absurd and ridiculous", "kit_harington": "Defended the ending"}, "grrm_silence": "Conspicuously did not defend the ending publicly", "lasting_impact": "Damaged franchise reputation, influenced spinoff approach", "hbo_response": "No remake, focused on prequels instead"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ============================================
@@ -267,6 +272,16 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
 ('44444444-0003-0010-0000-000000000001', '44444444-4444-4444-4444-444444444444',
  'Still Not Finished (2025)', 'milestone.status.current', 'in_progress', '2025-12-31'::timestamptz,
  '{"state": "in_progress", "pages_written": "~1200+", "years_since_adwd": 14, "challenge": "Interweaving 12+ POV narratives into one cohesive plot", "quote": "It is a challenging book", "major_remaining_work": ["Battle of Ice resolution", "Battle of Fire resolution", "Jon resurrection aftermath", "Tyrion/Dany meeting", "Aegon invasion of Westeros", "Cersei trial by combat"], "convention_updates": "Vague but hopeful", "fan_status": "Permanent state of cautious despair"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0003-0011-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+ 'Beware the Butterflies (Deleted Post)', 'milestone.controversy.deleted', 'completed', '2024-07-15'::timestamptz,
+ '{"state": "achieved", "blog_title": "Beware the Butterflies", "posted_then_deleted": true, "duration_before_deletion": "Less than 24 hours", "subject": "Criticism of House of the Dragon Season 2 changes", "main_grievance": "Blood and Cheese scene weakened by omitting Prince Maelor", "maelor_issue": {"book_version": "Toddler Maelor present, forced to watch brother die", "show_version": "Maelor cut entirely", "ryan_condal_promise": "Would introduce Maelor later", "condal_reversal": "Decided against including Maelor at all"}, "butterfly_effect_warning": "Changes will weaken Helaena suicide, Bitterbridge riot, and future plot points", "got_comparison": "Worried HOTD going same direction as Game of Thrones finale", "famous_quotes": ["Simpler is not better", "What will we offer the fans instead, once we have killed these butterflies?"], "hbo_response": "Statement defending Condal, emphasizing difficulty of dramatizing core elements", "aftermath": "Post deleted, tension between Martin and showrunners revealed", "fan_reaction": "Screenshots preserved and widely circulated"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0003-0012-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+ 'July 2024: Little Progress Admission', 'milestone.progress.setback', 'completed', '2024-07-01'::timestamptz,
+ '{"state": "achieved", "blog_post": "July 2024 update on Not A Blog", "admission": "Made little progress on The Winds of Winter", "pages_written": "Some new pages, far less than hoped", "reason": "Television projects consumed most of time", "projects_blamed": ["House of the Dragon Season 2", "A Knight of the Seven Kingdoms development", "Various other HBO spinoffs"], "tone": "Apologetic but unapologetic", "fan_reaction": "Frustrated resignation", "hope_offered": "None specific", "contrast_with_2020": "COVID isolation was most productive period; 2024 was not"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ============================================
@@ -328,6 +343,26 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
 ('44444444-0005-0008-0000-000000000001', '44444444-4444-4444-4444-444444444444',
  'Not A Blog Football Posts', 'milestone.distraction.blogging', 'completed', '2024-12-31'::timestamptz,
  '{"state": "achieved", "platform": "LiveJournal (now georgerrmartin.com)", "started": "2006", "nfl_posts": "235+ posts tagged NFL", "teams": ["New York Jets", "New York Giants"], "famous_phrase": "Life is meaningless and full of pain", "usage_of_phrase": {"jets_losses": 23, "giants_losses": 25}, "time_spent": "Unknown but clearly loves football", "fan_reaction": "Stop blogging about Jets and WRITE"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0005-0009-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+ 'Snow Sequel Cancelled', 'milestone.distraction.cancelled', 'completed', '2024-06-01'::timestamptz,
+ '{"state": "achieved", "project": "Snow - Jon Snow sequel series", "announced": "June 2022 by GRRM on Not A Blog", "star": "Kit Harington attached", "premise": "Jon Snow life after exile beyond the Wall", "development_time": "2022-2024", "status": "Shelved/Cancelled by HBO in 2024", "reason": "Creative differences, changed priorities", "grrm_involvement": "Consulted on scripts", "time_consumed": "Unknown but measurable", "irony": "Even sequel about exile got exiled", "hbo_pivot": "Focusing on prequels instead (HOTD, Knight of Seven Kingdoms)", "door_open": "Not completely ruled out for future", "fan_reaction": "Mixed - some wanted more Jon, others wanted TWOW"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0005-0010-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+ 'A Knight of the Seven Kingdoms Development', 'milestone.distraction.spinoff', 'in_progress', '2026-01-18'::timestamptz,
+ '{"state": "in_progress", "series": "A Knight of the Seven Kingdoms", "source": "Tales of Dunk and Egg novellas", "first_season_adapts": "The Hedge Knight", "premiere_date": "January 18, 2026", "network": "HBO / Max", "episodes": 6, "cast": {"ser_duncan_tall": "Peter Claffey", "egg_aegon_targaryen": "Dexter Sol Ansell"}, "filming_location": "Belfast, Northern Ireland", "grrm_role": "Executive Producer, source material author", "time_consumed": "Significant - active involvement", "remaining_novellas": ["The Sworn Sword", "The Mystery Knight"], "unwritten_novellas": ["The She-Wolves of Winterfell", "The Village Hero"], "irony": "Adapting novellas he finished while not finishing TWOW", "fan_hope": "Maybe this motivates him to write more Dunk and Egg"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0005-0011-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+ 'House of the Dragon Season 2', 'milestone.distraction.spinoff', 'completed', '2024-08-04'::timestamptz,
+ '{"state": "achieved", "premiere": "June 16, 2024", "finale": "August 4, 2024", "episodes": 8, "network": "HBO / Max", "showrunner": "Ryan Condal (sole showrunner after Miguel Sapochnik departure)", "grrm_role": "Executive Producer, consultant", "source": "Fire & Blood", "reception": "Generally positive, but pacing criticisms", "controversy": "Blood and Cheese changes sparked Beware the Butterflies post", "grrm_involvement_level": "Scripts incorporate his notes before filming", "seasons_planned": 4, "time_consumed": "Considerable - premieres, interviews, script consultations", "fan_reaction": "Better than GOT S8, but WRITE THE BOOK"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0005-0012-0000-000000000001', '44444444-4444-4444-4444-444444444444',
+ 'The Spinoff Empire (5-6 Shows in Development)', 'milestone.distraction.empire', 'in_progress', '2025-12-31'::timestamptz,
+ '{"state": "in_progress", "confirmed_projects": {"house_of_the_dragon": {"status": "Airing", "seasons": "4 planned"}, "knight_of_seven_kingdoms": {"status": "Premieres Jan 2026", "seasons": "TBD"}, "ten_thousand_ships": {"status": "In development", "about": "Nymeria and Rhoynar migration"}}, "cancelled_projects": {"snow": "Jon Snow sequel - shelved 2024", "flea_bottom": "Cancelled early", "9_voyages": "Sea Snake show - cancelled"}, "rumored_projects": ["Aegons Conquest animated", "Golden Empire of Yi Ti animated", "Other sequels per GRRM"], "grrm_quote": "Five or six shows in development", "total_time_consumed": "Immeasurable", "twow_impact": "Catastrophic", "business_reality": "HBO needs content, GRRM is the IP"}'::jsonb,
  '00000000-0000-0000-0000-000000000002'),
 
 -- ============================================
@@ -556,6 +591,18 @@ INSERT INTO onto_decisions (id, project_id, title, decision_at, rationale, props
  'Accept Every Side Project', '2011-04-17'::timestamptz,
  'Creative fulfillment from diverse projects justified taking time away from TWOW - side projects provide mental breaks and different creative challenges',
  '{"type": "decision.productivity.fatal", "state": "decided", "projects": ["Wild Cards", "Elden Ring", "House of the Dragon", "Theatre", "Film adaptations"], "impact_on_TWOW": "Devastating", "justification": "Creative fulfillment", "fan_reaction": "WRITE THE BOOK"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0003-0002-0001-000000000003', '44444444-4444-4444-4444-444444444444',
+ 'Delete the Butterflies Blog Post', '2024-07-16'::timestamptz,
+ 'Removed critical blog post about House of the Dragon within 24 hours after HBO response - preserved author-network relationship but revealed underlying tensions',
+ '{"type": "decision.communication.retraction", "state": "decided", "post_title": "Beware the Butterflies", "posted": "July 15, 2024", "deleted": "July 16, 2024", "content": "Criticism of HOTD S2 Blood and Cheese changes", "reason_for_deletion": "Likely pressure from HBO, preserve relationship", "hbo_response": "Statement defending Ryan Condal", "consequence": "Tension revealed publicly, screenshots preserved forever", "regret_level": "Unknown", "fan_interpretation": "GRRM was right but forced to back down"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0002-0004-0001-000000000003', '44444444-4444-4444-4444-444444444444',
+ 'Accept HBO Ending the Show Early', '2019-05-19'::timestamptz,
+ 'Did not push back forcefully enough when HBO chose to end Game of Thrones in 8 seasons rather than the 10+ GRRM envisioned',
+ '{"type": "decision.business.regret", "state": "decided", "grrm_preference": "10+ seasons", "hbo_decision": "8 seasons, final two shortened", "showrunner_preference": "End it, move on", "grrm_influence": "Limited - they had the rights", "consequence": "Rushed ending, fan backlash, damaged legacy", "alternative": "Could have pushed for more seasons or later conclusion", "quote": "I do not want to repeat what happened with Game of Thrones", "lesson_applied": "More involvement in HOTD production"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -601,6 +648,21 @@ INSERT INTO onto_risks (id, project_id, title, type_key, probability, impact, st
 ('44444444-0006-0002-0001-000000000001', '44444444-4444-4444-4444-444444444444',
  'Ending Already Spoiled by Show', 'risk.creative.spoilers', 0.7, 'high', 'occurred',
  '{"major_reveals": ["Hodor origin", "R+L=J", "Bran as King", "Dany''s fate"], "book_versions": "Will differ in execution", "surprise_factor": "Reduced"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0003-0003-0001-000000000004', '44444444-4444-4444-4444-444444444444',
+ 'HBO Creative Differences', 'risk.business.relationship', 0.6, 'high', 'occurred',
+ '{"manifestation": "Beware the Butterflies deleted blog post (July 2024)", "issue": "GRRM publicly criticized House of the Dragon changes", "hbo_response": "Statement defending showrunner", "tension_points": ["Blood and Cheese scene changes", "Prince Maelor omission", "Butterfly effect concerns"], "precedent": "Similar to Game of Thrones divergences", "mitigation": "Post deleted, but damage done", "ongoing_concern": "Author-showrunner alignment on future seasons"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0005-0003-0001-000000000004', '44444444-4444-4444-4444-444444444444',
+ 'Spinoff Empire Diluting Focus', 'risk.productivity.overcommitment', 0.9, 'critical', 'occurred',
+ '{"shows_in_development": "5-6 per GRRM", "active_involvement": ["House of the Dragon", "A Knight of the Seven Kingdoms"], "cancelled_but_consumed_time": ["Snow sequel", "9 Voyages"], "in_development": ["Ten Thousand Ships", "Aegons Conquest animated"], "executive_producer_duties": "Script review, casting input, promotional appearances", "opportunity_cost": "Every hour on TV is an hour not on TWOW", "financial_incentive": "~$15M per season makes TV very attractive", "fan_frustration": "WRITE THE BOOK"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0003-0004-0001-000000000004', '44444444-4444-4444-4444-444444444444',
+ 'Fire & Blood Volume 2 Also Pending', 'risk.productivity.parallel_projects', 0.8, 'medium', 'identified',
+ '{"book": "Fire & Blood Volume 2 (Blood & Fire)", "content": "Targaryen history from Aegon III to Robert''s Rebellion", "status": "In progress alongside TWOW", "september_2024_update": "A few new pages added", "competition_for_attention": "Another unfinished book waiting", "dependency": "Source material for future HOTD seasons", "fan_concern": "Will GRRM finish either book?", "pages_written": "Unknown", "priority_vs_twow": "TWOW supposedly takes precedence"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -646,6 +708,26 @@ INSERT INTO onto_documents (id, project_id, title, type_key, state_key, props, c
 ('44444444-0006-0001-0001-000000000005', '44444444-4444-4444-4444-444444444444',
  'The No More Predictions Manifesto', 'document.policy.announcement', 'published',
  '{"date": "2021", "quote": "I will make no predictions on when I will finish. Every time I do, assholes on the Internet take that as a promise, and then wait eagerly to crucify me when I miss the deadline.", "wisdom": "Earned through suffering"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0003-0004-0001-000000000005', '44444444-4444-4444-4444-444444444444',
+ 'Beware the Butterflies (Deleted)', 'document.controversy.deleted', 'published',
+ '{"date": "2024-07-15", "status": "Deleted within 24 hours of posting", "title": "Beware the Butterflies", "platform": "Not A Blog", "subject": "Criticism of House of the Dragon Season 2", "key_grievances": ["Blood and Cheese scene weakened", "Prince Maelor omitted", "Butterfly effect on future plot points"], "famous_quotes": ["Simpler is not better", "What will we offer the fans instead?"], "preservation": "Screenshots and transcripts circulated widely", "hbo_response": "Statement defending Ryan Condal", "significance": "Revealed author-showrunner tension publicly"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0001-0003-0001-000000000005', '44444444-4444-4444-4444-444444444444',
+ 'The 1993 Letter (Full Leaked Text)', 'document.historical.outline', 'published',
+ '{"date": "1993-10", "leaked": "2015 via Waterstones UK Twitter", "pages": 3, "format": "Typewritten letter to agent", "recipient": "Ralph Vicinanza (literary agent)", "content": "Original trilogy outline for A Song of Ice and Fire", "five_survivors": ["Tyrion", "Daenerys", "Jon", "Arya", "Bran"], "shocking_original_plans": {"jon_arya_romance": "Tormented love between supposed half-siblings", "tyrion_villain_arc": "Kills Joffrey, joins Starks for revenge, falls for Arya", "jaime_king": "Kills everyone ahead in succession, takes throne", "sansa_tragedy": "Bears Joffrey a son", "catelyn_death": "Killed by Others beyond Wall", "robb_death": "Dies in battle (not Red Wedding)"}, "accuracy_to_published": "Very low - everything changed", "historical_value": "Shows how stories evolve", "transcript_available": "Tower of the Hand, The Ringer"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0007-0002-0001-000000000005', '44444444-4444-4444-4444-444444444444',
+ 'Career Before Westeros', 'document.historical.background', 'published',
+ '{"early_career": {"first_sale": "The Hero (Galaxy magazine, 1971)", "breakthrough": "A Song for Lya (Hugo Award, 1974)", "novels": ["Dying of the Light (1977)", "Fevre Dream (1982)", "The Armageddon Rag (1983)"]}, "hollywood_years": {"trigger": "Armageddon Rag commercial failure", "twilight_zone": "Staff writer, 1985-1986 revival", "beauty_and_the_beast": "Writer-producer, 1987-1990", "other_work": "Max Headroom, various pilots", "duration": "~10 years in Hollywood"}, "return_to_prose": {"year": "Early 1990s", "catalyst": "Vision of direwolf pups (1991)", "lesson": "TV paid better but prose was his passion"}, "writing_tool": {"software": "WordStar 4.0", "os": "DOS", "year_of_software": 1987, "refuses_to_upgrade": true, "reason": "Does everything needed, no distractions"}, "awards_pre_asoiaf": {"hugos": ["A Song for Lya", "Sandkings", "The Way of Cross and Dragon"], "nebulas": ["A Song for Lya", "Sandkings", "Portraits of His Children"], "world_fantasy": ["Fevre Dream", "The Skin Trade"]}}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('44444444-0007-0003-0001-000000000005', '44444444-4444-4444-4444-444444444444',
+ 'ASOIAF By The Numbers', 'document.statistics.series', 'published',
+ '{"book_sales": {"total_worldwide": "90+ million copies", "franchise_value": "Billions (with HBO)"}, "author_earnings": {"net_worth_2024": "~$120 million", "hbo_per_season": "~$15 million", "annual_income": "~$25 million"}, "book_statistics": {"agot": {"published": "1996-08-06", "pages": 694, "chapters": 73}, "acok": {"published": "1998-11-16", "pages": 761, "chapters": 70}, "asos": {"published": "2000-11-08", "pages": 973, "chapters": 82}, "affc": {"published": "2005-10-17", "pages": 753, "chapters": 46}, "adwd": {"published": "2011-07-12", "pages": 1016, "chapters": 73}, "total_pages": 4197, "total_chapters": 344}, "awards": {"hugos": ["AGOT (1997)", "ASOS (2001)", "Blood of the Dragon (1997)"], "locus": "All 5 novels won Locus Fantasy", "nebulas": ["AGOT", "ASOS"]}, "waiting_statistics": {"gap_asos_to_affc": "5 years", "gap_affc_to_adwd": "5 years 9 months", "gap_adwd_to_twow": "14+ years and counting"}}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -796,7 +878,61 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 -- Distractions block completion
 ('milestone', '44444444-0005-0004-0000-000000000001', 'led_to', 'milestone', '44444444-0003-0008-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "Side projects consume writing time"}'::jsonb),
 -- TWOW needed for Dream
-('milestone', '44444444-0003-0008-0000-000000000001', 'enabled', 'milestone', '44444444-0004-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "Cannot start Book 7 until Book 6 done (theoretically)"}'::jsonb)
+('milestone', '44444444-0003-0008-0000-000000000001', 'enabled', 'milestone', '44444444-0004-0001-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "Cannot start Book 7 until Book 6 done (theoretically)"}'::jsonb),
+
+-- ============================================
+-- NEW ENTITY EDGES (2024-2025 additions)
+-- ============================================
+
+-- Goal 2 → New Milestone (Season 8 Backlash)
+('goal', '44444444-0002-0000-0000-000000000001', 'has_milestone', 'milestone', '44444444-0002-0007-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+
+-- Goal 3 → New Milestones (Butterflies controversy, July 2024 update)
+('goal', '44444444-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '44444444-0003-0011-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('goal', '44444444-0003-0000-0000-000000000001', 'has_milestone', 'milestone', '44444444-0003-0012-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+
+-- Goal 5 → New Milestones (Snow cancelled, Knight of Seven Kingdoms, HOTD S2, Spinoff Empire)
+('goal', '44444444-0005-0000-0000-000000000001', 'has_milestone', 'milestone', '44444444-0005-0009-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('goal', '44444444-0005-0000-0000-000000000001', 'has_milestone', 'milestone', '44444444-0005-0010-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('goal', '44444444-0005-0000-0000-000000000001', 'has_milestone', 'milestone', '44444444-0005-0011-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+('goal', '44444444-0005-0000-0000-000000000001', 'has_milestone', 'milestone', '44444444-0005-0012-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+
+-- New Milestone → Document edges
+-- Butterflies milestone → Butterflies document (deleted blog post)
+('milestone', '44444444-0003-0011-0000-000000000001', 'has_document', 'document', '44444444-0003-0004-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+-- 1993 Letter document linked to original trilogy proposal milestone
+('milestone', '44444444-0001-0002-0000-000000000001', 'has_document', 'document', '44444444-0001-0003-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+-- Career document linked to Goal 7 first milestone (legacy considerations)
+('milestone', '44444444-0007-0001-0000-000000000001', 'has_document', 'document', '44444444-0007-0002-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+-- ASOIAF statistics document linked to legacy milestone
+('milestone', '44444444-0007-0001-0000-000000000001', 'has_document', 'document', '44444444-0007-0003-0001-000000000005', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+
+-- New Milestone → Decision edges
+-- Butterflies deletion decision linked to Butterflies milestone
+('milestone', '44444444-0003-0011-0000-000000000001', 'has_decision', 'decision', '44444444-0003-0002-0001-000000000003', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+-- HBO season shortening decision linked to Season 8 backlash milestone
+('milestone', '44444444-0002-0007-0000-000000000001', 'has_decision', 'decision', '44444444-0002-0004-0001-000000000003', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+
+-- New Milestone → Risk edges
+-- HBO Creative Differences risk linked to Butterflies milestone
+('milestone', '44444444-0003-0011-0000-000000000001', 'has_risk', 'risk', '44444444-0003-0003-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+-- Spinoff dilution risk linked to Spinoff Empire milestone
+('milestone', '44444444-0005-0012-0000-000000000001', 'has_risk', 'risk', '44444444-0005-0003-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+-- Fire & Blood Vol 2 pending risk linked to July 2024 update
+('milestone', '44444444-0003-0012-0000-000000000001', 'has_risk', 'risk', '44444444-0003-0004-0001-000000000004', '44444444-4444-4444-4444-444444444444', '{}'::jsonb),
+
+-- New causal relationships
+-- Season 8 backlash led to more GRRM involvement in HOTD
+('milestone', '44444444-0002-0007-0000-000000000001', 'led_to', 'milestone', '44444444-0005-0011-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "Season 8 backlash motivated deeper involvement in spinoffs"}'::jsonb),
+-- HOTD S2 led to Butterflies controversy
+('milestone', '44444444-0005-0011-0000-000000000001', 'led_to', 'milestone', '44444444-0003-0011-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "Creative differences over HOTD S2 changes sparked the blog post"}'::jsonb),
+-- Butterflies controversy led to July 2024 admission of little progress
+('milestone', '44444444-0003-0011-0000-000000000001', 'led_to', 'milestone', '44444444-0003-0012-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "Same month - controversy and TWOW update both in July 2024"}'::jsonb),
+-- Snow sequel cancellation enabled Knight of Seven Kingdoms focus
+('milestone', '44444444-0005-0009-0000-000000000001', 'enabled', 'milestone', '44444444-0005-0010-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "Cancelling Snow freed resources for Knight of Seven Kingdoms"}'::jsonb),
+-- Spinoff Empire created by multiple shows in development
+('milestone', '44444444-0005-0010-0000-000000000001', 'led_to', 'milestone', '44444444-0005-0012-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "Each new show adds to the spinoff empire"}'::jsonb),
+('milestone', '44444444-0005-0011-0000-000000000001', 'led_to', 'milestone', '44444444-0005-0012-0000-000000000001', '44444444-4444-4444-4444-444444444444', '{"context": "HOTD success spawned more spinoffs"}'::jsonb)
 ;
 
 -- ============================================
@@ -828,14 +964,14 @@ BEGIN
   RAISE NOTICE '  Distractions Accepted: All of them';
   RAISE NOTICE '';
   RAISE NOTICE 'ENTITY COUNTS:';
-  RAISE NOTICE '  - 6 Goals (1 failed: Resist Distractions)';
-  RAISE NOTICE '  - 26 Milestones';
+  RAISE NOTICE '  - 7 Goals (1 failed: Resist Distractions)';
+  RAISE NOTICE '  - 33 Milestones (+7 new: Season 8 backlash, Butterflies, etc.)';
   RAISE NOTICE '  - 8 Plans (2 abandoned)';
   RAISE NOTICE '  - 18 Tasks';
-  RAISE NOTICE '  - 7 Decisions';
-  RAISE NOTICE '  - 8 Risks (most occurred)';
-  RAISE NOTICE '  - 8 Documents';
-  RAISE NOTICE '  - 80+ Graph Edges';
+  RAISE NOTICE '  - 9 Decisions (+2 new)';
+  RAISE NOTICE '  - 11 Risks (+3 new, most occurred)';
+  RAISE NOTICE '  - 12 Documents (+4 new)';
+  RAISE NOTICE '  - 100+ Graph Edges (+20 new connections)';
   RAISE NOTICE '';
   RAISE NOTICE 'FAMOUS QUOTES:';
   RAISE NOTICE '  "I will make no predictions..."';

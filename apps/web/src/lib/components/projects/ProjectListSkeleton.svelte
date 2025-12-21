@@ -19,7 +19,7 @@
 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 	{#each Array(count) as _, i (i)}
 		<div
-			class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-ink animate-pulse"
+			class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak animate-pulse"
 			aria-hidden="true"
 		>
 			<!-- Header: Title + Badge -->

@@ -133,16 +133,16 @@
 	const STATE_COLUMNS = [
 		{ key: 'draft', label: 'Draft', color: 'bg-muted' },
 		{ key: 'review', label: 'In Review', color: 'bg-amber-500/10' },
-		{ key: 'approved', label: 'Approved', color: 'bg-blue-500/10' },
+		{ key: 'approved', label: 'Approved', color: 'bg-accent/10' },
 		{ key: 'published', label: 'Published', color: 'bg-emerald-500/10' }
 	];
 
-	// Primitive icons and labels
+	// Primitive icons and labels - semantic colors for each type
 	const PRIMITIVE_CONFIG: Record<
 		DeliverablePrimitive,
 		{ icon: typeof FileText; label: string; color: string }
 	> = {
-		document: { icon: FileText, label: 'Document', color: 'text-blue-500' },
+		document: { icon: FileText, label: 'Document', color: 'text-accent' },
 		event: { icon: Calendar, label: 'Event', color: 'text-purple-500' },
 		collection: { icon: Layers, label: 'Collection', color: 'text-amber-500' },
 		external: { icon: ExternalLink, label: 'External', color: 'text-emerald-500' }
@@ -769,7 +769,7 @@
 						</h1>
 						{#if project?.description}
 							<p
-								class="text-xs text-muted-foreground mt-0.5 line-clamp-1 hidden sm:block"
+								class="text-xs text-muted-foreground mt-0.5 line-clamp-2 hidden sm:block"
 								title={project.description}
 							>
 								{project.description}
@@ -784,7 +784,7 @@
 					{#if graphHidden}
 						<button
 							onclick={handleGraphShow}
-							class="p-2 rounded-lg hover:bg-muted transition-colors"
+							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
 							aria-label="Show relationship graph"
 							title="Show relationship graph"
 						>
@@ -793,17 +793,17 @@
 					{/if}
 					<button
 						onclick={() => (showProjectEditModal = true)}
-						class="p-2 rounded-lg hover:bg-muted transition-colors"
+						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
 						aria-label="Edit project"
 					>
 						<Pencil class="w-5 h-5 text-muted-foreground" />
 					</button>
 					<button
 						onclick={() => (showDeleteProjectModal = true)}
-						class="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+						class="p-2 rounded-lg hover:bg-destructive/10 transition-colors pressable"
 						aria-label="Delete project"
 					>
-						<Trash2 class="w-5 h-5 text-red-500" />
+						<Trash2 class="w-5 h-5 text-destructive" />
 					</button>
 				</div>
 
@@ -813,7 +813,7 @@
 					<div class="relative">
 						<button
 							onclick={() => (showMobileMenu = !showMobileMenu)}
-							class="p-1.5 rounded-lg hover:bg-muted transition-colors"
+							class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
 							aria-label="Project options"
 							aria-expanded={showMobileMenu}
 						>
@@ -831,7 +831,7 @@
 
 							<!-- Dropdown -->
 							<div
-								class="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1"
+								class="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1 tx tx-frame tx-weak"
 							>
 								{#if graphHidden}
 									<button
@@ -861,7 +861,7 @@
 										showMobileMenu = false;
 										showDeleteProjectModal = true;
 									}}
-									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
 								>
 									<Trash2 class="w-4 h-4" />
 									Delete project
@@ -902,8 +902,8 @@
 	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-4 sm:py-6 overflow-x-hidden">
 		<!-- Hydration Error Banner -->
 		{#if hydrationError}
-			<div class="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-				<p class="text-sm text-red-600 dark:text-red-400">
+			<div class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak">
+				<p class="text-sm text-destructive">
 					Failed to load project data: {hydrationError}
 				</p>
 				<button
@@ -912,7 +912,7 @@
 						isHydrating = true;
 						hydrateFullData();
 					}}
-					class="mt-2 text-sm font-medium text-red-600 hover:text-red-500 dark:text-red-400"
+					class="mt-2 text-sm font-medium text-destructive hover:text-destructive/80 pressable"
 				>
 					Try again
 				</button>
@@ -1103,9 +1103,9 @@
 										class="flex items-center gap-3 px-4 py-4 bg-muted/30 tx tx-bloom tx-weak"
 									>
 										<div
-											class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center"
+											class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center"
 										>
-											<FileText class="w-4 h-4 text-blue-500" />
+											<FileText class="w-4 h-4 text-accent" />
 										</div>
 										<div>
 											<p class="text-sm text-foreground">No documents yet</p>
@@ -1127,9 +1127,9 @@
 													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 												>
 													<div
-														class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
+														class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0"
 													>
-														<FileText class="w-4 h-4 text-blue-500" />
+														<FileText class="w-4 h-4 text-accent" />
 													</div>
 													<div class="min-w-0 flex-1">
 														<p class="text-sm text-foreground truncate">
@@ -1504,7 +1504,7 @@
 												{#each risks as risk}
 													{@const impactColor =
 														risk.impact === 'critical'
-															? 'text-red-500'
+															? 'text-destructive'
 															: risk.impact === 'high'
 																? 'text-orange-500'
 																: risk.impact === 'medium'
@@ -1576,9 +1576,9 @@
 														stateKey === 'achieved'
 															? 'text-emerald-500'
 															: stateKey === 'missed'
-																? 'text-red-500'
+																? 'text-destructive'
 																: stateKey === 'in_progress'
-																	? 'text-blue-500'
+																	? 'text-accent'
 																	: stateKey === 'deferred'
 																		? 'text-amber-500'
 																		: 'text-muted-foreground'}
@@ -1860,7 +1860,7 @@
 		{/snippet}
 		{#snippet details()}
 			{#if deleteProjectError}
-				<p class="mt-2 text-sm text-red-600 dark:text-red-400">
+				<p class="mt-2 text-sm text-destructive">
 					{deleteProjectError}
 				</p>
 			{/if}

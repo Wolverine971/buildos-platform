@@ -58,6 +58,9 @@
 	let availableProjects = $state<PublicProject[]>([]);
 	let currentProjectId = $state<string | null>(initialProjectId ?? null);
 
+	// Track which projects have been shown to avoid repeats until all are exhausted
+	let shownProjectIds = $state<Set<string>>(new Set());
+
 	// UI State
 	let isLoading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -112,7 +115,11 @@
 				const selectedProject = availableProjects[randomIndex];
 				if (selectedProject) {
 					currentProjectId = selectedProject.id;
+					shownProjectIds.add(selectedProject.id);
 				}
+			} else if (currentProjectId) {
+				// Track the initial project if one was provided
+				shownProjectIds.add(currentProjectId);
 			}
 
 			// Load the selected project's graph data
@@ -163,19 +170,32 @@
 	}
 
 	/**
-	 * Shuffle to a different random project
+	 * Shuffle to a different random project.
+	 * Ensures no repeats until all available projects have been shown.
 	 */
 	async function shuffleProject() {
 		if (availableProjects.length <= 1) return;
 
-		// Pick a different project than the current one
-		const otherProjects = availableProjects.filter((p) => p.id !== currentProjectId);
-		if (otherProjects.length === 0) return;
+		// Get projects that haven't been shown yet
+		let unshownProjects = availableProjects.filter((p) => !shownProjectIds.has(p.id));
 
-		const randomIndex = Math.floor(Math.random() * otherProjects.length);
-		const selectedProject = otherProjects[randomIndex];
+		// If all projects have been shown, reset the tracking (but exclude current to avoid immediate repeat)
+		if (unshownProjects.length === 0) {
+			shownProjectIds.clear();
+			if (currentProjectId) {
+				shownProjectIds.add(currentProjectId);
+			}
+			unshownProjects = availableProjects.filter((p) => !shownProjectIds.has(p.id));
+		}
+
+		if (unshownProjects.length === 0) return;
+
+		const randomIndex = Math.floor(Math.random() * unshownProjects.length);
+		const selectedProject = unshownProjects[randomIndex];
 		if (!selectedProject) return;
+
 		currentProjectId = selectedProject.id;
+		shownProjectIds.add(selectedProject.id);
 
 		await loadGraphData();
 	}

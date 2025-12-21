@@ -57,7 +57,7 @@
 
 {#if hasNextStep}
 	<div
-		class="rounded-md border border-accent/20 bg-accent/5 {className}"
+		class="rounded-lg border border-accent/20 bg-accent/5 tx tx-grain tx-weak {className}"
 		role="region"
 		aria-label="Next step"
 	>
@@ -70,20 +70,20 @@
 					toggleExpand(e);
 				}
 			}}
-			class="w-full text-left px-2 py-1.5 flex items-start gap-1.5 {hasLongVersion
-				? 'cursor-pointer hover:bg-accent/10 transition-colors rounded-md'
+			class="w-full text-left px-2.5 py-2 flex items-start gap-2 {hasLongVersion
+				? 'cursor-pointer hover:bg-accent/10 transition-colors rounded-lg'
 				: 'cursor-default'}"
 			aria-expanded={hasLongVersion ? isExpanded : undefined}
 			disabled={!hasLongVersion}
 		>
 			<!-- Icon -->
-			<Zap class="w-3 h-3 text-accent flex-shrink-0 mt-0.5" />
+			<Zap class="w-3.5 h-3.5 text-accent flex-shrink-0 mt-0.5" />
 
 			<!-- Content -->
 			<div class="flex-1 min-w-0">
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				<p
-					class="text-xs text-foreground leading-snug next-step-text {isExpanded
+					class="text-xs font-medium text-foreground leading-snug next-step-text {isExpanded
 						? ''
 						: 'line-clamp-2'}"
 				>
@@ -94,7 +94,7 @@
 			<!-- Expand chevron -->
 			{#if hasLongVersion}
 				<ChevronDown
-					class="w-3 h-3 text-muted-foreground flex-shrink-0 transition-transform duration-200 {isExpanded
+					class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 transition-transform duration-200 {isExpanded
 						? 'rotate-180'
 						: ''}"
 				/>
@@ -103,8 +103,8 @@
 
 		<!-- Expanded long version -->
 		{#if isExpanded && hasLongVersion}
-			<div class="px-2 pb-2 pt-0">
-				<div class="pl-4.5 border-t border-accent/10 pt-1.5 mt-0.5">
+			<div class="px-2.5 pb-2 pt-0">
+				<div class="pl-5 border-t border-accent/15 pt-2 mt-0.5">
 					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 					<p class="text-xs text-muted-foreground leading-relaxed next-step-text">
 						{@html formattedLong}
@@ -122,11 +122,6 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
-	}
-
-	/* Custom spacing for the left padding to align with icon */
-	.pl-4\.5 {
-		padding-left: 1.125rem;
 	}
 
 	/* Ensure entity reference spans flow nicely with text */

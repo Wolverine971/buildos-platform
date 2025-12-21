@@ -127,6 +127,12 @@ INSERT INTO onto_goals (id, project_id, name, type_key, state_key, props, create
 ('22222222-0006-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
  'Win the Space Race', 'goal.strategic.political', 'achieved',
  '{"priority": "critical", "state": "achieved", "context": "Cold War technological and ideological competition", "soviet_advantages": ["First satellite (Sputnik, 1957)", "First human in space (Gagarin, 1961)", "First spacewalk (Leonov, 1965)"], "soviet_moon_program": "N1 rocket failed all 4 test flights (1969-1972)", "outcome": "USA first and only nation to land humans on Moon (as of 2024)", "geopolitical_impact": "Demonstrated technological superiority of free market democracy", "kennedy_motivation": "Needed clear goal where US could win"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Goal 7: Post-Apollo Legacy (Skylab & Apollo-Soyuz)
+('22222222-0007-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Establish Apollo Legacy', 'goal.strategic.legacy', 'achieved',
+ '{"priority": "high", "state": "achieved", "context": "Leverage Apollo investment for space station and international cooperation", "programs": ["Skylab (1973-1974)", "Apollo-Soyuz Test Project (1975)"], "skylab_achievements": ["First American space station", "171 days of crewed occupation", "Proved long-duration spaceflight feasible", "Solar science and Earth observations"], "astp_significance": ["First international crewed space mission", "US-Soviet cooperation at height of détente", "Last Apollo spacecraft flight", "Symbolic handshake in orbit"], "hardware_reuse": "Saturn V and Apollo spacecraft from cancelled lunar missions", "legacy": "Paved way for Shuttle-Mir and International Space Station"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -460,6 +466,102 @@ INSERT INTO onto_milestones (id, project_id, title, type_key, state_key, due_at,
  'Apollo 6 - Final Uncrewed Saturn V', 'milestone.testing.rocket', 'completed',
  '1968-04-04'::timestamptz,
  '{"state": "achieved", "mission": "Apollo 6 (AS-502)", "type": "Uncrewed Saturn V test", "problems": ["Pogo oscillation in S-II stage", "Two J-2 engines shut down early", "S-IVB failed to restart"], "outcome": "Partial success - problems identified and fixed", "fixes": "Helium injection to dampen pogo, J-2 engine modifications", "significance": "Last test before crewed flights - all issues resolved"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
+-- MILESTONES - CANCELLED MISSIONS (0014-*)
+-- ============================================
+-- Apollo 20 cancelled first to free up Saturn V for Skylab
+('22222222-0014-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Apollo 20 Cancelled', 'milestone.program.cancellation', 'completed',
+ '1970-01-04'::timestamptz,
+ '{"state": "achieved", "reason": "Budget cuts and Saturn V reallocation for Skylab", "context": "First Apollo mission cancelled", "announcement": "NASA Administrator Thomas Paine", "hardware_fate": "Saturn V SA-514 reserved for Skylab orbital workshop launch", "significance": "Began wind-down of Apollo lunar program"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- Apollo 18 and 19 cancelled together
+('22222222-0014-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Apollo 18 and 19 Cancelled', 'milestone.program.cancellation', 'completed',
+ '1970-09-02'::timestamptz,
+ '{"state": "achieved", "reason": "Congressional budget cuts, declining public interest, cost savings", "context": "Final lunar mission cancellations", "apollo_18_target": "Copernicus crater", "apollo_19_target": "Hyginus Rille", "crews_affected": ["Richard Gordon, Vance Brand, Harrison Schmitt (Apollo 18)", "Fred Haise, William Pogue, Gerald Carr (Apollo 19)"], "schmitt_outcome": "Reassigned to Apollo 17 - only scientist to walk on Moon", "budget_pressure": "NASA funding fell from 4.41% to 1.35% of federal budget", "legacy": "Apollo 17 became final lunar mission"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
+-- MILESTONES - POST-APOLLO LEGACY (0015-*)
+-- Skylab and Apollo-Soyuz Test Project
+-- ============================================
+('22222222-0015-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Skylab Launch', 'milestone.program.station', 'completed',
+ '1973-05-14'::timestamptz,
+ '{"state": "achieved", "launch_vehicle": "Saturn V SA-513 (two-stage configuration)", "mission": "First American space station", "damage": "Micrometeoroid shield torn off during launch, one solar panel lost", "mass": "169,950 lbs (77,088 kg)", "orbital_workshop": "Converted S-IVB stage", "workshop_volume": "12,417 cubic feet (351.6 m³) - largest habitable volume of any spacecraft", "rescue_mission": "Skylab 2 crew deployed parasol sunshade and freed jammed solar panel"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('22222222-0015-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Skylab 2 - First Crewed Mission', 'milestone.mission.station', 'completed',
+ '1973-05-25'::timestamptz,
+ '{"state": "achieved", "crew": ["Pete Conrad (Commander)", "Joseph Kerwin (Science Pilot)", "Paul Weitz (Pilot)"], "duration": "28 days, 49 minutes", "launch_vehicle": "Saturn IB", "repairs": "Deployed parasol sunshade through airlock, freed stuck solar panel during EVA", "eva_total": "5 hours 41 minutes", "achievements": ["Saved Skylab station", "First American EVA repair mission", "Medical experiments on long-duration effects"], "conrad_quote": "Everybody acts like we landed on the Moon. We just did what we were supposed to do."}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('22222222-0015-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Skylab 3 - Second Crewed Mission', 'milestone.mission.station', 'completed',
+ '1973-07-28'::timestamptz,
+ '{"state": "achieved", "crew": ["Alan Bean (Commander)", "Owen Garriott (Science Pilot)", "Jack Lousma (Pilot)"], "duration": "59 days, 11 hours, 9 minutes", "eva_total": "13 hours 44 minutes", "achievements": ["Deployed twin-pole sunshade (A-frame)", "Extensive solar observations during Comet Kohoutek passage", "3 EVAs conducted"], "experiments": "Earth resources, solar physics, biomedical"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('22222222-0015-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Skylab 4 - Final Crewed Mission', 'milestone.mission.station', 'completed',
+ '1973-11-16'::timestamptz,
+ '{"state": "achieved", "crew": ["Gerald Carr (Commander)", "Edward Gibson (Science Pilot)", "William Pogue (Pilot)"], "duration": "84 days, 1 hour, 16 minutes - longest US spaceflight until Shuttle-Mir era", "eva_total": "22 hours 21 minutes (4 EVAs)", "achievements": ["Observed Comet Kohoutek", "Christmas EVA", "Extensive solar observations", "Set spaceflight duration record"], "notable_incident": "Crew complained about overwork, NASA adjusted schedule - lessons learned for future long-duration missions", "station_fate": "Skylab reentered atmosphere July 11, 1979 over Western Australia"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('22222222-0015-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Apollo-Soyuz Test Project', 'milestone.mission.international', 'completed',
+ '1975-07-17'::timestamptz,
+ '{"state": "achieved", "us_crew": ["Thomas Stafford (Commander)", "Vance Brand (CM Pilot)", "Deke Slayton (DM Pilot) - finally flew after 16-year medical grounding"], "soviet_crew": ["Alexei Leonov (Commander)", "Valeri Kubasov (Flight Engineer)"], "docking_time": "July 17, 1975 at 12:12 PM EDT", "handshake": "Stafford and Leonov shook hands through docking module at 3:17 PM EDT", "duration": "US: 9 days, 1 hour, 28 minutes; Soviet: 5 days, 22 hours, 31 minutes", "significance": ["First international crewed space mission", "Last Apollo spacecraft flight", "Last splashdown (until Crew Dragon)", "US-Soviet cooperation during détente"], "docking_module": "Custom adapter built by Rockwell to connect incompatible docking systems", "slayton_note": "Original Mercury 7 astronaut, grounded 1962-1972 for heart condition", "legacy": "Laid groundwork for Shuttle-Mir and ISS cooperation"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
+-- MILESTONES - BUDGET & FUNDING (0016-*)
+-- ============================================
+('22222222-0016-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Peak NASA Budget - FY 1966', 'milestone.budget.peak', 'completed',
+ '1966-07-01'::timestamptz,
+ '{"state": "achieved", "fiscal_year": 1966, "budget": "$5.933 billion", "percent_federal_budget": "4.41%", "context": "Height of Apollo buildup - largest NASA budget ever as percentage of federal spending", "equivalent_2020_dollars": "$49.4 billion", "employment_peak": "400,000+ people across NASA, contractors, universities", "major_contractors": ["North American Aviation (CSM)", "Grumman (LM)", "Boeing (S-IC)", "Douglas (S-IVB)", "IBM (guidance)"], "facilities_built": ["Vehicle Assembly Building", "Launch Complex 39", "Mission Control Center expansion"]}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('22222222-0016-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Apollo Budget Decline Begins', 'milestone.budget.decline', 'completed',
+ '1967-07-01'::timestamptz,
+ '{"state": "achieved", "fiscal_year": 1967, "budget": "$5.0 billion", "percent_federal_budget": "3.1%", "context": "Post-Kennedy assassination, Vietnam War costs increasing, Great Society programs competing for funds", "trend": "Continued decline through 1972", "fy_1972_budget": "$3.4 billion (1.61% of federal budget)", "impact": ["Apollo 20 cancelled (January 1970)", "Apollo 18-19 cancelled (September 1970)", "Post-Apollo plans (lunar base, Mars) abandoned"], "administrator_quote": "Webb fought hard for budget, retired 1968; successors had less political capital"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
+-- MILESTONES - DIPLOMACY & WORLD IMPACT (0017-*)
+-- ============================================
+('22222222-0017-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Giant Leap World Tour', 'milestone.diplomacy.goodwill', 'completed',
+ '1969-09-29'::timestamptz,
+ '{"state": "achieved", "duration": "38 days (September 29 - November 5, 1969)", "countries_visited": 22, "cities": "24 cities", "participants": ["Neil Armstrong", "Buzz Aldrin", "Michael Collins", "and their wives"], "highlights": ["Massive crowds worldwide", "Pope Paul VI audience", "Queen Elizabeth II reception", "Addressed joint sessions of Congress in multiple countries"], "context": "Largest goodwill tour in US history at the time", "purpose": "Share Apollo 11 achievement with world, demonstrate peaceful space exploration", "quote": "Armstrong: We came in peace for all mankind - now sharing that message globally"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('22222222-0017-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Goodwill Moon Rocks Distribution', 'milestone.diplomacy.science', 'completed',
+ '1970-01-01'::timestamptz,
+ '{"state": "achieved", "apollo_11_distribution": "Tiny samples encased in acrylic to 135 countries and 50 US states", "apollo_17_distribution": "Larger samples (1.142 grams each) to same recipients", "presentation": "Mounted with country flags flown to Moon on respective missions", "total_countries": 135, "nixon_presentation": "President Nixon presented during state visits", "current_status": "Many samples lost, stolen, or locations unknown - subject of recovery efforts", "scientific_value": "Symbolic rather than scientific due to small size", "significance": "Extended Apollo achievement as global diplomacy tool"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+-- ============================================
+-- MILESTONES - KEY PERSONNEL ACHIEVEMENTS (0018-*)
+-- ============================================
+('22222222-0018-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Apollo Guidance Computer Software Completion', 'milestone.engineering.software', 'completed',
+ '1969-07-01'::timestamptz,
+ '{"state": "achieved", "leader": "Margaret Hamilton, Director of Apollo Flight Computer Programming at MIT Instrumentation Laboratory", "innovation": "Pioneered software engineering as a discipline", "key_contribution": "Priority-based task scheduling that saved Apollo 11 landing during 1202/1203 alarms", "team_size": "400+ engineers", "memory": "36,864 words of core rope memory (ROM), 2,048 words of erasable core memory (RAM)", "lines_of_code": "Approximately 145,000 lines of assembly code", "hamilton_quote": "There was no choice but to be pioneers", "recognition": "Presidential Medal of Freedom (2016)", "legacy": "Coined term software engineering - now standard industry practice"}'::jsonb,
+ '00000000-0000-0000-0000-000000000002'),
+
+('22222222-0018-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222',
+ 'Human Computers Calculate Trajectories', 'milestone.engineering.computation', 'completed',
+ '1962-02-20'::timestamptz,
+ '{"state": "achieved", "key_figure": "Katherine Johnson, NASA mathematician", "contribution": "Calculated trajectories for Mercury and Apollo missions", "mercury_contribution": "John Glenn requested she personally verify electronic computer calculations before his orbital flight", "apollo_contribution": "Calculated backup navigation charts for Apollo 11", "context": "African American women mathematicians (human computers) at Langley Research Center", "colleagues": ["Dorothy Vaughan", "Mary Jackson", "Christine Darden"], "recognition": "Presidential Medal of Freedom (2015), NASA building named in her honor", "book_film": "Hidden Figures (2016) brought their story to public attention", "glenn_quote": "Get the girl to check the numbers... If she says theyre good, Im ready to go"}'::jsonb,
  '00000000-0000-0000-0000-000000000002')
 ON CONFLICT (id) DO NOTHING;
 
@@ -1098,6 +1200,7 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 ('project', '22222222-2222-2222-2222-222222222222', 'has', 'goal', '22222222-0004-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
 ('project', '22222222-2222-2222-2222-222222222222', 'has', 'goal', '22222222-0005-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
 ('project', '22222222-2222-2222-2222-222222222222', 'has', 'goal', '22222222-0006-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('project', '22222222-2222-2222-2222-222222222222', 'has', 'goal', '22222222-0007-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
 
 -- Goal 1 (Mercury) → Milestones
 ('goal', '22222222-0001-0000-0000-000000000001', 'has', 'milestone', '22222222-0001-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
@@ -1377,7 +1480,63 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 -- Soviet milestones drove US urgency
 ('milestone', '22222222-0006-0004-0000-000000000001', 'led_to', 'milestone', '22222222-0002-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Soviet spacewalk spurred US EVA development"}'::jsonb),
 ('milestone', '22222222-0006-0005-0000-000000000001', 'led_to', 'milestone', '22222222-0008-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Luna 9 landing accelerated Surveyor program"}'::jsonb),
-('milestone', '22222222-0006-0007-0000-000000000001', 'led_to', 'milestone', '22222222-0003-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Zond flights accelerated Apollo 8 lunar orbit decision"}'::jsonb)
+('milestone', '22222222-0006-0007-0000-000000000001', 'led_to', 'milestone', '22222222-0003-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Zond flights accelerated Apollo 8 lunar orbit decision"}'::jsonb),
+
+-- ============================================
+-- ADDITIONAL EDGES - CANCELLED MISSIONS (0014-*)
+-- Connect to Goal 3 (Land Humans on Moon) as program wind-down milestones
+-- ============================================
+('goal', '22222222-0003-0000-0000-000000000001', 'has', 'milestone', '22222222-0014-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('goal', '22222222-0003-0000-0000-000000000001', 'has', 'milestone', '22222222-0014-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+-- Cancellations led to Skylab
+('milestone', '22222222-0014-0001-0000-000000000001', 'led_to', 'milestone', '22222222-0015-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Apollo 20 cancellation freed Saturn V SA-513 for Skylab launch"}'::jsonb),
+
+-- ============================================
+-- ADDITIONAL EDGES - POST-APOLLO LEGACY (0015-*)
+-- Connect to Goal 7 (Establish Apollo Legacy)
+-- ============================================
+('goal', '22222222-0007-0000-0000-000000000001', 'has', 'milestone', '22222222-0015-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('goal', '22222222-0007-0000-0000-000000000001', 'has', 'milestone', '22222222-0015-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('goal', '22222222-0007-0000-0000-000000000001', 'has', 'milestone', '22222222-0015-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('goal', '22222222-0007-0000-0000-000000000001', 'has', 'milestone', '22222222-0015-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('goal', '22222222-0007-0000-0000-000000000001', 'has', 'milestone', '22222222-0015-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+-- Skylab mission chain
+('milestone', '22222222-0015-0001-0000-000000000001', 'enabled', 'milestone', '22222222-0015-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Skylab 2 crew repaired damage from launch"}'::jsonb),
+('milestone', '22222222-0015-0002-0000-000000000001', 'enabled', 'milestone', '22222222-0015-0003-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Skylab 2 saved station for subsequent missions"}'::jsonb),
+('milestone', '22222222-0015-0003-0000-000000000001', 'enabled', 'milestone', '22222222-0015-0004-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Skylab 3 extended station operations"}'::jsonb),
+-- Apollo 17 led to ASTP (final Apollo flights)
+('milestone', '22222222-0003-0012-0000-000000000001', 'led_to', 'milestone', '22222222-0015-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Apollo 17 last lunar mission, Apollo hardware used for ASTP"}'::jsonb),
+
+-- ============================================
+-- ADDITIONAL EDGES - BUDGET MILESTONES (0016-*)
+-- Connect to Goal 7 (context for why legacy programs existed)
+-- ============================================
+('goal', '22222222-0007-0000-0000-000000000001', 'has', 'milestone', '22222222-0016-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('goal', '22222222-0007-0000-0000-000000000001', 'has', 'milestone', '22222222-0016-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+-- Budget decline led to cancellations
+('milestone', '22222222-0016-0002-0000-000000000001', 'led_to', 'milestone', '22222222-0014-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Budget pressure drove Apollo mission cancellations"}'::jsonb),
+
+-- ============================================
+-- ADDITIONAL EDGES - DIPLOMACY MILESTONES (0017-*)
+-- Connect to Goal 6 (Win the Space Race - diplomatic victory)
+-- ============================================
+('goal', '22222222-0006-0000-0000-000000000001', 'has', 'milestone', '22222222-0017-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('goal', '22222222-0006-0000-0000-000000000001', 'has', 'milestone', '22222222-0017-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+-- Apollo 11 led to world tour
+('milestone', '22222222-0003-0006-0000-000000000001', 'led_to', 'milestone', '22222222-0017-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Apollo 11 landing triggered worldwide goodwill tour"}'::jsonb),
+-- World tour led to moon rock diplomacy
+('milestone', '22222222-0017-0001-0000-000000000001', 'led_to', 'milestone', '22222222-0017-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Goodwill tour success led to expanded moon rock diplomacy"}'::jsonb),
+
+-- ============================================
+-- ADDITIONAL EDGES - KEY PERSONNEL MILESTONES (0018-*)
+-- Connect to Goal 3 (these achievements enabled lunar landing)
+-- ============================================
+('goal', '22222222-0003-0000-0000-000000000001', 'has', 'milestone', '22222222-0018-0001-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+('goal', '22222222-0003-0000-0000-000000000001', 'has', 'milestone', '22222222-0018-0002-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{}'::jsonb),
+-- Software enabled Apollo 11
+('milestone', '22222222-0018-0001-0000-000000000001', 'enabled', 'milestone', '22222222-0003-0006-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Hamilton software saved Apollo 11 landing during 1202 alarm"}'::jsonb),
+-- Human computers enabled early missions
+('milestone', '22222222-0018-0002-0000-000000000001', 'enabled', 'milestone', '22222222-0001-0005-0000-000000000001', '22222222-2222-2222-2222-222222222222', '{"context": "Katherine Johnson calculations verified Glenn orbital flight"}'::jsonb)
 ;
 
 -- ============================================
@@ -1386,7 +1545,7 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 DO $$
 BEGIN
   RAISE NOTICE '==============================================';
-  RAISE NOTICE 'Project Apollo: Race to the Moon - v3.0 (Comprehensive)';
+  RAISE NOTICE 'Project Apollo: Race to the Moon - v4.0 (Complete History)';
   RAISE NOTICE 'NASA SPACE PROGRAM ONTOLOGY GRAPH';
   RAISE NOTICE '==============================================';
   RAISE NOTICE 'Project ID: 22222222-2222-2222-2222-222222222222';
@@ -1397,30 +1556,42 @@ BEGIN
   RAISE NOTICE '  Robotic Precursors: Ranger, Surveyor, Lunar Orbiter';
   RAISE NOTICE '  Apollo (1967-1972): 11 crewed flights, 6 lunar landings';
   RAISE NOTICE '  Soviet Competition: Sputnik through Luna/Lunokhod programs';
+  RAISE NOTICE '  Skylab (1973-1974): Americas first space station, 3 crews';
+  RAISE NOTICE '  Apollo-Soyuz (1975): First international crewed mission';
   RAISE NOTICE '';
-  RAISE NOTICE 'GOALS (6):';
+  RAISE NOTICE 'GOALS (7):';
   RAISE NOTICE '  1. Prove Human Spaceflight (Mercury) - ACHIEVED';
   RAISE NOTICE '  2. Master Orbital Operations (Gemini) - ACHIEVED';
   RAISE NOTICE '  3. Land Humans on the Moon - ACHIEVED (6 landings)';
   RAISE NOTICE '  4. Return Astronauts Safely - ACHIEVED (0 in-flight deaths)';
   RAISE NOTICE '  5. Conduct Lunar Science - ACHIEVED (842 lbs samples)';
   RAISE NOTICE '  6. Win the Space Race - ACHIEVED (only nation to land humans)';
+  RAISE NOTICE '  7. Establish Apollo Legacy - ACHIEVED (Skylab + ASTP)';
   RAISE NOTICE '';
   RAISE NOTICE 'ENTITY COUNTS:';
-  RAISE NOTICE '  - 6 Goals (with detailed metrics and outcomes)';
-  RAISE NOTICE '  - 50+ Milestones (verified dates, crew, technical facts)';
+  RAISE NOTICE '  - 7 Goals (with detailed metrics and outcomes)';
+  RAISE NOTICE '  - 63+ Milestones (verified dates, crew, technical facts)';
   RAISE NOTICE '  - 11 Plans (detailed engineering specifications)';
   RAISE NOTICE '  - 45+ Tasks (technology, operations, training)';
   RAISE NOTICE '  - 18 Decisions (contracts, crew, mission-critical)';
   RAISE NOTICE '  - 19 Risks (technical, environmental, competition)';
   RAISE NOTICE '  - 23 Documents (speeches, photos, transcripts, artifacts)';
-  RAISE NOTICE '  - 200+ Graph Edges (hierarchical + causal relationships)';
+  RAISE NOTICE '  - 230+ Graph Edges (hierarchical + causal relationships)';
+  RAISE NOTICE '';
+  RAISE NOTICE 'NEW IN V4.0:';
+  RAISE NOTICE '  - Cancelled Missions: Apollo 18, 19, 20 with reasons';
+  RAISE NOTICE '  - Skylab Program: Launch + all 3 crewed missions';
+  RAISE NOTICE '  - Apollo-Soyuz: Stafford-Leonov handshake in orbit';
+  RAISE NOTICE '  - Budget History: Peak FY1966 (4.41%%) through decline';
+  RAISE NOTICE '  - Diplomacy: Giant Leap World Tour, Moon Rock gifts';
+  RAISE NOTICE '  - Key Personnel: Margaret Hamilton, Katherine Johnson';
   RAISE NOTICE '';
   RAISE NOTICE 'KEY PERSONNEL DOCUMENTED:';
   RAISE NOTICE '  - All 12 moonwalkers with full names and missions';
   RAISE NOTICE '  - Mercury Seven astronauts (by military branch)';
   RAISE NOTICE '  - NASA Leaders: Webb, Paine, Fletcher';
-  RAISE NOTICE '  - Engineers: von Braun, Faget, Houbolt, Hamilton, Low';
+  RAISE NOTICE '  - Engineers: von Braun, Faget, Houbolt, Low, Shea';
+  RAISE NOTICE '  - Software: Margaret Hamilton (AGC), Katherine Johnson';
   RAISE NOTICE '  - Flight Directors: Kraft, Kranz, Lunney, Charlesworth';
   RAISE NOTICE '  - Contractors: Boeing, North American, Grumman, MIT';
   RAISE NOTICE '';
@@ -1429,6 +1600,8 @@ BEGIN
   RAISE NOTICE '  - Apollo 11 First Landing (Jul 20, 1969) - 600M viewers';
   RAISE NOTICE '  - Apollo 13 Rescue (Apr 13-17, 1970) - greatest rescue';
   RAISE NOTICE '  - Apollo 17 Final Mission (Dec 1972) - geologist Schmitt';
+  RAISE NOTICE '  - Skylab 2 Repair (May 1973) - saved the station';
+  RAISE NOTICE '  - Apollo-Soyuz Handshake (Jul 1975) - Cold War thaw';
   RAISE NOTICE '  - 842 pounds (382 kg) of lunar samples from 6 sites';
   RAISE NOTICE '  - Total cost: $25.4 billion ($257B in 2020 dollars)';
   RAISE NOTICE '';

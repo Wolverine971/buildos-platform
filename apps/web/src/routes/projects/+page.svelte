@@ -349,68 +349,16 @@
 	<title>Projects | BuildOS</title>
 </svelte:head>
 
-<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
-	<!-- Mobile Navigation - Only visible on mobile, Admin Only -->
-	{#if isAdmin}
-		<nav
-			class="lg:hidden flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2 shadow-ink tx tx-strip tx-weak"
-			aria-label="Projects navigation"
-		>
-			<a
-				href="/projects"
-				class="inline-flex items-center gap-1.5 rounded border border-accent bg-accent/10 px-3 py-1.5 text-xs font-bold text-accent transition hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable shadow-ink"
-				aria-current="page"
-			>
-				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-					/>
-				</svg>
-				<span>Projects</span>
-			</a>
-			<a
-				href="/projects/create"
-				class="inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
-			>
-				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M12 4v16m8-8H4"
-					/>
-				</svg>
-				<span>Create</span>
-			</a>
-			<a
-				href="/"
-				class="ml-auto inline-flex items-center gap-1.5 rounded border border-border px-3 py-1.5 text-xs font-bold text-muted-foreground transition hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
-			>
-				<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M10 19l-7-7m0 0l7-7m-7 7h18"
-					/>
-				</svg>
-				<span>Back</span>
-			</a>
-		</nav>
-	{/if}
-
-	<header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0">
-		<div class="space-y-1 flex-1">
+<div class="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-2.5 sm:py-6 space-y-2.5 sm:space-y-6">
+	<header class="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0">
+		<div class="space-y-0.5 sm:space-y-1 flex-1">
 			<div class="flex items-center gap-2">
-				<h1 class="text-2xl font-bold text-foreground sm:text-3xl">Projects</h1>
+				<h1 class="text-lg sm:text-2xl font-bold text-foreground lg:text-3xl">Projects</h1>
 				{#if projectsLoading}
-					<Loader2 class="h-5 w-5 text-muted-foreground animate-spin" />
+					<Loader2 class="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground animate-spin" />
 				{/if}
 			</div>
-			<p class="text-sm text-muted-foreground sm:text-base">
+			<p class="text-xs sm:text-sm text-muted-foreground lg:text-base hidden sm:block">
 				Manage and organize your active projects and workflows.
 			</p>
 		</div>
@@ -550,51 +498,51 @@
 					</CardBody>
 				</Card>
 
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+				<div class="grid grid-cols-4 gap-1.5 sm:gap-3">
 					<div
-						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-bloom tx-weak ink-frame"
+						class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-bloom tx-weak ink-frame"
 					>
-						<p class="micro-label">Projects</p>
+						<p class="micro-label text-[8px] sm:text-[0.65rem]">Projects</p>
 						{#if showSkeletons}
-							<div class="h-8 w-12 bg-muted rounded mt-1 animate-pulse"></div>
+							<div class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"></div>
 						{:else}
-							<p class="text-2xl font-bold text-foreground mt-1">
+							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
 								{stats.totalProjects}
 							</p>
 						{/if}
 					</div>
 					<div
-						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak ink-frame"
+						class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-grain tx-weak ink-frame"
 					>
-						<p class="micro-label">Tasks</p>
+						<p class="micro-label text-[8px] sm:text-[0.65rem]">Tasks</p>
 						{#if showSkeletons}
-							<div class="h-8 w-12 bg-muted rounded mt-1 animate-pulse"></div>
+							<div class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"></div>
 						{:else}
-							<p class="text-2xl font-bold text-foreground mt-1">
+							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
 								{stats.totalTasks}
 							</p>
 						{/if}
 					</div>
 					<div
-						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak ink-frame"
+						class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-thread tx-weak ink-frame"
 					>
-						<p class="micro-label">Outputs</p>
+						<p class="micro-label text-[8px] sm:text-[0.65rem]">Outputs</p>
 						{#if showSkeletons}
-							<div class="h-8 w-12 bg-muted rounded mt-1 animate-pulse"></div>
+							<div class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"></div>
 						{:else}
-							<p class="text-2xl font-bold text-foreground mt-1">
+							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
 								{stats.totalOutputs}
 							</p>
 						{/if}
 					</div>
 					<div
-						class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-pulse tx-weak ink-frame"
+						class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-pulse tx-weak ink-frame"
 					>
-						<p class="micro-label">Active</p>
+						<p class="micro-label text-[8px] sm:text-[0.65rem]">Active</p>
 						{#if showSkeletons}
-							<div class="h-8 w-12 bg-muted rounded mt-1 animate-pulse"></div>
+							<div class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"></div>
 						{:else}
-							<p class="text-2xl font-bold text-accent mt-1">
+							<p class="text-lg sm:text-2xl font-bold text-accent mt-0.5 sm:mt-1">
 								{stats.activeProjects}
 							</p>
 						{/if}
@@ -754,24 +702,42 @@
 				</div>
 			</div>
 		{:else if filteredProjects.length > 0}
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+			<div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 				{#each filteredProjects as project (project.id)}
+					{@const projectStats = [
+						{ key: 'tasks', count: project.task_count, Icon: ListChecks },
+						{ key: 'outputs', count: project.output_count, Icon: Layers },
+						{ key: 'goals', count: project.goal_count, Icon: Target },
+						{ key: 'plans', count: project.plan_count, Icon: Calendar },
+						{ key: 'docs', count: project.document_count, Icon: FileText }
+					].filter(s => s.count > 0)}
+					{@const mobileProjectStats = projectStats.slice(0, 3)}
 					<a
 						href="/projects/{project.id}"
 						onclick={() => handleProjectClick(project)}
-						class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
+						class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
 					>
-						<div class="mb-4 flex items-start justify-between gap-3">
-							<div class="min-w-0">
+						<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
+						<div class="mb-1 sm:mb-4 flex items-start justify-between gap-1 sm:gap-3">
+							<div class="min-w-0 flex-1">
 								<h3
-									class="truncate text-lg font-bold text-foreground transition-colors group-hover:text-accent"
+									class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
 									style="view-transition-name: project-title-{project.id}"
 								>
 									{project.name}
 								</h3>
+								<!-- Mobile: Inline status under title -->
+								<span
+									class="sm:hidden inline-flex mt-1 items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
+										project.state_key
+									)}"
+								>
+									{project.state_key}
+								</span>
 							</div>
+							<!-- Desktop: Status badge -->
 							<span
-								class="flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+								class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
 									project.state_key
 								)}"
 							>
@@ -779,71 +745,61 @@
 							</span>
 						</div>
 
+						<!-- Description - Hidden on mobile -->
 						{#if project.description}
-							<p class="mb-4 line-clamp-2 text-sm text-muted-foreground">
+							<p class="hidden sm:block mb-4 line-clamp-2 text-sm text-muted-foreground">
 								{project.description.length > 120
 									? project.description.slice(0, 120) + '…'
 									: project.description}
 							</p>
 						{/if}
 
-						<!-- Next Step - Shows short version, expandable to long -->
+						<!-- Next Step - Hidden on mobile for density -->
 						{#if project.next_step_short}
-							<ProjectCardNextStep
-								nextStepShort={project.next_step_short}
-								nextStepLong={project.next_step_long}
-								class="mb-4"
-							/>
+							<div class="hidden sm:block">
+								<ProjectCardNextStep
+									nextStepShort={project.next_step_short}
+									nextStepLong={project.next_step_long}
+									class="mb-4"
+								/>
+							</div>
 						{/if}
 
+						<!-- Footer Stats - Show non-zero counts, limit on mobile -->
 						<div
-							class="mt-auto flex flex-col gap-2 border-t border-border pt-3 text-sm text-muted-foreground"
+							class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
 						>
-							<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-								<span
-									class="flex items-center gap-1"
-									aria-label="Task count"
-									title="Tasks"
-								>
-									<ListChecks class="h-3.5 w-3.5" />
-									<span class="font-bold text-xs">{project.task_count}</span>
-								</span>
-								<span
-									class="flex items-center gap-1"
-									aria-label="Output count"
-									title="Outputs"
-								>
-									<Layers class="h-3.5 w-3.5" />
-									<span class="font-bold text-xs">{project.output_count}</span>
-								</span>
-								<span
-									class="flex items-center gap-1"
-									aria-label="Goal count"
-									title="Goals"
-								>
-									<Target class="h-3.5 w-3.5" />
-									<span class="font-bold text-xs">{project.goal_count}</span>
-								</span>
-								<span
-									class="flex items-center gap-1"
-									aria-label="Plan count"
-									title="Plans"
-								>
-									<Calendar class="h-3.5 w-3.5" />
-									<span class="font-bold text-xs">{project.plan_count}</span>
-								</span>
-								<span
-									class="flex items-center gap-1"
-									aria-label="Document count"
-									title="Documents"
-								>
-									<FileText class="h-3.5 w-3.5" />
-									<span class="font-bold text-xs">{project.document_count}</span>
+							<!-- Mobile: Show up to 3 non-zero stats -->
+							<div class="flex sm:hidden items-center gap-2 overflow-hidden">
+								{#each mobileProjectStats as stat (stat.key)}
+									<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
+										<svelte:component this={stat.Icon} class="h-2.5 w-2.5" />
+										<span class="font-semibold text-[9px]">{stat.count}</span>
+									</span>
+								{/each}
+								{#if projectStats.length > 3}
+									<span class="text-[8px] text-muted-foreground/50">+{projectStats.length - 3}</span>
+								{/if}
+							</div>
+
+							<!-- Desktop: Full stats (non-zero only) -->
+							<div class="hidden sm:flex flex-col gap-2 w-full">
+								<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+									{#each projectStats as stat (stat.key)}
+										<span
+											class="flex items-center gap-1"
+											aria-label="{stat.key} count"
+											title={stat.key}
+										>
+											<svelte:component this={stat.Icon} class="h-3.5 w-3.5" />
+											<span class="font-bold text-xs">{stat.count}</span>
+										</span>
+									{/each}
+								</div>
+								<span class="text-xs text-muted-foreground/70">
+									Updated {new Date(project.updated_at).toLocaleDateString()}
 								</span>
 							</div>
-							<span class="text-xs text-muted-foreground/70">
-								Updated {new Date(project.updated_at).toLocaleDateString()}
-							</span>
 						</div>
 					</a>
 				{/each}

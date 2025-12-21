@@ -208,23 +208,26 @@
 </script>
 
 <main class="min-h-screen bg-background transition-colors">
-	<div class="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 lg:py-10 max-w-7xl">
-		<!-- Header Section -->
-		<header class="mb-4 sm:mb-6">
-			<h1
-				class="text-xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-1 sm:mb-2 tracking-tight"
-			>
-				Welcome back, {displayName}
-			</h1>
-			<p class="text-xs sm:text-base text-muted-foreground font-medium">
-				<time datetime={new Date().toISOString()}>
-					{formatFullDate(new Date())}
-				</time>
-			</p>
+	<div class="container mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-8 lg:py-10 max-w-7xl">
+		<!-- Header Section - Compact on mobile -->
+		<header class="mb-2.5 sm:mb-6">
+			<!-- Mobile: Compact single line with name and date -->
+			<div class="flex items-baseline justify-between gap-2 sm:block">
+				<h1
+					class="text-lg sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight"
+				>
+					Hi, {displayName}
+				</h1>
+				<p class="text-[10px] sm:text-base text-muted-foreground font-medium sm:mt-1">
+					<time datetime={new Date().toISOString()}>
+						{formatFullDate(new Date())}
+					</time>
+				</p>
+			</div>
 		</header>
 
 		<!-- Daily Brief Widget -->
-		<section class="mb-4 sm:mb-6">
+		<section class="mb-2.5 sm:mb-6">
 			<DashboardBriefWidget {user} onViewBrief={handleViewBrief} />
 		</section>
 
@@ -252,26 +255,26 @@
 		{/if}
 
 		<!-- Projects Grid - Always render structure, use skeletons or real cards -->
-		<section class="space-y-3 sm:space-y-6">
-			<!-- Mobile Create Button (above header on mobile) -->
+		<section class="space-y-2 sm:space-y-4">
+			<!-- Mobile Create Button (compact) -->
 			{#if hasProjects}
 				<button
 					onclick={handleCreateProject}
-					class="sm:hidden w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-accent/50 bg-accent/5 p-3 text-sm font-bold text-accent transition-all duration-200 hover:border-accent hover:bg-accent/10 pressable"
+					class="sm:hidden w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-accent/50 bg-accent/5 py-2 text-xs font-bold text-accent transition-all duration-200 hover:border-accent hover:bg-accent/10 pressable"
 				>
-					<Plus class="h-4 w-4" />
+					<Plus class="h-3.5 w-3.5" />
 					New Project
 				</button>
 			{/if}
 
-			<!-- Section Header -->
-			<div class="flex items-center gap-2 sm:gap-3">
-				<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg border border-accent/30">
-					<FolderOpen class="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+			<!-- Section Header - More compact on mobile -->
+			<div class="flex items-center gap-1.5 sm:gap-3">
+				<div class="p-1 sm:p-2 bg-accent/10 rounded-md sm:rounded-lg border border-accent/30">
+					<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-accent" />
 				</div>
-				<h2 class="text-base sm:text-xl font-bold text-foreground">Your Projects</h2>
+				<h2 class="text-sm sm:text-xl font-bold text-foreground">Projects</h2>
 				{#if isLoading}
-					<Loader2 class="h-4 w-4 text-muted-foreground animate-spin" />
+					<Loader2 class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground animate-spin" />
 				{/if}
 			</div>
 
@@ -281,7 +284,7 @@
 				{#if showSkeletons}
 					<!-- Create New Project Card (skeleton placeholder on desktop) -->
 					<div
-						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink min-h-[160px] sm:min-h-[200px] opacity-50"
+						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink sm:min-h-[200px] opacity-50"
 					>
 						<div
 							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent"
@@ -298,29 +301,28 @@
 						<ProjectCardSkeleton />
 					{/each}
 				{:else if !hasProjects && !isLoading}
-					<!-- Empty State - Large Create Card -->
+					<!-- Empty State - Compact on mobile -->
 					<div
-						class="col-span-full rounded-lg border-2 border-dashed border-border bg-card p-8 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
+						class="col-span-full rounded-lg border-2 border-dashed border-border bg-card p-6 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
 					>
 						<div
-							class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent"
+							class="mx-auto mb-4 sm:mb-6 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent"
 						>
-							<Sparkles class="h-8 w-8" />
+							<Sparkles class="h-6 w-6 sm:h-8 sm:w-8" />
 						</div>
-						<h3 class="text-xl font-bold text-foreground mb-2">
+						<h3 class="text-base sm:text-xl font-bold text-foreground mb-1.5 sm:mb-2">
 							Create Your First Project
 						</h3>
-						<p class="text-muted-foreground mb-6 max-w-md mx-auto">
-							Start by telling our AI assistant about your project. Describe your
-							goals, tasks, and timeline - we'll help you organize everything.
+						<p class="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 max-w-md mx-auto">
+							Tell our AI about your project - we'll help organize everything.
 						</p>
 						<Button
 							variant="primary"
-							size="lg"
+							size="sm"
 							onclick={handleCreateProject}
-							class="pressable"
+							class="pressable sm:!py-2.5 sm:!px-5"
 						>
-							<Plus class="h-5 w-5 mr-2" />
+							<Plus class="h-4 w-4 mr-1.5" />
 							Create Project
 						</Button>
 					</div>
@@ -328,7 +330,7 @@
 					<!-- Create New Project Card (hidden on mobile, shown on desktop) -->
 					<button
 						onclick={handleCreateProject}
-						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable min-h-[160px] sm:min-h-[200px]"
+						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable sm:min-h-[200px]"
 					>
 						<div
 							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
@@ -347,32 +349,29 @@
 						<a
 							href="/projects/{project.id}"
 							onclick={() => handleProjectClick(project)}
-							class="group relative flex flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
+							class="group relative flex flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
 						>
-							<!-- Header - Mobile: Title only, Desktop: Title + Badge -->
-							<div
-								class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
-							>
-								<h3
-									class="text-sm sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
-									style="view-transition-name: project-title-{project.id}"
-								>
-									{project.name}
-								</h3>
-								<!-- Status badge - hidden on mobile, shown on larger screens -->
+							<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
+							<div class="mb-1 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3">
+								<div class="flex-1 min-w-0">
+									<h3
+										class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
+										style="view-transition-name: project-title-{project.id}"
+									>
+										{project.name}
+									</h3>
+									<!-- Mobile: Inline status under title -->
+									<span
+										class="sm:hidden inline-flex mt-1 items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
+											project.state_key
+										)}"
+									>
+										{project.state_key}
+									</span>
+								</div>
+								<!-- Desktop: Status badge -->
 								<span
 									class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
-										project.state_key
-									)}"
-								>
-									{project.state_key}
-								</span>
-							</div>
-
-							<!-- Mobile status indicator (compact dot) -->
-							<div class="sm:hidden mb-1.5">
-								<span
-									class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold capitalize {getProjectStateBadgeClass(
 										project.state_key
 									)}"
 								>
@@ -397,94 +396,67 @@
 								</p>
 							{/if}
 
-							<!-- Next Step - Shows short version, expandable to long -->
+							<!-- Next Step - Hidden on mobile for density, shown on desktop -->
 							{#if project.next_step_short}
-								<ProjectCardNextStep
-									nextStepShort={project.next_step_short}
-									nextStepLong={project.next_step_long}
-									class="mb-3"
-								/>
-							{/if}
-
-							<!-- Footer Stats -->
-							<div
-								class="mt-auto flex flex-col gap-1 sm:gap-2 border-t border-border pt-2 sm:pt-3 text-sm text-muted-foreground"
-							>
-								<!-- Mobile: Only show task count -->
-								<div class="flex sm:hidden items-center justify-between">
-									<span
-										class="flex items-center gap-1"
-										aria-label="Task count"
-										title="Tasks"
-									>
-										<ListChecks class="h-3 w-3" />
-										<span class="font-bold text-[10px]"
-											>{project.task_count} tasks</span
-										>
-									</span>
-									<ChevronRight class="h-3.5 w-3.5 text-muted-foreground/50" />
-								</div>
-								<!-- Desktop: Full stats -->
-								<div
-									class="hidden sm:flex flex-wrap items-center gap-x-3 gap-y-1.5"
-								>
-									<span
-										class="flex items-center gap-1"
-										aria-label="Task count"
-										title="Tasks"
-									>
-										<ListChecks class="h-3.5 w-3.5" />
-										<span class="font-bold text-xs">{project.task_count}</span>
-									</span>
-									<span
-										class="flex items-center gap-1"
-										aria-label="Output count"
-										title="Outputs"
-									>
-										<Layers class="h-3.5 w-3.5" />
-										<span class="font-bold text-xs">{project.output_count}</span
-										>
-									</span>
-									<span
-										class="flex items-center gap-1"
-										aria-label="Goal count"
-										title="Goals"
-									>
-										<Target class="h-3.5 w-3.5" />
-										<span class="font-bold text-xs">{project.goal_count}</span>
-									</span>
-									<span
-										class="flex items-center gap-1"
-										aria-label="Plan count"
-										title="Plans"
-									>
-										<Calendar class="h-3.5 w-3.5" />
-										<span class="font-bold text-xs">{project.plan_count}</span>
-									</span>
-									<span
-										class="flex items-center gap-1"
-										aria-label="Document count"
-										title="Documents"
-									>
-										<FileText class="h-3.5 w-3.5" />
-										<span class="font-bold text-xs"
-											>{project.document_count}</span
-										>
-									</span>
-								</div>
-								<div
-									class="hidden sm:flex items-center justify-between text-xs text-muted-foreground/70"
-								>
-									<span
-										>Updated {new Date(
-											project.updated_at
-										).toLocaleDateString()}</span
-									>
-									<ChevronRight
-										class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
+								<div class="hidden sm:block">
+									<ProjectCardNextStep
+										nextStepShort={project.next_step_short}
+										nextStepLong={project.next_step_long}
+										class="mb-3"
 									/>
 								</div>
-							</div>
+							{/if}
+
+							<!-- Footer Stats - Show non-zero counts, limit on mobile -->
+							{#if true}
+								{@const stats = [
+									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
+									{ key: 'outputs', count: project.output_count, Icon: Layers },
+									{ key: 'goals', count: project.goal_count, Icon: Target },
+									{ key: 'plans', count: project.plan_count, Icon: Calendar },
+									{ key: 'docs', count: project.document_count, Icon: FileText }
+								].filter(s => s.count > 0)}
+								{@const mobileStats = stats.slice(0, 3)}
+								<div
+									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
+								>
+									<!-- Mobile: Show up to 3 non-zero stats -->
+									<div class="flex sm:hidden items-center gap-2 overflow-hidden">
+										{#each mobileStats as stat (stat.key)}
+											<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
+												<svelte:component this={stat.Icon} class="h-2.5 w-2.5" />
+												<span class="font-semibold text-[9px]">{stat.count}</span>
+											</span>
+										{/each}
+										{#if stats.length > 3}
+											<span class="text-[8px] text-muted-foreground/50">+{stats.length - 3}</span>
+										{/if}
+									</div>
+									<ChevronRight class="sm:hidden h-3 w-3 text-muted-foreground/40 shrink-0" />
+
+									<!-- Desktop: Full stats (non-zero only) -->
+									<div class="hidden sm:flex flex-col gap-2 w-full">
+										<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+											{#each stats as stat (stat.key)}
+												<span
+													class="flex items-center gap-1"
+													aria-label="{stat.key} count"
+													title={stat.key}
+												>
+													<svelte:component this={stat.Icon} class="h-3.5 w-3.5" />
+													<span class="font-bold text-xs">{stat.count}</span>
+												</span>
+											{/each}
+										</div>
+										<div class="flex items-center justify-between text-xs text-muted-foreground/70">
+											<span>Updated {new Date(project.updated_at).toLocaleDateString()}</span>
+											<ChevronRight
+												class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
+											/>
+										</div>
+									</div>
+								</div>
+							{/if}
 						</a>
 					{/each}
 				{/if}
