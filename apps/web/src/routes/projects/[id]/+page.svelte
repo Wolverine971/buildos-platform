@@ -748,21 +748,21 @@
 		class="sticky top-0 z-0 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
 	>
 		<div
-			class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-3 space-y-2 sm:space-y-3"
+			class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-1.5 sm:py-3 space-y-1 sm:space-y-3"
 		>
 			<!-- Title Row -->
-			<div class="flex items-center justify-between gap-2">
-				<div class="flex items-center gap-2 sm:gap-3 min-w-0">
+			<div class="flex items-center justify-between gap-1.5 sm:gap-2">
+				<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
 					<button
 						onclick={() => goto('/projects')}
-						class="p-1.5 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
+						class="p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
 						aria-label="Back to projects"
 					>
-						<ArrowLeft class="w-5 h-5 text-muted-foreground" />
+						<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 					</button>
 					<div class="min-w-0">
 						<h1
-							class="text-lg sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
+							class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
 							style="view-transition-name: project-title-{project.id}"
 						>
 							{project?.name || 'Untitled Project'}
@@ -872,6 +872,27 @@
 				</div>
 			</div>
 
+			<!-- Mobile: Compact entity count summary bar -->
+			{#if true}
+				{@const mobileStats = [
+					{ key: 'tasks', count: tasks.length, Icon: ListChecks },
+					{ key: 'outputs', count: outputs.length, Icon: Layers },
+					{ key: 'docs', count: documents.length, Icon: FileText },
+					{ key: 'goals', count: goals.length, Icon: Target },
+					{ key: 'plans', count: plans.length, Icon: Calendar }
+				].filter(s => s.count > 0)}
+				{#if mobileStats.length > 0}
+					<div class="flex sm:hidden items-center gap-2.5 text-muted-foreground overflow-x-auto pb-0.5">
+						{#each mobileStats as stat (stat.key)}
+							<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
+								<svelte:component this={stat.Icon} class="h-3 w-3" />
+								<span class="font-semibold text-[10px]">{stat.count}</span>
+							</span>
+						{/each}
+					</div>
+				{/if}
+			{/if}
+
 			<!-- Next Step Display -->
 			<NextStepDisplay
 				projectId={project.id}
@@ -899,7 +920,7 @@
 	{/if}
 
 	<!-- Main Content -->
-	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-4 sm:py-6 overflow-x-hidden">
+	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-6 overflow-x-hidden">
 		<!-- Hydration Error Banner -->
 		{#if hydrationError}
 			<div class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak">
@@ -920,7 +941,7 @@
 		{/if}
 
 		<div
-			class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-3 sm:gap-4 lg:gap-6"
+			class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-2 sm:gap-4 lg:gap-6"
 		>
 			<!-- Left Column: Outputs & Documents -->
 			{#if isHydrating && skeletonCounts}
@@ -931,46 +952,46 @@
 				/>
 			{:else}
 				<!-- Hydrated state - show real content -->
-				<div class="min-w-0 space-y-4">
+				<div class="min-w-0 space-y-2 sm:space-y-4">
 					<!-- Outputs Section - Collapsible -->
 					<section
-						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 					>
-						<div class="flex items-center justify-between gap-3 px-4 py-3">
+						<div class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
 							<button
 								onclick={() => (outputsExpanded = !outputsExpanded)}
-								class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors"
+								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors"
 							>
 								<div
-									class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
 								>
-									<Layers class="w-4 h-4 text-foreground" />
+									<Layers class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
 								</div>
 								<div>
-									<p class="text-sm font-semibold text-foreground">Outputs</p>
-									<p class="text-xs text-muted-foreground">
+									<p class="text-xs sm:text-sm font-semibold text-foreground">Outputs</p>
+									<p class="text-[10px] sm:text-xs text-muted-foreground">
 										{outputs.length}
 										{outputs.length === 1 ? 'deliverable' : 'deliverables'}
 									</p>
 								</div>
 							</button>
-							<div class="flex items-center gap-2">
+							<div class="flex items-center gap-1 sm:gap-2">
 								<button
 									onclick={() => (showOutputCreateModal = true)}
-									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
 									aria-label="Add output"
 								>
-									<Plus class="w-4 h-4 text-muted-foreground" />
+									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
 								</button>
 								<button
 									onclick={() => (outputsExpanded = !outputsExpanded)}
-									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
 									aria-label={outputsExpanded
 										? 'Collapse outputs'
 										: 'Expand outputs'}
 								>
 									<ChevronDown
-										class="w-4 h-4 text-muted-foreground transition-transform {outputsExpanded
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform {outputsExpanded
 											? 'rotate-180'
 											: ''}"
 									/>
@@ -985,16 +1006,16 @@
 							>
 								{#if outputs.length === 0}
 									<div
-										class="flex items-center gap-3 px-4 py-4 bg-muted/30 tx tx-bloom tx-weak"
+										class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 bg-muted/30 tx tx-bloom tx-weak"
 									>
 										<div
-											class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center"
+											class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
 										>
-											<Sparkles class="w-4 h-4 text-accent" />
+											<Sparkles class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
 										</div>
 										<div>
-											<p class="text-sm text-foreground">No outputs yet</p>
-											<p class="text-xs text-muted-foreground">
+											<p class="text-xs sm:text-sm text-foreground">No outputs yet</p>
+											<p class="text-[10px] sm:text-xs text-muted-foreground">
 												Create one to start delivering
 											</p>
 										</div>
@@ -1009,27 +1030,27 @@
 												<button
 													type="button"
 													onclick={() => (editingOutputId = output.id)}
-													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+													class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 												>
 													<div
-														class="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
+														class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
 													>
 														<PrimitiveIcon
-															class="w-4 h-4 {getPrimitiveColor(
+															class="w-3 h-3 sm:w-4 sm:h-4 {getPrimitiveColor(
 																output.primitive
 															)}"
 														/>
 													</div>
 													<div class="min-w-0 flex-1">
-														<p class="text-sm text-foreground truncate">
+														<p class="text-xs sm:text-sm text-foreground truncate">
 															{output.name}
 														</p>
-														<p class="text-xs text-muted-foreground">
+														<p class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
 															{output.typeLabel}
 														</p>
 													</div>
 													<span
-														class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full border border-border {getStateColor(
+														class="flex-shrink-0 text-[9px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full border border-border {getStateColor(
 															output.state_key
 														)}"
 													>
@@ -1046,46 +1067,46 @@
 
 					<!-- Documents Section - Collapsible -->
 					<section
-						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 					>
-						<div class="flex items-center justify-between gap-3 px-4 py-3">
+						<div class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
 							<button
 								onclick={() => (documentsExpanded = !documentsExpanded)}
-								class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors"
+								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors"
 							>
 								<div
-									class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
 								>
-									<FileText class="w-4 h-4 text-foreground" />
+									<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
 								</div>
 								<div>
-									<p class="text-sm font-semibold text-foreground">Documents</p>
-									<p class="text-xs text-muted-foreground">
+									<p class="text-xs sm:text-sm font-semibold text-foreground">Documents</p>
+									<p class="text-[10px] sm:text-xs text-muted-foreground">
 										{documents.length}
 										{documents.length === 1 ? 'document' : 'documents'}
 									</p>
 								</div>
 							</button>
-							<div class="flex items-center gap-2">
+							<div class="flex items-center gap-1 sm:gap-2">
 								<button
 									onclick={() => {
 										activeDocumentId = null;
 										showDocumentModal = true;
 									}}
-									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
 									aria-label="Add document"
 								>
-									<Plus class="w-4 h-4 text-muted-foreground" />
+									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
 								</button>
 								<button
 									onclick={() => (documentsExpanded = !documentsExpanded)}
-									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
 									aria-label={documentsExpanded
 										? 'Collapse documents'
 										: 'Expand documents'}
 								>
 									<ChevronDown
-										class="w-4 h-4 text-muted-foreground transition-transform {documentsExpanded
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform {documentsExpanded
 											? 'rotate-180'
 											: ''}"
 									/>
@@ -1100,16 +1121,16 @@
 							>
 								{#if documents.length === 0}
 									<div
-										class="flex items-center gap-3 px-4 py-4 bg-muted/30 tx tx-bloom tx-weak"
+										class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 bg-muted/30 tx tx-bloom tx-weak"
 									>
 										<div
-											class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center"
+											class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
 										>
-											<FileText class="w-4 h-4 text-accent" />
+											<FileText class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
 										</div>
 										<div>
-											<p class="text-sm text-foreground">No documents yet</p>
-											<p class="text-xs text-muted-foreground">
+											<p class="text-xs sm:text-sm text-foreground">No documents yet</p>
+											<p class="text-[10px] sm:text-xs text-muted-foreground">
 												Add notes, research, or drafts
 											</p>
 										</div>
@@ -1124,23 +1145,23 @@
 														activeDocumentId = doc.id;
 														showDocumentModal = true;
 													}}
-													class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+													class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 												>
 													<div
-														class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0"
+														class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0"
 													>
-														<FileText class="w-4 h-4 text-accent" />
+														<FileText class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
 													</div>
 													<div class="min-w-0 flex-1">
-														<p class="text-sm text-foreground truncate">
+														<p class="text-xs sm:text-sm text-foreground truncate">
 															{doc.title}
 														</p>
-														<p class="text-xs text-muted-foreground">
+														<p class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
 															{getTypeLabel(doc.type_key)}
 														</p>
 													</div>
 													<span
-														class="flex-shrink-0 text-[11px] px-2 py-1 rounded-full bg-card border border-border capitalize"
+														class="flex-shrink-0 text-[9px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-card border border-border capitalize"
 													>
 														{(doc.state_key || 'draft').replace(
 															/_/g,
@@ -1244,40 +1265,39 @@
 				</aside>
 			{:else}
 				<!-- Hydrated insight panels -->
-				<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
+				<aside class="min-w-0 space-y-2 sm:space-y-3 lg:sticky lg:top-24">
 					{#each insightPanels as section}
 						{@const isOpen = expandedPanels[section.key]}
 						<div
-							class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+							class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 						>
 							<button
 								onclick={() => togglePanel(section.key)}
-								class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+								class="w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 							>
-								<div class="flex items-start gap-3">
+								<div class="flex items-start gap-2 sm:gap-3">
 									<div
-										class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+										class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
 									>
 										<svelte:component
 											this={section.icon}
-											class="w-4 h-4 text-foreground"
+											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground"
 										/>
 									</div>
 									<div class="min-w-0">
-										<p class="text-sm font-semibold text-foreground">
+										<p class="text-xs sm:text-sm font-semibold text-foreground">
 											{section.label}
+											<span class="text-muted-foreground font-normal">({section.items.length})</span>
 										</p>
-										<p class="text-xs text-muted-foreground">
-											{section.items.length}
-											{section.items.length === 1 ? 'item' : 'items'}
+										<p class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
 											{#if section.description}
-												· {section.description}
+												{section.description}
 											{/if}
 										</p>
 									</div>
 								</div>
 								<ChevronDown
-									class="w-4 h-4 text-muted-foreground transition-transform {isOpen
+									class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform {isOpen
 										? 'rotate-180'
 										: ''}"
 								/>
@@ -1290,20 +1310,21 @@
 								>
 									{#if section.key === 'tasks'}
 										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
+											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
 										>
 											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
+												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
 											>
 												Tasks
 											</p>
 											<button
 												type="button"
 												onclick={() => (showTaskCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
+												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
-												<Plus class="w-3.5 h-3.5" />
-												New Task
+												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+												<span class="hidden sm:inline">New Task</span>
+												<span class="sm:hidden">Add</span>
 											</button>
 										</div>
 										{#if tasks.length > 0}
@@ -1313,25 +1334,25 @@
 														task.state_key
 													)}
 													<li>
-														<div class="flex items-center">
+														<div class="flex items-center min-w-0">
 															<button
 																type="button"
 																onclick={() =>
 																	(editingTaskId = task.id)}
-																class="flex-1 flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+																class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 															>
 																<svelte:component
 																	this={visuals.icon}
-																	class="w-4 h-4 {visuals.color}"
+																	class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 {visuals.color}"
 																/>
-																<div class="min-w-0">
+																<div class="min-w-0 flex-1">
 																	<p
-																		class="text-sm text-foreground truncate"
+																		class="text-xs sm:text-sm text-foreground truncate"
 																	>
 																		{task.title}
 																	</p>
 																	<p
-																		class="text-xs text-muted-foreground capitalize"
+																		class="text-[10px] sm:text-xs text-muted-foreground capitalize hidden sm:block"
 																	>
 																		{(
 																			task.state_key ||
@@ -1342,11 +1363,11 @@
 															</button>
 															<a
 																href="/projects/{project.id}/tasks/{task.id}"
-																class="p-2 mr-2 rounded-lg hover:bg-accent/10 transition-colors pressable"
+																class="flex-shrink-0 p-1.5 sm:p-2 mr-1.5 sm:mr-2 rounded-lg hover:bg-accent/10 transition-colors pressable"
 																title="Open task focus page"
 															>
 																<ExternalLink
-																	class="w-4 h-4 text-muted-foreground hover:text-accent"
+																	class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground hover:text-accent"
 																/>
 															</a>
 														</div>
@@ -1354,31 +1375,32 @@
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
+											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
+												<p class="text-xs sm:text-sm text-muted-foreground">
 													No tasks yet
 												</p>
-												<p class="text-xs text-muted-foreground/70 mt-0.5">
+												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
 													Add tasks to track work
 												</p>
 											</div>
 										{/if}
 									{:else if section.key === 'plans'}
 										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
+											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
 										>
 											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
+												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
 											>
 												Plans
 											</p>
 											<button
 												type="button"
 												onclick={() => (showPlanCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
+												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
-												<Plus class="w-3.5 h-3.5" />
-												New Plan
+												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+												<span class="hidden sm:inline">New Plan</span>
+												<span class="sm:hidden">Add</span>
 											</button>
 										</div>
 										{#if plans.length > 0}
@@ -1389,19 +1411,19 @@
 															type="button"
 															onclick={() =>
 																(editingPlanId = plan.id)}
-															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+															class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
 															<Calendar
-																class="w-4 h-4 text-muted-foreground"
+																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
 															/>
 															<div class="min-w-0">
 																<p
-																	class="text-sm text-foreground truncate"
+																	class="text-xs sm:text-sm text-foreground truncate"
 																>
 																	{plan.name}
 																</p>
 																<p
-																	class="text-xs text-muted-foreground capitalize"
+																	class="text-[10px] sm:text-xs text-muted-foreground capitalize hidden sm:block"
 																>
 																	{(
 																		plan.state_key || 'draft'
@@ -1413,31 +1435,32 @@
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
+											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
+												<p class="text-xs sm:text-sm text-muted-foreground">
 													No plans yet
 												</p>
-												<p class="text-xs text-muted-foreground/70 mt-0.5">
+												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
 													Create a plan to organize work
 												</p>
 											</div>
 										{/if}
 									{:else if section.key === 'goals'}
 										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
+											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
 										>
 											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
+												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
 											>
 												Goals
 											</p>
 											<button
 												type="button"
 												onclick={() => (showGoalCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
+												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
-												<Plus class="w-3.5 h-3.5" />
-												New Goal
+												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+												<span class="hidden sm:inline">New Goal</span>
+												<span class="sm:hidden">Add</span>
 											</button>
 										</div>
 										{#if goals.length > 0}
@@ -1448,19 +1471,19 @@
 															type="button"
 															onclick={() =>
 																(editingGoalId = goal.id)}
-															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+															class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
 															<Target
-																class="w-4 h-4 text-amber-500 mt-0.5"
+																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5"
 															/>
 															<div class="min-w-0">
 																<p
-																	class="text-sm text-foreground truncate"
+																	class="text-xs sm:text-sm text-foreground truncate"
 																>
 																	{goal.name}
 																</p>
 																<p
-																	class="text-xs text-muted-foreground capitalize"
+																	class="text-[10px] sm:text-xs text-muted-foreground capitalize hidden sm:block"
 																>
 																	{(
 																		goal.state_key || 'draft'
@@ -1472,31 +1495,32 @@
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
+											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
+												<p class="text-xs sm:text-sm text-muted-foreground">
 													No goals yet
 												</p>
-												<p class="text-xs text-muted-foreground/70 mt-0.5">
+												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
 													Define what success looks like
 												</p>
 											</div>
 										{/if}
 									{:else if section.key === 'risks'}
 										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
+											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
 										>
 											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
+												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
 											>
 												Risks
 											</p>
 											<button
 												type="button"
 												onclick={() => (showRiskCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
+												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
-												<Plus class="w-3.5 h-3.5" />
-												New Risk
+												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+												<span class="hidden sm:inline">New Risk</span>
+												<span class="sm:hidden">Add</span>
 											</button>
 										</div>
 										{#if risks.length > 0}
@@ -1515,19 +1539,19 @@
 															type="button"
 															onclick={() =>
 																(editingRiskId = risk.id)}
-															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+															class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
 															<AlertTriangle
-																class="w-4 h-4 {impactColor} mt-0.5"
+																class="w-3.5 h-3.5 sm:w-4 sm:h-4 {impactColor} mt-0.5"
 															/>
 															<div class="min-w-0 flex-1">
 																<p
-																	class="text-sm text-foreground truncate"
+																	class="text-xs sm:text-sm text-foreground truncate"
 																>
 																	{risk.title}
 																</p>
 																<p
-																	class="text-xs text-muted-foreground capitalize"
+																	class="text-[10px] sm:text-xs text-muted-foreground capitalize hidden sm:block"
 																>
 																	{risk.impact || 'Unrated'} · {risk.state_key?.replace(
 																		/_/g,
@@ -1540,31 +1564,32 @@
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
+											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
+												<p class="text-xs sm:text-sm text-muted-foreground">
 													No risks logged
 												</p>
-												<p class="text-xs text-muted-foreground/70 mt-0.5">
+												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
 													Track potential blockers
 												</p>
 											</div>
 										{/if}
 									{:else if section.key === 'milestones'}
 										<div
-											class="flex items-center justify-between px-4 pt-3 pb-2"
+											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
 										>
 											<p
-												class="text-xs text-muted-foreground uppercase tracking-wide"
+												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
 											>
 												Milestones
 											</p>
 											<button
 												type="button"
 												onclick={() => (showMilestoneCreateModal = true)}
-												class="inline-flex items-center gap-2 px-2.5 py-1 text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
+												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
 											>
-												<Plus class="w-3.5 h-3.5" />
-												New Milestone
+												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+												<span class="hidden sm:inline">New Milestone</span>
+												<span class="sm:hidden">Add</span>
 											</button>
 										</div>
 										{#if milestones.length > 0}
@@ -1587,19 +1612,19 @@
 															type="button"
 															onclick={() =>
 																(editingMilestoneId = milestone.id)}
-															class="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+															class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
 															<Flag
-																class="w-4 h-4 {stateColor} mt-0.5"
+																class="w-3.5 h-3.5 sm:w-4 sm:h-4 {stateColor} mt-0.5"
 															/>
 															<div class="min-w-0 flex-1">
 																<p
-																	class="text-sm text-foreground truncate"
+																	class="text-xs sm:text-sm text-foreground truncate"
 																>
 																	{milestone.title}
 																</p>
 																<p
-																	class="text-xs text-muted-foreground"
+																	class="text-[10px] sm:text-xs text-muted-foreground"
 																>
 																	{formatDueDate(
 																		milestone.due_at
@@ -1611,11 +1636,11 @@
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
+											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
+												<p class="text-xs sm:text-sm text-muted-foreground">
 													No milestones yet
 												</p>
-												<p class="text-xs text-muted-foreground/70 mt-0.5">
+												<p class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block">
 													Set checkpoints and deadlines
 												</p>
 											</div>
@@ -1627,13 +1652,13 @@
 					{/each}
 
 					<!-- History Section Divider -->
-					<div class="relative py-4">
-						<div class="absolute inset-0 flex items-center px-4">
+					<div class="relative py-2 sm:py-4">
+						<div class="absolute inset-0 flex items-center px-3 sm:px-4">
 							<div class="w-full border-t border-border/40"></div>
 						</div>
 						<div class="relative flex justify-center">
 							<span
-								class="bg-background px-3 text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
+								class="bg-background px-2 sm:px-3 text-[9px] sm:text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
 							>
 								History
 							</span>

@@ -214,6 +214,16 @@
 
 	const voiceButtonClasses = $derived(getVoiceButtonClasses(voiceButtonState.variant));
 
+	// Compute padding for textarea based on whether actions snippet is provided
+	const textareaPaddingRight = $derived(
+		actions
+			? 'pr-3 xs:pr-[100px] sm:pr-[116px]' /* send (36-40px) + gap (6px) + voice (36-40px) + margin (12-20px) */
+			: 'pr-3 xs:pr-[56px] sm:pr-[64px]' /* voice (36-40px) + margin (12-16px) */
+	);
+
+	// Border radius for textarea (full rounded - status row is now separate helper text)
+	const textareaBorderRadius = '';
+
 	onMount(() => {
 		if (enableVoice) {
 			initializeVoice();
@@ -359,17 +369,25 @@
 	}
 
 	function getVoiceButtonClasses(variant: VoiceButtonVariant): string {
+		// Base classes for all states - Inkprint compliant
+		const base = 'shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background';
+
 		switch (variant) {
 			case 'recording':
-				return 'border-2 border-rose-500/60 bg-gradient-to-br from-rose-50 to-red-50 text-rose-600 shadow-sm hover:shadow-md hover:border-rose-600/70 dark:border-rose-500/50 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300';
+				// Active recording - uses destructive semantic (urgency/stop)
+				return `${base} border-2 border-destructive bg-destructive/10 text-destructive hover:bg-destructive/15 dark:bg-destructive/20 dark:hover:bg-destructive/25`;
 			case 'loading':
-				return 'border border-slate-200/60 bg-white/80 text-slate-400 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-800/80 dark:text-slate-400';
+				// Processing state - muted, non-interactive feel
+				return `${base} border border-border bg-muted text-muted-foreground`;
 			case 'prompt':
-				return 'border-2 border-blue-500/60 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 shadow-sm hover:shadow-md hover:border-blue-600/70 dark:border-blue-500/50 dark:from-blue-900/30 dark:to-indigo-900/20 dark:text-blue-300';
+				// Needs attention - accent color draws eye
+				return `${base} border-2 border-accent bg-accent/10 text-accent hover:bg-accent/15 dark:bg-accent/20 dark:hover:bg-accent/25`;
 			case 'muted':
-				return 'border border-slate-200/60 bg-slate-50/80 text-slate-400 cursor-not-allowed dark:border-slate-700/60 dark:bg-slate-800/50 dark:text-slate-500';
+				// Disabled/unavailable - clearly inactive
+				return `border border-border bg-muted text-muted-foreground/60 cursor-not-allowed opacity-60`;
 			default:
-				return 'border border-slate-900/80 bg-slate-900 text-white shadow-sm hover:bg-slate-800 hover:shadow-md dark:border-slate-100/80 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200';
+				// Ready state - primary action, inverted for prominence
+				return `${base} border border-foreground bg-foreground text-background hover:bg-foreground/90`;
 		}
 	}
 
@@ -577,7 +595,7 @@
 
 <div class={`${containerClass} ${className}`.trim()}>
 	<div class="relative">
-		<!-- ✅ Textarea: Full width on mobile, right padding on landscape+ for inline buttons -->
+		<!-- Textarea: rounded-t only when status row is shown (seamless connection) -->
 		<Textarea
 			bind:this={textareaRef}
 			bind:value
@@ -589,7 +607,7 @@
 			{helperText}
 			{error}
 			{errorMessage}
-			class={`${actions ? 'pr-3 xs:pr-[90px]' : 'pr-3 xs:pr-[54px]'} ${textareaClass}`.trim()}
+			class={`${textareaPaddingRight} ${textareaBorderRadius} ${textareaClass}`.trim()}
 			oninput={handleTextareaInput}
 			{...restProps}
 			onkeydown={(e) => {
@@ -606,11 +624,11 @@
 				{@render actions()}
 			{/if}
 
-			<!-- ✅ Voice recording button: 36px, touch-optimized, hidden on mobile (shown in bottom bar) -->
+			<!-- Voice recording button: 36px, touch-optimized, hidden on mobile (shown in bottom bar) -->
 			{#if enableVoice}
 				<button
 					type="button"
-					class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-200 touch-manipulation focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${voiceButtonClasses}`}
+					class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
 					style="-webkit-tap-highlight-color: transparent;"
 					onclick={toggleVoiceRecording}
 					aria-label={voiceButtonState.label}
@@ -628,45 +646,30 @@
 			{/if}
 		</div>
 
-		<!-- ✅ Live transcript preview: Positioned above the action buttons to avoid overlap -->
+		<!-- Live transcript preview: Positioned to avoid overlap with action buttons -->
 		{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
-			{#if actions}
-				<!-- With send button: need more right offset to avoid both send + mic buttons -->
+			{@const rightOffset = actions ? 'xs:right-24' : 'xs:right-14'}
+			<div
+				class={`pointer-events-none absolute bottom-12 left-2 right-2 xs:bottom-2 ${rightOffset}`}
+			>
 				<div
-					class="pointer-events-none absolute bottom-12 left-2 right-2 xs:bottom-2 xs:right-24"
+					class="pointer-events-auto rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-1.5 text-sm text-accent shadow-ink backdrop-blur-sm dark:bg-accent/10"
 				>
-					<div
-						class="pointer-events-auto rounded-lg border border-blue-200/60 bg-gradient-to-br from-blue-50/95 to-indigo-50/90 px-2.5 py-1.5 text-[13px] text-blue-900 shadow-md backdrop-blur-sm dark:border-blue-500/30 dark:from-blue-900/80 dark:to-indigo-900/70 dark:text-blue-100"
-					>
-						<p class="m-0 whitespace-pre-wrap leading-snug">
-							{liveTranscriptPreview}
-						</p>
-					</div>
+					<p class="m-0 whitespace-pre-wrap leading-snug">
+						{liveTranscriptPreview}
+					</p>
 				</div>
-			{:else}
-				<!-- Without send button: only need offset for mic button -->
-				<div
-					class="pointer-events-none absolute bottom-12 left-2 right-2 xs:bottom-2 xs:right-14"
-				>
-					<div
-						class="pointer-events-auto rounded-lg border border-blue-200/60 bg-gradient-to-br from-blue-50/95 to-indigo-50/90 px-2.5 py-1.5 text-[13px] text-blue-900 shadow-md backdrop-blur-sm dark:border-blue-500/30 dark:from-blue-900/80 dark:to-indigo-900/70 dark:text-blue-100"
-					>
-						<p class="m-0 whitespace-pre-wrap leading-snug">
-							{liveTranscriptPreview}
-						</p>
-					</div>
-				</div>
-			{/if}
+			</div>
 		{/if}
 	</div>
 
-	<!-- ✅ Mobile action bar: Visible only on portrait phones (< 480px) -->
+	<!-- Mobile action bar: Visible only on portrait phones (< 480px) -->
 	<div class="mt-2 flex items-center justify-end gap-2 xs:hidden">
-		<!-- Voice recording button for mobile -->
+		<!-- Voice recording button for mobile (larger touch target) -->
 		{#if enableVoice}
 			<button
 				type="button"
-				class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full shadow-sm transition-all duration-200 touch-manipulation focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${voiceButtonClasses}`}
+				class={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
 				style="-webkit-tap-highlight-color: transparent;"
 				onclick={toggleVoiceRecording}
 				aria-label={voiceButtonState.label}
@@ -675,10 +678,10 @@
 				disabled={voiceButtonState.disabled}
 			>
 				{#if voiceButtonState.isLoading}
-					<LoaderCircle class="h-4 w-4 animate-spin" />
+					<LoaderCircle class="h-5 w-5 animate-spin" />
 				{:else}
 					{@const VoiceIcon = voiceButtonState.icon}
-					<VoiceIcon class="h-4 w-4" />
+					<VoiceIcon class="h-5 w-5" />
 				{/if}
 			</button>
 		{/if}
@@ -690,96 +693,95 @@
 	</div>
 
 	{#if enableVoice && showStatusRow}
-		<!-- ✅ Ultra-tight status row: gap-1.5 (6px), responsive text sizing -->
-		<div class="flex flex-wrap items-center justify-between gap-2 px-1">
-			<!-- Left side: Primary status indicator -->
-			<div class="flex flex-wrap items-center gap-1.5">
-				{#if isCurrentlyRecording}
-					<!-- ✅ Recording indicator: tight spacing, semantic color, responsive text -->
-					<span class="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
-						<span class="relative flex h-2 w-2 items-center justify-center">
-							<span
-								class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500/70 dark:bg-rose-400/70"
-							></span>
-							<span
-								class="relative inline-flex h-1.5 w-1.5 rounded-full bg-rose-600 dark:bg-rose-500"
-							></span>
+		<!-- Status row: clean helper text below input -->
+		<div class="mt-1.5 px-1">
+			<div class="flex flex-wrap items-center justify-between gap-2">
+				<!-- Left side: Primary status indicator -->
+				<div class="flex flex-wrap items-center gap-1.5">
+					{#if isCurrentlyRecording}
+						<!-- Recording indicator: destructive semantic with pulse animation -->
+						<span class="flex items-center gap-1.5 text-destructive">
+							<span class="relative flex h-2 w-2 items-center justify-center">
+								<span
+									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60"
+								></span>
+								<span
+									class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"
+								></span>
+							</span>
+							<span class="text-xs font-semibold">{listeningLabel}</span>
+							<span class="text-xs font-bold tabular-nums"
+								>{formatDuration(_recordingDuration)}</span
+							>
+							<!-- Keyboard hint to stop recording -->
+							<kbd
+								class="hidden rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-destructive sm:inline-flex"
+							>
+								Space
+							</kbd>
 						</span>
-						<span class="text-[11px] font-semibold xs:text-xs">{listeningLabel}</span>
-						<span class="text-[11px] font-bold tabular-nums xs:text-xs"
-							>{formatDuration(_recordingDuration)}</span
+					{:else if isInitializingRecording}
+						<!-- Initializing state: muted, processing feel -->
+						<span class="flex items-center gap-1.5 text-muted-foreground">
+							<LoaderCircle class="h-3 w-3 animate-spin" />
+							<span class="text-xs font-medium">{preparingLabel}</span>
+						</span>
+					{:else if _isTranscribing}
+						<!-- Transcribing state: accent color for active processing -->
+						<span class="flex items-center gap-1.5 text-accent">
+							<LoaderCircle class="h-3 w-3 animate-spin" />
+							<span class="text-xs font-semibold">{transcribingLabel}</span>
+						</span>
+					{:else if !isVoiceSupported}
+						<!-- Unsupported: muted text -->
+						<span class="text-xs font-medium text-muted-foreground">Voice unavailable</span>
+					{:else if voiceBlocked}
+						<!-- Blocked: warning state -->
+						<span class="text-xs font-medium text-amber-600 dark:text-amber-500"
+							>{voiceBlockedLabel}</span
 						>
-						<!-- Keyboard hint to stop recording -->
+					{:else}
+						<!-- Idle hint: keyboard shortcuts highlighted -->
+						<span class="text-xs text-muted-foreground">
+							<kbd class="rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground">Enter</kbd>
+							<span class="mx-1">send</span>
+							<span class="text-border">·</span>
+							<kbd class="ml-1 rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground">Shift+Enter</kbd>
+							<span class="ml-1">new line</span>
+						</span>
+					{/if}
+
+					<!-- Live transcript badge: accent styling, micro-label -->
+					{#if _canUseLiveTranscript && isCurrentlyRecording}
 						<span
-							class="hidden rounded border border-rose-300 bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-600 dark:border-rose-600 dark:bg-rose-900/40 dark:text-rose-300 sm:inline-flex"
+							class="hidden rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-accent xs:inline-flex"
 						>
-							Space to stop
+							{liveTranscriptLabel}
 						</span>
-					</span>
-				{:else if isInitializingRecording}
-					<!-- ✅ Initializing state: compact loader, responsive text -->
-					<span class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-						<LoaderCircle class="h-3 w-3 animate-spin" />
-						<span class="text-[11px] font-medium xs:text-xs">{preparingLabel}</span>
-					</span>
-				{:else if _isTranscribing}
-					<!-- ✅ Transcribing state: compact loader, responsive text -->
-					<span class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-						<LoaderCircle class="h-3 w-3 animate-spin" />
-						<span class="text-[11px] font-semibold xs:text-xs">{transcribingLabel}</span
+					{/if}
+				</div>
+
+				<!-- Right side: Errors and custom status snippet -->
+				<div class="flex flex-wrap items-center gap-1.5">
+					{#if _voiceError}
+						<!-- Error badge: destructive with Inkprint static texture -->
+						<span
+							role="alert"
+							class="flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive tx tx-static tx-weak"
 						>
-					</span>
-				{:else if !isVoiceSupported}
-					<!-- ✅ Unsupported: muted text, responsive -->
-					<span
-						class="text-[11px] font-medium text-slate-500 dark:text-slate-400 xs:text-xs"
-						>Voice unavailable</span
-					>
-				{:else if voiceBlocked}
-					<!-- ✅ Blocked: warning color, responsive -->
-					<span
-						class="text-[11px] font-medium text-amber-600 dark:text-amber-400 xs:text-xs"
-						>{voiceBlockedLabel}</span
-					>
-				{:else}
-					<!-- ✅ Idle hint: muted, compact, responsive -->
-					<span
-						class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 xs:text-xs"
-					>
-						{idleHint}
-					</span>
-				{/if}
+							{_voiceError}
+						</span>
+					{/if}
 
-				<!-- ✅ Live transcript badge: show on landscape and up -->
-				{#if _canUseLiveTranscript && isCurrentlyRecording}
-					<span
-						class="hidden rounded-md border border-blue-200/60 bg-gradient-to-r from-blue-50 to-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-700 dark:border-blue-500/40 dark:from-blue-900/30 dark:to-indigo-900/20 dark:text-blue-300 xs:inline-flex"
-					>
-						{liveTranscriptLabel}
-					</span>
-				{/if}
-			</div>
-
-			<!-- Right side: Errors and custom status snippet -->
-			<div class="flex flex-wrap items-center gap-1.5">
-				{#if _voiceError}
-					<!-- ✅ Error badge: compact, semantic gradient, responsive text -->
-					<span
-						role="alert"
-						class="flex items-center gap-1 rounded-md bg-gradient-to-r from-rose-50 to-red-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:from-rose-900/30 dark:to-red-900/20 dark:text-rose-300 xs:text-xs"
-					>
-						{_voiceError}
-					</span>
-				{/if}
-
-				{#if status}
-					{@render status({
-						isCurrentlyRecording,
-						isTranscribing: _isTranscribing,
-						recordingDuration: _recordingDuration,
-						voiceError: _voiceError
-					})}
-				{/if}
+					{#if status}
+						{@render status({
+							isCurrentlyRecording,
+							isTranscribing: _isTranscribing,
+							recordingDuration: _recordingDuration,
+							voiceError: _voiceError
+						})}
+					{/if}
+				</div>
 			</div>
 		</div>
 	{/if}

@@ -141,12 +141,9 @@ export class StreamHandler {
 
 		// Generate initial last turn context
 		const toolResultsFromHistory = this.extractToolResultsFromHistory(conversationHistory);
-		const toolResultsForContext =
-			toolResultsFromHistory.length > 0
-				? toolResultsFromHistory
-				: request.history && request.history.length > 0
-					? await this.safeLoadRecentToolResults(session.id)
-					: [];
+		// Note: toolResultsForContext is computed synchronously here using history extraction.
+		// If history is provided but no tool results found, we'll load them async in runOrchestration.
+		const toolResultsForContext = toolResultsFromHistory;
 
 		let lastTurnContextForPlanner =
 			request.last_turn_context ??
@@ -244,6 +241,22 @@ export class StreamHandler {
 		const userMessageTimestamp = new Date().toISOString();
 		const abortSignal = requestAbortSignal;
 		const streamRunId = request.stream_run_id;
+
+		// If no lastTurnContext provided and history exists but no tool results found,
+		// load them asynchronously from the database
+		if (!lastTurnContextForPlanner && request.history && request.history.length > 0) {
+			const toolResultsFromHistory = this.extractToolResultsFromHistory(conversationHistory);
+			if (toolResultsFromHistory.length === 0) {
+				const loadedToolResults = await this.safeLoadRecentToolResults(session.id);
+				if (loadedToolResults.length > 0) {
+					lastTurnContextForPlanner = generateLastTurnContext(
+						conversationHistory,
+						normalizedContextType,
+						{ toolResults: loadedToolResults }
+					);
+				}
+			}
+		}
 
 		try {
 			// Send focus active event if applicable

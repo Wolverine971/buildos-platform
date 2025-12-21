@@ -49,8 +49,8 @@
 		lg: 'px-4 py-3 text-lg min-h-[48px]'
 	};
 
-	// Wrapper classes - Inkprint design
-	let wrapperClasses = $derived(twMerge('relative rounded-lg overflow-hidden', 'bg-card'));
+	// Wrapper classes - minimal container
+	let wrapperClasses = 'relative';
 
 	let textareaClasses = $derived(
 		twMerge(

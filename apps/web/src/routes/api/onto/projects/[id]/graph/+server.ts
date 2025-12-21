@@ -96,7 +96,9 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			documents: data.documents,
 			plans: data.plans,
 			goals: data.goals,
-			milestones: data.milestones
+			milestones: data.milestones,
+			risks: data.risks,
+			decisions: data.decisions
 		};
 
 		// Filter out template edges
@@ -127,7 +129,9 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			totalDocuments: data.documents.length,
 			totalPlans: data.plans.length,
 			totalGoals: data.goals.length,
-			totalMilestones: data.milestones.length
+			totalMilestones: data.milestones.length,
+			totalRisks: data.risks.length,
+			totalDecisions: data.decisions.length
 		};
 
 		return ApiResponse.success({

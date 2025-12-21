@@ -604,26 +604,26 @@
 
 <!-- Show loading state for initial load -->
 {#if isInitialLoading}
-	<div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+	<div class="min-h-screen bg-background flex items-center justify-center">
 		<div class="text-center">
-			<Loader2 class="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-			<p class="text-sm text-gray-600 dark:text-gray-400">Loading briefs...</p>
+			<Loader2 class="w-8 h-8 text-accent animate-spin mx-auto mb-4" />
+			<p class="text-sm text-muted-foreground">Loading briefs...</p>
 		</div>
 	</div>
 {:else}
-	<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+	<div class="min-h-screen bg-background">
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
 			<!-- Improved Header -->
 			<div class="mb-6">
 				<!-- Main Header -->
 				<div class="flex items-center justify-between mb-6">
 					<div class="flex items-center">
-						<Calendar class="w-8 h-8 mr-3 text-blue-600 dark:text-blue-400" />
+						<Calendar class="w-8 h-8 mr-3 text-accent" />
 						<div>
-							<h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+							<h1 class="text-3xl font-bold text-foreground">
 								Daily Briefs
 							</h1>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+							<p class="text-sm text-muted-foreground mt-1">
 								AI-generated insights and priority actions
 							</p>
 						</div>
@@ -632,16 +632,16 @@
 						<!-- Next Scheduled Brief Display -->
 						{#if isLoadingNextBrief}
 							<div
-								class="hidden sm:flex items-center text-sm text-gray-500 dark:text-gray-400"
+								class="hidden sm:flex items-center text-sm text-muted-foreground"
 							>
 								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 								<span>Loading...</span>
 							</div>
 						{:else if nextScheduledBrief}
 							<div
-								class="hidden sm:flex items-center text-sm text-gray-600 dark:text-gray-300 bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-lg border border-blue-200 dark:border-blue-800"
+								class="hidden sm:flex items-center text-sm text-muted-foreground bg-accent/10 px-3 py-2 rounded-lg border border-accent/30"
 							>
-								<Clock class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+								<Clock class="w-4 h-4 mr-2 text-accent" />
 								<span class="font-medium">Next Brief:</span>
 								<span class="ml-1"
 									>{formatDateTime(nextScheduledBrief.scheduledFor, 'full')}</span
@@ -673,11 +673,11 @@
 				<!-- Desktop Navigation Bar -->
 				<div class="hidden sm:block">
 					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4"
+						class="bg-card rounded-lg shadow-ink border border-border p-4 tx tx-frame tx-weak"
 					>
 						<div class="flex items-center justify-between">
 							<!-- View Tabs -->
-							<div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+							<div class="flex bg-muted rounded-lg p-1">
 								{#each viewConfigs as view}
 									<Button
 										type="button"
@@ -685,8 +685,8 @@
 										variant={selectedView === view.id ? 'primary' : 'ghost'}
 										size="sm"
 										class={selectedView === view.id
-											? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm'
-											: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}
+											? 'bg-card text-accent shadow-ink'
+											: 'text-muted-foreground hover:text-foreground'}
 										icon={view.icon}
 									>
 										{view.label}
@@ -703,28 +703,28 @@
 											onclick={goToToday}
 											variant="primary"
 											size="sm"
-											class="bg-blue-600 text-white hover:bg-blue-700"
+											class="bg-accent text-accent-foreground hover:bg-accent/90"
 										>
 											Today
 										</Button>
 									{/if}
 
 									<div
-										class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg"
+										class="flex items-center bg-muted rounded-lg"
 									>
 										<Button
 											type="button"
 											onclick={() => navigateDate('prev')}
 											variant="ghost"
 											size="sm"
-											class="p-2 rounded-l-lg rounded-r-none hover:bg-gray-200 dark:hover:bg-gray-600"
+											class="p-2 rounded-l-lg rounded-r-none hover:bg-muted"
 											aria-label="Previous day"
 											icon={ChevronLeft}
 										></Button>
 
 										<div class="px-4 py-2 min-w-[140px] text-center">
 											<span
-												class="text-sm font-medium text-gray-900 dark:text-white"
+												class="text-sm font-medium text-foreground"
 											>
 												{BriefClientService.formatDisplayDate(currentDate)}
 											</span>
@@ -735,7 +735,7 @@
 											onclick={() => navigateDate('next')}
 											variant="ghost"
 											size="sm"
-											class="p-2 rounded-r-lg rounded-l-none hover:bg-gray-200 dark:hover:bg-gray-600"
+											class="p-2 rounded-r-lg rounded-l-none hover:bg-muted"
 											disabled={isToday}
 											aria-label="Next day"
 											icon={ChevronRight}
@@ -748,7 +748,7 @@
 									onclick={() => (showFilters = !showFilters)}
 									variant="ghost"
 									size="sm"
-									class="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+									class="p-2 text-muted-foreground hover:text-foreground"
 									title="Toggle filters"
 									icon={Filter}
 								></Button>
@@ -763,10 +763,10 @@
 						<!-- Mobile Next Scheduled Brief Display -->
 						{#if isLoadingNextBrief}
 							<div
-								class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border border-gray-200 dark:border-gray-700"
+								class="bg-card rounded-lg p-3 shadow-sm border border-border"
 							>
 								<div
-									class="flex items-center text-sm text-gray-500 dark:text-gray-400"
+									class="flex items-center text-sm text-muted-foreground"
 								>
 									<Loader2 class="w-4 h-4 mr-2 animate-spin" />
 									<span>Loading next brief...</span>
@@ -774,12 +774,12 @@
 							</div>
 						{:else if nextScheduledBrief}
 							<div
-								class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 shadow-sm border border-blue-200 dark:border-blue-800"
+								class="bg-accent/10 rounded-lg p-3 shadow-sm border border-accent/30"
 							>
 								<div
-									class="flex items-center text-sm text-gray-600 dark:text-gray-300"
+									class="flex items-center text-sm text-muted-foreground"
 								>
-									<Clock class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
+									<Clock class="w-4 h-4 mr-2 text-accent" />
 									<span class="font-medium">Next Brief:</span>
 									<span class="ml-1"
 										>{formatDateTime(
@@ -792,7 +792,7 @@
 						{/if}
 
 						<div
-							class="flex flex-col space-y-2 bg-white dark:bg-gray-800 rounded-lg p-2 shadow-sm border border-gray-200 dark:border-gray-700"
+							class="flex flex-col space-y-2 bg-card rounded-lg p-2 shadow-sm border border-border"
 						>
 							{#each viewConfigs as view}
 								<Button
@@ -801,7 +801,7 @@
 									variant={selectedView === view.id ? 'primary' : 'ghost'}
 									size="md"
 									class={selectedView === view.id
-										? 'bg-blue-600 text-white shadow-sm justify-start'
+										? 'bg-accent text-white shadow-sm justify-start'
 										: 'justify-start'}
 									icon={view.icon}
 								>
@@ -816,7 +816,7 @@
 				{#if selectedView === 'single'}
 					<div class="sm:hidden mt-4">
 						<div
-							class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-2"
+							class="flex items-center justify-between bg-card rounded-lg shadow-sm border border-border p-2"
 						>
 							<Button
 								type="button"
@@ -829,7 +829,7 @@
 							></Button>
 
 							<div class="flex-1 text-center">
-								<span class="text-sm font-medium text-gray-900 dark:text-white">
+								<span class="text-sm font-medium text-foreground">
 									{BriefClientService.formatDisplayDate(currentDate)}
 								</span>
 							</div>
@@ -852,7 +852,7 @@
 								onclick={goToToday}
 								variant="primary"
 								size="sm"
-								class="w-full mt-2 bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800"
+								class="w-full mt-2 bg-accent/15 text-accent hover:bg-accent/25"
 							>
 								Go to Today
 							</Button>
@@ -864,21 +864,21 @@
 			<!-- Mobile-Optimized Streaming Progress -->
 			{#if currentStreamingStatus?.isGenerating}
 				<div
-					class="bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 shadow-sm"
+					class="bg-card border border-accent/30 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 shadow-sm"
 				>
 					<div class="flex items-center justify-between mb-3">
 						<div class="flex items-center flex-1">
 							<Loader2
-								class="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 animate-spin mr-2 sm:mr-3 flex-shrink-0"
+								class="w-4 h-4 sm:w-5 sm:h-5 text-accent animate-spin mr-2 sm:mr-3 flex-shrink-0"
 							/>
 							<div class="min-w-0">
 								<h3
-									class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white truncate"
+									class="text-sm sm:text-base font-semibold text-foreground truncate"
 								>
 									Generating Brief
 								</h3>
 								<p
-									class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 truncate"
+									class="text-xs sm:text-sm text-accent truncate"
 								>
 									{currentStreamingStatus.message}
 								</p>
@@ -889,7 +889,7 @@
 							onclick={cancelGeneration}
 							variant="ghost"
 							size="sm"
-							class="p-1 sm:p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 ml-2"
+							class="p-1 sm:p-1.5 text-muted-foreground hover:text-destructive ml-2"
 							title="Cancel"
 							icon={X}
 						></Button>
@@ -898,7 +898,7 @@
 					{#if currentStreamingStatus.progress.projects.total > 0}
 						<div class="space-y-2">
 							<div
-								class="flex justify-between text-xs text-gray-600 dark:text-gray-400"
+								class="flex justify-between text-xs text-muted-foreground"
 							>
 								<span
 									>Progress: {currentStreamingStatus.progress.projects
@@ -908,10 +908,10 @@
 								<span>{overallProgress}%</span>
 							</div>
 							<div
-								class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 sm:h-2"
+								class="w-full bg-muted rounded-full h-1.5 sm:h-2"
 							>
 								<div
-									class="bg-blue-600 h-1.5 sm:h-2 rounded-full transition-all duration-500"
+									class="bg-accent h-1.5 sm:h-2 rounded-full transition-all duration-500"
 									style="width: {overallProgress}%"
 								></div>
 							</div>
@@ -923,13 +923,13 @@
 			<!-- Mobile-Optimized Error Display -->
 			{#if error || currentStreamingStatus?.error}
 				<div
-					class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 sm:mb-6"
+					class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4 sm:mb-6"
 				>
 					<div class="flex items-start">
 						<AlertCircle
-							class="w-4 h-4 mr-2 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5"
+							class="w-4 h-4 mr-2 text-destructive flex-shrink-0 mt-0.5"
 						/>
-						<p class="text-xs sm:text-sm text-red-800 dark:text-red-200 flex-1">
+						<p class="text-xs sm:text-sm text-destructive flex-1">
 							{error || currentStreamingStatus?.error}
 						</p>
 						<Button
@@ -937,7 +937,7 @@
 							onclick={() => (error = null)}
 							variant="ghost"
 							size="sm"
-							class="ml-2 p-0 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
+							class="ml-2 p-0 text-destructive hover:text-destructive/80"
 							icon={X}
 						></Button>
 					</div>
@@ -951,12 +951,12 @@
 				<!-- Mobile-Optimized Filters Panel -->
 				{#if showFilters}
 					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 border border-gray-200 dark:border-gray-700"
+						class="bg-card rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 border border-border"
 					>
 						<div class="space-y-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0">
 							<div class="sm:col-span-3 md:col-span-1">
 								<div
-									class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-xs font-medium text-muted-foreground mb-1"
 								>
 									Search
 								</div>
@@ -1006,18 +1006,18 @@
 					<div class="space-y-3 sm:space-y-4">
 						{#each Array(3) as _}
 							<div
-								class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 sm:p-4 animate-pulse"
+								class="bg-card rounded-lg shadow-sm p-3 sm:p-4 animate-pulse"
 							>
 								<div
-									class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2"
+									class="h-3 bg-muted rounded w-1/4 mb-2"
 								></div>
 								<div
-									class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-3"
+									class="h-4 bg-muted rounded w-3/4 mb-3"
 								></div>
 								<div class="space-y-2">
-									<div class="h-2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+									<div class="h-2 bg-muted rounded"></div>
 									<div
-										class="h-2 bg-gray-200 dark:bg-gray-700 rounded w-5/6"
+										class="h-2 bg-muted rounded w-5/6"
 									></div>
 								</div>
 							</div>
@@ -1027,7 +1027,7 @@
 					<div class="space-y-3 sm:space-y-4">
 						{#each filteredBriefs as brief}
 							<div
-								class="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 dark:border-gray-700"
+								class="bg-card rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-border"
 							>
 								<div class="p-3 sm:p-4">
 									<div
@@ -1035,14 +1035,14 @@
 									>
 										<div class="mb-2 sm:mb-0">
 											<h3
-												class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white"
+												class="text-sm sm:text-base font-semibold text-foreground"
 											>
 												{BriefClientService.formatDisplayDate(
 													brief.brief_date
 												)}
 											</h3>
 											<div
-												class="flex items-center text-xs text-gray-500 dark:text-gray-400"
+												class="flex items-center text-xs text-muted-foreground"
 											>
 												<Clock class="mr-1 h-3 w-3" />
 												{formatDateTime(
@@ -1058,7 +1058,7 @@
 												onclick={() => selectBriefDate(brief.brief_date)}
 												variant="ghost"
 												size="sm"
-												class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+												class="p-1.5 text-muted-foreground hover:text-accent hover:bg-accent/10"
 												title="View"
 												icon={Eye}
 											></Button>
@@ -1067,7 +1067,7 @@
 												onclick={() => copyBrief(brief)}
 												variant="ghost"
 												size="sm"
-												class="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+												class="p-1.5 text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
 												title="Copy"
 												icon={Copy}
 											></Button>
@@ -1076,7 +1076,7 @@
 												onclick={() => exportBrief(brief)}
 												variant="ghost"
 												size="sm"
-												class="p-1.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+												class="p-1.5 text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
 												title="Export"
 												icon={Download}
 											></Button>
@@ -1085,7 +1085,7 @@
 												onclick={() => showDeleteBriefConfirmation(brief)}
 												variant="ghost"
 												size="sm"
-												class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+												class="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
 												title="Delete"
 												icon={Trash2}
 											></Button>
@@ -1093,7 +1093,7 @@
 									</div>
 
 									<div
-										class="text-xs sm:text-sm text-gray-700 dark:text-gray-300 line-clamp-2 mb-3"
+										class="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-3"
 									>
 										{brief.summary_content.substring(0, 200)}
 										{brief.summary_content.length > 200 ? '...' : ''}
@@ -1103,7 +1103,7 @@
 										<div class="flex flex-wrap gap-1">
 											{#each brief.priority_actions.slice(0, 3) as action}
 												<span
-													class="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-800 rounded dark:bg-blue-900 dark:text-blue-300"
+													class="px-1.5 py-0.5 text-xs bg-accent/15 text-accent rounded "
 												>
 													{action.length > 30
 														? action.substring(0, 30) + '...'
@@ -1112,7 +1112,7 @@
 											{/each}
 											{#if brief.priority_actions.length > 3}
 												<span
-													class="px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded dark:bg-gray-700 dark:text-gray-400"
+													class="px-1.5 py-0.5 text-xs bg-muted text-muted-foreground rounded"
 												>
 													+{brief.priority_actions.length - 3}
 												</span>
@@ -1126,17 +1126,17 @@
 				{:else}
 					<div class="text-center py-8 sm:py-12">
 						<div
-							class="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 max-w-md mx-auto border border-gray-200 dark:border-gray-700"
+							class="bg-card rounded-lg p-4 sm:p-6 max-w-md mx-auto border border-border"
 						>
 							<Calendar
-								class="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3"
+								class="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3"
 							/>
 							<h3
-								class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2"
+								class="text-base sm:text-lg font-semibold text-foreground mb-2"
 							>
 								No Briefs Found
 							</h3>
-							<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+							<p class="text-xs sm:text-sm text-muted-foreground">
 								{searchQuery
 									? 'Try adjusting your search or filters.'
 									: 'Generate some daily briefs to see them here.'}
@@ -1150,21 +1150,21 @@
 					<!-- Mobile-Optimized Empty State -->
 					<div class="text-center py-8 sm:py-12">
 						<div
-							class="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 max-w-lg mx-auto border border-gray-200 dark:border-gray-700"
+							class="bg-card rounded-lg p-4 sm:p-6 max-w-lg mx-auto border border-border"
 						>
 							<div
-								class="bg-blue-100 dark:bg-blue-900/20 rounded-full w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center mx-auto mb-4"
+								class="bg-accent/15 rounded-full w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center mx-auto mb-4"
 							>
 								<Sparkles
-									class="h-7 w-7 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400"
+									class="h-7 w-7 sm:h-8 sm:w-8 text-accent"
 								/>
 							</div>
 							<h3
-								class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-3"
+								class="text-lg sm:text-xl font-semibold text-foreground mb-3"
 							>
 								No Brief Available
 							</h3>
-							<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-6">
+							<p class="text-xs sm:text-sm text-muted-foreground mb-6">
 								{isToday
 									? "Generate your daily brief to get started with today's priorities and insights."
 									: 'No brief was generated for this date.'}
@@ -1198,13 +1198,13 @@
 				{:else if displayDailyBrief}
 					<!-- Mobile-Optimized Main Brief Card -->
 					<div
-						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200 dark:border-gray-700"
+						class="bg-card rounded-lg shadow-sm p-4 sm:p-6 mb-4 sm:mb-6 border border-border"
 					>
 						<div
 							class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4"
 						>
 							<h2
-								class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-0"
+								class="text-lg sm:text-xl font-bold text-foreground mb-2 sm:mb-0"
 							>
 								Daily Brief
 							</h2>
@@ -1212,7 +1212,7 @@
 								class="flex items-center justify-between sm:justify-end sm:space-x-2"
 							>
 								<div
-									class="flex items-center text-xs text-gray-500 dark:text-gray-400"
+									class="flex items-center text-xs text-muted-foreground"
 								>
 									<Clock class="w-3 h-3 mr-1" />
 									{displayDailyBrief.generation_completed_at
@@ -1228,7 +1228,7 @@
 										onclick={() => exportBrief(displayDailyBrief)}
 										variant="ghost"
 										size="sm"
-										class="p-1.5 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+										class="p-1.5 text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
 										title="Export"
 										icon={Download}
 									></Button>
@@ -1237,7 +1237,7 @@
 										onclick={() => copyBrief(displayDailyBrief)}
 										variant="ghost"
 										size="sm"
-										class="p-1.5 text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+										class="p-1.5 text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
 										title="Copy"
 										icon={Copy}
 									></Button>
@@ -1247,7 +1247,7 @@
 										disabled={currentStreamingStatus?.isGenerating}
 										variant="ghost"
 										size="sm"
-										class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+										class="p-1.5 text-muted-foreground hover:text-accent hover:bg-accent/10"
 										title="Regenerate"
 										icon={currentStreamingStatus?.isGenerating
 											? Loader2
@@ -1259,10 +1259,8 @@
 
 						<div
 							class="prose prose-gray dark:prose-invert max-w-none prose-sm
-							prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700
-							prose-strong:text-gray-900 prose-a:text-blue-600 prose-blockquote:text-gray-700
-							dark:prose-headings:text-white dark:prose-p:text-gray-300 dark:prose-li:text-gray-300
-							dark:prose-strong:text-white dark:prose-a:text-blue-400 dark:prose-blockquote:text-gray-300
+							prose-headings:text-foreground prose-p:text-muted-foreground prose-li:text-muted-foreground
+							prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
 							prose-headings:text-base sm:prose-headings:text-lg
 							prose-p:text-sm sm:prose-p:text-base
 							prose-li:text-sm sm:prose-li:text-base"
@@ -1272,10 +1270,10 @@
 
 						{#if displayDailyBrief.priority_actions?.length}
 							<div
-								class="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+								class="mt-4 sm:mt-6 p-3 sm:p-4 bg-accent/10 rounded-lg border border-accent/30"
 							>
 								<h3
-									class="font-medium text-blue-900 dark:text-blue-200 mb-2 sm:mb-3 flex items-center text-sm"
+									class="font-medium text-accent mb-2 sm:mb-3 flex items-center text-sm"
 								>
 									<ArrowRight class="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
 									Priority Actions
@@ -1283,7 +1281,7 @@
 								<ul class="space-y-1.5 sm:space-y-2">
 									{#each displayDailyBrief.priority_actions as action}
 										<li
-											class="flex items-start text-xs sm:text-sm text-blue-800 dark:text-blue-300"
+											class="flex items-start text-xs sm:text-sm text-accent"
 										>
 											<ArrowRight
 												class="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-1.5 sm:mr-2 mt-0.5 flex-shrink-0"
@@ -1307,7 +1305,7 @@
 				{:else if isRefreshing}
 					<!-- Show loading state while refreshing -->
 					<div class="flex justify-center items-center py-12">
-						<Loader2 class="w-8 h-8 text-blue-600 animate-spin" />
+						<Loader2 class="w-8 h-8 text-accent animate-spin" />
 					</div>
 				{/if}
 			{/if}
@@ -1327,13 +1325,13 @@
 	oncancel={cancelDeleteBrief}
 >
 	{#snippet content()}
-		<p class="text-sm text-gray-500 dark:text-gray-400">
+		<p class="text-sm text-muted-foreground">
 			Are you sure you want to delete this brief? This action cannot be undone.
 		</p>
 	{/snippet}
 	{#snippet details()}
 		<div class="mt-2">
-			<p class="text-xs text-gray-400 dark:text-gray-500">
+			<p class="text-xs text-muted-foreground">
 				Brief: {briefToDelete?.brief_date}
 			</p>
 		</div>

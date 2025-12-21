@@ -175,13 +175,13 @@
 			case 'processed':
 			case 'active':
 			case 'completed':
-				return 'text-emerald-600 dark:text-emerald-400';
+				return 'text-emerald-500';
 			case 'processing':
-				return 'text-blue-600 dark:text-blue-400 animate-spin';
+				return 'text-accent animate-spin';
 			case 'pending':
-				return 'text-amber-600 dark:text-amber-400';
+				return 'text-amber-500';
 			case 'failed':
-				return 'text-red-600 dark:text-red-400';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -193,8 +193,8 @@
 
 	function getTypeColor(type: HistoryItem['type']) {
 		return type === 'chat_session'
-			? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-			: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300';
+			? 'bg-accent/15 text-accent'
+			: 'bg-purple-500/15 text-purple-600 dark:text-purple-400';
 	}
 
 	function formatDate(dateStr: string) {
@@ -282,20 +282,20 @@
 
 <div class="min-h-screen bg-background">
 	<!-- Header -->
-	<div class="border-b border-border bg-card">
-		<div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-			<div class="flex items-center gap-3">
-				<div class="rounded-lg bg-violet-100 p-2 dark:bg-violet-900/30">
-					<Lightbulb class="h-6 w-6 text-violet-600 dark:text-violet-400" />
+	<div class="border-b border-border bg-card tx tx-frame tx-weak">
+		<div class="mx-auto max-w-6xl px-2 sm:px-4 lg:px-8 py-3 sm:py-6">
+			<div class="flex items-center gap-2 sm:gap-3">
+				<div class="rounded-md sm:rounded-lg bg-accent/15 p-1.5 sm:p-2">
+					<Lightbulb class="h-4 w-4 sm:h-6 sm:w-6 text-accent" />
 				</div>
-				<div>
+				<div class="min-w-0 flex-1">
 					<div class="flex items-center gap-2">
-						<h1 class="text-2xl font-bold text-foreground">History</h1>
+						<h1 class="text-lg sm:text-2xl font-bold text-foreground">History</h1>
 						{#if historyLoading}
-							<Loader2 class="h-5 w-5 animate-spin text-muted-foreground" />
+							<Loader2 class="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-muted-foreground" />
 						{/if}
 					</div>
-					<p class="text-sm text-muted-foreground">
+					<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
 						Your braindumps and chat conversations
 					</p>
 				</div>
@@ -304,132 +304,133 @@
 	</div>
 
 	<!-- Main content -->
-	<div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-		<!-- Stats cards -->
-		<div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-			<div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
-				<div class="text-2xl font-bold text-foreground">
+	<div class="mx-auto max-w-6xl px-2 sm:px-4 lg:px-8 py-3 sm:py-6">
+		<!-- Stats cards - compact on mobile -->
+		<div class="mb-3 sm:mb-6 grid grid-cols-4 gap-1.5 sm:gap-4">
+			<div class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak">
+				<div class="text-base sm:text-2xl font-bold text-foreground">
 					{stats.totalBraindumps + stats.totalChatSessions}
 				</div>
-				<div class="text-sm text-muted-foreground">Total Items</div>
+				<div class="text-[9px] sm:text-sm text-muted-foreground">Total</div>
 			</div>
-			<div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
-				<div class="flex items-center gap-2">
-					<Brain class="h-5 w-5 text-violet-600 dark:text-violet-400" />
-					<span class="text-2xl font-bold text-violet-600 dark:text-violet-400">
+			<div class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak">
+				<div class="flex items-center gap-1 sm:gap-2">
+					<Brain class="h-3 w-3 sm:h-5 sm:w-5 text-purple-500 hidden sm:block" />
+					<span class="text-base sm:text-2xl font-bold text-purple-500">
 						{stats.totalBraindumps}
 					</span>
 				</div>
-				<div class="text-sm text-muted-foreground">Braindumps</div>
+				<div class="text-[9px] sm:text-sm text-muted-foreground">Dumps</div>
 			</div>
-			<div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
-				<div class="flex items-center gap-2">
-					<MessagesSquare class="h-5 w-5 text-blue-600 dark:text-blue-400" />
-					<span class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+			<div class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak">
+				<div class="flex items-center gap-1 sm:gap-2">
+					<MessagesSquare class="h-3 w-3 sm:h-5 sm:w-5 text-accent hidden sm:block" />
+					<span class="text-base sm:text-2xl font-bold text-accent">
 						{stats.totalChatSessions}
 					</span>
 				</div>
-				<div class="text-sm text-muted-foreground">Chat Sessions</div>
+				<div class="text-[9px] sm:text-sm text-muted-foreground">Chats</div>
 			</div>
-			<div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-frame tx-weak">
-				<div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+			<div class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak">
+				<div class="text-base sm:text-2xl font-bold text-emerald-500">
 					{stats.processedBraindumps + stats.chatSessionsWithSummary}
 				</div>
-				<div class="text-sm text-muted-foreground">With Summary</div>
+				<div class="text-[9px] sm:text-sm text-muted-foreground">Done</div>
 			</div>
 		</div>
 
-		<!-- Type filter tabs -->
-		<div class="mb-4 flex gap-2 border-b border-border">
+		<!-- Type filter tabs - compact on mobile -->
+		<div class="mb-2 sm:mb-4 flex gap-0.5 sm:gap-2 border-b border-border overflow-x-auto">
 			<button
 				onclick={() => setTypeFilter('all')}
-				class="relative px-4 py-2 text-sm font-medium transition-colors {typeFilter ===
+				class="relative px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
 				'all'
 					? 'text-foreground'
 					: 'text-muted-foreground hover:text-foreground'}"
 			>
 				All
 				{#if typeFilter === 'all'}
-					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600"></span>
+					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
 				{/if}
 			</button>
 			<button
 				onclick={() => setTypeFilter('braindumps')}
-				class="relative flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors {typeFilter ===
+				class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
 				'braindumps'
 					? 'text-foreground'
 					: 'text-muted-foreground hover:text-foreground'}"
 			>
-				<Brain class="h-4 w-4" />
-				Braindumps
+				<Brain class="h-3 w-3 sm:h-4 sm:w-4" />
+				<span class="hidden sm:inline">Braindumps</span>
+				<span class="sm:hidden">Dumps</span>
 				<span
-					class="rounded-full bg-violet-100 px-1.5 py-0.5 text-xs text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+					class="rounded-full bg-purple-500/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-purple-600 dark:text-purple-400"
 				>
 					{stats.totalBraindumps}
 				</span>
 				{#if typeFilter === 'braindumps'}
-					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600"></span>
+					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500"></span>
 				{/if}
 			</button>
 			<button
 				onclick={() => setTypeFilter('chats')}
-				class="relative flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors {typeFilter ===
+				class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
 				'chats'
 					? 'text-foreground'
 					: 'text-muted-foreground hover:text-foreground'}"
 			>
-				<MessagesSquare class="h-4 w-4" />
+				<MessagesSquare class="h-3 w-3 sm:h-4 sm:w-4" />
 				Chats
 				<span
-					class="rounded-full bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+					class="rounded-full bg-accent/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-accent"
 				>
 					{stats.totalChatSessions}
 				</span>
 				{#if typeFilter === 'chats'}
-					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></span>
+					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
 				{/if}
 			</button>
 		</div>
 
-		<!-- Search and filters -->
-		<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+		<!-- Search and filters - compact on mobile -->
+		<div class="mb-3 sm:mb-6 flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center">
 			<div class="relative flex-1">
 				<Search
-					class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+					class="absolute left-2.5 sm:left-3 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground"
 				/>
 				<input
 					type="text"
-					placeholder="Search history..."
+					placeholder="Search..."
 					bind:value={searchInput}
 					onkeydown={handleKeydown}
-					class="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+					class="w-full rounded-md sm:rounded-lg border border-border bg-background py-1.5 sm:py-2 pl-8 sm:pl-10 pr-3 sm:pr-4 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 				/>
 			</div>
-			<div class="flex items-center gap-2">
-				<Filter class="h-4 w-4 text-muted-foreground" />
+			<div class="flex items-center gap-1.5 sm:gap-2">
+				<Filter class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground hidden sm:block" />
 				<select
 					bind:value={statusFilter}
 					onchange={applyFilters}
-					class="rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+					class="flex-1 sm:flex-none rounded-md sm:rounded-lg border border-border bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 				>
-					<option value="">All statuses</option>
-					<option value="processed">Processed / With Summary</option>
+					<option value="">All</option>
+					<option value="processed">Done</option>
 					<option value="pending">Pending</option>
 					<option value="processing">Processing</option>
 					<option value="failed">Failed</option>
 				</select>
 				<button
 					onclick={applyFilters}
-					class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 pressable"
+					class="rounded-md sm:rounded-lg bg-accent px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable"
 				>
-					Search
+					Go
 				</button>
 				{#if searchInput || statusFilter || typeFilter !== 'all'}
 					<button
 						onclick={clearFilters}
-						class="rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted pressable"
+						class="rounded-md sm:rounded-lg border border-border p-1.5 sm:px-3 sm:py-2 text-sm text-muted-foreground hover:bg-muted pressable"
 					>
-						<X class="h-4 w-4" />
+						<X class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
 					</button>
 				{/if}
 			</div>
@@ -442,14 +443,14 @@
 		{:else if historyError}
 			<!-- Error state -->
 			<div
-				class="flex flex-col items-center justify-center rounded-lg border border-dashed border-red-300 bg-red-50 py-16 dark:border-red-800 dark:bg-red-900/20"
+				class="flex flex-col items-center justify-center rounded-lg border border-dashed border-destructive/30 bg-destructive/5 py-16 tx tx-static tx-weak"
 			>
-				<AlertCircle class="mb-4 h-12 w-12 text-red-500" />
+				<AlertCircle class="mb-4 h-12 w-12 text-destructive" />
 				<h3 class="mb-2 text-lg font-medium text-foreground">Failed to load history</h3>
 				<p class="mb-4 text-center text-sm text-muted-foreground">{historyError}</p>
 				<button
 					onclick={() => location.reload()}
-					class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 pressable"
+					class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable"
 				>
 					Retry
 				</button>
@@ -473,74 +474,74 @@
 				</p>
 			</div>
 		{:else}
-			<!-- Responsive grid: 1 col mobile, 2 cols tablet, 3 cols desktop -->
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			<!-- Responsive grid: 2 cols mobile for density, 2 cols tablet, 3 cols desktop -->
+			<div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
 				{#each items as item (item.id)}
 					<button
 						onclick={() => openItem(item)}
-						class="group flex h-full flex-col rounded-lg border border-border bg-card p-4 text-left shadow-ink transition-all hover:border-violet-500/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable"
+						class="group flex h-full flex-col rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable"
 					>
 						<!-- Header: Type badge and status -->
-						<div class="mb-2 flex items-center justify-between">
+						<div class="mb-1 sm:mb-2 flex items-center justify-between">
 							<span
-								class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium {getTypeColor(
+								class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-medium {getTypeColor(
 									item.type
 								)}"
 							>
-								<svelte:component this={getTypeIcon(item.type)} class="h-3 w-3" />
-								{item.type === 'chat_session' ? 'Chat' : 'Braindump'}
+								<svelte:component this={getTypeIcon(item.type)} class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+								<span class="hidden sm:inline">{item.type === 'chat_session' ? 'Chat' : 'Braindump'}</span>
 							</span>
 							<svelte:component
 								this={getStatusIcon(item.status)}
-								class="h-4 w-4 flex-shrink-0 {getStatusColor(item.status)}"
+								class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 {getStatusColor(item.status)}"
 							/>
 						</div>
 
 						<!-- Title -->
-						<h3 class="mb-2 line-clamp-2 font-medium text-foreground">
+						<h3 class="mb-1 sm:mb-2 line-clamp-2 text-xs sm:text-base font-medium text-foreground">
 							{item.title}
 						</h3>
 
-						<!-- Preview / Summary -->
-						<p class="mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground">
+						<!-- Preview / Summary - hidden on mobile for density -->
+						<p class="hidden sm:block mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground">
 							{item.preview}
 						</p>
 
-						<!-- Topics (compact) -->
+						<!-- Topics (compact) - show fewer on mobile -->
 						{#if item.topics && item.topics.length > 0}
-							<div class="mb-3 flex flex-wrap gap-1">
-								{#each item.topics.slice(0, 3) as topic}
+							<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
+								{#each item.topics.slice(0, 2) as topic}
 									<span
-										class="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+										class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[10px] text-muted-foreground truncate max-w-[60px] sm:max-w-none"
 									>
 										{topic}
 									</span>
 								{/each}
-								{#if item.topics.length > 3}
-									<span class="text-[10px] text-muted-foreground">
-										+{item.topics.length - 3}
+								{#if item.topics.length > 2}
+									<span class="text-[8px] sm:text-[10px] text-muted-foreground">
+										+{item.topics.length - 2}
 									</span>
 								{/if}
 							</div>
 						{/if}
 
-						<!-- Footer: Metadata -->
+						<!-- Footer: Metadata - compact on mobile -->
 						<div
-							class="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground"
+							class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-[9px] sm:text-xs text-muted-foreground"
 						>
-							<span class="flex items-center gap-1">
-								<Clock class="h-3 w-3" />
-								{formatDate(item.createdAt)}
+							<span class="flex items-center gap-0.5 sm:gap-1 truncate">
+								<Clock class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+								<span class="truncate">{formatDate(item.createdAt)}</span>
 							</span>
-							<div class="flex items-center gap-2">
+							<div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
 								{#if item.type === 'chat_session' && item.messageCount}
-									<span class="flex items-center gap-1">
-										<MessageSquare class="h-3 w-3" />
+									<span class="flex items-center gap-0.5">
+										<MessageSquare class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
 										{item.messageCount}
 									</span>
 								{/if}
 								<ChevronRight
-									class="h-4 w-4 text-muted-foreground transition-colors group-hover:text-violet-600 dark:group-hover:text-violet-400"
+									class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground transition-colors group-hover:text-accent"
 								/>
 							</div>
 						</div>

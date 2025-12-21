@@ -109,7 +109,9 @@
 		totalDocuments: 0,
 		totalPlans: 0,
 		totalGoals: 0,
-		totalMilestones: 0
+		totalMilestones: 0,
+		totalRisks: 0,
+		totalDecisions: 0
 	};
 
 	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {

@@ -9,7 +9,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(cat:*)",
       "Bash(pnpm check:*)",
-      "mcp__perplexity__reason"
+      "mcp__perplexity__reason",
+      "Bash(pnpm run build:*)"
     ],
     "deny": [],
     "ask": []
