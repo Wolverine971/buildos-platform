@@ -9,14 +9,15 @@
 	import DocumentEditor from '$lib/components/ontology/DocumentEditor.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
-	import type { ComponentType } from 'svelte';
+	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import { OUTPUT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let AgentChatModalComponent = $state<Component<any, any, any> | null>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
@@ -419,7 +420,7 @@
 								Description
 							</label>
 							<Button
-								size="xs"
+								size="sm"
 								variant="secondary"
 								onclick={handleDescriptionSave}
 								disabled={savingDescription}
@@ -434,7 +435,7 @@
 							rows="3"
 							bind:value={description}
 							placeholder="What does this output cover?"
-						/>
+						></textarea>
 					</div>
 
 					<!-- Linked Entities -->
@@ -510,10 +511,12 @@
 	on:confirm={handleDelete}
 	on:cancel={() => (showDeleteConfirm = false)}
 >
-	<p class="text-sm text-gray-600 dark:text-gray-300">
-		This removes the text document and any references in the project. This action cannot be
-		undone.
-	</p>
+	{#snippet content()}
+		<p class="text-sm text-gray-600 dark:text-gray-300">
+			This removes the text document and any references in the project. This action cannot be
+			undone.
+		</p>
+	{/snippet}
 </ConfirmationModal>
 
 <!-- Linked Entity Modals -->
@@ -529,10 +532,6 @@
 
 <!-- Chat About Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
-	<svelte:component
-		this={AgentChatModalComponent}
-		isOpen={showChatModal}
-		initialProjectFocus={entityFocus}
-		onClose={handleChatClose}
-	/>
+	{@const ChatModal = AgentChatModalComponent}
+	<ChatModal isOpen={showChatModal} initialProjectFocus={entityFocus} onClose={handleChatClose} />
 {/if}

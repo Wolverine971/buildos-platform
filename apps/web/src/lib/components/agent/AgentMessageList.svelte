@@ -115,6 +115,15 @@
 								{message.content}
 							</div>
 						{/if}
+						{#if message.metadata?.interrupted}
+							<div
+								class="mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
+								role="status"
+								aria-live="polite"
+							>
+								Response interrupted
+							</div>
+						{/if}
 						<!-- INKPRINT micro-label timestamp -->
 						<div
 							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"

@@ -14,7 +14,9 @@
 		ChevronDown,
 		ChevronRight,
 		Maximize2,
-		SlidersHorizontal
+		SlidersHorizontal,
+		AlertTriangle,
+		Scale
 	} from 'lucide-svelte';
 	import type { GraphStats, OntologyGraphInstance, ViewMode } from './lib/graph.types';
 
@@ -73,7 +75,9 @@
 		{ value: 'goal', label: 'Goals' },
 		{ value: 'milestone', label: 'Milestones' },
 		{ value: 'output', label: 'Outputs' },
-		{ value: 'document', label: 'Documents' }
+		{ value: 'document', label: 'Documents' },
+		{ value: 'risk', label: 'Risks' },
+		{ value: 'decision', label: 'Decisions' }
 	];
 
 	// Node legend items with colors matching the graph
@@ -84,7 +88,9 @@
 		{ icon: Target, label: 'Goal', color: 'text-amber-500' },
 		{ icon: Flag, label: 'Milestone', color: 'text-emerald-500' },
 		{ icon: Layers, label: 'Output', color: 'text-purple-500' },
-		{ icon: FileText, label: 'Document', color: 'text-blue-500' }
+		{ icon: FileText, label: 'Document', color: 'text-blue-500' },
+		{ icon: AlertTriangle, label: 'Risk', color: 'text-red-500' },
+		{ icon: Scale, label: 'Decision', color: 'text-violet-500' }
 	];
 
 	// Edge legend items
@@ -266,6 +272,22 @@
 						<span class="text-lg font-bold text-foreground">{stats.totalDocuments}</span
 						>
 						<span class="text-muted-foreground">Documents</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50"
+					>
+						<span class="text-lg font-bold text-red-600 dark:text-red-400"
+							>{stats.totalRisks ?? 0}</span
+						>
+						<span class="text-red-600/70 dark:text-red-400/70">Risks</span>
+					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50"
+					>
+						<span class="text-lg font-bold text-violet-600 dark:text-violet-400"
+							>{stats.totalDecisions ?? 0}</span
+						>
+						<span class="text-violet-600/70 dark:text-violet-400/70">Decisions</span>
 					</div>
 				</div>
 			{/if}

@@ -1,13 +1,20 @@
 <!-- apps/web/docs/features/agentic-chat/STREAM_INTERRUPT_SPEC.md -->
+
 # Agentic Chat Stream Interruption Spec
 
 **Created**: 2025-12-20
-**Status**: Draft
+**Status**: Draft (v2)
 **Author**: AI-assisted
 
 ## Overview
 
 Enable users to interrupt/cancel an in-progress AI agent response mid-stream and immediately send a new message without waiting for the current response to complete.
+
+**This revision adds:**
+
+- Explicit `interrupted/cancelled` statuses for thinking blocks and assistant messages.
+- A stale-stream guard to drop late SSE chunks after aborts.
+- Persistence rules for partial assistant output and partial tool results (with metadata for context safety).
 
 ## Current Architecture Analysis
 
@@ -31,14 +38,16 @@ signal: streamController.signal
 ```
 
 **Current abort triggers:**
+
 - `handleClose()` (line 1608): Aborts when modal is closed
 - `onDestroy()` (line 2482): Cleanup on component destruction
 - New `sendMessage()` call (line 1716): Aborts previous stream before starting new one
 
-**Current limitations:**
+**Previous limitations (addressed in this spec/implementation):**
+
 - No explicit "Stop" button in UI during streaming
-- Composer is disabled while `isStreaming === true`
-- Users must close the modal to abort
+- Composer was disabled while `isStreaming === true`
+- Users had to close the modal to abort
 
 ### Backend (stream-handler.ts)
 
@@ -71,8 +80,8 @@ The orchestrator also respects abort signals throughout:
 ```typescript
 // Line 262-265: Checks abort in loop
 if (request.abortSignal?.aborted) {
-    doneEmitted = true;
-    return;
+	doneEmitted = true;
+	return;
 }
 
 // Lines 497, 549, 573, 608: Multiple abort checkpoints
@@ -107,24 +116,25 @@ Replace the send button with a stop button while streaming:
 ```svelte
 <!-- AgentComposer.svelte -->
 {#if isStreaming}
-    <button
-        type="button"
-        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-ink transition-all duration-100 pressable hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:w-10"
-        aria-label="Stop response"
-        onclick={onStop}
-    >
-        <Square class="h-4 w-4" />
-    </button>
+	<button
+		type="button"
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-ink transition-all duration-100 pressable hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:w-10"
+		aria-label="Stop response"
+		onclick={onStop}
+	>
+		<Square class="h-4 w-4" />
+	</button>
 {:else}
-    <!-- existing send button -->
+	<!-- existing send button -->
 {/if}
 ```
 
 Add new prop to AgentComposer:
+
 ```typescript
 interface Props {
-    // ... existing props
-    onStop?: () => void;
+	// ... existing props
+	onStop?: () => void;
 }
 ```
 
@@ -139,6 +149,11 @@ Change the composer to allow typing while streaming (but not sending until stopp
 
 The send button remains disabled during streaming, but the stop button is available.
 
+Decouple button disabled states:
+
+- Stop button should remain enabled while streaming (unless an abort is already in flight).
+- `isSendDisabled` can stay true during streaming because the send button is hidden; introduce `isStopDisabled` if we need to block repeated clicks during abort cleanup.
+
 #### C. Visual Feedback
 
 Add a pulsing border or indicator during streaming to make it clear the response is in progress:
@@ -147,130 +162,217 @@ Add a pulsing border or indicator during streaming to make it clear the response
 <div class={`... ${isStreaming ? 'ring-2 ring-accent/50 animate-pulse' : ''}`}>
 ```
 
-### 2. State Management Changes
+### 2. State Management & Lifecycle
 
-#### A. New State Variables
+#### A. Status model (frontend)
+
+- Thinking blocks: `status` now supports `active | completed | interrupted | cancelled | error`. Aborted user stops should set `interrupted`; navigations/context-changes that supersede a turn should set `cancelled`.
+- Assistant messages: add metadata `{ interrupted: boolean, interrupted_reason?: 'user_cancelled' | 'superseded' | 'error', stream_run_id?: number, partial_tokens?: number }` and an inline UI badge (“Response interrupted”) instead of appending plain text to content; hydrate metadata on session restore.
+- Conversation history passed to the server must **exclude** interrupted assistant messages so partial text does not poison future prompts.
+
+#### B. State fields
 
 ```typescript
-// Track if user manually stopped vs natural completion
 let wasManuallyStopped = $state(false);
-
-// Track partial response content for display
-let partialResponseContent = $state('');
+let activeStreamRunId = $state(0); // monotonic run token for stream guards
+let interruptedReason = $state<'user_cancelled' | 'superseded' | 'error'>('user_cancelled');
 ```
 
-#### B. New Stop Handler
+#### C. Stop handler (ordering fixed to avoid dropping metadata)
 
 ```typescript
-function handleStopGeneration() {
-    if (!isStreaming || !currentStreamController) return;
+function finalizeThinkingBlock(
+	status: 'completed' | 'interrupted' | 'cancelled' | 'error' = 'completed',
+	note?: string
+) {
+	if (!currentThinkingBlockId) return;
+	updateThinkingBlock(currentThinkingBlockId, (block) => ({
+		...block,
+		status,
+		content:
+			note ??
+			(status === 'interrupted'
+				? 'Stopped'
+				: status === 'cancelled'
+					? 'Cancelled'
+					: status === 'error'
+						? 'Error'
+						: 'Complete')
+	}));
+	currentThinkingBlockId = null;
+}
 
-    wasManuallyStopped = true;
-    currentStreamController.abort();
-    currentStreamController = null;
+function handleStopGeneration(
+	reason: 'user_cancelled' | 'superseded' | 'error' = 'user_cancelled'
+) {
+	if (!isStreaming || !currentStreamController) return;
 
-    // Keep the partial response visible
-    finalizeThinkingBlock();
-    finalizeAssistantMessage();
+	wasManuallyStopped = true;
+	interruptedReason = reason;
+	const runId = activeStreamRunId;
+	// Invalidate the current run so late SSE chunks are dropped
+	activeStreamRunId = activeStreamRunId + 1;
 
-    // Mark the message as interrupted
-    if (currentAssistantMessageId) {
-        updateAssistantMessage(currentAssistantMessageId, (msg) => ({
-            ...msg,
-            content: msg.content + '\n\n*[Response interrupted]*',
-            metadata: { ...msg.metadata, interrupted: true }
-        }));
-    }
+	currentStreamController.abort();
 
-    // Reset streaming state immediately
-    isStreaming = false;
-    currentActivity = '';
-    agentState = null;
-    agentStateDetails = null;
+	if (currentAssistantMessageId) {
+		updateAssistantMessage(currentAssistantMessageId, (msg) => ({
+			...msg,
+			metadata: {
+				...msg.metadata,
+				interrupted: true,
+				interrupted_reason: reason,
+				stream_run_id: runId
+			}
+		}));
+	}
 
-    // Focus the input for immediate typing
-    voiceInputRef?.focus?.();
+	finalizeThinkingBlock(
+		reason === 'superseded' ? 'cancelled' : 'interrupted',
+		reason === 'user_cancelled' ? 'Stopped by you' : 'Stopped'
+	);
+	finalizeAssistantMessage(); // Only after metadata is written
+
+	isStreaming = false;
+	currentActivity = '';
+	agentState = null;
+	agentStateDetails = null;
+	voiceInputRef?.focus?.();
 }
 ```
 
-#### C. Update sendMessage to Handle Quick Succession
+#### D. Send flow with stale-stream guard
 
-```diff
+```typescript
 async function sendMessage(...) {
-+   // If currently streaming, abort first
-+   if (isStreaming && currentStreamController) {
-+       wasManuallyStopped = true;
-+       currentStreamController.abort();
-+       currentStreamController = null;
-+       // Small delay to ensure cleanup
-+       await new Promise(resolve => setTimeout(resolve, 50));
-+   }
+    // Abort any in-flight stream before starting a new one
+    if (isStreaming && currentStreamController) {
+        handleStopGeneration('superseded');
+    }
 
-    // ... rest of sendMessage
+    const runId = ++activeStreamRunId;
+    let streamController: AbortController | null = new AbortController();
+    currentStreamController = streamController;
+
+    // Build conversation history without interrupted assistant messages
+    const conversationHistory = messages
+        .filter(
+            (msg) =>
+                (msg.role === 'user' || msg.role === 'assistant') &&
+                !msg.metadata?.interrupted
+        )
+        .map(...);
+
+    // Include runId in the request payload so the backend can tag partial persistence
+    const response = await fetch('/api/agent/stream', {
+        method: 'POST',
+        signal: streamController.signal,
+        body: JSON.stringify({
+            message: trimmed,
+            session_id: currentSession?.id,
+            context_type: selectedContextType,
+            entity_id: selectedEntityId,
+            conversation_history: conversationHistory,
+            stream_run_id: runId
+        })
+    });
+
+    const callbacks: StreamCallbacks = {
+        onProgress: (data: any) => {
+            if (runId !== activeStreamRunId) return; // drop late chunks
+            handleSSEMessage(data as AgentSSEMessage);
+        },
+        onError: (err) => {
+            if (runId !== activeStreamRunId) return;
+            // existing error handling...
+        },
+        onComplete: () => {
+            if (runId !== activeStreamRunId) return;
+            isStreaming = false;
+            currentActivity = '';
+            currentStreamController = null;
+            agentState = null;
+            agentStateDetails = null;
+            if (!receivedStreamEvent && !error) {
+                error = 'BuildOS did not return a response. Please try again.';
+            }
+            finalizeThinkingBlock('completed');
+            finalizeAssistantMessage();
+            lastFinishedRunId = runId;
+        }
+    };
+
+    await SSEProcessor.processStream(response, callbacks, {
+        timeout: 240000,
+        parseJSON: true,
+        signal: streamController.signal
+    });
 }
 ```
 
 ### 3. Backend Graceful Shutdown
 
-#### A. Interrupted Message Persistence
+#### A. Abort path persists flagged partials
 
-When an abort signal is received, persist the partial response with metadata:
+- Accept `stream_run_id` in `/api/agent/stream` payload and thread it through `StreamRequest` → orchestrator → persistence so backend metadata matches the frontend guard.
 
 ```typescript
-// stream-handler.ts - in the finally block or abort handler
-if (abortSignal?.aborted && state.assistantResponse.trim()) {
-    await this.messagePersister.persistAssistantMessage({
-        sessionId: session.id,
-        userId,
-        content: state.assistantResponse,
-        metadata: {
-            interrupted: true,
-            interruptedAt: new Date().toISOString()
-        }
-    });
+// stream-handler.ts - in finally/abort branch
+if (abortSignal?.aborted) {
+	const interruptReason =
+		(abortSignal as any).reason === 'superseded' ? 'superseded' : 'user_cancelled';
+	const metadata = {
+		interrupted: true,
+		interrupted_reason: interruptReason,
+		stream_run_id: request.streamRunId,
+		interrupted_at: new Date().toISOString()
+	};
+
+	if (state.assistantResponse.trim()) {
+		await this.messagePersister.persistAssistantMessage({
+			sessionId: session.id,
+			userId,
+			content: state.assistantResponse,
+			messageType: 'assistant_interrupted',
+			metadata: {
+				...metadata,
+				partial_tokens: state.assistantResponse.length // replace with token count if available
+			}
+		});
+	}
+
+	// Persist only completed tool results; skip pending tool calls without results
+	if (state.toolResults.length > 0) {
+		await this.messagePersister.persistToolResults({
+			sessionId: session.id,
+			userId,
+			toolCalls: state.toolCalls,
+			toolResults: state.toolResults,
+			messageType: 'tool_partial',
+			metadata: { ...metadata, partial: true }
+		});
+	}
+
+	return; // Do not generate lastTurnContext on aborted runs
 }
 ```
 
-#### B. Tool Execution Cleanup
+#### B. Tool execution cancellation
 
-For long-running tool executions, ensure they can be cancelled:
+- `ToolExecutionService.executeTool` accepts an `abortSignal` option; short-circuits if already aborted, races execution against the signal, and returns “Operation cancelled” on abort. `executeMultipleTools` exits early on abort.
+- `AgentChatOrchestrator` forwards `request.abortSignal` into tool execution so long-running tools are cancelled when the stream aborts.
 
-```typescript
-// In tool-execution-service.ts
-async executeTool(toolCall, context, tools, options) {
-    const abortSignal = options?.abortSignal;
+#### C. Persistence format (Supabase `chat_messages`)
 
-    // Check at start
-    if (abortSignal?.aborted) {
-        return { success: false, error: 'Operation cancelled' };
-    }
-
-    // Pass to individual tool executors
-    return await executor.execute(toolCall, { ...options, abortSignal });
-}
-```
+- Use existing columns: `message_type` and `metadata`.
+- Assistant partial: `message_type: 'assistant_interrupted'`, `metadata: { interrupted: true, interrupted_reason, stream_run_id, partial_tokens }`.
+- Tool partial: `message_type: 'tool_partial'`, `metadata: { partial: true, interrupted: true, interrupted_reason, stream_run_id }`, `tool_name` populated, `tool_result` holds the structured JSON result (avoid double-stringifying), `tool_call_id` set.
+- Update `message-persister` helpers to accept `messageType` and `metadata` parameters.
 
 ### 4. SSE Events
 
-#### A. New Event Type for Interruption Acknowledgment
-
-```typescript
-// In AgentSSEMessage types
-interface InterruptedEvent {
-    type: 'interrupted';
-    reason: 'user_cancelled' | 'timeout' | 'error';
-    partialTokens?: number;
-}
-```
-
-#### B. Handle on Frontend
-
-```typescript
-case 'interrupted':
-    // Already handled by abort, but acknowledge
-    console.debug('[AgentChat] Server acknowledged interruption');
-    break;
-```
+- Existing event types remain (`text`, `tool_call`, `tool_result`, `done`, `error`, `context_shift`, etc.). A server-side `interrupted` ack is optional; if emitted, include `stream_run_id` and `reason`, and the frontend must drop it when `run_id !== activeStreamRunId`.
+- Frontend handlers must apply the runId guard from §2D before mutating UI state. `SSEProcessor` cancels on abort, but buffered chunks prior to cancel can still surface; the guard prevents stale updates.
 
 ### 5. Keyboard Shortcuts
 
@@ -278,25 +380,19 @@ Add keyboard support for stopping:
 
 ```typescript
 function handleKeyDown(event: KeyboardEvent) {
-    // Escape to stop generation
-    if (event.key === 'Escape' && isStreaming) {
-        event.preventDefault();
-        handleStopGeneration();
-        return;
-    }
+	if (event.key === 'Escape' && isStreaming) {
+		event.preventDefault();
+		handleStopGeneration('user_cancelled');
+		return;
+	}
 
-    // Existing Enter handling
-    if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        if (isStreaming) {
-            // Stop and send new message
-            handleStopGeneration();
-            // Queue the send after a brief delay
-            setTimeout(() => sendMessage(), 100);
-        } else if (!isSendDisabled) {
-            sendMessage();
-        }
-    }
+	if (event.key === 'Enter' && !event.shiftKey) {
+		event.preventDefault();
+		// sendMessage will stop an in-flight stream first
+		if (!isSendDisabled || isStreaming) {
+			sendMessage();
+		}
+	}
 }
 ```
 
@@ -305,11 +401,12 @@ function handleKeyDown(event: KeyboardEvent) {
 ### Phase 1: Basic Stop Button (MVP)
 
 1. Add stop button to AgentComposer
-2. Wire up `onStop` callback to `handleStopGeneration()`
-3. Ensure clean state reset on abort
-4. Mark interrupted messages visually
+2. Wire up `onStop` callback to `handleStopGeneration()` and ensure it sets thinking block status to `interrupted/cancelled` (not `completed`)
+3. Ensure clean state reset on abort and message metadata is written before finalizing
+4. Mark interrupted messages visually (badge) without mutating content text
 
 **Files to modify:**
+
 - `AgentComposer.svelte` - Add stop button and prop
 - `AgentChatModal.svelte` - Add `handleStopGeneration()` and wire to composer
 
@@ -318,21 +415,26 @@ function handleKeyDown(event: KeyboardEvent) {
 1. Enable input typing during streaming
 2. Allow Enter to stop current + send new
 3. Add Escape keyboard shortcut
+4. Add runId/stale-stream guard around SSE callbacks and conversation_history filtering of interrupted messages
 
 **Files to modify:**
+
 - `AgentComposer.svelte` - Remove `disabled` from textarea
-- `AgentChatModal.svelte` - Update keyboard handlers
+- `AgentChatModal.svelte` - Update keyboard handlers and stream guard
 
 ### Phase 3: Backend Improvements
 
-1. Persist partial responses on interruption
-2. Add `interrupted` event type
-3. Ensure tool execution can be cancelled
+1. Persist partial responses on interruption with `message_type/metadata`
+2. Persist partial tool results (completed ones only) with `message_type/metadata`
+3. Ensure tool execution can be cancelled and abort is forwarded
+4. (Optional) Add `interrupted` SSE ack that includes `stream_run_id`
 
 **Files to modify:**
+
 - `stream-handler.ts` - Interrupted persistence
 - `agent-chat-orchestrator.ts` - Tool cancellation
-- SSE types files
+- `message-persister.ts` - Support `messageType` + `metadata`
+- SSE types files (if ack is added)
 
 ### Phase 4: Polish
 
@@ -346,61 +448,85 @@ function handleKeyDown(event: KeyboardEvent) {
 ### 1. Rapid Stop/Send
 
 User stops and immediately sends a new message:
+
 - Ensure previous abort completes before new request
 - Use small delay or promise-based sequencing
 
 ### 2. Stop During Tool Execution
 
 Long-running tool (e.g., web search) is interrupted:
+
 - Mark tool as cancelled in thinking block
-- Don't show partial tool results as "completed"
+- If a partial result exists, render it with a "Partial (stopped)" badge; never mark as "completed"
 
 ### 3. Stop During Plan Execution
 
 Multi-step plan is interrupted mid-execution:
+
 - Mark remaining steps as "skipped"
 - Show which steps completed before interruption
 
 ### 4. Network Issues During Stop
 
 Abort happens but server already completed:
+
 - Handle race condition gracefully
 - Show the full response if it arrives
 
 ### 5. Rapid Multiple Messages
 
 User stops multiple times quickly:
+
 - Debounce stop button
 - Ensure only one abort signal is processed
+
+### 6. Stale SSE after abort
+
+Late SSE chunks arriving after abort:
+
+- Drop any chunk whose `run_id` (or closure token) does not match `activeStreamRunId`
+- onComplete/onError handlers must also guard, so they cannot clear state for a superseding run
 
 ## Testing Checklist
 
 ### Unit Tests
-- [ ] `handleStopGeneration()` resets all state correctly
+
+- [ ] `handleStopGeneration()` writes interrupted metadata before finalizing and resets all state
+- [ ] Thinking block status moves to `interrupted`/`cancelled` (not `completed`) on abort
 - [ ] Abort signal propagates through SSE processor
-- [ ] Partial messages are preserved with metadata
+- [ ] Stale-stream guard drops callbacks when `runId` changes
+- [ ] Partial assistant messages are preserved with metadata
+- [ ] `message-persister` accepts `messageType` + `metadata` and stores tool partials in `tool_result`
+- [ ] ToolExecutionService respects `abortSignal` (single and multiple tools)
 
 ### Integration Tests
+
 - [ ] Stop button appears during streaming
 - [ ] Clicking stop immediately halts response
 - [ ] New message can be sent after stop
 - [ ] Escape key triggers stop
 - [ ] Enter key stops + queues new message
+- [ ] Thinking block shows `Interrupted` status and assistant message shows badge
+- [ ] Late SSE chunks after abort do not modify UI
 
 ### E2E Tests
+
 - [ ] Full flow: start chat → stream → stop → new message
 - [ ] Verify partial response is visible after stop
 - [ ] Backend correctly handles abort signal
+- [ ] Superseded request (stop + immediately send new) does not mix content between runs
 - [ ] No dangling streams or memory leaks
 
 ## Accessibility
 
 ### ARIA Requirements
+
 - Stop button: `aria-label="Stop generating response"`
 - Live region announcement when generation stops
 - Focus management after stop (return to input)
 
 ### Keyboard Navigation
+
 - Escape: Stop generation
 - Tab: Should still navigate normally during streaming
 - Enter: Context-aware (send or stop+send)
@@ -408,11 +534,13 @@ User stops multiple times quickly:
 ## Performance Considerations
 
 ### Memory
+
 - Clean up all event listeners on abort
 - Release reader lock in SSE processor
 - Clear thinking block activities if too large
 
 ### Network
+
 - Abort controller properly cancels fetch
 - No orphaned connections after stop
 - Server-side cleanup of stream resources
@@ -432,10 +560,10 @@ User stops multiple times quickly:
 
 ## Open Questions
 
-1. Should we auto-save partial responses as drafts?
-2. Should the stop button have a loading state while aborting?
-3. Should we show "generation stopped" vs "response interrupted"?
-4. Should there be a cooldown between stop and new send?
+1. Should partial tool results be rendered in the UI, and if so with what affordance (“Partial tool output”)?
+2. Should the stop button show a brief loading/disabled state while aborting to prevent double-clicks?
+3. Should we announce “generation stopped” via ARIA live region or rely on visual badge only?
+4. Should there be a cooldown/backoff after repeated stop→send thrashes?
 
 ## References
 

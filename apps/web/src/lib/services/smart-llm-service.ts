@@ -1860,6 +1860,7 @@ You must respond with valid JSON only. Follow these rules:
 			let accumulatedContent = '';
 			let currentToolCall: any = null;
 			let usage: any = null;
+			let inThinkingBlock = false;
 
 			while (true) {
 				const { done, value } = await reader.read();
@@ -1973,24 +1974,14 @@ You must respond with valid JSON only. Follow these rules:
 							const delta = choice.delta;
 
 							if (delta.content) {
-								// Filter out invisible padding characters that some models (like DeepSeek) emit
-								// U+3164 (ㅤ) = Hangul Filler - often used as invisible thinking/padding
-								// U+200B = Zero Width Space
-								// U+FEFF = Zero Width No-Break Space (BOM)
-								// U+00A0 repeated = Non-breaking spaces used as padding
-								const filteredContent = delta.content
-									.replace(/[\u3164\u200B\uFEFF]+/g, '')
-									.replace(/\u00A0{3,}/g, ' '); // Collapse multiple NBSPs to single space
+								const {
+									text: filteredContent,
+									inThinkingBlock: nextThinkingState
+								} = this.normalizeStreamingContent(delta.content, inThinkingBlock);
 
-								// Filter DeepSeek thinking tokens - but preserve legitimate content
-								// Only filter if the ENTIRE chunk is just the thinking pattern
-								// Pattern: repeated sequences of ".,;" or similar punctuation-only chunks
-								const isThinkingToken =
-									/^[.,;]+$/.test(filteredContent.trim()) || // Chunk is ONLY punctuation
-									/^(\s*[.,;]\s*){3,}$/.test(filteredContent); // Repeated .,; pattern only
+								inThinkingBlock = nextThinkingState;
 
-								if (filteredContent && !isThinkingToken) {
-									// Text content
+								if (filteredContent) {
 									accumulatedContent += filteredContent;
 									yield {
 										type: 'text',
@@ -2102,6 +2093,122 @@ You must respond with valid JSON only. Follow these rules:
 				error: `Stream failed: ${(error as Error).message}`
 			};
 		}
+	}
+
+	private normalizeStreamingContent(
+		content: unknown,
+		inThinkingBlock: boolean
+	): { text: string; inThinkingBlock: boolean } {
+		const textParts: string[] = [];
+
+		const pushText = (value?: string) => {
+			if (value) {
+				textParts.push(value);
+			}
+		};
+
+		const handleContentPart = (part: any) => {
+			if (!part) return;
+
+			if (typeof part === 'string') {
+				pushText(part);
+				return;
+			}
+
+			if (typeof part === 'object') {
+				const type = typeof part.type === 'string' ? part.type.toLowerCase() : '';
+				if (type && ['reasoning', 'analysis', 'thinking', 'system'].includes(type)) {
+					return;
+				}
+
+				if (typeof part.text === 'string') {
+					pushText(part.text);
+				} else if (part.text && typeof part.text.value === 'string') {
+					pushText(part.text.value);
+				} else if (typeof part.value === 'string') {
+					pushText(part.value);
+				}
+			}
+		};
+
+		if (Array.isArray(content)) {
+			content.forEach(handleContentPart);
+		} else if (typeof content === 'string') {
+			pushText(content);
+		} else if (typeof content === 'object' && content !== null) {
+			handleContentPart(content);
+		}
+
+		if (textParts.length === 0) {
+			return { text: '', inThinkingBlock };
+		}
+
+		let combined = textParts.join('');
+
+		// Strip invisible padding and normalize whitespace without collapsing intentional spacing
+		combined = combined.replace(/[\u3164\u200B\uFEFF]/g, '');
+		combined = combined.replace(/\u00A0/g, ' ');
+		combined = combined.replace(/\r\n?/g, '\n');
+
+		const { text, inThinkingBlock: thinkingState } = this.filterThinkingTokens(
+			combined,
+			inThinkingBlock
+		);
+
+		const trimmed = text.trim();
+		// Skip obvious filler punctuation bursts often used for "thinking" animations
+		if (trimmed && /^[.,;·•…]+$/.test(trimmed) && trimmed.length >= 6) {
+			return { text: '', inThinkingBlock: thinkingState };
+		}
+
+		return { text, inThinkingBlock: thinkingState };
+	}
+
+	private filterThinkingTokens(
+		text: string,
+		inThinkingBlock: boolean
+	): { text: string; inThinkingBlock: boolean } {
+		let output = text;
+		let thinking = inThinkingBlock;
+
+		const startRegex = /<\s*(think|thinking|analysis|reasoning)\s*>/i;
+		const endRegex = /<\s*\/\s*(think|thinking|analysis|reasoning)\s*>/i;
+
+		// If already inside a thinking block, drop content until a closing tag appears
+		if (thinking) {
+			const endMatch = output.match(endRegex);
+			if (endMatch?.index !== undefined) {
+				output = output.slice(endMatch.index + endMatch[0].length);
+				thinking = false;
+			} else {
+				return { text: '', inThinkingBlock: true };
+			}
+		}
+
+		// Remove any complete thinking blocks inside this chunk
+		while (true) {
+			const startMatch = output.match(startRegex);
+			if (!startMatch || startMatch.index === undefined) break;
+
+			const afterStart = output.slice(startMatch.index + startMatch[0].length);
+			const endMatch = afterStart.match(endRegex);
+
+			if (endMatch?.index !== undefined) {
+				output =
+					output.slice(0, startMatch.index) +
+					afterStart.slice(endMatch.index + endMatch[0].length);
+			} else {
+				// Start marker without an end - drop trailing content and keep state
+				output = output.slice(0, startMatch.index);
+				thinking = true;
+				break;
+			}
+		}
+
+		// Remove bracket-based markers that can leak thinking output
+		output = output.replace(/【\s*(thinking|reasoning|analysis)\s*】/gi, '');
+
+		return { text: output, inThinkingBlock: thinking };
 	}
 
 	private isAbortError(error: unknown): boolean {

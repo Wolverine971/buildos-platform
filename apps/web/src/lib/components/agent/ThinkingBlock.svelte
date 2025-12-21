@@ -28,10 +28,30 @@
 		planCollapseStates = new Map(planCollapseStates);
 	}
 
-	// Derive status label
-	const statusLabel = $derived(
-		block.status === 'active' && block.content ? block.content : 'Complete'
-	);
+	// Derive status label and color
+	const statusLabel = $derived(() => {
+		if (block.status === 'active') {
+			return block.content || 'Working...';
+		}
+		if (block.status === 'interrupted') return 'Interrupted';
+		if (block.status === 'cancelled') return 'Cancelled';
+		if (block.status === 'error') return 'Error';
+		return block.content || 'Complete';
+	});
+
+	const statusClass = $derived(() => {
+		switch (block.status) {
+			case 'active':
+				return 'text-emerald-600 dark:text-emerald-400';
+			case 'interrupted':
+			case 'cancelled':
+				return 'text-amber-600 dark:text-amber-400';
+			case 'error':
+				return 'text-red-600 dark:text-red-400';
+			default:
+				return 'text-muted-foreground';
+		}
+	});
 	const activityCount = $derived(block.activities.length);
 
 	// INKPRINT activity styles with semantic meanings
@@ -125,9 +145,7 @@
 		</div>
 		<div class="flex shrink-0 items-center gap-1.5 text-[0.65rem] sm:gap-2 sm:text-xs">
 			<span
-				class="hidden font-mono font-medium sm:inline {block.status === 'active'
-					? 'text-emerald-600 dark:text-emerald-400'
-					: 'text-muted-foreground'}"
+				class="hidden font-mono font-medium sm:inline {statusClass}"
 				role="status"
 				aria-live="polite"
 			>

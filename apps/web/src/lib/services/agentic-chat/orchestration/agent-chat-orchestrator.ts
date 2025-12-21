@@ -347,6 +347,7 @@ export class AgentChatOrchestrator {
 			if (profileIndex >= 0) {
 				messages[profileIndex] = {
 					...messages[profileIndex],
+					role: 'system' as const,
 					content: profileContent
 				};
 			} else {
@@ -370,6 +371,7 @@ export class AgentChatOrchestrator {
 		if (snapshotIndex >= 0) {
 			messages[snapshotIndex] = {
 				...messages[snapshotIndex],
+				role: 'system' as const,
 				content: snapshotContent
 			};
 			return;
@@ -616,7 +618,8 @@ export class AgentChatOrchestrator {
 					serviceContext,
 					currentTools,
 					{
-						virtualHandlers: currentVirtualHandlers
+						virtualHandlers: currentVirtualHandlers,
+						abortSignal: request.abortSignal
 					}
 				);
 

@@ -7,10 +7,11 @@
 	goals, milestones, plans, tasks, risks, and decisions.
 
 	Features:
+	- Randomly selects from available public example projects
 	- Loads public project data from API
 	- Interactive Cytoscape graph visualization
-	- Collapsible legend showing node types
 	- Responsive design for mobile and desktop
+	- Shuffle button to switch to a different example
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
@@ -25,9 +26,8 @@
 		AlertTriangle,
 		Maximize2,
 		ChevronDown,
-		ChevronUp,
-		X,
-		Scale
+		Scale,
+		Shuffle
 	} from 'lucide-svelte';
 	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
 	import NodeDetailsPanel from '$lib/components/ontology/graph/NodeDetailsPanel.svelte';
@@ -38,17 +38,29 @@
 		ViewMode
 	} from '$lib/components/ontology/graph/lib/graph.types';
 
+	interface PublicProject {
+		id: string;
+		name: string;
+		description: string | null;
+		props: Record<string, unknown> | null;
+		start_at: string | null;
+		end_at: string | null;
+	}
+
 	interface Props {
 		projectId?: string;
 	}
 
-	// Default to George Washington example project
-	let { projectId = '11111111-1111-1111-1111-111111111111' }: Props = $props();
+	// Optional override - if not provided, will randomly select
+	let { projectId: initialProjectId }: Props = $props();
+
+	// Available public projects
+	let availableProjects = $state<PublicProject[]>([]);
+	let currentProjectId = $state<string | null>(initialProjectId ?? null);
 
 	// UI State
 	let isLoading = $state(true);
 	let loadError = $state<string | null>(null);
-	let showLegend = $state(false);
 
 	// Graph data state
 	let graphData = $state<GraphSourceData | null>(null);
@@ -77,16 +89,58 @@
 	const viewMode: ViewMode = 'full';
 
 	onMount(() => {
-		loadGraphData();
+		loadAvailableProjects();
 	});
 
+	/**
+	 * Fetch all available public projects, then randomly select one
+	 */
+	async function loadAvailableProjects() {
+		try {
+			const response = await fetch('/api/public/projects');
+			const payload = await response.json();
+
+			if (!response.ok || !payload.success) {
+				throw new Error(payload?.error || 'Failed to fetch public projects');
+			}
+
+			availableProjects = payload.data?.projects ?? [];
+
+			// If no initial project specified, randomly select one
+			if (!currentProjectId && availableProjects.length > 0) {
+				const randomIndex = Math.floor(Math.random() * availableProjects.length);
+				const selectedProject = availableProjects[randomIndex];
+				if (selectedProject) {
+					currentProjectId = selectedProject.id;
+				}
+			}
+
+			// Load the selected project's graph data
+			if (currentProjectId) {
+				await loadGraphData();
+			} else {
+				loadError = 'No example projects available';
+				isLoading = false;
+			}
+		} catch (err) {
+			console.error('[ExampleProjectGraph] Failed to load projects:', err);
+			loadError = err instanceof Error ? err.message : 'Failed to load example projects';
+			isLoading = false;
+		}
+	}
+
+	/**
+	 * Load graph data for the current project
+	 */
 	async function loadGraphData() {
+		if (!currentProjectId) return;
+
 		isLoading = true;
 		loadError = null;
 
 		try {
 			const response = await fetch(
-				`/api/public/projects/${projectId}/graph?viewMode=${viewMode}`
+				`/api/public/projects/${currentProjectId}/graph?viewMode=${viewMode}`
 			);
 			const payload = await response.json();
 
@@ -99,6 +153,7 @@
 			graphData = payload.data?.source ?? null;
 			projectInfo = payload.data?.project ?? null;
 			stats = payload.data?.stats ?? null;
+			selectedNode = null; // Clear selection when switching projects
 		} catch (err) {
 			console.error('[ExampleProjectGraph] Failed to load:', err);
 			loadError = err instanceof Error ? err.message : 'Failed to load example project';
@@ -106,6 +161,27 @@
 			isLoading = false;
 		}
 	}
+
+	/**
+	 * Shuffle to a different random project
+	 */
+	async function shuffleProject() {
+		if (availableProjects.length <= 1) return;
+
+		// Pick a different project than the current one
+		const otherProjects = availableProjects.filter((p) => p.id !== currentProjectId);
+		if (otherProjects.length === 0) return;
+
+		const randomIndex = Math.floor(Math.random() * otherProjects.length);
+		const selectedProject = otherProjects[randomIndex];
+		if (!selectedProject) return;
+		currentProjectId = selectedProject.id;
+
+		await loadGraphData();
+	}
+
+	// Derived: can shuffle (more than one project available)
+	let canShuffle = $derived(availableProjects.length > 1);
 
 	function handleFitToView() {
 		graphInstance?.fitToView();
@@ -131,9 +207,24 @@
 			: ''
 	);
 
-	// Get commander name from props
+	// Hardcoded commanders by project ID
+	const PROJECT_COMMANDERS: Record<string, string> = {
+		'11111111-1111-1111-1111-111111111111': 'General George Washington', // Washington Campaign
+		'22222222-2222-2222-2222-222222222222': 'NASA Administrator James E. Webb', // Apollo Program
+		'33333333-3333-3333-3333-333333333333': 'Dr. Ryland Grace', // Project Hail Mary
+		'44444444-4444-4444-4444-444444444444': 'George R.R. Martin', // ASOIAF Writing
+		'55555555-5555-5555-5555-555555555555': 'Sarah J. Maas', // ACOTAR Writing
+		'66666666-6666-6666-6666-666666666666': 'Brigadier General Leslie R. Groves' // Manhattan Project
+	};
+
+	// Get commander name - first check hardcoded, then fall back to props
 	let commander = $derived(
-		(projectInfo?.props as Record<string, unknown>)?.commander as string | undefined
+		currentProjectId
+			? (PROJECT_COMMANDERS[currentProjectId] ??
+					((projectInfo?.props as Record<string, unknown>)?.commander as
+						| string
+						| undefined))
+			: undefined
 	);
 </script>
 
@@ -157,10 +248,9 @@
 			</h2>
 
 			<p class="text-sm text-muted-foreground max-w-2xl">
-				This interactive graph shows how BuildOS organizes a real historical project: George
-				Washington's Revolutionary War campaign. Goals cascade into milestones, milestones
-				spawn plans, plans break down into tasks — all connected in a living knowledge
-				graph.
+				This interactive graph shows how BuildOS organizes real projects. Goals cascade into
+				milestones, milestones spawn plans, plans break down into tasks — all connected in a
+				living knowledge graph.
 			</p>
 		</div>
 
@@ -188,18 +278,18 @@
 						</div>
 
 						<div class="flex items-center gap-2">
-							<button
-								type="button"
-								onclick={() => (showLegend = !showLegend)}
-								class="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition"
-							>
-								{#if showLegend}
-									<ChevronUp class="w-3.5 h-3.5" />
-								{:else}
-									<ChevronDown class="w-3.5 h-3.5" />
-								{/if}
-								<span>Legend</span>
-							</button>
+							{#if canShuffle}
+								<button
+									type="button"
+									onclick={shuffleProject}
+									disabled={isLoading}
+									class="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed transition"
+									title="Show a different example project"
+								>
+									<Shuffle class="w-3.5 h-3.5" />
+									<span class="hidden sm:inline">Shuffle</span>
+								</button>
+							{/if}
 
 							<button
 								type="button"
@@ -213,44 +303,6 @@
 						</div>
 					</div>
 				</div>
-
-				<!-- Legend (collapsible) -->
-				{#if showLegend}
-					<div class="px-4 sm:px-6 py-3 border-b border-border bg-muted/20">
-						<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-xs">
-							<div class="flex items-center gap-2">
-								<div
-									class="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-700 border-2 border-slate-400 dark:border-slate-500"
-								></div>
-								<span class="text-muted-foreground">Project</span>
-							</div>
-							<div class="flex items-center gap-2">
-								<Target class="w-4 h-4 text-amber-500" />
-								<span class="text-muted-foreground">Goal</span>
-							</div>
-							<div class="flex items-center gap-2">
-								<Flag class="w-4 h-4 text-emerald-500" />
-								<span class="text-muted-foreground">Milestone</span>
-							</div>
-							<div class="flex items-center gap-2">
-								<ListTodo class="w-4 h-4 text-indigo-500" />
-								<span class="text-muted-foreground">Plan</span>
-							</div>
-							<div class="flex items-center gap-2">
-								<CheckCircle2 class="w-4 h-4 text-slate-500" />
-								<span class="text-muted-foreground">Task</span>
-							</div>
-							<div class="flex items-center gap-2">
-								<FileText class="w-4 h-4 text-sky-500" />
-								<span class="text-muted-foreground">Document</span>
-							</div>
-							<div class="flex items-center gap-2">
-								<AlertTriangle class="w-4 h-4 text-red-500" />
-								<span class="text-muted-foreground">Risk</span>
-							</div>
-						</div>
-					</div>
-				{/if}
 
 				<!-- Stats Row -->
 				{#if stats}
@@ -282,6 +334,22 @@
 									>{stats.totalDocuments} Docs</span
 								>
 							</div>
+							{#if stats.totalRisks > 0}
+								<div class="hidden md:flex items-center gap-1.5">
+									<AlertTriangle class="w-3.5 h-3.5 text-red-500" />
+									<span class="text-muted-foreground"
+										>{stats.totalRisks} Risks</span
+									>
+								</div>
+							{/if}
+							{#if stats.totalDecisions > 0}
+								<div class="hidden md:flex items-center gap-1.5">
+									<Scale class="w-3.5 h-3.5 text-violet-500" />
+									<span class="text-muted-foreground"
+										>{stats.totalDecisions} Decisions</span
+									>
+								</div>
+							{/if}
 							<div class="hidden lg:flex items-center gap-1.5">
 								<span class="text-muted-foreground"
 									>{stats.totalEdges} Connections</span
@@ -296,7 +364,9 @@
 					<!-- Main Graph Area -->
 					<div class="flex-1 relative {showDetailsPanel ? 'lg:mr-[320px]' : ''}">
 						{#if isLoading}
-							<div class="absolute inset-0 flex items-center justify-center bg-muted/20">
+							<div
+								class="absolute inset-0 flex items-center justify-center bg-muted/20"
+							>
 								<div class="flex items-center gap-2 text-sm text-muted-foreground">
 									<Loader2 class="w-5 h-5 animate-spin" />
 									<span>Loading example project...</span>
@@ -325,9 +395,15 @@
 
 							<!-- Click hint overlay (shown when no node selected) -->
 							{#if !selectedNode}
-								<div class="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-auto sm:bottom-4 sm:left-4 pointer-events-none">
-									<div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card/90 border border-border shadow-ink text-xs text-muted-foreground backdrop-blur-sm">
-										<span class="hidden sm:inline">Click any node to see details</span>
+								<div
+									class="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-auto sm:bottom-4 sm:left-4 pointer-events-none"
+								>
+									<div
+										class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card/90 border border-border shadow-ink text-xs text-muted-foreground backdrop-blur-sm"
+									>
+										<span class="hidden sm:inline"
+											>Click any node to see details</span
+										>
 										<span class="sm:hidden">Tap a node to see details</span>
 									</div>
 								</div>
@@ -401,7 +477,10 @@
 								</p>
 							</div>
 							<div class="flex items-center gap-2">
-								<span class="text-[0.65rem] uppercase tracking-wide text-muted-foreground">Tap for details</span>
+								<span
+									class="text-[0.65rem] uppercase tracking-wide text-muted-foreground"
+									>Tap for details</span
+								>
 								<ChevronDown class="w-4 h-4 text-muted-foreground" />
 							</div>
 						</button>

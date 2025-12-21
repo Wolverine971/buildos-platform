@@ -1,13 +1,24 @@
 ---
 title: Ontology API Reference
 description: REST endpoints that power the BuildOS ontology system.
-last_updated: 2025-11-05
+last_updated: 2025-12-20
 path: docs/api/ontology-endpoints.md
 ---
 
 # Ontology API Reference
 
+> **Recent Updates (2024-12-20)**: Schema migration complete. All entities now support soft deletes via `deleted_at`. New dedicated columns: `description`, `content`, `target_date`, `completed_at`, `start_at`. See [Migration Plan](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) and [Detailed API Docs](/apps/web/docs/features/ontology/API_ENDPOINTS.md).
+
 All endpoints are served from the SvelteKit application (`apps/web`). Requests **require an authenticated user session** unless otherwise noted. Payloads use `application/json`.
+
+## Soft Delete Behavior
+
+All ontology entities now support soft deletes:
+
+- `DELETE` endpoints set `deleted_at` instead of hard deleting
+- `GET` endpoints automatically filter out soft-deleted records
+- Add `?include_deleted=true` to include soft-deleted records
+- Use `PATCH` with `{ "deleted_at": null }` to restore entities
 
 ## Table of Contents
 
@@ -300,6 +311,7 @@ Content-Type: application/json
 	"project_id": "09dfad24-f021-4a09-b2d5-1dbbaabd00f6",
 	"type_key": "output.article",
 	"name": "Launch Narrative",
+	"description": "Feature announcement article for the AI launch",
 	"state_key": "draft",
 	"props": {
 		"target_word_count": 1500,
@@ -307,6 +319,11 @@ Content-Type: application/json
 	}
 }
 ```
+
+**New Fields (2024-12-20):**
+
+- `description` (text): Output description (dedicated column)
+- `deleted_at` (timestamptz): Soft delete timestamp
 
 **Response**
 

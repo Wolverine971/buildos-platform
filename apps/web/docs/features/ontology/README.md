@@ -2,9 +2,11 @@
 
 # Ontology System Documentation
 
-**Last Updated**: December 12, 2025
+**Last Updated**: December 20, 2025
 **Status**: Production Ready ✅
 **Location**: `/apps/web/docs/features/ontology/`
+
+> **Recent Updates (2024-12-20)**: Schema migration complete. All ontology tables now have dedicated columns for `description`, `deleted_at` (soft deletes), and entity-specific fields like `content`, `target_date`, `completed_at`. See [Migration Plan](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md).
 
 ---
 

@@ -105,7 +105,8 @@ async function parseRequest(
 			conversation_history: conversationHistory = [],
 			ontologyEntityType,
 			lastTurnContext: providedLastTurnContext,
-			projectFocus
+			projectFocus,
+			stream_run_id
 		} = body;
 
 		if (!message?.trim()) {
@@ -124,7 +125,8 @@ async function parseRequest(
 			entity_id,
 			history: Array.isArray(conversationHistory) ? conversationHistory : [],
 			ontology_entity_type: ontologyEntityType,
-			last_turn_context: providedLastTurnContext
+			last_turn_context: providedLastTurnContext,
+			stream_run_id
 		};
 
 		if (projectFocus !== undefined) {

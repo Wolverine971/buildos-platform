@@ -2,15 +2,26 @@
 
 # Ontology System API Endpoints Reference
 
-**Last Updated**: December 12, 2025
+**Last Updated**: December 20, 2025
 **Status**: Production Ready
 **Base Path**: `/api/onto/`
+
+> **Recent Updates (2024-12-20)**: Schema migration complete. All entities now support soft deletes via `deleted_at`, dedicated `description` columns, and entity-specific fields. See [ONTOLOGY_SCHEMA_MIGRATION_PLAN.md](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) for details.
 
 ## 📋 Overview
 
 The Ontology System API provides comprehensive endpoints for managing projects and entity lifecycle operations. All endpoints follow RESTful conventions and use the `ApiResponse` wrapper for consistency.
 
 The API uses a **props-based architecture** where type_key provides semantic classification and props (JSONB) stores flexible entity properties.
+
+### Soft Delete Behavior
+
+All ontology entities now support soft deletes:
+
+- `DELETE` endpoints set `deleted_at` instead of hard deleting
+- `GET` endpoints automatically filter out soft-deleted records (`WHERE deleted_at IS NULL`)
+- Add `?include_deleted=true` to include soft-deleted records in responses
+- Use `PATCH` with `{ "deleted_at": null }` to restore soft-deleted entities
 
 ---
 
@@ -162,12 +173,22 @@ POST /api/onto/tasks/create
 	"description": "Draft the first chapter",
 	"priority": 2,
 	"state_key": "todo",
+	"start_at": "2025-01-10T00:00:00Z",
 	"due_at": "2025-01-15T00:00:00Z",
 	"props": {
 		"facets": { "scale": "small" }
 	}
 }
 ```
+
+**New Fields (2024-12-20):**
+
+| Field          | Type                  | Description                                             |
+| -------------- | --------------------- | ------------------------------------------------------- |
+| `description`  | `text \| null`        | Task description (dedicated column)                     |
+| `start_at`     | `timestamptz \| null` | When task should start                                  |
+| `completed_at` | `timestamptz \| null` | Auto-set when `state_key` becomes `done`                |
+| `deleted_at`   | `timestamptz \| null` | Soft delete timestamp (set by DELETE, clear to restore) |
 
 **type_key Work Mode Taxonomy:**
 | Work Mode | Description |
@@ -202,14 +223,22 @@ PATCH /api/onto/tasks/[id]
 ```json
 {
 	"title": "Updated title",
+	"description": "Updated description",
 	"type_key": "task.review",
 	"state_key": "in_progress",
 	"priority": 1,
+	"start_at": "2025-01-12T00:00:00Z",
+	"due_at": "2025-01-20T00:00:00Z",
 	"plan_id": "uuid or null"
 }
 ```
 
-**Note:** All fields are optional. `plan_id` updates edge relationships.
+**Notes:**
+
+- All fields are optional
+- `plan_id` updates edge relationships
+- Setting `state_key` to `done` auto-sets `completed_at` to current timestamp
+- Setting `state_key` away from `done` clears `completed_at`
 
 ### Delete Task
 
@@ -217,7 +246,12 @@ PATCH /api/onto/tasks/[id]
 DELETE /api/onto/tasks/[id]
 ```
 
-Removes task and all associated edges
+**Behavior:**
+
+- Sets `deleted_at` to current timestamp (soft delete)
+- Preserves all associated edges for potential restoration
+- To restore: `PATCH /api/onto/tasks/[id]` with `{ "deleted_at": null }`
+- Add `?hard=true` to permanently delete (removes edges)
 
 ### Make Task Recurring
 
@@ -292,6 +326,7 @@ POST /api/onto/plans/create
 	"project_id": "uuid",
 	"type_key": "plan.timebox.sprint",
 	"name": "Q1 Development",
+	"plan": "Detailed plan content...",
 	"description": "First quarter development tasks",
 	"state_key": "draft",
 	"start_date": "2025-01-01",
@@ -304,6 +339,14 @@ POST /api/onto/plans/create
 	}
 }
 ```
+
+**New Fields (2024-12-20):**
+
+| Field         | Type                  | Description                                        |
+| ------------- | --------------------- | -------------------------------------------------- |
+| `plan`        | `text \| null`        | Plan content/details (dedicated column)            |
+| `description` | `text \| null`        | Plan description (migrated from props.description) |
+| `deleted_at`  | `timestamptz \| null` | Soft delete timestamp                              |
 
 ---
 
@@ -322,13 +365,25 @@ POST /api/onto/goals/create
 	"project_id": "uuid",
 	"type_key": "goal.outcome.milestone",
 	"name": "Launch MVP",
+	"goal": "Detailed goal content...",
 	"description": "Successfully launch the minimum viable product",
-	"priority": "high",
-	"success_criteria": "100 active users",
 	"target_date": "2025-06-01",
-	"props": {}
+	"props": {
+		"success_criteria": "100 active users",
+		"priority": "high"
+	}
 }
 ```
+
+**New Fields (2024-12-20):**
+
+| Field          | Type                  | Description                                              |
+| -------------- | --------------------- | -------------------------------------------------------- |
+| `goal`         | `text \| null`        | Goal content (dedicated column)                          |
+| `description`  | `text \| null`        | Goal description (migrated from props.description)       |
+| `target_date`  | `timestamptz \| null` | Target completion date (migrated from props.target_date) |
+| `completed_at` | `timestamptz \| null` | Auto-set when `state_key` becomes `achieved`             |
+| `deleted_at`   | `timestamptz \| null` | Soft delete timestamp                                    |
 
 ---
 
@@ -393,9 +448,20 @@ POST /api/onto/documents/create
 	"type_key": "document.knowledge.research",
 	"title": "Market Research",
 	"content": "Document content here...",
+	"description": "Research document on market trends",
 	"props": {}
 }
 ```
+
+**New Fields (2024-12-20):**
+
+| Field         | Type                  | Description                                       |
+| ------------- | --------------------- | ------------------------------------------------- |
+| `content`     | `text \| null`        | Document body (migrated from props.body_markdown) |
+| `description` | `text \| null`        | Document description                              |
+| `deleted_at`  | `timestamptz \| null` | Soft delete timestamp                             |
+
+**Backwards Compatibility:** New documents store content in both `content` column and `props.body_markdown`. Read operations prefer the `content` column with fallback to `props.body_markdown`.
 
 ### Create Document Version
 
@@ -430,12 +496,20 @@ POST /api/onto/outputs/create
 	"project_id": "uuid",
 	"type_key": "output.operational.report",
 	"name": "Q1 Progress Report",
+	"description": "Quarterly progress report for stakeholders",
 	"state_key": "draft",
 	"props": {
 		"facets": { "stage": "execution" }
 	}
 }
 ```
+
+**New Fields (2024-12-20):**
+
+| Field         | Type                  | Description           |
+| ------------- | --------------------- | --------------------- |
+| `description` | `text \| null`        | Output description    |
+| `deleted_at`  | `timestamptz \| null` | Soft delete timestamp |
 
 ### Create Output Version
 

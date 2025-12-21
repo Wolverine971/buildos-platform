@@ -596,7 +596,8 @@
 
 									<div class="flex justify-between gap-2">
 										<span class="text-muted-foreground shrink-0">ID:</span>
-										<span class="font-mono text-xs text-muted-foreground break-all text-right"
+										<span
+											class="font-mono text-xs text-muted-foreground break-all text-right"
 											>{risk.id}</span
 										>
 									</div>

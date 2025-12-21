@@ -208,9 +208,9 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 						description: 'Document state (draft, review, published)',
 						default: 'draft'
 					},
-					body_markdown: {
+					content: {
 						type: 'string',
-						description: 'Optional markdown body content'
+						description: 'Markdown body content stored in the content column'
 					},
 					props: {
 						type: 'object',
@@ -256,9 +256,9 @@ Also ensures the project has_document edge exists for discovery.`,
 						type: 'string',
 						description: 'Edge role (e.g., deliverable, scratch)'
 					},
-					body_markdown: {
+					content: {
 						type: 'string',
-						description: 'Optional markdown body content'
+						description: 'Markdown body content stored in the content column'
 					},
 					props: {
 						type: 'object',
@@ -328,8 +328,8 @@ For example:
   plans?: [{ name, type_key, state_key?, props? }],
   tasks?: [{ title, plan_name?, state_key?, priority?, due_at?, props? }],
   outputs?: [{ name, type_key, state_key?, props? }],
-  documents?: [{ title, type_key, state_key?, body_markdown?, props? }],
-  context_document?: { title: string, body_markdown: string, props? },
+  documents?: [{ title, type_key, state_key?, content?, props? }],
+  context_document?: { title: string, content: string, props? },
   clarifications?: [{ key, question, required, choices?, help_text? }],
   meta?: { model, confidence, suggested_facets } (NOT sent to API)
 }`,
@@ -509,9 +509,9 @@ DO NOT leave props empty when information is available in the conversation!`,
 								title: { type: 'string' },
 								type_key: { type: 'string' },
 								state_key: { type: 'string' },
-								body_markdown: {
+								content: {
 									type: 'string',
-									description: 'Optional markdown body stored on the document'
+									description: 'Markdown body stored in the content column'
 								},
 								props: { type: 'object' }
 							},
@@ -524,9 +524,10 @@ DO NOT leave props empty when information is available in the conversation!`,
 							'Canonical context document (document.context.project) that will be linked to the project.',
 						properties: {
 							title: { type: 'string' },
-							body_markdown: {
+							content: {
 								type: 'string',
-								description: 'Markdown body with the user braindump/overview'
+								description:
+									'Markdown body with the user braindump/overview (stored in content column)'
 							},
 							type_key: {
 								type: 'string',
@@ -542,7 +543,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 								description: 'Additional metadata (e.g., spark notes, tags)'
 							}
 						},
-						required: ['title', 'body_markdown']
+						required: ['title', 'content']
 					},
 					clarifications: {
 						type: 'array',
@@ -845,14 +846,14 @@ Use for edits to titles, states, body markdown, or metadata.`,
 						type: 'string',
 						description: 'Document state'
 					},
-					body_markdown: {
+					content: {
 						type: 'string',
-						description: 'Markdown content to store'
+						description: 'Markdown content to store in the content column'
 					},
 					update_strategy: {
 						type: 'string',
 						description:
-							"How to apply body_markdown: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing content.",
+							"How to apply content: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing content.",
 						enum: ['replace', 'append', 'merge_llm'],
 						default: 'replace'
 					},

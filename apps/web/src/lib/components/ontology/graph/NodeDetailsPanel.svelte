@@ -41,7 +41,10 @@
 		showDetailLink?: boolean;
 	}
 
-	let { node, onClose, showDetailLink = true }: Props = $props();
+	const componentProps: Props = $props();
+	const node: GraphNode | null = $derived(componentProps.node);
+	const onClose: () => void = componentProps.onClose;
+	const showDetailLink: boolean = componentProps.showDetailLink ?? true;
 
 	// Type configuration with icons, colors, and textures
 	const typeConfig: Record<
@@ -137,38 +140,115 @@
 		}
 	};
 
-	const config = $derived(typeConfig[(node?.type as NodeType) ?? 'unknown'] ?? typeConfig.unknown);
+	const config = $derived(
+		typeConfig[(node?.type as NodeType) ?? 'unknown'] ?? typeConfig.unknown
+	);
 
 	// State badge configuration
 	const stateConfig: Record<string, { color: string; bgColor: string; label: string }> = {
 		// Project states
-		planning: { color: 'text-slate-700 dark:text-slate-300', bgColor: 'bg-slate-100 dark:bg-slate-800', label: 'Planning' },
-		active: { color: 'text-amber-700 dark:text-amber-300', bgColor: 'bg-amber-100 dark:bg-amber-900/50', label: 'Active' },
-		completed: { color: 'text-emerald-700 dark:text-emerald-300', bgColor: 'bg-emerald-100 dark:bg-emerald-900/50', label: 'Completed' },
-		cancelled: { color: 'text-red-700 dark:text-red-300', bgColor: 'bg-red-100 dark:bg-red-900/50', label: 'Cancelled' },
+		planning: {
+			color: 'text-slate-700 dark:text-slate-300',
+			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			label: 'Planning'
+		},
+		active: {
+			color: 'text-amber-700 dark:text-amber-300',
+			bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+			label: 'Active'
+		},
+		completed: {
+			color: 'text-emerald-700 dark:text-emerald-300',
+			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			label: 'Completed'
+		},
+		cancelled: {
+			color: 'text-red-700 dark:text-red-300',
+			bgColor: 'bg-red-100 dark:bg-red-900/50',
+			label: 'Cancelled'
+		},
 		// Task states
-		todo: { color: 'text-slate-700 dark:text-slate-300', bgColor: 'bg-slate-100 dark:bg-slate-800', label: 'To Do' },
-		in_progress: { color: 'text-amber-700 dark:text-amber-300', bgColor: 'bg-amber-100 dark:bg-amber-900/50', label: 'In Progress' },
-		done: { color: 'text-emerald-700 dark:text-emerald-300', bgColor: 'bg-emerald-100 dark:bg-emerald-900/50', label: 'Done' },
-		blocked: { color: 'text-red-700 dark:text-red-300', bgColor: 'bg-red-100 dark:bg-red-900/50', label: 'Blocked' },
+		todo: {
+			color: 'text-slate-700 dark:text-slate-300',
+			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			label: 'To Do'
+		},
+		in_progress: {
+			color: 'text-amber-700 dark:text-amber-300',
+			bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+			label: 'In Progress'
+		},
+		done: {
+			color: 'text-emerald-700 dark:text-emerald-300',
+			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			label: 'Done'
+		},
+		blocked: {
+			color: 'text-red-700 dark:text-red-300',
+			bgColor: 'bg-red-100 dark:bg-red-900/50',
+			label: 'Blocked'
+		},
 		// Goal states
-		defined: { color: 'text-slate-700 dark:text-slate-300', bgColor: 'bg-slate-100 dark:bg-slate-800', label: 'Defined' },
-		achieved: { color: 'text-emerald-700 dark:text-emerald-300', bgColor: 'bg-emerald-100 dark:bg-emerald-900/50', label: 'Achieved' },
-		abandoned: { color: 'text-red-700 dark:text-red-300', bgColor: 'bg-red-100 dark:bg-red-900/50', label: 'Abandoned' },
+		defined: {
+			color: 'text-slate-700 dark:text-slate-300',
+			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			label: 'Defined'
+		},
+		achieved: {
+			color: 'text-emerald-700 dark:text-emerald-300',
+			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			label: 'Achieved'
+		},
+		abandoned: {
+			color: 'text-red-700 dark:text-red-300',
+			bgColor: 'bg-red-100 dark:bg-red-900/50',
+			label: 'Abandoned'
+		},
 		// Plan states
-		draft: { color: 'text-slate-700 dark:text-slate-300', bgColor: 'bg-slate-100 dark:bg-slate-800', label: 'Draft' },
+		draft: {
+			color: 'text-slate-700 dark:text-slate-300',
+			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			label: 'Draft'
+		},
 		// Risk states
-		identified: { color: 'text-amber-700 dark:text-amber-300', bgColor: 'bg-amber-100 dark:bg-amber-900/50', label: 'Identified' },
-		mitigated: { color: 'text-emerald-700 dark:text-emerald-300', bgColor: 'bg-emerald-100 dark:bg-emerald-900/50', label: 'Mitigated' },
-		occurred: { color: 'text-red-700 dark:text-red-300', bgColor: 'bg-red-100 dark:bg-red-900/50', label: 'Occurred' },
-		closed: { color: 'text-slate-700 dark:text-slate-300', bgColor: 'bg-slate-100 dark:bg-slate-800', label: 'Closed' },
+		identified: {
+			color: 'text-amber-700 dark:text-amber-300',
+			bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+			label: 'Identified'
+		},
+		mitigated: {
+			color: 'text-emerald-700 dark:text-emerald-300',
+			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			label: 'Mitigated'
+		},
+		occurred: {
+			color: 'text-red-700 dark:text-red-300',
+			bgColor: 'bg-red-100 dark:bg-red-900/50',
+			label: 'Occurred'
+		},
+		closed: {
+			color: 'text-slate-700 dark:text-slate-300',
+			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			label: 'Closed'
+		},
 		// Document states
-		review: { color: 'text-amber-700 dark:text-amber-300', bgColor: 'bg-amber-100 dark:bg-amber-900/50', label: 'In Review' },
-		published: { color: 'text-emerald-700 dark:text-emerald-300', bgColor: 'bg-emerald-100 dark:bg-emerald-900/50', label: 'Published' }
+		review: {
+			color: 'text-amber-700 dark:text-amber-300',
+			bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+			label: 'In Review'
+		},
+		published: {
+			color: 'text-emerald-700 dark:text-emerald-300',
+			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			label: 'Published'
+		}
 	};
 
 	// Helper functions
-	function readString(metadata: Record<string, unknown> | undefined, ...keys: string[]): string | null {
+	function readString(
+		metadata: Record<string, unknown> | undefined,
+		...keys: string[]
+	): string | null {
 		if (!metadata) return null;
 		for (const key of keys) {
 			const value = metadata[key];
@@ -179,7 +259,10 @@
 		return null;
 	}
 
-	function readNumber(metadata: Record<string, unknown> | undefined, ...keys: string[]): number | null {
+	function readNumber(
+		metadata: Record<string, unknown> | undefined,
+		...keys: string[]
+	): number | null {
 		if (!metadata) return null;
 		for (const key of keys) {
 			const value = metadata[key];
@@ -250,11 +333,18 @@
 		}
 	}
 
+	// Helper to extract metadata safely
+	function getMetadata(n: GraphNode | null): Record<string, unknown> {
+		return n?.metadata ?? {};
+	}
+
 	// Derived values
 	const detailUrl = $derived(getDetailUrl(node));
-	const meta = $derived(node?.metadata ?? {});
+	const meta: Record<string, unknown> = $derived(getMetadata(node));
 	const state = $derived(readString(meta, 'state', 'state_key', 'stateKey') ?? 'unknown');
-	const stateStyle = $derived(stateConfig[state] ?? stateConfig.draft);
+	const stateStyle = $derived(
+		stateConfig[state] ?? stateConfig.draft ?? { color: '', bgColor: '', label: '' }
+	);
 	const description = $derived(readString(meta, 'description', 'desc'));
 	const typeKey = $derived(readString(meta, 'typeKey', 'type_key'));
 
@@ -297,28 +387,45 @@
 	const rationale = $derived(readString(meta, 'rationale'));
 	const decisionAt = $derived(readString(meta, 'decisionAt', 'decision_at'));
 
+	// Helper to extract props from metadata safely
+	function getExtraProps(m: Record<string, unknown>): Record<string, unknown> | undefined {
+		return typeof m.props === 'object' && m.props !== null
+			? (m.props as Record<string, unknown>)
+			: undefined;
+	}
+
 	// Props (extra metadata)
-	const props = $derived(meta.props as Record<string, unknown> | undefined);
+	const extraProps: Record<string, unknown> | undefined = $derived(getExtraProps(meta));
 </script>
 
 <div class="h-full flex flex-col bg-card border-l border-border shadow-ink-inner {config.texture}">
 	<!-- Header with type icon and close button -->
 	<header class="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30">
-		<div
-			class="flex items-center justify-center w-10 h-10 rounded-xl {config.bgColor} border {config.borderColor} flex-shrink-0 shadow-ink"
-		>
-			<svelte:component this={config.icon} class="w-5 h-5 {config.color}" />
-		</div>
+		{#if config.icon}
+			{@const IconComponent = config.icon}
+			<div
+				class="flex items-center justify-center w-10 h-10 rounded-xl {config.bgColor} border {config.borderColor} flex-shrink-0 shadow-ink"
+			>
+				<IconComponent class="w-5 h-5 {config.color}" />
+			</div>
+		{/if}
 		<div class="flex-1 min-w-0">
-			<h2 class="text-base font-semibold text-foreground truncate" title={node?.label}>
+			<h2
+				class="text-base font-semibold text-foreground line-clamp-2 leading-snug"
+				title={node?.label}
+			>
 				{node?.label ?? 'Untitled'}
 			</h2>
 			<div class="flex items-center gap-2 mt-0.5">
-				<span class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground font-medium">
+				<span
+					class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground font-medium"
+				>
 					{config.label}
 				</span>
 				{#if state !== 'unknown'}
-					<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-medium {stateStyle.bgColor} {stateStyle.color}">
+					<span
+						class="inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-medium {stateStyle.bgColor} {stateStyle.color}"
+					>
 						{stateStyle.label}
 					</span>
 				{/if}
@@ -344,7 +451,9 @@
 		<div class="flex-1 flex items-center gap-2 px-4 py-2.5">
 			<Users class="w-3.5 h-3.5 text-muted-foreground" />
 			<span class="text-sm font-semibold text-foreground">{node?.neighbors ?? 0}</span>
-			<span class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">neighbors</span>
+			<span class="text-[0.65rem] text-muted-foreground uppercase tracking-wide"
+				>neighbors</span
+			>
 		</div>
 	</div>
 
@@ -353,7 +462,9 @@
 		<!-- Description Section (if present) -->
 		{#if description}
 			<div class="px-4 py-3 border-b border-border/50">
-				<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5">
+				<p
+					class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+				>
 					Description
 				</p>
 				<p class="text-sm text-foreground leading-relaxed">
@@ -365,281 +476,403 @@
 		<!-- Type-Specific Content -->
 		{#if node?.type === 'project'}
 			<!-- Project Details -->
-			<div class="px-4 py-3 space-y-3 border-b border-border/50">
-				{#if projectContext || projectScale || projectStage}
+			{#if projectContext || projectScale || projectStage}
+				<div class="px-4 py-3 space-y-3 border-b border-border/50">
 					<div>
-						<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-2">
+						<p
+							class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-2"
+						>
 							Facets
 						</p>
 						<div class="flex flex-wrap gap-1.5">
 							{#if projectContext}
-								<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border">
+								<span
+									class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border"
+								>
 									<BookOpen class="w-3 h-3" />
 									{projectContext}
 								</span>
 							{/if}
 							{#if projectScale}
-								<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border">
+								<span
+									class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border"
+								>
 									<Layers class="w-3 h-3" />
 									{projectScale}
 								</span>
 							{/if}
 							{#if projectStage}
-								<span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border">
+								<span
+									class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-muted text-muted-foreground border border-border"
+								>
 									<Flag class="w-3 h-3" />
 									{projectStage}
 								</span>
 							{/if}
 						</div>
 					</div>
-				{/if}
-			</div>
-
+				</div>
+			{/if}
 		{:else if node?.type === 'goal'}
 			<!-- Goal Details -->
-			<div class="px-4 py-3 space-y-3 border-b border-border/50">
-				{#if goalText}
-					<div>
-						<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5">
-							Goal Statement
-						</p>
-						<p class="text-sm text-foreground leading-relaxed italic">
-							"{truncateText(goalText, 250)}"
-						</p>
-					</div>
-				{/if}
-				<div class="flex flex-wrap gap-4">
-					{#if targetDate}
-						<div class="flex items-center gap-2">
-							<CalendarDays class="w-3.5 h-3.5 text-amber-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Target</p>
-								<p class="text-xs font-medium text-foreground">{formatDate(targetDate)}</p>
-							</div>
+			{#if goalText || targetDate || completedAt}
+				<div class="px-4 py-3 space-y-3 border-b border-border/50">
+					{#if goalText}
+						<div>
+							<p
+								class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+							>
+								Goal Statement
+							</p>
+							<p class="text-sm text-foreground leading-relaxed italic">
+								"{truncateText(goalText, 250)}"
+							</p>
 						</div>
 					{/if}
-					{#if completedAt}
-						<div class="flex items-center gap-2">
-							<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Achieved</p>
-								<p class="text-xs font-medium text-foreground">{formatDate(completedAt)}</p>
-							</div>
+					{#if targetDate || completedAt}
+						<div class="flex flex-wrap gap-4">
+							{#if targetDate}
+								<div class="flex items-center gap-2">
+									<CalendarDays class="w-3.5 h-3.5 text-amber-500" />
+									<div>
+										<p
+											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										>
+											Target
+										</p>
+										<p class="text-xs font-medium text-foreground">
+											{formatDate(targetDate)}
+										</p>
+									</div>
+								</div>
+							{/if}
+							{#if completedAt}
+								<div class="flex items-center gap-2">
+									<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+									<div>
+										<p
+											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										>
+											Achieved
+										</p>
+										<p class="text-xs font-medium text-foreground">
+											{formatDate(completedAt)}
+										</p>
+									</div>
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
-			</div>
-
+			{/if}
 		{:else if node?.type === 'milestone'}
 			<!-- Milestone Details -->
-			<div class="px-4 py-3 space-y-3 border-b border-border/50">
-				{#if milestoneText}
-					<div>
-						<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5">
-							Milestone Details
-						</p>
-						<p class="text-sm text-foreground leading-relaxed">
-							{truncateText(milestoneText, 250)}
-						</p>
-					</div>
-				{/if}
-				<div class="flex flex-wrap gap-4">
-					{#if dueAt}
-						<div class="flex items-center gap-2">
-							<Clock class="w-3.5 h-3.5 text-amber-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Due</p>
-								<p class="text-xs font-medium text-foreground">{formatDate(dueAt)}</p>
-							</div>
+			{#if milestoneText || dueAt || milestoneCompletedAt}
+				<div class="px-4 py-3 space-y-3 border-b border-border/50">
+					{#if milestoneText}
+						<div>
+							<p
+								class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+							>
+								Milestone Details
+							</p>
+							<p class="text-sm text-foreground leading-relaxed">
+								{truncateText(milestoneText, 250)}
+							</p>
 						</div>
 					{/if}
-					{#if milestoneCompletedAt}
-						<div class="flex items-center gap-2">
-							<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Completed</p>
-								<p class="text-xs font-medium text-foreground">{formatDate(milestoneCompletedAt)}</p>
-							</div>
+					{#if dueAt || milestoneCompletedAt}
+						<div class="flex flex-wrap gap-4">
+							{#if dueAt}
+								<div class="flex items-center gap-2">
+									<Clock class="w-3.5 h-3.5 text-amber-500" />
+									<div>
+										<p
+											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										>
+											Due
+										</p>
+										<p class="text-xs font-medium text-foreground">
+											{formatDate(dueAt)}
+										</p>
+									</div>
+								</div>
+							{/if}
+							{#if milestoneCompletedAt}
+								<div class="flex items-center gap-2">
+									<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+									<div>
+										<p
+											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										>
+											Completed
+										</p>
+										<p class="text-xs font-medium text-foreground">
+											{formatDate(milestoneCompletedAt)}
+										</p>
+									</div>
+								</div>
+							{/if}
 						</div>
 					{/if}
 				</div>
-			</div>
-
+			{/if}
 		{:else if node?.type === 'plan'}
 			<!-- Plan Details -->
-			<div class="px-4 py-3 space-y-3 border-b border-border/50">
-				{#if planText}
+			{#if planText}
+				<div class="px-4 py-3 space-y-3 border-b border-border/50">
 					<div>
-						<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5">
+						<p
+							class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+						>
 							Plan Content
 						</p>
 						<p class="text-sm text-foreground leading-relaxed">
 							{truncateText(planText, 300)}
 						</p>
 					</div>
-				{/if}
-			</div>
-
+				</div>
+			{/if}
 		{:else if node?.type === 'task'}
 			<!-- Task Details -->
-			<div class="px-4 py-3 space-y-3 border-b border-border/50">
-				<div class="flex flex-wrap gap-4">
-					{#if priority !== null}
-						<div class="flex items-center gap-2">
-							<Lightbulb class="w-3.5 h-3.5 text-indigo-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Priority</p>
-								<p class="text-xs font-medium text-foreground">P{priority}</p>
+			{#if priority !== null || taskDueAt || taskStartAt || taskCompletedAt}
+				<div class="px-4 py-3 space-y-3 border-b border-border/50">
+					<div class="flex flex-wrap gap-4">
+						{#if priority !== null}
+							<div class="flex items-center gap-2">
+								<Lightbulb class="w-3.5 h-3.5 text-indigo-500" />
+								<div>
+									<p
+										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+									>
+										Priority
+									</p>
+									<p class="text-xs font-medium text-foreground">P{priority}</p>
+								</div>
 							</div>
-						</div>
-					{/if}
-					{#if taskDueAt}
-						<div class="flex items-center gap-2">
-							<Clock class="w-3.5 h-3.5 text-amber-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Due</p>
-								<p class="text-xs font-medium text-foreground">{formatDate(taskDueAt)}</p>
+						{/if}
+						{#if taskDueAt}
+							<div class="flex items-center gap-2">
+								<Clock class="w-3.5 h-3.5 text-amber-500" />
+								<div>
+									<p
+										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+									>
+										Due
+									</p>
+									<p class="text-xs font-medium text-foreground">
+										{formatDate(taskDueAt)}
+									</p>
+								</div>
 							</div>
-						</div>
-					{/if}
-					{#if taskStartAt}
-						<div class="flex items-center gap-2">
-							<Calendar class="w-3.5 h-3.5 text-sky-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Started</p>
-								<p class="text-xs font-medium text-foreground">{formatDate(taskStartAt)}</p>
+						{/if}
+						{#if taskStartAt}
+							<div class="flex items-center gap-2">
+								<Calendar class="w-3.5 h-3.5 text-sky-500" />
+								<div>
+									<p
+										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+									>
+										Started
+									</p>
+									<p class="text-xs font-medium text-foreground">
+										{formatDate(taskStartAt)}
+									</p>
+								</div>
 							</div>
-						</div>
-					{/if}
-					{#if taskCompletedAt}
-						<div class="flex items-center gap-2">
-							<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Completed</p>
-								<p class="text-xs font-medium text-foreground">{formatDate(taskCompletedAt)}</p>
+						{/if}
+						{#if taskCompletedAt}
+							<div class="flex items-center gap-2">
+								<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+								<div>
+									<p
+										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+									>
+										Completed
+									</p>
+									<p class="text-xs font-medium text-foreground">
+										{formatDate(taskCompletedAt)}
+									</p>
+								</div>
 							</div>
-						</div>
-					{/if}
+						{/if}
+					</div>
 				</div>
-			</div>
-
+			{/if}
 		{:else if node?.type === 'document'}
 			<!-- Document Details -->
-			<div class="px-4 py-3 space-y-3 border-b border-border/50">
-				{#if content}
+			{#if content}
+				<div class="px-4 py-3 space-y-3 border-b border-border/50">
 					<div>
-						<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5">
+						<p
+							class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+						>
 							Content Preview
 						</p>
-						<div class="text-sm text-foreground leading-relaxed bg-muted/30 rounded-lg p-3 border border-border/50">
+						<div
+							class="text-sm text-foreground leading-relaxed bg-muted/30 rounded-lg p-3 border border-border/50"
+						>
 							{truncateText(content, 300)}
 						</div>
 					</div>
-				{/if}
-			</div>
-
+				</div>
+			{/if}
 		{:else if node?.type === 'risk'}
 			<!-- Risk Details -->
-			<div class="px-4 py-3 space-y-3 border-b border-border/50">
-				<div class="flex flex-wrap gap-4">
-					{#if probability !== null}
-						<div class="flex items-center gap-2">
-							<Target class="w-3.5 h-3.5 text-amber-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Probability</p>
-								<p class="text-xs font-medium text-foreground">{(probability * 100).toFixed(0)}%</p>
-							</div>
+			{#if probability !== null || impact || mitigatedAt || riskContent}
+				<div class="px-4 py-3 space-y-3 border-b border-border/50">
+					{#if probability !== null || impact || mitigatedAt}
+						<div class="flex flex-wrap gap-4">
+							{#if probability !== null}
+								<div class="flex items-center gap-2">
+									<Target class="w-3.5 h-3.5 text-amber-500" />
+									<div>
+										<p
+											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										>
+											Probability
+										</p>
+										<p class="text-xs font-medium text-foreground">
+											{(probability * 100).toFixed(0)}%
+										</p>
+									</div>
+								</div>
+							{/if}
+							{#if impact}
+								<div class="flex items-center gap-2">
+									<AlertTriangle class="w-3.5 h-3.5 text-red-500" />
+									<div>
+										<p
+											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										>
+											Impact
+										</p>
+										<p class="text-xs font-medium text-foreground capitalize">
+											{impact}
+										</p>
+									</div>
+								</div>
+							{/if}
+							{#if mitigatedAt}
+								<div class="flex items-center gap-2">
+									<Shield class="w-3.5 h-3.5 text-emerald-500" />
+									<div>
+										<p
+											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+										>
+											Mitigated
+										</p>
+										<p class="text-xs font-medium text-foreground">
+											{formatDate(mitigatedAt)}
+										</p>
+									</div>
+								</div>
+							{/if}
 						</div>
 					{/if}
-					{#if impact}
-						<div class="flex items-center gap-2">
-							<AlertTriangle class="w-3.5 h-3.5 text-red-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Impact</p>
-								<p class="text-xs font-medium text-foreground capitalize">{impact}</p>
-							</div>
-						</div>
-					{/if}
-					{#if mitigatedAt}
-						<div class="flex items-center gap-2">
-							<Shield class="w-3.5 h-3.5 text-emerald-500" />
-							<div>
-								<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Mitigated</p>
-								<p class="text-xs font-medium text-foreground">{formatDate(mitigatedAt)}</p>
-							</div>
+					{#if riskContent}
+						<div>
+							<p
+								class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+							>
+								Risk Details
+							</p>
+							<p class="text-sm text-foreground leading-relaxed">
+								{truncateText(riskContent, 250)}
+							</p>
 						</div>
 					{/if}
 				</div>
-				{#if riskContent}
-					<div>
-						<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5">
-							Risk Details
-						</p>
-						<p class="text-sm text-foreground leading-relaxed">
-							{truncateText(riskContent, 250)}
-						</p>
-					</div>
-				{/if}
-			</div>
-
+			{/if}
 		{:else if node?.type === 'decision'}
 			<!-- Decision Details -->
-			<div class="px-4 py-3 space-y-3 border-b border-border/50">
-				{#if decisionAt}
-					<div class="flex items-center gap-2">
-						<CalendarDays class="w-3.5 h-3.5 text-violet-500" />
-						<div>
-							<p class="text-[0.6rem] uppercase tracking-wide text-muted-foreground">Decision Date</p>
-							<p class="text-xs font-medium text-foreground">{formatDateTime(decisionAt)}</p>
+			{#if decisionAt || rationale}
+				<div class="px-4 py-3 space-y-3 border-b border-border/50">
+					{#if decisionAt}
+						<div class="flex items-center gap-2">
+							<CalendarDays class="w-3.5 h-3.5 text-violet-500" />
+							<div>
+								<p
+									class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
+								>
+									Decision Date
+								</p>
+								<p class="text-xs font-medium text-foreground">
+									{formatDateTime(decisionAt)}
+								</p>
+							</div>
 						</div>
-					</div>
-				{/if}
-				{#if rationale}
-					<div>
-						<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5">
-							Rationale
-						</p>
-						<p class="text-sm text-foreground leading-relaxed italic">
-							"{truncateText(rationale, 300)}"
-						</p>
-					</div>
-				{/if}
-			</div>
+					{/if}
+					{#if rationale}
+						<div>
+							<p
+								class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
+							>
+								Rationale
+							</p>
+							<p class="text-sm text-foreground leading-relaxed italic">
+								"{truncateText(rationale, 300)}"
+							</p>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		{/if}
 
 		<!-- Type Key -->
 		{#if typeKey}
-			<div class="px-4 py-2.5 border-b border-border/50 flex items-center justify-between gap-2">
-				<span class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground shrink-0 font-medium">Type</span>
-				<code class="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
+			<div
+				class="px-4 py-2.5 border-b border-border/50 flex items-center justify-between gap-2"
+			>
+				<span
+					class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground shrink-0 font-medium"
+					>Type</span
+				>
+				<code
+					class="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border"
+				>
 					{typeKey}
 				</code>
 			</div>
 		{/if}
 
 		<!-- Extra Props (if any meaningful ones exist) -->
-		{#if props && Object.keys(props).length > 0}
-			{@const displayProps = Object.entries(props)
-				.filter(([key, value]) =>
-					value !== null &&
-					value !== undefined &&
-					value !== '' &&
-					!['description', 'content', 'goal', 'plan', 'milestone', 'rationale'].includes(key)
+		{#if extraProps && Object.keys(extraProps).length > 0}
+			{@const displayProps = Object.entries(extraProps)
+				.filter(
+					([key, value]) =>
+						value !== null &&
+						value !== undefined &&
+						value !== '' &&
+						![
+							'description',
+							'content',
+							'goal',
+							'plan',
+							'milestone',
+							'rationale'
+						].includes(key)
 				)
 				.slice(0, 6)}
 			{#if displayProps.length > 0}
 				<div class="px-4 py-3 border-b border-border/50">
-					<p class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-2">
+					<p
+						class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-2"
+					>
 						Additional Info
 					</p>
 					<dl class="space-y-1.5">
 						{#each displayProps as [key, value]}
 							<div class="flex items-start gap-2 text-xs">
-								<dt class="text-muted-foreground flex-shrink-0 min-w-[80px] capitalize">
+								<dt
+									class="text-muted-foreground flex-shrink-0 min-w-[80px] capitalize"
+								>
 									{key.replace(/_/g, ' ')}
 								</dt>
 								<dd class="text-foreground break-words">
-									{typeof value === 'object' ? JSON.stringify(value) : String(value)}
+									{typeof value === 'object'
+										? JSON.stringify(value)
+										: String(value)}
 								</dd>
 							</div>
 						{/each}
@@ -649,10 +882,15 @@
 		{/if}
 
 		<!-- Node ID -->
-		<div class="px-4 py-2.5 flex items-center justify-between gap-2">
-			<span class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground shrink-0 font-medium">ID</span>
-			<code class="text-[0.6rem] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border break-all text-right max-w-[180px] truncate" title={node?.id ?? ''}>
-				{(node?.id ?? '').slice(0, 18)}...
+		<div class="px-4 py-2.5 flex flex-col gap-1">
+			<span
+				class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground font-medium"
+				>ID</span
+			>
+			<code
+				class="text-[0.6rem] font-mono text-muted-foreground bg-muted px-2 py-1 rounded border border-border break-all select-all"
+			>
+				{node?.id ?? ''}
 			</code>
 		</div>
 	</div>

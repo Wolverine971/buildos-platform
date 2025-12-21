@@ -1,4 +1,5 @@
 <!-- docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md -->
+
 # Ontology Schema Migration Plan
 
 > **Created:** 2024-12-20
@@ -543,8 +544,26 @@ ALTER TABLE onto_tasks DROP COLUMN IF EXISTS description;
 
 ---
 
+## Documentation Updates ✅ COMPLETE
+
+> **Updated:** 2024-12-20
+
+All documentation has been updated to reflect the schema changes:
+
+| Documentation File                                  | Updates Made                                                          | Status |
+| --------------------------------------------------- | --------------------------------------------------------------------- | ------ |
+| `/apps/web/docs/features/ontology/DATA_MODELS.md`   | Updated all entity interfaces with new columns, added migration notes | ✅     |
+| `/apps/web/docs/features/ontology/API_ENDPOINTS.md` | Added soft delete behavior, updated request/response examples         | ✅     |
+| `/apps/web/docs/features/ontology/README.md`        | Added migration summary note                                          | ✅     |
+| `/docs/api/ontology-endpoints.md`                   | Added soft delete section, updated examples                           | ✅     |
+| `/packages/shared-types/src/database.schema.ts`     | Already contains all new columns (generated from Supabase)            | ✅     |
+
+---
+
 ## Related Documentation
 
 - `/docs/architecture/ONTOLOGY_DATA_MODEL_ANALYSIS.md` - Original analysis
-- `/apps/web/docs/features/ontology/DATA_MODELS.md` - Feature documentation
+- `/apps/web/docs/features/ontology/DATA_MODELS.md` - Feature documentation (updated)
+- `/apps/web/docs/features/ontology/API_ENDPOINTS.md` - API reference (updated)
+- `/docs/api/ontology-endpoints.md` - Quick API reference (updated)
 - `/packages/shared-types/src/database.schema.ts` - TypeScript schema

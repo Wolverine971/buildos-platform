@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/profile/BriefsTab.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { briefPreferencesStore } from '$lib/stores/briefPreferences';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
@@ -24,22 +24,26 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 
-	// Create event dispatcher for parent communication
-	const dispatch = createEventDispatcher();
+	interface Props {
+		onsuccess?: (event: { message: string }) => void;
+		onerror?: (event: { message: string }) => void;
+	}
+
+	let { onsuccess, onerror }: Props = $props();
 
 	// State
-	let editingBriefPreferences = false;
-	let briefPreferences: BriefPreferences | null = null;
-	let briefPreferencesForm: BriefPreferences = {
+	let editingBriefPreferences = $state(false);
+	let briefPreferences = $state<BriefPreferences | null>(null);
+	let briefPreferencesForm = $state<BriefPreferences>({
 		frequency: 'daily',
 		day_of_week: 1,
 		time_of_day: '09:00:00',
 		is_active: true
-	};
-	let refreshingJobs = false;
+	});
+	let refreshingJobs = $state(false);
 
 	// For the time input, we need to handle HH:MM format
-	let timeInputValue = '09:00';
+	let timeInputValue = $state('09:00');
 
 	// Timezone options
 	const TIMEZONE_OPTIONS = [
@@ -85,28 +89,41 @@
 	}
 
 	// Store subscriptions
-	$: briefPreferencesState = $briefPreferencesStore;
-	$: notificationPreferencesState = $notificationPreferencesStore;
-	$: if (briefPreferencesState.preferences) {
-		briefPreferences = briefPreferencesState.preferences;
-	}
-	$: hasEmailOptIn = notificationPreferencesState.preferences?.should_email_daily_brief || false;
+	let briefPreferencesState = $derived($briefPreferencesStore);
+	let notificationPreferencesState = $derived($notificationPreferencesStore);
+
+	// Update briefPreferences when store changes
+	$effect(() => {
+		if (briefPreferencesState.preferences) {
+			briefPreferences = briefPreferencesState.preferences;
+		}
+	});
+
+	let hasEmailOptIn = $derived(
+		notificationPreferencesState.preferences?.should_email_daily_brief || false
+	);
 
 	// Handle store errors
-	$: if (briefPreferencesState.error) {
-		dispatch('error', { message: briefPreferencesState.error });
-		briefPreferencesStore.clearError();
-	}
+	$effect(() => {
+		if (briefPreferencesState.error) {
+			onerror?.({ message: briefPreferencesState.error });
+			briefPreferencesStore.clearError();
+		}
+	});
 
 	// Reactive update for time input
-	$: if (briefPreferencesForm?.time_of_day) {
-		timeInputValue = convertTimeToHHMM(briefPreferencesForm.time_of_day);
-	}
+	$effect(() => {
+		if (briefPreferencesForm?.time_of_day) {
+			timeInputValue = convertTimeToHHMM(briefPreferencesForm.time_of_day);
+		}
+	});
 
 	// Update form when time input changes
-	$: if (timeInputValue && briefPreferencesForm) {
-		briefPreferencesForm.time_of_day = convertTimeToHHMMSS(timeInputValue);
-	}
+	$effect(() => {
+		if (timeInputValue && briefPreferencesForm) {
+			briefPreferencesForm.time_of_day = convertTimeToHHMMSS(timeInputValue);
+		}
+	});
 
 	// Load brief preferences on mount
 	async function loadBriefPreferences() {
@@ -114,7 +131,7 @@
 			try {
 				await briefPreferencesStore.load();
 			} catch (error) {
-				dispatch('error', { message: 'Failed to load brief preferences' });
+				onerror?.({ message: 'Failed to load brief preferences' });
 			}
 		}
 	}
@@ -127,7 +144,7 @@
 		try {
 			await briefPreferencesStore.loadJobs();
 		} catch (error) {
-			dispatch('error', { message: 'Failed to refresh brief jobs' });
+			onerror?.({ message: 'Failed to refresh brief jobs' });
 		} finally {
 			refreshingJobs = false;
 		}
@@ -173,9 +190,9 @@
 
 			await briefPreferencesStore.save(formToSave);
 			editingBriefPreferences = false;
-			dispatch('success', { message: 'Brief preferences saved successfully' });
+			onsuccess?.({ message: 'Brief preferences saved successfully' });
 		} catch (error) {
-			dispatch('error', {
+			onerror?.({
 				message: `Failed to save brief preferences: ${error instanceof Error ? error.message : 'Unknown error'}`
 			});
 		}
@@ -186,9 +203,9 @@
 			try {
 				await briefPreferencesStore.resetToDefaults();
 				editingBriefPreferences = false;
-				dispatch('success', { message: 'Brief preferences reset to defaults' });
+				onsuccess?.({ message: 'Brief preferences reset to defaults' });
 			} catch (error) {
-				dispatch('error', {
+				onerror?.({
 					message: `Failed to reset preferences: ${error instanceof Error ? error.message : 'Unknown error'}`
 				});
 			}
@@ -200,9 +217,9 @@
 			try {
 				const briefDate = job.scheduled_for.split('T')[0];
 				await briefPreferencesStore.cancelJob(briefDate);
-				dispatch('success', { message: 'Brief job cancelled successfully' });
+				onsuccess?.({ message: 'Brief job cancelled successfully' });
 			} catch (error) {
-				dispatch('error', {
+				onerror?.({
 					message: `Failed to cancel brief job: ${error instanceof Error ? error.message : 'Unknown error'}`
 				});
 			}

@@ -1,4 +1,5 @@
 <!-- docs/architecture/ONTOLOGY_DATA_MODEL_ANALYSIS.md -->
+
 # Ontology Data Model Analysis
 
 > **Date:** 2024-12-20

@@ -87,16 +87,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.forbidden('You do not have permission to update this output');
 		}
 
-		// Build update payload with proper typing
-		interface UpdatePayload {
-			name?: string;
-			state_key?: string;
-			description?: string;
-			props?: Record<string, unknown>;
-			updated_at?: string;
-		}
-
-		const updatePayload: UpdatePayload = {
+		// Build update payload
+		// Note: We cast the payload to satisfy Supabase's stricter Json type requirements.
+		// Record<string, unknown> from request body is compatible at runtime but not at type level.
+		const updatePayload: Record<string, unknown> = {
 			updated_at: new Date().toISOString()
 		};
 
@@ -108,7 +102,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		// Update the output
 		const { data: updatedOutput, error: updateError } = await supabase
 			.from('onto_outputs')
-			.update(updatePayload)
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			.update(updatePayload as any)
 			.eq('id', id)
 			.select('*')
 			.single();

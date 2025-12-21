@@ -1,4 +1,5 @@
 <!-- apps/web/docs/technical/components/ONTOLOGY_GRAPH_DESIGN_SPEC.md -->
+
 # Ontology Graph Visualization Design Spec
 
 > **Version:** 1.0

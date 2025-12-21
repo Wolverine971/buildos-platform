@@ -84,7 +84,8 @@
 				{#if innerWidth > 600}
 					<br />
 				{/if}
-				BuildOS is being built from the ground up using AI but focusing on understanding the user.
+				BuildOS is being built from the ground up using AI but focusing on understanding the
+				user.
 			</p>
 
 			<div class="flex flex-col sm:flex-row gap-3 justify-center">
@@ -291,7 +292,9 @@
 				<div
 					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-grain tx-weak"
 				>
-					<p class="text-[0.65rem] uppercase tracking-[0.15em] text-accent font-semibold mb-2">
+					<p
+						class="text-[0.65rem] uppercase tracking-[0.15em] text-accent font-semibold mb-2"
+					>
 						PHASE 1 • NOW - Q2 2025
 					</p>
 					<h3 class="text-lg font-bold mb-3 text-foreground">Productivity Tool</h3>
@@ -319,7 +322,9 @@
 				<div
 					class="bg-card rounded-lg p-6 shadow-ink-strong border-2 border-accent tx tx-pulse tx-weak"
 				>
-					<p class="text-[0.65rem] uppercase tracking-[0.15em] text-info font-semibold mb-2">
+					<p
+						class="text-[0.65rem] uppercase tracking-[0.15em] text-info font-semibold mb-2"
+					>
 						PHASE 2 • Q3 2025
 					</p>
 					<h3 class="text-lg font-bold mb-3 text-foreground">LLM Platform</h3>
@@ -344,7 +349,9 @@
 				<div
 					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-bloom tx-weak"
 				>
-					<p class="text-[0.65rem] uppercase tracking-[0.15em] text-warning font-semibold mb-2">
+					<p
+						class="text-[0.65rem] uppercase tracking-[0.15em] text-warning font-semibold mb-2"
+					>
 						PHASE 3 • 2026+
 					</p>
 					<h3 class="text-lg font-bold mb-3 text-foreground">Agent Operating System</h3>
@@ -426,16 +433,15 @@
 			<div class="text-sm text-muted-foreground">
 				For business inquiries: <a
 					href="mailto:dj@build-os.com"
-					class="text-accent hover:text-accent/80 transition-colors font-semibold">dj@build-os.com</a
+					class="text-accent hover:text-accent/80 transition-colors font-semibold"
+					>dj@build-os.com</a
 				>
 			</div>
 		</div>
 	</section>
 
 	<!-- Connect -->
-	<section
-		class="mt-8 py-16 px-4 sm:px-6 lg:px-8 bg-accent tx tx-frame tx-med"
-	>
+	<section class="mt-8 py-16 px-4 sm:px-6 lg:px-8 bg-accent tx tx-frame tx-med">
 		<div class="max-w-3xl mx-auto text-center">
 			<h2 class="text-3xl font-bold mb-6 text-accent-foreground">Building for the AI Era</h2>
 

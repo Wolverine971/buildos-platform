@@ -206,6 +206,7 @@ export interface EnhancedAgentStreamRequest {
 	lastTurnContext?: LastTurnContext;
 	projectFocus?: ProjectFocus | null;
 	conversation_history?: ChatMessage[];
+	stream_run_id?: number;
 }
 
 /**

@@ -61,6 +61,8 @@ export class MessagePersister {
 		content: string;
 		toolCalls?: ChatToolCall[];
 		timestamp?: string;
+		messageType?: string | null;
+		metadata?: Record<string, unknown>;
 	}): Promise<void> {
 		// Use type assertion on entire object to handle Json type compatibility
 		const messageData = {
@@ -70,7 +72,10 @@ export class MessagePersister {
 			content: params.content || '', // Can be empty if only tool calls
 			tool_calls:
 				params.toolCalls && params.toolCalls.length > 0 ? params.toolCalls : undefined,
-			created_at: params.timestamp ?? new Date().toISOString()
+			created_at: params.timestamp ?? new Date().toISOString(),
+			message_type: params.messageType ?? null,
+			metadata: (params.metadata ??
+				null) as Database['public']['Tables']['chat_messages']['Insert']['metadata']
 		} as ChatMessageInsert;
 
 		await this.persistMessage(messageData);
@@ -87,6 +92,8 @@ export class MessagePersister {
 		userId: string;
 		toolCalls: ChatToolCall[];
 		toolResults: ToolResultData[];
+		messageType?: string | null;
+		metadata?: Record<string, unknown>;
 	}): Promise<void> {
 		for (const toolCall of params.toolCalls) {
 			// Match result by tool_call_id
@@ -94,6 +101,11 @@ export class MessagePersister {
 
 			if (result) {
 				const normalizedResult = result.result;
+				const toolName =
+					toolCall.function?.name ??
+					(result.tool_name as string | undefined) ??
+					(toolCall as any)?.name ??
+					null;
 
 				const toolResultMessage: ChatMessageInsert = {
 					session_id: params.sessionId,
@@ -101,7 +113,13 @@ export class MessagePersister {
 					role: 'tool',
 					content: JSON.stringify(normalizedResult),
 					tool_call_id: toolCall.id,
-					created_at: new Date().toISOString()
+					tool_name: toolName,
+					tool_result:
+						normalizedResult as Database['public']['Tables']['chat_messages']['Insert']['tool_result'],
+					created_at: new Date().toISOString(),
+					message_type: params.messageType ?? null,
+					metadata: (params.metadata ??
+						null) as Database['public']['Tables']['chat_messages']['Insert']['metadata']
 				};
 
 				await this.persistMessage(toolResultMessage);

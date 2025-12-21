@@ -452,9 +452,7 @@
 			<!-- 2026+ FUTURE VISION -->
 			<div class="mb-16">
 				<div class="flex items-center gap-3 mb-6">
-					<div
-						class="w-3 h-3 bg-accent rounded-full"
-					></div>
+					<div class="w-3 h-3 bg-accent rounded-full"></div>
 					<h2 class="text-2xl font-bold text-foreground">2026+ Future Vision</h2>
 					<span
 						class="px-3 py-1 bg-accent/10 text-accent border border-accent/20 rounded-full text-sm font-medium"

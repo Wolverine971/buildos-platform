@@ -46,15 +46,18 @@
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
-	import type { ComponentType } from 'svelte';
+	import type { Component } from 'svelte';
 
 	// Lazy-loaded modal components for better initial load performance
-	let TaskSeriesModalComponent = $state<ComponentType<any> | null>(null);
-	let DocumentModalComponent = $state<ComponentType<any> | null>(null);
-	let GoalEditModalComponent = $state<ComponentType<any> | null>(null);
-	let PlanEditModalComponent = $state<ComponentType<any> | null>(null);
-	let TaskEditModalSelfComponent = $state<ComponentType<any> | null>(null);
-	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+	// Using Component<any, any, any> for Svelte 5 function-based components
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	type LazyComponent = Component<any, any, any> | null;
+	let TaskSeriesModalComponent = $state<LazyComponent>(null);
+	let DocumentModalComponent = $state<LazyComponent>(null);
+	let GoalEditModalComponent = $state<LazyComponent>(null);
+	let PlanEditModalComponent = $state<LazyComponent>(null);
+	let TaskEditModalSelfComponent = $state<LazyComponent>(null);
+	let AgentChatModalComponent = $state<LazyComponent>(null);
 
 	async function loadTaskSeriesModal() {
 		if (!TaskSeriesModalComponent) {
@@ -447,7 +450,10 @@
 
 			// Auto-select first deliverable document if none selected
 			if (!selectedWorkspaceDocId && deliverableDocuments.length > 0) {
-				selectWorkspaceDocument(deliverableDocuments[0].document.id);
+				const firstDoc = deliverableDocuments[0];
+				if (firstDoc?.document?.id) {
+					selectWorkspaceDocument(firstDoc.document.id);
+				}
 			}
 
 			workspaceInitialized = true;
@@ -1610,8 +1616,8 @@
 </Modal>
 
 {#if task && showSeriesModal && TaskSeriesModalComponent}
-	<svelte:component
-		this={TaskSeriesModalComponent}
+	{@const SeriesModal = TaskSeriesModalComponent}
+	<SeriesModal
 		{task}
 		bind:isOpen={showSeriesModal}
 		onClose={() => (showSeriesModal = false)}
@@ -1620,8 +1626,8 @@
 {/if}
 
 {#if task && workspaceDocumentModalOpen && DocumentModalComponent}
-	<svelte:component
-		this={DocumentModalComponent}
+	{@const DocModal = DocumentModalComponent}
+	<DocModal
 		projectId={task.project_id}
 		taskId={task.id}
 		bind:isOpen={workspaceDocumentModalOpen}
@@ -1654,8 +1660,8 @@
 
 <!-- Linked Entity Modals (Lazy Loaded) -->
 {#if showGoalModal && selectedGoalIdForModal && GoalEditModalComponent}
-	<svelte:component
-		this={GoalEditModalComponent}
+	{@const GoalModal = GoalEditModalComponent}
+	<GoalModal
 		goalId={selectedGoalIdForModal}
 		{projectId}
 		onClose={handleLinkedEntityModalClose}
@@ -1665,8 +1671,8 @@
 {/if}
 
 {#if showPlanModal && selectedPlanIdForModal && PlanEditModalComponent}
-	<svelte:component
-		this={PlanEditModalComponent}
+	{@const PlanModal = PlanEditModalComponent}
+	<PlanModal
 		planId={selectedPlanIdForModal}
 		{projectId}
 		onClose={handleLinkedEntityModalClose}
@@ -1676,8 +1682,8 @@
 {/if}
 
 {#if showLinkedTaskModal && selectedLinkedTaskId && TaskEditModalSelfComponent}
-	<svelte:component
-		this={TaskEditModalSelfComponent}
+	{@const LinkedTaskModal = TaskEditModalSelfComponent}
+	<LinkedTaskModal
 		taskId={selectedLinkedTaskId}
 		{projectId}
 		{plans}
@@ -1691,10 +1697,6 @@
 
 <!-- Chat About Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
-	<svelte:component
-		this={AgentChatModalComponent}
-		isOpen={showChatModal}
-		initialProjectFocus={entityFocus}
-		onClose={handleChatClose}
-	/>
+	{@const ChatModal = AgentChatModalComponent}
+	<ChatModal isOpen={showChatModal} initialProjectFocus={entityFocus} onClose={handleChatClose} />
 {/if}

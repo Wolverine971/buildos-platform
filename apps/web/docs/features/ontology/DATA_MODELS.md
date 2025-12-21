@@ -2,10 +2,12 @@
 
 # Ontology Data Models & Database Schema
 
-**Last Updated**: December 12, 2025
+**Last Updated**: December 20, 2025
 **Status**: Production Ready
 **Category**: Feature Documentation
 **Location**: `/apps/web/docs/features/ontology/`
+
+> **Recent Updates (2024-12-20)**: Schema migration complete. All ontology tables now have dedicated columns for `description`, `deleted_at` (soft deletes), and entity-specific fields. See [ONTOLOGY_SCHEMA_MIGRATION_PLAN.md](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) for details.
 
 ## Overview
 
@@ -65,18 +67,24 @@ interface OntoProject {
 	name: text;
 	description: text | null;
 	type_key: text; // Classification: 'project.creative.book', 'project.technical.app'
-	also_types: text[]; // Additional type keys
 	state_key: text; // 'draft', 'active', 'paused', 'complete', 'archived'
 	props: jsonb; // AI-inferred properties
+	is_public: boolean | null; // Whether project is publicly visible
 
 	// Generated facet columns (from props->'facets')
 	facet_context: text | null; // 'personal', 'client', 'commercial', etc.
 	facet_scale: text | null; // 'micro', 'small', 'medium', 'large', 'epic'
 	facet_stage: text | null; // 'discovery', 'planning', 'execution', 'launch', etc.
 
+	// Project timeline
 	start_at: timestamptz | null;
 	end_at: timestamptz | null;
-	context_document_id: uuid | null; // FK to onto_documents
+
+	// Next step tracking (AI-generated)
+	next_step_short: text | null;
+	next_step_long: text | null;
+	next_step_source: text | null;
+	next_step_updated_at: timestamptz | null;
 
 	created_by: uuid; // FK to onto_actors
 	created_at: timestamptz;
@@ -89,7 +97,7 @@ interface OntoProject {
 - `type_key` is a classification string (no schema enforcement)
 - Facets stored in `props.facets` as generated columns for efficient querying
 - Props are AI-inferred, flexible JSONB
-- Context document provides detailed project narrative
+- `next_step_*` columns track AI-suggested next actions
 
 ---
 
@@ -105,10 +113,19 @@ interface OntoTask {
 	project_id: uuid; // FK to onto_projects
 	type_key: text; // Work mode taxonomy (required, default: 'task.execute')
 	title: text;
+	description: text | null; // Task description (migrated from props.description)
 	state_key: text; // 'todo', 'in_progress', 'blocked', 'done', 'abandoned'
 	priority: int | null; // Numeric priority (1-5)
-	due_at: timestamptz | null;
 	props: jsonb; // Flexible task properties
+	search_vector: tsvector; // Full-text search
+
+	// Scheduling
+	start_at: timestamptz | null; // When task should start
+	due_at: timestamptz | null; // When task is due
+
+	// Lifecycle
+	completed_at: timestamptz | null; // When task was completed (auto-set on done)
+	deleted_at: timestamptz | null; // Soft delete timestamp
 
 	// Generated facet column
 	facet_scale: text | null; // Task size/effort
@@ -118,6 +135,13 @@ interface OntoTask {
 	updated_at: timestamptz;
 }
 ```
+
+**New Columns (2024-12-20 Migration):**
+
+- `description`: Dedicated text column (migrated from `props.description`)
+- `start_at`: Task start date for scheduling
+- `completed_at`: Auto-set when `state_key` becomes `done`
+- `deleted_at`: Soft delete support (all queries should filter `WHERE deleted_at IS NULL`)
 
 **type_key Work Mode Taxonomy**
 
@@ -179,20 +203,32 @@ interface OntoPlan {
 	id: uuid;
 	project_id: uuid; // FK to onto_projects
 	name: text;
+	plan: text | null; // Plan content/details
+	description: text | null; // Plan description (migrated from props.description)
 	type_key: text; // e.g., 'plan.sprint', 'plan.phase', 'plan.quarterly'
 	state_key: text; // 'draft', 'active', 'review', 'complete'
 	props: jsonb;
+	search_vector: tsvector; // Full-text search
 
 	// Generated facet columns
 	facet_context: text | null;
 	facet_scale: text | null;
 	facet_stage: text | null;
 
+	// Lifecycle
+	deleted_at: timestamptz | null; // Soft delete timestamp
+
 	created_by: uuid;
 	created_at: timestamptz;
 	updated_at: timestamptz;
 }
 ```
+
+**New Columns (2024-12-20 Migration):**
+
+- `plan`: Dedicated text column for plan content
+- `description`: Dedicated text column (migrated from `props.description`)
+- `deleted_at`: Soft delete support
 
 ---
 
@@ -205,18 +241,32 @@ interface OntoOutput {
 	id: uuid;
 	project_id: uuid;
 	name: text;
+	description: text | null; // Output description
 	type_key: text; // e.g., 'output.written.chapter', 'output.software.feature'
 	state_key: text; // 'draft', 'review', 'approved', 'published'
 	props: jsonb;
+	search_vector: tsvector; // Full-text search
 
 	// Generated facet column
 	facet_stage: text | null;
+
+	// Source tracking
+	source_document_id: uuid | null; // FK to onto_documents
+	source_event_id: uuid | null; // FK to onto_events
+
+	// Lifecycle
+	deleted_at: timestamptz | null; // Soft delete timestamp
 
 	created_by: uuid;
 	created_at: timestamptz;
 	updated_at: timestamptz;
 }
 ```
+
+**New Columns (2024-12-20 Migration):**
+
+- `description`: Dedicated text column for output description
+- `deleted_at`: Soft delete support
 
 **Version Tracking:**
 
@@ -243,15 +293,29 @@ interface OntoDocument {
 	id: uuid;
 	project_id: uuid;
 	title: text;
+	content: text | null; // Document content (migrated from props.body_markdown)
+	description: text | null; // Document description
 	type_key: text; // e.g., 'document.context', 'document.spec', 'document.notes'
 	state_key: text; // 'draft', 'published'
 	props: jsonb;
+	search_vector: tsvector; // Full-text search
+
+	// Lifecycle
+	deleted_at: timestamptz | null; // Soft delete timestamp
 
 	created_by: uuid;
 	created_at: timestamptz;
-	updated_at?: timestamptz;
+	updated_at: timestamptz;
 }
 ```
+
+**New Columns (2024-12-20 Migration):**
+
+- `content`: Dedicated text column for document body (migrated from `props.body_markdown`)
+- `description`: Dedicated text column for document description
+- `deleted_at`: Soft delete support
+
+**Backwards Compatibility:** During transition, both `content` column and `props.body_markdown` are maintained. New documents store content in both locations. Read operations prefer `content` column with fallback to `props.body_markdown`.
 
 **Version Tracking:**
 
@@ -270,16 +334,139 @@ interface OntoDocumentVersion {
 
 ---
 
-### 2.6 - 2.13 Other Entities
+### 2.6 ONTO_GOALS
 
-See the interface definitions for:
+**Project objectives and strategic goals.**
 
-- `OntoGoal` - Project objectives
-- `OntoRequirement` - Project requirements
-- `OntoMilestone` - Key milestones
-- `OntoRisk` - Risk tracking
+```typescript
+interface OntoGoal {
+	id: uuid;
+	project_id: uuid;
+	name: text;
+	goal: text | null; // Goal content
+	description: text | null; // Goal description (migrated from props.description)
+	type_key: text | null; // e.g., 'goal.outcome.milestone', 'goal.metric.target'
+	state_key: text; // 'active', 'achieved', 'abandoned'
+	props: jsonb;
+	search_vector: tsvector;
+
+	// Timeline
+	target_date: timestamptz | null; // Target completion date (migrated from props.target_date)
+
+	// Lifecycle
+	completed_at: timestamptz | null; // When goal was achieved
+	deleted_at: timestamptz | null; // Soft delete timestamp
+
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz | null;
+}
+```
+
+### 2.7 ONTO_MILESTONES
+
+**Key project milestones and checkpoints.**
+
+```typescript
+interface OntoMilestone {
+	id: uuid;
+	project_id: uuid;
+	title: text;
+	milestone: text | null; // Milestone content
+	description: text | null; // Milestone description (migrated from props.description)
+	type_key: text | null;
+	state_key: text; // 'pending', 'achieved', 'missed'
+	due_at: timestamptz;
+	props: jsonb;
+	search_vector: tsvector;
+
+	// Lifecycle
+	completed_at: timestamptz | null; // When milestone was achieved
+	deleted_at: timestamptz | null; // Soft delete timestamp
+
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz | null;
+}
+```
+
+### 2.8 ONTO_RISKS
+
+**Risk tracking and mitigation.**
+
+```typescript
+interface OntoRisk {
+	id: uuid;
+	project_id: uuid;
+	title: text;
+	content: text | null; // Risk content/description
+	type_key: text | null;
+	state_key: text; // 'identified', 'mitigated', 'closed'
+	impact: text; // 'low', 'medium', 'high', 'critical'
+	probability: number | null; // 0-100
+	props: jsonb;
+	search_vector: tsvector;
+
+	// Lifecycle
+	mitigated_at: timestamptz | null; // When risk was mitigated
+	deleted_at: timestamptz | null; // Soft delete timestamp
+
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz | null;
+}
+```
+
+### 2.9 ONTO_REQUIREMENTS
+
+**Project requirements and specifications.**
+
+```typescript
+interface OntoRequirement {
+	id: uuid;
+	project_id: uuid;
+	text: text; // Requirement text
+	type_key: text;
+	priority: int | null; // Requirement priority
+	props: jsonb;
+	search_vector: tsvector;
+
+	// Lifecycle
+	deleted_at: timestamptz | null; // Soft delete timestamp
+
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz | null;
+}
+```
+
+### 2.10 ONTO_DECISIONS
+
+**Project decision records.**
+
+```typescript
+interface OntoDecision {
+	id: uuid;
+	project_id: uuid;
+	title: text;
+	rationale: text | null;
+	decision_at: timestamptz;
+	props: jsonb;
+
+	// Lifecycle
+	deleted_at: timestamptz | null; // Soft delete timestamp
+
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz | null;
+}
+```
+
+### 2.11 - 2.13 Other Entities
+
+See the database schema for:
+
 - `OntoMetric` / `OntoMetricPoint` - Performance metrics
-- `OntoDecision` - Decision log
 - `OntoSource` - External references
 - `OntoSignal` / `OntoInsight` - Real-time signals
 

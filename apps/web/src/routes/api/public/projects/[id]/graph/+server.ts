@@ -112,7 +112,9 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			documents: (documentsResult.data ?? []) as OntoDocument[],
 			plans: (plansResult.data ?? []) as OntoPlan[],
 			goals: (goalsResult.data ?? []) as OntoGoal[],
-			milestones: (milestonesResult.data ?? []) as OntoMilestone[]
+			milestones: (milestonesResult.data ?? []) as OntoMilestone[],
+			risks: (risksResult.data ?? []) as OntoRisk[],
+			decisions: (decisionsResult.data ?? []) as OntoDecision[]
 		};
 
 		// Filter out template edges
@@ -143,12 +145,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			totalDocuments: (documentsResult.data ?? []).length,
 			totalPlans: (plansResult.data ?? []).length,
 			totalGoals: (goalsResult.data ?? []).length,
-			totalMilestones: (milestonesResult.data ?? []).length
-		};
-
-		// Add extra stats for risks and decisions
-		const extendedStats = {
-			...stats,
+			totalMilestones: (milestonesResult.data ?? []).length,
 			totalRisks: (risksResult.data ?? []).length,
 			totalDecisions: (decisionsResult.data ?? []).length
 		};
@@ -156,7 +153,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 		return ApiResponse.success({
 			source: sourceData,
 			graph: graphData,
-			stats: extendedStats,
+			stats,
 			project: {
 				id: project.id,
 				name: project.name,

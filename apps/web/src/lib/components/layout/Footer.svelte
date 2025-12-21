@@ -104,7 +104,9 @@
 							</span>
 						</a>
 						{#if user?.is_admin}
-							<span class="px-2 py-1 text-xs font-bold bg-destructive text-destructive-foreground rounded">
+							<span
+								class="px-2 py-1 text-xs font-bold bg-destructive text-destructive-foreground rounded"
+							>
 								Admin
 							</span>
 						{/if}

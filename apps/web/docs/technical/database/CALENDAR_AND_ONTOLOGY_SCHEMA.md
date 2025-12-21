@@ -2,11 +2,14 @@
 
 # BuildOS Database Schema: Calendar & Ontology System
 
+> **Last Updated**: December 20, 2025
+> **Recent Changes**: Schema migration complete - all ontology tables now have dedicated columns for `description`, `deleted_at`, and entity-specific fields. Template system removed. See [Migration Plan](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md).
+
 ## Executive Summary
 
 BuildOS has two primary systems for managing entities and their relationships:
 
-1. **Ontology System** - Template-driven, type-safe entity management with FSM state machines (onto\_\* tables)
+1. **Ontology System** - Props-based, type_key-driven entity management with application-layer state machines (onto\_\* tables)
 2. **Traditional Task Management** - Calendar-integrated task tracking with project phases (tasks, projects, project_calendars)
 
 These systems are **NOT currently connected** - they operate independently. The ontology system is newer and more sophisticated, while the traditional system powers the core product features.
@@ -17,12 +20,14 @@ These systems are **NOT currently connected** - they operate independently. The 
 
 ### Core Concept
 
-The ontology system implements a **template-driven, type-safe architecture** for managing projects, plans, tasks, and outputs. It uses:
+The ontology system implements a **props-based, type_key-driven architecture** for managing projects, plans, tasks, and outputs. It uses:
 
-- **Finite State Machines (FSM)** for state transitions
+- **Application-layer state machines** for state transitions (no database FSM)
 - **Faceted metadata** system (3 facets: context, scale, stage)
 - **Graph-based relationships** (onto_edges)
-- **Template inheritance** for code reuse
+- **Type keys** for semantic classification (templates removed Dec 2025)
+- **Dedicated columns** for common fields (description, deleted_at, etc.)
+- **Soft deletes** via `deleted_at` column on all entities
 
 ### Core Reference Tables
 
@@ -108,79 +113,16 @@ Unique: (facet_key, value)
 
 ---
 
-### Templates System
+### Templates System (REMOVED - December 2025)
 
-#### `onto_templates` (Schema & FSM Definitions)
+> **⚠️ DEPRECATED**: The `onto_templates` table has been removed. The system now uses type_key strings directly for classification without a backing template table.
 
-```
-id (uuid, pk)
-scope (text) - 'project'|'plan'|'task'|'output'|'document'|'goal'|'requirement'|'risk'|'milestone'|'metric'
-type_key (text, format: "realm.type[.subtype]")
-name (text)
-status (enum: 'draft'|'active'|'deprecated')
+**Current Approach:**
 
-parent_template_id (uuid fk, self-referential)
-is_abstract (boolean)
-
-schema (jsonb) - JSON Schema for properties
-fsm (jsonb) - Finite State Machine definition
-default_props (jsonb) - Default values
-default_views (jsonb array) - UI view configs
-facet_defaults (jsonb) - Default facet values
-metadata (jsonb) - Keywords, realm, etc.
-
-created_by (uuid)
-created_at (timestamptz)
-updated_at (timestamptz)
-
-Unique: (scope, type_key)
-```
-
-**FSM Structure** (in `fsm` column):
-
-```json
-{
-  "type_key": "writer.book",
-  "states": ["planning", "writing", "editing", "published"],
-  "transitions": [
-    {
-      "from": "planning",
-      "to": "writing",
-      "event": "start_writing",
-      "guards": [{"type": "has_property", "path": "props.target_word_count"}],
-      "actions": [
-        {"type": "spawn_tasks", "titles": [...], "props_template": {...}},
-        {"type": "update_facets", "facets": {"stage": "execution"}},
-        {"type": "notify", "message": "..."}
-      ]
-    }
-  ]
-}
-```
-
-**Seeded Templates** (25):
-
-**Project Templates**:
-
-- `writer.book`, `writer.article`
-- `coach.client`, `coach.program`
-- `developer.app`, `developer.feature`
-- `founder.startup`, `founder.product`
-- `student.assignment`, `student.project`
-- `personal.goal`, `personal.routine`
-- `marketer.campaign` (with advanced FSM)
-
-**Plan Templates**:
-
-- `plan.weekly`, `plan.sprint`
-
-**Output Templates**:
-
-- `output.chapter`, `output.design`, `output.workout_plan`
-
-**Document Templates**:
-
-- `doc.brief`, `doc.notes`, `doc.intake`
+- Type keys are string conventions (e.g., `task.execute`, `project.base`)
+- No schema validation via templates
+- State transitions handled at application layer
+- See [TYPE_KEY_TAXONOMY.md](/apps/web/docs/features/ontology/TYPE_KEY_TAXONOMY.md) for naming conventions
 
 ---
 
@@ -193,10 +135,10 @@ id (uuid, pk)
 org_id (uuid)
 name (text, not null)
 description (text)
-type_key (text, not null) - references onto_templates.type_key
-also_types (text array) - additional types
+type_key (text, not null) - semantic classification string
 state_key (text, default 'draft')
-props (jsonb) - custom properties per template
+props (jsonb) - custom properties
+is_public (boolean) - whether project is publicly visible
 
 facet_context (generated) - extracted from props.facets.context
 facet_scale (generated) - extracted from props.facets.scale
@@ -204,7 +146,12 @@ facet_stage (generated) - extracted from props.facets.stage
 
 start_at (timestamptz)
 end_at (timestamptz)
-context_document_id (uuid fk → onto_documents)
+
+-- Next step tracking (AI-generated)
+next_step_short (text)
+next_step_long (text)
+next_step_source (text)
+next_step_updated_at (timestamptz)
 
 created_by (uuid)
 created_at (timestamptz)
@@ -212,6 +159,8 @@ updated_at (timestamptz)
 
 Indexes: type_key, state_key, facet_context, facet_scale, facet_stage, props (gin), name (trgm), description (trgm)
 ```
+
+> **Note**: `also_types` column removed in December 2025 schema migration.
 
 **Example**:
 
@@ -239,13 +188,19 @@ Indexes: type_key, state_key, facet_context, facet_scale, facet_stage, props (gi
 id (uuid, pk)
 project_id (uuid fk, cascade delete)
 name (text, not null)
+plan (text) -- NEW: Plan content
+description (text) -- NEW: Dedicated column (migrated from props.description)
 type_key (text, not null)
 state_key (text, default 'draft')
 props (jsonb)
+search_vector (tsvector) -- Full-text search
 
 facet_context (generated)
 facet_scale (generated)
 facet_stage (generated)
+
+-- Lifecycle
+deleted_at (timestamptz) -- NEW: Soft delete timestamp
 
 created_by (uuid)
 created_at (timestamptz)
@@ -261,10 +216,19 @@ id (uuid, pk)
 project_id (uuid fk, not null, cascade delete)
 type_key (text, not null, default 'task.execute')  -- Work mode taxonomy
 title (text, not null)
+description (text) -- NEW: Dedicated column (migrated from props.description)
 state_key (text, default 'todo')
 priority (int, 1-5)
-due_at (timestamptz)
 props (jsonb)
+search_vector (tsvector) -- Full-text search
+
+-- Scheduling
+start_at (timestamptz) -- NEW: When task should start
+due_at (timestamptz)
+
+-- Lifecycle
+completed_at (timestamptz) -- NEW: Auto-set when state_key='done'
+deleted_at (timestamptz) -- NEW: Soft delete timestamp
 
 facet_scale (generated from props.facets.scale)
 
@@ -272,7 +236,8 @@ created_by (uuid)
 created_at (timestamptz)
 updated_at (timestamptz)
 
-Indexes: project, type_key, state_key, due_at, priority, props (gin), title (trgm)
+Indexes: project, type_key, state_key, due_at, priority, props (gin), title (trgm),
+         start_at, completed_at, deleted_at (partial where null)
 ```
 
 **type_key Format**: `task.{work_mode}[.{specialization}]`
@@ -285,21 +250,69 @@ Indexes: project, type_key, state_key, due_at, priority, props (gin), title (trg
 - `belongs_to_plan` (task → plan)
 - `has_task` (plan → task)
 
-#### `onto_goals`, `onto_requirements` (Project Context)
+#### `onto_goals` (Project Goals)
 
 ```
-onto_goals:
-  id, project_id (fk), name, type_key, props, created_by, created_at
+id (uuid, pk)
+project_id (uuid fk)
+name (text, not null)
+goal (text) -- NEW: Goal content
+description (text) -- NEW: Dedicated column
+type_key (text)
+state_key (text, default 'active')
+props (jsonb)
+search_vector (tsvector)
 
-onto_requirements:
-  id, project_id (fk), text, type_key, props, created_by, created_at
+-- Timeline
+target_date (timestamptz) -- NEW: Migrated from props.target_date
+
+-- Lifecycle
+completed_at (timestamptz) -- NEW: When goal achieved
+deleted_at (timestamptz) -- NEW: Soft delete
+
+created_by (uuid)
+created_at (timestamptz)
+updated_at (timestamptz)
+```
+
+#### `onto_requirements` (Project Requirements)
+
+```
+id (uuid, pk)
+project_id (uuid fk)
+text (text, not null)
+type_key (text)
+priority (int) -- NEW: Requirement priority
+props (jsonb)
+search_vector (tsvector)
+
+-- Lifecycle
+deleted_at (timestamptz) -- NEW: Soft delete
+
+created_by (uuid)
+created_at (timestamptz)
+updated_at (timestamptz) -- NEW
 ```
 
 #### `onto_outputs` & `onto_output_versions` (Deliverables)
 
 ```
 onto_outputs:
-  id, project_id (fk), name, type_key, state_key, props, facet_stage (gen), created_by, created_at, updated_at
+  id (uuid, pk)
+  project_id (uuid fk)
+  name (text, not null)
+  description (text) -- NEW: Output description
+  type_key (text)
+  state_key (text)
+  props (jsonb)
+  search_vector (tsvector)
+  facet_stage (generated)
+  source_document_id (uuid fk) -- Source document reference
+  source_event_id (uuid fk) -- Source event reference
+  deleted_at (timestamptz) -- NEW: Soft delete
+  created_by (uuid)
+  created_at (timestamptz)
+  updated_at (timestamptz)
 
 onto_output_versions:
   id, output_id (fk, cascade), number, storage_uri, props, created_by, created_at
@@ -310,12 +323,26 @@ onto_output_versions:
 
 ```
 onto_documents:
-  id, project_id (fk), title, type_key, props, created_by, created_at
+  id (uuid, pk)
+  project_id (uuid fk)
+  title (text, not null)
+  content (text) -- NEW: Document body (migrated from props.body_markdown)
+  description (text) -- NEW: Document description
+  type_key (text)
+  state_key (text)
+  props (jsonb)
+  search_vector (tsvector)
+  deleted_at (timestamptz) -- NEW: Soft delete
+  created_by (uuid)
+  created_at (timestamptz)
+  updated_at (timestamptz)
 
 onto_document_versions:
   id, document_id (fk, cascade), number, storage_uri, embedding (vector), props, created_by, created_at
   Unique: (document_id, number)
 ```
+
+> **Backwards Compatibility**: During transition, documents store content in both `content` column and `props.body_markdown`. Read operations prefer `content` with fallback to `props.body_markdown`.
 
 **Example**: Context document for a project (stored via context_document_id FK in onto_projects).
 
@@ -336,19 +363,37 @@ created_at (timestamptz)
 
 ```
 onto_decisions:
-  id, project_id (fk), title, decision_at (timestamptz), rationale, props, created_by, created_at
+  id, project_id (fk), title, decision_at, rationale, props
+  deleted_at (timestamptz) -- NEW: Soft delete
+  updated_at (timestamptz) -- NEW
+  created_by, created_at
 
 onto_risks:
-  id, project_id (fk), title, type_key, probability (0-1), impact ('low'|'medium'|'high'), state_key, props, created_by, created_at
+  id, project_id (fk), title, type_key
+  content (text) -- NEW: Risk content
+  probability (0-1), impact ('low'|'medium'|'high'|'critical'), state_key, props
+  search_vector (tsvector)
+  mitigated_at (timestamptz) -- NEW: When risk was mitigated
+  deleted_at (timestamptz) -- NEW: Soft delete
+  updated_at (timestamptz) -- NEW
+  created_by, created_at
 
 onto_milestones:
-  id, project_id (fk), title, type_key, due_at (timestamptz), props, created_by, created_at
+  id, project_id (fk), title, type_key
+  milestone (text) -- NEW: Milestone content
+  description (text) -- NEW: Dedicated column
+  due_at, state_key, props
+  search_vector (tsvector)
+  completed_at (timestamptz) -- NEW: When milestone achieved
+  deleted_at (timestamptz) -- NEW: Soft delete
+  updated_at (timestamptz) -- NEW
+  created_by, created_at
 
 onto_metrics:
-  id, project_id (fk), name, type_key, unit (text), definition, props, created_by, created_at
+  id, project_id (fk), name, type_key, unit, definition, props, created_by, created_at
 
 onto_metric_points:
-  id, metric_id (fk, cascade), ts (timestamptz), numeric_value, props, created_at
+  id, metric_id (fk, cascade), ts, numeric_value, props, created_at
 ```
 
 ---

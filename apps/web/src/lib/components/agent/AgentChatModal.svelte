@@ -213,6 +213,7 @@
 	let currentSession = $state<ChatSession | null>(null);
 	let isStreaming = $state(false);
 	let currentStreamController: AbortController | null = null;
+	let activeStreamRunId = $state(0);
 	let inputValue = $state('');
 	let error = $state<string | null>(null);
 	// Track current plan for potential future UI enhancements
@@ -1083,6 +1084,7 @@
 				content: msg.content,
 				timestamp: new Date(msg.created_at),
 				created_at: msg.created_at,
+				metadata: msg.metadata as Record<string, any> | undefined,
 				tool_calls: msg.tool_calls,
 				tool_call_id: msg.tool_call_id
 			}));
@@ -1480,13 +1482,24 @@
 		}));
 	}
 
-	function finalizeThinkingBlock() {
+	function finalizeThinkingBlock(
+		status: 'completed' | 'interrupted' | 'cancelled' | 'error' = 'completed',
+		note?: string
+	) {
 		if (!currentThinkingBlockId) return;
 
 		updateThinkingBlock(currentThinkingBlockId, (block) => ({
 			...block,
-			status: 'completed',
-			content: 'Complete'
+			status,
+			content:
+				note ??
+				(status === 'interrupted'
+					? 'Interrupted'
+					: status === 'cancelled'
+						? 'Cancelled'
+						: status === 'error'
+							? 'Error'
+							: 'Complete')
 		}));
 
 		currentThinkingBlockId = null;
@@ -1604,7 +1617,9 @@
 
 	function handleClose() {
 		stopVoiceInput();
-		if (currentStreamController) {
+		if (currentStreamController && isStreaming) {
+			handleStopGeneration('user_cancelled');
+		} else if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
 		}
@@ -1627,9 +1642,16 @@
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && isStreaming) {
+			event.preventDefault();
+			handleStopGeneration('user_cancelled');
+			return;
+		}
+
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
-			if (!isSendDisabled) {
+			// If streaming, sendMessage will stop current run first
+			if (!isSendDisabled || isStreaming) {
 				sendMessage();
 			}
 		}
@@ -1675,7 +1697,10 @@
 
 		// Convert existing messages to conversation history format (only user/assistant messages)
 		const conversationHistory: Partial<ChatMessage>[] = messages
-			.filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+			.filter(
+				(msg) =>
+					(msg.role === 'user' || msg.role === 'assistant') && !msg.metadata?.interrupted
+			)
 			.map((msg) => ({
 				id: msg.id,
 				session_id: currentSession?.id || 'pending',
@@ -1691,6 +1716,14 @@
 			inputValue = '';
 		}
 		error = null;
+		if (isStreaming) {
+			handleStopGeneration('superseded');
+		}
+
+		// Increment run id for stale-stream guard
+		activeStreamRunId = activeStreamRunId + 1;
+		const runId = activeStreamRunId;
+
 		isStreaming = true;
 
 		// NEW: Create thinking block for agent activity
@@ -1712,10 +1745,6 @@
 		let receivedStreamEvent = false;
 
 		try {
-			if (currentStreamController) {
-				currentStreamController.abort();
-				currentStreamController = null;
-			}
 			streamController = new AbortController();
 			currentStreamController = streamController;
 
@@ -1743,7 +1772,8 @@
 					conversation_history: conversationHistory, // Pass conversation history for compression
 					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
 					projectFocus: resolvedProjectFocus,
-					lastTurnContext: lastTurnContext // Pass last turn context for conversation continuity
+					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
+					stream_run_id: runId
 				})
 			});
 
@@ -1753,10 +1783,12 @@
 
 			const callbacks: StreamCallbacks = {
 				onProgress: (data: any) => {
+					if (runId !== activeStreamRunId) return; // Drop stale chunks
 					receivedStreamEvent = true;
 					handleSSEMessage(data as AgentSSEMessage);
 				},
 				onError: (err) => {
+					if (runId !== activeStreamRunId) return;
 					console.error('SSE error:', err);
 					error =
 						typeof err === 'string' ? err : 'Connection error occurred while streaming';
@@ -1765,10 +1797,11 @@
 					currentStreamController = null;
 					agentState = null;
 					agentStateDetails = null;
-					finalizeThinkingBlock();
+					finalizeThinkingBlock('error');
 					finalizeAssistantMessage();
 				},
 				onComplete: () => {
+					if (runId !== activeStreamRunId) return;
 					isStreaming = false;
 					currentActivity = '';
 					currentStreamController = null;
@@ -1777,7 +1810,7 @@
 					if (!receivedStreamEvent && !error) {
 						error = 'BuildOS did not return a response. Please try again.';
 					}
-					finalizeThinkingBlock();
+					finalizeThinkingBlock('completed');
 					finalizeAssistantMessage();
 				}
 			};
@@ -1790,14 +1823,16 @@
 		} catch (err) {
 			currentStreamController = null;
 			if ((err as DOMException)?.name === 'AbortError') {
-				if (dev) {
-					console.debug('[AgentChat] Stream aborted');
+				if (runId !== activeStreamRunId) {
+					// This stream was superseded; ignore abort cleanup
+					return;
 				}
 				isStreaming = false;
 				currentActivity = '';
 				agentState = null;
 				agentStateDetails = null;
-				finalizeThinkingBlock(); // Ensure thinking block is closed on abort
+				finalizeThinkingBlock('interrupted', 'Stopped');
+				finalizeAssistantMessage();
 				return;
 			}
 
@@ -1807,7 +1842,8 @@
 			currentActivity = '';
 			agentState = null;
 			agentStateDetails = null;
-			finalizeThinkingBlock(); // Ensure thinking block is closed on error
+			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
+			finalizeAssistantMessage();
 
 			// Remove user message on error
 			messages = messages.filter((m) => m.id !== userMessage.id);
@@ -2402,6 +2438,57 @@
 		currentAssistantMessageId = null;
 	}
 
+	function markAssistantInterrupted(
+		reason: 'user_cancelled' | 'superseded' | 'error',
+		runId = activeStreamRunId
+	) {
+		if (!currentAssistantMessageId) return;
+		messages = messages.map((msg) =>
+			msg.id === currentAssistantMessageId
+				? {
+						...msg,
+						metadata: {
+							...msg.metadata,
+							interrupted: true,
+							interrupted_reason: reason,
+							stream_run_id: runId
+						}
+					}
+				: msg
+		);
+	}
+
+	function handleStopGeneration(
+		reason: 'user_cancelled' | 'superseded' | 'error' = 'user_cancelled'
+	) {
+		if (!isStreaming || !currentStreamController) return;
+
+		const runId = activeStreamRunId;
+		markAssistantInterrupted(reason, runId);
+		// Invalidate the active run id so late SSE chunks are dropped
+		activeStreamRunId = activeStreamRunId + 1;
+
+		try {
+			currentStreamController.abort();
+		} catch (abortError) {
+			if (dev) {
+				console.debug('Abort failed (already closed)', abortError);
+			}
+		}
+		currentStreamController = null;
+
+		finalizeThinkingBlock(
+			reason === 'superseded' ? 'cancelled' : 'interrupted',
+			reason === 'user_cancelled' ? 'Stopped by you' : 'Stopped'
+		);
+		finalizeAssistantMessage();
+
+		isStreaming = false;
+		currentActivity = '';
+		agentState = null;
+		agentStateDetails = null;
+	}
+
 	// ========================================================================
 	// Initial Message Generation
 	// ========================================================================
@@ -2478,7 +2565,9 @@
 
 	onDestroy(() => {
 		stopVoiceInput();
-		if (currentStreamController) {
+		if (currentStreamController && isStreaming) {
+			handleStopGeneration('user_cancelled');
+		} else if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
 		}
@@ -2818,6 +2907,7 @@
 							{displayContextLabel}
 							onKeyDownHandler={handleKeyDown}
 							onSend={handleSendMessage}
+							onStop={() => handleStopGeneration('user_cancelled')}
 						/>
 					</div>
 				{/if}

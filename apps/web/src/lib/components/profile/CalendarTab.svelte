@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/profile/CalendarTab.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
@@ -38,26 +38,29 @@
 	import { invalidate } from '$app/navigation';
 
 	// Props
-	export let data: any;
-	export let form: any = null;
+	interface Props {
+		data: any;
+		form?: any;
+		onsuccess?: (event: { message: string }) => void;
+		onerror?: (event: { message: string }) => void;
+	}
 
-	// Create event dispatcher for parent communication
-	const dispatch = createEventDispatcher();
+	let { data, form = null, onsuccess, onerror }: Props = $props();
 
 	// State
-	let calendarData: any = null;
-	let loadingCalendar = false;
-	let calendarPreferences: any = null;
-	let isSavingCalendar = false;
-	let refreshingCalendar = false;
-	let showAnalysisModal = false;
-	let analysisInProgress = false;
-	let calendarAnalysisHistory: any[] = [];
-	let calendarProjects: any[] = [];
-	let showDisconnectModal = false;
-	let calendarDependencies: any = null;
-	let checkingDependencies = false;
-	let disconnecting = false;
+	let calendarData = $state<any>(null);
+	let loadingCalendar = $state(false);
+	let calendarPreferences = $state<any>(null);
+	let isSavingCalendar = $state(false);
+	let refreshingCalendar = $state(false);
+	let showAnalysisModal = $state(false);
+	let analysisInProgress = $state(false);
+	let calendarAnalysisHistory = $state<any[]>([]);
+	let calendarProjects = $state<any[]>([]);
+	let showDisconnectModal = $state(false);
+	let calendarDependencies = $state<any>(null);
+	let checkingDependencies = $state(false);
+	let disconnecting = $state(false);
 
 	// Calendar timezones
 	const CALENDAR_TIMEZONES = [
@@ -86,83 +89,93 @@
 	];
 
 	// Handle calendar data from form actions
-	$: if (form?.calendarData) {
-		calendarData = form.calendarData;
-		calendarPreferences = form.calendarData.calendarPreferences;
-	}
+	$effect(() => {
+		if (form?.calendarData) {
+			calendarData = form.calendarData;
+			calendarPreferences = form.calendarData.calendarPreferences;
+		}
+	});
 
 	// Handle form submission results
-	$: if (form?.success) {
-		// Handle calendar-specific success messages
-		if (form?.calendarDisconnected && browser) {
-			// Calendar was disconnected, refresh calendar data
-			loadCalendarData();
+	$effect(() => {
+		if (form?.success) {
+			// Handle calendar-specific success messages
+			if (form?.calendarDisconnected && browser) {
+				// Calendar was disconnected, refresh calendar data
+				loadCalendarData();
+			}
+			onsuccess?.({ message: 'Calendar settings updated successfully' });
 		}
-		dispatch('success', { message: 'Calendar settings updated successfully' });
-	}
+	});
 
 	// Handle URL parameters for success/error messages
-	$: if (browser && $page.url.searchParams.get('success') === 'calendar_connected') {
-		// Calendar was just connected, refresh data and show success
-		refreshCalendarData();
-		dispatch('success', { message: 'Google Calendar connected successfully!' });
+	$effect(() => {
+		if (browser && $page.url.searchParams.get('success') === 'calendar_connected') {
+			// Calendar was just connected, refresh data and show success
+			refreshCalendarData();
+			onsuccess?.({ message: 'Google Calendar connected successfully!' });
 
-		// Check if this is first-time calendar connection
-		const hasShownAnalysis =
-			localStorage.getItem('calendar_analysis_requested') ||
-			localStorage.getItem('calendar_analysis_skipped');
+			// Check if this is first-time calendar connection
+			const hasShownAnalysis =
+				localStorage.getItem('calendar_analysis_requested') ||
+				localStorage.getItem('calendar_analysis_skipped');
 
-		if (!hasShownAnalysis) {
-			// Show the analysis modal for first-time users
-			showAnalysisModal = true;
+			if (!hasShownAnalysis) {
+				// Show the analysis modal for first-time users
+				showAnalysisModal = true;
+			}
+
+			// Clean up URL parameters
+			const newUrl = new URL($page.url);
+			newUrl.searchParams.delete('success');
+			replaceState(newUrl.toString(), {});
 		}
-
-		// Clean up URL parameters
-		const newUrl = new URL($page.url);
-		newUrl.searchParams.delete('success');
-		replaceState(newUrl.toString(), {});
-	}
+	});
 
 	// Handle analyze parameter from URL
-	$: if (browser && $page.url.searchParams.get('analyze') === 'true') {
-		startCalendarAnalysis();
-		// Clean up URL parameter
-		const newUrl = new URL($page.url);
-		newUrl.searchParams.delete('analyze');
-		replaceState(newUrl.toString(), {});
-	}
-
-	$: if (browser && $page.url.searchParams.get('error')) {
-		const error = $page.url.searchParams.get('error');
-		let errorMessage = 'Failed to connect Google Calendar';
-
-		switch (error) {
-			case 'access_denied':
-				errorMessage = 'Access to Google Calendar was denied';
-				break;
-			case 'no_authorization_code':
-				errorMessage = 'No authorization code received from Google';
-				break;
-			case 'invalid_state':
-				errorMessage = 'Invalid security token. Please try again.';
-				break;
-			case 'token_exchange_failed':
-				errorMessage = 'Failed to exchange authorization code for tokens';
-				break;
-			default:
-				errorMessage = `Calendar connection failed: ${error}`;
+	$effect(() => {
+		if (browser && $page.url.searchParams.get('analyze') === 'true') {
+			startCalendarAnalysis();
+			// Clean up URL parameter
+			const newUrl = new URL($page.url);
+			newUrl.searchParams.delete('analyze');
+			replaceState(newUrl.toString(), {});
 		}
+	});
 
-		dispatch('error', { message: errorMessage });
+	$effect(() => {
+		if (browser && $page.url.searchParams.get('error')) {
+			const error = $page.url.searchParams.get('error');
+			let errorMessage = 'Failed to connect Google Calendar';
 
-		// Clean up URL parameters
-		const newUrl = new URL($page.url);
-		newUrl.searchParams.delete('error');
-		replaceState(newUrl.toString(), {});
-	}
+			switch (error) {
+				case 'access_denied':
+					errorMessage = 'Access to Google Calendar was denied';
+					break;
+				case 'no_authorization_code':
+					errorMessage = 'No authorization code received from Google';
+					break;
+				case 'invalid_state':
+					errorMessage = 'Invalid security token. Please try again.';
+					break;
+				case 'token_exchange_failed':
+					errorMessage = 'Failed to exchange authorization code for tokens';
+					break;
+				default:
+					errorMessage = `Calendar connection failed: ${error}`;
+			}
+
+			onerror?.({ message: errorMessage });
+
+			// Clean up URL parameters
+			const newUrl = new URL($page.url);
+			newUrl.searchParams.delete('error');
+			replaceState(newUrl.toString(), {});
+		}
+	});
 
 	// Computed values
-	$: calendarConnected = calendarData?.calendarStatus?.isConnected ?? false;
+	let calendarConnected = $derived(calendarData?.calendarStatus?.isConnected ?? false);
 
 	onMount(() => {
 		loadCalendarData();
@@ -187,7 +200,7 @@
 
 			if (result.error) {
 				console.error('Failed to load calendar settings:', result.error);
-				dispatch('error', { message: 'Failed to load calendar settings' });
+				onerror?.({ message: 'Failed to load calendar settings' });
 				return;
 			}
 
@@ -200,7 +213,7 @@
 			}
 		} catch (error) {
 			console.error('Error loading calendar settings:', error);
-			dispatch('error', { message: 'Error loading calendar settings' });
+			onerror?.({ message: 'Error loading calendar settings' });
 		} finally {
 			loadingCalendar = false;
 		}
@@ -226,7 +239,7 @@
 
 			if (result.error) {
 				console.error('Failed to refresh calendar settings:', result.error);
-				dispatch('error', { message: 'Failed to refresh calendar settings' });
+				onerror?.({ message: 'Failed to refresh calendar settings' });
 				return;
 			}
 
@@ -234,7 +247,7 @@
 			calendarPreferences = result.calendarPreferences;
 		} catch (error) {
 			console.error('Error refreshing calendar settings:', error);
-			dispatch('error', { message: 'Error refreshing calendar settings' });
+			onerror?.({ message: 'Error refreshing calendar settings' });
 		} finally {
 			refreshingCalendar = false;
 		}
@@ -385,8 +398,8 @@
 	}
 
 	// Handle disconnect modal confirmation
-	async function handleDisconnectConfirm(event: CustomEvent) {
-		const { action } = event.detail;
+	async function handleDisconnectConfirm(event: { action: string }) {
+		const { action } = event;
 		showDisconnectModal = false;
 
 		// Disconnect calendar with data removal option
@@ -1041,6 +1054,6 @@
 	bind:isOpen={showDisconnectModal}
 	calendarData={calendarDependencies?.breakdown}
 	loading={disconnecting}
-	on:confirm={handleDisconnectConfirm}
-	on:cancel={() => (showDisconnectModal = false)}
+	onconfirm={handleDisconnectConfirm}
+	oncancel={() => (showDisconnectModal = false)}
 />

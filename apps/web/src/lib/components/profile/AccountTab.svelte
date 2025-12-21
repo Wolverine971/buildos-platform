@@ -1,42 +1,42 @@
 <!-- apps/web/src/lib/components/profile/AccountTab.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { User, Lock, Trash2, TriangleAlert, CircleCheck, Eye, EyeOff } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 
-	export let user: any;
+	interface Props {
+		user: any;
+		onsuccess?: (event: { message: string }) => void;
+		onerror?: (event: { message: string }) => void;
+	}
 
-	const dispatch = createEventDispatcher<{
-		success: { message: string };
-		error: { message: string };
-	}>();
+	let { user, onsuccess, onerror }: Props = $props();
 
 	// Form state
-	let activeSection: 'profile' | 'password' | 'danger' = 'profile';
-	let loading = false;
-	let showCurrentPassword = false;
-	let showNewPassword = false;
-	let showConfirmPassword = false;
-	let showDeleteConfirmation = false;
+	let activeSection = $state<'profile' | 'password' | 'danger'>('profile');
+	let loading = $state(false);
+	let showCurrentPassword = $state(false);
+	let showNewPassword = $state(false);
+	let showConfirmPassword = $state(false);
+	let showDeleteConfirmation = $state(false);
 
 	// Profile form
-	let profileForm = {
+	let profileForm = $state({
 		name: user?.user_metadata?.name || user?.name || '',
 		email: user?.email || ''
-	};
+	});
 
 	// Password form
-	let passwordForm = {
+	let passwordForm = $state({
 		currentPassword: '',
 		newPassword: '',
 		confirmPassword: ''
-	};
+	});
 
-	let errors: string[] = [];
-	let successMessage = '';
+	let errors = $state<string[]>([]);
+	let successMessage = $state('');
 
 	async function updateProfile() {
 		if (loading) return;
@@ -73,7 +73,7 @@
 
 			if (response.ok && result.success) {
 				successMessage = result.data.message;
-				dispatch('success', { message: result.data.message });
+				onsuccess?.({ message: result.data.message });
 			} else {
 				errors = [result.error || 'Failed to update profile'];
 			}
@@ -140,7 +140,7 @@
 					newPassword: '',
 					confirmPassword: ''
 				};
-				dispatch('success', { message: result.data.message });
+				onsuccess?.({ message: result.data.message });
 			} else {
 				errors = [result.error || 'Failed to update password'];
 			}
@@ -166,7 +166,7 @@
 			const result = await response.json();
 
 			if (response.ok && result.success) {
-				dispatch('success', { message: 'Account deleted successfully. Redirecting...' });
+				onsuccess?.({ message: 'Account deleted successfully. Redirecting...' });
 				// Redirect will be handled by the parent component
 				setTimeout(() => {
 					window.location.href = '/';
@@ -526,8 +526,8 @@
 	confirmVariant="danger"
 	{loading}
 	loadingText="Deleting Account..."
-	on:confirm={deleteAccount}
-	on:cancel={() => (showDeleteConfirmation = false)}
+	onconfirm={deleteAccount}
+	oncancel={() => (showDeleteConfirmation = false)}
 >
 	Are you absolutely sure you want to delete your account? This action cannot be undone and will
 	permanently delete all your data.

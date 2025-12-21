@@ -39,6 +39,7 @@ export interface ToolExecutionOptions {
 	retryCount?: number;
 	retryDelay?: number;
 	virtualHandlers?: Record<string, VirtualToolHandler>;
+	abortSignal?: AbortSignal;
 }
 
 /**
@@ -159,6 +160,15 @@ export class ToolExecutionService implements BaseService {
 			});
 		}
 
+		if (options.abortSignal?.aborted) {
+			return finalizeResult({
+				success: false,
+				error: 'Operation cancelled',
+				toolName,
+				toolCallId: toolCall.id
+			});
+		}
+
 		if (virtualHandler) {
 			try {
 				const result = await virtualHandler({
@@ -199,13 +209,34 @@ export class ToolExecutionService implements BaseService {
 			});
 		}
 
+		let abortListener: (() => void) | undefined;
+
 		try {
 			// Execute with timeout if specified
 			const timeout = options.timeout ?? ToolExecutionService.DEFAULT_TIMEOUT;
-			const execution = await this.executeWithTimeout(
+			const execPromise = this.executeWithTimeout(
 				() => this.toolExecutor(toolName, args, context),
 				timeout
 			);
+
+			let execution: Awaited<ReturnType<typeof this.executeWithTimeout>>;
+			if (options.abortSignal) {
+				execution = await Promise.race([
+					execPromise,
+					new Promise<never>((_, reject) => {
+						const onAbort = () =>
+							reject(new DOMException('Tool execution aborted', 'AbortError'));
+						options.abortSignal?.addEventListener('abort', onAbort);
+						abortListener = () =>
+							options.abortSignal?.removeEventListener('abort', onAbort);
+						if (options.abortSignal?.aborted) {
+							onAbort();
+						}
+					})
+				]);
+			} else {
+				execution = await execPromise;
+			}
 
 			const streamEvents = execution?.streamEvents;
 			const result = execution?.data;
@@ -231,6 +262,17 @@ export class ToolExecutionService implements BaseService {
 				metadata: executionMetadata
 			});
 		} catch (error) {
+			if (abortListener) {
+				abortListener();
+			}
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				return finalizeResult({
+					success: false,
+					error: 'Operation cancelled',
+					toolName,
+					toolCallId: toolCall.id
+				});
+			}
 			console.error('[ToolExecutionService] Tool execution failed', {
 				toolName,
 				error: error instanceof Error ? error.message : error
@@ -244,6 +286,10 @@ export class ToolExecutionService implements BaseService {
 				toolName,
 				toolCallId: toolCall.id
 			});
+		} finally {
+			if (abortListener) {
+				abortListener();
+			}
 		}
 	}
 
@@ -264,8 +310,20 @@ export class ToolExecutionService implements BaseService {
 		const results: ToolExecutionResult[] = [];
 
 		for (const toolCall of toolCalls) {
+			if (options.abortSignal?.aborted) {
+				results.push({
+					success: false,
+					error: 'Operation cancelled',
+					toolName: this.resolveToolCall(toolCall).name ?? 'unknown',
+					toolCallId: toolCall.id
+				});
+				break;
+			}
 			const result = await this.executeTool(toolCall, context, availableTools, options);
 			results.push(result);
+			if (options.abortSignal?.aborted) {
+				break;
+			}
 		}
 
 		return results;

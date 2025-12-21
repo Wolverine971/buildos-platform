@@ -20,6 +20,7 @@ import type {
 	GraphData,
 	GraphSourceData,
 	NodeType,
+	OntoDecision,
 	OntoDocument,
 	OntoEdge,
 	OntoGoal,
@@ -27,6 +28,7 @@ import type {
 	OntoOutput,
 	OntoPlan,
 	OntoProject,
+	OntoRisk,
 	OntoTask,
 	ViewMode
 } from './graph.types';
@@ -710,6 +712,89 @@ export class OntologyGraphService {
 		});
 	}
 
+	static risksToNodes(risks: OntoRisk[], isDark = false): CytoscapeNode[] {
+		const config = NODE_STYLE_CONFIG.risk;
+		const baseColors = isDark ? GRAPH_COLORS.risk.dark : GRAPH_COLORS.risk.light;
+
+		return risks.map((risk) => {
+			const state = normalizeState(risk.state_key ?? 'identified');
+
+			// Risks use state-based colors
+			let colors = baseColors;
+			if (state === 'mitigated' || state === 'closed') {
+				colors = getStateColors('complete', isDark);
+			} else if (state === 'occurred') {
+				colors = getStateColors('blocked', isDark);
+			}
+
+			return {
+				data: {
+					id: risk.id,
+					label: risk.title,
+					type: 'risk',
+					state,
+					metadata: {
+						projectId: risk.project_id,
+						typeKey: risk.type_key,
+						state: risk.state_key,
+						impact: risk.impact,
+						probability: risk.probability,
+						content: risk.content,
+						mitigatedAt: risk.mitigated_at,
+						props: risk.props
+					},
+					color: colors.bg,
+					borderColor: colors.border,
+					borderWidth: config.borderWidth,
+					borderStyle: config.borderStyle,
+					width: config.baseWidth,
+					height: config.baseHeight,
+					size: config.baseWidth,
+					shape: config.shape,
+					fontSize: config.fontSize,
+					labelValign: config.labelValign,
+					labelMarginY: config.labelMarginY ?? 0
+				}
+			};
+		});
+	}
+
+	static decisionsToNodes(decisions: OntoDecision[], isDark = false): CytoscapeNode[] {
+		const config = NODE_STYLE_CONFIG.decision;
+		const baseColors = isDark ? GRAPH_COLORS.decision.dark : GRAPH_COLORS.decision.light;
+
+		return decisions.map((decision) => {
+			// Decisions don't have a state_key, they are recorded facts
+			const state = 'active';
+
+			return {
+				data: {
+					id: decision.id,
+					label: decision.title,
+					type: 'decision',
+					state,
+					metadata: {
+						projectId: decision.project_id,
+						rationale: decision.rationale,
+						decisionAt: decision.decision_at,
+						props: decision.props
+					},
+					color: baseColors.bg,
+					borderColor: baseColors.border,
+					borderWidth: config.borderWidth,
+					borderStyle: config.borderStyle,
+					width: config.baseWidth,
+					height: config.baseHeight,
+					size: config.baseWidth,
+					shape: config.shape,
+					fontSize: config.fontSize,
+					labelValign: config.labelValign,
+					labelMarginY: config.labelMarginY ?? 0
+				}
+			};
+		});
+	}
+
 	// ============================================================
 	// EDGE STYLING
 	// ============================================================
@@ -851,7 +936,9 @@ export class OntologyGraphService {
 			'document',
 			'plan',
 			'goal',
-			'milestone'
+			'milestone',
+			'risk',
+			'decision'
 		]);
 
 		const nodes: CytoscapeNode[] = [
@@ -861,7 +948,9 @@ export class OntologyGraphService {
 			...this.documentsToNodes(data.documents, isDark),
 			...this.plansToNodes(data.plans, isDark),
 			...this.goalsToNodes(data.goals, isDark),
-			...this.milestonesToNodes(data.milestones, isDark)
+			...this.milestonesToNodes(data.milestones, isDark),
+			...this.risksToNodes(data.risks ?? [], isDark),
+			...this.decisionsToNodes(data.decisions ?? [], isDark)
 		];
 
 		const filteredSourceEdges =

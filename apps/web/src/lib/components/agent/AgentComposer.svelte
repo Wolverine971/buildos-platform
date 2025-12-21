@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/agent/AgentComposer.svelte -->
 <!-- INKPRINT Design System: Composer input with inner shadow styling -->
 <script lang="ts">
-	import { Send, Loader } from 'lucide-svelte';
+	import { Send, Loader, Square } from 'lucide-svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 
@@ -20,6 +20,7 @@
 		voiceSupportsLiveTranscript: boolean;
 		onKeyDownHandler?: (event: KeyboardEvent) => void;
 		onSend?: () => void; // ✅ Svelte 5: Callback instead of event
+		onStop?: () => void;
 	}
 
 	let {
@@ -35,7 +36,8 @@
 		voiceRecordingDuration = $bindable(),
 		voiceSupportsLiveTranscript = $bindable(),
 		onKeyDownHandler,
-		onSend
+		onSend,
+		onStop
 	}: Props = $props();
 
 	function handleSubmit(event: Event) {
@@ -62,7 +64,7 @@
 		autoResize
 		rows={1}
 		maxRows={6}
-		disabled={isStreaming}
+		disabled={false}
 		voiceBlocked={isStreaming}
 		voiceBlockedLabel="Wait for BuildOS..."
 		idleHint="Enter · Shift+Enter for new line"
@@ -77,19 +79,31 @@
 	>
 		{#snippet actions()}
 			<!-- INKPRINT primary send button -->
-			<button
-				type="submit"
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-foreground/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:w-10"
-				style="-webkit-tap-highlight-color: transparent;"
-				aria-label="Send message"
-				disabled={isSendDisabled}
-			>
-				{#if isStreaming}
-					<Loader class="h-4 w-4 animate-spin" />
-				{:else}
-					<Send class="h-4 w-4" />
-				{/if}
-			</button>
+			{#if isStreaming}
+				<button
+					type="button"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:w-10"
+					style="-webkit-tap-highlight-color: transparent;"
+					aria-label="Stop response"
+					onclick={onStop}
+				>
+					<Square class="h-4 w-4" />
+				</button>
+			{:else}
+				<button
+					type="submit"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-foreground/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:w-10"
+					style="-webkit-tap-highlight-color: transparent;"
+					aria-label="Send message"
+					disabled={isSendDisabled}
+				>
+					{#if isStreaming}
+						<Loader class="h-4 w-4 animate-spin" />
+					{:else}
+						<Send class="h-4 w-4" />
+					{/if}
+				</button>
+			{/if}
 		{/snippet}
 	</TextareaWithVoice>
 

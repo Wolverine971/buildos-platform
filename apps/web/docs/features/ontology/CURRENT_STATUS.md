@@ -2,7 +2,7 @@
 
 # Ontology System - Current Implementation Status
 
-**Date**: December 12, 2025
+**Date**: December 20, 2025
 **Architecture**: Props-Based with Type Keys (Template-Free)
 **Overall Status**: Production Ready ✅
 
@@ -18,6 +18,27 @@ The BuildOS Ontology System is **production-ready** with comprehensive database 
 - ✅ **Phase 2**: Complete API layer (20+ endpoints, validation, CRUD)
 - ✅ **Phase 3**: UI components (create/edit modals, state management)
 - ✅ **December 2025**: Template system removed, transitioned to type_key classification
+- ✅ **December 20, 2025**: Schema migration - dedicated columns for `description`, `deleted_at`, entity-specific fields
+
+### Recent Schema Migration (December 20, 2025)
+
+All ontology tables now have dedicated columns instead of relying on `props`:
+
+| Entity              | New Columns                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `onto_tasks`        | `description`, `start_at`, `completed_at`, `deleted_at`            |
+| `onto_plans`        | `plan`, `description`, `deleted_at`                                |
+| `onto_goals`        | `goal`, `description`, `target_date`, `completed_at`, `deleted_at` |
+| `onto_documents`    | `content`, `description`, `deleted_at`                             |
+| `onto_outputs`      | `description`, `deleted_at`                                        |
+| `onto_milestones`   | `milestone`, `description`, `completed_at`, `deleted_at`           |
+| `onto_risks`        | `content`, `mitigated_at`, `deleted_at`                            |
+| `onto_requirements` | `priority`, `deleted_at`                                           |
+| `onto_decisions`    | `deleted_at`, `updated_at`                                         |
+
+**Soft Delete Support**: All entities now support soft deletes via `deleted_at` column. Queries filter `WHERE deleted_at IS NULL` by default.
+
+See [Migration Plan](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) for details.
 
 ---
 
@@ -405,6 +426,6 @@ description, state ✅ GoalEditModal.svelte // Edit priority, target date, crite
 
 ---
 
-**Last Updated:** December 12, 2025
-**Status:** Template-Free Architecture ✅
-**Overall Completion:** 90%
+**Last Updated:** December 20, 2025
+**Status:** Template-Free Architecture with Dedicated Columns ✅
+**Overall Completion:** 95%

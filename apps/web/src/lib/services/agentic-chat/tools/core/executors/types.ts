@@ -160,6 +160,9 @@ export interface CreateOntoDocumentArgs {
 	title: string;
 	type_key: string;
 	state_key?: string;
+	/** Markdown content stored in the content column */
+	content?: string;
+	/** @deprecated Use content instead. Kept for backwards compatibility. */
 	body_markdown?: string;
 	props?: Record<string, unknown>;
 }
@@ -171,6 +174,9 @@ export interface CreateTaskDocumentArgs {
 	type_key?: string;
 	state_key?: string;
 	role?: string;
+	/** Markdown content stored in the content column */
+	content?: string;
+	/** @deprecated Use content instead. Kept for backwards compatibility. */
 	body_markdown?: string;
 	props?: Record<string, unknown>;
 }
@@ -228,12 +234,18 @@ export interface CreateOntoProjectArgs {
 		title: string;
 		type_key: string;
 		state_key?: string;
+		/** Markdown content stored in the content column */
+		content?: string;
+		/** @deprecated Use content instead. Kept for backwards compatibility. */
 		body_markdown?: string;
 		props?: Record<string, unknown>;
 	}>;
 	context_document?: {
 		title: string;
-		body_markdown: string;
+		/** Markdown content stored in the content column */
+		content?: string;
+		/** @deprecated Use content instead. Kept for backwards compatibility. */
+		body_markdown?: string;
 		type_key?: string;
 		state_key?: string;
 		props?: Record<string, unknown>;
@@ -300,6 +312,9 @@ export interface UpdateOntoDocumentArgs {
 	title?: string;
 	type_key?: string;
 	state_key?: string;
+	/** Markdown content stored in the content column */
+	content?: string;
+	/** @deprecated Use content instead. Kept for backwards compatibility. */
 	body_markdown?: string;
 	update_strategy?: 'replace' | 'append' | 'merge_llm';
 	merge_instructions?: string;

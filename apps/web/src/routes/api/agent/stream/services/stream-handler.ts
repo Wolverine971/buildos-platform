@@ -226,6 +226,7 @@ export class StreamHandler {
 		let { lastTurnContextForPlanner } = params;
 		const userMessageTimestamp = new Date().toISOString();
 		const abortSignal = requestAbortSignal;
+		const streamRunId = request.stream_run_id;
 
 		try {
 			// Send focus active event if applicable
@@ -285,6 +286,12 @@ export class StreamHandler {
 			}
 
 			if (abortSignal?.aborted) {
+				await this.persistInterruptedState({
+					state,
+					session,
+					userId,
+					streamRunId
+				});
 				return;
 			}
 
@@ -361,6 +368,12 @@ export class StreamHandler {
 			}
 		} catch (streamError) {
 			if (abortSignal?.aborted) {
+				await this.persistInterruptedState({
+					state,
+					session,
+					userId,
+					streamRunId
+				});
 				return;
 			}
 
@@ -397,6 +410,10 @@ export class StreamHandler {
 				} as AgentSSEMessage);
 			}
 		} finally {
+			if (abortSignal?.aborted) {
+				await agentStream.close();
+				return;
+			}
 			// CRITICAL: Consolidate metadata persistence - single DB write
 			const shouldPersistMetadata =
 				state.hasPendingMetadataUpdate ||
@@ -654,6 +671,43 @@ export class StreamHandler {
 			entityId: contextShift.entity_id,
 			entityName: contextShift.entity_name
 		});
+	}
+
+	private async persistInterruptedState(params: {
+		state: StreamState;
+		session: ChatSession;
+		userId: string;
+		streamRunId?: number;
+	}): Promise<void> {
+		const { state, session, userId, streamRunId } = params;
+
+		const baseMetadata = {
+			interrupted: true,
+			interrupted_reason: 'user_cancelled',
+			stream_run_id: streamRunId ?? null,
+			partial_tokens: state.assistantResponse.length
+		};
+
+		if (state.assistantResponse.trim()) {
+			await this.messagePersister.persistAssistantMessage({
+				sessionId: session.id,
+				userId,
+				content: state.assistantResponse,
+				messageType: 'assistant_interrupted',
+				metadata: baseMetadata
+			});
+		}
+
+		if (state.toolResults.length > 0) {
+			await this.messagePersister.persistToolResults({
+				sessionId: session.id,
+				userId,
+				toolCalls: state.toolCalls,
+				toolResults: state.toolResults,
+				messageType: 'tool_partial',
+				metadata: { ...baseMetadata, partial: true }
+			});
+		}
 	}
 
 	/**

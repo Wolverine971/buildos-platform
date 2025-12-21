@@ -4,6 +4,7 @@ import type { PageServerLoad } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type {
 	GraphStats,
+	OntoDecision,
 	OntoDocument,
 	OntoEdge,
 	OntoGoal,
@@ -11,6 +12,7 @@ import type {
 	OntoOutput,
 	OntoPlan,
 	OntoProject,
+	OntoRisk,
 	OntoTask
 } from '$lib/components/ontology/graph/lib/graph.types';
 
@@ -47,7 +49,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			documentsRes,
 			plansRes,
 			goalsRes,
-			milestonesRes
+			milestonesRes,
+			risksRes,
+			decisionsRes
 		] = await Promise.all([
 			adminClient.from('onto_projects').select('*'),
 			adminClient.from('onto_edges').select('*'),
@@ -56,7 +60,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			adminClient.from('onto_documents').select('*'),
 			adminClient.from('onto_plans').select('*'),
 			adminClient.from('onto_goals').select('*'),
-			adminClient.from('onto_milestones').select('*')
+			adminClient.from('onto_milestones').select('*'),
+			adminClient.from('onto_risks').select('*'),
+			adminClient.from('onto_decisions').select('*')
 		]);
 
 		if (projectsRes.error) throw projectsRes.error;
@@ -67,6 +73,8 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		if (plansRes.error) throw plansRes.error;
 		if (goalsRes.error) throw goalsRes.error;
 		if (milestonesRes.error) throw milestonesRes.error;
+		if (risksRes.error) throw risksRes.error;
+		if (decisionsRes.error) throw decisionsRes.error;
 
 		const projects = (projectsRes.data ?? []) as OntoProject[];
 		const edges = ((edgesRes.data ?? []) as OntoEdge[]).filter(
@@ -78,6 +86,8 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		const plans = (plansRes.data ?? []) as OntoPlan[];
 		const goals = (goalsRes.data ?? []) as OntoGoal[];
 		const milestones = (milestonesRes.data ?? []) as OntoMilestone[];
+		const risks = (risksRes.data ?? []) as OntoRisk[];
+		const decisions = (decisionsRes.data ?? []) as OntoDecision[];
 
 		const stats: GraphStats = {
 			totalProjects: projects.length,
@@ -88,7 +98,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			totalDocuments: documents.length,
 			totalPlans: plans.length,
 			totalGoals: goals.length,
-			totalMilestones: milestones.length
+			totalMilestones: milestones.length,
+			totalRisks: risks.length,
+			totalDecisions: decisions.length
 		};
 
 		return {
@@ -100,6 +112,8 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			plans,
 			goals,
 			milestones,
+			risks,
+			decisions,
 			stats,
 			user: {
 				id: user.id,

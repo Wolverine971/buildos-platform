@@ -36,6 +36,7 @@ export interface UIMessage {
 	content: string;
 	created_at?: string;
 	updated_at?: string;
+	metadata?: Record<string, any>;
 	type:
 		| 'user'
 		| 'assistant'
@@ -55,7 +56,7 @@ export interface UIMessage {
 export interface ThinkingBlockMessage extends UIMessage {
 	type: 'thinking_block';
 	activities: ActivityEntry[];
-	status: 'active' | 'completed';
+	status: 'active' | 'completed' | 'interrupted' | 'cancelled' | 'error';
 	agentState?: AgentLoopState;
 	isCollapsed?: boolean;
 }

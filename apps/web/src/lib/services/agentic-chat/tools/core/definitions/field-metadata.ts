@@ -170,12 +170,73 @@ Use the most specific type that matches the task nature.`,
 			example: '{"goal_id":"abc123","supporting_milestone_id":"def456"}'
 		}
 	},
+	ontology_goal: {
+		name: {
+			type: 'string',
+			description: 'Goal title stored in onto_goals.name',
+			required: true,
+			example: 'Reach $50K MRR by Q2'
+		},
+		description: {
+			type: 'string',
+			description: 'Goal description stored in onto_goals.description column',
+			required: false,
+			example: 'Achieve sustainable monthly recurring revenue through subscription growth'
+		},
+		type_key: {
+			type: 'string',
+			description: `Goal type taxonomy. Format: goal.{family}[.{variant}]
+Families: outcome (binary completion), metric (quantitative), behavior (frequency), learning (skill progression).
+Examples: goal.outcome.project, goal.metric.revenue, goal.behavior.cadence, goal.learning.skill`,
+			required: false,
+			example: 'goal.metric.revenue'
+		},
+		state_key: {
+			type: 'enum',
+			enum_values: ['active', 'completed', 'cancelled'],
+			description: 'Lifecycle state for the goal',
+			required: false,
+			example: 'active'
+		},
+		target_date: {
+			type: 'date',
+			description: 'Target date for achieving the goal (ISO timestamp)',
+			required: false,
+			example: '2025-06-30T00:00:00Z'
+		},
+		completed_at: {
+			type: 'date',
+			description:
+				'Timestamp when the goal was achieved. Set when goal transitions to completed.',
+			required: false,
+			example: '2025-05-15T14:30:00Z'
+		},
+		deleted_at: {
+			type: 'date',
+			description:
+				'Soft delete timestamp. When set, goal is excluded from queries but can be recovered.',
+			required: false,
+			example: '(null when active)'
+		},
+		props: {
+			type: 'string',
+			description: 'Goal metadata (JSON stored in props)',
+			required: false,
+			example: '{"metrics":{"target":50000,"unit":"USD"}}'
+		}
+	},
 	ontology_plan: {
 		name: {
 			type: 'string',
 			description: 'Plan name stored in onto_plans.name',
 			required: true,
 			example: 'Q1 Development Sprint'
+		},
+		description: {
+			type: 'string',
+			description: 'Plan description stored in onto_plans.description column',
+			required: false,
+			example: 'First quarter sprint focusing on core feature development'
 		},
 		type_key: {
 			type: 'string',
@@ -192,33 +253,18 @@ Examples: plan.timebox.sprint, plan.pipeline.sales, plan.phase.project`,
 			required: true,
 			example: 'active'
 		},
+		deleted_at: {
+			type: 'date',
+			description:
+				'Soft delete timestamp. When set, plan is excluded from queries but can be recovered.',
+			required: false,
+			example: '(null when active)'
+		},
 		props: {
 			type: 'string',
 			description: 'Plan metadata JSON (object stored as string when updating)',
 			required: false,
 			example: '{"facets":{"stage":"planning"}}'
-		}
-	},
-	ontology_goal: {
-		name: {
-			type: 'string',
-			description: 'Goal title stored in onto_goals.name',
-			required: true,
-			example: 'Reach $50K MRR by Q2'
-		},
-		type_key: {
-			type: 'string',
-			description: `Goal type taxonomy. Format: goal.{family}[.{variant}]
-Families: outcome (binary completion), metric (quantitative), behavior (frequency), learning (skill progression).
-Examples: goal.outcome.project, goal.metric.revenue, goal.behavior.cadence, goal.learning.skill`,
-			required: false,
-			example: 'goal.metric.revenue'
-		},
-		props: {
-			type: 'string',
-			description: 'Goal metadata (JSON stored in props)',
-			required: false,
-			example: '{"metrics":{"target":50000,"unit":"USD"}}'
 		}
 	}
 };

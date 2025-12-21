@@ -380,9 +380,7 @@ if (project.state_key === 'blocked') {
 						style="animation: fadeInUp 0.5s ease-out {metric.delay} forwards; opacity: 0"
 					>
 						<CardBody padding="md">
-							<div
-								class="text-2xl sm:text-3xl lg:text-4xl font-bold text-accent"
-							>
+							<div class="text-2xl sm:text-3xl lg:text-4xl font-bold text-accent">
 								{metric.value}
 							</div>
 							<div class="mt-2 text-xs sm:text-sm text-muted-foreground">
@@ -421,7 +419,10 @@ if (project.state_key === 'blocked') {
 							<div
 								class="mb-3 inline-flex rounded-xl bg-accent p-3 shadow-ink transform transition-transform duration-300 group-hover:scale-110"
 							>
-								<svelte:component this={category.icon} class="h-6 w-6 text-accent-foreground" />
+								<svelte:component
+									this={category.icon}
+									class="h-6 w-6 text-accent-foreground"
+								/>
 							</div>
 							<h3 class="text-lg font-semibold text-foreground sm:text-xl">
 								{category.title}

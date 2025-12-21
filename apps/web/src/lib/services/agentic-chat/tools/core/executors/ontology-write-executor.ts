@@ -52,9 +52,13 @@ function buildContextDocumentSpec(
 	args: CreateOntoProjectArgs
 ): CreateOntoProjectArgs['context_document'] {
 	const provided = args.context_document;
-	if (provided?.title?.trim() && provided?.body_markdown?.trim()) {
+	// Support both content (new) and body_markdown (legacy) parameters
+	const providedContent = provided?.content ?? provided?.body_markdown;
+	if (provided?.title?.trim() && providedContent?.trim()) {
 		return {
 			...provided,
+			content: providedContent,
+			body_markdown: providedContent, // Keep for backwards compat
 			type_key: provided.type_key ?? 'document.context.project',
 			state_key: provided.state_key ?? 'draft'
 		};
@@ -93,7 +97,8 @@ function buildContextDocumentSpec(
 
 	return {
 		title: `${args.project.name} Context Document`,
-		body_markdown: body,
+		content: body,
+		body_markdown: body, // Keep for backwards compat
 		type_key: 'document.context.project',
 		state_key: 'active',
 		props: {
@@ -263,14 +268,16 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		document: any;
 		message: string;
 	}> {
+		// Support both content (new) and body_markdown (legacy) parameters
+		const documentContent = args.content ?? args.body_markdown ?? null;
 		const payload = {
 			project_id: args.project_id,
 			title: args.title,
 			type_key: args.type_key,
 			state_key: args.state_key ?? 'draft',
 			// Use content column (body_markdown is preserved for backwards compatibility via API)
-			content: args.body_markdown ?? null,
-			body_markdown: args.body_markdown ?? '',
+			content: documentContent,
+			body_markdown: documentContent ?? '',
 			props: args.props ?? {}
 		};
 
@@ -294,13 +301,16 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			throw new Error('task_id is required for create_task_document');
 		}
 
+		// Support both content (new) and body_markdown (legacy) parameters
+		const documentContent = args.content ?? args.body_markdown;
 		const payload: Record<string, unknown> = {
 			document_id: args.document_id,
 			title: args.title,
 			type_key: args.type_key,
 			state_key: args.state_key,
 			role: args.role,
-			body_markdown: args.body_markdown,
+			content: documentContent,
+			body_markdown: documentContent,
 			props: args.props
 		};
 
@@ -413,8 +423,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				entityLabel: `goal:${args.goal_id}`,
 				existingLoader: async () => {
 					const details = await getGoalDetails(args.goal_id);
-					const props = (details?.goal?.props as Record<string, unknown>) || {};
-					const raw = props.description;
+					// Description is now a column, fall back to props for backwards compat
+					const raw =
+						details?.goal?.description ??
+						(details?.goal?.props as Record<string, unknown>)?.description;
 					return typeof raw === 'string' ? raw : '';
 				}
 			});
@@ -459,8 +471,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				entityLabel: `plan:${args.plan_id}`,
 				existingLoader: async () => {
 					const details = await getPlanDetails(args.plan_id);
-					const props = (details?.plan?.props as Record<string, unknown>) || {};
-					const raw = props.description;
+					// Description is now a column, fall back to props for backwards compat
+					const raw =
+						details?.plan?.description ??
+						(details?.plan?.props as Record<string, unknown>)?.description;
 					return typeof raw === 'string' ? raw : '';
 				}
 			});
@@ -497,12 +511,14 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.title !== undefined) updateData.title = args.title;
 		if (args.type_key !== undefined) updateData.type_key = args.type_key;
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;
-		if (args.body_markdown !== undefined) {
+		// Support both content (new) and body_markdown (legacy) parameters
+		const documentContent = args.content ?? args.body_markdown;
+		if (documentContent !== undefined) {
 			const strategy = args.update_strategy ?? 'replace';
 			// Resolve content with strategy, then send as content (API handles backwards compat)
 			const resolvedContent = await this.resolveTextWithStrategy({
 				strategy,
-				newContent: args.body_markdown ?? '',
+				newContent: documentContent ?? '',
 				instructions: args.merge_instructions,
 				entityLabel: `document:${args.document_id}`,
 				existingLoader: async () => {

@@ -56,14 +56,16 @@
 	let creatingTemplate = $state<'project' | null>(null);
 
 	// Progress data from server
-	let progressData = $state(data.progressData || {
-		completed: false,
-		progress: 0,
-		missingFields: [] as string[],
-		completedFields: [] as string[],
-		missingRequiredFields: [] as string[],
-		categoryProgress: {} as Record<string, boolean>
-	});
+	let progressData = $state(
+		data.progressData || {
+			completed: false,
+			progress: 0,
+			missingFields: [] as string[],
+			completedFields: [] as string[],
+			missingRequiredFields: [] as string[],
+			categoryProgress: {} as Record<string, boolean>
+		}
+	);
 
 	// Handle form submission results
 	$effect(() => {
@@ -217,13 +219,13 @@
 	}
 
 	// Handle success messages from child components
-	function handleComponentSuccess(event: CustomEvent<{ message?: string }>) {
-		showSuccess(event.detail?.message || 'Changes saved successfully!');
+	function handleComponentSuccess(event: { message?: string }) {
+		showSuccess(event?.message || 'Changes saved successfully!');
 	}
 
 	// Handle error messages from child components
-	function handleComponentError(event: CustomEvent<{ message?: string }>) {
-		showError(event.detail?.message || 'An error occurred');
+	function handleComponentError(event: { message?: string }) {
+		showError(event?.message || 'An error occurred');
 	}
 
 	let activeProjectTemplate = $derived(getActiveTemplate());
@@ -245,8 +247,8 @@
 				progress: storeState.progress.percentage,
 				missingFields: storeState.progress.missingCategories,
 				completedFields: storeState.progress.completedCategories,
-				missingRequiredFields: storeState.progress.missingCategories.filter(
-					(cat: string) => ['projects', 'work_style', 'challenges'].includes(cat)
+				missingRequiredFields: storeState.progress.missingCategories.filter((cat: string) =>
+					['projects', 'work_style', 'challenges'].includes(cat)
 				),
 				categoryProgress: storeState.progress.completedCategories.reduce(
 					(acc: Record<string, boolean>, cat: string) => {
@@ -415,19 +417,19 @@
 			<!-- Use the new AccountTab component -->
 			<AccountTab
 				user={data.user}
-				on:success={handleComponentSuccess}
-				on:error={handleComponentError}
+				onsuccess={handleComponentSuccess}
+				onerror={handleComponentError}
 			/>
 		{:else if activeTab === 'briefs'}
 			<!-- Use the new BriefsTab component -->
-			<BriefsTab on:success={handleComponentSuccess} on:error={handleComponentError} />
+			<BriefsTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
 		{:else if activeTab === 'calendar'}
 			<!-- Use the new CalendarTab component -->
 			<CalendarTab
 				{data}
 				{form}
-				on:success={handleComponentSuccess}
-				on:error={handleComponentError}
+				onsuccess={handleComponentSuccess}
+				onerror={handleComponentError}
 			/>
 		{:else if activeTab === 'notifications'}
 			<!-- Use the new NotificationsTab component -->

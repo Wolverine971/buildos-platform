@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/profile/AccountSettingsModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import {
 		User,
 		Mail,
@@ -18,59 +17,62 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 
-	export let isOpen: boolean = false;
-	export let user: any;
+	interface Props {
+		isOpen?: boolean;
+		user: any;
+		onclose?: () => void;
+		onsuccess?: (event: { message: string }) => void;
+		onerror?: (event: { message: string }) => void;
+	}
 
-	const dispatch = createEventDispatcher<{
-		close: void;
-		success: { message: string };
-		error: { message: string };
-	}>();
+	let { isOpen = false, user, onclose, onsuccess, onerror }: Props = $props();
 
 	// Form state
-	let activeTab: 'profile' | 'password' | 'danger' = 'profile';
-	let loading = false;
-	let showCurrentPassword = false;
-	let showNewPassword = false;
-	let showConfirmPassword = false;
-	let showDeleteConfirmation = false;
+	let activeTab = $state<'profile' | 'password' | 'danger'>('profile');
+	let loading = $state(false);
+	let showCurrentPassword = $state(false);
+	let showNewPassword = $state(false);
+	let showConfirmPassword = $state(false);
+	let showDeleteConfirmation = $state(false);
 
 	// Profile form
-	let profileForm = {
+	let profileForm = $state({
 		name: '',
 		email: ''
-	};
+	});
 
 	// Password form
-	let passwordForm = {
+	let passwordForm = $state({
 		currentPassword: '',
 		newPassword: '',
 		confirmPassword: ''
-	};
+	});
 
-	let errors: string[] = [];
-	let successMessage = '';
+	let errors = $state<string[]>([]);
+	let successMessage = $state('');
 
 	// Initialize form data when modal opens
-	$: if (isOpen && user) {
-		profileForm = {
-			name: user.user_metadata?.name || user.name || '',
-			email: user.email || ''
-		};
+	$effect(() => {
+		if (isOpen && user) {
+			profileForm = {
+				name: user.user_metadata?.name || user.name || '',
+				email: user.email || ''
+			};
 
-		// Reset password form
-		passwordForm = {
-			currentPassword: '',
-			newPassword: '',
-			confirmPassword: ''
-		};
+			// Reset password form
+			passwordForm = {
+				currentPassword: '',
+				newPassword: '',
+				confirmPassword: ''
+			};
 
-		// Reset state
-		errors = [];
-		successMessage = '';
-		loading = false;
-		activeTab = 'profile';
-	}
+			// Reset state
+			errors = [];
+			successMessage = '';
+			loading = false;
+			activeTab = 'profile';
+		}
+	});
 
 	async function updateProfile() {
 		if (loading) return;
@@ -107,7 +109,7 @@
 
 			if (response.ok && result.success) {
 				successMessage = result.data.message;
-				dispatch('success', { message: result.data.message });
+				onsuccess?.({ message: result.data.message });
 			} else {
 				errors = [result.error || 'Failed to update profile'];
 			}
@@ -174,7 +176,7 @@
 					newPassword: '',
 					confirmPassword: ''
 				};
-				dispatch('success', { message: result.data.message });
+				onsuccess?.({ message: result.data.message });
 			} else {
 				errors = [result.error || 'Failed to update password'];
 			}
@@ -200,7 +202,7 @@
 			const result = await response.json();
 
 			if (response.ok && result.success) {
-				dispatch('success', { message: 'Account deleted successfully. Redirecting...' });
+				onsuccess?.({ message: 'Account deleted successfully. Redirecting...' });
 				// Redirect will be handled by the parent component
 				setTimeout(() => {
 					window.location.href = '/';
@@ -219,7 +221,7 @@
 
 	function handleClose() {
 		if (loading) return;
-		dispatch('close');
+		onclose?.();
 	}
 
 	function isValidEmail(email: string): boolean {
@@ -612,8 +614,8 @@
 	variant="danger"
 	{loading}
 	loadingText="Deleting Account..."
-	on:confirm={deleteAccount}
-	on:cancel={() => (showDeleteConfirmation = false)}
+	onconfirm={deleteAccount}
+	oncancel={() => (showDeleteConfirmation = false)}
 />
 
 <style>

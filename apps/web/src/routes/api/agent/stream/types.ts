@@ -91,6 +91,8 @@ export interface StreamRequest {
 	ontology_entity_type?: 'task' | 'plan' | 'goal' | 'document' | 'output';
 	/** Optional last turn context provided by client */
 	last_turn_context?: LastTurnContext;
+	/** Optional run id for guarding/persistence */
+	stream_run_id?: number;
 }
 
 /**

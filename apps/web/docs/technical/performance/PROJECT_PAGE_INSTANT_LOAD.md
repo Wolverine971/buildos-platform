@@ -1,4 +1,5 @@
 <!-- apps/web/docs/technical/performance/PROJECT_PAGE_INSTANT_LOAD.md -->
+
 # Project Page Instant Load - Performance Optimization Specification
 
 **Date:** 2025-12-19

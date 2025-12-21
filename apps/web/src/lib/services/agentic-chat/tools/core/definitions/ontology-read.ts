@@ -400,7 +400,7 @@ Use after listing plans to retrieve the full record for editing or auditing.`,
 		type: 'function',
 		function: {
 			name: 'get_onto_document_details',
-			description: `Get complete details for a specific ontology document including props/body markdown.
+			description: `Get complete details for a specific ontology document including content, description, and metadata.
 Use when you need the full document before editing or linking it.`,
 			parameters: {
 				type: 'object',

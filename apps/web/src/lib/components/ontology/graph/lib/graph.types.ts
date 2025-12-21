@@ -113,6 +113,8 @@ export interface GraphSourceData {
 	plans: OntoPlan[];
 	goals: OntoGoal[];
 	milestones: OntoMilestone[];
+	risks?: OntoRisk[];
+	decisions?: OntoDecision[];
 }
 
 export interface GraphStats {
@@ -125,6 +127,8 @@ export interface GraphStats {
 	totalPlans: number;
 	totalGoals: number;
 	totalMilestones: number;
+	totalRisks: number;
+	totalDecisions: number;
 }
 
 export interface OntologyGraphInstance {

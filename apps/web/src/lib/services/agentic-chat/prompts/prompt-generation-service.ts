@@ -205,7 +205,7 @@ ${PROJECT_WORKSPACE_PROMPT.content}`;
 
 		// Context document requirements
 		sections.push(
-			`### Context Document Requirements (MANDATORY)\n${PROJECT_CONTEXT_DOC_GUIDANCE}\n\nUse this guidance to write the \`context_document.body_markdown\` when calling \`create_onto_project\`.`
+			`### Context Document Requirements (MANDATORY)\n${PROJECT_CONTEXT_DOC_GUIDANCE}\n\nUse this guidance to write the \`context_document.content\` when calling \`create_onto_project\`.`
 		);
 
 		return '\n\n' + sections.join('\n\n');
@@ -430,7 +430,7 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 ## Project Context Document Requirements
 ${PROJECT_CONTEXT_DOC_GUIDANCE}
 
-Apply this structure when generating the \`context_document.body_markdown\` in \`create_onto_project\`.`;
+Apply this structure when generating the \`context_document.content\` in \`create_onto_project\`.`;
 		}
 
 		return prompt;

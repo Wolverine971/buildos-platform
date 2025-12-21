@@ -656,6 +656,18 @@
 				{:else}
 					<!-- Auth buttons for non-authenticated users - synesthetic texture style -->
 					<div class="hidden md:flex items-center gap-3">
+						<!-- Theme toggle button -->
+						<button
+							onclick={toggleMode}
+							class="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+							aria-label="Toggle theme"
+						>
+							{#if isDark}
+								<Sun class="w-4 h-4" />
+							{:else}
+								<Moon class="w-4 h-4" />
+							{/if}
+						</button>
 						<a
 							href="/auth/login"
 							class="pressable rounded-full border border-border bg-card px-3 py-1.5 text-xs shadow-ink hover:opacity-95"
@@ -878,6 +890,19 @@
 						Under the hood
 					</a>
 					<div class="border-t border-border my-2"></div>
+					<button
+						onclick={toggleMode}
+						class="flex items-center w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+						aria-label="Toggle theme"
+					>
+						{#if isDark}
+							<Sun class="w-4 h-4 mr-2" />
+							Light Mode
+						{:else}
+							<Moon class="w-4 h-4 mr-2" />
+							Dark Mode
+						{/if}
+					</button>
 					<a
 						href="/auth/login"
 						onclick={() => handleMenuItemClick('/auth/login')}
