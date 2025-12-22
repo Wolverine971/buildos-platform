@@ -1,9 +1,11 @@
+<!-- apps/web/docs/technical/CODE_QUALITY_FINDINGS_2025-12-21.md -->
+
 # Code Quality Findings Report
 
 **Date:** 2025-12-21
 **Scope:** BuildOS Web Application (`apps/web`)
 **Reviewer:** Automated Analysis with Manual Verification
-**Status:** ✅ ALL ISSUES FIXED (2025-12-21)
+**Status:** ✅ ALL 13 ISSUES FIXED (2025-12-21)
 
 ---
 
@@ -11,8 +13,8 @@
 
 | Severity | Count | Description                                                    | Status   |
 | -------- | ----- | -------------------------------------------------------------- | -------- |
-| Medium   | 2     | Logic bugs affecting UI behavior and data race conditions      | ✅ Fixed |
-| Low      | 4     | Configuration issues and potential memory/performance concerns | ✅ Fixed |
+| Medium   | 4     | Logic bugs affecting UI behavior and data race conditions      | ✅ Fixed |
+| Low      | 9     | Configuration issues and potential memory/performance concerns | ✅ Fixed |
 
 ---
 
@@ -150,6 +152,44 @@ $effect(() => {
 		});
 });
 ```
+
+---
+
+### MEDIUM-3: Streaming Brief Preview Missing on First Generation ✅ FIXED
+
+**File:** `apps/web/src/routes/briefs/+page.svelte`
+**Lines:** 571-595
+**Fix:** Build a minimal `DailyBrief` preview from streaming data when `dailyBrief` is null. This allows the main brief card to render during initial generation.
+
+**Issue:**
+`displayDailyBrief` only used streaming data when `dailyBrief` already existed. On a user's first daily brief, the page kept showing the empty state even while streaming data was available.
+
+**Impact:**
+
+- Users saw "No Brief Available" during active generation
+- Streaming preview appeared only after a completed brief existed
+
+**Recommendation:**
+Allow the streaming brief to render even when `dailyBrief` is null by creating a preview object from `currentStreamingData.mainBrief`.
+
+---
+
+### MEDIUM-4: Modal Escape Handler Active When Closed ✅ FIXED
+
+**File:** `apps/web/src/lib/components/ui/Modal.svelte`
+**Lines:** 186-191
+**Fix:** Guard the global Escape handler with `isOpen` before attempting to close.
+
+**Issue:**
+The `svelte:window` Escape handler ran even when the modal was closed, triggering `onClose` unexpectedly.
+
+**Impact:**
+
+- Esc key could fire close callbacks for inactive modals
+- Unintended state updates in parent components
+
+**Recommendation:**
+Check `isOpen` at the start of `handleKeydown` and return early when the modal is not visible.
 
 ---
 
@@ -322,33 +362,145 @@ Or if you need the latest LTS features:
 
 ---
 
+### LOW-5: Superseded Brief Jobs Treated as Errors ✅ FIXED
+
+**File:** `apps/web/src/lib/services/briefClient.service.ts`
+**Lines:** 322-395
+**Fix:** Mark superseded jobs and attempt to resume the latest generation; if none exist, stop polling without an error toast.
+
+**Issue:**
+When a job was cancelled due to a newer brief generation request, polling returned `null` and surfaced a "Job not found" error.
+
+**Impact:**
+
+- Users saw error toasts for expected cancellations
+- Polling stopped in a failure state instead of quietly moving on
+
+**Recommendation:**
+Detect the "newer brief generation request" cancellation reason and treat it as a silent supersession.
+
+---
+
+### LOW-6: Voice Stop Triggered Twice ✅ FIXED
+
+**File:** `apps/web/src/lib/components/ui/TextareaWithVoice.svelte`
+**Lines:** 553-568
+**Fix:** Stop propagation in the textarea keydown handler so the global handler doesn't fire twice.
+
+**Issue:**
+Pressing Space/Enter while recording fired both the textarea and global keydown handlers, causing `stopVoiceRecording()` to run twice.
+
+**Impact:**
+
+- Redundant cleanup calls
+- Potential double state updates and console noise
+
+**Recommendation:**
+Prevent the event from bubbling when the textarea handler already handled the stop action.
+
+---
+
+### LOW-7: SSE Timeout Leaves Reader Active ✅ FIXED
+
+**File:** `apps/web/src/lib/utils/sse-processor.ts`
+**Lines:** 83-137
+**Fix:** Cancel the reader on inactivity timeout and wait for the stream promise to settle before releasing the lock.
+
+**Issue:**
+The inactivity timeout rejected without canceling the underlying stream reader, leaving the stream active until the server closed it.
+
+**Impact:**
+
+- Unnecessary network usage after timeout
+- Potential lock release while reads are still pending
+
+**Recommendation:**
+Cancel the reader on timeout and ensure cleanup waits for the stream to finish shutting down.
+
+---
+
+### LOW-8: Background Prefetch Timers Not Cleared ✅ FIXED
+
+**File:** `apps/web/src/lib/services/projectData.service.ts`
+**Lines:** 39-54, 343-346
+**Fix:** Track background timers and clear them on `destroy()` to avoid post-teardown fetches.
+
+**Issue:**
+Background `setTimeout` prefetches could fire after `destroy()` was called.
+
+**Impact:**
+
+- Unnecessary network calls after teardown
+- Potential store updates against destroyed state
+
+**Recommendation:**
+Store timeout handles and clear them during cleanup.
+
+---
+
+### LOW-9: Modal Scroll Lock Not Stack-Safe ✅ FIXED
+
+**Files:**
+
+- `apps/web/src/lib/components/ui/Modal.svelte`
+- `apps/web/src/lib/utils/body-scroll-lock.ts`
+
+**Fix:** Added a ref-counted scroll lock helper so stacked modals don't re-enable body scroll prematurely.
+
+**Issue:**
+Closing a nested modal restored body scroll even when a parent modal was still open.
+
+**Impact:**
+
+- Background page could scroll while a modal remained visible
+- Inconsistent UX for stacked dialogs
+
+**Recommendation:**
+Use a shared scroll lock helper with reference counting.
+
+---
+
 ## Priority Matrix
 
 | Finding                           | Severity   | Effort  | Impact           | Priority |
 | --------------------------------- | ---------- | ------- | ---------------- | -------- |
 | MEDIUM-1: State Badge Colors      | Medium     | Low     | High (UX)        | **P1**   |
 | MEDIUM-2: History Race Condition  | Medium     | Low     | Medium           | **P2**   |
+| MEDIUM-3: Streaming Preview       | Medium     | Low     | Medium (UX)      | **P2**   |
+| MEDIUM-4: Modal Escape Guard      | Medium     | Low     | Medium           | **P2**   |
 | LOW-4: Node Types Mismatch        | Low/Medium | Low     | Medium (Runtime) | **P2**   |
 | LOW-1: Double Speed Insights      | Low        | Low     | Low              | P3       |
 | LOW-2: Duplicate Supabase Clients | Low        | Low     | Low              | P3       |
 | LOW-3: Trailing Space             | Low        | Trivial | Low              | P3       |
+| LOW-5: Superseded Brief Jobs      | Low        | Low     | Low              | P3       |
+| LOW-6: Voice Stop Twice           | Low        | Low     | Low              | P3       |
+| LOW-7: SSE Timeout Cleanup        | Low        | Low     | Low              | P3       |
+| LOW-8: Background Timers Cleanup  | Low        | Low     | Low              | P3       |
+| LOW-9: Modal Scroll Lock Stack    | Low        | Low     | Medium (UX)      | P3       |
 
 ---
 
 ## Resolution Summary
 
-All 6 issues were fixed on 2025-12-21:
+All 13 issues were fixed on 2025-12-21:
 
 | Issue    | Fix Applied                                                 |
 | -------- | ----------------------------------------------------------- |
 | MEDIUM-1 | Added `getStateKey()` helper for consistent state matching  |
 | MEDIUM-2 | Added version token pattern to guard against stale Promises |
+| MEDIUM-3 | Built streaming preview fallback for first-time briefs      |
+| MEDIUM-4 | Guarded Escape handler with `isOpen`                        |
 | LOW-1    | Removed duplicate Speed Insights from `+layout.ts`          |
 | LOW-2    | Changed to use shared Supabase client from `data.supabase`  |
 | LOW-3    | Removed trailing space from TypeScript version              |
 | LOW-4    | Downgraded `@types/node` to `^20.19.0`                      |
+| LOW-5    | Handled superseded brief jobs without error toasts          |
+| LOW-6    | Stopped keydown propagation for voice stop                  |
+| LOW-7    | Cancelled SSE reader on inactivity timeout                  |
+| LOW-8    | Cleared background timers on service destroy                |
+| LOW-9    | Added ref-counted modal scroll lock helper                  |
 
-**Verification:** Type checking passed with `pnpm run check`. Pre-existing errors in unrelated files (`migration-stats.service.ts`, `migration-error.service.ts`, `onto.ts`) remain but are outside the scope of these fixes.
+**Verification:** Not run in this pass.
 
 ---
 

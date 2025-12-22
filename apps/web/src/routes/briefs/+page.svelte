@@ -569,20 +569,36 @@
 	];
 
 	// Show generated brief from streaming data ONLY while actively generating
-	let displayDailyBrief = $derived(
-		isToday &&
-			currentStreamingData?.mainBrief &&
-			currentStreamingStatus?.isGenerating &&
-			dailyBrief
-			? {
-					...dailyBrief,
-					id: currentStreamingData.mainBrief.id,
+	let displayDailyBrief = $derived.by(() => {
+		if (isToday && currentStreamingData?.mainBrief && currentStreamingStatus?.isGenerating) {
+			const now = new Date().toISOString();
+			const baseBrief =
+				dailyBrief ??
+				({
+					id: currentStreamingData.mainBrief.id || `streaming-${currentDate || now}`,
+					user_id: data.user?.id ?? '',
+					brief_date:
+						currentDate || getTodayInTimezone(userTimezone || getUserTimezone()),
 					summary_content: currentStreamingData.mainBrief.content,
-					priority_actions: currentStreamingData.mainBrief.priority_actions,
-					generation_completed_at: new Date().toISOString()
-				}
-			: dailyBrief
-	);
+					priority_actions: currentStreamingData.mainBrief.priority_actions || [],
+					generation_status: 'pending',
+					generation_started_at: now,
+					generation_completed_at: now,
+					created_at: now,
+					updated_at: now
+				} satisfies DailyBrief);
+
+			return {
+				...baseBrief,
+				id: currentStreamingData.mainBrief.id || baseBrief.id,
+				summary_content: currentStreamingData.mainBrief.content,
+				priority_actions: currentStreamingData.mainBrief.priority_actions,
+				generation_completed_at: now
+			};
+		}
+
+		return dailyBrief;
+	});
 
 	// Show project briefs from streaming data ONLY while actively generating
 	let displayProjectBriefs = $derived(

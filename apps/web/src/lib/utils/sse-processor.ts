@@ -66,6 +66,8 @@ export class SSEProcessor {
 		const decoder = new TextDecoder();
 		let buffer = '';
 		let timeoutId: NodeJS.Timeout | null = null;
+		let didTimeout = false;
+		let streamPromise: Promise<void> | null = null;
 		const abortHandler = () => {
 			reader.cancel().catch(() => {
 				/* intentional noop */
@@ -88,6 +90,10 @@ export class SSEProcessor {
 				clearTimeout(timeoutId);
 			}
 			timeoutId = setTimeout(() => {
+				didTimeout = true;
+				reader.cancel().catch(() => {
+					/* intentional noop */
+				});
 				timeoutReject?.(new Error(`SSE stream timeout after ${timeout}ms of inactivity`));
 			}, timeout);
 		};
@@ -102,7 +108,7 @@ export class SSEProcessor {
 				: null;
 
 		try {
-			const streamPromise = this.processStreamChunks(
+			streamPromise = this.processStreamChunks(
 				reader,
 				decoder,
 				buffer,
@@ -125,6 +131,13 @@ export class SSEProcessor {
 			if (!hasCompleted) {
 				safeCallbacks.onComplete?.(undefined);
 			}
+		} catch (error) {
+			if (didTimeout && streamPromise) {
+				await streamPromise.catch(() => {
+					/* intentional noop */
+				});
+			}
+			throw error;
 		} finally {
 			// Clean up
 			if (timeoutId) {

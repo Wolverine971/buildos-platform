@@ -554,6 +554,7 @@
 		// Stop recording on Space or Enter when recording is active
 		if (isCurrentlyRecording && (event.key === ' ' || event.key === 'Enter')) {
 			event.preventDefault();
+			event.stopPropagation();
 			stopVoiceRecording();
 		}
 	}

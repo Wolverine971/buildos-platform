@@ -52,6 +52,7 @@
 	import { onDestroy, tick } from 'svelte';
 	import { browser } from '$app/environment';
 	import { portal } from '$lib/actions/portal';
+	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -151,7 +152,6 @@
 	let previousFocusElement = $state<HTMLElement | null>(null);
 	let focusTrapCleanup = $state<(() => void) | null>(null);
 	let animationComplete = $state(false);
-	let scrollY = $state(0);
 
 	// Touch gesture state
 	let isDragging = $state(false);
@@ -184,6 +184,7 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
+		if (!isOpen) return;
 		if (event.key === 'Escape' && closeOnEscape && !persistent) {
 			event.preventDefault();
 			attemptClose();
@@ -343,11 +344,7 @@
 
 		// Lock body scroll
 		if (browser) {
-			scrollY = window.scrollY;
-			document.body.style.position = 'fixed';
-			document.body.style.top = `-${scrollY}px`;
-			document.body.style.width = '100%';
-			document.body.style.overflow = 'hidden';
+			lockBodyScroll();
 		}
 
 		trapFocus();
@@ -372,11 +369,7 @@
 
 		// Restore scroll position
 		if (browser) {
-			document.body.style.position = '';
-			document.body.style.top = '';
-			document.body.style.width = '';
-			document.body.style.overflow = '';
-			window.scrollTo(0, scrollY);
+			unlockBodyScroll();
 		}
 
 		restoreFocus();

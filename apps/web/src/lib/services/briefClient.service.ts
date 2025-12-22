@@ -33,6 +33,15 @@ interface GenerationState {
 	abortController: AbortController | null;
 }
 
+interface JobStatus {
+	status: string;
+	error_message?: string;
+	metadata?: {
+		generation_progress?: any;
+	};
+	_superseded?: boolean;
+}
+
 export class BriefClientService {
 	// Single source of truth for generation state
 	private static generationState: GenerationState = {
@@ -326,6 +335,27 @@ export class BriefClientService {
 					return;
 				}
 
+				if (jobStatus._superseded) {
+					const existingJob = await this.checkExistingGeneration(userId, briefDate);
+					if (existingJob?.queue_job_id) {
+						this.generationState.jobId = existingJob.queue_job_id;
+						return;
+					}
+
+					unifiedBriefGenerationStore.update(
+						{
+							isGenerating: false,
+							currentStep: 'idle',
+							message: '',
+							error: undefined
+						},
+						'manual',
+						0
+					);
+					this.cleanup();
+					return;
+				}
+
 				// Update status
 				this.updateStatusFromJob(jobStatus);
 
@@ -369,7 +399,7 @@ export class BriefClientService {
 	/**
 	 * Poll for job status
 	 */
-	private static async pollJobStatus(jobId: string) {
+	private static async pollJobStatus(jobId: string): Promise<JobStatus | null> {
 		try {
 			const response = await fetch(`/api/brief-jobs/${jobId}`);
 			const payload = await response.json().catch(() => null);
@@ -381,7 +411,7 @@ export class BriefClientService {
 				throw new Error(`Failed to fetch job status: ${message}`);
 			}
 
-			const job = payload?.data?.job ?? payload?.job ?? null;
+			const job = (payload?.data?.job ?? payload?.job ?? null) as JobStatus | null;
 			if (!job) {
 				return null;
 			}
@@ -391,7 +421,7 @@ export class BriefClientService {
 				job.status === 'cancelled' &&
 				job.error_message?.includes('newer brief generation request')
 			) {
-				return null; // Silently stop polling
+				return { ...job, _superseded: true };
 			}
 
 			return job;

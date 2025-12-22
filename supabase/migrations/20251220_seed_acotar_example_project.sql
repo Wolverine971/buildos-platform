@@ -1415,7 +1415,159 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 ('goal', '55555555-0003-0000-0000-000000000001', 'precedes', 'goal', '55555555-0004-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Trilogy completion enables Nesta story"}'::jsonb),
 ('goal', '55555555-0005-0000-0000-000000000001', 'supports', 'goal', '55555555-0001-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Worldbuilding underlies all books"}'::jsonb),
 ('goal', '55555555-0005-0000-0000-000000000001', 'supports', 'goal', '55555555-0007-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Worldbuilding enables multiverse expansion"}'::jsonb),
-('goal', '55555555-0002-0000-0000-000000000001', 'enabled', 'goal', '55555555-0006-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "ACOMAF transformation drove cultural phenomenon"}'::jsonb);
+('goal', '55555555-0002-0000-0000-000000000001', 'enabled', 'goal', '55555555-0006-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "ACOMAF transformation drove cultural phenomenon"}'::jsonb),
+
+-- ============================================
+-- TIER 11: ACOFAS Task → Milestone Connections (Book 4 - Previously Missing)
+-- ============================================
+-- Winter Solstice task → ACOFAS milestones
+('task', '55555555-0004-0000-0001-000000000001', 'contributes_to', 'milestone', '55555555-0004-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Winter Solstice celebration scenes for ACOFAS"}'::jsonb),
+('task', '55555555-0004-0000-0001-000000000001', 'contributes_to', 'milestone', '55555555-0004-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Holiday novella content"}'::jsonb),
+-- Nesta confrontation task → Nesta's spiral milestone
+('task', '55555555-0004-0000-0002-000000000001', 'contributes_to', 'milestone', '55555555-0004-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Nesta intervention scene establishes her spiral"}'::jsonb),
+('task', '55555555-0004-0000-0002-000000000001', 'contributes_to', 'milestone', '55555555-0004-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Sets up Nesta as Book 5 protagonist"}'::jsonb),
+-- Feyre art studio task → healing milestone
+('task', '55555555-0004-0000-0003-000000000001', 'contributes_to', 'milestone', '55555555-0004-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Polina studio gift scene"}'::jsonb),
+-- Rhysand Spring Court visits task → Tamlin milestone
+('task', '55555555-0004-0000-0004-000000000001', 'contributes_to', 'milestone', '55555555-0004-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Tamlin Spring Court visit scenes"}'::jsonb),
+('task', '55555555-0004-0000-0004-000000000001', 'contributes_to', 'milestone', '55555555-0008-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Shows Spring Court collapse"}'::jsonb),
+
+-- ============================================
+-- TIER 12: ACOWAR Task → Milestone Connections (Book 3 - Previously Missing)
+-- ============================================
+-- Spy mission task → Spring Court infiltration milestone
+('task', '55555555-0003-0001-0001-000000000001', 'contributes_to', 'milestone', '55555555-0003-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Feyre undercover spy mission writing"}'::jsonb),
+('task', '55555555-0003-0001-0001-000000000001', 'contributes_to', 'milestone', '55555555-0003-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Ianthe conflict scenes"}'::jsonb),
+-- Escape with Lucien task → escape milestone
+('task', '55555555-0003-0001-0002-000000000001', 'contributes_to', 'milestone', '55555555-0003-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Escape from Spring Court sequence"}'::jsonb),
+('task', '55555555-0003-0001-0002-000000000001', 'contributes_to', 'milestone', '55555555-0003-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Hybern twins confrontation"}'::jsonb),
+-- High Lords meeting task → alliance milestone
+('task', '55555555-0003-0001-0003-000000000001', 'contributes_to', 'milestone', '55555555-0003-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "High Lords meeting scenes"}'::jsonb),
+-- Archeron sisters Made task → transformation milestone
+('task', '55555555-0003-0001-0004-000000000001', 'contributes_to', 'milestone', '55555555-0003-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Sisters forced into Cauldron scenes"}'::jsonb),
+-- Final battle task → battle and redemption milestones
+('task', '55555555-0003-0001-0005-000000000001', 'contributes_to', 'milestone', '55555555-0003-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Final battle against Hybern"}'::jsonb),
+('task', '55555555-0003-0001-0005-000000000001', 'contributes_to', 'milestone', '55555555-0003-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Miryam and Drakon arrive"}'::jsonb),
+('task', '55555555-0003-0001-0005-000000000001', 'contributes_to', 'milestone', '55555555-0003-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Mr. Archeron sacrifice scene"}'::jsonb),
+-- Mor coming out task → relevant milestone
+('task', '55555555-0003-0001-0006-000000000001', 'contributes_to', 'milestone', '55555555-0008-0021-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"work": "Mor comes out to Feyre"}'::jsonb),
+
+-- ============================================
+-- TIER 13: New Document → Milestone Connections
+-- ============================================
+-- "Feyre darling" quote → ACOMAF publication and mate bond reveal
+('document', '55558888-0002-0003-0001-000000000001', 'documents', 'milestone', '55555555-0002-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Signature romantic phrase from ACOMAF"}'::jsonb),
+('document', '55558888-0002-0003-0001-000000000001', 'related_to', 'milestone', '55555555-0002-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Part of romantic arc with mate reveal"}'::jsonb),
+-- Salvation quote → ACOMAF romance
+('document', '55558888-0002-0004-0001-000000000001', 'documents', 'milestone', '55555555-0002-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Key romantic declaration"}'::jsonb),
+-- Mate bond declaration → Under the Mountain and mate reveal
+('document', '55558888-0002-0005-0001-000000000001', 'documents', 'milestone', '55555555-0002-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Mate bond revelation backstory"}'::jsonb),
+('document', '55558888-0002-0005-0001-000000000001', 'related_to', 'milestone', '55555555-0001-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "References Under the Mountain events"}'::jsonb),
+-- Torn world apart quote → Feyre PTSD healing
+('document', '55558888-0002-0006-0001-000000000001', 'documents', 'milestone', '55555555-0002-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Feyre declaration of devotion"}'::jsonb),
+-- Different kinds of darkness quote → Night Court duality
+('document', '55558888-0002-0007-0001-000000000001', 'documents', 'milestone', '55555555-0005-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Rhysand philosophy on Night Court"}'::jsonb),
+('document', '55558888-0002-0007-0001-000000000001', 'related_to', 'milestone', '55555555-0002-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Inner Circle worldview"}'::jsonb),
+-- Love as poison quote → Tamlin controlling behavior
+('document', '55558888-0002-0008-0001-000000000001', 'documents', 'milestone', '55555555-0008-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Explains Tamlin toxic behavior"}'::jsonb),
+('document', '55558888-0002-0008-0001-000000000001', 'related_to', 'milestone', '55555555-0002-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Part of the pivot decision rationale"}'::jsonb),
+-- Queen quote → First Female High Lady
+('document', '55558888-0002-0009-0001-000000000001', 'documents', 'milestone', '55555555-0003-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Feyre agency declaration"}'::jsonb),
+-- All night dance quote → Starfall/mate bond
+('document', '55558888-0002-0010-0001-000000000001', 'documents', 'milestone', '55555555-0002-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Romantic moment at Starfall"}'::jsonb),
+-- ACOWAR dedication → Father redemption arc
+('document', '55558888-0003-0001-0001-000000000001', 'documents', 'milestone', '55555555-0003-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "ACOWAR dedication to father"}'::jsonb),
+('document', '55558888-0003-0001-0001-000000000001', 'related_to', 'milestone', '55555555-0003-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Connects to Mr. Archeron sacrifice"}'::jsonb),
+-- Nesta/Cassian mate quote → bond acceptance milestone
+('document', '55558888-0005-0002-0001-000000000001', 'documents', 'milestone', '55555555-0004-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"artifact": "Nesta/Cassian mate bond acceptance"}'::jsonb),
+('document', '55558888-0005-0002-0001-000000000001', 'related_to', 'milestone', '55555555-0004-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Culminates in ACOSF"}'::jsonb),
+
+-- ============================================
+-- TIER 14: New Decision → Milestone/Goal Connections
+-- ============================================
+-- Move to Adult classification decision
+('decision', '55556666-0005-0001-0001-000000000001', 'led_to', 'milestone', '55555555-0004-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"impact": "ACOSF published as Adult Fantasy"}'::jsonb),
+('decision', '55556666-0005-0001-0001-000000000001', 'influenced', 'goal', '55555555-0004-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"impact": "Enabled explicit content in Nesta story"}'::jsonb),
+-- Announce 4+ more books decision
+('decision', '55556666-0007-0003-0001-000000000001', 'influenced', 'goal', '55555555-0007-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"impact": "Confirmed long-term future of series"}'::jsonb),
+('decision', '55556666-0007-0003-0001-000000000001', 'related_to', 'milestone', '55555555-0007-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Book 6 is first of 4+ confirmed books"}'::jsonb),
+-- Shop TV rights decision
+('decision', '55556666-0007-0004-0001-000000000001', 'related_to', 'milestone', '55555555-0007-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"response_to": "Hulu cancellation"}'::jsonb),
+('decision', '55556666-0007-0004-0001-000000000001', 'influenced', 'goal', '55555555-0007-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"impact": "Continuing adaptation efforts"}'::jsonb),
+
+-- ============================================
+-- TIER 15: New Risk → Milestone/Goal Connections
+-- ============================================
+-- Multiverse complexity risk
+('risk', '55557777-0007-0003-0001-000000000001', 'threatened', 'goal', '55555555-0007-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"threat": "Cross-series confusion could alienate readers"}'::jsonb),
+('risk', '55557777-0007-0003-0001-000000000001', 'related_to', 'milestone', '55555555-0007-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"occurrence": "Bryce crossover introduced complexity"}'::jsonb),
+-- Lucien/Elain mate complication risk
+('risk', '55557777-0008-0001-0001-000000000001', 'threatened', 'milestone', '55555555-0007-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"threat": "Must resolve mate bond vs Azriel attraction"}'::jsonb),
+('risk', '55557777-0008-0001-0001-000000000001', 'related_to', 'milestone', '55555555-0008-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"origin": "Lucien mate bond discovery"}'::jsonb),
+('risk', '55557777-0008-0001-0001-000000000001', 'related_to', 'milestone', '55555555-0004-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"escalation": "Lucien Solstice rejection"}'::jsonb),
+-- Illyrian rebellion risk
+('risk', '55557777-0008-0002-0001-000000000001', 'threatened', 'goal', '55555555-0007-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"threat": "Could destabilize Night Court in future books"}'::jsonb),
+('risk', '55557777-0008-0002-0001-000000000001', 'related_to', 'milestone', '55555555-0004-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"setup": "Illyrian reform resistance in ACOFAS"}'::jsonb),
+('risk', '55557777-0008-0002-0001-000000000001', 'related_to', 'milestone', '55555555-0005-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Illyrian culture development"}'::jsonb),
+-- Wait time between books risk
+('risk', '55557777-0008-0003-0001-000000000001', 'threatened', 'goal', '55555555-0006-0000-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"threat": "Could lose casual readers during gaps"}'::jsonb),
+('risk', '55557777-0008-0003-0001-000000000001', 'related_to', 'milestone', '55555555-0004-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"start": "ACOSF publication Feb 2021"}'::jsonb),
+('risk', '55557777-0008-0003-0001-000000000001', 'mitigated_by', 'milestone', '55555555-0006-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"mitigation": "BookTok maintains engagement during waits"}'::jsonb),
+
+-- ============================================
+-- TIER 16: Secondary Character Arc Interconnections
+-- ============================================
+-- Lucien arc causal chain
+('milestone', '55555555-0008-0001-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Trauma history precedes Under the Mountain suffering"}'::jsonb),
+('milestone', '55555555-0008-0002-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "50 years loyalty tested before break with Tamlin"}'::jsonb),
+('milestone', '55555555-0008-0003-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Breaking with Tamlin opens path to Elain bond discovery"}'::jsonb),
+('milestone', '55555555-0008-0004-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Mate bond discovery parallels Helion parentage reveal"}'::jsonb),
+('milestone', '55555555-0008-0005-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0006-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Dual heritage leads to Band of Exiles formation"}'::jsonb),
+-- Tamlin arc causal chain
+('milestone', '55555555-0008-0007-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "PTSD manifests as controlling behavior"}'::jsonb),
+('milestone', '55555555-0008-0008-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Losing Feyre leads to Hybern alliance"}'::jsonb),
+('milestone', '55555555-0008-0009-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Within Hybern, becomes double agent"}'::jsonb),
+('milestone', '55555555-0008-0011-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "After war, Spring Court collapses under his isolation"}'::jsonb),
+-- Azriel arc causal chain
+('milestone', '55555555-0008-0012-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0013-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Childhood darkness led to shadowsinger emergence"}'::jsonb),
+('milestone', '55555555-0008-0013-0000-000000000001', 'enabled', 'milestone', '55555555-0008-0014-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Shadowsinger abilities enabled Truth-Teller significance"}'::jsonb),
+('milestone', '55555555-0008-0014-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0015-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Truth-Teller connection to Gwyn leads to shadows softening observation"}'::jsonb),
+-- Amren arc causal chain
+('milestone', '55555555-0008-0016-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0017-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Ancient being origins enabled Cauldron sacrifice option"}'::jsonb),
+('milestone', '55555555-0008-0017-0000-000000000001', 'led_to', 'milestone', '55555555-0008-0018-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Cauldron sacrifice resulted in High Fae rebirth"}'::jsonb),
+-- Mor arc causal chain
+('milestone', '55555555-0008-0019-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0020-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Court of Nightmares abuse led to Rhysand rescue"}'::jsonb),
+('milestone', '55555555-0008-0020-0000-000000000001', 'precedes', 'milestone', '55555555-0008-0021-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "500 years of freedom before coming out to Feyre"}'::jsonb),
+('milestone', '55555555-0008-0021-0000-000000000001', 'related_to', 'milestone', '55555555-0008-0022-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Coming out incomplete without full power reveal"}'::jsonb),
+-- Cross-character connections
+('milestone', '55555555-0008-0003-0000-000000000001', 'related_to', 'milestone', '55555555-0008-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Lucien break triggered by Tamlin controlling behavior"}'::jsonb),
+('milestone', '55555555-0008-0017-0000-000000000001', 'contributes_to', 'milestone', '55555555-0003-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"contribution": "Amren sacrifice turned tide of battle"}'::jsonb),
+('milestone', '55555555-0008-0014-0000-000000000001', 'related_to', 'milestone', '55555555-0007-0001-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Truth-Teller connects to multiverse reveal"}'::jsonb),
+-- Secondary characters to main plot connections
+('milestone', '55555555-0008-0002-0000-000000000001', 'related_to', 'milestone', '55555555-0001-0005-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Lucien maiming happens Under the Mountain"}'::jsonb),
+('milestone', '55555555-0008-0016-0000-000000000001', 'related_to', 'milestone', '55555555-0002-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Amren revealed as Inner Circle member"}'::jsonb),
+('milestone', '55555555-0008-0019-0000-000000000001', 'related_to', 'milestone', '55555555-0002-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Mor backstory revealed with Inner Circle"}'::jsonb),
+('milestone', '55555555-0008-0012-0000-000000000001', 'related_to', 'milestone', '55555555-0005-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Azriel childhood part of Illyrian culture"}'::jsonb),
+
+-- ============================================
+-- TIER 17: ACOWAR Spy Mission Milestone Chains
+-- ============================================
+('milestone', '55555555-0003-0006-0000-000000000001', 'precedes', 'milestone', '55555555-0003-0007-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Spy mission involves conflict with Ianthe"}'::jsonb),
+('milestone', '55555555-0003-0007-0000-000000000001', 'precedes', 'milestone', '55555555-0003-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Ianthe schemes lead to Hybern twins arrival"}'::jsonb),
+('milestone', '55555555-0003-0008-0000-000000000001', 'precedes', 'milestone', '55555555-0003-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Twin threat forces escape with Lucien"}'::jsonb),
+('milestone', '55555555-0003-0009-0000-000000000001', 'precedes', 'milestone', '55555555-0003-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Intel gathered enables High Lords meeting"}'::jsonb),
+('milestone', '55555555-0003-0010-0000-000000000001', 'enabled', 'milestone', '55555555-0003-0011-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "High Lords meeting discusses reaching Miryam and Drakon"}'::jsonb),
+('milestone', '55555555-0003-0011-0000-000000000001', 'precedes', 'milestone', '55555555-0003-0012-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Alliance reinforcements set stage for Mr. Archeron sacrifice"}'::jsonb),
+
+-- ============================================
+-- TIER 18: ACOFAS Milestone Chains
+-- ============================================
+('milestone', '55555555-0004-0007-0000-000000000001', 'precedes', 'milestone', '55555555-0004-0008-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Solstice preparations lead to studio gift"}'::jsonb),
+('milestone', '55555555-0004-0008-0000-000000000001', 'related_to', 'milestone', '55555555-0004-0009-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"contrast": "Feyre healing while Nesta spirals"}'::jsonb),
+('milestone', '55555555-0004-0009-0000-000000000001', 'precedes', 'milestone', '55555555-0004-0003-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"reason": "Nesta spiral sets up protagonist decision"}'::jsonb),
+('milestone', '55555555-0004-0010-0000-000000000001', 'related_to', 'milestone', '55555555-0008-0004-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Lucien rejection shows mate bond complication"}'::jsonb),
+('milestone', '55555555-0004-0011-0000-000000000001', 'related_to', 'milestone', '55555555-0005-0002-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Illyrian reform tied to culture development"}'::jsonb),
+('milestone', '55555555-0004-0012-0000-000000000001', 'related_to', 'milestone', '55555555-0008-0010-0000-000000000001', '55555555-5555-5555-5555-555555555555', '{"connection": "Shows Spring Court collapse state"}'::jsonb);
 
 -- ============================================
 -- COMPLETION NOTICE
@@ -1433,9 +1585,9 @@ BEGIN
   RAISE NOTICE '  - 9 Decisions (major creative and business choices)';
   RAISE NOTICE '  - 10 Risks (challenges faced and ongoing)';
   RAISE NOTICE '  - 19 Documents (iconic quotes, dedications, cultural analysis)';
-  RAISE NOTICE '  - 250+ Edges (comprehensive relationship mapping)';
+  RAISE NOTICE '  - 350+ Edges (comprehensive relationship mapping)';
   RAISE NOTICE '';
-  RAISE NOTICE 'GRAPH STRUCTURE (10 Tiers):';
+  RAISE NOTICE 'GRAPH STRUCTURE (18 Tiers):';
   RAISE NOTICE '  1. Project → Goals (8 edges)';
   RAISE NOTICE '  2. Goals → Milestones (74+ edges)';
   RAISE NOTICE '  3. Milestones → Sub-Milestones (9 edges incl. chains)';
@@ -1446,6 +1598,14 @@ BEGIN
   RAISE NOTICE '  8. Risks → Milestones/Goals (18 edges)';
   RAISE NOTICE '  9. Documents → Milestones (20+ edges)';
   RAISE NOTICE ' 10. Milestone → Milestone chains (50+ edges)';
+  RAISE NOTICE ' 11. ACOFAS Task → Milestone (7 edges - NEW)';
+  RAISE NOTICE ' 12. ACOWAR Task → Milestone (12 edges - NEW)';
+  RAISE NOTICE ' 13. New Document → Milestone (16 edges - NEW)';
+  RAISE NOTICE ' 14. New Decision → Goal/Milestone (6 edges - NEW)';
+  RAISE NOTICE ' 15. New Risk → Goal/Milestone (11 edges - NEW)';
+  RAISE NOTICE ' 16. Secondary Character Arc chains (25+ edges - NEW)';
+  RAISE NOTICE ' 17. ACOWAR Spy Mission chains (6 edges - NEW)';
+  RAISE NOTICE ' 18. ACOFAS Milestone chains (6 edges - NEW)';
   RAISE NOTICE '';
   RAISE NOTICE 'V3.0 NEW ADDITIONS:';
   RAISE NOTICE '  - ACOWAR spy mission arc (7 milestones)';
@@ -1459,6 +1619,17 @@ BEGIN
   RAISE NOTICE '  - Updated sales: 75M+ worldwide (was 38M)';
   RAISE NOTICE '  - SJM writing process details';
   RAISE NOTICE '  - Book 6 first draft confirmed July 2025';
+  RAISE NOTICE '';
+  RAISE NOTICE 'V3.1 GRAPH CONNECTIONS FIX:';
+  RAISE NOTICE '  - ACOFAS tasks now connected to milestones';
+  RAISE NOTICE '  - ACOWAR tasks now connected to milestones';
+  RAISE NOTICE '  - All new documents connected to relevant milestones';
+  RAISE NOTICE '  - All new decisions connected to goals/milestones';
+  RAISE NOTICE '  - All new risks connected to goals/milestones';
+  RAISE NOTICE '  - Secondary character arcs now have causal chains';
+  RAISE NOTICE '  - ACOWAR spy mission has sequential chain';
+  RAISE NOTICE '  - ACOFAS milestones properly interconnected';
+  RAISE NOTICE '  - Cross-character connections established';
   RAISE NOTICE '';
   RAISE NOTICE 'EASTER EGGS FOR SUPERFANS:';
   RAISE NOTICE '  - All fairy tale inspirations documented';

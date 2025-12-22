@@ -2108,7 +2108,95 @@ INSERT INTO onto_edges (src_kind, src_id, rel, dst_kind, dst_id, project_id, pro
 -- Oriskany → Saratoga (tied up British forces)
 ('milestone', '33331111-0009-0001-0000-000000000001', 'enabled', 'milestone', '33331111-0002-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Stopped St. Leger, concentrated forces against Burgoyne"}'::jsonb),
 -- 1st Rhode Island → Yorktown assault
-('milestone', '33331111-0008-0001-0000-000000000001', 'enabled', 'milestone', '33331111-0003-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Black soldiers served in Yorktown assault"}'::jsonb)
+('milestone', '33331111-0008-0001-0000-000000000001', 'enabled', 'milestone', '33331111-0003-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Black soldiers served in Yorktown assault"}'::jsonb),
+
+-- ============================================
+-- MISSING EDGE FIXES
+-- ============================================
+-- Conway Cabal risk → Goal 4 (Civilian Control) - risk threatened civilian control
+('risk', '77771111-0004-0003-0001-000000000001', 'threatened', 'goal', '22221111-0004-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"threat": "Attempted to replace Washington with Gates"}'::jsonb),
+
+-- Newburgh Address document → Newburgh Conspiracy milestone (already connected to 0004-0001, add to proper milestone)
+-- Note: 88881111-0004-0003-0001 is already connected in v3.0 edges, this adds semantic relationship
+('document', '88881111-0004-0003-0001-000000000001', 'documents', 'decision', '66661111-0004-0001-0001-000000000001', '11111111-1111-1111-1111-111111111111', '{"artifact": "Washington spectacles speech text"}'::jsonb),
+
+-- Articles of Confederation → Goal 4 (Civilian Control) - foundational document
+('document', '88881111-0005-0002-0002-000000000001', 'documents', 'goal', '22221111-0004-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"artifact": "First framework for civilian government"}'::jsonb),
+
+-- Articles of Confederation → Treaty of Paris milestone (enabled independence negotiations)
+('document', '88881111-0005-0002-0002-000000000001', 'related_to', 'milestone', '33331111-0003-0004-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"connection": "Articles created government to sign treaty"}'::jsonb),
+
+-- De Kalb document → Camden milestone (where he died)
+('document', '88881111-0003-0022-0001-000000000001', 'documents', 'milestone', '33331111-0003-0011-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"artifact": "De Kalb service record - died at Camden"}'::jsonb),
+
+-- Kosciuszko document → Saratoga milestone (fortified the position)
+('document', '88881111-0003-0021-0001-000000000001', 'documents', 'milestone', '33331111-0002-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"artifact": "Kosciuszko engineering - fortified Saratoga"}'::jsonb),
+
+-- Kosciuszko document → Arnold Treason milestone (designed West Point defenses)
+('document', '88881111-0003-0021-0001-000000000001', 'related_to', 'milestone', '33331111-0006-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"connection": "Designed West Point defenses Arnold tried to betray"}'::jsonb),
+
+-- Morristown Hard Winter → Pennsylvania Line Mutiny (directly caused it)
+('milestone', '33331111-0001-0008-0000-000000000001', 'led_to', 'milestone', '33331111-0001-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Hard winter conditions led to mutiny"}'::jsonb),
+
+-- Pennsylvania Line Mutiny → New Jersey Line Mutiny (contagion effect)
+('milestone', '33331111-0001-0005-0000-000000000001', 'led_to', 'milestone', '33331111-0001-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Pennsylvania success inspired New Jersey mutiny"}'::jsonb),
+
+-- Fort Washington → Strategic Retreat milestone (forced the retreat)
+('milestone', '33331111-0003-0017-0000-000000000001', 'led_to', 'milestone', '33331111-0001-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Fort Washington disaster forced retreat from New York"}'::jsonb),
+
+-- Quebec Expedition → Intelligence lesson (Arnold's fame before treason)
+('milestone', '33331111-0003-0018-0000-000000000001', 'related_to', 'milestone', '33331111-0006-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"irony": "Quebec hero became most notorious traitor"}'::jsonb),
+
+-- Siege of Savannah → Fall of Charleston (French defeat led to Southern collapse)
+('milestone', '33331111-0003-0019-0000-000000000001', 'led_to', 'milestone', '33331111-0003-0010-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Failed siege left South vulnerable to British campaign"}'::jsonb),
+
+-- Oneida Alliance → Oriskany (Oneida fought alongside Americans)
+('milestone', '33331111-0008-0003-0000-000000000001', 'enabled', 'milestone', '33331111-0009-0001-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "60 Oneida warriors fought at Oriskany"}'::jsonb),
+
+-- Haym Salomon → Yorktown (financing chain)
+('milestone', '33331111-0007-0005-0000-000000000001', 'enabled', 'milestone', '33331111-0003-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Securities sales provided campaign funds"}'::jsonb),
+
+-- 1st Rhode Island formation → Battle of Rhode Island (regiment formed for this)
+('milestone', '33331111-0008-0001-0000-000000000001', 'enabled', 'milestone', '33331111-0008-0002-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Regiment formed and then proved valor"}'::jsonb),
+
+-- Brandywine → Paoli (sequential events)
+('milestone', '33331111-0003-0005-0000-000000000001', 'precedes', 'milestone', '33331111-0003-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Brandywine defeat led to Paoli surprise"}'::jsonb),
+
+-- Paoli → Philadelphia capture
+('milestone', '33331111-0003-0006-0000-000000000001', 'precedes', 'milestone', '33331111-0003-0007-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Paoli massacre cleared path to Philadelphia"}'::jsonb),
+
+-- Philadelphia capture → Germantown
+('milestone', '33331111-0003-0007-0000-000000000001', 'precedes', 'milestone', '33331111-0003-0008-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Washington attacked British after Philadelphia fell"}'::jsonb),
+
+-- Germantown → Valley Forge
+('milestone', '33331111-0003-0008-0000-000000000001', 'precedes', 'milestone', '33331111-0001-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "After Germantown, army went to Valley Forge"}'::jsonb),
+
+-- Paoli → Stony Point (revenge arc)
+('milestone', '33331111-0003-0006-0000-000000000001', 'led_to', 'milestone', '33331111-0003-0009-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Wayne sought revenge for Paoli - got it at Stony Point"}'::jsonb),
+
+-- Charleston fall → Camden (sequential Southern disasters)
+('milestone', '33331111-0003-0010-0000-000000000001', 'precedes', 'milestone', '33331111-0003-0011-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Charleston loss led to Gates Camden disaster"}'::jsonb),
+
+-- Camden → Kings Mountain (turning point)
+('milestone', '33331111-0003-0011-0000-000000000001', 'precedes', 'milestone', '33331111-0003-0012-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Camden disaster preceded Kings Mountain turning point"}'::jsonb),
+
+-- Eutaw Springs → Charleston evacuation (drove British to port)
+('milestone', '33331111-0003-0016-0000-000000000001', 'enabled', 'milestone', '33331111-0003-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Greene won South without winning - British confined to Charleston"}'::jsonb),
+
+-- Culper Ring saves French at Newport → enabled Yorktown coordination
+('milestone', '33331111-0006-0004-0000-000000000001', 'enabled', 'milestone', '33331111-0002-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Saved French army for later Yorktown cooperation"}'::jsonb),
+
+-- André executed → Arnold escapes (sequential)
+('milestone', '33331111-0006-0005-0000-000000000001', 'precedes', 'milestone', '33331111-0006-0006-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "André captured while Arnold escaped"}'::jsonb),
+
+-- Tallmadge appointed → Culper Ring established (organizational sequence)
+('milestone', '33331111-0006-0002-0000-000000000001', 'enabled', 'milestone', '33331111-0006-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Tallmadge organized the spy network"}'::jsonb),
+
+-- Greene Quartermaster → Valley Forge survival (logistics chain)
+('milestone', '33331111-0007-0002-0000-000000000001', 'enabled', 'milestone', '33331111-0001-0003-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Greene reformed supply system saved army"}'::jsonb),
+
+-- Robert Morris → Haym Salomon (financing team)
+('milestone', '33331111-0007-0004-0000-000000000001', 'enabled', 'milestone', '33331111-0007-0005-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"context": "Morris appointed Salomon as broker"}'::jsonb)
 ;
 
 -- ============================================
@@ -2189,7 +2277,7 @@ BEGIN
   RAISE NOTICE '  - 20 Decisions';
   RAISE NOTICE '  - 20 Risks';
   RAISE NOTICE '  - 22 Documents';
-  RAISE NOTICE '  - 220+ Graph Edges';
+  RAISE NOTICE '  - 260+ Graph Edges (including v4.1 missing edge fixes)';
   RAISE NOTICE '';
   RAISE NOTICE 'GRAPH DEPTH: 6 levels';
   RAISE NOTICE '  Project → Goals → Milestones → Plans → Sub-Plans → Tasks';
@@ -2202,6 +2290,23 @@ BEGIN
   RAISE NOTICE '  - Naval enabling (Valcour Island → Saratoga; Chesapeake → Yorktown)';
   RAISE NOTICE '  - Financing enabling (Morris credit → Yorktown march)';
   RAISE NOTICE '  - Alliance enabling (Oneida aid → Valley Forge survival)';
+  RAISE NOTICE '';
+  RAISE NOTICE 'V4.1 MISSING EDGE FIXES:';
+  RAISE NOTICE '  - Conway Cabal risk now connected to Goal 4';
+  RAISE NOTICE '  - Articles of Confederation now connected to Goal 4 and Treaty';
+  RAISE NOTICE '  - De Kalb document connected to Camden milestone';
+  RAISE NOTICE '  - Kosciuszko document connected to Saratoga and West Point';
+  RAISE NOTICE '  - Philadelphia Campaign causal chain (Brandywine→Paoli→Philadelphia→Germantown→Valley Forge)';
+  RAISE NOTICE '  - Southern Campaign causal chain (Savannah→Charleston→Camden→Kings Mountain→Cowpens)';
+  RAISE NOTICE '  - Mutiny causal chain (Morristown→PA Mutiny→NJ Mutiny)';
+  RAISE NOTICE '  - Intelligence causal chain (Tallmadge→Culper Ring→Arnold detection→André execution)';
+  RAISE NOTICE '  - Financing causal chain (Morris→Salomon→Yorktown)';
+  RAISE NOTICE '  - Logistics causal chain (Greene Quartermaster→Valley Forge)';
+  RAISE NOTICE '  - Wayne revenge arc (Paoli→Stony Point)';
+  RAISE NOTICE '  - Oneida alliance connections (Oriskany, Valley Forge aid)';
+  RAISE NOTICE '  - 1st Rhode Island progression (formation→Battle of Rhode Island→Yorktown)';
+  RAISE NOTICE '  - Fort Washington→Strategic Retreat connection';
+  RAISE NOTICE '  - Quebec Expedition→Arnold Treason irony connection';
   RAISE NOTICE '';
   RAISE NOTICE 'Note: Project is marked as is_public = TRUE for display on homepage';
   RAISE NOTICE '==============================================';

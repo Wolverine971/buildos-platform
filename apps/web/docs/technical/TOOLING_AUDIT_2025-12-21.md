@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/TOOLING_AUDIT_2025-12-21.md -->
+
 # BuildOS Web App Tooling Audit Report
 
 **Date:** December 21, 2025

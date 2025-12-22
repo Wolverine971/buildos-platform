@@ -30,6 +30,7 @@ export class ProjectDataService {
 	private retryAttempts: Map<string, number> = new Map();
 	private maxRetries = 3;
 	private baseDelay = 1000; // Base delay for exponential backoff
+	private backgroundTimers: Array<ReturnType<typeof setTimeout>> = [];
 
 	constructor(projectId: string) {
 		this.projectId = projectId;
@@ -42,16 +43,25 @@ export class ProjectDataService {
 		await Promise.all(priority1);
 
 		// Priority 2: Prefetch adjacent tab data
-		setTimeout(() => {
+		this.scheduleBackgroundLoad(() => {
 			const priority2 = this.getPriority2Data(tab);
 			Promise.all(priority2).catch(console.error);
 		}, 100);
 
 		// Priority 3: Background load remaining data
-		setTimeout(() => {
+		this.scheduleBackgroundLoad(() => {
 			const priority3 = this.getPriority3Data(tab);
 			Promise.all(priority3).catch(console.error);
 		}, 500);
+	}
+
+	private scheduleBackgroundLoad(callback: () => void, delay: number): void {
+		const timerId = setTimeout(() => {
+			this.backgroundTimers = this.backgroundTimers.filter((timer) => timer !== timerId);
+			callback();
+		}, delay);
+
+		this.backgroundTimers.push(timerId);
 	}
 
 	private getPriority1Data(tab: string): Promise<void>[] {
@@ -342,6 +352,8 @@ export class ProjectDataService {
 	// Cleanup on destroy
 	destroy(): void {
 		this.abortAll();
+		this.backgroundTimers.forEach((timer) => clearTimeout(timer));
+		this.backgroundTimers = [];
 		this.retryAttempts.clear();
 	}
 
