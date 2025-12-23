@@ -268,7 +268,7 @@ export const handleError: HandleServerError = ({ error, event }) => {
 	}
 
 	return {
-		message: errorMessage || 'Something went wrong',
+		message: dev ? errorMessage || 'Something went wrong' : 'Something went wrong',
 		errorId
 	};
 };
