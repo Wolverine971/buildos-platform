@@ -278,11 +278,11 @@ PromptGenerationService.buildPlannerSystemPrompt(context)
 
 #### Key Files for Prompts
 
-| File                           | Location                              | LOC  | Responsibility            |
-| ------------------------------ | ------------------------------------- | ---- | ------------------------- |
-| `prompt-generation-service.ts` | `/lib/services/agentic-chat/prompts/` | 590  | Main prompt builder       |
-| `prompt-components.ts`         | `/lib/services/prompts/core/`         | ~300 | Reusable prompt fragments |
-| `project-creation-enhanced.ts` | `/lib/services/agentic-chat/prompts/` | ~200 | Project creation prompts  |
+| File                           | Location                                     | LOC  | Responsibility            |
+| ------------------------------ | -------------------------------------------- | ---- | ------------------------- |
+| `prompt-generation-service.ts` | `/lib/services/agentic-chat/prompts/`        | 590  | Main prompt builder       |
+| `prompt-components.ts`         | `/lib/services/prompts/core/`                | ~300 | Reusable prompt fragments |
+| `context-prompts.ts`           | `/lib/services/agentic-chat/prompts/config/` | ~280 | Context-specific prompts  |
 
 #### Current Prompt Structure
 
@@ -882,7 +882,7 @@ const snapshot = await projectDataLoader.loadSnapshot(projectId, userId);
 | -------- | ------------------------------ | ----------------------------------------------------------------- |
 | 1        | `prompt-generation-service.ts` | `/lib/services/agentic-chat/prompts/prompt-generation-service.ts` |
 | 2        | `prompt-components.ts`         | `/lib/services/prompts/core/prompt-components.ts`                 |
-| 3        | `project-creation-enhanced.ts` | `/lib/services/agentic-chat/prompts/project-creation-enhanced.ts` |
+| 3        | `context-prompts.ts`           | `/lib/services/agentic-chat/prompts/config/context-prompts.ts`    |
 
 ### For TOOLS (Tool Scoping)
 

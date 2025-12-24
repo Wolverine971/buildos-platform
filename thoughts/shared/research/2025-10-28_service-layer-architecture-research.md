@@ -187,8 +187,7 @@ This document maps the service layer architecture for BuildOS's chat and agent s
     3. **project_update** - Modify existing project
     4. **project_audit** - Critical project review (read-only, Phase 2)
     5. **project_forecast** - Scenario forecasting (Phase 2)
-    6. **task_update** - Quick task modifications (Phase 2)
-    7. **daily_brief_update** - Brief preferences (Phase 2)
+    6. **daily_brief_update** - Brief preferences (Phase 2)
 
 - **Session Phases:**
     - `gathering_info` → Initial data collection

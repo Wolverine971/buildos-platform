@@ -60,17 +60,16 @@ Database & External Services
 
 ### 2.1 Chat Context Types
 
-The system supports four context types:
+The system supports three context types:
 
 ```typescript
-type ChatContextType = 'global' | 'project' | 'task' | 'calendar';
+type ChatContextType = 'global' | 'project' | 'calendar';
 ```
 
 **Context Details:**
 
 - **global**: No specific context; assistant operates across entire BuildOS
 - **project**: Focused on a specific project with abbreviated project context
-- **task**: Focused on a specific task with full task details
 - **calendar**: Calendar-aware context for scheduling assistance
 
 ### 2.2 Chat Session Structure
@@ -724,8 +723,8 @@ type StreamChunk =
 CREATE TABLE chat_sessions (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL,
-  context_type TEXT,              -- 'global', 'project', 'task', 'calendar'
-  entity_id UUID,                 -- projectId, taskId, etc.
+  context_type TEXT,              -- 'global', 'project', 'calendar'
+  entity_id UUID,                 -- projectId, calendarId, etc.
   title TEXT DEFAULT 'Untitled Chat',
   status TEXT DEFAULT 'active',   -- 'active', 'archived', 'compressed'
   message_count INTEGER DEFAULT 0,

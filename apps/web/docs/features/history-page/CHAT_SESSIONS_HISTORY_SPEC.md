@@ -51,23 +51,23 @@ This spec outlines the changes needed to display chat sessions on the `/history`
 
 ### chat_sessions Table (Existing)
 
-| Field               | Type        | Description                             |
-| ------------------- | ----------- | --------------------------------------- |
-| `id`                | UUID        | Primary key                             |
-| `user_id`           | UUID        | Owner                                   |
-| `title`             | TEXT        | User-set title                          |
-| `auto_title`        | TEXT        | AI-generated title (max 50 chars)       |
-| `chat_topics`       | TEXT[]      | AI-extracted topics (3-7 keywords)      |
+| Field               | Type        | Description                                                                                                          |
+| ------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| `id`                | UUID        | Primary key                                                                                                          |
+| `user_id`           | UUID        | Owner                                                                                                                |
+| `title`             | TEXT        | User-set title                                                                                                       |
+| `auto_title`        | TEXT        | AI-generated title (max 50 chars)                                                                                    |
+| `chat_topics`       | TEXT[]      | AI-extracted topics (3-7 keywords)                                                                                   |
 | `context_type`      | TEXT        | global, project, calendar, project_create, project_audit, project_forecast, daily_brief_update, brain_dump, ontology |
-| `entity_id`         | UUID        | Related project/entity ID               |
-| `status`            | TEXT        | active, archived, compressed            |
-| `message_count`     | INTEGER     | Number of messages                      |
-| `total_tokens_used` | INTEGER     | LLM token consumption                   |
-| `tool_call_count`   | INTEGER     | Tools invoked                           |
-| `agent_metadata`    | JSONB       | Session state (focus, etc.)             |
-| `last_message_at`   | TIMESTAMPTZ | Most recent message                     |
-| `created_at`        | TIMESTAMPTZ | Session start                           |
-| `summary`           | TEXT        | ✅ **NEW** AI-generated summary         |
+| `entity_id`         | UUID        | Related project/entity ID                                                                                            |
+| `status`            | TEXT        | active, archived, compressed                                                                                         |
+| `message_count`     | INTEGER     | Number of messages                                                                                                   |
+| `total_tokens_used` | INTEGER     | LLM token consumption                                                                                                |
+| `tool_call_count`   | INTEGER     | Tools invoked                                                                                                        |
+| `agent_metadata`    | JSONB       | Session state (focus, etc.)                                                                                          |
+| `last_message_at`   | TIMESTAMPTZ | Most recent message                                                                                                  |
+| `created_at`        | TIMESTAMPTZ | Session start                                                                                                        |
+| `summary`           | TEXT        | ✅ **NEW** AI-generated summary                                                                                      |
 
 ### onto_braindumps Table (Reference)
 

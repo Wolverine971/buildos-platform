@@ -138,16 +138,8 @@ export interface ProjectCreationPromptConfig {
  * Brain dump exploration prompt configuration
  */
 export interface BrainDumpPromptConfig {
-	/** Core approach */
-	coreApproach: PromptSection;
-	/** User state awareness */
-	userStates: PromptSection;
-	/** Engagement guidelines */
-	engagementGuidelines: PromptSection;
-	/** What not to do */
-	antiPatterns: PromptSection;
-	/** When to transition to action */
-	transitionTriggers: PromptSection;
+	/** Single concise guide for braindump mode */
+	guide: PromptSection;
 }
 
 /**

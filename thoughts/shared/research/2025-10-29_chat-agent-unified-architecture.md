@@ -73,13 +73,13 @@ interface Props {
 - `global` - No project context, general assistant
 - `project_create` - Guided project creation with dimension questions
 - `project` - View/search existing project (reactive)
-- `task` - View/search task details (reactive)
 - `calendar` - Calendar operations (reactive)
-- `project_update` - Update existing project (proactive)
+- `general` - General assistant mode (proactive)
 - `project_audit` - Audit project across dimensions (proactive)
 - `project_forecast` - Scenario forecasting (proactive)
-- `task_update` - Quick task updates (proactive)
 - `daily_brief_update` - Update brief preferences (proactive)
+- `brain_dump` - Brain dump context (proactive)
+- `ontology` - Ontology interactions (proactive)
 
 ### 2. Expanded chat-context-service.ts
 
@@ -118,7 +118,7 @@ const REACTIVE_TOOLS = {
 #### Proactive Mode Tools (Operation Pattern)
 
 ```typescript
-// For: project_create, project_update, task_update, etc.
+// For: project_create, project, daily_brief_update, etc.
 const PROACTIVE_TOOLS = {
   // PROJECT OPERATIONS
   create_project: { ... },
@@ -208,9 +208,6 @@ function getTools(contextType: ChatContextType): ChatToolDefinition[] {
 				...REACTIVE_TOOLS.detail, // Read-only
 				...REACTIVE_TOOLS.list
 			];
-
-		case 'task_update':
-			return [PROACTIVE_TOOLS.update_task, REACTIVE_TOOLS.get_task_details];
 
 		case 'daily_brief_update':
 			return [PROACTIVE_TOOLS.update_user_preferences];

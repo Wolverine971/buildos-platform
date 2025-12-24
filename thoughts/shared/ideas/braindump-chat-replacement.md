@@ -167,7 +167,6 @@ ADD COLUMN chat_type TEXT CHECK (chat_type IN (
     'project_audit',
     'project_forecast',
     'task_create',
-    'task_update',
     'daily_brief'
 )) DEFAULT 'general',
 ADD COLUMN agent_metadata JSONB DEFAULT '{}'::jsonb,
@@ -250,7 +249,6 @@ export type ChatType =
 	| 'project_audit'
 	| 'project_forecast'
 	| 'task_create'
-	| 'task_update'
 	| 'daily_brief';
 
 export interface AgentMetadata {
@@ -321,8 +319,6 @@ export class AgentOrchestrator {
 				return this.handleProjectForecast(session, userMessage, userId);
 			case 'task_create':
 				return this.handleTaskCreate(session, userMessage, userId);
-			case 'task_update':
-				return this.handleTaskUpdate(session, userMessage, userId);
 			default:
 				return this.handleGeneral(session, userMessage, userId);
 		}
@@ -1407,7 +1403,7 @@ export async function POST({ request, locals }) {
 			// On specific task page
 			const taskId = path.split('/tasks/')[1];
 			agentEntityId = taskId;
-			agentInitialContext = 'task_update';
+			agentInitialContext = 'project_update';
 		} else {
 			// Default to project creation
 			agentInitialContext = 'project_create';
@@ -1555,8 +1551,7 @@ export const FEATURE_FLAGS = {
 			project_update: true,
 			project_audit: true,
 			project_forecast: true,
-			task_create: false, // Phase 2
-			task_update: false // Phase 2
+			task_create: false // Phase 2
 		},
 		classic_braindump_enabled: true
 	}

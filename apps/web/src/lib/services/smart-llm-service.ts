@@ -1960,7 +1960,7 @@ You must respond with valid JSON only. Follow these rules:
 		messageId?: string;
 		signal?: AbortSignal;
 		// Context tracking for usage logging
-		contextType?: string; // e.g., 'project', 'general', 'project_create', 'project_task'
+		contextType?: string; // e.g., 'project', 'general', 'project_create', 'ontology'
 		entityId?: string; // Optional entity ID for additional tracking
 		projectId?: string; // Optional project ID for additional tracking
 	}): AsyncGenerator<{

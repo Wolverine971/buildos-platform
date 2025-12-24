@@ -165,8 +165,8 @@ function generateLastTurnContext(recentMessages, contextType, options) {
 
 ### 1.3 Consolidate Context Types
 
-**Current State**: 9 different `ChatContextType` values:
-- `global`, `project`, `task`, `calendar`, `project_create`, `project_audit`, `project_forecast`, `task_update`, `daily_brief_update`
+**Current State**: 10 different `ChatContextType` values:
+- `global`, `project`, `calendar`, `general`, `project_create`, `project_audit`, `project_forecast`, `daily_brief_update`, `brain_dump`, `ontology`
 
 **Issue**:
 - Some contexts are rarely used (`project_forecast`, `daily_brief_update`)

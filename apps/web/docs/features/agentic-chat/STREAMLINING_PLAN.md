@@ -268,7 +268,7 @@ planning/
 - `src/lib/services/agentic-chat/tools/core/tool-executor.ts`
 - `src/lib/services/agentic-chat/tools/buildos/references.ts`
 - `src/lib/services/agentic-chat/config/llm-cache-wrapper.ts`
-- `src/lib/services/agentic-chat/prompts/project-creation-enhanced.ts`
+- `src/lib/services/agentic-chat/prompts/config/context-prompts.ts`
 - `src/lib/services/agentic-chat/tools/core/tool-definitions.ts`
 - `src/lib/services/agentic-chat/execution/tool-execution-service.ts`
 

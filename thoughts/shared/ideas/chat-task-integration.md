@@ -27,8 +27,8 @@ Successfully integrated the BuildOS Chat System with Progressive Disclosure Patt
     - Includes tooltip showing keyboard shortcut
 
 4. **Context-Aware Chat**
-    - Chat opens with task-specific context
-    - Passes `contextType="task"` and `entityId={task.id}`
+    - Chat opens with task-focused project context
+    - Passes `contextType="project"` and `initialProjectFocus={taskFocus}`
     - Progressive disclosure pattern loads task data efficiently
 
 5. **Smart Initial Message**
@@ -52,7 +52,7 @@ Successfully integrated the BuildOS Chat System with Progressive Disclosure Patt
 1. **Imports Added**
 
     ```svelte
-    import {MessageCircle} from 'lucide-svelte'; import ChatModal from '$lib/components/chat/ChatModal.svelte';
+    import {MessageCircle} from 'lucide-svelte'; import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
     ```
 
 2. **State Management**
@@ -73,7 +73,7 @@ Successfully integrated the BuildOS Chat System with Progressive Disclosure Patt
 4. **UI Components**
     - Chat button in header
     - Floating action button
-    - ChatModal instance with task context
+    - AgentChatModal instance with task focus
 
 ## User Experience
 
@@ -113,7 +113,7 @@ When user asks specific questions, the system:
 
 ## Token Usage Optimization
 
-- **Initial Load**: ~400 tokens for task context
+- **Initial Load**: ~400 tokens for task focus context
 - **With Project Context**: ~900 tokens total
 - **After Compression**: Maintains <2000 tokens for long conversations
 - **Cost per Session**: ~$0.01-0.02
@@ -126,7 +126,7 @@ When user asks specific questions, the system:
 - [ ] Keyboard shortcut (Cmd/K) works
 - [ ] Floating action button visible
 - [ ] Chat modal opens correctly
-- [ ] Initial message shows task context
+- [ ] Initial message shows task focus
 
 ✅ **Task Context**
 

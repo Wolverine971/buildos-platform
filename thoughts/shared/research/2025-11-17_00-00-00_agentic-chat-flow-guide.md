@@ -791,7 +791,7 @@ Return to PlanOrchestrator or runPlannerLoop
 
 ### Tool Context Filtering
 
-Tools are filtered based on `ChatContextType`:
+Tools are filtered based on `ChatContextType` (and `project_focus` when set):
 
 ```
 Context Type          Available Tools
@@ -810,20 +810,7 @@ project               • All global tools
                       • onto_link_entities
                       • onto_list_entity_types
 
-task                  • All project tools
-                      • onto_update_entity_status
-                      • onto_update_entity_props
-                      • onto_create_output
-                      • onto_list_entity_outputs
-
-plan                  • Similar to task context
-                      • Focus on plan-specific operations
-
-goal                  • Similar to task context
-                      • Goal-specific filtering
-
-document              • Document-specific tools
-                      • Content management focus
+calendar              • Calendar tools (next events, scheduling)
 
 project_create        • Restricted set for creation flow
                       • onto_create_task/plan/goal
@@ -832,9 +819,17 @@ project_create        • Restricted set for creation flow
 project_audit         • Full project tools
                       • Read-heavy for analysis
 
-task_update           • Task modification tools
-                      • onto_update_entity
-                      • onto_update_entity_status
+project_forecast      • Forecasting tools + project read context
+
+daily_brief_update    • Brief preference tools
+
+brain_dump            • Brain dump context tools
+
+ontology              • Ontology read/write tools
+
+general               • General assistant tools
+
+project_focus         • Adds entity-specific tools (status/props/output)
 ```
 
 ---

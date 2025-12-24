@@ -38,7 +38,7 @@ Plan Generation → Tool Execution → API Endpoint → Database
 | Strategy Analyzer         | `src/lib/services/agentic-chat/analysis/strategy-analyzer.ts`            | Determines which strategy to use (planner_stream, project_creation, ask_clarifying) |
 | Project Creation Analyzer | `src/lib/services/agentic-chat/analysis/project-creation-analyzer.ts`    | Analyzes if sufficient context exists for project creation                          |
 | Prompt Generation         | `src/lib/services/agentic-chat/prompts/prompt-generation-service.ts`     | Builds system prompts with context                                                  |
-| Enhanced Prompts          | `src/lib/services/agentic-chat/prompts/project-creation-enhanced.ts`     | Project creation specific prompts                                                   |
+| Project Creation Prompts  | `src/lib/services/agentic-chat/prompts/config/context-prompts.ts`        | Project creation-specific prompt sections                                           |
 | Plan Orchestrator         | `src/lib/services/agentic-chat/planning/plan-orchestrator.ts`            | Creates and executes multi-step plans                                               |
 | Tool Execution Service    | `src/lib/services/agentic-chat/execution/tool-execution-service.ts`      | Validates and executes tool calls                                                   |
 | Tool Executor             | `src/lib/services/agentic-chat/tools/core/tool-executor.ts`              | Actual tool implementations                                                         |
@@ -408,7 +408,7 @@ This can lead to inconsistent context documents.
 
 Props extraction is instructed in:
 
-1. **project-creation-enhanced.ts** prompts
+1. **context-prompts.ts** project creation section
 2. **prompt-generation-service.ts** system prompts
 3. **tool-definitions.ts** tool description
 4. **PlanOrchestrator** plan generation prompt
@@ -584,7 +584,7 @@ apps/web/src/lib/
 │   │   └── tool-execution-service.ts      # Tool execution wrapper
 │   ├── prompts/
 │   │   ├── prompt-generation-service.ts   # System prompts
-│   │   └── project-creation-enhanced.ts   # Project creation prompts
+│   │   └── config/context-prompts.ts      # Project creation prompts
 │   └── tools/core/
 │       ├── tool-definitions.ts            # Tool schemas
 │       └── tool-executor.ts               # Tool implementations

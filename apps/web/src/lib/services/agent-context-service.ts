@@ -294,17 +294,7 @@ export class AgentContextService {
 		const messages: LLMMessage[] = [];
 		let usageSnapshot: ContextUsageSnapshot | undefined;
 
-		// Add last turn context as a system message if available
-		if (lastTurnContext) {
-			messages.push({
-				role: 'system',
-				content: `Previous turn context:
-- Summary: ${lastTurnContext.summary}
-- Entities: ${JSON.stringify(lastTurnContext.entities)}
-- Strategy Used: ${lastTurnContext.strategy_used || 'none'}
-- Tools Accessed: ${lastTurnContext.data_accessed.join(', ') || 'none'}`
-			});
-		}
+		// Last turn context is now embedded in the base system prompt to avoid duplication.
 
 		// Estimate tokens (rough: 1 token ≈ 4 chars)
 		const estimatedTokens = history.reduce(

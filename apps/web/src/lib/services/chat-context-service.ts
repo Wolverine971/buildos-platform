@@ -34,7 +34,7 @@ export class ChatContextService {
 		// Initial context (abbreviated)
 		SYSTEM_PROMPT: 500, // Instructions + tool descriptions
 		USER_PROFILE: 300, // Work style preferences
-		LOCATION_CONTEXT: 1000, // Current project/task (abbreviated)
+		LOCATION_CONTEXT: 1000, // Current project/entity (abbreviated)
 		RELATED_DATA: 500, // Related items (abbreviated)
 
 		// Conversation

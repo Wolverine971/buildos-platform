@@ -68,9 +68,9 @@ Projects were the only exception. This migration unifies the naming pattern.
     - [x] Update `suggest_template` description examples
     - [x] Update `list_onto_templates` examples
 
-- [x] **project-creation-enhanced.ts** (`/apps/web/src/lib/services/agentic-chat/prompts/`)
-    - [x] Verify examples are using `project.` prefix (most already do)
-    - [x] Update pattern description in documentation
+- [x] **context-prompts.ts** (`/apps/web/src/lib/services/agentic-chat/prompts/config/`)
+    - [x] Verify project creation examples use `project.` prefix
+    - [x] Update pattern description in project creation guidance
 
 - [x] **project-migration.service.ts** (`/apps/web/src/lib/services/ontology/`)
     - [x] Verify `DEFAULT_PROJECT_TYPE` uses correct prefix (already has `project.`)
@@ -104,7 +104,7 @@ Projects were the only exception. This migration unifies the naming pattern.
 | `template-scope.ts`                     | Code | Complete | Updated typeKeyPattern for project scope                |
 | `project-template-inference.service.ts` | Code | Complete | Updated buildTypeKey() to prepend project. prefix       |
 | `tool-definitions.ts`                   | Code | Complete | Updated all project type_key examples                   |
-| `project-creation-enhanced.ts`          | Code | Complete | Updated pattern description and verified examples       |
+| `context-prompts.ts`                    | Code | Complete | Updated project creation pattern description            |
 | `project-migration.service.ts`          | Code | Complete | Updated resolveProjectTypeKey() fallbacks               |
 | `20251201_project_prefix_migration.sql` | DB   | Complete | Migration to update existing templates                  |
 
@@ -165,7 +165,7 @@ If issues are discovered after deployment:
 - Updated `template-scope.ts` - Changed `typeKeyPattern` from `{domain}.{deliverable}[.{variant}]` to `project.{domain}.{deliverable}[.{variant}]`
 - Updated `project-template-inference.service.ts` - Modified `buildTypeKey()` to prepend `project.` prefix to all generated type keys
 - Updated `tool-definitions.ts` - Changed all project type_key examples from `writer.book` to `project.writer.book`
-- Updated `project-creation-enhanced.ts` - Updated pattern description to show `project.` prefix requirement
+- Updated `context-prompts.ts` - Updated project creation guidance to show `project.` prefix requirement
 - Updated `project-migration.service.ts` - Changed fallback type keys to use domain-based naming (e.g., `project.writer.general` instead of `project.writing.general`)
 
 **Database Migration:**

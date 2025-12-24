@@ -328,7 +328,7 @@ chat_sessions (1:many)
 chat_messages (1:many)
     └─ chat_tool_executions (optional, via message_id)
 
-chat_sessions → [projects | tasks] (optional, via entity_id + context_type)
+chat_sessions → [projects | calendar events] (optional, via entity_id + context_type; entity focus stored in agent_metadata.project_focus)
 ```
 
 ### 2.2 Data Flow Example: User Query → Response

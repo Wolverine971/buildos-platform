@@ -171,8 +171,7 @@ ADD COLUMN chat_type TEXT CHECK (chat_type IN (
     'project_create',
     'project_update',
     'project_audit',
-    'project_forecast',
-    'task_update'
+    'project_forecast'
 )) DEFAULT 'general',
 ADD COLUMN draft_project_id UUID REFERENCES project_drafts(id) ON DELETE SET NULL,
 ADD COLUMN agent_metadata JSONB DEFAULT '{}'::jsonb;
@@ -210,7 +209,6 @@ ADD COLUMN message_type TEXT CHECK (message_type IN (
 export type ChatContextType =
 	| 'global'
 	| 'project'
-	| 'task'
 	| 'calendar'
 	| 'project_create' // NEW: Creating a new project from scratch
 	| 'project_update' // NEW: Updating existing project
@@ -612,7 +610,7 @@ Return JSON with dimension scores.
     - "Update Project"
     - "Audit Project"
     - "Forecast Scenarios"
-- **On Task Page**: Opens in `task_update` mode (future)
+- **On Task Page**: Opens in project mode with task focus (future)
 
 #### 2. **Project Page Context Menu**
 

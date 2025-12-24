@@ -12,7 +12,7 @@ The BuildOS Chat System is an intelligent, context-aware AI assistant that uses 
 
 - **Progressive Disclosure Pattern**: Two-tier data loading (abbreviated → detailed)
 - **72% Token Reduction**: Optimized for cost-effective AI interactions
-- **Context-Aware**: Understands project, task, and calendar contexts
+- **Context-Aware**: Understands project, focused-entity, and calendar contexts
 - **Real-time Streaming**: Server-Sent Events (SSE) for instant responses
 - **20+ Integrated Tools**: Calendar, task management, project updates, and more
 - **Secure Markdown Rendering**: Safe HTML sanitization for all content

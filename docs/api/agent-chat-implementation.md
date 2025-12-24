@@ -78,8 +78,9 @@ apps/web/src/routes/api/agent/stream/
 interface AgentStreamRequest extends ChatStreamRequest {
 	message: string;
 	session_id?: string;
-	context_type?: ChatContextType; // 'global', 'project', 'task', etc.
-	entity_id?: string;
+	context_type?: ChatContextType; // 'global', 'project', 'calendar', 'project_create', etc. (entity focus via project_focus)
+	entity_id?: string; // Project ID for project context
+	project_focus?: ProjectFocus | null;
 	conversationHistory?: ChatMessage[];
 }
 ```
@@ -301,8 +302,7 @@ Context Assembly:
 **`loadLocationContext()` (Lines 487-518)**
 Loads context based on ChatContextType:
 
-- `project` - Project overview + abbreviated data
-- `task` - Task details + parent/sibling context
+- `project` - Project overview + abbreviated data (focus entity via project_focus)
 - `calendar` - Next 7 days of events
 - `global` - User's active projects and tasks
 - `project_create` - Framework for project creation
@@ -314,13 +314,13 @@ Returns full system prompt with context-specific additions.
 
 1. **ABBREVIATED (Token-Efficient)**
     - Project: Name, status, 500-char context, top 5 tasks
-    - Task: Title, status, 100-char description, parent/siblings
+    - Focused entity: Title, status, 100-char description, linked entities
     - Calendar: Next 7 days in preview format
     - Data loss: ~70% reduction in tokens
 
 2. **FULL (Detailed)**
     - Complete project with all dimensions and phases
-    - Task with subtasks and full description
+    - Focused entity with linked details and full description
     - All related notes and brain dumps
     - Used only when user needs full details
 

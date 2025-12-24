@@ -64,7 +64,7 @@ CREATE TABLE chat_sessions (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
 
     -- Context (following project pattern)
-    context_type TEXT CHECK (context_type IN ('project', 'task', 'calendar', 'global')) NOT NULL,
+    context_type TEXT CHECK (context_type IN ('project', 'calendar', 'global')) NOT NULL,
     project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
     task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
     calendar_date DATE,
@@ -186,7 +186,7 @@ export type ChatSessionInsert = Database['public']['Tables']['chat_sessions']['I
 export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['Insert'];
 
 // Context types
-export type ChatContextType = 'project' | 'task' | 'calendar' | 'global';
+export type ChatContextType = 'project' | 'calendar' | 'global';
 ```
 
 ### 2. App-Specific Types

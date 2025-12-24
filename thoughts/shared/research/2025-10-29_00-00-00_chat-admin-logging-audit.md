@@ -75,7 +75,7 @@ id UUID PRIMARY KEY
 user_id UUID REFERENCES users(id)
 title TEXT                          -- User-defined title
 auto_title TEXT                     -- AI-generated title
-context_type TEXT                   -- Type: global, project, task, calendar, etc.
+context_type TEXT                   -- Type: global, project, calendar, etc.
 status TEXT                         -- active, archived, compressed
 message_count INTEGER               -- Running count of messages
 total_tokens_used INTEGER           -- ✅ TOKEN TRACKING
@@ -250,7 +250,7 @@ plan_id UUID                        -- Plan being executed
 step_number INTEGER                 -- Which plan step
 session_type agent_session_type     -- planner_thinking or planner_executor (ENUM)
 initial_context JSONB               -- Context provided to agents
-context_type TEXT                   -- project, task, calendar, etc.
+context_type TEXT                   -- project, calendar, etc.
 entity_id UUID                      -- Entity being worked on
 status agent_status                 -- active, completed, failed
 message_count INTEGER               -- ✅ MESSAGES IN CONVERSATION
@@ -464,11 +464,11 @@ User Message → API Endpoint
 
 **Token Estimation**: `Math.ceil(text.length / 4)` (4 chars per token)
 
-**Context Types Supported**: 11 types
+**Context Types Supported**: 10 types
 
-- global, project, task, calendar, general
-- project_create, project_update, project_audit, project_forecast
-- task_update, daily_brief_update
+- global, project, calendar, general
+- project_create, project_audit, project_forecast
+- daily_brief_update, brain_dump, ontology
 
 **Issues**:
 
@@ -630,7 +630,7 @@ User Message → API Endpoint
 
 **File**: `apps/web/src/lib/services/agent-orchestrator.service.ts` (1110 lines)
 
-**Purpose**: Routes between 7 agent modes with context-specific prompts
+**Purpose**: Routes between 6 agent modes with context-specific prompts
 
 **Modes**:
 
@@ -638,9 +638,8 @@ User Message → API Endpoint
 2. **project_update**: Quick updates
 3. **project_audit**: Read-only analysis
 4. **project_forecast**: Scenario generation
-5. **task_update**: Task modifications
-6. **daily_brief_update**: Brief preferences
-7. **general**: General assistant
+5. **daily_brief_update**: Brief preferences
+6. **general**: General assistant
 
 **Draft System** (Project Creation):
 

@@ -63,7 +63,7 @@ Extend the `OntologyContextLoader` to fetch and format linked entity details whe
 ┌─────────────────────────────────────────────────────────────────┐
 │              AgentContextService.buildPlannerContext()          │
 │                                                                 │
-│  Determine context type (project, task, plan, goal, etc.)       │
+│  Determine focus type (project-wide, task, plan, goal, etc.)    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼

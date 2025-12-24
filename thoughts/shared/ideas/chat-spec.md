@@ -64,7 +64,7 @@ CREATE TABLE chats (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
 
     -- Context info
-    context_type TEXT CHECK (context_type IN ('project', 'task', 'calendar', 'global')) NOT NULL,
+    context_type TEXT CHECK (context_type IN ('project', 'calendar', 'global')) NOT NULL,
     project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
     task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
     calendar_date DATE,
@@ -147,7 +147,7 @@ CREATE INDEX idx_chats_last_message ON chats(user_id, last_message_at DESC);
 ```typescript
 // src/lib/types/chat.ts
 
-export type ChatContextType = 'project' | 'task' | 'calendar' | 'global';
+export type ChatContextType = 'project' | 'calendar' | 'global';
 
 export interface Chat {
 	id: string;

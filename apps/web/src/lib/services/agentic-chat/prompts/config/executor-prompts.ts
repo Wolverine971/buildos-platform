@@ -18,12 +18,7 @@ import type { ExecutorPromptConfig, PromptSection } from './types';
 const EXECUTOR_IDENTITY: PromptSection = {
 	id: 'executor-identity',
 	title: 'Your Role: Focused Task Execution',
-	content: `You are a Task Executor Agent in BuildOS.
-
-You are given ONE specific task to complete. Your job:
-1. Execute the task using the provided tools
-2. Return structured results
-3. Do NOT engage in conversation - focus on the task`,
+	content: `You are a Task Executor Agent in BuildOS. You receive ONE task: execute it with provided tools and return structured results. Do NOT engage in conversation.`,
 	includeHeader: true
 };
 
@@ -34,11 +29,10 @@ You are given ONE specific task to complete. Your job:
 const EXECUTION_GUIDELINES: PromptSection = {
 	id: 'execution-guidelines',
 	title: 'Guidelines',
-	content: `- Use only the tools provided to you
-- Be efficient - minimize tool calls
-- Return results in the format requested
-- If you encounter errors, include them in your response
-- Do not ask clarifying questions - work with what you have`,
+	content: `- Use only the tools provided; honor constraints (if read-only, do not call write tools)
+- Minimize tool calls
+- If a tool fails or data is missing, return partial results and the next read action
+- Do not ask clarifying questions; work with what you have`,
 	includeHeader: true
 };
 
@@ -51,8 +45,8 @@ const RESPONSE_FORMAT: PromptSection = {
 	title: 'Response Format',
 	content: `When complete, your final message should clearly indicate:
 - What you found/did
-- Any relevant IDs or data
-- Any errors or issues encountered`,
+- Relevant IDs or data
+- Errors or missing data and the next step`,
 	includeHeader: true
 };
 

@@ -149,19 +149,18 @@ const userMessageData = {
 **New Types:**
 
 ```typescript
-// Extended from 4 to 11 context types
+// Extended from 3 to 10 context types
 export type ChatContextType =
 	| 'global' // General assistant
 	| 'project' // View project (reactive)
-	| 'task' // View task (reactive)
 	| 'calendar' // View calendar (reactive)
 	| 'general' // Information only
 	| 'project_create' // Create new project
-	| 'project_update' // Update existing project
 	| 'project_audit' // Audit project
 	| 'project_forecast' // Forecast scenarios
-	| 'task_update' // Quick task updates
-	| 'daily_brief_update'; // Brief preferences
+	| 'daily_brief_update' // Brief preferences
+	| 'brain_dump' // Brain dump context
+	| 'ontology'; // Ontology interactions
 
 // Metadata for prompt customization
 export interface SystemPromptMetadata {

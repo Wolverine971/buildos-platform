@@ -258,7 +258,6 @@ ADD COLUMN chat_type TEXT CHECK (chat_type IN (
     'project_update',
     'project_audit',
     'project_forecast',
-    'task_update',
     'daily_brief_update'
 )) DEFAULT 'general',
 ADD COLUMN agent_metadata JSONB DEFAULT '{}'::jsonb,
@@ -1178,8 +1177,7 @@ const AGENT_FEATURE_FLAGS = {
 		project_create: true,
 		project_update: true,
 		project_audit: false, // Phase 2
-		project_forecast: false, // Phase 2
-		task_update: false // Phase 2
+		project_forecast: false // Phase 2
 	},
 	show_old_braindump: true, // Keep during transition
 	default_auto_accept: true

@@ -89,7 +89,7 @@ The BuildOS codebase has **already implemented the unified architecture** throug
 - **Operations Queue**: User can approve/reject/edit operations before execution
 - **Agent Modes**:
     - `project_create`, `project_update`, `project_audit`, `project_forecast`
-    - `task_update`, `daily_brief_update`, `general`
+    - `daily_brief_update`, `general`
 
 **File Location**: `/thoughts/shared/ideas/conversational-project-agent.md` (1,229 lines)
 
@@ -128,7 +128,6 @@ ADD COLUMN chat_type TEXT CHECK (chat_type IN (
     'project_update',
     'project_audit',
     'project_forecast',
-    'task_update',
     'daily_brief_update'
 )) DEFAULT 'general',
 ADD COLUMN agent_metadata JSONB DEFAULT '{}'::jsonb,
@@ -295,9 +294,10 @@ const stream = new ReadableStream({
 │  │ 'general'        │         │ 'project_create'             │ │
 │  │ 'global'         │         │ 'project_update'             │ │
 │  │ 'project'        │         │ 'project_audit'              │ │
-│  │ 'task'           │         │ 'project_forecast'           │ │
-│  │ 'calendar'       │         │ 'task_update'                │ │
+│  │ 'calendar'       │         │ 'project_forecast'           │ │
 │  │                  │         │ 'daily_brief_update'         │ │
+│  │                  │         │ 'brain_dump'                 │ │
+│  │                  │         │ 'ontology'                   │ │
 │  └──────────────────┘         └──────────────────────────────┘ │
 │         ↓                                   ↓                   │
 │  List/Search/Detail Tools         Draft → Queue → Execute      │
@@ -345,9 +345,6 @@ async *processMessage(
     case 'project_forecast':
       yield* this.handleProjectForecast(session, userMessage, userId);
       break;
-    case 'task_update':
-      yield* this.handleTaskUpdate(session, userMessage, userId);
-      break;
     case 'daily_brief_update':
       yield* this.handleDailyBriefUpdate(session, userMessage, userId);
       break;
@@ -378,7 +375,6 @@ async *processMessage(
 			'project_update',
 			'project_audit',
 			'project_forecast',
-			'task_update',
 			'daily_brief_update'
 		].includes(type);
 
@@ -631,7 +627,6 @@ export class DimensionDetectionService {
 - `project_update` - Guided project updates
 - `project_audit` - Critical review of existing project
 - `project_forecast` - Scenario forecasting (optimistic/realistic/pessimistic)
-- `task_update` - Guided task modifications
 - `daily_brief_update` - Daily brief preferences
 
 ### 5.3 When to Use Each Mode
@@ -840,7 +835,6 @@ const systemPrompt = this.promptTemplateService.getSystemPrompt('project_create'
 **Incomplete Modes**:
 
 - `project_update` (lines 466-525) - needs operation generation
-- `task_update` (lines 623-668) - needs operation generation
 - `daily_brief_update` (lines 673-701) - needs operation generation
 - `project_audit` (lines 530-577) - placeholder analysis
 - `project_forecast` (lines 582-618) - placeholder scenarios
@@ -1068,19 +1062,15 @@ test('user switches from chat to agent mode', async ({ page }) => {
     - LLM analysis of changes
     - Operation generation
 
-2. ✅ Complete `task_update` mode
-    - Task context loading
-    - Update operations
-
-3. ✅ Complete `daily_brief_update` mode
+2. ✅ Complete `daily_brief_update` mode
     - Settings analysis
     - Update operations
 
-4. ✅ Complete `project_audit` mode
+3. ✅ Complete `project_audit` mode
     - Critical review with harshness=7
     - Recommendations
 
-5. ✅ Complete `project_forecast` mode
+4. ✅ Complete `project_forecast` mode
     - 3 scenarios (optimistic/realistic/pessimistic)
     - Timeline estimates
 

@@ -1594,6 +1594,18 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 	}
 
 	private inferFieldInfoEntityType(context: ServiceContext): string {
+		const focusType = context.projectFocus?.focusType;
+		if (focusType && focusType !== 'project-wide') {
+			switch (focusType) {
+				case 'task':
+					return 'ontology_task';
+				case 'goal':
+					return 'ontology_goal';
+				case 'plan':
+					return 'ontology_plan';
+			}
+		}
+
 		switch (context.contextType) {
 			case 'project':
 			case 'project_create':

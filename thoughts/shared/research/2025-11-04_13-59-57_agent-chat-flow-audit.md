@@ -59,7 +59,7 @@ The current agent chat implementation has a sophisticated multi-agent architectu
 **Current Implementation**:
 
 - Lines 54-58: State management for context selection
-- Lines 58-103: Defines 11 context types (global, project, task, calendar, etc.)
+- Lines 58-103: Defines 10 context types (global, project, calendar, project_create, etc.)
 - Lines 250-339: `sendMessage()` sends to `/api/agent/stream` with context
 - Lines 341-434: `handleSSEMessage()` processes streaming responses
 

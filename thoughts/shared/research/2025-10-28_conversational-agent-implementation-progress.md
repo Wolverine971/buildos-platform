@@ -74,13 +74,12 @@ Implementation of the Conversational Project Agent v3.0 (TAILORED) spec is appro
 
 ##### AgentOrchestrator (`apps/web/src/lib/services/agent-orchestrator.service.ts`)
 
-- ✅ All 7 agent modes implemented:
+- ✅ All 6 agent modes implemented:
     - general
     - project_create (fully implemented with phases)
     - project_update
     - project_audit
     - project_forecast
-    - task_update
     - daily_brief_update
 - ✅ Integration with existing services:
     - BrainDumpProcessor for dimension detection

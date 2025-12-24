@@ -129,33 +129,31 @@ interface Props {
 // AgentChatType (packages/shared-types/src/agent.types.ts:50-57)
 export type AgentChatType =
 	| 'general'
+	| 'project'
 	| 'project_create'
-	| 'project_update'
 	| 'project_audit'
 	| 'project_forecast'
-	| 'task_update'
 	| 'daily_brief_update';
 
 // ChatContextType (packages/shared-types/src/chat.types.ts:37-50)
 export type ChatContextType =
 	// Reactive modes
 	| 'global' // ⚠️ Missing from AgentChatType
-	| 'project' // ⚠️ Missing from AgentChatType
-	| 'task' // ⚠️ Missing from AgentChatType
+	| 'project'
 	| 'calendar' // ⚠️ Missing from AgentChatType
 	// Proactive modes (overlap)
 	| 'general'
 	| 'project_create'
-	| 'project_update'
 	| 'project_audit'
 	| 'project_forecast'
-	| 'task_update'
-	| 'daily_brief_update';
+	| 'daily_brief_update'
+	| 'brain_dump' // ⚠️ Missing from AgentChatType
+	| 'ontology'; // ⚠️ Missing from AgentChatType
 ```
 
 **Problems**:
 
-1. `AgentChatType` is missing 4 values: `global`, `project`, `task`, `calendar`
+1. `AgentChatType` is missing 4 values: `global`, `calendar`, `brain_dump`, `ontology`
 2. TypeScript won't catch when someone passes these values
 3. Runtime mismatch between what component accepts and what backend expects
 
@@ -645,11 +643,10 @@ These types overlap significantly. Options:
 export type AgentChatType = Extract<
 	ChatContextType,
 	| 'general'
+	| 'project'
 	| 'project_create'
-	| 'project_update'
 	| 'project_audit'
 	| 'project_forecast'
-	| 'task_update'
 	| 'daily_brief_update'
 >;
 ```

@@ -112,7 +112,7 @@
 - [x] Update `tool-definitions.ts`
 - [x] Update `tool-executor.ts`
 - [x] Update `tools.config.ts`
-- [x] Update `project-creation-enhanced.ts` prompt
+- [x] Update project creation prompts (`config/context-prompts.ts`)
 - [x] Update `prompt-generation-service.ts`
 - [x] Remove `TemplateSuggestionCard.svelte`
 - [x] Update `AgentChatModal.svelte` - remove template events

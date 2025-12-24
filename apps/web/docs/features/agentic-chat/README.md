@@ -188,7 +188,7 @@ const response = await fetch('/api/agent/stream', {
 1. Build PlannerContext
    - System prompt with ontology awareness
    - Compressed conversation history
-   - Location context (project/task details)
+   - Location context (project/focus details)
    - Available tools for context
 
 2. Create Planner Agent record in database
@@ -687,7 +687,7 @@ interface AgentStreamRequest {
 	message: string; // User message (required)
 	session_id?: string; // Existing session ID
 	context_type: ChatContextType; // 'global' | 'project' | etc.
-	entity_id?: string; // Project/task ID for context
+	entity_id?: string; // Project ID for project context (entity focus via projectFocus)
 	conversation_history?: ChatMessage[];
 	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output';
 	projectFocus?: ProjectFocus;
