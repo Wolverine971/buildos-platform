@@ -499,12 +499,6 @@ You're focused on a specific project workspace. The abbreviated context is loade
 
 Always mention when more data is available via tools and confirm before modifying important project data.`,
 
-			task: `
-
-## Current Context: Task
-You're focused on a specific task. The abbreviated task context has been loaded.
-Consider subtasks, dependencies, and parent project context when relevant.${metadata?.taskTitle ? `\nTask: ${metadata.taskTitle}` : ''}`,
-
 			calendar: `
 
 ## Current Context: Calendar
@@ -526,7 +520,6 @@ Help users understand what BuildOS can do and guide them to the right features. 
 - Audit projects for gaps and issues
 - Forecast project outcomes and scenarios
 - Update daily briefs
-- Update individual tasks
 
 ## Guidelines
 - Keep responses brief and actionable
@@ -644,34 +637,6 @@ Use \`get_project_details()\` to analyze:
 
 **Note:** Read-only access for analysis. No changes will be made.`,
 
-			task_update: `
-
-## Your Role
-You are a focused task assistant helping users quickly update task details.${metadata?.taskTitle ? ` Current task: ${metadata.taskTitle}` : ''}
-
-Quickly understand what needs updating on the task and make changes efficiently.
-
-## Available Tools
-- \`list_tasks()\` - Find tasks if user doesn't specify which one
-- \`get_task_details(task_id)\` - Get complete task information
-- \`update_task(task_id, updates)\` - Apply changes
-
-## Guidelines
-- Be direct and action-oriented - no unnecessary questions
-- Confirm what you're changing before executing
-- Handle multiple task updates in sequence if requested
-- If the task doesn't exist, offer to create it
-- Keep responses brief and focused
-
-## Common Updates You Can Handle
-- Status changes (backlog → in_progress → done → blocked)
-- Priority adjustments (low, medium, high)
-- Due date / start date changes
-- Adding or updating task descriptions and details
-- Breaking down tasks into subtasks
-- Updating duration estimates
-- Adding dependencies`,
-
 			daily_brief_update: `
 
 ## Your Role
@@ -773,10 +738,6 @@ You are an ontology system assistant helping users work with the BuildOS knowled
 				if (!entityId) throw new Error('Project ID required for project context');
 				return this.loadProjectContext(entityId, abbreviated, userId, contextType);
 
-			case 'task':
-				if (!entityId) throw new Error('Task ID required for task context');
-				return this.loadTaskContext(entityId, abbreviated, userId, contextType);
-
 			case 'calendar':
 				return this.loadCalendarContext(abbreviated, userId);
 
@@ -791,8 +752,6 @@ You are an ontology system assistant helping users work with the BuildOS knowled
 			case 'project_audit':
 			case 'project_forecast':
 				return 'project';
-			case 'task_update':
-				return 'task';
 			case 'general':
 				return 'global';
 			default:
@@ -955,7 +914,7 @@ Use get_task_details('${taskId}') for complete information.`;
 				content,
 				tokens: this.estimateTokens(content),
 				metadata: {
-					contextType: sourceContextType ?? 'task',
+					contextType: sourceContextType,
 					taskId,
 					projectId: task.project?.id,
 					taskTitle: task.title,
@@ -1103,47 +1062,6 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 						return `- ${n.title || 'Untitled'}: ${preview}${needsEllipsis ? '...' : ''}`;
 					})
 					.join('\n');
-			}
-		}
-
-		if (resolvedType === 'task' && entityId) {
-			// Get parent task and sibling tasks
-			const { data: task } = await this.supabase
-				.from('tasks')
-				.select('parent_task_id, project_id')
-				.eq('id', entityId)
-				.eq('user_id', userId)
-				.single();
-
-			if (task?.parent_task_id) {
-				const { data: parentTask } = await this.supabase
-					.from('tasks')
-					.select('id, title, status')
-					.eq('id', task.parent_task_id)
-					.eq('user_id', userId)
-					.single();
-
-				if (parentTask) {
-					hasContent = true;
-					content += `\n### Parent Task\n- ${parentTask.title} (${parentTask.status})\n`;
-				}
-
-				// Get sibling tasks
-				const { data: siblings } = await this.supabase
-					.from('tasks')
-					.select('id, title, status, priority')
-					.eq('parent_task_id', task.parent_task_id)
-					.eq('user_id', userId)
-					.neq('id', entityId)
-					.limit(5);
-
-				if (siblings && siblings.length > 0) {
-					hasContent = true;
-					content += '\n### Sibling Tasks\n';
-					content += siblings
-						.map((s) => `- [${s.priority}] ${s.title} (${s.status})`)
-						.join('\n');
-				}
 			}
 		}
 
@@ -1433,7 +1351,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			content,
 			tokens: this.estimateTokens(content),
 			metadata: {
-				contextType: sourceContextType ?? 'task',
+				contextType: sourceContextType,
 				taskId,
 				projectId: task.project_id ?? undefined,
 				taskTitle: task.title,
@@ -2206,7 +2124,6 @@ Use this when users ask questions like:
 					UTILITY_TOOLS.get_field_info
 				];
 
-			case 'task':
 			case 'calendar':
 				// Reactive contexts get list/detail tools only
 				return [
@@ -2252,17 +2169,6 @@ Use this when users ask questions like:
 					UTILITY_TOOLS.get_field_info
 				];
 
-			case 'task_update':
-				// Task-focused update mode
-				return [
-					REACTIVE_TOOLS.list_tasks,
-					REACTIVE_TOOLS.get_task_details,
-					PROACTIVE_TOOLS.update_task,
-					PROACTIVE_TOOLS.create_task,
-					PROACTIVE_TOOLS.schedule_task,
-					UTILITY_TOOLS.get_field_info
-				];
-
 			case 'daily_brief_update':
 				// Daily brief configuration (would need specific tools)
 				return [UTILITY_TOOLS.get_field_info];
@@ -2279,7 +2185,7 @@ Use this when users ask questions like:
 	 */
 	public shouldAutoExecute(contextType: ChatContextType): boolean {
 		// Reactive modes always execute immediately
-		const reactiveModes: ChatContextType[] = ['global', 'project', 'task', 'calendar'];
+		const reactiveModes: ChatContextType[] = ['global', 'project', 'calendar'];
 		return reactiveModes.includes(contextType);
 	}
 

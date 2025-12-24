@@ -84,9 +84,6 @@ export class AgentOrchestrator {
 			case 'project_forecast':
 				yield* this.handleProjectForecast(session, userMessage, userId);
 				break;
-			case 'task_update':
-				yield* this.handleTaskUpdate(session, userMessage, userId, autoAccept);
-				break;
 			case 'daily_brief_update':
 				yield* this.handleDailyBriefUpdate(session, userMessage, userId);
 				break;
@@ -526,64 +523,6 @@ export class AgentOrchestrator {
 		yield {
 			type: 'text',
 			content: this.formatForecastInsights(forecast.insights)
-		};
-	}
-
-	/**
-	 * Handle task update mode
-	 */
-	private async *handleTaskUpdate(
-		session: any,
-		userMessage: string,
-		userId: string,
-		autoAccept: boolean
-	): AsyncGenerator<AgentSSEMessage> {
-		const taskId = session.entity_id;
-		if (!taskId) {
-			yield {
-				type: 'error',
-				error: 'No task specified for update'
-			};
-			return;
-		}
-
-		// Load task context
-		const context = await this.contextService.loadLocationContext('task', taskId, true, userId);
-
-		// Build metadata for system prompt
-		const promptMetadata: SystemPromptMetadata = {
-			taskTitle: context.metadata?.taskTitle
-		};
-
-		// Use task_update system prompt
-		const stream = this.llmService.streamText({
-			messages: [
-				{
-					role: 'system',
-					content: this.contextService.getSystemPrompt('task_update', promptMetadata)
-				},
-				{
-					role: 'system',
-					content: `Current task: ${JSON.stringify(context, null, 2)}`
-				},
-				{ role: 'user', content: userMessage }
-			],
-			userId,
-			profile: 'speed',
-			temperature: 0.3,
-			maxTokens: 300
-		});
-
-		for await (const chunk of stream) {
-			if (chunk.type === 'text' && typeof chunk.content === 'string') {
-				yield { type: 'text', content: chunk.content };
-			}
-		}
-
-		// TODO: Generate and execute/queue task update operations
-		yield {
-			type: 'text',
-			content: '(Task update operations will be implemented in future iteration)'
 		};
 	}
 

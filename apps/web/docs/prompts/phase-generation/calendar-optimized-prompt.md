@@ -1,4 +1,5 @@
 <!-- apps/web/docs/prompts/phase-generation/calendar-optimized-prompt.md -->
+
 # Prompt Audit: phase-generation-calendar-optimized
 
 **Generated at:** 2025-10-13T01:47:25.638Z

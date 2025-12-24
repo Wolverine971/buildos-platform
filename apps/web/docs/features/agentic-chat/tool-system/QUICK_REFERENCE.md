@@ -106,12 +106,12 @@ agent_create_plan  (handled by orchestrator, not a real API tool)
 | `global`             | Base (4) + Global (7)                    | Workspace discovery    |
 | `project_create`     | Base (4) + Create (3)                    | Bootstrap new projects |
 | `project`            | Base (4) + Global (7) + Project ops (12) | Project work           |
-| `task`               | Base (4) + Global (7) + Project ops (12) | Task focus             |
 | `calendar`           | Base (4) + Global (7)                    | Calendar planning      |
 | `project_audit`      | Base (4) + Project (12)                  | Project review         |
 | `project_forecast`   | Base (4) + Project (12)                  | Scenario planning      |
-| `task_update`        | Base (4) + Project (12)                  | Task updates           |
 | `daily_brief_update` | Base (4)                                 | Brief generation       |
+
+**Note:** Focused task/goal/plan/document conversations use `project` context with `project_focus` set.
 
 ---
 

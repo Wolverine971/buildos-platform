@@ -423,7 +423,7 @@ if (adminError || !adminUser) {
 {
   timeframe?: '24h' | '7d' | '30d';  // Default: '7d'
   status?: 'active' | 'completed' | 'failed';
-  context_type?: 'global' | 'project' | 'task' | 'calendar';
+  context_type?: 'global' | 'project' | 'calendar' | 'project_create' | 'project_audit' | 'project_forecast' | 'daily_brief_update' | 'brain_dump' | 'ontology';
   search?: string;  // Search by email or session ID
   page?: number;    // Default: 1
   limit?: number;   // Default: 20

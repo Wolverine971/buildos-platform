@@ -27,6 +27,7 @@ export type {
 	PromptSection,
 	ContextPromptConfig,
 	PlannerPromptConfig,
+	PlannerLegacySections,
 	ExecutorPromptConfig,
 	ProjectCreationPromptConfig,
 	BrainDumpPromptConfig,
@@ -34,9 +35,10 @@ export type {
 	FallbackContextMessages
 } from './types';
 
-// Planner prompts
+// Planner prompts (Phase 2 - consolidated)
 export {
 	PLANNER_PROMPTS,
+	PLANNER_LEGACY_SECTIONS,
 	PLANNER_ADDITIONAL_SECTIONS,
 	getPlannerSections,
 	getPlannerBaseInstructionSections
@@ -51,9 +53,11 @@ export {
 	PROJECT_CREATION_PROMPTS,
 	BRAIN_DUMP_PROMPTS,
 	CONTEXT_DISPLAY_NAMES,
+	CONTEXT_TYPE_GUIDANCE,
 	FALLBACK_CONTEXT_MESSAGES,
 	getFallbackMessage,
 	getContextDisplayName,
+	getContextTypeGuidance,
 	buildBrainDumpPrompt
 } from './context-prompts';
 

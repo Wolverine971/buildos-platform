@@ -58,8 +58,8 @@ This spec outlines the changes needed to display chat sessions on the `/history`
 | `title`             | TEXT        | User-set title                          |
 | `auto_title`        | TEXT        | AI-generated title (max 50 chars)       |
 | `chat_topics`       | TEXT[]      | AI-extracted topics (3-7 keywords)      |
-| `context_type`      | TEXT        | global, project, task, brain_dump, etc. |
-| `entity_id`         | UUID        | Related project/task ID                 |
+| `context_type`      | TEXT        | global, project, calendar, project_create, project_audit, project_forecast, daily_brief_update, brain_dump, ontology |
+| `entity_id`         | UUID        | Related project/entity ID               |
 | `status`            | TEXT        | active, archived, compressed            |
 | `message_count`     | INTEGER     | Number of messages                      |
 | `total_tokens_used` | INTEGER     | LLM token consumption                   |

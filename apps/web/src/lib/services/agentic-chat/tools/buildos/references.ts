@@ -34,7 +34,7 @@ export const PROJECT_CLASSIFICATION_REFERENCE: BuildosDocReference = {
 export const CHAT_ARCHITECTURE_REFERENCE: BuildosDocReference = {
 	title: 'Chat System Architecture',
 	summary:
-		'BuildOS chat uses progressive disclosure to keep context small: abbreviated data loads first (~400 tokens), then detailed data on demand. Conversations happen in different modes: global (cross-project), project-focused, task-focused, or specialized flows like project_create. Within project mode, users can narrow focus to specific tasks, goals, plans, or documents via the ProjectFocusSelector. SSE streaming delivers incremental responses so the UI stays responsive while tools execute. Tool calls go through ChatToolExecutor which handles validation, telemetry, and error recovery.'
+		'BuildOS chat uses progressive disclosure to keep context small: abbreviated data loads first (~400 tokens), then detailed data on demand. Conversations happen in different modes: global (cross-project), project-focused, or specialized flows like project_create. Within project mode, users can narrow focus to specific tasks, goals, plans, documents, or outputs via the ProjectFocusSelector. SSE streaming delivers incremental responses so the UI stays responsive while tools execute. Tool calls go through ChatToolExecutor which handles validation, telemetry, and error recovery.'
 };
 
 export const CALENDAR_FEATURE_REFERENCE: BuildosDocReference = {
@@ -58,5 +58,5 @@ export const STYLE_GUIDE_REFERENCE: BuildosDocReference = {
 export const CHAT_CONVERSATION_MODES_REFERENCE: BuildosDocReference = {
 	title: 'Chat Conversation Modes & Project Focus',
 	summary:
-		'BuildOS chat adapts to what the user wants to work on. In global mode, users can work across all projects and calendar. In project mode, they work within one project—asking questions, creating tasks, updating plans. Project mode also supports focus narrowing: users can spotlight a specific task, goal, plan, document, or output to have deep conversations about that one thing. The project_create mode guides users through turning ideas into structured projects. Task-focused mode lets users dive into task details, dependencies, and execution. Each mode changes what tools are available and how context loads, ensuring the AI has the right information without overwhelming token limits.'
+		'BuildOS chat adapts to what the user wants to work on. In global mode, users can work across all projects and calendar. In project mode, they work within one project—asking questions, creating tasks, updating plans. Project mode also supports focus narrowing: users can spotlight a specific task, goal, plan, document, output, milestone, risk, decision, or requirement to have deep conversations about that one thing. The project_create mode guides users through turning ideas into structured projects. Each mode changes what tools are available and how context loads, ensuring the AI has the right information without overwhelming token limits.'
 };

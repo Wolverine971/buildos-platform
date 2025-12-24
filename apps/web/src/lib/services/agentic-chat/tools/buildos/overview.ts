@@ -73,14 +73,14 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 	{
 		title: 'Conversation Modes & Project Focus',
 		summary:
-			'BuildOS chat adapts to what users want to work on—from global brainstorming to deep dives on individual tasks.',
+			'BuildOS chat adapts to what users want to work on—from global brainstorming to deep dives on individual entities.',
 		highlights: [
 			'Global mode lets users work across all projects and calendar, perfect for high-level planning and cross-project coordination.',
 			'Project mode focuses conversation within one project. Users can ask questions, create tasks, update plans, or request summaries—all scoped to that project context.',
 			'Within project mode, the ProjectFocusSelector lets users narrow to a specific task, goal, plan, document, or output for deep, focused conversations about that one thing.',
 			'Specialized flows exist for structured workflows: project_create guides turning ideas into projects, project_audit stress-tests for gaps, project_forecast explores timelines.',
-			'Task-focused mode provides a spotlight on individual tasks—perfect for breaking down work, clarifying requirements, or updating status.',
-			'Each mode changes what tools are available and how context loads. Project mode loads project context documents and related entities; task mode loads task details and dependencies.',
+			'Focused entity conversations provide a spotlight on individual tasks, goals, plans, or documents—perfect for breaking down work, clarifying requirements, or updating status.',
+			'Each mode changes what tools are available and how context loads. Project mode loads project context documents and related entities; focus mode loads the selected entity details and dependencies.',
 			'The focus system prevents context overload: instead of loading an entire project graph, the agent loads only what is relevant to the current conversation scope.'
 		],
 		references: [CHAT_CONVERSATION_MODES_REFERENCE, CHAT_ARCHITECTURE_REFERENCE]

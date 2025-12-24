@@ -172,13 +172,11 @@
 	const DEFAULT_CHAT_SESSION_TITLES = [
 		'Agent Session',
 		'Project Assistant',
-		'Task Assistant',
 		'Calendar Assistant',
 		'General Assistant',
 		'New Project Creation',
 		'Project Audit',
 		'Project Forecast',
-		'Task Update',
 		'Daily Brief Settings',
 		'Chat session'
 	].map((title) => title.toLowerCase());
@@ -1356,6 +1354,19 @@
 		})
 	};
 
+	const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
+		Running: 'Ran'
+	};
+
+	function toPastTenseAction(action: string): string {
+		const [verb, ...rest] = action.split(' ');
+		if (!verb) return action;
+		const pastVerb =
+			TOOL_ACTION_PAST_TENSE[verb] ??
+			(verb.endsWith('ing') ? `${verb.slice(0, -3)}ed` : verb);
+		return [pastVerb, ...rest].join(' ');
+	}
+
 	/**
 	 * Formats a tool message based on tool name, arguments, and status
 	 */
@@ -1382,9 +1393,7 @@
 				if (status === 'pending') {
 					return `${action}...`;
 				} else if (status === 'completed') {
-					// Convert "Creating task" → "Task created"
-					const noun = action.split(' ').slice(1).join(' '); // "Creating task" → "task"
-					return `${noun.charAt(0).toUpperCase() + noun.slice(1)} created`;
+					return toPastTenseAction(action);
 				} else {
 					return `Failed to ${action.toLowerCase()}`;
 				}
@@ -1395,7 +1404,7 @@
 				return `${action}: "${target}"`;
 			} else if (status === 'completed') {
 				// Convert "Creating" → "Created", "Updating" → "Updated"
-				const pastTense = action.replace(/ing$/, 'ed').replace(/ching$/, 'ched');
+				const pastTense = toPastTenseAction(action);
 				return `${pastTense}: "${target}"`;
 			} else {
 				return `Failed to ${action.toLowerCase()}: "${target}"`;
@@ -1749,14 +1758,20 @@
 			currentStreamController = streamController;
 
 			// Determine ontology entity type from context
-			let ontologyEntityType: 'task' | 'plan' | 'goal' | 'document' | 'output' | undefined;
-			if (selectedContextType === 'task' || selectedContextType === 'task_update') {
-				ontologyEntityType = 'task';
-			} else if (isProjectContext(selectedContextType)) {
-				// For project contexts, don't set a specific entity type - let the backend determine
-				ontologyEntityType = undefined;
+			let ontologyEntityType:
+				| 'task'
+				| 'plan'
+				| 'goal'
+				| 'document'
+				| 'output'
+				| 'milestone'
+				| 'risk'
+				| 'decision'
+				| 'requirement'
+				| undefined;
+			if (resolvedProjectFocus && resolvedProjectFocus.focusType !== 'project-wide') {
+				ontologyEntityType = resolvedProjectFocus.focusType;
 			}
-			// Additional mappings can be added as needed
 
 			const response = await fetch('/api/agent/stream', {
 				method: 'POST',
@@ -2520,10 +2535,6 @@
 
 			case 'project_forecast':
 				return `Let's explore timelines and scenarios for ${name}. What aspects would you like to forecast?`;
-
-			case 'task':
-			case 'task_update':
-				return 'What would you like to know or update about this task?';
 
 			case 'calendar':
 				return 'What would you like to plan or review on your calendar?';

@@ -1,4 +1,5 @@
 <!-- apps/web/docs/prompts/brain-dump/new-project/singular/new-project-singular-prompt.md -->
+
 # Prompt Audit: new-project-singular
 
 **Generated at:** 2025-09-20T16:31:10.939Z

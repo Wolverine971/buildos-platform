@@ -302,15 +302,22 @@ This is the **definitive navigation guide** for all BuildOS web app documentatio
     - Tools: `/apps/web/src/lib/chat/tools.config.ts`
     - API: `/apps/web/src/routes/api/chat/stream/+server.ts`
 
-4. **Integration example (Task Page):**
+4. **Integration example (Task Page with Project Focus):**
 
     ```svelte
-    import ChatModal from '$lib/components/chat/ChatModal.svelte';
+    import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 
-    <ChatModal
+    const taskFocus = {
+    	focusType: 'task',
+    	focusEntityId: task.id,
+    	focusEntityName: task.title,
+    	projectId: project.id,
+    	projectName: project.name
+    };
+
+    <AgentChatModal
     	isOpen={showChat}
-    	contextType="task"
-    	entityId={task.id}
+    	initialProjectFocus={taskFocus}
     	onClose={() => (showChat = false)}
     />
     ```

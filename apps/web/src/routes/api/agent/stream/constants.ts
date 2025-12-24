@@ -70,13 +70,13 @@ export const ONTOLOGY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 export const VALID_CONTEXT_TYPES = [
 	'global',
 	'project',
-	'task',
 	'calendar',
 	'project_create',
 	'project_audit',
 	'project_forecast',
-	'task_update',
-	'daily_brief_update'
+	'daily_brief_update',
+	'brain_dump',
+	'ontology'
 ] as const;
 
 /**

@@ -57,8 +57,11 @@ export interface ContextPromptConfig {
  *
  * Sections are organized in cognitive order:
  * 1. Foundation (identity, platform, data model) - WHO am I, WHAT is BuildOS, HOW is data organized
- * 2. Operational (data access, strategies, guidelines) - HOW to operate
- * 3. Behavioral (language rules, update rules, task creation) - RULES to follow
+ * 2. Operational (consolidated) - HOW to operate
+ * 3. Behavioral (consolidated) - RULES to follow
+ *
+ * Phase 2 consolidates verbose sections for token efficiency while adding
+ * error handling and proactive intelligence guidance.
  */
 export interface PlannerPromptConfig {
 	// === FOUNDATION SECTIONS ===
@@ -69,20 +72,35 @@ export interface PlannerPromptConfig {
 	/** Data model overview - how information is organized */
 	dataModelOverview: PromptSection;
 
-	// === OPERATIONAL SECTIONS ===
-	/** Data access patterns and progressive disclosure */
-	dataAccessPatterns: PromptSection;
-	/** Available strategies */
-	strategies: PromptSection;
-	/** Important guidelines */
-	guidelines: PromptSection;
+	// === OPERATIONAL SECTION (Consolidated) ===
+	/** Consolidated operational guidelines: data access, strategies, response style */
+	operationalGuidelines: PromptSection;
 
-	// === BEHAVIORAL SECTIONS ===
-	/** User-facing language rules */
+	// === BEHAVIORAL SECTIONS (Consolidated + New) ===
+	/** Consolidated behavioral rules: language, task creation, updates */
+	behavioralRules: PromptSection;
+	/** Error handling and recovery patterns */
+	errorHandling: PromptSection;
+	/** Proactive insight surfacing */
+	proactiveIntelligence: PromptSection;
+}
+
+/**
+ * Legacy planner sections (kept for reference/compatibility)
+ * These have been consolidated into operationalGuidelines and behavioralRules
+ */
+export interface PlannerLegacySections {
+	/** @deprecated Use operationalGuidelines instead */
+	dataAccessPatterns: PromptSection;
+	/** @deprecated Use operationalGuidelines instead */
+	strategies: PromptSection;
+	/** @deprecated Use operationalGuidelines instead */
+	guidelines: PromptSection;
+	/** @deprecated Use behavioralRules instead */
 	languageRules: PromptSection;
-	/** Non-destructive update rules */
+	/** @deprecated Use behavioralRules instead */
 	updateRules: PromptSection;
-	/** Task creation philosophy */
+	/** @deprecated Use behavioralRules instead */
 	taskCreationPhilosophy: PromptSection;
 }
 

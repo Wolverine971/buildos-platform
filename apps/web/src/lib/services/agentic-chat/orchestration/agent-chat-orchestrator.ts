@@ -566,7 +566,8 @@ export class AgentChatOrchestrator {
 		virtualHandlers: Record<string, VirtualToolHandler>;
 	}): AsyncGenerator<StreamEvent, void, unknown> {
 		const { toolExecutionService } = this.deps;
-		const { request, messages, tools, serviceContext, virtualHandlers, plannerContext } = params;
+		const { request, messages, tools, serviceContext, virtualHandlers, plannerContext } =
+			params;
 		let currentPlannerContext = plannerContext;
 		let currentTools = tools;
 		let currentVirtualHandlers = virtualHandlers;

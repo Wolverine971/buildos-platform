@@ -38,14 +38,12 @@ export type ChatContextType =
 	// Original reactive chat modes
 	| 'global'
 	| 'project'
-	| 'task'
 	| 'calendar'
 	// Agent proactive modes
 	| 'general' // General agent assistant
 	| 'project_create' // Creating new project with guided questions
 	| 'project_audit' // Critical review of project
 	| 'project_forecast' // Scenario forecasting
-	| 'task_update' // Quick task updates
 	| 'daily_brief_update' // Daily brief preferences
 	// Additional context types
 	| 'ontology' // Ontology system interactions
@@ -64,7 +62,6 @@ export interface SystemPromptMetadata {
 	projectId?: string; // Project ID for context
 	dimensionsCovered?: string[]; // Already covered dimensions (project_create)
 	auditHarshness?: number; // Audit severity 1-10 (project_audit)
-	taskTitle?: string; // Task title for task_update mode
 }
 
 // =====================================================

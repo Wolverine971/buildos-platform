@@ -81,7 +81,7 @@ export interface StreamRequest {
 	session_id?: string;
 	/** The context type for the conversation */
 	context_type: ChatContextType;
-	/** Optional entity ID for project/task context */
+	/** Optional entity ID for project/entity context */
 	entity_id?: string;
 	/** Optional project focus */
 	project_focus?: ProjectFocus | null;

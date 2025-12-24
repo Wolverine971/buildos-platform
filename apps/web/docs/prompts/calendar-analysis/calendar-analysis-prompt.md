@@ -1,4 +1,5 @@
 <!-- apps/web/docs/prompts/calendar-analysis/calendar-analysis-prompt.md -->
+
 # Prompt Audit: calendar-analysis
 
 **Generated at:** 2025-10-07T20:57:12.605Z

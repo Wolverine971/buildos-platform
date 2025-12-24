@@ -40,7 +40,7 @@ CREATE TABLE chat_sessions (
   auto_title TEXT,  -- AI-generated from first message
 
   -- Context information (for progressive disclosure)
-  context_type TEXT CHECK IN ('global', 'project', 'task', 'calendar'),
+  context_type TEXT CHECK IN ('global', 'project', 'calendar', 'project_create', 'project_audit', 'project_forecast', 'daily_brief_update', 'brain_dump', 'ontology'),
   entity_id UUID,  -- References projects.id or tasks.id
 
   -- Session state
@@ -65,7 +65,7 @@ CREATE TABLE chat_sessions (
 
 **Key Features:**
 
-- Context-aware: Can be scoped to global, project, task, or calendar context
+- Context-aware: Can be scoped to global, project, calendar, or focused entity within a project
 - Auto-updating statistics via trigger functions
 - Status tracking for lifecycle management
 - User preferences stored as flexible JSONB
@@ -871,7 +871,17 @@ CREATE INDEX idx_audit_user ON chat_operation_audit(user_id, created_at DESC);
 ### Current Types (in chat.types.ts)
 
 ```typescript
-export type ChatContextType = 'global' | 'project' | 'task' | 'calendar';
+export type ChatContextType =
+	| 'global'
+	| 'project'
+	| 'calendar'
+	| 'general'
+	| 'project_create'
+	| 'project_audit'
+	| 'project_forecast'
+	| 'daily_brief_update'
+	| 'brain_dump'
+	| 'ontology';
 export type ChatSessionStatus = 'active' | 'archived' | 'compressed';
 export type ToolCategory = 'list' | 'detail' | 'action' | 'calendar';
 

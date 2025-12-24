@@ -359,8 +359,9 @@ For the initial implementation, the following ChatModal features were **intentio
 ```typescript
 interface Props {
 	isOpen?: boolean; // Show/hide modal
-	contextType?: ChatContextType; // 'global' | 'project' | 'task' | etc.
-	entityId?: string; // Project/task ID for context
+	contextType?: ChatContextType; // 'global' | 'project' | 'calendar' | etc.
+	entityId?: string; // Project/entity ID for context
+	initialProjectFocus?: ProjectFocus | null; // Focused entity within project
 	onClose?: () => void; // Close handler
 }
 ```

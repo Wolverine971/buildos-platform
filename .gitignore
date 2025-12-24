@@ -47,4 +47,4 @@ coverage
 .cache
 # nul
 # Calendar analysis prompt audits (contain user data)
-/apps/web/docs/prompts/**/*prompt.md
+# /apps/web/docs/prompts/**/*prompt.md

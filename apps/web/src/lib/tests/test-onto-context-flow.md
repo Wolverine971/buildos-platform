@@ -15,9 +15,9 @@ BuildOS supports multiple context types for specialized workflows:
 - `project` - Working within a specific project workspace
 - `project_audit` - Specialized audit/review mode for projects
 - `project_forecast` - Scenario planning and forecasting
-- `task` / `task_update` - Task-focused work
 - `calendar` - Calendar and scheduling operations
 - `daily_brief_update` - Daily brief configuration
+- Project focus (task/goal/plan/document/etc) within `project` context
 
 ---
 
@@ -367,7 +367,7 @@ list_onto_tasks(
 
 ---
 
-## Test Flow 4: Global to Task Focus
+## Test Flow 4: Global to Project Focus (Task)
 
 **Scenario**: User wants to focus on a specific task
 
@@ -399,8 +399,8 @@ search_onto_tasks(
 
 **Expected Agent Behavior**:
 
-1. **Context Shift**: `global` → `task_update`
-2. **Set Entity ID**: Task ID becomes active entity
+1. **Context Shift**: `global` → `project` (task's parent project)
+2. **Set Project Focus**: focusType `task` with the selected task
 
 **Expected SSE Event**:
 
@@ -409,19 +409,33 @@ search_onto_tasks(
 	"type": "context_shift",
 	"context_shift": {
 		"old_context": "global",
-		"new_context": "task_update",
-		"entity_id": "[api_doc_task_id]",
-		"entity_name": "Write API Documentation",
-		"entity_type": "task",
+		"new_context": "project",
+		"entity_id": "[api_doc_project_id]",
+		"entity_name": "API Docs Project",
+		"entity_type": "project",
 		"message": "Focused on task: Write API Documentation"
+	}
+}
+```
+
+```json
+{
+	"type": "focus_changed",
+	"focus": {
+		"focusType": "task",
+		"focusEntityId": "[api_doc_task_id]",
+		"focusEntityName": "Write API Documentation",
+		"projectId": "[api_doc_project_id]",
+		"projectName": "API Docs Project"
 	}
 }
 ```
 
 **Expected Results**:
 
-- ✅ Context is `task_update`
-- ✅ Entity_id is task_id
+- ✅ Context is `project`
+- ✅ Entity_id is project_id
+- ✅ Project focus is the task
 - ✅ Task-specific operations available
 - ✅ Agent focuses on single task
 
@@ -429,8 +443,9 @@ search_onto_tasks(
 
 ### Step 3: Task Update Operations
 
-**Context Type**: `task_update`
-**Entity ID**: [api_doc_task_id]
+**Context Type**: `project`
+**Entity ID**: [api_doc_project_id]
+**Project Focus**: task `[api_doc_task_id]`
 
 **User Input**: "Update this task - I'm 50% done, need 4 more hours"
 
@@ -451,8 +466,8 @@ update_onto_task({
 **Expected Results**:
 
 - ✅ Task updated with progress
-- ✅ Context remains `task_update`
-- ✅ Focused on single task operations
+- ✅ Context remains `project`
+- ✅ Focus remains on selected task
 
 ---
 
@@ -567,23 +582,24 @@ create_calendar_block({
 
 **Scenario**: Attempting invalid or nonsensical transitions
 
-### Invalid Transition 1: Task to Project Create
+### Invalid Transition 1: Focused Task to Project Create
 
-**Current Context**: `task_update`
-**Entity ID**: [some_task_id]
+**Current Context**: `project`
+**Entity ID**: [some_project_id]
+**Project Focus**: task `[some_task_id]`
 
 **User Input**: "Create a new project"
 
 **Expected Agent Behavior**:
 
-1. **Validate Transition**: Cannot go directly task → project_create
-2. **Route Through Global**: task → global → project_create
+1. **Clear Focus**: Exit focused task view
+2. **Shift Context**: project → project_create
 
 **Expected Results**:
 
-- ✅ First shift to `global` (exit task mode)
-- ✅ Then shift to `project_create`
-- ✅ Two context shift events emitted
+- ✅ Focus cleared before mode change
+- ✅ Context shifts to `project_create`
+- ✅ Context shift event emitted
 - ✅ Safe transition path
 
 ---
@@ -638,7 +654,7 @@ create_calendar_block({
 2. **Project Create → Project**: Automatic after creation
 3. **Project ↔ Project Audit**: Specialized review mode
 4. **Project ↔ Project**: Switching between projects
-5. **Global ↔ Task**: Task focus mode
+5. **Global → Project Focus**: Task/goal/document focus within project context
 6. **Global ↔ Calendar**: Calendar operations
 7. **Any → Global**: Always safe return to global
 

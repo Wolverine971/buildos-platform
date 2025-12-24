@@ -179,39 +179,39 @@ The key is passing the focus through `autoInitProject` with `showActionSelector:
 
 **However**, looking at the AgentChatModal code, the `projectFocus` state is internal and needs to be set after initialization. We need to either:
 
-1. **Option A**: Add a new prop to AgentChatModal for `initialProjectFocus`
-2. **Option B**: Use context type `'task'` with `entityId` set to the task ID (simpler, already supported)
+1. **Option A**: Use `initialProjectFocus` to open chat with a scoped project focus
+2. **Option B**: Extend `ChatContextType` (not needed with focus support)
 
-### Recommended Approach: Use Existing Context Types
+### Recommended Approach: Use Project Focus
 
-For **tasks**, the existing system already supports `contextType: 'task'` with `entityId`:
+For **tasks and other entity types** (goal, plan, milestone, output, document), pass `initialProjectFocus` so the chat boots in `project` context with the focus set:
 
 ```svelte
 <svelte:component
 	this={AgentChatModalComponent}
 	isOpen={showChatModal}
-	contextType="task"
-	entityId={taskId}
+	initialProjectFocus={entityFocus}
 	onClose={handleChatClose}
 />
 ```
 
-For **other entity types** (goal, plan, milestone, output, document), we need to:
-
-1. Either extend `ChatContextType` to support these
-2. Or add an `initialProjectFocus` prop to AgentChatModal
-
 ## Implementation by Modal
 
-### TaskEditModal (Already Supported)
+### TaskEditModal (Focus-Based)
 
 ```svelte
-const chatContextType = 'task'; const chatEntityId = taskId; // Render:
+const entityFocus = {
+	focusType: 'task',
+	focusEntityId: taskId,
+	focusEntityName: task?.title ?? 'Untitled Task',
+	projectId,
+	projectName
+};
+// Render:
 <svelte:component
 	this={AgentChatModalComponent}
 	isOpen={showChatModal}
-	contextType={chatContextType}
-	entityId={chatEntityId}
+	initialProjectFocus={entityFocus}
 	onClose={handleChatClose}
 />
 ```

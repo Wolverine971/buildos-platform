@@ -61,14 +61,14 @@ async function testEnhancedWrapper() {
 	}
 	console.log('');
 
-	// Test 2: Stream with task update context (should use 'balanced' profile)
-	console.log('Test 2: Task Update Context');
+	// Test 2: Stream with calendar context (should use 'balanced' profile)
+	console.log('Test 2: Calendar Context');
 	console.log('Expected: balanced profile for simple operations');
 
 	for await (const chunk of enhancedLLM.streamText({
-		messages: [{ role: 'user', content: 'Update task' }],
+		messages: [{ role: 'user', content: 'Schedule a focus block' }],
 		userId: 'test-user',
-		contextType: 'task_update' as ChatContextType,
+		contextType: 'calendar' as ChatContextType,
 		operationType: 'planner_stream'
 	})) {
 		if (chunk.type === 'text') {

@@ -7,7 +7,7 @@
  *
  * Architecture:
  * - Planner spawns executor for a task
- * - Conversation begins with initial task context
+ * - Conversation begins with initial executor context
  * - Executor can ask questions or return results
  * - Planner evaluates and responds
  * - Loop continues until task complete or max turns reached
@@ -75,7 +75,7 @@ export interface ConversationSession {
 	createdAt: Date;
 	completedAt?: Date;
 	// Context enrichment for executors
-	locationContext?: string; // Current project/task/calendar context (from planner)
+	locationContext?: string; // Current project/entity/calendar context (from planner)
 	previousResults?: string; // Results from previous executors in the plan
 }
 

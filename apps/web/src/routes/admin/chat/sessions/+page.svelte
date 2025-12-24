@@ -288,10 +288,10 @@
 							<option value="project_create">Project Create</option>
 							<option value="project_audit">Project Audit</option>
 							<option value="project_forecast">Project Forecast</option>
-							<option value="task">Task</option>
-							<option value="task_update">Task Update</option>
 							<option value="calendar">Calendar</option>
 							<option value="daily_brief_update">Daily Brief Update</option>
+							<option value="brain_dump">Braindump</option>
+							<option value="ontology">Ontology</option>
 						</Select>
 					</div>
 				</div>

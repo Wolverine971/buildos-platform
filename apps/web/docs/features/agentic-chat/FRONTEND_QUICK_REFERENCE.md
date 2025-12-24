@@ -18,8 +18,8 @@
 ### Context & Conversation
 
 ```typescript
-selectedContextType: ChatContextType | null           // global, project, task, etc.
-selectedEntityId: string | undefined                  // Project/task/goal ID
+selectedContextType: ChatContextType | null           // global, project, calendar, project_create, project_audit, project_forecast, daily_brief_update, brain_dump, ontology
+selectedEntityId: string | undefined                  // Project/entity ID
 selectedContextLabel: string | null                   // Display name
 messages: UIMessage[]                                 // Chat history + thinking blocks
 currentSession: ChatSession | null                    // Active chat session

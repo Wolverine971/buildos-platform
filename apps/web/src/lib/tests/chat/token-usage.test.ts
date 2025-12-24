@@ -162,7 +162,7 @@ describe('Chat Token Usage', () => {
 		});
 
 		it('should respect token budgets for different context types', async () => {
-			const contextTypes: ChatContextType[] = ['global', 'project', 'task', 'calendar'];
+			const contextTypes: ChatContextType[] = ['global', 'project', 'calendar'];
 
 			for (const contextType of contextTypes) {
 				const context = await contextService.buildInitialContext(

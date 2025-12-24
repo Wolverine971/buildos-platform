@@ -83,14 +83,23 @@ Users can access the chat in three ways:
 
 ```svelte
 <script>
-	import ChatModal from '$lib/components/chat/ChatModal.svelte';
+	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 
 	let showChat = false;
-	let contextType = 'task'; // or 'project', 'calendar', 'global'
-	let entityId = 'task_123'; // ID of the current context
+	const taskFocus = {
+		focusType: 'task',
+		focusEntityId: task.id,
+		focusEntityName: task.title,
+		projectId: project.id,
+		projectName: project.name
+	};
 </script>
 
-<ChatModal isOpen={showChat} {contextType} {entityId} onClose={() => (showChat = false)} />
+<AgentChatModal
+	isOpen={showChat}
+	initialProjectFocus={taskFocus}
+	onClose={() => (showChat = false)}
+/>
 ```
 
 ## 🧠 Progressive Disclosure Pattern
@@ -284,20 +293,21 @@ pnpm test src/lib/tests/chat/
 
 ```svelte
 <!-- In /routes/projects/[id]/tasks/[taskId]/+page.svelte -->
-<ChatModal
-	isOpen={showChatModal}
-	contextType="task"
-	entityId={task.id}
-	initialMessage={getInitialChatMessage()}
-	onClose={closeChatModal}
-/>
+{@const taskFocus = {
+	focusType: 'task',
+	focusEntityId: task.id,
+	focusEntityName: task.title,
+	projectId: project.id,
+	projectName: project.name
+}}
+<AgentChatModal isOpen={showChatModal} initialProjectFocus={taskFocus} onClose={closeChatModal} />
 ```
 
 ### Project Page Integration
 
 ```svelte
 <!-- In /routes/projects/[id]/+page.svelte -->
-<ChatModal
+<AgentChatModal
 	isOpen={showChatModal}
 	contextType="project"
 	entityId={project.id}
@@ -317,7 +327,7 @@ Stream a chat conversation with tool execution.
 {
   message: string;
   session_id?: string;
-  context_type?: 'global' | 'project' | 'task' | 'calendar';
+  context_type?: 'global' | 'project' | 'calendar';
   entity_id?: string;
 }
 ```

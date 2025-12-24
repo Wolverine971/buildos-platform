@@ -32,7 +32,7 @@ import {
 	PROJECT_CREATION_PROMPTS,
 	buildBrainDumpPrompt,
 	buildExecutorPromptFromConfig,
-	assembleSections
+	getContextTypeGuidance
 } from './config';
 
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
@@ -90,8 +90,8 @@ export class PromptGenerationService {
 	 * Section order (cognitive hierarchy):
 	 * 1. Foundation - WHO am I, WHAT is BuildOS, HOW is data organized
 	 * 2. Session - Current context and conversation state
-	 * 3. Operational - HOW to operate (data access, strategies, guidelines)
-	 * 4. Behavioral - RULES to follow (language, updates, task creation)
+	 * 3. Operational - HOW to operate (consolidated)
+	 * 4. Behavioral - RULES to follow (consolidated + error handling + proactive)
 	 * 5. Reference - Type key taxonomy
 	 */
 	private getBasePrompt(
@@ -120,46 +120,36 @@ export class PromptGenerationService {
 
 		// ===== SESSION CONTEXT (Dynamic) =====
 
-		// 4. Current session context - consolidated to avoid duplication with getLastTurnPrompt
+		// 4. Current session context
 		sections.push(this.buildSessionContext(contextType, ontologyContext, lastTurnContext));
 
-		// ===== OPERATIONAL SECTIONS (How to operate) =====
+		// ===== OPERATIONAL SECTION (Consolidated) =====
 
-		// 5. Data access patterns
+		// 5. Operational guidelines - data access, strategies, response style
 		sections.push(
-			`## ${PLANNER_PROMPTS.dataAccessPatterns.title}\n\n${PLANNER_PROMPTS.dataAccessPatterns.content}`
+			`## ${PLANNER_PROMPTS.operationalGuidelines.title}\n\n${PLANNER_PROMPTS.operationalGuidelines.content}`
 		);
 
-		// 6. Strategies
+		// ===== BEHAVIORAL SECTIONS (Consolidated + New) =====
+
+		// 6. Behavioral rules - language, task creation, updates
 		sections.push(
-			`## ${PLANNER_PROMPTS.strategies.title}\n\n${PLANNER_PROMPTS.strategies.content}`
+			`## ${PLANNER_PROMPTS.behavioralRules.title}\n\n${PLANNER_PROMPTS.behavioralRules.content}`
 		);
 
-		// 7. Guidelines
+		// 7. Error handling - recovery patterns
 		sections.push(
-			`## ${PLANNER_PROMPTS.guidelines.title}\n\n${PLANNER_PROMPTS.guidelines.content}`
+			`## ${PLANNER_PROMPTS.errorHandling.title}\n\n${PLANNER_PROMPTS.errorHandling.content}`
 		);
 
-		// ===== BEHAVIORAL SECTIONS (Rules to follow) =====
-
-		// 8. Language rules - AFTER understanding, so AI knows WHY these rules exist
+		// 8. Proactive intelligence - when to surface insights
 		sections.push(
-			`## ${PLANNER_PROMPTS.languageRules.title}\n\n${PLANNER_PROMPTS.languageRules.content}`
-		);
-
-		// 9. Update rules
-		sections.push(
-			`### ${PLANNER_PROMPTS.updateRules.title}\n\n${PLANNER_PROMPTS.updateRules.content}`
-		);
-
-		// 10. Task creation philosophy
-		sections.push(
-			`### ${PLANNER_PROMPTS.taskCreationPhilosophy.title}\n\n${PLANNER_PROMPTS.taskCreationPhilosophy.content}`
+			`## ${PLANNER_PROMPTS.proactiveIntelligence.title}\n\n${PLANNER_PROMPTS.proactiveIntelligence.content}`
 		);
 
 		// ===== REFERENCE SECTIONS =====
 
-		// 11. Task type guidance (dynamic)
+		// 9. Task type guidance (dynamic)
 		sections.push(generateTaskTypeKeyGuidance('short'));
 
 		return sections.join('\n\n');
@@ -167,7 +157,7 @@ export class PromptGenerationService {
 
 	/**
 	 * Build consolidated session context
-	 * Combines context type, ontology level, and last turn info into one section
+	 * Combines context type guidance, ontology level, and last turn info into one section
 	 */
 	private buildSessionContext(
 		contextType: ChatContextType,
@@ -176,11 +166,9 @@ export class PromptGenerationService {
 	): string {
 		const lines: string[] = ['## Current Session'];
 
-		// Chat context
+		// Context guidance - meaningful description instead of raw type
 		lines.push('');
-		lines.push('**Chat Context:**');
-		lines.push(`- Context Type: ${contextType}`);
-		lines.push(`- Scope Level: ${ontologyContext?.type || 'global'}`);
+		lines.push(`**Context:** ${getContextTypeGuidance(contextType)}`);
 
 		// Conversation state
 		lines.push('');
@@ -204,7 +192,9 @@ export class PromptGenerationService {
 		}
 
 		lines.push('');
-		lines.push('Use this context to maintain continuity. Reference entities by ID when continuing from previous turns.');
+		lines.push(
+			'Use this context to maintain continuity. Reference entities by ID when continuing from previous turns.'
+		);
 
 		return lines.join('\n');
 	}

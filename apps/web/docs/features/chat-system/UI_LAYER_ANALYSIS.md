@@ -39,7 +39,16 @@ BuildOS uses a sophisticated, modular UI architecture centered on **progressive 
 
 ```typescript
 interface Props {
-	contextType?: 'global' | 'project' | 'task' | 'calendar';
+	contextType?:
+		| 'global'
+		| 'project'
+		| 'calendar'
+		| 'project_create'
+		| 'project_audit'
+		| 'project_forecast'
+		| 'daily_brief_update'
+		| 'brain_dump'
+		| 'ontology';
 	entityId?: string;
 	sessionId?: string;
 	initialMessage?: string;
@@ -49,7 +58,6 @@ interface Props {
 const CONTEXT_META: Record<ChatContextType, { badge: string; description: string }> = {
 	global: { badge: '🌍 Global', description: 'No specific context' },
 	project: { badge: '📁 Project', description: 'Project-focused session' },
-	task: { badge: '✅ Task', description: 'Task-focused session' },
 	calendar: { badge: '📅 Calendar', description: 'Calendar session' }
 };
 ```

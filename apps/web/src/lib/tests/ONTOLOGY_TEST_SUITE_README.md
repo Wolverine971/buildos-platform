@@ -320,16 +320,16 @@ This testing suite validates the **complete ontology system** including:
 - `project` - Working within project workspace
 - `project_audit` - Specialized audit/review mode
 - `project_forecast` - Scenario planning (not implemented yet)
-- `task` / `task_update` - Task-focused operations
 - `calendar` - Calendar planning mode
 - `daily_brief_update` - Brief configuration (not fully tested)
+- Project focus (task/goal/plan/document/etc) within `project` context
 
 **Key Scenarios**:
 
 1. **Global → Project Create → Project** - Creation flow
 2. **Project ↔ Audit** - Switching to specialized mode
 3. **Project ↔ Project** - Multi-project switching
-4. **Global → Task** - Task focus mode
+4. **Project focus shifts** - Task/goal/document focus within project context
 5. **Session restoration** - Context persistence
 6. **Calendar operations** - Cross-project scheduling
 7. **Invalid transitions** - Safe routing paths

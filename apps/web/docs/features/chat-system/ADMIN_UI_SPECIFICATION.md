@@ -145,7 +145,16 @@ interface SessionFilters {
 	userEmail?: string;
 
 	// Context
-	contextType?: 'global' | 'project' | 'task' | 'calendar';
+	contextType?:
+		| 'global'
+		| 'project'
+		| 'calendar'
+		| 'project_create'
+		| 'project_audit'
+		| 'project_forecast'
+		| 'daily_brief_update'
+		| 'brain_dump'
+		| 'ontology';
 	entityId?: string;
 
 	// Status

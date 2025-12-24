@@ -91,7 +91,6 @@ export type AgentChatType =
   | 'project_create'    // Creating a new project from scratch
   | 'project_audit'     // Critical review of project
   | 'project_forecast'  // Scenario forecasting
-  | 'task_update'       // Updating tasks
   | 'daily_brief_update'; // Daily brief updates
 
 // ============================================================================
@@ -506,7 +505,6 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
     project: true,
     project_audit: false,  // Phase 2
     project_forecast: false, // Phase 2
-    task_update: false,     // Phase 2
     daily_brief_update: false // Phase 2
   },
   show_old_braindump: true,
@@ -571,7 +569,6 @@ export function isAgentChatType(type: string): type is AgentChatType {
     'project',
     'project_audit',
     'project_forecast',
-    'task_update',
     'daily_brief_update'
   ].includes(type);
 }
@@ -742,8 +739,8 @@ export interface AgentChatSession {
 
   // Context
   initial_context: any; // Initial prompt, tools, constraints
-  context_type?: string | null; // project, task, calendar, global
-  entity_id?: string | null; // Project/task ID
+  context_type?: string | null; // project, calendar, global, etc.
+  entity_id?: string | null; // Project/entity ID
 
   // Status
   status: 'active' | 'completed' | 'failed';

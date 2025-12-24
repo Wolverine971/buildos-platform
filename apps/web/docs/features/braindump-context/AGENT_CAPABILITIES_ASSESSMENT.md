@@ -33,11 +33,9 @@ const CONTEXT_TO_TOOL_GROUPS: Record<PlannerContextType, ToolContextScope[]> = {
 	global: ['base', 'global'],
 	project_create: ['base', 'project_create'],
 	project: ['base', 'project'],
-	task: ['base', 'project'],
 	calendar: ['base', 'global'],
 	project_audit: ['base', 'project', 'project_audit'],
 	project_forecast: ['base', 'project', 'project_forecast'],
-	task_update: ['base', 'project'],
 	daily_brief_update: ['base']
 	// NOTE: brain_dump is MISSING - falls back to DEFAULT_GROUPS
 };

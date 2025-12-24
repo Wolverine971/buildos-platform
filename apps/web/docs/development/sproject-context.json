@@ -17,16 +17,6 @@
 			"components": ["AgentChatModal"]
 		},
 		{
-			"file": "src/routes/projects-old/+page.svelte",
-			"type": "page",
-			"components": [
-				"NewProjectModal",
-				"ProjectBriefModal",
-				"DailyBriefModal",
-				"QuickProjectModal"
-			]
-		},
-		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
 			"type": "component",
 			"components": [
@@ -183,17 +173,6 @@
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/routes/projects-old/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"TasksList",
-				"NotesSection",
-				"ProjectSynthesis",
-				"PhasesSection",
-				"BraindumpsSection"
-			]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -927,10 +906,6 @@
 			"src/lib/components/ontology/MilestoneEditModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
-		"src/routes/projects-old/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectSynthesis.svelte",
-			"src/lib/components/project/PhasesSection.svelte"
-		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte",
@@ -946,8 +921,10 @@
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
+		"src/lib/components/project/PhasesSection.svelte",
 		"src/lib/components/project/ProjectHeaderMinimal.svelte",
 		"src/lib/components/project/ProjectModals.svelte",
+		"src/lib/components/project/ProjectSynthesis.svelte",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",

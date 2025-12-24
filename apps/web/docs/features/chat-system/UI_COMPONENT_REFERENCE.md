@@ -23,8 +23,8 @@ This document provides a quick reference for BuildOS UI components and patterns 
 **Props**:
 
 - `isOpen: boolean` - Modal visibility
-- `contextType?: 'global' | 'project' | 'task' | 'calendar'` - Context awareness
-- `entityId?: string` - Associated entity (project/task ID)
+- `contextType?: 'global' | 'project' | 'calendar'` - Context awareness
+- `entityId?: string` - Associated entity (project/entity ID)
 - `sessionId?: string` - Load existing session
 - `initialMessage?: string` - Pre-fill input
 - `onClose?: () => void` - Close callback
@@ -434,7 +434,7 @@ async function loadComponentsForView(view: string) {
 ```typescript
 // Add new context in ChatModal props
 interface Props {
-	contextType?: 'global' | 'project' | 'task' | 'calendar' | 'agent';
+	contextType?: 'global' | 'project' | 'calendar' | 'agent';
 }
 
 // Add to CONTEXT_META

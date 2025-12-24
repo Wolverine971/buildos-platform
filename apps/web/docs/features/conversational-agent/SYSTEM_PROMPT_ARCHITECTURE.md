@@ -155,38 +155,7 @@ User receives specialized agent response
 
 ---
 
-### 6. `task_update` - Focused Task Assistant
-
-**Handler**: `handleTaskUpdate()`
-**System Prompt**: `AGENT_SYSTEM_PROMPTS.task_update`
-
-**Purpose**: Quickly update individual task details.
-
-**Behavior**:
-
-- Direct and action-oriented
-- Confirms changes before executing
-- Handles multiple updates in sequence
-- Offers to create task if it doesn't exist
-- Temperature: 0.3 (precise)
-
-**Common Operations**:
-
-- Status changes (backlog → in_progress → done)
-- Priority adjustments
-- Due date modifications
-- Detail updates
-- Subtask creation
-
-**Requires**: `entity_id` (task ID)
-
-**Example Use**: "Mark task #123 as done and add a note about testing"
-
-**Status**: Handler implemented with TODO for operation execution
-
----
-
-### 7. `daily_brief_update` - Brief Preferences Manager
+### 6. `daily_brief_update` - Brief Preferences Manager
 
 **Handler**: `handleDailyBriefUpdate()`
 **System Prompt**: `AGENT_SYSTEM_PROMPTS.daily_brief_update`
@@ -226,14 +195,14 @@ CREATE TABLE chat_sessions (
 
   -- Both store same value (agent chat type)
   context_type TEXT NOT NULL CHECK (context_type IN (
-    'global', 'project', 'task', 'calendar',  -- Legacy values
-    'general', 'project_create', 'project',
+    'global', 'project', 'calendar',
+    'general', 'project_create',
     'project_audit', 'project_forecast',
-    'task_update', 'daily_brief_update'  -- Agent values
+    'daily_brief_update', 'brain_dump', 'ontology'
   )),
   chat_type TEXT CHECK (chat_type IN (...)), -- Backward compatibility
 
-  entity_id UUID,  -- Project/Task ID for context-specific modes
+  entity_id UUID,  -- Project/entity ID for context-specific modes
   ...
 );
 ```
@@ -260,8 +229,8 @@ switch (chatType) {
   case 'project_create':
     yield* this.handleProjectCreate(...);
     break;
-  case 'task_update':
-    yield* this.handleTaskUpdate(...);
+  case 'daily_brief_update':
+    yield* this.handleDailyBriefUpdate(...);
     break;
   // ... etc
 }
@@ -302,7 +271,7 @@ await supabase.from('chat_sessions').insert({
 
 ### Original Chat System (`20251027_create_chat_tables.sql`)
 
-- Created `context_type` with values: `'global', 'project', 'task', 'calendar'`
+- Created `context_type` with values: `'global', 'project', 'calendar'`
 - Generic chat system without specialized agents
 
 ### Agent Extension (`20251028_create_agent_tables.sql`)
@@ -404,7 +373,7 @@ await supabase.from('chat_sessions').insert({
 ### Technical Debt
 
 - `chat_type` and `context_type` duplicate the same information
-- Legacy values (`'global', 'project', 'task', 'calendar'`) may not be needed
+- Legacy values (`'global', 'project', 'calendar'`) may not be needed
 - Some handlers have TODO placeholders for operation execution
 
 ---

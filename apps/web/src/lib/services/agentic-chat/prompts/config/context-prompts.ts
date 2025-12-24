@@ -9,6 +9,7 @@
  * @lastUpdated 2025-01-16
  */
 
+import type { ChatContextType } from '@buildos/shared-types';
 import type {
 	ProjectCreationPromptConfig,
 	BrainDumpPromptConfig,
@@ -16,6 +17,47 @@ import type {
 	ContextDisplayNames,
 	FallbackContextMessages
 } from './types';
+
+// ============================================
+// CONTEXT TYPE GUIDANCE (AI Agent-Facing)
+// ============================================
+
+/**
+ * AI-agent-facing guidance for each context type.
+ * These descriptions help the AI understand the operational context
+ * and adjust its behavior accordingly.
+ *
+ * Unlike CONTEXT_DISPLAY_NAMES (for UI) or FALLBACK_CONTEXT_MESSAGES (for errors),
+ * these are concise operational summaries embedded in the session context.
+ */
+export const CONTEXT_TYPE_GUIDANCE: Record<ChatContextType, string> = {
+	global: `No project selected. User may be exploring their workspace, asking about cross-project insights (e.g., "what's overdue?", "how many active projects?"), or looking for a specific project. Provide workspace-level overviews and help them navigate.`,
+
+	project: `Scoped to a specific project (details below). All queries default to this project's entities. Help with tasks, progress, blockers, and insights. Don't ask which project—they've already selected one.`,
+
+	calendar: `Calendar planning mode. Help with scheduling, availability, time blocks, and date coordination. Focus on timing and logistics.`,
+
+	general: `Same as global—no project selected.`,
+
+	project_create: `User is starting a new project. Focus on understanding intent, classifying correctly, extracting props, and creating a well-structured project. Detailed guidance provided separately.`,
+
+	project_audit: `Critical review mode. Identify gaps, risks, unclear goals, and areas needing attention. Be thorough and constructively critical.`,
+
+	project_forecast: `Scenario planning mode. Explore timelines, what-if scenarios, dependencies, and potential outcomes. Think ahead about risks and alternatives.`,
+
+	daily_brief_update: `Daily brief preferences mode. Help adjust notification settings, brief content, and what surfaces in daily summaries.`,
+
+	brain_dump: `Exploratory mode. User is thinking out loud or brainstorming. Be a supportive sounding board—don't rush to structure or create tasks unless they signal readiness. Detailed guidance provided separately.`,
+
+	ontology: `Working with the data model directly. Help navigate projects, tasks, documents, goals, and their relationships.`
+};
+
+/**
+ * Get context guidance for a given context type
+ */
+export function getContextTypeGuidance(contextType: ChatContextType): string {
+	return CONTEXT_TYPE_GUIDANCE[contextType] || CONTEXT_TYPE_GUIDANCE.global;
+}
 
 // ============================================
 // PROJECT WORKSPACE PROMPTS
@@ -226,13 +268,11 @@ export const BRAIN_DUMP_PROMPTS: BrainDumpPromptConfig = {
 export const CONTEXT_DISPLAY_NAMES: ContextDisplayNames = {
 	global: 'Global Assistant Mode',
 	project: 'Project Workspace',
-	task: 'Task Context',
 	calendar: 'Calendar Context',
 	general: 'Global Assistant Mode',
 	project_create: 'Project Creation Mode',
 	project_audit: 'Project Audit Mode',
 	project_forecast: 'Project Forecast Mode',
-	task_update: 'Task Update Mode',
 	daily_brief_update: 'Daily Brief Update Mode',
 	brain_dump: 'Braindump Exploration Mode',
 	ontology: 'Ontology Mode'
@@ -250,13 +290,6 @@ Use available project tools to explore or update this workspace. Start with list
 
 	project_no_id:
 		'No project selected. Use available list/search tools to find a project before continuing.',
-
-	task: `## Current Task
-Task ID: {{entityId}}
-
-Use the available task detail tool to load task information.`,
-
-	task_no_id: 'No task context available. Use available list/search tools to find tasks.',
 
 	calendar: `## Calendar Context
 
@@ -278,13 +311,6 @@ Project ID: {{entityId}}
 Generate scenario forecasts for the project.`,
 
 	project_forecast_no_id: 'Project forecast mode requires a project ID.',
-
-	task_update: `## Task Update Mode
-Task ID: {{entityId}}
-
-Use available task tools to update task information.`,
-
-	task_update_no_id: 'Task update mode requires a task ID.',
 
 	daily_brief_update: `## Daily Brief Settings
 Help user configure their daily brief preferences.`,
@@ -314,12 +340,6 @@ export function getFallbackMessage(contextType: string, entityId?: string): stri
 			: FALLBACK_CONTEXT_MESSAGES.project_no_id!;
 	}
 
-	if (contextType === 'task') {
-		return hasEntity
-			? FALLBACK_CONTEXT_MESSAGES.task!.replace('{{entityId}}', entityId!)
-			: FALLBACK_CONTEXT_MESSAGES.task_no_id!;
-	}
-
 	if (contextType === 'project_audit') {
 		return hasEntity
 			? FALLBACK_CONTEXT_MESSAGES.project_audit!.replace('{{entityId}}', entityId!)
@@ -330,12 +350,6 @@ export function getFallbackMessage(contextType: string, entityId?: string): stri
 		return hasEntity
 			? FALLBACK_CONTEXT_MESSAGES.project_forecast!.replace('{{entityId}}', entityId!)
 			: FALLBACK_CONTEXT_MESSAGES.project_forecast_no_id!;
-	}
-
-	if (contextType === 'task_update') {
-		return hasEntity
-			? FALLBACK_CONTEXT_MESSAGES.task_update!.replace('{{entityId}}', entityId!)
-			: FALLBACK_CONTEXT_MESSAGES.task_update_no_id!;
 	}
 
 	// Default fallback - use nullish coalescing with global as fallback

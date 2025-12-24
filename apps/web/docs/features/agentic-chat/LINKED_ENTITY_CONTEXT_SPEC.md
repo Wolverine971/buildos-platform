@@ -422,7 +422,7 @@ Use this tool when you need to:
 	},
 
 	tier: 2, // Detail tool (use after list tools)
-	contextTypes: ['project', 'task', 'plan', 'goal', 'global'],
+	contextTypes: ['project', 'global', 'ontology'],
 	group: 'ontology_read'
 };
 ```

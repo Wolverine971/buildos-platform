@@ -40,7 +40,6 @@ export class TokenOptimizer {
 			case 'project_forecast':
 			case 'project_create':
 				return 4000; // Complex reasoning
-			case 'task_update':
 			case 'calendar':
 			case 'brain_dump':
 				return 2500; // Simple operations
@@ -149,7 +148,6 @@ export class TokenOptimizer {
 		contextType: ChatContextType
 	): ChatMessage[] {
 		switch (contextType) {
-			case 'task_update':
 			case 'calendar':
 				// Aggressive compression for simple contexts
 				return this.compressSimpleContext(messages);

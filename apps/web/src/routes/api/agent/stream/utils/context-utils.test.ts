@@ -51,11 +51,13 @@ describe('normalizeContextType', () => {
 		const validTypes: ChatContextType[] = [
 			'global',
 			'project',
-			'task',
 			'calendar',
 			'project_audit',
 			'project_forecast',
-			'project_create'
+			'project_create',
+			'daily_brief_update',
+			'brain_dump',
+			'ontology'
 		];
 
 		for (const type of validTypes) {
@@ -472,7 +474,7 @@ describe('buildContextShiftLastTurnContext', () => {
 
 	it('should build context for task shift', () => {
 		const shift: ContextShiftData = {
-			new_context: 'task',
+			new_context: 'project',
 			entity_type: 'task',
 			entity_id: 'task_456',
 			entity_name: 'Important Task'
@@ -480,7 +482,7 @@ describe('buildContextShiftLastTurnContext', () => {
 
 		const context = buildContextShiftLastTurnContext(shift, 'project');
 
-		expect(context.context_type).toBe('task');
+		expect(context.context_type).toBe('project');
 		expect(context.entities.task_ids).toEqual(['task_456']);
 	});
 

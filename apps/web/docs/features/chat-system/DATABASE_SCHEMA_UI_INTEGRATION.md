@@ -65,8 +65,8 @@ CREATE TABLE chat_sessions (
   auto_title TEXT,                -- AI-generated title from first message
 
   -- Context information (progressive disclosure pattern)
-  context_type TEXT NOT NULL,      -- 'global', 'project', 'task', 'calendar'
-  entity_id UUID,                  -- References projects.id or tasks.id
+  context_type TEXT NOT NULL,      -- 'global', 'project', 'calendar', etc. (task focus via project_focus)
+  entity_id UUID,                  -- References projects.id or other entity ids as needed
 
   -- Session state
   status TEXT DEFAULT 'active',    -- 'active', 'archived', 'compressed'
@@ -936,13 +936,13 @@ MessageStream/
 
 ### 3. Context Selector
 
-**Purpose**: Change session context (global, project, task, calendar)
+**Purpose**: Change session context (global, project, calendar)
 
 **UI Pattern**:
 
 ```svelte
 <div class="flex gap-2">
-	{#each ['global', 'project', 'task', 'calendar'] as type}
+	{#each ['global', 'project', 'calendar'] as type}
 		<Button
 			variant={activeContext === type ? 'primary' : 'outline'}
 			on:click={() => setContext(type)}

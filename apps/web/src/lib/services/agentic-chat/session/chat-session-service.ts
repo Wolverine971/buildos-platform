@@ -283,13 +283,11 @@ export class ChatSessionService {
 		const titles: Record<ChatContextType, string> = {
 			global: 'Agent Session',
 			project: 'Project Assistant',
-			task: 'Task Assistant',
 			calendar: 'Calendar Assistant',
 			general: 'General Assistant',
 			project_create: 'New Project Creation',
 			project_audit: 'Project Audit',
 			project_forecast: 'Project Forecast',
-			task_update: 'Task Update',
 			daily_brief_update: 'Daily Brief Settings',
 			brain_dump: 'Brain Dump Assistant',
 			ontology: 'Ontology Assistant'

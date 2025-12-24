@@ -1,4 +1,5 @@
 <!-- apps/web/docs/prompts/brain-dump/existing-project/existing-project-context-update-prompt.md -->
+
 # Prompt Audit: existing-project-context-update
 
 **Generated at:** 2025-09-12T00:27:56.808Z

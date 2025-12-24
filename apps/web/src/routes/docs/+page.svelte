@@ -1248,7 +1248,8 @@
 											<p class="text-muted-foreground">
 												<strong class="text-foreground"
 													>Event created</strong
-												> with task context and details automatically included
+												> with linked entity context and details automatically
+												included
 											</p>
 										</div>
 									</div>

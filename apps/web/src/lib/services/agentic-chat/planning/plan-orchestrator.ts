@@ -1595,9 +1595,6 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 
 	private inferFieldInfoEntityType(context: ServiceContext): string {
 		switch (context.contextType) {
-			case 'task':
-			case 'task_update':
-				return 'ontology_task';
 			case 'project':
 			case 'project_create':
 			case 'project_audit':

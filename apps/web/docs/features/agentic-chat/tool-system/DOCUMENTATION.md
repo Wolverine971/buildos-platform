@@ -271,14 +271,14 @@ CONTEXT_TO_TOOL_GROUPS: Record<PlannerContextType, ToolContextScope[]> = {
 	global: ['base', 'global'],
 	project_create: ['base', 'project_create'],
 	project: ['base', 'project'],
-	task: ['base', 'project'],
 	calendar: ['base', 'global'],
 	project_audit: ['base', 'project', 'project_audit'],
 	project_forecast: ['base', 'project', 'project_forecast'],
-	task_update: ['base', 'project'],
 	daily_brief_update: ['base']
 };
 ```
+
+Focused task/goal/plan/document conversations are handled via `project` context with `project_focus` set.
 
 ### 2.4 Helper Functions
 

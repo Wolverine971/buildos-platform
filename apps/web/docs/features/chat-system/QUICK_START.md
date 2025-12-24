@@ -65,12 +65,17 @@ Open any task page and press `Cmd/Ctrl + K` to open the chat.
 	<MessageCircle class="w-5 h-5" />
 </button>
 
-<!-- Chat modal with task context -->
-<ChatModal
+<!-- Agent chat modal with task focus -->
+{@const taskFocus = {
+	focusType: 'task',
+	focusEntityId: task.id,
+	focusEntityName: task.title,
+	projectId: project.id,
+	projectName: project.name
+}}
+<AgentChatModal
 	isOpen={showChat}
-	contextType="task"
-	entityId={task.id}
-	initialMessage="Help me with this task"
+	initialProjectFocus={taskFocus}
 	onClose={() => (showChat = false)}
 />
 ```
@@ -90,16 +95,22 @@ Open any task page and press `Cmd/Ctrl + K` to open the chat.
 ## 🛠️ Available Context Types
 
 ```typescript
-type ChatContextType = 'global' | 'project' | 'task' | 'calendar';
+type ChatContextType =
+	| 'global'
+	| 'project'
+	| 'calendar'
+	| 'project_create'
+	| 'project_audit'
+	| 'project_forecast'
+	| 'daily_brief_update'
+	| 'brain_dump'
+	| 'ontology';
 
 // Global - No specific context
 <ChatModal contextType="global" />
 
 // Project - Project-specific context
 <ChatModal contextType="project" entityId={projectId} />
-
-// Task - Task-specific context
-<ChatModal contextType="task" entityId={taskId} />
 
 // Calendar - Calendar event context
 <ChatModal contextType="calendar" entityId={eventId} />

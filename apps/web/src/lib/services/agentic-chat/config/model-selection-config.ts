@@ -47,7 +47,6 @@ export function getOptimalTextProfile(
 			case 'project_forecast':
 			case 'project_create':
 				return 'quality'; // Claude 3.5 Sonnet for complex planning
-			case 'task_update':
 			case 'calendar':
 			case 'global':
 				return 'balanced'; // DeepSeek-Chat + Claude Haiku mix
@@ -84,7 +83,6 @@ export function getOptimalTextProfile(
 		case 'project_create':
 		case 'ontology':
 			return 'quality';
-		case 'task_update':
 		case 'calendar':
 		case 'brain_dump':
 			return 'balanced';
@@ -233,7 +231,7 @@ export function inferOperationType(
 	}
 
 	// Speed-critical contexts
-	if (contextType === 'calendar' || contextType === 'task_update') {
+	if (contextType === 'calendar') {
 		return 'speed_critical';
 	}
 

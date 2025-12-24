@@ -163,7 +163,13 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		cost: 0.15,
 		outputCost: 0.6,
 		provider: 'google',
-		bestFor: ['hybrid-reasoning', 'json-mode', 'structured-output', 'thinking-model', 'swe-bench'],
+		bestFor: [
+			'hybrid-reasoning',
+			'json-mode',
+			'structured-output',
+			'thinking-model',
+			'swe-bench'
+		],
 		limitations: []
 	},
 	'google/gemini-2.0-flash-001': {
@@ -248,10 +254,17 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		name: 'MiniMax M2.1',
 		speed: 3.5,
 		smartness: 4.6,
-		cost: 0.30,
-		outputCost: 1.20,
+		cost: 0.3,
+		outputCost: 1.2,
 		provider: 'minimax',
-		bestFor: ['agentic-workflows', 'tool-calling', 'coding', 'terminal-tasks', 'swe-bench-69.4%', 'tau-bench-77.2%'],
+		bestFor: [
+			'agentic-workflows',
+			'tool-calling',
+			'coding',
+			'terminal-tasks',
+			'swe-bench-69.4%',
+			'tau-bench-77.2%'
+		],
 		limitations: ['verbose-output', 'requires-reasoning-tokens']
 	},
 
@@ -266,7 +279,13 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		cost: 1.0,
 		outputCost: 5.0,
 		provider: 'anthropic',
-		bestFor: ['fast-json', 'excellent-tool-calling', 'parallel-tools', 'agent-chat', 'extended-thinking'],
+		bestFor: [
+			'fast-json',
+			'excellent-tool-calling',
+			'parallel-tools',
+			'agent-chat',
+			'extended-thinking'
+		],
 		limitations: ['no-native-json-mode']
 	},
 
@@ -281,7 +300,13 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		cost: 3.0,
 		outputCost: 15.0,
 		provider: 'anthropic',
-		bestFor: ['complex-reasoning', 'nuanced-instructions', 'tool-calling-92%', 'swe-bench-72.7%', '1m-context'],
+		bestFor: [
+			'complex-reasoning',
+			'nuanced-instructions',
+			'tool-calling-92%',
+			'swe-bench-72.7%',
+			'1m-context'
+		],
 		limitations: ['no-native-json-mode']
 	},
 	'deepseek/deepseek-reasoner': {
@@ -314,7 +339,13 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		cost: 3.0,
 		outputCost: 15.0,
 		provider: 'anthropic',
-		bestFor: ['best-overall', 'extended-thinking', 'osworld-61.4%', 'complex-reasoning', 'nuanced-tasks'],
+		bestFor: [
+			'best-overall',
+			'extended-thinking',
+			'osworld-61.4%',
+			'complex-reasoning',
+			'nuanced-tasks'
+		],
 		limitations: ['no-native-json-mode']
 	},
 	'openai/gpt-4o': {
@@ -408,7 +439,13 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		cost: 1.0,
 		outputCost: 5.0,
 		provider: 'anthropic',
-		bestFor: ['fast-generation', 'excellent-tool-calling', 'agent-chat', 'briefs', 'extended-thinking']
+		bestFor: [
+			'fast-generation',
+			'excellent-tool-calling',
+			'agent-chat',
+			'briefs',
+			'extended-thinking'
+		]
 	},
 	'openai/gpt-4o-mini': {
 		id: 'openai/gpt-4o-mini',
@@ -471,8 +508,8 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		speed: 3.5,
 		smartness: 4.6,
 		creativity: 4.3,
-		cost: 0.30,
-		outputCost: 1.20,
+		cost: 0.3,
+		outputCost: 1.2,
 		provider: 'minimax',
 		bestFor: ['agentic-workflows', 'tool-calling', 'coding', 'terminal-tasks'],
 		limitations: ['verbose-output', 'requires-reasoning-tokens']
