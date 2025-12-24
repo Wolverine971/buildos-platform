@@ -32,7 +32,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
-import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logCreateAsync,
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
+} from '$lib/services/async-activity-logger';
 
 const VALID_STATES = ['pending', 'in_progress', 'achieved', 'missed', 'deferred'] as const;
 type MilestoneState = (typeof VALID_STATES)[number];
@@ -45,6 +49,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Parse request body
@@ -152,8 +157,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			'milestone',
 			milestone.id,
 			{ title: milestone.title, type_key: milestone.type_key, due_at: milestone.due_at },
-			actorId,
-			getChangeSourceFromRequest(request)
+			user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.created({ milestone });

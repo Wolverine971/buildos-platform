@@ -82,6 +82,36 @@ export interface ListOntoDocumentsArgs {
 	limit?: number;
 }
 
+export interface ListOntoOutputsArgs {
+	project_id?: string;
+	state_key?: string;
+	limit?: number;
+}
+
+export interface ListOntoMilestonesArgs {
+	project_id?: string;
+	state_key?: string;
+	limit?: number;
+}
+
+export interface ListOntoRisksArgs {
+	project_id?: string;
+	state_key?: string;
+	impact?: string;
+	limit?: number;
+}
+
+export interface ListOntoDecisionsArgs {
+	project_id?: string;
+	limit?: number;
+}
+
+export interface ListOntoRequirementsArgs {
+	project_id?: string;
+	type_key?: string;
+	limit?: number;
+}
+
 export interface SearchOntoDocumentsArgs {
 	search: string;
 	project_id?: string;
@@ -115,6 +145,26 @@ export interface GetOntoPlanDetailsArgs {
 
 export interface GetOntoDocumentDetailsArgs {
 	document_id: string;
+}
+
+export interface GetOntoOutputDetailsArgs {
+	output_id: string;
+}
+
+export interface GetOntoMilestoneDetailsArgs {
+	milestone_id: string;
+}
+
+export interface GetOntoRiskDetailsArgs {
+	risk_id: string;
+}
+
+export interface GetOntoDecisionDetailsArgs {
+	decision_id: string;
+}
+
+export interface GetOntoRequirementDetailsArgs {
+	requirement_id: string;
 }
 
 export interface ListTaskDocumentsArgs {
@@ -321,6 +371,52 @@ export interface UpdateOntoDocumentArgs {
 	props?: Record<string, unknown>;
 }
 
+export interface UpdateOntoOutputArgs {
+	output_id: string;
+	name?: string;
+	state_key?: string;
+	description?: string;
+	props?: Record<string, unknown>;
+}
+
+export interface UpdateOntoMilestoneArgs {
+	milestone_id: string;
+	title?: string;
+	due_at?: string;
+	state_key?: string;
+	description?: string;
+	props?: Record<string, unknown>;
+}
+
+export interface UpdateOntoRiskArgs {
+	risk_id: string;
+	title?: string;
+	impact?: string;
+	probability?: number;
+	state_key?: string;
+	content?: string;
+	description?: string;
+	mitigation_strategy?: string;
+	owner?: string;
+	props?: Record<string, unknown>;
+}
+
+export interface UpdateOntoDecisionArgs {
+	decision_id: string;
+	title?: string;
+	decision_at?: string;
+	rationale?: string;
+	props?: Record<string, unknown>;
+}
+
+export interface UpdateOntoRequirementArgs {
+	requirement_id: string;
+	text?: string;
+	priority?: number;
+	type_key?: string;
+	props?: Record<string, unknown>;
+}
+
 export interface DeleteOntoTaskArgs {
 	task_id: string;
 }
@@ -353,6 +449,25 @@ export interface GetEntityRelationshipsArgs {
 
 export interface GetLinkedEntitiesArgs {
 	entity_id: string;
-	entity_kind: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk';
-	filter_kind?: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk' | 'all';
+	entity_kind:
+		| 'task'
+		| 'plan'
+		| 'goal'
+		| 'milestone'
+		| 'document'
+		| 'output'
+		| 'risk'
+		| 'decision'
+		| 'requirement';
+	filter_kind?:
+		| 'task'
+		| 'plan'
+		| 'goal'
+		| 'milestone'
+		| 'document'
+		| 'output'
+		| 'risk'
+		| 'decision'
+		| 'requirement'
+		| 'all';
 }

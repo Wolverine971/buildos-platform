@@ -6,7 +6,11 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logCreateAsync,
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
+} from '$lib/services/async-activity-logger';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -31,6 +35,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		// ✅ SECURITY: Verify user owns the project
 		const { data: project, error: projectError } = await supabase
@@ -121,8 +126,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			'output',
 			output.id,
 			{ name: output.name, type_key: output.type_key, state_key: output.state_key },
-			actorId,
-			getChangeSourceFromRequest(request)
+			user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ output });

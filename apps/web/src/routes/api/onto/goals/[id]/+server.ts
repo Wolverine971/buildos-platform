@@ -37,7 +37,8 @@ import { ApiResponse } from '$lib/utils/api-response';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
-	getChangeSourceFromRequest
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 
 // GET /api/onto/goals/[id] - Get a single goal
@@ -103,6 +104,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		const body = await request.json();
@@ -212,8 +214,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			params.id,
 			{ name: existingGoal.name, props: existingGoal.props },
 			{ name: updatedGoal.name, props: updatedGoal.props },
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ goal: updatedGoal });
@@ -231,6 +234,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Get user's actor ID
@@ -289,8 +293,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			'goal',
 			params.id,
 			goalDataForLog,
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ message: 'Goal deleted successfully' });

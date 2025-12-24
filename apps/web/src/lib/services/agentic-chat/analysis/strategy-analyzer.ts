@@ -2,18 +2,20 @@
 /**
  * Strategy Analyzer Service
  *
- * Analyzes user intent and selects the appropriate execution strategy.
- * This service extracts and consolidates the strategy analysis logic
- * that was previously embedded in the monolithic agent-planner-service.
+ * What this file is:
+ * - Centralized strategy + intent analysis for the agentic chat flow.
+ *
+ * Purpose:
+ * - Decide the execution strategy (planner_stream / project_creation / ask_clarifying).
+ * - Estimate complexity and required tools.
+ * - Optionally emit tool selection hints when a tool catalog is provided.
+ *
+ * Why / when to use:
+ * - Use whenever a request needs a strategy decision before planning.
+ * - Use as the LLM-driven signal for tool selection (paired with ToolSelectionService).
  *
  * @see {@link /apps/web/docs/features/agentic-chat/REFACTORING_SPEC.md} - Refactoring specification
  * @see {@link ../../../agent-planner-service.ts} - Original implementation reference
- *
- * Key responsibilities:
- * - Analyze message complexity and user intent
- * - Select between planner_stream, project_creation, or ask_clarifying strategies
- * - Estimate resource requirements and execution steps
- * - Validate and normalize strategy selections
  *
  * @module agentic-chat/analysis
  */
@@ -22,16 +24,22 @@ import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type {
 	StrategyAnalysis,
 	LastTurnContext,
-	OntologyContext
+	OntologyContext,
+	ToolSelectionSummary
 } from '$lib/types/agent-chat-enhancement';
 import type { ServiceContext, PlannerContext, StreamCallback } from '../shared/types';
 import { StrategyError } from '../shared/types';
-import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
+import {
+	formatToolSummaries,
+	formatBriefToolCatalog,
+	resolveToolName
+} from '$lib/services/agentic-chat/tools/core/tools.config';
 import {
 	ProjectCreationAnalyzer,
 	type ClarificationRoundMetadata,
 	type ProjectCreationIntentAnalysis
 } from './project-creation-analyzer';
+import type { ChatToolDefinition } from '@buildos/shared-types';
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -45,6 +53,11 @@ interface LLMService {
 		userId?: string;
 		operationType?: string;
 	}): Promise<string>;
+}
+
+interface ToolSelectionContext {
+	toolCatalog: ChatToolDefinition[];
+	defaultToolNames: string[];
 }
 
 /**
@@ -95,7 +108,8 @@ export class StrategyAnalyzer {
 		plannerContext: PlannerContext,
 		context: ServiceContext,
 		lastTurnContext?: LastTurnContext,
-		clarificationMetadata?: ClarificationRoundMetadata
+		clarificationMetadata?: ClarificationRoundMetadata,
+		toolSelectionContext?: ToolSelectionContext
 	): Promise<StrategyAnalysis> {
 		const availableToolNames = this.getAvailableToolNames(plannerContext.availableTools);
 
@@ -150,7 +164,8 @@ export class StrategyAnalyzer {
 				message,
 				plannerContext,
 				context,
-				lastTurnContext
+				lastTurnContext,
+				toolSelectionContext
 			);
 
 			// Validate and normalize the analysis
@@ -303,10 +318,20 @@ export class StrategyAnalyzer {
 		message: string,
 		plannerContext: PlannerContext,
 		context: ServiceContext,
-		lastTurnContext?: LastTurnContext
+		lastTurnContext?: LastTurnContext,
+		toolSelectionContext?: ToolSelectionContext
 	): Promise<StrategyAnalysis> {
-		const systemPrompt = this.buildAnalysisSystemPrompt(plannerContext, context);
-		const analysisPrompt = this.buildAnalysisPrompt(message, plannerContext, lastTurnContext);
+		const systemPrompt = this.buildAnalysisSystemPrompt(
+			plannerContext,
+			context,
+			toolSelectionContext
+		);
+		const analysisPrompt = this.buildAnalysisPrompt(
+			message,
+			plannerContext,
+			lastTurnContext,
+			toolSelectionContext
+		);
 
 		const response = await this.llmService.generateText({
 			systemPrompt,
@@ -356,14 +381,38 @@ export class StrategyAnalyzer {
 	 */
 	private buildAnalysisSystemPrompt(
 		plannerContext: PlannerContext,
-		context: ServiceContext
+		context: ServiceContext,
+		toolSelectionContext?: ToolSelectionContext
 	): string {
 		const hasOntology = plannerContext.metadata?.hasOntology || false;
 		const toolNames = this.getAvailableToolNames(plannerContext.availableTools);
-		const toolList = toolNames.length > 0 ? toolNames.join(', ') : 'None available';
+		const defaultToolNames = toolSelectionContext?.defaultToolNames?.length
+			? toolSelectionContext.defaultToolNames
+			: toolNames;
+		const toolList =
+			defaultToolNames.length > 0 ? defaultToolNames.join(', ') : 'None available';
+
+		// Use brief summaries for default tools (what planner will see)
 		const toolSummaries = plannerContext.availableTools.length
 			? formatToolSummaries(plannerContext.availableTools)
 			: 'No tools available.';
+
+		// Use BRIEF catalog for full tool list to minimize tokens (~50% reduction)
+		const toolCatalogBrief = toolSelectionContext?.toolCatalog?.length
+			? formatBriefToolCatalog(toolSelectionContext.toolCatalog)
+			: '';
+
+		const toolSelectionGuidance = toolSelectionContext
+			? `
+Tool selection task:
+- Default pool (${defaultToolNames.length} tools): ${toolList}
+- Full catalog available:
+${toolCatalogBrief}
+
+Select tools from the catalog. Start with default pool, add missing tools or trim irrelevant ones based on intent.
+When selecting, return tool_selection.selected_tools with the final list.
+`
+			: '';
 
 		return `You are a strategy analyzer for BuildOS chat.
 
@@ -383,10 +432,9 @@ Available strategies:
 Context available:
 - Type: ${context.contextType}
 - Has ontology: ${hasOntology}
-- Available tools: ${plannerContext.availableTools.length} (${toolList})
-- Tool summaries:
-${toolSummaries}
 - Entity ID: ${context.entityId || 'none'}
+- Default tools (${defaultToolNames.length}): ${toolList}
+${toolSelectionGuidance}
 
 IMPORTANT:
 - Prefer research strategies over asking questions
@@ -401,11 +449,23 @@ IMPORTANT:
 	private buildAnalysisPrompt(
 		message: string,
 		plannerContext: PlannerContext,
-		lastTurnContext?: LastTurnContext
+		lastTurnContext?: LastTurnContext,
+		toolSelectionContext?: ToolSelectionContext
 	): string {
 		const previousContext = lastTurnContext
 			? `User was ${lastTurnContext.summary}`
 			: 'This is the first message';
+		const toolSelectionSchema = toolSelectionContext
+			? `,
+  "tool_selection": {
+    "selected_tools": ["tool1", "tool2"],
+    "intent": "read" | "write" | "mixed",
+    "reasoning": "Why these tools were selected"
+  }`
+			: '';
+		const toolSelectionNote = toolSelectionContext
+			? '\nIf tool_selection is included, selected_tools must come from the provided tool catalog.'
+			: '';
 
 		return `Analyze this user message and determine the best strategy:
 
@@ -417,7 +477,7 @@ Consider:
 1. How many tools/steps are needed?
 2. Is there ambiguity that research can't resolve?
 3. Does this need coordination across multiple data sources?
-4. Can this be answered with the abbreviated data from LIST tools?
+4. Can this be answered with the abbreviated data from LIST tools?${toolSelectionNote}
 
 Return a JSON object with:
 {
@@ -428,7 +488,7 @@ Return a JSON object with:
   "clarifying_questions": ["question1", "question2"] or null,
   "estimated_steps": number,
   "required_tools": ["tool1", "tool2"],
-  "can_complete_directly": boolean
+  "can_complete_directly": boolean${toolSelectionSchema}
 }`;
 	}
 
@@ -437,6 +497,8 @@ Return a JSON object with:
 	 */
 	private fallbackAnalysis(message: string, availableToolNames: string[]): StrategyAnalysis {
 		const complexity = this.estimateComplexity(message, availableToolNames);
+		const heuristicTools = this.estimateRequiredTools(message, availableToolNames);
+		const selectedTools = heuristicTools.length > 0 ? heuristicTools : availableToolNames;
 
 		// Determine strategy based on complexity
 		const strategy = ChatStrategy.PLANNER_STREAM;
@@ -451,8 +513,13 @@ Return a JSON object with:
 			reasoning,
 			needs_clarification: false,
 			estimated_steps: complexity,
-			required_tools: this.estimateRequiredTools(message, availableToolNames),
-			can_complete_directly: complexity <= 2
+			required_tools: heuristicTools,
+			can_complete_directly: complexity <= 2,
+			tool_selection: {
+				selected_tools: selectedTools,
+				reasoning: 'Heuristic fallback based on default context tools',
+				is_fallback: true
+			}
 		};
 	}
 
@@ -504,14 +571,16 @@ Return a JSON object with:
 	}
 
 	/**
-	 * Estimate which tools might be required
+	 * Estimate which tools might be required based on keywords AND entity mentions.
+	 * Entity-based matching ensures we load relevant tools even for queries like
+	 * "show me my tasks" (no action keyword, but mentions 'tasks').
 	 */
-	private estimateRequiredTools(message: string, availableTools: string[]): string[] {
+	estimateRequiredTools(message: string, availableTools: string[]): string[] {
 		const lowerMessage = message.toLowerCase();
 		const requiredTools: string[] = [];
 
-		// Map keywords to tool patterns
-		const toolPatterns: Record<string, string[]> = {
+		// 1. Action keyword to tool pattern mapping
+		const actionPatterns: Record<string, string[]> = {
 			list: ['list_', 'get_all_'],
 			create: ['create_', 'add_'],
 			update: ['update_', 'modify_', 'edit_'],
@@ -521,8 +590,24 @@ Return a JSON object with:
 			schedule: ['schedule_', 'calendar_']
 		};
 
-		// Match tools based on message content
-		for (const [keyword, patterns] of Object.entries(toolPatterns)) {
+		// 2. Entity mention to tool pattern mapping (NEW)
+		const entityPatterns: Record<string, string[]> = {
+			task: ['_task', 'task_'],
+			tasks: ['_task', 'task_'],
+			project: ['_project', 'project_'],
+			projects: ['_project', 'project_'],
+			goal: ['_goal', 'goal_'],
+			goals: ['_goal', 'goal_'],
+			plan: ['_plan', 'plan_'],
+			plans: ['_plan', 'plan_'],
+			document: ['_document', 'document_'],
+			documents: ['_document', 'document_'],
+			doc: ['_document', 'document_'],
+			docs: ['_document', 'document_']
+		};
+
+		// Match tools based on action keywords
+		for (const [keyword, patterns] of Object.entries(actionPatterns)) {
 			if (lowerMessage.includes(keyword)) {
 				const matchingTools = availableTools.filter((tool) =>
 					patterns.some((pattern) => tool.includes(pattern))
@@ -531,8 +616,84 @@ Return a JSON object with:
 			}
 		}
 
+		// Match tools based on entity mentions (even without action keywords)
+		for (const [entity, patterns] of Object.entries(entityPatterns)) {
+			// Use word boundary matching to avoid false positives
+			const entityRegex = new RegExp(`\\b${entity}\\b`, 'i');
+			if (entityRegex.test(message)) {
+				const matchingTools = availableTools.filter((tool) =>
+					patterns.some((pattern) => tool.includes(pattern))
+				);
+				requiredTools.push(...matchingTools);
+			}
+		}
+
+		// If no matches found, check for generic queries that might need listing tools
+		if (requiredTools.length === 0) {
+			const genericListKeywords = [
+				'show',
+				'what',
+				'tell me',
+				'give me',
+				'get',
+				'find',
+				'see'
+			];
+			const hasGenericQuery = genericListKeywords.some((kw) => lowerMessage.includes(kw));
+			if (hasGenericQuery) {
+				// Include list tools as safe defaults for generic queries
+				const listTools = availableTools.filter((tool) => tool.includes('list_'));
+				requiredTools.push(...listTools);
+			}
+		}
+
 		// Remove duplicates
 		return [...new Set(requiredTools)];
+	}
+
+	private normalizeToolSelection(selection: any): ToolSelectionSummary | undefined {
+		if (!selection || typeof selection !== 'object') {
+			return undefined;
+		}
+
+		const selectedTools = Array.isArray(selection.selected_tools)
+			? selection.selected_tools.filter((tool: unknown) => typeof tool === 'string')
+			: [];
+
+		const addedTools = Array.isArray(selection.added_tools)
+			? selection.added_tools.filter((tool: unknown) => typeof tool === 'string')
+			: undefined;
+
+		const removedTools = Array.isArray(selection.removed_tools)
+			? selection.removed_tools.filter((tool: unknown) => typeof tool === 'string')
+			: undefined;
+
+		const intent =
+			selection.intent === 'read' ||
+			selection.intent === 'write' ||
+			selection.intent === 'mixed'
+				? selection.intent
+				: undefined;
+
+		const reasoning = typeof selection.reasoning === 'string' ? selection.reasoning : undefined;
+
+		if (
+			selectedTools.length === 0 &&
+			!addedTools?.length &&
+			!removedTools?.length &&
+			!intent &&
+			!reasoning
+		) {
+			return undefined;
+		}
+
+		return {
+			selected_tools: selectedTools,
+			intent,
+			added_tools: addedTools,
+			removed_tools: removedTools,
+			reasoning
+		};
 	}
 
 	/**
@@ -558,7 +719,8 @@ Return a JSON object with:
 			needs_clarification: !!analysis.needs_clarification,
 			estimated_steps: Math.max(0, analysis.estimated_steps || 1),
 			required_tools: Array.isArray(analysis.required_tools) ? analysis.required_tools : [],
-			can_complete_directly: !!analysis.can_complete_directly
+			can_complete_directly: !!analysis.can_complete_directly,
+			tool_selection: this.normalizeToolSelection(analysis.tool_selection)
 		};
 
 		// Add clarifying questions if needed
@@ -643,25 +805,15 @@ Return a JSON object with:
 	}
 
 	/**
-	 * Extract tool names from planner context definitions
+	 * Extract tool names from planner context definitions.
+	 * Uses canonical resolveToolName for consistency.
 	 */
 	private getAvailableToolNames(availableTools: PlannerContext['availableTools']): string[] {
 		const names = new Set<string>();
 
 		for (const tool of availableTools ?? []) {
-			if (!tool) continue;
-			const directName =
-				typeof (tool as any).name === 'string' && (tool as any).name.trim().length > 0
-					? (tool as any).name.trim()
-					: undefined;
-			const functionName =
-				typeof (tool as any)?.function?.name === 'string' &&
-				(tool as any).function.name.trim().length > 0
-					? (tool as any).function.name.trim()
-					: undefined;
-
-			const resolved = directName ?? functionName;
-			if (resolved) {
+			const resolved = resolveToolName(tool);
+			if (resolved !== 'unknown') {
 				names.add(resolved);
 			}
 		}

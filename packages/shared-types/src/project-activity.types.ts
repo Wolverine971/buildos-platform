@@ -31,6 +31,7 @@ export type ProjectLogEntityType =
 	| 'risk'
 	| 'plan'
 	| 'requirement'
+	| 'decision'
 	| 'source'
 	| 'edge';
 

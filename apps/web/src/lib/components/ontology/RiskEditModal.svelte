@@ -123,7 +123,6 @@
 	let showChatModal = $state(false);
 
 	// Build focus for chat about this risk
-	// Note: 'risk' needs to be added to ProjectFocus.focusType in shared-types
 	const entityFocus = $derived.by((): ProjectFocus | null => {
 		if (!risk || !projectId) return null;
 		return {

@@ -1,0 +1,262 @@
+// apps/web/src/lib/services/agentic-chat/analysis/tool-selection-service.ts
+/**
+ * Tool Selection Service
+ *
+ * What this file is:
+ * - The SINGLE SOURCE OF TRUTH for tool pool determination.
+ * - A tool-routing layer that chooses the final tool list for a request.
+ *
+ * Purpose:
+ * - Determine default tool pool based on context type and focus.
+ * - Start from the default context tool pool, then add/trim based on intent.
+ * - Prefer StrategyAnalyzer output; fall back to heuristics when needed.
+ *
+ * Why / when to use:
+ * - Use before plan generation so the planner sees only relevant tools.
+ * - Use on context refreshes after a context shift.
+ *
+ * Architecture note:
+ * - This service OWNS all default pool logic. Do not determine default tools elsewhere.
+ * - agent-context-service.ts should pass ALL_TOOLS and let this service filter.
+ */
+
+import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
+import { getToolsForAgent } from '@buildos/shared-types';
+import type { PlannerContext, ServiceContext } from '../shared/types';
+import type {
+	LastTurnContext,
+	StrategyAnalysis,
+	ProjectFocus
+} from '$lib/types/agent-chat-enhancement';
+import { StrategyAnalyzer } from './strategy-analyzer';
+import {
+	ALL_TOOLS,
+	extractTools,
+	resolveToolName,
+	extractToolNamesFromDefinitions,
+	getDefaultToolsForContextType
+} from '$lib/services/agentic-chat/tools/core/tools.config';
+import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
+
+export type ToolSelectionMode = 'llm' | 'heuristic' | 'default';
+
+export interface ToolSelectionMetadata {
+	mode: ToolSelectionMode;
+	defaultToolNames: string[];
+	selectedToolNames: string[];
+	addedTools: string[];
+	removedTools: string[];
+	strategy: StrategyAnalysis['primary_strategy'];
+	confidence: number;
+}
+
+export interface ToolSelectionResult {
+	tools: ChatToolDefinition[];
+	analysis: StrategyAnalysis;
+	metadata: ToolSelectionMetadata;
+}
+
+export class ToolSelectionService {
+	constructor(private strategyAnalyzer: StrategyAnalyzer) {}
+
+	/**
+	 * Get the default tool pool for a given context type.
+	 * This is the CANONICAL method for determining default tools.
+	 */
+	getDefaultToolPool(contextType: ChatContextType): ChatToolDefinition[] {
+		const normalized = normalizeContextType(contextType);
+		const defaultTools = getDefaultToolsForContextType(normalized);
+		return getToolsForAgent(defaultTools.length > 0 ? defaultTools : ALL_TOOLS, 'read_write');
+	}
+
+	/**
+	 * Filter tools based on project focus (element-level context).
+	 * When focused on a specific entity type, deprioritize unrelated write tools.
+	 */
+	filterToolsForFocus(
+		tools: ChatToolDefinition[],
+		focus: ProjectFocus | null | undefined
+	): ChatToolDefinition[] {
+		if (!focus || focus.focusType === 'project-wide') {
+			return tools;
+		}
+
+		const focusType = focus.focusType;
+		const otherTypes = [
+			'task',
+			'goal',
+			'plan',
+			'document',
+			'output',
+			'milestone',
+			'risk',
+			'decision',
+			'requirement'
+		].filter((type) => type !== focusType);
+
+		return tools.filter((tool) => {
+			const toolName = resolveToolName(tool).toLowerCase();
+			if (!toolName || toolName === 'unknown') return true;
+
+			// Always keep list/get tools (read operations)
+			if (toolName.startsWith('list_') || toolName.startsWith('get_')) return true;
+
+			// Always keep project-level tools
+			if (toolName.includes('project')) return true;
+
+			// Keep tools matching the focus type
+			if (toolName.includes(`_${focusType}`)) return true;
+
+			// Filter out write tools for other entity types
+			return !otherTypes.some((type) => toolName.includes(`_${type}`));
+		});
+	}
+
+	/**
+	 * Main entry point: Select tools based on context, focus, and user intent.
+	 * This service owns all default pool logic - don't determine defaults elsewhere.
+	 */
+	async selectTools(params: {
+		message: string;
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+		lastTurnContext?: LastTurnContext;
+		toolCatalog?: ChatToolDefinition[];
+	}): Promise<ToolSelectionResult> {
+		const {
+			message,
+			plannerContext,
+			serviceContext,
+			lastTurnContext,
+			toolCatalog = ALL_TOOLS
+		} = params;
+
+		// STEP 1: Compute default pool from context type (canonical source)
+		const contextDefaultTools = this.getDefaultToolPool(serviceContext.contextType);
+
+		// STEP 2: Apply focus filtering
+		const focusFilteredTools = this.filterToolsForFocus(
+			contextDefaultTools,
+			serviceContext.projectFocus
+		);
+
+		// STEP 3: Extract names for comparison
+		const defaultToolNames = extractToolNamesFromDefinitions(focusFilteredTools);
+		const toolCatalogNames = new Set(extractToolNamesFromDefinitions(toolCatalog));
+		const defaultSet = new Set(defaultToolNames);
+
+		const analysis = await this.strategyAnalyzer.analyzeUserIntent(
+			message,
+			plannerContext,
+			serviceContext,
+			lastTurnContext,
+			undefined,
+			{
+				toolCatalog,
+				defaultToolNames
+			}
+		);
+
+		let selectedToolNames: string[] = [];
+		let mode: ToolSelectionMode = 'default';
+
+		// Use is_fallback flag instead of fragile string matching
+		const isFallbackSelection = analysis.tool_selection?.is_fallback === true;
+
+		if (analysis.tool_selection?.selected_tools?.length && !isFallbackSelection) {
+			selectedToolNames = analysis.tool_selection.selected_tools;
+			mode = 'llm';
+		} else if (analysis.required_tools?.length) {
+			selectedToolNames = analysis.required_tools;
+			mode = 'heuristic';
+		} else {
+			selectedToolNames = this.strategyAnalyzer.estimateRequiredTools(
+				message,
+				defaultToolNames
+			);
+			mode = selectedToolNames.length ? 'heuristic' : 'default';
+		}
+
+		selectedToolNames = this.normalizeToolNames(selectedToolNames, toolCatalogNames);
+		if (selectedToolNames.length === 0) {
+			selectedToolNames = defaultToolNames.filter((name) => toolCatalogNames.has(name));
+			mode = 'default';
+		}
+
+		if (mode !== 'llm') {
+			selectedToolNames = selectedToolNames.filter((name) => defaultSet.has(name));
+			selectedToolNames = this.filterExternalTools(selectedToolNames, message);
+			if (selectedToolNames.length === 0) {
+				selectedToolNames = defaultToolNames.filter((name) => toolCatalogNames.has(name));
+				mode = 'default';
+			}
+		}
+
+		selectedToolNames = this.ensureProjectCreationTool(
+			selectedToolNames,
+			serviceContext.contextType
+		);
+
+		const selectedSet = new Set(selectedToolNames);
+		const addedTools = selectedToolNames.filter((name) => !defaultSet.has(name));
+		const removedTools = defaultToolNames.filter((name) => !selectedSet.has(name));
+
+		const tools = extractTools(selectedToolNames);
+
+		return {
+			tools,
+			analysis,
+			metadata: {
+				mode,
+				defaultToolNames,
+				selectedToolNames,
+				addedTools,
+				removedTools,
+				strategy: analysis.primary_strategy,
+				confidence: analysis.confidence
+			}
+		};
+	}
+
+	private normalizeToolNames(names: string[], allowed: Set<string>): string[] {
+		const normalized: string[] = [];
+		const seen = new Set<string>();
+		for (const name of names) {
+			if (!allowed.has(name) || seen.has(name)) continue;
+			seen.add(name);
+			normalized.push(name);
+		}
+		return normalized;
+	}
+
+	private ensureProjectCreationTool(names: string[], contextType: ChatContextType): string[] {
+		if (contextType !== 'project_create') {
+			return names;
+		}
+		if (!names.includes('create_onto_project')) {
+			return [...names, 'create_onto_project'];
+		}
+		return names;
+	}
+
+	private filterExternalTools(names: string[], message: string): string[] {
+		const needsWebSearch =
+			/\b(search|research|look up|find online|web|internet|latest|current|news)\b/i.test(
+				message
+			);
+		const needsBuildosDocs = /\b(buildos|usage|guide|docs|documentation|help|how does)\b/i.test(
+			message
+		);
+
+		return names.filter((name) => {
+			if (name === 'web_search' && !needsWebSearch) return false;
+			if (
+				(name === 'get_buildos_overview' || name === 'get_buildos_usage_guide') &&
+				!needsBuildosDocs
+			) {
+				return false;
+			}
+			return true;
+		});
+	}
+}

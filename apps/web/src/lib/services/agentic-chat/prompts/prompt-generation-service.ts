@@ -68,9 +68,9 @@ export class PromptGenerationService {
 			prompt += this.getBrainDumpPrompt();
 		}
 
-		if (lastTurnContext) {
-			prompt += this.getLastTurnPrompt(lastTurnContext);
-		}
+		// Note: Last turn context is now consolidated in buildSessionContext()
+		// within getBasePrompt() to avoid duplication. The getLastTurnPrompt()
+		// method is kept for potential future use or debugging.
 
 		// Add ontology-specific context
 		prompt += this.getOntologyContextPrompt(ontologyContext);
@@ -86,59 +86,149 @@ export class PromptGenerationService {
 	/**
 	 * Get base prompt with context awareness
 	 * Uses prompt configuration from ./config/planner-prompts.ts
+	 *
+	 * Section order (cognitive hierarchy):
+	 * 1. Foundation - WHO am I, WHAT is BuildOS, HOW is data organized
+	 * 2. Session - Current context and conversation state
+	 * 3. Operational - HOW to operate (data access, strategies, guidelines)
+	 * 4. Behavioral - RULES to follow (language, updates, task creation)
+	 * 5. Reference - Type key taxonomy
 	 */
 	private getBasePrompt(
 		contextType: ChatContextType,
 		ontologyContext?: OntologyContext,
 		lastTurnContext?: LastTurnContext
 	): string {
-		// Build prompt from config sections
 		const sections: string[] = [];
 
-		// Identity - simplified intro
-		sections.push(`You are an AI assistant in BuildOS with advanced context awareness.`);
+		// ===== FOUNDATION SECTIONS (Understanding) =====
 
-		// Language rules from config
+		// 1. Identity - Who am I and what's my role
 		sections.push(
-			`## ${PLANNER_PROMPTS.languageRules.title}\n${PLANNER_PROMPTS.languageRules.content}`
+			`## ${PLANNER_PROMPTS.identity.title}\n\n${PLANNER_PROMPTS.identity.content}`
 		);
 
-		// Dynamic current context
-		sections.push(`## Current Context
-- Type: ${contextType}
-- Level: ${ontologyContext?.type || 'standard'}
-${lastTurnContext ? `- Previous Turn: "${lastTurnContext.summary}"` : '- Previous Turn: First message'}
-${lastTurnContext?.entities ? `- Active Entities: ${JSON.stringify(lastTurnContext.entities)}` : ''}`);
-
-		// Data access patterns from config
+		// 2. Platform Context - What is BuildOS and who are users
 		sections.push(
-			`## ${PLANNER_PROMPTS.dataAccessPatterns.title}\n${PLANNER_PROMPTS.dataAccessPatterns.content}`
+			`## ${PLANNER_PROMPTS.platformContext.title}\n\n${PLANNER_PROMPTS.platformContext.content}`
 		);
 
-		// Strategies from config
+		// 3. Data Model - How is information organized
 		sections.push(
-			`## ${PLANNER_PROMPTS.strategies.title}\n${PLANNER_PROMPTS.strategies.content}`
+			`## ${PLANNER_PROMPTS.dataModelOverview.title}\n\n${PLANNER_PROMPTS.dataModelOverview.content}`
 		);
 
-		// Guidelines from config
+		// ===== SESSION CONTEXT (Dynamic) =====
+
+		// 4. Current session context - consolidated to avoid duplication with getLastTurnPrompt
+		sections.push(this.buildSessionContext(contextType, ontologyContext, lastTurnContext));
+
+		// ===== OPERATIONAL SECTIONS (How to operate) =====
+
+		// 5. Data access patterns
 		sections.push(
-			`## ${PLANNER_PROMPTS.guidelines.title}\n${PLANNER_PROMPTS.guidelines.content}`
+			`## ${PLANNER_PROMPTS.dataAccessPatterns.title}\n\n${PLANNER_PROMPTS.dataAccessPatterns.content}`
 		);
 
-		// Update rules from config
+		// 6. Strategies
 		sections.push(
-			`### ${PLANNER_PROMPTS.updateRules.title}\n${PLANNER_PROMPTS.updateRules.content}`
+			`## ${PLANNER_PROMPTS.strategies.title}\n\n${PLANNER_PROMPTS.strategies.content}`
 		);
 
-		// Task creation philosophy from config
+		// 7. Guidelines
 		sections.push(
-			`### ${PLANNER_PROMPTS.taskCreationPhilosophy.title}\n${PLANNER_PROMPTS.taskCreationPhilosophy.content}`
+			`## ${PLANNER_PROMPTS.guidelines.title}\n\n${PLANNER_PROMPTS.guidelines.content}`
 		);
 
-		// Task type guidance (dynamic)
+		// ===== BEHAVIORAL SECTIONS (Rules to follow) =====
+
+		// 8. Language rules - AFTER understanding, so AI knows WHY these rules exist
+		sections.push(
+			`## ${PLANNER_PROMPTS.languageRules.title}\n\n${PLANNER_PROMPTS.languageRules.content}`
+		);
+
+		// 9. Update rules
+		sections.push(
+			`### ${PLANNER_PROMPTS.updateRules.title}\n\n${PLANNER_PROMPTS.updateRules.content}`
+		);
+
+		// 10. Task creation philosophy
+		sections.push(
+			`### ${PLANNER_PROMPTS.taskCreationPhilosophy.title}\n\n${PLANNER_PROMPTS.taskCreationPhilosophy.content}`
+		);
+
+		// ===== REFERENCE SECTIONS =====
+
+		// 11. Task type guidance (dynamic)
 		sections.push(generateTaskTypeKeyGuidance('short'));
 
 		return sections.join('\n\n');
+	}
+
+	/**
+	 * Build consolidated session context
+	 * Combines context type, ontology level, and last turn info into one section
+	 */
+	private buildSessionContext(
+		contextType: ChatContextType,
+		ontologyContext?: OntologyContext,
+		lastTurnContext?: LastTurnContext
+	): string {
+		const lines: string[] = ['## Current Session'];
+
+		// Chat context
+		lines.push('');
+		lines.push('**Chat Context:**');
+		lines.push(`- Context Type: ${contextType}`);
+		lines.push(`- Scope Level: ${ontologyContext?.type || 'global'}`);
+
+		// Conversation state
+		lines.push('');
+		lines.push('**Conversation State:**');
+		if (lastTurnContext) {
+			lines.push(`- Previous Turn: "${lastTurnContext.summary}"`);
+			if (lastTurnContext.strategy_used) {
+				lines.push(`- Strategy Used: ${lastTurnContext.strategy_used}`);
+			}
+			if (lastTurnContext.data_accessed?.length) {
+				lines.push(`- Data Accessed: ${lastTurnContext.data_accessed.join(', ')}`);
+			}
+			if (lastTurnContext.entities) {
+				const entityRefs = this.formatEntityReferences(lastTurnContext.entities);
+				if (entityRefs.length > 0) {
+					lines.push(`- Active Entities: ${entityRefs.join(', ')}`);
+				}
+			}
+		} else {
+			lines.push('- This is the start of the conversation.');
+		}
+
+		lines.push('');
+		lines.push('Use this context to maintain continuity. Reference entities by ID when continuing from previous turns.');
+
+		return lines.join('\n');
+	}
+
+	/**
+	 * Format entity references from last turn context
+	 */
+	private formatEntityReferences(entities: LastTurnContext['entities']): string[] {
+		const refs: string[] = [];
+
+		if (entities.project_id) {
+			refs.push(`project:${entities.project_id}`);
+		}
+		if (entities.task_ids?.length) {
+			refs.push(`tasks:${entities.task_ids.join(',')}`);
+		}
+		if (entities.plan_id) {
+			refs.push(`plan:${entities.plan_id}`);
+		}
+		if (entities.goal_ids?.length) {
+			refs.push(`goals:${entities.goal_ids.join(',')}`);
+		}
+
+		return refs;
 	}
 
 	/**

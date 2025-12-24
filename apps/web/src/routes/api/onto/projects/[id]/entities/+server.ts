@@ -3,7 +3,16 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { FocusEntitySummary } from '@buildos/shared-types';
 
-type FocusEntityType = 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone';
+type FocusEntityType =
+	| 'task'
+	| 'goal'
+	| 'plan'
+	| 'document'
+	| 'output'
+	| 'milestone'
+	| 'risk'
+	| 'decision'
+	| 'requirement';
 
 const ENTITY_CONFIG: Record<
 	FocusEntityType,
@@ -38,6 +47,21 @@ const ENTITY_CONFIG: Record<
 		table: 'onto_milestones',
 		select: 'id, title, due_at, created_at, props, type_key',
 		searchField: 'title'
+	},
+	risk: {
+		table: 'onto_risks',
+		select: 'id, title, state_key, impact, probability, created_at, props',
+		searchField: 'title'
+	},
+	decision: {
+		table: 'onto_decisions',
+		select: 'id, title, decision_at, created_at, rationale, props',
+		searchField: 'title'
+	},
+	requirement: {
+		table: 'onto_requirements',
+		select: 'id, text, priority, type_key, created_at, props',
+		searchField: 'text'
 	}
 };
 
@@ -91,16 +115,21 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			return ApiResponse.error('Failed to load project entities', 500);
 		}
 
-		const entities: FocusEntitySummary[] = (data || []).map((item: any) => ({
-			id: item.id,
-			name: item.title ?? item.name ?? 'Untitled',
-			type: typeParam,
-			metadata: {
-				state_key: item.state_key ?? item.type_key ?? null,
-				priority: 'priority' in item ? item.priority : null,
-				due_at: item.due_at ?? null
-			}
-		}));
+		const entities: FocusEntitySummary[] = (data || []).map((item: any) => {
+			const resolvedName = item.title ?? item.name ?? item.text ?? 'Untitled';
+			const dueAt = item.due_at ?? item.decision_at ?? null;
+
+			return {
+				id: item.id,
+				name: resolvedName,
+				type: typeParam,
+				metadata: {
+					state_key: item.state_key ?? item.type_key ?? null,
+					priority: 'priority' in item ? item.priority : null,
+					due_at: dueAt
+				}
+			};
+		});
 
 		return ApiResponse.success(entities);
 	} catch (error) {

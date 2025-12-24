@@ -9,7 +9,11 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { logDeleteAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logDeleteAsync,
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
+} from '$lib/services/async-activity-logger';
 
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -66,14 +70,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		// Log activity async (non-blocking)
 		if (projectId) {
+			const chatSessionId = getChatSessionIdFromRequest(request);
 			logDeleteAsync(
 				supabase,
 				projectId,
 				'edge',
 				edgeId,
 				edgeDataForLog,
-				actorId,
-				getChangeSourceFromRequest(request)
+				user.id,
+				getChangeSourceFromRequest(request),
+				chatSessionId
 			);
 		}
 

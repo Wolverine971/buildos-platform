@@ -16,7 +16,7 @@
  *   entityId: 'task-456',
  *   action: 'created',
  *   afterData: { title: 'New Task' },
- *   changedBy: actorId,
+ *   changedBy: userId,
  *   changeSource: 'form'
  * });
  * ```
@@ -49,6 +49,18 @@ export function getChangeSourceFromRequest(request: Request): ProjectLogChangeSo
 		return headerValue as ProjectLogChangeSource;
 	}
 	return 'api';
+}
+
+/**
+ * Extract chat session ID from request headers.
+ * Looks for X-Chat-Session-Id header to link activity logs to agentic chat sessions.
+ */
+export function getChatSessionIdFromRequest(request: Request): string | undefined {
+	const headerValue = request.headers.get('X-Chat-Session-Id');
+	if (headerValue && headerValue.trim().length > 0) {
+		return headerValue.trim();
+	}
+	return undefined;
 }
 
 // =============================================================================

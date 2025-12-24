@@ -259,6 +259,7 @@
 			"components": [],
 			"exports": [
 				"getChangeSourceFromRequest",
+				"getChatSessionIdFromRequest",
 				"logActivityAsync",
 				"logActivitiesAsync",
 				"logCreateAsync",

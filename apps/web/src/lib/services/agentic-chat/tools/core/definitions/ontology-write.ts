@@ -871,6 +871,200 @@ Use for edits to titles, states, body markdown, or metadata.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_output',
+			description: `Update an existing ontology output.
+Use for edits to output name, state, description, or metadata.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					output_id: {
+						type: 'string',
+						description: 'Output UUID (required)'
+					},
+					name: {
+						type: 'string',
+						description: 'New output name'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Output state'
+					},
+					description: {
+						type: 'string',
+						description: 'Output description'
+					},
+					props: {
+						type: 'object',
+						description: 'Metadata fields to set on the output props'
+					}
+				},
+				required: ['output_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_milestone',
+			description: `Update an existing ontology milestone.
+Use for edits to title, due date, state, or metadata.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					milestone_id: {
+						type: 'string',
+						description: 'Milestone UUID (required)'
+					},
+					title: {
+						type: 'string',
+						description: 'New milestone title'
+					},
+					due_at: {
+						type: 'string',
+						description: 'Milestone due date (ISO timestamp)'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Milestone state'
+					},
+					description: {
+						type: 'string',
+						description: 'Milestone description'
+					},
+					props: {
+						type: 'object',
+						description: 'Metadata fields to merge into milestone props'
+					}
+				},
+				required: ['milestone_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_risk',
+			description: `Update an existing ontology risk.
+Use for edits to title, impact, probability, state, or mitigation metadata.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					risk_id: {
+						type: 'string',
+						description: 'Risk UUID (required)'
+					},
+					title: {
+						type: 'string',
+						description: 'New risk title'
+					},
+					impact: {
+						type: 'string',
+						description: 'Impact level (low, medium, high, critical)'
+					},
+					probability: {
+						type: 'number',
+						description: 'Probability (0-1)'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Risk state'
+					},
+					content: {
+						type: 'string',
+						description: 'Risk content summary'
+					},
+					description: {
+						type: 'string',
+						description: 'Risk description'
+					},
+					mitigation_strategy: {
+						type: 'string',
+						description: 'Risk mitigation strategy'
+					},
+					owner: {
+						type: 'string',
+						description: 'Owner or responsible party'
+					},
+					props: {
+						type: 'object',
+						description: 'Metadata fields to merge into risk props'
+					}
+				},
+				required: ['risk_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_decision',
+			description: `Update an existing ontology decision.
+Use for edits to title, decision date, rationale, or metadata.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					decision_id: {
+						type: 'string',
+						description: 'Decision UUID (required)'
+					},
+					title: {
+						type: 'string',
+						description: 'Decision title'
+					},
+					decision_at: {
+						type: 'string',
+						description: 'Decision date (ISO timestamp)'
+					},
+					rationale: {
+						type: 'string',
+						description: 'Decision rationale'
+					},
+					props: {
+						type: 'object',
+						description: 'Metadata fields to merge into decision props'
+					}
+				},
+				required: ['decision_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'update_onto_requirement',
+			description: `Update an existing ontology requirement.
+Use for edits to requirement text, priority, or metadata.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					requirement_id: {
+						type: 'string',
+						description: 'Requirement UUID (required)'
+					},
+					text: {
+						type: 'string',
+						description: 'Requirement text'
+					},
+					priority: {
+						type: 'number',
+						description: 'Requirement priority'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Requirement type key'
+					},
+					props: {
+						type: 'object',
+						description: 'Metadata fields to merge into requirement props'
+					}
+				},
+				required: ['requirement_id']
+			}
+		}
+	},
 
 	// ============================================
 	// DELETE TOOLS

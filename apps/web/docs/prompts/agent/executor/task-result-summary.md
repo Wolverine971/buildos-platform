@@ -2,20 +2,20 @@
 
 # Prompt Audit: agent-executor-result
 
-**Generated at:** 2025-11-14T23:15:56.655Z
+**Generated at:** 2025-12-23T06:28:54.543Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"executorId": "c6f132f5-6c2a-4880-b376-053ae0c101a3",
-	"planId": "b6ee8f06-a4de-48e0-a140-f9bb0e75bbc2",
-	"sessionId": "d3085278-7010-4093-990b-d390ac020765",
-	"taskId": "b6ee8f06-a4de-48e0-a140-f9bb0e75bbc2-step-3-e48ad875-fa27-402a-8447-b7d8918b3399",
+	"executorId": "d18899a5-2177-43f0-94e2-f888aff7d340",
+	"planId": "b2df4112-9739-4464-8c3d-e40f7bfb833c",
+	"sessionId": "55e5fd65-525f-4b81-8910-568172cee5b0",
+	"taskId": "b2df4112-9739-4464-8c3d-e40f7bfb833c-step-2-515681b0-c0e5-4e72-ac89-caca8d0c5ee6",
 	"toolCalls": 0,
-	"tokensUsed": 3461,
-	"timestamp": "2025-11-14T23:15:56.655Z"
+	"tokensUsed": 5487,
+	"timestamp": "2025-12-23T06:28:54.543Z"
 }
 ```
 
@@ -23,9 +23,9 @@
 
 ```
 Executor Result Summary
-Executor ID: c6f132f5-6c2a-4880-b376-053ae0c101a3
-Plan ID: b6ee8f06-a4de-48e0-a140-f9bb0e75bbc2
-Session ID: d3085278-7010-4093-990b-d390ac020765
+Executor ID: d18899a5-2177-43f0-94e2-f888aff7d340
+Plan ID: b2df4112-9739-4464-8c3d-e40f7bfb833c
+Session ID: 55e5fd65-525f-4b81-8910-568172cee5b0
 ```
 
 ## User Prompt
@@ -33,252 +33,307 @@ Session ID: d3085278-7010-4093-990b-d390ac020765
 ````
 {
   "task": {
-    "id": "b6ee8f06-a4de-48e0-a140-f9bb0e75bbc2-step-3-e48ad875-fa27-402a-8447-b7d8918b3399",
-    "description": "Create a comprehensive task hierarchy with phases and attach working documents.",
-    "goal": "Complete plan step 3 for strategy planner_stream",
+    "id": "b2df4112-9739-4464-8c3d-e40f7bfb833c-step-2-515681b0-c0e5-4e72-ac89-caca8d0c5ee6",
+    "description": "Analyze retrieved project details to categorize entities (tasks, goals, plans, documents) for migration.",
+    "goal": "Complete plan step 2 for strategy planner_stream",
     "constraints": [
-      "Incorporate outputs from plan steps 2",
+      "Incorporate outputs from plan steps 1",
       "Use reasoning and summarization without additional tools",
       "Return structured JSON data that can be used by subsequent plan steps"
     ],
     "contextData": {
       "1": {
-        "projects": [
-          {
-            "id": "a346f414-9681-4e14-b660-13bccc386f3d",
-            "name": "FocusFlow Product Launch",
-            "description": "Launching FocusFlow productivity app for remote teams. 6-month timeline with $50k budget. Phases:\n1. Product Development (Months 1-3): MVP + SOC2 prep\n2. Go-to-Market (Months 3-4): Marketing + Pricing\n3. Pre-Launch (Month 5): Testing + Compliance\n4. Launch (Month 6): Deployment + ROI tracking",
-            "type_key": "founder.product",
-            "state_key": "draft",
-            "props": {
-              "risks": [
-                "SOC2 compliance timeline",
-                "Market competition"
-              ],
-              "facets": {
-                "scale": "large",
-                "stage": "planning",
-                "context": "commercial"
-              },
-              "team_size": 5
+        "project": {
+          "id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+          "org_id": null,
+          "name": "BuildOS Unified",
+          "description": "Consolidated project for all BuildOS-related initiatives including development, marketing, and outreach",
+          "type_key": "project.technical.os.unified",
+          "state_key": "planning",
+          "props": {
+            "facets": {
+              "scale": "epic",
+              "stage": "planning",
+              "context": "startup"
             },
-            "facet_context": "commercial",
-            "facet_scale": "large",
-            "facet_stage": "planning",
-            "created_at": "2025-11-12T21:25:34.377025+00:00",
-            "updated_at": "2025-11-14T22:55:58.626804+00:00"
+            "migration_source_project_ids": [
+              "c4b58fa3-6dd2-486c-a658-fd2921e3876b",
+              "f7824d94-0de0-460c-80dd-67bf11f6445a",
+              "0a7d9b5e-18c4-4990-a416-c2bdcb0cc026",
+              "660161ee-3ef8-476d-9885-b4af63ce544b",
+              "986549c8-6944-43ee-b0d6-9751683c058d"
+            ]
           },
+          "facet_context": "startup",
+          "facet_scale": "epic",
+          "facet_stage": "planning",
+          "start_at": null,
+          "end_at": null,
+          "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+          "created_at": "2025-12-23T06:27:24.205408+00:00",
+          "updated_at": "2025-12-23T06:27:24.205408+00:00",
+          "next_step_short": null,
+          "next_step_long": null,
+          "next_step_updated_at": null,
+          "next_step_source": null,
+          "is_public": false,
+          "deleted_at": null
+        },
+        "goals": [
           {
-            "id": "7e47a0af-5d61-4973-97a6-5f4cf1cd6ee6",
-            "name": "Verde Roast Brand Identity Project",
-            "description": "A comprehensive project to create a modern and eco-friendly brand identity for Verde Roast, a sustainable coffee company. This includes logo design, color palette, typography system, brand guidelines, packaging design, and website mockups.",
-            "type_key": "marketer.campaign",
+            "id": "1ea48d6c-8a3c-4946-9145-fb3a36bd7c5d",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "name": "Complete migration of all BuildOS projects into unified structure",
+            "type_key": "goal.outcome.project",
+            "props": {},
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:24.539898+00:00",
             "state_key": "draft",
-            "props": {
-              "facets": {
-                "scale": "medium",
-                "stage": "planning",
-                "context": "client"
-              }
-            },
-            "facet_context": "client",
-            "facet_scale": "medium",
-            "facet_stage": "planning",
-            "created_at": "2025-11-12T21:56:03.194369+00:00",
-            "updated_at": "2025-11-13T19:01:22.484138+00:00"
-          },
-          {
-            "id": "984eff94-dc41-4cb1-b0a0-47cec96af2b0",
-            "name": "SaaS Project Management Tool",
-            "description": "A SaaS project management tool that includes user authentication, project workspaces, real-time collaboration, and a REST API, built with a React frontend, Node.js backend, and PostgreSQL database.",
-            "type_key": "developer.app",
-            "state_key": "draft",
-            "props": {
-              "facets": {
-                "scale": "large",
-                "stage": "planning",
-                "context": "commercial"
-              }
-            },
-            "facet_context": "commercial",
-            "facet_scale": "large",
-            "facet_stage": "planning",
-            "created_at": "2025-11-12T20:57:31.334305+00:00",
-            "updated_at": "2025-11-12T20:57:31.749386+00:00"
-          },
-          {
-            "id": "b6ebab72-1532-4a6f-b426-fc23f4650925",
-            "name": "Academic and Extracurricular Management Project",
-            "description": "A project to manage academic responsibilities and extracurricular activities for the upcoming semester, focusing on maintaining high academic performance and achieving extracurricular goals.",
-            "type_key": "student.project",
-            "state_key": "draft",
-            "props": {
-              "facets": {
-                "scale": "medium",
-                "stage": "planning",
-                "context": "academic"
-              }
-            },
-            "facet_context": "academic",
-            "facet_scale": "medium",
-            "facet_stage": "planning",
-            "created_at": "2025-11-12T20:43:58.226246+00:00",
-            "updated_at": "2025-11-12T20:43:58.774195+00:00"
-          },
-          {
-            "id": "7f0b7ba9-8d31-4cc0-b30d-06c755d83eba",
-            "name": "The Last Ember",
-            "description": "An exciting new book project titled 'The Last Ember' aimed at captivating readers with a thrilling narrative.",
-            "type_key": "writer.book",
-            "state_key": "draft",
-            "props": {
-              "facets": {
-                "scale": "large",
-                "stage": "planning",
-                "context": "personal"
-              },
-              "default_chapter_count": 10
-            },
-            "facet_context": "personal",
-            "facet_scale": "large",
-            "facet_stage": "planning",
-            "created_at": "2025-11-12T02:34:01.160864+00:00",
-            "updated_at": "2025-11-12T02:34:01.432854+00:00"
-          },
-          {
-            "id": "c4b58fa3-6dd2-486c-a658-fd2921e3876b",
-            "name": "Buildos",
+            "goal": null,
             "description": null,
-            "type_key": "founder.startup",
+            "updated_at": "2025-12-23T06:27:24.539898+00:00",
+            "completed_at": null,
+            "target_date": null,
+            "deleted_at": null,
+            "search_vector": "'buildo':5A 'complet':1A 'migrat':2A 'project':6A 'structur':9A 'unifi':8A"
+          },
+          {
+            "id": "4ce9d48a-f961-430f-8952-d5d78a93b553",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "name": "Maintain data integrity during migration",
+            "type_key": "goal.metric.integrity",
+            "props": {},
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:24.539898+00:00",
             "state_key": "draft",
-            "props": {
-              "facets": {
-                "scale": "epic",
-                "stage": "discovery",
-                "context": "startup"
-              },
-              "mvp_complete": false,
-              "default_funding_stage": "bootstrapped"
-            },
-            "facet_context": "startup",
-            "facet_scale": "epic",
-            "facet_stage": "discovery",
-            "created_at": "2025-11-11T03:28:32.113638+00:00",
-            "updated_at": "2025-11-11T03:28:32.113638+00:00"
-          },
-          {
-            "id": "880a01bd-4bb3-4418-85b1-90a9380fc1b1",
-            "name": "Marketing plan for 9takes",
-            "description": "A marketing plan to attract users to the 9takes platform, focusing on individuals curious about others, those with some experience in Psychology or Myers-Briggs, and Reddit users.",
-            "type_key": "plan.marketing.general",
-            "state_key": "draft",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "planning",
-                "context": "commercial"
-              }
-            },
-            "facet_context": "commercial",
-            "facet_scale": "small",
-            "facet_stage": "planning",
-            "created_at": "2025-11-05T05:52:38.310674+00:00",
-            "updated_at": "2025-11-05T05:52:38.310674+00:00"
-          },
-          {
-            "id": "e9a984c8-b7b5-4c88-953a-f6676b381ca8",
-            "name": "9takes",
-            "description": "A project to create a platform similar to Reddit based on the Enneagram, where users ask and answer questions anonymously and respond only as their Enneagram type.",
-            "type_key": "project.community.forum",
-            "state_key": "draft",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "discovery",
-                "context": "community"
-              }
-            },
-            "facet_context": "community",
-            "facet_scale": "small",
-            "facet_stage": "discovery",
-            "created_at": "2025-11-05T05:46:13.686218+00:00",
-            "updated_at": "2025-11-05T05:46:13.686218+00:00"
-          },
-          {
-            "id": "b361a4af-fe4a-4441-8a7b-9c490d64c4f0",
-            "name": "book on shoopie shop",
-            "description": "tes",
-            "type_key": "writer.book",
-            "state_key": "planning",
-            "props": {
-              "facets": {
-                "scale": "large",
-                "stage": "planning",
-                "context": "personal"
-              },
-              "default_chapter_count": 10
-            },
-            "facet_context": "personal",
-            "facet_scale": "large",
-            "facet_stage": "planning",
-            "created_at": "2025-11-04T16:13:51.869223+00:00",
-            "updated_at": "2025-11-04T16:13:51.869223+00:00"
-          },
-          {
-            "id": "bd9c4e75-3a3d-4792-8c2d-314d99dc7740",
-            "name": "workout every day",
-            "description": "dasd",
-            "type_key": "personal.routine",
-            "state_key": "designing",
-            "props": {
-              "facets": {
-                "scale": "epic",
-                "stage": "planning",
-                "context": "personal"
-              },
-              "target_streak": 21,
-              "days_completed": 0
-            },
-            "facet_context": "personal",
-            "facet_scale": "epic",
-            "facet_stage": "planning",
-            "created_at": "2025-11-04T04:44:24.643938+00:00",
-            "updated_at": "2025-11-04T04:44:24.643938+00:00"
+            "goal": null,
+            "description": null,
+            "updated_at": "2025-12-23T06:27:24.539898+00:00",
+            "completed_at": null,
+            "target_date": null,
+            "deleted_at": null,
+            "search_vector": "'data':2A 'integr':3A 'maintain':1A 'migrat':5A"
           }
         ],
-        "total": 10,
-        "message": "Found 10 ontology projects. Use get_onto_project_details for full context."
-      },
-      "2": {
-        "toolResults": [
+        "requirements": [],
+        "plans": [
           {
-            "tool": "list_onto_tasks",
-            "result": {
-              "tasks": [],
-              "total": 0,
-              "message": "Found 0 ontology tasks. Use get_onto_task_details for full information."
+            "id": "a39f1722-3e09-487c-a675-740bb0396fb4",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "name": "Migration Execution Plan",
+            "type_key": "plan.process.migration",
+            "state_key": "draft",
+            "props": {},
+            "facet_context": null,
+            "facet_scale": null,
+            "facet_stage": null,
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:24.820986+00:00",
+            "updated_at": "2025-12-23T06:27:24.820986+00:00",
+            "plan": null,
+            "description": null,
+            "deleted_at": null,
+            "search_vector": "'execut':2A 'migrat':1A 'plan':3A"
+          },
+          {
+            "id": "7801f8d2-7eb3-4964-aafa-790f57573bfb",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "name": "Data Verification Phase",
+            "type_key": "plan.phase.verification",
+            "state_key": "draft",
+            "props": {},
+            "facet_context": null,
+            "facet_scale": null,
+            "facet_stage": null,
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:24.983884+00:00",
+            "updated_at": "2025-12-23T06:27:24.983884+00:00",
+            "plan": null,
+            "description": null,
+            "deleted_at": null,
+            "search_vector": "'data':1A 'phase':3A 'verif':2A"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "cf807570-1e38-4ef3-8014-87f31872d4fe",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "title": "Audit all source projects for migration content",
+            "state_key": "todo",
+            "priority": 1,
+            "due_at": null,
+            "props": {},
+            "facet_scale": null,
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:25.122886+00:00",
+            "updated_at": "2025-12-23T06:27:25.122886+00:00",
+            "type_key": "task.execute",
+            "start_at": null,
+            "completed_at": null,
+            "deleted_at": null,
+            "description": null,
+            "search_vector": "'audit':1A 'content':7A 'migrat':6A 'project':4A 'sourc':3A",
+            "plan_id": "a39f1722-3e09-487c-a675-740bb0396fb4",
+            "plan": {
+              "id": "a39f1722-3e09-487c-a675-740bb0396fb4",
+              "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+              "name": "Migration Execution Plan",
+              "type_key": "plan.process.migration",
+              "state_key": "draft",
+              "props": {},
+              "facet_context": null,
+              "facet_scale": null,
+              "facet_stage": null,
+              "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+              "created_at": "2025-12-23T06:27:24.820986+00:00",
+              "updated_at": "2025-12-23T06:27:24.820986+00:00",
+              "plan": null,
+              "description": null,
+              "deleted_at": null,
+              "search_vector": "'execut':2A 'migrat':1A 'plan':3A"
+            }
+          },
+          {
+            "id": "9969fa1a-0c56-401a-8dc1-aed688a6d832",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "title": "Create mapping structure for entity relationships",
+            "state_key": "todo",
+            "priority": 2,
+            "due_at": null,
+            "props": {},
+            "facet_scale": null,
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:25.311018+00:00",
+            "updated_at": "2025-12-23T06:27:25.311018+00:00",
+            "type_key": "task.execute",
+            "start_at": null,
+            "completed_at": null,
+            "deleted_at": null,
+            "description": null,
+            "search_vector": "'creat':1A 'entiti':5A 'map':2A 'relationship':6A 'structur':3A",
+            "plan_id": "a39f1722-3e09-487c-a675-740bb0396fb4",
+            "plan": {
+              "id": "a39f1722-3e09-487c-a675-740bb0396fb4",
+              "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+              "name": "Migration Execution Plan",
+              "type_key": "plan.process.migration",
+              "state_key": "draft",
+              "props": {},
+              "facet_context": null,
+              "facet_scale": null,
+              "facet_stage": null,
+              "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+              "created_at": "2025-12-23T06:27:24.820986+00:00",
+              "updated_at": "2025-12-23T06:27:24.820986+00:00",
+              "plan": null,
+              "description": null,
+              "deleted_at": null,
+              "search_vector": "'execut':2A 'migrat':1A 'plan':3A"
+            }
+          },
+          {
+            "id": "2d291887-303f-497d-8939-504e043f37d7",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "title": "Verify all migrated data matches source",
+            "state_key": "todo",
+            "priority": 1,
+            "due_at": null,
+            "props": {},
+            "facet_scale": null,
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:25.444121+00:00",
+            "updated_at": "2025-12-23T06:27:25.444121+00:00",
+            "type_key": "task.execute",
+            "start_at": null,
+            "completed_at": null,
+            "deleted_at": null,
+            "description": null,
+            "search_vector": "'data':4A 'match':5A 'migrat':3A 'sourc':6A 'verifi':1A",
+            "plan_id": "7801f8d2-7eb3-4964-aafa-790f57573bfb",
+            "plan": {
+              "id": "7801f8d2-7eb3-4964-aafa-790f57573bfb",
+              "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+              "name": "Data Verification Phase",
+              "type_key": "plan.phase.verification",
+              "state_key": "draft",
+              "props": {},
+              "facet_context": null,
+              "facet_scale": null,
+              "facet_stage": null,
+              "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+              "created_at": "2025-12-23T06:27:24.983884+00:00",
+              "updated_at": "2025-12-23T06:27:24.983884+00:00",
+              "plan": null,
+              "description": null,
+              "deleted_at": null,
+              "search_vector": "'data':1A 'phase':3A 'verif':2A"
             }
           }
-        ]
+        ],
+        "outputs": [],
+        "documents": [
+          {
+            "id": "e179afb4-6ae9-4047-85c1-a2ccba1c2779",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "title": "BuildOS Unified Context Document",
+            "type_key": "document.context.project",
+            "props": {
+              "source": "agent_project_creation",
+              "generated_at": "2025-12-23T06:27:23.122Z",
+              "body_markdown": "# BuildOS Unified Context Document\n\n## Vision & Summary\n\nConsolidated project for all BuildOS-related initiatives including development, marketing, and outreach\n\n## Braindump / Spark\n\nNot provided yet.\n\n## Initial Goals\n\n- Complete migration of all BuildOS projects into unified structure\n- Maintain data integrity during migration\n\n## Initial Tasks / Threads\n\n- Audit all source projects for migration content (Plan: Migration Execution Plan)\n- Create mapping structure for entity relationships (Plan: Migration Execution Plan)\n- Verify all migrated data matches source (Plan: Data Verification Phase)"
+            },
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:24.353125+00:00",
+            "state_key": "draft",
+            "updated_at": "2025-12-23T06:27:24.353125+00:00",
+            "content": "# BuildOS Unified Context Document\n\n## Vision & Summary\n\nConsolidated project for all BuildOS-related initiatives including development, marketing, and outreach\n\n## Braindump / Spark\n\nNot provided yet.\n\n## Initial Goals\n\n- Complete migration of all BuildOS projects into unified structure\n- Maintain data integrity during migration\n\n## Initial Tasks / Threads\n\n- Audit all source projects for migration content (Plan: Migration Execution Plan)\n- Create mapping structure for entity relationships (Plan: Migration Execution Plan)\n- Verify all migrated data matches source (Plan: Data Verification Phase)",
+            "description": null,
+            "deleted_at": null,
+            "search_vector": "'-12':86 '-23':87 '2025':85 '23.122':90 '27':89 'agent':80 'audit':48C,152 'bodi':92 'braindump':24C,118 'buildo':1A,5C,16C,35C,94,108,134 'buildos-rel':15C,107 'complet':31C,130 'consolid':11C 'content':54C,158 'context':3A,7C,96 'creat':59C,164 'creation':82 'data':41C,72C,76C,141,178,182 'develop':20C,112 'document':4A,8C,97 'entiti':63C,168 'execut':57C,67C,161,172 'generat':83 'goal':30C,127 'includ':19C,111 'initi':18C,29C,45C,110,126,147 'integr':42C,142 'maintain':40C,140 'map':60C,165 'markdown':93 'market':21C,113 'match':73C,179 'migrat':32C,44C,53C,56C,66C,71C,131,144,157,160,171,177 'n':98,99,102,116,117,120,124,125,128,129,139,145,146,150,151,163,174 'nconsolid':103 'nnot':121 'outreach':23C,115 'phase':78C,184 'plan':55C,58C,65C,68C,75C,159,162,170,173,181 'project':12C,36C,51C,81,104,135,155 'provid':27C,122 'relat':17C,109 'relationship':64C,169 'sourc':50C,74C,79,154,180 'spark':25C,119 'structur':39C,61C,138,166 'summari':10C,101 't06':88 'task':46C,148 'thread':47C,149 'unifi':2A,6C,38C,95,137 'verif':77C,183 'verifi':69C,175 'vision':9C,100 'yet':28C,123 'z':91"
+          },
+          {
+            "id": "130a760f-1d82-4fdb-9992-b2b5b93878b1",
+            "project_id": "2339d78f-f925-4bb3-b6a6-c2027ceeca87",
+            "title": "Migration Protocol",
+            "type_key": "document.spec.technical",
+            "props": {},
+            "created_by": "85eba71b-56c9-4561-9dae-3828cf9922c4",
+            "created_at": "2025-12-23T06:27:24.690713+00:00",
+            "state_key": "draft",
+            "updated_at": "2025-12-23T06:27:24.690713+00:00",
+            "content": null,
+            "description": null,
+            "deleted_at": null,
+            "search_vector": "'migrat':1A 'protocol':2A"
+          }
+        ],
+        "sources": [],
+        "milestones": [],
+        "risks": [],
+        "decisions": [],
+        "metrics": [],
+        "context_document": null,
+        "message": "Complete ontology project details loaded."
       },
-      "planId": "b6ee8f06-a4de-48e0-a140-f9bb0e75bbc2",
-      "stepNumber": 3,
-      "contextType": "global"
+      "planId": "b2df4112-9739-4464-8c3d-e40f7bfb833c",
+      "stepNumber": 2,
+      "contextType": "project",
+      "entityId": "2339d78f-f925-4bb3-b6a6-c2027ceeca87"
     }
   },
   "result": {
-    "response": "```json\n{\n  \"task_hierarchy\": {\n    \"phases\": [\n      {\n        \"name\": \"Phase 1: Project Analysis\",\n        \"description\": \"Analyze all projects from step 1 outputs to identify common patterns and unique requirements\",\n        \"tasks\": [\n          {\n            \"name\": \"Categorize projects by type\",\n            \"description\": \"Group projects by their type_key (founder, marketer, developer, etc.)\",\n            \"working_document\": \"project_categories.md\",\n            \"dependencies\": []\n          },\n          {\n            \"name\": \"Identify scale patterns\",\n            \"description\": \"Analyze facet_scale values across projects\",\n            \"working_document\": \"scale_analysis.md\",\n            \"dependencies\": [\"Categorize projects by type\"]\n          }\n        ]\n      },\n      {\n        \"name\": \"Phase 2: Hierarchy Design\",\n        \"description\": \"Design a task hierarchy structure based on analysis\",\n        \"tasks\": [\n          {\n            \"name\": \"Create base hierarchy template\",\n            \"description\": \"Design a template structure that can accommodate all project types\",\n            \"working_document\": \"hierarchy_template.json\",\n            \"dependencies\": [\"Identify scale patterns\"]\n          },\n          {\n            \"name\": \"Define phase structure\",\n            \"description\": \"Establish common phases that apply across project types\",\n            \"working_document\": \"phase_definitions.md\",\n            \"dependencies\": [\"Create base hierarchy template\"]\n          }\n        ]\n      },\n      {\n        \"name\": \"Phase 3: Implementation Planning\",\n        \"description\": \"Plan how to implement the hierarchy across projects\",\n        \"tasks\": [\n          {\n            \"name\": \"Map projects to hierarchy\",\n            \"description\": \"Create individual mappings for each project to the hierarchy\",\n            \"working_document\": \"project_mappings.json\",\n            \"dependencies\": [\"Define phase structure\"]\n          },\n          {\n            \"name\": \"Identify customization needs\",\n            \"description\": \"Document where projects need custom phases/tasks\",\n            \"working_document\": \"customization_needs.md\",\n            \"dependencies\": [\"Map projects to hierarchy\"]\n          }\n        ]\n      }\n    ],\n    \"working_documents\": [\n      {\n        \"name\": \"project_categories.md\",\n        \"content\": \"Document outlining project categorization by type_key\"\n      },\n      {\n        \"name\": \"scale_analysis.md\",\n        \"content\": \"Analysis of scale patterns across projects\"\n      },\n      {\n        \"name\": \"hierarchy_template.json\",\n        \"content\": \"JSON template for the base hierarchy structure\"\n      },\n      {\n        \"name\": \"phase_definitions.md\",\n        \"content\": \"Definitions of common phases across project types\"\n      },\n      {\n        \"name\": \"project_mappings.json\",\n        \"content\": \"Mappings of individual projects to the hierarchy\"\n      },\n      {\n        \"name\": \"customization_needs.md\",\n        \"content\": \"Documentation of required customizations per project\"\n      }\n    ],\n    \"metadata\": {\n      \"projects_analyzed\": 10,\n      \"hierarchy_levels\": 3,\n      \"phases_defined\": 3,\n      \"tasks_defined\": 6,\n      \"documents_created\": 6\n    }\n  },\n  \"next_steps\": [\n    \"Validate hierarchy with project owners\",\n    \"Implement hierarchy in project management system\",\n    \"Schedule review cycles for hierarchy maintenance\"\n  ]\n}\n```"
+    "response": "```json\n{\n  \"entities\": {\n    \"tasks\": [\n      {\n        \"id\": \"cf807570-1e38-4ef3-8014-87f31872d4fe\",\n        \"title\": \"Audit all source projects for migration content\",\n        \"state_key\": \"todo\",\n        \"priority\": 1,\n        \"plan_id\": \"a39f1722-3e09-487c-a675-740bb0396fb4\"\n      },\n      {\n        \"id\": \"9969fa1a-0c56-401a-8dc1-aed688a6d832\",\n        \"title\": \"Create mapping structure for entity relationships\",\n        \"state_key\": \"todo\",\n        \"priority\": 2,\n        \"plan_id\": \"a39f1722-3e09-487c-a675-740bb0396fb4\"\n      },\n      {\n        \"id\": \"2d291887-303f-497d-8939-504e043f37d7\",\n        \"title\": \"Verify all migrated data matches source\",\n        \"state_key\": \"todo\",\n        \"priority\": 1,\n        \"plan_id\": \"7801f8d2-7eb3-4964-aafa-790f57573bfb\"\n      }\n    ],\n    \"goals\": [\n      {\n        \"id\": \"1ea48d6c-8a3c-4946-9145-fb3a36bd7c5d\",\n        \"name\": \"Complete migration of all BuildOS projects into unified structure\",\n        \"state_key\": \"draft\"\n      },\n      {\n        \"id\": \"4ce9d48a-f961-430f-8952-d5d78a93b553\",\n        \"name\": \"Maintain data integrity during migration\",\n        \"state_key\": \"draft\"\n      }\n    ],\n    \"plans\": [\n      {\n        \"id\": \"a39f1722-3e09-487c-a675-740bb0396fb4\",\n        \"name\": \"Migration Execution Plan\",\n        \"state_key\": \"draft\"\n      },\n      {\n        \"id\": \"7801f8d2-7eb3-4964-aafa-790f57573bfb\",\n        \"name\": \"Data Verification Phase\",\n        \"state_key\": \"draft\"\n      }\n    ],\n    \"documents\": [\n      {\n        \"id\": \"e179afb4-6ae9-4047-85c1-a2ccba1c2779\",\n        \"title\": \"BuildOS Unified Context Document\",\n        \"state_key\": \"draft\"\n      },\n      {\n        \"id\": \"130a760f-1d82-4fdb-9992-b2b5b93878b1\",\n        \"title\": \"Migration Protocol\",\n        \"state_key\": \"draft\"\n      }\n    ]\n  },\n  \"project_id\": \"2339d78f-f925-4bb3-b6a6-c2027ceeca87\",\n  \"plan_step\": 2,\n  \"status\": \"completed\",\n  \"errors\": []\n}\n```"
   },
   "toolCallsMade": 0,
-  "tokensUsed": 3461
+  "tokensUsed": 5487
 }
 ````
 
 ## Token Estimates
 
 - **System Prompt:** ~42 tokens
-- **User Prompt:** ~3339 tokens
-- **Total Estimate:** ~3381 tokens
+- **User Prompt:** ~4149 tokens
+- **Total Estimate:** ~4191 tokens
 
 ---
 

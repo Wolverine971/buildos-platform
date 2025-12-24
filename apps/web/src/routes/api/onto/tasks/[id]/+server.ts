@@ -39,7 +39,8 @@ import { resolveLinkedEntities } from '../task-linked-helpers';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
-	getChangeSourceFromRequest
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 
 // GET /api/onto/tasks/[id] - Get a single task
@@ -50,6 +51,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Parallelize initial queries: actor resolution and task fetch
@@ -432,8 +434,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				state_key: updatedTask.state_key,
 				props: updatedTask.props
 			},
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ task: updatedTask });
@@ -451,6 +454,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Get user's actor ID
@@ -519,8 +523,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			'task',
 			params.id,
 			taskDataForLog,
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ message: 'Task deleted successfully' });

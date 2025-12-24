@@ -38,7 +38,8 @@ import { RISK_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
-	getChangeSourceFromRequest
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
@@ -110,6 +111,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		const body = await request.json();
@@ -276,8 +278,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				impact: updatedRisk.impact,
 				state_key: updatedRisk.state_key
 			},
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ risk: updatedRisk });
@@ -295,6 +298,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Get user's actor ID
@@ -358,8 +362,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			'risk',
 			params.id,
 			riskDataForLog,
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ message: 'Risk deleted successfully' });

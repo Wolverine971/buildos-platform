@@ -56,7 +56,9 @@ export type OntologyEntityType =
 	| 'document'
 	| 'output'
 	| 'milestone'
-	| 'risk';
+	| 'risk'
+	| 'decision'
+	| 'requirement';
 
 type OntologyEntityRecordMap = {
 	project: Database['public']['Tables']['onto_projects']['Row'];
@@ -67,6 +69,8 @@ type OntologyEntityRecordMap = {
 	output: Database['public']['Tables']['onto_outputs']['Row'];
 	milestone: Database['public']['Tables']['onto_milestones']['Row'];
 	risk: Database['public']['Tables']['onto_risks']['Row'];
+	decision: Database['public']['Tables']['onto_decisions']['Row'];
+	requirement: Database['public']['Tables']['onto_requirements']['Row'];
 };
 
 type OntologyEntityCollectionMap = {
@@ -78,6 +82,8 @@ type OntologyEntityCollectionMap = {
 	outputs: OntologyEntityRecordMap['output'][];
 	milestones: OntologyEntityRecordMap['milestone'][];
 	risks: OntologyEntityRecordMap['risk'][];
+	decisions: OntologyEntityRecordMap['decision'][];
+	requirements: OntologyEntityRecordMap['requirement'][];
 };
 
 export type OntologyContextEntities = Partial<
@@ -158,6 +164,19 @@ export interface ProjectCreationIntentAnalysis {
 }
 
 /**
+ * Tool selection summary for planner context
+ */
+export interface ToolSelectionSummary {
+	selected_tools: string[];
+	intent?: 'read' | 'write' | 'mixed';
+	added_tools?: string[];
+	removed_tools?: string[];
+	reasoning?: string;
+	/** True if this selection was produced by heuristic fallback rather than LLM */
+	is_fallback?: boolean;
+}
+
+/**
  * Strategy analysis result from planner
  */
 export interface StrategyAnalysis {
@@ -169,6 +188,7 @@ export interface StrategyAnalysis {
 	estimated_steps: number;
 	required_tools: string[];
 	can_complete_directly: boolean;
+	tool_selection?: ToolSelectionSummary;
 	/** Present when strategy is PROJECT_CREATION and intent analysis was performed */
 	project_creation_analysis?: ProjectCreationIntentAnalysis;
 }
@@ -202,7 +222,16 @@ export interface EnhancedAgentStreamRequest {
 	// Optional fields
 	session_id?: string;
 	entity_id?: string;
-	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output';
+	ontologyEntityType?:
+		| 'task'
+		| 'plan'
+		| 'goal'
+		| 'document'
+		| 'output'
+		| 'milestone'
+		| 'risk'
+		| 'decision'
+		| 'requirement';
 	lastTurnContext?: LastTurnContext;
 	projectFocus?: ProjectFocus | null;
 	conversation_history?: ChatMessage[];
@@ -247,7 +276,17 @@ export type AgentSSEEvent =
 				new_context: ChatContextType;
 				entity_id: string;
 				entity_name: string;
-				entity_type: 'project' | 'task' | 'plan' | 'goal';
+				entity_type:
+					| 'project'
+					| 'task'
+					| 'plan'
+					| 'goal'
+					| 'document'
+					| 'output'
+					| 'milestone'
+					| 'risk'
+					| 'decision'
+					| 'requirement';
 				message: string;
 			};
 	  }

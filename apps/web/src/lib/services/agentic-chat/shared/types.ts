@@ -82,6 +82,15 @@ export interface ExecutionResult<T = any> {
 }
 
 /**
+ * Error types for tool execution
+ */
+export type ToolExecutionErrorType =
+	| 'tool_not_loaded'
+	| 'validation_error'
+	| 'execution_error'
+	| 'timeout';
+
+/**
  * Tool execution specific result
  */
 export interface ToolExecutionResult extends ExecutionResult {
@@ -90,6 +99,8 @@ export interface ToolExecutionResult extends ExecutionResult {
 	entitiesAccessed?: string[];
 	tokensUsed?: number;
 	streamEvents?: StreamEvent[];
+	/** Categorizes the error type for handling by the orchestrator */
+	errorType?: ToolExecutionErrorType;
 }
 
 /**
@@ -253,6 +264,18 @@ export interface PlannerContext {
 		scope?: OntologyContextScope;
 		/** Token usage from compression */
 		compressionUsage?: ContextUsageSnapshot;
+		/** Strategy analysis for this request */
+		strategyAnalysis?: StrategyAnalysis;
+		/** Tool selection metadata */
+		toolSelection?: {
+			mode: 'llm' | 'heuristic' | 'default';
+			defaultToolNames: string[];
+			selectedToolNames: string[];
+			addedTools: string[];
+			removedTools: string[];
+			strategy: StrategyAnalysis['primary_strategy'];
+			confidence: number;
+		};
 	};
 }
 
@@ -351,7 +374,12 @@ export type StreamEvent =
 	| { type: 'tool_result'; result: ToolExecutionResult }
 	| { type: 'done'; usage?: { total_tokens: number } }
 	| { type: 'error'; error: string }
-	| { type: 'debug_context'; debug: DebugContextInfo };
+	| { type: 'debug_context'; debug: DebugContextInfo }
+	| {
+			type: 'telemetry';
+			event: 'tool_selection' | 'tool_selection_miss' | 'tool_execution';
+			data: Record<string, unknown>;
+	  };
 
 export interface ToolExecutorResponse {
 	data: any;

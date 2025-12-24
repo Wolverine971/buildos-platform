@@ -1,7 +1,19 @@
 <!-- apps/web/src/lib/components/agent/ProjectFocusIndicator.svelte -->
 <!-- INKPRINT Design System: Compact focus indicator badge -->
 <script lang="ts">
-	import { Target } from 'lucide-svelte';
+	import {
+		Target,
+		ListChecks,
+		Calendar,
+		FileText,
+		Layers,
+		Flag,
+		TriangleAlert,
+		Scale,
+		Pin,
+		FolderKanban,
+		Search
+	} from 'lucide-svelte';
 	import type { ProjectFocus } from '@buildos/shared-types';
 
 	interface Props {
@@ -12,15 +24,22 @@
 
 	let { focus, onChangeFocus, onClearFocus }: Props = $props();
 
-	const focusIcons: Record<ProjectFocus['focusType'], string> = {
-		'project-wide': '📘',
-		task: '📝',
-		goal: '🎯',
-		plan: '📋',
-		document: '📄',
-		output: '📦',
-		milestone: '🏁'
+	// Lucide icons matching the project page insight panels
+	const focusIcons: Record<ProjectFocus['focusType'], typeof Target> = {
+		'project-wide': FolderKanban,
+		task: ListChecks,
+		goal: Target,
+		plan: Calendar,
+		document: FileText,
+		output: Layers,
+		milestone: Flag,
+		risk: TriangleAlert,
+		decision: Scale,
+		requirement: Pin
 	};
+
+	// Get the icon component for the current focus type
+	const FocusIcon = $derived(focus ? focusIcons[focus.focusType] || Search : Search);
 
 	const focusLabelMap: Record<ProjectFocus['focusType'], string> = {
 		'project-wide': 'Project-wide view',
@@ -29,7 +48,10 @@
 		plan: 'Plan focus',
 		document: 'Document focus',
 		output: 'Output focus',
-		milestone: 'Milestone focus'
+		milestone: 'Milestone focus',
+		risk: 'Risk focus',
+		decision: 'Decision focus',
+		requirement: 'Requirement focus'
 	};
 
 	const resolvedLabel = $derived(
@@ -42,9 +64,9 @@
 {#if focus}
 	<!-- INKPRINT compact inline focus indicator -->
 	<span class="inline-flex items-center gap-0.5 text-xs sm:gap-1">
-		<!-- Focus type emoji -->
-		<span class="text-[11px] sm:text-xs" aria-hidden="true">
-			{focusIcons[focus.focusType] || '🔍'}
+		<!-- Focus type icon -->
+		<span class="text-muted-foreground" aria-hidden="true">
+			<FocusIcon class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
 		</span>
 
 		<!-- INKPRINT focus label button -->

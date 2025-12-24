@@ -19,7 +19,9 @@ export type LinkedEntityKind =
 	| 'milestone'
 	| 'document'
 	| 'output'
-	| 'risk';
+	| 'risk'
+	| 'decision'
+	| 'requirement';
 
 /**
  * A single linked entity with context for chat.
@@ -76,6 +78,8 @@ export interface EntityLinkedContext {
 		documents: LinkedEntityContext[];
 		outputs: LinkedEntityContext[];
 		risks: LinkedEntityContext[];
+		decisions: LinkedEntityContext[];
+		requirements: LinkedEntityContext[];
 	};
 
 	/** Summary counts (total, not just shown) */
@@ -87,6 +91,8 @@ export interface EntityLinkedContext {
 		documents: number;
 		outputs: number;
 		risks: number;
+		decisions: number;
+		requirements: number;
 		total: number;
 	};
 

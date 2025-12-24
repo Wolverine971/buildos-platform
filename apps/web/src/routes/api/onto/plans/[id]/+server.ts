@@ -39,7 +39,8 @@ import { PLAN_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
-	getChangeSourceFromRequest
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 
 // GET /api/onto/plans/[id] - Get a single plan
@@ -105,6 +106,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		const body = await request.json();
@@ -216,8 +218,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				props: existingPlan.props
 			},
 			{ name: updatedPlan.name, state_key: updatedPlan.state_key, props: updatedPlan.props },
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ plan: updatedPlan });
@@ -235,6 +238,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Get user's actor ID
@@ -297,8 +301,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			'plan',
 			params.id,
 			planDataForLog,
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ message: 'Plan deleted successfully' });

@@ -13,7 +13,8 @@ import { OUTPUT_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
-	getChangeSourceFromRequest
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
@@ -36,6 +37,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		// Verify the output exists and get project info (fetch more data for logging)
 		// Exclude soft-deleted outputs
@@ -124,8 +126,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				state_key: existingOutput.state_key ?? 'unknown'
 			},
 			{ name: updatedOutput.name, state_key: updatedOutput.state_key },
-			actorId,
-			getChangeSourceFromRequest(request)
+			user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ output: updatedOutput });
@@ -148,6 +151,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		// Fetch output with project info for authorization
 		// Exclude soft-deleted outputs
@@ -282,8 +286,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			'output',
 			id,
 			outputDataForLog,
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ deleted: true });

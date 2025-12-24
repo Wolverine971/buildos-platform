@@ -34,7 +34,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
-import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logCreateAsync,
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
+} from '$lib/services/async-activity-logger';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -47,6 +51,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Parse request body
@@ -162,8 +167,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				impact: risk.impact,
 				state_key: risk.state_key
 			},
-			actorId,
-			getChangeSourceFromRequest(request)
+			user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.created({ risk });

@@ -88,7 +88,16 @@ export interface StreamRequest {
 	/** Optional conversation history (if not loading from session) */
 	history?: ChatMessage[];
 	/** Optional ontology entity type for element-level context */
-	ontology_entity_type?: 'task' | 'plan' | 'goal' | 'document' | 'output';
+	ontology_entity_type?:
+		| 'task'
+		| 'plan'
+		| 'goal'
+		| 'document'
+		| 'output'
+		| 'milestone'
+		| 'risk'
+		| 'decision'
+		| 'requirement';
 	/** Optional last turn context provided by client */
 	last_turn_context?: LastTurnContext;
 	/** Optional run id for guarding/persistence */

@@ -32,7 +32,11 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { logCreateAsync, getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	logCreateAsync,
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
+} from '$lib/services/async-activity-logger';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -42,6 +46,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Parse request body
@@ -129,8 +134,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			'plan',
 			plan.id,
 			{ name: plan.name, type_key: plan.type_key, state_key: plan.state_key },
-			actorId,
-			getChangeSourceFromRequest(request)
+			user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.created({ plan });

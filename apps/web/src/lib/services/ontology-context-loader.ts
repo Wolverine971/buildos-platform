@@ -29,6 +29,8 @@ type ElementRowMap = {
 	output: Database['public']['Tables']['onto_outputs']['Row'];
 	milestone: Database['public']['Tables']['onto_milestones']['Row'];
 	risk: Database['public']['Tables']['onto_risks']['Row'];
+	decision: Database['public']['Tables']['onto_decisions']['Row'];
+	requirement: Database['public']['Tables']['onto_requirements']['Row'];
 };
 
 type ElementTableNameMap = {
@@ -44,7 +46,11 @@ type ElementTableNameMap = {
 						? 'outputs'
 						: K extends 'milestone'
 							? 'milestones'
-							: 'risks'}`;
+							: K extends 'risk'
+								? 'risks'
+								: K extends 'decision'
+									? 'decisions'
+									: 'requirements'}`;
 };
 
 type ContextEntityMap = Partial<Record<ElementType, ElementRowMap[ElementType]>> & {
@@ -77,7 +83,9 @@ export class OntologyContextLoader {
 		document: 'onto_documents',
 		output: 'onto_outputs',
 		milestone: 'onto_milestones',
-		risk: 'onto_risks'
+		risk: 'onto_risks',
+		decision: 'onto_decisions',
+		requirement: 'onto_requirements'
 	} as const;
 
 	/**
@@ -153,7 +161,18 @@ export class OntologyContextLoader {
 				entity_count: entityCounts,
 				last_updated: new Date().toISOString(),
 				total_projects: totalProjects || 0,
-				available_entity_types: ['project', 'task', 'plan', 'goal', 'document', 'output'],
+				available_entity_types: [
+					'project',
+					'task',
+					'plan',
+					'goal',
+					'document',
+					'output',
+					'milestone',
+					'risk',
+					'decision',
+					'requirement'
+				],
 				recent_project_ids: (projects || []).map((project) => project.id)
 			}
 		};
@@ -290,7 +309,16 @@ export class OntologyContextLoader {
 	 */
 	async loadCombinedProjectElementContext(
 		projectId: string,
-		elementType: 'task' | 'goal' | 'plan' | 'document' | 'output' | 'milestone' | 'risk',
+		elementType:
+			| 'task'
+			| 'goal'
+			| 'plan'
+			| 'document'
+			| 'output'
+			| 'milestone'
+			| 'risk'
+			| 'decision'
+			| 'requirement',
 		elementId: string
 	): Promise<OntologyContext> {
 		await this.assertProjectOwnership(projectId);
@@ -412,7 +440,9 @@ export class OntologyContextLoader {
 			milestone: [],
 			document: [],
 			output: [],
-			risk: []
+			risk: [],
+			decision: [],
+			requirement: []
 		};
 
 		for (const edge of edges || []) {
@@ -442,7 +472,9 @@ export class OntologyContextLoader {
 			milestones: [],
 			documents: [],
 			outputs: [],
-			risks: []
+			risks: [],
+			decisions: [],
+			requirements: []
 		};
 
 		const counts: EntityLinkedContext['counts'] = {
@@ -453,6 +485,8 @@ export class OntologyContextLoader {
 			documents: edgesByKind.document.length,
 			outputs: edgesByKind.output.length,
 			risks: edgesByKind.risk.length,
+			decisions: edgesByKind.decision.length,
+			requirements: edgesByKind.requirement.length,
 			total: 0
 		};
 		counts.total =
@@ -462,7 +496,9 @@ export class OntologyContextLoader {
 			counts.milestones +
 			counts.documents +
 			counts.outputs +
-			counts.risks;
+			counts.risks +
+			counts.decisions +
+			counts.requirements;
 
 		let truncated = false;
 
@@ -499,6 +535,18 @@ export class OntologyContextLoader {
 				table: 'onto_risks',
 				edges: edgesByKind.risk,
 				targetKey: 'risks'
+			},
+			{
+				kind: 'decision',
+				table: 'onto_decisions',
+				edges: edgesByKind.decision,
+				targetKey: 'decisions'
+			},
+			{
+				kind: 'requirement',
+				table: 'onto_requirements',
+				edges: edgesByKind.requirement,
+				targetKey: 'requirements'
 			}
 		];
 
@@ -545,7 +593,11 @@ export class OntologyContextLoader {
 						kind,
 						id: entity.id,
 						name:
-							entity.name || entity.title || entity.summary || `${kind}:${entity.id}`,
+							entity.name ||
+							entity.title ||
+							entity.summary ||
+							entity.text ||
+							`${kind}:${entity.id}`,
 						state: entity.state_key || null,
 						typeKey: entity.type_key || null,
 						relation: edge.relation,
@@ -612,7 +664,9 @@ export class OntologyContextLoader {
 				milestones: [],
 				documents: [],
 				outputs: [],
-				risks: []
+				risks: [],
+				decisions: [],
+				requirements: []
 			},
 			counts: {
 				plans: 0,
@@ -622,6 +676,8 @@ export class OntologyContextLoader {
 				documents: 0,
 				outputs: 0,
 				risks: 0,
+				decisions: 0,
+				requirements: 0,
 				total: 0
 			},
 			truncated: false,
@@ -760,7 +816,9 @@ export class OntologyContextLoader {
 			'onto_outputs',
 			'onto_documents',
 			'onto_milestones',
-			'onto_risks'
+			'onto_risks',
+			'onto_decisions',
+			'onto_requirements'
 		];
 
 		for (const table of tables) {
@@ -934,7 +992,10 @@ export class OntologyContextLoader {
 			{ table: 'onto_plans', key: 'plan' },
 			{ table: 'onto_documents', key: 'document' },
 			{ table: 'onto_outputs', key: 'output' },
-			{ table: 'onto_milestones', key: 'milestone' }
+			{ table: 'onto_milestones', key: 'milestone' },
+			{ table: 'onto_risks', key: 'risk' },
+			{ table: 'onto_decisions', key: 'decision' },
+			{ table: 'onto_requirements', key: 'requirement' }
 		];
 
 		for (const { table, key } of tableMappings) {
@@ -992,6 +1053,10 @@ export class OntologyContextLoader {
 
 		if ('summary' in entity && typeof entity.summary === 'string' && entity.summary) {
 			return entity.summary;
+		}
+
+		if ('text' in entity && typeof entity.text === 'string' && entity.text) {
+			return entity.text;
 		}
 
 		if (

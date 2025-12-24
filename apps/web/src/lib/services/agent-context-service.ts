@@ -23,8 +23,7 @@ import type {
 	LLMMessage,
 	ContextUsageSnapshot
 } from '@buildos/shared-types';
-import { getToolsForContextType } from '$lib/services/agentic-chat/tools/core/tools.config';
-import { getToolsForAgent } from '@buildos/shared-types';
+import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { ChatCompressionService } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
 import { PromptGenerationService } from './agentic-chat/prompts/prompt-generation-service';
@@ -225,9 +224,12 @@ export class AgentContextService {
 			});
 		}
 
-		// Step 4: Get tools appropriate for context
-		const rawTools = await this.getContextTools(normalizedContext, ontologyContext);
-		const availableTools = this.filterToolsForFocus(rawTools, projectFocus);
+		// Step 4: Pass ALL_TOOLS - ToolSelectionService owns default pool logic
+		// The orchestrator will call ToolSelectionService.selectTools() which:
+		// 1. Computes default pool from context type
+		// 2. Applies focus filtering
+		// 3. Uses LLM/heuristic selection
+		const availableTools = ALL_TOOLS;
 
 		// Step 5: Calculate token usage
 		const totalTokens = this.calculateTokens([
@@ -416,42 +418,6 @@ export class AgentContextService {
 		}
 
 		return { messages, usageSnapshot };
-	}
-
-	/**
-	 * Get tools appropriate for the context
-	 * Now ontology-first: uses onto_* tools when ontology context is available
-	 */
-	private async getContextTools(
-		contextType: ChatContextType,
-		_ontologyContext?: OntologyContext
-	): Promise<ChatToolDefinition[]> {
-		const normalized = normalizeContextType(contextType);
-		const tools = getToolsForContextType(normalized as Exclude<ChatContextType, 'general'>);
-		return getToolsForAgent(tools, 'read_write');
-	}
-
-	private filterToolsForFocus(
-		tools: ChatToolDefinition[],
-		focus: ProjectFocus | null
-	): ChatToolDefinition[] {
-		if (!focus || focus.focusType === 'project-wide') {
-			return tools;
-		}
-
-		const focusType = focus.focusType;
-		const otherTypes = ['task', 'goal', 'plan', 'document', 'output', 'milestone'].filter(
-			(type) => type !== focusType
-		);
-
-		return tools.filter((tool) => {
-			const toolName = tool.function?.name ? tool.function.name.toLowerCase() : '';
-			if (!toolName) return true;
-			if (toolName.startsWith('list_') || toolName.startsWith('get_')) return true;
-			if (toolName.includes('project')) return true;
-			if (toolName.includes(`_${focusType}`)) return true;
-			return !otherTypes.some((type) => toolName.includes(`_${type}`));
-		});
 	}
 
 	/**

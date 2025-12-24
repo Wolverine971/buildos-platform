@@ -96,6 +96,141 @@ Use for queries about project documentation, briefs, specs, or research artifact
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'list_onto_outputs',
+			description: `List outputs from the ontology system (onto_outputs table). Returns output summaries with state and type.
+Use for deliverables, artifacts, or outputs tied to a project.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Filter outputs by project ID'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by output state'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of outputs to return'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'list_onto_milestones',
+			description: `List milestones from the ontology system (onto_milestones table). Returns milestone summaries with dates and state.
+Use for project timelines, checkpoints, or delivery milestones.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Filter milestones by project ID'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by milestone state'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of milestones to return'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'list_onto_risks',
+			description: `List risks from the ontology system (onto_risks table). Returns risk summaries with impact and state.
+Use for risk reviews, mitigation planning, or status updates.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Filter risks by project ID'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by risk state'
+					},
+					impact: {
+						type: 'string',
+						description: 'Filter by impact level (low, medium, high, critical)'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of risks to return'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'list_onto_decisions',
+			description: `List decisions from the ontology system (onto_decisions table). Returns decision summaries with decision dates.
+Use for decision logs, rationale audits, or historical context.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Filter decisions by project ID'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of decisions to return'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'list_onto_requirements',
+			description: `List requirements from the ontology system (onto_requirements table). Returns requirement summaries with priority.
+Use for constraints, compliance, or scope requirements.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Filter requirements by project ID'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by requirement type key'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of requirements to return'
+					}
+				}
+			}
+		}
+	},
 
 	{
 		type: 'function',
@@ -414,6 +549,96 @@ Use when you need the full document before editing or linking it.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_output_details',
+			description: `Get complete details for a specific ontology output including description and metadata.
+Use when you need the full output record before updating it.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					output_id: {
+						type: 'string',
+						description: 'Output ID to retrieve'
+					}
+				},
+				required: ['output_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_milestone_details',
+			description: `Get complete details for a specific ontology milestone including dates, state, and metadata.
+Use when you need the full milestone before updating it.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					milestone_id: {
+						type: 'string',
+						description: 'Milestone ID to retrieve'
+					}
+				},
+				required: ['milestone_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_risk_details',
+			description: `Get complete details for a specific ontology risk including impact, probability, and mitigation info.
+Use when you need the full risk before updating it.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					risk_id: {
+						type: 'string',
+						description: 'Risk ID to retrieve'
+					}
+				},
+				required: ['risk_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_decision_details',
+			description: `Get complete details for a specific ontology decision including decision date and rationale.
+Use when you need the full decision record before updating it.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					decision_id: {
+						type: 'string',
+						description: 'Decision ID to retrieve'
+					}
+				},
+				required: ['decision_id']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_requirement_details',
+			description: `Get complete details for a specific ontology requirement including priority and type.
+Use when you need the full requirement record before updating it.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					requirement_id: {
+						type: 'string',
+						description: 'Requirement ID to retrieve'
+					}
+				},
+				required: ['requirement_id']
+			}
+		}
+	},
 
 	// ============================================
 	// RELATIONSHIP TOOLS
@@ -467,12 +692,33 @@ The initial context shows abbreviated linked entities. Use this tool to get full
 					},
 					entity_kind: {
 						type: 'string',
-						enum: ['task', 'plan', 'goal', 'milestone', 'document', 'output'],
+						enum: [
+							'task',
+							'plan',
+							'goal',
+							'milestone',
+							'document',
+							'output',
+							'risk',
+							'decision',
+							'requirement'
+						],
 						description: 'Type of the source entity'
 					},
 					filter_kind: {
 						type: 'string',
-						enum: ['task', 'plan', 'goal', 'milestone', 'document', 'output', 'all'],
+						enum: [
+							'task',
+							'plan',
+							'goal',
+							'milestone',
+							'document',
+							'output',
+							'risk',
+							'decision',
+							'requirement',
+							'all'
+						],
 						default: 'all',
 						description: 'Filter to specific entity type, or "all" for everything'
 					}

@@ -10,7 +10,8 @@ import type { Project, Document } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
-	getChangeSourceFromRequest
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -234,6 +235,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		// Resolve actor for ownership verification
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -365,8 +367,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				state_key: updatedProject.state_key,
 				description: updatedProject.description
 			},
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ project: updatedProject });
@@ -413,6 +416,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
 			p_user_id: session.user.id
@@ -464,8 +468,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			'project',
 			id,
 			projectDataForLog,
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({

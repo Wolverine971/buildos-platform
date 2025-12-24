@@ -70,7 +70,17 @@
 		// Use ontology URL for ontology-focused contexts
 		if (
 			resolvedProjectFocus &&
-			['task', 'goal', 'plan', 'document', 'output'].includes(resolvedProjectFocus.focusType)
+			[
+				'task',
+				'goal',
+				'plan',
+				'document',
+				'output',
+				'milestone',
+				'risk',
+				'decision',
+				'requirement'
+			].includes(resolvedProjectFocus.focusType)
 		) {
 			return `/projects/${projectId}`;
 		}

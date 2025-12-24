@@ -36,7 +36,12 @@ import type {
 } from '../shared/types';
 import { PlanExecutionError } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
-import type { ChatToolCall, ChatContextType, AgentPlanMetadata } from '@buildos/shared-types';
+import type {
+	ChatToolCall,
+	ChatContextType,
+	AgentPlanMetadata,
+	ChatToolDefinition
+} from '@buildos/shared-types';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { ToolExecutionService } from '../execution/tool-execution-service';
@@ -116,6 +121,11 @@ export class PlanOrchestrator implements BaseService {
 		'list_onto_tasks',
 		'list_onto_goals',
 		'list_onto_plans',
+		'list_onto_outputs',
+		'list_onto_milestones',
+		'list_onto_risks',
+		'list_onto_decisions',
+		'list_onto_requirements',
 		'create_onto_task',
 		'create_onto_goal',
 		'create_onto_plan',
@@ -677,6 +687,9 @@ export class PlanOrchestrator implements BaseService {
 		const toolSummaries = plannerContext.availableTools.length
 			? formatToolSummaries(plannerContext.availableTools)
 			: 'No tools available.';
+		const toolRequirements = plannerContext.availableTools.length
+			? this.buildToolRequirementsSummary(plannerContext.availableTools)
+			: 'none';
 
 		const strategyGuidance =
 			strategy === ChatStrategy.PROJECT_CREATION || intent?.contextType === 'project_create'
@@ -695,6 +708,8 @@ Context type: ${intent?.contextType ?? context.contextType}
 Available tools: ${toolList}
 Tool summaries:
 ${toolSummaries}
+Tool required parameters (include these when using the tool):
+${toolRequirements}
 ${strategyGuidance}
 
 Create a step-by-step execution plan.
@@ -706,16 +721,35 @@ Each step should have:
 - tools: Array of tool names to use
 - executorRequired: Boolean - true if step needs an executor agent
 - dependsOn: Array of step numbers this step depends on (optional)
+- metadata: Optional object for tool arguments (use metadata.toolArguments or metadata.arguments)
 
 Guidelines:
 - Keep plans minimal and focused
 - Mark steps as executorRequired only for complex analysis
+- For tools with required parameters, include them in metadata.toolArguments or metadata.arguments
 - Use dependencies to ensure proper execution order
 - For planner_stream, target 3-5 steps and mark executorRequired only when parallel execution is needed
 - Keep each description under 200 characters and focus on actions, not final creative output
 - The response must be strict JSON without prose or markdown fences
 
 Return JSON: { steps: [...], reasoning: "Brief explanation" }`;
+	}
+
+	private buildToolRequirementsSummary(tools: ChatToolDefinition[]): string {
+		const lines: string[] = [];
+
+		for (const tool of tools) {
+			const name = tool.function?.name || (tool as any).name || 'unknown';
+			const paramSchema =
+				(tool as any).function?.parameters || (tool as any).parameters || undefined;
+			const required = Array.isArray(paramSchema?.required) ? paramSchema.required : [];
+
+			if (required.length > 0) {
+				lines.push(`- ${name}: ${required.join(', ')}`);
+			}
+		}
+
+		return lines.length > 0 ? lines.join('\n') : 'none';
 	}
 
 	/**
@@ -746,16 +780,29 @@ Generate an execution plan to fulfill this request.`;
 	 * Normalize plan steps
 	 */
 	private normalizeSteps(steps: any[]): PlanStep[] {
-		return steps.map((step, index) => ({
-			stepNumber: step.stepNumber || index + 1,
-			type: step.type || 'research',
-			description: step.description || `Step ${index + 1}`,
-			executorRequired: !!step.executorRequired,
-			tools: Array.isArray(step.tools) ? step.tools : [],
-			dependsOn: Array.isArray(step.dependsOn) ? step.dependsOn : undefined,
-			status: 'pending',
-			metadata: step.metadata
-		}));
+		return steps.map((step, index) => {
+			const metadata: Record<string, any> = {
+				...(step.metadata ?? {})
+			};
+
+			if (step.toolArguments && metadata.toolArguments === undefined) {
+				metadata.toolArguments = step.toolArguments;
+			}
+			if (step.arguments && metadata.arguments === undefined) {
+				metadata.arguments = step.arguments;
+			}
+
+			return {
+				stepNumber: step.stepNumber || index + 1,
+				type: step.type || 'research',
+				description: step.description || `Step ${index + 1}`,
+				executorRequired: !!step.executorRequired,
+				tools: Array.isArray(step.tools) ? step.tools : [],
+				dependsOn: Array.isArray(step.dependsOn) ? step.dependsOn : undefined,
+				status: 'pending',
+				metadata: Object.keys(metadata).length > 0 ? metadata : undefined
+			};
+		});
 	}
 
 	private enforceProjectCreationPlan(plan: AgentPlan, plannerContext: PlannerContext): void {
@@ -971,13 +1018,19 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 
 			for (const toolName of step.tools) {
 				const args = this.buildToolArgs(toolName, step, stepResults, context);
+				const normalizedArgs = this.applyToolArgumentDefaults(
+					toolName,
+					args,
+					step,
+					plannerContext
+				);
 
 				const toolCall: ChatToolCall = {
 					id: uuidv4(),
 					type: 'function',
 					function: {
 						name: toolName,
-						arguments: JSON.stringify(args ?? {})
+						arguments: JSON.stringify(normalizedArgs ?? {})
 					}
 				};
 
@@ -1223,6 +1276,55 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		}
 
 		return args;
+	}
+
+	private applyToolArgumentDefaults(
+		toolName: string,
+		args: Record<string, any>,
+		step: PlanStep,
+		plannerContext: PlannerContext
+	): Record<string, any> {
+		const toolDef = plannerContext.availableTools.find((tool) => {
+			const name = (tool as any).function?.name ?? (tool as any).name;
+			return name === toolName;
+		});
+
+		if (!toolDef) {
+			return args;
+		}
+
+		const paramSchema = (toolDef as any).function?.parameters || (toolDef as any).parameters;
+		const required = Array.isArray(paramSchema?.required) ? paramSchema.required : [];
+		if (required.length === 0) {
+			return args;
+		}
+
+		const resolved = { ...args };
+		const fallbackTitle = this.buildFallbackTitle(step);
+
+		for (const requiredParam of required) {
+			if (resolved[requiredParam] !== undefined && resolved[requiredParam] !== null) {
+				continue;
+			}
+
+			if (requiredParam === 'title' || requiredParam === 'name') {
+				if (fallbackTitle) {
+					resolved[requiredParam] = fallbackTitle;
+				}
+			} else if (requiredParam === 'description' && step.description) {
+				resolved[requiredParam] = step.description;
+			}
+		}
+
+		return resolved;
+	}
+
+	private buildFallbackTitle(step: PlanStep): string {
+		const base = step.description?.trim() || `Step ${step.stepNumber}`;
+		if (base.length <= 120) {
+			return base;
+		}
+		return `${base.slice(0, 117)}...`;
 	}
 
 	private toolRequiresProjectId(toolName: string): boolean {

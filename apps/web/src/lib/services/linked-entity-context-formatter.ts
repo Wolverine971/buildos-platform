@@ -49,7 +49,20 @@ export function formatLinkedEntitiesForSystemPrompt(context: EntityLinkedContext
 			singular: 'document',
 			count: context.counts.documents
 		},
-		{ key: 'outputs', label: 'Outputs', singular: 'output', count: context.counts.outputs }
+		{ key: 'outputs', label: 'Outputs', singular: 'output', count: context.counts.outputs },
+		{ key: 'risks', label: 'Risks', singular: 'risk', count: context.counts.risks },
+		{
+			key: 'decisions',
+			label: 'Decisions',
+			singular: 'decision',
+			count: context.counts.decisions
+		},
+		{
+			key: 'requirements',
+			label: 'Requirements',
+			singular: 'requirement',
+			count: context.counts.requirements
+		}
 	];
 
 	for (const { key, label, singular, count } of sections) {
@@ -131,7 +144,10 @@ export function formatLinkedEntitiesFullDetail(context: EntityLinkedContext): st
 		{ key: 'tasks', label: 'Tasks', count: context.counts.tasks },
 		{ key: 'milestones', label: 'Milestones', count: context.counts.milestones },
 		{ key: 'documents', label: 'Documents', count: context.counts.documents },
-		{ key: 'outputs', label: 'Outputs', count: context.counts.outputs }
+		{ key: 'outputs', label: 'Outputs', count: context.counts.outputs },
+		{ key: 'risks', label: 'Risks', count: context.counts.risks },
+		{ key: 'decisions', label: 'Decisions', count: context.counts.decisions },
+		{ key: 'requirements', label: 'Requirements', count: context.counts.requirements }
 	];
 
 	for (const { key, label, count } of sections) {
@@ -205,6 +221,9 @@ export function getLinkedEntitiesSummary(context: EntityLinkedContext): string {
 	if (context.counts.milestones > 0) parts.push(`${context.counts.milestones} milestones`);
 	if (context.counts.documents > 0) parts.push(`${context.counts.documents} documents`);
 	if (context.counts.outputs > 0) parts.push(`${context.counts.outputs} outputs`);
+	if (context.counts.risks > 0) parts.push(`${context.counts.risks} risks`);
+	if (context.counts.decisions > 0) parts.push(`${context.counts.decisions} decisions`);
+	if (context.counts.requirements > 0) parts.push(`${context.counts.requirements} requirements`);
 
 	return parts.join(', ');
 }

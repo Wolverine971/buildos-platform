@@ -201,9 +201,14 @@ export class ToolExecutionService implements BaseService {
 		// Validate the tool call
 		const validation = this.validateToolCall(toolName, args, availableTools);
 		if (!validation.isValid) {
+			// Detect if this is a "tool not loaded" error for telemetry/fallback handling
+			const isToolNotLoaded = validation.errors.some((err) =>
+				err.startsWith('Unknown tool:')
+			);
 			return finalizeResult({
 				success: false,
 				error: validation.errors.join('; '),
+				errorType: isToolNotLoaded ? 'tool_not_loaded' : 'validation_error',
 				toolName,
 				toolCallId: toolCall.id
 			});
@@ -280,9 +285,15 @@ export class ToolExecutionService implements BaseService {
 
 			const normalizedError = this.normalizeExecutionError(error, toolName, args);
 
+			// Detect timeout errors
+			const isTimeout =
+				normalizedError.includes('timed out') ||
+				(error instanceof Error && error.message.includes('timeout'));
+
 			return finalizeResult({
 				success: false,
 				error: normalizedError,
+				errorType: isTimeout ? 'timeout' : 'execution_error',
 				toolName,
 				toolCallId: toolCall.id
 			});

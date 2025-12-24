@@ -27,8 +27,8 @@ export const PROJECT_WORKSPACE_PROMPT: PromptSection = {
 	content: `- Treat this chat as the user's dedicated project workspace: they may ask for summaries, risks, decisions, or request concrete changes.
 - Default workflow:
   1. Identify whether the request is informational (answer with existing data) or operational (requires write tools).
-  2. **For informational requests: EXECUTE tools immediately** - use list/detail tools (list_onto_tasks, get_onto_project_details, etc.) and ANSWER THE QUESTION without asking for permission.
-  2a. If the user references an item by name but the type is unclear, use \`search_ontology\` with the project_id to locate it, then follow up with the relevant get_onto_*_details tool.
+  2. **For informational requests: EXECUTE tools immediately** - use available list/detail tools and ANSWER THE QUESTION without asking for permission.
+  2a. If the user references an item by name but the type is unclear, use an available search tool with the project_id to locate it, then follow up with the relevant detail tool.
   3. If the user clearly asks to change data, confirm the action, then call the corresponding create/update tool and describe the result.
   4. Proactively surface related insights (risks, blockers, next steps) when helpful—even if the user asked a simple question.
 - **Do NOT ask for permission before reading data** - just fetch it and answer. Only confirm before write operations.
@@ -246,21 +246,21 @@ export const FALLBACK_CONTEXT_MESSAGES: FallbackContextMessages = {
 	project: `## Project Workspace
 Project ID: {{entityId}}
 
-Use ontology tools (list_onto_projects, get_onto_project_details, list_onto_tasks) to explore or update this workspace. Start with list/search tools before making changes.`,
+Use available project tools to explore or update this workspace. Start with list/search tools before making changes.`,
 
 	project_no_id:
-		'No project selected. Use list_onto_projects to find a project before continuing.',
+		'No project selected. Use available list/search tools to find a project before continuing.',
 
 	task: `## Current Task
 Task ID: {{entityId}}
 
-Use get_onto_task_details tool to load task information.`,
+Use the available task detail tool to load task information.`,
 
-	task_no_id: 'No task context available. Use list_onto_tasks to find tasks.',
+	task_no_id: 'No task context available. Use available list/search tools to find tasks.',
 
 	calendar: `## Calendar Context
 
-Use calendar tools (find_available_slots, get_task_calendar_events) to access schedule information.`,
+Use available calendar tools to access schedule information.`,
 
 	project_create: `## Project Creation Mode
 Help the user create a well-structured project by asking clarifying questions.`,
@@ -282,7 +282,7 @@ Generate scenario forecasts for the project.`,
 	task_update: `## Task Update Mode
 Task ID: {{entityId}}
 
-Use task tools to update task information.`,
+Use available task tools to update task information.`,
 
 	task_update_no_id: 'Task update mode requires a task ID.',
 

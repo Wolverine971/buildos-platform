@@ -38,7 +38,8 @@ import { MILESTONE_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
-	getChangeSourceFromRequest
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 
 type MilestoneState = (typeof MILESTONE_STATES)[number];
@@ -109,6 +110,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		const body = await request.json();
@@ -247,8 +249,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				due_at: updatedMilestone.due_at,
 				props: updatedMilestone.props
 			},
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ milestone: updatedMilestone });
@@ -266,6 +269,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Get user's actor ID
@@ -328,8 +332,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			'milestone',
 			params.id,
 			milestoneDataForLog,
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ message: 'Milestone deleted successfully' });

@@ -25,6 +25,11 @@ import type {
 	UpdateOntoGoalArgs,
 	UpdateOntoPlanArgs,
 	UpdateOntoDocumentArgs,
+	UpdateOntoOutputArgs,
+	UpdateOntoMilestoneArgs,
+	UpdateOntoRiskArgs,
+	UpdateOntoDecisionArgs,
+	UpdateOntoRequirementArgs,
 	DeleteOntoTaskArgs,
 	DeleteOntoGoalArgs,
 	DeleteOntoPlanArgs,
@@ -43,6 +48,106 @@ function extractMetaString(
 	if (typeof value !== 'string') return undefined;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : undefined;
+}
+
+type DateBoundary = 'start' | 'end';
+
+const MONTH_NAME_TO_NUMBER: Record<string, number> = {
+	jan: 1,
+	january: 1,
+	feb: 2,
+	february: 2,
+	mar: 3,
+	march: 3,
+	apr: 4,
+	april: 4,
+	may: 5,
+	jun: 6,
+	june: 6,
+	jul: 7,
+	july: 7,
+	aug: 8,
+	august: 8,
+	sep: 9,
+	sept: 9,
+	september: 9,
+	oct: 10,
+	october: 10,
+	nov: 11,
+	november: 11,
+	dec: 12,
+	december: 12
+};
+
+const pad2 = (value: number): string => String(value).padStart(2, '0');
+
+function buildIsoDateTime(
+	year: number,
+	month: number,
+	day: number,
+	boundary: DateBoundary
+): string {
+	const date = `${year}-${pad2(month)}-${pad2(day)}`;
+	return boundary === 'end' ? `${date}T23:59:59Z` : `${date}T00:00:00Z`;
+}
+
+function normalizeIsoDateTime(value: unknown, boundary: DateBoundary): string | undefined {
+	if (value instanceof Date) {
+		return isNaN(value.getTime()) ? undefined : value.toISOString();
+	}
+	if (typeof value !== 'string') return undefined;
+
+	const raw = value.trim();
+	if (!raw) return undefined;
+
+	if (raw.includes('T')) {
+		const parsed = new Date(raw);
+		return isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+	}
+
+	const dateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	if (dateOnlyMatch) {
+		const year = Number(dateOnlyMatch[1]);
+		const month = Number(dateOnlyMatch[2]);
+		const day = Number(dateOnlyMatch[3]);
+		if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+			return buildIsoDateTime(year, month, day, boundary);
+		}
+	}
+
+	const yearMonthMatch = raw.match(/^(\d{4})-(\d{2})$/);
+	if (yearMonthMatch) {
+		const year = Number(yearMonthMatch[1]);
+		const month = Number(yearMonthMatch[2]);
+		if (month >= 1 && month <= 12) {
+			const day = boundary === 'end' ? new Date(Date.UTC(year, month, 0)).getUTCDate() : 1;
+			return buildIsoDateTime(year, month, day, boundary);
+		}
+	}
+
+	const yearMatch = raw.match(/^(\d{4})$/);
+	if (yearMatch) {
+		const year = Number(yearMatch[1]);
+		return boundary === 'end'
+			? buildIsoDateTime(year, 12, 31, boundary)
+			: buildIsoDateTime(year, 1, 1, boundary);
+	}
+
+	const monthYearMatch = raw.match(
+		/^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{4})$/i
+	);
+	if (monthYearMatch) {
+		const monthName = monthYearMatch[1]?.toLowerCase() ?? '';
+		const year = Number(monthYearMatch[2]);
+		const month = MONTH_NAME_TO_NUMBER[monthName];
+		if (month) {
+			const day = boundary === 'end' ? new Date(Date.UTC(year, month, 0)).getUTCDate() : 1;
+			return buildIsoDateTime(year, month, day, boundary);
+		}
+	}
+
+	const parsed = new Date(raw);
+	return isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
 /**
@@ -145,18 +250,55 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			};
 		}
 
-		const contextDocument = buildContextDocumentSpec(args);
+		const normalizedProject = { ...args.project };
+		const normalizedStartAt = normalizeIsoDateTime(args.project.start_at, 'start');
+		if (normalizedStartAt !== undefined) {
+			normalizedProject.start_at = normalizedStartAt;
+		} else if (args.project.start_at !== undefined) {
+			delete normalizedProject.start_at;
+		}
+
+		const normalizedEndAt = normalizeIsoDateTime(args.project.end_at, 'end');
+		if (normalizedEndAt !== undefined) {
+			normalizedProject.end_at = normalizedEndAt;
+		} else if (args.project.end_at !== undefined) {
+			delete normalizedProject.end_at;
+		}
+
+		const normalizedTasks = args.tasks?.map((task) => {
+			const normalizedDueAt = normalizeIsoDateTime(task.due_at, 'end');
+			if (normalizedDueAt !== undefined) {
+				return { ...task, due_at: normalizedDueAt };
+			}
+			if (task.due_at !== undefined) {
+				const { due_at: _ignored, ...rest } = task;
+				return rest;
+			}
+			return task;
+		});
+
+		const normalizedArgs: CreateOntoProjectArgs = {
+			...args,
+			project: normalizedProject,
+			tasks: normalizedTasks ?? args.tasks
+		};
+
+		const contextDocument = buildContextDocumentSpec(normalizedArgs);
 
 		const additionalDocuments =
-			args.documents?.filter((doc) => doc.type_key !== 'document.context.project') ?? [];
+			normalizedArgs.documents?.filter(
+				(doc) => doc.type_key !== 'document.context.project'
+			) ?? [];
 
 		const spec = {
-			project: args.project,
-			...(args.goals?.length ? { goals: args.goals } : {}),
-			...(args.requirements?.length ? { requirements: args.requirements } : {}),
-			...(args.plans?.length ? { plans: args.plans } : {}),
-			...(args.tasks?.length ? { tasks: args.tasks } : {}),
-			...(args.outputs?.length ? { outputs: args.outputs } : {}),
+			project: normalizedArgs.project,
+			...(normalizedArgs.goals?.length ? { goals: normalizedArgs.goals } : {}),
+			...(normalizedArgs.requirements?.length
+				? { requirements: normalizedArgs.requirements }
+				: {}),
+			...(normalizedArgs.plans?.length ? { plans: normalizedArgs.plans } : {}),
+			...(normalizedArgs.tasks?.length ? { tasks: normalizedArgs.tasks } : {}),
+			...(normalizedArgs.outputs?.length ? { outputs: normalizedArgs.outputs } : {}),
 			...(additionalDocuments.length ? { documents: additionalDocuments } : {}),
 			context_document: contextDocument
 		};
@@ -549,6 +691,143 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			document: data.document,
 			message: `Updated ontology document "${data.document?.title ?? args.document_id}"`
+		};
+	}
+
+	async updateOntoOutput(args: UpdateOntoOutputArgs): Promise<{
+		output: any;
+		message: string;
+	}> {
+		const updateData: Record<string, unknown> = {};
+
+		if (args.name !== undefined) updateData.name = args.name;
+		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.description !== undefined) updateData.description = args.description;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		if (Object.keys(updateData).length === 0) {
+			throw new Error('No updates provided for ontology output');
+		}
+
+		const data = await this.apiRequest(`/api/onto/outputs/${args.output_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		return {
+			output: data.output,
+			message: `Updated ontology output "${data.output?.name ?? args.output_id}"`
+		};
+	}
+
+	async updateOntoMilestone(args: UpdateOntoMilestoneArgs): Promise<{
+		milestone: any;
+		message: string;
+	}> {
+		const updateData: Record<string, unknown> = {};
+
+		if (args.title !== undefined) updateData.title = args.title;
+		if (args.due_at !== undefined) updateData.due_at = args.due_at;
+		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.description !== undefined) updateData.description = args.description;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		if (Object.keys(updateData).length === 0) {
+			throw new Error('No updates provided for ontology milestone');
+		}
+
+		const data = await this.apiRequest(`/api/onto/milestones/${args.milestone_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		return {
+			milestone: data.milestone,
+			message: `Updated ontology milestone "${data.milestone?.title ?? args.milestone_id}"`
+		};
+	}
+
+	async updateOntoRisk(args: UpdateOntoRiskArgs): Promise<{
+		risk: any;
+		message: string;
+	}> {
+		const updateData: Record<string, unknown> = {};
+
+		if (args.title !== undefined) updateData.title = args.title;
+		if (args.impact !== undefined) updateData.impact = args.impact;
+		if (args.probability !== undefined) updateData.probability = args.probability;
+		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.content !== undefined) updateData.content = args.content;
+		if (args.description !== undefined) updateData.description = args.description;
+		if (args.mitigation_strategy !== undefined)
+			updateData.mitigation_strategy = args.mitigation_strategy;
+		if (args.owner !== undefined) updateData.owner = args.owner;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		if (Object.keys(updateData).length === 0) {
+			throw new Error('No updates provided for ontology risk');
+		}
+
+		const data = await this.apiRequest(`/api/onto/risks/${args.risk_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		return {
+			risk: data.risk,
+			message: `Updated ontology risk "${data.risk?.title ?? args.risk_id}"`
+		};
+	}
+
+	async updateOntoDecision(args: UpdateOntoDecisionArgs): Promise<{
+		decision: any;
+		message: string;
+	}> {
+		const updateData: Record<string, unknown> = {};
+
+		if (args.title !== undefined) updateData.title = args.title;
+		if (args.decision_at !== undefined) updateData.decision_at = args.decision_at;
+		if (args.rationale !== undefined) updateData.rationale = args.rationale;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		if (Object.keys(updateData).length === 0) {
+			throw new Error('No updates provided for ontology decision');
+		}
+
+		const data = await this.apiRequest(`/api/onto/decisions/${args.decision_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		return {
+			decision: data.decision,
+			message: `Updated ontology decision "${data.decision?.title ?? args.decision_id}"`
+		};
+	}
+
+	async updateOntoRequirement(args: UpdateOntoRequirementArgs): Promise<{
+		requirement: any;
+		message: string;
+	}> {
+		const updateData: Record<string, unknown> = {};
+
+		if (args.text !== undefined) updateData.text = args.text;
+		if (args.priority !== undefined) updateData.priority = args.priority;
+		if (args.type_key !== undefined) updateData.type_key = args.type_key;
+		if (args.props !== undefined) updateData.props = args.props;
+
+		if (Object.keys(updateData).length === 0) {
+			throw new Error('No updates provided for ontology requirement');
+		}
+
+		const data = await this.apiRequest(`/api/onto/requirements/${args.requirement_id}`, {
+			method: 'PATCH',
+			body: JSON.stringify(updateData)
+		});
+
+		return {
+			requirement: data.requirement,
+			message: `Updated ontology requirement "${data.requirement?.text ?? args.requirement_id}"`
 		};
 	}
 

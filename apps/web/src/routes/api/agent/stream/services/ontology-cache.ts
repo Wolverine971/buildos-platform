@@ -161,7 +161,9 @@ export class OntologyCacheService {
 						| 'document'
 						| 'output'
 						| 'milestone'
-						| 'risk',
+						| 'risk'
+						| 'decision'
+						| 'requirement',
 					resolvedFocus.focusEntityId
 				);
 			} else {
@@ -195,7 +197,16 @@ export class OntologyCacheService {
 	private async loadOntologyContext(
 		contextType: ChatContextType,
 		entityId?: string,
-		ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output'
+		ontologyEntityType?:
+			| 'task'
+			| 'plan'
+			| 'goal'
+			| 'document'
+			| 'output'
+			| 'milestone'
+			| 'risk'
+			| 'decision'
+			| 'requirement'
 	): Promise<OntologyContext | null> {
 		logger.debug('Loading ontology context', {
 			contextType,

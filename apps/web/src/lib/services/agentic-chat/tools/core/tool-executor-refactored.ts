@@ -273,6 +273,21 @@ export class ChatToolExecutor {
 			case 'list_onto_documents':
 				return this.readExecutor.listOntoDocuments(args);
 
+			case 'list_onto_outputs':
+				return this.readExecutor.listOntoOutputs(args);
+
+			case 'list_onto_milestones':
+				return this.readExecutor.listOntoMilestones(args);
+
+			case 'list_onto_risks':
+				return this.readExecutor.listOntoRisks(args);
+
+			case 'list_onto_decisions':
+				return this.readExecutor.listOntoDecisions(args);
+
+			case 'list_onto_requirements':
+				return this.readExecutor.listOntoRequirements(args);
+
 			case 'search_onto_documents':
 				return this.readExecutor.searchOntoDocuments(args);
 
@@ -293,6 +308,21 @@ export class ChatToolExecutor {
 
 			case 'get_onto_document_details':
 				return this.readExecutor.getOntoDocumentDetails(args);
+
+			case 'get_onto_output_details':
+				return this.readExecutor.getOntoOutputDetails(args);
+
+			case 'get_onto_milestone_details':
+				return this.readExecutor.getOntoMilestoneDetails(args);
+
+			case 'get_onto_risk_details':
+				return this.readExecutor.getOntoRiskDetails(args);
+
+			case 'get_onto_decision_details':
+				return this.readExecutor.getOntoDecisionDetails(args);
+
+			case 'get_onto_requirement_details':
+				return this.readExecutor.getOntoRequirementDetails(args);
 
 			case 'list_task_documents':
 				return this.readExecutor.listTaskDocuments(args);
@@ -340,6 +370,21 @@ export class ChatToolExecutor {
 				return this.writeExecutor.updateOntoDocument(args, (documentId) =>
 					this.readExecutor.getOntoDocumentDetails({ document_id: documentId })
 				);
+
+			case 'update_onto_output':
+				return this.writeExecutor.updateOntoOutput(args);
+
+			case 'update_onto_milestone':
+				return this.writeExecutor.updateOntoMilestone(args);
+
+			case 'update_onto_risk':
+				return this.writeExecutor.updateOntoRisk(args);
+
+			case 'update_onto_decision':
+				return this.writeExecutor.updateOntoDecision(args);
+
+			case 'update_onto_requirement':
+				return this.writeExecutor.updateOntoRequirement(args);
 
 			case 'delete_onto_task':
 				return this.writeExecutor.deleteOntoTask(args);

@@ -54,18 +54,32 @@ export interface ContextPromptConfig {
 
 /**
  * Planner agent prompt configuration
+ *
+ * Sections are organized in cognitive order:
+ * 1. Foundation (identity, platform, data model) - WHO am I, WHAT is BuildOS, HOW is data organized
+ * 2. Operational (data access, strategies, guidelines) - HOW to operate
+ * 3. Behavioral (language rules, update rules, task creation) - RULES to follow
  */
 export interface PlannerPromptConfig {
+	// === FOUNDATION SECTIONS ===
 	/** Core system identity and role */
 	identity: PromptSection;
-	/** User-facing language rules */
-	languageRules: PromptSection;
+	/** Platform context - what BuildOS is, who users are */
+	platformContext: PromptSection;
+	/** Data model overview - how information is organized */
+	dataModelOverview: PromptSection;
+
+	// === OPERATIONAL SECTIONS ===
 	/** Data access patterns and progressive disclosure */
 	dataAccessPatterns: PromptSection;
 	/** Available strategies */
 	strategies: PromptSection;
 	/** Important guidelines */
 	guidelines: PromptSection;
+
+	// === BEHAVIORAL SECTIONS ===
+	/** User-facing language rules */
+	languageRules: PromptSection;
 	/** Non-destructive update rules */
 	updateRules: PromptSection;
 	/** Task creation philosophy */

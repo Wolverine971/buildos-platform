@@ -31,6 +31,7 @@ import type { ExecutorContext } from './types';
 export class BaseExecutor {
 	protected readonly supabase: SupabaseClient;
 	protected readonly userId: string;
+	protected readonly sessionId?: string;
 	protected readonly fetchFn: typeof fetch;
 	protected readonly llmService?: SmartLLMService;
 
@@ -40,6 +41,7 @@ export class BaseExecutor {
 	constructor(context: ExecutorContext) {
 		this.supabase = context.supabase;
 		this.userId = context.userId;
+		this.sessionId = context.sessionId;
 		this.fetchFn = context.fetchFn;
 		this.llmService = context.llmService;
 	}
@@ -79,11 +81,17 @@ export class BaseExecutor {
 			data: { session }
 		} = await this.supabase.auth.getSession();
 
-		return {
+		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 			Authorization: session?.access_token ? `Bearer ${session.access_token}` : '',
 			'X-Change-Source': 'chat'
 		};
+
+		if (this.sessionId) {
+			headers['X-Chat-Session-Id'] = this.sessionId;
+		}
+
+		return headers;
 	}
 
 	// ============================================
@@ -214,7 +222,17 @@ export class BaseExecutor {
 		if (project) return;
 
 		// Check other entity tables
-		const tables = ['onto_tasks', 'onto_plans', 'onto_goals', 'onto_outputs', 'onto_documents'];
+		const tables = [
+			'onto_tasks',
+			'onto_plans',
+			'onto_goals',
+			'onto_outputs',
+			'onto_documents',
+			'onto_milestones',
+			'onto_risks',
+			'onto_decisions',
+			'onto_requirements'
+		];
 
 		for (const table of tables) {
 			const { data, error } = await this.supabase

@@ -11,7 +11,8 @@ import { DOCUMENT_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
-	getChangeSourceFromRequest
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 
 type Locals = App.Locals;
@@ -90,6 +91,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (!session?.user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
+
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		const documentId = params.id;
 		if (!documentId) {
@@ -225,8 +228,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				state_key: updatedDocument.state_key,
 				type_key: updatedDocument.type_key
 			},
-			accessResult.actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ document: updatedDocument });
@@ -242,6 +246,8 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		if (!session?.user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
+
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		const documentId = params.id;
 		if (!documentId) {
@@ -281,8 +287,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			'document',
 			documentId,
 			documentDataForLog,
-			actorId,
-			getChangeSourceFromRequest(request)
+			session.user.id,
+			getChangeSourceFromRequest(request),
+			chatSessionId
 		);
 
 		return ApiResponse.success({ deleted: true });

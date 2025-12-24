@@ -163,6 +163,10 @@ BuildOS uses a props-based ontology system with these core entities:
 - **Plans** (onto_plans): Logical groupings of tasks within projects
 - **Goals** (onto_goals): Project objectives and success criteria
 - **Outputs** (onto_outputs): Deliverables and artifacts
+- **Milestones** (onto_milestones): Checkpoints and due dates
+- **Risks** (onto_risks): Risk registers and mitigation plans
+- **Decisions** (onto_decisions): Decision records and rationale
+- **Requirements** (onto_requirements): Constraints and requirements
 - **Documents** (onto_documents): Project documentation
 - **Edges** (onto_edges): Relationships between entities
 
@@ -172,17 +176,32 @@ These query the ontology system and return abbreviated data:
 - list_onto_tasks → Task summaries (id, title, state_key, priority, due_at)
 - list_onto_plans → Plan summaries (id, name, type_key, state_key)
 - list_onto_goals → Goal summaries (id, name, type_key, description)
+- list_onto_documents → Document summaries (id, title, state_key, type_key)
+- list_onto_outputs → Output summaries (id, name, state_key, type_key)
+- list_onto_milestones → Milestone summaries (id, title, due_at, state_key)
+- list_onto_risks → Risk summaries (id, title, impact, state_key)
+- list_onto_decisions → Decision summaries (id, title, decision_at)
+- list_onto_requirements → Requirement summaries (id, text, priority)
 
 **Filters Available:**
 - Projects: state_key, type_key
 - Tasks: project_id, state_key (filter by state: 'todo', 'in_progress', 'done')
 - Plans: project_id
 - Goals: project_id
+- Documents/Outputs/Milestones/Risks/Decisions/Requirements: project_id (plus type/state filters where supported)
 
 ### Tier 2: ONTOLOGY DETAIL Tools (Use When Needed)
 Get complete entity data including props (JSON):
 - get_onto_project_details → Full project with all properties
 - get_onto_task_details → Full task with all properties
+- get_onto_goal_details → Full goal with all properties
+- get_onto_plan_details → Full plan with all properties
+- get_onto_document_details → Full document with all properties
+- get_onto_output_details → Full output with all properties
+- get_onto_milestone_details → Full milestone with all properties
+- get_onto_risk_details → Full risk with all properties
+- get_onto_decision_details → Full decision with all properties
+- get_onto_requirement_details → Full requirement with all properties
 
 ### Tier 3: ONTOLOGY RELATIONSHIP Tools
 Explore the entity graph:
@@ -195,15 +214,25 @@ Create, update, and delete ontology entities:
 - create_onto_task → Create task in project (required: project_id, title)
 - create_onto_goal → Create project goal (required: project_id, name)
 - create_onto_plan → Create task grouping (required: project_id, name)
+- create_onto_document → Create project document (required: project_id, title, type_key)
 
 **UPDATE Tools** (Modify existing):
 - update_onto_task → Update task fields (required: task_id, optional: title, description, state_key, priority, plan_id, due_at, props)
 - update_onto_project → Update project fields (required: project_id, optional: name, description, state_key, props)
+- update_onto_goal → Update goal fields (required: goal_id, optional: name, description, priority, target_date, props)
+- update_onto_plan → Update plan fields (required: plan_id, optional: name, description, state_key, dates, props)
+- update_onto_document → Update document fields (required: document_id, optional: title, state_key, content, props)
+- update_onto_output → Update output fields (required: output_id, optional: name, state_key, description, props)
+- update_onto_milestone → Update milestone fields (required: milestone_id, optional: title, due_at, state_key, description, props)
+- update_onto_risk → Update risk fields (required: risk_id, optional: title, impact, probability, state_key, content, props)
+- update_onto_decision → Update decision fields (required: decision_id, optional: title, decision_at, rationale, props)
+- update_onto_requirement → Update requirement fields (required: requirement_id, optional: text, priority, type_key, props)
 
 **DELETE Tools** (Remove entities):
 - delete_onto_task → Delete task permanently (required: task_id)
 - delete_onto_goal → Delete goal permanently (required: goal_id)
 - delete_onto_plan → Delete plan permanently (required: plan_id)
+- delete_onto_document → Delete document permanently (required: document_id)
 
 **When to use ACTION tools:**
 - User explicitly requests creation: "Create a task", "Add a goal", "Make a new plan"

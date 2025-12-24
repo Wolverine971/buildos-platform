@@ -11,7 +11,10 @@
       "Bash(pnpm check:*)",
       "mcp__perplexity__reason",
       "Bash(pnpm run build:*)",
-      "Bash(pnpm typecheck:*)"
+      "Bash(pnpm typecheck:*)",
+      "WebFetch(domain:openrouter.ai)",
+      "WebFetch(domain:venturebeat.com)",
+      "WebFetch(domain:www.deeplearning.ai)"
     ],
     "deny": [],
     "ask": []

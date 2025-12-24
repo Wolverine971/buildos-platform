@@ -46,6 +46,36 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
+	list_onto_outputs: {
+		summary: 'List project outputs and deliverables with status.',
+		capabilities: ['Filter by project/state', 'Highlights deliverable state'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
+	list_onto_milestones: {
+		summary: 'List project milestones with due dates and status.',
+		capabilities: ['Filter by project/state', 'Highlights upcoming checkpoints'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
+	list_onto_risks: {
+		summary: 'List project risks with impact and state.',
+		capabilities: ['Filter by project/state/impact', 'Highlights risk posture'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
+	list_onto_decisions: {
+		summary: 'List project decisions with decision dates.',
+		capabilities: ['Filter by project', 'Good for decision audits'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
+	list_onto_requirements: {
+		summary: 'List project requirements with priority.',
+		capabilities: ['Filter by project/type', 'Highlights constraints'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
 	list_onto_projects: {
 		summary: 'List ontology projects grouped by recent activity.',
 		capabilities: ['Filter by type or state', 'Highlights facet metadata'],
@@ -100,6 +130,36 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	get_onto_document_details: {
 		summary: 'Load full document details including body markdown/props.',
 		capabilities: ['Validates ownership', 'Use before edits or linking'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_onto_output_details: {
+		summary: 'Load full output details including description and metadata.',
+		capabilities: ['Validates ownership', 'Use before edits'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_onto_milestone_details: {
+		summary: 'Load full milestone details including due dates and state.',
+		capabilities: ['Validates ownership', 'Use before edits'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_onto_risk_details: {
+		summary: 'Load full risk details including impact and mitigation info.',
+		capabilities: ['Validates ownership', 'Use before edits'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_onto_decision_details: {
+		summary: 'Load full decision details including rationale and decision date.',
+		capabilities: ['Validates ownership', 'Use before edits'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_onto_requirement_details: {
+		summary: 'Load full requirement details including priority and type.',
+		capabilities: ['Validates ownership', 'Use before edits'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'read'
 	},
@@ -214,6 +274,36 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Validates ownership',
 			'Append or LLM-merge body content safely'
 		],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	update_onto_output: {
+		summary: 'Modify output name, state, or metadata.',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	update_onto_milestone: {
+		summary: 'Modify milestone title, due date, state, or metadata.',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	update_onto_risk: {
+		summary: 'Modify risk status, impact, probability, or mitigation info.',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	update_onto_decision: {
+		summary: 'Modify decision title, date, rationale, or metadata.',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	update_onto_requirement: {
+		summary: 'Modify requirement text, priority, or metadata.',
+		capabilities: ['Supports partial updates', 'Validates ownership'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},

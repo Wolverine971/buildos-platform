@@ -132,7 +132,10 @@ export function detectElementType(
 		'plan',
 		'document',
 		'output',
-		'milestone'
+		'milestone',
+		'risk',
+		'decision',
+		'requirement'
 	];
 
 	return candidates.find((type) => !!getScopedEntity(ontology, type));
@@ -201,7 +204,7 @@ ${
 ${(ontology?.relationships?.edges?.length ?? 0) > 5 ? `... and ${(ontology?.relationships?.edges?.length ?? 0) - 5} more` : ''}
 
 ### Hints
-- Use list_onto_tasks, list_onto_goals, list_onto_plans to see entities
+- Use list_onto_* tools to see entities (tasks, goals, plans, documents, outputs, milestones, risks, decisions, requirements)
 - Use get_entity_relationships for full graph
 - Use get_onto_project_details for complete information`;
 }

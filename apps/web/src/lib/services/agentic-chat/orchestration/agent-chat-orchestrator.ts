@@ -1,4 +1,19 @@
 // apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts
+/**
+ * Agent Chat Orchestrator
+ *
+ * What this file is:
+ * - The top-level runtime loop that drives a single agentic chat request.
+ *
+ * Purpose:
+ * - Build planner context, select tools, stream the planner loop, and execute tools.
+ * - Handle context refreshes, plan meta tool calls, and event streaming.
+ *
+ * Why / when to use:
+ * - Use for the main chat flow that coordinates planning + tool execution.
+ * - This is the entry point for request-level orchestration.
+ */
+
 import { v4 as uuidv4 } from 'uuid';
 import type {
 	AgentChatRequest,
@@ -34,10 +49,13 @@ import {
 	ProjectCreationAnalyzer,
 	type ClarificationRoundMetadata
 } from '../analysis/project-creation-analyzer';
+import { StrategyAnalyzer } from '../analysis/strategy-analyzer';
+import { ToolSelectionService } from '../analysis/tool-selection-service';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
 import { buildDebugContextInfo, isDebugModeEnabled } from '../observability';
 import { ErrorLoggerService } from '../../errorLogger.service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
+import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 
 const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	type: 'function',
@@ -97,12 +115,16 @@ export interface AgentChatOrchestratorDependencies {
 export class AgentChatOrchestrator {
 	private enhancedLLM: EnhancedLLMWrapper;
 	private projectCreationAnalyzer: ProjectCreationAnalyzer;
+	private strategyAnalyzer: StrategyAnalyzer;
+	private toolSelectionService: ToolSelectionService;
 
 	constructor(private deps: AgentChatOrchestratorDependencies) {
 		// Create enhanced wrapper for intelligent model selection
 		this.enhancedLLM = createEnhancedLLMWrapper(deps.llmService);
 		// Create analyzer for project creation clarifying questions
 		this.projectCreationAnalyzer = new ProjectCreationAnalyzer(deps.llmService);
+		this.strategyAnalyzer = new StrategyAnalyzer(deps.llmService);
+		this.toolSelectionService = new ToolSelectionService(this.strategyAnalyzer);
 	}
 
 	async *streamConversation(
@@ -129,6 +151,49 @@ export class AgentChatOrchestrator {
 				projectFocus: request.projectFocus ?? null
 			});
 
+			const contextScope =
+				request.ontologyContext?.scope ??
+				(request.entityId ? { projectId: request.entityId } : undefined);
+
+			const serviceContext: ServiceContext = {
+				sessionId: request.sessionId,
+				userId: request.userId,
+				contextType: request.contextType,
+				entityId: request.entityId,
+				conversationHistory,
+				ontologyContext: request.ontologyContext,
+				lastTurnContext: request.lastTurnContext,
+				projectFocus: request.projectFocus ?? null,
+				contextScope
+			};
+
+			plannerContext = await this.applyToolSelection({
+				request,
+				plannerContext,
+				serviceContext
+			});
+
+			// Emit tool selection telemetry
+			const toolSelectionMeta = plannerContext.metadata?.toolSelection;
+			if (toolSelectionMeta) {
+				const telemetryEvent: StreamEvent = {
+					type: 'telemetry',
+					event: 'tool_selection',
+					data: {
+						mode: toolSelectionMeta.mode,
+						defaultToolCount: toolSelectionMeta.defaultToolNames?.length ?? 0,
+						selectedToolCount: toolSelectionMeta.selectedToolNames?.length ?? 0,
+						addedTools: toolSelectionMeta.addedTools ?? [],
+						removedTools: toolSelectionMeta.removedTools ?? [],
+						strategy: toolSelectionMeta.strategy,
+						confidence: toolSelectionMeta.confidence,
+						contextType: serviceContext.contextType
+					}
+				};
+				yield telemetryEvent;
+				await callback(telemetryEvent);
+			}
+
 			plannerAgentId = await this.createPlannerAgentRecord(
 				persistenceService,
 				plannerContext,
@@ -139,6 +204,7 @@ export class AgentChatOrchestrator {
 				...plannerContext.metadata,
 				plannerAgentId
 			};
+			serviceContext.plannerAgentId = plannerAgentId;
 
 			// === DEBUG CONTEXT EMISSION ===
 			// If debug mode is enabled, emit full context info for observability
@@ -155,23 +221,6 @@ export class AgentChatOrchestrator {
 				yield debugEvent;
 				await callback(debugEvent);
 			}
-
-			const contextScope =
-				request.ontologyContext?.scope ??
-				(request.entityId ? { projectId: request.entityId } : undefined);
-
-			const serviceContext: ServiceContext = {
-				sessionId: request.sessionId,
-				userId: request.userId,
-				plannerAgentId,
-				contextType: request.contextType,
-				entityId: request.entityId,
-				conversationHistory,
-				ontologyContext: request.ontologyContext,
-				lastTurnContext: request.lastTurnContext,
-				projectFocus: request.projectFocus ?? null,
-				contextScope
-			};
 
 			if (request.chatSession) {
 				const sessionEvent: StreamEvent = {
@@ -321,6 +370,37 @@ export class AgentChatOrchestrator {
 		return messages;
 	}
 
+	private async applyToolSelection(params: {
+		request: AgentChatRequest;
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+	}): Promise<PlannerContext> {
+		const { request, plannerContext, serviceContext } = params;
+		try {
+			const selection = await this.toolSelectionService.selectTools({
+				message: request.userMessage,
+				plannerContext,
+				serviceContext,
+				lastTurnContext: request.lastTurnContext ?? plannerContext.lastTurnContext
+			});
+
+			return {
+				...plannerContext,
+				availableTools: selection.tools,
+				metadata: {
+					...plannerContext.metadata,
+					toolSelection: selection.metadata,
+					strategyAnalysis: selection.analysis
+				}
+			};
+		} catch (error) {
+			console.warn('[AgentChatOrchestrator] Tool selection failed, using default tools', {
+				error
+			});
+			return plannerContext;
+		}
+	}
+
 	private refreshPlannerMessages(messages: LLMMessage[], plannerContext: PlannerContext): void {
 		if (messages.length === 0) {
 			return;
@@ -433,7 +513,7 @@ export class AgentChatOrchestrator {
 	} | null> {
 		const { request, serviceContext, messages } = params;
 		try {
-			const refreshedPlannerContext = await this.deps.contextService.buildPlannerContext({
+			let refreshedPlannerContext = await this.deps.contextService.buildPlannerContext({
 				sessionId: serviceContext.sessionId,
 				userId: serviceContext.userId,
 				conversationHistory: serviceContext.conversationHistory,
@@ -447,6 +527,12 @@ export class AgentChatOrchestrator {
 					? { lastTurnContext: serviceContext.lastTurnContext }
 					: {}),
 				projectFocus: serviceContext.projectFocus ?? null
+			});
+
+			refreshedPlannerContext = await this.applyToolSelection({
+				request,
+				plannerContext: refreshedPlannerContext,
+				serviceContext
 			});
 
 			this.refreshPlannerMessages(messages, refreshedPlannerContext);
@@ -480,7 +566,8 @@ export class AgentChatOrchestrator {
 		virtualHandlers: Record<string, VirtualToolHandler>;
 	}): AsyncGenerator<StreamEvent, void, unknown> {
 		const { toolExecutionService } = this.deps;
-		const { request, messages, tools, serviceContext, virtualHandlers } = params;
+		const { request, messages, tools, serviceContext, virtualHandlers, plannerContext } = params;
+		let currentPlannerContext = plannerContext;
 		let currentTools = tools;
 		let currentVirtualHandlers = virtualHandlers;
 
@@ -488,6 +575,7 @@ export class AgentChatOrchestrator {
 		let toolCallCount = 0;
 		let lastUsage: { total_tokens: number } | undefined;
 		let continueLoop = true;
+		let toolMissRetryUsed = false;
 
 		yield this.buildAgentStateEvent(
 			'thinking',
@@ -606,6 +694,7 @@ export class AgentChatOrchestrator {
 				tool_calls: pendingToolCalls
 			});
 
+			let retryWithExpandedTools = false;
 			for (const toolCall of pendingToolCalls) {
 				if (request.abortSignal?.aborted) {
 					return;
@@ -622,6 +711,25 @@ export class AgentChatOrchestrator {
 						abortSignal: request.abortSignal
 					}
 				);
+
+				// Track tool_not_loaded errors for telemetry - indicates tool selection miss
+				if (result.errorType === 'tool_not_loaded') {
+					console.warn('[AgentChatOrchestrator] Tool not loaded - selection miss', {
+						toolName: result.toolName,
+						sessionId: serviceContext.sessionId,
+						contextType: serviceContext.contextType
+					});
+					// Emit telemetry event for tracking
+					yield {
+						type: 'telemetry',
+						event: 'tool_selection_miss',
+						data: {
+							toolName: result.toolName,
+							contextType: serviceContext.contextType,
+							loadedToolCount: currentTools.length
+						}
+					} as StreamEvent;
+				}
 
 				yield { type: 'tool_result', result };
 
@@ -646,6 +754,7 @@ export class AgentChatOrchestrator {
 							messages
 						});
 						if (refreshed) {
+							currentPlannerContext = refreshed.plannerContext;
 							currentTools = refreshed.tools;
 							currentVirtualHandlers = refreshed.virtualHandlers;
 						}
@@ -666,8 +775,64 @@ export class AgentChatOrchestrator {
 					tool_call_id: toolCall.id
 				};
 				messages.push(toolMessage);
+
+				if (result.errorType === 'tool_not_loaded' && !toolMissRetryUsed) {
+					toolMissRetryUsed = true;
+					const expanded = this.expandToolPoolAfterMiss({
+						request,
+						serviceContext,
+						plannerContext: currentPlannerContext,
+						messages,
+						missedToolName: result.toolName
+					});
+					currentPlannerContext = expanded.plannerContext;
+					currentTools = expanded.tools;
+					currentVirtualHandlers = expanded.virtualHandlers;
+					retryWithExpandedTools = true;
+				}
+
+				if (retryWithExpandedTools) {
+					break;
+				}
+			}
+
+			if (retryWithExpandedTools) {
+				continue;
 			}
 		}
+	}
+
+	private expandToolPoolAfterMiss(params: {
+		request: AgentChatRequest;
+		serviceContext: ServiceContext;
+		plannerContext: PlannerContext;
+		messages: LLMMessage[];
+		missedToolName: string;
+	}): {
+		plannerContext: PlannerContext;
+		tools: ChatToolDefinition[];
+		virtualHandlers: Record<string, VirtualToolHandler>;
+	} {
+		const { request, serviceContext, plannerContext, messages, missedToolName } = params;
+		const expandedPlannerContext: PlannerContext = {
+			...plannerContext,
+			availableTools: ALL_TOOLS
+		};
+
+		messages.push({
+			role: 'system',
+			content: `Tool "${missedToolName}" was not loaded. Tool pool expanded to full catalog; replan with available tools.`
+		});
+
+		return {
+			plannerContext: expandedPlannerContext,
+			tools: this.appendVirtualTools(expandedPlannerContext.availableTools),
+			virtualHandlers: this.createVirtualToolHandlers({
+				request,
+				plannerContext: expandedPlannerContext,
+				serviceContext
+			})
+		};
 	}
 
 	private ensureWithinLimits(startTime: number, toolCallCount: number): void {

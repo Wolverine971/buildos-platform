@@ -88,7 +88,17 @@ export const PROJECT_CONTEXT_TYPES = ['project', 'project_audit', 'project_forec
 /**
  * Valid ontology entity types for element-level context loading.
  */
-export const VALID_ONTOLOGY_ENTITY_TYPES = ['task', 'plan', 'goal', 'document', 'output'] as const;
+export const VALID_ONTOLOGY_ENTITY_TYPES = [
+	'task',
+	'plan',
+	'goal',
+	'document',
+	'output',
+	'milestone',
+	'risk',
+	'decision',
+	'requirement'
+] as const;
 
 // ============================================
 // SESSION HANDLING

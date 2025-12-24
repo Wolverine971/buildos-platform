@@ -187,7 +187,9 @@ export class UtilityExecutor extends BaseExecutor {
 					milestones: kindKey === 'milestones' ? filteredEntities : [],
 					documents: kindKey === 'documents' ? filteredEntities : [],
 					outputs: kindKey === 'outputs' ? filteredEntities : [],
-					risks: kindKey === 'risks' ? filteredEntities : []
+					risks: kindKey === 'risks' ? filteredEntities : [],
+					decisions: kindKey === 'decisions' ? filteredEntities : [],
+					requirements: kindKey === 'requirements' ? filteredEntities : []
 				},
 				counts: {
 					...linkedContext.counts,
@@ -228,7 +230,10 @@ export class UtilityExecutor extends BaseExecutor {
 			goal: 'onto_goals',
 			milestone: 'onto_milestones',
 			document: 'onto_documents',
-			output: 'onto_outputs'
+			output: 'onto_outputs',
+			risk: 'onto_risks',
+			decision: 'onto_decisions',
+			requirement: 'onto_requirements'
 		};
 
 		const table = tableMap[entityKind];
@@ -236,11 +241,17 @@ export class UtilityExecutor extends BaseExecutor {
 
 		const { data } = await this.supabase
 			.from(table as any)
-			.select('name, title, summary')
+			.select('name, title, summary, text')
 			.eq('id', entityId)
 			.single();
 
 		if (!data) return entityId;
-		return (data as any).name || (data as any).title || (data as any).summary || entityId;
+		return (
+			(data as any).name ||
+			(data as any).title ||
+			(data as any).summary ||
+			(data as any).text ||
+			entityId
+		);
 	}
 }
