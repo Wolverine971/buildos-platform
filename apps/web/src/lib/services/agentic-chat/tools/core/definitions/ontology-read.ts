@@ -28,7 +28,7 @@ Use this for queries about ontology tasks, plans with tasks, or project task lis
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by state (e.g., "pending", "in_progress", "completed")'
+						description: 'Filter by state (todo, in_progress, blocked, done)'
 					},
 					limit: {
 						type: 'number',
@@ -84,7 +84,7 @@ Use for queries about project documentation, briefs, specs, or research artifact
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by document state'
+						description: 'Filter by document state (draft, review, published)'
 					},
 					limit: {
 						type: 'number',
@@ -111,7 +111,7 @@ Use for deliverables, artifacts, or outputs tied to a project.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by output state'
+						description: 'Filter by output state (draft, in_progress, review, published)'
 					},
 					limit: {
 						type: 'number',
@@ -138,7 +138,7 @@ Use for project timelines, checkpoints, or delivery milestones.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by milestone state'
+						description: 'Filter by milestone state (pending, in_progress, completed, missed)'
 					},
 					limit: {
 						type: 'number',
@@ -165,7 +165,7 @@ Use for risk reviews, mitigation planning, or status updates.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by risk state'
+						description: 'Filter by risk state (identified, mitigated, occurred, closed)'
 					},
 					impact: {
 						type: 'string',
@@ -266,7 +266,7 @@ Use for discovering available projects or getting project overviews.`,
 				properties: {
 					state_key: {
 						type: 'string',
-						description: 'Filter by project state'
+						description: 'Filter by project state (planning, active, completed, cancelled)'
 					},
 					type_key: {
 						type: 'string',
@@ -352,7 +352,7 @@ Use when the user references a task by name or description but the project is un
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by project state'
+						description: 'Filter by project state (planning, active, completed, cancelled)'
 					},
 					type_key: {
 						type: 'string',
@@ -393,7 +393,7 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by document state'
+						description: 'Filter by document state (draft, review, published)'
 					},
 					limit: {
 						type: 'number',

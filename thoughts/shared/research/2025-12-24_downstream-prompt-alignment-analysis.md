@@ -199,6 +199,7 @@ To keep downstream prompts lean and consistent, consider:
 - 2025-12-24: Trimmed Executor prompt and added minimal constraints/error-handling guidance.
 - 2025-12-24: Aligned docs to replace deleted `project-creation-enhanced.ts` references with `context-prompts.ts`.
 - 2025-12-24: Removed duplicate last-turn system message injection in planner history (last-turn context now only in base prompt).
+- 2025-12-24: Updated response synthesis prompts and fallbacks to avoid internal tool names and raw error strings.
 
 ---
 

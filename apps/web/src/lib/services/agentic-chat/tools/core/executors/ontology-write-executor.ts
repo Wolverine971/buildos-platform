@@ -251,6 +251,11 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		}
 
 		const normalizedProject = { ...args.project };
+		if (normalizedProject.state_key !== undefined) {
+			normalizedProject.state_key =
+				this.normalizeProjectState(normalizedProject.state_key) ??
+				normalizedProject.state_key;
+		}
 		const normalizedStartAt = normalizeIsoDateTime(args.project.start_at, 'start');
 		if (normalizedStartAt !== undefined) {
 			normalizedProject.start_at = normalizedStartAt;
@@ -340,7 +345,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			title: args.title,
 			description: args.description ?? null,
 			type_key: args.type_key ?? 'task.execute',
-			state_key: args.state_key ?? 'todo',
+			state_key: this.normalizeTaskState(args.state_key) ?? 'todo',
 			priority: args.priority ?? 3,
 			plan_id: args.plan_id ?? null,
 			start_at: args.start_at ?? null,
@@ -480,7 +485,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 
 		if (args.name !== undefined) updateData.name = args.name;
 		if (args.description !== undefined) updateData.description = args.description;
-		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.state_key !== undefined) {
+			updateData.state_key = this.normalizeTaskState(args.state_key);
+		}
 		if (args.props !== undefined) updateData.props = args.props;
 
 		if (Object.keys(updateData).length === 0) {
@@ -524,7 +531,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			});
 		}
 		if (args.type_key !== undefined) updateData.type_key = args.type_key;
-		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (args.state_key !== undefined) {
+			updateData.state_key = this.normalizeProjectState(args.state_key);
+		}
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.plan_id !== undefined) updateData.plan_id = args.plan_id;
 		if (args.start_at !== undefined) updateData.start_at = args.start_at;

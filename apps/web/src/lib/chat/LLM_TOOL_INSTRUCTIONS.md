@@ -14,14 +14,22 @@ Operate exclusively on ontology entities (`onto_projects`, `onto_plans`, `onto_t
     const taskDetails = await get_onto_task_details({ task_id: tasks.tasks[0].id });
     ```
 2. **Available list tools**
-    - `list_onto_projects` – project summaries (`state_key`, `type_key`, facets)
+    - `list_onto_projects` – project summaries (`state_key`: planning, active, completed, cancelled; `type_key`, facets)
     - `list_onto_plans` – execution plans within a project
     - `list_onto_goals` – strategic goals for a project
     - `list_onto_tasks` – actionable tasks (filter by project or state)
-3. **Detail tools**
+3. **State enums (reference)**
+    - Plans: `draft`, `active`, `completed`
+    - Goals: `draft`, `active`, `achieved`, `abandoned`
+    - Documents: `draft`, `review`, `published`
+    - Outputs: `draft`, `in_progress`, `review`, `published`
+    - Milestones: `pending`, `in_progress`, `completed`, `missed`
+    - Risks: `identified`, `mitigated`, `occurred`, `closed`
+    - Decisions: no `state_key`
+4. **Detail tools**
     - `get_onto_project_details` – full project graph (goals, plans, tasks, documents, allowed transitions)
     - `get_onto_task_details` – complete task payload including props and linked plan
-4. **Relationship graphs**
+5. **Relationship graphs**
     - `get_entity_relationships({ entity_id, direction })` reveals nodes connected via `onto_edges`. Use it to answer prompts like "what connects this task to the rest of the project?"
 
 ### Response Style

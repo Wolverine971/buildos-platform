@@ -383,8 +383,8 @@ export class ResponseSynthesizer implements BaseService {
 		try {
 			const response = await this.llmService.generateText({
 				systemPrompt:
-					'You are a helpful assistant explaining errors to users in a friendly way.',
-				prompt: `The user tried to: ${operation}\n\nAn error occurred: ${errorMessage}\n\nGenerate a user-friendly explanation and suggest next steps.`,
+					'You are a helpful assistant explaining errors to users in a friendly way. Do not mention internal tool names or raw error strings; summarize in plain language and suggest next steps.',
+				prompt: `The user tried to: ${operation}\n\nAn error occurred. Provide a user-friendly explanation without exposing internal error details, and suggest next steps.`,
 				temperature: 0.7,
 				maxTokens: 200,
 				userId: context.userId,
@@ -394,7 +394,7 @@ export class ResponseSynthesizer implements BaseService {
 			return response;
 		} catch (llmError) {
 			// Fallback if LLM fails
-			return `I encountered an error while ${operation}. Error details: ${errorMessage}. Please try again or contact support if the issue persists.`;
+			return `I encountered an error while ${operation}. Please try again, or let me know if you'd like me to retry with a different approach.`;
 		}
 	}
 
@@ -409,51 +409,19 @@ export class ResponseSynthesizer implements BaseService {
 		const successful = results.filter((r) => r.success);
 		const failed = results.filter((r) => !r.success);
 
-		const toolSuccesses = successful.filter((r) => this.isToolResult(r));
-		const executorSuccesses = successful.filter((r) => this.isExecutorResult(r));
-		const otherSuccesses = successful.filter(
-			(r) => !this.isToolResult(r) && !this.isExecutorResult(r)
-		);
-
-		const toolFailures = failed.filter((r) => this.isToolResult(r));
-		const executorFailures = failed.filter((r) => this.isExecutorResult(r));
-		const otherFailures = failed.filter(
-			(r) => !this.isToolResult(r) && !this.isExecutorResult(r)
-		);
-
 		let summary = `Execution Results Summary:\n`;
 
 		if (successful.length > 0) {
 			summary += `- ${successful.length} successful executions\n`;
-			const pushPreview = (result: ExecutionResult, label?: string) => {
-				if (!result.data) return;
-				const preview = JSON.stringify(result.data, null, 2).substring(0, 100);
-				const prefix = label ? `  • ${label}: ` : '  • ';
-				summary += `${prefix}${preview}${preview.length >= 100 ? '...' : ''}\n`;
-			};
-			toolSuccesses.forEach((result) =>
-				pushPreview(result, (result as ToolExecutionResult).toolName)
-			);
-			executorSuccesses.forEach((result) =>
-				pushPreview(result, (result as ExecutorResult).executorId)
-			);
-			otherSuccesses.forEach((result) => pushPreview(result));
+			const hasDataPreview = successful.some((result) => result.data);
+			if (hasDataPreview) {
+				summary += `  • Key results available in execution context\n`;
+			}
 		}
 
 		if (failed.length > 0) {
 			summary += `- ${failed.length} failed executions\n`;
-			const pushFailure = (result: ExecutionResult, label?: string) => {
-				if (!result.error) return;
-				const prefix = label ? `  • ${label}: ` : '  • ';
-				summary += `${prefix}${result.error}\n`;
-			};
-			toolFailures.forEach((result) =>
-				pushFailure(result, (result as ToolExecutionResult).toolName)
-			);
-			executorFailures.forEach((result) =>
-				pushFailure(result, (result as ExecutorResult).executorId)
-			);
-			otherFailures.forEach((result) => pushFailure(result));
+			summary += `  • Some steps failed; retry or follow-up may be needed\n`;
 		}
 
 		return summary;
@@ -473,7 +441,8 @@ ${context.entityId ? `Entity: ${context.entityId}` : ''}
 
 Your task is to synthesize tool execution results into a clear, concise response.
 Be factual and helpful. Format the response in a user-friendly way.
-If there were errors, explain them clearly and suggest next steps.`;
+Never mention internal tool names or system fields (ontology, type_key, state_key, props, facets).
+Do not expose raw error strings; summarize errors in plain language and suggest next steps.`;
 	}
 
 	/**
@@ -512,7 +481,9 @@ ${context.entityId ? `Entity: ${context.entityId}` : ''}
 
 Your task is to synthesize a complex multi-step plan execution into a comprehensive response.
 Explain what was accomplished, what failed (if anything), and provide insights.
-Be clear about the overall outcome and any next steps needed.`;
+Be clear about the overall outcome and any next steps needed.
+Never mention internal tool names or system fields (ontology, type_key, state_key, props, facets).
+Do not expose raw error strings; summarize errors in plain language and suggest next steps.`;
 	}
 
 	/**
@@ -626,13 +597,7 @@ Format the response as a short introduction followed by a numbered list of the q
 
 		if (failCount > 0) {
 			response += `However, ${failCount} operation${failCount > 1 ? 's' : ''} failed.\n`;
-			const errors = toolResults
-				.filter((r) => !r.success && r.error)
-				.map((r) => `- ${r.toolName}: ${r.error}`)
-				.join('\n');
-			if (errors) {
-				response += `\nErrors encountered:\n${errors}\n`;
-			}
+			response += `I can retry or adjust the approach if you want.\n`;
 		}
 
 		if (successCount === 0 && failCount === 0) {

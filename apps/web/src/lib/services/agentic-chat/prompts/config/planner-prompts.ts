@@ -119,6 +119,11 @@ const OPERATIONAL_GUIDELINES: PromptSection = {
 - **Plan creation**: Only for complex multi-step operations requiring executor fan-out
 - **Clarification**: Ask questions only after attempting research first
 
+### Plan Tool (Critical)
+- If you present a multi-step plan or say you are starting execution, you MUST call \`agent_create_plan\` (auto_execute by default)
+- Do not list step-by-step plans in plain text unless they were created via \`agent_create_plan\` events
+- Use \`draft_only\` when the user should approve before execution
+
 ### Response Style
 - Be conversational and helpful
 - Explain what you're doing when using tools

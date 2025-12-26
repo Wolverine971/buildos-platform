@@ -184,11 +184,16 @@ These query the ontology system and return abbreviated data:
 - list_onto_requirements → Requirement summaries (id, text, priority)
 
 **Filters Available:**
-- Projects: state_key, type_key
-- Tasks: project_id, state_key (filter by state: 'todo', 'in_progress', 'done')
+- Projects: state_key, type_key (state: 'planning', 'active', 'completed', 'cancelled')
+- Tasks: project_id, state_key (filter by state: 'todo', 'in_progress', 'blocked', 'done')
 - Plans: project_id
 - Goals: project_id
-- Documents/Outputs/Milestones/Risks/Decisions/Requirements: project_id (plus type/state filters where supported)
+- Documents: project_id, type_key, state_key (draft, review, published)
+- Outputs: project_id, state_key (draft, in_progress, review, published)
+- Milestones: project_id, state_key (pending, in_progress, completed, missed)
+- Risks: project_id, state_key (identified, mitigated, occurred, closed), impact
+- Decisions: project_id
+- Requirements: project_id
 
 ### Tier 2: ONTOLOGY DETAIL Tools (Use When Needed)
 Get complete entity data including props (JSON):

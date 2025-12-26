@@ -168,7 +168,7 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 					state_key: {
 						type: 'string',
 						default: 'draft',
-						description: 'Initial state (draft, active, complete)'
+						description: 'Initial state (draft, active, completed)'
 					},
 					props: {
 						type: 'object',
@@ -701,7 +701,7 @@ Only updates fields that are provided.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'New state (draft, active, complete, archived)'
+						description: 'New state (planning, active, completed, cancelled)'
 					},
 					props: {
 						type: 'object',
@@ -844,7 +844,7 @@ Use for edits to titles, states, body markdown, or metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Document state'
+						description: 'Document state (draft, review, published)'
 					},
 					content: {
 						type: 'string',
@@ -890,7 +890,7 @@ Use for edits to output name, state, description, or metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Output state'
+						description: 'Output state (draft, in_progress, review, published)'
 					},
 					description: {
 						type: 'string',
@@ -928,7 +928,7 @@ Use for edits to title, due date, state, or metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Milestone state'
+						description: 'Milestone state (pending, in_progress, completed, missed)'
 					},
 					description: {
 						type: 'string',
@@ -970,7 +970,7 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Risk state'
+						description: 'Risk state (identified, mitigated, occurred, closed)'
 					},
 					content: {
 						type: 'string',

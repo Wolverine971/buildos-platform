@@ -265,4 +265,65 @@ export class BaseExecutor {
 		if (!term) return '';
 		return term.replace(/[%]/g, '').replace(/,/g, ' ').trim();
 	}
+
+	protected normalizeTaskState(state?: string | null): string | undefined {
+		if (!state) return undefined;
+
+		const normalized = state.trim().toLowerCase().replace(/[\s-]+/g, '_');
+		if (!normalized) return undefined;
+
+		const stateMap: Record<string, string> = {
+			pending: 'todo',
+			not_started: 'todo',
+			backlog: 'todo',
+			inprogress: 'in_progress',
+			started: 'in_progress',
+			working: 'in_progress',
+			completed: 'done',
+			complete: 'done'
+		};
+
+		const candidate = stateMap[normalized] ?? normalized;
+		return ['todo', 'in_progress', 'blocked', 'done'].includes(candidate)
+			? candidate
+			: state;
+	}
+
+	protected normalizeProjectState(state?: string | null): string | undefined {
+		if (!state) return undefined;
+
+		const normalized = state.trim().toLowerCase().replace(/[\s-]+/g, '_');
+		if (!normalized) return undefined;
+
+		const stateMap: Record<string, string> = {
+			in_progress: 'active',
+			inprogress: 'active',
+			started: 'active',
+			working: 'active',
+			ongoing: 'active',
+			paused: 'active',
+			on_hold: 'active',
+			hold: 'active',
+			pending: 'planning',
+			planned: 'planning',
+			backlog: 'planning',
+			todo: 'planning',
+			draft: 'planning',
+			complete: 'completed',
+			completed: 'completed',
+			done: 'completed',
+			finished: 'completed',
+			shipped: 'completed',
+			cancelled: 'cancelled',
+			canceled: 'cancelled',
+			aborted: 'cancelled',
+			abandoned: 'cancelled',
+			archived: 'cancelled'
+		};
+
+		const candidate = stateMap[normalized] ?? normalized;
+		return ['planning', 'active', 'completed', 'cancelled'].includes(candidate)
+			? candidate
+			: state;
+	}
 }

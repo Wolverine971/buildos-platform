@@ -193,7 +193,7 @@ Examples: goal.outcome.project, goal.metric.revenue, goal.behavior.cadence, goal
 		},
 		state_key: {
 			type: 'enum',
-			enum_values: ['active', 'completed', 'cancelled'],
+			enum_values: ['draft', 'active', 'achieved', 'abandoned'],
 			description: 'Lifecycle state for the goal',
 			required: false,
 			example: 'active'
@@ -207,7 +207,7 @@ Examples: goal.outcome.project, goal.metric.revenue, goal.behavior.cadence, goal
 		completed_at: {
 			type: 'date',
 			description:
-				'Timestamp when the goal was achieved. Set when goal transitions to completed.',
+				'Timestamp when the goal was achieved. Set when goal transitions to achieved.',
 			required: false,
 			example: '2025-05-15T14:30:00Z'
 		},
