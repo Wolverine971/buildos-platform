@@ -214,12 +214,9 @@
 
 	const voiceButtonClasses = $derived(getVoiceButtonClasses(voiceButtonState.variant));
 
-	// Compute padding for textarea based on whether actions snippet is provided
-	const textareaPaddingRight = $derived(
-		actions
-			? 'pr-3 xs:pr-[100px] sm:pr-[116px]' /* send (36-40px) + gap (6px) + voice (36-40px) + margin (12-20px) */
-			: 'pr-3 xs:pr-[56px] sm:pr-[64px]' /* voice (36-40px) + margin (12-16px) */
-	);
+	// Minimal padding - buttons have backdrop so text can flow underneath
+	// The backdrop blur + bg-card/90 ensures buttons remain visible over text
+	const textareaPaddingRight = $derived('pr-3');
 
 	// Border radius for textarea (full rounded - status row is now separate helper text)
 	const textareaBorderRadius = '';
@@ -619,33 +616,37 @@
 			}}
 		/>
 
-		<!-- ✅ Action buttons: Below textarea on portrait mobile, inside on landscape+ -->
-		<div class="absolute bottom-1.5 right-1.5 top-1.5 hidden items-start gap-1.5 xs:flex">
-			<!-- Snippet for custom action buttons (e.g., send button) -->
-			{#if actions}
-				{@render actions()}
-			{/if}
+		<!-- ✅ Action buttons: Bottom-right corner with backdrop for visual separation -->
+		<div class="pointer-events-none absolute bottom-0 right-0 hidden p-1.5 xs:block">
+			<div
+				class="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/90 p-1 shadow-ink backdrop-blur-sm"
+			>
+				<!-- Snippet for custom action buttons (e.g., send button) -->
+				{#if actions}
+					{@render actions()}
+				{/if}
 
-			<!-- Voice recording button: 36px, touch-optimized, hidden on mobile (shown in bottom bar) -->
-			{#if enableVoice}
-				<button
-					type="button"
-					class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
-					style="-webkit-tap-highlight-color: transparent;"
-					onclick={toggleVoiceRecording}
-					aria-label={voiceButtonState.label}
-					title={voiceButtonState.label}
-					aria-pressed={isCurrentlyRecording}
-					disabled={voiceButtonState.disabled}
-				>
-					{#if voiceButtonState.isLoading}
-						<LoaderCircle class="h-4 w-4 animate-spin" />
-					{:else}
-						{@const VoiceIcon = voiceButtonState.icon}
-						<VoiceIcon class="h-4 w-4" />
-					{/if}
-				</button>
-			{/if}
+				<!-- Voice recording button: 36px, touch-optimized, hidden on mobile (shown in bottom bar) -->
+				{#if enableVoice}
+					<button
+						type="button"
+						class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
+						style="-webkit-tap-highlight-color: transparent;"
+						onclick={toggleVoiceRecording}
+						aria-label={voiceButtonState.label}
+						title={voiceButtonState.label}
+						aria-pressed={isCurrentlyRecording}
+						disabled={voiceButtonState.disabled}
+					>
+						{#if voiceButtonState.isLoading}
+							<LoaderCircle class="h-4 w-4 animate-spin" />
+						{:else}
+							{@const VoiceIcon = voiceButtonState.icon}
+							<VoiceIcon class="h-4 w-4" />
+						{/if}
+					</button>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Live transcript preview: Positioned to avoid overlap with action buttons -->
