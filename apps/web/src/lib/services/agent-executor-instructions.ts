@@ -61,7 +61,7 @@ const executorConfig = {
     description: "Specific, actionable task description",
     goal: "Clear success criteria in one sentence",
     constraints: [
-      "Must complete within 30 seconds",
+      "Must complete within 2 minutes",
       "Only use provided tools",
       "Return structured data"
     ],
@@ -73,7 +73,7 @@ const executorConfig = {
   },
   tools: ["tool1", "tool2"], // Minimum required tools only
   maxTokens: 1500,
-  timeout: 30000,
+  timeout: 120000,
   model: "deepseek-coder" // Optimized for task execution
 };
 \`\`\`
@@ -93,20 +93,24 @@ ${this.generateCoordinationStrategy(plan)}
 ### Success Validation
 - Each executor must return a result object with:
   - \`success\`: boolean
+  - \`summary\`: string (1-2 sentences)
   - \`data\`: any (the actual results)
   - \`entities_accessed\`: string[] (IDs of entities touched)
-  - \`error\`: string (if failed)
+  - \`error\`: string | null
+  - \`next_step\`: string | null (if blocked)
 
 ### Example Executor Response
 \`\`\`json
 {
   "success": true,
+  "summary": "Archived 4 source projects and verified entity counts/relationships.",
   "data": {
     "tasks": [/* task objects */],
     "total": 15
   },
   "entities_accessed": ["task-123", "task-456"],
-  "error": null
+  "error": null,
+  "next_step": null
 }
 \`\`\``;
 	}
@@ -126,7 +130,7 @@ ${this.generateCoordinationStrategy(plan)}
 {
   description: "${step.description}",
   goal: "${step.successCriteria}",
-  constraints: ${JSON.stringify(step.constraints || ['Complete within 30s'])},
+  constraints: ${JSON.stringify(step.constraints || ['Complete within 2 minutes'])},
   requiredTools: ${JSON.stringify(step.requiredTools)},
   contextData: ${this.generateMinimalContext(step, context)}
 }
@@ -181,7 +185,7 @@ ${this.generateCoordinationStrategy(plan)}
 		if (plan.requiresParallelExecution) {
 			return `### Parallel Execution Strategy
 1. Spawn all executors simultaneously using Promise.all()
-2. Set a collective timeout of 45 seconds
+2. Set a collective timeout of 2 minutes
 3. Collect all results, even if some fail
 4. Merge results intelligently:
    - Combine entity lists

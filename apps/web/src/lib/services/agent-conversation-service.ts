@@ -119,7 +119,7 @@ export class AgentConversationService {
 	private readonly CONFIG = {
 		MAX_TURNS: 10, // Maximum conversation turns
 		MAX_CONVERSATION_TIME_MS: 300000, // 5 minutes total conversation time
-		EXECUTOR_TIMEOUT_MS: 60000, // 60 seconds per executor turn
+		EXECUTOR_TIMEOUT_MS: 120000, // 2 minutes per executor turn
 		PLANNER_TIMEOUT_MS: 30000 // 30 seconds per planner response
 	};
 

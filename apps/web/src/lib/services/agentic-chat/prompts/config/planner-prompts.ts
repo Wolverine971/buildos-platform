@@ -113,6 +113,7 @@ const OPERATIONAL_GUIDELINES: PromptSection = {
 2. Use DETAIL tools when you need full information
 3. Use ACTION tools only after confirming with user (for writes)
 4. For fuzzy entity names (e.g., "marketing plan", "that document"), search first, then get details by ID
+5. Only call \`search_ontology\` with a non-empty \`query\`; if you lack a search term, ask for one or browse with a list_onto_* tool
 
 ### Strategy Selection
 - **Direct response** (most common): Answer using tools as needed

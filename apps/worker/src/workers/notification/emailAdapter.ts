@@ -59,6 +59,18 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
 	const actionUrl = payload.action_url || null;
 	const imageUrl = payload.image_url || null;
 
+	// Inkprint Design System colors
+	const inkprint = {
+		accent: '#D96C1E', // warm orange-amber
+		accentLight: '#FDF4ED',
+		foreground: '#1A1A1D', // deep ink black
+		mutedForeground: '#6F6E75', // warm gray
+		background: '#FAF9F7', // warm off-white
+		card: '#F5F4F0',
+		border: '#DCD9D1',
+		muted: '#EDEBE6'
+	};
+
 	const html = `
 <!DOCTYPE html>
 <html>
@@ -67,51 +79,57 @@ function formatEmailTemplate(delivery: NotificationDelivery): {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1A1A1D; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 24px;">${title}</h1>
-  </div>
-
-  <div style="background: #fff; padding: 30px; border: 1px solid #e1e8ed; border-top: none; border-radius: 0 0 10px 10px;">
-    <div style="font-size: 16px; color: #555; margin-bottom: 20px;">
-      ${body}
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: ${inkprint.foreground}; background-color: ${inkprint.background}; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: ${inkprint.card}; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(26, 26, 29, 0.08);">
+    <!-- Header -->
+    <div style="background-color: ${inkprint.foreground}; padding: 24px 32px; text-align: center;">
+      <h1 style="color: ${inkprint.background}; margin: 0; font-size: 20px; font-weight: 600;">${title}</h1>
     </div>
 
-    ${
-		actionUrl
-			? `
-      <div style="text-align: center; margin: 30px 0;">
+    <!-- Content -->
+    <div style="padding: 32px;">
+      <div style="font-size: 16px; color: ${inkprint.mutedForeground}; margin-bottom: 20px; line-height: 1.6;">
+        ${body}
+      </div>
+
+      ${
+			actionUrl
+				? `
+      <div style="text-align: center; margin: 32px 0;">
         <a href="${actionUrl}"
-           style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                  color: white;
+           style="background-color: ${inkprint.accent};
+                  color: ${inkprint.background};
                   padding: 12px 30px;
                   text-decoration: none;
                   border-radius: 6px;
                   display: inline-block;
-                  font-weight: 600;">
+                  font-weight: 600;
+                  font-size: 16px;">
           View Details
         </a>
       </div>
-    `
-			: ''
-	}
+      `
+				: ''
+		}
 
-    ${
-		imageUrl
-			? `
+      ${
+			imageUrl
+				? `
       <div style="margin: 20px 0;">
         <img src="${imageUrl}" alt="" style="max-width: 100%; height: auto; border-radius: 6px;">
       </div>
-    `
-			: ''
-	}
-  </div>
+      `
+				: ''
+		}
+    </div>
 
-  <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-    <p>This is an automated notification from BuildOS</p>
-    <p>
-      <a href="${baseUrl}/profile?tab=notifications" style="color: #667eea;">Manage notification preferences</a>
-    </p>
+    <!-- Footer -->
+    <div style="background-color: ${inkprint.muted}; padding: 20px 32px; text-align: center; border-top: 1px solid ${inkprint.border};">
+      <p style="font-size: 14px; color: ${inkprint.mutedForeground}; margin: 0 0 8px 0;">This is an automated notification from BuildOS</p>
+      <p style="font-size: 14px; margin: 0;">
+        <a href="${baseUrl}/profile?tab=notifications" style="color: ${inkprint.accent}; text-decoration: none;">Manage notification preferences</a>
+      </p>
+    </div>
   </div>
 </body>
 </html>

@@ -131,10 +131,10 @@ export class ErrorHandler {
 		if (errorMessage.includes('overload') || errorMessage.includes('capacity')) {
 			// Suggest fallback to less loaded model
 			const fallbacks: Record<string, string> = {
-				'anthropic/claude-3-5-sonnet': 'deepseek/deepseek-reasoner',
+				'anthropic/claude-3-5-sonnet': 'deepseek/deepseek-r1',
 				'anthropic/claude-3-5-haiku': 'deepseek/deepseek-chat',
 				'openai/gpt-4o': 'openai/gpt-4o-mini',
-				'deepseek/deepseek-reasoner': 'deepseek/deepseek-chat'
+				'deepseek/deepseek-r1': 'deepseek/deepseek-chat'
 			};
 
 			return {

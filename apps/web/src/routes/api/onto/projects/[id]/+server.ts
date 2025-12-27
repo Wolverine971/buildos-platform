@@ -34,16 +34,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Note: We don't filter deleted_at here to allow viewing deleted projects
 		// (but we return deleted_at status so frontend can handle it)
 		const [projectResult, actorResult] = await Promise.all([
-			supabase.from('onto_projects').select('*').eq('id', id).single(),
+			supabase.from('onto_projects').select('*').eq('id', id).maybeSingle(),
 			supabase.rpc('ensure_actor_for_user', { p_user_id: user.id })
 		]);
 
 		if (projectResult.error) {
 			console.error('[Project API] Failed to fetch project:', projectResult.error);
-			return ApiResponse.error(
-				`Failed to fetch project: ${projectResult.error.message}`,
-				500
-			);
+			return ApiResponse.databaseError(projectResult.error);
 		}
 
 		const project = projectResult.data;
@@ -461,17 +458,19 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to delete project', 500);
 		}
 
-		// Log activity async (non-blocking)
-		logDeleteAsync(
-			supabase,
-			id,
-			'project',
-			id,
-			projectDataForLog,
-			session.user.id,
-			getChangeSourceFromRequest(request),
-			chatSessionId
-		);
+		if (deleteRpcName === 'soft_delete_onto_project') {
+			// Only log when the project row remains (soft delete) to avoid FK errors.
+			logDeleteAsync(
+				supabase,
+				id,
+				'project',
+				id,
+				projectDataForLog,
+				session.user.id,
+				getChangeSourceFromRequest(request),
+				chatSessionId
+			);
+		}
 
 		return ApiResponse.success({
 			id,

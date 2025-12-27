@@ -75,7 +75,7 @@ describe('PlanOrchestrator', () => {
 			sessionId: 'session_123',
 			userId: 'user_123',
 			contextType: 'project',
-			entityId: 'proj_123',
+			entityId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
 			plannerAgentId: 'planner_123',
 			conversationHistory: []
 		};
@@ -85,9 +85,55 @@ describe('PlanOrchestrator', () => {
 			conversationHistory: [],
 			locationContext: 'Project: Test Project',
 			availableTools: [
-				{ name: 'list_onto_tasks', description: 'List tasks', parameters: {} },
-				{ name: 'create_onto_task', description: 'Create task', parameters: {} },
-				{ name: 'create_onto_project', description: 'Create project', parameters: {} }
+				{
+					name: 'list_onto_tasks',
+					description: 'List tasks',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							state_key: { type: 'string' },
+							limit: { type: 'number' }
+						}
+					}
+				},
+				{
+					name: 'create_onto_task',
+					description: 'Create task',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							title: { type: 'string' },
+							description: { type: 'string' }
+						},
+						required: ['project_id', 'title']
+					}
+				},
+				{
+					name: 'create_onto_project',
+					description: 'Create project',
+					parameters: {
+						type: 'object',
+						properties: {
+							name: { type: 'string' }
+						},
+						required: ['name']
+					}
+				},
+				{
+					name: 'get_linked_entities',
+					description: 'Get linked entities',
+					parameters: {
+						type: 'object',
+						properties: {
+							entity_id: { type: 'string' },
+							entity_kind: { type: 'string' },
+							filter_kind: { type: 'string' }
+						},
+						required: ['entity_id', 'entity_kind']
+					}
+				}
 			],
 			metadata: {
 				sessionId: 'session_123',
@@ -374,6 +420,128 @@ describe('PlanOrchestrator', () => {
 
 			// Verify persistence updates
 			expect(mockPersistence.updatePlan).toHaveBeenCalled();
+		});
+
+		it('uses project focus when context scope is missing', async () => {
+			const projectId = '9f3c2e7a-5d5b-4db6-8a4a-6c6b41f29d9b';
+			const focusContext: ServiceContext = {
+				...mockContext,
+				contextType: 'general',
+				entityId: undefined,
+				projectFocus: {
+					projectId,
+					projectName: 'Focused Project',
+					focusType: 'project-wide',
+					focusEntityId: null,
+					focusEntityName: null
+				},
+				contextScope: undefined
+			};
+
+			const focusPlan: AgentPlan = {
+				id: 'plan_focus',
+				sessionId: focusContext.sessionId,
+				userId: focusContext.userId,
+				plannerAgentId: 'planner_123',
+				userMessage: 'List tasks',
+				strategy: ChatStrategy.PLANNER_STREAM,
+				status: 'pending',
+				steps: [
+					{
+						stepNumber: 1,
+						type: 'research',
+						description: 'List tasks',
+						executorRequired: false,
+						tools: ['list_onto_tasks'],
+						status: 'pending'
+					}
+				],
+				createdAt: new Date()
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ data: { tasks: [] } });
+			mockPersistence.updatePlan.mockResolvedValue(undefined);
+
+			const generator = orchestrator.executePlan(
+				focusPlan,
+				mockPlannerContext,
+				focusContext,
+				async () => {}
+			);
+
+			for await (const event of generator) {
+				// Consume stream
+			}
+
+			expect(mockToolExecutor).toHaveBeenCalled();
+			const [toolName, args] = mockToolExecutor.mock.calls[0];
+			expect(toolName).toBe('list_onto_tasks');
+			expect(args.project_id).toBe(projectId);
+		});
+
+		it('does not inject project_id for get_linked_entities', async () => {
+			const projectId = '4d7d1e9c-6fd5-4c4e-8fa6-2b9dfe18d5f6';
+			const entityId = '0c7bdb4f-934c-4e75-a6b0-3b9b36fa4b1d';
+			const focusContext: ServiceContext = {
+				...mockContext,
+				contextType: 'general',
+				entityId: undefined,
+				projectFocus: {
+					projectId,
+					projectName: 'Focused Project',
+					focusType: 'task',
+					focusEntityId: entityId,
+					focusEntityName: 'Test Task'
+				},
+				contextScope: {
+					projectId
+				}
+			};
+
+			const focusPlan: AgentPlan = {
+				id: 'plan_links',
+				sessionId: focusContext.sessionId,
+				userId: focusContext.userId,
+				plannerAgentId: 'planner_123',
+				userMessage: 'Show linked entities',
+				strategy: ChatStrategy.PLANNER_STREAM,
+				status: 'pending',
+				steps: [
+					{
+						stepNumber: 1,
+						type: 'research',
+						description: 'Get linked entities',
+						executorRequired: false,
+						tools: ['get_linked_entities'],
+						status: 'pending',
+						metadata: {
+							toolArguments: {
+								entity_id: entityId,
+								entity_kind: 'task'
+							}
+						}
+					}
+				],
+				createdAt: new Date()
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ data: { linked_entities: [] } });
+			mockPersistence.updatePlan.mockResolvedValue(undefined);
+
+			const generator = orchestrator.executePlan(
+				focusPlan,
+				mockPlannerContext,
+				focusContext,
+				async () => {}
+			);
+
+			for await (const event of generator) {
+				// Consume stream
+			}
+
+			expect(mockToolExecutor).toHaveBeenCalled();
+			const [, args] = mockToolExecutor.mock.calls[0];
+			expect(args).not.toHaveProperty('project_id');
 		});
 
 		it('should emit tool events for direct tool steps', async () => {

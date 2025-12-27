@@ -862,7 +862,7 @@ export async function getAgentChatUsage(
 	const { data: sessions, error: sessionsError } = await client
 		.from('agent_chat_sessions')
 		.select('id, session_type, status, message_count, created_at')
-		.gte('created_at', startDate);
+		.gte('created_at', startDate.toISOString());
 	// .lte('created_at', endDate.toISOString());
 
 	if (sessionsError) {

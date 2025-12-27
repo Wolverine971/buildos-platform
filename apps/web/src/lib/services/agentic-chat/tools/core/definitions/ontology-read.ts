@@ -111,7 +111,8 @@ Use for deliverables, artifacts, or outputs tied to a project.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by output state (draft, in_progress, review, published)'
+						description:
+							'Filter by output state (draft, in_progress, review, published)'
 					},
 					limit: {
 						type: 'number',
@@ -138,7 +139,8 @@ Use for project timelines, checkpoints, or delivery milestones.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by milestone state (pending, in_progress, completed, missed)'
+						description:
+							'Filter by milestone state (pending, in_progress, completed, missed)'
 					},
 					limit: {
 						type: 'number',
@@ -165,7 +167,8 @@ Use for risk reviews, mitigation planning, or status updates.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by risk state (identified, mitigated, occurred, closed)'
+						description:
+							'Filter by risk state (identified, mitigated, occurred, closed)'
 					},
 					impact: {
 						type: 'string',
@@ -266,7 +269,8 @@ Use for discovering available projects or getting project overviews.`,
 				properties: {
 					state_key: {
 						type: 'string',
-						description: 'Filter by project state (planning, active, completed, cancelled)'
+						description:
+							'Filter by project state (planning, active, completed, cancelled)'
 					},
 					type_key: {
 						type: 'string',
@@ -352,7 +356,8 @@ Use when the user references a task by name or description but the project is un
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by project state (planning, active, completed, cancelled)'
+						description:
+							'Filter by project state (planning, active, completed, cancelled)'
 					},
 					type_key: {
 						type: 'string',

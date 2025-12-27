@@ -30,6 +30,7 @@ import type {
 } from '../shared/types';
 import { normalizeToolError } from '../shared/error-utils';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
+import { TOOL_METADATA } from '../tools/core/definitions';
 
 /**
  * Tool execution options
@@ -217,8 +218,8 @@ export class ToolExecutionService implements BaseService {
 		let abortListener: (() => void) | undefined;
 
 		try {
-			// Execute with timeout if specified
-			const timeout = options.timeout ?? ToolExecutionService.DEFAULT_TIMEOUT;
+			// Execute with timeout if specified or configured per tool
+			const timeout = this.resolveTimeoutMs(toolName, options.timeout);
 			const execPromise = this.executeWithTimeout(
 				() => this.toolExecutor(toolName, args, context),
 				timeout
@@ -570,6 +571,17 @@ export class ToolExecutionService implements BaseService {
 				)
 			)
 		]);
+	}
+
+	private resolveTimeoutMs(toolName: string, override?: number): number {
+		if (typeof override === 'number' && Number.isFinite(override)) {
+			return override;
+		}
+		const metadataTimeout = TOOL_METADATA[toolName]?.timeoutMs;
+		if (typeof metadataTimeout === 'number' && Number.isFinite(metadataTimeout)) {
+			return metadataTimeout;
+		}
+		return ToolExecutionService.DEFAULT_TIMEOUT;
 	}
 
 	/**

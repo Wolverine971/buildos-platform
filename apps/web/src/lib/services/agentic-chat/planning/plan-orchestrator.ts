@@ -831,7 +831,7 @@ Generate an execution plan to fulfill this request.`;
 			}
 
 			const usesProjectContextTool = step.tools.some((tool) =>
-				this.toolRequiresProjectId(tool)
+				this.toolRequiresProjectId(tool, plannerContext)
 			);
 			if (!usesProjectContextTool) {
 				continue;
@@ -1017,7 +1017,13 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 			const aggregatedResults: any[] = [];
 
 			for (const toolName of step.tools) {
-				const args = this.buildToolArgs(toolName, step, stepResults, context);
+				const args = this.buildToolArgs(
+					toolName,
+					step,
+					stepResults,
+					context,
+					plannerContext
+				);
 				const normalizedArgs = this.applyToolArgumentDefaults(
 					toolName,
 					args,
@@ -1212,7 +1218,8 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		toolName: string,
 		step: PlanStep,
 		stepResults: Map<number, any>,
-		context: ServiceContext
+		context: ServiceContext,
+		plannerContext: PlannerContext
 	): Record<string, any> {
 		// Extract relevant data from previous steps
 		const args: Record<string, any> = {
@@ -1220,17 +1227,22 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 			...(step.metadata?.arguments ?? {})
 		};
 
-		const normalizedInitialProject = this.normalizeProjectId(args.project_id);
-		if (normalizedInitialProject) {
-			args.project_id = normalizedInitialProject;
-		} else {
+		const projectIdSupport = this.getProjectIdSupport(toolName, plannerContext);
+		if (!projectIdSupport.supports) {
 			delete args.project_id;
-		}
+		} else {
+			const normalizedInitialProject = this.normalizeProjectId(args.project_id);
+			if (normalizedInitialProject) {
+				args.project_id = normalizedInitialProject;
+			} else {
+				delete args.project_id;
+			}
 
-		if (!args.project_id) {
-			const metaProjectId = this.normalizeProjectId(step.metadata?.projectId);
-			if (metaProjectId) {
-				args.project_id = metaProjectId;
+			if (!args.project_id) {
+				const metaProjectId = this.normalizeProjectId(step.metadata?.projectId);
+				if (metaProjectId) {
+					args.project_id = metaProjectId;
+				}
 			}
 		}
 
@@ -1248,15 +1260,14 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 			}
 		}
 
-		if (!args.project_id && this.toolRequiresProjectId(toolName)) {
+		if (projectIdSupport.supports && !args.project_id) {
 			const projectId = this.resolveProjectId(step, stepResults, context);
 			if (projectId) {
 				args.project_id = projectId;
 			}
 		}
 
-		const requiresProject = this.toolRequiresProjectId(toolName);
-		if (requiresProject && args.project_id) {
+		if (projectIdSupport.supports && args.project_id) {
 			const normalized = this.normalizeProjectId(args.project_id);
 			if (normalized) {
 				args.project_id = normalized;
@@ -1265,7 +1276,7 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 			}
 		}
 
-		if (requiresProject && !args.project_id) {
+		if (projectIdSupport.requires && !args.project_id) {
 			throw new Error(
 				`Missing project context for tool ${toolName}. Provide project_id in plan metadata or ensure dependencies return a project id.`
 			);
@@ -1278,22 +1289,54 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		return args;
 	}
 
+	private getToolDefinition(
+		toolName: string,
+		plannerContext: PlannerContext
+	): ChatToolDefinition | undefined {
+		return plannerContext.availableTools.find((tool) => {
+			const name = (tool as any).function?.name ?? (tool as any).name;
+			return name === toolName;
+		});
+	}
+
+	private getToolParameterSchema(
+		toolName: string,
+		plannerContext: PlannerContext
+	): Record<string, any> | undefined {
+		const toolDef = this.getToolDefinition(toolName, plannerContext);
+		if (!toolDef) {
+			return undefined;
+		}
+		return (toolDef as any).function?.parameters || (toolDef as any).parameters;
+	}
+
+	private getProjectIdSupport(
+		toolName: string,
+		plannerContext: PlannerContext
+	): { supports: boolean; requires: boolean } {
+		const paramSchema = this.getToolParameterSchema(toolName, plannerContext);
+		if (paramSchema && typeof paramSchema === 'object') {
+			const required = Array.isArray(paramSchema.required) ? paramSchema.required : [];
+			const supports =
+				'project_id' in (paramSchema.properties ?? {}) || required.includes('project_id');
+			return { supports, requires: required.includes('project_id') };
+		}
+
+		const fallback = PlanOrchestrator.PROJECT_CONTEXT_TOOLS.has(toolName);
+		return { supports: fallback, requires: fallback };
+	}
+
 	private applyToolArgumentDefaults(
 		toolName: string,
 		args: Record<string, any>,
 		step: PlanStep,
 		plannerContext: PlannerContext
 	): Record<string, any> {
-		const toolDef = plannerContext.availableTools.find((tool) => {
-			const name = (tool as any).function?.name ?? (tool as any).name;
-			return name === toolName;
-		});
-
-		if (!toolDef) {
+		const paramSchema = this.getToolParameterSchema(toolName, plannerContext);
+		if (!paramSchema) {
 			return args;
 		}
 
-		const paramSchema = (toolDef as any).function?.parameters || (toolDef as any).parameters;
 		const required = Array.isArray(paramSchema?.required) ? paramSchema.required : [];
 		if (required.length === 0) {
 			return args;
@@ -1327,7 +1370,10 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		return `${base.slice(0, 117)}...`;
 	}
 
-	private toolRequiresProjectId(toolName: string): boolean {
+	private toolRequiresProjectId(toolName: string, plannerContext?: PlannerContext): boolean {
+		if (plannerContext) {
+			return this.getProjectIdSupport(toolName, plannerContext).requires;
+		}
 		return PlanOrchestrator.PROJECT_CONTEXT_TOOLS.has(toolName);
 	}
 
@@ -1351,6 +1397,11 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 			if (contextProjectId) {
 				return contextProjectId;
 			}
+		}
+
+		const focusProjectId = this.normalizeProjectId(context.projectFocus?.projectId);
+		if (focusProjectId) {
+			return focusProjectId;
 		}
 
 		if (step.dependsOn) {

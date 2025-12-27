@@ -30,6 +30,7 @@ import {
 } from './agent-context-service';
 import { SmartLLMService } from './smart-llm-service';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
+import { TOOL_METADATA } from '$lib/services/agentic-chat/tools/core/definitions';
 import { getToolsForAgent } from '@buildos/shared-types';
 import { v4 as uuidv4 } from 'uuid';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
@@ -100,9 +101,9 @@ export class AgentExecutorService {
 	// Execution limits for safety
 	private readonly LIMITS = {
 		MAX_TOOL_CALLS: 10, // Prevent infinite loops
-		MAX_EXECUTION_TIME_MS: 60000, // 60 seconds max
+		MAX_EXECUTION_TIME_MS: 120000, // 2 minutes max
 		MAX_RETRIES: 2, // Max retries per tool call
-		TOOL_CALL_TIMEOUT_MS: 20000 // Max time per tool execution
+		TOOL_CALL_TIMEOUT_MS: 30000 // Max time per tool execution
 	};
 
 	constructor(
@@ -328,6 +329,7 @@ export class AgentExecutorService {
 		let toolCallsMade = 0;
 		let tokensUsed = 0;
 		let resultData: any = null;
+		let finalResponse = '';
 		const executionStartedAt = Date.now();
 		const getRemainingTime = () =>
 			this.LIMITS.MAX_EXECUTION_TIME_MS - (Date.now() - executionStartedAt);
@@ -396,6 +398,9 @@ export class AgentExecutorService {
 			if (assistantBuffer.trim()) {
 				if (!resultData) resultData = { response: '' };
 				resultData.response += assistantBuffer;
+				if (pendingToolCalls.length === 0) {
+					finalResponse = assistantBuffer.trim();
+				}
 			}
 
 			if (pendingToolCalls.length === 0) {
@@ -414,9 +419,14 @@ export class AgentExecutorService {
 					throw new Error('Executor hit tool usage limit.');
 				}
 
+				const configuredTimeoutMs = this.resolveToolTimeoutMs(toolCall.function.name);
+				const timeoutMs = Math.min(
+					Math.max(1000, configuredTimeoutMs),
+					Math.max(1000, getRemainingTime())
+				);
 				const result = await this.runWithTimeout(
 					() => toolExecutor.execute(toolCall),
-					Math.min(this.LIMITS.TOOL_CALL_TIMEOUT_MS, Math.max(1000, getRemainingTime())),
+					timeoutMs,
 					'Tool execution timed out.'
 				);
 				const toolPayload =
@@ -445,6 +455,13 @@ export class AgentExecutorService {
 					});
 				}
 			}
+		}
+
+		const parsedResponse = this.parseExecutorJsonResponse(
+			finalResponse || resultData?.response
+		);
+		if (parsedResponse) {
+			resultData = this.mergeExecutorParsedResult(parsedResponse, resultData);
 		}
 
 		const result = {
@@ -479,6 +496,17 @@ export class AgentExecutorService {
 		});
 	}
 
+	private resolveToolTimeoutMs(toolName?: string): number {
+		if (!toolName) {
+			return this.LIMITS.TOOL_CALL_TIMEOUT_MS;
+		}
+		const metadataTimeout = TOOL_METADATA[toolName]?.timeoutMs;
+		if (typeof metadataTimeout === 'number' && Number.isFinite(metadataTimeout)) {
+			return metadataTimeout;
+		}
+		return this.LIMITS.TOOL_CALL_TIMEOUT_MS;
+	}
+
 	/**
 	 * Format task into clear prompt for executor LLM
 	 */
@@ -494,9 +522,56 @@ export class AgentExecutorService {
 			});
 		}
 
-		prompt += `\nUse the available tools to complete this task. Return structured results.`;
+		prompt += `\nUse the available tools to complete this task. Return JSON only, following the system prompt schema.`;
 
 		return prompt;
+	}
+
+	private parseExecutorJsonResponse(rawResponse?: string): any | null {
+		if (!rawResponse) return null;
+		let jsonString = rawResponse.trim();
+		if (!jsonString) return null;
+
+		if (jsonString.includes('```json')) {
+			const match = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
+			if (match?.[1]) {
+				jsonString = match[1].trim();
+			}
+		} else if (jsonString.includes('```')) {
+			const match = jsonString.match(/```\s*([\s\S]*?)\s*```/);
+			if (match?.[1]) {
+				jsonString = match[1].trim();
+			}
+		}
+
+		if (!jsonString.startsWith('{')) {
+			const match = jsonString.match(/\{[\s\S]*\}/);
+			if (match?.[0]) {
+				jsonString = match[0];
+			}
+		}
+
+		try {
+			return JSON.parse(jsonString);
+		} catch (error) {
+			console.warn('[AgentExecutorService] Failed to parse executor JSON response', {
+				error,
+				rawResponse: rawResponse.slice(0, 500)
+			});
+			return null;
+		}
+	}
+
+	private mergeExecutorParsedResult(parsed: any, existing?: any): any {
+		if (!existing) return parsed;
+		const merged = { ...parsed };
+		if (existing.toolResults && merged.toolResults === undefined) {
+			merged.toolResults = existing.toolResults;
+		}
+		if (existing.errors && merged.errors === undefined) {
+			merged.errors = existing.errors;
+		}
+		return merged;
 	}
 
 	// ============================================

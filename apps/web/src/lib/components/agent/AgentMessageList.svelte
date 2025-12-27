@@ -107,7 +107,9 @@
 						class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
-							<div class="{proseClasses} overflow-hidden break-words [&>*:nth-child(2)]:mt-0">
+							<div
+								class="{proseClasses} overflow-hidden break-words [&>*:nth-child(2)]:mt-0"
+							>
 								<!-- INKPRINT avatar badge - MOBILE ONLY (floated inside BFC for text wrap) -->
 								<div
 									class="sm:hidden float-left mr-2.5 mb-1 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-foreground text-[0.5rem] font-bold uppercase tracking-[0.05em] text-background shadow-ink"

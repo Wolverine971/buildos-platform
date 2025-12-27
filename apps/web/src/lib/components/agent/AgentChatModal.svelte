@@ -1831,7 +1831,7 @@
 			};
 
 			await SSEProcessor.processStream(response, callbacks, {
-				timeout: 240000, // 4 minutes for complex agent conversations
+				timeout: 0, // Disable inactivity timeouts for long-running streams
 				parseJSON: true,
 				signal: streamController.signal
 			});

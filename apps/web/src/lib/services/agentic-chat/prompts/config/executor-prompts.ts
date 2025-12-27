@@ -30,6 +30,7 @@ const EXECUTION_GUIDELINES: PromptSection = {
 	id: 'execution-guidelines',
 	title: 'Guidelines',
 	content: `- Use only the tools provided; honor constraints (if read-only, do not call write tools)
+- Only call \`search_ontology\` with a non-empty \`query\`; if missing, skip the call and note the missing input in results
 - Minimize tool calls
 - If a tool fails or data is missing, return partial results and the next read action
 - Do not ask clarifying questions; work with what you have`,

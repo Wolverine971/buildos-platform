@@ -850,20 +850,16 @@
 		}
 	}
 
-	/* Dark mode enhancements */
+	/* Dark mode enhancements - Inkprint accent */
 	@media (prefers-color-scheme: dark) {
 		:global(.dark-gradient-subtle) {
-			background: linear-gradient(
-				135deg,
-				rgba(59, 130, 246, 0.05) 0%,
-				rgba(147, 51, 234, 0.05) 100%
-			);
+			background: hsl(24 80% 55% / 0.05); /* accent with low opacity */
 		}
 	}
 
-	/* Textarea focus enhancement */
+	/* Textarea focus enhancement - Inkprint accent */
 	:global(textarea:focus) {
-		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+		box-shadow: 0 0 0 3px hsl(24 80% 55% / 0.1);
 	}
 
 	/* Smooth transitions for all interactive elements */

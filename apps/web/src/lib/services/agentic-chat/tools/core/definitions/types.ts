@@ -35,4 +35,5 @@ export interface ToolMetadata {
 	capabilities: string[];
 	contexts: ToolContextScope[];
 	category: 'search' | 'read' | 'write' | 'utility';
+	timeoutMs?: number;
 }

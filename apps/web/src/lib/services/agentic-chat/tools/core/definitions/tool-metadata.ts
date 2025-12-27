@@ -101,12 +101,14 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Accepts project scope and type filters'
 		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		timeoutMs: 45000,
 		category: 'search'
 	},
 	get_onto_project_details: {
 		summary: 'Load the complete ontology project graph and metadata.',
 		capabilities: ['Returns nested entities', 'Use after identifying a project'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
+		timeoutMs: 45000,
 		category: 'read'
 	},
 	get_onto_task_details: {
@@ -177,6 +179,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Use when abbreviated context needs expansion'
 		],
 		contexts: ['base', 'project', 'project_audit', 'project_forecast'],
+		timeoutMs: 45000,
 		category: 'read'
 	},
 	list_task_documents: {
@@ -364,6 +367,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'project_audit',
 			'project_forecast'
 		],
+		timeoutMs: 60000,
 		category: 'search'
 	},
 	get_buildos_overview: {

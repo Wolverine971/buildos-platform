@@ -73,7 +73,7 @@ Default: task.execute`
 						type: 'string',
 						default: 'todo',
 						description:
-							'Initial state (default: todo). Common: todo, in_progress, done'
+							'Initial state (default: todo). Valid: todo, in_progress, blocked, done'
 					},
 					priority: {
 						type: 'number',
@@ -637,7 +637,7 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'New state (todo, in_progress, done, blocked, etc.)'
+						description: 'New state (todo, in_progress, blocked, done)'
 					},
 					priority: {
 						type: 'number',

@@ -232,7 +232,7 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Loader2 class="w-4 h-4 text-blue-600 animate-spin" />
+							<Loader2 class="w-4 h-4 text-accent animate-spin" />
 						</span>
 						<div>
 							<h3 class="card-heading">Fetching your daily brief</h3>
@@ -254,7 +254,7 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Loader2 class="w-4 h-4 text-blue-600 animate-spin" />
+							<Loader2 class="w-4 h-4 text-accent animate-spin" />
 						</span>
 						<div class="min-w-0">
 							<h3 class="card-heading">Generating Daily Brief</h3>
@@ -313,7 +313,7 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Sparkles class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+							<Sparkles class="w-4 h-4 text-accent dark:text-accent" />
 						</span>
 						<div class="min-w-0 flex-1">
 							<h3 class="card-heading">Today's Daily Brief</h3>
@@ -329,7 +329,7 @@
 						</div>
 					</div>
 					<div class="card-view-indicator">
-						<ChevronRight class="w-5 h-5 text-gray-400 dark:text-gray-500" />
+						<ChevronRight class="w-5 h-5 text-muted-foreground" />
 					</div>
 				</div>
 
@@ -356,8 +356,8 @@
 			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
 				<div class="email-cta-banner mt-3">
 					<div class="flex items-center gap-2 flex-1 min-w-0">
-						<Mail class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-						<p class="text-sm text-gray-700 dark:text-gray-300 truncate">
+						<Mail class="w-4 h-4 text-accent dark:text-accent flex-shrink-0" />
+						<p class="text-sm text-muted-foreground truncate">
 							Want this delivered to your inbox each morning?
 						</p>
 					</div>
@@ -382,7 +382,7 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Sparkles class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+							<Sparkles class="w-4 h-4 text-accent dark:text-accent" />
 						</span>
 						<div>
 							<h3 class="card-heading">Get your daily brief</h3>
@@ -420,12 +420,12 @@
 		transition: min-height 0.2s ease-out;
 	}
 
-	/* Base card styling for all states */
+	/* Base card styling for all states - Inkprint Design System */
 	.daily-brief-card {
 		border-radius: 0.75rem;
-		box-shadow: 0 10px 25px -12px rgb(30 41 59 / 0.25);
-		border: 1px solid #e5e7eb;
-		background: white;
+		box-shadow: 0 1px 3px rgba(26, 26, 29, 0.08); /* shadow-ink */
+		border: 1px solid hsl(40 10% 85%); /* border */
+		background: hsl(40 15% 96%); /* card */
 		padding: 1.25rem;
 		transition: all 0.2s ease-out;
 		overflow: hidden;
@@ -434,10 +434,10 @@
 		gap: 1rem;
 	}
 
-	/* Dark mode for cards */
+	/* Dark mode for cards - Inkprint */
 	:global(.dark) .daily-brief-card {
-		background: #1f2937; /* bg-gray-800 */
-		border-color: #374151; /* border-gray-700 */
+		background: hsl(240 10% 10%); /* card dark */
+		border-color: hsl(240 10% 18%); /* border dark */
 	}
 
 	/* State-specific styling */
@@ -445,10 +445,11 @@
 		min-height: 140px;
 	}
 
+	/* Generation state - Inkprint accent (warm orange-amber) */
 	.generation-state {
 		position: relative;
-		border-color: #bfdbfe;
-		background: linear-gradient(135deg, #eff6ff 0%, #ffffff 55%);
+		border-color: hsl(24 80% 80%); /* accent light border */
+		background: hsl(24 60% 97%); /* accent very light bg */
 		gap: 1.25rem;
 	}
 
@@ -465,8 +466,8 @@
 	}
 
 	:global(.dark) .generation-state {
-		border-color: #1e3a8a;
-		background: linear-gradient(135deg, rgba(30, 64, 175, 0.2), rgba(30, 58, 138, 0.05));
+		border-color: hsl(24 60% 30%);
+		background: hsl(24 40% 12%);
 	}
 
 	:global(.dark) .generation-state::before {
@@ -480,10 +481,11 @@
 		gap: 0.75rem;
 	}
 
+	/* No brief state - Inkprint accent (warm orange-amber) */
 	.no-brief-state {
 		position: relative;
-		background: linear-gradient(120deg, #eff6ff, #e0e7ff);
-		border-color: #bfdbfe;
+		background: hsl(24 60% 97%); /* accent very light bg */
+		border-color: hsl(24 80% 80%); /* accent light border */
 		min-height: 120px;
 	}
 
@@ -500,8 +502,8 @@
 	}
 
 	:global(.dark) .no-brief-state {
-		background: linear-gradient(to right, #1f2937, #1f2937);
-		border-color: #1e3a8a;
+		background: hsl(24 40% 12%);
+		border-color: hsl(24 60% 30%);
 	}
 
 	:global(.dark) .no-brief-state::before {
@@ -533,50 +535,52 @@
 		align-items: flex-start;
 	}
 
+	/* Icon pill - Inkprint accent */
 	.icon-pill {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		border-radius: 9999px;
 		padding: 0.45rem;
-		background: rgba(59, 130, 246, 0.12);
+		background: hsl(24 80% 55% / 0.12); /* accent with opacity */
 	}
 
 	:global(.dark) .icon-pill {
-		background: rgba(96, 165, 250, 0.15);
+		background: hsl(24 80% 55% / 0.18);
 	}
 
+	/* Card text - Inkprint semantic colors */
 	.card-heading {
 		font-size: 1rem;
 		font-weight: 600;
-		color: #111827;
+		color: hsl(240 10% 10%); /* foreground */
 		margin: 0;
 	}
 
 	:global(.dark) .card-heading {
-		color: white;
+		color: hsl(40 10% 92%); /* foreground dark */
 	}
 
 	.card-subheading {
 		margin: 0.15rem 0 0 0;
 		font-size: 0.9rem;
-		color: #475569;
+		color: hsl(240 5% 45%); /* muted-foreground */
 	}
 
 	:global(.dark) .card-subheading {
-		color: #94a3b8;
+		color: hsl(40 5% 55%); /* muted-foreground dark */
 	}
 
 	.card-meta {
 		display: flex;
 		align-items: center;
 		font-size: 0.75rem;
-		color: #6b7280;
+		color: hsl(240 5% 45%); /* muted-foreground */
 		margin-top: 0.25rem;
 	}
 
 	:global(.dark) .card-meta {
-		color: #9ca3af;
+		color: hsl(40 5% 55%); /* muted-foreground dark */
 	}
 
 	.card-actions {
@@ -587,36 +591,38 @@
 		justify-content: flex-end;
 	}
 
+	/* Card actions - Inkprint accent */
 	.card-action {
 		padding: 0.35rem;
-		color: #64748b;
+		color: hsl(240 5% 45%); /* muted-foreground */
 	}
 
 	.card-action:hover {
-		color: #2563eb;
+		color: hsl(24 80% 48%); /* accent */
 	}
 
 	.toggle-button {
 		padding: 0.35rem;
-		color: #475569;
+		color: hsl(240 5% 45%); /* muted-foreground */
 	}
 
 	.toggle-button:hover {
-		color: #1f2937;
+		color: hsl(240 10% 10%); /* foreground */
 	}
 
 	:global(.dark) .toggle-button {
-		color: #9ca3af;
+		color: hsl(40 5% 55%); /* muted-foreground dark */
 	}
 
 	:global(.dark) .toggle-button:hover {
-		color: white;
+		color: hsl(40 10% 92%); /* foreground dark */
 	}
 
 	.email-button {
 		padding: 0.35rem 0.75rem;
 	}
 
+	/* Email CTA banner - Inkprint accent */
 	.email-cta-banner {
 		position: relative;
 		display: flex;
@@ -625,8 +631,8 @@
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
 		border-radius: 0.65rem;
-		background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-		border: 1px solid #bfdbfe;
+		background: hsl(24 60% 97%); /* accent very light */
+		border: 1px solid hsl(24 80% 80%); /* accent light border */
 		margin-top: 0.5rem;
 		overflow: hidden;
 	}
@@ -644,8 +650,8 @@
 	}
 
 	:global(.dark) .email-cta-banner {
-		background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(30, 64, 175, 0.1));
-		border-color: rgba(59, 130, 246, 0.3);
+		background: hsl(24 40% 12%);
+		border-color: hsl(24 60% 30%);
 	}
 
 	:global(.dark) .email-cta-banner::before {
@@ -661,9 +667,9 @@
 		gap: 1rem;
 		padding: 1.25rem;
 		border-radius: 0.75rem;
-		background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-		border: 1px solid #bfdbfe;
-		box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.2);
+		background: hsl(24 60% 97%); /* accent very light */
+		border: 1px solid hsl(24 80% 80%); /* accent light border */
+		box-shadow: 0 4px 12px -4px hsl(24 80% 55% / 0.2); /* accent shadow */
 		overflow: hidden;
 	}
 
@@ -680,9 +686,9 @@
 	}
 
 	:global(.dark) .email-cta-banner-expanded {
-		background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(30, 64, 175, 0.12));
-		border-color: rgba(59, 130, 246, 0.4);
-		box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.3);
+		background: hsl(24 40% 15%);
+		border-color: hsl(24 60% 35%);
+		box-shadow: 0 4px 12px -4px hsl(24 80% 55% / 0.3);
 	}
 
 	:global(.dark) .email-cta-banner-expanded::before {
@@ -698,12 +704,12 @@
 		width: 2.5rem;
 		height: 2.5rem;
 		border-radius: 0.5rem;
-		background: rgba(37, 99, 235, 0.15);
+		background: hsl(24 80% 55% / 0.15); /* accent with opacity */
 		flex-shrink: 0;
 	}
 
 	:global(.dark) .email-cta-icon {
-		background: rgba(59, 130, 246, 0.25);
+		background: hsl(24 80% 55% / 0.25);
 	}
 
 	@media (min-width: 640px) {
@@ -714,8 +720,9 @@
 		}
 	}
 
+	/* Generate button - Inkprint accent shadow */
 	.generate-button {
-		box-shadow: 0 10px 20px -15px rgb(30 64 175 / 0.55);
+		box-shadow: 0 10px 20px -15px hsl(24 80% 40% / 0.55);
 	}
 
 	.loading-placeholder {
@@ -723,12 +730,13 @@
 		gap: 0.5rem;
 	}
 
+	/* Loading skeleton - Inkprint muted colors */
 	.loading-line {
 		position: relative;
 		display: block;
 		height: 0.6rem;
 		border-radius: 9999px;
-		background: linear-gradient(90deg, #e2e8f0, #f1f5f9, #e2e8f0);
+		background: hsl(40 10% 88%); /* muted */
 		background-size: 200% 100%;
 		animation: shimmer 1.4s ease-in-out infinite;
 		overflow: hidden;
@@ -751,7 +759,7 @@
 	}
 
 	:global(.dark) .loading-line {
-		background: linear-gradient(90deg, #334155, #475569, #334155);
+		background: hsl(240 10% 22%); /* muted dark */
 	}
 
 	:global(.dark) .loading-line::before {
@@ -769,6 +777,7 @@
 		}
 	}
 
+	/* Progress bar - Inkprint accent */
 	.generation-progress {
 		display: flex;
 		flex-direction: column;
@@ -779,30 +788,30 @@
 		display: flex;
 		justify-content: space-between;
 		font-size: 0.75rem;
-		color: #1d4ed8;
+		color: hsl(24 80% 40%); /* accent darker */
 	}
 
 	:global(.dark) .progress-meta {
-		color: #60a5fa;
+		color: hsl(24 80% 65%); /* accent lighter */
 	}
 
 	.progress-bar {
 		width: 100%;
 		height: 0.5rem;
 		border-radius: 9999px;
-		background: rgba(59, 130, 246, 0.2);
+		background: hsl(24 80% 55% / 0.2); /* accent with opacity */
 		overflow: hidden;
 	}
 
 	:global(.dark) .progress-bar {
-		background: rgba(59, 130, 246, 0.25);
+		background: hsl(24 80% 55% / 0.25);
 	}
 
 	.progress-bar__fill {
 		position: relative;
 		height: 100%;
 		border-radius: 9999px;
-		background: linear-gradient(90deg, #2563eb, #3b82f6);
+		background: hsl(24 80% 55%); /* accent solid */
 		transition: width 0.4s ease;
 		overflow: hidden;
 	}
@@ -819,62 +828,64 @@
 		border-radius: 9999px;
 	}
 
+	/* Generation preview - Inkprint accent */
 	.generation-preview {
 		border-radius: 0.75rem;
-		background: rgba(59, 130, 246, 0.08);
+		background: hsl(24 80% 55% / 0.08);
 		padding: 0.75rem 0.9rem;
 	}
 
 	:global(.dark) .generation-preview {
-		background: rgba(37, 99, 235, 0.18);
+		background: hsl(24 80% 55% / 0.18);
 	}
 
 	.preview-label {
 		font-size: 0.7rem;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: #2563eb;
+		color: hsl(24 80% 48%); /* accent */
 		margin: 0 0 0.35rem 0;
 	}
 
 	:global(.dark) .preview-label {
-		color: #bfdbfe;
+		color: hsl(24 80% 75%); /* accent light */
 	}
 
 	.preview-content {
 		margin: 0;
 		font-size: 0.85rem;
-		color: #1e3a8a;
+		color: hsl(24 60% 25%); /* accent very dark */
 	}
 
 	:global(.dark) .preview-content {
-		color: #e0e7ff;
+		color: hsl(24 40% 85%); /* accent very light */
 	}
 
+	/* Collapsed preview - Inkprint muted */
 	.collapsed-preview {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.65rem 0.85rem;
 		border-radius: 0.65rem;
-		background: #f8fafc;
-		border: 1px solid #e2e8f0;
+		background: hsl(40 20% 98%); /* background */
+		border: 1px solid hsl(40 10% 85%); /* border */
 	}
 
 	:global(.dark) .collapsed-preview {
-		background: rgba(148, 163, 184, 0.08);
-		border-color: rgba(148, 163, 184, 0.3);
+		background: hsl(240 10% 12%);
+		border-color: hsl(240 10% 22%);
 	}
 
 	.preview-text {
 		flex: 1;
 		margin: 0;
 		font-size: 0.85rem;
-		color: #475569;
+		color: hsl(240 5% 45%); /* muted-foreground */
 	}
 
 	:global(.dark) .preview-text {
-		color: #cbd5f5;
+		color: hsl(40 5% 65%);
 	}
 
 	.preview-pill {
@@ -883,18 +894,18 @@
 		gap: 0.4rem;
 		padding: 0.3rem 0.6rem;
 		border-radius: 9999px;
-		background: rgba(96, 165, 250, 0.2);
+		background: hsl(24 80% 55% / 0.15); /* accent with opacity */
 		font-size: 0.75rem;
-		color: #1e3a8a;
+		color: hsl(24 60% 30%); /* accent dark */
 	}
 
 	:global(.dark) .preview-pill {
-		background: rgba(96, 165, 250, 0.25);
-		color: #bfdbfe;
+		background: hsl(24 80% 55% / 0.25);
+		color: hsl(24 80% 75%);
 	}
 
 	.expanded-body {
-		border-top: 1px solid #e5e7eb;
+		border-top: 1px solid hsl(40 10% 85%); /* border */
 		padding-top: 1.25rem;
 		display: flex;
 		flex-direction: column;
@@ -902,26 +913,27 @@
 	}
 
 	:global(.dark) .expanded-body {
-		border-color: #374151;
+		border-color: hsl(240 10% 18%);
 	}
 
 	.brief-markdown {
 		line-height: 1.6;
 	}
 
+	/* Priority card - Inkprint accent */
 	.priority-card {
 		border-radius: 0.75rem;
 		padding: 1rem;
-		background: rgba(37, 99, 235, 0.08);
-		border: 1px solid rgba(37, 99, 235, 0.18);
+		background: hsl(24 80% 55% / 0.08);
+		border: 1px solid hsl(24 80% 55% / 0.18);
 		display: flex;
 		flex-direction: column;
 		gap: 0.85rem;
 	}
 
 	:global(.dark) .priority-card {
-		background: rgba(37, 99, 235, 0.18);
-		border-color: rgba(59, 130, 246, 0.28);
+		background: hsl(24 80% 55% / 0.18);
+		border-color: hsl(24 80% 55% / 0.28);
 	}
 
 	.priority-heading {
@@ -931,11 +943,11 @@
 		font-weight: 600;
 		margin: 0;
 		font-size: 0.9rem;
-		color: #1e3a8a;
+		color: hsl(24 60% 30%); /* accent dark */
 	}
 
 	:global(.dark) .priority-heading {
-		color: #bfdbfe;
+		color: hsl(24 80% 75%);
 	}
 
 	.priority-list {
@@ -951,14 +963,14 @@
 		align-items: flex-start;
 		gap: 0.5rem;
 		font-size: 0.9rem;
-		color: #1e40af;
+		color: hsl(24 70% 35%); /* accent medium */
 	}
 
 	:global(.dark) .priority-item {
-		color: #dbeafe;
+		color: hsl(24 60% 80%);
 	}
 
-	/* Clickable card styles */
+	/* Clickable card styles - Inkprint */
 	.clickable-card {
 		cursor: pointer;
 		transition: all 0.2s ease;
@@ -968,17 +980,17 @@
 
 	.clickable-card:hover {
 		transform: translateY(-2px);
-		box-shadow: 0 12px 30px -14px rgb(30 41 59 / 0.35);
-		border-color: #bfdbfe;
+		box-shadow: 0 4px 12px -4px rgba(26, 26, 29, 0.15); /* shadow-ink-strong */
+		border-color: hsl(24 80% 70%); /* accent light */
 	}
 
 	:global(.dark) .clickable-card:hover {
-		border-color: #1e3a8a;
-		box-shadow: 0 12px 30px -14px rgba(59, 130, 246, 0.3);
+		border-color: hsl(24 60% 40%);
+		box-shadow: 0 4px 12px -4px hsl(24 80% 55% / 0.3);
 	}
 
 	.clickable-card:focus-visible {
-		outline: 2px solid #3b82f6;
+		outline: 2px solid hsl(24 80% 55%); /* accent */
 		outline-offset: 2px;
 	}
 
@@ -993,11 +1005,11 @@
 	}
 
 	.clickable-card:hover .card-view-indicator :global(svg) {
-		color: #3b82f6;
+		color: hsl(24 80% 55%); /* accent */
 	}
 
 	:global(.dark) .clickable-card:hover .card-view-indicator :global(svg) {
-		color: #60a5fa;
+		color: hsl(24 80% 65%);
 	}
 
 	/* Fade-in animation for state changes */

@@ -41,7 +41,12 @@ export function getOptimalTextProfile(
 
 	// Tool-heavy operations need reliable tool calling
 	if (operationType === 'tool_heavy' || operationType === 'planner_stream') {
-		// For planner streaming, vary by context importance
+		// Favor the most reliable tool-calling models for planner_stream.
+		if (operationType === 'planner_stream') {
+			return 'quality';
+		}
+
+		// For tool-heavy non-planner operations, vary by context importance
 		switch (contextType) {
 			case 'project_audit':
 			case 'project_forecast':
@@ -57,7 +62,7 @@ export function getOptimalTextProfile(
 
 	// Reasoning-heavy operations
 	if (operationType === 'reasoning_heavy' || operationType === 'plan_generation') {
-		return 'quality'; // DeepSeek-Reasoner primary
+		return 'quality'; // DeepSeek R1 primary
 	}
 
 	// Cost-sensitive operations
@@ -128,35 +133,37 @@ export function getOptimalJSONProfile(
 
 /**
  * Model selection recommendations for specific use cases
+ * Updated 2025-12-26: Prioritizing x-ai/grok-4.1-fast for tool-calling (93% τ²-Bench)
  */
 export const MODEL_RECOMMENDATIONS = {
 	// High-volume operations (optimize for cost)
 	brainDumps: {
-		contextExtraction: ['google/gemini-2.5-flash-lite', 'anthropic/claude-3-5-haiku'],
-		taskExtraction: ['deepseek/deepseek-chat', 'anthropic/claude-3-5-haiku'],
-		clarification: ['deepseek/deepseek-reasoner', 'anthropic/claude-3-5-sonnet']
+		contextExtraction: ['google/gemini-2.5-flash-lite', 'anthropic/claude-haiku-4.5'],
+		taskExtraction: ['deepseek/deepseek-chat', 'anthropic/claude-haiku-4.5'],
+		clarification: ['deepseek/deepseek-r1', 'x-ai/grok-4.1-fast']
 	},
 
 	// Agent chat (balance speed, reliability, cost)
+	// Prioritizing grok-4.1-fast: 93% τ²-Bench, $0.30/$1.00, 2M context
 	agentChat: {
 		planner: {
-			simple: ['anthropic/claude-3-5-haiku', 'deepseek/deepseek-chat'],
-			complex: ['anthropic/claude-3-5-sonnet-20241022', 'deepseek/deepseek-reasoner'],
-			toolHeavy: ['anthropic/claude-3-5-haiku', 'anthropic/claude-3-5-sonnet-20241022']
+			simple: ['x-ai/grok-4.1-fast', 'anthropic/claude-haiku-4.5'],
+			complex: ['x-ai/grok-4.1-fast', 'deepseek/deepseek-r1'],
+			toolHeavy: ['x-ai/grok-4.1-fast', 'anthropic/claude-haiku-4.5']
 		},
 		executor: {
 			default: ['google/gemini-2.5-flash-lite', 'openai/gpt-4o-mini'],
-			toolHeavy: ['anthropic/claude-3-5-haiku', 'openai/gpt-4o-mini']
+			toolHeavy: ['x-ai/grok-4.1-fast', 'anthropic/claude-haiku-4.5']
 		},
 		synthesis: {
 			simple: ['google/gemini-2.5-flash-lite', 'deepseek/deepseek-chat'],
-			complex: ['deepseek/deepseek-chat', 'anthropic/claude-3-5-haiku']
+			complex: ['deepseek/deepseek-chat', 'x-ai/grok-4.1-fast']
 		}
 	},
 
 	// Daily briefs (optimize for quality at scale)
 	dailyBriefs: {
-		generation: ['deepseek/deepseek-chat', 'anthropic/claude-3-5-haiku'],
+		generation: ['deepseek/deepseek-chat', 'anthropic/claude-haiku-4.5'],
 		summary: ['google/gemini-2.5-flash-lite', 'deepseek/deepseek-chat']
 	}
 };

@@ -269,7 +269,10 @@ export class BaseExecutor {
 	protected normalizeTaskState(state?: string | null): string | undefined {
 		if (!state) return undefined;
 
-		const normalized = state.trim().toLowerCase().replace(/[\s-]+/g, '_');
+		const normalized = state
+			.trim()
+			.toLowerCase()
+			.replace(/[\s-]+/g, '_');
 		if (!normalized) return undefined;
 
 		const stateMap: Record<string, string> = {
@@ -284,15 +287,16 @@ export class BaseExecutor {
 		};
 
 		const candidate = stateMap[normalized] ?? normalized;
-		return ['todo', 'in_progress', 'blocked', 'done'].includes(candidate)
-			? candidate
-			: state;
+		return ['todo', 'in_progress', 'blocked', 'done'].includes(candidate) ? candidate : state;
 	}
 
 	protected normalizeProjectState(state?: string | null): string | undefined {
 		if (!state) return undefined;
 
-		const normalized = state.trim().toLowerCase().replace(/[\s-]+/g, '_');
+		const normalized = state
+			.trim()
+			.toLowerCase()
+			.replace(/[\s-]+/g, '_');
 		if (!normalized) return undefined;
 
 		const stateMap: Record<string, string> = {

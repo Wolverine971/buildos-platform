@@ -592,18 +592,7 @@ export class AgentChatOrchestrator {
 			let assistantBuffer = '';
 			const pendingToolCalls: ChatToolCall[] = [];
 
-			const elapsedMs = Date.now() - startTime;
-			const remainingMs = AGENTIC_CHAT_LIMITS.MAX_SESSION_DURATION_MS - elapsedMs;
-			if (remainingMs <= 0) {
-				throw new Error('Planner session exceeded time limit. Please try again.');
-			}
-
 			const streamAbortController = new AbortController();
-			let timeoutTriggered = false;
-			const timeoutId = setTimeout(() => {
-				timeoutTriggered = true;
-				streamAbortController.abort();
-			}, remainingMs);
 
 			const handleRequestAbort = () => {
 				streamAbortController.abort();
@@ -655,7 +644,6 @@ export class AgentChatOrchestrator {
 					}
 				}
 			} finally {
-				clearTimeout(timeoutId);
 				if (request.abortSignal) {
 					request.abortSignal.removeEventListener('abort', handleRequestAbort);
 				}
@@ -663,10 +651,6 @@ export class AgentChatOrchestrator {
 
 			if (request.abortSignal?.aborted) {
 				return;
-			}
-
-			if (timeoutTriggered) {
-				throw new Error('LLM stream timeout. Please try again.');
 			}
 
 			if (pendingToolCalls.length === 0) {

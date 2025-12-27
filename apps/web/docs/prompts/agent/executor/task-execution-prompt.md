@@ -1,19 +1,17 @@
-<!-- apps/web/docs/prompts/agent/executor/task-execution-prompt.md -->
-
 # Prompt Audit: agent-executor-task-execution
 
-**Generated at:** 2025-12-23T06:28:35.019Z
+**Generated at:** 2025-12-27T04:07:14.914Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"executorId": "d18899a5-2177-43f0-94e2-f888aff7d340",
-	"sessionId": "55e5fd65-525f-4b81-8910-568172cee5b0",
-	"taskDescription": "Analyze retrieved project details to categorize entities (tasks, goals, plans, documents) for migration.",
-	"taskGoal": "Complete plan step 2 for strategy planner_stream",
-	"availableTools": [],
+	"executorId": "5bf786bf-ff19-4916-9e01-93ebd99630ed",
+	"sessionId": "c7f6be1a-e73f-474e-af80-93f2bf5ad909",
+	"taskDescription": "Archive source projects (mark completed/cancelled); run verification checks for data integrity, entity counts, relationships.",
+	"taskGoal": "Complete plan step 4 for strategy planner_stream",
+	"availableTools": ["update_onto_plan", "search_ontology"],
 	"hasRelevantData": true,
 	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435"
 }
@@ -33,13 +31,13 @@ You are given ONE specific task to complete. Your job:
 
 ## Your Task
 
-Analyze retrieved project details to categorize entities (tasks, goals, plans, documents) for migration.
+Archive source projects (mark completed/cancelled); run verification checks for data integrity, entity counts, relationships.
 
-**Goal:** Complete plan step 2 for strategy planner_stream
+**Goal:** Complete plan step 4 for strategy planner_stream
 
 **Constraints:**
-- Incorporate outputs from plan steps 1
-- Use reasoning and summarization without additional tools
+- Incorporate outputs from plan steps 3
+- Use only the assigned tools: `update_onto_plan`, `search_ontology`
 - Return structured JSON data that can be used by subsequent plan steps
 
 ## Guidelines
@@ -63,12 +61,12 @@ When complete, your final message should clearly indicate:
 ```
 Execute this task:
 
-**Description:** Analyze retrieved project details to categorize entities (tasks, goals, plans, documents) for migration.
-**Goal:** Complete plan step 2 for strategy planner_stream
+**Description:** Archive source projects (mark completed/cancelled); run verification checks for data integrity, entity counts, relationships.
+**Goal:** Complete plan step 4 for strategy planner_stream
 
 **Constraints:**
-- Incorporate outputs from plan steps 1
-- Use reasoning and summarization without additional tools
+- Incorporate outputs from plan steps 3
+- Use only the assigned tools: `update_onto_plan`, `search_ontology`
 - Return structured JSON data that can be used by subsequent plan steps
 
 Use the available tools to complete this task. Return structured results.
@@ -76,9 +74,9 @@ Use the available tools to complete this task. Return structured results.
 
 ## Token Estimates
 
-- **System Prompt:** ~261 tokens
-- **User Prompt:** ~116 tokens
-- **Total Estimate:** ~377 tokens
+- **System Prompt:** ~268 tokens
+- **User Prompt:** ~124 tokens
+- **Total Estimate:** ~392 tokens
 
 ---
 

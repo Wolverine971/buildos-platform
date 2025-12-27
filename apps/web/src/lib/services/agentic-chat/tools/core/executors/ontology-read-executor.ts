@@ -263,9 +263,8 @@ export class OntologyReadExecutor extends BaseExecutor {
 			query = query.eq('type_key', args.type_key);
 		}
 
-		const normalizedState = this.normalizeTaskState(args.state_key);
-		if (normalizedState) {
-			query = query.eq('state_key', normalizedState);
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
 		}
 
 		const limit = Math.min(args.limit ?? 20, 50);
@@ -340,9 +339,8 @@ export class OntologyReadExecutor extends BaseExecutor {
 			query = query.eq('project_id', args.project_id);
 		}
 
-		const normalizedState = this.normalizeProjectState(args.state_key);
-		if (normalizedState) {
-			query = query.eq('state_key', normalizedState);
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
 		}
 
 		const limit = Math.min(args.limit ?? 20, 50);
@@ -590,8 +588,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 			query = query.eq('project_id', args.project_id);
 		}
 
-		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
+		const normalizedState = this.normalizeTaskState(args.state_key);
+		if (normalizedState) {
+			query = query.eq('state_key', normalizedState);
 		}
 
 		const limit = Math.min(args.limit ?? 20, 50);
