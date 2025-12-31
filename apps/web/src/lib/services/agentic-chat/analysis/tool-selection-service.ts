@@ -21,20 +21,21 @@
  */
 
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
-import { getToolsForAgent } from '@buildos/shared-types';
 import type { PlannerContext, ServiceContext } from '../shared/types';
 import type {
 	LastTurnContext,
 	StrategyAnalysis,
 	ProjectFocus
 } from '$lib/types/agent-chat-enhancement';
+import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import { StrategyAnalyzer } from './strategy-analyzer';
 import {
 	ALL_TOOLS,
 	extractTools,
 	resolveToolName,
 	extractToolNamesFromDefinitions,
-	getDefaultToolsForContextType
+	getDefaultToolsForContextType,
+	isWriteToolName
 } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
 
@@ -66,7 +67,8 @@ export class ToolSelectionService {
 	getDefaultToolPool(contextType: ChatContextType): ChatToolDefinition[] {
 		const normalized = normalizeContextType(contextType);
 		const defaultTools = getDefaultToolsForContextType(normalized);
-		return getToolsForAgent(defaultTools.length > 0 ? defaultTools : ALL_TOOLS, 'read_write');
+		const pool = defaultTools.length > 0 ? defaultTools : ALL_TOOLS;
+		return this.applyReadOnlyContextFilter(pool, normalized);
 	}
 
 	/**
@@ -131,45 +133,70 @@ export class ToolSelectionService {
 			toolCatalog = ALL_TOOLS
 		} = params;
 
+		const normalizedContextType = normalizeContextType(serviceContext.contextType);
+		const analysisContext =
+			serviceContext.contextType === normalizedContextType
+				? serviceContext
+				: { ...serviceContext, contextType: normalizedContextType };
+
 		// STEP 1: Compute default pool from context type (canonical source)
-		const contextDefaultTools = this.getDefaultToolPool(serviceContext.contextType);
+		const contextDefaultTools = this.getDefaultToolPool(normalizedContextType);
 
 		// STEP 2: Apply focus filtering
 		const focusFilteredTools = this.filterToolsForFocus(
 			contextDefaultTools,
-			serviceContext.projectFocus
+			analysisContext.projectFocus
 		);
 
 		// STEP 3: Extract names for comparison
 		const defaultToolNames = extractToolNamesFromDefinitions(focusFilteredTools);
-		const toolCatalogNames = new Set(extractToolNamesFromDefinitions(toolCatalog));
+		const readOnlyCatalog = this.applyReadOnlyContextFilter(toolCatalog, normalizedContextType);
+		const toolCatalogNames = new Set(extractToolNamesFromDefinitions(readOnlyCatalog));
 		const defaultSet = new Set(defaultToolNames);
 
-		const analysis = await this.strategyAnalyzer.analyzeUserIntent(
-			message,
-			plannerContext,
-			serviceContext,
-			lastTurnContext,
-			undefined,
-			{
-				toolCatalog,
-				defaultToolNames
-			}
-		);
-
+		let analysis: StrategyAnalysis;
 		let selectedToolNames: string[] = [];
 		let mode: ToolSelectionMode = 'default';
+
+		if (normalizedContextType === 'project_create') {
+			analysis = this.buildDefaultAnalysis(
+				ChatStrategy.PROJECT_CREATION,
+				'Tool selection skipped for project_create context.'
+			);
+			selectedToolNames = defaultToolNames.filter((name) => toolCatalogNames.has(name));
+		} else {
+			const analysisPlannerContext = {
+				...plannerContext,
+				availableTools: readOnlyCatalog
+			};
+
+			analysis = await this.strategyAnalyzer.analyzeUserIntent(
+				message,
+				analysisPlannerContext,
+				analysisContext,
+				lastTurnContext,
+				undefined,
+				{
+					toolCatalog: readOnlyCatalog,
+					defaultToolNames
+				}
+			);
+		}
 
 		// Use is_fallback flag instead of fragile string matching
 		const isFallbackSelection = analysis.tool_selection?.is_fallback === true;
 
-		if (analysis.tool_selection?.selected_tools?.length && !isFallbackSelection) {
+		if (
+			!selectedToolNames.length &&
+			analysis.tool_selection?.selected_tools?.length &&
+			!isFallbackSelection
+		) {
 			selectedToolNames = analysis.tool_selection.selected_tools;
 			mode = 'llm';
-		} else if (analysis.required_tools?.length) {
+		} else if (!selectedToolNames.length && analysis.required_tools?.length) {
 			selectedToolNames = analysis.required_tools;
 			mode = 'heuristic';
-		} else {
+		} else if (!selectedToolNames.length) {
 			selectedToolNames = this.strategyAnalyzer.estimateRequiredTools(
 				message,
 				defaultToolNames
@@ -178,8 +205,13 @@ export class ToolSelectionService {
 		}
 
 		selectedToolNames = this.normalizeToolNames(selectedToolNames, toolCatalogNames);
+		selectedToolNames = this.filterReadOnlyToolNames(selectedToolNames, normalizedContextType);
 		if (selectedToolNames.length === 0) {
 			selectedToolNames = defaultToolNames.filter((name) => toolCatalogNames.has(name));
+			selectedToolNames = this.filterReadOnlyToolNames(
+				selectedToolNames,
+				normalizedContextType
+			);
 			mode = 'default';
 		}
 
@@ -188,13 +220,17 @@ export class ToolSelectionService {
 			selectedToolNames = this.filterExternalTools(selectedToolNames, message);
 			if (selectedToolNames.length === 0) {
 				selectedToolNames = defaultToolNames.filter((name) => toolCatalogNames.has(name));
+				selectedToolNames = this.filterReadOnlyToolNames(
+					selectedToolNames,
+					normalizedContextType
+				);
 				mode = 'default';
 			}
 		}
 
 		selectedToolNames = this.ensureProjectCreationTool(
 			selectedToolNames,
-			serviceContext.contextType
+			normalizedContextType
 		);
 
 		const selectedSet = new Set(selectedToolNames);
@@ -237,6 +273,39 @@ export class ToolSelectionService {
 			return [...names, 'create_onto_project'];
 		}
 		return names;
+	}
+
+	private isReadOnlyContext(contextType: ChatContextType): boolean {
+		return contextType === 'project_audit' || contextType === 'project_forecast';
+	}
+
+	private applyReadOnlyContextFilter(
+		tools: ChatToolDefinition[],
+		contextType: ChatContextType
+	): ChatToolDefinition[] {
+		if (!this.isReadOnlyContext(contextType)) {
+			return tools;
+		}
+		return tools.filter((tool) => !isWriteToolName(resolveToolName(tool)));
+	}
+
+	private filterReadOnlyToolNames(names: string[], contextType: ChatContextType): string[] {
+		if (!this.isReadOnlyContext(contextType)) {
+			return names;
+		}
+		return names.filter((name) => !isWriteToolName(name));
+	}
+
+	private buildDefaultAnalysis(strategy: ChatStrategy, reasoning: string): StrategyAnalysis {
+		return {
+			primary_strategy: strategy,
+			confidence: 0.4,
+			reasoning,
+			needs_clarification: false,
+			estimated_steps: 0,
+			required_tools: [],
+			can_complete_directly: false
+		};
 	}
 
 	private filterExternalTools(names: string[], message: string): string[] {

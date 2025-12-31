@@ -105,7 +105,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			prompt: promptSections,
 			temperature: 0.2,
 			maxTokens: 320,
-			operationType: 'agent_to_agent_turn'
+			operationType: 'agent_to_agent_turn',
+			userId: user.id,
+			projectId: project.id
 		});
 
 		return ApiResponse.success({

@@ -486,7 +486,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.name !== undefined) updateData.name = args.name;
 		if (args.description !== undefined) updateData.description = args.description;
 		if (args.state_key !== undefined) {
-			updateData.state_key = this.normalizeTaskState(args.state_key);
+			updateData.state_key = this.normalizeProjectState(args.state_key);
 		}
 		if (args.props !== undefined) updateData.props = args.props;
 
@@ -526,13 +526,16 @@ export class OntologyWriteExecutor extends BaseExecutor {
 					const details = await getTaskDetails(args.task_id);
 					// Description is now a column, not in props
 					const raw = details?.task?.description;
-					return typeof raw === 'string' ? raw : '';
+					return {
+						text: typeof raw === 'string' ? raw : '',
+						projectId: details?.task?.project_id as string | undefined
+					};
 				}
 			});
 		}
 		if (args.type_key !== undefined) updateData.type_key = args.type_key;
 		if (args.state_key !== undefined) {
-			updateData.state_key = this.normalizeProjectState(args.state_key);
+			updateData.state_key = this.normalizeTaskState(args.state_key);
 		}
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.plan_id !== undefined) updateData.plan_id = args.plan_id;
@@ -578,7 +581,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 					const raw =
 						details?.goal?.description ??
 						(details?.goal?.props as Record<string, unknown>)?.description;
-					return typeof raw === 'string' ? raw : '';
+					return {
+						text: typeof raw === 'string' ? raw : '',
+						projectId: details?.goal?.project_id as string | undefined
+					};
 				}
 			});
 		}
@@ -626,7 +632,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 					const raw =
 						details?.plan?.description ??
 						(details?.plan?.props as Record<string, unknown>)?.description;
-					return typeof raw === 'string' ? raw : '';
+					return {
+						text: typeof raw === 'string' ? raw : '',
+						projectId: details?.plan?.project_id as string | undefined
+					};
 				}
 			});
 		}
@@ -675,12 +684,14 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				existingLoader: async () => {
 					const existing = await getDocumentDetails(args.document_id);
 					// Prefer content column, fall back to props.body_markdown for backwards compat
-					return (
-						(existing?.document?.content as string) ||
-						(existing?.document?.props?.body_markdown as string) ||
-						(existing?.document?.body_markdown as string) ||
-						''
-					);
+					return {
+						text:
+							(existing?.document?.content as string) ||
+							(existing?.document?.props?.body_markdown as string) ||
+							(existing?.document?.body_markdown as string) ||
+							'',
+						projectId: existing?.document?.project_id as string | undefined
+					};
 				}
 			});
 			// Use content column (API handles backwards compatibility with props.body_markdown)
@@ -912,7 +923,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		newContent: string;
 		instructions?: string;
 		entityLabel?: string;
-		existingLoader: () => Promise<string>;
+		existingLoader: () => Promise<{ text: string; projectId?: string }>;
 	}): Promise<string> {
 		const { strategy, newContent, instructions, entityLabel, existingLoader } = params;
 		const sanitizedNew = newContent ?? '';
@@ -922,8 +933,11 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		}
 
 		let existingText = '';
+		let projectId: string | undefined;
 		try {
-			existingText = (await existingLoader()) || '';
+			const existing = await existingLoader();
+			existingText = existing?.text ?? '';
+			projectId = existing?.projectId;
 		} catch (error) {
 			console.warn(
 				`[OntologyWriteExecutor] Failed to load existing content for ${entityLabel || 'entity'}, using provided content`,
@@ -947,7 +961,8 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				return await this.composeContentUpdateWithLLM({
 					existingContent: existingText,
 					newContent: sanitizedNew,
-					instructions
+					instructions,
+					projectId
 				});
 			} catch (error) {
 				console.warn(
@@ -971,6 +986,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		existingContent: string;
 		newContent: string;
 		instructions?: string;
+		projectId?: string;
 	}): Promise<string> {
 		if (!this.llmService) {
 			throw new Error('LLM service unavailable for merge');
@@ -1005,7 +1021,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			profile: 'balanced',
 			maxTokens: 2000,
 			temperature: 0.4,
-			operationType: 'agentic_chat_content_merge'
+			operationType: 'agentic_chat_content_merge',
+			chatSessionId: this.sessionId,
+			projectId: params.projectId
 		});
 
 		return result.text.trim();

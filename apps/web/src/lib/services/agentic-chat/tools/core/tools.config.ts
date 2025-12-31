@@ -278,7 +278,7 @@ function resolveToolNames(contextType: PlannerContextType, options: GetToolsOpti
 		if (!includeBase && group === 'base') continue;
 		const groupTools = TOOL_GROUPS[group] ?? [];
 		for (const toolName of groupTools) {
-			if (!includeWriteTools && isWriteTool(toolName)) continue;
+			if (!includeWriteTools && isWriteToolName(toolName)) continue;
 			names.add(toolName);
 		}
 	}
@@ -288,7 +288,7 @@ function resolveToolNames(contextType: PlannerContextType, options: GetToolsOpti
 	return Array.from(names);
 }
 
-function isWriteTool(toolName: string): boolean {
+export function isWriteToolName(toolName: string): boolean {
 	return TOOL_METADATA[toolName]?.category === 'write';
 }
 

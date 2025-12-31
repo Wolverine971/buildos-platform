@@ -178,7 +178,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Total Cost
 						</p>
 						<p class="text-2xl font-bold text-emerald-500 mt-1">
@@ -206,7 +208,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Total Tokens
 						</p>
 						<p class="text-2xl font-bold text-blue-500 mt-1">
@@ -225,7 +229,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Chat Cost
 						</p>
 						<p class="text-2xl font-bold text-purple-500 mt-1">
@@ -243,7 +249,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Agent Cost
 						</p>
 						<p class="text-2xl font-bold text-indigo-500 mt-1">
@@ -267,7 +275,8 @@
 					<div>
 						<div class="flex items-center justify-between mb-2">
 							<div>
-								<span class="text-sm font-medium text-foreground">Input Tokens</span>
+								<span class="text-sm font-medium text-foreground">Input Tokens</span
+								>
 								<span class="text-xs text-muted-foreground ml-2">
 									(${dashboardData.pricing.INPUT_COST_PER_M || 0}/1M)
 								</span>
@@ -293,7 +302,9 @@
 					<div>
 						<div class="flex items-center justify-between mb-2">
 							<div>
-								<span class="text-sm font-medium text-foreground">Output Tokens</span>
+								<span class="text-sm font-medium text-foreground"
+									>Output Tokens</span
+								>
 								<span class="text-xs text-muted-foreground ml-2">
 									(${dashboardData.pricing.OUTPUT_COST_PER_M || 0}/1M)
 								</span>
@@ -330,7 +341,8 @@
 						</div>
 						<div class="text-sm text-muted-foreground mt-1">Saved by compression</div>
 						<div class="text-xs text-muted-foreground mt-1">
-							{formatNumber(dashboardData.compression_savings.tokens_saved || 0)} tokens saved
+							{formatNumber(dashboardData.compression_savings.tokens_saved || 0)} tokens
+							saved
 						</div>
 					</div>
 				</div>
@@ -339,7 +351,9 @@
 
 		<!-- Cost by Model -->
 		{#if dashboardData.by_model && dashboardData.by_model.length > 0}
-			<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak">
+			<div
+				class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak"
+			>
 				<h3 class="text-sm font-semibold text-foreground mb-4">Cost by Model</h3>
 				<div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
 					{#each dashboardData.by_model as modelData}
@@ -362,7 +376,9 @@
 		{/if}
 
 		<!-- Top Sessions by Cost -->
-		<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak">
+		<div
+			class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak"
+		>
 			<h3 class="text-sm font-semibold text-foreground mb-4">Top Sessions by Cost</h3>
 			{#if dashboardData.top_sessions && dashboardData.top_sessions.length > 0}
 				<div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">

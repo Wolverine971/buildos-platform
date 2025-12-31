@@ -155,7 +155,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Total Agents
 						</p>
 						<p class="text-2xl font-bold text-blue-500 mt-1">
@@ -174,7 +176,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Success Rate
 						</p>
 						<p class="text-2xl font-bold text-emerald-500 mt-1">
@@ -193,7 +197,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Executions
 						</p>
 						<p class="text-2xl font-bold text-purple-500 mt-1">
@@ -211,7 +217,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Avg Duration
 						</p>
 						<p class="text-2xl font-bold text-indigo-500 mt-1">
@@ -230,7 +238,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Total Tokens
 						</p>
 						<p class="text-2xl font-bold text-emerald-500 mt-1">
@@ -248,7 +258,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Tool Calls
 						</p>
 						<p class="text-2xl font-bold text-amber-500 mt-1">
@@ -266,7 +278,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Conversations
 						</p>
 						<p class="text-2xl font-bold text-cyan-500 mt-1">
@@ -284,7 +298,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Exec Duration
 						</p>
 						<p class="text-2xl font-bold text-orange-500 mt-1">
@@ -314,7 +330,9 @@
 							<div
 								class="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
 								style="width: {dashboardData.plans.total > 0
-									? ((dashboardData.plans.direct || 0) / dashboardData.plans.total) * 100
+									? ((dashboardData.plans.direct || 0) /
+											dashboardData.plans.total) *
+										100
 									: 0}%"
 							></div>
 						</div>
@@ -330,7 +348,9 @@
 							<div
 								class="bg-purple-500 h-2.5 rounded-full transition-all duration-300"
 								style="width: {dashboardData.plans.total > 0
-									? ((dashboardData.plans.complex || 0) / dashboardData.plans.total) * 100
+									? ((dashboardData.plans.complex || 0) /
+											dashboardData.plans.total) *
+										100
 									: 0}%"
 							></div>
 						</div>
@@ -349,7 +369,8 @@
 				<div class="space-y-4">
 					<div>
 						<div class="flex items-center justify-between mb-2">
-							<span class="text-sm font-medium text-foreground">Planner Thinking</span>
+							<span class="text-sm font-medium text-foreground">Planner Thinking</span
+							>
 							<span class="text-sm font-bold text-blue-500">
 								{formatNumber(dashboardData.conversations.planner_thinking || 0)}
 							</span>
@@ -367,7 +388,8 @@
 					</div>
 					<div>
 						<div class="flex items-center justify-between mb-2">
-							<span class="text-sm font-medium text-foreground">Planner-Executor</span>
+							<span class="text-sm font-medium text-foreground">Planner-Executor</span
+							>
 							<span class="text-sm font-bold text-purple-500">
 								{formatNumber(dashboardData.conversations.planner_executor || 0)}
 							</span>
@@ -393,7 +415,9 @@
 
 		<!-- Top Errors -->
 		{#if dashboardData.errors.top_errors && dashboardData.errors.top_errors.length > 0}
-			<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-static tx-weak">
+			<div
+				class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-static tx-weak"
+			>
 				<h3 class="text-sm font-semibold text-foreground mb-4">
 					Top Errors ({formatNumber(dashboardData.errors.total_errors || 0)} total)
 				</h3>
@@ -406,7 +430,9 @@
 									{errorItem.error}
 								</p>
 							</div>
-							<span class="text-sm font-bold text-red-500 bg-red-500/20 px-2 py-0.5 rounded shrink-0">
+							<span
+								class="text-sm font-bold text-red-500 bg-red-500/20 px-2 py-0.5 rounded shrink-0"
+							>
 								{formatNumber(errorItem.count)}
 							</span>
 						</div>
@@ -419,7 +445,11 @@
 		<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 			<h3 class="text-sm font-semibold text-foreground mb-4">Recent Agent Executions</h3>
 			{#if dashboardData.recent_activity && dashboardData.recent_activity.length > 0}
-				<div class="space-y-3 max-h-80 overflow-y-auto scrollbar-thin" role="log" aria-label="Recent agent activity">
+				<div
+					class="space-y-3 max-h-80 overflow-y-auto scrollbar-thin"
+					role="log"
+					aria-label="Recent agent activity"
+				>
 					{#each dashboardData.recent_activity as activity}
 						<div class="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
 							<Bot
@@ -433,7 +463,8 @@
 										{activity.agent_name}
 									</span>
 									<span
-										class="text-xs px-2 py-0.5 rounded {activity.agent_type === 'planner'
+										class="text-xs px-2 py-0.5 rounded {activity.agent_type ===
+										'planner'
 											? 'bg-blue-500/10 text-blue-500'
 											: 'bg-purple-500/10 text-purple-500'}"
 									>
@@ -448,7 +479,9 @@
 								<p class="text-sm text-muted-foreground mb-2 truncate">
 									{activity.user_message || 'No message'}
 								</p>
-								<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+								<div
+									class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+								>
 									<span>{formatNumber(activity.tokens_used)} tokens</span>
 									<span>•</span>
 									<span>{formatNumber(activity.tool_calls)} tool calls</span>

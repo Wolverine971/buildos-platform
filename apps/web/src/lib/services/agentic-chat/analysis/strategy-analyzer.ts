@@ -145,7 +145,8 @@ export class StrategyAnalyzer {
 			return this.analyzeProjectCreationIntent(
 				message,
 				context.userId,
-				clarificationMetadata
+				clarificationMetadata,
+				context.sessionId
 			);
 		}
 
@@ -208,7 +209,8 @@ export class StrategyAnalyzer {
 	private async analyzeProjectCreationIntent(
 		message: string,
 		userId: string,
-		clarificationMetadata?: ClarificationRoundMetadata
+		clarificationMetadata?: ClarificationRoundMetadata,
+		chatSessionId?: string
 	): Promise<StrategyAnalysis> {
 		const roundNumber = clarificationMetadata?.roundNumber ?? 0;
 
@@ -222,7 +224,8 @@ export class StrategyAnalyzer {
 			const analysis = await this.projectCreationAnalyzer.analyzeIntent(
 				message,
 				userId,
-				clarificationMetadata
+				clarificationMetadata,
+				chatSessionId
 			);
 
 			console.log('[StrategyAnalyzer] Project creation analysis result', {

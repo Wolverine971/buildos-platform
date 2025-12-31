@@ -35,11 +35,13 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
+import { TASK_STATES } from '$lib/types/onto';
 import {
 	logCreateAsync,
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { normalizeTaskStateInput } from '../../shared/task-state';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -60,7 +62,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			description,
 			priority = 3,
 			plan_id,
-			state_key = 'todo',
+			state_key,
 			type_key,
 			props = {},
 			goal_id,
@@ -73,6 +75,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!project_id || !title) {
 			return ApiResponse.badRequest('Project ID and title are required');
 		}
+		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
+		const normalizedState = normalizeTaskStateInput(state_key);
+
+		if (hasStateInput && !normalizedState) {
+			return ApiResponse.badRequest(`state_key must be one of: ${TASK_STATES.join(', ')}`);
+		}
+		const finalState = normalizedState ?? 'todo';
 
 		// Get user's actor ID
 		const { data: actorData, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -152,7 +161,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			title,
 			description: description || null,
 			type_key: type_key || 'task.execute',
-			state_key,
+			state_key: finalState,
 			priority,
 			start_at: start_at || null,
 			due_at: due_at || null,
@@ -166,7 +175,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		};
 
 		// Auto-set completed_at when creating a task as done
-		if (state_key === 'done') {
+		if (finalState === 'done') {
 			taskData.completed_at = new Date().toISOString();
 		}
 

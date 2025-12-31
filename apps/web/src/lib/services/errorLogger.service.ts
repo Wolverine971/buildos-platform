@@ -200,6 +200,34 @@ export class ErrorLoggerService {
 				.single();
 
 			if (insertError) {
+				if (insertError.code === '23503' && errorEntry.project_id) {
+					const retryEntry = {
+						...errorEntry,
+						project_id: null,
+						metadata: {
+							...(errorEntry.metadata as Record<string, any>),
+							invalid_project_id: errorEntry.project_id,
+							project_id_fk_retry: true
+						}
+					};
+					const { data: retryData, error: retryError } = await this.supabase
+						.from('error_logs')
+						.insert(retryEntry as any)
+						.select('id')
+						.single();
+
+					if (retryError) {
+						console.error('Failed to log error to database:', retryError);
+						this.logToConsole(retryEntry, error);
+						return null;
+					}
+
+					if (retryData?.id) {
+						console.log(`Error logged with ID: ${retryData.id}`);
+						return retryData.id;
+					}
+				}
+
 				console.error('Failed to log error to database:', insertError);
 				this.logToConsole(errorEntry, error);
 				return null;

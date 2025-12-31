@@ -1280,7 +1280,8 @@ export class AgentChatOrchestrator {
 			const analysis = await this.projectCreationAnalyzer.analyzeIntent(
 				request.userMessage,
 				request.userId,
-				analyzerMetadata
+				analyzerMetadata,
+				request.sessionId
 			);
 
 			console.log('[AgentChatOrchestrator] Project creation analysis result', {

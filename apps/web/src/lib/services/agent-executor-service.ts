@@ -34,6 +34,7 @@ import { TOOL_METADATA } from '$lib/services/agentic-chat/tools/core/definitions
 import { getToolsForAgent } from '@buildos/shared-types';
 import { v4 as uuidv4 } from 'uuid';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 // ============================================
 // TYPES
@@ -97,6 +98,7 @@ export class AgentExecutorService {
 	private contextService: AgentContextService;
 	private smartLLM: SmartLLMService;
 	private fetchFn: typeof fetch; // Custom fetch function for API requests
+	private errorLogger: ErrorLoggerService;
 
 	// Execution limits for safety
 	private readonly LIMITS = {
@@ -114,6 +116,7 @@ export class AgentExecutorService {
 		// Store fetch function (use global fetch as fallback)
 		this.fetchFn = fetchFn || fetch;
 		this.contextService = new AgentContextService(supabase);
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 
 		// Initialize SmartLLMService if not provided
 		this.smartLLM =
@@ -173,6 +176,19 @@ export class AgentExecutorService {
 			return successResult;
 		} catch (error) {
 			console.error('Executor error:', error);
+			await this.errorLogger.logError(error, {
+				userId,
+				projectId: params.entityId,
+				operationType: 'executor_task',
+				metadata: {
+					executorId,
+					sessionId,
+					planId,
+					stepNumber: params.stepNumber,
+					contextType: params.contextType,
+					entityId: params.entityId
+				}
+			});
 
 			const failureResult: ExecutorResult = {
 				executorId,

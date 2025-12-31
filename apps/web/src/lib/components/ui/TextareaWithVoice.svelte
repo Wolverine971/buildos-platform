@@ -617,7 +617,8 @@
 		/>
 
 		<!-- ✅ Action buttons: Bottom-right corner with backdrop for visual separation -->
-		<div class="pointer-events-none absolute bottom-0 right-0 hidden p-1.5 xs:block">
+		<!-- z-10 ensures buttons are ALWAYS above live transcript preview (z-0) -->
+		<div class="pointer-events-none absolute bottom-0 right-0 z-10 hidden p-1.5 xs:block">
 			<div
 				class="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/90 p-1 shadow-ink backdrop-blur-sm"
 			>
@@ -650,15 +651,16 @@
 		</div>
 
 		<!-- Live transcript preview: Positioned to avoid overlap with action buttons -->
+		<!-- IMPORTANT: pointer-events-none on ALL elements to ensure buttons are always clickable -->
 		{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
 			{@const rightOffset = actions ? 'xs:right-24' : 'xs:right-14'}
 			<div
-				class={`pointer-events-none absolute bottom-12 left-2 right-2 xs:bottom-2 ${rightOffset}`}
+				class={`pointer-events-none absolute bottom-14 left-2 right-2 z-0 max-h-24 overflow-hidden xs:bottom-2 ${rightOffset}`}
 			>
 				<div
-					class="pointer-events-auto rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-1.5 text-sm text-accent shadow-ink backdrop-blur-sm dark:bg-accent/10"
+					class="pointer-events-none select-none rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-1.5 text-sm text-accent shadow-ink backdrop-blur-sm dark:bg-accent/10"
 				>
-					<p class="m-0 whitespace-pre-wrap leading-snug">
+					<p class="m-0 line-clamp-4 whitespace-pre-wrap leading-snug">
 						{liveTranscriptPreview}
 					</p>
 				</div>
@@ -667,7 +669,8 @@
 	</div>
 
 	<!-- Mobile action bar: Visible only on portrait phones (< 480px) -->
-	<div class="mt-2 flex items-center justify-end gap-2 xs:hidden">
+	<!-- z-10 ensures buttons are ALWAYS clickable above any overlays -->
+	<div class="relative z-10 mt-2 flex items-center justify-end gap-2 xs:hidden">
 		<!-- Voice recording button for mobile (larger touch target) -->
 		{#if enableVoice}
 			<button

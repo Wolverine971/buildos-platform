@@ -68,12 +68,16 @@ export class PromptGenerationService {
 			prompt += this.getBrainDumpPrompt();
 		}
 
+		if (contextType === 'ontology') {
+			prompt +=
+				'\n\n## Ontology Mode Override\n- The user opted into technical detail; internal field names and tool terminology are allowed when it improves precision.\n- Keep explanations concise and still prioritize user goals over system jargon.';
+		}
+
 		// Note: Last turn context is now consolidated in buildSessionContext()
 		// within getBasePrompt() to avoid duplication. The getLastTurnPrompt()
 		// method is kept for potential future use or debugging.
 
-		// Add ontology-specific context
-		prompt += this.getOntologyContextPrompt(ontologyContext);
+		// Ontology context is already included in the location snapshot to avoid duplication.
 
 		// Add linked entities context when there's a focus entity
 		if (linkedEntitiesContext && hasLinkedEntities(linkedEntitiesContext)) {

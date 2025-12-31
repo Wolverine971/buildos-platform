@@ -369,7 +369,8 @@ export class AgentContextService {
 				...recentMessages.map((m) => ({
 					role: m.role as any,
 					content: m.content,
-					tool_calls: m.tool_calls as any
+					tool_calls: m.tool_calls as any,
+					tool_call_id: m.tool_call_id ?? undefined
 				}))
 			);
 			if (this.compressionService && sessionId) {
@@ -391,7 +392,8 @@ export class AgentContextService {
 			...history.map((m) => ({
 				role: m.role as any,
 				content: m.content,
-				tool_calls: m.tool_calls as any
+				tool_calls: m.tool_calls as any,
+				tool_call_id: m.tool_call_id ?? undefined
 			}))
 		);
 

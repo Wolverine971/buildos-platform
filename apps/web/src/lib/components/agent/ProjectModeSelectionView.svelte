@@ -142,7 +142,9 @@
 					<div
 						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-emerald-900/40 sm:h-16 sm:w-16 sm:rounded-xl"
 					>
-						<FolderOpen class="h-5 w-5 text-emerald-600 dark:text-emerald-400 sm:h-8 sm:w-8" />
+						<FolderOpen
+							class="h-5 w-5 text-emerald-600 dark:text-emerald-400 sm:h-8 sm:w-8"
+						/>
 					</div>
 					<div class="min-w-0 flex-1">
 						<h3 class="text-sm font-semibold text-foreground sm:mb-1 sm:text-base">
@@ -213,7 +215,9 @@
 									{/if}
 									{#if project.taskCount > 0}
 										<p class="mt-1 text-xs text-muted-foreground">
-											{project.taskCount} task{project.taskCount !== 1 ? 's' : ''}
+											{project.taskCount} task{project.taskCount !== 1
+												? 's'
+												: ''}
 										</p>
 									{/if}
 								</div>
@@ -222,7 +226,9 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="flex flex-col items-center justify-center py-12 text-center sm:py-16">
+					<div
+						class="flex flex-col items-center justify-center py-12 text-center sm:py-16"
+					>
 						<div
 							class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted sm:mb-6 sm:h-20 sm:w-20"
 						>
@@ -269,7 +275,9 @@
 						<div
 							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-blue-900/40 sm:h-14 sm:w-14 sm:rounded-xl"
 						>
-							<Sparkles class="h-5 w-5 text-blue-600 dark:text-blue-400 sm:h-7 sm:w-7" />
+							<Sparkles
+								class="h-5 w-5 text-blue-600 dark:text-blue-400 sm:h-7 sm:w-7"
+							/>
 						</div>
 						<div class="min-w-0 flex-1">
 							<h3 class="text-sm font-semibold text-foreground sm:mb-1">
@@ -290,7 +298,9 @@
 						<div
 							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-amber-900/40 sm:h-14 sm:w-14 sm:rounded-xl"
 						>
-							<Search class="h-5 w-5 text-amber-600 dark:text-amber-400 sm:h-7 sm:w-7" />
+							<Search
+								class="h-5 w-5 text-amber-600 dark:text-amber-400 sm:h-7 sm:w-7"
+							/>
 						</div>
 						<div class="min-w-0 flex-1">
 							<h3 class="text-sm font-semibold text-foreground sm:mb-1">
@@ -311,7 +321,9 @@
 						<div
 							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-emerald-900/40 sm:h-14 sm:w-14 sm:rounded-xl"
 						>
-							<TrendingUp class="h-5 w-5 text-emerald-600 dark:text-emerald-400 sm:h-7 sm:w-7" />
+							<TrendingUp
+								class="h-5 w-5 text-emerald-600 dark:text-emerald-400 sm:h-7 sm:w-7"
+							/>
 						</div>
 						<div class="min-w-0 flex-1">
 							<h3 class="text-sm font-semibold text-foreground sm:mb-1">
@@ -326,7 +338,9 @@
 				</div>
 
 				<!-- Mode Descriptions - hidden on mobile to save space -->
-				<div class="mt-4 hidden space-y-2 rounded-lg border border-border bg-muted/50 p-3 sm:mt-6 sm:block sm:space-y-3 sm:p-4">
+				<div
+					class="mt-4 hidden space-y-2 rounded-lg border border-border bg-muted/50 p-3 sm:mt-6 sm:block sm:space-y-3 sm:p-4"
+				>
 					<div class="flex gap-3 text-xs">
 						<Target class="h-4 w-4 shrink-0 text-muted-foreground" />
 						<div>

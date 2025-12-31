@@ -31,6 +31,7 @@ import type {
 import { normalizeToolError } from '../shared/error-utils';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import { TOOL_METADATA } from '../tools/core/definitions';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 /**
  * Tool execution options
@@ -81,7 +82,8 @@ export class ToolExecutionService implements BaseService {
 
 	constructor(
 		private toolExecutor: ToolExecutorFunction,
-		private telemetryHook?: ToolExecutionTelemetryHook
+		private telemetryHook?: ToolExecutionTelemetryHook,
+		private errorLogger?: ErrorLoggerService
 	) {}
 
 	async initialize(): Promise<void> {}
@@ -102,6 +104,7 @@ export class ToolExecutionService implements BaseService {
 		const startTime = typeof performance !== 'undefined' ? performance.now() : Date.now();
 		const virtualHandler =
 			name && options.virtualHandlers ? options.virtualHandlers[name] : undefined;
+		let parsedArgs: Record<string, any> | undefined;
 
 		const finalizeResult = (
 			result: ToolExecutionResult,
@@ -130,6 +133,9 @@ export class ToolExecutionService implements BaseService {
 					});
 				}
 			}
+			if (!result.success) {
+				this.logToolError(result, context, toolName, virtualHandler, parsedArgs);
+			}
 			return result;
 		};
 
@@ -151,6 +157,7 @@ export class ToolExecutionService implements BaseService {
 		let args: Record<string, any>;
 		try {
 			args = this.normalizeArguments(rawArguments, toolName);
+			parsedArgs = args;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return finalizeResult({
@@ -303,6 +310,33 @@ export class ToolExecutionService implements BaseService {
 				abortListener();
 			}
 		}
+	}
+
+	private logToolError(
+		result: ToolExecutionResult,
+		context: ServiceContext,
+		toolName: string,
+		virtualHandler?: VirtualToolHandler,
+		args?: Record<string, any>
+	): void {
+		if (!this.errorLogger) {
+			return;
+		}
+		void this.errorLogger.logError(result.error ?? 'Tool execution failed', {
+			userId: context.userId,
+			projectId: context.contextScope?.projectId ?? context.entityId,
+			operationType: 'tool_execution',
+			metadata: {
+				toolName,
+				toolCallId: result.toolCallId,
+				sessionId: context.sessionId,
+				contextType: context.contextType,
+				entityId: context.entityId,
+				args: args ?? undefined,
+				errorType: result.errorType,
+				virtual: Boolean(virtualHandler)
+			}
+		});
 	}
 
 	/**

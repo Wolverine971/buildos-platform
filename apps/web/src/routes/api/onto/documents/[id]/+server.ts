@@ -92,8 +92,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.unauthorized('Authentication required');
 		}
 
-		const chatSessionId = getChatSessionIdFromRequest(request);
-
 		const documentId = params.id;
 		if (!documentId) {
 			return ApiResponse.badRequest('Document ID required');
@@ -118,6 +116,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (!session?.user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		const documentId = params.id;
 		if (!documentId) {

@@ -29,6 +29,7 @@ import type {
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
 import { ChatCompressionService } from '$lib/services/chat-compression-service';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createLogger } from '$lib/utils/logger';
 import type {
 	AgentSessionMetadata,
@@ -85,11 +86,13 @@ export class StreamHandler {
 	private supabase: SupabaseClient<Database>;
 	private sessionManager: ReturnType<typeof createSessionManager>;
 	private messagePersister: ReturnType<typeof createMessagePersister>;
+	private errorLogger: ErrorLoggerService;
 
 	constructor(supabase: SupabaseClient<Database>) {
 		this.supabase = supabase;
 		this.sessionManager = createSessionManager(supabase);
 		this.messagePersister = createMessagePersister(supabase);
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
 	/**
@@ -156,7 +159,10 @@ export class StreamHandler {
 		const agentStream = SSEResponse.createChatStream();
 
 		// Send quick usage estimate immediately
-		const historyForUsage = [...conversationHistory, { content: request.message }];
+		const historyForUsage = [
+			...conversationHistory,
+			{ content: request.message, created_at: new Date().toISOString() }
+		];
 		const quickUsageSnapshot = buildQuickUsageSnapshot(
 			historyForUsage,
 			CONTEXT_USAGE_TOKEN_BUDGET
@@ -418,6 +424,21 @@ export class StreamHandler {
 				entityId: request.entity_id,
 				hasOntology: !!ontologyContext,
 				messageLength: request.message.length
+			});
+			await this.errorLogger.logError(streamError, {
+				userId,
+				projectId: resolvedFocus?.projectId ?? resolvedEntityId,
+				endpoint: '/api/agent/stream',
+				httpMethod: 'POST',
+				operationType: 'agent_stream',
+				metadata: {
+					sessionId: session.id,
+					contextType: state.effectiveContextType,
+					entityId: request.entity_id,
+					hasOntology: !!ontologyContext,
+					messageLength: request.message.length,
+					streamRunId
+				}
 			});
 
 			// CRITICAL: Send error event, then done event
@@ -758,11 +779,11 @@ export class StreamHandler {
 	private async sendEnhancedUsageSnapshot(
 		agentStream: ReturnType<typeof SSEResponse.createChatStream>,
 		sessionId: string,
-		historyForUsage: Array<{ content: string }>
+		historyForUsage: Array<{ content: string; created_at?: string | null }>
 	): Promise<void> {
 		try {
 			const compressionService = new ChatCompressionService(this.supabase);
-			const usageSnapshot = await compressionService.getContextUsageSnapshot(
+			const usageSnapshot = await compressionService.getUsageSnapshotWithCompressionBaseline(
 				sessionId,
 				historyForUsage,
 				CONTEXT_USAGE_TOKEN_BUDGET

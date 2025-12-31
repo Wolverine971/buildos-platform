@@ -58,6 +58,7 @@ interface LLMService {
 		agentSessionId?: string;
 		agentPlanId?: string;
 		agentExecutionId?: string;
+		projectId?: string;
 	}): Promise<string>;
 
 	generateTextDetailed?(params: {
@@ -71,6 +72,7 @@ interface LLMService {
 		agentSessionId?: string;
 		agentPlanId?: string;
 		agentExecutionId?: string;
+		projectId?: string;
 	}): Promise<{ text: string; usage?: SynthesisUsage }>;
 
 	generateStream?(params: {
@@ -84,6 +86,7 @@ interface LLMService {
 		agentSessionId?: string;
 		agentPlanId?: string;
 		agentExecutionId?: string;
+		projectId?: string;
 	}): Promise<AsyncGenerator<string, void, unknown>>;
 }
 
@@ -185,7 +188,8 @@ export class ResponseSynthesizer implements BaseService {
 					maxTokens: 2000,
 					operationType: 'complex_response_synthesis'
 				},
-				context
+				context,
+				{ agentPlanId: plan.id }
 			);
 			return {
 				...result,
@@ -284,7 +288,9 @@ export class ResponseSynthesizer implements BaseService {
 				temperature: 0.7,
 				maxTokens: 1000,
 				userId: context.userId,
-				operationType: 'streaming_response_synthesis'
+				operationType: 'streaming_response_synthesis',
+				chatSessionId: context.sessionId,
+				projectId: this.resolveProjectId(context)
 			});
 
 			let totalContent = '';
@@ -321,17 +327,22 @@ export class ResponseSynthesizer implements BaseService {
 
 	private async callLLMWithUsage(
 		config: LLMRequestConfig,
-		context: ServiceContext
+		context: ServiceContext,
+		overrides?: { agentPlanId?: string; agentExecutionId?: string }
 	): Promise<SynthesisResult> {
+		const llmContext = this.buildLLMContext(context, overrides);
 		if (typeof this.llmService.generateTextDetailed === 'function') {
 			const result = await this.llmService.generateTextDetailed({
 				systemPrompt: config.systemPrompt,
 				prompt: config.prompt,
 				temperature: config.temperature,
 				maxTokens: config.maxTokens,
-				userId: context.userId,
+				userId: llmContext.userId,
 				operationType: config.operationType,
-				chatSessionId: context.sessionId
+				chatSessionId: llmContext.chatSessionId,
+				agentPlanId: llmContext.agentPlanId,
+				agentExecutionId: llmContext.agentExecutionId,
+				projectId: llmContext.projectId
 			});
 
 			return {
@@ -345,12 +356,40 @@ export class ResponseSynthesizer implements BaseService {
 			prompt: config.prompt,
 			temperature: config.temperature,
 			maxTokens: config.maxTokens,
-			userId: context.userId,
+			userId: llmContext.userId,
 			operationType: config.operationType,
-			chatSessionId: context.sessionId
+			chatSessionId: llmContext.chatSessionId,
+			agentPlanId: llmContext.agentPlanId,
+			agentExecutionId: llmContext.agentExecutionId,
+			projectId: llmContext.projectId
 		});
 
 		return { text };
+	}
+
+	private buildLLMContext(
+		context: ServiceContext,
+		overrides?: { agentPlanId?: string; agentExecutionId?: string }
+	): {
+		userId?: string;
+		chatSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
+		projectId?: string;
+	} {
+		return {
+			userId: context.userId,
+			chatSessionId: context.sessionId,
+			agentPlanId: overrides?.agentPlanId,
+			agentExecutionId: overrides?.agentExecutionId,
+			projectId: this.resolveProjectId(context)
+		};
+	}
+
+	private resolveProjectId(context: ServiceContext): string | undefined {
+		return (
+			context.contextScope?.projectId ?? context.projectFocus?.projectId ?? context.entityId
+		);
 	}
 
 	/**

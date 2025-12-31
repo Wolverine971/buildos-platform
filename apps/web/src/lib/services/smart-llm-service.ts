@@ -2058,6 +2058,10 @@ You must respond with valid JSON only. Follow these rules:
 		if (needsToolSupport) {
 			preferredModels = this.ensureToolCompatibleModels(preferredModels);
 		}
+		let resolvedModel = preferredModels[0] || 'openai/gpt-4o-mini';
+		let modelResolvedFromStream = false;
+		let resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
+		let providerResolvedFromStream = false;
 
 		try {
 			// Build request with streaming enabled following OpenRouter API v1 spec
@@ -2171,7 +2175,8 @@ You must respond with valid JSON only. Follow these rules:
 
 						// Log usage if available
 						if (usage) {
-							const actualModel = preferredModels[0] || 'openai/gpt-4o-mini';
+							const actualModel =
+								resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini';
 							const modelConfig = TEXT_MODELS[actualModel];
 							const inputCost = modelConfig
 								? ((usage.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
@@ -2180,6 +2185,7 @@ You must respond with valid JSON only. Follow these rules:
 								? ((usage.completion_tokens || 0) / 1_000_000) *
 									modelConfig.outputCost
 								: 0;
+							const provider = modelConfig?.provider ?? resolvedProvider;
 
 							// Log to database (async, non-blocking)
 							// Build operation type with context: chat_stream_${contextType}
@@ -2192,7 +2198,7 @@ You must respond with valid JSON only. Follow these rules:
 								operationType,
 								modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 								modelUsed: actualModel,
-								provider: modelConfig?.provider,
+								provider,
 								promptTokens: usage.prompt_tokens || 0,
 								completionTokens: usage.completion_tokens || 0,
 								totalTokens: usage.total_tokens || 0,
@@ -2217,7 +2223,9 @@ You must respond with valid JSON only. Follow these rules:
 									messageId: options.messageId,
 									hasTools: !!options.tools,
 									contextType: options.contextType,
-									entityId: options.entityId
+									entityId: options.entityId,
+									modelResolvedFromStream,
+									providerResolvedFromStream
 								}
 							}).catch((err) => console.error('Failed to log usage:', err));
 						}
@@ -2232,6 +2240,21 @@ You must respond with valid JSON only. Follow these rules:
 
 					try {
 						const chunk = JSON.parse(data);
+
+						if (typeof chunk?.model === 'string' && chunk.model.trim().length > 0) {
+							resolvedModel = chunk.model;
+							modelResolvedFromStream = true;
+							if (!providerResolvedFromStream) {
+								resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
+							}
+						}
+						if (
+							typeof chunk?.provider === 'string' &&
+							chunk.provider.trim().length > 0
+						) {
+							resolvedProvider = chunk.provider;
+							providerResolvedFromStream = true;
+						}
 
 						// Handle different chunk types
 						if (chunk.choices && chunk.choices[0]) {
@@ -2328,7 +2351,7 @@ You must respond with valid JSON only. Follow these rules:
 				userId: options.userId,
 				operationType,
 				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-				modelUsed: preferredModels[0] || 'openai/gpt-4o-mini',
+				modelUsed: resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini',
 				promptTokens: 0,
 				completionTokens: 0,
 				totalTokens: 0,
@@ -2353,7 +2376,9 @@ You must respond with valid JSON only. Follow these rules:
 					sessionId: options.sessionId,
 					messageId: options.messageId,
 					contextType: options.contextType,
-					entityId: options.entityId
+					entityId: options.entityId,
+					modelResolvedFromStream,
+					providerResolvedFromStream
 				}
 			}).catch((err) => console.error('Failed to log error:', err));
 

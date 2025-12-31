@@ -255,7 +255,9 @@
 			<div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 				<!-- Status Filter -->
 				<div>
-					<label class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+					<label
+						class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
+					>
 						Status
 					</label>
 					<Select
@@ -272,7 +274,9 @@
 
 				<!-- Context Type Filter -->
 				<div>
-					<label class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+					<label
+						class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
+					>
 						Context Type
 					</label>
 					<Select
@@ -320,12 +324,12 @@
 			{/each}
 		</div>
 	{:else if sessions.length === 0}
-		<div class="bg-card border border-border rounded-lg p-12 text-center shadow-ink tx tx-frame tx-weak">
+		<div
+			class="bg-card border border-border rounded-lg p-12 text-center shadow-ink tx tx-frame tx-weak"
+		>
 			<MessageSquare class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
 			<h3 class="text-base font-medium text-foreground mb-2">No sessions found</h3>
-			<p class="text-sm text-muted-foreground">
-				Try adjusting your filters or search query.
-			</p>
+			<p class="text-sm text-muted-foreground">Try adjusting your filters or search query.</p>
 		</div>
 	{:else}
 		<div class="space-y-3">
@@ -351,7 +355,9 @@
 									{session.status}
 								</span>
 							</div>
-							<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+							<div
+								class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+							>
 								<span class="truncate max-w-[200px]">{session.user.email}</span>
 								<span>•</span>
 								<span>{formatDate(session.created_at)}</span>
@@ -392,19 +398,25 @@
 					<!-- Badges -->
 					<div class="flex flex-wrap items-center gap-2">
 						{#if session.has_agent_plan}
-							<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400">
+							<span
+								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
+							>
 								<Bot class="h-3 w-3 mr-1" />
 								Multi-Agent
 							</span>
 						{/if}
 						{#if session.has_compression}
-							<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+							<span
+								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+							>
 								<Sparkles class="h-3 w-3 mr-1" />
 								Compressed
 							</span>
 						{/if}
 						{#if session.has_errors}
-							<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400">
+							<span
+								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400"
+							>
 								<AlertCircle class="h-3 w-3 mr-1" />
 								Has Errors
 							</span>

@@ -380,6 +380,65 @@ Compressed summary:`;
 	}
 
 	/**
+	 * Provide context usage that accounts for the latest compression baseline.
+	 */
+	async getUsageSnapshotWithCompressionBaseline(
+		sessionId: string,
+		messages: { content: string; created_at?: string | null }[],
+		tokenBudget: number = 4000
+	): Promise<ContextUsageSnapshot> {
+		let compressionRow: {
+			id: string;
+			created_at: string | null;
+			compression_ratio: number | null;
+			original_tokens: number | null;
+			compressed_tokens: number | null;
+		} | null = null;
+
+		try {
+			const { data } = await this.supabase
+				.from('chat_compressions')
+				.select('id, created_at, compression_ratio, original_tokens, compressed_tokens')
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: false })
+				.limit(1)
+				.maybeSingle();
+			compressionRow = data ?? null;
+		} catch (error) {
+			console.error('Failed to fetch latest compression for usage snapshot', error);
+		}
+
+		if (!compressionRow?.created_at) {
+			return this.getContextUsageSnapshot(sessionId, messages, tokenBudget);
+		}
+
+		const cutoff = new Date(compressionRow.created_at).getTime();
+		const messagesSince = Number.isNaN(cutoff)
+			? messages
+			: messages.filter((msg) => {
+					const createdAt = msg.created_at
+						? new Date(msg.created_at).getTime()
+						: Number.NaN;
+					if (Number.isNaN(createdAt)) return true;
+					return createdAt > cutoff;
+				});
+
+		const recentTokens = this.estimateTokens(messagesSince);
+		const baselineTokens = compressionRow.compressed_tokens ?? 0;
+
+		return this.getContextUsageSnapshot(sessionId, messages, tokenBudget, {
+			estimatedTokens: baselineTokens + recentTokens,
+			lastCompressedAt: compressionRow.created_at,
+			lastCompression: {
+				id: compressionRow.id,
+				compressionRatio: compressionRow.compression_ratio,
+				originalTokens: compressionRow.original_tokens ?? undefined,
+				compressedTokens: compressionRow.compressed_tokens ?? undefined
+			}
+		});
+	}
+
+	/**
 	 * Get compression history for a session
 	 */
 	async getCompressionHistory(sessionId: string): Promise<ChatCompression[]> {

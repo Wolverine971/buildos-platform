@@ -282,6 +282,7 @@ export class BaseExecutor {
 			inprogress: 'in_progress',
 			started: 'in_progress',
 			working: 'in_progress',
+			active: 'in_progress',
 			completed: 'done',
 			complete: 'done'
 		};

@@ -49,7 +49,7 @@ export const CONTEXT_TYPE_GUIDANCE: Record<ChatContextType, string> = {
 
 	brain_dump: `Exploratory mode for unstructured thoughts. Be a sounding board, ask gentle questions, and avoid forcing structure; detailed guidance follows.`,
 
-	ontology: `Ontology mode with direct data-model focus. Help navigate projects, tasks, documents, goals, and relationships precisely.`
+	ontology: `Ontology mode with direct data-model focus. The user opted into technical detail, so it's acceptable to use internal field names and tool terminology when helpful.`
 };
 
 /**
@@ -91,7 +91,8 @@ const PROJECT_CREATION_USER_RULES: PromptSection = {
 	title: 'IMPORTANT - User Communication',
 	content: `- Keep user-facing updates simple and action-oriented
 - Say "I'll create a project for you" or "Setting up your [type] project"
-- Do not mention internal fields or tool names`,
+- Do not mention internal fields or tool names
+- In project_create, treat the user's intent as implicit confirmation once critical details are clear (no extra "are you sure?" write confirmation)`,
 	includeHeader: false
 };
 

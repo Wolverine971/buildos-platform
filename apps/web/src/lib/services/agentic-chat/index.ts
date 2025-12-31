@@ -50,9 +50,14 @@ export function createAgentChatOrchestrator(
 	const compressionService = new ChatCompressionService(supabase);
 	const contextService = new AgentContextService(supabase, compressionService);
 	const persistenceService = new AgentPersistenceService(supabase);
+	const errorLogger = ErrorLoggerService.getInstance(supabase);
 
 	const sharedToolExecutor = createToolExecutor(supabase, fetchFn, llmService);
-	const toolExecutionService = new ToolExecutionService(sharedToolExecutor);
+	const toolExecutionService = new ToolExecutionService(
+		sharedToolExecutor,
+		undefined,
+		errorLogger
+	);
 
 	const executorService = new AgentExecutorService(supabase, llmService, fetchFn);
 	const executorCoordinator = new ExecutorCoordinator(executorService, persistenceService);
@@ -65,7 +70,6 @@ export function createAgentChatOrchestrator(
 	);
 
 	const responseSynthesizer = new ResponseSynthesizer(llmService);
-	const errorLogger = ErrorLoggerService.getInstance(supabase);
 
 	const dependencies: AgentChatOrchestratorDependencies = {
 		planOrchestrator,

@@ -172,7 +172,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Total Executions
 						</p>
 						<p class="text-2xl font-bold text-blue-500 mt-1">
@@ -190,7 +192,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Success Rate
 						</p>
 						<p class="text-2xl font-bold text-emerald-500 mt-1">
@@ -209,7 +213,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Total Tokens
 						</p>
 						<p class="text-2xl font-bold text-purple-500 mt-1">
@@ -227,7 +233,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Sessions
 						</p>
 						<p class="text-2xl font-bold text-indigo-500 mt-1">
@@ -244,7 +252,9 @@
 
 		<!-- Tool Categories -->
 		{#if dashboardData.by_category && dashboardData.by_category.length > 0}
-			<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak">
+			<div
+				class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak"
+			>
 				<h3 class="text-sm font-semibold text-foreground mb-4">Usage by Category</h3>
 				<div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
 					{#each dashboardData.by_category as category}
@@ -288,7 +298,9 @@
 
 		<!-- Top Tools by Usage -->
 		{#if dashboardData.top_tools && dashboardData.top_tools.length > 0}
-			<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak">
+			<div
+				class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak"
+			>
 				<h3 class="text-sm font-semibold text-foreground mb-4">Top 10 Tools by Usage</h3>
 				<div class="space-y-3 max-h-80 overflow-y-auto scrollbar-thin">
 					{#each dashboardData.top_tools as tool}
@@ -306,7 +318,9 @@
 										{tool.tool_category}
 									</span>
 								</div>
-								<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+								<div
+									class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+								>
 									<span>{formatNumber(tool.total_executions)} calls</span>
 									<span>•</span>
 									<span>{formatPercentage(tool.success_rate)} success</span>
@@ -330,11 +344,17 @@
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 			<!-- Most Problematic Tools -->
 			{#if dashboardData.most_problematic_tools && dashboardData.most_problematic_tools.length > 0}
-				<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-static tx-weak">
-					<h3 class="text-sm font-semibold text-foreground mb-4">Most Problematic Tools</h3>
+				<div
+					class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-static tx-weak"
+				>
+					<h3 class="text-sm font-semibold text-foreground mb-4">
+						Most Problematic Tools
+					</h3>
 					<div class="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
 						{#each dashboardData.most_problematic_tools as tool}
-							<div class="flex items-center justify-between p-2 bg-red-500/10 rounded">
+							<div
+								class="flex items-center justify-between p-2 bg-red-500/10 rounded"
+							>
 								<div class="flex-1 min-w-0">
 									<div class="text-sm font-medium text-foreground truncate">
 										{tool.tool_name}
@@ -357,11 +377,15 @@
 
 			<!-- Slowest Tools -->
 			{#if dashboardData.slowest_tools && dashboardData.slowest_tools.length > 0}
-				<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
+				<div
+					class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak"
+				>
 					<h3 class="text-sm font-semibold text-foreground mb-4">Slowest Tools</h3>
 					<div class="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
 						{#each dashboardData.slowest_tools as tool}
-							<div class="flex items-center justify-between p-2 bg-amber-500/10 rounded">
+							<div
+								class="flex items-center justify-between p-2 bg-amber-500/10 rounded"
+							>
 								<div class="flex-1 min-w-0">
 									<div class="text-sm font-medium text-foreground truncate">
 										{tool.tool_name}
@@ -385,7 +409,9 @@
 
 		<!-- Top Errors -->
 		{#if dashboardData.errors && dashboardData.errors.top_errors && dashboardData.errors.top_errors.length > 0}
-			<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-static tx-weak">
+			<div
+				class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-static tx-weak"
+			>
 				<h3 class="text-sm font-semibold text-foreground mb-4">
 					Top Errors ({formatNumber(dashboardData.errors.total_errors)} total)
 				</h3>
@@ -404,7 +430,9 @@
 							</div>
 							<div class="flex flex-wrap gap-1 mt-2">
 								{#each errorData.affected_tools as toolName}
-									<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+									<span
+										class="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground"
+									>
 										{toolName}
 									</span>
 								{/each}
@@ -427,22 +455,34 @@
 					<table class="min-w-full divide-y divide-border">
 						<thead class="bg-muted/50 sticky top-0">
 							<tr>
-								<th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+								>
 									Tool Name
 								</th>
-								<th class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+								<th
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+								>
 									Category
 								</th>
-								<th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+								<th
+									class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+								>
 									Executions
 								</th>
-								<th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+								<th
+									class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+								>
 									Success Rate
 								</th>
-								<th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+								<th
+									class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+								>
 									Avg Time
 								</th>
-								<th class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+								<th
+									class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+								>
 									Tokens
 								</th>
 							</tr>

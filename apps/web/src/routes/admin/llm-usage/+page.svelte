@@ -126,7 +126,9 @@
 			class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 tx tx-static tx-weak"
 			role="alert"
 		>
-			<p class="font-semibold text-base text-red-600 dark:text-red-400">Error loading stats</p>
+			<p class="font-semibold text-base text-red-600 dark:text-red-400">
+				Error loading stats
+			</p>
 			<p class="mt-1 text-sm text-red-500">{error}</p>
 		</div>
 	{:else if stats}
@@ -197,7 +199,8 @@
 						<div class="space-y-2">
 							{#each stats.dailyData.slice(-14) as day}
 								<div class="flex items-center gap-2">
-									<span class="w-16 sm:w-20 text-xs text-muted-foreground shrink-0"
+									<span
+										class="w-16 sm:w-20 text-xs text-muted-foreground shrink-0"
 										>{day.summary_date}</span
 									>
 									<div class="flex-1 min-w-0">
@@ -212,7 +215,9 @@
 												100}%"
 										></div>
 									</div>
-									<span class="w-16 sm:w-20 text-right text-xs font-medium text-foreground shrink-0">
+									<span
+										class="w-16 sm:w-20 text-right text-xs font-medium text-foreground shrink-0"
+									>
 										{formatCurrency(Number(day.total_cost_usd))}
 									</span>
 								</div>
@@ -232,7 +237,8 @@
 						<div class="space-y-2">
 							{#each stats.dailyData.slice(-14) as day}
 								<div class="flex items-center gap-2">
-									<span class="w-16 sm:w-20 text-xs text-muted-foreground shrink-0"
+									<span
+										class="w-16 sm:w-20 text-xs text-muted-foreground shrink-0"
 										>{day.summary_date}</span
 									>
 									<div class="flex-1 min-w-0">
@@ -240,12 +246,16 @@
 											class="h-5 rounded bg-blue-500"
 											style="width: {(day.total_requests /
 												Math.max(
-													...stats.dailyData.map((d: any) => d.total_requests)
+													...stats.dailyData.map(
+														(d: any) => d.total_requests
+													)
 												)) *
 												100}%"
 										></div>
 									</div>
-									<span class="w-16 sm:w-20 text-right text-xs font-medium text-foreground shrink-0">
+									<span
+										class="w-16 sm:w-20 text-right text-xs font-medium text-foreground shrink-0"
+									>
 										{formatNumber(day.total_requests)}
 									</span>
 								</div>
@@ -267,22 +277,34 @@
 				<table class="min-w-full divide-y divide-border">
 					<thead class="bg-muted/50">
 						<tr>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Model
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Requests
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Total Cost
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Tokens
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Avg Response
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Success Rate
 							</th>
 						</tr>
@@ -290,22 +312,34 @@
 					<tbody class="divide-y divide-border bg-card">
 						{#each stats.modelBreakdown as model}
 							<tr class="hover:bg-muted/30 transition-colors">
-								<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-sm font-medium text-foreground"
+								>
 									{model.model}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatNumber(Number(model.requests))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground"
+								>
 									{formatCurrency(Number(model.total_cost))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatNumber(Number(model.total_tokens))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{model.avg_response_time}ms
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatPercent(Number(model.success_rate))}
 								</td>
 							</tr>
@@ -324,22 +358,34 @@
 				<table class="min-w-full divide-y divide-border">
 					<thead class="bg-muted/50">
 						<tr>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Operation
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Requests
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Total Cost
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Tokens
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Avg Response
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Success Rate
 							</th>
 						</tr>
@@ -347,22 +393,34 @@
 					<tbody class="divide-y divide-border bg-card">
 						{#each stats.operationBreakdown as op}
 							<tr class="hover:bg-muted/30 transition-colors">
-								<td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-sm font-medium text-foreground"
+								>
 									{op.operation}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatNumber(Number(op.requests))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground"
+								>
 									{formatCurrency(Number(op.total_cost))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatNumber(Number(op.total_tokens))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{op.avg_response_time}ms
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatPercent(Number(op.success_rate))}
 								</td>
 							</tr>
@@ -381,22 +439,34 @@
 				<table class="min-w-full divide-y divide-border">
 					<thead class="bg-muted/50">
 						<tr>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								User
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Requests
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Total Cost
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Tokens
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Avg Response
 							</th>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Last Usage
 							</th>
 						</tr>
@@ -410,19 +480,29 @@
 									</div>
 									<div class="text-xs text-muted-foreground">{user.email}</div>
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatNumber(Number(user.requests))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground"
+								>
 									{formatCurrency(Number(user.total_cost))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatNumber(Number(user.total_tokens))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{user.avg_response_time}ms
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground"
+								>
 									{format(new Date(user.last_usage), 'MMM d, yyyy HH:mm')}
 								</td>
 							</tr>
@@ -441,28 +521,44 @@
 				<table class="min-w-full divide-y divide-border">
 					<thead class="bg-muted/50 sticky top-0">
 						<tr>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Time
 							</th>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								User
 							</th>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Operation
 							</th>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Model
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Cost
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Tokens
 							</th>
-							<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Response
 							</th>
-							<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+							<th
+								class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+							>
 								Status
 							</th>
 						</tr>
@@ -470,25 +566,39 @@
 					<tbody class="divide-y divide-border bg-card">
 						{#each stats.recentLogs as log}
 							<tr class="hover:bg-muted/30 transition-colors">
-								<td class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground"
+								>
 									{format(new Date(log.created_at), 'HH:mm:ss')}
 								</td>
-								<td class="px-4 py-3 text-sm text-foreground max-w-[150px] truncate">
+								<td
+									class="px-4 py-3 text-sm text-foreground max-w-[150px] truncate"
+								>
 									{log.users?.email || 'Unknown'}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground"
+								>
 									{log.operation_type}
 								</td>
-								<td class="px-4 py-3 text-sm text-muted-foreground max-w-[120px] truncate">
+								<td
+									class="px-4 py-3 text-sm text-muted-foreground max-w-[120px] truncate"
+								>
 									{log.model_used}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-foreground"
+								>
 									{formatCurrency(Number(log.total_cost_usd))}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{formatNumber(log.total_tokens)}
 								</td>
-								<td class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground">
+								<td
+									class="whitespace-nowrap px-4 py-3 text-right text-sm text-muted-foreground"
+								>
 									{log.response_time_ms}ms
 								</td>
 								<td class="whitespace-nowrap px-4 py-3">

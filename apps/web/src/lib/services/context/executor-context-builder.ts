@@ -104,7 +104,7 @@ If blocked, set success=false and fill error and next_step. Return JSON only (no
 ## Project Context Document Requirements
 ${PROJECT_CONTEXT_DOC_GUIDANCE}
 
-Apply this structure when generating the \`context_document.body_markdown\` in \`create_onto_project\`. The agent or human should be able to read it and immediately grasp the project's vision, strategy, and next strategic moves.`;
+Apply this structure when generating the \`context_document.content\` in \`create_onto_project\`. The agent or human should be able to read it and immediately grasp the project's vision, strategy, and next strategic moves.`;
 	}
 
 	return prompt;

@@ -28,6 +28,17 @@ vi.mock('$lib/utils/sse-response', () => ({
 
 vi.mock('$lib/services/chat-compression-service', () => ({
 	ChatCompressionService: class {
+		async getUsageSnapshotWithCompressionBaseline() {
+			return {
+				estimatedTokens: 10,
+				tokenBudget: 2500,
+				usagePercent: 1,
+				tokensRemaining: 2490,
+				status: 'ok',
+				lastCompressedAt: null,
+				lastCompression: null
+			};
+		}
 		async getContextUsageSnapshot() {
 			return {
 				estimatedTokens: 10,

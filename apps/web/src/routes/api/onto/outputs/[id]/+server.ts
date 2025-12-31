@@ -151,7 +151,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const supabase = locals.supabase;
-		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		// Fetch output with project info for authorization
 		// Exclude soft-deleted outputs
@@ -213,6 +212,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		// Exclude already soft-deleted outputs
 		const { data: output, error: fetchError } = await supabase

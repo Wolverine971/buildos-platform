@@ -244,7 +244,13 @@
 			</Select>
 
 			<!-- Export -->
-			<Button onclick={exportData} variant="primary" size="sm" icon={Download} class="pressable">
+			<Button
+				onclick={exportData}
+				variant="primary"
+				size="sm"
+				icon={Download}
+				class="pressable"
+			>
 				Export
 			</Button>
 
@@ -346,7 +352,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Total Sessions
 						</p>
 						<p class="text-2xl font-bold text-blue-500 mt-1">
@@ -364,7 +372,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Total Messages
 						</p>
 						<p class="text-2xl font-bold text-indigo-500 mt-1">
@@ -382,7 +392,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Token Usage
 						</p>
 						<p class="text-2xl font-bold text-emerald-500 mt-1">
@@ -406,7 +418,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Estimated Cost
 						</p>
 						<p class="text-2xl font-bold text-amber-500 mt-1">
@@ -416,9 +430,8 @@
 					<DollarSign class="h-7 w-7 text-amber-500 shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
-					{formatCurrency(
-						dashboardKPIs.estimatedCost / dashboardKPIs.totalSessions || 0
-					)} per session
+					{formatCurrency(dashboardKPIs.estimatedCost / dashboardKPIs.totalSessions || 0)}
+					per session
 				</div>
 			</div>
 
@@ -426,7 +439,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Agent Success Rate
 						</p>
 						<p class="text-2xl font-bold text-purple-500 mt-1">
@@ -444,7 +459,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Tool Success Rate
 						</p>
 						<p class="text-2xl font-bold text-cyan-500 mt-1">
@@ -460,7 +477,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Avg Response Time
 						</p>
 						<p class="text-2xl font-bold text-blue-500 mt-1">
@@ -476,7 +495,9 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
-						<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
 							Compression
 						</p>
 						<p class="text-2xl font-bold text-emerald-500 mt-1">

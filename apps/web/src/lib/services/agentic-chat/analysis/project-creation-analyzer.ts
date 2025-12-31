@@ -207,7 +207,8 @@ export class ProjectCreationAnalyzer {
 	async analyzeIntent(
 		message: string,
 		userId: string,
-		clarificationMetadata?: ClarificationRoundMetadata
+		clarificationMetadata?: ClarificationRoundMetadata,
+		chatSessionId?: string
 	): Promise<ProjectCreationIntentAnalysis> {
 		const roundNumber = clarificationMetadata?.roundNumber ?? 0;
 		const accumulatedContext = clarificationMetadata?.accumulatedContext
@@ -443,7 +444,8 @@ Is there enough context to create a meaningful project? If not, what 1-2 questio
 			temperature: 0.3,
 			maxTokens: 400,
 			userId,
-			operationType: 'project_creation_analysis'
+			operationType: 'project_creation_analysis',
+			chatSessionId
 		});
 
 		try {

@@ -36,15 +36,17 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntities } from '../task-linked-helpers';
+import { TASK_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { normalizeTaskStateInput } from '../../shared/task-state';
 
 // GET /api/onto/tasks/[id] - Get a single task
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
 		return ApiResponse.error('Unauthorized', 401);
@@ -135,6 +137,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		const body = await request.json();
@@ -257,11 +260,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		// Handle state_key transitions and completed_at
 		if (state_key !== undefined) {
-			updateData.state_key = state_key;
+			const normalizedState = normalizeTaskStateInput(state_key);
+			if (!normalizedState) {
+				return ApiResponse.badRequest(
+					`state_key must be one of: ${TASK_STATES.join(', ')}`
+				);
+			}
+			updateData.state_key = normalizedState;
 			const wasNotDone = existingTask.state_key !== 'done';
-			const isNowDone = state_key === 'done';
+			const isNowDone = normalizedState === 'done';
 			const wasAlreadyDone = existingTask.state_key === 'done';
-			const isNoLongerDone = state_key !== 'done';
+			const isNoLongerDone = normalizedState !== 'done';
 
 			// Transitioning TO done: set completed_at
 			if (wasNotDone && isNowDone) {

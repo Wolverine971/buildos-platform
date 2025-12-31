@@ -206,6 +206,12 @@
 		return rawTitle || null;
 	}
 
+	function parseIsoTimestamp(value?: string | null): number | null {
+		if (!value) return null;
+		const parsed = Date.parse(value);
+		return Number.isNaN(parsed) ? null : parsed;
+	}
+
 	// Conversation state
 	let messages = $state<UIMessage[]>([]);
 	let currentSession = $state<ChatSession | null>(null);
@@ -273,6 +279,8 @@
 	let voiceErrorMessage = $state('');
 	let voiceSupportsLiveTranscript = $state(false);
 	let voiceRecordingDuration = $state(0);
+	// When user clicks send while recording, we stop recording and auto-send after transcription
+	let pendingSendAfterTranscription = $state(false);
 
 	// Braindump context state
 	type BraindumpMode = 'input' | 'options' | 'chat';
@@ -359,14 +367,16 @@
 	}
 
 	// ✅ Svelte 5: Use $derived for computed values
+	// Note: isVoiceRecording is NOT included - clicking send while recording will
+	// stop the recording and auto-send after transcription completes
 	const isSendDisabled = $derived(
 		agentToAgentMode ||
 			!selectedContextType ||
-			!inputValue.trim() ||
+			(!inputValue.trim() && !isVoiceRecording) || // Allow send if recording (will get transcribed text)
 			isStreaming ||
-			isVoiceRecording ||
 			isVoiceInitializing ||
-			isVoiceTranscribing
+			isVoiceTranscribing ||
+			pendingSendAfterTranscription // Prevent double-clicks while waiting for transcription
 	);
 
 	async function stopVoiceInput() {
@@ -409,6 +419,7 @@
 		contextUsage = null;
 		pendingToolResults.clear();
 		voiceErrorMessage = '';
+		pendingSendAfterTranscription = false;
 		showFocusSelector = false;
 		showProjectActionSelector = false;
 		agentLoopActive = false;
@@ -1660,16 +1671,38 @@
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
 			// If streaming, sendMessage will stop current run first
-			if (!isSendDisabled || isStreaming) {
-				sendMessage();
+			// Use handleSendMessage to properly handle "send while recording" flow
+			if (!isSendDisabled || isStreaming || isVoiceRecording) {
+				handleSendMessage();
 			}
 		}
 	}
 
 	// ✅ Svelte 5: Wrapper function for AgentComposer callback
-	function handleSendMessage() {
+	// Handles "send while recording" - stops recording and auto-sends after transcription
+	async function handleSendMessage() {
+		// If currently recording, stop and queue auto-send after transcription
+		if (isVoiceRecording) {
+			pendingSendAfterTranscription = true;
+			await stopVoiceInput();
+			return; // The $effect below will auto-send when transcription completes
+		}
 		sendMessage();
 	}
+
+	// Auto-send after transcription completes (when user clicked send while recording)
+	$effect(() => {
+		if (
+			pendingSendAfterTranscription &&
+			!isVoiceRecording &&
+			!isVoiceTranscribing &&
+			!isVoiceInitializing &&
+			inputValue.trim()
+		) {
+			pendingSendAfterTranscription = false;
+			sendMessage();
+		}
+	});
 
 	async function sendMessage(
 		contentOverride?: string,
@@ -1677,14 +1710,7 @@
 	) {
 		const { senderType = 'user', suppressInputClear = false } = options;
 		const trimmed = (contentOverride ?? inputValue).trim();
-		if (
-			!trimmed ||
-			isStreaming ||
-			isVoiceRecording ||
-			isVoiceInitializing ||
-			isVoiceTranscribing
-		)
-			return;
+		if (!trimmed || isStreaming || isVoiceInitializing || isVoiceTranscribing) return;
 		if (!selectedContextType) {
 			error = 'Select a focus before starting the conversation.';
 			return;
@@ -1936,7 +1962,38 @@
 				break;
 
 			case 'context_usage':
-				contextUsage = event.usage ?? null;
+				if (!event.usage) {
+					contextUsage = null;
+					break;
+				}
+
+				if (!contextUsage) {
+					contextUsage = event.usage;
+					break;
+				}
+
+				{
+					const currentCompressedAt = parseIsoTimestamp(contextUsage.lastCompressedAt);
+					const nextCompressedAt = parseIsoTimestamp(event.usage.lastCompressedAt);
+
+					if (currentCompressedAt === null && nextCompressedAt === null) {
+						contextUsage = event.usage;
+						break;
+					}
+
+					if (currentCompressedAt === null && nextCompressedAt !== null) {
+						contextUsage = event.usage;
+						break;
+					}
+
+					if (
+						currentCompressedAt !== null &&
+						nextCompressedAt !== null &&
+						nextCompressedAt >= currentCompressedAt
+					) {
+						contextUsage = event.usage;
+					}
+				}
 				break;
 
 			case 'focus_active':

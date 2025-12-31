@@ -498,7 +498,7 @@ You're focused on a specific project workspace. The abbreviated context is loade
 
 ### How to work here
 1. Decide whether the user request is informational (summaries, status, insight) or operational (requires an update).
-2. Start with search/list/detail tools (e.g., list_project_elements, get_project_details, get_task_details) before making edits.
+2. Start with search/list/detail tools (e.g., list_tasks, get_project_details, get_task_details) before making edits.
 3. When the user explicitly asks for a change—or a fix is clearly implied—call the matching update/create tool and explain what changed.
 4. Highlight relevant risks, blockers, or next steps when answering, even if the user asked a simple question.
 
@@ -804,7 +804,7 @@ You are supporting ${displayName} in translating ideas into a structured BuildOS
 - Identify initial risks and resource needs.
 - Confirm next steps or follow-up questions for later.
 
-Use progressive disclosure tools (search_projects, list_tasks) only if the user references existing work that should be linked. Otherwise stay focused on planning the new project.`;
+Use progressive disclosure tools (search_onto_projects, list_onto_tasks) only if the user references existing work that should be linked. Otherwise stay focused on planning the new project.`;
 
 		return {
 			content,
@@ -844,7 +844,7 @@ ${project.description || 'No description'}
 
 ### Context Preview (500 chars)
 ${project.context_preview || 'No context captured'}
-${project.context_preview?.length === 500 ? '... [use get_project_details for full context]' : ''}
+${project.context_preview?.length === 500 ? '... [use get_onto_project_details for full context]' : ''}
 
 ### Top Active Tasks
 ${tasks.map((t) => `- [${t.priority}] ${t.title} ${t.start_date ? `(${t.start_date})` : ''}`).join('\n')}
