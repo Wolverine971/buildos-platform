@@ -72,83 +72,83 @@
 </script>
 
 <div
-	class="flex h-full flex-col overflow-hidden bg-gradient-to-br from-gray-50/50 to-gray-100/30 dither-surface dark:from-gray-900/50 dark:to-gray-800/30 {inModal
-		? 'max-h-[70vh] min-h-[400px] bg-white dark:bg-gray-800'
+	class="flex h-full flex-col overflow-hidden bg-background {inModal
+		? 'max-h-[70vh] min-h-[400px]'
 		: ''}"
 >
 	<!-- PRIMARY SELECTION VIEW -->
 	{#if selectedView === 'primary'}
 		<div class="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-4 sm:p-6">
 			<!-- Header -->
-			<div class="mb-6 text-center">
-				<h2 class="mb-2 text-2xl font-bold text-gray-900 dark:text-white">
+			<div class="mb-4 text-center sm:mb-6">
+				<h2 class="mb-1 text-lg font-bold text-foreground sm:mb-2 sm:text-2xl">
 					What would you like to do?
 				</h2>
-				<p class="text-sm text-gray-600 dark:text-gray-400">
+				<p class="text-xs text-muted-foreground sm:text-sm">
 					Choose how you want to interact with your BuildOS agent
 				</p>
 			</div>
 
 			<!-- Primary Actions Grid -->
-			<div class="grid gap-4 sm:grid-cols-3">
+			<div class="grid gap-3 sm:grid-cols-3 sm:gap-4">
 				<!-- Option 1: Chat Globally -->
 				<button
 					onclick={selectGlobal}
-					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-gray-300/50 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300/50 hover:shadow-lg active:scale-[0.99] dark:border-gray-600/50 dark:from-blue-900/10 dark:to-indigo-900/10 dark:hover:border-blue-600/50"
+					class="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5 sm:flex-col sm:items-center sm:gap-4 sm:p-6 sm:text-center"
 				>
 					<div
-						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-blue-800/40 dark:to-indigo-800/40"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-blue-900/40 sm:h-16 sm:w-16 sm:rounded-xl"
 					>
-						<Globe class="h-8 w-8 text-blue-600 dark:text-blue-400" />
+						<Globe class="h-5 w-5 text-blue-600 dark:text-blue-400 sm:h-8 sm:w-8" />
 					</div>
-					<div>
-						<h3 class="mb-1 text-base font-semibold text-gray-900 dark:text-white">
+					<div class="min-w-0 flex-1">
+						<h3 class="text-sm font-semibold text-foreground sm:mb-1 sm:text-base">
 							Chat Globally
 						</h3>
-						<p class="text-xs text-gray-600 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							General assistant without project context
 						</p>
 					</div>
-					<ChevronRight class="h-5 w-5 text-gray-400 dark:text-gray-500" />
+					<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground sm:h-5 sm:w-5" />
 				</button>
 
 				<!-- Option 2: Create New Project -->
 				<button
 					onclick={selectProjectCreate}
-					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-purple-300/50 bg-gradient-to-br from-purple-50/30 to-pink-50/30 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-purple-400/50 hover:shadow-lg active:scale-[0.99] dark:border-purple-600/50 dark:from-purple-900/10 dark:to-pink-900/10 dark:hover:border-purple-500/50"
+					class="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5 sm:flex-col sm:items-center sm:gap-4 sm:p-6 sm:text-center"
 				>
 					<div
-						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-purple-800/40 dark:to-pink-800/40"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-purple-900/40 sm:h-16 sm:w-16 sm:rounded-xl"
 					>
-						<Plus class="h-8 w-8 text-purple-600 dark:text-purple-400" />
+						<Plus class="h-5 w-5 text-purple-600 dark:text-purple-400 sm:h-8 sm:w-8" />
 					</div>
-					<div>
-						<h3 class="mb-1 text-base font-semibold text-gray-900 dark:text-white">
+					<div class="min-w-0 flex-1">
+						<h3 class="text-sm font-semibold text-foreground sm:mb-1 sm:text-base">
 							Create New Project
 						</h3>
-						<p class="text-xs text-gray-600 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							Guided conversation to build a project
 						</p>
 					</div>
-					<ChevronRight class="h-5 w-5 text-gray-400 dark:text-gray-500" />
+					<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground sm:h-5 sm:w-5" />
 				</button>
 
 				<!-- Option 3: Existing Project -->
 				<button
 					onclick={showProjectSelection}
 					disabled={projects.length === 0}
-					class="group flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-emerald-300/50 bg-gradient-to-br from-emerald-50/30 to-teal-50/30 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-400/50 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 dark:border-emerald-600/50 dark:from-emerald-900/10 dark:to-teal-900/10 dark:hover:border-emerald-500/50"
+					class="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-col sm:items-center sm:gap-4 sm:p-6 sm:text-center"
 				>
 					<div
-						class="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-emerald-800/40 dark:to-teal-800/40"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-emerald-900/40 sm:h-16 sm:w-16 sm:rounded-xl"
 					>
-						<FolderOpen class="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+						<FolderOpen class="h-5 w-5 text-emerald-600 dark:text-emerald-400 sm:h-8 sm:w-8" />
 					</div>
-					<div>
-						<h3 class="mb-1 text-base font-semibold text-gray-900 dark:text-white">
+					<div class="min-w-0 flex-1">
+						<h3 class="text-sm font-semibold text-foreground sm:mb-1 sm:text-base">
 							Existing Project
 						</h3>
-						<p class="text-xs text-gray-600 dark:text-gray-400">
+						<p class="text-xs text-muted-foreground">
 							{#if projects.length === 0}
 								No projects yet
 							{:else}
@@ -156,14 +156,14 @@
 							{/if}
 						</p>
 					</div>
-					<ChevronRight class="h-5 w-5 text-gray-400 dark:text-gray-500" />
+					<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground sm:h-5 sm:w-5" />
 				</button>
 			</div>
 
 			<!-- Quick Stats -->
 			{#if projects.length > 0}
 				<div
-					class="mt-8 flex items-center justify-center gap-6 text-xs text-gray-500 dark:text-gray-400"
+					class="mt-4 flex items-center justify-center gap-6 text-xs text-muted-foreground sm:mt-8"
 				>
 					<div class="flex items-center gap-2">
 						<div class="h-2 w-2 rounded-full bg-emerald-500"></div>
@@ -178,72 +178,60 @@
 	{#if selectedView === 'project-selection'}
 		<div class="flex h-full flex-col">
 			<!-- Header with Back Button -->
-			<div
-				class="border-b border-gray-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-gray-700/60 dark:bg-gray-900/80"
-			>
+			<div class="border-b border-border bg-card px-4 py-3">
 				<button
 					onclick={backToPrimary}
-					class="mb-2 flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+					class="mb-2 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
 				>
 					<ChevronLeft class="h-4 w-4" />
 					<span>Back</span>
 				</button>
-				<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-					Select a Project
-				</h2>
-				<p class="text-xs text-gray-600 dark:text-gray-400">
-					Choose which project to work with
-				</p>
+				<h2 class="text-lg font-semibold text-foreground">Select a Project</h2>
+				<p class="text-xs text-muted-foreground">Choose which project to work with</p>
 			</div>
 
 			<!-- Projects List -->
 			<div class="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-4">
 				{#if activeProjects.length > 0}
-					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					<div class="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
 						{#each activeProjects as project}
 							<button
 								onclick={() => selectProject(project)}
-								class="group flex flex-col rounded-xl border border-gray-200/50 bg-white/70 p-4 text-left backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] hover:border-gray-300/70 hover:shadow-lg active:scale-[0.99] dark:border-gray-700/50 dark:bg-gray-800/70 dark:hover:border-gray-600/70"
+								class="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5"
 							>
-								<div class="mb-3 flex items-start justify-between">
+								<div class="min-w-0 flex-1">
 									<h3
-										class="flex-1 truncate text-sm font-semibold text-gray-900 dark:text-white"
+										class="truncate text-sm font-semibold text-foreground"
 										title={project.name}
 									>
 										{project.name}
 									</h3>
-									<ChevronRight
-										class="h-4 w-4 flex-shrink-0 text-gray-400 dark:text-gray-500"
-									/>
+									{#if project.description}
+										<p class="line-clamp-1 text-xs text-muted-foreground">
+											{project.description}
+										</p>
+									{/if}
+									{#if project.taskCount > 0}
+										<p class="mt-1 text-xs text-muted-foreground">
+											{project.taskCount} task{project.taskCount !== 1 ? 's' : ''}
+										</p>
+									{/if}
 								</div>
-								{#if project.description}
-									<p
-										class="mb-3 line-clamp-2 text-xs text-gray-600 dark:text-gray-400"
-									>
-										{project.description}
-									</p>
-								{/if}
-								{#if project.taskCount > 0}
-									<div
-										class="mt-auto border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400"
-									>
-										{project.taskCount} task{project.taskCount !== 1 ? 's' : ''}
-									</div>
-								{/if}
+								<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
 							</button>
 						{/each}
 					</div>
 				{:else}
-					<div class="flex flex-col items-center justify-center py-16 text-center">
+					<div class="flex flex-col items-center justify-center py-12 text-center sm:py-16">
 						<div
-							class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800"
+							class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted sm:mb-6 sm:h-20 sm:w-20"
 						>
-							<FolderOpen class="h-10 w-10 text-gray-400 dark:text-gray-500" />
+							<FolderOpen class="h-8 w-8 text-muted-foreground sm:h-10 sm:w-10" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="mb-2 text-base font-semibold text-foreground sm:text-lg">
 							No Active Projects
 						</h3>
-						<p class="max-w-xs text-sm text-gray-600 dark:text-gray-400">
+						<p class="max-w-xs text-xs text-muted-foreground sm:text-sm">
 							Create your first project to get started
 						</p>
 					</div>
@@ -256,117 +244,112 @@
 	{#if selectedView === 'mode-selection' && selectedProject}
 		<div class="flex h-full flex-col">
 			<!-- Header with Back Button -->
-			<div
-				class="border-b border-gray-200/60 bg-white/80 px-4 py-3 backdrop-blur-sm dark:border-gray-700/60 dark:bg-gray-900/80"
-			>
+			<div class="border-b border-border bg-card px-4 py-3">
 				<button
 					onclick={backToProjectSelection}
-					class="mb-2 flex items-center gap-2 text-sm text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+					class="mb-2 flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
 				>
 					<ChevronLeft class="h-4 w-4" />
 					<span>Back to Projects</span>
 				</button>
-				<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+				<h2 class="truncate text-lg font-semibold text-foreground">
 					{selectedProject.name}
 				</h2>
-				<p class="text-xs text-gray-600 dark:text-gray-400">Choose what you'd like to do</p>
+				<p class="text-xs text-muted-foreground">Choose what you'd like to do</p>
 			</div>
 
 			<!-- Mode Options -->
-			<div class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-6">
-				<div class="grid gap-4 sm:grid-cols-3">
+			<div class="mx-auto w-full max-w-3xl flex-1 overflow-y-auto p-4 sm:p-6">
+				<div class="grid gap-3 sm:grid-cols-3 sm:gap-4">
 					<!-- Project Workspace -->
-					<Button
+					<button
 						onclick={() => selectMode('project')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-blue-300 hover:shadow-lg active:scale-[0.99] dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20 dark:hover:border-blue-700"
+						class="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5 sm:flex-col sm:items-center sm:gap-4 sm:p-6 sm:text-center"
 					>
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-blue-800/40 dark:to-indigo-800/40"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-blue-900/40 sm:h-14 sm:w-14 sm:rounded-xl"
 						>
-							<Sparkles class="h-7 w-7 text-blue-600 dark:text-blue-400" />
+							<Sparkles class="h-5 w-5 text-blue-600 dark:text-blue-400 sm:h-7 sm:w-7" />
 						</div>
-						<div>
-							<h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
+						<div class="min-w-0 flex-1">
+							<h3 class="text-sm font-semibold text-foreground sm:mb-1">
 								Project workspace
 							</h3>
-							<p class="text-xs text-gray-600 dark:text-gray-400">
+							<p class="text-xs text-muted-foreground">
 								Ask questions, explore, or make updates
 							</p>
 						</div>
-					</Button>
+						<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground sm:hidden" />
+					</button>
 
 					<!-- Project Audit -->
-					<Button
+					<button
 						onclick={() => selectMode('project_audit')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-orange-50/50 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-amber-300 hover:shadow-lg active:scale-[0.99] dark:border-amber-800/50 dark:from-amber-900/20 dark:to-orange-900/20 dark:hover:border-amber-700"
+						class="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5 sm:flex-col sm:items-center sm:gap-4 sm:p-6 sm:text-center"
 					>
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-amber-800/40 dark:to-orange-800/40"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-amber-900/40 sm:h-14 sm:w-14 sm:rounded-xl"
 						>
-							<Search class="h-7 w-7 text-amber-600 dark:text-amber-400" />
+							<Search class="h-5 w-5 text-amber-600 dark:text-amber-400 sm:h-7 sm:w-7" />
 						</div>
-						<div>
-							<h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
+						<div class="min-w-0 flex-1">
+							<h3 class="text-sm font-semibold text-foreground sm:mb-1">
 								Audit Project
 							</h3>
-							<p class="text-xs text-gray-600 dark:text-gray-400">
+							<p class="text-xs text-muted-foreground">
 								Critical review across dimensions
 							</p>
 						</div>
-					</Button>
+						<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground sm:hidden" />
+					</button>
 
 					<!-- Project Forecast -->
-					<Button
+					<button
 						onclick={() => selectMode('project_forecast')}
-						class="group flex flex-col items-center gap-4 rounded-xl border-2 border-emerald-200/50 bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dither-soft dither-fade-hover p-6 text-center transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:shadow-lg active:scale-[0.99] dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20 dark:hover:border-emerald-700"
+						class="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-left shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5 sm:flex-col sm:items-center sm:gap-4 sm:p-6 sm:text-center"
 					>
 						<div
-							class="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dither-subtle shadow-sm transition-transform duration-200 group-hover:scale-105 dark:from-emerald-800/40 dark:to-teal-800/40"
+							class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 shadow-ink transition-transform duration-200 group-hover:scale-105 dark:bg-emerald-900/40 sm:h-14 sm:w-14 sm:rounded-xl"
 						>
-							<TrendingUp class="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+							<TrendingUp class="h-5 w-5 text-emerald-600 dark:text-emerald-400 sm:h-7 sm:w-7" />
 						</div>
-						<div>
-							<h3 class="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
+						<div class="min-w-0 flex-1">
+							<h3 class="text-sm font-semibold text-foreground sm:mb-1">
 								Forecast Project
 							</h3>
-							<p class="text-xs text-gray-600 dark:text-gray-400">
+							<p class="text-xs text-muted-foreground">
 								Scenario planning and outcomes
 							</p>
 						</div>
-					</Button>
+						<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground sm:hidden" />
+					</button>
 				</div>
 
-				<!-- Mode Descriptions -->
-				<div class="mt-6 space-y-3 rounded-xl bg-white/50 p-4 dark:bg-gray-800/50">
+				<!-- Mode Descriptions - hidden on mobile to save space -->
+				<div class="mt-4 hidden space-y-2 rounded-lg border border-border bg-muted/50 p-3 sm:mt-6 sm:block sm:space-y-3 sm:p-4">
 					<div class="flex gap-3 text-xs">
-						<Target class="h-4 w-4 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+						<Target class="h-4 w-4 shrink-0 text-muted-foreground" />
 						<div>
-							<span class="font-semibold text-gray-900 dark:text-white">
-								Workspace
-							</span>
-							<span class="text-gray-600 dark:text-gray-400">
+							<span class="font-semibold text-foreground">Workspace</span>
+							<span class="text-muted-foreground">
 								- Ask questions, explore data, or make updates
 							</span>
 						</div>
 					</div>
 					<div class="flex gap-3 text-xs">
-						<Search class="h-4 w-4 flex-shrink-0 text-gray-400 dark:text-gray-500" />
+						<Search class="h-4 w-4 shrink-0 text-muted-foreground" />
 						<div>
-							<span class="font-semibold text-gray-900 dark:text-white"> Audit </span>
-							<span class="text-gray-600 dark:text-gray-400">
+							<span class="font-semibold text-foreground">Audit</span>
+							<span class="text-muted-foreground">
 								- Identify gaps, risks, and improvement opportunities
 							</span>
 						</div>
 					</div>
 					<div class="flex gap-3 text-xs">
-						<TrendingUp
-							class="h-4 w-4 flex-shrink-0 text-gray-400 dark:text-gray-500"
-						/>
+						<TrendingUp class="h-4 w-4 shrink-0 text-muted-foreground" />
 						<div>
-							<span class="font-semibold text-gray-900 dark:text-white">
-								Forecast
-							</span>
-							<span class="text-gray-600 dark:text-gray-400">
+							<span class="font-semibold text-foreground">Forecast</span>
+							<span class="text-muted-foreground">
 								- Explore scenarios and predict outcomes
 							</span>
 						</div>
@@ -381,11 +364,11 @@
 	/* Minimal custom styles for scrollbar */
 	.overflow-y-auto {
 		scrollbar-width: thin;
-		scrollbar-color: theme('colors.gray.300') transparent;
+		scrollbar-color: hsl(var(--border)) transparent;
 	}
 
 	.overflow-y-auto::-webkit-scrollbar {
-		width: 8px;
+		width: 6px;
 	}
 
 	.overflow-y-auto::-webkit-scrollbar-track {
@@ -393,24 +376,16 @@
 	}
 
 	.overflow-y-auto::-webkit-scrollbar-thumb {
-		background: theme('colors.gray.300');
-		border-radius: 4px;
-	}
-
-	:global(.dark) .overflow-y-auto {
-		scrollbar-color: theme('colors.gray.600') transparent;
-	}
-
-	:global(.dark) .overflow-y-auto::-webkit-scrollbar-thumb {
-		background: theme('colors.gray.600');
+		background: hsl(var(--border));
+		border-radius: 3px;
 	}
 
 	/* Line clamp utility */
-	.line-clamp-2 {
+	.line-clamp-1 {
 		overflow: hidden;
 		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
+		-webkit-line-clamp: 1;
+		line-clamp: 1;
 		-webkit-box-orient: vertical;
 	}
 </style>

@@ -137,11 +137,18 @@
 			<span class="hidden text-muted-foreground sm:inline">•</span>
 
 			{#if resolvedProjectFocus}
-				<ProjectFocusIndicator
-					focus={resolvedProjectFocus}
-					{onChangeFocus}
-					{onClearFocus}
-				/>
+				<!-- Hide project-wide indicator on mobile to give more room for project title -->
+				<span
+					class={resolvedProjectFocus.focusType === 'project-wide'
+						? 'hidden sm:inline-flex'
+						: 'inline-flex'}
+				>
+					<ProjectFocusIndicator
+						focus={resolvedProjectFocus}
+						{onChangeFocus}
+						{onClearFocus}
+					/>
+				</span>
 			{:else}
 				<span class="hidden truncate text-xs text-muted-foreground sm:inline">
 					{displayContextSubtitle || 'Ready to assist'}
