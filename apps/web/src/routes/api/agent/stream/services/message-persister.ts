@@ -63,6 +63,8 @@ export class MessagePersister {
 		timestamp?: string;
 		messageType?: string | null;
 		metadata?: Record<string, unknown>;
+		errorMessage?: string;
+		errorCode?: string;
 	}): Promise<void> {
 		// Use type assertion on entire object to handle Json type compatibility
 		const messageData = {
@@ -75,6 +77,40 @@ export class MessagePersister {
 			created_at: params.timestamp ?? new Date().toISOString(),
 			message_type: params.messageType ?? null,
 			metadata: (params.metadata ??
+				null) as Database['public']['Tables']['chat_messages']['Insert']['metadata'],
+			error_message: params.errorMessage ?? null,
+			error_code: params.errorCode ?? null
+		} as ChatMessageInsert;
+
+		await this.persistMessage(messageData);
+	}
+
+	/**
+	 * Persist an error message to track failures in the conversation.
+	 *
+	 * @param params - Error message parameters
+	 */
+	async persistErrorMessage(params: {
+		sessionId: string;
+		userId: string;
+		errorMessage: string;
+		errorCode?: string;
+		context?: string;
+		metadata?: Record<string, unknown>;
+	}): Promise<void> {
+		const content = params.context
+			? `[Error during ${params.context}]: ${params.errorMessage}`
+			: `[Error]: ${params.errorMessage}`;
+
+		const messageData = {
+			session_id: params.sessionId,
+			user_id: params.userId,
+			role: 'system',
+			content,
+			created_at: new Date().toISOString(),
+			error_message: params.errorMessage,
+			error_code: params.errorCode ?? null,
+			metadata: (params.metadata ??
 				null) as Database['public']['Tables']['chat_messages']['Insert']['metadata']
 		} as ChatMessageInsert;
 
@@ -84,6 +120,7 @@ export class MessagePersister {
 	/**
 	 * Persist tool result messages.
 	 * Creates a separate message for each tool result.
+	 * Captures error information when tool execution fails.
 	 *
 	 * @param params - Tool results parameters
 	 */
@@ -107,6 +144,11 @@ export class MessagePersister {
 					(toolCall as any)?.name ??
 					null;
 
+				// Capture error info from tool result
+				const hasError = result.success === false || !!result.error;
+				const errorMessage = result.error ?? null;
+				const errorCode = result.error_code ?? (hasError ? 'TOOL_EXECUTION_ERROR' : null);
+
 				const toolResultMessage: ChatMessageInsert = {
 					session_id: params.sessionId,
 					user_id: params.userId,
@@ -119,7 +161,9 @@ export class MessagePersister {
 					created_at: new Date().toISOString(),
 					message_type: params.messageType ?? null,
 					metadata: (params.metadata ??
-						null) as Database['public']['Tables']['chat_messages']['Insert']['metadata']
+						null) as Database['public']['Tables']['chat_messages']['Insert']['metadata'],
+					error_message: errorMessage,
+					error_code: errorCode
 				};
 
 				await this.persistMessage(toolResultMessage);

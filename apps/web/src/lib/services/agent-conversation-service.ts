@@ -478,6 +478,9 @@ export class AgentConversationService {
 			temperature: 0.3,
 			maxTokens: 1500,
 			sessionId: session.parentSessionId,
+			chatSessionId: session.parentSessionId,
+			agentSessionId: session.id,
+			agentPlanId: session.planId,
 			// Context for usage tracking
 			contextType: 'executor_conversation'
 		})) {
@@ -702,6 +705,9 @@ export class AgentConversationService {
 			temperature: 0.7,
 			maxTokens: 1000,
 			sessionId: session.parentSessionId,
+			chatSessionId: session.parentSessionId,
+			agentSessionId: session.id,
+			agentPlanId: session.planId,
 			// Context for usage tracking
 			contextType: 'planner_response'
 		})) {

@@ -148,7 +148,7 @@ Coatue operates a lifecycle investment platform with a "tech-obsessed" approach,
 
 1. **Portfolio Company Introductions** - Leverage connections through Replit, Supabase, or other portfolio companies
 2. **Developer Community** - Connect through open source and developer tool networks
-3. **A16z Network** - Utilize Jade Lai's previous connections from Andreessen Horowitz
+3. **A16z Network** - Use Jade Lai's previous connections from Andreessen Horowitz
 4. **MIT Alumni** - Leverage Philippe Laffont's alma mater connections
 
 ### No Public Application Process:

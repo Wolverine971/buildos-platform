@@ -3151,8 +3151,12 @@ export type Database = {
       }
       llm_usage_logs: {
         Row: {
+          agent_execution_id: string | null
+          agent_plan_id: string | null
+          agent_session_id: string | null
           brain_dump_id: string | null
           brief_id: string | null
+          chat_session_id: string | null
           completion_tokens: number
           created_at: string
           error_message: string | null
@@ -3183,8 +3187,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          agent_execution_id?: string | null
+          agent_plan_id?: string | null
+          agent_session_id?: string | null
           brain_dump_id?: string | null
           brief_id?: string | null
+          chat_session_id?: string | null
           completion_tokens: number
           created_at?: string
           error_message?: string | null
@@ -3215,8 +3223,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          agent_execution_id?: string | null
+          agent_plan_id?: string | null
+          agent_session_id?: string | null
           brain_dump_id?: string | null
           brief_id?: string | null
+          chat_session_id?: string | null
           completion_tokens?: number
           created_at?: string
           error_message?: string | null
@@ -3248,6 +3260,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "llm_usage_logs_agent_execution_id_fkey"
+            columns: ["agent_execution_id"]
+            isOneToOne: false
+            referencedRelation: "agent_executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_usage_logs_agent_plan_id_fkey"
+            columns: ["agent_plan_id"]
+            isOneToOne: false
+            referencedRelation: "agent_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_usage_logs_agent_session_id_fkey"
+            columns: ["agent_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "llm_usage_logs_brain_dump_id_fkey"
             columns: ["brain_dump_id"]
             isOneToOne: false
@@ -3259,6 +3292,13 @@ export type Database = {
             columns: ["brief_id"]
             isOneToOne: false
             referencedRelation: "daily_briefs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_usage_logs_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
             referencedColumns: ["id"]
           },
           {

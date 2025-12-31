@@ -102,13 +102,65 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			return ApiResponse.databaseError(dailyError);
 		}
 
-		const normalizedDaily = (dailyData ?? []).map((row) => ({
+		let normalizedDaily = (dailyData ?? []).map((row) => ({
 			summary_date: row.summary_date,
 			total_requests: row.total_requests ?? 0,
 			total_cost_usd: row.total_cost_usd ?? '0',
 			total_tokens: row.total_tokens ?? 0,
 			successful_requests: row.successful_requests ?? 0
 		}));
+
+		if (normalizedDaily.length === 0) {
+			const { data: fallbackLogs, error: fallbackError } = await supabase
+				.from('llm_usage_logs')
+				.select('created_at, total_cost_usd, total_tokens, status')
+				.gte('created_at', startIso)
+				.lte('created_at', endIso);
+
+			if (fallbackError) {
+				return ApiResponse.databaseError(fallbackError);
+			}
+
+			const fallbackByDate = (fallbackLogs ?? []).reduce(
+				(acc, row) => {
+					const date = row.created_at.split('T')[0];
+					if (!acc[date]) {
+						acc[date] = {
+							summary_date: date,
+							total_requests: 0,
+							total_cost_usd: '0',
+							total_tokens: 0,
+							successful_requests: 0
+						};
+					}
+
+					acc[date].total_requests += 1;
+					acc[date].total_tokens += row.total_tokens || 0;
+					acc[date].total_cost_usd = (
+						Number(acc[date].total_cost_usd) + Number(row.total_cost_usd || 0)
+					).toString();
+					if (row.status === 'success') {
+						acc[date].successful_requests += 1;
+					}
+
+					return acc;
+				},
+				{} as Record<
+					string,
+					{
+						summary_date: string;
+						total_requests: number;
+						total_cost_usd: string;
+						total_tokens: number;
+						successful_requests: number;
+					}
+				>
+			);
+
+			normalizedDaily = Object.values(fallbackByDate).sort((a, b) =>
+				a.summary_date.localeCompare(b.summary_date)
+			);
+		}
 
 		// Get model breakdown
 		const { data: modelData, error: modelError } = await supabase.rpc(

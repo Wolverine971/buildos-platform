@@ -12,7 +12,7 @@
 
 ## 🎯 Deck Overview & Positioning Strategy
 
-**Core Thesis**: We're not building another productivity app. We're building the cognitive infrastructure for the AI era — the first tool where you just talk and AI organizes everything automatically.
+**Core Thesis**: We're not building another productivity app. We're building the cognitive infrastructure for the AI era: the first tool where you just talk and AI organizes everything automatically.
 
 **Market Timing**: AI just reached the capability threshold to truly organize human thought. We're first to market with an AI-native productivity system built for how people actually think, not how they "should" think.
 
@@ -36,15 +36,15 @@
 
 _Transforming scattered thoughts into organized action_
 
-**DJ Wayne** — CEO & Co-Founder | Former USMC Scout Sniper, YC-backed Engineer
-**Zach Tyler** — COO & Co-Founder | Former USAF Systems Admin, 100+ Campaign Veteran
+**DJ Wayne** - CEO & Co-Founder | Former USMC Scout Sniper, YC-backed Engineer
+**Zach Tyler** - COO & Co-Founder | Former USAF Systems Admin, 100+ Campaign Veteran
 
 **Contact**: dj@build-os.com | build-os.com
 **Date**: October 2025
 
 ### Speaker Notes
 
-- Open with: "Hi, I'm DJ. I'm not naturally organized. I tried other productivity apps, but they didn't work for me. I wanted a system where I could just talk to it and it would organize my thoughts. So I built BuildOS. Then I noticed other people wanted something new too — a tool actually built for the AI age."
+- Open with: "Hi, I'm DJ. I'm not naturally organized. I tried other productivity apps, but they didn't work for me. I wanted a system where I could just talk to it and it would organize my thoughts. So I built BuildOS. Then I noticed other people wanted something new too: a tool actually built for the AI age."
 - Establish credibility: Two military vets who know execution, now building the productivity tool for the next decade
 
 ---
@@ -91,7 +91,7 @@ _Transforming scattered thoughts into organized action_
 ### Speaker Notes
 
 - Hit the pain hard: "How many of you copy-paste project context into ChatGPT every day?"
-- Relatability: "Show of hands — who's tried multiple productivity tools that didn't stick?"
+- Relatability: "Show of hands, who's tried multiple productivity tools that didn't stick?"
 - Transition: "The problem isn't people. It's that every tool is designed for how we SHOULD think, not how we ACTUALLY think."
 
 ---
@@ -139,7 +139,7 @@ _Transforming scattered thoughts into organized action_
 
 ---
 
-## Slide 4: Our Solution — Context Engineering
+## Slide 4: Our Solution - Context Engineering
 
 ### Visual Layout
 
@@ -158,7 +158,7 @@ Instead of focusing on AI tools and capabilities, we focus on understanding the 
 
 **1. Capture Context (The Easy Part)**
 
-- Brain dump via voice or text — zero structure required
+- Brain dump via voice or text, zero structure required
 - AI automatically organizes into projects, tasks, and insights
 - Works on your worst brain days
 
@@ -201,7 +201,7 @@ Instead of focusing on AI tools and capabilities, we focus on understanding the 
 
 ---
 
-## Slide 5: The Product — BuildOS in Action
+## Slide 5: The Product - BuildOS in Action
 
 ### Visual Layout
 
@@ -221,7 +221,7 @@ Instead of focusing on AI tools and capabilities, we focus on understanding the 
 **Feature 2: Rich Project Context**
 
 - Every project builds a knowledge base over time
-- Context compounds — each dump makes projects smarter
+- Context compounds: each dump makes projects smarter
 - Copy-paste to Claude/ChatGPT for instant collaboration
 
 **Feature 3: Smart Execution**
@@ -232,10 +232,10 @@ Instead of focusing on AI tools and capabilities, we focus on understanding the 
 
 ### Product Philosophy
 
-- **Simplicity over features** — One tool, not twelve
-- **AI-native, not AI-enhanced** — Built for this era
-- **Context compounds** — Value increases over time
-- **Frictionless organization** — Just talk, AI does the rest
+- **Simplicity over features**: One tool, not twelve
+- **AI-native, not AI-enhanced**: Built for this era
+- **Context compounds**: Value increases over time
+- **Frictionless organization**: Just talk, AI does the rest
 
 ### Speaker Notes
 
@@ -268,7 +268,7 @@ _Us_: Built AI context engine first, everything else serves it
 _Them_: Add more features to compete
 _Us_: Understand the user better, compound context value
 
-**Why it matters**: We focus on what users actually need — frictionless organization. They add features to hit quarterly metrics.
+**Why it matters**: We focus on what users actually need: frictionless organization. They add features to hit quarterly metrics.
 
 **3. Founder-Market Fit (Authenticity)**
 
@@ -297,12 +297,12 @@ _Us_: Founders building for themselves
 ### Speaker Notes
 
 - "Here's what incumbents can't do: they can't rebuild their architecture. They're trapped."
-- "ChatGPT will never be a productivity tool — it's a general AI. We're specialists."
+- "ChatGPT will never be a productivity tool. It's a general AI. We're specialists."
 - "Our moat isn't tech. It's understanding. And that compounds."
 
 ---
 
-## Slide 7: State of the Dream — Traction
+## Slide 7: State of the Dream - Traction
 
 ### Visual Layout
 
@@ -317,8 +317,8 @@ _Us_: Founders building for themselves
 
 - **83 signups** in 3 weeks from targeted ads (Maryland test market)
 - **$3 CAC** for qualified users
-- **Minimal marketing spend** — Just targeted Meta ads
-- **Continuing organic growth** — Word of mouth, community building
+- **Minimal marketing spend**: Just targeted Meta ads
+- **Continuing organic growth**: Word of mouth, community building
 
 ### What We're Learning
 
@@ -351,7 +351,7 @@ _Us_: Founders building for themselves
 
 ---
 
-## Slide 8: Different Approach — Why We're Not Like the Rest
+## Slide 8: Different Approach - Why We're Not Like the Rest
 
 ### Visual Layout
 
@@ -411,7 +411,7 @@ _Us_: Founders building for themselves
 
 ---
 
-## Slide 9: Zoom Out — The Bigger Trends
+## Slide 9: Zoom Out - The Bigger Trends
 
 ### Visual Layout
 
@@ -429,12 +429,12 @@ _Us_: Founders building for themselves
 - **Our play**: Voice-native brain dumping, zero friction input
 - **Timeline**: Voice-first features Q4 2025
 
-**Evidence**: OpenAI Advanced Voice Mode, Google Gemini Live, Meta Voice AI — all launched 2024-2025
+**Evidence**: OpenAI Advanced Voice Mode, Google Gemini Live, Meta Voice AI, all launched 2024-2025
 
 ### Trend 2: User Context > AI Agents
 
 - **What's happening**: MCP and capable AI agents are secondary to gathering quality user context
-- **Why it matters**: Industry leaders are slowly realizing this — context is everything
+- **Why it matters**: Industry leaders are slowly realizing this. Context is everything
 - **Our play**: We OWN the user's context layer (the most valuable asset)
 - **Timeline**: MCP integration Q2 2026
 
@@ -444,7 +444,7 @@ _Us_: Founders building for themselves
 
 - **What's happening**: Social media, constant notifications, information overload
 - **Why it matters**: Most people could be labeled as having some form of ADHD now
-- **Our play**: Frictionless organization for short attention spans — we want to own "braindumping"
+- **Our play**: Frictionless organization for short attention spans. We want to own "braindumping"
 - **Timeline**: The future = talking to AI agents that do stuff for you
 
 **Evidence**: Average attention span dropped from 12s to 8s (Microsoft), TikTok generation, productivity tool fatigue
@@ -474,7 +474,7 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 
 ---
 
-## Slide 10: Why Now — The Market Timing
+## Slide 10: Why Now - The Market Timing
 
 ### Visual Layout
 
@@ -539,7 +539,7 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 
 ---
 
-## Slide 11: Why Us — The Founders
+## Slide 11: Why Us - The Founders
 
 ### Visual Layout
 
@@ -550,7 +550,7 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 
 **TWO MILITARY VETS JOINING FORCES TO SOLVE A BIG PROBLEM**
 
-### DJ Wayne — CEO & Co-Founder
+### DJ Wayne - CEO & Co-Founder
 
 **The Builder**
 
@@ -579,7 +579,7 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 
 ---
 
-### Zach Tyler — COO & Co-Founder
+### Zach Tyler - COO & Co-Founder
 
 **The Operator**
 
@@ -726,9 +726,9 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 
 ### Use of Funds Breakdown ($2M)
 
-- **50% Team** ($1M) — Cofounder salary, 1-2 engineers, designers as needed
-- **30% Product Development** ($600K) — iOS app, rapid experimentation, infrastructure
-- **20% Growth & Operations** ($400K) — Marketing tests, tools, legal, runway
+- **50% Team** ($1M): Cofounder salary, 1-2 engineers, designers as needed
+- **30% Product Development** ($600K): iOS app, rapid experimentation, infrastructure
+- **20% Growth & Operations** ($400K): Marketing tests, tools, legal, runway
 
 ### The Path Forward
 
@@ -768,10 +768,10 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 
 **What we're looking for:**
 
-✓ **AI/Productivity Thesis** — You believe AI-native tools will win
-✓ **Founder-Friendly** — You back teams, not just ideas
-✓ **Operational Support** — You can help with hiring, GTM, scaling
-✓ **Patient Capital** — You're thinking 10 years, not 2
+✓ **AI/Productivity Thesis**: You believe AI-native tools will win
+✓ **Founder-Friendly**: You back teams, not just ideas
+✓ **Operational Support**: You can help with hiring, GTM, scaling
+✓ **Patient Capital**: You're thinking 10 years, not 2
 
 **Bonus Points:**
 
@@ -782,10 +782,10 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 
 ### What We're NOT
 
-❌ **Not a lifestyle business** — Building for scale and impact
-❌ **Not a feature** — Platform play, not point solution
-❌ **Not a crowded market** — Creating new category
-❌ **Not an untested team** — Military execution + technical depth
+❌ **Not a lifestyle business**: Building for scale and impact
+❌ **Not a feature**: Platform play, not point solution
+❌ **Not a crowded market**: Creating new category
+❌ **Not an untested team**: Military execution + technical depth
 
 ### The Deal Terms (Indicative)
 
@@ -890,7 +890,7 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 ### Risk Mitigation
 
 **Risk: "Big tech will crush you"**
-**Mitigation**: We're building what they can't — AI-native from day 1, not retrofitted. Architecture matters.
+**Mitigation**: We're building what they can't: AI-native from day 1, not retrofitted. Architecture matters.
 
 **Risk: "Too early, market not ready"**
 **Mitigation**: 83 signups at $3 CAC proves demand. Voice AI, context engineering, and productivity fatigue are all happening NOW.
@@ -941,7 +941,7 @@ In the future, you'll just talk to an AI agent and it does stuff for you. **We'r
 
 ---
 
-## Slide 15: Vision — The World We're Building
+## Slide 15: Vision - The World We're Building
 
 ### Visual Layout
 
@@ -1216,11 +1216,11 @@ If you answered yes to all three → **You should lead this round.**
 
 **Next Steps**
 
-1. **Product Demo** — 30-minute walkthrough of BuildOS
-2. **User Interviews** — Talk to our beta users (we'll facilitate)
-3. **Technical Deep Dive** — Architecture review with DJ
-4. **Due Diligence** — Financials, metrics, roadmap details
-5. **Term Sheet** — Close round by Q1 2026
+1. **Product Demo**: 30-minute walkthrough of BuildOS
+2. **User Interviews**: Talk to our beta users (we'll set it up)
+3. **Technical Deep Dive**: Architecture review with DJ
+4. **Due Diligence**: Financials, metrics, roadmap details
+5. **Term Sheet**: Close round by Q1 2026
 
 ---
 

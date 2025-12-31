@@ -60,6 +60,7 @@ async function handleSingleProjectGraph(
 			.from('onto_projects')
 			.select('id, created_by')
 			.eq('id', projectId)
+			.is('deleted_at', null)
 			.single();
 
 		if (projectError || !project) {
@@ -173,6 +174,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			.from('onto_projects')
 			.select('*')
 			.eq('created_by', actorId)
+			.is('deleted_at', null)
 			.order('updated_at', { ascending: false });
 
 		if (projectsError) {

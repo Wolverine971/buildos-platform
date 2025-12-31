@@ -185,8 +185,16 @@ export class ChatToolExecutor {
 			const result = await this.dispatchTool(toolName, args);
 
 			const duration = Date.now() - startTime;
-			const { payload, streamEvents } = this.extractStreamEvents(result);
-			await this.logToolExecution(toolCall, payload, duration, true, undefined, args);
+			const { payload, streamEvents, tokensConsumed } = this.extractStreamEvents(result);
+			await this.logToolExecution(
+				toolCall,
+				payload,
+				duration,
+				true,
+				undefined,
+				args,
+				tokensConsumed
+			);
 
 			return {
 				tool_call_id: toolCall.id,
@@ -410,22 +418,55 @@ export class ChatToolExecutor {
 	// HELPERS
 	// ============================================
 
-	private extractStreamEvents(result: any): { payload: any; streamEvents?: any[] } {
+	private extractStreamEvents(result: any): {
+		payload: any;
+		streamEvents?: any[];
+		tokensConsumed?: number;
+	} {
 		if (!result || typeof result !== 'object') {
 			return { payload: result };
 		}
 
 		const maybe = result as Record<string, any>;
-		if (!('_stream_events' in maybe)) {
-			return { payload: result };
-		}
-
 		const events = Array.isArray(maybe._stream_events) ? maybe._stream_events : undefined;
+
+		// Extract tokens from various possible locations
+		const tokensConsumed = this.extractTokensFromResult(maybe);
+
 		const payload = Array.isArray(result) ? [...(result as any[])] : { ...maybe };
 		if (!Array.isArray(payload)) {
 			delete (payload as Record<string, any>)._stream_events;
+			delete (payload as Record<string, any>)._tokens_used;
+			delete (payload as Record<string, any>)._tokens_consumed;
+			delete (payload as Record<string, any>).tokens_used;
+			delete (payload as Record<string, any>).usage;
 		}
-		return { payload, streamEvents: events };
+		return { payload, streamEvents: events, tokensConsumed };
+	}
+
+	/**
+	 * Extract token count from tool result metadata
+	 * Checks various possible locations where tokens might be stored
+	 */
+	private extractTokensFromResult(result: Record<string, any>): number | undefined {
+		const candidates: Array<number | undefined> = [
+			result._tokens_used,
+			result._tokens_consumed,
+			result.tokens_used,
+			result.tokens_consumed,
+			result.usage?.total_tokens,
+			result.usage?.totalTokens,
+			result.metadata?.tokens_used,
+			result.metadata?.tokensUsed
+		];
+
+		for (const value of candidates) {
+			if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+				return value;
+			}
+		}
+
+		return undefined;
 	}
 
 	private async logToolExecution(
@@ -434,7 +475,8 @@ export class ChatToolExecutor {
 		duration: number,
 		success: boolean,
 		errorMessage?: string,
-		parsedArgs?: Record<string, any>
+		parsedArgs?: Record<string, any>,
+		tokensConsumed?: number
 	): Promise<void> {
 		if (!this.sessionId) {
 			console.warn(
@@ -454,6 +496,7 @@ export class ChatToolExecutor {
 				arguments: argumentsPayload,
 				result: success ? result : null,
 				execution_time_ms: duration,
+				tokens_consumed: tokensConsumed ?? null,
 				success,
 				error_message: errorMessage ?? null
 			});

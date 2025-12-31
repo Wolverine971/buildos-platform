@@ -89,6 +89,27 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// For each session, check for agent plans, compressions, and errors
 		const sessionIds = sessionsData?.map((s) => s.id) || [];
 
+		const usageBySession = new Map<string, { total_tokens: number; total_cost: number }>();
+		if (sessionIds.length > 0) {
+			const { data: usageLogs, error: usageError } = await supabase
+				.from('llm_usage_logs')
+				.select('chat_session_id, total_tokens, total_cost_usd')
+				.in('chat_session_id', sessionIds);
+
+			if (usageError) throw usageError;
+
+			(usageLogs || []).forEach((log) => {
+				if (!log.chat_session_id) return;
+				const current = usageBySession.get(log.chat_session_id) || {
+					total_tokens: 0,
+					total_cost: 0
+				};
+				current.total_tokens += log.total_tokens || 0;
+				current.total_cost += Number(log.total_cost_usd || 0);
+				usageBySession.set(log.chat_session_id, current);
+			});
+		}
+
 		// Check for agent plans
 		const { data: plansData } = await supabase
 			.from('agent_plans')
@@ -116,8 +137,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		// Format sessions
 		const sessions = (sessionsData || []).map((session) => {
-			const totalTokens = session.total_tokens_used || 0;
-			const costEstimate = (totalTokens / 1000000) * 0.21; // $0.21 per 1M tokens
+			const usageStats = usageBySession.get(session.id);
+			const totalTokens = usageStats?.total_tokens ?? session.total_tokens_used ?? 0;
+			const costEstimate = usageStats?.total_cost ?? (totalTokens / 1000000) * 0.21; // $0.21 per 1M tokens fallback
 
 			return {
 				id: session.id,

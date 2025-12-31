@@ -16,7 +16,7 @@ path: apps/web/src/content/blogs/productivity-tips/task-management-best-practice
 
 Task management in Build OS goes far beyond simple to-do lists. It's a sophisticated system that connects individual actions to larger projects, aligns with your energy patterns, integrates with your calendar, and adapts based on your working style and progress patterns.
 
-Mastering these task management principles transforms how you approach daily work—from reactive scrambling to purposeful execution.
+Mastering these task management principles transforms how you approach daily work-from reactive scrambling to purposeful execution.
 
 ## The Build OS Task Philosophy
 
@@ -391,7 +391,7 @@ If a task takes less than 2 minutes and you're in appropriate context, do it imm
 **Calendar Sync**: Leverage automatic scheduling and time blocking
 **Progress Tracking**: Use task completion to measure project advancement
 
-Effective task management in Build OS is about creating a sustainable system that connects daily actions to larger purposes while respecting your energy, schedule, and working style. The goal isn't to complete more tasks—it's to complete the right tasks at the right time in service of your most important projects and goals.
+Effective task management in Build OS is about creating a sustainable system that connects daily actions to larger purposes while respecting your energy, schedule, and working style. The goal isn't to complete more tasks-it's to complete the right tasks at the right time in service of your most important projects and goals.
 
 Start by implementing one or two of these best practices and gradually build a comprehensive task management system that works with your natural patterns rather than against them.
 

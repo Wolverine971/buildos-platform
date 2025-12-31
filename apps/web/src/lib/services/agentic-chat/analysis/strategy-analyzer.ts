@@ -52,6 +52,10 @@ interface LLMService {
 		maxTokens?: number;
 		userId?: string;
 		operationType?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 	}): Promise<string>;
 }
 
@@ -339,7 +343,8 @@ export class StrategyAnalyzer {
 			temperature: 0.3,
 			maxTokens: 500,
 			userId: context.userId,
-			operationType: 'strategy_analysis'
+			operationType: 'strategy_analysis',
+			chatSessionId: context.sessionId
 		});
 
 		try {

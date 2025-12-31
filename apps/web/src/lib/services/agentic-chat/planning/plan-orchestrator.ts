@@ -58,6 +58,10 @@ interface LLMService {
 		maxTokens?: number;
 		userId?: string;
 		operationType?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 	}): Promise<string>;
 }
 
@@ -290,7 +294,9 @@ export class PlanOrchestrator implements BaseService {
 				temperature: 0.2,
 				maxTokens: 600,
 				userId: context.userId,
-				operationType: 'plan_review'
+				operationType: 'plan_review',
+				chatSessionId: plan.sessionId,
+				agentPlanId: plan.id
 			});
 
 			return this.parsePlanReviewResponse(response);
@@ -654,7 +660,8 @@ export class PlanOrchestrator implements BaseService {
 				temperature: 0.35,
 				maxTokens: 1200,
 				userId: context.userId,
-				operationType: 'plan_generation'
+				operationType: 'plan_generation',
+				chatSessionId: context.sessionId
 			});
 
 			const parsed = this.tryParsePlanResponse(response);

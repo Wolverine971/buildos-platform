@@ -156,7 +156,7 @@ export class AgentExecutorService {
 			persistenceHandles = await this.initializeExecutorPersistence(params, context);
 
 			// 2. Execute task with LLM + tools
-			const result = await this.executeWithContext(context, userId);
+			const result = await this.executeWithContext(context, userId, persistenceHandles);
 
 			const successResult: ExecutorResult = {
 				executorId,
@@ -275,7 +275,8 @@ export class AgentExecutorService {
 	 */
 	private async executeWithContext(
 		context: ExecutorContext,
-		userId: string
+		userId: string,
+		handles?: ExecutorPersistenceHandles
 	): Promise<{
 		data: any;
 		toolCallsMade: number;
@@ -358,6 +359,10 @@ export class AgentExecutorService {
 					temperature: 0.3,
 					maxTokens: 1500,
 					sessionId: context.metadata.sessionId,
+					chatSessionId: context.metadata.sessionId,
+					agentSessionId: handles?.agentSessionId,
+					agentPlanId: context.metadata.planId,
+					agentExecutionId: handles?.executionId,
 					// Context for usage tracking
 					contextType: 'executor',
 					signal: streamAbortController.signal

@@ -148,8 +148,29 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		// ===================================================
 		// FORMAT RESPONSE
 		// ===================================================
-		const totalTokens = session.total_tokens_used || 0;
-		const costEstimate = (totalTokens / 1000000) * 0.21; // $0.21 per 1M tokens
+		let totalTokens = session.total_tokens_used || 0;
+		let costEstimate = (totalTokens / 1000000) * 0.21; // $0.21 per 1M tokens fallback
+
+		const { data: usageLogs, error: usageError } = await supabase
+			.from('llm_usage_logs')
+			.select('total_tokens, total_cost_usd')
+			.eq('chat_session_id', sessionId);
+
+		if (usageError) throw usageError;
+
+		if (usageLogs && usageLogs.length > 0) {
+			const usageTotals = usageLogs.reduce(
+				(acc, row) => {
+					acc.total_tokens += row.total_tokens || 0;
+					acc.total_cost += Number(row.total_cost_usd || 0);
+					return acc;
+				},
+				{ total_tokens: 0, total_cost: 0 }
+			);
+
+			totalTokens = usageTotals.total_tokens;
+			costEstimate = usageTotals.total_cost;
+		}
 
 		return ApiResponse.success({
 			session: {

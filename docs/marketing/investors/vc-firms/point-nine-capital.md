@@ -190,7 +190,7 @@ P.S. - Your SaaS metrics framework has been invaluable for our business planning
 
 ### Strategic Value for Point Nine:
 
-- **European Market Entry**: Point Nine can facilitate EU expansion with local expertise
+- **European Market Entry**: Point Nine can help with EU expansion with local expertise
 - **GDPR Compliance**: Existing European portfolio provides compliance guidance
 - **Local Partnerships**: European productivity tool integrations and partnerships
 - **Talent Access**: European tech talent for international team building

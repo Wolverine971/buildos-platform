@@ -18,7 +18,7 @@ path: apps/web/src/content/blogs/advanced-guides/custom-context-field-mastery-in
 
 ## Overview & Direction
 
-**Blog Purpose**: Deep dive into BuildOS's custom context fields feature—how to use them effectively to capture project-specific information that makes work easier and more intelligent over time.
+**Blog Purpose**: Deep dive into BuildOS's custom context fields feature-how to use them effectively to capture project-specific information that makes work easier and more intelligent over time.
 
 **Target Audience**: Power users, consultants with repeating project patterns, teams standardizing workflows, people frustrated by rigid task fields
 

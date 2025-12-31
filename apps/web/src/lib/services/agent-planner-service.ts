@@ -602,6 +602,8 @@ Respond with JSON in this exact format:
 				temperature: 0.7,
 				maxTokens: 2000,
 				sessionId: context.metadata.sessionId,
+				chatSessionId: context.metadata.sessionId,
+				agentPlanId: context.metadata.planId,
 				// Context for usage tracking (pass through planner's context type)
 				contextType: context.metadata.contextType,
 				entityId: context.metadata.entityId,
@@ -1290,6 +1292,8 @@ Synthesized response:`;
 				userId: plan.userId,
 				profile: 'balanced', // Use balanced model for synthesis
 				sessionId: plan.sessionId,
+				chatSessionId: plan.sessionId,
+				agentPlanId: plan.id,
 				// Context for usage tracking
 				contextType: 'planner_synthesis'
 			})) {
@@ -1704,7 +1708,8 @@ Return a JSON object with:
 				temperature: 0.3,
 				maxTokens: 500,
 				userId: userId,
-				operationType: 'strategy_analysis'
+				operationType: 'strategy_analysis',
+				chatSessionId: context.metadata.sessionId
 			});
 
 			const analysis = JSON.parse(response) as StrategyAnalysis;
@@ -2052,7 +2057,8 @@ Generate a helpful response that:
 			temperature: 0.7,
 			maxTokens: 1000,
 			userId: userId,
-			operationType: 'response_generation'
+			operationType: 'response_generation',
+			chatSessionId: context.metadata.sessionId
 		});
 
 		return response;

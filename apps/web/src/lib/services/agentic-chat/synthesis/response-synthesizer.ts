@@ -54,6 +54,10 @@ interface LLMService {
 		maxTokens?: number;
 		userId?: string;
 		operationType?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 	}): Promise<string>;
 
 	generateTextDetailed?(params: {
@@ -63,6 +67,10 @@ interface LLMService {
 		maxTokens?: number;
 		userId?: string;
 		operationType?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 	}): Promise<{ text: string; usage?: SynthesisUsage }>;
 
 	generateStream?(params: {
@@ -72,6 +80,10 @@ interface LLMService {
 		maxTokens?: number;
 		userId?: string;
 		operationType?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 	}): Promise<AsyncGenerator<string, void, unknown>>;
 }
 
@@ -318,7 +330,8 @@ export class ResponseSynthesizer implements BaseService {
 				temperature: config.temperature,
 				maxTokens: config.maxTokens,
 				userId: context.userId,
-				operationType: config.operationType
+				operationType: config.operationType,
+				chatSessionId: context.sessionId
 			});
 
 			return {
@@ -333,7 +346,8 @@ export class ResponseSynthesizer implements BaseService {
 			temperature: config.temperature,
 			maxTokens: config.maxTokens,
 			userId: context.userId,
-			operationType: config.operationType
+			operationType: config.operationType,
+			chatSessionId: context.sessionId
 		});
 
 		return { text };
@@ -388,7 +402,8 @@ export class ResponseSynthesizer implements BaseService {
 				temperature: 0.7,
 				maxTokens: 200,
 				userId: context.userId,
-				operationType: 'error_response'
+				operationType: 'error_response',
+				chatSessionId: context.sessionId
 			});
 
 			return response;

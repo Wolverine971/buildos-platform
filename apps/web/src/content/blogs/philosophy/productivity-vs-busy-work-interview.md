@@ -26,7 +26,7 @@ path: apps/web/src/content/blogs/philosophy/productivity-vs-busy-work-interview.
 
 **Word Count**: 2000-2500 words
 
-**Key Message**: Most people aren't lazy—they're trapped in systems that reward busy work over real progress. Learning to distinguish and eliminate busy work is the most important productivity skill.
+**Key Message**: Most people aren't lazy-they're trapped in systems that reward busy work over real progress. Learning to distinguish and eliminate busy work is the most important productivity skill.
 
 ---
 
@@ -34,8 +34,8 @@ path: apps/web/src/content/blogs/philosophy/productivity-vs-busy-work-interview.
 
 ### Introduction: The Trap of Feeling Productive
 
-- Spent 3 hours "organizing" your task list—feel productive?
-- Reorganized your Notion workspace—made progress?
+- Spent 3 hours "organizing" your task list-feel productive?
+- Reorganized your Notion workspace-made progress?
 - The problem: busy work masquerading as productivity
 
 ### Section 1: Defining the Distinction

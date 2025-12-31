@@ -50,7 +50,8 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		const { count: projectCount, error: countError } = await supabase
 			.from('onto_projects')
 			.select('*', { count: 'exact', head: true })
-			.eq('created_by', actorId);
+			.eq('created_by', actorId)
+			.is('deleted_at', null);
 
 		if (countError) {
 			console.error('[Dashboard] Failed to get project count:', countError);
@@ -88,6 +89,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 					`
 					)
 					.eq('created_by', actorId)
+					.is('deleted_at', null)
 					.order('updated_at', { ascending: false });
 
 				if (error) {

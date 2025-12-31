@@ -68,7 +68,7 @@ The magic happens continuously. Each brain dump enriches the system's understand
 
 ### What Gets Offloaded
 
-The transformation is profound:
+The transformation is real:
 
 **Chaotic thoughts → Structured projects**
 No more mental gymnastics trying to hold complex project structures in your head. The AI maintains the full context while you focus on the work.

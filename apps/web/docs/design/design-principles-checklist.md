@@ -38,7 +38,7 @@ path: apps/web/docs/design/design-principles-checklist.md
 - [ ] **Establish a Typographic Scale:**
     - [ ] **Primary Font Family:** Choose a clean, legible sans-serif font (e.g., Inter, Manrope, system-ui).
     - [ ] **Modular Scale:** Define distinct sizes for H1, H2, H3, H4, Body Large, Body Medium (Default), Body Small/Caption. (e.g., H1: 32px, Body: 14px/16px).
-    - [ ] **Font Weights:** Utilize a limited set of weights (e.g., Regular, Medium, SemiBold, Bold).
+    - [ ] **Font Weights:** Use a limited set of weights (e.g., Regular, Medium, SemiBold, Bold).
     - [ ] **Line Height:** Ensure generous line height for readability (e.g., 1.5-1.7 for body text).
 - [ ] **Define Spacing Units:**
     - [ ] **Base Unit:** Establish a base unit (e.g., 8px).

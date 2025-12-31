@@ -69,7 +69,8 @@ Title:`;
 				profile: 'speed',
 				temperature: 0.3,
 				maxTokens: 20,
-				operationType: 'chat_title_generation'
+				operationType: 'chat_title_generation',
+				chatSessionId: sessionId
 			});
 
 			const title = titleResponse.trim().substring(0, 50);
@@ -188,7 +189,8 @@ Compressed summary:`;
 				profile: 'balanced',
 				temperature: 0.2,
 				maxTokens: Math.floor(targetTokens * 0.4),
-				operationType: 'chat_conversation_compression'
+				operationType: 'chat_conversation_compression',
+				chatSessionId: sessionId
 			});
 
 			const compressedSummary = compressionResponse;

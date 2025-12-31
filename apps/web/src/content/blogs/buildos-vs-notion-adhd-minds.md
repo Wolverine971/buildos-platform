@@ -40,7 +40,7 @@ _"My Notion has 47 databases and I can't find anything."_
 
 _"I need a tutorial to use my own productivity system."_
 
-The average ADHD professional loses **15 hours per month** to what we call the "complexity tax"—time spent learning, organizing, and maintaining their productivity tools instead of doing actual work.
+The average ADHD professional loses **15 hours per month** to what we call the "complexity tax"-time spent learning, organizing, and maintaining their productivity tools instead of doing actual work.
 
 **That's almost two full working days. Every month. Forever.**
 
@@ -50,9 +50,9 @@ The average ADHD professional loses **15 hours per month** to what we call the "
 
 **For ADHD minds, infinite flexibility equals infinite paralysis.**
 
-Notion gives you 1,000 ways to organize a task. But ADHD brains don't need 1,000 options—they need ONE path that works.
+Notion gives you 1,000 ways to organize a task. But ADHD brains don't need 1,000 options. They need ONE path that works.
 
-Every template you browse, every database schema you design, every property you configure—it's all cognitive load that depletes your executive function before you've even started your real work.
+Every template you browse, every database schema you design, every property you configure: it's all cognitive load that depletes your executive function before you've even started your real work.
 
 The cruel irony? **The more powerful the tool, the less powerful you become.**
 
@@ -72,7 +72,7 @@ This isn't about features. It's about respecting how ADHD brains actually work.
 
 ### The Learning Curve That Never Ends
 
-**Notion's learning curve isn't a curve—it's a treadmill.**
+**Notion's learning curve isn't a curve. It's a treadmill.**
 
 Just when you master databases, you discover formulas.
 Master formulas? Now learn relations.
@@ -100,7 +100,7 @@ What we discovered changed everything: **Disorganized minds don't need better or
 
 Just open BuildOS and start talking. The AI handles everything else.
 
-Our early users report capturing **18x more ideas** than with traditional tools—not because they have more ideas, but because they finally have a way to catch them.
+Our early users report capturing **18x more ideas** than with traditional tools. Not because they have more ideas, but because they finally have a way to catch them.
 
 ### The Brain Dump Revolution
 
@@ -155,7 +155,7 @@ Something interesting is happening in ADHD communities online:
 
 ### The First Movers
 
-A small group of creators and founders who struggled with chaos have discovered BuildOS. They're not evangelizing it yet—they're too busy shipping.
+A small group of creators and founders who struggled with chaos have discovered BuildOS. They're not evangelizing it yet. They're too busy shipping.
 
 But their output is noticeable. Their stress is lower. Their creative flow is returning.
 

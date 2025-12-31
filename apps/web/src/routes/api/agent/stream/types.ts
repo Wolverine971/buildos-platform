@@ -177,6 +177,12 @@ export interface ToolResultData {
 	tool_name?: string;
 	/** Normalized result data */
 	result: unknown;
+	/** Whether the tool execution was successful */
+	success?: boolean;
+	/** Error message if the tool failed */
+	error?: string;
+	/** Error code for classification */
+	error_code?: string;
 	/** Entities accessed during tool execution */
 	entities_accessed?: string[];
 	/** Context shift triggered by this tool result */

@@ -31,6 +31,10 @@ export interface EnhancedTextParams {
 	maxTokens?: number;
 	profile?: TextProfile; // Can be overridden
 	forceProfile?: boolean; // If true, use provided profile without optimization
+	chatSessionId?: string;
+	agentSessionId?: string;
+	agentPlanId?: string;
+	agentExecutionId?: string;
 }
 
 /**
@@ -61,6 +65,10 @@ export class EnhancedLLMWrapper {
 			prompt: params.prompt,
 			userId: params.userId,
 			operationType: params.operationType as string,
+			chatSessionId: params.chatSessionId,
+			agentSessionId: params.agentSessionId,
+			agentPlanId: params.agentPlanId,
+			agentExecutionId: params.agentExecutionId,
 			temperature,
 			maxTokens,
 			profile
@@ -86,6 +94,10 @@ export class EnhancedLLMWrapper {
 		maxTokens?: number;
 		sessionId?: string;
 		messageId?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 		signal?: AbortSignal;
 		// Enhanced parameters for optimization
 		contextType?: ChatContextType;
@@ -132,6 +144,10 @@ export class EnhancedLLMWrapper {
 			profile,
 			temperature,
 			maxTokens,
+			chatSessionId: options.chatSessionId || options.sessionId,
+			agentSessionId: options.agentSessionId,
+			agentPlanId: options.agentPlanId,
+			agentExecutionId: options.agentExecutionId,
 			// Ensure contextType is passed for usage logging
 			contextType: contextType as string,
 			entityId: options.entityId,

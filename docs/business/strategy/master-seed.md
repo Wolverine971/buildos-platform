@@ -567,7 +567,7 @@ When creating tasks from brain dumps:
 
 ### Daily Brief Generation
 
-When generating briefs, utilize project context and calendar data:
+When generating briefs, use project context and calendar data:
 
 - Extract relevant insights from each project's markdown context
 - Look for status updates, challenges, and next actions in context

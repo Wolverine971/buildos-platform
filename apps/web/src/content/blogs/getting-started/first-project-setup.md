@@ -73,7 +73,7 @@ Becomes Project:
 Your project name should be:
 
 - **Specific enough** to be clear
-- **Broad enough** to encompass the full scope
+- **Broad enough** to cover the full scope
 - **Action-oriented** when possible
 - **Memorable** for daily reference
 
@@ -332,7 +332,7 @@ Once you've successfully set up and begun executing your first project:
 
 Remember: Your first project is about learning the Build OS system as much as accomplishing your goal. Be patient with yourself and adjust the system to work with your natural thinking and working style.
 
-The goal isn't perfection—it's building a sustainable system that grows more valuable with each project you complete.
+The goal isn't perfection-it's building a sustainable system that grows more valuable with each project you complete.
 
 ---
 

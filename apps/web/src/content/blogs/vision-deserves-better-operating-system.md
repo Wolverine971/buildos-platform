@@ -39,13 +39,13 @@ You wake up at 3 AM with a breakthrough. The architecture finally makes sense. Y
 
 You won't.
 
-By 9 AM, you're in three tabs, two Slack threads, and a Google Doc titled "ACTUAL FINAL THOUGHTS V3." The breakthrough is gone. What remains is a fragment—a ghost of the clarity you had when the whole system was alive in your mind.
+By 9 AM, you're in three tabs, two Slack threads, and a Google Doc titled "ACTUAL FINAL THOUGHTS V3." The breakthrough is gone. What remains is a fragment, a ghost of the clarity you had when the whole system was alive in your mind.
 
 This isn't a productivity problem. This is an **architecture problem**.
 
 ## The Curse of the Visionary
 
-If you're reading this, you probably have too many ideas, not too few. You don't struggle with motivation—you struggle with **coherence**. Your problem isn't that you can't start; it's that you can't hold the whole vision in working memory while also executing on it.
+If you're reading this, you probably have too many ideas, not too few. You don't struggle with motivation. You struggle with **coherence**. Your problem isn't that you can't start; it's that you can't hold the whole vision in working memory while also executing on it.
 
 You're building something ambitious:
 
@@ -64,7 +64,7 @@ Here's what nobody tells you about "productivity":
 
 The bottleneck isn't task management. It's **context preservation**.
 
-Every time you context-switch, you're not just changing tasks—you're **rebuilding your mental model from scratch**. You're asking your brain to reload the entire state of a complex system: the vision, the constraints, the decisions you made three weeks ago, the reason you deprioritized that other thing, the conversation that sparked this direction.
+Every time you context-switch, you're not just changing tasks. You're **rebuilding your mental model from scratch**. You're asking your brain to reload the entire state of a complex system: the vision, the constraints, the decisions you made three weeks ago, the reason you deprioritized that other thing, the conversation that sparked this direction.
 
 Your notes can't do this. They're snapshots, not systems. They capture **what** you thought, but not **how** the thoughts connect, evolve, and inform each other.
 
@@ -72,7 +72,7 @@ Your notes can't do this. They're snapshots, not systems. They capture **what** 
 
 Imagine this instead:
 
-You brain-dump at 3 AM—voice memo, scattered thoughts, half-formed ideas. When you wake up, **the system has already organized it**. Not into rigid folders, but into living context:
+You brain-dump at 3 AM: voice memo, scattered thoughts, half-formed ideas. When you wake up, **the system has already organized it**. Not into rigid folders, but into living context:
 
 - This idea connects to Project X
 - It resolves that contradiction from last week's strategy doc
@@ -118,7 +118,7 @@ Where your brain holds the vision, BuildOS holds **everything else**.
 
 ## The Builder's Promise
 
-If you're building something that matters—something big enough to break your existing tools, complex enough to exceed your working memory, important enough to demand more from your systems—**you deserve infrastructure that matches your ambition**.
+If you're building something that matters, something big enough to break your existing tools, complex enough to exceed your working memory, important enough to demand more from your systems, **you deserve infrastructure that matches your ambition**.
 
 You deserve tools that:
 
@@ -133,11 +133,11 @@ You deserve tools that:
 
 The world doesn't need another todo app. It needs the things **you're too overwhelmed to finish**.
 
-That startup idea that could reshape an industry—stuck in fragmented notes.
+That startup idea that could reshape an industry? Stuck in fragmented notes.
 
-That creative project that could move people—lost in version control chaos.
+That creative project that could move people? Lost in version control chaos.
 
-That research that could change how we think—scattered across tools that don't talk to each other.
+That research that could change how we think? Scattered across tools that don't talk to each other.
 
 **The bottleneck isn't your ambition. It's the friction between your vision and your ability to hold it all together.**
 
@@ -182,31 +182,31 @@ _Turn your grand vision into a working system. [Join the early access list →](
 
 Early-stage founders juggling strategy, fundraising, hiring, and product. Your vision is sprawling, stored across 40 docs, 12 tools, and 3 group chats. You lose the "why" behind decisions.
 
-**BuildOS becomes your living brain**—turning chaos into structured execution and traceable rationale.
+**BuildOS becomes your living brain**, turning chaos into structured execution and traceable rationale.
 
 ### The Creator-Strategist
 
 YouTubers, writers, game devs, agency owners managing long arcs and collaborators. You can't keep narrative, tasks, and collaborators aligned across creative projects.
 
-**BuildOS keeps the creative through-line alive**—every idea, draft, and decision captured in context.
+**BuildOS keeps the creative through-line alive**, with every idea, draft, and decision captured in context.
 
 ### The Polymath Builder
 
 Indie hackers, designer-engineer hybrids, consultants with multiple projects. Context-switching kills flow. Ideas fragment between Figma, Notion, and Slack.
 
-**BuildOS acts as the context mesh**—one place where all projects evolve with preserved memory.
+**BuildOS acts as the context mesh**: one place where all projects evolve with preserved memory.
 
 ### The Vision Collective
 
 Small teams working on ambitious social or technical problems. Institutional memory decays. No shared rationale chain for decisions.
 
-**BuildOS is the continuity layer**—a collective brain that never forgets how ideas evolved.
+**BuildOS is the continuity layer**: a collective brain that never forgets how ideas evolved.
 
 ## The Core Workflow
 
 ### 1. Dump Your Brain
 
-Capture everything—ideas, links, meeting notes, voice memos—no structure required.
+Capture everything: ideas, links, meeting notes, voice memos. No structure required.
 
 ### 2. BuildOS Organizes It for You
 

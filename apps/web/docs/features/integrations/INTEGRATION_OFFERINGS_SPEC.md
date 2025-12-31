@@ -467,7 +467,7 @@ Leverage BuildOS data for advanced analytics and insights
 
 ### Q: What about data privacy?
 
-**A:** User data privacy is paramount. We use row-level security, encrypt data at rest and in transit, and never share user data without explicit consent.
+**A:** User data privacy is our top priority. We use row-level security, encrypt data at rest and in transit, and never share user data without explicit consent.
 
 ### Q: Can I white-label BuildOS features?
 

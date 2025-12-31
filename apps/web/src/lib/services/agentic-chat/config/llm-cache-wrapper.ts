@@ -60,6 +60,10 @@ export class LLMCacheWrapper {
 		temperature?: number;
 		maxTokens?: number;
 		profile?: TextProfile;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 		useCache?: boolean; // Can be overridden per call
 	}): Promise<string> {
 		// Determine if we should cache this request

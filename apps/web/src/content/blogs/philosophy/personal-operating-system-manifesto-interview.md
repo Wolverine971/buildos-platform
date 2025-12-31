@@ -22,11 +22,11 @@ path: apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto-
 
 **Target Audience**: Ambitious professionals, founders, creative thinkers, productivity enthusiasts, people building their life systems
 
-**Tone**: Manifesto style—bold, visionary, inspiring, opinionated, grounded in reality but aspirational. Think "Paul Graham essay" meets "product vision".
+**Tone**: Manifesto style-bold, visionary, inspiring, opinionated, grounded in reality but aspirational. Think "Paul Graham essay" meets "product vision".
 
 **Word Count**: 2000-2500 words (manifestos should be punchy)
 
-**Key Message**: Your productivity tools should be infrastructure, not applications. BuildOS isn't a task manager—it's the operating system for how you think, plan, and execute your life.
+**Key Message**: Your productivity tools should be infrastructure, not applications. BuildOS isn't a task manager-it's the operating system for how you think, plan, and execute your life.
 
 ---
 
@@ -55,7 +55,7 @@ path: apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto-
 
 **Principle 2: AI as Core Service, Not Feature**
 
-- AI isn't a plugin—it's the kernel
+- AI isn't a plugin-it's the kernel
 - Handles organization, connection discovery, prioritization
 - Human provides direction; AI provides structure
 
@@ -165,7 +165,7 @@ path: apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto-
 
 ### Storytelling & Examples
 
-25. **Do you have a user story of someone who "got it"—who understood BuildOS as their OS?** (Specific example)
+25. **Do you have a user story of someone who "got it"-who understood BuildOS as their OS?** (Specific example)
 
 26. **Can you walk me through a day in your life using BuildOS as your personal OS?** (First-person narrative)
 
@@ -242,9 +242,9 @@ path: apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto-
 
 **Tone balance**: Bold without being arrogant. Visionary without being unrealistic. Opinionated without being dismissive of other approaches.
 
-**Key differentiator**: Most productivity content is tactical. This is **strategic and philosophical**. We're not just building features—we're building infrastructure for human potential.
+**Key differentiator**: Most productivity content is tactical. This is **strategic and philosophical**. We're not just building features-we're building infrastructure for human potential.
 
-**Reader takeaway**: Readers should feel inspired to think bigger about what their productivity tools could be. Even if they don't use BuildOS, they should start demanding more from their tools—and from themselves.
+**Reader takeaway**: Readers should feel inspired to think bigger about what their productivity tools could be. Even if they don't use BuildOS, they should start demanding more from their tools-and from themselves.
 
 **Risk to avoid**: Don't sound like vaporware or empty promises. Ground the vision in real implementation (BuildOS exists and works). Show that this is happening now, not just a future dream.
 

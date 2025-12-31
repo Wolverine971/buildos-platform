@@ -16,11 +16,11 @@ path: apps/web/src/content/blogs/getting-started/effective-brain-dumping.md
 
 Brain dumping is the foundation of effective personal productivity, yet most people do it wrong. They treat it like a simple list-making exercise, missing the transformative power of properly structured thought capture.
 
-In Build OS, brain dumping isn't just about getting thoughts out of your head—it's about creating a structured foundation that your AI-powered system can understand, organize, and transform into actionable intelligence.
+In Build OS, brain dumping isn't just about getting thoughts out of your head-it's about creating a structured foundation that your AI-powered system can understand, organize, and transform into actionable intelligence.
 
 ## What Makes Build OS Brain Dumping Different
 
-Traditional brain dumping tools treat your thoughts like isolated data points. Build OS recognizes that your thoughts exist in relationships—projects connect to goals, tasks depend on resources, and ideas evolve into structured plans.
+Traditional brain dumping tools treat your thoughts like isolated data points. Build OS recognizes that your thoughts exist in relationships-projects connect to goals, tasks depend on resources, and ideas evolve into structured plans.
 
 ### The Intelligence Layer
 
@@ -36,7 +36,7 @@ When you brain dump in Build OS, you're not just creating a text file. You're fe
 
 ### 1. Create the Right Environment
 
-Set aside uninterrupted time—typically 20-45 minutes for a comprehensive brain dump. Open Build OS and create a new brain dump session. Don't worry about organization yet; focus on complete capture.
+Set aside uninterrupted time-typically 20-45 minutes for a comprehensive brain dump. Open Build OS and create a new brain dump session. Don't worry about organization yet; focus on complete capture.
 
 ### 2. Use Stream-of-Consciousness Capture
 
@@ -118,11 +118,11 @@ Combine different input methods:
 
 ### Over-Editing During Capture
 
-Don't organize while you capture. Your job is complete extraction—let Build OS handle the structure. Editing breaks your flow and causes you to miss important connections.
+Don't organize while you capture. Your job is complete extraction-let Build OS handle the structure. Editing breaks your flow and causes you to miss important connections.
 
 ### Avoiding "Negative" Thoughts
 
-Include worries, frustrations, and concerns. These aren't just emotional noise—they're important project intelligence that helps Build OS understand risks and dependencies.
+Include worries, frustrations, and concerns. These aren't just emotional noise-they're important project intelligence that helps Build OS understand risks and dependencies.
 
 ### Stopping Too Early
 
@@ -130,7 +130,7 @@ Keep going even when you think you're done. The most valuable insights often com
 
 ### Skipping Context
 
-Don't just list tasks—explain why they matter, how they connect, and what you're trying to achieve. Context is what transforms lists into intelligent systems.
+Don't just list tasks-explain why they matter, how they connect, and what you're trying to achieve. Context is what transforms lists into intelligent systems.
 
 ## Practical Examples
 
@@ -231,7 +231,7 @@ Over time, Build OS learns from your brain dump patterns to suggest better proje
 1. **Schedule 30 minutes** of uninterrupted time
 2. **Open Build OS** and create a new brain dump session
 3. **Set a timer** and write continuously for 20 minutes
-4. **Include everything**—projects, tasks, worries, ideas, context
+4. **Include everything**-projects, tasks, worries, ideas, context
 5. **Submit for parsing** and review the suggested organization
 6. **Refine the results** by adjusting project boundaries and task assignments
 7. **Set up your first project phases** based on the parsed structure
@@ -247,7 +247,7 @@ Once you've mastered basic brain dumping, explore these advanced features:
 - **Recurring brain dump sessions** for ongoing project maintenance
 - **Cross-project insights** to identify themes and patterns in your work
 
-Brain dumping in Build OS isn't just about getting organized—it's about creating a foundation for your personal operating system to truly understand and support your goals. Master this skill, and everything else becomes more effective.
+Brain dumping in Build OS isn't just about getting organized-it's about creating a foundation for your personal operating system to truly understand and support your goals. Master this skill, and everything else becomes more effective.
 
 ---
 

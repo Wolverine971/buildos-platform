@@ -26,7 +26,7 @@ path: apps/web/src/content/blogs/productivity-tips/focus-time-optimization-inter
 
 **Word Count**: 2000-2500 words
 
-**Key Message**: Deep work doesn't happen by accident—it requires deliberate design of your environment, schedule, and systems. BuildOS helps you identify, protect, and maximize your focus time.
+**Key Message**: Deep work doesn't happen by accident-it requires deliberate design of your environment, schedule, and systems. BuildOS helps you identify, protect, and maximize your focus time.
 
 ---
 

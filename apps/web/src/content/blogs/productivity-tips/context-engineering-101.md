@@ -26,7 +26,7 @@ pic: ''
 path: apps/web/src/content/blogs/productivity-tips/context-engineering-101.md
 ---
 
-The way we work with AI is fundamentally changing. What started as prompt engineering—crafting the perfect message to get good AI responses—is evolving into something much more powerful: context engineering.
+The way we work with AI is fundamentally changing. What started as prompt engineering-crafting the perfect message to get good AI responses-is evolving into something much more powerful: context engineering.
 
 This shift represents the difference between having individual conversations with AI and building systems that remember, organize, and build upon everything you've done before.
 
@@ -82,7 +82,7 @@ This requires system-level thinking, not just message-level optimization.
 
 ### Mistake #1: Letting Insights Disappear
 
-The biggest mistake is having insightful conversations with AI and then losing all that context when you close the chat. You're not building upon what you've learned—you're starting over every time.
+The biggest mistake is having insightful conversations with AI and then losing all that context when you close the chat. You're not building upon what you've learned-you're starting over every time.
 
 **Solution:** Dump important insights and conversations into BuildOS immediately. Build a persistent record of your AI interactions.
 
@@ -106,7 +106,7 @@ Building contexts that are either too narrow (missing critical information) or t
 
 **One-shot prompting** delivers one concise, powerful instruction that encapsulates everything the AI needs to know.
 
-Think of marketing taglines—"Just Do It" or "Think Different"—they capture entire brand philosophies in a few words. For BuildOS, we use "Forget nothing, continue to build." This one-shot prompt encapsulates our entire approach to context preservation and iterative development.
+Think of marketing taglines-"Just Do It" or "Think Different"-they capture entire brand philosophies in a few words. For BuildOS, we use "Forget nothing, continue to build." This one-shot prompt encapsulates our entire approach to context preservation and iterative development.
 
 The future isn't better multi-shot prompting. It's building **systems of strategic one-shots** paired with rich, structured context that AI can access when needed.
 
@@ -144,7 +144,7 @@ The future isn't better multi-shot prompting. It's building **systems of strateg
 **Step 1: Audit Your Repetitive Prompts**
 Review your ChatGPT or Claude history. What context do you find yourself explaining repeatedly? What project details do you re-type in every conversation?
 
-This is analogous to how developers using Cursor create rules files to give their AI context about coding standards and project structure. You need to identify the context you're constantly recreating.
+This is similar to how developers using Cursor create rules files to give their AI context about coding standards and project structure. You need to identify the context you're constantly recreating.
 
 <!-- EDITOR'S NOTE: Most people find they're repeating 23% of their context across conversations - that's about 2.3 hours per week of retyping -->
 
@@ -161,7 +161,7 @@ Instead of starting fresh conversations with AI, begin with: "Using the context 
 
 ## The Strategic Imperative: Avoiding AI Vendor Lock-in
 
-This shift to context engineering isn't just about productivity—it's about strategic independence.
+This shift to context engineering isn't just about productivity-it's about strategic independence.
 
 **The Problem:** If you build all your context inside ChatGPT or Claude, you're locked into that platform. When better models emerge or pricing changes, you lose everything.
 
@@ -201,6 +201,6 @@ You know your context engineering is working when:
 
 The companies and individuals who master context engineering will have exponentially more leverage with AI tools. They'll build compound benefits from every interaction while others stay trapped in one-off conversation cycles.
 
-Context engineering isn't just a productivity upgrade—it's the foundation for building AI-augmented workflows that get smarter and more valuable over time.
+Context engineering isn't just a productivity upgrade-it's the foundation for building AI-augmented workflows that get smarter and more valuable over time.
 
 The future belongs to those who can build and maintain rich contextual systems, not those who craft perfect prompts. Start building your context infrastructure today.

@@ -73,7 +73,7 @@ The knowledge you need. Meeting notes, specs, reference materials, decision reco
 
 ### Risks
 
-Things that could go wrong. Every project has them. BuildOS helps you identify and track risks so you can mitigate them before they derail you.
+Things that could go wrong. Every project has them. BuildOS helps you identify and track risks so you can address them before they derail you.
 
 ---
 

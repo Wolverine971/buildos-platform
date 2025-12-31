@@ -23,7 +23,7 @@ tags:
         'AI-organization'
     ]
 readingTime: 12
-excerpt: "Most knowledge management is productivity theater—80% of notes are never revisited. The future isn't better filing cabinets, it's AI systems that turn chaos into clarity and knowledge into action. Learn why strategic forgetting beats total recall, and how to prepare for the shift from passive archives to active intelligence."
+excerpt: "Most knowledge management is productivity theater-80% of notes are never revisited. The future isn't better filing cabinets, it's AI systems that turn chaos into clarity and knowledge into action. Learn why strategic forgetting beats total recall, and how to prepare for the shift from passive archives to active intelligence."
 pic: 'knowledge-management-future'
 path: apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management.md
 ---

@@ -26,7 +26,7 @@ path: apps/web/src/content/blogs/productivity-tips/evolution-of-note-taking.md
 
 <!-- EDITOR'S NOTE: Stronger lead with specific problem/data -->
 
-**The Problem:** We estimate that knowledge workers spend significant time daily searching for information they already have—notes scattered across apps, ideas lost in old documents, context forgotten.
+**The Problem:** We estimate that knowledge workers spend significant time daily searching for information they already have-notes scattered across apps, ideas lost in old documents, context forgotten.
 
 Here's a complete guide to choosing the right note-taking system for your brain.
 
@@ -88,7 +88,7 @@ Notion promised to be the "all-in-one workspace."
 **Reality Check:**
 
 - **We estimate** most users create many pages initially but only access a fraction regularly
-- Template overload is a real problem—too many options can paralyze productivity
+- Template overload is a real problem-too many options can paralyze productivity
 - **Setup time:** Several hours minimum based on user feedback
 
 **Power User Shortcut:**
@@ -116,7 +116,7 @@ Pioneered the concept of "networked thought" with bi-directional linking and blo
 - **Pros:** Excellent for connecting ideas, powerful query system
 - **Cons:** Steep learning curve, can feel chaotic, expensive
 
-These digital tools solved many problems of traditional systems—searchability, infinite space, multimedia support. But they introduced new problems: endless customization, complexity, and still requiring users to manually organize their thoughts.
+These digital tools solved many problems of traditional systems-searchability, infinite space, multimedia support. But they introduced new problems: endless customization, complexity, and still requiring users to manually organize their thoughts.
 
 ## The Core Problems Persist
 
@@ -133,7 +133,7 @@ Every system requires you to decide how to categorize information as you capture
 - **We estimate** significant time is spent just deciding where to file information
 - Many notes end up never being properly categorized ("Untitled" graveyard)
 - **Weekly organization maintenance becomes a burden** that most people can't sustain
-- Decision fatigue is real—too many categorization choices paralyze action
+- Decision fatigue is real-too many categorization choices paralyze action
 
 **This cognitive overhead breaks flow state**, which is crucial for deep work and productivity.
 
@@ -161,7 +161,7 @@ Brain dump raw info into build-os and have it organize your thoughts. Let it sif
 
 - **Voice capture is faster than typing** (speaking is naturally 3x faster than typing for most people)
 - Processing happens quickly after you submit your brain dump
-- **Simple, conversational input**—just talk naturally
+- **Simple, conversational input**-just talk naturally
 
 **AI Organization:**
 
@@ -182,7 +182,7 @@ Brain dump raw info into build-os and have it organize your thoughts. Let it sif
 - **See your progress** without manual tracking
 
 **Real-World Usage:**
-**We use Build OS to build Build OS**—it's how we manage our own development, track features, and stay organized.
+**We use Build OS to build Build OS**-it's how we manage our own development, track features, and stay organized.
 
 <!-- EDITOR'S NOTE: Added specific metrics and capabilities -->
 
@@ -204,7 +204,7 @@ We're at a unique moment where three trends converge:
 2. **Context becomes critical** - As AI agents become more capable, maintaining persistent context becomes essential
 3. **Information overload is accelerating** - Remote work and digital communication create more scattered information than ever
 
-Traditional productivity systems were designed for a world where humans did all the cognitive work. AI-native systems acknowledge that machines can handle organization, categorization, and synthesis—freeing humans to focus on creation and decision-making.
+Traditional productivity systems were designed for a world where humans did all the cognitive work. AI-native systems acknowledge that machines can handle organization, categorization, and synthesis-freeing humans to focus on creation and decision-making.
 
 ## Choosing Your System (Decision Matrix)
 
@@ -232,7 +232,7 @@ Traditional productivity systems were designed for a world where humans did all 
 
 The trajectory is clear: AI will handle more of the cognitive overhead in information management, while humans focus on higher-level thinking and creativity. The question isn't whether AI will reshape how we organize information, but how quickly we adapt to these new possibilities.
 
-The most organized people aren't necessarily using the most complex systems—they're using systems they can maintain consistently. As AI removes the maintenance burden, the most organized people will be those who can effectively collaborate with AI to capture, develop, and act on their ideas.
+The most organized people aren't necessarily using the most complex systems-they're using systems they can maintain consistently. As AI removes the maintenance burden, the most organized people will be those who can effectively collaborate with AI to capture, develop, and act on their ideas.
 
 Information management is evolving from a human organizational challenge to a human-AI collaboration opportunity. The systems that win will be those that make this collaboration feel natural, transparent, and empowering rather than mysterious or constraining.
 
@@ -259,7 +259,7 @@ Information management is evolving from a human organizational challenge to a hu
 - **$20/month** - Less than a single hour of your time
 - **See results immediately**
 
-**The bottom line:** The future belongs to those who can think clearly and act decisively—not those who organize perfectly.
+**The bottom line:** The future belongs to those who can think clearly and act decisively-not those who organize perfectly.
 
 **Build OS helps you capture, organize, and execute without the overhead.**
 

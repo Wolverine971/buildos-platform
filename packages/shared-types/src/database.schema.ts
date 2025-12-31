@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2025-12-27T04:35:09.456Z
+// Generated on: 2025-12-31T05:48:17.064Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -765,8 +765,12 @@ export type DatabaseSchema = {
 		title: string | null;
 	};
 	llm_usage_logs: {
+		agent_execution_id: string | null;
+		agent_plan_id: string | null;
+		agent_session_id: string | null;
 		brain_dump_id: string | null;
 		brief_id: string | null;
+		chat_session_id: string | null;
 		completion_tokens: number;
 		created_at: string;
 		error_message: string | null;

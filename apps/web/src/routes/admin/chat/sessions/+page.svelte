@@ -178,286 +178,275 @@
 </svelte:head>
 
 <div class="admin-page">
-	<div class="admin-page">
-		<!-- Header -->
-		<AdminPageHeader
-			title="Chat Sessions"
-			description="View and analyze all chat conversations"
-			icon={MessageSquare}
-			showBack={true}
-		>
-			<div slot="actions" class="flex items-center space-x-4">
-				<!-- Timeframe -->
-				<Select
-					bind:value={selectedTimeframe}
-					onchange={(e) => (selectedTimeframe = e.detail)}
-					size="md"
-					placeholder="Last 7 Days"
-				>
-					<option value="24h">Last 24 Hours</option>
-					<option value="7d">Last 7 Days</option>
-					<option value="30d">Last 30 Days</option>
-				</Select>
-
-				<!-- Refresh -->
-				<Button
-					onclick={loadSessions}
-					disabled={isLoading}
-					variant="secondary"
-					size="sm"
-					icon={RefreshCw}
-					loading={isLoading}
-				>
-					Refresh
-				</Button>
-			</div>
-		</AdminPageHeader>
-
-		<!-- Search and Filters -->
-		<div class="admin-panel p-4">
-			<!-- Search Bar -->
-			<form onsubmit={handleSearch} class="mb-4">
-				<div class="flex items-center space-x-2">
-					<div class="flex-1 relative">
-						<Search
-							class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
-						/>
-						<input
-							type="text"
-							bind:value={searchQuery}
-							placeholder="Search sessions by user email or session ID..."
-							class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-						/>
-					</div>
-					<Button type="submit" variant="primary" size="md">Search</Button>
-				</div>
-			</form>
-
-			<!-- Filter Toggle -->
-			<button
-				onclick={() => (showFilters = !showFilters)}
-				class="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+	<!-- Header -->
+	<AdminPageHeader
+		title="Chat Sessions"
+		description="View and analyze all chat conversations"
+		icon={MessageSquare}
+		showBack={true}
+	>
+		<div slot="actions" class="flex flex-wrap items-center gap-3">
+			<!-- Timeframe -->
+			<Select
+				bind:value={selectedTimeframe}
+				onchange={(e) => (selectedTimeframe = e.detail)}
+				size="md"
+				placeholder="Last 7 Days"
+				aria-label="Select time range"
 			>
-				<Filter class="h-4 w-4" />
-				<span>Filters</span>
-				{#if showFilters}
-					<ChevronUp class="h-4 w-4" />
-				{:else}
-					<ChevronDown class="h-4 w-4" />
-				{/if}
-			</button>
+				<option value="24h">Last 24 Hours</option>
+				<option value="7d">Last 7 Days</option>
+				<option value="30d">Last 30 Days</option>
+			</Select>
 
-			<!-- Filters -->
-			{#if showFilters}
-				<div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-					<!-- Status Filter -->
-					<div>
-						<div
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>
-							Status
-						</div>
-						<Select
-							bind:value={selectedStatus}
-							onchange={(e) => (selectedStatus = e.detail)}
-							size="md"
-						>
-							<option value="all">All Statuses</option>
-							<option value="active">Active</option>
-							<option value="archived">Archived</option>
-							<option value="compressed">Compressed</option>
-						</Select>
-					</div>
-
-					<!-- Context Type Filter -->
-					<div>
-						<div
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>
-							Context Type
-						</div>
-						<Select
-							bind:value={selectedContextType}
-							onchange={(e) => (selectedContextType = e.detail)}
-							size="md"
-						>
-							<option value="all">All Contexts</option>
-							<option value="global">Global</option>
-							<option value="general">General</option>
-							<option value="project">Project workspace</option>
-							<option value="project_create">Project Create</option>
-							<option value="project_audit">Project Audit</option>
-							<option value="project_forecast">Project Forecast</option>
-							<option value="calendar">Calendar</option>
-							<option value="daily_brief_update">Daily Brief Update</option>
-							<option value="brain_dump">Braindump</option>
-							<option value="ontology">Ontology</option>
-						</Select>
-					</div>
-				</div>
-			{/if}
+			<!-- Refresh -->
+			<Button
+				onclick={loadSessions}
+				disabled={isLoading}
+				variant="secondary"
+				size="sm"
+				icon={RefreshCw}
+				loading={isLoading}
+				class="pressable"
+			>
+				Refresh
+			</Button>
 		</div>
+	</AdminPageHeader>
 
-		{#if error}
-			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
-			>
-				<div class="flex items-center">
-					<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
-					<p class="text-red-800 dark:text-red-200">{error}</p>
+	<!-- Search and Filters -->
+	<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6">
+		<!-- Search Bar -->
+		<form onsubmit={handleSearch} class="mb-4">
+			<div class="flex items-center gap-2">
+				<div class="flex-1 relative">
+					<Search
+						class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
+					/>
+					<input
+						type="text"
+						bind:value={searchQuery}
+						placeholder="Search sessions by user email or session ID..."
+						class="w-full pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:ring-2 focus:ring-ring focus:border-accent text-foreground placeholder:text-muted-foreground"
+						aria-label="Search sessions"
+					/>
 				</div>
+				<Button type="submit" variant="primary" size="md" class="pressable">Search</Button>
 			</div>
-		{/if}
+		</form>
 
-		<!-- Sessions List -->
-		{#if isLoading}
-			<div class="space-y-4">
-				{#each Array(5) as _}
-					<div class="admin-panel p-6 animate-pulse">
-						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
-						<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-					</div>
-				{/each}
-			</div>
-		{:else if sessions.length === 0}
-			<div class="admin-panel p-12 text-center">
-				<MessageSquare class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-				<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-					No sessions found
-				</h3>
-				<p class="text-gray-600 dark:text-gray-400">
-					Try adjusting your filters or search query.
-				</p>
-			</div>
-		{:else}
-			<div class="space-y-4">
-				{#each sessions as session}
-					{@const StatusIcon = getStatusIcon(session.status)}
-					<Button
-						onclick={() => viewSession(session.id)}
-						class="w-full admin-panel p-6 hover:shadow-lg transition-shadow text-left"
+		<!-- Filter Toggle -->
+		<button
+			onclick={() => (showFilters = !showFilters)}
+			class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring rounded"
+			aria-expanded={showFilters}
+		>
+			<Filter class="h-4 w-4" />
+			<span>Filters</span>
+			{#if showFilters}
+				<ChevronUp class="h-4 w-4" />
+			{:else}
+				<ChevronDown class="h-4 w-4" />
+			{/if}
+		</button>
+
+		<!-- Filters -->
+		{#if showFilters}
+			<div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+				<!-- Status Filter -->
+				<div>
+					<label class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+						Status
+					</label>
+					<Select
+						bind:value={selectedStatus}
+						onchange={(e) => (selectedStatus = e.detail)}
+						size="md"
 					>
-						<!-- Header -->
-						<div class="flex items-start justify-between mb-4">
-							<div class="flex-1">
-								<div class="flex items-center space-x-3 mb-2">
-									<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-										{session.title || 'Untitled Session'}
-									</h3>
-									<span
-										class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {getStatusColor(
-											session.status
-										)}"
-									>
-										<StatusIcon class="h-3 w-3 mr-1" />
-										{session.status}
-									</span>
-								</div>
-								<div
-									class="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400"
-								>
-									<span>{session.user.email}</span>
-									<span>•</span>
-									<span>{formatDate(session.created_at)}</span>
-									<span>•</span>
-									<span class="capitalize">{session.context_type}</span>
-								</div>
-							</div>
-						</div>
-
-						<!-- Metrics -->
-						<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-							<div>
-								<div class="text-xs text-gray-500 dark:text-gray-400">Messages</div>
-								<div class="text-lg font-semibold text-gray-900 dark:text-white">
-									{formatNumber(session.message_count)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-gray-500 dark:text-gray-400">Tokens</div>
-								<div class="text-lg font-semibold text-gray-900 dark:text-white">
-									{formatNumber(session.total_tokens)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-gray-500 dark:text-gray-400">
-									Tool Calls
-								</div>
-								<div class="text-lg font-semibold text-gray-900 dark:text-white">
-									{formatNumber(session.tool_call_count)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-gray-500 dark:text-gray-400">Cost</div>
-								<div class="text-lg font-semibold text-gray-900 dark:text-white">
-									{formatCurrency(session.cost_estimate)}
-								</div>
-							</div>
-						</div>
-
-						<!-- Badges -->
-						<div class="flex items-center space-x-2">
-							{#if session.has_agent_plan}
-								<span
-									class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-								>
-									<Bot class="h-3 w-3 mr-1" />
-									Multi-Agent
-								</span>
-							{/if}
-							{#if session.has_compression}
-								<span
-									class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-								>
-									<Sparkles class="h-3 w-3 mr-1" />
-									Compressed
-								</span>
-							{/if}
-							{#if session.has_errors}
-								<span
-									class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-								>
-									<AlertCircle class="h-3 w-3 mr-1" />
-									Has Errors
-								</span>
-							{/if}
-						</div>
-					</Button>
-				{/each}
-			</div>
-
-			<!-- Pagination -->
-			<div class="mt-6 flex items-center justify-between">
-				<div class="text-sm text-gray-600 dark:text-gray-400">
-					Showing {(currentPage - 1) * pageSize + 1} to {Math.min(
-						currentPage * pageSize,
-						totalSessions
-					)} of {formatNumber(totalSessions)} sessions
+						<option value="all">All Statuses</option>
+						<option value="active">Active</option>
+						<option value="archived">Archived</option>
+						<option value="compressed">Compressed</option>
+					</Select>
 				</div>
-				<div class="flex items-center space-x-2">
-					<Button
-						onclick={previousPage}
-						disabled={currentPage === 1}
-						variant="secondary"
-						size="sm"
+
+				<!-- Context Type Filter -->
+				<div>
+					<label class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+						Context Type
+					</label>
+					<Select
+						bind:value={selectedContextType}
+						onchange={(e) => (selectedContextType = e.detail)}
+						size="md"
 					>
-						Previous
-					</Button>
-					<span class="text-sm text-gray-600 dark:text-gray-400">
-						Page {currentPage} of {Math.ceil(totalSessions / pageSize)}
-					</span>
-					<Button
-						onclick={nextPage}
-						disabled={currentPage * pageSize >= totalSessions}
-						variant="secondary"
-						size="sm"
-					>
-						Next
-					</Button>
+						<option value="all">All Contexts</option>
+						<option value="global">Global</option>
+						<option value="general">General</option>
+						<option value="project">Project workspace</option>
+						<option value="project_create">Project Create</option>
+						<option value="project_audit">Project Audit</option>
+						<option value="project_forecast">Project Forecast</option>
+						<option value="calendar">Calendar</option>
+						<option value="daily_brief_update">Daily Brief Update</option>
+						<option value="brain_dump">Braindump</option>
+						<option value="ontology">Ontology</option>
+					</Select>
 				</div>
 			</div>
 		{/if}
 	</div>
+
+	{#if error}
+		<div
+			class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			role="alert"
+		>
+			<div class="flex items-center gap-2">
+				<AlertCircle class="h-5 w-5 text-red-500 shrink-0" />
+				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Sessions List -->
+	{#if isLoading}
+		<div class="space-y-3">
+			{#each Array(5) as _}
+				<div class="bg-card border border-border rounded-lg p-4 shadow-ink animate-pulse">
+					<div class="h-4 bg-muted rounded w-3/4 mb-4"></div>
+					<div class="h-3 bg-muted rounded w-1/2"></div>
+				</div>
+			{/each}
+		</div>
+	{:else if sessions.length === 0}
+		<div class="bg-card border border-border rounded-lg p-12 text-center shadow-ink tx tx-frame tx-weak">
+			<MessageSquare class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+			<h3 class="text-base font-medium text-foreground mb-2">No sessions found</h3>
+			<p class="text-sm text-muted-foreground">
+				Try adjusting your filters or search query.
+			</p>
+		</div>
+	{:else}
+		<div class="space-y-3">
+			{#each sessions as session}
+				{@const StatusIcon = getStatusIcon(session.status)}
+				<button
+					onclick={() => viewSession(session.id)}
+					class="w-full bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all text-left pressable focus:outline-none focus:ring-2 focus:ring-ring tx tx-frame tx-weak"
+				>
+					<!-- Header -->
+					<div class="flex items-start justify-between mb-3">
+						<div class="flex-1 min-w-0">
+							<div class="flex flex-wrap items-center gap-2 mb-2">
+								<h3 class="text-sm font-semibold text-foreground truncate">
+									{session.title || 'Untitled Session'}
+								</h3>
+								<span
+									class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {getStatusColor(
+										session.status
+									)}"
+								>
+									<StatusIcon class="h-3 w-3 mr-1" />
+									{session.status}
+								</span>
+							</div>
+							<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+								<span class="truncate max-w-[200px]">{session.user.email}</span>
+								<span>•</span>
+								<span>{formatDate(session.created_at)}</span>
+								<span>•</span>
+								<span class="capitalize">{session.context_type}</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Metrics -->
+					<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+						<div>
+							<div class="text-xs text-muted-foreground">Messages</div>
+							<div class="text-base font-semibold text-foreground">
+								{formatNumber(session.message_count)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground">Tokens</div>
+							<div class="text-base font-semibold text-foreground">
+								{formatNumber(session.total_tokens)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground">Tool Calls</div>
+							<div class="text-base font-semibold text-foreground">
+								{formatNumber(session.tool_call_count)}
+							</div>
+						</div>
+						<div>
+							<div class="text-xs text-muted-foreground">Cost</div>
+							<div class="text-base font-semibold text-foreground">
+								{formatCurrency(session.cost_estimate)}
+							</div>
+						</div>
+					</div>
+
+					<!-- Badges -->
+					<div class="flex flex-wrap items-center gap-2">
+						{#if session.has_agent_plan}
+							<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400">
+								<Bot class="h-3 w-3 mr-1" />
+								Multi-Agent
+							</span>
+						{/if}
+						{#if session.has_compression}
+							<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+								<Sparkles class="h-3 w-3 mr-1" />
+								Compressed
+							</span>
+						{/if}
+						{#if session.has_errors}
+							<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400">
+								<AlertCircle class="h-3 w-3 mr-1" />
+								Has Errors
+							</span>
+						{/if}
+					</div>
+				</button>
+			{/each}
+		</div>
+
+		<!-- Pagination -->
+		<div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+			<div class="text-sm text-muted-foreground">
+				Showing {(currentPage - 1) * pageSize + 1} to {Math.min(
+					currentPage * pageSize,
+					totalSessions
+				)} of {formatNumber(totalSessions)} sessions
+			</div>
+			<div class="flex items-center gap-2">
+				<Button
+					onclick={previousPage}
+					disabled={currentPage === 1}
+					variant="secondary"
+					size="sm"
+					class="pressable"
+				>
+					Previous
+				</Button>
+				<span class="text-sm text-muted-foreground px-2">
+					Page {currentPage} of {Math.ceil(totalSessions / pageSize)}
+				</span>
+				<Button
+					onclick={nextPage}
+					disabled={currentPage * pageSize >= totalSessions}
+					variant="secondary"
+					size="sm"
+					class="pressable"
+				>
+					Next
+				</Button>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <!-- Session Detail Modal -->

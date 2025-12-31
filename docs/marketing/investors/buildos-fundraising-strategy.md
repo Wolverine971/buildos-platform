@@ -654,7 +654,7 @@ Best,
 
 **Actions**:
 
-- Facilitate comprehensive due diligence process
+- Support comprehensive due diligence process
 - Provide detailed metrics and projections
 - Arrange customer and advisor reference calls
 

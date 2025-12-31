@@ -47,6 +47,10 @@ export interface JSONRequestOptions {
 	brainDumpId?: string;
 	taskId?: string;
 	briefId?: string;
+	chatSessionId?: string;
+	agentSessionId?: string;
+	agentPlanId?: string;
+	agentExecutionId?: string;
 }
 
 export interface TextGenerationOptions {
@@ -68,6 +72,10 @@ export interface TextGenerationOptions {
 	brainDumpId?: string;
 	taskId?: string;
 	briefId?: string;
+	chatSessionId?: string;
+	agentSessionId?: string;
+	agentPlanId?: string;
+	agentExecutionId?: string;
 }
 
 export interface TextGenerationUsage {
@@ -717,6 +725,10 @@ export class SmartLLMService {
 		brainDumpId?: string;
 		taskId?: string;
 		briefId?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 		openrouterRequestId?: string;
 		openrouterCacheStatus?: string;
 		rateLimitRemaining?: number;
@@ -743,6 +755,18 @@ export class SmartLLMService {
 			}
 
 			const projectId = this.normalizeProjectIdForLogging(params.projectId);
+			const chatSessionId = this.normalizeOptionalIdForLogging(
+				params.chatSessionId || this.getMetadataId(params.metadata, 'sessionId')
+			);
+			const agentSessionId = this.normalizeOptionalIdForLogging(
+				params.agentSessionId || this.getMetadataId(params.metadata, 'agentSessionId')
+			);
+			const agentPlanId = this.normalizeOptionalIdForLogging(
+				params.agentPlanId || this.getMetadataId(params.metadata, 'planId')
+			);
+			const agentExecutionId = this.normalizeOptionalIdForLogging(
+				params.agentExecutionId || this.getMetadataId(params.metadata, 'executionId')
+			);
 			const payload = {
 				user_id: sanitizedUserId,
 				operation_type: params.operationType,
@@ -765,6 +789,10 @@ export class SmartLLMService {
 				profile: params.profile,
 				streaming: params.streaming,
 				project_id: projectId ?? undefined,
+				chat_session_id: chatSessionId ?? undefined,
+				agent_session_id: agentSessionId ?? undefined,
+				agent_plan_id: agentPlanId ?? undefined,
+				agent_execution_id: agentExecutionId ?? undefined,
 				brain_dump_id: params.brainDumpId,
 				task_id: params.taskId,
 				brief_id: params.briefId,
@@ -825,6 +853,20 @@ export class SmartLLMService {
 		if (!projectId) return null;
 		const trimmed = projectId.trim();
 		return this.isUUID(trimmed) ? trimmed : null;
+	}
+
+	private normalizeOptionalIdForLogging(value?: string | null): string | null {
+		if (!value) return null;
+		const trimmed = value.trim();
+		return this.isUUID(trimmed) ? trimmed : null;
+	}
+
+	private getMetadataId(metadata: any, key: string): string | undefined {
+		if (!metadata || typeof metadata !== 'object') {
+			return undefined;
+		}
+		const value = metadata[key];
+		return typeof value === 'string' ? value : undefined;
 	}
 
 	private isUUID(value: string): boolean {
@@ -1045,6 +1087,10 @@ export class SmartLLMService {
 				brainDumpId: options.brainDumpId,
 				taskId: options.taskId,
 				briefId: options.briefId,
+				chatSessionId: options.chatSessionId,
+				agentSessionId: options.agentSessionId,
+				agentPlanId: options.agentPlanId,
+				agentExecutionId: options.agentExecutionId,
 				openrouterRequestId: response.id,
 				openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
 				metadata: {
@@ -1106,6 +1152,10 @@ export class SmartLLMService {
 				brainDumpId: options.brainDumpId,
 				taskId: options.taskId,
 				briefId: options.briefId,
+				chatSessionId: options.chatSessionId,
+				agentSessionId: options.agentSessionId,
+				agentPlanId: options.agentPlanId,
+				agentExecutionId: options.agentExecutionId,
 				metadata: {
 					complexity,
 					preferredModels
@@ -1216,6 +1266,10 @@ export class SmartLLMService {
 				brainDumpId: options.brainDumpId,
 				taskId: options.taskId,
 				briefId: options.briefId,
+				chatSessionId: options.chatSessionId,
+				agentSessionId: options.agentSessionId,
+				agentPlanId: options.agentPlanId,
+				agentExecutionId: options.agentExecutionId,
 				openrouterRequestId: response.id,
 				openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
 				metadata: {
@@ -1287,6 +1341,10 @@ export class SmartLLMService {
 				brainDumpId: options.brainDumpId,
 				taskId: options.taskId,
 				briefId: options.briefId,
+				chatSessionId: options.chatSessionId,
+				agentSessionId: options.agentSessionId,
+				agentPlanId: options.agentPlanId,
+				agentExecutionId: options.agentExecutionId,
 				metadata: {
 					estimatedLength,
 					preferredModels
@@ -1958,6 +2016,10 @@ You must respond with valid JSON only. Follow these rules:
 		maxTokens?: number;
 		sessionId?: string;
 		messageId?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
 		signal?: AbortSignal;
 		// Context tracking for usage logging
 		contextType?: string; // e.g., 'project', 'general', 'project_create', 'ontology'
@@ -2146,6 +2208,10 @@ You must respond with valid JSON only. Follow these rules:
 								profile,
 								streaming: true,
 								projectId: options.projectId,
+								chatSessionId: options.chatSessionId || options.sessionId,
+								agentSessionId: options.agentSessionId,
+								agentPlanId: options.agentPlanId,
+								agentExecutionId: options.agentExecutionId,
 								metadata: {
 									sessionId: options.sessionId,
 									messageId: options.messageId,
@@ -2279,6 +2345,10 @@ You must respond with valid JSON only. Follow these rules:
 				profile,
 				streaming: true,
 				projectId: options.projectId || options.entityId,
+				chatSessionId: options.chatSessionId || options.sessionId,
+				agentSessionId: options.agentSessionId,
+				agentPlanId: options.agentPlanId,
+				agentExecutionId: options.agentExecutionId,
 				metadata: {
 					sessionId: options.sessionId,
 					messageId: options.messageId,

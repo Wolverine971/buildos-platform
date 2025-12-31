@@ -46,6 +46,35 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
+		const chatUsageFilter = [
+			'chat_session_id.not.is.null',
+			'agent_session_id.not.is.null',
+			'agent_plan_id.not.is.null',
+			'agent_execution_id.not.is.null',
+			'operation_type.ilike.chat_%',
+			'operation_type.ilike.agent_%',
+			'operation_type.ilike.planner_%',
+			'operation_type.ilike.executor_%',
+			'operation_type.ilike.plan_%',
+			'operation_type.ilike.strategy_%',
+			'operation_type.ilike.response_%',
+			'operation_type.ilike.clarifying_%'
+		].join(',');
+
+		const { data: usageLogs, error: usageError } = await supabase
+			.from('llm_usage_logs')
+			.select(
+				'user_id, chat_session_id, agent_session_id, agent_plan_id, agent_execution_id, operation_type, total_tokens, total_cost_usd, response_time_ms, created_at'
+			)
+			.gte('created_at', startDate.toISOString())
+			.lte('created_at', now.toISOString())
+			.or(chatUsageFilter);
+
+		if (usageError) throw usageError;
+
+		const usageRows = usageLogs || [];
+		const hasUsage = usageRows.length > 0;
+
 		// ===================================================
 		// 1. TOTAL SESSIONS (active and completed)
 		// ===================================================
@@ -59,6 +88,19 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const totalSessions = sessionsData?.length || 0;
 		const activeSessions = sessionsData?.filter((s) => s.status === 'active').length || 0;
+		const sessionsOverTime = Object.entries(
+			(sessionsData || []).reduce(
+				(acc, session) => {
+					const date = session.created_at?.split('T')[0];
+					if (!date) return acc;
+					acc[date] = (acc[date] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			)
+		)
+			.map(([date, count]) => ({ date, count }))
+			.sort((a, b) => a.date.localeCompare(b.date));
 
 		// ===================================================
 		// 2. TOTAL MESSAGES & AVG MESSAGES PER SESSION
@@ -130,67 +172,137 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// ===================================================
 		// 6. TOKEN USAGE & COSTS
 		// ===================================================
-		// Token usage from chat_messages (uses total_tokens, not tokens_used)
-		const { data: messageTokensData, error: messageTokensError } = await supabase
-			.from('chat_messages')
-			.select('total_tokens, created_at')
-			.gte('created_at', startDate.toISOString())
-			.not('total_tokens', 'is', null);
+		let totalTokensUsed = 0;
+		let estimatedCost = 0;
+		let avgTokensPerSession = 0;
+		let avgResponseTime = 1500;
+		let tokensOverTime: Array<{ date: string; tokens: number }> = [];
 
-		if (messageTokensError) throw messageTokensError;
-
-		const messageTokens =
-			messageTokensData?.reduce((sum, msg) => sum + (msg.total_tokens || 0), 0) || 0;
-
-		// Token usage from agent_chat_messages
-		const { data: agentMessageTokensData, error: agentMessageTokensError } = await supabase
-			.from('agent_chat_messages')
-			.select('tokens_used, created_at')
-			.gte('created_at', startDate.toISOString())
-			.not('tokens_used', 'is', null);
-
-		if (agentMessageTokensError) throw agentMessageTokensError;
-
-		const agentMessageTokens =
-			agentMessageTokensData?.reduce((sum, msg) => sum + (msg.tokens_used || 0), 0) || 0;
-
-		const totalTokensUsed = messageTokens + agentMessageTokens;
-		const avgTokensPerSession = totalSessions > 0 ? totalTokensUsed / totalSessions : 0;
-
-		// Estimated cost (DeepSeek pricing: ~$0.14 per 1M input, ~$0.28 per 1M output)
-		// Simplified: average of $0.21 per 1M tokens
-		const estimatedCost = (totalTokensUsed / 1000000) * 0.21;
-
-		// Token trend (compare to previous period)
 		const previousPeriodStart = new Date(
 			startDate.getTime() - (now.getTime() - startDate.getTime())
 		);
 
-		const { data: previousMessageTokensData } = await supabase
-			.from('chat_messages')
-			.select('total_tokens')
-			.gte('created_at', previousPeriodStart.toISOString())
-			.lt('created_at', startDate.toISOString())
-			.not('total_tokens', 'is', null);
+		let tokenTrendValue = 0;
 
-		const { data: previousAgentMessageTokensData } = await supabase
-			.from('agent_chat_messages')
-			.select('tokens_used')
-			.gte('created_at', previousPeriodStart.toISOString())
-			.lt('created_at', startDate.toISOString())
-			.not('tokens_used', 'is', null);
+		if (hasUsage) {
+			totalTokensUsed = usageRows.reduce((sum, row) => sum + (row.total_tokens || 0), 0);
+			estimatedCost = usageRows.reduce(
+				(sum, row) => sum + Number(row.total_cost_usd || 0),
+				0
+			);
+			avgTokensPerSession = totalSessions > 0 ? totalTokensUsed / totalSessions : 0;
+			avgResponseTime =
+				usageRows.length > 0
+					? usageRows.reduce((sum, row) => sum + (row.response_time_ms || 0), 0) /
+						usageRows.length
+					: 0;
 
-		const previousMessageTokens =
-			previousMessageTokensData?.reduce((sum, msg) => sum + (msg.total_tokens || 0), 0) || 0;
-		const previousAgentMessageTokens =
-			previousAgentMessageTokensData?.reduce((sum, msg) => sum + (msg.tokens_used || 0), 0) ||
-			0;
-		const previousTotalTokens = previousMessageTokens + previousAgentMessageTokens;
+			const tokensByDate = usageRows.reduce(
+				(acc, row) => {
+					const date = row.created_at?.split('T')[0];
+					if (!date) return acc;
+					acc[date] = (acc[date] || 0) + (row.total_tokens || 0);
+					return acc;
+				},
+				{} as Record<string, number>
+			);
 
-		const tokenTrendValue =
-			previousTotalTokens > 0
-				? ((totalTokensUsed - previousTotalTokens) / previousTotalTokens) * 100
-				: 0;
+			tokensOverTime = Object.entries(tokensByDate)
+				.map(([date, tokens]) => ({ date, tokens }))
+				.sort((a, b) => a.date.localeCompare(b.date));
+
+			const { data: previousUsageLogs, error: previousUsageError } = await supabase
+				.from('llm_usage_logs')
+				.select('total_tokens')
+				.gte('created_at', previousPeriodStart.toISOString())
+				.lt('created_at', startDate.toISOString())
+				.or(chatUsageFilter);
+
+			if (previousUsageError) throw previousUsageError;
+
+			const previousTotalTokens =
+				previousUsageLogs?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) || 0;
+			tokenTrendValue =
+				previousTotalTokens > 0
+					? ((totalTokensUsed - previousTotalTokens) / previousTotalTokens) * 100
+					: 0;
+		} else {
+			const { data: messageTokensData, error: messageTokensError } = await supabase
+				.from('chat_messages')
+				.select('total_tokens, created_at')
+				.gte('created_at', startDate.toISOString())
+				.not('total_tokens', 'is', null);
+
+			if (messageTokensError) throw messageTokensError;
+
+			const messageTokens =
+				messageTokensData?.reduce((sum, msg) => sum + (msg.total_tokens || 0), 0) || 0;
+
+			const { data: agentMessageTokensData, error: agentMessageTokensError } = await supabase
+				.from('agent_chat_messages')
+				.select('tokens_used, created_at')
+				.gte('created_at', startDate.toISOString())
+				.not('tokens_used', 'is', null);
+
+			if (agentMessageTokensError) throw agentMessageTokensError;
+
+			const agentMessageTokens =
+				agentMessageTokensData?.reduce((sum, msg) => sum + (msg.tokens_used || 0), 0) || 0;
+
+			totalTokensUsed = messageTokens + agentMessageTokens;
+			avgTokensPerSession = totalSessions > 0 ? totalTokensUsed / totalSessions : 0;
+			estimatedCost = (totalTokensUsed / 1000000) * 0.21;
+
+			const tokensByDate = (messageTokensData || []).reduce(
+				(acc, msg) => {
+					const date = msg.created_at?.split('T')[0];
+					if (!date) return acc;
+					acc[date] = (acc[date] || 0) + (msg.total_tokens || 0);
+					return acc;
+				},
+				{} as Record<string, number>
+			);
+
+			(agentMessageTokensData || []).forEach((msg) => {
+				const date = msg.created_at?.split('T')[0];
+				if (!date) return;
+				tokensByDate[date] = (tokensByDate[date] || 0) + (msg.tokens_used || 0);
+			});
+
+			tokensOverTime = Object.entries(tokensByDate)
+				.map(([date, tokens]) => ({ date, tokens }))
+				.sort((a, b) => a.date.localeCompare(b.date));
+
+			const { data: previousMessageTokensData } = await supabase
+				.from('chat_messages')
+				.select('total_tokens')
+				.gte('created_at', previousPeriodStart.toISOString())
+				.lt('created_at', startDate.toISOString())
+				.not('total_tokens', 'is', null);
+
+			const { data: previousAgentMessageTokensData } = await supabase
+				.from('agent_chat_messages')
+				.select('tokens_used')
+				.gte('created_at', previousPeriodStart.toISOString())
+				.lt('created_at', startDate.toISOString())
+				.not('tokens_used', 'is', null);
+
+			const previousMessageTokens =
+				previousMessageTokensData?.reduce((sum, msg) => sum + (msg.total_tokens || 0), 0) ||
+				0;
+			const previousAgentMessageTokens =
+				previousAgentMessageTokensData?.reduce(
+					(sum, msg) => sum + (msg.tokens_used || 0),
+					0
+				) || 0;
+			const previousTotalTokens = previousMessageTokens + previousAgentMessageTokens;
+
+			tokenTrendValue =
+				previousTotalTokens > 0
+					? ((totalTokensUsed - previousTotalTokens) / previousTotalTokens) * 100
+					: 0;
+		}
+
 		const tokenTrend = {
 			direction: tokenTrendValue >= 0 ? 'up' : 'down',
 			value: Math.abs(tokenTrendValue)
@@ -234,12 +346,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			totalToolExecutions > 0 ? (successfulToolExecutions / totalToolExecutions) * 100 : 0;
 
 		// ===================================================
-		// 9. AVG RESPONSE TIME (placeholder - would need actual timing data)
-		// ===================================================
-		// For now, using a placeholder. In production, you'd track actual response times
-		const avgResponseTime = 1500; // milliseconds
-
-		// ===================================================
 		// 10. ERROR RATE
 		// ===================================================
 		// Calculate error rate from messages with errors and failed tool executions
@@ -258,34 +364,133 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// ===================================================
 		// 11. ACTIVITY FEED (last 50 events)
 		// ===================================================
-		const { data: recentMessagesData, error: recentMessagesError } = await supabase
-			.from('chat_messages')
-			.select(
-				`
-        created_at,
-        role,
-        session_id,
-        total_tokens,
-        chat_sessions!inner(
-          user_id,
-          users!inner(email)
-        )
-      `
-			)
-			.gte('created_at', startDate.toISOString())
-			.order('created_at', { ascending: false })
-			.limit(50);
+		const [
+			{ data: recentMessagesData, error: recentMessagesError },
+			{ data: recentPlansData, error: recentPlansError },
+			{ data: recentToolExecutionsData, error: recentToolExecutionsError },
+			{ data: recentCompressionsData, error: recentCompressionsError }
+		] = await Promise.all([
+			supabase
+				.from('chat_messages')
+				.select(
+					`
+				created_at,
+				role,
+				session_id,
+				total_tokens,
+				chat_sessions!inner(
+					user_id,
+					users!inner(email)
+				)
+			`
+				)
+				.gte('created_at', startDate.toISOString())
+				.order('created_at', { ascending: false })
+				.limit(20),
+			supabase
+				.from('agent_plans')
+				.select(
+					'id, created_at, strategy, session_id, user_id, users!agent_plans_user_id_fkey(email)'
+				)
+				.gte('created_at', startDate.toISOString())
+				.order('created_at', { ascending: false })
+				.limit(20),
+			supabase
+				.from('chat_tool_executions')
+				.select(
+					`
+				created_at,
+				success,
+				tool_name,
+				tokens_consumed,
+				session_id,
+				chat_sessions!inner(users!inner(email))
+			`
+				)
+				.gte('created_at', startDate.toISOString())
+				.order('created_at', { ascending: false })
+				.limit(20),
+			supabase
+				.from('chat_compressions')
+				.select(
+					`
+				created_at,
+				original_tokens,
+				compressed_tokens,
+				session_id,
+				chat_sessions!inner(users!inner(email))
+			`
+				)
+				.gte('created_at', startDate.toISOString())
+				.order('created_at', { ascending: false })
+				.limit(20)
+		]);
 
 		if (recentMessagesError) throw recentMessagesError;
+		if (recentPlansError) throw recentPlansError;
+		if (recentToolExecutionsError) throw recentToolExecutionsError;
+		if (recentCompressionsError) throw recentCompressionsError;
 
-		const activityFeed = (recentMessagesData || []).map((msg: any) => ({
-			timestamp: msg.created_at,
-			type: msg.role,
-			user_email: msg.chat_sessions.users.email,
-			session_id: msg.session_id,
-			details: msg.role === 'user' ? 'sent a message' : 'received assistant response',
-			tokens_used: msg.total_tokens
-		}));
+		const activityEvents: Array<{
+			timestamp: string;
+			type: string;
+			user_email: string;
+			session_id: string;
+			details: string;
+			tokens_used?: number;
+		}> = [];
+
+		(recentMessagesData || []).forEach((msg: any) => {
+			activityEvents.push({
+				timestamp: msg.created_at,
+				type: 'message',
+				user_email: msg.chat_sessions.users.email,
+				session_id: msg.session_id,
+				details: msg.role === 'user' ? 'sent a message' : 'received assistant response',
+				tokens_used: msg.total_tokens || undefined
+			});
+		});
+
+		(recentPlansData || []).forEach((plan: any) => {
+			activityEvents.push({
+				timestamp: plan.created_at,
+				type: 'plan_created',
+				user_email: plan.users?.email || 'Unknown',
+				session_id: plan.session_id,
+				details: `created a ${plan.strategy || 'multi-step'} plan`
+			});
+		});
+
+		(recentToolExecutionsData || []).forEach((tool: any) => {
+			const success = tool.success === true;
+			activityEvents.push({
+				timestamp: tool.created_at,
+				type: success ? 'tool_execution' : 'error',
+				user_email: tool.chat_sessions?.users?.email || 'Unknown',
+				session_id: tool.session_id,
+				details: success
+					? `ran tool ${tool.tool_name || 'unknown_tool'}`
+					: `tool ${tool.tool_name || 'unknown_tool'} failed`,
+				tokens_used: tool.tokens_consumed || undefined
+			});
+		});
+
+		(recentCompressionsData || []).forEach((compression: any) => {
+			const tokensSaved =
+				(compression.original_tokens || 0) - (compression.compressed_tokens || 0);
+			activityEvents.push({
+				timestamp: compression.created_at,
+				type: 'compression',
+				user_email: compression.chat_sessions?.users?.email || 'Unknown',
+				session_id: compression.session_id,
+				details: 'compressed conversation',
+				tokens_used: tokensSaved > 0 ? tokensSaved : undefined
+			});
+		});
+
+		const activityFeed = activityEvents
+			.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+			.slice(0, 50);
 
 		// ===================================================
 		// 12. TOP USERS BY ACTIVITY
@@ -304,6 +509,15 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.gte('created_at', startDate.toISOString());
 
 		if (topUsersError) throw topUsersError;
+
+		const usageTokensByUser = new Map<string, number>();
+		if (hasUsage) {
+			usageRows.forEach((row) => {
+				if (!row.user_id) return;
+				const current = usageTokensByUser.get(row.user_id) || 0;
+				usageTokensByUser.set(row.user_id, current + (row.total_tokens || 0));
+			});
+		}
 
 		// Aggregate by user
 		const userStats = new Map<
@@ -335,6 +549,15 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				});
 			}
 		});
+
+		if (hasUsage && usageTokensByUser.size > 0) {
+			userStats.forEach((stats, userId) => {
+				const usageTokens = usageTokensByUser.get(userId);
+				if (typeof usageTokens === 'number') {
+					stats.tokens_used = usageTokens;
+				}
+			});
+		}
 
 		const topUsers = Array.from(userStats.values())
 			.sort((a, b) => b.session_count - a.session_count)
@@ -370,9 +593,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				avgResponseTime,
 				errorRate,
 
-				// Time series data (placeholder - would build from actual data)
-				sessionsOverTime: [],
-				tokensOverTime: []
+				// Time series data
+				sessionsOverTime,
+				tokensOverTime
 			},
 			activity_feed: activityFeed,
 			strategy_distribution: {

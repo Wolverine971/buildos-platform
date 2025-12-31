@@ -612,11 +612,20 @@ export class StreamHandler {
 	): Promise<void> {
 		const result = event.result;
 
-		// Build tool result data
+		// Extract success/error info from result
+		const success =
+			result.success ?? (result.error === undefined && result.error_message === undefined);
+		const errorMessage = result.error ?? result.error_message ?? null;
+		const errorCode = result.error_code ?? (success === false ? 'TOOL_EXECUTION_ERROR' : null);
+
+		// Build tool result data with error tracking
 		const toolResultData: ToolResultData = {
 			tool_call_id: result.tool_call_id ?? result.toolCallId ?? '',
 			tool_name: result.tool_name ?? result.toolName,
 			result: result.tool_result ?? result.result ?? result.data ?? result,
+			success,
+			error: errorMessage,
+			error_code: errorCode,
 			entities_accessed: result.entities_accessed ?? result.entitiesAccessed
 		};
 
@@ -779,10 +788,15 @@ export class StreamHandler {
 			const rawResults = await this.sessionManager.loadRecentToolResults(sessionId, 20);
 			return rawResults.map((result) => {
 				const entities = this.extractEntitiesFromResult(result.result);
+				// Include error info from persisted message if available
+				const msg = result as any;
 				return {
 					tool_call_id: result.tool_call_id ?? '',
 					tool_name: result.tool_name ?? undefined,
 					result: result.result,
+					success: msg.error_message ? false : true,
+					error: msg.error_message ?? undefined,
+					error_code: msg.error_code ?? undefined,
 					entities_accessed: entities.length > 0 ? entities : undefined
 				};
 			});
@@ -859,10 +873,15 @@ export class StreamHandler {
 			}
 
 			const entities = this.extractEntitiesFromResult(parsedResult);
+			// Include error info from persisted message
+			const msg = message as any;
 			results.push({
-				tool_call_id: (message as any).tool_call_id ?? '',
-				tool_name: (message as any).tool_name ?? undefined,
+				tool_call_id: msg.tool_call_id ?? '',
+				tool_name: msg.tool_name ?? undefined,
 				result: parsedResult,
+				success: msg.error_message ? false : true,
+				error: msg.error_message ?? undefined,
+				error_code: msg.error_code ?? undefined,
 				entities_accessed: entities.length > 0 ? entities : undefined
 			});
 		}

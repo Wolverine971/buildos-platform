@@ -16,7 +16,7 @@ path: apps/web/src/content/blogs/getting-started/understanding-life-goals.md
 
 One of the most powerful aspects of Build OS is how it helps you maintain clear alignment between your daily actions and long-term vision. This alignment comes from understanding the crucial distinction between life goals (strategic) and projects (tactical).
 
-Getting this relationship right transforms how you approach productivity—instead of just being busy, you become purposefully productive.
+Getting this relationship right transforms how you approach productivity-instead of just being busy, you become purposefully productive.
 
 ## The Fundamental Distinction
 
@@ -29,7 +29,7 @@ Life goals are **enduring directions** that guide your life over years or decade
 - **Timeless**: Don't have strict deadlines
 - **Directional**: Point toward desired futures
 - **Values-based**: Reflect what matters most to you
-- **Broad**: Encompass multiple areas of development
+- **Broad**: Cover multiple areas of development
 - **Aspirational**: Stretch your vision of what's possible
 
 ### Projects: Your Stepping Stones

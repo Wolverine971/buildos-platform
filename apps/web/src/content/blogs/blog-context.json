@@ -542,7 +542,7 @@
 			"posts": {
 				"agentic-vrs-context-engineering": {
 					"title": "Why Context Engineering Will Matter More Than Agentic Engineering",
-					"description": "As AI agents gain more capabilities, the real differentiator becomes context engineering—the art of providing the right knowledge at the right time. Learn why judgment beats raw capability.",
+					"description": "As AI agents gain more capabilities, the real differentiator becomes context engineering: the art of providing the right knowledge at the right time. Learn why judgment beats raw capability.",
 					"author": "DJ Wayne",
 					"date": "2025-08-12",
 					"lastmod": "2025-08-12",
@@ -562,7 +562,7 @@
 						"future-of-ai"
 					],
 					"readingTime": 6,
-					"excerpt": "While everyone focuses on giving AI agents more capabilities, the real edge comes from context engineering—teaching them judgment through curated, relevant, evolving information. Discover why contextual precision beats raw capability.",
+					"excerpt": "While everyone focuses on giving AI agents more capabilities, the real edge comes from context engineering: teaching AI judgment through curated, relevant, evolving information. Discover why contextual precision beats raw capability.",
 					"pic": "context-vs-agentic",
 					"path": "apps/web/src/content/blogs/philosophy/agentic-vrs-context-engineering.md",
 					"slug": "agentic-vrs-context-engineering",
@@ -642,7 +642,7 @@
 						"AI-organization"
 					],
 					"readingTime": 12,
-					"excerpt": "Most knowledge management is productivity theater—80% of notes are never revisited. The future isn't better filing cabinets, it's AI systems that turn chaos into clarity and knowledge into action. Learn why strategic forgetting beats total recall, and how to prepare for the shift from passive archives to active intelligence.",
+					"excerpt": "Most knowledge management is productivity theater-80% of notes are never revisited. The future isn't better filing cabinets, it's AI systems that turn chaos into clarity and knowledge into action. Learn why strategic forgetting beats total recall, and how to prepare for the shift from passive archives to active intelligence.",
 					"pic": "knowledge-management-future",
 					"path": "apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management.md",
 					"slug": "future-of-personal-knowledge-management",
@@ -1169,7 +1169,7 @@
 			}
 		}
 	},
-	"generatedAt": "2025-12-27T04:35:15.485Z",
+	"generatedAt": "2025-12-31T05:48:21.563Z",
 	"totalPosts": 51,
 	"totalCategories": 6
 }

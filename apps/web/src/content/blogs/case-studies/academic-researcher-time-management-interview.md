@@ -26,7 +26,7 @@ path: apps/web/src/content/blogs/case-studies/academic-researcher-time-managemen
 
 **Word Count**: 1500-2000 words (case studies should be digestible)
 
-**Key Message**: Academic life is overwhelming by design—multiple projects, teaching, admin, grants, publications. BuildOS helps researchers regain control without sacrificing intellectual depth.
+**Key Message**: Academic life is overwhelming by design-multiple projects, teaching, admin, grants, publications. BuildOS helps researchers regain control without sacrificing intellectual depth.
 
 ---
 

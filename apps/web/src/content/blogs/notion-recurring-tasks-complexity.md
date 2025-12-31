@@ -1,6 +1,6 @@
 ---
 title: 'Thomas Frank Needs 5 Database Properties to Create a Recurring Task in Notion. You Need One Sentence in BuildOS.'
-description: 'Watching Thomas Frank explain how to create recurring tasks in Notion is painful. Complex formulas, manual updates, database properties—all to do what should take 5 seconds.'
+description: 'Watching Thomas Frank explain how to create recurring tasks in Notion is painful. Complex formulas, manual updates, and database properties, all to do what should take 5 seconds.'
 slug: 'notion-recurring-tasks-complexity'
 publishDate: '2025-10-29'
 author: 'DJ Wayne'
@@ -28,7 +28,7 @@ I watched [Thomas Frank's YouTube short](https://youtube.com/shorts/yYNbf__-gx4)
 
 And I felt **physical pain**.
 
-Not because Thomas did anything wrong. He's brilliant. But because what he's explaining—the _minimum viable setup_ for recurring tasks in Notion—is **absurdly, unnecessarily complex**.
+Not because Thomas did anything wrong. He's brilliant. But because what he's explaining (the _minimum viable setup_ for recurring tasks in Notion) is **absurdly, unnecessarily complex**.
 
 Let me show you what I mean.
 
@@ -136,7 +136,7 @@ Every property you configure is cognitive load you're carrying.
 
 Every manual update is a chance to forget, to fall behind, to feel like you're failing at a "productivity" tool.
 
-**For anyone struggling with organization, this complexity isn't just annoying—it's a barrier to getting things done.**
+**For anyone struggling with organization, this complexity isn't just annoying. It's a barrier to getting things done.**
 
 ### The Expertise Barrier
 
@@ -259,7 +259,7 @@ You don't have to abandon Notion entirely. Use it for what it's good at:
 - Team collaboration
 - Rich content
 
-But for task management—especially recurring tasks—consider tools built specifically for that purpose.
+But for task management, especially recurring tasks, consider tools built specifically for that purpose.
 
 ### If You're Looking for Simple
 

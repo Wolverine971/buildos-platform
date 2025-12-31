@@ -1,6 +1,6 @@
 ---
 title: 'Why Context Engineering Will Matter More Than Agentic Engineering'
-description: 'As AI agents gain more capabilities, the real differentiator becomes context engineering—the art of providing the right knowledge at the right time. Learn why judgment beats raw capability.'
+description: 'As AI agents gain more capabilities, the real differentiator becomes context engineering: the art of providing the right knowledge at the right time. Learn why judgment beats raw capability.'
 author: 'DJ Wayne'
 date: '2025-08-12'
 lastmod: '2025-08-12'
@@ -21,20 +21,20 @@ tags:
         'future-of-ai'
     ]
 readingTime: 6
-excerpt: 'While everyone focuses on giving AI agents more capabilities, the real edge comes from context engineering—teaching them judgment through curated, relevant, evolving information. Discover why contextual precision beats raw capability.'
+excerpt: 'While everyone focuses on giving AI agents more capabilities, the real edge comes from context engineering: teaching AI judgment through curated, relevant, evolving information. Discover why contextual precision beats raw capability.'
 pic: 'context-vs-agentic'
 path: apps/web/src/content/blogs/philosophy/agentic-vrs-context-engineering.md
 ---
 
-Right now, everyone’s talking about **AI agents** — autonomous programs that can chain together reasoning steps, call APIs, operate tools, and act on your behalf. The hype is about _capability_:
+Right now, everyone’s talking about **AI agents** - autonomous programs that can chain together reasoning steps, call APIs, operate tools, and act on your behalf. The hype is about _capability_:
 
 - “Look, it can browse the web!”
 - “It can schedule meetings!”
 - “It can write code and deploy apps!”
 
-This is **agentic engineering** — the art of giving an AI the ability to do things.
+This is **agentic engineering**: the art of giving an AI the ability to do things.
 
-And don’t get me wrong — it’s exciting. But it’s missing something.
+And don't get me wrong, it's exciting. But it's missing something.
 
 Because an agent with _every_ tool in the toolbox but _the wrong context_ is a liability, not an asset.
 
@@ -49,21 +49,21 @@ Think of it this way:
 - **Agentic engineering** = capability.
 - **Context engineering** = judgment.
 
-You wouldn’t hire a human just because they know how to use every tool in the workshop — you’d hire them because they know _which tool to pick up, when, and why_.
+You wouldn't hire a human just because they know how to use every tool in the workshop. You'd hire them because they know _which tool to pick up, when, and why_.
 
 ---
 
 ### **What Counts as “Context”?**
 
-In this sense, context is not the agent’s entire environment — it’s the **curated, relevant, evolving subset of information** it draws on when reasoning about a task.
+In this sense, context is not the agent's entire environment. It's the **curated, relevant, evolving subset of information** it draws on when reasoning about a task.
 
 It includes:
 
-- **State** — what’s currently true (project status, live data, constraints).
-- **History** — what’s already happened (past actions, decisions, failures).
-- **Knowledge** — relevant facts, instructions, or references tied to the task at hand.
+- **State** - what’s currently true (project status, live data, constraints).
+- **History** - what’s already happened (past actions, decisions, failures).
+- **Knowledge** - relevant facts, instructions, or references tied to the task at hand.
 
-The key is _selectivity_. More information isn’t better — better information is better.
+The key is _selectivity_. More information isn't better. Better information is better.
 
 ---
 
@@ -71,14 +71,14 @@ The key is _selectivity_. More information isn’t better — better information
 
 When agents have high capacity but poor context, bad things happen:
 
-1. **Overreach** — Using powerful tools when a lighter touch is needed.
-2. **Misalignment** — Applying the wrong method because of outdated or missing facts.
-3. **Wasted Effort** — Repeating work that’s already been done.
-4. **Hallucinated Precision** — Being confidently wrong because key details were missing.
-5. **Overgeneralization** — Copying solutions from unrelated situations.
-6. **Premature Action** — Acting before gathering enough relevant information.
+1. **Overreach** - Using powerful tools when a lighter touch is needed.
+2. **Misalignment** - Applying the wrong method because of outdated or missing facts.
+3. **Wasted Effort** - Repeating work that’s already been done.
+4. **Hallucinated Precision** - Being confidently wrong because key details were missing.
+5. **Overgeneralization** - Copying solutions from unrelated situations.
+6. **Premature Action** - Acting before gathering enough relevant information.
 
-We’ve seen this in humans too — the most capable person in the room can still make a terrible decision if they don’t have the right facts.
+We've seen this in humans too. The most capable person in the room can still make a terrible decision if they don't have the right facts.
 
 ---
 
@@ -86,10 +86,10 @@ We’ve seen this in humans too — the most capable person in the room can stil
 
 Good context engineering blends two modes:
 
-- **Predefined context** — Hardcoded facts, rules, constraints, and knowledge bases.
-- **Dynamic context** — Live updates based on recent actions, new data, and environmental shifts.
+- **Predefined context** - Hardcoded facts, rules, constraints, and knowledge bases.
+- **Dynamic context** - Live updates based on recent actions, new data, and environmental shifts.
 
-The power lies in _iteration_. Context is never “done” — it’s a living thing, continuously updated to keep the agent’s reasoning relevant.
+The power lies in _iteration_. Context is never "done." It's a living thing, continuously updated to keep the agent's reasoning relevant.
 
 ---
 
@@ -149,7 +149,7 @@ Every interaction adds to your contextual foundation, making the system smarter 
 
 ### **Why This Will Be the Differentiator**
 
-Capabilities are rapidly commoditizing — everyone will soon have access to agents that can browse, code, schedule, analyze, and more.
+Capabilities are rapidly commoditizing. Everyone will soon have access to agents that can browse, code, schedule, analyze, and more.
 
 The edge will come from _how well you engineer their context_.
 

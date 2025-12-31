@@ -81,7 +81,7 @@ Khosla Ventures focuses on bold, early, and impactful investments in companies b
 
 ### Investment Implications:
 
-- Focus on AI companies that replace rather than augment human work
+- Focus on AI companies that replace rather than add to human work
 - Interest in platforms that enable new ways of working and productivity (both consumer and enterprise)
 - Preference for technically sophisticated AI implementations over surface-level integrations
 - Stage-agnostic approach allows for both consumer and B2B investments

@@ -98,6 +98,40 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		if (compressionsError) throw compressionsError;
 
+		// Get agent chat sessions
+		const { data: agentSessionsData, error: agentSessionsError } = await supabase
+			.from('agent_chat_sessions')
+			.select('*')
+			.gte('created_at', startDate.toISOString())
+			.order('created_at', { ascending: false });
+
+		if (agentSessionsError) throw agentSessionsError;
+
+		const agentSessionIds = agentSessionsData?.map((s) => s.id) || [];
+
+		let agentChatMessagesData: any[] = [];
+		let agentExecutionsData: any[] = [];
+
+		if (agentSessionIds.length > 0) {
+			const { data: agentChatMessages, error: agentChatMessagesError } = await supabase
+				.from('agent_chat_messages')
+				.select('*')
+				.in('agent_session_id', agentSessionIds)
+				.order('created_at', { ascending: true });
+
+			if (agentChatMessagesError) throw agentChatMessagesError;
+			agentChatMessagesData = agentChatMessages || [];
+
+			const { data: agentExecutions, error: agentExecutionsError } = await supabase
+				.from('agent_executions')
+				.select('*')
+				.in('agent_session_id', agentSessionIds)
+				.order('created_at', { ascending: true });
+
+			if (agentExecutionsError) throw agentExecutionsError;
+			agentExecutionsData = agentExecutions || [];
+		}
+
 		const exportData = {
 			export_date: now.toISOString(),
 			timeframe,
@@ -106,12 +140,18 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			tool_executions: toolExecutionsData,
 			agent_plans: plansData,
 			compressions: compressionsData,
+			agent_chat_sessions: agentSessionsData,
+			agent_chat_messages: agentChatMessagesData,
+			agent_executions: agentExecutionsData,
 			summary: {
 				total_sessions: sessionsData?.length || 0,
 				total_messages: messagesData?.length || 0,
 				total_tool_executions: toolExecutionsData?.length || 0,
 				total_plans: plansData?.length || 0,
-				total_compressions: compressionsData?.length || 0
+				total_compressions: compressionsData?.length || 0,
+				total_agent_sessions: agentSessionsData?.length || 0,
+				total_agent_messages: agentChatMessagesData?.length || 0,
+				total_agent_executions: agentExecutionsData?.length || 0
 			}
 		};
 
