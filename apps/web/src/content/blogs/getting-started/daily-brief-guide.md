@@ -1,20 +1,32 @@
 ---
 title: 'Using Daily Briefs Effectively: Your Personal Intelligence System'
-description: 'Make the most of your daily AI-generated briefs and insights. Learn how to leverage Build OS intelligence for better decision-making and focused productivity.'
+description: 'Make the most of your daily AI-generated briefs—contextual intelligence that draws from your goals, plans, tasks, and documents to provide personalized strategic guidance.'
 author: 'DJ Wayne'
 date: '2025-6-26'
-lastmod: '2025-6-26'
+lastmod: '2026-01-01'
 changefreq: 'monthly'
 priority: '0.8'
 published: true
-tags: ['daily-briefs', 'ai-intelligence', 'productivity', 'getting-started', 'decision-making']
-readingTime: 10
-excerpt: 'Transform your daily productivity with AI-powered briefs that provide personalized insights, priority guidance, and strategic recommendations based on your unique context.'
+tags:
+    [
+        'daily-briefs',
+        'ai-intelligence',
+        'productivity',
+        'getting-started',
+        'decision-making',
+        'contextual-intelligence',
+        'project-lens',
+        'context-compounding'
+    ]
+readingTime: 12
+excerpt: 'Transform your daily productivity with AI-powered briefs that draw from your full context—goals, plans, tasks, and documents—to provide personalized strategic intelligence.'
 pic: 'daily-briefs-guide'
 path: apps/web/src/content/blogs/getting-started/daily-brief-guide.md
 ---
 
-Your daily brief is Build OS's most powerful feature—a personalized intelligence report that understands your projects, goals, and working style to provide targeted guidance for each day. Unlike generic productivity advice, your daily brief is tailored specifically to your current context and priorities.
+Your daily brief is **contextual intelligence**—a personalized report that draws from your entire Build OS context: goals, plans, tasks, and documents. Unlike generic productivity advice, your brief understands the relationships between your work, your strategic objectives, and your patterns.
+
+The key insight: **the richer your context, the smarter your briefs become**. Day 1 briefs are helpful. Day 100 briefs—after you've built real context—feel like having an executive assistant who actually knows your work.
 
 Learning to effectively use and customize your daily briefs transforms them from simple summaries into strategic intelligence that drives better decisions and focused action.
 
@@ -22,15 +34,17 @@ Learning to effectively use and customize your daily briefs transforms them from
 
 ## What Makes Build OS Daily Briefs Different
 
-### Beyond Task Lists
+### Intelligence From Your Full Context
 
-Traditional productivity tools give you task lists. Build OS gives you intelligence:
+Traditional productivity tools give you task lists. Build OS gives you intelligence drawn from your **complete context architecture**—goals, plans, tasks, and documents all connected. (See [Under the Hood](/blog/under-the-hood) for how this works technically.)
 
-- **Context-Aware Insights**: Recommendations based on your project dynamics
-- **Strategic Alignment**: How today's work connects to larger goals
-- **Intelligent Prioritization**: AI-suggested focus areas based on your patterns
-- **Proactive Guidance**: Anticipation of needs before they become urgent
-- **Learning Integration**: Insights that improve as the system learns your preferences
+This connected context enables:
+
+- **Goal-Aware Insights**: Not just "what's due" but "what advances your strategic objectives"
+- **Relationship-Based Prioritization**: Tasks prioritized by which goals they serve
+- **Cross-Project Intelligence**: Patterns and connections across all your work
+- **Proactive Guidance**: Anticipation of needs based on your full context
+- **Compounding Intelligence**: Briefs get smarter as your context grows
 
 ### Your Personal Chief of Staff
 
@@ -202,6 +216,62 @@ The system learns from your responses:
 - Which project types generate most valuable insights?
 - How does brief utilization correlate with goal progress?
 
+## Zoom Into Your Brief with Project Lens
+
+Here's where daily briefs get interactive: **Project Lens lets you chat about your brief**.
+
+### Ask Questions About Your Brief
+
+After reading your brief, zoom in to explore:
+
+```
+"Why is the marketing task marked urgent?"
+```
+
+The AI explains based on your context—maybe it's blocking a goal, maybe it's been overdue, maybe there's a dependency chain.
+
+```
+"What should I tackle first given my energy levels today?"
+```
+
+The AI considers your patterns, your calendar, and your priorities.
+
+### Drill Into Specific Recommendations
+
+Brief mentioned a blocked project? Zoom in:
+
+```
+"Zoom into the website launch project—what's really blocking it?"
+```
+
+Now you're in a focused conversation about that specific project, with full context loaded.
+
+### Customize Future Briefs Through Conversation
+
+```
+"I want my briefs to focus more on my revenue goal"
+"De-emphasize the side projects for now"
+"Add more strategic insights, less task-level detail"
+```
+
+Project Lens can help you tune your brief preferences through natural conversation.
+
+### The Brief → Lens → Action Flow
+
+```
+Read Brief (2 min)
+    ↓
+Something unclear? Zoom in with Project Lens
+    ↓
+Ask: "Why this priority?" or "What's blocking X?"
+    ↓
+Get context-aware answers
+    ↓
+Take action with full understanding
+```
+
+**Your brief is the starting point. Project Lens is where you go deeper.**
+
 ## Common Brief Utilization Mistakes
 
 ### Mistake 1: Passive Reading Only
@@ -357,6 +427,14 @@ Adjust brief preferences for different life seasons:
 - **Maintenance Periods**: Focus on consistency and system improvements
 - **Transition Periods**: Attention to change management and adaptation
 
+## Briefs That Get Smarter Over Time
+
+Here's what most people miss: **your briefs compound in value**. Day 1 briefs give you helpful task reminders. Day 100 briefs—after you've built real context—feel like having a chief of staff who's been with you for years.
+
+Why? Because briefs draw from your full context. More goals, more completed tasks, more documents, more history—it all feeds into smarter briefs tomorrow. (For more on how context compounding works, see [Context Engineering 101](/blog/context-engineering-101).)
+
+---
+
 Your daily brief is your most direct connection to Build OS intelligence. The more effectively you use it—reading actively, responding to insights, providing feedback, and integrating recommendations—the more valuable it becomes as your personal strategic advisor.
 
 Start by committing to a 5-minute morning brief review for one week. Pay attention to which insights prove most valuable, and gradually customize the brief to better serve your unique working style and current priorities.
@@ -365,7 +443,11 @@ Over time, your daily brief will become an indispensable strategic intelligence 
 
 ---
 
-_Ready to optimize your daily intelligence system? [Open Build OS](/) and customize your brief preferences for maximum strategic value._
+**Ready to wake up to intelligence?**
+
+Your daily brief is only as smart as your context. Start building today—every brain dump, every task, every document makes tomorrow's brief sharper.
+
+[Get your first daily brief →](/)
 
 ---
 

@@ -394,13 +394,13 @@
 		<form onsubmit={handleSubmit} class="flex flex-col flex-1 min-h-0">
 			{#if errors.length > 0}
 				<div
-					class="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded p-4 mx-4 sm:mx-6 lg:mx-8 mb-4"
+					class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mx-3 sm:mx-4 mb-3 tx tx-static tx-weak"
 				>
-					<div class="flex items-start space-x-2">
+					<div class="flex items-start gap-2">
 						<AlertCircle
-							class="w-5 h-5 text-rose-600 dark:text-rose-400 mt-0.5 flex-shrink-0"
+							class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0"
 						/>
-						<div class="text-sm text-rose-700 dark:text-rose-300">
+						<div class="text-xs sm:text-sm text-destructive">
 							{#each errors as error}
 								<p>{error}</p>
 							{/each}
@@ -410,36 +410,26 @@
 			{/if}
 
 			<div
-				class="space-y-4 sm:space-y-5 lg:space-y-6 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 flex-1 min-h-0 bg-gray-50/50 dark:bg-gray-900/30"
+				class="space-y-2 sm:space-y-3 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 flex-1 min-h-0 bg-muted/30"
 			>
 				{#each Object.entries(formConfig) as [field, config] (field)}
-					{@const isContext = field === 'context'}
-					{@const isExecutiveSummary = field === 'executive_summary'}
-					{@const isDateField = config.type === 'date'}
 					{@const FieldIcon = getFieldIcon(field, config)}
-					{@const bgGradient = isContext
-						? 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-800 dark:to-gray-800 border-green-200 dark:border-gray-700'
-						: isExecutiveSummary
-							? 'bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-800 border-purple-200 dark:border-gray-700'
-							: isDateField
-								? 'bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-800 border-indigo-200 dark:border-gray-700'
-								: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
 
-					<!-- Card-style container for each field with contextual gradients -->
+					<!-- Inkprint field card - flat design with semantic texture -->
 					<div
-						class="{bgGradient} rounded border p-5 shadow-sm hover:shadow-md transition-shadow-gpu"
+						class="bg-card border border-border rounded-lg p-3 sm:p-4 shadow-ink tx tx-frame tx-weak"
 					>
-						<!-- Custom label with icon -->
-						<div class="flex items-center justify-between mb-3">
-							<div class="flex items-center gap-2">
-								<FieldIcon class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+						<!-- Compact label with icon -->
+						<div class="flex items-center justify-between mb-2">
+							<div class="flex items-center gap-1.5">
+								<FieldIcon class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground hidden sm:block" />
 								<label
 									for={`field-${field}`}
-									class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider"
+									class="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider"
 								>
 									{config.label}
 									{#if config.required}
-										<span class="text-red-500 ml-0.5">*</span>
+										<span class="text-destructive ml-0.5">*</span>
 									{/if}
 								</label>
 							</div>
@@ -449,15 +439,15 @@
 									onclick={() => copyFieldValue(field)}
 									variant="outline"
 									size="sm"
-									class="flex items-center gap-1.5"
+									class="flex items-center gap-1 text-xs"
 								>
-									<Copy class="w-4 h-4" />
-									Copy
+									<Copy class="w-3 h-3" />
+									<span class="hidden sm:inline">Copy</span>
 								</Button>
 							{/if}
 						</div>
 						{#if config.description}
-							<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+							<p class="text-xs text-muted-foreground mb-2">
 								{config.description}
 							</p>
 						{/if}
@@ -568,13 +558,13 @@
 											);
 										}}
 										disabled={loading}
-										class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50"
+										class="h-4 w-4 text-accent focus:ring-ring border-border rounded bg-card disabled:opacity-50"
 									/>
 									{#if config.description}
 										<label
 											id={`field-${field}-description`}
 											for={`field-${field}`}
-											class="ml-2 text-sm text-gray-600 dark:text-gray-400"
+											class="ml-2 text-xs sm:text-sm text-muted-foreground"
 										>
 											{config.description}
 										</label>
@@ -613,10 +603,10 @@
 			{/if}
 
 			<div
-				class="flex flex-col gap-3 pt-5 pb-6 sm:pb-5 mt-2 px-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 safe-area-bottom flex-shrink-0"
+				class="flex flex-col gap-2 sm:gap-3 pt-3 pb-4 sm:pb-3 px-3 sm:px-4 border-t border-border bg-muted/30 safe-area-bottom flex-shrink-0"
 			>
 				<!-- Mobile Layout: Stack buttons with proper hierarchy -->
-				<div class="sm:hidden space-y-3">
+				<div class="sm:hidden space-y-2">
 					<!-- Primary action at top for mobile -->
 					<Button
 						type="submit"

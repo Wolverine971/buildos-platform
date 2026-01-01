@@ -186,9 +186,11 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 	// Decisions - only show if there are decisions
 	if (project.decisions.length > 0) {
 		brief += `### Recent Decisions\n`;
-		const recentDecisions = [...project.decisions].sort(
-			(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
-		);
+		const recentDecisions = [...project.decisions]
+			.filter((d) => d.decision_at !== null)
+			.sort(
+				(a, b) => parseISO(b.decision_at!).getTime() - parseISO(a.decision_at!).getTime()
+			);
 		for (const decision of recentDecisions.slice(0, 3)) {
 			brief += `- **${decision.title}**\n`;
 		}
@@ -405,9 +407,12 @@ function generateMainBriefMarkdown(
 
 		if (briefData.decisions.length > 0) {
 			mainBrief += `### Recent Decisions (${briefData.decisions.length})\n`;
-			const sortedDecisions = [...briefData.decisions].sort(
-				(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
-			);
+			const sortedDecisions = [...briefData.decisions]
+				.filter((d) => d.decision_at !== null)
+				.sort(
+					(a, b) =>
+						parseISO(b.decision_at!).getTime() - parseISO(a.decision_at!).getTime()
+				);
 			for (const decision of sortedDecisions.slice(0, 5)) {
 				const projectName = projectNameMap.get(decision.project_id) || '';
 				const projectSuffix = projectName
@@ -659,13 +664,48 @@ export async function generateOntologyDailyBrief(
 			)
 			.map((r) => r.value);
 
-		const projectBriefContents = projectBriefs.map((b) => b.brief_content);
+		const allProjectBriefContents = projectBriefs.map((b) => b.brief_content);
+		const projectBriefContentById = new Map(
+			projectBriefs.map((brief) => [brief.project_id, brief.brief_content])
+		);
+		const maxPromptProjectBriefs = 5;
+		const sortedProjects = [...briefData.projects].sort((a, b) => {
+			const scoreA =
+				a.todaysTasks.length * 3 +
+				a.blockedTasks.length * 2 +
+				a.upcomingTasks.length +
+				a.recentlyUpdatedTasks.length;
+			const scoreB =
+				b.todaysTasks.length * 3 +
+				b.blockedTasks.length * 2 +
+				b.upcomingTasks.length +
+				b.recentlyUpdatedTasks.length;
+			if (scoreA !== scoreB) return scoreB - scoreA;
+			return a.project.name.localeCompare(b.project.name);
+		});
+		const promptProjectBriefContents: string[] = [];
+		const includedProjectIds = new Set<string>();
+		for (const project of sortedProjects) {
+			const content = projectBriefContentById.get(project.project.id);
+			if (!content) continue;
+			promptProjectBriefContents.push(content);
+			includedProjectIds.add(project.project.id);
+			if (promptProjectBriefContents.length >= maxPromptProjectBriefs) break;
+		}
+		if (promptProjectBriefContents.length < maxPromptProjectBriefs) {
+			for (const brief of projectBriefs) {
+				if (includedProjectIds.has(brief.project_id)) continue;
+				promptProjectBriefContents.push(brief.brief_content);
+				if (promptProjectBriefContents.length >= maxPromptProjectBriefs) break;
+			}
+		}
 
 		console.log(
 			`[OntologyBrief] Generated ${projectBriefs.length}/${briefData.projects.length} project briefs`
 		);
 
 		// Step 4: Generate executive summary via LLM
+		// NOTE: Executive summary now generated AFTER project briefs so it has full formatted context
 		await updateProgress(
 			dailyBrief.id,
 			{ step: 'generating_executive_summary', progress: 60 },
@@ -681,11 +721,13 @@ export async function generateOntologyDailyBrief(
 				appName: 'BuildOS Ontology Brief Worker'
 			});
 
+			// Pass project brief contents for full context in executive summary
 			const summaryPrompt = OntologyExecutiveSummaryPrompt.buildUserPrompt({
 				date: briefDateInUserTz,
 				timezone: userTimezone,
 				briefData,
-				holidays: holidays || undefined
+				holidays: holidays || undefined,
+				projectBriefContents: promptProjectBriefContents
 			});
 
 			executiveSummary = await llmService.generateText({
@@ -755,12 +797,13 @@ export async function generateOntologyDailyBrief(
 					systemPrompt: OntologyReengagementPrompt.getSystemPrompt(daysSinceLastLogin)
 				});
 			} else {
-				// Standard analysis
+				// Standard analysis - include project briefs for full context
 				const analysisPrompt = OntologyAnalysisPrompt.buildUserPrompt({
 					date: briefDateInUserTz,
 					timezone: userTimezone,
 					briefData,
-					holidays: holidays || undefined
+					holidays: holidays || undefined,
+					projectBriefContents: promptProjectBriefContents
 				});
 
 				llmAnalysis = await llmService.generateText({
@@ -814,12 +857,12 @@ export async function generateOntologyDailyBrief(
 		// Step 6: Generate main brief markdown
 		await updateProgress(dailyBrief.id, { step: 'finalizing', progress: 90 }, jobId);
 
-		const mainBriefContent = generateMainBriefMarkdown(
-			briefData,
-			projectBriefContents,
-			executiveSummary,
-			holidays
-		);
+			const mainBriefContent = generateMainBriefMarkdown(
+				briefData,
+				allProjectBriefContents,
+				executiveSummary,
+				holidays
+			);
 
 		const priorityActions = extractPriorityActions(briefData);
 

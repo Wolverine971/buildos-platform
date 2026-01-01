@@ -1,3 +1,5 @@
+<!-- apps/web/docs/content/BLOG_AUDIT_2025.md -->
+
 # BuildOS Blog Content Audit - December 2025
 
 ## Executive Summary

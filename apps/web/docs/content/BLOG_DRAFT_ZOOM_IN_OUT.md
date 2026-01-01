@@ -1,3 +1,5 @@
+<!-- apps/web/docs/content/BLOG_DRAFT_ZOOM_IN_OUT.md -->
+
 # BLOG DRAFT: The Best AI Practitioners Zoom In and Out
 
 **Content Type:** Jab (Thought Leadership / Value-First)

@@ -1,15 +1,25 @@
 ---
 title: 'Under the Hood: How BuildOS Organizes Your Thoughts'
-description: 'A peek behind the curtain at the flexible system that makes BuildOS work. No rigid templates—just structure that emerges from your conversations.'
+description: 'A peek behind the curtain at the ontology that powers BuildOS—rich context architecture where goals, plans, tasks, and documents all connect.'
 author: 'DJ Wayne'
 date: '2025-12-17'
-lastmod: '2025-12-17'
+lastmod: '2026-01-01'
 changefreq: 'monthly'
 priority: '0.8'
 published: true
-tags: ['under-the-hood', 'getting-started', 'ontology', 'architecture', 'technical']
-readingTime: 7
-excerpt: 'Most productivity tools force you into rigid templates. BuildOS takes a different approach—structure emerges from your conversations, not from predetermined boxes.'
+tags:
+    [
+        'under-the-hood',
+        'getting-started',
+        'ontology',
+        'architecture',
+        'technical',
+        'project-lens',
+        'context-building',
+        'zoom'
+    ]
+readingTime: 9
+excerpt: 'Most productivity tools force you into rigid templates. BuildOS takes a different approach—a connected ontology where goals, plans, tasks, and documents form rich context that compounds over time.'
 pic: 'under-the-hood'
 path: apps/web/src/content/blogs/getting-started/under-the-hood.md
 ---
@@ -43,33 +53,38 @@ The system doesn't need you to click "Add Task" and fill out a form. You just ta
 
 ---
 
-## The Building Blocks
+## The Ontology: Rich Context Architecture
 
-Under the hood, BuildOS organizes your work using a few key concepts:
+Under the hood, BuildOS organizes your work using what we call an **ontology**—a connected architecture of entities that form rich context:
 
-### Projects
+```
+Goals (Why you're doing this)
+  └── Plans (How you'll get there)
+       └── Tasks (What to do next)
+            └── Documents (What you've learned)
+```
 
-The big containers. A project is anything you're working toward—writing a book, launching a product, planning an event, building a habit.
+This isn't just organization—it's **context infrastructure**. Every piece knows what it connects to. Every entity carries its parent context.
 
 ### Goals
 
-What you're trying to achieve. Goals are the "why" behind your projects. "Ship the MVP by March." "Write 80,000 words." "Close the funding round."
+What you're trying to achieve. Goals are the "why" behind your projects. "Ship the MVP by March." "Write 80,000 words." "Close the funding round." Goals sit at the top of the hierarchy—everything else exists to serve them.
 
 ### Plans
 
-How you're going to get there. Plans are strategic groupings of work. Think of them like phases or sprints—a collection of related tasks that move you toward a goal.
+How you're going to get there. Plans are strategic groupings of work. Think of them like phases or sprints—a collection of related tasks that move you toward a goal. Plans connect goals to execution.
 
 ### Tasks
 
-The actual work. Tasks are the things you do today. Call this person. Write this section. Review that document. Tasks are where rubber meets road.
+The actual work. Tasks are the things you do today. Call this person. Write this section. Review that document. Tasks are where rubber meets road—but in BuildOS, every task knows which goal it serves and which plan it belongs to.
+
+### Documents
+
+The knowledge you need. Meeting notes, specs, reference materials, decision records. Documents live inside your projects and give the AI (and you) context. They're not isolated files—they're connected to the work they inform.
 
 ### Milestones
 
 Significant markers along the way. The investor meeting. The beta launch. The manuscript deadline. Milestones make progress visible and give you something to celebrate.
-
-### Documents
-
-The knowledge you need. Meeting notes, specs, reference materials, decision records. Documents live inside your projects and give the AI (and you) context.
 
 ### Risks
 
@@ -150,16 +165,71 @@ You get intelligent recommendations because everything is connected.
 
 ---
 
+## Project Lens: Zoom Into Your Context
+
+Here's where the ontology becomes interactive: **Project Lens lets you zoom into any level of your context**.
+
+When you focus on a specific entity—a goal, a task, a document—the AI automatically loads the relevant context:
+
+| Zoom Level | What AI Knows                         | Example Use            |
+| ---------- | ------------------------------------- | ---------------------- |
+| Goal       | All connected plans, tasks, documents | Strategic review       |
+| Plan       | Parent goal + all tasks in this plan  | Phase planning         |
+| Task       | Full context chain + task details     | Execution guidance     |
+| Document   | What it connects to + content         | Research and decisions |
+
+**You control the altitude. AI follows.**
+
+This is why the ontology matters. Without structured context, "zoom into my marketing task" would mean nothing. With the ontology, it means loading:
+
+- The parent goal this task serves
+- The plan it belongs to
+- Related documents
+- Dependencies and blockers
+- History of decisions
+
+### The Zoom Flow
+
+```
+Need strategic view?
+    ↓
+Zoom out to goal level
+    ↓
+Need execution details?
+    ↓
+Zoom into a specific task
+    ↓
+Need research?
+    ↓
+Zoom into a document
+```
+
+Every zoom level loads the right context automatically.
+
+---
+
+## Why the Ontology Matters Over Time
+
+Here's what makes this architecture powerful: **context compounds through the ontology**.
+
+Every brain dump, every task completed, every decision documented—it all connects through these relationships. Day 1 context is helpful. Day 100 context—where everything connects to everything—is like having a partner who knows your entire work history.
+
+(For a deeper dive on context compounding as a concept, see [Context Engineering 101](/blog/context-engineering-101).)
+
 ## The Bottom Line
 
 BuildOS doesn't force your messy, creative, human brain into rigid boxes.
 
-Instead, it provides flexible building blocks—projects, goals, plans, tasks, milestones, documents, risks—that combine in whatever way makes sense for YOUR work.
+Instead, it provides a **connected ontology**—goals, plans, tasks, documents—that forms rich context for AI to actually help you. Structure emerges from conversations. Properties adapt to context. Connections create meaning.
 
-Structure emerges from conversations. Properties adapt to context. Connections create meaning.
+Project Lens lets you zoom into any level of that context. And everything compounds over time.
 
 That's what's under the hood.
 
 ---
 
-_Want to see it in action? [Start a project](/auth/register) and watch the structure emerge from your thoughts._
+**Ready to see the ontology in action?**
+
+Start with a brain dump. Watch structure emerge from your thoughts. See how goals connect to plans connect to tasks.
+
+[Try the connected approach →](/)

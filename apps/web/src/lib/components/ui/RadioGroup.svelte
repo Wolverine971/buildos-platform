@@ -1,8 +1,15 @@
 <!-- apps/web/src/lib/components/ui/RadioGroup.svelte -->
+<!--
+	Inkprint RadioGroup Component (Svelte 5)
+	- Migrated to Svelte 5 runes
+	- Responsive spacing for mobile density
+	- Uses Inkprint semantic tokens
+-->
 <script lang="ts">
-	import { createEventDispatcher, setContext } from 'svelte';
+	import { setContext } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 	import Radio from './Radio.svelte';
+	import type { Snippet } from 'svelte';
 
 	type RadioGroupOrientation = 'vertical' | 'horizontal';
 	type RadioSize = 'sm' | 'md' | 'lg';
@@ -14,26 +21,42 @@
 		disabled?: boolean;
 	}
 
-	export let value: string | number = '';
-	export let name = '';
-	export let options: RadioOption[] = [];
-	export let orientation: RadioGroupOrientation = 'vertical';
-	export let size: RadioSize = 'md';
-	export let disabled = false;
-	export let required = false;
-	export let error = false;
-	export let label = '';
-	export let helperText = '';
-	export let errorText = '';
+	interface Props {
+		value?: string | number;
+		name?: string;
+		options?: RadioOption[];
+		orientation?: RadioGroupOrientation;
+		size?: RadioSize;
+		disabled?: boolean;
+		required?: boolean;
+		error?: boolean;
+		label?: string;
+		helperText?: string;
+		errorText?: string;
+		class?: string;
+		children?: Snippet;
+		onchange?: (value: string | number) => void;
+	}
+
+	let {
+		value = $bindable(''),
+		name = '',
+		options = [],
+		orientation = 'vertical',
+		size = 'md',
+		disabled = false,
+		required = false,
+		error = false,
+		label = '',
+		helperText = '',
+		errorText = '',
+		class: className = '',
+		children,
+		onchange
+	}: Props = $props();
 
 	const generatedLabelId = crypto.randomUUID();
-	$: labelId = label ? `${(name || generatedLabelId).toString()}-label` : undefined;
-
-	// Allow class prop to be passed through
-	let className = '';
-	export { className as class };
-
-	const dispatch = createEventDispatcher();
+	let labelId = $derived(label ? `${(name || generatedLabelId).toString()}-label` : undefined);
 
 	// Create context for child Radio components
 	setContext('radioGroup', {
@@ -50,30 +73,40 @@
 	function handleChange(newValue: string | number) {
 		if (!disabled) {
 			value = newValue;
-			dispatch('change', value);
+			onchange?.(value);
 		}
 	}
 
-	$: containerClasses = twMerge('space-y-2', className);
+	// Responsive spacing: tighter on mobile
+	let containerClasses = $derived(twMerge('space-y-1 sm:space-y-2', className));
 
-	$: groupClasses = twMerge(
-		'flex gap-4',
-		orientation === 'vertical' ? 'flex-col' : 'flex-row flex-wrap',
-		// Add border and padding for better visual grouping - Inkprint design
-		'border border-border rounded-lg p-4 shadow-ink bg-card',
-		error ? 'border-destructive' : '',
-		disabled ? 'opacity-50' : ''
+	// Responsive gap and padding for mobile density
+	let groupClasses = $derived(
+		twMerge(
+			'flex gap-2 sm:gap-3',
+			orientation === 'vertical' ? 'flex-col' : 'flex-row flex-wrap',
+			// Inkprint styling with responsive padding
+			'border border-border rounded-lg p-3 sm:p-4 shadow-ink bg-card tx tx-frame tx-weak',
+			error ? 'border-destructive' : '',
+			disabled ? 'opacity-50' : ''
+		)
 	);
 
-	$: labelClasses = twMerge(
-		'block font-medium mb-2',
-		size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base',
-		disabled ? 'text-muted-foreground/50' : 'text-foreground'
+	// Responsive label sizing
+	let labelClasses = $derived(
+		twMerge(
+			'block font-semibold mb-1 sm:mb-1.5',
+			size === 'sm' ? 'text-xs sm:text-sm' : size === 'lg' ? 'text-base sm:text-lg' : 'text-sm sm:text-base',
+			disabled ? 'text-muted-foreground/50' : 'text-foreground'
+		)
 	);
 
-	$: helperTextClasses = twMerge(
-		'text-sm mt-1',
-		error ? 'text-destructive' : 'text-muted-foreground'
+	// Responsive helper text
+	let helperTextClasses = $derived(
+		twMerge(
+			'text-xs sm:text-sm mt-1',
+			error ? 'text-destructive' : 'text-muted-foreground'
+		)
 	);
 
 	// Handle keyboard navigation
@@ -157,8 +190,8 @@
 					onchange={() => handleChange(option.value)}
 				/>
 			{/each}
-		{:else}
-			<slot />
+		{:else if children}
+			{@render children()}
 		{/if}
 	</div>
 

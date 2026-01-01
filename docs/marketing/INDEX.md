@@ -19,11 +19,24 @@
 
 ## 🎨 Brand Strategy & Development
 
+### 🎯 Strategic Documents (Start Here)
+
+- **[Brand Strategy 2025](brand/BRAND_STRATEGY_2025.md)** ⭐ **NEW**
+    - **Master brand strategy document** - comprehensive 2025 positioning
+    - Context-first messaging, Jab/Hook content model, competitive positioning
+    - Value proposition hierarchy, audience messaging, content strategy
+
+- **[Zoom Messaging Guide](brand/ZOOM_MESSAGING_GUIDE.md)** ⭐ **NEW**
+    - How to communicate the "zoom in / zoom out" concept
+    - Project Lens positioning and terminology
+    - User-facing language guidelines
+
 ### ✅ Completed Documents
 
 - **[Brand Guide (1-Pager)](brand/brand-guide-1-pager.md)** ✅
     - Core brand positioning, messaging, and visual identity
     - Quick reference for team alignment
+    - **Updated January 2025** to align with Brand Strategy 2025
 
 - **[Brand Building Worksheet](brand/brand-building-worksheet.md)** ✅
     - Comprehensive toolkit with frameworks and implementation phases
@@ -223,6 +236,22 @@ Personalized email templates for investor introductions:
 
 ## 🔗 Cross-Document Relationships
 
+### Brand Strategy Hierarchy
+
+```
+Brand Strategy 2025 (Master Document)
+├── Brand Guide 1-Pager (Quick Reference)
+├── Zoom Messaging Guide (Feature Messaging)
+├── Brand Personality Profile (Voice & Tone)
+└── Communication Guide (DJ's Preferences)
+```
+
+### Brand ↔ Content Strategy
+
+- [Brand Strategy 2025](brand/BRAND_STRATEGY_2025.md) defines content themes for [Blog Content](/apps/web/docs/content/)
+- [Zoom Messaging Guide](brand/ZOOM_MESSAGING_GUIDE.md) informs Project Lens blog content
+- Blog CTAs follow brand messaging hierarchy
+
 ### Brand ↔ Customer Research
 
 - [BuildOS Brand Personality Profile](brand/buildos-brand-personality-profile.md) incorporates insights from [ADHD Customer Language Analysis](customer-lingo-adhd.md)
@@ -230,7 +259,7 @@ Personalized email templates for investor introductions:
 
 ### Fundraising ↔ Brand Strategy
 
-- [Fundraising Strategy](investors/buildos-fundraising-strategy.md) leverages [Brand Guide](brand/brand-guide-1-pager.md) positioning
+- [Fundraising Strategy](investors/buildos-fundraising-strategy.md) leverages [Brand Strategy 2025](brand/BRAND_STRATEGY_2025.md) positioning
 - [Investor Messaging](investors/investor-optimists.md) incorporates [Brand Personality Profile](brand/buildos-brand-personality-profile.md)
 
 ### Growth ↔ Social Media
@@ -287,5 +316,5 @@ Personalized email templates for investor introductions:
 
 ---
 
-_Last Updated: September 2025_  
-_Related: [Documentation Start Here](../start-here.md) | [Business Strategy](../business/) | [Development Process](../development/)_
+_Last Updated: January 2025_
+_Related: [Documentation Start Here](../start-here.md) | [Business Strategy](../business/) | [Content Strategy](/apps/web/docs/content/)_

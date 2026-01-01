@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-12-23_smart-llm-service-model-assessment.md -->
 # Smart LLM Service Model Assessment
 
 **Date:** 2025-12-23

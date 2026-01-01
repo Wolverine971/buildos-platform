@@ -9,7 +9,24 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz';
-import { addDays, subHours, parseISO, differenceInDays } from 'date-fns';
+import { addDays, subDays, subHours, parseISO, differenceInDays } from 'date-fns';
+
+// ============================================================================
+// ENTITY CAPS (from PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
+// ============================================================================
+
+export const ENTITY_CAPS = {
+	GOALS: 5,
+	RISKS: 5,
+	DECISIONS: 5,
+	REQUIREMENTS: 5,
+	DOCUMENTS: 5,
+	MILESTONES: 5,
+	PLANS: 5,
+	OUTPUTS: 5,
+	TASKS_RECENT: 10,
+	TASKS_UPCOMING: 5
+} as const;
 import type {
 	OntoProject,
 	OntoTask,
@@ -75,6 +92,7 @@ function getTodayInTimezone(timezone: string): string {
 
 /**
  * Categorize tasks by time, status, and work mode
+ * Uses 7-day windows per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
  */
 export function categorizeTasks(
 	tasks: OntoTask[],
@@ -82,7 +100,8 @@ export function categorizeTasks(
 	timezone: string
 ): CategorizedTasks {
 	const now = new Date();
-	const cutoff = subHours(now, 24);
+	const cutoff24h = subHours(now, 24); // For recently completed
+	const cutoff7d = subDays(now, 7); // For recently updated (per spec)
 	const todayStr = briefDate; // yyyy-MM-dd (user-local date)
 	// Calculate week end date (7 days from today) in user's timezone
 	const weekEndStr = addDaysToLocalDate(todayStr, 7, timezone);
@@ -127,26 +146,36 @@ export function categorizeTasks(
 	for (const task of tasks) {
 		const dueAt = task.due_at ? parseISO(task.due_at) : null;
 		const dueDateStr = dueAt ? formatInTimeZone(dueAt, timezone, 'yyyy-MM-dd') : null;
+		const startAt = task.start_at ? parseISO(task.start_at) : null;
+		const startDateStr = startAt ? formatInTimeZone(startAt, timezone, 'yyyy-MM-dd') : null;
 		const updatedAt = parseISO(task.updated_at);
 		const state = task.state_key;
 
-		// Recently updated (last 24 hours, absolute time)
-		if (updatedAt >= cutoff) {
+		// Recently updated (last 7 days, per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
+		if (updatedAt >= cutoff7d && state !== 'done' && state !== 'blocked') {
 			recentlyUpdated.push(task);
 		}
 
 		// Time-based
 		if (state === 'done') {
-			if (updatedAt >= cutoff) {
+			// Recently completed uses 24h window
+			if (updatedAt >= cutoff24h) {
 				recentlyCompleted.push(task);
 			}
-		} else if (dueDateStr) {
-			if (dueDateStr < todayStr) {
+		} else if (dueDateStr || startDateStr) {
+			// Check overdue first (only for tasks with due dates)
+			if (dueDateStr && dueDateStr < todayStr) {
 				overdueTasks.push(task);
 			} else if (dueDateStr === todayStr) {
 				todaysTasks.push(task);
-			} else if (dueDateStr > todayStr && dueDateStr <= weekEndStr) {
-				upcomingTasks.push(task);
+			} else {
+				// Upcoming: due_at in next 7 days OR start_at in next 7 days (per spec)
+				const isDueUpcoming = dueDateStr && dueDateStr > todayStr && dueDateStr <= weekEndStr;
+				const isStartUpcoming =
+					startDateStr && startDateStr >= todayStr && startDateStr <= weekEndStr;
+				if (isDueUpcoming || isStartUpcoming) {
+					upcomingTasks.push(task);
+				}
 			}
 		}
 
@@ -206,10 +235,31 @@ export function categorizeTasks(
 		}
 	}
 
+	// Sort for "Recent Updates" per spec: updated_at desc
+	const recentUpdatedSort = (a: OntoTask, b: OntoTask): number => {
+		return parseISO(b.updated_at).getTime() - parseISO(a.updated_at).getTime();
+	};
+
+	// Sort for "Upcoming" per spec: earliest due_at/start_at, then updated_at desc
+	const upcomingSort = (a: OntoTask, b: OntoTask): number => {
+		// Get earliest date (due or start) for each task
+		const aEarliest = Math.min(
+			a.due_at ? parseISO(a.due_at).getTime() : Number.POSITIVE_INFINITY,
+			a.start_at ? parseISO(a.start_at).getTime() : Number.POSITIVE_INFINITY
+		);
+		const bEarliest = Math.min(
+			b.due_at ? parseISO(b.due_at).getTime() : Number.POSITIVE_INFINITY,
+			b.start_at ? parseISO(b.start_at).getTime() : Number.POSITIVE_INFINITY
+		);
+		if (aEarliest !== bEarliest) return aEarliest - bEarliest;
+		// Tie-breaker: updated_at desc
+		return parseISO(b.updated_at).getTime() - parseISO(a.updated_at).getTime();
+	};
+
 	return {
 		todaysTasks: todaysTasks.sort(taskSort),
 		overdueTasks: overdueTasks.sort(taskSort),
-		upcomingTasks: upcomingTasks.sort(taskSort),
+		upcomingTasks: upcomingTasks.sort(upcomingSort),
 		recentlyCompleted: recentlyCompleted.sort(taskSort),
 		blockedTasks: blockedTasks.sort(taskSort),
 		inProgressTasks: inProgressTasks.sort(taskSort),
@@ -223,7 +273,7 @@ export function categorizeTasks(
 		planTasks: planTasks.sort(taskSort),
 		unblockingTasks, // Will be populated later
 		goalAlignedTasks, // Will be populated later
-		recentlyUpdated: recentlyUpdated.sort(taskSort)
+		recentlyUpdated: recentlyUpdated.sort(recentUpdatedSort)
 	};
 }
 
@@ -778,10 +828,11 @@ export class OntologyBriefDataLoader {
 		const allOutputs = projectsData.flatMap((p) => p.outputs);
 		const outputs = allOutputs.map((output) => getOutputStatus(output, allEdges));
 
-		// Get active risks (not mitigated or closed)
-		const activeRisks = allRisks.filter(
-			(r) => r.state_key !== 'mitigated' && r.state_key !== 'closed'
-		);
+		// Get active risks (not mitigated or closed), apply cap per spec
+		const activeRisks = allRisks
+			.filter((r) => r.state_key !== 'mitigated' && r.state_key !== 'closed')
+			.sort((a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime())
+			.slice(0, ENTITY_CAPS.RISKS);
 
 		// Count high priority tasks (P1/P2) that are due today or overdue
 		const highPriorityCount = [
@@ -809,6 +860,51 @@ export class OntologyBriefDataLoader {
 			plan: categorizedTasks.planTasks
 		};
 
+		// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
+		// 1) Recent Updates: updated in last 7 days, order by updated_at desc, cap 10
+		const recentlyUpdatedTasks = categorizedTasks.recentlyUpdated.slice(0, ENTITY_CAPS.TASKS_RECENT);
+		const recentlyUpdatedIds = new Set(recentlyUpdatedTasks.map((t) => t.id));
+
+		// 2) Upcoming: due/start in next 7 days, deduplicated from Recent, cap 5
+		const upcomingTasks = categorizedTasks.upcomingTasks
+			.filter((t) => !recentlyUpdatedIds.has(t.id))
+			.slice(0, ENTITY_CAPS.TASKS_UPCOMING);
+
+		// Apply entity caps to decisions and requirements per spec
+		const cappedDecisions = allDecisions
+			.sort((a, b) => {
+				// Sort by decision_at desc, fallback created_at desc
+				const aDate = a.decision_at || a.created_at;
+				const bDate = b.decision_at || b.created_at;
+				return parseISO(bDate).getTime() - parseISO(aDate).getTime();
+			})
+			.slice(0, ENTITY_CAPS.DECISIONS);
+
+		const cappedRequirements = allRequirements
+			.sort((a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime())
+			.slice(0, ENTITY_CAPS.REQUIREMENTS);
+
+		// Cap goals by status priority (at_risk/behind first, then on_track)
+		const cappedGoals = goals
+			.sort((a, b) => {
+				const statusOrder = { behind: 0, at_risk: 1, on_track: 2 };
+				const aOrder = statusOrder[a.status] ?? 3;
+				const bOrder = statusOrder[b.status] ?? 3;
+				if (aOrder !== bOrder) return aOrder - bOrder;
+				// Tie-breaker: updated_at desc on the goal object
+				return parseISO(b.goal.created_at).getTime() - parseISO(a.goal.created_at).getTime();
+			})
+			.slice(0, ENTITY_CAPS.GOALS);
+
+		// Cap outputs
+		const cappedOutputs = outputs
+			.sort((a, b) => {
+				const aUpdated = a.updated_at || a.output.created_at;
+				const bUpdated = b.updated_at || b.output.created_at;
+				return parseISO(bUpdated).getTime() - parseISO(aUpdated).getTime();
+			})
+			.slice(0, ENTITY_CAPS.OUTPUTS);
+
 		// Build project brief data
 		const projects: ProjectBriefData[] = projectsData.map((data) => {
 			const projectCategorized = categorizeTasks(data.tasks, briefDate, timezone);
@@ -817,6 +913,14 @@ export class OntologyBriefDataLoader {
 			);
 			const projectOutputs = data.outputs.map((o) => getOutputStatus(o, data.edges));
 			const unblockingTasks = findUnblockingTasks(data.tasks, data.edges);
+			const projectDecisions = [...data.decisions].sort((a, b) => {
+				const aDate = a.decision_at || a.created_at;
+				const bDate = b.decision_at || b.created_at;
+				return parseISO(bDate).getTime() - parseISO(aDate).getTime();
+			});
+			const projectRequirements = [...data.requirements].sort(
+				(a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime()
+			);
 
 			// Get active plan
 			const activePlan = data.plans.find((p) => p.state_key === 'active') || null;
@@ -835,12 +939,22 @@ export class OntologyBriefDataLoader {
 				.filter((m) => m.state_key !== 'completed' && m.state_key !== 'missed')
 				.sort((a, b) => parseISO(a.due_at).getTime() - parseISO(b.due_at).getTime())[0];
 
+			// Project-level strategic task splits with deduplication
+			const projectRecentlyUpdated = projectCategorized.recentlyUpdated.slice(
+				0,
+				ENTITY_CAPS.TASKS_RECENT
+			);
+			const projectRecentIds = new Set(projectRecentlyUpdated.map((t) => t.id));
+			const projectUpcoming = projectCategorized.upcomingTasks
+				.filter((t) => !projectRecentIds.has(t.id))
+				.slice(0, ENTITY_CAPS.TASKS_UPCOMING);
+
 			return {
 				project: data.project,
-				goals: projectGoals,
-				outputs: projectOutputs,
-				requirements: data.requirements,
-				decisions: data.decisions,
+				goals: projectGoals.slice(0, ENTITY_CAPS.GOALS),
+				outputs: projectOutputs.slice(0, ENTITY_CAPS.OUTPUTS),
+				requirements: projectRequirements.slice(0, ENTITY_CAPS.REQUIREMENTS),
+				decisions: projectDecisions.slice(0, ENTITY_CAPS.DECISIONS),
 				nextSteps,
 				nextMilestone: nextMilestone?.title || null,
 				activePlan,
@@ -850,25 +964,30 @@ export class OntologyBriefDataLoader {
 					...projectCategorized.upcomingTasks
 				],
 				blockedTasks: projectCategorized.blockedTasks,
-				unblockingTasks: unblockingTasks.map((u) => u.task)
+				unblockingTasks: unblockingTasks.map((u) => u.task),
+				recentlyUpdatedTasks: projectRecentlyUpdated,
+				upcomingTasks: projectUpcoming
 			};
 		});
 
 		return {
 			briefDate,
 			timezone,
-			goals,
-			outputs,
+			goals: cappedGoals,
+			outputs: cappedOutputs,
 			risks: activeRisks,
-			requirements: allRequirements,
-			decisions: allDecisions,
+			requirements: cappedRequirements,
+			decisions: cappedDecisions,
 			todaysTasks: categorizedTasks.todaysTasks,
 			blockedTasks: categorizedTasks.blockedTasks,
 			overdueTasks: categorizedTasks.overdueTasks,
 			highPriorityCount,
 			recentUpdates: allRecentUpdates,
 			tasksByWorkMode,
-			projects
+			projects,
+			// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
+			recentlyUpdatedTasks,
+			upcomingTasks
 		};
 	}
 
@@ -890,6 +1009,9 @@ export class OntologyBriefDataLoader {
 		const allRisks = projectsData.flatMap((p) => p.risks);
 		const allOutputs = projectsData.flatMap((p) => p.outputs);
 		const allEdges = projectsData.flatMap((p) => p.edges);
+		const allGoalProgress = projectsData.flatMap((p) =>
+			Array.from(p.goalProgress.values())
+		);
 
 		// Count milestones this week
 		const milestonesThisWeek = allMilestones.filter((m) => {
@@ -901,8 +1023,11 @@ export class OntologyBriefDataLoader {
 		// Count outputs in review
 		const outputsInReview = allOutputs.filter((o) => o.state_key === 'review').length;
 
-		// Count goals at risk
-		const goalsAtRisk = briefData.goals.filter(
+		// Count active risks and goals at risk (use full sets, not capped brief data)
+		const activeRisksCount = allRisks.filter(
+			(r) => r.state_key !== 'mitigated' && r.state_key !== 'closed'
+		).length;
+		const goalsAtRisk = allGoalProgress.filter(
 			(g) => g.status === 'at_risk' || g.status === 'behind'
 		).length;
 
@@ -924,7 +1049,7 @@ export class OntologyBriefDataLoader {
 			totalTasks: allTasks.length,
 			totalGoals: allGoals.length,
 			totalMilestones: allMilestones.length,
-			activeRisksCount: briefData.risks.length,
+			activeRisksCount,
 			totalOutputs: allOutputs.length,
 			recentUpdatesCount,
 			blockedCount: briefData.blockedTasks.length,

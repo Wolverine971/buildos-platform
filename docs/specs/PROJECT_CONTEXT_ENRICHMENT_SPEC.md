@@ -101,7 +101,7 @@ An entity is included if it is **directly connected** to the project by an `onto
 
 ### Risks
 
-- Include title + id only.
+- Include title + id + created/updated.
 - Exclude `state_key` in `mitigated`, `closed`.
 - Exclude soft-deleted (`deleted_at` not null).
 - Order by `created_at` desc.

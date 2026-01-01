@@ -11,7 +11,7 @@ import type {
 import { browser } from '$app/environment';
 
 export class ErrorLoggerService {
-	private static instance: ErrorLoggerService;
+	private static instances = new WeakMap<SupabaseClient<Database>, ErrorLoggerService>();
 	private supabase: SupabaseClient<Database>;
 	private environment: 'development' | 'staging' | 'production';
 	private appVersion: string = '1.0.0'; // You can update this from package.json
@@ -22,10 +22,13 @@ export class ErrorLoggerService {
 	}
 
 	public static getInstance(supabase: SupabaseClient<Database>): ErrorLoggerService {
-		if (!ErrorLoggerService.instance) {
-			ErrorLoggerService.instance = new ErrorLoggerService(supabase);
+		const existing = ErrorLoggerService.instances.get(supabase);
+		if (existing) {
+			return existing;
 		}
-		return ErrorLoggerService.instance;
+		const instance = new ErrorLoggerService(supabase);
+		ErrorLoggerService.instances.set(supabase, instance);
+		return instance;
 	}
 
 	private detectEnvironment(): 'development' | 'staging' | 'production' {

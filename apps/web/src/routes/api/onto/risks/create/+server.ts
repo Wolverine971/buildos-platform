@@ -34,6 +34,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
+import { RISK_STATES } from '$lib/types/onto';
 import {
 	logCreateAsync,
 	getChangeSourceFromRequest,
@@ -92,6 +93,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
+		if (state_key && !RISK_STATES.includes(state_key)) {
+			return ApiResponse.badRequest(`State must be one of: ${RISK_STATES.join(', ')}`);
+		}
+
 		// Get user's actor ID
 		const { data: actorData, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
 			p_user_id: user.id
@@ -116,6 +121,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
+		const normalizedContent = content?.trim() || description?.trim() || null;
+
 		// Create the risk
 		const riskData = {
 			project_id,
@@ -125,14 +132,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			probability:
 				probability !== undefined && probability !== null ? Number(probability) : null,
 			state_key,
-			content: content?.trim() || null,
+			content: normalizedContent,
 			created_by: actorId,
 			props: {
 				...props,
-				description: description?.trim() || null,
+				description: normalizedContent,
 				mitigation_strategy: mitigation_strategy?.trim() || null
 			}
 		};
+
+		if (state_key === 'mitigated') {
+			riskData.mitigated_at = new Date().toISOString();
+		}
 
 		const { data: risk, error: createError } = await supabase
 			.from('onto_risks')

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/mobile-command-center/MOBILE_COMMAND_CENTER_SPEC.md -->
+
 # Mobile Command Center Specification
 
 > **Version:** 1.0

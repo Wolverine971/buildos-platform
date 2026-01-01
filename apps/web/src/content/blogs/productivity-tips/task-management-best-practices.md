@@ -7,7 +7,17 @@ lastmod: '2025-12-31'
 changefreq: 'monthly'
 priority: '0.7'
 published: true
-tags: ['task-management', 'productivity-tips', 'organization', 'execution', 'calendar-integration', 'project-lens', 'context-building', 'zoom']
+tags:
+    [
+        'task-management',
+        'productivity-tips',
+        'organization',
+        'execution',
+        'calendar-integration',
+        'project-lens',
+        'context-building',
+        'zoom'
+    ]
 readingTime: 14
 excerpt: 'Transform scattered to-do lists into connected context—where tasks serve goals, link to plans, and compound over time. Plus: how to zoom into any task with Project Lens.'
 pic: 'task-management-mastery'
@@ -24,14 +34,7 @@ This guide covers both the fundamentals of great task management AND how Build O
 
 ### Tasks in the Context Hierarchy
 
-In Build OS, tasks don't exist in isolation. They're part of a connected architecture:
-
-```
-Goals (Why you're doing this)
-  └── Plans (How you'll get there)
-       └── Tasks (What to do next)
-            └── Documents (What you've learned)
-```
+In Build OS, tasks don't exist in isolation. They're part of a connected architecture: Goals → Plans → Tasks → Documents. (See [Under the Hood](/blog/under-the-hood) for the full technical picture.)
 
 Every task knows:
 
@@ -76,7 +79,7 @@ Traditional task management focuses on completion. Build OS focuses on:
 - ❌ Isolated tasks without project context
 - ✅ "Design website header (supports Brand Identity Project)"
 
-*In Build OS, this connection is automatic. Tasks link to plans, plans link to goals. When you complete a task, you see its impact on the bigger picture.*
+_In Build OS, this connection is automatic. Tasks link to plans, plans link to goals. When you complete a task, you see its impact on the bigger picture._
 
 **Time-bound**: Realistic duration estimate
 
@@ -486,8 +489,6 @@ That's context compounding. That's why starting now matters.
 
 **Ready to transform your task management?**
 
-Start by implementing one or two of these best practices. Then use Project Lens to zoom into stuck tasks. Watch your context compound over time.
+Start by implementing one or two of these best practices. Then use Project Lens to zoom into stuck tasks and understand what's really blocking you.
 
-**Zoom in. Zoom out. Build tasks that connect to goals.**
-
-[Start building task context →](/)
+[Master your tasks →](/)

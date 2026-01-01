@@ -21,7 +21,7 @@ interface LastBriefSent {
  * BriefBackoffCalculator - Pure function calculator for determining
  * whether to send daily briefs based on user engagement.
  *
- * Uses existing database tables (users.last_visit, daily_briefs) with
+ * Uses existing database tables (users.last_visit, ontology_daily_briefs) with
  * no additional state storage required.
  */
 export class BriefBackoffCalculator {
@@ -32,6 +32,132 @@ export class BriefBackoffCalculator {
 		THIRD_REENGAGEMENT: 31,
 		RECURRING_INTERVAL: 31
 	};
+
+	/**
+	 * BATCH METHOD: Pre-fetches engagement data for multiple users in 2 queries
+	 * instead of 2 queries per user. Returns a Map of userId -> BackoffDecision.
+	 *
+	 * For 100 users, this uses 2 queries instead of 200 queries.
+	 */
+	public async shouldSendDailyBriefBatch(
+		userIds: string[]
+	): Promise<Map<string, BackoffDecision>> {
+		if (userIds.length === 0) {
+			return new Map();
+		}
+
+		const results = new Map<string, BackoffDecision>();
+
+		try {
+			// BATCH QUERY 1: Fetch all user last_visit data in single query
+			const { data: usersData, error: usersError } = await supabase
+				.from('users')
+				.select('id, last_visit')
+				.in('id', userIds);
+
+			if (usersError) {
+				console.error('Error batch fetching user last visits:', usersError);
+				// Fall back to individual queries on error
+				return this.fallbackToIndividualQueries(userIds);
+			}
+
+			const userLastVisitMap = new Map<string, string | null>();
+			usersData?.forEach((user) => {
+				userLastVisitMap.set(user.id, user.last_visit);
+			});
+
+			// BATCH QUERY 2: Fetch most recent brief for each user via RPC
+			const { data: briefsData, error: briefsError } = await (supabase as any).rpc(
+				'get_latest_ontology_daily_briefs',
+				{ user_ids: userIds }
+			);
+
+			if (briefsError) {
+				console.error('Error batch fetching last briefs:', briefsError);
+				// Fall back to individual queries on error
+				return this.fallbackToIndividualQueries(userIds);
+			}
+
+			// Build map of userId -> most recent brief
+			const userLastBriefMap = new Map<
+				string,
+				{ brief_date: string; generation_completed_at: string | null }
+			>();
+			briefsData?.forEach((brief) => {
+				userLastBriefMap.set(brief.user_id, {
+					brief_date: brief.brief_date,
+					generation_completed_at: brief.generation_completed_at
+				});
+			});
+
+			// Calculate backoff decision for each user using pre-fetched data
+			for (const userId of userIds) {
+				const lastVisit = userLastVisitMap.get(userId);
+				const lastBrief = userLastBriefMap.get(userId);
+
+				if (!lastVisit) {
+					// New user or never logged in - send normal brief
+					results.set(userId, {
+						shouldSend: true,
+						isReengagement: false,
+						daysSinceLastLogin: 0,
+						reason: 'No last visit recorded'
+					});
+					continue;
+				}
+
+				const daysSinceLastLogin = this.calculateDaysSince(lastVisit);
+				const daysSinceLastBrief = lastBrief
+					? this.calculateDaysSince(
+							lastBrief.generation_completed_at || lastBrief.brief_date
+						)
+					: 999;
+
+				results.set(
+					userId,
+					this.calculateBackoffDecision(daysSinceLastLogin, daysSinceLastBrief)
+				);
+			}
+
+			console.log(
+				`[BackoffCalculator] Batch processed ${userIds.length} users with 2 queries`
+			);
+			return results;
+		} catch (error) {
+			console.error('Error in batch backoff calculation:', error);
+			return this.fallbackToIndividualQueries(userIds);
+		}
+	}
+
+	/**
+	 * Fallback method when batch query fails - uses individual queries
+	 */
+	private async fallbackToIndividualQueries(
+		userIds: string[]
+	): Promise<Map<string, BackoffDecision>> {
+		console.warn(
+			`[BackoffCalculator] Falling back to individual queries for ${userIds.length} users`
+		);
+		const results = new Map<string, BackoffDecision>();
+
+		for (const userId of userIds) {
+			try {
+				const decision = await this.shouldSendDailyBrief(userId);
+				results.set(userId, decision);
+			} catch (error) {
+				console.error(`Failed to check engagement for user ${userId}:`, error);
+				// Default to sending on error
+				results.set(userId, {
+					shouldSend: true,
+					isReengagement: false,
+					daysSinceLastLogin: 0,
+					reason: 'Error checking engagement - defaulting to send'
+				});
+			}
+		}
+
+		return results;
+	}
 
 	/**
 	 * Determines if a daily brief should be sent to a user based on their
@@ -82,11 +208,11 @@ export class BriefBackoffCalculator {
 	}
 
 	/**
-	 * Fetch the most recent daily brief for a user
+	 * Fetch the most recent ontology daily brief for a user
 	 */
 	private async getLastBriefSent(userId: string): Promise<LastBriefSent | null> {
 		const { data, error } = await supabase
-			.from('daily_briefs')
+			.from('ontology_daily_briefs')
 			.select('brief_date, generation_completed_at')
 			.eq('user_id', userId)
 			.order('brief_date', { ascending: false })

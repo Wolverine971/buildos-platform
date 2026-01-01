@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2025-12-23_minimax-m2-vs-deepseek-assessment.md -->
 # MiniMax M2.1 vs DeepSeek V3: Model Assessment
 
 **Date:** 2025-12-23

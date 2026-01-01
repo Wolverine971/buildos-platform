@@ -40,6 +40,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { GOAL_STATES } from '$lib/types/onto';
 
 // GET /api/onto/goals/[id] - Get a single goal
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -108,7 +109,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { name, description, priority, target_date, measurement_criteria, props } = body;
+		const {
+			name,
+			goal,
+			description,
+			priority,
+			target_date,
+			measurement_criteria,
+			state_key,
+			props
+		} = body;
+
+		if (state_key !== undefined && !GOAL_STATES.includes(state_key)) {
+			return ApiResponse.badRequest(`state_key must be one of: ${GOAL_STATES.join(', ')}`);
+		}
 
 		// Get user's actor ID
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -151,6 +165,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		};
 
 		if (name !== undefined) updateData.name = name;
+		if (state_key !== undefined) updateData.state_key = state_key;
+		if (goal !== undefined) updateData.goal = goal || null;
 
 		// Update dedicated columns
 		if (description !== undefined) {
@@ -158,6 +174,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 		if (target_date !== undefined) {
 			updateData.target_date = target_date || null;
+		}
+
+		if (state_key === 'achieved' && existingGoal.state_key !== 'achieved') {
+			updateData.completed_at = new Date().toISOString();
+		} else if (state_key && state_key !== 'achieved' && existingGoal.state_key === 'achieved') {
+			updateData.completed_at = null;
 		}
 
 		// Handle props update - merge with existing
@@ -172,6 +194,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Maintain backwards compatibility by also storing in props
+		if (goal !== undefined) {
+			propsUpdate.goal = goal || null;
+			hasPropsUpdate = true;
+		}
 		if (description !== undefined) {
 			propsUpdate.description = description || null;
 			hasPropsUpdate = true;
@@ -186,6 +212,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 		if (measurement_criteria !== undefined) {
 			propsUpdate.measurement_criteria = measurement_criteria || null;
+			hasPropsUpdate = true;
+		}
+
+		if (state_key !== undefined) {
+			propsUpdate.state_key = state_key;
 			hasPropsUpdate = true;
 		}
 

@@ -1,27 +1,46 @@
 <!-- apps/web/src/lib/components/ui/MarkdownToggleField.svelte -->
+<!--
+	Inkprint MarkdownToggleField Component (Svelte 5)
+	- Migrated to Svelte 5 runes
+	- Responsive mobile design
+	- Uses Inkprint semantic tokens
+-->
 <script lang="ts">
 	import { Eye, Edit } from 'lucide-svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import Textarea from './Textarea.svelte';
 	import Button from './Button.svelte';
 
-	export let value: string = '';
-	export let onUpdate: (newValue: string) => void;
-	export let placeholder: string = 'Enter content...';
-	export let rows: number = 4;
-	export let disabled: boolean = false;
-	export let size: 'sm' | 'base' | 'lg' = 'sm';
-	export let autoFocus: boolean = false;
-	export let ariaLabelledby: string | undefined = undefined;
+	interface Props {
+		value?: string;
+		onUpdate: (newValue: string) => void;
+		placeholder?: string;
+		rows?: number;
+		disabled?: boolean;
+		size?: 'sm' | 'base' | 'lg';
+		autoFocus?: boolean;
+		ariaLabelledby?: string;
+	}
 
-	let isEditMode = false;
-	let textareaElement: HTMLTextAreaElement;
+	let {
+		value = '',
+		onUpdate,
+		placeholder = 'Enter content...',
+		rows = 4,
+		disabled = false,
+		size = 'sm',
+		autoFocus = false,
+		ariaLabelledby
+	}: Props = $props();
 
-	// Use internal state that syncs with the prop
-	let internalValue = value;
+	let isEditMode = $state(false);
+	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	let internalValue = $state(value);
 
-	// Update internal value when prop changes
-	$: internalValue = value;
+	// Sync internal value when prop changes
+	$effect(() => {
+		internalValue = value;
+	});
 
 	function toggleMode() {
 		if (disabled) return;
@@ -72,31 +91,31 @@
 	}
 
 	// Determine if we should show the toggle button
-	$: showToggle = !disabled && (value?.trim() || isEditMode);
+	let showToggle = $derived(!disabled && (value?.trim() || isEditMode));
 
 	// Get the display value - show N/A for empty content in preview mode
-	$: displayValue = value?.trim() || '';
-	$: showPlaceholder = !displayValue && !isEditMode;
+	let displayValue = $derived(value?.trim() || '');
+	let showPlaceholder = $derived(!displayValue && !isEditMode);
 </script>
 
 <div class="markdown-toggle-field">
-	<!-- Toggle Button -->
+	<!-- Toggle Button - responsive sizing -->
 	{#if showToggle}
-		<div class="flex justify-end mb-2">
+		<div class="flex justify-end mb-1.5 sm:mb-2">
 			<Button
 				type="button"
 				onclick={toggleMode}
 				{disabled}
 				variant="ghost"
 				size="sm"
-				class="text-xs"
+				class="text-xs px-2 py-1 sm:px-3 sm:py-1.5"
 			>
 				{#if isEditMode}
-					<Eye class="w-3 h-3 mr-1" />
-					Preview
+					<Eye class="w-3 h-3 sm:w-3.5 sm:h-3.5 sm:mr-1" />
+					<span class="hidden sm:inline">Preview</span>
 				{:else}
-					<Edit class="w-3 h-3 mr-1" />
-					Edit
+					<Edit class="w-3 h-3 sm:w-3.5 sm:h-3.5 sm:mr-1" />
+					<span class="hidden sm:inline">Edit</span>
 				{/if}
 			</Button>
 		</div>
@@ -119,14 +138,15 @@
 				size="md"
 				aria-labelledby={ariaLabelledby}
 			/>
-			<!-- Helper text for edit mode -->
-			<div class="mt-1 text-xs text-muted-foreground">
-				Press Ctrl+Enter to save • ESC to cancel
+			<!-- Helper text for edit mode - responsive -->
+			<div class="mt-1 text-[10px] sm:text-xs text-muted-foreground">
+				<span class="hidden sm:inline">Press Ctrl+Enter to save • ESC to cancel</span>
+				<span class="sm:hidden">Ctrl+↵ save • ESC cancel</span>
 			</div>
 		{:else}
-			<!-- Preview Mode -->
+			<!-- Preview Mode - Inkprint styling with responsive padding -->
 			<div
-				class="w-full px-3 py-2 border border-border rounded-lg bg-muted/50 min-h-[2.5rem] cursor-pointer transition-colors hover:bg-muted {showPlaceholder
+				class="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 border border-border rounded-lg bg-card shadow-ink-inner min-h-[2.25rem] sm:min-h-[2.5rem] cursor-pointer transition-colors hover:bg-muted/50 tx tx-frame tx-weak {showPlaceholder
 					? 'flex items-center'
 					: ''}"
 				onclick={toggleMode}
@@ -137,7 +157,7 @@
 				aria-labelledby={ariaLabelledby}
 			>
 				{#if showPlaceholder}
-					<span class="text-muted-foreground italic text-sm">
+					<span class="text-muted-foreground italic text-xs sm:text-sm">
 						{disabled ? 'N/A' : placeholder || 'Click to add content'}
 					</span>
 				{:else}

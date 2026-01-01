@@ -39,6 +39,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { RISK_STATES } from '$lib/types/onto';
 
 	interface Props {
 		projectId: string;
@@ -137,7 +138,7 @@
 
 	// Form fields
 	let title = $state('');
-	let description = $state('');
+	let content = $state('');
 	let impact = $state<string>('medium');
 	let probability = $state<string>('0.5');
 	let mitigationStrategy = $state('');
@@ -195,7 +196,8 @@
 				impact,
 				probability: probability ? parseFloat(probability) : null,
 				state_key: stateKey || 'identified',
-				description: description.trim() || null,
+				content: content.trim() || null,
+				description: content.trim() || null,
 				mitigation_strategy: mitigationStrategy.trim() || null
 			};
 
@@ -231,7 +233,7 @@
 		selectedType = null;
 		// Reset form
 		title = '';
-		description = '';
+		content = '';
 		impact = 'medium';
 		probability = '0.5';
 		mitigationStrategy = '';
@@ -254,7 +256,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -293,7 +295,7 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="px-3 py-3 sm:px-6 sm:py-6">
+		<div class="px-2 py-2 sm:px-6 sm:py-4">
 			<!-- Horizontal Slide Animation Between Views -->
 			<div class="relative overflow-hidden" style="min-height: 420px;">
 				{#key showTypeSelection}
@@ -304,7 +306,7 @@
 					>
 						{#if showTypeSelection}
 							<!-- RISK TYPE SELECTION VIEW -->
-							<div class="space-y-6">
+							<div class="space-y-3 sm:space-y-4">
 								<!-- Header -->
 								<div class="flex items-center gap-3 pb-4 border-b border-border">
 									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
@@ -320,7 +322,7 @@
 									</div>
 								</div>
 
-								<div class="space-y-6">
+								<div class="space-y-4 sm:space-y-6">
 									{#each Object.entries(typesByCategory) as [category, types]}
 										<div>
 											<h3
@@ -336,7 +338,7 @@
 													<button
 														type="button"
 														onclick={() => selectType(type)}
-														class="bg-card border border-border p-4 rounded-lg text-left group hover:border-amber-500 shadow-ink transition-all duration-200"
+														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-amber-500 shadow-ink transition-all duration-200"
 													>
 														<div
 															class="flex items-start justify-between mb-2"
@@ -371,7 +373,7 @@
 										<button
 											type="button"
 											onclick={skipTypeSelection}
-											class="w-full bg-muted/50 border border-dashed border-border p-4 rounded-lg text-left hover:bg-muted hover:border-amber-500/50 transition-all duration-200"
+											class="w-full bg-muted/50 border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-amber-500/50 transition-all duration-200"
 										>
 											<div class="flex items-center justify-between">
 												<div class="flex items-center gap-3">
@@ -398,11 +400,11 @@
 							</div>
 						{:else}
 							<!-- RISK DETAILS FORM -->
-							<form class="space-y-6" onsubmit={handleSubmit}>
+							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
 								<!-- Selected Type Badge -->
 								{#if selectedType}
 									<div
-										class="rounded-lg border border-border bg-muted/30 p-4 tx tx-grain tx-weak"
+										class="rounded-lg border border-border bg-muted/30 p-2.5 sm:p-4 tx tx-grain tx-weak"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3 flex-1 min-w-0">
@@ -460,13 +462,13 @@
 
 								<!-- Description -->
 								<FormField
-									label="Description"
-									labelFor="description"
+									label="Risk Details"
+									labelFor="content"
 									hint="Explain the risk in detail"
 								>
 									<Textarea
-										id="description"
-										bind:value={description}
+										id="content"
+										bind:value={content}
 										placeholder="Describe what could happen and why..."
 										enterkeyhint="next"
 										rows={3}
@@ -538,11 +540,19 @@
 										size="md"
 										placeholder="Select state"
 									>
-										<option value="identified">Identified</option>
-										<option value="analyzing">Analyzing</option>
-										<option value="mitigating">Mitigating</option>
-										<option value="monitoring">Monitoring</option>
-										<option value="accepted">Accepted (won't mitigate)</option>
+										{#each RISK_STATES as state}
+											<option value={state}>
+												{state === 'identified'
+													? 'Identified'
+													: state === 'mitigated'
+														? 'Mitigated'
+														: state === 'occurred'
+															? 'Occurred'
+															: state === 'closed'
+																? 'Closed'
+																: state}
+											</option>
+										{/each}
 									</Select>
 								</FormField>
 
@@ -566,7 +576,7 @@
 	<!-- Footer Actions -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30"
 		>
 			{#if showTypeSelection}
 				<div class="flex-1"></div>

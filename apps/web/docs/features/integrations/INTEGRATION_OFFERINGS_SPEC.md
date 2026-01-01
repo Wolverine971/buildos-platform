@@ -99,7 +99,7 @@ AI Agent → Takes action: Notifies design team about blocking approval
 #### Tasks
 
 - **Detailed task information:** title, description, priority, due dates
-- **State tracking:** todo, in_progress, done, cancelled
+- **State tracking:** todo, in_progress, blocked, done
 - **Dependencies and blockers**
 - **Calendar event associations**
 - **Recurring series configuration**

@@ -69,6 +69,7 @@
 	// Form fields
 	let name = $state('');
 	let description = $state('');
+	let planDetails = $state('');
 	let startDate = $state('');
 	let endDate = $state('');
 	let stateKey = $state('draft');
@@ -120,7 +121,7 @@
 		return days > 0 ? `${days} day${days === 1 ? '' : 's'}` : 'Flexible timeline';
 	});
 	const lastUpdatedLabel = $derived(formatRelativeTime(plan?.updated_at || plan?.created_at));
-	const planTypeLabel = $derived(plan?.type_key || 'plan.phase.base');
+	const planTypeLabel = $derived(plan?.type_key || 'plan.process.base');
 	const planIdLabel = $derived(plan?.id || planId);
 	const formDisabled = $derived(isSaving || isDeleting);
 
@@ -144,7 +145,8 @@
 
 			if (plan) {
 				name = plan.name || '';
-				description = plan.props?.description || '';
+				description = plan.description || plan.props?.description || '';
+				planDetails = plan.plan || plan.props?.plan || '';
 				startDate = plan.props?.start_date || '';
 				endDate = plan.props?.end_date || '';
 				stateKey = plan.state_key || 'draft';
@@ -174,6 +176,7 @@
 		try {
 			const requestBody = {
 				name: name.trim(),
+				plan: planDetails.trim() || null,
 				description: description.trim() || null,
 				start_date: startDate || null,
 				end_date: endDate || null,
@@ -408,9 +411,6 @@
 									>
 										Plan details
 									</p>
-									<h3 class="text-lg font-semibold text-foreground">
-										Structure the execution blueprint
-									</h3>
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-5">
@@ -444,6 +444,22 @@
 											enterkeyhint="next"
 											rows={4}
 											placeholder="Summarize objectives, target outcomes, and cross-team dependencies."
+											disabled={formDisabled}
+										/>
+									</FormField>
+
+									<FormField
+										label="Plan details"
+										labelFor="plan-details"
+										hint="Optional execution outline or runbook"
+										showOptional={true}
+									>
+										<Textarea
+											id="plan-details"
+											bind:value={planDetails}
+											enterkeyhint="next"
+											rows={4}
+											placeholder="Capture the execution outline, milestones, or runbook details..."
 											disabled={formDisabled}
 										/>
 									</FormField>
@@ -549,12 +565,6 @@
 											{endLabel}
 										</p>
 									</div>
-								</div>
-								<div
-									class="rounded bg-accent/10 border border-accent/30 px-3 py-2 text-xs text-foreground tx tx-bloom tx-weak"
-								>
-									Align plan duration with sprint cadence. If work exceeds six
-									weeks, consider splitting into phases.
 								</div>
 							</CardBody>
 						</Card>

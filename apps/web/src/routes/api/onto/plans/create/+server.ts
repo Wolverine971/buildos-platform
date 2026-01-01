@@ -32,6 +32,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { PLAN_STATES } from '$lib/types/onto';
 import {
 	logCreateAsync,
 	getChangeSourceFromRequest,
@@ -55,6 +56,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			type_key = 'plan.phase.base',
 			name,
+			plan,
 			description,
 			state_key = 'draft',
 			start_date,
@@ -65,6 +67,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Validate required fields
 		if (!project_id || !name) {
 			return ApiResponse.badRequest('Project ID and name are required');
+		}
+
+		if (state_key && !PLAN_STATES.includes(state_key)) {
+			return ApiResponse.badRequest(`state_key must be one of: ${PLAN_STATES.join(', ')}`);
 		}
 
 		// Get user's actor ID
@@ -95,11 +101,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key,
 			name,
 			state_key,
+			plan: plan || null,
 			description: description || null, // Use dedicated column
 			created_by: actorId,
 			props: {
 				...props,
 				// Maintain backwards compatibility by also storing in props
+				plan: plan || null,
 				description: description || null,
 				start_date: start_date || null,
 				end_date: end_date || null

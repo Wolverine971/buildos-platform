@@ -1,3 +1,5 @@
+<!-- apps/web/docs/content/AGENTIC_CHAT_POSITIONING.md -->
+
 # BuildOS Chat: Strategic Positioning Document
 
 ## Executive Summary
@@ -11,9 +13,10 @@ BuildOS has a genuinely differentiated chat system, but the market is flooded wi
 
 > **Related Documents:**
 >
-> - [Zoom Messaging Guide](/apps/web/docs/content/ZOOM_MESSAGING_GUIDE.md) - Complete messaging examples and concept explainer
-> - [Brand Strategy 2025](/apps/web/docs/content/BRAND_STRATEGY_2025.md) - Overall positioning and content strategy
-> - [Blog Update Master Plan](/apps/web/docs/content/BLOG_UPDATE_MASTER_PLAN.md) - Content implementation tracker
+> - [Zoom Messaging Guide](/docs/marketing/brand/ZOOM_MESSAGING_GUIDE.md) - Complete messaging examples and concept explainer
+> - [Brand Strategy 2025](/docs/marketing/brand/BRAND_STRATEGY_2025.md) - Overall positioning and content strategy
+> - [Brand Guide 1-Pager](/docs/marketing/brand/brand-guide-1-pager.md) - Quick brand reference
+> - [Blog Update Master Plan](BLOG_UPDATE_MASTER_PLAN.md) - Content implementation tracker
 
 ---
 

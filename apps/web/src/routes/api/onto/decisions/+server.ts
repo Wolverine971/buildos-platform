@@ -118,6 +118,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('title is required and cannot be empty');
 		}
 
+		if (state_key !== undefined && state_key !== null && typeof state_key !== 'string') {
+			return ApiResponse.badRequest('state_key must be a string');
+		}
+
+		if (description !== undefined && description !== null && typeof description !== 'string') {
+			return ApiResponse.badRequest('description must be a string');
+		}
+
+		if (outcome !== undefined && outcome !== null && typeof outcome !== 'string') {
+			return ApiResponse.badRequest('outcome must be a string');
+		}
+
+		if (rationale !== undefined && rationale !== null && typeof rationale !== 'string') {
+			return ApiResponse.badRequest('rationale must be a string');
+		}
+
 		// Validate state_key if provided
 		const validStates = ['pending', 'made', 'deferred', 'reversed'];
 		const finalStateKey = state_key || 'pending';
@@ -130,6 +146,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Validate decision_at if provided
 		let parsedDecisionAt: string | null = null;
 		if (decision_at !== undefined && decision_at !== null) {
+			if (typeof decision_at !== 'string') {
+				return ApiResponse.badRequest('decision_at must be a valid ISO 8601 date');
+			}
 			const decisionDate = new Date(decision_at);
 			if (isNaN(decisionDate.getTime())) {
 				return ApiResponse.badRequest('decision_at must be a valid ISO 8601 date');

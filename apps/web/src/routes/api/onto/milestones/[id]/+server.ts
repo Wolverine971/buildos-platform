@@ -41,8 +41,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
-
-type MilestoneState = (typeof MILESTONE_STATES)[number];
+import { normalizeMilestoneStateInput } from '../../shared/milestone-state';
 
 // GET /api/onto/milestones/[id] - Get a single milestone
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -114,10 +113,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { title, due_at, state_key, description, props } = body;
+		const { title, due_at, state_key, milestone, description, props } = body;
 
 		// Validate state_key if provided
-		if (state_key !== undefined && !MILESTONE_STATES.includes(state_key as MilestoneState)) {
+		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
+		const normalizedState = normalizeMilestoneStateInput(state_key);
+		if (hasStateInput && !normalizedState) {
 			return ApiResponse.badRequest(`State must be one of: ${MILESTONE_STATES.join(', ')}`);
 		}
 
@@ -182,6 +183,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Update dedicated columns
+		if (milestone !== undefined) {
+			updateData.milestone = milestone?.trim() || null;
+		}
 		if (description !== undefined) {
 			updateData.description = description?.trim() || null;
 		}
@@ -202,10 +206,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			hasPropsUpdate = true;
 		}
 
-		if (state_key !== undefined) {
-			updateData.state_key = state_key;
-			propsUpdate.state_key = state_key;
+		if (hasStateInput) {
+			const finalState = normalizedState ?? 'pending';
+			updateData.state_key = finalState;
+			propsUpdate.state_key = finalState;
 			hasPropsUpdate = true;
+			if (finalState === 'completed' && existingMilestone.state_key !== 'completed') {
+				updateData.completed_at = new Date().toISOString();
+			} else if (finalState !== 'completed' && existingMilestone.state_key === 'completed') {
+				updateData.completed_at = null;
+			}
 		}
 
 		if (hasPropsUpdate) {

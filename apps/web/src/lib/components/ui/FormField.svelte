@@ -23,25 +23,29 @@
 		class?: string;
 	} = $props();
 
-	let containerClasses = $derived(['space-y-1.5', className].filter(Boolean).join(' '));
+	// Tighter spacing: space-y-1 on mobile, space-y-1.5 on desktop
+	let containerClasses = $derived(['space-y-1 sm:space-y-1.5', className].filter(Boolean).join(' '));
 
+	// Tighter label margin: mb-1 on mobile, mb-1.5 on desktop
 	let labelClasses = $derived(
 		[
-			'block text-sm font-semibold',
+			'block text-xs sm:text-sm font-semibold',
 			uppercase && 'uppercase tracking-wider',
 			'text-foreground',
-			'mb-2'
+			'mb-1 sm:mb-1.5'
 		]
 			.filter(Boolean)
 			.join(' ')
 	);
 
+	// Error: text-xs on mobile, text-sm on desktop. Tighter gap.
 	let errorClasses = $derived(
-		['flex items-center gap-1.5 mt-1.5', 'text-sm text-destructive'].join(' ')
+		['flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5', 'text-xs sm:text-sm text-destructive'].join(' ')
 	);
 
+	// Hint: same responsive treatment
 	let hintClasses = $derived(
-		['flex items-center gap-1.5 mt-1.5', 'text-sm text-muted-foreground'].join(' ')
+		['flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5', 'text-xs sm:text-sm text-muted-foreground'].join(' ')
 	);
 </script>
 
@@ -52,23 +56,29 @@
 			{#if required}
 				<span class="text-destructive ml-0.5">*</span>
 			{:else if showOptional && !required}
-				<span class="text-muted-foreground ml-1 text-xs">(optional)</span>
+				<span class="text-muted-foreground ml-1 text-xs hidden sm:inline">(optional)</span>
 			{/if}
 		</label>
 	{/if}
 
 	<slot />
 
-	<!-- Reserve space for error/hint messages to prevent layout shift -->
-	<div class="min-h-[1.5rem] flex items-start">
+	<!--
+		Error/hint message space:
+		- Mobile: No reserved space (min-h-0) - layout shifts acceptable, density is priority
+		- Desktop: Reserve space (sm:min-h-5) to prevent layout shift during typing
+	-->
+	<div class="min-h-0 sm:min-h-5 flex items-start">
 		{#if error}
 			<div class={errorClasses} role="alert" aria-live="polite">
-				<AlertCircle class="w-4 h-4 flex-shrink-0" />
+				<!-- Icon hidden on mobile for density, shown on desktop -->
+				<AlertCircle class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 hidden sm:block" />
 				<span>{error}</span>
 			</div>
 		{:else if hint}
 			<div class={hintClasses}>
-				<Info class="w-4 h-4 flex-shrink-0" />
+				<!-- Icon hidden on mobile for density, shown on desktop -->
+				<Info class="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 hidden sm:block" />
 				<span>{hint}</span>
 			</div>
 		{/if}

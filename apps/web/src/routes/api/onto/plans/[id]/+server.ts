@@ -110,7 +110,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { name, description, start_date, end_date, state_key, props } = body;
+		const { name, plan, description, start_date, end_date, state_key, props } = body;
 
 		if (state_key !== undefined && !PLAN_STATES.includes(state_key)) {
 			return ApiResponse.badRequest(`state_key must be one of: ${PLAN_STATES.join(', ')}`);
@@ -159,6 +159,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (name !== undefined) updateData.name = name;
 		if (state_key !== undefined) updateData.state_key = state_key;
 
+		if (plan !== undefined) {
+			updateData.plan = plan || null;
+		}
+
 		// Update description in dedicated column
 		if (description !== undefined) {
 			updateData.description = description || null;
@@ -176,6 +180,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Maintain backwards compatibility by also storing in props
+		if (plan !== undefined) {
+			propsUpdate.plan = plan || null;
+			hasPropsUpdate = true;
+		}
 		if (description !== undefined) {
 			propsUpdate.description = description || null;
 			hasPropsUpdate = true;

@@ -289,6 +289,9 @@ export interface OntologyBriefData {
 	recentUpdates: RecentUpdates;
 	tasksByWorkMode: Record<string, OntoTask[]>;
 	projects: ProjectBriefData[];
+	// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
+	recentlyUpdatedTasks: OntoTask[]; // Updated in last 7 days, ordered by updated_at desc, cap 10
+	upcomingTasks: OntoTask[]; // Due/start in next 7 days (deduplicated from recent), cap 5
 }
 
 export interface ProjectBriefData {
@@ -304,6 +307,9 @@ export interface ProjectBriefData {
 	thisWeekTasks: OntoTask[];
 	blockedTasks: OntoTask[];
 	unblockingTasks: OntoTask[];
+	// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
+	recentlyUpdatedTasks: OntoTask[]; // Updated in last 7 days, ordered by updated_at desc
+	upcomingTasks: OntoTask[]; // Due/start in next 7 days (deduplicated from recent)
 }
 
 // ============================================================================

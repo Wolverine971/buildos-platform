@@ -1,3 +1,5 @@
+<!-- apps/web/docs/prompts/chat/compression/segment-compression-prompt.md -->
+
 # Prompt Audit: chat-compression-segment
 
 **Generated at:** 2025-12-31T13:30:35.882Z

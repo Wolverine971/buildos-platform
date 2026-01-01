@@ -4,6 +4,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -51,6 +52,7 @@
 	let title = $state('');
 	let typeKey = $state('');
 	let stateKey = $state('draft');
+	let description = $state('');
 	let body = $state('');
 	let createdAt = $state<string | null>(null);
 	let updatedAt = $state<string | null>(null);
@@ -98,8 +100,9 @@
 
 	function resetForm() {
 		title = '';
-		typeKey = typeOptions[0] ?? 'doc.project.note';
+		typeKey = typeOptions[0] ?? 'document.knowledge.research';
 		stateKey = 'draft';
+		description = '';
 		body = '';
 		formError = null;
 		createdAt = null;
@@ -128,6 +131,7 @@
 			title = document.title ?? '';
 			typeKey = document.type_key ?? '';
 			stateKey = document.state_key ?? 'draft';
+			description = document.description ?? document.props?.description ?? '';
 			// Prefer content column, fall back to props.body_markdown for backwards compatibility
 			body = (document.content as string) ?? (document.props?.body_markdown as string) ?? '';
 			createdAt = document.created_at ?? null;
@@ -190,6 +194,7 @@
 				title: title.trim(),
 				type_key: typeKey.trim(),
 				state_key: stateKey,
+				description: description.trim() || null,
 				// Use content column (API handles backwards compatibility with props.body_markdown)
 				content: body
 			};
@@ -404,6 +409,22 @@
 									/>
 								</FormField>
 
+								<!-- Description -->
+								<FormField
+									label="Description"
+									labelFor="document-description"
+									uppercase={false}
+								>
+									<Textarea
+										id="document-description"
+										bind:value={description}
+										placeholder="Short summary"
+										rows={2}
+										disabled={saving}
+										size="sm"
+									/>
+								</FormField>
+
 								<!-- State & Type - Compact inline on mobile -->
 								<div class="grid grid-cols-2 gap-2">
 									<FormField
@@ -433,7 +454,7 @@
 											list={datalistId}
 											class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-all"
 											bind:value={typeKey}
-											placeholder="doc.type"
+											placeholder="document.type"
 										/>
 										<datalist id={datalistId}>
 											{#each docTypeOptions as option}
@@ -448,21 +469,21 @@
 									<button
 										type="button"
 										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-										onclick={() => (typeKey = 'doc.project.context')}
+										onclick={() => (typeKey = 'document.context.project')}
 									>
 										.context
 									</button>
 									<button
 										type="button"
 										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-										onclick={() => (typeKey = 'doc.task.spec')}
+										onclick={() => (typeKey = 'document.spec.product')}
 									>
 										.spec
 									</button>
 									<button
 										type="button"
 										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-										onclick={() => (typeKey = 'doc.project.note')}
+										onclick={() => (typeKey = 'document.knowledge.research')}
 									>
 										.note
 									</button>

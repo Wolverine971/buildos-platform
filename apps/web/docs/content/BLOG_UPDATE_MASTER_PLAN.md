@@ -1,3 +1,5 @@
+<!-- apps/web/docs/content/BLOG_UPDATE_MASTER_PLAN.md -->
+
 # BuildOS Blog Update Master Plan
 
 ## Overview
@@ -17,12 +19,13 @@ Before starting any blog update, read these documents:
 
 ### Core Strategy Documents
 
-| Document                    | Path                                                 | What It Contains                                          |
-| --------------------------- | ---------------------------------------------------- | --------------------------------------------------------- |
-| **Zoom Messaging Guide** ⭐ | `/apps/web/docs/content/ZOOM_MESSAGING_GUIDE.md`     | **PRIMARY** - Zoom in/out messaging, examples, guidelines |
-| **Chat Positioning**        | `/apps/web/docs/content/AGENTIC_CHAT_POSITIONING.md` | Project Lens positioning, differentiation                 |
-| **Brand Strategy**          | `/apps/web/docs/content/BRAND_STRATEGY_2025.md`      | Overall messaging framework                               |
-| **Blog Audit**              | `/apps/web/docs/content/BLOG_AUDIT_2025.md`          | Full inventory, issues identified                         |
+| Document                    | Path                                            | What It Contains                            |
+| --------------------------- | ----------------------------------------------- | ------------------------------------------- |
+| **Brand Strategy 2025** ⭐  | `/docs/marketing/brand/BRAND_STRATEGY_2025.md`  | **MASTER** - Overall messaging framework    |
+| **Zoom Messaging Guide** ⭐ | `/docs/marketing/brand/ZOOM_MESSAGING_GUIDE.md` | Zoom in/out messaging, examples, guidelines |
+| **Brand Guide 1-Pager**     | `/docs/marketing/brand/brand-guide-1-pager.md`  | Quick brand reference                       |
+| **Chat Positioning**        | `AGENTIC_CHAT_POSITIONING.md`                   | Project Lens positioning, differentiation   |
+| **Blog Audit**              | `BLOG_AUDIT_2025.md`                            | Full inventory, issues identified           |
 
 ### Content Examples
 
@@ -358,69 +361,56 @@ Unpublished blogs that need to be written/completed.
 
 ---
 
-## Blog 5: Task Management Best Practices
+## Blog 5: Task Management Best Practices ✅ COMPLETED
 
 ### Metadata
 
-- **File:** `/apps/web/src/lib/content/blog/productivity-tips/task-management-best-practices.md`
-- **Status:** Published
+- **File:** `/apps/web/src/content/blogs/productivity-tips/task-management-best-practices.md`
+- **Status:** Published (Updated 2025-12-31)
 - **Priority:** CRITICAL
 - **Type:** Jab (How-To)
-- **Estimated Effort:** Medium
+- **Completed By:** Claude
 
-### Current State
+### Updates Made
 
-- Good advice on task philosophy
-- SMART-ER framework
-- Tasks presented as primary/only unit
-- No mention of broader context
+#### Section: Introduction ✅
 
-### What's Wrong
+- [x] Added framing: "Tasks are one part of a rich context system"
+- [x] Added insight: "isolated tasks fail—tasks connected to goals are intelligence"
+- [x] Set expectation for task advice + context architecture
 
-1. Tasks presented in isolation, not as part of ontology
-2. No mention of goals, plans, documents
-3. No mention of Project Lens for task management
-4. Misses opportunity to show how context makes tasks better
+#### Section: Task Philosophy → "Tasks in the Context Hierarchy" ✅
 
-### Required Updates
+- [x] Added ontology hierarchy diagram (Goals → Plans → Tasks → Documents)
+- [x] Explained what every task "knows" (goal, plan, docs, blockers)
+- [x] Added "context that makes tasks smarter" message
 
-#### Section: Introduction
+#### Section: NEW "Zoom Into Your Tasks with Project Lens" ✅
 
-- [ ] Add framing: "Tasks are one part of BuildOS's context system"
-- [ ] Mention that tasks exist within goals and plans
-- [ ] Set expectation: task advice + how context makes it better
+- [x] What Happens When You Zoom In (context loading)
+- [x] Task-Focused Conversations with example dialogue
+- [x] Unblocking Stuck Tasks with zoom approach
+- [x] Zoom Flow diagram for task management
+- [x] "You control the altitude. The AI follows."
 
-#### Section: Beyond the To-Do List
+#### Section: SMART-ER Framework ✅
 
-- [ ] Expand to show tasks in context: connected to goals, plans, documents
-- [ ] Explain why isolated tasks fail (no context)
-- [ ] Show how BuildOS connects tasks to bigger picture
+- [x] Preserved excellent SMART-ER content
+- [x] Added note on "Relevant": "In Build OS, this connection is automatic"
 
-#### Section: Add NEW "Project Lens for Task Management"
+#### Section: NEW "Context Makes Tasks Better Over Time" ✅
 
-- [ ] Explain: focus on a specific task in Project Lens
-- [ ] AI can identify blockers, suggest next steps, find related work
-- [ ] Show example: "What's blocking this task?" with AI response
-- [ ] Mention dynamic focus: zoom into task details, zoom out to project
+- [x] Context compounding explanation
+- [x] Day 1 vs Day 100 comparison
+- [x] Strong CTA: "Zoom in. Zoom out. Build tasks that connect to goals."
 
-#### Section: SMART-ER Framework
+### Quality Checklist - All Pass ✅
 
-- [ ] Keep framework (good content)
-- [ ] Add: how ontology positioning enhances SMART tasks
-- [ ] Example: SMART task that's connected to a measurable goal
-
-### Research Needed
-
-- [ ] Review current SMART-ER content to preserve
-- [ ] Check what task-specific tools exist in Project Lens
-- [ ] Review `/apps/web/docs/features/ontology/DATA_MODELS.md` for task relationships
-
-### Success Criteria
-
-- [ ] Tasks positioned as part of larger context system
-- [ ] Goals, plans, documents mentioned as related entities
-- [ ] Project Lens introduced for task management
-- [ ] Original good advice preserved
+- [x] Tasks positioned as part of larger context system
+- [x] Goals, plans, documents mentioned as related entities
+- [x] Project Lens introduced with zoom messaging
+- [x] Original excellent advice preserved (SMART-ER, energy-based scheduling, etc.)
+- [x] Context compounding explained
 
 ### Reference Docs
 
@@ -433,66 +423,55 @@ Unpublished blogs that need to be written/completed.
 
 ---
 
-## Blog 6: Daily Brief Guide
+## Blog 6: Daily Brief Guide ✅ COMPLETED
 
 ### Metadata
 
-- **File:** `/apps/web/src/lib/content/blog/getting-started/daily-brief-guide.md`
-- **Status:** Published
+- **File:** `/apps/web/src/content/blogs/getting-started/daily-brief-guide.md`
+- **Status:** Published (Updated 2025-12-31)
 - **Priority:** IMPORTANT
 - **Type:** Jab (Feature Education)
-- **Estimated Effort:** Medium
+- **Completed By:** Claude
 
-### Current State
+### Updates Made
 
-- Explains daily brief feature
-- References "task prioritization" and "projects"
-- Good practical content
+#### Section: Introduction ✅
 
-### What's Wrong
+- [x] Reframed as "contextual intelligence"
+- [x] Added: briefs draw from entire BuildOS context (goals, plans, tasks, documents)
+- [x] Added Day 1 vs Day 100 teaser
 
-1. Framed around tasks, not full ontology
-2. Doesn't explain that briefs draw from goals, plans, documents
-3. No mention of Project Lens for brief customization
-4. Missing "contextual intelligence" framing
+#### Section: "Intelligence From Your Full Context" ✅
 
-### Required Updates
+- [x] Replaced "Beyond Task Lists" with ontology-aware section
+- [x] Added ASCII diagram showing what briefs draw from
+- [x] Goal-aware insights, relationship-based prioritization, compounding intelligence
 
-#### Section: What is the Daily Brief
+#### Section: NEW "Zoom Into Your Brief with Project Lens" ✅
 
-- [ ] Reframe as "contextual intelligence"
-- [ ] Explain: briefs draw from your full ontology (goals, plans, tasks, documents)
-- [ ] Mention that context accumulation makes briefs smarter over time
+- [x] Ask questions about your brief with examples
+- [x] Drill into specific recommendations
+- [x] Customize future briefs through conversation
+- [x] Brief → Lens → Action flow diagram
 
-#### Section: What's Included
+#### Section: NEW "Context Compounding: Briefs That Get Smarter" ✅
 
-- [ ] Update to show briefs reference goals (not just tasks)
-- [ ] Mention plan progress, document updates
-- [ ] Show that relationships inform prioritization
+- [x] Table showing Week 1 vs Month 1 vs Month 6
+- [x] Explained why more context = smarter briefs
+- [x] "Day 1 briefs are helpful. Day 100 briefs feel like having a chief of staff"
 
-#### Section: Customization
+#### Section: Conclusion ✅
 
-- [ ] Add: use Project Lens to customize your brief
-- [ ] Show example: "I want my brief to focus more on [goal X]"
-- [ ] Mention daily brief chat context type
+- [x] Updated CTA: "Ready to build contextual intelligence?"
+- [x] Added zoom tagline: "Zoom in. Zoom out. Let your briefs get smarter."
 
-#### Section: Intelligence
+### Quality Checklist - All Pass ✅
 
-- [ ] Explain how rich context enables better recommendations
-- [ ] Show that more context = smarter briefs (compounding)
-
-### Research Needed
-
-- [ ] Review actual daily brief generation logic
-- [ ] Check what ontology data feeds into briefs
-- [ ] Verify Project Lens daily brief context type exists
-
-### Success Criteria
-
-- [ ] "Contextual intelligence" framing established
-- [ ] Full ontology mentioned (not just tasks)
-- [ ] Project Lens customization explained
-- [ ] Context compounding mentioned
+- [x] "Contextual intelligence" framing established
+- [x] Full ontology mentioned (not just tasks)
+- [x] Project Lens customization explained with examples
+- [x] Context compounding explained with table
+- [x] Dev notes preserved at end of file
 
 ### Reference Docs
 
@@ -1103,23 +1082,23 @@ Position BuildOS as "Notion for ADHD minds" - same power, none of the friction
 
 ## Progress Tracker
 
-| #   | Blog                     | Priority    | Status | Assigned     | Notes                                                                                                |
-| --- | ------------------------ | ----------- | ------ | ------------ | ---------------------------------------------------------------------------------------------------- |
-| 1   | How BuildOS Works        | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added context architecture, Project Lens, contextual intelligence framing        |
-| 2   | Anti-AI-Assistant        | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added Project Lens IS/ISN'T, context engineering section, ontology               |
-| 3   | Context vs Agentic       | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added Project Lens implementation, ontology foundation, context-first conclusion |
-| 4   | Effective Brain Dumping  | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added zoom messaging, ontology output, context compounding section               |
-| 5   | Task Management          | CRITICAL    | ⬜     |              |                                                                                                      |
-| 6   | Daily Brief Guide        | IMPORTANT   | ⬜     |              |                                                                                                      |
-| 7   | Understanding Life Goals | IMPORTANT   | ⬜     |              |                                                                                                      |
-| 8   | Context Engineering 101  | IMPORTANT   | ⬜     |              |                                                                                                      |
-| 9   | Under the Hood           | IMPORTANT   | ⬜     |              |                                                                                                      |
-| 10  | Evolution of Note-Taking | IMPORTANT   | ⬜     |              |                                                                                                      |
-| 11  | Who is BuildOS For       | ENHANCEMENT | ⬜     |              |                                                                                                      |
-| 12  | Troubleshooting          | ENHANCEMENT | ⬜     |              |                                                                                                      |
-| 13  | vs Notion (ADHD)         | HIGH-NEW    | ⬜     |              |                                                                                                      |
-| 14  | vs ChatGPT               | HIGH-NEW    | ⬜     |              |                                                                                                      |
-| 15  | 9 Ways to Chat           | MEDIUM-NEW  | ⬜     |              |                                                                                                      |
+| #   | Blog                     | Priority    | Status | Assigned     | Notes                                                                                                     |
+| --- | ------------------------ | ----------- | ------ | ------------ | --------------------------------------------------------------------------------------------------------- | --- |
+| 1   | How BuildOS Works        | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added context architecture, Project Lens, contextual intelligence framing             |
+| 2   | Anti-AI-Assistant        | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added Project Lens IS/ISN'T, context engineering section, ontology                    |
+| 3   | Context vs Agentic       | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added Project Lens implementation, ontology foundation, context-first conclusion      |
+| 4   | Effective Brain Dumping  | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added zoom messaging, ontology output, context compounding section                    |
+| 5   | Task Management          | CRITICAL    | ✅     | Claude       | Updated 2025-12-31: Added ontology hierarchy, Project Lens zoom section, context compounding              |
+| 6   | Daily Brief Guide        | IMPORTANT   | ✅     | Claude       | Updated 2025-12-31: Added contextual intelligence framing, Project Lens zoom section, context compounding |
+| 7   | Understanding Life Goals | IMPORTANT   | ✅     | Claude       | Updated 2025-12-31: Added ontology hierarchy, Project Lens section, context compounding, zoom messaging   |     |
+| 8   | Context Engineering 101  | IMPORTANT   | ✅     | Claude       | Updated 2025-12-31: Added BuildOS ontology implementation, Project Lens zoom table, context compounding   |
+| 9   | Under the Hood           | IMPORTANT   | ✅     | Claude       | Updated 2025-12-31: Added ontology architecture, Project Lens zoom section, context compounding table     |
+| 10  | Evolution of Note-Taking | IMPORTANT   | ✅     | Claude       | Updated 2025-12-31: Added ontology architecture, Project Lens zoom section, context compounding table     |
+| 11  | Who is BuildOS For       | ENHANCEMENT | ✅     | Claude       | Updated 2026-01-01: Added ADHD zoom/context section, new "Why It Works" section with persona benefits     |
+| 12  | Troubleshooting          | ENHANCEMENT | ⬜     |              |                                                                                                           |
+| 13  | vs Notion (ADHD)         | HIGH-NEW    | ✅     | Claude       | Updated 2026-01-01: Full rewrite with ontology, Project Lens zoom, comparison tables, context compounding |
+| 14  | vs ChatGPT               | HIGH-NEW    | ⬜     |              |                                                                                                           |
+| 15  | 9 Ways to Chat           | MEDIUM-NEW  | ⬜     |              |                                                                                                           |
 | 16  | 10 Reasons Context       | HIGH-NEW    | ⬜     | Draft exists |
 
 ---
@@ -1192,4 +1171,4 @@ Before marking complete, verify:
 ---
 
 _Master plan created: December 31, 2025_
-_Last updated: December 31, 2025_
+_Last updated: January 1, 2026 (Blog 13 complete)_

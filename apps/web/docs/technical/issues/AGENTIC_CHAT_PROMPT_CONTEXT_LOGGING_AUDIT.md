@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/issues/AGENTIC_CHAT_PROMPT_CONTEXT_LOGGING_AUDIT.md -->
+
 # Agentic Chat Audit - Prompts, Contexts, Logging
 
 > Created: 2025-12-31

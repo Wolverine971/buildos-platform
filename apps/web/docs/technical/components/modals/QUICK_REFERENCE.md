@@ -2,7 +2,7 @@
 
 # Modal Components Quick Reference
 
-**Last Updated**: November 4, 2025
+**Last Updated**: January 1, 2026
 **Status**: Active Reference Guide
 **Category**: Component Documentation
 **Location**: `/apps/web/docs/technical/components/modals/`
@@ -297,6 +297,61 @@ xl:  max-w-6xl  (1152px)  ← Extra large
 - Centered with fixed max-width
 - Buttons horizontal layout
 - Standard padding
+
+---
+
+## Ontology Modal Spacing Standards
+
+**Updated January 2026** - Standardized for mobile command center experience.
+
+### Standard Spacing Pattern (Mobile-First)
+
+```css
+/* Header - Ultra-compact on mobile */
+px-2 py-1.5 sm:px-4 sm:py-2.5
+
+/* Body Container */
+px-2 py-2 sm:px-6 sm:py-4
+
+/* Footer */
+px-2 py-2 sm:px-4 sm:py-3
+
+/* Form Field Spacing */
+space-y-3 sm:space-y-4
+
+/* Type Selection Cards */
+p-2.5 sm:p-4
+
+/* Category Groups */
+space-y-4 sm:space-y-6
+
+/* Button Gaps */
+gap-2 sm:gap-3
+```
+
+### Ontology Modals Using This Pattern
+
+| Modal | Location |
+|-------|----------|
+| TaskCreateModal | `/src/lib/components/ontology/TaskCreateModal.svelte` |
+| GoalCreateModal | `/src/lib/components/ontology/GoalCreateModal.svelte` |
+| DecisionCreateModal | `/src/lib/components/ontology/DecisionCreateModal.svelte` |
+| RiskCreateModal | `/src/lib/components/ontology/RiskCreateModal.svelte` |
+| MilestoneCreateModal | `/src/lib/components/ontology/MilestoneCreateModal.svelte` |
+
+### State Enums Reference
+
+All ontology modals use enums from `$lib/types/onto.ts`:
+
+```typescript
+TASK_STATES: ['todo', 'in_progress', 'blocked', 'done']
+GOAL_STATES: ['draft', 'active', 'achieved', 'abandoned']
+MILESTONE_STATES: ['pending', 'in_progress', 'completed', 'missed']
+RISK_STATES: ['identified', 'mitigated', 'occurred', 'closed']
+DECISION_STATES: ['pending', 'made', 'deferred', 'reversed']
+```
+
+**Full Audit:** See `/docs/reports/ontology-modal-audit-2025-01.md`
 
 ---
 

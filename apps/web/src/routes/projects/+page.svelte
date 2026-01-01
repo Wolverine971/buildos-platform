@@ -26,7 +26,16 @@
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
-	import { ListChecks, Layers, Target, Calendar, FileText, Loader2, SlidersHorizontal, ChevronDown } from 'lucide-svelte';
+	import {
+		ListChecks,
+		Layers,
+		Target,
+		Calendar,
+		FileText,
+		Loader2,
+		SlidersHorizontal,
+		ChevronDown
+	} from 'lucide-svelte';
 	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
 	import {
 		setNavigationData,
@@ -221,7 +230,10 @@
 
 	// Count of active filters (excluding search)
 	const activeFilterCount = $derived(
-		selectedStates.length + selectedContexts.length + selectedScales.length + selectedStages.length
+		selectedStates.length +
+			selectedContexts.length +
+			selectedScales.length +
+			selectedStages.length
 	);
 
 	// Check if any filter options are available
@@ -575,20 +587,26 @@
 								<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
 								<span class="text-sm font-semibold text-foreground">Filters</span>
 								{#if activeFilterCount > 0}
-									<span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold">
+									<span
+										class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold"
+									>
 										{activeFilterCount}
 									</span>
 								{/if}
 							</div>
 							<ChevronDown
-								class="h-4 w-4 text-muted-foreground transition-transform duration-200 {filtersExpanded ? 'rotate-180' : ''}"
+								class="h-4 w-4 text-muted-foreground transition-transform duration-200 {filtersExpanded
+									? 'rotate-180'
+									: ''}"
 							/>
 						</button>
 
 						<!-- Filter Panel Content (Collapsible) -->
 						<div
 							id="filter-panel-content"
-							class="grid transition-all duration-200 ease-out {filtersExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}"
+							class="grid transition-all duration-200 ease-out {filtersExpanded
+								? 'grid-rows-[1fr] opacity-100'
+								: 'grid-rows-[0fr] opacity-0'}"
 						>
 							<div class="overflow-hidden">
 								<div class="px-3 pb-3 pt-1 space-y-3 border-t border-border">

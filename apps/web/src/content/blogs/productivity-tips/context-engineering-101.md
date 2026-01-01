@@ -1,9 +1,9 @@
 ---
 title: 'Prompt Engineering is Out. Context Engineering is In.'
-description: 'Why the future of AI productivity moves beyond crafting clever prompts to building persistent, contextual systems that remember and build upon your work over time.'
+description: 'Why the future of AI productivity moves beyond crafting clever prompts to building persistent, contextual systems. See how Build OS implements context engineering with rich ontology and Project Lens.'
 author: 'DJ Wayne'
 date: '2025-08-05'
-lastmod: '2025-08-05'
+lastmod: '2025-12-31'
 changefreq: 'monthly'
 priority: '0.9'
 published: true
@@ -18,10 +18,13 @@ tags:
         'AI-systems',
         'build-os',
         'ai-context',
-        'prompt-optimization'
+        'prompt-optimization',
+        'ontology',
+        'project-lens',
+        'zoom'
     ]
-readingTime: 8
-excerpt: 'The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts, and how to implement context engineering in your workflows today.'
+readingTime: 10
+excerpt: 'The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts—and how Build OS implements this with rich context architecture and Project Lens.'
 pic: ''
 path: apps/web/src/content/blogs/productivity-tips/context-engineering-101.md
 ---
@@ -77,6 +80,46 @@ This requires system-level thinking, not just message-level optimization.
 - Preferred workflows and output formats
 
 <!-- EDITOR'S NOTE: A well-structured context file typically reduces prompt length by 67% while improving response relevance -->
+
+## Build OS: Context Engineering in Practice
+
+Build OS implements context engineering through a **rich context architecture**—structured data that gives AI the right information at the right time:
+
+```
+Goals (Why you're doing this)
+  └── Plans (How you'll get there)
+       └── Tasks (What to do next)
+            └── Documents (What you've learned)
+```
+
+This isn't just organization—it's **context infrastructure**:
+
+- **Goals** provide strategic context for every conversation
+- **Plans** show how work connects to outcomes
+- **Tasks** carry their parent context (which goal they serve, which plan they belong to)
+- **Documents** preserve decisions and learnings in context
+
+When you talk to AI in Build OS, it doesn't just know what you typed. It knows the goal you're working toward, the plan you're executing, and the history of decisions you've made.
+
+### Project Lens: Zoom In and Out
+
+Here's where context engineering becomes interactive: **Project Lens lets you zoom into any level of your context**.
+
+| Zoom Level | What AI Knows                          | Example Conversation                   |
+| ---------- | -------------------------------------- | -------------------------------------- |
+| Global     | All your goals, projects, patterns     | "What should I focus on this quarter?" |
+| Goal       | Everything connected to one goal       | "What's blocking my revenue goal?"     |
+| Plan       | All tasks and documents in a plan      | "What's the next milestone?"           |
+| Task       | Parent context + task-specific details | "How do I approach this?"              |
+| Document   | Full document + what it connects to    | "Summarize this research"              |
+
+**You control the altitude. AI follows.**
+
+This is context engineering in action:
+
+- You don't craft prompts—you **select context**
+- You don't explain your project—you **zoom into it**
+- You don't start over—you **continue building**
 
 ## The Critical Mistakes People Make
 
@@ -201,6 +244,40 @@ You know your context engineering is working when:
 
 The companies and individuals who master context engineering will have exponentially more leverage with AI tools. They'll build compound benefits from every interaction while others stay trapped in one-off conversation cycles.
 
-Context engineering isn't just a productivity upgrade-it's the foundation for building AI-augmented workflows that get smarter and more valuable over time.
+Context engineering isn't just a productivity upgrade—it's the foundation for building AI-augmented workflows that get smarter and more valuable over time.
 
-The future belongs to those who can build and maintain rich contextual systems, not those who craft perfect prompts. Start building your context infrastructure today.
+## Context Compounding: The Long Game
+
+Here's the insight that changes everything: **context compounds**.
+
+| Time Building Context | What Your System Knows         | Quality of AI Help              |
+| --------------------- | ------------------------------ | ------------------------------- |
+| Week 1                | Basic project structure        | Generic responses               |
+| Month 1               | Your patterns and preferences  | Personalized guidance           |
+| Month 6               | Deep history and relationships | Intelligence that surprises you |
+
+Every brain dump, every decision captured, every task completed—it all adds to your context. Day 1 context engineering gives you better prompts. Day 100 context engineering gives you an AI that actually knows your work.
+
+This is why starting matters more than perfecting. Every day you wait is context you don't have.
+
+## The Future is Context-First
+
+The future belongs to those who can build and maintain rich contextual systems, not those who craft perfect prompts.
+
+Build OS bets on this future:
+
+- **Rich Context Architecture** gives AI structured knowledge
+- **Project Lens** delivers that context through zoom in/out
+- **Context Compounding** means your system gets smarter every day
+
+You don't need to become a prompt engineer. You need to become a context builder.
+
+---
+
+**Ready to start context engineering?**
+
+Stop crafting prompts. Start building context. Every brain dump, every task, every document makes your AI smarter about YOUR work.
+
+The future isn't about better prompts. It's about better context. Start building today.
+
+[Start building context →](/)

@@ -199,6 +199,7 @@ async function checkAndScheduleBriefs() {
 		});
 
 		// PHASE 1: Batch fetch engagement data for all users (if enabled)
+		// OPTIMIZED: Uses single batch query instead of 2 queries per user
 		const engagementDataMap = new Map<
 			string,
 			{
@@ -210,52 +211,55 @@ async function checkAndScheduleBriefs() {
 		>();
 
 		if (ENGAGEMENT_BACKOFF_ENABLED && preferences.length > 0) {
-			console.log('🔍 Batch checking engagement status for all users...');
+			console.log('🔍 Batch checking engagement status for all users (optimized)...');
 
-			// IMPORTANT: Limit concurrent queries to prevent connection exhaustion
-			const MAX_CONCURRENT_CHECKS = 20; // Conservative limit to avoid overwhelming DB
-			const failedChecks: string[] = [];
+			try {
+				// Single batch call that uses 2 queries for ALL users instead of 2 per user
+				// For 100 users: 2 queries vs 200 queries (100x improvement)
+				const batchResults = await backoffCalculator.shouldSendDailyBriefBatch(userIds);
 
-			for (let i = 0; i < preferences.length; i += MAX_CONCURRENT_CHECKS) {
-				const batch = preferences.slice(i, i + MAX_CONCURRENT_CHECKS);
-
-				const engagementChecks = await Promise.allSettled(
-					batch.map(async (preference) => {
-						if (!preference.user_id) return null;
-						try {
-							const decision = await backoffCalculator.shouldSendDailyBrief(
-								preference.user_id
-							);
-							return { userId: preference.user_id, decision };
-						} catch (error) {
-							failedChecks.push(preference.user_id);
-							console.error(
-								`Failed to check engagement for user ${preference.user_id}:`,
-								error
-							);
-							return null;
-						}
-					})
-				);
-
-				// Process results
-				engagementChecks.forEach((result) => {
-					if (result.status === 'fulfilled' && result.value) {
-						const { userId, decision } = result.value;
-						engagementDataMap.set(userId, decision);
-					}
+				// Transfer results to the engagement map
+				batchResults.forEach((decision, userId) => {
+					engagementDataMap.set(userId, decision);
 				});
 
-				// Log batch progress
-				if (i + MAX_CONCURRENT_CHECKS < preferences.length) {
-					console.log(
-						`Processed ${Math.min(i + MAX_CONCURRENT_CHECKS, preferences.length)}/${preferences.length} users`
-					);
-				}
-			}
+				console.log(
+					`✅ Batch engagement check complete: ${engagementDataMap.size}/${userIds.length} users processed`
+				);
+			} catch (error) {
+				console.error('❌ Batch engagement check failed:', error);
+				console.log('⚠️ Falling back to individual engagement checks...');
 
-			if (failedChecks.length > 0) {
-				console.warn(`⚠️ Failed to check engagement for ${failedChecks.length} users`);
+				// Fallback to original behavior if batch fails
+				const MAX_CONCURRENT_CHECKS = 20;
+				for (let i = 0; i < preferences.length; i += MAX_CONCURRENT_CHECKS) {
+					const batch = preferences.slice(i, i + MAX_CONCURRENT_CHECKS);
+
+					const engagementChecks = await Promise.allSettled(
+						batch.map(async (preference) => {
+							if (!preference.user_id) return null;
+							try {
+								const decision = await backoffCalculator.shouldSendDailyBrief(
+									preference.user_id
+								);
+								return { userId: preference.user_id, decision };
+							} catch (err) {
+								console.error(
+									`Failed to check engagement for user ${preference.user_id}:`,
+									err
+								);
+								return null;
+							}
+						})
+					);
+
+					engagementChecks.forEach((result) => {
+						if (result.status === 'fulfilled' && result.value) {
+							const { userId, decision } = result.value;
+							engagementDataMap.set(userId, decision);
+						}
+					});
+				}
 			}
 		}
 

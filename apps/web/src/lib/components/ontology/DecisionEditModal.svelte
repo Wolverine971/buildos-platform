@@ -70,6 +70,16 @@
 		}
 	];
 
+	function formatDateTimeLocal(value?: string | null): string {
+		if (!value) return '';
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return '';
+		const pad = (num: number) => String(num).padStart(2, '0');
+		return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+			date.getHours()
+		)}:${pad(date.getMinutes())}`;
+	}
+
 	let modalOpen = $state(true);
 	let decision = $state<any>(null);
 	let isLoading = $state(true);
@@ -121,11 +131,7 @@
 				outcome = decision.outcome || '';
 				rationale = decision.rationale || '';
 				stateKey = decision.state_key || 'pending';
-				// Convert to datetime-local format
-				if (decision.decision_at) {
-					const date = new Date(decision.decision_at);
-					decisionAt = date.toISOString().slice(0, 16);
-				}
+				decisionAt = formatDateTimeLocal(decision.decision_at);
 			}
 		} catch (err) {
 			console.error('Error loading decision:', err);

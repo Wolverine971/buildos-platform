@@ -16,6 +16,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { GOAL_STATES } from '$lib/types/onto';
 
 	// Hardcoded goal types (templates removed)
 	interface GoalType {
@@ -89,6 +90,7 @@
 	// Form fields
 	let name = $state('');
 	let description = $state('');
+	let goalDetails = $state('');
 	let measurementCriteria = $state('');
 	let priority = $state('medium');
 	let targetDate = $state('');
@@ -107,6 +109,7 @@
 	function selectTemplate(template: GoalType) {
 		selectedTemplate = template;
 		name = '';
+		goalDetails = '';
 		measurementCriteria = '';
 		stateKey = 'draft';
 		slideDirection = 1;
@@ -134,10 +137,11 @@
 				project_id: projectId,
 				type_key: selectedTemplate.type_key,
 				name: name.trim(),
+				goal: goalDetails.trim() || null,
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
+				target_date: targetDate || null,
 				props: {
-					description: description.trim() || null,
 					target_date: targetDate || null,
 					measurement_criteria: measurementCriteria.trim() || null,
 					priority: priority || 'medium'
@@ -175,6 +179,7 @@
 		selectedTemplate = null;
 		name = '';
 		description = '';
+		goalDetails = '';
 		measurementCriteria = '';
 		priority = 'medium';
 		targetDate = '';
@@ -197,7 +202,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -236,7 +241,7 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="px-3 py-3 sm:px-6 sm:py-6">
+		<div class="px-2 py-2 sm:px-6 sm:py-4">
 			<!-- Horizontal Slide Animation Between Views -->
 			<div class="relative overflow-hidden" style="min-height: 400px;">
 				{#key showTemplateSelection}
@@ -247,7 +252,7 @@
 					>
 						{#if showTemplateSelection}
 							<!-- TEMPLATE SELECTION VIEW -->
-							<div class="space-y-6">
+							<div class="space-y-3 sm:space-y-4">
 								<!-- Header -->
 								<div class="flex items-center gap-3 pb-4 border-b border-border">
 									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
@@ -264,7 +269,7 @@
 									</div>
 								</div>
 
-								<div class="space-y-6">
+								<div class="space-y-4 sm:space-y-6">
 									{#each Object.entries(templateCategories) as [category, categoryTemplates]}
 										<div>
 											<h3
@@ -279,7 +284,7 @@
 													<button
 														type="button"
 														onclick={() => selectTemplate(template)}
-														class="bg-card border border-border p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
+														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
 													>
 														<div
 															class="flex items-start justify-between mb-2"
@@ -324,11 +329,11 @@
 							</div>
 						{:else}
 							<!-- GOAL DETAILS FORM -->
-							<form class="space-y-6" onsubmit={handleSubmit}>
+							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
 								<!-- Selected Template Badge -->
 								{#if selectedTemplate}
 									<div
-										class="rounded-lg border border-border bg-muted/30 p-4 tx tx-grain tx-weak"
+										class="rounded-lg border border-border bg-muted/30 p-2.5 sm:p-4 tx tx-grain tx-weak"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3 flex-1 min-w-0">
@@ -400,6 +405,22 @@
 									/>
 								</FormField>
 
+								<FormField
+									label="Goal Details"
+									labelFor="goal_details"
+									hint="Optional extended goal statement"
+								>
+									<Textarea
+										id="goal_details"
+										bind:value={goalDetails}
+										placeholder="Add any additional context or structured goal notes..."
+										enterkeyhint="next"
+										rows={3}
+										disabled={isSaving}
+										size="md"
+									/>
+								</FormField>
+
 								<!-- Success Criteria -->
 								<FormField
 									label="Success Criteria"
@@ -445,12 +466,19 @@
 											size="md"
 											placeholder="Select state"
 										>
-											<option value="draft">Draft</option>
-											<option value="active">Active</option>
-											<option value="on_track">On Track</option>
-											<option value="at_risk">At Risk</option>
-											<option value="achieved">Achieved</option>
-											<option value="missed">Missed</option>
+											{#each GOAL_STATES as state}
+												<option value={state}>
+													{state === 'draft'
+														? 'Draft'
+														: state === 'active'
+															? 'Active'
+															: state === 'achieved'
+																? 'Achieved'
+																: state === 'abandoned'
+																	? 'Abandoned'
+																	: state}
+												</option>
+											{/each}
 										</Select>
 									</FormField>
 								</div>
@@ -490,7 +518,7 @@
 	<!-- Footer Actions - buttons on one row, smaller on mobile -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30"
 		>
 			{#if showTemplateSelection}
 				<div class="flex-1"></div>

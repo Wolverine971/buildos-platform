@@ -77,7 +77,9 @@
 						/>
 					</div>
 					<!-- Description underneath -->
-					<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+					<p
+						class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+					>
 						{action.subtitle}
 					</p>
 					<!-- Desktop footer -->
@@ -105,7 +107,9 @@
 				</div>
 				<div class="min-w-0 flex-1">
 					<p class="text-sm font-semibold text-foreground">Focus on specific work</p>
-					<p class="text-[0.6rem] uppercase tracking-wider text-muted-foreground sm:text-[0.65rem] sm:tracking-[0.1em]">
+					<p
+						class="text-[0.6rem] uppercase tracking-wider text-muted-foreground sm:text-[0.65rem] sm:tracking-[0.1em]"
+					>
 						Pick a task, goal, plan, document, or output.
 					</p>
 				</div>

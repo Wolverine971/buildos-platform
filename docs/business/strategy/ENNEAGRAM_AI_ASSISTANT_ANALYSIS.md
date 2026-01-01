@@ -1,3 +1,5 @@
+<!-- docs/business/strategy/ENNEAGRAM_AI_ASSISTANT_ANALYSIS.md -->
+
 # Enneagram-Based AI Assistant Design for BuildOS
 
 ## Executive Summary

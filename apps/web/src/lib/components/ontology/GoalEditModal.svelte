@@ -77,6 +77,7 @@
 	// Form fields
 	let name = $state('');
 	let description = $state('');
+	let goalDetails = $state('');
 	let priority = $state<string>('medium');
 	let targetDate = $state('');
 	let measurementCriteria = $state('');
@@ -110,6 +111,13 @@
 		}
 	});
 
+	function formatDateOnly(value?: string | null): string {
+		if (!value) return '';
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return '';
+		return date.toISOString().slice(0, 10);
+	}
+
 	async function loadGoal() {
 		try {
 			isLoading = true;
@@ -123,9 +131,10 @@
 
 			if (goal) {
 				name = goal.name || '';
-				description = goal.props?.description || '';
+				description = goal.description || goal.props?.description || '';
+				goalDetails = goal.goal || goal.props?.goal || '';
 				priority = goal.props?.priority || 'medium';
-				targetDate = goal.props?.target_date || '';
+				targetDate = formatDateOnly(goal.target_date || goal.props?.target_date || null);
 				measurementCriteria = goal.props?.measurement_criteria || '';
 				stateKey = goal.state_key || 'draft';
 			}
@@ -149,6 +158,7 @@
 		try {
 			const requestBody = {
 				name: name.trim(),
+				goal: goalDetails.trim() || null,
 				description: description.trim() || null,
 				priority: priority || null,
 				target_date: targetDate || null,
@@ -383,6 +393,22 @@
 									bind:value={description}
 									enterkeyhint="next"
 									placeholder="Describe the goal..."
+									rows={3}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<FormField
+								label="Goal Details"
+								labelFor="goal-details"
+								hint="Optional extended goal statement"
+							>
+								<Textarea
+									id="goal-details"
+									bind:value={goalDetails}
+									enterkeyhint="next"
+									placeholder="Add any additional context or structured goal notes..."
 									rows={3}
 									disabled={isSaving}
 									size="md"

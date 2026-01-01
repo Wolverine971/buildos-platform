@@ -66,57 +66,24 @@
 </div>
 
 <style>
-	/* CSS custom properties for consistent color management */
-	:global(:root) {
-		--tab-border: rgb(229 231 235);
-		--tab-border-dark: rgb(55 65 81);
-		--tab-active-color: rgb(37 99 235);
-		--tab-active-color-dark: rgb(96 165 250);
-		--tab-active-border: rgb(59 130 246);
-		--tab-active-border-dark: rgb(96 165 250);
-		--tab-inactive-color: rgb(107 114 128);
-		--tab-inactive-color-dark: rgb(156 163 175);
-		--tab-hover-color: rgb(55 65 81);
-		--tab-hover-border: rgb(209 213 219);
-		--tab-hover-color-dark: rgb(229 231 235);
-		--tab-hover-border-dark: rgb(75 85 99);
-		--tab-focus-color: rgb(59 130 246);
-		--tab-focus-color-dark: rgb(96 165 250);
-		--badge-active-bg: rgb(219 234 254);
-		--badge-active-color: rgb(29 78 216);
-		--badge-active-bg-dark: rgba(30, 64, 175, 0.3);
-		--badge-active-color-dark: rgb(147 197 253);
-		--badge-inactive-bg: rgb(243 244 246);
-		--badge-inactive-color: rgb(107 114 128);
-		--badge-inactive-bg-dark: rgb(55 65 81);
-		--badge-inactive-color-dark: rgb(156 163 175);
-		--badge-hover-bg: rgb(229 231 235);
-		--badge-hover-color: rgb(75 85 99);
-		--badge-hover-bg-dark: rgb(75 85 99);
-		--badge-hover-color-dark: rgb(209 213 219);
-	}
+	/*
+	 * Inkprint Tab Navigation
+	 * Uses semantic tokens instead of hardcoded colors
+	 * Flat design (no gradients) per Inkprint "Printed, Not Plastic" principle
+	 */
 
-	/* Apple-quality tab container */
+	/* Tab container - Inkprint border token */
 	.tab-container {
-		border-bottom: 1px solid var(--tab-border);
-		position: relative;
-	}
-
-	:global(.dark) .tab-container {
-		border-bottom-color: var(--tab-border-dark);
+		@apply border-b border-border relative;
 	}
 
 	/* Tab navigation with smooth scrolling */
 	.tab-nav {
-		display: flex;
-		gap: 0.25rem;
-		overflow-x: auto;
-		overflow-y: hidden;
+		@apply flex gap-1 sm:gap-2 overflow-x-auto overflow-y-hidden px-2 sm:px-0;
 		-webkit-overflow-scrolling: touch;
 		scroll-behavior: smooth;
 		scrollbar-width: none;
 		-ms-overflow-style: none;
-		padding: 0 0.5rem;
 		margin-bottom: -1px;
 	}
 
@@ -124,116 +91,51 @@
 		display: none;
 	}
 
-	@media (min-width: 640px) {
-		.tab-nav {
-			padding: 0;
-			gap: 0.5rem;
-		}
-	}
-
-	/* Tab button - Apple-refined touch targets and spacing */
+	/* Tab button - compact mobile, comfortable desktop */
 	.tab-button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1rem;
-		border: none;
-		border-bottom: 2px solid transparent;
-		background: transparent;
-		font-size: 0.875rem;
-		font-weight: 500;
-		line-height: 1.25rem;
-		white-space: nowrap;
-		cursor: pointer;
-		transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-		outline: none;
-		min-height: 44px; /* Apple touch target minimum */
-		flex-shrink: 0;
+		@apply inline-flex items-center justify-center;
+		@apply gap-1.5 sm:gap-2;
+		@apply px-3 py-2 sm:px-4 sm:py-3;
+		@apply border-none border-b-2 border-transparent;
+		@apply bg-transparent;
+		@apply text-sm font-medium leading-5;
+		@apply whitespace-nowrap cursor-pointer;
+		@apply transition-colors duration-200;
+		@apply outline-none;
+		@apply min-h-[44px] flex-shrink-0; /* WCAG touch target */
 	}
 
-	@media (min-width: 640px) {
-		.tab-button {
-			padding: 0.875rem 1.25rem;
-			gap: 0.625rem;
-		}
-	}
-
-	/* Active tab - refined Apple aesthetic */
+	/* Active tab - Inkprint accent, flat background */
 	.tab-active {
-		border-bottom-color: var(--tab-active-border);
-		color: var(--tab-active-color);
-		background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.08));
-		font-weight: 600;
+		@apply border-b-accent text-accent bg-accent/5;
+		@apply font-semibold;
 		letter-spacing: -0.01em;
 	}
 
-	:global(.dark) .tab-active {
-		border-bottom-color: var(--tab-active-border-dark);
-		color: var(--tab-active-color-dark);
-		background: linear-gradient(to bottom, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.12));
-	}
-
-	/* Inactive tab - subtle and refined */
+	/* Inactive tab - muted foreground */
 	.tab-inactive {
-		border-bottom-color: transparent;
-		color: var(--tab-inactive-color);
+		@apply border-b-transparent text-muted-foreground;
 	}
 
-	:global(.dark) .tab-inactive {
-		color: var(--tab-inactive-color-dark);
-	}
-
-	/* Hover state - preview active state */
+	/* Hover state - subtle preview */
 	.tab-inactive:hover {
-		color: var(--tab-hover-color);
-		border-bottom-color: var(--tab-hover-border);
-		background: linear-gradient(to bottom, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.03));
+		@apply text-foreground border-b-border bg-muted/50;
 	}
 
-	:global(.dark) .tab-inactive:hover {
-		color: var(--tab-hover-color-dark);
-		border-bottom-color: var(--tab-hover-border-dark);
-		background: linear-gradient(
-			to bottom,
-			rgba(255, 255, 255, 0.03),
-			rgba(255, 255, 255, 0.05)
-		);
-	}
-
-	/* Focus state for keyboard navigation */
+	/* Focus state for keyboard navigation - Inkprint ring */
 	.tab-button:focus-visible {
-		outline: 2px solid var(--tab-focus-color);
-		outline-offset: -2px;
-		border-radius: 0.375rem;
+		@apply outline-2 outline-ring outline-offset-[-2px] rounded-md;
 	}
 
-	:global(.dark) .tab-button:focus-visible {
-		outline-color: var(--tab-focus-color-dark);
-	}
-
-	/* Active state on press */
+	/* Active state on press - Inkprint pressable feel */
 	.tab-button:active {
 		transform: scale(0.98);
 	}
 
-	/* Tab icon - perfectly sized and aligned */
+	/* Tab icon - responsive sizing */
 	.tab-icon {
-		width: 1rem;
-		height: 1rem;
-		flex-shrink: 0;
-		transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	@media (min-width: 640px) {
-		.tab-icon {
-			width: 1.125rem;
-			height: 1.125rem;
-		}
-	}
-
-	.tab-active .tab-icon {
-		transform: scale(1.05);
+		@apply w-4 h-4 sm:w-[1.125rem] sm:h-[1.125rem] flex-shrink-0;
+		@apply transition-transform duration-200;
 	}
 
 	/* Tab label */
@@ -243,49 +145,29 @@
 		-moz-osx-font-smoothing: grayscale;
 	}
 
-	/* Count badge - subtle and elegant */
+	/* Count badge - Inkprint styling */
 	.tab-badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 0.125rem 0.5rem;
-		font-size: 0.75rem;
-		font-weight: 600;
-		line-height: 1rem;
-		border-radius: 9999px;
-		transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-		min-width: 1.5rem;
+		@apply inline-flex items-center justify-center;
+		@apply px-2 py-0.5 text-xs font-semibold leading-4;
+		@apply rounded-full;
+		@apply transition-colors duration-200;
+		@apply min-w-[1.5rem];
 		font-variant-numeric: tabular-nums;
 	}
 
+	/* Active badge - accent variant */
 	.badge-active {
-		background: var(--badge-active-bg);
-		color: var(--badge-active-color);
+		@apply bg-accent/15 text-accent;
 	}
 
-	:global(.dark) .badge-active {
-		background: var(--badge-active-bg-dark);
-		color: var(--badge-active-color-dark);
-	}
-
+	/* Inactive badge - muted variant */
 	.badge-inactive {
-		background: var(--badge-inactive-bg);
-		color: var(--badge-inactive-color);
+		@apply bg-muted text-muted-foreground;
 	}
 
-	:global(.dark) .badge-inactive {
-		background: var(--badge-inactive-bg-dark);
-		color: var(--badge-inactive-color-dark);
-	}
-
+	/* Hover state for inactive badge */
 	.tab-inactive:hover .badge-inactive {
-		background: var(--badge-hover-bg);
-		color: var(--badge-hover-color);
-	}
-
-	:global(.dark) .tab-inactive:hover .badge-inactive {
-		background: var(--badge-hover-bg-dark);
-		color: var(--badge-hover-color-dark);
+		@apply bg-muted text-foreground;
 	}
 
 	/* Reduce motion for accessibility */
@@ -297,10 +179,6 @@
 		}
 
 		.tab-button:active {
-			transform: none;
-		}
-
-		.tab-active .tab-icon {
 			transform: none;
 		}
 	}

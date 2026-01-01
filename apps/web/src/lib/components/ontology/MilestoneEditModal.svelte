@@ -99,6 +99,7 @@
 	// Form fields
 	let title = $state('');
 	let description = $state('');
+	let milestoneDetails = $state('');
 	let dueAt = $state('');
 	let stateKey = $state('pending');
 
@@ -142,7 +143,7 @@
 	});
 	const dueDateStatus = $derived.by(() => {
 		if (daysUntilDue === null) return 'unknown';
-		if (stateKey === 'achieved') return 'achieved';
+		if (stateKey === 'completed') return 'completed';
 		if (stateKey === 'missed') return 'missed';
 		if (daysUntilDue < 0) return 'overdue';
 		if (daysUntilDue === 0) return 'today';
@@ -173,8 +174,9 @@
 					const dateObj = new Date(milestone.due_at);
 					dueAt = dateObj.toISOString().split('T')[0];
 				}
-				stateKey = milestone.state_key || milestone.props?.state_key || 'pending';
-				description = milestone.props?.description || '';
+				stateKey = milestone.state_key || 'pending';
+				description = milestone.description || milestone.props?.description || '';
+				milestoneDetails = milestone.milestone || milestone.props?.milestone || '';
 			}
 		} catch (err) {
 			console.error('Error loading milestone:', err);
@@ -206,6 +208,7 @@
 				title: title.trim(),
 				due_at: dueDateObj.toISOString(),
 				state_key: stateKey,
+				milestone: milestoneDetails.trim() || null,
 				description: description.trim() || null
 			};
 
@@ -476,6 +479,22 @@
 									bind:value={description}
 									enterkeyhint="next"
 									placeholder="What does achieving this milestone mean for the project?"
+									rows={3}
+									disabled={isSaving}
+									size="md"
+								/>
+							</FormField>
+
+							<FormField
+								label="Milestone Details"
+								labelFor="milestone-details"
+								hint="Optional extended milestone notes"
+							>
+								<Textarea
+									id="milestone-details"
+									bind:value={milestoneDetails}
+									enterkeyhint="next"
+									placeholder="Add any additional milestone context or criteria..."
 									rows={3}
 									disabled={isSaving}
 									size="md"

@@ -1,3 +1,5 @@
+<!-- docs/marketing/brand/ZOOM_MESSAGING_GUIDE.md -->
+
 # Zoom In/Out: Complete Messaging Guide
 
 ## Overview
@@ -10,8 +12,9 @@ This document provides complete messaging guidance for BuildOS's core differenti
 
 > **Related Documents:**
 >
+> - [Brand Strategy 2025](BRAND_STRATEGY_2025.md) - Master brand strategy
+> - [Brand Guide 1-Pager](brand-guide-1-pager.md) - Quick brand reference
 > - [Chat Positioning Document](/apps/web/docs/content/AGENTIC_CHAT_POSITIONING.md) - Strategic positioning
-> - [Brand Strategy 2025](/apps/web/docs/content/BRAND_STRATEGY_2025.md) - Overall brand positioning
 > - [Blog Update Master Plan](/apps/web/docs/content/BLOG_UPDATE_MASTER_PLAN.md) - Content implementation
 
 ---

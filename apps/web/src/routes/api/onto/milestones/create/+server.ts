@@ -37,9 +37,8 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
-
-const VALID_STATES = ['pending', 'in_progress', 'achieved', 'missed', 'deferred'] as const;
-type MilestoneState = (typeof VALID_STATES)[number];
+import { MILESTONE_STATES } from '$lib/types/onto';
+import { normalizeMilestoneStateInput } from '../../shared/milestone-state';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -58,8 +57,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			type_key = 'milestone.general',
 			title,
+			milestone,
 			due_at,
-			state_key = 'pending',
+			state_key,
 			description,
 			props = {}
 		} = body;
@@ -83,10 +83,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
 		}
 
-		// Validate state_key if provided
-		if (state_key && !VALID_STATES.includes(state_key as MilestoneState)) {
-			return ApiResponse.badRequest(`State must be one of: ${VALID_STATES.join(', ')}`);
+		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
+		const normalizedState = normalizeMilestoneStateInput(state_key);
+		if (hasStateInput && !normalizedState) {
+			return ApiResponse.badRequest(`State must be one of: ${MILESTONE_STATES.join(', ')}`);
 		}
+		const finalState = normalizedState ?? 'pending';
 
 		// Get user's actor ID
 		const { data: actorData, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -117,15 +119,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			type_key,
 			title: title.trim(),
+			milestone: milestone?.trim() || null,
 			due_at: dueDate.toISOString(),
-			state_key: state_key || 'pending',
+			state_key: finalState,
 			description: description?.trim() || null, // Use dedicated column
 			created_by: actorId,
 			props: {
 				...props,
 				// Maintain backwards compatibility by also storing in props
 				description: description?.trim() || null,
-				state_key: state_key || 'pending'
+				state_key: finalState
 			}
 		};
 

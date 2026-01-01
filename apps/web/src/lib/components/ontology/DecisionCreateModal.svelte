@@ -35,7 +35,8 @@
 	const STATE_OPTIONS = [
 		{ value: 'pending', label: 'Pending', description: 'Decision not yet made' },
 		{ value: 'made', label: 'Made', description: 'Decision has been finalized' },
-		{ value: 'deferred', label: 'Deferred', description: 'Decision postponed' }
+		{ value: 'deferred', label: 'Deferred', description: 'Decision postponed' },
+		{ value: 'reversed', label: 'Reversed', description: 'Decision overturned' }
 	];
 
 	let isSaving = $state(false);
@@ -122,7 +123,7 @@
 >
 	{#snippet header()}
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -161,8 +162,8 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="px-3 py-3 sm:px-6 sm:py-6">
-			<form class="space-y-4 sm:space-y-6" onsubmit={handleSubmit}>
+		<div class="px-2 py-2 sm:px-6 sm:py-4">
+			<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
 				<!-- Decision Title -->
 				<FormField
 					label="Decision Title"
@@ -266,7 +267,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30"
+			class="flex flex-row items-center justify-end gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30"
 		>
 			<Button
 				type="button"

@@ -17,6 +17,7 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { format } from 'date-fns';
+	import { TASK_STATES } from '$lib/types/onto';
 
 	// Hardcoded task types (templates removed)
 	interface TaskType {
@@ -62,9 +63,9 @@
 			}
 		},
 		{
-			id: 'planning',
+			id: 'plan',
 			name: 'Planning Task',
-			type_key: 'task.planning',
+			type_key: 'task.plan',
 			metadata: {
 				category: 'Planning',
 				description: 'Plan, organize, or coordinate work',
@@ -74,7 +75,7 @@
 		{
 			id: 'meeting',
 			name: 'Meeting',
-			type_key: 'task.meeting',
+			type_key: 'task.coordinate.meeting',
 			metadata: {
 				category: 'Collaboration',
 				description: 'Scheduled meeting or discussion',
@@ -235,7 +236,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -274,7 +275,7 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="px-3 py-3 sm:px-6 sm:py-6">
+		<div class="px-2 py-2 sm:px-6 sm:py-4">
 			<!-- Horizontal Slide Animation Between Views -->
 			<div class="relative overflow-hidden" style="min-height: 400px;">
 				{#key showTemplateSelection}
@@ -285,7 +286,7 @@
 					>
 						{#if showTemplateSelection}
 							<!-- TEMPLATE SELECTION VIEW -->
-							<div class="space-y-6">
+							<div class="space-y-3 sm:space-y-4">
 								<!-- Header -->
 								<div class="flex items-center gap-3 pb-4 border-b border-border">
 									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
@@ -302,7 +303,7 @@
 									</div>
 								</div>
 
-								<div class="space-y-6">
+								<div class="space-y-4 sm:space-y-6">
 									{#each Object.entries(templateCategories) as [category, categoryTemplates]}
 										<div>
 											<h3
@@ -317,7 +318,7 @@
 													<button
 														type="button"
 														onclick={() => selectTemplate(template)}
-														class="bg-card border border-border p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
+														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
 													>
 														<div
 															class="flex items-start justify-between mb-2"
@@ -359,11 +360,11 @@
 							</div>
 						{:else}
 							<!-- TASK DETAILS FORM -->
-							<form class="space-y-6" onsubmit={handleSubmit}>
+							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
 								<!-- Selected Template Badge -->
 								{#if selectedTemplate}
 									<div
-										class="rounded-lg border border-border bg-muted/30 p-4 tx tx-grain tx-weak"
+										class="rounded-lg border border-border bg-muted/30 p-2.5 sm:p-4 tx tx-grain tx-weak"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3 flex-1 min-w-0">
@@ -465,11 +466,19 @@
 											size="md"
 											placeholder="Select state"
 										>
-											<option value="todo">To Do</option>
-											<option value="in_progress">In Progress</option>
-											<option value="blocked">Blocked</option>
-											<option value="done">Done</option>
-											<option value="archived">Archived</option>
+											{#each TASK_STATES as state}
+												<option value={state}>
+													{state === 'todo'
+														? 'To Do'
+														: state === 'in_progress'
+															? 'In Progress'
+															: state === 'blocked'
+																? 'Blocked'
+																: state === 'done'
+																	? 'Done'
+																	: state}
+												</option>
+											{/each}
 										</Select>
 									</FormField>
 								</div>
@@ -549,7 +558,7 @@
 
 								<!-- Scheduled Section -->
 								<div
-									class="border border-border rounded-lg p-4 bg-muted/30 tx tx-frame tx-weak"
+									class="border border-border rounded-lg p-2.5 sm:p-4 bg-muted/30 tx tx-frame tx-weak"
 								>
 									<div class="flex items-center gap-2 mb-3">
 										<span class="text-base">📅</span>
@@ -638,7 +647,7 @@
 	<!-- Footer Actions - buttons on one row, smaller on mobile -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30"
 		>
 			{#if showTemplateSelection}
 				<div class="flex-1"></div>

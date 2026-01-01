@@ -33,6 +33,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
+import { GOAL_STATES } from '$lib/types/onto';
 import {
 	logCreateAsync,
 	getChangeSourceFromRequest,
@@ -56,14 +57,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			type_key = 'goal.outcome.project',
 			name,
+			goal,
 			description,
 			target_date,
+			state_key = 'draft',
+			measurement_criteria,
+			priority,
 			props = {}
 		} = body;
 
 		// Validate required fields
 		if (!project_id || !name) {
 			return ApiResponse.badRequest('Project ID and name are required');
+		}
+
+		if (state_key && !GOAL_STATES.includes(state_key)) {
+			return ApiResponse.badRequest(`state_key must be one of: ${GOAL_STATES.join(', ')}`);
 		}
 
 		// Get user's actor ID
@@ -95,14 +104,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			type_key,
 			name,
+			goal: goal || null,
 			description: description || null, // Use dedicated column
 			target_date: target_date || null, // Use dedicated column
+			state_key,
 			created_by: actorId,
+			completed_at: state_key === 'achieved' ? new Date().toISOString() : null,
 			props: {
 				...props,
 				// Maintain backwards compatibility by also storing in props
+				goal: goal || null,
 				description: description || null,
-				target_date: target_date || null
+				target_date: target_date || null,
+				measurement_criteria: measurement_criteria || null,
+				priority: priority || null
 			}
 		};
 

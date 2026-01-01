@@ -20,6 +20,7 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import { PLAN_STATES } from '$lib/types/onto';
 
 	// Hardcoded plan types (templates removed)
 	interface PlanType {
@@ -38,9 +39,9 @@
 		{
 			id: 'sprint',
 			name: 'Sprint',
-			type_key: 'plan.phase.sprint',
+			type_key: 'plan.timebox.sprint',
 			metadata: {
-				category: 'Agile',
+				category: 'Timebox',
 				description: 'Time-boxed iteration for focused execution',
 				measurement_type: 'Velocity tracking',
 				typical_scope: '1-4 weeks'
@@ -49,9 +50,9 @@
 		{
 			id: 'phase',
 			name: 'Project Phase',
-			type_key: 'plan.phase.base',
+			type_key: 'plan.phase.project',
 			metadata: {
-				category: 'Project',
+				category: 'Phase',
 				description: 'Major phase of a larger project',
 				measurement_type: 'Milestone completion',
 				typical_scope: '1-3 months'
@@ -60,9 +61,9 @@
 		{
 			id: 'quarter',
 			name: 'Quarterly Plan',
-			type_key: 'plan.phase.quarter',
+			type_key: 'plan.roadmap.strategy',
 			metadata: {
-				category: 'Strategic',
+				category: 'Roadmap',
 				description: 'Quarter-level planning and OKR tracking',
 				measurement_type: 'OKR progress',
 				typical_scope: '3 months'
@@ -71,9 +72,9 @@
 		{
 			id: 'custom',
 			name: 'Custom Plan',
-			type_key: 'plan.phase.base',
+			type_key: 'plan.process.base',
 			metadata: {
-				category: 'Custom',
+				category: 'Process',
 				description: 'Flexible plan structure for any workflow',
 				measurement_type: 'Manual tracking',
 				typical_scope: 'Flexible'
@@ -99,18 +100,15 @@
 	// Form fields
 	let name = $state('');
 	let description = $state('');
+	let planDetails = $state('');
 	let startDate = $state('');
 	let endDate = $state('');
 	let stateKey = $state('draft');
 
-	const stateOptions = [
-		{ value: 'draft', label: 'Draft' },
-		{ value: 'planning', label: 'Planning' },
-		{ value: 'active', label: 'Active' },
-		{ value: 'on_hold', label: 'On Hold' },
-		{ value: 'completed', label: 'Completed' },
-		{ value: 'cancelled', label: 'Cancelled' }
-	];
+	const stateOptions = PLAN_STATES.map((state) => ({
+		value: state,
+		label: formatStateLabel(state)
+	}));
 
 	const filteredTemplates = $derived.by(() => {
 		const query = templateSearch.trim().toLowerCase();
@@ -168,6 +166,7 @@
 	function applyTemplateDefaults(template: PlanType) {
 		name = template.name || name;
 		description = template.metadata.description || '';
+		planDetails = '';
 		stateKey = 'draft';
 	}
 
@@ -188,6 +187,7 @@
 	function resetForm() {
 		name = '';
 		description = '';
+		planDetails = '';
 		startDate = '';
 		endDate = '';
 		stateKey = 'draft';
@@ -234,11 +234,13 @@
 				project_id: projectId,
 				type_key: selectedTemplate.type_key,
 				name: name.trim(),
+				plan: planDetails.trim() || null,
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
 				start_date: startDate || null,
 				end_date: endDate || null,
 				props: {
+					plan: planDetails.trim() || null,
 					description: description.trim() || null,
 					start_date: startDate || null,
 					end_date: endDate || null
@@ -509,6 +511,21 @@
 												/>
 											</FormField>
 
+											<FormField
+												label="Plan details"
+												labelFor="plan-details"
+												hint="Optional execution notes or outline"
+												showOptional={true}
+											>
+												<Textarea
+													id="plan-details"
+													bind:value={planDetails}
+													rows={4}
+													enterkeyhint="next"
+													placeholder="Capture the execution outline, milestones, or runbook details..."
+												/>
+											</FormField>
+
 											<div class="grid gap-4 sm:grid-cols-2">
 												<FormField
 													label="Start date"
@@ -607,17 +624,6 @@
 														</p>
 													</div>
 												</div>
-												<div
-													class="rounded-lg bg-muted/30 border border-border px-3 py-2 flex items-start gap-2 tx tx-grain tx-weak"
-												>
-													<CircleCheck
-														class="w-4 h-4 text-accent mt-0.5"
-													/>
-													<p class="text-xs text-muted-foreground">
-														Keep duration realistic—plans over 45 days
-														often perform better when split into phases.
-													</p>
-												</div>
 											</CardBody>
 										</Card>
 
@@ -638,7 +644,7 @@
 												</p>
 												<p class="text-sm text-muted-foreground">
 													{selectedTemplate?.metadata?.description ||
-														'Use this template as a launchpad. Layer in tasks, owners, and checkpoints after saving.'}
+														'A flexible plan structure for your workflow.'}
 												</p>
 												<div class="flex flex-wrap gap-2">
 													{#if selectedTemplate?.metadata?.typical_scope}
@@ -661,7 +667,7 @@
 														Type key: <span
 															class="font-mono text-[11px] text-muted-foreground"
 															>{selectedTemplate?.type_key ||
-																'plan.phase.base'}</span
+																'plan.process.base'}</span
 														>
 													</p>
 												</div>

@@ -246,7 +246,9 @@
 						/>
 					</div>
 					<!-- Description underneath -->
-					<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+					<p
+						class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+					>
 						Talk across projects, calendar, and knowledge with no preset scope.
 					</p>
 					<!-- Desktop footer -->
@@ -279,7 +281,9 @@
 								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
 							/>
 						</div>
-						<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+						<p
+							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+						>
 							Hand the BuildOS chat to another AI agent with a clear goal.
 						</p>
 						<div
@@ -311,7 +315,9 @@
 							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
 						/>
 					</div>
-					<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+					<p
+						class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+					>
 						Start something new or dive into an existing project with focused tools.
 					</p>
 					<div
@@ -335,14 +341,14 @@
 						>
 							<Lightbulb class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 						</div>
-						<h3 class="flex-1 text-sm font-semibold text-foreground">
-							Braindump
-						</h3>
+						<h3 class="flex-1 text-sm font-semibold text-foreground">Braindump</h3>
 						<ChevronRight
 							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
 						/>
 					</div>
-					<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+					<p
+						class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+					>
 						Capture raw thoughts, then save them or explore with AI as a thought
 						partner.
 					</p>
@@ -374,9 +380,7 @@
 	{#if selectedView === 'projectHub'}
 		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header - compact on mobile -->
-			<div
-				class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4"
-			>
+			<div class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4">
 				<h2 class="text-base font-semibold text-foreground sm:text-lg">Project flow</h2>
 				<p class="text-xs text-muted-foreground">
 					Choose whether you're starting fresh or advancing an existing project.
@@ -403,7 +407,9 @@
 								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-purple-500 sm:hidden"
 							/>
 						</div>
-						<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+						<p
+							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+						>
 							Guided discovery to capture goals, milestones, and structure.
 						</p>
 						<div
@@ -439,7 +445,9 @@
 								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
 							/>
 						</div>
-						<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+						<p
+							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+						>
 							Select a project, then choose whether to update, audit, or forecast it.
 						</p>
 						<div
@@ -457,7 +465,9 @@
 				</div>
 
 				{#if projectsError}
-					<div class="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:mt-6">
+					<div
+						class="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:mt-6"
+					>
 						<p class="text-sm text-destructive" role="alert">
 							{projectsError}
 						</p>
@@ -471,15 +481,9 @@
 	{#if selectedView === 'project-selection'}
 		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header - compact on mobile -->
-			<div
-				class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4"
-			>
-				<h2 class="text-base font-semibold text-foreground sm:text-lg">
-					Select a Project
-				</h2>
-				<p class="text-xs text-muted-foreground">
-					Choose which project to work with
-				</p>
+			<div class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4">
+				<h2 class="text-base font-semibold text-foreground sm:text-lg">Select a Project</h2>
+				<p class="text-xs text-muted-foreground">Choose which project to work with</p>
 			</div>
 
 			<!-- Projects List -->
@@ -489,7 +493,9 @@
 						<Loader2 class="h-6 w-6 animate-spin text-muted-foreground sm:h-8 sm:w-8" />
 					</div>
 				{:else if projectsError}
-					<div class="flex flex-col items-center justify-center py-12 text-center sm:py-16">
+					<div
+						class="flex flex-col items-center justify-center py-12 text-center sm:py-16"
+					>
 						<p class="mb-3 text-sm text-destructive">{projectsError}</p>
 						<button
 							onclick={() => loadProjects()}
@@ -564,7 +570,10 @@
 										{/if}
 										{#if project.outputCount > 0}
 											<span>
-												{project.outputCount} output{project.outputCount !== 1 ? 's' : ''}
+												{project.outputCount} output{project.outputCount !==
+												1
+													? 's'
+													: ''}
 											</span>
 										{/if}
 									</div>
@@ -573,13 +582,17 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="flex flex-col items-center justify-center py-12 text-center sm:py-16">
+					<div
+						class="flex flex-col items-center justify-center py-12 text-center sm:py-16"
+					>
 						<div
 							class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted sm:mb-6 sm:h-20 sm:w-20"
 						>
 							<FolderOpen class="h-7 w-7 text-muted-foreground sm:h-10 sm:w-10" />
 						</div>
-						<h3 class="mb-1.5 text-base font-semibold text-foreground sm:text-lg sm:mb-2">
+						<h3
+							class="mb-1.5 text-base font-semibold text-foreground sm:text-lg sm:mb-2"
+						>
 							No Ontology Projects
 						</h3>
 						<p class="max-w-xs text-xs text-muted-foreground sm:text-sm">

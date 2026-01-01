@@ -47,7 +47,7 @@ All ontology tables use the `onto_` prefix in the public schema. Key tables are:
 | `onto_risks`         | Risk tracking                | id, project_id, title, impact, probability, state_key, type_key, props        |
 | `onto_metrics`       | Performance metrics          | id, project_id, name, unit, type_key, props                                   |
 | `onto_metric_points` | Metric data points           | id, metric_id, ts, numeric_value, props                                       |
-| `onto_decisions`     | Project decisions            | id, project_id, title, decision_at, rationale, props                          |
+| `onto_decisions`     | Project decisions            | id, project_id, title, state_key, decision_at, outcome, description, props    |
 | `onto_sources`       | External information sources | id, project_id, uri, snapshot_uri, props                                      |
 | `onto_signals`       | Real-time project signals    | id, project_id, ts, channel, payload                                          |
 | `onto_insights`      | Derived insights             | id, project_id, title, derived_from_signal_id, props                          |
@@ -67,7 +67,7 @@ interface OntoProject {
 	name: text;
 	description: text | null;
 	type_key: text; // Classification: 'project.creative.book', 'project.technical.app'
-	state_key: text; // 'draft', 'active', 'paused', 'complete', 'archived'
+	state_key: text; // 'planning', 'active', 'completed', 'cancelled'
 	props: jsonb; // AI-inferred properties
 	is_public: boolean | null; // Whether project is publicly visible
 
@@ -114,7 +114,7 @@ interface OntoTask {
 	type_key: text; // Work mode taxonomy (required, default: 'task.execute')
 	title: text;
 	description: text | null; // Task description (migrated from props.description)
-	state_key: text; // 'todo', 'in_progress', 'blocked', 'done', 'abandoned'
+	state_key: text; // 'todo', 'in_progress', 'blocked', 'done'
 	priority: int | null; // Numeric priority (1-5)
 	props: jsonb; // Flexible task properties
 	search_vector: tsvector; // Full-text search
@@ -205,8 +205,8 @@ interface OntoPlan {
 	name: text;
 	plan: text | null; // Plan content/details
 	description: text | null; // Plan description (migrated from props.description)
-	type_key: text; // e.g., 'plan.sprint', 'plan.phase', 'plan.quarterly'
-	state_key: text; // 'draft', 'active', 'review', 'complete'
+	type_key: text; // e.g., 'plan.timebox.sprint', 'plan.phase.project', 'plan.roadmap.strategy'
+	state_key: text; // 'draft', 'active', 'completed'
 	props: jsonb;
 	search_vector: tsvector; // Full-text search
 
@@ -242,8 +242,8 @@ interface OntoOutput {
 	project_id: uuid;
 	name: text;
 	description: text | null; // Output description
-	type_key: text; // e.g., 'output.written.chapter', 'output.software.feature'
-	state_key: text; // 'draft', 'review', 'approved', 'published'
+	type_key: text; // e.g., 'output.document', 'output.written.chapter', 'output.software.feature'
+	state_key: text; // 'draft', 'in_progress', 'review', 'published'
 	props: jsonb;
 	search_vector: tsvector; // Full-text search
 
@@ -295,8 +295,8 @@ interface OntoDocument {
 	title: text;
 	content: text | null; // Document content (migrated from props.body_markdown)
 	description: text | null; // Document description
-	type_key: text; // e.g., 'document.context', 'document.spec', 'document.notes'
-	state_key: text; // 'draft', 'published'
+	type_key: text; // e.g., 'document.context.project', 'document.spec.product', 'document.knowledge.research'
+	state_key: text; // 'draft', 'review', 'published'
 	props: jsonb;
 	search_vector: tsvector; // Full-text search
 
@@ -346,7 +346,7 @@ interface OntoGoal {
 	goal: text | null; // Goal content
 	description: text | null; // Goal description (migrated from props.description)
 	type_key: text | null; // e.g., 'goal.outcome.milestone', 'goal.metric.target'
-	state_key: text; // 'active', 'achieved', 'abandoned'
+	state_key: text; // 'draft', 'active', 'achieved', 'abandoned'
 	props: jsonb;
 	search_vector: tsvector;
 
@@ -375,13 +375,13 @@ interface OntoMilestone {
 	milestone: text | null; // Milestone content
 	description: text | null; // Milestone description (migrated from props.description)
 	type_key: text | null;
-	state_key: text; // 'pending', 'achieved', 'missed'
+	state_key: text; // 'pending', 'in_progress', 'completed', 'missed'
 	due_at: timestamptz;
 	props: jsonb;
 	search_vector: tsvector;
 
 	// Lifecycle
-	completed_at: timestamptz | null; // When milestone was achieved
+	completed_at: timestamptz | null; // When milestone was completed
 	deleted_at: timestamptz | null; // Soft delete timestamp
 
 	created_by: uuid;
@@ -401,9 +401,9 @@ interface OntoRisk {
 	title: text;
 	content: text | null; // Risk content/description
 	type_key: text | null;
-	state_key: text; // 'identified', 'mitigated', 'closed'
+	state_key: text; // 'identified', 'mitigated', 'occurred', 'closed'
 	impact: text; // 'low', 'medium', 'high', 'critical'
-	probability: number | null; // 0-100
+	probability: number | null; // 0-1
 	props: jsonb;
 	search_vector: tsvector;
 
@@ -449,8 +449,11 @@ interface OntoDecision {
 	id: uuid;
 	project_id: uuid;
 	title: text;
+	description: text | null; // Context and background
+	outcome: text | null; // What was decided
+	state_key: text; // 'pending', 'made', 'deferred', 'reversed'
 	rationale: text | null;
-	decision_at: timestamptz;
+	decision_at: timestamptz | null;
 	props: jsonb;
 
 	// Lifecycle
@@ -548,15 +551,17 @@ interface OntoEdge {
 
 ### 5.1 Standard States by Entity Type
 
-| Entity        | States                                                | Initial   | Terminal                |
-| ------------- | ----------------------------------------------------- | --------- | ----------------------- |
-| **Project**   | `draft`, `active`, `paused`, `complete`, `archived`   | `draft`   | `archived`              |
-| **Task**      | `todo`, `in_progress`, `blocked`, `done`, `abandoned` | `todo`    | `done`, `abandoned`     |
-| **Plan**      | `draft`, `active`, `review`, `complete`               | `draft`   | `complete`              |
-| **Output**    | `draft`, `review`, `approved`, `published`            | `draft`   | `published`             |
-| **Document**  | `draft`, `published`                                  | `draft`   | `published`             |
-| **Goal**      | `active`, `achieved`, `abandoned`                     | `active`  | `achieved`, `abandoned` |
-| **Milestone** | `pending`, `achieved`, `missed`                       | `pending` | `achieved`, `missed`    |
+| Entity        | States                                          | Initial      | Terminal                 |
+| ------------- | ----------------------------------------------- | ------------ | ------------------------ |
+| **Project**   | `planning`, `active`, `completed`, `cancelled`  | `planning`   | `completed`, `cancelled` |
+| **Task**      | `todo`, `in_progress`, `blocked`, `done`        | `todo`       | `done`                   |
+| **Plan**      | `draft`, `active`, `completed`                  | `draft`      | `completed`              |
+| **Output**    | `draft`, `in_progress`, `review`, `published`   | `draft`      | `published`              |
+| **Document**  | `draft`, `review`, `published`                  | `draft`      | `published`              |
+| **Goal**      | `draft`, `active`, `achieved`, `abandoned`      | `draft`      | `achieved`, `abandoned`  |
+| **Milestone** | `pending`, `in_progress`, `completed`, `missed` | `pending`    | `completed`, `missed`    |
+| **Risk**      | `identified`, `mitigated`, `occurred`, `closed` | `identified` | `closed`                 |
+| **Decision**  | `pending`, `made`, `deferred`, `reversed`       | `pending`    | `made`, `reversed`       |
 
 ### 5.2 Transition Validation
 
@@ -641,13 +646,13 @@ Type keys are classification strings following the pattern:
 
 ### Document Types
 
-| Type Key             | Description              |
-| -------------------- | ------------------------ |
-| `document.context`   | Project context/brief    |
-| `document.notes`     | Meeting notes, research  |
-| `document.spec`      | Technical specification  |
-| `document.reference` | Handbook, SOP, checklist |
-| `document.decision`  | RFC, proposal, ADR       |
+| Type Key                          | Description              |
+| --------------------------------- | ------------------------ |
+| `document.context.project`        | Project context/brief    |
+| `document.knowledge.research`     | Research notes, findings |
+| `document.spec.product`           | Technical specification  |
+| `document.reference.handbook`     | Handbook, SOP, checklist |
+| `document.decision.meeting_notes` | RFC, proposal, ADR       |
 
 ---
 

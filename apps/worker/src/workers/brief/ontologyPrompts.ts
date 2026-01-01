@@ -69,6 +69,7 @@ export interface OntologyAnalysisPromptInput {
 	timezone: string;
 	briefData: OntologyBriefData;
 	holidays?: string[];
+	projectBriefContents?: string[];
 }
 
 export class OntologyAnalysisPrompt {
@@ -124,7 +125,7 @@ Never output JSON - deliver polished Markdown only.`;
 	}
 
 	static buildUserPrompt(input: OntologyAnalysisPromptInput): string {
-		const { date, timezone, briefData, holidays } = input;
+		const { date, timezone, briefData, holidays, projectBriefContents } = input;
 
 		let prompt = `Generate a goal-oriented daily brief analysis.
 
@@ -135,6 +136,8 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 ## Overview Stats
 - Active Projects: ${briefData.projects.length}
 - Tasks Today: ${briefData.todaysTasks.length}
+- Recently Updated Tasks (7d): ${briefData.recentlyUpdatedTasks?.length ?? 0}
+- Upcoming Tasks (next 7d): ${briefData.upcomingTasks?.length ?? 0}
 - Blocked Tasks: ${briefData.blockedTasks.length}
 - Overdue Tasks: ${briefData.overdueTasks.length}
 - High Priority Tasks: ${briefData.highPriorityCount}
@@ -197,6 +200,32 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		}
 		prompt += '\n';
 
+		// Recently Updated Tasks (per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
+		if (briefData.recentlyUpdatedTasks && briefData.recentlyUpdatedTasks.length > 0) {
+			prompt += `## Recently Updated Tasks (Last 7 Days)\n`;
+			prompt += `*Tasks with recent activity - ordered by update time*\n\n`;
+			for (const task of briefData.recentlyUpdatedTasks.slice(0, 10)) {
+				prompt += formatTaskForPrompt(task) + '\n';
+			}
+			if (briefData.recentlyUpdatedTasks.length > 10) {
+				prompt += `... and ${briefData.recentlyUpdatedTasks.length - 10} more\n`;
+			}
+			prompt += '\n';
+		}
+
+		// Upcoming Tasks (per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
+		if (briefData.upcomingTasks && briefData.upcomingTasks.length > 0) {
+			prompt += `## Upcoming Tasks (Next 7 Days)\n`;
+			prompt += `*Tasks with due dates or start dates coming up - deduplicated from recent updates*\n\n`;
+			for (const task of briefData.upcomingTasks.slice(0, 5)) {
+				prompt += formatTaskForPrompt(task) + '\n';
+			}
+			if (briefData.upcomingTasks.length > 5) {
+				prompt += `... and ${briefData.upcomingTasks.length - 5} more\n`;
+			}
+			prompt += '\n';
+		}
+
 		// Blocked Tasks
 		if (briefData.blockedTasks.length > 0) {
 			prompt += `## Blocked Tasks\n`;
@@ -236,9 +265,12 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		// Decisions
 		if (briefData.decisions.length > 0) {
 			prompt += `## Recent Decisions\n`;
-			const recentDecisions = [...briefData.decisions].sort(
-				(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
-			);
+			const recentDecisions = [...briefData.decisions]
+				.filter((d) => d.decision_at !== null)
+				.sort(
+					(a, b) =>
+						parseISO(b.decision_at!).getTime() - parseISO(a.decision_at!).getTime()
+				);
 			for (const decision of recentDecisions.slice(0, 5)) {
 				prompt += `- ${decision.title}\n`;
 			}
@@ -289,9 +321,25 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			}
 		}
 
+		// Include formatted project briefs for detailed context (if available)
+		if (projectBriefContents && projectBriefContents.length > 0) {
+			prompt += `\n## Formatted Project Briefs\n`;
+			prompt += `*Use these finalized briefs for accurate, specific analysis:*\n\n`;
+			const maxBriefs = 5;
+			const truncatedBriefs = projectBriefContents.slice(0, maxBriefs).map((content) => {
+				if (content.length > 3000) {
+					return content.slice(0, 3000) + '\n...(truncated)';
+				}
+				return content;
+			});
+			prompt += truncatedBriefs.join('\n---\n');
+			prompt += '\n';
+		}
+
 		prompt += `
 Write the analysis following the system instructions.
-Focus on strategic alignment and actionable recommendations.`;
+Focus on strategic alignment and actionable recommendations.
+Reference specific projects, goals, outputs, and tasks by name.`;
 
 		return prompt;
 	}
@@ -342,7 +390,7 @@ Guidelines:
 	}
 
 	static buildUserPrompt(input: OntologyAnalysisPromptInput): string {
-		const { date, timezone, briefData, holidays } = input;
+		const { date, timezone, briefData, holidays, projectBriefContents } = input;
 
 		// Calculate aggregate stats
 		const activeGoals = briefData.goals.filter(
@@ -364,6 +412,8 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 ## Quick Stats
 - Projects: ${briefData.projects.length}
 - Tasks Today: ${briefData.todaysTasks.length}
+- Recently Updated (7d): ${briefData.recentlyUpdatedTasks?.length ?? 0}
+- Upcoming (next 7d): ${briefData.upcomingTasks?.length ?? 0}
 - High Priority: ${briefData.highPriorityCount}
 - Blocked: ${briefData.blockedTasks.length}
 - Overdue: ${briefData.overdueTasks.length}
@@ -393,9 +443,12 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 					.join('; ')}\n`;
 			}
 			if (briefData.decisions.length > 0) {
-				const recentDecisions = [...briefData.decisions].sort(
-					(a, b) => parseISO(b.decision_at).getTime() - parseISO(a.decision_at).getTime()
-				);
+				const recentDecisions = [...briefData.decisions]
+					.filter((d) => d.decision_at !== null)
+					.sort(
+						(a, b) =>
+							parseISO(b.decision_at!).getTime() - parseISO(a.decision_at!).getTime()
+					);
 				prompt += `- Recent decisions: ${recentDecisions
 					.slice(0, 3)
 					.map((d) => d.title)
@@ -422,10 +475,16 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += '\n';
 		}
 
-		// Add project context
+		// Add project context with strategic task splits
 		prompt += `## Project Context\n`;
 		for (const project of briefData.projects.slice(0, 3)) {
-			prompt += `- **${project.project.name}**: ${project.todaysTasks.length} tasks today`;
+			prompt += `- **${project.project.name}**: ${project.todaysTasks.length} today`;
+			if (project.recentlyUpdatedTasks && project.recentlyUpdatedTasks.length > 0) {
+				prompt += `, ${project.recentlyUpdatedTasks.length} recently updated`;
+			}
+			if (project.upcomingTasks && project.upcomingTasks.length > 0) {
+				prompt += `, ${project.upcomingTasks.length} upcoming`;
+			}
 			if (project.blockedTasks.length > 0) {
 				prompt += `, ${project.blockedTasks.length} blocked`;
 			}
@@ -435,9 +494,25 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += '\n';
 		}
 
+		// Include formatted project briefs for full context (if available)
+		if (projectBriefContents && projectBriefContents.length > 0) {
+			prompt += `\n## Detailed Project Briefs\n`;
+			prompt += `*These are the finalized project briefs - use them to provide accurate, specific context:*\n\n`;
+			// Limit to first 3 project briefs and truncate each to avoid token overflow
+			const truncatedBriefs = projectBriefContents.slice(0, 3).map((content) => {
+				if (content.length > 2000) {
+					return content.slice(0, 2000) + '\n...(truncated)';
+				}
+				return content;
+			});
+			prompt += truncatedBriefs.join('\n---\n');
+			prompt += '\n';
+		}
+
 		prompt += `
 Write a 200-word executive summary following the system instructions.
-Focus on strategic alignment and what matters most today.`;
+Focus on strategic alignment and what matters most today.
+Reference specific projects, goals, and tasks by name using the detailed briefs above.`;
 
 		return prompt;
 	}
@@ -499,6 +574,25 @@ ${project.project.description ? `- Description: ${project.project.description}` 
 		}
 
 		prompt += `\n## This Week (${project.thisWeekTasks.length} tasks)\n`;
+
+		// Recently Updated Tasks (per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
+		if (project.recentlyUpdatedTasks && project.recentlyUpdatedTasks.length > 0) {
+			prompt += `\n## Recently Updated (Last 7 Days)\n`;
+			for (const task of project.recentlyUpdatedTasks.slice(0, 5)) {
+				prompt += formatTaskForPrompt(task) + '\n';
+			}
+			if (project.recentlyUpdatedTasks.length > 5) {
+				prompt += `... and ${project.recentlyUpdatedTasks.length - 5} more\n`;
+			}
+		}
+
+		// Upcoming Tasks (per PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
+		if (project.upcomingTasks && project.upcomingTasks.length > 0) {
+			prompt += `\n## Upcoming (Next 7 Days)\n`;
+			for (const task of project.upcomingTasks.slice(0, 5)) {
+				prompt += formatTaskForPrompt(task) + '\n';
+			}
+		}
 
 		// Goals
 		if (project.goals.length > 0) {

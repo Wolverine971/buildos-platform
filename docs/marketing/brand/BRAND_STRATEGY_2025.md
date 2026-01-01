@@ -1,4 +1,8 @@
-# BuildOS Brand Strategy Evolution - December 2025
+<!-- docs/marketing/brand/BRAND_STRATEGY_2025.md -->
+
+# BuildOS Brand Strategy Evolution - January 2025
+
+> **This is the master brand strategy document.** All other brand docs reference and support this strategy.
 
 ## Strategic Context
 
@@ -12,9 +16,12 @@ This document synthesizes existing brand positioning with new strategic prioriti
 
 > **Related Documents:**
 >
-> - [Zoom Messaging Guide](/apps/web/docs/content/ZOOM_MESSAGING_GUIDE.md) - Complete zoom in/out messaging
+> - [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) - Complete zoom in/out messaging
+> - [Brand Guide 1-Pager](brand-guide-1-pager.md) - Quick reference for team alignment
+> - [Brand Personality Profile](buildos-brand-personality-profile.md) - Voice and tone guidelines
 > - [Chat Positioning](/apps/web/docs/content/AGENTIC_CHAT_POSITIONING.md) - Project Lens positioning
 > - [Blog Update Master Plan](/apps/web/docs/content/BLOG_UPDATE_MASTER_PLAN.md) - Content implementation
+> - [Content Strategy README](/apps/web/docs/content/README.md) - Blog documentation hub
 
 ---
 

@@ -104,7 +104,7 @@
 
 	// Form fields
 	let title = $state('');
-	let description = $state('');
+	let content = $state('');
 	let impact = $state<string>('medium');
 	let probability = $state<string>('0.5');
 	let mitigationStrategy = $state('');
@@ -165,7 +165,7 @@
 				impact = risk.impact || 'medium';
 				probability = risk.probability?.toString() || '0.5';
 				stateKey = risk.state_key || 'identified';
-				description = risk.props?.description || '';
+				content = risk.content || risk.props?.description || '';
 				mitigationStrategy = risk.props?.mitigation_strategy || '';
 				owner = risk.props?.owner || '';
 			}
@@ -192,7 +192,8 @@
 				impact,
 				probability: probability ? parseFloat(probability) : null,
 				state_key: stateKey,
-				description: description.trim() || null,
+				content: content.trim() || null,
+				description: content.trim() || null,
 				mitigation_strategy: mitigationStrategy.trim() || null,
 				owner: owner.trim() || null
 			};
@@ -420,13 +421,13 @@
 							</FormField>
 
 							<FormField
-								label="Description"
-								labelFor="description"
+								label="Risk Details"
+								labelFor="content"
 								hint="Explain the risk in detail"
 							>
 								<Textarea
-									id="description"
-									bind:value={description}
+									id="content"
+									bind:value={content}
 									enterkeyhint="next"
 									placeholder="Describe what could happen and why..."
 									rows={3}

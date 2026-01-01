@@ -1692,16 +1692,16 @@
 
 	// Auto-send after transcription completes (when user clicked send while recording)
 	$effect(() => {
-		if (
-			pendingSendAfterTranscription &&
-			!isVoiceRecording &&
-			!isVoiceTranscribing &&
-			!isVoiceInitializing &&
-			inputValue.trim()
-		) {
+		if (!pendingSendAfterTranscription) return;
+		if (isVoiceRecording || isVoiceTranscribing || isVoiceInitializing) return;
+
+		if (inputValue.trim()) {
 			pendingSendAfterTranscription = false;
 			sendMessage();
+			return;
 		}
+
+		pendingSendAfterTranscription = false;
 	});
 
 	async function sendMessage(

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/content/BLOG_DRAFT_10_REASONS_SCOPED_CONVERSATION.md -->
+
 # BLOG DRAFT: 10 Reasons to Chat About Your Specific Work (Not Everything at Once)
 
 **Content Type:** "1 Nugget, 10 Reasons" (Right Hook - Soft Conversion)
