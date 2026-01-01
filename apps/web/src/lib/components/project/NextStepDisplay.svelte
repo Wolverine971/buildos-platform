@@ -15,6 +15,7 @@
 	@see /apps/web/docs/features/project-activity-logging/IMPLEMENTATION_PLAN.md
 -->
 <script lang="ts">
+	import { slide } from 'svelte/transition';
 	import { ChevronDown, Sparkles, User, Zap, RefreshCw, Loader2 } from 'lucide-svelte';
 	import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
 	import type { EntityReference } from '@buildos/shared-types';
@@ -270,7 +271,7 @@
 					<!-- Chevron (in header on mobile, direct flex child on desktop) -->
 					{#if hasLongVersion}
 						<div
-							class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground transition-transform duration-200 {isExpanded
+							class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground transition-transform duration-[120ms] {isExpanded
 								? 'rotate-180'
 								: ''}"
 						>
@@ -288,7 +289,7 @@
 
 		<!-- Expanded content -->
 		{#if isExpanded && hasLongVersion}
-			<div class="px-3 pb-3 pt-0">
+			<div class="px-3 pb-3 pt-0" transition:slide={{ duration: 120 }}>
 				<!-- No indent on mobile, indent on desktop to align under label -->
 				<div class="sm:pl-10">
 					<div class="h-px bg-border mb-2"></div>

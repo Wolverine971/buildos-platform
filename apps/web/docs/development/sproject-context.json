@@ -150,6 +150,11 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -166,13 +171,10 @@
 				"RiskEditModal",
 				"MilestoneCreateModal",
 				"MilestoneEditModal",
+				"DecisionCreateModal",
+				"DecisionEditModal",
 				"OntologyProjectEditModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",

@@ -53,6 +53,11 @@ export const RISK_STATES = ['identified', 'mitigated', 'occurred', 'closed'] as 
 export type RiskState = (typeof RISK_STATES)[number];
 export const RiskStateSchema = z.enum(RISK_STATES);
 
+/** Decision states: pending → made/deferred, made → reversed */
+export const DECISION_STATES = ['pending', 'made', 'deferred', 'reversed'] as const;
+export type DecisionState = (typeof DECISION_STATES)[number];
+export const DecisionStateSchema = z.enum(DECISION_STATES);
+
 /**
  * Get valid states for an entity kind
  */
@@ -74,6 +79,8 @@ export function getStatesForKind(kind: string): readonly string[] {
 			return MILESTONE_STATES;
 		case 'risk':
 			return RISK_STATES;
+		case 'decision':
+			return DECISION_STATES;
 		default:
 			return [];
 	}
@@ -108,6 +115,8 @@ export function getDefaultState(kind: string): string {
 			return 'pending';
 		case 'risk':
 			return 'identified';
+		case 'decision':
+			return 'pending';
 		default:
 			return 'draft';
 	}
@@ -717,6 +726,28 @@ export const RiskSchema = z.object({
 });
 
 export type Risk = z.infer<typeof RiskSchema>;
+
+// ============================================
+// DECISION SCHEMA
+// ============================================
+
+export const DecisionSchema = z.object({
+	id: z.string().uuid(),
+	project_id: z.string().uuid(),
+	title: z.string(),
+	description: z.string().nullable().optional(),
+	outcome: z.string().nullable().optional(),
+	rationale: z.string().nullable().optional(),
+	state_key: DecisionStateSchema,
+	decision_at: z.string().datetime().nullable().optional(),
+	deleted_at: z.string().datetime().nullable().optional(),
+	props: z.record(z.unknown()),
+	created_by: z.string().uuid(),
+	created_at: z.string().datetime(),
+	updated_at: z.string().datetime()
+});
+
+export type Decision = z.infer<typeof DecisionSchema>;
 
 // ============================================
 // ONTO_EVENTS (Calendar Events)

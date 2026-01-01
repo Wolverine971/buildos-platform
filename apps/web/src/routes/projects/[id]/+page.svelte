@@ -76,7 +76,7 @@
 		MoreVertical,
 		GitBranch
 	} from 'lucide-svelte';
-	import type { Project, Task, Output, Document, Plan } from '$lib/types/onto';
+	import type { Project, Task, Output, Document, Plan, Decision } from '$lib/types/onto';
 	import {
 		getDeliverablePrimitive,
 		isCollectionDeliverable,
@@ -118,6 +118,9 @@
 		state_key?: string | null;
 		props?: Record<string, unknown> | null;
 	}
+
+	// Import MobileCommandCenter for mobile-first layout
+	import MobileCommandCenter from '$lib/components/project/MobileCommandCenter.svelte';
 
 	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'milestones';
 
@@ -170,9 +173,11 @@
 					plan_count: number;
 					milestone_count: number;
 					risk_count: number;
+					decision_count: number;
 				})
 			: null
 	);
+	const skeletonRows = [0, 1, 2, 3];
 
 	// Core data - initialized from skeleton or full data
 	let project = $state(
@@ -201,6 +206,9 @@
 		data.skeleton ? ([] as Milestone[]) : ((data.milestones || []) as Milestone[])
 	);
 	let risks = $state(data.skeleton ? ([] as Risk[]) : ((data.risks || []) as Risk[]));
+	let decisions = $state(
+		data.skeleton ? ([] as Decision[]) : ((data.decisions || []) as Decision[])
+	);
 	let contextDocument = $state(
 		data.skeleton ? null : ((data.context_document || null) as Document | null)
 	);
@@ -224,6 +232,8 @@
 	let editingRiskId = $state<string | null>(null);
 	let showMilestoneCreateModal = $state(false);
 	let editingMilestoneId = $state<string | null>(null);
+	let showDecisionCreateModal = $state(false);
+	let editingDecisionId = $state<string | null>(null);
 
 	// UI State
 	let dataRefreshing = $state(false);
@@ -278,6 +288,7 @@
 			goals = fullData.goals || [];
 			milestones = fullData.milestones || [];
 			risks = fullData.risks || [];
+			decisions = fullData.decisions || [];
 			contextDocument = fullData.context_document || null;
 
 			isHydrating = false;
@@ -622,6 +633,21 @@
 		editingMilestoneId = null;
 	}
 
+	async function handleDecisionCreated() {
+		await refreshData();
+		showDecisionCreateModal = false;
+	}
+
+	async function handleDecisionUpdated() {
+		await refreshData();
+		editingDecisionId = null;
+	}
+
+	async function handleDecisionDeleted() {
+		await refreshData();
+		editingDecisionId = null;
+	}
+
 	async function handleProjectDeleteConfirm() {
 		if (!project?.id) return;
 		isDeletingProject = true;
@@ -955,8 +981,60 @@
 			</div>
 		{/if}
 
+		<!-- Mobile Command Center (shown only on mobile < 640px) -->
+		<div class="sm:hidden mb-4">
+			{#if isHydrating}
+				<div class="space-y-1.5">
+					{#each skeletonRows as _}
+						<div class="flex flex-wrap gap-1.5">
+							<div
+								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+							/>
+							<div
+								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+							/>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<MobileCommandCenter
+					{goals}
+					{milestones}
+					{tasks}
+					{plans}
+					{risks}
+					{decisions}
+					{documents}
+					{outputs}
+					onAddGoal={() => (showGoalCreateModal = true)}
+					onAddMilestone={() => (showMilestoneCreateModal = true)}
+					onAddTask={() => (showTaskCreateModal = true)}
+					onAddPlan={() => (showPlanCreateModal = true)}
+					onAddRisk={() => (showRiskCreateModal = true)}
+					onAddDecision={() => (showDecisionCreateModal = true)}
+					onAddDocument={() => {
+						activeDocumentId = null;
+						showDocumentModal = true;
+					}}
+					onAddOutput={() => (showOutputCreateModal = true)}
+					onEditGoal={(id) => (editingGoalId = id)}
+					onEditMilestone={(id) => (editingMilestoneId = id)}
+					onEditTask={(id) => (editingTaskId = id)}
+					onEditPlan={(id) => (editingPlanId = id)}
+					onEditRisk={(id) => (editingRiskId = id)}
+					onEditDecision={(id) => (editingDecisionId = id)}
+					onEditDocument={(id) => {
+						activeDocumentId = id;
+						showDocumentModal = true;
+					}}
+					onEditOutput={(id) => (editingOutputId = id)}
+				/>
+			{/if}
+		</div>
+
+		<!-- Desktop Layout (hidden on mobile) -->
 		<div
-			class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-2 sm:gap-4 lg:gap-6"
+			class="hidden sm:grid sm:grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-2 sm:gap-4 lg:gap-6"
 		>
 			<!-- Left Column: Outputs & Documents -->
 			{#if isHydrating && skeletonCounts}
@@ -1010,7 +1088,7 @@
 										: 'Expand outputs'}
 								>
 									<ChevronDown
-										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform {outputsExpanded
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {outputsExpanded
 											? 'rotate-180'
 											: ''}"
 									/>
@@ -1021,7 +1099,7 @@
 						{#if outputsExpanded}
 							<div
 								class="border-t border-border"
-								transition:slide={{ duration: 200 }}
+								transition:slide={{ duration: 120 }}
 							>
 								{#if outputs.length === 0}
 									<div
@@ -1135,7 +1213,7 @@
 										: 'Expand documents'}
 								>
 									<ChevronDown
-										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform {documentsExpanded
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {documentsExpanded
 											? 'rotate-180'
 											: ''}"
 									/>
@@ -1146,7 +1224,7 @@
 						{#if documentsExpanded}
 							<div
 								class="border-t border-border"
-								transition:slide={{ duration: 200 }}
+								transition:slide={{ duration: 120 }}
 							>
 								{#if documents.length === 0}
 									<div
@@ -1338,7 +1416,7 @@
 									</div>
 								</div>
 								<ChevronDown
-									class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform {isOpen
+									class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isOpen
 										? 'rotate-180'
 										: ''}"
 								/>
@@ -1347,7 +1425,7 @@
 							{#if isOpen}
 								<div
 									class="border-t border-border"
-									transition:slide={{ duration: 200 }}
+									transition:slide={{ duration: 120 }}
 								>
 									{#if section.key === 'tasks'}
 										<div
@@ -1895,6 +1973,30 @@
 			onClose={() => (editingMilestoneId = null)}
 			onUpdated={handleMilestoneUpdated}
 			onDeleted={handleMilestoneDeleted}
+		/>
+	{/await}
+{/if}
+
+<!-- Decision Create Modal -->
+{#if showDecisionCreateModal}
+	{#await import('$lib/components/ontology/DecisionCreateModal.svelte') then { default: DecisionCreateModal }}
+		<DecisionCreateModal
+			projectId={project.id}
+			onClose={() => (showDecisionCreateModal = false)}
+			onCreated={handleDecisionCreated}
+		/>
+	{/await}
+{/if}
+
+<!-- Decision Edit Modal -->
+{#if editingDecisionId}
+	{#await import('$lib/components/ontology/DecisionEditModal.svelte') then { default: DecisionEditModal }}
+		<DecisionEditModal
+			decisionId={editingDecisionId}
+			projectId={project.id}
+			onClose={() => (editingDecisionId = null)}
+			onUpdated={handleDecisionUpdated}
+			onDeleted={handleDecisionDeleted}
 		/>
 	{/await}
 {/if}

@@ -4009,36 +4009,48 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
-          decision_at: string
+          decision_at: string | null
           deleted_at: string | null
+          description: string | null
           id: string
+          outcome: string | null
           project_id: string
           props: Json
           rationale: string | null
+          search_vector: unknown
+          state_key: string
           title: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string
           created_by: string
-          decision_at: string
+          decision_at?: string | null
           deleted_at?: string | null
+          description?: string | null
           id?: string
+          outcome?: string | null
           project_id: string
           props?: Json
           rationale?: string | null
+          search_vector?: unknown
+          state_key?: string
           title: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string
-          decision_at?: string
+          decision_at?: string | null
           deleted_at?: string | null
+          description?: string | null
           id?: string
+          outcome?: string | null
           project_id?: string
           props?: Json
           rationale?: string | null
+          search_vector?: unknown
+          state_key?: string
           title?: string
           updated_at?: string | null
         }

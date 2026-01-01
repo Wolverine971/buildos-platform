@@ -1,9 +1,9 @@
 ---
 title: 'Why Context Engineering Will Matter More Than Agentic Engineering'
-description: 'As AI agents gain more capabilities, the real differentiator becomes context engineering: the art of providing the right knowledge at the right time. Learn why judgment beats raw capability.'
+description: 'As AI agents gain more capabilities, the real differentiator becomes context engineering: the art of providing the right knowledge at the right time. See how Project Lens puts this into practice.'
 author: 'DJ Wayne'
 date: '2025-08-12'
-lastmod: '2025-08-12'
+lastmod: '2025-12-31'
 changefreq: 'monthly'
 priority: '0.9'
 published: true
@@ -18,9 +18,11 @@ tags:
         'AI-productivity',
         'build-os',
         'AI-architecture',
-        'future-of-ai'
+        'future-of-ai',
+        'project-lens',
+        'scoped-conversation'
     ]
-readingTime: 6
+readingTime: 8
 excerpt: 'While everyone focuses on giving AI agents more capabilities, the real edge comes from context engineering: teaching AI judgment through curated, relevant, evolving information. Discover why contextual precision beats raw capability.'
 pic: 'context-vs-agentic'
 path: apps/web/src/content/blogs/philosophy/agentic-vrs-context-engineering.md
@@ -133,15 +135,70 @@ This loop runs constantly in a well-designed agent, keeping its context relevant
 
 ---
 
+### **Rich Context Architecture: The Foundation**
+
+For context engineering to work, you need structured context—not just a pile of notes.
+
+Build OS organizes your context into a connected architecture:
+
+```
+Goals (Why you're doing this)
+  └── Plans (How you'll get there)
+       └── Tasks (What to do next)
+            └── Documents (What you've learned)
+```
+
+This isn't just organization—it's **context infrastructure**:
+
+- **Goals** provide strategic context for every conversation
+- **Plans** show how work connects to outcomes
+- **Tasks** carry their parent context (which goal they serve, which plan they belong to)
+- **Documents** preserve decisions and learnings in context
+
+When these entities are connected, the context loop becomes more powerful. The AI doesn't just know what you're working on—it knows why, and what came before.
+
+---
+
+### **Project Lens: Context Engineering in Action**
+
+Here's where theory becomes practice. **Project Lens** is Build OS's scoped conversation feature—and it's context engineering in its purest form.
+
+When you use Project Lens, you're not just chatting with an AI. You're providing **precise, relevant context** through focus:
+
+#### Scoped Conversation = Context Engineering
+
+| What You Do         | Context Engineering Principle                |
+| ------------------- | -------------------------------------------- |
+| Focus on a task     | Filter: Only task-relevant context is loaded |
+| Zoom into a goal    | Prioritize: Strategic context comes first    |
+| Ask about blockers  | Apply: Context informs the response          |
+| Shift to a document | Update: Context shifts to new focus          |
+
+The AI gives better answers because it has **exactly the context it needs**—not everything, not nothing, but the right information for the current moment.
+
+#### Dynamic Focus = Real-Time Context Updates
+
+Remember the context loop? Project Lens runs it in real-time:
+
+1. You focus on a task → **Gather** task context (dependencies, blockers, parent goal)
+2. The AI filters noise → **Filter** irrelevant project details
+3. You ask a question → **Apply** context to reasoning
+4. AI responds → **Evaluate** if the answer was useful
+5. You shift focus → **Update** context for the new scope
+
+This is judgment at the right moment. Not an agent deciding for you—but AI providing intelligence grounded in YOUR context.
+
+---
+
 ### **Context Engineering in Practice: Build OS**
 
-This isn't just theory. At Build OS, we've built our entire system around context engineering principles:
+Beyond Project Lens, the entire Build OS system embodies context engineering:
 
-- **Brain Dumps** gather raw thoughts and information
-- **Dynamic Context Fields** filter and prioritize what matters for each project
-- **AI Processing** applies context to parse and organize information intelligently
-- **Daily Briefs** evaluate outcomes and surface relevant insights
-- **Project Memory** updates and maintains context over time
+- **Brain Dumps** gather raw thoughts and information → **Gather**
+- **Rich Context Architecture** (goals, plans, tasks, docs) → **Structure**
+- **Project Lens** applies context through scoped conversation → **Apply**
+- **Daily Briefs** evaluate and surface relevant insights → **Evaluate**
+- **Project Memory** updates and compounds context over time → **Update**
 
 Every interaction adds to your contextual foundation, making the system smarter and more aligned with how you actually work.
 
@@ -160,6 +217,20 @@ In other words: **agentic capacity is necessary, but contextual precision is dec
 
 ---
 
+### **The Future is Context-First**
+
+Here's the irony: as AI agents become more powerful, context engineering becomes MORE important, not less.
+
+A capable agent with poor context is dangerous—it can do the wrong thing faster and with more confidence. A capable agent with rich, structured context becomes genuinely useful—it provides intelligence, not just action.
+
+Build OS bets on this future:
+
+- **Rich Context Architecture** gives the AI structured knowledge
+- **Project Lens** delivers that context through scoped conversation
+- **Context Compounding** means your system gets smarter every day
+
+You don't need an AI that does everything. You need an AI that knows your work. That's what context engineering delivers.
+
 ---
 
 ### **Related Reading**
@@ -174,4 +245,10 @@ If you found this post valuable, you might also enjoy:
 
 ### **Build Your Own Context Engineering System**
 
-Ready to put context engineering into practice? [Build OS](/) implements these principles to create a personal operating system that remembers everything, builds context over time, and helps you make better decisions.
+Ready to put context engineering into practice? [Build OS](/) is context infrastructure for the AI era.
+
+Your projects get rich context. Project Lens delivers that context through scoped conversation. And everything compounds over time.
+
+**Stop teaching AI new capabilities. Start giving it the right context.**
+
+[Try Build OS →](https://buildos.dev)

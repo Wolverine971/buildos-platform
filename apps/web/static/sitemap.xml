@@ -17,19 +17,19 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/getting-started/how-buildos-works</loc>
-    <lastmod>2025-12-16</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://build-os.com/blogs/philosophy/agentic-vrs-context-engineering</loc>
-    <lastmod>2025-08-11</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://build-os.com/blogs/philosophy/anti-ai-assistant-execution-engine</loc>
-    <lastmod>2025-08-23</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -65,7 +65,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/getting-started/effective-brain-dumping</loc>
-    <lastmod>2025-06-27</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -107,7 +107,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs</loc>
-    <lastmod>2025-12-16</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -149,13 +149,13 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/getting-started</loc>
-    <lastmod>2025-12-16</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://build-os.com/blogs/philosophy</loc>
-    <lastmod>2025-10-08</lastmod>
+    <lastmod>2025-12-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

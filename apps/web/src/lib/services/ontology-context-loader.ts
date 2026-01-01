@@ -9,7 +9,20 @@ import type { Database } from '@buildos/shared-types';
 import type {
 	OntologyContext,
 	EntityRelationships,
-	OntologyEntityType
+	OntologyEntityType,
+	ProjectHighlights,
+	HighlightSection,
+	ProjectHighlightGoal,
+	ProjectHighlightRisk,
+	ProjectHighlightDecision,
+	ProjectHighlightRequirement,
+	ProjectHighlightDocument,
+	ProjectHighlightMilestone,
+	ProjectHighlightPlan,
+	ProjectHighlightOutput,
+	ProjectHighlightSignal,
+	ProjectHighlightInsight,
+	ProjectHighlightTask
 } from '$lib/types/agent-chat-enhancement';
 import type {
 	EntityLinkedContext,
@@ -58,6 +71,28 @@ type ContextEntityMap = Partial<Record<ElementType, ElementRowMap[ElementType]>>
 };
 
 type OntologyEntityRow = ProjectRow | ElementRowMap[ElementType];
+
+const PROJECT_HIGHLIGHT_LIMITS = {
+	goals: 5,
+	risks: 5,
+	decisions: 5,
+	requirements: 5,
+	documents: 5,
+	milestones: 5,
+	plans: 5,
+	outputs: 5,
+	signals: 5,
+	insights: 5,
+	tasksRecent: 10,
+	tasksUpcoming: 5
+} as const;
+
+const PROJECT_HIGHLIGHT_TRUNCATION = {
+	decisionRationale: 180,
+	documentDescription: 180,
+	requirementText: 160,
+	signalPayload: 160
+} as const;
 
 export class OntologyContextLoader {
 	// Simple in-memory cache with TTL
@@ -122,6 +157,458 @@ export class OntologyContextLoader {
 				}
 			}
 		}
+	}
+
+	private createEmptyProjectHighlights(): ProjectHighlights {
+		return {
+			goals: { items: [] },
+			risks: { items: [] },
+			decisions: { items: [] },
+			requirements: { items: [] },
+			documents: { items: [] },
+			milestones: { items: [] },
+			plans: { items: [] },
+			outputs: { items: [] },
+			signals: { items: [] },
+			insights: { items: [] },
+			tasks: {
+				recent: { items: [] },
+				upcoming: { items: [] }
+			}
+		};
+	}
+
+	private buildHighlightSection<T>(items: T[], totalCount?: number): HighlightSection<T> {
+		const more =
+			typeof totalCount === 'number' && totalCount > items.length
+				? totalCount - items.length
+				: 0;
+		return more > 0 ? { items, more } : { items };
+	}
+
+	private truncateText(value: string | null | undefined, limit: number): string | null {
+		if (!value) return null;
+		const trimmed = value.trim();
+		if (trimmed.length <= limit) return trimmed;
+		return `${trimmed.slice(0, limit).trimEnd()}...`;
+	}
+
+	private formatPayloadSummary(payload: unknown): string | null {
+		if (payload === null || payload === undefined) return null;
+		try {
+			if (typeof payload === 'string') {
+				return this.truncateText(payload, PROJECT_HIGHLIGHT_TRUNCATION.signalPayload);
+			}
+			return this.truncateText(
+				JSON.stringify(payload),
+				PROJECT_HIGHLIGHT_TRUNCATION.signalPayload
+			);
+		} catch {
+			return this.truncateText(String(payload), PROJECT_HIGHLIGHT_TRUNCATION.signalPayload);
+		}
+	}
+
+	private async loadProjectHighlights(projectId: string): Promise<ProjectHighlights> {
+		const actorId = this.requireActorId();
+		const empty = this.createEmptyProjectHighlights();
+
+		const { data: edges, error: edgeError } = await this.supabase
+			.from('onto_edges')
+			.select('src_kind, src_id, dst_kind, dst_id')
+			.or(
+				`and(src_id.eq.${projectId},src_kind.eq.project),and(dst_id.eq.${projectId},dst_kind.eq.project)`
+			);
+
+		if (edgeError) {
+			console.error('[OntologyLoader] Failed to load project highlight edges:', edgeError);
+			return empty;
+		}
+
+		const allowedKinds = new Set([
+			'goal',
+			'risk',
+			'decision',
+			'requirement',
+			'document',
+			'milestone',
+			'plan',
+			'output',
+			'signal',
+			'insight',
+			'task'
+		]);
+
+		const idsByKind: Record<string, Set<string>> = {};
+		for (const kind of allowedKinds) {
+			idsByKind[kind] = new Set<string>();
+		}
+
+		for (const edge of edges || []) {
+			let otherKind: string | null = null;
+			let otherId: string | null = null;
+
+			if (edge.src_kind === 'project' && edge.src_id === projectId) {
+				otherKind = edge.dst_kind;
+				otherId = edge.dst_id;
+			} else if (edge.dst_kind === 'project' && edge.dst_id === projectId) {
+				otherKind = edge.src_kind;
+				otherId = edge.src_id;
+			}
+
+			if (!otherKind || !otherId) continue;
+			if (!allowedKinds.has(otherKind)) continue;
+
+			idsByKind[otherKind].add(otherId);
+		}
+
+		const goalIds = [...idsByKind.goal];
+		const riskIds = [...idsByKind.risk];
+		const decisionIds = [...idsByKind.decision];
+		const requirementIds = [...idsByKind.requirement];
+		const documentIds = [...idsByKind.document];
+		const milestoneIds = [...idsByKind.milestone];
+		const planIds = [...idsByKind.plan];
+		const outputIds = [...idsByKind.output];
+		const signalIds = [...idsByKind.signal];
+		const insightIds = [...idsByKind.insight];
+		const taskIds = [...idsByKind.task];
+
+		const [
+			goalsSection,
+			risksSection,
+			decisionsSection,
+			requirementsSection,
+			documentsSection,
+			milestonesSection,
+			plansSection,
+			outputsSection,
+			signalsSection,
+			insightsSection
+		] = await Promise.all([
+			(async (): Promise<HighlightSection<ProjectHighlightGoal>> => {
+				if (goalIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_goals')
+					.select('id, name, goal, created_at, updated_at, target_date', {
+						count: 'exact'
+					})
+					.in('id', goalIds)
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.order('updated_at', { ascending: false })
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.goals);
+
+				const items: ProjectHighlightGoal[] = (data ?? []).map((goal) => ({
+					id: goal.id,
+					name: goal.name || goal.goal || 'Untitled goal',
+					created_at: goal.created_at,
+					updated_at: goal.updated_at,
+					target_date: goal.target_date
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightRisk>> => {
+				if (riskIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_risks')
+					.select('id, title, created_at, updated_at, state_key', { count: 'exact' })
+					.in('id', riskIds)
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.not('state_key', 'in', '(mitigated,closed)')
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.risks);
+
+				const items: ProjectHighlightRisk[] = (data ?? []).map((risk) => ({
+					id: risk.id,
+					title: risk.title,
+					created_at: risk.created_at,
+					updated_at: risk.updated_at
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightDecision>> => {
+				if (decisionIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_decisions')
+					.select('id, title, rationale, decision_at, created_at, updated_at', {
+						count: 'exact'
+					})
+					.in('id', decisionIds)
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.order('decision_at', { ascending: false })
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.decisions);
+
+				const items: ProjectHighlightDecision[] = (data ?? []).map((decision) => ({
+					id: decision.id,
+					title: decision.title,
+					rationale: this.truncateText(
+						decision.rationale,
+						PROJECT_HIGHLIGHT_TRUNCATION.decisionRationale
+					),
+					decision_at: decision.decision_at,
+					created_at: decision.created_at,
+					updated_at: decision.updated_at
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightRequirement>> => {
+				if (requirementIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_requirements')
+					.select('id, text, created_at, updated_at', { count: 'exact' })
+					.in('id', requirementIds)
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.requirements);
+
+				const items: ProjectHighlightRequirement[] = (data ?? []).map((req) => ({
+					id: req.id,
+					text:
+						this.truncateText(req.text, PROJECT_HIGHLIGHT_TRUNCATION.requirementText) ||
+						'',
+					created_at: req.created_at,
+					updated_at: req.updated_at
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightDocument>> => {
+				if (documentIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_documents')
+					.select('id, title, description, created_at, updated_at', { count: 'exact' })
+					.in('id', documentIds)
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.order('updated_at', { ascending: false })
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.documents);
+
+				const items: ProjectHighlightDocument[] = (data ?? []).map((doc) => ({
+					id: doc.id,
+					title: doc.title,
+					description: this.truncateText(
+						doc.description,
+						PROJECT_HIGHLIGHT_TRUNCATION.documentDescription
+					),
+					created_at: doc.created_at,
+					updated_at: doc.updated_at
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightMilestone>> => {
+				if (milestoneIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_milestones')
+					.select('id, title, due_at, created_at, updated_at', { count: 'exact' })
+					.in('id', milestoneIds)
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.order('due_at', { ascending: true })
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.milestones);
+
+				const items: ProjectHighlightMilestone[] = (data ?? []).map((milestone) => ({
+					id: milestone.id,
+					title: milestone.title,
+					due_at: milestone.due_at,
+					created_at: milestone.created_at,
+					updated_at: milestone.updated_at
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightPlan>> => {
+				if (planIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_plans')
+					.select('id, name, state_key, created_at, updated_at', { count: 'exact' })
+					.in('id', planIds)
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.order('updated_at', { ascending: false })
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.plans);
+
+				const items: ProjectHighlightPlan[] = (data ?? []).map((plan) => ({
+					id: plan.id,
+					name: plan.name,
+					state_key: plan.state_key,
+					created_at: plan.created_at,
+					updated_at: plan.updated_at
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightOutput>> => {
+				if (outputIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_outputs')
+					.select('id, name, state_key, created_at, updated_at', { count: 'exact' })
+					.in('id', outputIds)
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.order('updated_at', { ascending: false })
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.outputs);
+
+				const items: ProjectHighlightOutput[] = (data ?? []).map((output) => ({
+					id: output.id,
+					name: output.name,
+					state_key: output.state_key,
+					created_at: output.created_at,
+					updated_at: output.updated_at
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightSignal>> => {
+				if (signalIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_signals')
+					.select('id, channel, ts, created_at, payload', { count: 'exact' })
+					.in('id', signalIds)
+					.eq('project_id', projectId)
+					.order('ts', { ascending: false })
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.signals);
+
+				const items: ProjectHighlightSignal[] = (data ?? []).map((signal) => ({
+					id: signal.id,
+					channel: signal.channel,
+					ts: signal.ts,
+					created_at: signal.created_at,
+					payload_summary: this.formatPayloadSummary(signal.payload)
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})(),
+			(async (): Promise<HighlightSection<ProjectHighlightInsight>> => {
+				if (insightIds.length === 0) return { items: [] };
+				const { data, count } = await this.supabase
+					.from('onto_insights')
+					.select('id, title, created_at, derived_from_signal_id', { count: 'exact' })
+					.in('id', insightIds)
+					.eq('project_id', projectId)
+					.order('created_at', { ascending: false })
+					.limit(PROJECT_HIGHLIGHT_LIMITS.insights);
+
+				const items: ProjectHighlightInsight[] = (data ?? []).map((insight) => ({
+					id: insight.id,
+					title: insight.title,
+					created_at: insight.created_at,
+					derived_from_signal_id: insight.derived_from_signal_id
+				}));
+				return this.buildHighlightSection(items, count ?? items.length);
+			})()
+		]);
+
+		const now = new Date();
+		const recentSince = new Date(now);
+		recentSince.setDate(now.getDate() - 7);
+		const upcomingUntil = new Date(now);
+		upcomingUntil.setDate(now.getDate() + 7);
+
+		let recentTasks: ProjectHighlightTask[] = [];
+		let recentMore = 0;
+		if (taskIds.length > 0) {
+			const { data, count } = await this.supabase
+				.from('onto_tasks')
+				.select('id, title, updated_at, start_at, due_at', { count: 'exact' })
+				.in('id', taskIds)
+				.eq('project_id', projectId)
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
+				.not('state_key', 'in', '(done,blocked)')
+				.gte('updated_at', recentSince.toISOString())
+				.order('updated_at', { ascending: false })
+				.limit(PROJECT_HIGHLIGHT_LIMITS.tasksRecent);
+
+			recentTasks = (data ?? []).map((task) => ({
+				id: task.id,
+				title: task.title,
+				updated_at: task.updated_at,
+				start_at: task.start_at,
+				due_at: task.due_at
+			}));
+			recentMore =
+				typeof count === 'number' && count > recentTasks.length
+					? count - recentTasks.length
+					: 0;
+		}
+
+		let upcomingTasks: ProjectHighlightTask[] = [];
+		let upcomingMore = 0;
+		if (taskIds.length > 0) {
+			const recentIds = new Set(recentTasks.map((task) => task.id));
+			let upcomingQuery = this.supabase
+				.from('onto_tasks')
+				.select('id, title, updated_at, start_at, due_at', { count: 'exact' })
+				.in('id', taskIds)
+				.eq('project_id', projectId)
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
+				.not('state_key', 'in', '(done,blocked)')
+				.or(
+					`and(due_at.gte.${now.toISOString()},due_at.lte.${upcomingUntil.toISOString()}),and(start_at.gte.${now.toISOString()},start_at.lte.${upcomingUntil.toISOString()})`
+				)
+				.order('due_at', { ascending: true })
+				.order('start_at', { ascending: true })
+				.order('updated_at', { ascending: false })
+				.limit(PROJECT_HIGHLIGHT_LIMITS.tasksUpcoming);
+
+			if (recentIds.size > 0) {
+				const excluded = [...recentIds].map((id) => `"${id}"`).join(',');
+				upcomingQuery = upcomingQuery.not('id', 'in', `(${excluded})`);
+			}
+
+			const { data, count } = await upcomingQuery;
+			upcomingTasks = (data ?? [])
+				.filter((task) => !recentIds.has(task.id))
+				.map((task) => ({
+					id: task.id,
+					title: task.title,
+					updated_at: task.updated_at,
+					start_at: task.start_at,
+					due_at: task.due_at
+				}));
+
+			upcomingMore =
+				typeof count === 'number' && count > upcomingTasks.length
+					? count - upcomingTasks.length
+					: 0;
+		}
+
+		return {
+			goals: goalsSection,
+			risks: risksSection,
+			decisions: decisionsSection,
+			requirements: requirementsSection,
+			documents: documentsSection,
+			milestones: milestonesSection,
+			plans: plansSection,
+			outputs: outputsSection,
+			signals: signalsSection,
+			insights: insightsSection,
+			tasks: {
+				recent:
+					recentMore > 0
+						? { items: recentTasks, more: recentMore }
+						: { items: recentTasks },
+				upcoming:
+					upcomingMore > 0
+						? { items: upcomingTasks, more: upcomingMore }
+						: { items: upcomingTasks }
+			}
+		};
 	}
 
 	/**
@@ -228,6 +715,7 @@ export class OntologyContextLoader {
 
 		// Get entity counts
 		const entityCounts = await this.getProjectEntityCounts(projectId);
+		const projectHighlights = await this.loadProjectHighlights(projectId);
 
 		const context: OntologyContext = {
 			type: 'project',
@@ -239,7 +727,8 @@ export class OntologyContextLoader {
 				entity_count: entityCounts,
 				context_document_id: contextDocumentId ?? undefined,
 				facets: facets,
-				last_updated: new Date().toISOString()
+				last_updated: new Date().toISOString(),
+				project_highlights: projectHighlights
 			},
 			scope: {
 				projectId: project.id,

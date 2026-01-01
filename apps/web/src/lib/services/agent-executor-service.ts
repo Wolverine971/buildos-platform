@@ -102,7 +102,7 @@ export class AgentExecutorService {
 
 	// Execution limits for safety
 	private readonly LIMITS = {
-		MAX_TOOL_CALLS: 10, // Prevent infinite loops
+		MAX_TOOL_CALLS: 15, // Prevent infinite loops
 		MAX_EXECUTION_TIME_MS: 120000, // 2 minutes max
 		MAX_RETRIES: 2, // Max retries per tool call
 		TOOL_CALL_TIMEOUT_MS: 30000 // Max time per tool execution

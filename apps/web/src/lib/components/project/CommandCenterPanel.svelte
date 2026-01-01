@@ -1,0 +1,128 @@
+<!-- apps/web/src/lib/components/project/CommandCenterPanel.svelte -->
+<!--
+	Command Center Panel Component
+
+	Ultra-compact panel for the mobile command center layout.
+	Displays entity count in collapsed state and item list when expanded.
+
+	Documentation:
+	- Mobile Command Center: /apps/web/docs/features/mobile-command-center/MOBILE_COMMAND_CENTER_SPEC.md
+	- Inkprint Design System: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
+-->
+<script lang="ts">
+	import type { ComponentType, Snippet } from 'svelte';
+	import { slide } from 'svelte/transition';
+	import { ChevronDown, Plus } from 'lucide-svelte';
+
+	type PanelKey =
+		| 'goals'
+		| 'milestones'
+		| 'tasks'
+		| 'plans'
+		| 'risks'
+		| 'decisions'
+		| 'documents'
+		| 'outputs';
+
+	interface Props {
+		panelKey: PanelKey;
+		label: string;
+		icon: ComponentType;
+		iconColor: string;
+		count: number;
+		expanded: boolean;
+		partnerExpanded: boolean;
+		onToggle: (key: PanelKey) => void;
+		onAdd: () => void;
+		emptyMessage: string;
+		children: Snippet;
+	}
+
+	let {
+		panelKey,
+		label,
+		icon: Icon,
+		iconColor,
+		count,
+		expanded,
+		partnerExpanded,
+		onToggle,
+		onAdd,
+		emptyMessage,
+		children
+	}: Props = $props();
+
+	// Panel width classes based on expansion state
+	const panelClasses = $derived.by(() => {
+		if (expanded) return 'w-full';
+		if (partnerExpanded) return 'w-full order-2';
+		return 'w-[calc(50%-3px)]';
+	});
+</script>
+
+<div
+	class="
+		bg-card border border-border rounded-lg shadow-ink
+		tx tx-frame tx-weak overflow-hidden
+		transition-all duration-[120ms] ease-out
+		{panelClasses}
+		{expanded ? '' : 'h-[52px]'}
+	"
+>
+	<!-- Panel Header (always visible) -->
+	<button
+		type="button"
+		onclick={() => onToggle(panelKey)}
+		class="
+			w-full flex items-center justify-between
+			px-2.5 py-2
+			hover:bg-accent/5 transition-colors pressable
+			focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset
+		"
+		aria-expanded={expanded}
+	>
+		<div class="flex items-center gap-2 min-w-0">
+			<Icon class="w-4 h-4 shrink-0 {iconColor}" />
+			<span class="text-xs font-semibold text-foreground truncate">{label}</span>
+			<span class="text-[10px] text-muted-foreground shrink-0">({count})</span>
+		</div>
+		<ChevronDown
+			class="w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-[120ms] {expanded
+				? 'rotate-180'
+				: ''}"
+		/>
+	</button>
+
+	<!-- Expanded Content -->
+	{#if expanded}
+		<div class="border-t border-border" transition:slide={{ duration: 120 }}>
+			<!-- Add button row -->
+			<div class="flex justify-end px-2.5 py-1.5 border-b border-border/50 bg-muted/30">
+				<button
+					type="button"
+					onclick={onAdd}
+					class="
+						flex items-center gap-1 px-2 py-1
+						text-[10px] font-medium text-accent
+						hover:bg-accent/10 rounded transition-colors
+						pressable
+					"
+				>
+					<Plus class="w-3 h-3" />
+					<span>Add</span>
+				</button>
+			</div>
+
+			<!-- Item list (scrollable) -->
+			<div class="max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-border">
+				{#if count === 0}
+					<div class="px-2.5 py-4 text-center">
+						<p class="text-xs text-muted-foreground">{emptyMessage}</p>
+					</div>
+				{:else}
+					{@render children()}
+				{/if}
+			</div>
+		</div>
+	{/if}
+</div>

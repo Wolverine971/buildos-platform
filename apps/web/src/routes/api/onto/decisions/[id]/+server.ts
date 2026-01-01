@@ -93,16 +93,21 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { title, decision_at, rationale, props } = body;
+		const { title, description, outcome, rationale, state_key, decision_at, props } = body;
 
 		if (title !== undefined && (typeof title !== 'string' || !title.trim())) {
 			return ApiResponse.badRequest('Title cannot be empty');
 		}
 
-		if (decision_at !== undefined) {
-			if (decision_at === null) {
-				return ApiResponse.badRequest('decision_at cannot be null');
-			}
+		// Validate state_key if provided
+		const validStates = ['pending', 'made', 'deferred', 'reversed'];
+		if (state_key !== undefined && !validStates.includes(state_key)) {
+			return ApiResponse.badRequest(
+				`Invalid state_key. Must be one of: ${validStates.join(', ')}`
+			);
+		}
+
+		if (decision_at !== undefined && decision_at !== null) {
 			const decisionDate = new Date(decision_at);
 			if (isNaN(decisionDate.getTime())) {
 				return ApiResponse.badRequest('decision_at must be a valid ISO 8601 date');
@@ -150,12 +155,24 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.title = title.trim();
 		}
 
-		if (decision_at !== undefined) {
-			updateData.decision_at = new Date(decision_at).toISOString();
+		if (description !== undefined) {
+			updateData.description = description?.trim() || null;
+		}
+
+		if (outcome !== undefined) {
+			updateData.outcome = outcome?.trim() || null;
 		}
 
 		if (rationale !== undefined) {
 			updateData.rationale = rationale?.trim() || null;
+		}
+
+		if (state_key !== undefined) {
+			updateData.state_key = state_key;
+		}
+
+		if (decision_at !== undefined) {
+			updateData.decision_at = decision_at ? new Date(decision_at).toISOString() : null;
 		}
 
 		if (props !== undefined && typeof props === 'object' && props !== null) {

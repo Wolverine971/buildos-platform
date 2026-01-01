@@ -90,6 +90,114 @@ export type OntologyContextEntities = Partial<
 	OntologyEntityRecordMap & OntologyEntityCollectionMap
 >;
 
+export interface HighlightSection<T> {
+	items: T[];
+	more?: number;
+}
+
+export interface ProjectHighlightGoal {
+	id: string;
+	name: string;
+	created_at: string;
+	updated_at?: string | null;
+	target_date?: string | null;
+}
+
+export interface ProjectHighlightRisk {
+	id: string;
+	title: string;
+	created_at: string;
+	updated_at?: string | null;
+}
+
+export interface ProjectHighlightDecision {
+	id: string;
+	title: string;
+	rationale?: string | null;
+	decision_at?: string | null;
+	created_at: string;
+	updated_at?: string | null;
+}
+
+export interface ProjectHighlightRequirement {
+	id: string;
+	text: string;
+	created_at: string;
+	updated_at?: string | null;
+}
+
+export interface ProjectHighlightDocument {
+	id: string;
+	title: string;
+	description?: string | null;
+	created_at: string;
+	updated_at?: string | null;
+}
+
+export interface ProjectHighlightMilestone {
+	id: string;
+	title: string;
+	due_at?: string | null;
+	created_at: string;
+	updated_at?: string | null;
+}
+
+export interface ProjectHighlightPlan {
+	id: string;
+	name: string;
+	state_key?: string | null;
+	created_at: string;
+	updated_at?: string | null;
+}
+
+export interface ProjectHighlightOutput {
+	id: string;
+	name: string;
+	state_key?: string | null;
+	created_at: string;
+	updated_at?: string | null;
+}
+
+export interface ProjectHighlightSignal {
+	id: string;
+	channel: string;
+	ts?: string | null;
+	created_at: string;
+	payload_summary?: string | null;
+}
+
+export interface ProjectHighlightInsight {
+	id: string;
+	title: string;
+	created_at: string;
+	derived_from_signal_id?: string | null;
+}
+
+export interface ProjectHighlightTask {
+	id: string;
+	title: string;
+	updated_at?: string | null;
+	start_at?: string | null;
+	due_at?: string | null;
+}
+
+export interface ProjectHighlights {
+	goals: HighlightSection<ProjectHighlightGoal>;
+	risks: HighlightSection<ProjectHighlightRisk>;
+	decisions: HighlightSection<ProjectHighlightDecision>;
+	requirements: HighlightSection<ProjectHighlightRequirement>;
+	documents: HighlightSection<ProjectHighlightDocument>;
+	milestones: HighlightSection<ProjectHighlightMilestone>;
+	plans: HighlightSection<ProjectHighlightPlan>;
+	outputs: HighlightSection<ProjectHighlightOutput>;
+	signals: HighlightSection<ProjectHighlightSignal>;
+	insights: HighlightSection<ProjectHighlightInsight>;
+	tasks: {
+		recent: HighlightSection<ProjectHighlightTask>;
+		upcoming: HighlightSection<ProjectHighlightTask>;
+	};
+}
+
 export interface OntologyContextScope {
 	projectId?: string;
 	projectName?: string;
@@ -123,6 +231,7 @@ export interface OntologyContext {
 		available_entity_types?: string[];
 		total_projects?: number;
 		recent_project_ids?: string[];
+		project_highlights?: ProjectHighlights;
 	};
 
 	// Current scope/focus for this context (project + optional focused entity)

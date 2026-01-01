@@ -8,7 +8,8 @@
 import type {
 	OntologyContext,
 	ProjectFocus,
-	OntologyEntityType
+	OntologyEntityType,
+	ProjectHighlights
 } from '$lib/types/agent-chat-enhancement';
 import type { FormattedContextResult } from './types';
 
@@ -178,15 +179,22 @@ export function getEntityName(entity?: Record<string, any> | null): string {
 
 function formatProjectContext(ontology: OntologyContext): string {
 	const project = ontology.entities.project;
-	return `### Project Information
+	const sections: string[] = [];
+
+	sections.push(`### Project Information
 - ID: ${project?.id ?? 'unknown'}
 - Name: ${project?.name ?? 'No name'}
 - Description: ${project?.description || 'No description'}
 - State: ${project?.state_key ?? 'n/a'}
 - Type: ${project?.type_key ?? 'n/a'}
-- Created: ${project?.created_at || 'Unknown'}
+- Created: ${project?.created_at || 'Unknown'}`);
 
-### Entity Summary
+	const highlights = formatProjectHighlights(ontology.metadata?.project_highlights);
+	if (highlights) {
+		sections.push(highlights);
+	}
+
+	sections.push(`### Entity Summary
 ${
 	Object.entries(ontology.metadata?.entity_count || {})
 		.map(([type, count]) => `- ${type}s: ${count}`)
@@ -206,7 +214,9 @@ ${(ontology?.relationships?.edges?.length ?? 0) > 5 ? `... and ${(ontology?.rela
 ### Hints
 - Use list_onto_* tools to see entities (tasks, goals, plans, documents, outputs, milestones, risks, decisions, requirements)
 - Use get_entity_relationships for full graph
-- Use get_onto_project_details for complete information`;
+- Use get_onto_project_details for complete information`);
+
+	return sections.join('\n\n');
 }
 
 function formatElementContext(ontology: OntologyContext): string {
@@ -276,4 +286,178 @@ ${
 ### Hints
 - Use list_onto_projects to find specific projects
 - Use create_onto_project to start new projects`;
+}
+
+function formatProjectHighlights(highlights?: ProjectHighlights): string {
+	if (!highlights) return '';
+
+	const sections: string[] = [];
+
+	const formatDate = (value?: string | null): string | null => {
+		if (!value) return null;
+		return value.split('T')[0] || value;
+	};
+
+	const formatCreatedUpdated = (created?: string | null, updated?: string | null): string[] => {
+		const parts: string[] = [];
+		const createdShort = formatDate(created);
+		const updatedShort = formatDate(updated);
+		if (createdShort) parts.push(`created: ${createdShort}`);
+		if (updatedShort && updatedShort !== createdShort) {
+			parts.push(`updated: ${updatedShort}`);
+		}
+		return parts;
+	};
+
+	const formatParts = (parts: string[]): string => (parts.length ? ` (${parts.join(', ')})` : '');
+
+	const addSection = (title: string, lines: string[], more?: number): void => {
+		if (lines.length === 0) return;
+		if (more && more > 0) {
+			lines.push(`- ... and ${more} more`);
+		}
+		sections.push(`#### ${title}\n${lines.join('\n')}`);
+	};
+
+	addSection(
+		'Goals',
+		highlights.goals.items.map((goal) => {
+			const parts = formatCreatedUpdated(goal.created_at, goal.updated_at);
+			const targetDate = formatDate(goal.target_date);
+			if (targetDate) parts.push(`target: ${targetDate}`);
+			return `- ${goal.name} [${goal.id}]${formatParts(parts)}`;
+		}),
+		highlights.goals.more
+	);
+
+	addSection(
+		'Risks',
+		highlights.risks.items.map((risk) => {
+			const parts = formatCreatedUpdated(risk.created_at, risk.updated_at);
+			return `- ${risk.title} [${risk.id}]${formatParts(parts)}`;
+		}),
+		highlights.risks.more
+	);
+
+	addSection(
+		'Decisions',
+		highlights.decisions.items.map((decision) => {
+			const parts = formatCreatedUpdated(decision.created_at, decision.updated_at);
+			const decisionDate = formatDate(decision.decision_at);
+			if (decisionDate) parts.unshift(`decision: ${decisionDate}`);
+			const rationale = decision.rationale ? ` — Rationale: ${decision.rationale}` : '';
+			return `- ${decision.title} [${decision.id}]${formatParts(parts)}${rationale}`;
+		}),
+		highlights.decisions.more
+	);
+
+	addSection(
+		'Requirements',
+		highlights.requirements.items.map((requirement) => {
+			const parts = formatCreatedUpdated(requirement.created_at, requirement.updated_at);
+			return `- ${requirement.text} [${requirement.id}]${formatParts(parts)}`;
+		}),
+		highlights.requirements.more
+	);
+
+	addSection(
+		'Documents',
+		highlights.documents.items.map((doc) => {
+			const parts = formatCreatedUpdated(doc.created_at, doc.updated_at);
+			const description = doc.description ? ` — Desc: ${doc.description}` : '';
+			return `- ${doc.title} [${doc.id}]${formatParts(parts)}${description}`;
+		}),
+		highlights.documents.more
+	);
+
+	addSection(
+		'Milestones',
+		highlights.milestones.items.map((milestone) => {
+			const parts = formatCreatedUpdated(milestone.created_at, milestone.updated_at);
+			const dueDate = formatDate(milestone.due_at);
+			if (dueDate) parts.unshift(`due: ${dueDate}`);
+			return `- ${milestone.title} [${milestone.id}]${formatParts(parts)}`;
+		}),
+		highlights.milestones.more
+	);
+
+	addSection(
+		'Plans',
+		highlights.plans.items.map((plan) => {
+			const parts = formatCreatedUpdated(plan.created_at, plan.updated_at);
+			if (plan.state_key) parts.unshift(`state: ${plan.state_key}`);
+			return `- ${plan.name} [${plan.id}]${formatParts(parts)}`;
+		}),
+		highlights.plans.more
+	);
+
+	addSection(
+		'Outputs',
+		highlights.outputs.items.map((output) => {
+			const parts = formatCreatedUpdated(output.created_at, output.updated_at);
+			if (output.state_key) parts.unshift(`state: ${output.state_key}`);
+			return `- ${output.name} [${output.id}]${formatParts(parts)}`;
+		}),
+		highlights.outputs.more
+	);
+
+	addSection(
+		'Signals',
+		highlights.signals.items.map((signal) => {
+			const tsDate = formatDate(signal.ts);
+			const createdDate = formatDate(signal.created_at);
+			const parts: string[] = [];
+			if (tsDate) parts.push(`ts: ${tsDate}`);
+			if (createdDate && createdDate !== tsDate) {
+				parts.push(`created: ${createdDate}`);
+			}
+			const payload = signal.payload_summary ? ` — Payload: ${signal.payload_summary}` : '';
+			return `- ${signal.channel} [${signal.id}]${formatParts(parts)}${payload}`;
+		}),
+		highlights.signals.more
+	);
+
+	addSection(
+		'Insights',
+		highlights.insights.items.map((insight) => {
+			const parts = formatCreatedUpdated(insight.created_at, null);
+			if (insight.derived_from_signal_id) {
+				parts.push(`signal: ${insight.derived_from_signal_id}`);
+			}
+			return `- ${insight.title} [${insight.id}]${formatParts(parts)}`;
+		}),
+		highlights.insights.more
+	);
+
+	addSection(
+		'Tasks (Recent Updates)',
+		highlights.tasks.recent.items.map((task) => {
+			const parts: string[] = [];
+			const updated = formatDate(task.updated_at);
+			const start = formatDate(task.start_at);
+			const due = formatDate(task.due_at);
+			if (updated) parts.push(`updated: ${updated}`);
+			if (start) parts.push(`start: ${start}`);
+			if (due) parts.push(`due: ${due}`);
+			return `- ${task.title} [${task.id}]${formatParts(parts)}`;
+		}),
+		highlights.tasks.recent.more
+	);
+
+	addSection(
+		'Tasks (Upcoming)',
+		highlights.tasks.upcoming.items.map((task) => {
+			const parts: string[] = [];
+			const start = formatDate(task.start_at);
+			const due = formatDate(task.due_at);
+			if (start) parts.push(`start: ${start}`);
+			if (due) parts.push(`due: ${due}`);
+			return `- ${task.title} [${task.id}]${formatParts(parts)}`;
+		}),
+		highlights.tasks.upcoming.more
+	);
+
+	if (sections.length === 0) return '';
+
+	return `### Project Context Highlights\n${sections.join('\n\n')}`;
 }

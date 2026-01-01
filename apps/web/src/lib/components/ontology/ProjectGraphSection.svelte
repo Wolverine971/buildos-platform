@@ -17,7 +17,8 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ChevronDown, ChevronUp, Maximize2, EyeOff, GitBranch, Loader2 } from 'lucide-svelte';
+	import { slide } from 'svelte/transition';
+	import { ChevronDown, Maximize2, EyeOff, GitBranch, Loader2 } from 'lucide-svelte';
 	import OntologyGraph from './graph/OntologyGraph.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import type {
@@ -177,18 +178,16 @@
 			</div>
 		</div>
 
-		<div class="flex items-center gap-2">
-			{#if isExpanded}
-				<ChevronUp class="w-4 h-4 text-muted-foreground" />
-			{:else}
-				<ChevronDown class="w-4 h-4 text-muted-foreground" />
-			{/if}
-		</div>
+		<ChevronDown
+			class="w-4 h-4 text-muted-foreground transition-transform duration-[120ms] {isExpanded
+				? 'rotate-180'
+				: ''}"
+		/>
 	</button>
 
 	<!-- Expanded Content -->
 	{#if isExpanded}
-		<div class="border-t border-border">
+		<div class="border-t border-border" transition:slide={{ duration: 120 }}>
 			<!-- Controls Row -->
 			<div
 				class="flex items-center justify-between gap-2 px-4 py-2 bg-muted/30 border-b border-border"

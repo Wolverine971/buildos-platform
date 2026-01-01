@@ -4,6 +4,7 @@ import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
 import { validateEmail } from '$lib/utils/email-validation';
+import { verifyRecaptcha } from '$lib/utils/recaptcha';
 
 interface BetaSignupRequest {
 	email: string;
@@ -18,6 +19,7 @@ interface BetaSignupRequest {
 	wants_community_access: boolean;
 	user_timezone?: string;
 	honeypot?: string;
+	recaptcha_token?: string;
 }
 
 function validateSignupData(data: BetaSignupRequest): string | null {
@@ -73,7 +75,7 @@ function getClientIP(request: Request): string {
 	const cfConnectingIP = request.headers.get('cf-connecting-ip');
 
 	if (forwardedFor) {
-		return forwardedFor.split(',')[0].trim();
+		return forwardedFor.split(',')[0]?.trim() ?? 'unknown';
 	}
 
 	if (realIP) {
@@ -185,6 +187,7 @@ async function sendBetaWelcomeEmail(signupData: any) {
 // Admin notification for new beta signups
 async function sendBetaSignupNotification(signupData: any) {
 	try {
+		const defaultSender = getDefaultSender();
 		const transporter = createGmailTransporter();
 
 		// Create admin notification content
@@ -261,6 +264,17 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		// Parse request body
 		const data: BetaSignupRequest = await request.json();
 
+		// Get client IP for reCAPTCHA verification
+		const clientIP = getClientIP(request);
+
+		// Verify reCAPTCHA token (if provided)
+		const isRecaptchaValid = await verifyRecaptcha(data.recaptcha_token || '', clientIP);
+		if (!isRecaptchaValid) {
+			return ApiResponse.badRequest(
+				'reCAPTCHA verification failed. Please try again or refresh the page.'
+			);
+		}
+
 		// Validate input data
 		const validationError = validateSignupData(data);
 		if (validationError) {
@@ -272,7 +286,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		const normalizedEmail = emailValidation.email!;
 
 		// Get client info
-		const clientIP = getClientIP(request);
 		const userAgent = request.headers.get('user-agent') || 'unknown';
 
 		// Check if email already exists

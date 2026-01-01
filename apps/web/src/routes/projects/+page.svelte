@@ -26,7 +26,7 @@
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
-	import { ListChecks, Layers, Target, Calendar, FileText, Loader2 } from 'lucide-svelte';
+	import { ListChecks, Layers, Target, Calendar, FileText, Loader2, SlidersHorizontal, ChevronDown } from 'lucide-svelte';
 	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
 	import {
 		setNavigationData,
@@ -207,6 +207,7 @@
 	let selectedContexts = $state<string[]>([]);
 	let selectedScales = $state<string[]>([]);
 	let selectedStages = $state<string[]>([]);
+	let filtersExpanded = $state(false);
 
 	const hasFilters = $derived(
 		Boolean(
@@ -216,6 +217,19 @@
 				selectedScales.length ||
 				selectedStages.length
 		)
+	);
+
+	// Count of active filters (excluding search)
+	const activeFilterCount = $derived(
+		selectedStates.length + selectedContexts.length + selectedScales.length + selectedStages.length
+	);
+
+	// Check if any filter options are available
+	const hasFilterOptions = $derived(
+		availableStates.length > 0 ||
+			availableContexts.length > 0 ||
+			availableScales.length > 0 ||
+			availableStages.length > 0
 	);
 
 	const filteredProjects = $derived.by(() => {
@@ -444,42 +458,27 @@
 						padding="md"
 						class="space-y-dense-4 lg:flex lg:items-start lg:justify-between lg:gap-dense-6 lg:space-y-0"
 					>
-						<div
-							class="flex flex-col gap-dense-3 sm:flex-row sm:items-center sm:gap-dense-4 lg:flex-1"
-						>
-							<div class="relative flex-1">
-								<input
-									type="search"
-									class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring shadow-ink-inner"
-									placeholder="Search projects by name or description..."
-									bind:value={searchQuery}
+						<div class="relative flex-1">
+							<input
+								type="search"
+								class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring shadow-ink-inner"
+								placeholder="Search projects by name or description..."
+								bind:value={searchQuery}
+							/>
+							<svg
+								class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
 								/>
-								<svg
-									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-									xmlns="http://www.w3.org/2000/svg"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
-									/>
-								</svg>
-							</div>
-
-							{#if hasFilters}
-								<Button
-									variant="ghost"
-									size="sm"
-									class="text-accent hover:text-accent/80 font-bold"
-									onclick={clearFilters}
-								>
-									Clear filters
-								</Button>
-							{/if}
+							</svg>
 						</div>
 
 						<Button variant="primary" size="sm" onclick={handleCreateProject}>
@@ -561,109 +560,156 @@
 					</div>
 				</div>
 
-				<!-- Ontology filters - Admin Only -->
-				{#if isAdmin}
-					<div class="space-y-4">
-						{#if availableStates.length}
-							<div class="flex flex-col gap-2">
-								<p class="micro-label">State</p>
-								<div class="flex flex-wrap gap-2">
-									{#each availableStates as state (state)}
-										<button
-											type="button"
-											class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
-												selectedStates.includes(state)
-													? 'border-accent bg-accent text-accent-foreground shadow-ink'
-													: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
-											}`}
-											onclick={() =>
-												(selectedStates = toggleValue(
-													selectedStates,
-													state
-												))}
-										>
-											{state}
-										</button>
-									{/each}
+				<!-- Collapsible Filter Panel - Admin Only -->
+				{#if isAdmin && hasFilterOptions}
+					<div class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
+						<!-- Filter Panel Header (Always Visible) -->
+						<button
+							type="button"
+							class="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-muted/30 pressable"
+							onclick={() => (filtersExpanded = !filtersExpanded)}
+							aria-expanded={filtersExpanded}
+							aria-controls="filter-panel-content"
+						>
+							<div class="flex items-center gap-2">
+								<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
+								<span class="text-sm font-semibold text-foreground">Filters</span>
+								{#if activeFilterCount > 0}
+									<span class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold">
+										{activeFilterCount}
+									</span>
+								{/if}
+							</div>
+							<ChevronDown
+								class="h-4 w-4 text-muted-foreground transition-transform duration-200 {filtersExpanded ? 'rotate-180' : ''}"
+							/>
+						</button>
+
+						<!-- Filter Panel Content (Collapsible) -->
+						<div
+							id="filter-panel-content"
+							class="grid transition-all duration-200 ease-out {filtersExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}"
+						>
+							<div class="overflow-hidden">
+								<div class="px-3 pb-3 pt-1 space-y-3 border-t border-border">
+									<!-- State Filters -->
+									{#if availableStates.length}
+										<div class="flex flex-col gap-1.5">
+											<p class="micro-label">State</p>
+											<div class="flex flex-wrap gap-1.5">
+												{#each availableStates as state (state)}
+													<button
+														type="button"
+														class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable ${
+															selectedStates.includes(state)
+																? 'border-accent bg-accent text-accent-foreground shadow-ink'
+																: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
+														}`}
+														onclick={() =>
+															(selectedStates = toggleValue(
+																selectedStates,
+																state
+															))}
+													>
+														{state}
+													</button>
+												{/each}
+											</div>
+										</div>
+									{/if}
+
+									<!-- Context, Scale, Stage Filters -->
+									<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+										{#if availableContexts.length}
+											<div class="flex flex-col gap-1.5">
+												<p class="micro-label">Context</p>
+												<div class="flex flex-wrap gap-1.5">
+													{#each availableContexts as context (context)}
+														<button
+															type="button"
+															class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable ${
+																selectedContexts.includes(context)
+																	? 'border-accent bg-accent text-accent-foreground shadow-ink'
+																	: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
+															}`}
+															onclick={() =>
+																(selectedContexts = toggleValue(
+																	selectedContexts,
+																	context
+																))}
+														>
+															{context}
+														</button>
+													{/each}
+												</div>
+											</div>
+										{/if}
+
+										{#if availableScales.length}
+											<div class="flex flex-col gap-1.5">
+												<p class="micro-label">Scale</p>
+												<div class="flex flex-wrap gap-1.5">
+													{#each availableScales as scale (scale)}
+														<button
+															type="button"
+															class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable ${
+																selectedScales.includes(scale)
+																	? 'border-accent bg-accent text-accent-foreground shadow-ink'
+																	: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
+															}`}
+															onclick={() =>
+																(selectedScales = toggleValue(
+																	selectedScales,
+																	scale
+																))}
+														>
+															{scale}
+														</button>
+													{/each}
+												</div>
+											</div>
+										{/if}
+
+										{#if availableStages.length}
+											<div class="flex flex-col gap-1.5">
+												<p class="micro-label">Stage</p>
+												<div class="flex flex-wrap gap-1.5">
+													{#each availableStages as stage (stage)}
+														<button
+															type="button"
+															class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable ${
+																selectedStages.includes(stage)
+																	? 'border-accent bg-accent text-accent-foreground shadow-ink'
+																	: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
+															}`}
+															onclick={() =>
+																(selectedStages = toggleValue(
+																	selectedStages,
+																	stage
+																))}
+														>
+															{stage}
+														</button>
+													{/each}
+												</div>
+											</div>
+										{/if}
+									</div>
+
+									<!-- Clear Filters Button (inside panel when expanded) -->
+									{#if activeFilterCount > 0}
+										<div class="pt-1">
+											<button
+												type="button"
+												class="text-xs font-bold text-accent hover:text-accent/80 transition pressable"
+												onclick={clearFilters}
+											>
+												Clear all filters
+											</button>
+										</div>
+									{/if}
 								</div>
 							</div>
-						{/if}
-
-						<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-							{#if availableContexts.length}
-								<div class="flex flex-col gap-2">
-									<p class="micro-label">Context</p>
-									<div class="flex flex-wrap gap-2">
-										{#each availableContexts as context (context)}
-											<button
-												type="button"
-												class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
-													selectedContexts.includes(context)
-														? 'border-accent bg-accent text-accent-foreground shadow-ink'
-														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
-												}`}
-												onclick={() =>
-													(selectedContexts = toggleValue(
-														selectedContexts,
-														context
-													))}
-											>
-												{context}
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/if}
-
-							{#if availableScales.length}
-								<div class="flex flex-col gap-2">
-									<p class="micro-label">Scale</p>
-									<div class="flex flex-wrap gap-2">
-										{#each availableScales as scale (scale)}
-											<button
-												type="button"
-												class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
-													selectedScales.includes(scale)
-														? 'border-accent bg-accent text-accent-foreground shadow-ink'
-														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
-												}`}
-												onclick={() =>
-													(selectedScales = toggleValue(
-														selectedScales,
-														scale
-													))}
-											>
-												{scale}
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/if}
-
-							{#if availableStages.length}
-								<div class="flex flex-col gap-2">
-									<p class="micro-label">Stage</p>
-									<div class="flex flex-wrap gap-2">
-										{#each availableStages as stage (stage)}
-											<button
-												type="button"
-												class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition pressable ${
-													selectedStages.includes(stage)
-														? 'border-accent bg-accent text-accent-foreground shadow-ink'
-														: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
-												}`}
-												onclick={() =>
-													(selectedStages = toggleValue(
-														selectedStages,
-														stage
-													))}
-											>
-												{stage}
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/if}
 						</div>
 					</div>
 				{/if}

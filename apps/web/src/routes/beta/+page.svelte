@@ -22,6 +22,30 @@
 	import { goto } from '$app/navigation';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
+	import { PUBLIC_RECAPTCHA_SITE_KEY } from '$env/static/public';
+	import { dev } from '$app/environment';
+
+	// TypeScript types for reCAPTCHA
+	declare global {
+		interface Window {
+			grecaptcha: {
+				render: (
+					container: string | HTMLElement,
+					options: {
+						sitekey: string;
+						callback: (token: string) => void;
+						'expired-callback'?: () => void;
+						'error-callback'?: () => void;
+						theme?: 'light' | 'dark';
+					}
+				) => number;
+				reset: (widgetId?: number) => void;
+				getResponse: (widgetId?: number) => string;
+				ready: (callback: () => void) => void;
+			};
+			onRecaptchaLoad?: () => void;
+		}
+	}
 
 	// Form state
 	let email = '';
@@ -43,6 +67,15 @@
 	let submitError = '';
 	let existingSignupStatus = '';
 	let emailError = '';
+
+	// reCAPTCHA state
+	let recaptchaToken = '';
+	let recaptchaWidgetId: number | null = null;
+	let recaptchaLoaded = false;
+	let recaptchaError = '';
+
+	// Check if reCAPTCHA is required (skip in dev mode if no site key configured)
+	const recaptchaRequired = !dev || !!PUBLIC_RECAPTCHA_SITE_KEY;
 
 	// Check if user already signed up
 	onMount(async () => {
@@ -151,6 +184,11 @@
 			return emailValidation.error || 'Please provide a valid email address';
 		}
 
+		// reCAPTCHA validation (only required if configured)
+		if (recaptchaRequired && PUBLIC_RECAPTCHA_SITE_KEY && !recaptchaToken) {
+			return 'Please complete the reCAPTCHA verification';
+		}
+
 		return null;
 	}
 
@@ -185,7 +223,8 @@
 					wants_weekly_calls: wantsWeeklyCalls,
 					wants_community_access: wantsCommunityAccess,
 					user_timezone: userTimezone,
-					honeypot: honeypot
+					honeypot: honeypot,
+					recaptcha_token: recaptchaToken || undefined
 				})
 			});
 
@@ -198,7 +237,8 @@
 			const emailParam = encodeURIComponent(email.trim());
 			goto(`/beta/thank-you?email=${emailParam}`);
 		} catch (error) {
-			// Signup error
+			// Signup error - reset reCAPTCHA so user can try again
+			resetRecaptcha();
 			submitError =
 				error instanceof Error
 					? error.message
@@ -210,10 +250,116 @@
 
 	function openSignupForm() {
 		showSignupForm = true;
+		// Initialize reCAPTCHA after DOM updates
+		setTimeout(initRecaptcha, 0);
 	}
 
 	function closeSignupForm() {
 		showSignupForm = false;
+		// Reset reCAPTCHA state when closing
+		resetRecaptcha();
+	}
+
+	// reCAPTCHA functions
+	function loadRecaptchaScript(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			// If already loaded, resolve immediately
+			if (window.grecaptcha?.render) {
+				resolve();
+				return;
+			}
+
+			// Check if script is already being loaded
+			const existingScript = document.querySelector(
+				'script[src*="recaptcha/api.js"]'
+			) as HTMLScriptElement;
+			if (existingScript) {
+				// Wait for it to load
+				existingScript.onload = () => resolve();
+				existingScript.onerror = () => reject(new Error('Failed to load reCAPTCHA'));
+				return;
+			}
+
+			// Create and load the script
+			const script = document.createElement('script');
+			script.src =
+				'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit';
+			script.async = true;
+			script.defer = true;
+
+			window.onRecaptchaLoad = () => {
+				recaptchaLoaded = true;
+				resolve();
+			};
+
+			script.onerror = () => {
+				recaptchaError = 'Failed to load reCAPTCHA. Please refresh the page.';
+				reject(new Error('Failed to load reCAPTCHA'));
+			};
+
+			document.head.appendChild(script);
+		});
+	}
+
+	function renderRecaptcha() {
+		const container = document.getElementById('recaptcha-container');
+		if (!container || !window.grecaptcha?.render) return;
+
+		// Don't render if already rendered
+		if (recaptchaWidgetId !== null) return;
+
+		try {
+			recaptchaWidgetId = window.grecaptcha.render(container, {
+				sitekey: PUBLIC_RECAPTCHA_SITE_KEY,
+				callback: onRecaptchaSuccess,
+				'expired-callback': onRecaptchaExpired,
+				'error-callback': onRecaptchaError,
+				theme: 'light' // Could be dynamic based on dark mode
+			});
+		} catch (error) {
+			console.error('Failed to render reCAPTCHA:', error);
+			recaptchaError = 'Failed to display reCAPTCHA. Please refresh the page.';
+		}
+	}
+
+	function onRecaptchaSuccess(token: string) {
+		recaptchaToken = token;
+		recaptchaError = '';
+	}
+
+	function onRecaptchaExpired() {
+		recaptchaToken = '';
+		recaptchaError = 'reCAPTCHA expired. Please verify again.';
+	}
+
+	function onRecaptchaError() {
+		recaptchaToken = '';
+		recaptchaError = 'reCAPTCHA error. Please try again.';
+	}
+
+	function resetRecaptcha() {
+		recaptchaToken = '';
+		recaptchaError = '';
+		if (recaptchaWidgetId !== null && window.grecaptcha?.reset) {
+			try {
+				window.grecaptcha.reset(recaptchaWidgetId);
+			} catch (error) {
+				console.error('Failed to reset reCAPTCHA:', error);
+			}
+		}
+	}
+
+	// Initialize reCAPTCHA when form opens
+	async function initRecaptcha() {
+		if (!recaptchaRequired || !PUBLIC_RECAPTCHA_SITE_KEY) return;
+
+		try {
+			await loadRecaptchaScript();
+			// Small delay to ensure DOM is ready
+			setTimeout(renderRecaptcha, 100);
+		} catch (error) {
+			console.error('Failed to initialize reCAPTCHA:', error);
+		}
 	}
 </script>
 
@@ -528,6 +674,22 @@
 								</label>
 							</div>
 						</fieldset>
+
+						<!-- reCAPTCHA -->
+						{#if recaptchaRequired && PUBLIC_RECAPTCHA_SITE_KEY}
+							<div class="space-y-2">
+								<div
+									id="recaptcha-container"
+									class="flex justify-center"
+									aria-label="reCAPTCHA verification"
+								></div>
+								{#if recaptchaError}
+									<p class="text-sm text-destructive text-center" role="alert">
+										{recaptchaError}
+									</p>
+								{/if}
+							</div>
+						{/if}
 
 						<!-- Submit Button -->
 						<div class="flex gap-4" role="group" aria-label="Form actions">
