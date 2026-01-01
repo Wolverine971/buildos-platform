@@ -857,12 +857,12 @@ export async function generateOntologyDailyBrief(
 		// Step 6: Generate main brief markdown
 		await updateProgress(dailyBrief.id, { step: 'finalizing', progress: 90 }, jobId);
 
-			const mainBriefContent = generateMainBriefMarkdown(
-				briefData,
-				allProjectBriefContents,
-				executiveSummary,
-				holidays
-			);
+		const mainBriefContent = generateMainBriefMarkdown(
+			briefData,
+			allProjectBriefContents,
+			executiveSummary,
+			holidays
+		);
 
 		const priorityActions = extractPriorityActions(briefData);
 

@@ -170,7 +170,8 @@ export function categorizeTasks(
 				todaysTasks.push(task);
 			} else {
 				// Upcoming: due_at in next 7 days OR start_at in next 7 days (per spec)
-				const isDueUpcoming = dueDateStr && dueDateStr > todayStr && dueDateStr <= weekEndStr;
+				const isDueUpcoming =
+					dueDateStr && dueDateStr > todayStr && dueDateStr <= weekEndStr;
 				const isStartUpcoming =
 					startDateStr && startDateStr >= todayStr && startDateStr <= weekEndStr;
 				if (isDueUpcoming || isStartUpcoming) {
@@ -862,7 +863,10 @@ export class OntologyBriefDataLoader {
 
 		// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
 		// 1) Recent Updates: updated in last 7 days, order by updated_at desc, cap 10
-		const recentlyUpdatedTasks = categorizedTasks.recentlyUpdated.slice(0, ENTITY_CAPS.TASKS_RECENT);
+		const recentlyUpdatedTasks = categorizedTasks.recentlyUpdated.slice(
+			0,
+			ENTITY_CAPS.TASKS_RECENT
+		);
 		const recentlyUpdatedIds = new Set(recentlyUpdatedTasks.map((t) => t.id));
 
 		// 2) Upcoming: due/start in next 7 days, deduplicated from Recent, cap 5
@@ -892,7 +896,9 @@ export class OntologyBriefDataLoader {
 				const bOrder = statusOrder[b.status] ?? 3;
 				if (aOrder !== bOrder) return aOrder - bOrder;
 				// Tie-breaker: updated_at desc on the goal object
-				return parseISO(b.goal.created_at).getTime() - parseISO(a.goal.created_at).getTime();
+				return (
+					parseISO(b.goal.created_at).getTime() - parseISO(a.goal.created_at).getTime()
+				);
 			})
 			.slice(0, ENTITY_CAPS.GOALS);
 
@@ -1009,9 +1015,7 @@ export class OntologyBriefDataLoader {
 		const allRisks = projectsData.flatMap((p) => p.risks);
 		const allOutputs = projectsData.flatMap((p) => p.outputs);
 		const allEdges = projectsData.flatMap((p) => p.edges);
-		const allGoalProgress = projectsData.flatMap((p) =>
-			Array.from(p.goalProgress.values())
-		);
+		const allGoalProgress = projectsData.flatMap((p) => Array.from(p.goalProgress.values()));
 
 		// Count milestones this week
 		const milestonesThisWeek = allMilestones.filter((m) => {

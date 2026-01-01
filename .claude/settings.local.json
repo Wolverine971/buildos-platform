@@ -14,7 +14,8 @@
       "Bash(pnpm typecheck:*)",
       "WebFetch(domain:openrouter.ai)",
       "WebFetch(domain:venturebeat.com)",
-      "WebFetch(domain:www.deeplearning.ai)"
+      "WebFetch(domain:www.deeplearning.ai)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

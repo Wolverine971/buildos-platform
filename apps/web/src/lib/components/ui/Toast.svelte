@@ -50,7 +50,7 @@
 </script>
 
 <div
-	class="flex items-center gap-3 p-4 rounded-lg shadow-ink max-w-md w-full {config.bgClass}"
+	class="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg shadow-ink max-w-md w-full {config.bgClass}"
 	transition:fly={{ x: 300, duration: 300 }}
 >
 	<!-- Icon -->

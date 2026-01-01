@@ -106,16 +106,9 @@
 			<div class="flex justify-center mb-3 sm:mb-4">
 				{@render icon?.()}
 				{#if !icon}
-					<div class="relative">
-						<div
-							class="absolute inset-0 bg-primary-500 rounded-full blur-xl opacity-30"
-						></div>
-						<div
-							class="relative bg-gradient-to-br {gradientFrom} {gradientTo} rounded-full p-4"
-						>
-							<!-- Default icon placeholder -->
-							<div class="w-8 h-8 bg-white rounded-full"></div>
-						</div>
+					<!-- Inkprint default icon - flat design, no blur/gradients -->
+					<div class="bg-accent rounded-full p-3 sm:p-4 shadow-ink tx tx-bloom tx-weak">
+						<div class="w-6 h-6 sm:w-8 sm:h-8 bg-accent-foreground rounded-full"></div>
 					</div>
 				{/if}
 			</div>
@@ -148,7 +141,7 @@
 						size="xl"
 						fullWidth={true}
 						btnType="container"
-						class="bg-gradient-to-r {gradientFrom} {gradientTo} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+						class="bg-accent text-accent-foreground shadow-ink pressable"
 					>
 						<span class="flex items-center justify-center space-x-2">
 							<span>{primaryButtonText}</span>

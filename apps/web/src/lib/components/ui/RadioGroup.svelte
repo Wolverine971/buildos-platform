@@ -96,17 +96,18 @@
 	let labelClasses = $derived(
 		twMerge(
 			'block font-semibold mb-1 sm:mb-1.5',
-			size === 'sm' ? 'text-xs sm:text-sm' : size === 'lg' ? 'text-base sm:text-lg' : 'text-sm sm:text-base',
+			size === 'sm'
+				? 'text-xs sm:text-sm'
+				: size === 'lg'
+					? 'text-base sm:text-lg'
+					: 'text-sm sm:text-base',
 			disabled ? 'text-muted-foreground/50' : 'text-foreground'
 		)
 	);
 
 	// Responsive helper text
 	let helperTextClasses = $derived(
-		twMerge(
-			'text-xs sm:text-sm mt-1',
-			error ? 'text-destructive' : 'text-muted-foreground'
-		)
+		twMerge('text-xs sm:text-sm mt-1', error ? 'text-destructive' : 'text-muted-foreground')
 	);
 
 	// Handle keyboard navigation

@@ -77,12 +77,12 @@
 		onClose?.();
 	}
 
-	const containerClasses = `rounded-lg p-4 shadow-ink ${config.bg} ${config.border} ${config.text} ${config.texture} ${className}`;
+	const containerClasses = `rounded-lg p-3 sm:p-4 shadow-ink ${config.bg} ${config.border} ${config.text} ${config.texture} ${className}`;
 </script>
 
 {#if isVisible}
 	<div class={containerClasses} role="alert" {...rest}>
-		<div class="flex gap-3">
+		<div class="flex gap-2 sm:gap-3">
 			<!-- Icon -->
 			{#if icon}
 				<div class="flex-shrink-0 flex items-start pt-0.5">
@@ -91,7 +91,7 @@
 			{:else}
 				{@const AlertIcon = config.icon}
 				<div class="flex-shrink-0 flex items-start pt-0.5">
-					<AlertIcon class="w-5 h-5 {config.icon_color}" />
+					<AlertIcon class="w-4 h-4 sm:w-5 sm:h-5 {config.icon_color}" />
 				</div>
 			{/if}
 

@@ -1,10 +1,25 @@
 <!-- apps/web/src/lib/components/ui/SkeletonLoader.svelte -->
+<!--
+	Inkprint SkeletonLoader Component (Svelte 5)
+	- Migrated to Svelte 5 runes
+	- Uses Inkprint tokens for gradients
+-->
 <script lang="ts">
-	export let variant: 'card' | 'text' | 'avatar' | 'button' | 'list' | 'table' = 'card';
-	export let count: number = 1;
-	export let height: string = 'auto';
-	export let width: string = 'auto';
-	export let className: string = '';
+	interface Props {
+		variant?: 'card' | 'text' | 'avatar' | 'button' | 'list' | 'table';
+		count?: number;
+		height?: string;
+		width?: string;
+		className?: string;
+	}
+
+	let {
+		variant = 'card',
+		count = 1,
+		height = 'auto',
+		width = 'auto',
+		className = ''
+	}: Props = $props();
 </script>
 
 {#if variant === 'card'}
@@ -92,13 +107,14 @@
 {/if}
 
 <style>
+	/* Inkprint skeleton - uses semantic tokens */
 	.skeleton-loader {
 		contain: layout style paint;
 		background: linear-gradient(
 			90deg,
-			rgb(236, 236, 236) 25%,
-			rgb(222, 222, 222) 50%,
-			rgb(236, 236, 236) 75%
+			hsl(var(--muted)) 25%,
+			hsl(var(--border)) 50%,
+			hsl(var(--muted)) 75%
 		);
 		background-size: 200% 100%;
 		animation: skeleton-loading 1.5s infinite;
@@ -106,15 +122,7 @@
 		overflow: hidden;
 	}
 
-	.dark .skeleton-loader {
-		background: linear-gradient(
-			90deg,
-			rgb(30, 41, 59) 25%,
-			rgb(45, 53, 72) 50%,
-			rgb(30, 41, 59) 75%
-		);
-		background-size: 200% 100%;
-	}
+	/* Dark mode handled automatically by semantic tokens */
 
 	@keyframes skeleton-loading {
 		0% {

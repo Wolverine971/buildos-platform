@@ -8882,6 +8882,14 @@ export type Database = {
           total_tasks: number
         }[]
       }
+      get_latest_ontology_daily_briefs: {
+        Args: { user_ids: string[] }
+        Returns: {
+          brief_date: string
+          generation_completed_at: string
+          user_id: string
+        }[]
+      }
       get_link_click_stats: {
         Args: { p_days_back?: number; p_delivery_id?: string }
         Returns: {

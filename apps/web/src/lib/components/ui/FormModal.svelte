@@ -397,9 +397,7 @@
 					class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mx-3 sm:mx-4 mb-3 tx tx-static tx-weak"
 				>
 					<div class="flex items-start gap-2">
-						<AlertCircle
-							class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0"
-						/>
+						<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 						<div class="text-xs sm:text-sm text-destructive">
 							{#each errors as error}
 								<p>{error}</p>
@@ -422,7 +420,9 @@
 						<!-- Compact label with icon -->
 						<div class="flex items-center justify-between mb-2">
 							<div class="flex items-center gap-1.5">
-								<FieldIcon class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground hidden sm:block" />
+								<FieldIcon
+									class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground hidden sm:block"
+								/>
 								<label
 									for={`field-${field}`}
 									class="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wider"

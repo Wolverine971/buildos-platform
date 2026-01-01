@@ -331,12 +331,12 @@ gap-2 sm:gap-3
 
 ### Ontology Modals Using This Pattern
 
-| Modal | Location |
-|-------|----------|
-| TaskCreateModal | `/src/lib/components/ontology/TaskCreateModal.svelte` |
-| GoalCreateModal | `/src/lib/components/ontology/GoalCreateModal.svelte` |
-| DecisionCreateModal | `/src/lib/components/ontology/DecisionCreateModal.svelte` |
-| RiskCreateModal | `/src/lib/components/ontology/RiskCreateModal.svelte` |
+| Modal                | Location                                                   |
+| -------------------- | ---------------------------------------------------------- |
+| TaskCreateModal      | `/src/lib/components/ontology/TaskCreateModal.svelte`      |
+| GoalCreateModal      | `/src/lib/components/ontology/GoalCreateModal.svelte`      |
+| DecisionCreateModal  | `/src/lib/components/ontology/DecisionCreateModal.svelte`  |
+| RiskCreateModal      | `/src/lib/components/ontology/RiskCreateModal.svelte`      |
 | MilestoneCreateModal | `/src/lib/components/ontology/MilestoneCreateModal.svelte` |
 
 ### State Enums Reference
@@ -344,11 +344,11 @@ gap-2 sm:gap-3
 All ontology modals use enums from `$lib/types/onto.ts`:
 
 ```typescript
-TASK_STATES: ['todo', 'in_progress', 'blocked', 'done']
-GOAL_STATES: ['draft', 'active', 'achieved', 'abandoned']
-MILESTONE_STATES: ['pending', 'in_progress', 'completed', 'missed']
-RISK_STATES: ['identified', 'mitigated', 'occurred', 'closed']
-DECISION_STATES: ['pending', 'made', 'deferred', 'reversed']
+TASK_STATES: ['todo', 'in_progress', 'blocked', 'done'];
+GOAL_STATES: ['draft', 'active', 'achieved', 'abandoned'];
+MILESTONE_STATES: ['pending', 'in_progress', 'completed', 'missed'];
+RISK_STATES: ['identified', 'mitigated', 'occurred', 'closed'];
+DECISION_STATES: ['pending', 'made', 'deferred', 'reversed'];
 ```
 
 **Full Audit:** See `/docs/reports/ontology-modal-audit-2025-01.md`

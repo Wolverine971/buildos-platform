@@ -173,11 +173,16 @@
 	/>
 </div>
 {#if error && errorMessage}
-	<p id="input-error" role="alert" aria-live="polite" class="mt-1 text-sm text-destructive">
+	<p
+		id="input-error"
+		role="alert"
+		aria-live="polite"
+		class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-destructive"
+	>
 		{errorMessage}
 	</p>
 {:else if helperText}
-	<p id="input-helper" class="mt-1 text-sm text-muted-foreground">
+	<p id="input-helper" class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-muted-foreground">
 		{helperText}
 	</p>
 {/if}

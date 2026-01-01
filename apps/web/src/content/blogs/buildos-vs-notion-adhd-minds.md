@@ -235,19 +235,19 @@ BuildOS doesn't try to "fix" your brain. It amplifies what makes you brilliant.
 
 Let's get specific. Here's how the two compare on what matters for ADHD minds:
 
-| Feature                    | Notion                                 | BuildOS                            |
-| -------------------------- | -------------------------------------- | ---------------------------------- |
-| **Setup time**             | Hours to days                          | Minutes (just start talking)       |
-| **Structure creation**     | You build it                           | AI builds it automatically         |
-| **Context organization**   | Pages (scattered)                      | Connected hierarchy (visible)      |
-| **AI scope**               | Page-level                             | Project-level (zoom in/out)        |
-| **AI memory**              | Current page only                      | Your full project history          |
-| **Finding things**         | Search across pages (hope you tagged)  | Everything connected, always       |
-| **Bad brain days**         | Punishes you                           | Meets you where you are            |
-| **Learning curve**         | Never ends                             | None (just dump and go)            |
-| **Maintenance required**   | Constant                               | Zero                               |
-| **Executive function tax** | High                                   | Low                                |
-| **Best for**               | System builders                        | ADHD minds who need to get moving  |
+| Feature                    | Notion                                | BuildOS                           |
+| -------------------------- | ------------------------------------- | --------------------------------- |
+| **Setup time**             | Hours to days                         | Minutes (just start talking)      |
+| **Structure creation**     | You build it                          | AI builds it automatically        |
+| **Context organization**   | Pages (scattered)                     | Connected hierarchy (visible)     |
+| **AI scope**               | Page-level                            | Project-level (zoom in/out)       |
+| **AI memory**              | Current page only                     | Your full project history         |
+| **Finding things**         | Search across pages (hope you tagged) | Everything connected, always      |
+| **Bad brain days**         | Punishes you                          | Meets you where you are           |
+| **Learning curve**         | Never ends                            | None (just dump and go)           |
+| **Maintenance required**   | Constant                              | Zero                              |
+| **Executive function tax** | High                                  | Low                               |
+| **Best for**               | System builders                       | ADHD minds who need to get moving |
 
 ### The Real Difference: Context That Compounds
 
@@ -257,12 +257,12 @@ Here's the part that changes everything for ADHD minds:
 
 **BuildOS is context that compounds.** Every brain dump adds to your context. Every conversation builds on your history. Every day, your AI gets smarter about YOUR work.
 
-| Time Using      | Notion                        | BuildOS                            |
-| --------------- | ----------------------------- | ---------------------------------- |
-| **Day 1**       | Setting up databases          | Brain dumping, getting organized   |
-| **Week 1**      | Still learning features       | AI knows your projects             |
-| **Month 1**     | Abandoned 47 templates        | Context is compounding             |
-| **Month 6**     | Started over... again         | AI is like a chief of staff        |
+| Time Using  | Notion                  | BuildOS                          |
+| ----------- | ----------------------- | -------------------------------- |
+| **Day 1**   | Setting up databases    | Brain dumping, getting organized |
+| **Week 1**  | Still learning features | AI knows your projects           |
+| **Month 1** | Abandoned 47 templates  | Context is compounding           |
+| **Month 6** | Started over... again   | AI is like a chief of staff      |
 
 **The compound effect is ADHD's secret weapon.** You don't need perfect organization. You need context that grows automatically—even when you're inconsistent, even when you disappear for a week, even on your worst brain days.
 

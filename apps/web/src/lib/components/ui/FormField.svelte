@@ -24,7 +24,9 @@
 	} = $props();
 
 	// Tighter spacing: space-y-1 on mobile, space-y-1.5 on desktop
-	let containerClasses = $derived(['space-y-1 sm:space-y-1.5', className].filter(Boolean).join(' '));
+	let containerClasses = $derived(
+		['space-y-1 sm:space-y-1.5', className].filter(Boolean).join(' ')
+	);
 
 	// Tighter label margin: mb-1 on mobile, mb-1.5 on desktop
 	let labelClasses = $derived(
@@ -40,12 +42,18 @@
 
 	// Error: text-xs on mobile, text-sm on desktop. Tighter gap.
 	let errorClasses = $derived(
-		['flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5', 'text-xs sm:text-sm text-destructive'].join(' ')
+		[
+			'flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5',
+			'text-xs sm:text-sm text-destructive'
+		].join(' ')
 	);
 
 	// Hint: same responsive treatment
 	let hintClasses = $derived(
-		['flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5', 'text-xs sm:text-sm text-muted-foreground'].join(' ')
+		[
+			'flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5',
+			'text-xs sm:text-sm text-muted-foreground'
+		].join(' ')
 	);
 </script>
 

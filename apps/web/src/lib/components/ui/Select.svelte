@@ -134,7 +134,7 @@
 
 	// Size classes with minimum touch target of 44x44px per WCAG AA standards
 	const sizeClasses = {
-		sm: 'pl-3 pr-9 py-2 text-sm min-h-[40px]',
+		sm: 'pl-3 pr-9 py-2 text-sm min-h-[44px]',
 		md: 'pl-4 pr-11 py-2.5 text-base min-h-[44px]',
 		lg: 'pl-4 pr-12 py-3 text-lg min-h-[48px]'
 	};
@@ -285,11 +285,16 @@
 	</div>
 </div>
 {#if error && errorMessage}
-	<p id="select-error" role="alert" aria-live="polite" class="mt-1 text-sm text-destructive">
+	<p
+		id="select-error"
+		role="alert"
+		aria-live="polite"
+		class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-destructive"
+	>
 		{errorMessage}
 	</p>
 {:else if helperText}
-	<p id="select-helper" class="mt-1 text-sm text-muted-foreground">
+	<p id="select-helper" class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-muted-foreground">
 		{helperText}
 	</p>
 {/if}

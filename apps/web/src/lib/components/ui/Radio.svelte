@@ -56,18 +56,18 @@
 		lg: 'w-6 h-6'
 	};
 
-	// Label size classes
+	// Label size classes - responsive
 	const labelSizeClasses = {
-		sm: 'text-sm',
-		md: 'text-base',
-		lg: 'text-lg'
+		sm: 'text-xs sm:text-sm',
+		md: 'text-sm sm:text-base',
+		lg: 'text-base sm:text-lg'
 	};
 
-	// Container padding based on size
+	// Container padding based on size - responsive for mobile
 	const containerPadding = {
-		sm: 'p-2',
-		md: 'p-3',
-		lg: 'p-4'
+		sm: 'p-1.5 sm:p-2',
+		md: 'p-2 sm:p-3',
+		lg: 'p-3 sm:p-4'
 	};
 
 	let radioClasses = $derived(
@@ -122,7 +122,7 @@
 
 	let descriptionClasses = $derived(
 		twMerge(
-			'text-sm mt-1',
+			'text-xs sm:text-sm mt-0.5 sm:mt-1',
 			effectiveDisabled ? 'text-muted-foreground/50' : 'text-muted-foreground'
 		)
 	);

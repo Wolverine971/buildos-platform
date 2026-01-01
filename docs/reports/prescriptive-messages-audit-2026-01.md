@@ -13,6 +13,7 @@ This audit identified and addressed over-prescriptive messages in the BuildOS mo
 ### 1. PlanEditModal.svelte
 
 **Removed:**
+
 ```
 Align plan duration with sprint cadence. If work exceeds six weeks, consider splitting into phases.
 ```
@@ -26,6 +27,7 @@ Align plan duration with sprint cadence. If work exceeds six weeks, consider spl
 ### 2. PlanEditModal.svelte (Header)
 
 **Removed:**
+
 ```
 Structure the execution blueprint
 ```
@@ -39,6 +41,7 @@ Structure the execution blueprint
 ### 3. PlanCreateModal.svelte
 
 **Removed:**
+
 ```
 Keep duration realistic—plans over 45 days often perform better when split into phases.
 ```
@@ -52,6 +55,7 @@ Keep duration realistic—plans over 45 days often perform better when split int
 ### 4. PlanCreateModal.svelte (Fallback Text)
 
 **Changed:**
+
 ```
 From: "Use this template as a launchpad. Layer in tasks, owners, and checkpoints after saving."
 To:   "A flexible plan structure for your workflow."
@@ -69,20 +73,20 @@ The following messages were reviewed but determined to be **helpful contextual g
 
 ### Helpful UI Tips (Kept)
 
-| Location | Message | Reason for Keeping |
-|----------|---------|-------------------|
-| TaskStepsSection.svelte | "Tip: Use Markdown formatting with checkboxes (- [ ]) to create..." | Teaches feature usage |
-| ContributionChart.svelte | "Tip: Tap any square to view that day's braindumps" | UI navigation hint |
-| QuickProjectModal.svelte | "Tip: Use markdown formatting (## Headers, **bold**, - lists, etc.)" | Teaches feature usage |
-| CoreDimensionsField.svelte | "Core dimensions are automatically extracted when you process..." | Explains feature behavior |
-| ProcessingModal.svelte | Various loading tips | Entertainment during wait state |
-| AdminTourStep.svelte | "Tip: Click the 'History' button..." | Onboarding guidance |
+| Location                   | Message                                                              | Reason for Keeping              |
+| -------------------------- | -------------------------------------------------------------------- | ------------------------------- |
+| TaskStepsSection.svelte    | "Tip: Use Markdown formatting with checkboxes (- [ ]) to create..."  | Teaches feature usage           |
+| ContributionChart.svelte   | "Tip: Tap any square to view that day's braindumps"                  | UI navigation hint              |
+| QuickProjectModal.svelte   | "Tip: Use markdown formatting (## Headers, **bold**, - lists, etc.)" | Teaches feature usage           |
+| CoreDimensionsField.svelte | "Core dimensions are automatically extracted when you process..."    | Explains feature behavior       |
+| ProcessingModal.svelte     | Various loading tips                                                 | Entertainment during wait state |
+| AdminTourStep.svelte       | "Tip: Click the 'History' button..."                                 | Onboarding guidance             |
 
 ### Onboarding Messages (Kept)
 
-| Location | Message | Reason for Keeping |
-|----------|---------|-------------------|
-| NewProjectModal.svelte | "We recommend starting with a brain dump" | First-time user guidance |
+| Location                      | Message                                    | Reason for Keeping                 |
+| ----------------------------- | ------------------------------------------ | ---------------------------------- |
+| NewProjectModal.svelte        | "We recommend starting with a brain dump"  | First-time user guidance           |
 | FirstTimeBrainDumpCard.svelte | "Pro tip: Focus on one project at a time." | Helpful for new users (borderline) |
 
 ---
@@ -90,14 +94,16 @@ The following messages were reviewed but determined to be **helpful contextual g
 ## Distinction: Helpful Tips vs. Prescriptive Messages
 
 **Helpful tips:**
+
 - Explain how to use a feature
 - Provide navigation hints
 - Describe what the system does
 
 **Over-prescriptive messages:**
+
 - Dictate specific workflows or methodologies
 - Impose arbitrary thresholds (e.g., "45 days", "six weeks")
-- Tell users how they *should* work rather than enabling them to work how they prefer
+- Tell users how they _should_ work rather than enabling them to work how they prefer
 
 ---
 
