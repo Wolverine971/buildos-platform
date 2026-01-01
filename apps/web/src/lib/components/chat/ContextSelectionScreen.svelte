@@ -208,48 +208,50 @@
 	const hasProjects = $derived(projects.length > 0);
 </script>
 
-<div class="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50/70 dark:bg-slate-900/40">
+<div class="flex h-full min-h-0 flex-col overflow-hidden bg-background">
 	<!-- PRIMARY SELECTION VIEW -->
 	{#if selectedView === 'primary'}
-		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
-			<!-- Header -->
-			<div class="mb-6 text-center">
+		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-5">
+			<!-- Header - compact on mobile -->
+			<div class="mb-4 text-center sm:mb-6">
 				<h2
-					class="mb-1.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white"
+					class="mb-1 text-lg font-semibold tracking-tight text-foreground sm:text-2xl sm:mb-1.5"
 				>
 					How would you like to work today?
 				</h2>
-				<p class="text-sm text-slate-600 dark:text-slate-400">
+				<p class="text-xs text-muted-foreground sm:text-sm">
 					Pick a focus and we'll tailor the assistant around it.
 				</p>
 			</div>
 
-			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			<!-- Mobile: compact stacked list | Desktop: grid -->
+			<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
 				<!-- Global conversation -->
 				<button
 					onclick={selectGlobal}
-					class="group flex items-start gap-2.5 rounded-xl border border-slate-200/60 bg-gradient-to-br from-blue-50/70 via-slate-50/40 to-white/80 dither-soft dither-fade-hover p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-blue-500/60 sm:h-full sm:flex-col sm:gap-3 sm:p-5"
+					class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
 				>
-					<div
-						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 bg-gradient-to-br from-blue-500/10 via-sky-400/10 to-indigo-500/10 dither-subtle text-blue-600 transition-transform duration-200 group-hover:scale-105 dark:text-blue-300"
-					>
-						<Globe class="h-4 w-4 sm:h-5 sm:w-5" />
-					</div>
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center justify-between gap-2">
-							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
-								Global conversation
-							</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-blue-600 transition-transform group-hover:translate-x-1 dark:text-blue-400 sm:hidden"
-							/>
+					<!-- Mobile: Icon + Title + Chevron in one row -->
+					<div class="flex items-center gap-2 sm:gap-3">
+						<div
+							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-lg"
+						>
+							<Globe class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 						</div>
-						<p class="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
-							Talk across projects, calendar, and knowledge with no preset scope.
-						</p>
+						<h3 class="flex-1 text-sm font-semibold text-foreground">
+							Global conversation
+						</h3>
+						<ChevronRight
+							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:hidden"
+						/>
 					</div>
+					<!-- Description underneath -->
+					<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+						Talk across projects, calendar, and knowledge with no preset scope.
+					</p>
+					<!-- Desktop footer -->
 					<div
-						class="hidden items-center justify-between text-xs font-medium text-blue-600 dark:text-blue-400 sm:flex"
+						class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-accent sm:flex"
 					>
 						<span>Open conversation</span>
 						<ChevronRight
@@ -262,23 +264,26 @@
 				{#if dev}
 					<button
 						onclick={selectAgentToAgent}
-						class="group flex items-start gap-2.5 rounded-xl border border-slate-200/60 bg-gradient-to-br from-indigo-50/70 via-purple-50/40 to-white/80 dither-soft dither-fade-hover p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-indigo-500/60 sm:h-full sm:flex-col sm:gap-3 sm:p-5"
+						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
 					>
-						<div
-							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 bg-gradient-to-br from-indigo-500/10 via-violet-400/10 to-fuchsia-500/10 dither-subtle text-indigo-600 transition-transform duration-200 group-hover:scale-105 dark:text-indigo-300"
-						>
-							<Sparkles class="h-4 w-4 sm:h-5 sm:w-5" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+						<div class="flex items-center gap-2 sm:gap-3">
+							<div
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:h-10 sm:w-10 sm:rounded-lg"
+							>
+								<Sparkles class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+							</div>
+							<h3 class="flex-1 text-sm font-semibold text-foreground">
 								Agent to BuildOS chat
 							</h3>
-							<p class="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
-								Hand the BuildOS chat to another AI agent with a clear goal.
-							</p>
+							<ChevronRight
+								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
+							/>
 						</div>
+						<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+							Hand the BuildOS chat to another AI agent with a clear goal.
+						</p>
 						<div
-							class="hidden items-center justify-between text-xs font-medium text-indigo-600 dark:text-indigo-400 sm:flex"
+							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
 						>
 							<span>Agent-to-BuildOS</span>
 							<ChevronRight
@@ -291,28 +296,26 @@
 				<!-- Projects workspace -->
 				<button
 					onclick={goToProjectHub}
-					class="group flex items-start gap-2.5 rounded-xl border border-slate-200/60 bg-gradient-to-br from-emerald-50/70 via-teal-50/40 to-white/80 dither-soft dither-fade-hover p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-emerald-500/60 sm:h-full sm:flex-col sm:gap-3 sm:p-5"
+					class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
 				>
-					<div
-						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 bg-gradient-to-br from-emerald-500/10 via-teal-400/10 to-lime-500/10 dither-subtle text-emerald-600 transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
-					>
-						<FolderOpen class="h-4 w-4 sm:h-5 sm:w-5" />
-					</div>
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center justify-between gap-2">
-							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
-								Projects workspace
-							</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-emerald-600 transition-transform group-hover:translate-x-1 dark:text-emerald-400 sm:hidden"
-							/>
+					<div class="flex items-center gap-2 sm:gap-3">
+						<div
+							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
+						>
+							<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 						</div>
-						<p class="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
-							Start something new or dive into an existing project with focused tools.
-						</p>
+						<h3 class="flex-1 text-sm font-semibold text-foreground">
+							Projects workspace
+						</h3>
+						<ChevronRight
+							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
+						/>
 					</div>
+					<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+						Start something new or dive into an existing project with focused tools.
+					</p>
 					<div
-						class="hidden items-center justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
+						class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
 					>
 						<span>Project flows</span>
 						<ChevronRight
@@ -324,29 +327,27 @@
 				<!-- Braindump -->
 				<button
 					onclick={selectBraindump}
-					class="group flex items-start gap-2.5 rounded-xl border border-slate-200/60 bg-gradient-to-br from-violet-50/70 via-purple-50/40 to-white/80 dither-soft dither-fade-hover p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-violet-500/60 sm:h-full sm:flex-col sm:gap-3 sm:p-5"
+					class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-violet-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
 				>
-					<div
-						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 bg-gradient-to-br from-violet-500/10 via-purple-400/10 to-fuchsia-500/10 dither-subtle text-violet-600 transition-transform duration-200 group-hover:scale-105 dark:text-violet-300"
-					>
-						<Lightbulb class="h-4 w-4 sm:h-5 sm:w-5" />
-					</div>
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center justify-between gap-2">
-							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
-								Braindump
-							</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-violet-600 transition-transform group-hover:translate-x-1 dark:text-violet-400 sm:hidden"
-							/>
+					<div class="flex items-center gap-2 sm:gap-3">
+						<div
+							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:h-10 sm:w-10 sm:rounded-lg"
+						>
+							<Lightbulb class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 						</div>
-						<p class="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
-							Capture raw thoughts, then save them or explore with AI as a thought
-							partner.
-						</p>
+						<h3 class="flex-1 text-sm font-semibold text-foreground">
+							Braindump
+						</h3>
+						<ChevronRight
+							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
+						/>
 					</div>
+					<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+						Capture raw thoughts, then save them or explore with AI as a thought
+						partner.
+					</p>
 					<div
-						class="hidden items-center justify-between text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
+						class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
 					>
 						<span>Capture thoughts</span>
 						<ChevronRight
@@ -358,7 +359,7 @@
 
 			{#if hasProjects}
 				<div
-					class="mt-6 flex items-center justify-center gap-4 text-xs text-slate-500 dark:text-slate-400"
+					class="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground sm:mt-6"
 				>
 					<div class="flex items-center gap-2">
 						<div class="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
@@ -372,35 +373,41 @@
 	<!-- PROJECT HUB VIEW -->
 	{#if selectedView === 'projectHub'}
 		<div class="flex h-full min-h-0 flex-col">
+			<!-- Header - compact on mobile -->
 			<div
-				class="border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4"
 			>
-				<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Project flow</h2>
-				<p class="text-xs text-slate-600 dark:text-slate-400">
+				<h2 class="text-base font-semibold text-foreground sm:text-lg">Project flow</h2>
+				<p class="text-xs text-muted-foreground">
 					Choose whether you're starting fresh or advancing an existing project.
 				</p>
 			</div>
-			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
-				<div class="grid gap-4 sm:grid-cols-2">
+			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-5">
+				<!-- Mobile: stacked list | Desktop: grid -->
+				<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4">
+					<!-- Create new project -->
 					<button
 						onclick={selectProjectCreate}
-						class="group flex items-start gap-2.5 rounded-xl border border-slate-200/60 bg-gradient-to-br from-purple-50/70 via-fuchsia-50/40 to-white/85 dither-soft dither-fade-hover p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-300/60 hover:shadow-md active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-purple-500/60 sm:h-full sm:flex-col sm:gap-3 sm:p-5"
+						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-purple-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
 					>
-						<div
-							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 bg-gradient-to-br from-purple-500/15 via-pink-400/10 to-violet-500/15 dither-subtle text-purple-600 transition-transform duration-200 group-hover:scale-105 dark:text-purple-300"
-						>
-							<Plus class="h-4 w-4 sm:h-5 sm:w-5" />
-						</div>
-						<div class="min-w-0 flex-1">
-							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+						<div class="flex items-center gap-2 sm:gap-3">
+							<div
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 sm:h-10 sm:w-10 sm:rounded-lg"
+							>
+								<Plus class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+							</div>
+							<h3 class="flex-1 text-sm font-semibold text-foreground">
 								Create a new project
 							</h3>
-							<p class="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
-								Guided discovery to capture goals, milestones, and structure.
-							</p>
+							<ChevronRight
+								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-purple-500 sm:hidden"
+							/>
 						</div>
+						<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+							Guided discovery to capture goals, milestones, and structure.
+						</p>
 						<div
-							class="hidden items-center justify-between text-xs font-medium text-purple-600 dark:text-purple-400 sm:flex"
+							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-purple-600 dark:text-purple-400 sm:flex"
 						>
 							<span>10-minute setup</span>
 							<ChevronRight
@@ -409,31 +416,34 @@
 						</div>
 					</button>
 
+					<!-- Work with existing project -->
 					<button
 						onclick={showProjectSelection}
 						disabled={isLoadingProjects || !hasProjects}
-						class="group flex items-start gap-2.5 rounded-xl border border-slate-200/60 bg-gradient-to-br from-slate-50/80 via-slate-50/40 to-white/85 dither-soft dither-fade-hover p-3 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-300/60 hover:shadow-md active:translate-y-0 disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none dark:border-slate-700/60 dark:from-slate-900/85 dark:via-slate-900/55 dark:to-slate-900/75 dark:hover:border-emerald-500/60 sm:h-full sm:flex-col sm:gap-3 sm:p-5"
+						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] disabled:opacity-60 disabled:shadow-ink sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5 sm:disabled:translate-y-0"
 					>
-						<div
-							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-12 sm:w-12 bg-gradient-to-br from-emerald-500/15 via-teal-400/10 to-lime-500/15 dither-subtle text-emerald-600 transition-transform duration-200 group-hover:scale-105 dark:text-emerald-300"
-						>
-							{#if isLoadingProjects}
-								<Loader2 class="h-5 w-5 animate-spin" />
-							{:else}
-								<FolderOpen class="h-4 w-4 sm:h-5 sm:w-5" />
-							{/if}
-						</div>
-						<div class="min-w-0 flex-1">
-							<h3 class="text-sm font-semibold text-slate-900 dark:text-white">
-								Work with an existing project
+						<div class="flex items-center gap-2 sm:gap-3">
+							<div
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
+							>
+								{#if isLoadingProjects}
+									<Loader2 class="h-3.5 w-3.5 animate-spin sm:h-5 sm:w-5" />
+								{:else}
+									<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+								{/if}
+							</div>
+							<h3 class="flex-1 text-sm font-semibold text-foreground">
+								Work with existing project
 							</h3>
-							<p class="mt-0.5 text-xs leading-snug text-slate-600 dark:text-slate-400">
-								Select a project, then choose whether to update, audit, or forecast
-								it.
-							</p>
+							<ChevronRight
+								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
+							/>
 						</div>
+						<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+							Select a project, then choose whether to update, audit, or forecast it.
+						</p>
 						<div
-							class="hidden items-center justify-between text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
+							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
 						>
 							<span
 								>{#if hasProjects}{activeProjects.length} ready projects{:else}No
@@ -447,16 +457,11 @@
 				</div>
 
 				{#if projectsError}
-					<Card
-						variant="elevated"
-						class="mt-6 border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20"
-					>
-						<CardBody padding="md">
-							<p class="text-sm text-rose-700 dark:text-rose-300" role="alert">
-								{projectsError}
-							</p>
-						</CardBody>
-					</Card>
+					<div class="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:mt-6">
+						<p class="text-sm text-destructive" role="alert">
+							{projectsError}
+						</p>
+					</div>
 				{/if}
 			</div>
 		</div>
@@ -465,60 +470,63 @@
 	<!-- PROJECT SELECTION VIEW -->
 	{#if selectedView === 'project-selection'}
 		<div class="flex h-full min-h-0 flex-col">
-			<!-- Header -->
+			<!-- Header - compact on mobile -->
 			<div
-				class="border-b border-slate-200/60 bg-white/80 p-4 sm:p-5 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/80"
+				class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4"
 			>
-				<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+				<h2 class="text-base font-semibold text-foreground sm:text-lg">
 					Select a Project
 				</h2>
-				<p class="text-xs text-slate-600 dark:text-slate-400">
+				<p class="text-xs text-muted-foreground">
 					Choose which project to work with
 				</p>
 			</div>
 
 			<!-- Projects List -->
-			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto p-4">
+			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-4">
 				{#if isLoadingProjects}
-					<div class="flex items-center justify-center py-16">
-						<Loader2 class="h-8 w-8 animate-spin text-slate-400" />
+					<div class="flex items-center justify-center py-12 sm:py-16">
+						<Loader2 class="h-6 w-6 animate-spin text-muted-foreground sm:h-8 sm:w-8" />
 					</div>
 				{:else if projectsError}
-					<div class="flex flex-col items-center justify-center py-16 text-center">
-						<p class="mb-4 text-sm text-red-600 dark:text-red-400">{projectsError}</p>
+					<div class="flex flex-col items-center justify-center py-12 text-center sm:py-16">
+						<p class="mb-3 text-sm text-destructive">{projectsError}</p>
 						<button
 							onclick={() => loadProjects()}
-							class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+							class="text-sm font-medium text-accent hover:underline"
 						>
 							Try again
 						</button>
 					</div>
 				{:else if activeProjects.length > 0}
-					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					<!-- Mobile: compact stacked list | Desktop: grid -->
+					<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
 						{#each activeProjects as project (project.id)}
 							{@const facetSummary = getFacetSummary(project)}
 							<button
 								onclick={() => selectProject(project)}
-								class="group flex flex-col rounded-xl border border-slate-200/60 bg-gradient-to-br from-white/80 via-slate-50/40 to-white/70 dither-soft dither-fade-hover p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300/70 hover:shadow-lg active:translate-y-0 dark:border-slate-700/60 dark:from-slate-900/80 dark:via-slate-900/50 dark:to-slate-900/70 dark:hover:border-slate-600/70"
+								class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-3 sm:hover:-translate-y-0.5"
 							>
-								<div class="mb-3 flex items-start justify-between">
+								<!-- Mobile: title row with chevron -->
+								<div class="flex items-center gap-2">
 									<h3
-										class="flex-1 truncate text-sm font-semibold text-slate-900 dark:text-white"
+										class="flex-1 truncate text-sm font-semibold text-foreground"
 										title={project.name}
 									>
 										{project.name}
 									</h3>
 									<ChevronRight
-										class="h-4 w-4 flex-shrink-0 text-slate-400 dark:text-slate-500"
+										class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
 									/>
 								</div>
+								<!-- Metadata row - compact -->
 								{#if project.stateKey || project.typeKey}
 									<div
-										class="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400"
+										class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[11px]"
 									>
 										{#if project.stateKey}
 											<span
-												class="rounded-full border border-slate-200 px-2 py-0.5 dark:border-slate-600"
+												class="rounded-full border border-border px-1.5 py-0.5"
 											>
 												{formatKeyLabel(project.stateKey)}
 											</span>
@@ -529,20 +537,20 @@
 									</div>
 								{/if}
 								{#if facetSummary}
-									<p class="mb-2 text-xs text-slate-500 dark:text-slate-400">
+									<p class="mt-1 text-[11px] text-muted-foreground sm:text-xs">
 										{facetSummary}
 									</p>
 								{/if}
 								{#if project.description}
 									<p
-										class="mb-3 line-clamp-2 text-xs text-slate-600 dark:text-slate-400"
+										class="mt-1.5 line-clamp-2 text-xs text-muted-foreground hidden sm:block"
 									>
 										{project.description}
 									</p>
 								{/if}
 								{#if project.taskCount > 0 || project.outputCount > 0}
 									<div
-										class="mt-auto border-t border-slate-100 pt-2 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400"
+										class="mt-2 border-t border-border pt-1.5 text-[11px] text-muted-foreground sm:text-xs"
 									>
 										{#if project.taskCount > 0}
 											<span>
@@ -552,12 +560,11 @@
 											</span>
 										{/if}
 										{#if project.taskCount > 0 && project.outputCount > 0}
-											<span class="mx-2 text-slate-400">•</span>
+											<span class="mx-1.5 opacity-50">•</span>
 										{/if}
 										{#if project.outputCount > 0}
 											<span>
-												{project.outputCount} output
-												{project.outputCount !== 1 ? 's' : ''}
+												{project.outputCount} output{project.outputCount !== 1 ? 's' : ''}
 											</span>
 										{/if}
 									</div>
@@ -566,16 +573,16 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="flex flex-col items-center justify-center py-16 text-center">
+					<div class="flex flex-col items-center justify-center py-12 text-center sm:py-16">
 						<div
-							class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+							class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted sm:mb-6 sm:h-20 sm:w-20"
 						>
-							<FolderOpen class="h-10 w-10 text-slate-400 dark:text-slate-500" />
+							<FolderOpen class="h-7 w-7 text-muted-foreground sm:h-10 sm:w-10" />
 						</div>
-						<h3 class="mb-2 text-lg font-semibold text-slate-900 dark:text-white">
+						<h3 class="mb-1.5 text-base font-semibold text-foreground sm:text-lg sm:mb-2">
 							No Ontology Projects
 						</h3>
-						<p class="max-w-xs text-sm text-slate-600 dark:text-slate-400">
+						<p class="max-w-xs text-xs text-muted-foreground sm:text-sm">
 							Instantiate your first ontology project to get started
 						</p>
 					</div>
@@ -586,14 +593,14 @@
 </div>
 
 <style>
-	/* Scrollbar styling */
+	/* Scrollbar styling - uses CSS custom properties for theme compatibility */
 	.overflow-y-auto {
 		scrollbar-width: thin;
-		scrollbar-color: theme('colors.slate.300') transparent;
+		scrollbar-color: hsl(var(--border)) transparent;
 	}
 
 	.overflow-y-auto::-webkit-scrollbar {
-		width: 8px;
+		width: 6px;
 	}
 
 	.overflow-y-auto::-webkit-scrollbar-track {
@@ -601,16 +608,12 @@
 	}
 
 	.overflow-y-auto::-webkit-scrollbar-thumb {
-		background: theme('colors.slate.300');
-		border-radius: 4px;
+		background: hsl(var(--border));
+		border-radius: 3px;
 	}
 
-	:global(.dark) .overflow-y-auto {
-		scrollbar-color: theme('colors.slate.600') transparent;
-	}
-
-	:global(.dark) .overflow-y-auto::-webkit-scrollbar-thumb {
-		background: theme('colors.slate.600');
+	.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+		background: hsl(var(--muted-foreground) / 0.5);
 	}
 
 	/* Line clamp utility */

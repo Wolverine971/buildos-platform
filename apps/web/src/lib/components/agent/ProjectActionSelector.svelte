@@ -52,31 +52,37 @@
 
 <!-- INKPRINT container with muted background -->
 <div class="flex h-full flex-col bg-muted">
-	<div class="flex-1 overflow-auto p-4 sm:p-5">
-		<!-- INKPRINT action cards grid -->
-		<div class="grid gap-4 sm:grid-cols-3">
+	<div class="flex-1 overflow-auto px-3 py-3 sm:p-5">
+		<!-- Mobile: compact stacked list | Desktop: grid -->
+		<div class="flex flex-col gap-2 sm:grid sm:grid-cols-3 sm:gap-4">
 			{#each actions as action (action.id)}
 				{@const Icon = action.Icon}
 				<button
 					type="button"
 					onclick={() => onSelectAction(action.id)}
-					class={`group flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-5 text-left shadow-ink ${action.texture} transition-all duration-200 pressable hover:border-accent hover:shadow-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+					class={`group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink ${action.texture} transition-all duration-200 hover:border-accent hover:shadow-ink-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-full sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5`}
 				>
-					<div
-						class={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${action.iconBg} shadow-ink transition-transform duration-200 group-hover:scale-105`}
-					>
-						<Icon class="h-5 w-5" />
-					</div>
-					<div class="flex-1 space-y-1">
-						<h3 class="text-sm font-semibold text-foreground">
+					<!-- Mobile: Icon + Title + Chevron in one row -->
+					<div class="flex items-center gap-2 sm:gap-3">
+						<div
+							class={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${action.iconBg} sm:h-10 sm:w-10 sm:rounded-lg`}
+						>
+							<Icon class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+						</div>
+						<h3 class="flex-1 text-sm font-semibold text-foreground">
 							{action.title}
 						</h3>
-						<p class="text-xs leading-snug text-muted-foreground">
-							{action.subtitle}
-						</p>
+						<ChevronRight
+							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:hidden"
+						/>
 					</div>
+					<!-- Description underneath -->
+					<p class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2">
+						{action.subtitle}
+					</p>
+					<!-- Desktop footer -->
 					<div
-						class="flex items-center justify-between text-xs font-semibold text-accent"
+						class="hidden items-center justify-between pt-3 mt-auto text-xs font-semibold text-accent sm:flex"
 					>
 						<span>Start</span>
 						<ChevronRight
@@ -87,36 +93,36 @@
 			{/each}
 		</div>
 
-		<!-- INKPRINT focus selector card with Bloom texture -->
+		<!-- INKPRINT focus selector card with Bloom texture - compact on mobile -->
 		<div
-			class="mt-5 flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-bloom tx-weak"
+			class="mt-3 flex flex-col gap-2 rounded-lg border border-border bg-card p-2.5 shadow-ink tx tx-bloom tx-weak sm:mt-5 sm:gap-3 sm:p-4"
 		>
 			<div class="flex items-center gap-2">
 				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/10 text-accent"
+					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-8 sm:w-8 sm:rounded-lg"
 				>
-					<Target class="h-4 w-4" />
+					<Target class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
 				</div>
-				<div>
+				<div class="min-w-0 flex-1">
 					<p class="text-sm font-semibold text-foreground">Focus on specific work</p>
-					<p class="text-[0.65rem] uppercase tracking-[0.1em] text-muted-foreground">
-						Pick a task, goal, plan, document, or output inside this project.
+					<p class="text-[0.6rem] uppercase tracking-wider text-muted-foreground sm:text-[0.65rem] sm:tracking-[0.1em]">
+						Pick a task, goal, plan, document, or output.
 					</p>
 				</div>
 			</div>
-			<div class="flex flex-wrap items-center gap-2">
-				<!-- INKPRINT outline buttons -->
+			<div class="flex flex-wrap items-center gap-1.5 pl-9 sm:gap-2 sm:pl-0">
+				<!-- INKPRINT outline buttons - compact on mobile -->
 				<button
 					type="button"
 					onclick={() => onOpenFocusSelector?.()}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-accent shadow-ink transition pressable hover:border-accent hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-accent shadow-ink transition hover:border-accent hover:bg-accent/5 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-xs"
 				>
 					Open focus selector
 				</button>
 				<button
 					type="button"
 					onclick={() => onSelectAction('workspace')}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-ink transition pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-semibold text-muted-foreground shadow-ink transition hover:border-accent hover:text-foreground active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-xs"
 				>
 					Switch to workspace
 				</button>

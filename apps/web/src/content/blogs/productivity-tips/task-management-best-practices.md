@@ -1,34 +1,46 @@
 ---
 title: 'Task Management Best Practices: Beyond To-Do Lists'
-description: 'Learn how to organize and prioritize your tasks for maximum productivity using Build OS intelligent task management system. Master advanced techniques for sustained execution.'
+description: 'Learn how to manage tasks within Build OS rich context system—where tasks connect to goals, plans, and documents. Master advanced techniques plus how to zoom into any task with Project Lens.'
 author: 'DJ Wayne'
 date: '2025-06-28'
-lastmod: '2025-07-08'
+lastmod: '2025-12-31'
 changefreq: 'monthly'
 priority: '0.7'
 published: true
-tags: ['task-management', 'productivity-tips', 'organization', 'execution', 'calendar-integration']
-readingTime: 12
-excerpt: 'Transform scattered to-do lists into a systematic task management approach that integrates seamlessly with your projects, calendar, and energy patterns for sustained productivity.'
+tags: ['task-management', 'productivity-tips', 'organization', 'execution', 'calendar-integration', 'project-lens', 'context-building', 'zoom']
+readingTime: 14
+excerpt: 'Transform scattered to-do lists into connected context—where tasks serve goals, link to plans, and compound over time. Plus: how to zoom into any task with Project Lens.'
 pic: 'task-management-mastery'
 path: apps/web/src/content/blogs/productivity-tips/task-management-best-practices.md
 ---
 
-Task management in Build OS goes far beyond simple to-do lists. It's a sophisticated system that connects individual actions to larger projects, aligns with your energy patterns, integrates with your calendar, and adapts based on your working style and progress patterns.
+Task management in Build OS goes far beyond simple to-do lists. Tasks are one part of a **rich context system** where every action connects to goals, plans, and documents.
 
-Mastering these task management principles transforms how you approach daily work-from reactive scrambling to purposeful execution.
+Here's the key insight: **isolated tasks fail**. A task without context is just an item on a list. A task connected to a goal—with related documents and clear dependencies—is intelligence you can act on.
+
+This guide covers both the fundamentals of great task management AND how Build OS's context architecture makes it all work better. Master these principles and transform how you approach daily work—from reactive scrambling to purposeful execution.
 
 ## The Build OS Task Philosophy
 
-### Tasks as Project Building Blocks
+### Tasks in the Context Hierarchy
 
-Every task in Build OS serves a larger purpose:
+In Build OS, tasks don't exist in isolation. They're part of a connected architecture:
 
-- **Project Connection**: Tasks advance specific project phases
-- **Goal Alignment**: Tasks contribute to life goal progress
-- **Context Awareness**: Tasks understand their role in larger systems
-- **Intelligent Scheduling**: Tasks find optimal execution times
-- **Progress Tracking**: Tasks provide feedback on project momentum
+```
+Goals (Why you're doing this)
+  └── Plans (How you'll get there)
+       └── Tasks (What to do next)
+            └── Documents (What you've learned)
+```
+
+Every task knows:
+
+- **Which goal it serves** — strategic context that informs priority
+- **Which plan it belongs to** — phase context showing dependencies
+- **What documents relate to it** — knowledge context for better execution
+- **What's blocking it** — dependency context for unblocking
+
+This isn't just organization—it's **context that makes tasks smarter**. When you look at a task, you see the bigger picture. When you complete a task, you see its impact on goals.
 
 ### Beyond Simple Completion
 
@@ -63,6 +75,8 @@ Traditional task management focuses on completion. Build OS focuses on:
 
 - ❌ Isolated tasks without project context
 - ✅ "Design website header (supports Brand Identity Project)"
+
+*In Build OS, this connection is automatic. Tasks link to plans, plans link to goals. When you complete a task, you see its impact on the bigger picture.*
 
 **Time-bound**: Realistic duration estimate
 
@@ -171,6 +185,65 @@ This hierarchy ensures:
 - Learning tasks that inform multiple project areas
 - Research that supports multiple decision points
 - Feedback that affects multiple work streams
+
+## Zoom Into Your Tasks with Project Lens
+
+Here's where Build OS task management gets powerful: **Project Lens** lets you zoom into any task and get AI intelligence about that specific piece of work.
+
+### What Happens When You Zoom In
+
+When you focus on a task in Project Lens, the AI automatically loads:
+
+- **Parent context** — the goal and plan this task serves
+- **Dependencies** — what's blocking this task or depends on it
+- **Related documents** — research, decisions, and notes that inform the work
+- **History** — previous conversations about this task
+
+You're not getting generic task advice. You're getting intelligence grounded in YOUR specific context.
+
+### Task-Focused Conversations
+
+```
+"Zoom into the 'finalize pricing strategy' task"
+```
+
+Now you can ask:
+
+- "What's blocking this task?"
+- "What does success look like here?"
+- "How does this connect to my revenue goal?"
+- "What decisions have I already made about pricing?"
+
+The AI answers based on your full context—not generic advice.
+
+### Unblocking Stuck Tasks
+
+Got a task that's been sitting there for weeks? Zoom in and ask:
+
+- "Why have I been avoiding this task?"
+- "What would make this task easier to start?"
+- "Can we break this into smaller pieces?"
+- "What information am I missing?"
+
+Project Lens can identify blockers you might not have articulated—because it sees the task in context of your goals, schedule, and past patterns.
+
+### The Zoom Flow for Task Management
+
+```
+Task stuck?
+    ↓
+Zoom into that task
+    ↓
+Ask: "What's really blocking this?"
+    ↓
+AI identifies: dependencies, resources, clarity issues
+    ↓
+Take action or break down further
+    ↓
+Zoom out to see impact on project/goal
+```
+
+**You control the altitude. The AI follows.**
 
 ## Calendar Integration Strategies
 
@@ -391,10 +464,30 @@ If a task takes less than 2 minutes and you're in appropriate context, do it imm
 **Calendar Sync**: Leverage automatic scheduling and time blocking
 **Progress Tracking**: Use task completion to measure project advancement
 
-Effective task management in Build OS is about creating a sustainable system that connects daily actions to larger purposes while respecting your energy, schedule, and working style. The goal isn't to complete more tasks-it's to complete the right tasks at the right time in service of your most important projects and goals.
+Effective task management in Build OS is about creating a sustainable system that connects daily actions to larger purposes while respecting your energy, schedule, and working style. The goal isn't to complete more tasks—it's to complete the right tasks at the right time in service of your most important projects and goals.
 
-Start by implementing one or two of these best practices and gradually build a comprehensive task management system that works with your natural patterns rather than against them.
+## Context Makes Tasks Better Over Time
+
+Here's the insight that changes everything: **task context compounds**.
+
+Every task you create adds to your context. Every completion teaches the system about your patterns. Over time:
+
+- Tasks get better estimates (based on your actual patterns)
+- Dependencies become clearer (based on what's actually blocked you)
+- Priorities become smarter (based on which goals matter most)
+- The AI gets better at helping (based on YOUR work, not generic advice)
+
+Day 1: Your tasks are just tasks.
+Day 100: Your tasks are connected to goals, enriched with documents, informed by history.
+
+That's context compounding. That's why starting now matters.
 
 ---
 
-_Ready to transform your task management approach? [Open Build OS](/) and begin implementing systematic task organization that serves your bigger picture._
+**Ready to transform your task management?**
+
+Start by implementing one or two of these best practices. Then use Project Lens to zoom into stuck tasks. Watch your context compound over time.
+
+**Zoom in. Zoom out. Build tasks that connect to goals.**
+
+[Start building task context →](/)
