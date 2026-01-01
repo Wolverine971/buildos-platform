@@ -324,6 +324,8 @@ h-9 sm:h-10               /* Inputs */
 
 ## Modals Updated
 
+### Create Modals
+
 | Modal                | Header | Body | Footer | Form Spacing | Type Cards | Status   |
 | -------------------- | ------ | ---- | ------ | ------------ | ---------- | -------- |
 | TaskCreateModal      | ✅     | ✅   | ✅     | ✅           | ✅         | **Done** |
@@ -331,7 +333,18 @@ h-9 sm:h-10               /* Inputs */
 | DecisionCreateModal  | ✅     | ✅   | ✅     | ✅           | N/A        | **Done** |
 | RiskCreateModal      | ✅     | ✅   | ✅     | ✅           | ✅         | **Done** |
 | MilestoneCreateModal | ✅     | ✅   | ✅     | ✅           | ✅         | **Done** |
-| PlanCreateModal      | -      | -    | -      | -            | -          | TBD      |
+| PlanCreateModal      | ✅     | ✅   | N/A    | ✅           | ✅         | **Done** |
+
+### Edit Modals (January 2026)
+
+| Modal              | Header | Body | Footer | Form Spacing | Status   |
+| ------------------ | ------ | ---- | ------ | ------------ | -------- |
+| TaskEditModal      | ✅     | ✅   | ✅     | N/A          | **Done** |
+| GoalEditModal      | ✅     | ✅   | ✅     | ✅           | **Done** |
+| DecisionEditModal  | ✅     | ✅   | ✅     | ✅           | **Done** |
+| RiskEditModal      | ✅     | ✅   | ✅     | ✅           | **Done** |
+| MilestoneEditModal | ✅     | ✅   | ✅     | ✅           | **Done** |
+| PlanEditModal      | ✅     | ✅   | ✅     | ✅           | **Done** |
 
 ---
 
@@ -350,27 +363,27 @@ h-9 sm:h-10               /* Inputs */
 
 ### Files Modified
 
+**Create Modals (January 2025):**
+
 1. `apps/web/src/lib/components/ontology/TaskCreateModal.svelte`
 2. `apps/web/src/lib/components/ontology/GoalCreateModal.svelte`
 3. `apps/web/src/lib/components/ontology/DecisionCreateModal.svelte`
 4. `apps/web/src/lib/components/ontology/RiskCreateModal.svelte`
 5. `apps/web/src/lib/components/ontology/MilestoneCreateModal.svelte`
 
+**Edit + Plan Modals (January 2026):**
+
+6. `apps/web/src/lib/components/ontology/TaskEditModal.svelte`
+7. `apps/web/src/lib/components/ontology/GoalEditModal.svelte`
+8. `apps/web/src/lib/components/ontology/DecisionEditModal.svelte`
+9. `apps/web/src/lib/components/ontology/RiskEditModal.svelte`
+10. `apps/web/src/lib/components/ontology/MilestoneEditModal.svelte`
+11. `apps/web/src/lib/components/ontology/PlanCreateModal.svelte`
+12. `apps/web/src/lib/components/ontology/PlanEditModal.svelte`
+
 ---
 
 ## Remaining Modals (Future Work)
-
-### Edit Modals (Not Yet Standardized)
-
-| Modal              | File                        | Priority |
-| ------------------ | --------------------------- | -------- |
-| TaskEditModal      | `TaskEditModal.svelte`      | High     |
-| GoalEditModal      | `GoalEditModal.svelte`      | High     |
-| DecisionEditModal  | `DecisionEditModal.svelte`  | Medium   |
-| RiskEditModal      | `RiskEditModal.svelte`      | Medium   |
-| MilestoneEditModal | `MilestoneEditModal.svelte` | Medium   |
-| PlanCreateModal    | `PlanCreateModal.svelte`    | Medium   |
-| PlanEditModal      | `PlanEditModal.svelte`      | Medium   |
 
 ### Specialty Modals (Lower Priority)
 
@@ -390,6 +403,7 @@ h-9 sm:h-10               /* Inputs */
 
 1. ✅ **Test on mobile** to verify "command center" feel
 2. ✅ **Documented in QUICK_REFERENCE.md**
-3. **Standardize Edit modals** - Apply same spacing patterns
-4. **Consider PlanCreateModal** when used more frequently
+3. ✅ **Standardize Edit modals** - Applied same spacing patterns (Jan 2026)
+4. ✅ **PlanCreateModal & PlanEditModal** - Standardized (Jan 2026)
 5. **Optional:** Create shared modal layout component for consistency
+6. **Optional:** Standardize specialty modals (Output, Document, etc.)

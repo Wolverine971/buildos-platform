@@ -26,6 +26,7 @@
 	import ActivityTimelineChart from './ActivityTimelineChart.svelte';
 	import UserContextPanel from './UserContextPanel.svelte';
 	import { onMount } from 'svelte';
+	import { toastService } from '$lib/stores/toast.store';
 
 	let { user, onclose }: { user: any; onclose?: () => void } = $props();
 
@@ -61,6 +62,7 @@
 		} catch (error) {
 			console.error('Error loading user context:', error);
 			contextError = error instanceof Error ? error.message : 'Failed to load user context';
+			toastService.error('Failed to load user context');
 		} finally {
 			contextLoading = false;
 		}

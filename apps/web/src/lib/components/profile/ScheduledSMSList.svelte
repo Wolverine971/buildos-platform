@@ -15,6 +15,7 @@
 	import { formatInTimeZone } from 'date-fns-tz';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
+	import { toastService } from '$lib/stores/toast.store';
 
 	interface ScheduledSMS {
 		id: string;
@@ -77,6 +78,7 @@
 		} catch (err: any) {
 			console.error('Error loading scheduled SMS:', err);
 			error = err.message || 'Failed to load scheduled messages';
+			toastService.error('Failed to load scheduled messages');
 		} finally {
 			loading = false;
 		}
@@ -95,11 +97,12 @@
 			});
 			await requireApiSuccess(response, 'Failed to cancel message');
 
+			toastService.success('Scheduled SMS cancelled');
 			// Refresh the list
 			await loadScheduledMessages();
 		} catch (err: any) {
 			console.error('Error cancelling message:', err);
-			alert('Failed to cancel message: ' + err.message);
+			toastService.error('Failed to cancel message: ' + err.message);
 		} finally {
 			cancelling.delete(messageId);
 			cancelling = new Set(cancelling);

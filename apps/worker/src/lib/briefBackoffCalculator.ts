@@ -83,7 +83,13 @@ export class BriefBackoffCalculator {
 				string,
 				{ brief_date: string; generation_completed_at: string | null }
 			>();
-			briefsData?.forEach((brief) => {
+			const typedBriefs =
+				(briefsData as Array<{
+					user_id: string;
+					brief_date: string;
+					generation_completed_at: string | null;
+				}>) || [];
+			typedBriefs.forEach((brief) => {
 				userLastBriefMap.set(brief.user_id, {
 					brief_date: brief.brief_date,
 					generation_completed_at: brief.generation_completed_at

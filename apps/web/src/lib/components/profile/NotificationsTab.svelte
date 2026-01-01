@@ -5,6 +5,7 @@
 	import NotificationPreferences from '$lib/components/settings/NotificationPreferences.svelte';
 	import SMSPreferences from '$lib/components/settings/SMSPreferences.svelte';
 	import ScheduledSMSList from '$lib/components/profile/ScheduledSMSList.svelte';
+	import { toastService } from '$lib/stores/toast.store';
 
 	interface Props {
 		userId: string;
@@ -37,6 +38,7 @@
 			userTimezone = smsPreferences?.timezone || 'UTC';
 		} catch (error) {
 			console.error('Error loading SMS preferences:', error);
+			toastService.error('Failed to load notification preferences');
 		} finally {
 			loadingPreferences = false;
 		}

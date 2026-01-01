@@ -16,10 +16,12 @@
 		onUpdate: (newValue: string) => void;
 		placeholder?: string;
 		rows?: number;
+		maxRows?: number;
 		disabled?: boolean;
 		size?: 'sm' | 'base' | 'lg';
 		autoFocus?: boolean;
 		ariaLabelledby?: string;
+		class?: string;
 	}
 
 	let {
@@ -27,10 +29,12 @@
 		onUpdate,
 		placeholder = 'Enter content...',
 		rows = 4,
+		maxRows,
 		disabled = false,
 		size = 'sm',
 		autoFocus = false,
-		ariaLabelledby
+		ariaLabelledby,
+		class: className = ''
 	}: Props = $props();
 
 	let isEditMode = $state(false);
@@ -98,7 +102,7 @@
 	let showPlaceholder = $derived(!displayValue && !isEditMode);
 </script>
 
-<div class="markdown-toggle-field">
+<div class="markdown-toggle-field {className}">
 	<!-- Toggle Button - responsive sizing -->
 	{#if showToggle}
 		<div class="flex justify-end mb-1.5 sm:mb-2">
@@ -132,6 +136,7 @@
 				onblur={handleBlur}
 				onkeydown={handleKeydown}
 				{rows}
+				{maxRows}
 				{disabled}
 				{placeholder}
 				autofocus={autoFocus}

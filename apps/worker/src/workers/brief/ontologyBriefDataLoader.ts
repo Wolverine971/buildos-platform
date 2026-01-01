@@ -536,11 +536,14 @@ export class OntologyBriefDataLoader {
 		console.log('[OntologyBriefDataLoader] Loading data for user:', userId, 'actor:', actorId);
 
 		// Fetch all active projects for the actor
-		const { data: projects, error: projectsError } = await this.supabase
+		const { data: projectsData, error: projectsError } = await this.supabase
 			.from('onto_projects')
-			.select('*')
+			.select(
+				'id, name, state_key, type_key, description, next_step_short, next_step_long, updated_at'
+			)
 			.eq('created_by', actorId)
 			.in('state_key', ['planning', 'active'])
+			.is('deleted_at', null)
 			.order('updated_at', { ascending: false });
 
 		if (projectsError) {
@@ -548,7 +551,9 @@ export class OntologyBriefDataLoader {
 			throw new Error(`Failed to load projects: ${projectsError.message}`);
 		}
 
-		if (!projects || projects.length === 0) {
+		const projects = (projectsData || []) as OntoProject[];
+
+		if (projects.length === 0) {
 			console.log('[OntologyBriefDataLoader] No active projects found');
 			return [];
 		}
@@ -571,50 +576,55 @@ export class OntologyBriefDataLoader {
 		] = await Promise.all([
 			this.supabase
 				.from('onto_tasks')
-				.select('*')
+				.select(
+					'id, title, project_id, state_key, type_key, priority, due_at, start_at, updated_at, created_at'
+				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_goals')
-				.select('*')
+				.select('id, name, project_id, state_key, created_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_plans')
-				.select('*')
+				.select('id, project_id, state_key')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_milestones')
-				.select('*')
+				.select('id, project_id, title, due_at, state_key, created_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_risks')
-				.select('*')
+				.select('id, project_id, title, impact, state_key, created_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_documents')
-				.select('*')
+				.select('id, project_id, updated_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_outputs')
-				.select('*')
+				.select('id, project_id, name, state_key, updated_at, created_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_requirements')
-				.select('*')
+				.select('id, project_id, text, created_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_decisions')
-				.select('*')
+				.select('id, project_id, title, decision_at, created_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
-			this.supabase.from('onto_edges').select('*').in('project_id', projectIds)
+			this.supabase
+				.from('onto_edges')
+				.select('id, project_id, src_id, dst_id, src_kind, dst_kind, rel')
+				.in('project_id', projectIds)
 		]);
 		const queryDuration = Date.now() - queryStartTime;
 		console.log(
@@ -639,16 +649,16 @@ export class OntologyBriefDataLoader {
 			console.error('[OntologyBriefDataLoader] Errors loading entities:', errors);
 		}
 
-		const tasks = tasksResult.data || [];
-		const goals = goalsResult.data || [];
-		const plans = plansResult.data || [];
-		const milestones = milestonesResult.data || [];
-		const risks = risksResult.data || [];
-		const documents = documentsResult.data || [];
-		const outputs = outputsResult.data || [];
-		const requirements = requirementsResult.data || [];
-		const decisions = decisionsResult.data || [];
-		const edges = edgesResult.data || [];
+		const tasks = (tasksResult.data || []) as OntoTask[];
+		const goals = (goalsResult.data || []) as OntoGoal[];
+		const plans = (plansResult.data || []) as OntoPlan[];
+		const milestones = (milestonesResult.data || []) as OntoMilestone[];
+		const risks = (risksResult.data || []) as OntoRisk[];
+		const documents = (documentsResult.data || []) as OntoDocument[];
+		const outputs = (outputsResult.data || []) as OntoOutput[];
+		const requirements = (requirementsResult.data || []) as OntoRequirement[];
+		const decisions = (decisionsResult.data || []) as OntoDecision[];
+		const edges = (edgesResult.data || []) as OntoEdge[];
 
 		console.log('[OntologyBriefDataLoader] Loaded entities:', {
 			projects: projects.length,
@@ -813,7 +823,6 @@ export class OntologyBriefDataLoader {
 	): OntologyBriefData {
 		// Aggregate data across all projects
 		const allTasks = projectsData.flatMap((p) => p.tasks);
-		const allGoals = projectsData.flatMap((p) => p.goals);
 		const allRisks = projectsData.flatMap((p) => p.risks);
 		const allRequirements = projectsData.flatMap((p) => p.requirements);
 		const allDecisions = projectsData.flatMap((p) => p.decisions);
@@ -822,8 +831,34 @@ export class OntologyBriefDataLoader {
 		// Categorize all tasks
 		const categorizedTasks = categorizeTasks(allTasks, briefDate, timezone);
 
-		// Calculate goal progress
-		const goals = allGoals.map((goal) => calculateGoalProgress(goal, allEdges, allTasks));
+		const groupTasksByProject = (tasks: OntoTask[]): Map<string, OntoTask[]> => {
+			const grouped = new Map<string, OntoTask[]>();
+			for (const task of tasks) {
+				const list = grouped.get(task.project_id);
+				if (list) {
+					list.push(task);
+				} else {
+					grouped.set(task.project_id, [task]);
+				}
+			}
+			return grouped;
+		};
+
+		const todaysTasksByProject = groupTasksByProject(categorizedTasks.todaysTasks);
+		const upcomingTasksByProject = groupTasksByProject(categorizedTasks.upcomingTasks);
+		const blockedTasksByProject = groupTasksByProject(categorizedTasks.blockedTasks);
+		const recentlyUpdatedByProject = groupTasksByProject(categorizedTasks.recentlyUpdated);
+
+		// Reuse precomputed goal progress from project data to avoid recomputation
+		const goals: GoalProgress[] = [];
+		for (const data of projectsData) {
+			for (const goal of data.goals) {
+				const progress = data.goalProgress.get(goal.id);
+				if (progress) {
+					goals.push(progress);
+				}
+			}
+		}
 
 		// Get output statuses
 		const allOutputs = projectsData.flatMap((p) => p.outputs);
@@ -913,10 +948,9 @@ export class OntologyBriefDataLoader {
 
 		// Build project brief data
 		const projects: ProjectBriefData[] = projectsData.map((data) => {
-			const projectCategorized = categorizeTasks(data.tasks, briefDate, timezone);
-			const projectGoals = data.goals.map((g) =>
-				calculateGoalProgress(g, data.edges, data.tasks)
-			);
+			const projectGoals = data.goals
+				.map((g) => data.goalProgress.get(g.id))
+				.filter((g): g is GoalProgress => g !== undefined);
 			const projectOutputs = data.outputs.map((o) => getOutputStatus(o, data.edges));
 			const unblockingTasks = findUnblockingTasks(data.tasks, data.edges);
 			const projectDecisions = [...data.decisions].sort((a, b) => {
@@ -945,13 +979,18 @@ export class OntologyBriefDataLoader {
 				.filter((m) => m.state_key !== 'completed' && m.state_key !== 'missed')
 				.sort((a, b) => parseISO(a.due_at).getTime() - parseISO(b.due_at).getTime())[0];
 
+			const projectTodaysTasks = todaysTasksByProject.get(data.project.id) ?? [];
+			const projectUpcomingAll = upcomingTasksByProject.get(data.project.id) ?? [];
+			const projectBlockedTasks = blockedTasksByProject.get(data.project.id) ?? [];
+			const projectRecentlyUpdatedAll = recentlyUpdatedByProject.get(data.project.id) ?? [];
+
 			// Project-level strategic task splits with deduplication
-			const projectRecentlyUpdated = projectCategorized.recentlyUpdated.slice(
+			const projectRecentlyUpdated = projectRecentlyUpdatedAll.slice(
 				0,
 				ENTITY_CAPS.TASKS_RECENT
 			);
 			const projectRecentIds = new Set(projectRecentlyUpdated.map((t) => t.id));
-			const projectUpcoming = projectCategorized.upcomingTasks
+			const projectUpcoming = projectUpcomingAll
 				.filter((t) => !projectRecentIds.has(t.id))
 				.slice(0, ENTITY_CAPS.TASKS_UPCOMING);
 
@@ -964,12 +1003,9 @@ export class OntologyBriefDataLoader {
 				nextSteps,
 				nextMilestone: nextMilestone?.title || null,
 				activePlan,
-				todaysTasks: projectCategorized.todaysTasks,
-				thisWeekTasks: [
-					...projectCategorized.todaysTasks,
-					...projectCategorized.upcomingTasks
-				],
-				blockedTasks: projectCategorized.blockedTasks,
+				todaysTasks: projectTodaysTasks,
+				thisWeekTasks: [...projectTodaysTasks, ...projectUpcomingAll],
+				blockedTasks: projectBlockedTasks,
 				unblockingTasks: unblockingTasks.map((u) => u.task),
 				recentlyUpdatedTasks: projectRecentlyUpdated,
 				upcomingTasks: projectUpcoming

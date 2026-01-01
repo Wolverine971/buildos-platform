@@ -15,7 +15,8 @@
       "WebFetch(domain:openrouter.ai)",
       "WebFetch(domain:venturebeat.com)",
       "WebFetch(domain:www.deeplearning.ai)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

@@ -5,6 +5,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import { toastService } from '$lib/stores/toast.store';
 
 	interface Props {
 		user: any;
@@ -73,13 +74,16 @@
 
 			if (response.ok && result.success) {
 				successMessage = result.data.message;
+				toastService.success('Profile updated successfully');
 				onsuccess?.({ message: result.data.message });
 			} else {
 				errors = [result.error || 'Failed to update profile'];
+				toastService.error(result.error || 'Failed to update profile');
 			}
 		} catch (error) {
 			console.error('Profile update error:', error);
 			errors = ['An unexpected error occurred'];
+			toastService.error('Failed to update profile');
 		} finally {
 			loading = false;
 		}
@@ -140,13 +144,16 @@
 					newPassword: '',
 					confirmPassword: ''
 				};
+				toastService.success('Password updated successfully');
 				onsuccess?.({ message: result.data.message });
 			} else {
 				errors = [result.error || 'Failed to update password'];
+				toastService.error(result.error || 'Failed to update password');
 			}
 		} catch (error) {
 			console.error('Password update error:', error);
 			errors = ['An unexpected error occurred'];
+			toastService.error('Failed to update password');
 		} finally {
 			loading = false;
 		}
@@ -166,6 +173,7 @@
 			const result = await response.json();
 
 			if (response.ok && result.success) {
+				toastService.success('Account deleted successfully. Redirecting...');
 				onsuccess?.({ message: 'Account deleted successfully. Redirecting...' });
 				// Redirect will be handled by the parent component
 				setTimeout(() => {
@@ -173,10 +181,12 @@
 				}, 1500);
 			} else {
 				errors = [result.error || 'Failed to delete account'];
+				toastService.error(result.error || 'Failed to delete account');
 			}
 		} catch (error) {
 			console.error('Account deletion error:', error);
 			errors = ['An unexpected error occurred'];
+			toastService.error('Failed to delete account');
 		} finally {
 			loading = false;
 			showDeleteConfirmation = false;

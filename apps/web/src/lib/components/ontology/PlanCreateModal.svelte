@@ -312,7 +312,7 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="px-3 py-3 sm:px-6 sm:py-6 space-y-4 sm:space-y-6">
+		<div class="px-2 py-2 sm:px-6 sm:py-4 space-y-3 sm:space-y-4">
 			<div class="relative min-h-[420px]">
 				{#key showTemplateSelection}
 					<div
@@ -463,7 +463,7 @@
 								{/if}
 							</div>
 						{:else}
-							<form class="space-y-6" onsubmit={handleSubmit}>
+							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
 								<div class="grid gap-6 lg:grid-cols-3">
 									<Card class="lg:col-span-2 shadow-ink">
 										<CardHeader

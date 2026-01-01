@@ -1,5 +1,7 @@
 <!-- docs/specs/ENNEAGRAM_PROJECT_COUNCIL_SPEC.md -->
 
+<!-- todo -->
+
 # Enneagram Project Council Specification
 
 ## Overview

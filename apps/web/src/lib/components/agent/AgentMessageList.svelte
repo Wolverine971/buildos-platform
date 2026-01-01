@@ -39,7 +39,7 @@
 	bind:this={container}
 	onscroll={onScroll}
 	class="agent-chat-scroll flex-1 min-h-0 space-y-2 overflow-y-auto overscroll-contain bg-muted px-3 py-3 sm:px-4 sm:py-4"
-	style="overflow-anchor: none;"
+	style="overflow-anchor: none; -webkit-overflow-scrolling: touch;"
 >
 	{#if messages.length === 0}
 		<!-- INKPRINT empty state card with Bloom texture -->

@@ -8,6 +8,7 @@
 	import type { AvailableSlot } from '$lib/types/time-blocks';
 	import { formatSlotDuration, formatTimeRange } from '$lib/utils/slot-finder';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
+	import { toastService } from '$lib/stores/toast.store';
 
 	let {
 		blocks = [],
@@ -339,6 +340,7 @@
 			);
 		} catch (error) {
 			console.error('Error fetching calendar events:', error);
+			toastService.error('Failed to load calendar events');
 			calendarEvents = [];
 		} finally {
 			isLoadingEvents = false;

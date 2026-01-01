@@ -65,28 +65,7 @@
 	);
 
 	// Determine project URL based on context
-	const projectUrl = $derived.by(() => {
-		if (!projectId) return null;
-		// Use ontology URL for ontology-focused contexts
-		if (
-			resolvedProjectFocus &&
-			[
-				'task',
-				'goal',
-				'plan',
-				'document',
-				'output',
-				'milestone',
-				'risk',
-				'decision',
-				'requirement'
-			].includes(resolvedProjectFocus.focusType)
-		) {
-			return `/projects/${projectId}`;
-		}
-		// Default to regular project URL
-		return `/projects/${projectId}`;
-	});
+	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);
 </script>
 
 <!-- INKPRINT compact header: fixed 48px height -->

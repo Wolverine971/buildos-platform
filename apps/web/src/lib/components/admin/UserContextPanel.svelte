@@ -30,6 +30,7 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { EmailGenerationContext } from '$lib/services/email-generation-service';
+	import { toastService } from '$lib/stores/toast.store';
 
 	export let userContext: EmailGenerationContext['userInfo'];
 	export let expanded = true;
@@ -355,11 +356,13 @@
 			const markdown = formatUserContextAsMarkdown();
 			await navigator.clipboard.writeText(markdown);
 			copyButtonState = 'success';
+			toastService.success('User context copied to clipboard');
 			setTimeout(() => {
 				copyButtonState = 'idle';
 			}, 2000);
 		} catch (error) {
 			console.error('Failed to copy user context:', error);
+			toastService.error('Failed to copy user context');
 		}
 	}
 </script>

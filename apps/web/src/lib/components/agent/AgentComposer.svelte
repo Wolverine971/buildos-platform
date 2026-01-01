@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/agent/AgentComposer.svelte -->
 <!-- INKPRINT Design System: Composer input with inner shadow styling -->
 <script lang="ts">
-	import { Send, Loader, Square } from 'lucide-svelte';
+	import { Send, Square } from 'lucide-svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 
@@ -67,7 +67,6 @@
 		disabled={false}
 		voiceBlocked={isStreaming}
 		voiceBlockedLabel="Wait for BuildOS..."
-		idleHint="Enter · Shift+Enter for new line"
 		voiceButtonLabel="Record voice note"
 		listeningLabel="Listening"
 		transcribingLabel="Transcribing..."
@@ -97,11 +96,7 @@
 					aria-label="Send message"
 					disabled={isSendDisabled}
 				>
-					{#if isStreaming}
-						<Loader class="h-4 w-4 animate-spin" />
-					{:else}
-						<Send class="h-4 w-4" />
-					{/if}
+					<Send class="h-4 w-4" />
 				</button>
 			{/if}
 		{/snippet}

@@ -17,6 +17,11 @@
 			"components": ["AgentChatModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
 			"type": "component",
 			"components": [
@@ -43,6 +48,28 @@
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
 			"type": "component",
 			"components": ["AgentChatModal", "DailyBriefModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"OutputCreateModal",
+				"OutputEditModal",
+				"DocumentModal",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"RiskCreateModal",
+				"RiskEditModal",
+				"MilestoneCreateModal",
+				"MilestoneEditModal",
+				"DecisionCreateModal",
+				"DecisionEditModal",
+				"OntologyProjectEditModal"
+			]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -148,33 +175,6 @@
 			"file": "src/lib/components/project/ProjectSynthesis.svelte",
 			"type": "component",
 			"components": ["SynthesisLoadingState"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"OutputCreateModal",
-				"OutputEditModal",
-				"DocumentModal",
-				"TaskCreateModal",
-				"TaskEditModal",
-				"PlanCreateModal",
-				"PlanEditModal",
-				"GoalCreateModal",
-				"GoalEditModal",
-				"RiskCreateModal",
-				"RiskEditModal",
-				"MilestoneCreateModal",
-				"MilestoneEditModal",
-				"DecisionCreateModal",
-				"DecisionEditModal",
-				"OntologyProjectEditModal"
-			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -891,14 +891,6 @@
 		}
 	],
 	"dependencies": {
-		"src/lib/components/notifications/NotificationModal.svelte": [
-			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
-		],
-		"src/lib/components/ontology/TaskEditModal.svelte": [
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/TaskEditModal.svelte"
-		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/ontology/OutputEditModal.svelte",
 			"src/lib/components/ontology/TaskEditModal.svelte",
@@ -907,6 +899,14 @@
 			"src/lib/components/ontology/RiskEditModal.svelte",
 			"src/lib/components/ontology/MilestoneEditModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
+		],
+		"src/lib/components/notifications/NotificationModal.svelte": [
+			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
+		],
+		"src/lib/components/ontology/TaskEditModal.svelte": [
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte",
+			"src/lib/components/ontology/TaskEditModal.svelte"
 		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
 			"src/lib/components/ontology/GoalEditModal.svelte",

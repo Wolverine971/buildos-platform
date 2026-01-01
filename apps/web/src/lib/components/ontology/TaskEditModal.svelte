@@ -705,7 +705,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -781,7 +781,7 @@
 				<p class="text-destructive">Task not found</p>
 			</div>
 		{:else}
-			<div class="px-3 py-3 sm:px-6 sm:py-6">
+			<div class="px-2 py-2 sm:px-6 sm:py-4">
 				<!-- Tab Navigation - Pill Toggle -->
 				<div
 					class="inline-flex rounded-lg border border-border bg-muted/50 p-1 text-sm font-bold mb-6 shadow-ink"
@@ -1527,12 +1527,11 @@
 	<!-- Footer Actions - buttons on one row, smaller on mobile -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/50"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/50"
 		>
 			{#if activeView === 'details'}
 				<!-- Danger zone inline on mobile -->
 				<div class="flex items-center gap-1.5 sm:gap-2">
-					<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
 					<Button
 						type="button"
 						variant="danger"
@@ -1540,6 +1539,7 @@
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
 						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+						icon={Trash2}
 					>
 						<span class="hidden sm:inline">Delete</span>
 						<span class="sm:hidden">Del</span>

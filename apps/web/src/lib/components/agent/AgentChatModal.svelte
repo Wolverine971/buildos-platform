@@ -28,7 +28,8 @@
 		ChatMessage,
 		ChatRole,
 		AgentSSEMessage,
-		ContextUsageSnapshot
+		ContextUsageSnapshot,
+		AgentPlan
 	} from '@buildos/shared-types';
 	import {
 		requestAgentToAgentMessage,
@@ -52,6 +53,9 @@
 		type UIMessage
 	} from './agent-chat.types';
 	import { formatTime, shouldRenderAsMarkdown } from './agent-chat-formatters';
+	import { toastService } from '$lib/stores/toast.store';
+	import { haptic } from '$lib/utils/haptic';
+	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 
 	type ProjectAction = 'workspace' | 'audit' | 'forecast';
 
@@ -212,6 +216,15 @@
 		return Number.isNaN(parsed) ? null : parsed;
 	}
 
+	// Device detection for mobile UX
+	// On mobile/touch devices, Enter should not send messages (allows natural line breaks)
+	const isTouchDevice = $derived(
+		browser &&
+			('ontouchstart' in window ||
+				navigator.maxTouchPoints > 0 ||
+				(navigator as any).msMaxTouchPoints > 0)
+	);
+
 	// Conversation state
 	let messages = $state<UIMessage[]>([]);
 	let currentSession = $state<ChatSession | null>(null);
@@ -221,14 +234,16 @@
 	let inputValue = $state('');
 	let error = $state<string | null>(null);
 	// Track current plan for potential future UI enhancements
-	let currentPlan = $state<any>(null);
+	let currentPlan = $state<AgentPlan | null>(null);
 	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
 	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
 	const pendingToolResults = new Map<string, 'completed' | 'failed'>(); // Tool results that arrive before tool_call
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
+	let composerContainer = $state<HTMLElement | undefined>(undefined);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
+	let keyboardAvoidingCleanup = $state<(() => void) | null>(null);
 
 	// Ontology integration state
 	let lastTurnContext = $state<LastTurnContext | null>(null);
@@ -483,7 +498,8 @@
 				throw new Error(result.error || 'Failed to save braindump');
 			}
 
-			// Success - close modal or return to context selection
+			// Success - show toast and close modal
+			toastService.success('Brain dump saved');
 			pendingBraindumpContent = '';
 			inputValue = '';
 			braindumpMode = 'input';
@@ -1207,6 +1223,43 @@
 		}
 	});
 
+	// Keyboard avoiding for mobile - keeps composer visible when keyboard opens
+	$effect(() => {
+		if (!browser || !isOpen || !composerContainer) {
+			// Cleanup when modal closes or container unavailable
+			if (keyboardAvoidingCleanup) {
+				keyboardAvoidingCleanup();
+				keyboardAvoidingCleanup = null;
+			}
+			return;
+		}
+
+		// Initialize keyboard avoiding when composer is mounted
+		keyboardAvoidingCleanup = initKeyboardAvoiding({
+			element: composerContainer,
+			applyTransform: false, // Don't transform, just track state
+			onKeyboardChange: (isVisible) => {
+				// When keyboard appears, scroll messages to bottom to keep input visible
+				if (isVisible && messagesContainer) {
+					// Small delay to let layout settle
+					setTimeout(() => {
+						messagesContainer?.scrollTo({
+							top: messagesContainer.scrollHeight,
+							behavior: 'smooth'
+						});
+					}, 100);
+				}
+			}
+		});
+
+		return () => {
+			if (keyboardAvoidingCleanup) {
+				keyboardAvoidingCleanup();
+				keyboardAvoidingCleanup = null;
+			}
+		};
+	});
+
 	// ========================================================================
 	// Tool Display Formatters
 	// ========================================================================
@@ -1573,10 +1626,39 @@
 		});
 	}
 
-	function updateActivityStatus(toolCallId: string, status: 'completed' | 'failed'): boolean {
-		if (!currentThinkingBlockId) return false;
+	// Data mutation tools that should trigger toasts
+	const DATA_MUTATION_TOOLS = new Set([
+		'create_onto_project',
+		'update_onto_project',
+		'create_onto_task',
+		'update_onto_task',
+		'delete_onto_task',
+		'create_onto_goal',
+		'update_onto_goal',
+		'delete_onto_goal',
+		'create_onto_plan',
+		'update_onto_plan',
+		'delete_onto_plan',
+		'create_onto_document',
+		'update_onto_document',
+		'delete_onto_document'
+	]);
+
+	interface ActivityUpdateResult {
+		matched: boolean;
+		toolName?: string;
+		args?: string;
+	}
+
+	function updateActivityStatus(
+		toolCallId: string,
+		status: 'completed' | 'failed'
+	): ActivityUpdateResult {
+		if (!currentThinkingBlockId) return { matched: false };
 
 		let matchFound = false;
+		let foundToolName: string | undefined;
+		let foundArgs: string | undefined;
 
 		updateThinkingBlock(currentThinkingBlockId, (block) => {
 			const activityIndex = block.activities.findIndex(
@@ -1592,6 +1674,8 @@
 			const activity = block.activities[activityIndex]!;
 			const toolName = activity.metadata?.toolName || 'unknown';
 			const args = activity.metadata?.arguments || '';
+			foundToolName = toolName;
+			foundArgs = args;
 			const newContent = formatToolMessage(toolName, args, status);
 
 			const updatedActivity: ActivityEntry = {
@@ -1632,7 +1716,36 @@
 			);
 		}
 
-		return matchFound;
+		return { matched: matchFound, toolName: foundToolName, args: foundArgs };
+	}
+
+	function showToolResultToast(toolName: string, argsJson: string, success: boolean): void {
+		// Only show toasts for data mutation tools
+		if (!DATA_MUTATION_TOOLS.has(toolName)) return;
+
+		const formatter = TOOL_DISPLAY_FORMATTERS[toolName];
+		if (!formatter) return;
+
+		try {
+			const args = typeof argsJson === 'string' ? JSON.parse(argsJson) : argsJson;
+			const { action, target } = formatter(args);
+			const pastTense = toPastTenseAction(action);
+
+			if (success) {
+				const message = target ? `${pastTense}: "${target}"` : pastTense;
+				toastService.success(message);
+			} else {
+				const message = target
+					? `Failed to ${action.toLowerCase()}: "${target}"`
+					: `Failed to ${action.toLowerCase()}`;
+				toastService.error(message);
+			}
+		} catch (e) {
+			// Silently fail on parse errors - activity display already shows status
+			if (dev) {
+				console.error('[AgentChat] Error showing tool result toast:', e);
+			}
+		}
 	}
 
 	function handleClose() {
@@ -1644,6 +1757,9 @@
 			currentStreamController = null;
 		}
 		cleanupVoiceInput();
+
+		// Clear any pending tool results to prevent memory leaks
+		pendingToolResults.clear();
 
 		// Trigger chat session classification in the background (fire-and-forget)
 		// Only classify if we have a session with messages
@@ -1668,7 +1784,9 @@
 			return;
 		}
 
-		if (event.key === 'Enter' && !event.shiftKey) {
+		// On touch/mobile devices, Enter should insert a newline (natural typing behavior)
+		// Only desktop users can send with Enter; mobile users use the send button
+		if (event.key === 'Enter' && !event.shiftKey && !isTouchDevice) {
 			event.preventDefault();
 			// If streaming, sendMessage will stop current run first
 			// Use handleSendMessage to properly handle "send while recording" flow
@@ -1681,6 +1799,9 @@
 	// ✅ Svelte 5: Wrapper function for AgentComposer callback
 	// Handles "send while recording" - stops recording and auto-sends after transcription
 	async function handleSendMessage() {
+		// Haptic feedback for message send action (mobile)
+		haptic('medium');
+
 		// If currently recording, stop and queue auto-send after transcription
 		if (isVoiceRecording) {
 			pendingSendAfterTranscription = true;
@@ -1939,19 +2060,6 @@
 					}
 				}
 				break;
-
-			// case 'ontology_loaded':
-			// 	// Ontology context was loaded
-			// 	ontologyLoaded = true;
-			// 	ontologySummary = event.summary || 'Ontology context loaded';
-			// 	addActivityToThinkingBlock(
-			// 		`Ontology context: ${ontologySummary}`,
-			// 		'ontology_loaded',
-			// 		{
-			// 			summary: ontologySummary
-			// 		}
-			// 	);
-			// 	break;
 
 			case 'last_turn_context':
 				// Store last turn context for next message
@@ -2258,13 +2366,16 @@
 
 				if (resultToolCallId) {
 					// Update the matching activity status
-					const matched = updateActivityStatus(
+					const result = updateActivityStatus(
 						resultToolCallId,
 						success ? 'completed' : 'failed'
 					);
 
-					if (!matched) {
+					if (!result.matched) {
 						pendingToolResults.set(resultToolCallId, success ? 'completed' : 'failed');
+					} else if (result.toolName && result.args !== undefined) {
+						// Show toast for data mutation operations
+						showToolResultToast(result.toolName, result.args, success);
 					}
 				} else {
 					// No matching tool call ID - log warning but don't add duplicate message
@@ -2535,6 +2646,11 @@
 	) {
 		if (!isStreaming || !currentStreamController) return;
 
+		// Haptic feedback for stop action (mobile) - only for user-initiated stops
+		if (reason === 'user_cancelled') {
+			haptic('heavy');
+		}
+
 		const runId = activeStreamRunId;
 		markAssistantInterrupted(reason, runId);
 		// Invalidate the active run id so late SSE chunks are dropped
@@ -2769,7 +2885,8 @@
 								onSend={handleBraindumpSubmit}
 							/>
 						</div>
-						<p class="mt-2 text-center text-xs text-muted-foreground">
+						<!-- Desktop keyboard shortcut hint (hidden on mobile) -->
+						<p class="mt-2 hidden text-center text-xs text-muted-foreground md:block">
 							Press Cmd/Ctrl + Enter to continue
 						</p>
 					</div>
@@ -2960,7 +3077,10 @@
 					</div>
 				{:else if !showContextSelection && !showProjectActionSelector && !(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))}
 					<!-- INKPRINT composer footer - hidden for braindump input/options modes -->
-					<div class="border-t border-border bg-card p-2 sm:p-2.5">
+					<div
+						bind:this={composerContainer}
+						class="border-t border-border bg-card p-2 sm:p-2.5"
+					>
 						<AgentComposer
 							bind:voiceInputRef
 							bind:inputValue

@@ -295,7 +295,22 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 
 		// Project Summaries
 		prompt += `## Project Details\n`;
-		for (const project of briefData.projects) {
+		const maxProjectDetails = 5;
+		const sortedProjects = [...briefData.projects].sort((a, b) => {
+			const scoreA =
+				a.todaysTasks.length * 3 +
+				a.blockedTasks.length * 2 +
+				a.upcomingTasks.length +
+				a.recentlyUpdatedTasks.length;
+			const scoreB =
+				b.todaysTasks.length * 3 +
+				b.blockedTasks.length * 2 +
+				b.upcomingTasks.length +
+				b.recentlyUpdatedTasks.length;
+			if (scoreA !== scoreB) return scoreB - scoreA;
+			return a.project.name.localeCompare(b.project.name);
+		});
+		for (const project of sortedProjects.slice(0, maxProjectDetails)) {
 			prompt += `\n### ${project.project.name}\n`;
 			prompt += `- State: ${project.project.state_key}\n`;
 			prompt += `- Today's Tasks: ${project.todaysTasks.length}\n`;
@@ -319,6 +334,9 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 					}
 				}
 			}
+		}
+		if (briefData.projects.length > maxProjectDetails) {
+			prompt += `\n... and ${briefData.projects.length - maxProjectDetails} more projects\n`;
 		}
 
 		// Include formatted project briefs for detailed context (if available)

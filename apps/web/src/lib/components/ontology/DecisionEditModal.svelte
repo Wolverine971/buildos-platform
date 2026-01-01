@@ -307,7 +307,7 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="px-3 py-3 sm:px-6 sm:py-6">
+		<div class="px-2 py-2 sm:px-6 sm:py-4">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
@@ -325,7 +325,7 @@
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-4 sm:space-y-6"
+							class="space-y-3 sm:space-y-4"
 						>
 							<FormField
 								label="Decision Title"
@@ -502,11 +502,10 @@
 	{#snippet footer()}
 		{#if !isLoading && decision}
 			<div
-				class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 			>
 				<!-- Delete button on left -->
 				<div class="flex items-center gap-1.5 sm:gap-2">
-					<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
 					<Button
 						type="button"
 						variant="danger"
@@ -514,6 +513,7 @@
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
 						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+						icon={Trash2}
 					>
 						<span class="hidden sm:inline">Delete</span>
 						<span class="sm:hidden">Del</span>

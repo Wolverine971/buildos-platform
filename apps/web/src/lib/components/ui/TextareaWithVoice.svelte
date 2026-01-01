@@ -9,6 +9,7 @@
 	} from '$lib/services/voiceRecording.service';
 	import { liveTranscript } from '$lib/utils/voice';
 	import { browser } from '$app/environment';
+	import { haptic } from '$lib/utils/haptic';
 
 	type VoiceButtonVariant = 'muted' | 'loading' | 'prompt' | 'recording' | 'ready';
 
@@ -508,6 +509,9 @@
 	async function toggleVoiceRecording() {
 		if (!enableVoice || !isVoiceSupported) return;
 
+		// Haptic feedback for voice toggle (mobile)
+		haptic('light');
+
 		if (isCurrentlyRecording || isInitializingRecording) {
 			await stopVoiceRecording();
 		} else {
@@ -719,9 +723,9 @@
 							<span class="text-xs font-bold tabular-nums"
 								>{formatDuration(_recordingDuration)}</span
 							>
-							<!-- Keyboard hint to stop recording -->
+							<!-- Keyboard hint to stop recording (desktop only) -->
 							<kbd
-								class="hidden rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-destructive sm:inline-flex"
+								class="hidden rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-destructive md:inline-flex"
 							>
 								Space
 							</kbd>
@@ -749,8 +753,10 @@
 							>{voiceBlockedLabel}</span
 						>
 					{:else}
-						<!-- Idle hint: keyboard shortcuts highlighted -->
-						<span class="text-xs text-muted-foreground">
+						<!-- Idle hint: keyboard shortcuts (desktop only - hidden on mobile) -->
+						<span
+							class="hidden text-xs text-muted-foreground md:inline-flex md:items-center"
+						>
 							<kbd
 								class="rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground"
 								>Enter</kbd
@@ -762,6 +768,10 @@
 								>Shift+Enter</kbd
 							>
 							<span class="ml-1">new line</span>
+						</span>
+						<!-- Mobile hint: simpler message -->
+						<span class="text-xs text-muted-foreground md:hidden">
+							Tap send or use voice
 						</span>
 					{/if}
 

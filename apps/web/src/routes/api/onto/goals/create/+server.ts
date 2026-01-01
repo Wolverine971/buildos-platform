@@ -121,7 +121,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		};
 
-		const { data: goal, error: createError } = await supabase
+		const { data: createdGoal, error: createError } = await supabase
 			.from('onto_goals')
 			.insert(goalData)
 			.select('*')
@@ -137,7 +137,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id: project_id,
 			src_id: project_id,
 			src_kind: 'project',
-			dst_id: goal.id,
+			dst_id: createdGoal.id,
 			dst_kind: 'goal',
 			rel: 'contains'
 		});
@@ -147,14 +147,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			supabase,
 			project_id,
 			'goal',
-			goal.id,
-			{ name: goal.name, type_key: goal.type_key },
+			createdGoal.id,
+			{ name: createdGoal.name, type_key: createdGoal.type_key },
 			user.id,
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
 
-		return ApiResponse.created({ goal });
+		return ApiResponse.created({ goal: createdGoal });
 	} catch (error) {
 		console.error('Error in goal create endpoint:', error);
 		return ApiResponse.internalError(error);
