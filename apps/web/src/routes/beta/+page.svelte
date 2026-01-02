@@ -23,7 +23,6 @@
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 	import { PUBLIC_RECAPTCHA_SITE_KEY } from '$env/static/public';
-	import { dev } from '$app/environment';
 
 	// TypeScript types for reCAPTCHA
 	declare global {
@@ -74,8 +73,8 @@
 	let recaptchaLoaded = false;
 	let recaptchaError = '';
 
-	// Check if reCAPTCHA is required (skip in dev mode if no site key configured)
-	const recaptchaRequired = !dev || !!PUBLIC_RECAPTCHA_SITE_KEY;
+	// Check if reCAPTCHA is required (only when site key is configured)
+	const recaptchaRequired = !!PUBLIC_RECAPTCHA_SITE_KEY;
 
 	// Check if user already signed up
 	onMount(async () => {

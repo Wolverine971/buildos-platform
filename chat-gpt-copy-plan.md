@@ -1,5 +1,7 @@
 <!-- chat-gpt-copy-plan.md -->
 
+<!-- copy todo -->
+
 You’re thinking about this exactly like a founder should: treat your copy as _data_ and build a “Messaging OS” around it.
 
 I’ll do two things for you:

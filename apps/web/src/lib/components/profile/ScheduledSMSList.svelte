@@ -102,7 +102,7 @@
 			await loadScheduledMessages();
 		} catch (err: any) {
 			console.error('Error cancelling message:', err);
-			toastService.error('Failed to cancel message: ' + err.message);
+			toastService.error('Failed to cancel message. Please try again.');
 		} finally {
 			cancelling.delete(messageId);
 			cancelling = new Set(cancelling);

@@ -186,11 +186,11 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 	// Decisions - only show if there are decisions
 	if (project.decisions.length > 0) {
 		brief += `### Recent Decisions\n`;
-		const recentDecisions = [...project.decisions]
-			.filter((d) => d.decision_at !== null)
-			.sort(
-				(a, b) => parseISO(b.decision_at!).getTime() - parseISO(a.decision_at!).getTime()
-			);
+		const recentDecisions = [...project.decisions].sort((a, b) => {
+			const aDate = a.decision_at || a.created_at;
+			const bDate = b.decision_at || b.created_at;
+			return parseISO(bDate).getTime() - parseISO(aDate).getTime();
+		});
 		for (const decision of recentDecisions.slice(0, 3)) {
 			brief += `- **${decision.title}**\n`;
 		}
@@ -407,12 +407,11 @@ function generateMainBriefMarkdown(
 
 		if (briefData.decisions.length > 0) {
 			mainBrief += `### Recent Decisions (${briefData.decisions.length})\n`;
-			const sortedDecisions = [...briefData.decisions]
-				.filter((d) => d.decision_at !== null)
-				.sort(
-					(a, b) =>
-						parseISO(b.decision_at!).getTime() - parseISO(a.decision_at!).getTime()
-				);
+			const sortedDecisions = [...briefData.decisions].sort((a, b) => {
+				const aDate = a.decision_at || a.created_at;
+				const bDate = b.decision_at || b.created_at;
+				return parseISO(bDate).getTime() - parseISO(aDate).getTime();
+			});
 			for (const decision of sortedDecisions.slice(0, 5)) {
 				const projectName = projectNameMap.get(decision.project_id) || '';
 				const projectSuffix = projectName

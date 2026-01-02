@@ -22,7 +22,7 @@
 	import BraindumpHistoryCard from '$components/history/BraindumpHistoryCard.svelte';
 	import BraindumpModal from '$lib/components/history/BraindumpModalHistory.svelte';
 	import BraindumpHistoryDeleteModal from '$lib/components/history/BraindumpHistoryDeleteModal.svelte';
-	import { toastService } from '$lib/stores/toast.store';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import './history.css';
 	import type { PageData } from './$types';
 
@@ -145,7 +145,7 @@
 
 				toastService.warning(
 					`This braindump is outside your current search filters. <a href="${properUrl}" class="underline">View without filters</a>`,
-					{ duration: 8000 }
+					{ duration: TOAST_DURATION.EXTENDED }
 				);
 			}
 			return;
@@ -185,7 +185,7 @@
 
 			toastService.warning(
 				`This braindump is outside your current search filters. <a href="${properUrl}" class="underline">View without filters</a>`,
-				{ duration: 8000 }
+				{ duration: TOAST_DURATION.EXTENDED }
 			);
 		}
 	}

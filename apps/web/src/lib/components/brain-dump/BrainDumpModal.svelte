@@ -31,7 +31,7 @@
 
 	// Service imports
 	import { brainDumpService } from '$lib/services/braindump-api.service';
-	import { toastService } from '$lib/stores/toast.store';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { backgroundBrainDumpService } from '$lib/services/braindump-background.service';
 	import { page } from '$app/stores';
 	import { smartNavigateToProject } from '$lib/utils/brain-dump-navigation';
@@ -850,7 +850,7 @@
 			// Handle actual errors
 			console.error('Auto-save failed:', error);
 			toastService.warning('Auto-save failed. Your draft may not be saved.', {
-				duration: 3000
+				duration: TOAST_DURATION.SHORT
 			});
 		} finally {
 			isAutoSaving = false;
@@ -1047,7 +1047,7 @@
 				// Brain dump was queued due to concurrency limit
 				console.log('[BrainDumpModal] Brain dump queued (max concurrent reached)');
 				toastService.info('Brain dump queued - 3 brain dumps already processing', {
-					duration: 5000
+					duration: TOAST_DURATION.STANDARD
 				});
 			}
 		} else {

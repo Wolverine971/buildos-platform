@@ -119,8 +119,9 @@
 
 			handleClose();
 		} catch (err) {
-			error = (err as Error).message;
+			error = 'Failed to unschedule tasks. Please try again.';
 			toastService.error(error);
+			console.error('Unschedule tasks error:', err);
 		} finally {
 			loading = false;
 		}

@@ -12,7 +12,7 @@
 	import { RealtimeBriefService } from '$lib/services/realtimeBrief.service';
 	import type { DailyBrief, StreamingBriefData, StreamingStatus } from '$lib/types/daily-brief';
 	import { getMarkdownPreview } from '$lib/utils/markdown';
-	import { toastService } from '$lib/stores/toast.store';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { getContext } from 'svelte';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
@@ -173,7 +173,12 @@
 				"Email notifications enabled! You'll receive your daily briefs in your inbox."
 			);
 		} catch (error) {
-			toastService.error('Failed to enable email notifications');
+			toastService.error('Failed to enable email notifications', {
+				action: {
+					label: 'Retry',
+					onClick: () => enableEmailNotifications()
+				}
+			});
 		} finally {
 			emailOptInLoading = false;
 		}
@@ -223,7 +228,7 @@
 	});
 </script>
 
-<div class="mb-6">
+<div class="mb-3 sm:mb-6">
 	<!-- Consistent height container to prevent layout shift -->
 	<div class="daily-brief-container">
 		{#if isLoading}
@@ -232,17 +237,17 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Loader2 class="w-4 h-4 text-accent animate-spin" />
+							<Loader2 class="w-3 h-3 sm:w-4 sm:h-4 text-accent animate-spin" />
 						</span>
 						<div>
 							<h3 class="card-heading">Fetching your daily brief</h3>
-							<p class="card-subheading">
+							<p class="card-subheading hidden sm:block">
 								We are gathering the latest project updates.
 							</p>
 						</div>
 					</div>
 				</div>
-				<div class="loading-placeholder">
+				<div class="loading-placeholder hidden sm:grid">
 					<span class="loading-line"></span>
 					<span class="loading-line"></span>
 					<span class="loading-line short"></span>
@@ -254,11 +259,11 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Loader2 class="w-4 h-4 text-accent animate-spin" />
+							<Loader2 class="w-3 h-3 sm:w-4 sm:h-4 text-accent animate-spin" />
 						</span>
 						<div class="min-w-0">
-							<h3 class="card-heading">Generating Daily Brief</h3>
-							<p class="card-subheading">
+							<h3 class="card-heading">Generating Brief</h3>
+							<p class="card-subheading line-clamp-1">
 								{currentStreamingStatus.message}
 							</p>
 						</div>
@@ -269,7 +274,7 @@
 							onclick={cancelGeneration}
 							variant="ghost"
 							size="sm"
-							class="card-action"
+							class="card-action text-xs sm:text-sm"
 							title="Cancel"
 						>
 							Cancel
@@ -313,13 +318,13 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Sparkles class="w-4 h-4 text-accent dark:text-accent" />
+							<Sparkles class="w-3 h-3 sm:w-4 sm:h-4 text-accent dark:text-accent" />
 						</span>
 						<div class="min-w-0 flex-1">
-							<h3 class="card-heading">Today's Daily Brief</h3>
+							<h3 class="card-heading">Today's Brief</h3>
 							{#if displayDailyBrief.generation_completed_at}
 								<div class="card-meta">
-									<Clock class="w-3 h-3 mr-1" />
+									<Clock class="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
 									{formatDateTime(
 										displayDailyBrief.generation_completed_at,
 										'time'
@@ -329,7 +334,7 @@
 						</div>
 					</div>
 					<div class="card-view-indicator">
-						<ChevronRight class="w-5 h-5 text-muted-foreground" />
+						<ChevronRight class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 					</div>
 				</div>
 
@@ -337,28 +342,27 @@
 				{#if displayDailyBrief.summary_content}
 					<div class="collapsed-preview">
 						<p class="preview-text">
-							{getMarkdownPreview(displayDailyBrief.summary_content, 200)}
+							{getMarkdownPreview(displayDailyBrief.summary_content, 120)}
 						</p>
 						{#if displayDailyBrief.priority_actions?.length}
 							<span class="preview-pill">
-								<ArrowRight class="w-3 h-3" />
-								{displayDailyBrief.priority_actions.length} priority action{displayDailyBrief
-									.priority_actions.length !== 1
-									? 's'
-									: ''}
+								<ArrowRight class="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+								<span class="hidden sm:inline">{displayDailyBrief.priority_actions.length} priority action{displayDailyBrief.priority_actions.length !== 1 ? 's' : ''}</span>
+								<span class="sm:hidden">{displayDailyBrief.priority_actions.length}</span>
 							</span>
 						{/if}
 					</div>
 				{/if}
 			</button>
 
-			<!-- Email opt-in banner (outside clickable card) -->
+			<!-- Email opt-in banner (outside clickable card) - hidden on very small screens -->
 			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
-				<div class="email-cta-banner mt-3">
-					<div class="flex items-center gap-2 flex-1 min-w-0">
-						<Mail class="w-4 h-4 text-accent dark:text-accent flex-shrink-0" />
-						<p class="text-sm text-muted-foreground truncate">
-							Want this delivered to your inbox each morning?
+				<div class="email-cta-banner mt-2 sm:mt-3">
+					<div class="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+						<Mail class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent dark:text-accent flex-shrink-0" />
+						<p class="text-xs sm:text-sm text-muted-foreground truncate">
+							<span class="hidden sm:inline">Want this delivered to your inbox each morning?</span>
+							<span class="sm:hidden">Get this via email?</span>
 						</p>
 					</div>
 					<Button
@@ -370,9 +374,10 @@
 						variant="primary"
 						size="sm"
 						loading={emailOptInLoading}
-						class="flex-shrink-0"
+						class="flex-shrink-0 text-xs sm:text-sm"
 					>
-						Enable Emails
+						<span class="hidden sm:inline">Enable Emails</span>
+						<span class="sm:hidden">Enable</span>
 					</Button>
 				</div>
 			{/if}
@@ -382,11 +387,11 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Sparkles class="w-4 h-4 text-accent dark:text-accent" />
+							<Sparkles class="w-3 h-3 sm:w-4 sm:h-4 text-accent dark:text-accent" />
 						</span>
 						<div>
 							<h3 class="card-heading">Get your daily brief</h3>
-							<p class="card-subheading">
+							<p class="card-subheading hidden sm:block">
 								See priorities and project updates in one view.
 							</p>
 						</div>
@@ -397,14 +402,16 @@
 						disabled={currentStreamingStatus?.isGenerating || !user}
 						loading={currentStreamingStatus?.isGenerating}
 						variant="primary"
-						size="md"
-						class="generate-button"
+						size="sm"
+						class="generate-button text-xs sm:text-sm"
 						icon={Plus}
 					>
 						{#if currentStreamingStatus?.isGenerating}
-							Generating...
+							<span class="hidden sm:inline">Generating...</span>
+							<span class="sm:hidden">...</span>
 						{:else}
-							Generate Brief
+							<span class="hidden sm:inline">Generate Brief</span>
+							<span class="sm:hidden">Generate</span>
 						{/if}
 					</Button>
 				</div>
@@ -416,22 +423,37 @@
 <style>
 	/* Height reservation container to prevent layout shift */
 	.daily-brief-container {
-		min-height: 120px; /* Reserve space for basic states */
+		min-height: 80px; /* Reserve space for basic states - compact on mobile */
 		transition: min-height 0.2s ease-out;
 	}
 
+	@media (min-width: 640px) {
+		.daily-brief-container {
+			min-height: 120px;
+		}
+	}
+
 	/* Base card styling for all states - Inkprint Design System */
+	/* Mobile-first: compact padding and gaps */
 	.daily-brief-card {
-		border-radius: 0.75rem;
+		border-radius: 0.5rem;
 		box-shadow: 0 1px 3px rgba(26, 26, 29, 0.08); /* shadow-ink */
 		border: 1px solid hsl(40 10% 85%); /* border */
 		background: hsl(40 15% 96%); /* card */
-		padding: 1.25rem;
+		padding: 0.75rem;
 		transition: all 0.2s ease-out;
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.5rem;
+	}
+
+	@media (min-width: 640px) {
+		.daily-brief-card {
+			border-radius: 0.75rem;
+			padding: 1.25rem;
+			gap: 1rem;
+		}
 	}
 
 	/* Dark mode for cards - Inkprint */
@@ -442,7 +464,13 @@
 
 	/* State-specific styling */
 	.loading-state {
-		min-height: 140px;
+		min-height: 80px;
+	}
+
+	@media (min-width: 640px) {
+		.loading-state {
+			min-height: 140px;
+		}
 	}
 
 	/* Generation state - Inkprint accent (warm orange-amber) */
@@ -477,8 +505,15 @@
 	}
 
 	.display-state {
-		min-height: 120px;
-		gap: 0.75rem;
+		min-height: 70px;
+		gap: 0.5rem;
+	}
+
+	@media (min-width: 640px) {
+		.display-state {
+			min-height: 120px;
+			gap: 0.75rem;
+		}
 	}
 
 	/* No brief state - Inkprint accent (warm orange-amber) */
@@ -486,7 +521,13 @@
 		position: relative;
 		background: hsl(24 60% 97%); /* accent very light bg */
 		border-color: hsl(24 80% 80%); /* accent light border */
-		min-height: 120px;
+		min-height: 70px;
+	}
+
+	@media (min-width: 640px) {
+		.no-brief-state {
+			min-height: 120px;
+		}
 	}
 
 	.no-brief-state::before {
@@ -526,13 +567,25 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		gap: 1rem;
+		gap: 0.5rem;
+	}
+
+	@media (min-width: 640px) {
+		.card-header {
+			gap: 1rem;
+		}
 	}
 
 	.card-title {
 		display: flex;
-		gap: 0.75rem;
+		gap: 0.5rem;
 		align-items: flex-start;
+	}
+
+	@media (min-width: 640px) {
+		.card-title {
+			gap: 0.75rem;
+		}
 	}
 
 	/* Icon pill - Inkprint accent */
@@ -541,8 +594,14 @@
 		align-items: center;
 		justify-content: center;
 		border-radius: 9999px;
-		padding: 0.45rem;
+		padding: 0.35rem;
 		background: hsl(24 80% 55% / 0.12); /* accent with opacity */
+	}
+
+	@media (min-width: 640px) {
+		.icon-pill {
+			padding: 0.45rem;
+		}
 	}
 
 	:global(.dark) .icon-pill {
@@ -551,10 +610,16 @@
 
 	/* Card text - Inkprint semantic colors */
 	.card-heading {
-		font-size: 1rem;
+		font-size: 0.875rem;
 		font-weight: 600;
 		color: hsl(240 10% 10%); /* foreground */
 		margin: 0;
+	}
+
+	@media (min-width: 640px) {
+		.card-heading {
+			font-size: 1rem;
+		}
 	}
 
 	:global(.dark) .card-heading {
@@ -562,9 +627,16 @@
 	}
 
 	.card-subheading {
-		margin: 0.15rem 0 0 0;
-		font-size: 0.9rem;
+		margin: 0.1rem 0 0 0;
+		font-size: 0.8rem;
 		color: hsl(240 5% 45%); /* muted-foreground */
+	}
+
+	@media (min-width: 640px) {
+		.card-subheading {
+			margin: 0.15rem 0 0 0;
+			font-size: 0.9rem;
+		}
 	}
 
 	:global(.dark) .card-subheading {
@@ -865,11 +937,19 @@
 	.collapsed-preview {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.65rem 0.85rem;
-		border-radius: 0.65rem;
+		gap: 0.5rem;
+		padding: 0.5rem 0.65rem;
+		border-radius: 0.5rem;
 		background: hsl(40 20% 98%); /* background */
 		border: 1px solid hsl(40 10% 85%); /* border */
+	}
+
+	@media (min-width: 640px) {
+		.collapsed-preview {
+			gap: 0.75rem;
+			padding: 0.65rem 0.85rem;
+			border-radius: 0.65rem;
+		}
 	}
 
 	:global(.dark) .collapsed-preview {
@@ -880,8 +960,21 @@
 	.preview-text {
 		flex: 1;
 		margin: 0;
-		font-size: 0.85rem;
+		font-size: 0.75rem;
 		color: hsl(240 5% 45%); /* muted-foreground */
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	@media (min-width: 640px) {
+		.preview-text {
+			font-size: 0.85rem;
+			-webkit-line-clamp: 3;
+			line-clamp: 3;
+		}
 	}
 
 	:global(.dark) .preview-text {
@@ -891,12 +984,21 @@
 	.preview-pill {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.4rem;
-		padding: 0.3rem 0.6rem;
+		gap: 0.3rem;
+		padding: 0.25rem 0.5rem;
 		border-radius: 9999px;
 		background: hsl(24 80% 55% / 0.15); /* accent with opacity */
-		font-size: 0.75rem;
+		font-size: 0.65rem;
 		color: hsl(24 60% 30%); /* accent dark */
+		flex-shrink: 0;
+	}
+
+	@media (min-width: 640px) {
+		.preview-pill {
+			gap: 0.4rem;
+			padding: 0.3rem 0.6rem;
+			font-size: 0.75rem;
+		}
 	}
 
 	:global(.dark) .preview-pill {

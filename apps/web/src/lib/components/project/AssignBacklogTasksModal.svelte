@@ -175,8 +175,9 @@
 
 			handleClose();
 		} catch (err) {
-			error = (err as Error).message;
+			error = 'Failed to assign tasks. Please try again.';
 			toastService.error(error);
+			console.error('Assign tasks error:', err);
 		} finally {
 			loading = false;
 		}

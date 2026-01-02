@@ -20,7 +20,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { brainDumpV2Store } from '$lib/stores/brain-dump-v2.store';
 	import { brainDumpService } from '$lib/services/braindump-api.service';
-	import { toastService } from '$lib/stores/toast.store';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 
 	const MULTI_BRAINDUMP_ENABLED = true;
 
@@ -456,7 +456,9 @@
 			}
 			brainDumpV2Store.closeNotification();
 			handleClose();
-			toastService.success('✨ Project updated successfully', { duration: 2000 });
+			toastService.success('✨ Project updated successfully', {
+				duration: TOAST_DURATION.SHORT
+			});
 		} catch (error) {
 			console.warn(
 				'[BrainDumpModalContent] Soft refresh failed, falling back to reload',
@@ -478,7 +480,7 @@
 		showRefreshModal = false;
 		pendingProjectUpdate = null;
 		toastService.info('You can refresh anytime to see the latest changes', {
-			duration: 4000
+			duration: TOAST_DURATION.STANDARD
 		});
 		brainDumpV2Store.closeNotification();
 		handleClose();

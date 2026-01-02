@@ -1,4 +1,5 @@
 <!-- docs/reports/ui-components-mobile-audit-2026-01.md -->
+
 # UI Components Mobile & Inkprint Audit
 
 > **Date:** 2026-01-01

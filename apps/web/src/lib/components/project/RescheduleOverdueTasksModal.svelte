@@ -110,8 +110,9 @@
 			toastService.success(message);
 			handleClose();
 		} catch (err) {
-			error = (err as Error).message;
+			error = 'Failed to reschedule tasks. Please try again.';
 			toastService.error(error);
+			console.error('Reschedule tasks error:', err);
 		} finally {
 			loading = false;
 		}

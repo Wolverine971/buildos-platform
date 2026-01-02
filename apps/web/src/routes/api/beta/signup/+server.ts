@@ -5,6 +5,8 @@ import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
 import { validateEmail } from '$lib/utils/email-validation';
 import { verifyRecaptcha } from '$lib/utils/recaptcha';
+import { PRIVATE_RECAPTCHA_SECRET_KEY } from '$env/static/private';
+import { dev } from '$app/environment';
 
 interface BetaSignupRequest {
 	email: string;
@@ -264,15 +266,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		// Parse request body
 		const data: BetaSignupRequest = await request.json();
 
-		// Get client IP for reCAPTCHA verification
-		const clientIP = getClientIP(request);
+		const recaptchaEnabled = !!PRIVATE_RECAPTCHA_SECRET_KEY || dev;
+		if (recaptchaEnabled) {
+			// Get client IP for reCAPTCHA verification
+			const clientIP = getClientIP(request);
 
-		// Verify reCAPTCHA token (if provided)
-		const isRecaptchaValid = await verifyRecaptcha(data.recaptcha_token || '', clientIP);
-		if (!isRecaptchaValid) {
-			return ApiResponse.badRequest(
-				'reCAPTCHA verification failed. Please try again or refresh the page.'
-			);
+			// Verify reCAPTCHA token (if provided)
+			const isRecaptchaValid = await verifyRecaptcha(data.recaptcha_token || '', clientIP);
+			if (!isRecaptchaValid) {
+				return ApiResponse.badRequest(
+					'reCAPTCHA verification failed. Please try again or refresh the page.'
+				);
+			}
+		} else {
+			console.warn('[Beta Signup] reCAPTCHA not configured; skipping verification.');
 		}
 
 		// Validate input data

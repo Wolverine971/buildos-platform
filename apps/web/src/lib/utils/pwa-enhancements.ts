@@ -7,6 +7,11 @@
 
 import { browser } from '$app/environment';
 
+const THEME_COLORS = {
+	light: '#f9fafb',
+	dark: '#0f172a'
+} as const;
+
 /**
  * Update theme colors dynamically based on dark mode
  */
@@ -21,22 +26,20 @@ export function updateThemeColors(isDarkMode: boolean) {
 		'meta[name="theme-color"][media="(prefers-color-scheme: dark)"]'
 	);
 	const defaultThemeMetaTag = document.querySelector('meta[name="theme-color"]:not([media])');
+	const themeColor = isDarkMode ? THEME_COLORS.dark : THEME_COLORS.light;
 
-	if (isDarkMode) {
-		// Dark mode colors
-		if (defaultThemeMetaTag) {
-			defaultThemeMetaTag.setAttribute('content', '#1e40af'); // primary-800
-		}
-		// Update status bar for iOS
-		updateIOSStatusBar('black-translucent');
-	} else {
-		// Light mode colors
-		if (defaultThemeMetaTag) {
-			defaultThemeMetaTag.setAttribute('content', '#3b82f6'); // primary-500
-		}
-		// Update status bar for iOS
-		updateIOSStatusBar('default');
+	if (lightThemeMetaTag) {
+		lightThemeMetaTag.setAttribute('content', THEME_COLORS.light);
 	}
+	if (darkThemeMetaTag) {
+		darkThemeMetaTag.setAttribute('content', THEME_COLORS.dark);
+	}
+	if (defaultThemeMetaTag) {
+		defaultThemeMetaTag.setAttribute('content', themeColor);
+	}
+
+	// Update status bar for iOS
+	updateIOSStatusBar(isDarkMode ? 'black-translucent' : 'default');
 }
 
 /**

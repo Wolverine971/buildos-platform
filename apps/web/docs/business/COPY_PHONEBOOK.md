@@ -1,5 +1,7 @@
 <!-- apps/web/docs/business/COPY_PHONEBOOK.md -->
 
+<!-- copy todo -->
+
 # BuildOS Copy Phonebook
 
 > **Last Updated:** 2025-12-08

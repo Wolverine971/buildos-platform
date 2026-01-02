@@ -58,7 +58,7 @@ An entity is included if it is **directly connected** to the project by an `onto
 ## Formatting Rules
 
 - Every line includes the entity `id`.
-- Include `created_at` for all entities that have it.
+- Include `created_at` for all entities that have it (tasks may omit `created_at` in favor of `updated_at`/`start_at`/`due_at`).
 - Include `updated_at` only if it exists **and** differs from `created_at`.
 - Use a consistent short date format (e.g., `YYYY-MM-DD`).
 - Only render a section if it contains at least one entry.

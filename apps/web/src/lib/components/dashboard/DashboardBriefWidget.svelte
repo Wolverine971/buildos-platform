@@ -306,11 +306,13 @@
 						<h3 class="text-xs sm:text-sm font-semibold text-foreground">
 							Today's Brief
 						</h3>
-						<!-- Mobile: Show priority count inline if exists -->
+						<!-- Mobile: Show priority count inline if exists - with icon for context -->
 						{#if brief.priority_actions && brief.priority_actions.length > 0}
 							<span
-								class="sm:hidden px-1 py-0.5 text-[8px] font-bold rounded bg-accent/10 text-accent"
+								class="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-accent/15 text-accent border border-accent/20"
+								title="{brief.priority_actions.length} priority action{brief.priority_actions.length === 1 ? '' : 's'}"
 							>
+								<AlertCircle class="w-2.5 h-2.5" />
 								{brief.priority_actions.length}
 							</span>
 						{/if}

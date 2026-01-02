@@ -58,12 +58,12 @@ interface ConsultQualityArchitect {
 		artifacts?: string[]; // Any work products to review
 	};
 
-	output: {
+	output: ConsultationResult<{
 		assessment: string; // Quality/standards evaluation
 		improvements: string[]; // Specific enhancement suggestions
 		standards_defined?: string[]; // Quality criteria if requested
 		concerns: string[]; // Ethical or quality concerns raised
-	};
+	}>;
 }
 ```
 
@@ -97,12 +97,12 @@ interface ConsultPeopleExpert {
 		team_context?: string; // Team dynamics if relevant
 	};
 
-	output: {
+	output: ConsultationResult<{
 		stakeholder_insights: string; // Who's affected and how
 		needs_identified: string[]; // What people need
 		dynamics_assessment?: string; // Team/interpersonal read
 		recommendations: string[]; // People-centered suggestions
-	};
+	}>;
 }
 ```
 
@@ -136,12 +136,12 @@ interface ConsultExecutionStrategist {
 		blockers?: string[];
 	};
 
-	output: {
+	output: ConsultationResult<{
 		success_criteria: string[]; // Clear definition of winning
 		execution_strategy: string; // How to get there efficiently
 		quick_wins: string[]; // Near-term momentum builders
 		positioning: string; // How to frame for stakeholders
-	};
+	}>;
 }
 ```
 
@@ -175,12 +175,12 @@ interface ConsultMeaningExpert {
 		creative_constraints?: string[];
 	};
 
-	output: {
+	output: ConsultationResult<{
 		unique_essence: string; // What makes this special
 		meaning_articulation: string; // Why this matters
 		creative_direction: string; // Vision and aesthetic guidance
 		authenticity_check: string; // Is this genuine or generic?
-	};
+	}>;
 }
 ```
 
@@ -214,13 +214,13 @@ interface ConsultSystemsAnalyst {
 		system_boundaries?: string;
 	};
 
-	output: {
+	output: ConsultationResult<{
 		system_analysis: string; // How this actually works
 		root_causes?: string[]; // Underlying factors
 		framework: string; // Mental model for understanding
 		knowledge_gaps: string[]; // What we still need to learn
 		leverage_points: string[]; // Where to intervene effectively
-	};
+	}>;
 }
 ```
 
@@ -254,13 +254,13 @@ interface ConsultRiskExpert {
 		known_risks?: string[];
 	};
 
-	output: {
+	output: ConsultationResult<{
 		risks_identified: string[]; // What could go wrong
 		risk_assessment: string; // Likelihood and impact analysis
 		contingencies: string[]; // Backup plans
 		stress_test_results: string; // Weaknesses in current approach
 		security_recommendations: string[];
-	};
+	}>;
 }
 ```
 
@@ -294,13 +294,13 @@ interface ConsultPossibilityGenerator {
 		problem_to_reframe?: string;
 	};
 
-	output: {
+	output: ConsultationResult<{
 		possibilities: string[]; // Generated options and ideas
 		reframe: string; // Problem seen as opportunity
 		cross_domain_insights: string[]; // Connections from other fields
 		vision: string; // Exciting future possibility
 		energy_boosters: string[]; // How to make this engaging
-	};
+	}>;
 }
 ```
 
@@ -334,13 +334,13 @@ interface ConsultPowerStrategist {
 		power_landscape?: string;
 	};
 
-	output: {
+	output: ConsultationResult<{
 		decisive_action: string; // What needs to happen now
 		obstacles_to_remove: string[]; // What's in the way
 		power_analysis: string; // Who has influence and how
 		impact_strategy: string; // How to create lasting change
 		confrontation_needed?: string; // Difficult truths to address
-	};
+	}>;
 }
 ```
 
@@ -374,13 +374,13 @@ interface ConsultIntegrationArchitect {
 		conflicts?: string[];
 	};
 
-	output: {
+	output: ConsultationResult<{
 		synthesis: string; // How perspectives fit together
 		common_ground: string; // Shared interests/values
 		overlooked_perspectives: string[]; // What's being left out
 		integration_path: string; // How to bring it all together
 		harmony_recommendations: string[];
-	};
+	}>;
 }
 ```
 
@@ -424,13 +424,13 @@ interface ConsultVisionCouncil {
 		existing_ideas?: string[];
 	};
 
-	output: {
+	output: ConsultationResult<{
 		possibilities: string[]; // From Type 7
 		unique_angle: string; // From Type 4
 		meaning_articulation: string; // From Type 4
 		creative_synthesis: string; // Combined vision
 		energy_and_resonance: string; // Why this matters AND excites
-	};
+	}>;
 }
 ```
 
@@ -468,13 +468,13 @@ interface ConsultPlanningCouncil {
 		constraints?: string[];
 	};
 
-	output: {
+	output: ConsultationResult<{
 		goals_and_metrics: string[]; // From Type 3
 		system_design: string; // From Type 5
 		quality_standards: string[]; // From Type 1
 		execution_path: string; // From Type 3
 		process_framework: string; // Combined structured approach
-	};
+	}>;
 }
 ```
 
@@ -515,14 +515,14 @@ interface ConsultRiskCouncil {
 		artifacts_to_review?: string[];
 	};
 
-	output: {
+	output: ConsultationResult<{
 		external_risks: string[]; // From Type 6
 		internal_flaws: string[]; // From Type 1
 		risk_matrix: string; // Combined assessment
 		contingencies: string[]; // From Type 6
 		quality_improvements: string[]; // From Type 1
 		stress_test_results: string;
-	};
+	}>;
 }
 ```
 
@@ -561,13 +561,13 @@ interface ConsultPeopleCouncil {
 		team_dynamics?: string;
 	};
 
-	output: {
+	output: ConsultationResult<{
 		stakeholder_needs: string[]; // From Type 2
 		overlooked_voices: string[]; // From Type 9
 		dynamics_read: string; // From Type 2
 		integration_path: string; // From Type 9
 		people_strategy: string; // Combined approach
-	};
+	}>;
 }
 ```
 
@@ -606,13 +606,13 @@ interface ConsultExecutionCouncil {
 		momentum_status?: string;
 	};
 
-	output: {
+	output: ConsultationResult<{
 		efficiency_moves: string[]; // From Type 3
 		obstacles_to_remove: string[]; // From Type 8
 		decisions_made: string[]; // From Type 8
 		momentum_builders: string[]; // From Type 3
 		action_plan: string; // Combined execution strategy
-	};
+	}>;
 }
 ```
 
@@ -651,13 +651,13 @@ interface ConsultReviewCouncil {
 		process_notes?: string;
 	};
 
-	output: {
+	output: ConsultationResult<{
 		quality_assessment: string; // From Type 1
 		patterns_identified: string[]; // From Type 5
 		lessons_learned: string[]; // From Type 5
 		big_picture_synthesis: string; // From Type 9
 		improvements_for_next: string[]; // Combined recommendations
-	};
+	}>;
 }
 ```
 
@@ -739,15 +739,15 @@ interface ConsultationContext {
 
 ### Response Format
 
-All consultants return structured responses:
+All consultants return structured responses. The tool-specific output schemas above map to `detailed_response`.
 
 ```typescript
-interface ConsultationResult {
+type ConsultationDetails = Record<string, string | string[]>;
+
+interface ConsultationResult<TDetails extends ConsultationDetails = ConsultationDetails> {
 	consultant_type: string; // e.g., "quality_architect" or "vision_council"
 	perspective_summary: string; // 1-2 sentence core insight
-	detailed_response: {
-		[key: string]: string | string[];
-	};
+	detailed_response: TDetails;
 	action_items?: string[]; // Concrete next steps
 	questions_raised?: string[]; // Things to explore further
 	confidence: 'high' | 'medium' | 'low';
@@ -834,23 +834,25 @@ Main Agent: This is an early-stage visioning question. Let me consult
 
 Vision Council Response:
 {
-  "possibilities": [
-    "Marketplace + gallery + community hub hybrid",
-    "Local-first with global reach potential",
-    "Creator-owned cooperative model",
-    "Physical/digital bridge for local art scenes"
+  "consultant_type": "vision_council",
+  "perspective_summary": "The strongest opportunity is a hyper-local platform that preserves authentic community identity.",
+  "detailed_response": {
+    "possibilities": [
+      "Marketplace + gallery + community hub hybrid",
+      "Local-first with global reach potential",
+      "Creator-owned cooperative model",
+      "Physical/digital bridge for local art scenes"
+    ],
+    "unique_angle": "Hyper-local authenticity as the core differentiator.",
+    "meaning_articulation": "Infrastructure for the local creative economy.",
+    "creative_synthesis": "A locally-rooted platform that celebrates what makes each art community unique.",
+    "energy_and_resonance": "High emotional resonance from genuine local impact."
+  },
+  "action_items": [
+    "Validate the local differentiator with 5-10 artist interviews",
+    "Prototype a community hub + marketplace flow"
   ],
-  "unique_angle": "The opportunity is hyper-local authenticity—what makes
-                   THIS community's art scene special cannot be replicated
-                   by global platforms. That's your moat.",
-  "meaning_articulation": "This isn't just a platform—it's infrastructure
-                          for local creative economy and community identity.",
-  "creative_synthesis": "A locally-rooted platform that celebrates what
-                        makes each art community unique, rather than
-                        homogenizing into another Etsy clone.",
-  "energy_and_resonance": "The combination of genuine local impact with
-                          creative expression makes this deeply meaningful
-                          AND genuinely exciting to build."
+  "confidence": "high"
 }
 
 Main Agent: The Vision Council highlights that your biggest opportunity

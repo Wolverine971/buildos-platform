@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/haptic.ts
 /**
  * Haptic feedback utility for mobile devices
  *

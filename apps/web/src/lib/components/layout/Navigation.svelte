@@ -24,7 +24,7 @@
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { logout } from '$lib/utils/auth';
-	import { toastService } from '$lib/stores/toast.store';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { browser, dev } from '$app/environment';
 	import type { ChatContextType } from '@buildos/shared-types';
 
@@ -131,7 +131,7 @@
 		closeAllMenus();
 
 		try {
-			toastService.info('Signing out...', { duration: 1000 });
+			toastService.info('Signing out...', { duration: TOAST_DURATION.QUICK });
 
 			await logout(
 				'/auth/login?message=' + encodeURIComponent('You have been signed out successfully')
@@ -464,15 +464,16 @@
 						</div>
 					{/if}
 
-					<!-- Mobile menu button -->
+					<!-- Mobile menu button - styled to match brain-bolt button -->
 					<Button
 						onclick={toggleMobileMenu}
 						data-mobile-menu-button
 						disabled={loggingOut}
-						variant="ghost"
+						variant="outline"
 						size="sm"
+						btnType="container"
 						icon={showMobileMenu ? X : Menu}
-						class="md:hidden p-2 text-muted-foreground hover:text-foreground min-h-0"
+						class="md:hidden flex items-center justify-center w-10 h-10 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 hover:text-accent pressable transition-all duration-200 text-muted-foreground min-h-0"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
 					></Button>
@@ -681,14 +682,15 @@
 						</a>
 					</div>
 
-					<!-- Mobile auth menu toggle -->
+					<!-- Mobile auth menu toggle - styled to match brain-bolt button -->
 					<Button
 						onclick={toggleMobileMenu}
 						data-mobile-menu-button
-						variant="ghost"
+						variant="outline"
 						size="sm"
+						btnType="container"
 						icon={showMobileMenu ? X : Menu}
-						class="md:hidden p-2 text-muted-foreground hover:text-foreground min-h-0"
+						class="md:hidden flex items-center justify-center w-10 h-10 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 hover:text-accent pressable transition-all duration-200 text-muted-foreground min-h-0"
 						aria-expanded={showMobileMenu}
 					></Button>
 				{/if}

@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/keyboard-avoiding.ts
 /**
  * Keyboard Avoiding Utility
  *

@@ -18,7 +18,7 @@
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { formatFullDate, formatTimeOnly } from '$lib/utils/date-utils';
-	import { toastService } from '$lib/stores/toast.store';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 	import { browser } from '$app/environment';
 	import {
@@ -159,7 +159,13 @@
 	$effect(() => {
 		if (isRegenerating && !generationStatus.isGenerating && generationStatus.error) {
 			isRegenerating = false;
-			toastService.error(`Failed to regenerate brief: ${generationStatus.error}`);
+			toastService.error('Failed to regenerate brief. Please try again.', {
+				duration: TOAST_DURATION.LONG,
+				action: {
+					label: 'Retry',
+					onClick: () => regenerateBrief()
+				}
+			});
 		}
 	});
 
@@ -209,7 +215,12 @@
 				"Email notifications enabled! You'll receive your daily briefs in your inbox."
 			);
 		} catch (error) {
-			toastService.error('Failed to enable email notifications');
+			toastService.error('Failed to enable email notifications', {
+				action: {
+					label: 'Retry',
+					onClick: () => enableEmailNotifications()
+				}
+			});
 		} finally {
 			emailOptInLoading = false;
 		}

@@ -1,6 +1,23 @@
 // apps/web/src/lib/stores/toast.store.ts
 import { writable } from 'svelte/store';
 
+/**
+ * Standardized toast durations (in milliseconds)
+ * Use these constants for consistency across the app
+ */
+export const TOAST_DURATION = {
+	/** Quick confirmations, transitions (e.g., "Signing out...") */
+	QUICK: 1500,
+	/** Simple confirmations (e.g., "Copied to clipboard") */
+	SHORT: 3000,
+	/** Standard success/error messages (default) */
+	STANDARD: 5000,
+	/** Complex messages requiring more reading time */
+	LONG: 7000,
+	/** Messages requiring user action or attention */
+	EXTENDED: 10000
+} as const;
+
 export interface ToastAction {
 	label: string;
 	onClick: () => void;
@@ -10,7 +27,7 @@ export interface Toast {
 	id: string;
 	message: string;
 	type: 'success' | 'error' | 'warning' | 'info';
-	duration?: number; // in milliseconds, default 5000
+	duration?: number; // in milliseconds, default TOAST_DURATION.STANDARD (5000)
 	dismissible?: boolean;
 	action?: ToastAction; // Optional action button
 }

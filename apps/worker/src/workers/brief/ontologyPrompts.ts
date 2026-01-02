@@ -265,12 +265,11 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		// Decisions
 		if (briefData.decisions.length > 0) {
 			prompt += `## Recent Decisions\n`;
-			const recentDecisions = [...briefData.decisions]
-				.filter((d) => d.decision_at !== null)
-				.sort(
-					(a, b) =>
-						parseISO(b.decision_at!).getTime() - parseISO(a.decision_at!).getTime()
-				);
+			const recentDecisions = [...briefData.decisions].sort((a, b) => {
+				const aDate = a.decision_at || a.created_at;
+				const bDate = b.decision_at || b.created_at;
+				return parseISO(bDate).getTime() - parseISO(aDate).getTime();
+			});
 			for (const decision of recentDecisions.slice(0, 5)) {
 				prompt += `- ${decision.title}\n`;
 			}
@@ -461,12 +460,11 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 					.join('; ')}\n`;
 			}
 			if (briefData.decisions.length > 0) {
-				const recentDecisions = [...briefData.decisions]
-					.filter((d) => d.decision_at !== null)
-					.sort(
-						(a, b) =>
-							parseISO(b.decision_at!).getTime() - parseISO(a.decision_at!).getTime()
-					);
+				const recentDecisions = [...briefData.decisions].sort((a, b) => {
+					const aDate = a.decision_at || a.created_at;
+					const bDate = b.decision_at || b.created_at;
+					return parseISO(bDate).getTime() - parseISO(aDate).getTime();
+				});
 				prompt += `- Recent decisions: ${recentDecisions
 					.slice(0, 3)
 					.map((d) => d.title)

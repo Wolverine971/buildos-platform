@@ -559,11 +559,7 @@ export class OntologyContextLoader {
 				.not('state_key', 'in', '(done,blocked)')
 				.or(
 					`and(due_at.gte.${now.toISOString()},due_at.lte.${upcomingUntil.toISOString()}),and(start_at.gte.${now.toISOString()},start_at.lte.${upcomingUntil.toISOString()})`
-				)
-				.order('due_at', { ascending: true })
-				.order('start_at', { ascending: true })
-				.order('updated_at', { ascending: false })
-				.limit(PROJECT_HIGHLIGHT_LIMITS.tasksUpcoming);
+				);
 
 			if (recentIds.size > 0) {
 				const excluded = [...recentIds].map((id) => `"${id}"`).join(',');
@@ -571,20 +567,31 @@ export class OntologyContextLoader {
 			}
 
 			const { data, count } = await upcomingQuery;
-			upcomingTasks = (data ?? [])
-				.filter((task) => !recentIds.has(task.id))
-				.map((task) => ({
-					id: task.id,
-					title: task.title,
-					updated_at: task.updated_at,
-					start_at: task.start_at,
-					due_at: task.due_at
-				}));
+			const filteredUpcoming = (data ?? []).filter((task) => !recentIds.has(task.id));
+			const sortedUpcoming = filteredUpcoming.sort((a, b) => {
+				const aDue = a.due_at ? Date.parse(a.due_at) : Number.POSITIVE_INFINITY;
+				const aStart = a.start_at ? Date.parse(a.start_at) : Number.POSITIVE_INFINITY;
+				const bDue = b.due_at ? Date.parse(b.due_at) : Number.POSITIVE_INFINITY;
+				const bStart = b.start_at ? Date.parse(b.start_at) : Number.POSITIVE_INFINITY;
+				const aEarliest = Math.min(aDue, aStart);
+				const bEarliest = Math.min(bDue, bStart);
+				if (aEarliest !== bEarliest) return aEarliest - bEarliest;
+				const aUpdated = a.updated_at ? Date.parse(a.updated_at) : 0;
+				const bUpdated = b.updated_at ? Date.parse(b.updated_at) : 0;
+				return bUpdated - aUpdated;
+			});
+			const limitedUpcoming = sortedUpcoming.slice(0, PROJECT_HIGHLIGHT_LIMITS.tasksUpcoming);
+			upcomingTasks = limitedUpcoming.map((task) => ({
+				id: task.id,
+				title: task.title,
+				updated_at: task.updated_at,
+				start_at: task.start_at,
+				due_at: task.due_at
+			}));
 
+			const totalUpcoming = typeof count === 'number' ? count : filteredUpcoming.length;
 			upcomingMore =
-				typeof count === 'number' && count > upcomingTasks.length
-					? count - upcomingTasks.length
-					: 0;
+				totalUpcoming > upcomingTasks.length ? totalUpcoming - upcomingTasks.length : 0;
 		}
 
 		return {

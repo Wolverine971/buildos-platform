@@ -175,7 +175,9 @@ export function categorizeTasks(
 				const isStartUpcoming =
 					startDateStr && startDateStr >= todayStr && startDateStr <= weekEndStr;
 				if (isDueUpcoming || isStartUpcoming) {
-					upcomingTasks.push(task);
+					if (state !== 'blocked') {
+						upcomingTasks.push(task);
+					}
 				}
 			}
 		}
