@@ -186,6 +186,18 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			});
 		});
 
+		scheduledBriefs.forEach((scheduled) => {
+			activities.push({
+				entity_type: 'calendar',
+				action: 'scheduled',
+				created_at: scheduled.created_at,
+				object_name: scheduled.event_title || 'Scheduled Brief',
+				details: scheduled.event_start
+					? `Scheduled for ${new Date(scheduled.event_start).toLocaleDateString()}`
+					: 'Scheduled brief'
+			});
+		});
+
 		// Sort activities by date (most recent first)
 		activities.sort(
 			(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

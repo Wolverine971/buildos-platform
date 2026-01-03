@@ -9,8 +9,10 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { DOCUMENT_STATES } from '$lib/types/onto';
 import type { Json, Database } from '@buildos/shared-types';
 import { ensureTaskAccess, TASK_DOCUMENT_REL } from '../../task-document-helpers';
+import { normalizeDocumentStateInput } from '../../../shared/document-state';
 
 type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 
@@ -151,6 +153,15 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		let document: Record<string, any> | null = null;
 
+		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
+		const normalizedState = normalizeDocumentStateInput(state_key);
+
+		if (hasStateInput && !normalizedState) {
+			return ApiResponse.badRequest(
+				`state_key must be one of: ${DOCUMENT_STATES.join(', ')}`
+			);
+		}
+
 		if (document_id) {
 			const { data: existingDoc, error: existingError } = await supabase
 				.from('onto_documents')
@@ -171,7 +182,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		} else {
 			const docTitle = title?.trim() || `${task.title ?? 'Task'} Document`;
 			const docType = type_key?.trim() || 'document.task.scratch';
-			const docState = state_key?.trim() || 'draft';
+			const docState = normalizedState ?? 'draft';
 			// Prefer content param, fall back to body_markdown for backwards compatibility
 			const normalizedContent =
 				typeof content === 'string'

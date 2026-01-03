@@ -84,8 +84,12 @@
 		id: string;
 		status: string;
 		users?: { email: string } | null;
-		subscription_plans?: { name: string; price: number; interval: string } | null;
-		updated_at: string;
+		subscription_plans?: {
+			name: string;
+			price_cents: number;
+			billing_interval: string | null;
+		} | null;
+		updated_at: string | null;
 	};
 	type TopActiveUser = { email: string; last_brief?: string | null; brief_count: number };
 
@@ -797,7 +801,7 @@
 		return `${Math.round(num)}%`;
 	}
 
-	function getSystemHealthColor(value: number, unit: string): string {
+	function getSystemHealthColor(value: number, unit: string | null): string {
 		if (unit === 'percentage') {
 			if (value >= 95) return 'text-green-600';
 			if (value >= 85) return 'text-yellow-600';
@@ -1217,14 +1221,17 @@
 										<div class="text-right">
 											<p class="text-sm text-muted-foreground">
 												${(
-													typedChange.subscription_plans?.price / 100
+													(typedChange.subscription_plans?.price_cents ??
+														0) / 100
 												).toFixed(2)}/{typedChange.subscription_plans
-													?.interval}
+													?.billing_interval ?? 'N/A'}
 											</p>
 											<p class="text-xs text-muted-foreground">
-												{new Date(
-													typedChange.updated_at
-												).toLocaleDateString()}
+												{typedChange.updated_at
+													? new Date(
+															typedChange.updated_at
+														).toLocaleDateString()
+													: 'N/A'}
 											</p>
 										</div>
 									</div>
@@ -1491,9 +1498,9 @@
 											{metric.metric_description || metric.metric_name}
 										</div>
 										<div class="text-xs text-muted-foreground">
-											Last updated: {new Date(
-												metric.recorded_at
-											).toLocaleString()}
+											Last updated: {metric.recorded_at
+												? new Date(metric.recorded_at).toLocaleString()
+												: 'N/A'}
 										</div>
 									</div>
 									<div class="text-right ml-2">
@@ -1552,15 +1559,15 @@
 											{typedUser.email}
 										</div>
 										<div class="text-xs text-muted-foreground">
-											Last brief: {typedUser.last_brief
+											Last activity: {typedUser.last_activity
 												? new Date(
-														typedUser.last_brief
+														typedUser.last_activity
 													).toLocaleDateString()
 												: 'Never'}
 										</div>
 									</div>
 									<div class="text-xs sm:text-sm font-medium text-accent ml-2">
-										{typedUser.brief_count} briefs
+										{typedUser.activity_count} events
 									</div>
 								</div>
 							{/each}

@@ -33,8 +33,8 @@ export const OUTPUT_STATES = ['draft', 'in_progress', 'review', 'published'] as 
 export type OutputState = (typeof OUTPUT_STATES)[number];
 export const OutputStateSchema = z.enum(OUTPUT_STATES);
 
-/** Document states: draft → review → published */
-export const DOCUMENT_STATES = ['draft', 'review', 'published'] as const;
+/** Document states: draft → in_review → ready → published → archived */
+export const DOCUMENT_STATES = ['draft', 'in_review', 'ready', 'published', 'archived'] as const;
 export type DocumentState = (typeof DOCUMENT_STATES)[number];
 export const DocumentStateSchema = z.enum(DOCUMENT_STATES);
 

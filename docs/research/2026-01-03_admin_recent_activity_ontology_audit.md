@@ -1,3 +1,5 @@
+<!-- docs/research/2026-01-03_admin_recent_activity_ontology_audit.md -->
+
 # Admin Recent Activity Ontology Audit (2026-01-03)
 
 ## Scope
@@ -77,6 +79,10 @@ Audit the admin "recent activity" stats and logs to confirm they use the correct
     - Added bulk activity logging to ontology project instantiation.
 - [x] Ensure admin access to ontology logs.
     - Added an admin SELECT policy to `onto_project_logs`.
+
+## Additional Fixes
+
+- [x] Top active users now computed from combined ontology logs, user activity logs, and ontology briefs within the selected timeframe.
 
 ## Open Questions
 

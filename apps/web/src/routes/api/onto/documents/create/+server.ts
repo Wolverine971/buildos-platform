@@ -14,6 +14,7 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import { normalizeDocumentStateInput } from '../../shared/document-state';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -47,7 +48,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('title is required');
 		}
 
-		if (state_key !== undefined && !DOCUMENT_STATES.includes(String(state_key))) {
+		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
+		const normalizedState = normalizeDocumentStateInput(state_key);
+
+		if (hasStateInput && !normalizedState) {
 			return ApiResponse.badRequest(
 				`state_key must be one of: ${DOCUMENT_STATES.join(', ')}`
 			);
@@ -69,7 +73,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (!project) {
-			return ApiResponse.notFound('Project not found');
+			return ApiResponse.notFound('Project');
 		}
 
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -111,7 +115,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				project_id,
 				title: title.trim(),
 				type_key: 'document.default',
-				state_key: typeof state_key === 'string' && state_key.trim() ? state_key : 'draft',
+				state_key: normalizedState ?? 'draft',
 				content: normalizedContent,
 				description: normalizedDescription,
 				props: documentProps,

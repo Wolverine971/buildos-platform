@@ -52,6 +52,7 @@
 						return 'bg-muted text-muted-foreground';
 					case 'in_progress':
 					case 'active':
+					case 'ready':
 						return 'bg-accent/20 text-accent';
 					case 'done':
 					case 'completed':
@@ -67,7 +68,10 @@
 					case 'cancelled':
 						return 'bg-red-100/80 text-red-700 dark:bg-red-900/25 dark:text-red-400';
 					case 'review':
+					case 'in_review':
 						return 'bg-amber-100/80 text-amber-700 dark:bg-amber-900/25 dark:text-amber-400';
+					case 'archived':
+						return 'bg-muted text-muted-foreground';
 					default:
 						return 'bg-muted text-muted-foreground';
 				}

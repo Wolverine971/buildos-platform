@@ -237,7 +237,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		return ApiResponse.success({ decision }, 201);
+		return ApiResponse.created({ decision });
 	} catch (error) {
 		console.error('[Decisions POST] Unexpected error:', error);
 		return ApiResponse.internalError(error);

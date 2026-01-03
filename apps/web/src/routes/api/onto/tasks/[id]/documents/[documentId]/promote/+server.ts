@@ -12,6 +12,8 @@ import {
 	ensureTaskDocumentLink,
 	mergeEdgeProps
 } from '../../../../task-document-helpers';
+import { DOCUMENT_STATES } from '$lib/types/onto';
+import { normalizeDocumentStateInput } from '../../../../../shared/document-state';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -38,10 +40,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const supabase = locals.supabase;
 
 		const body = await request.json().catch(() => ({}));
-		const targetState =
-			typeof body?.target_state === 'string' && body.target_state.trim()
-				? body.target_state.trim()
-				: 'ready';
+		const hasTargetState = Object.prototype.hasOwnProperty.call(body ?? {}, 'target_state');
+		const normalizedTargetState = normalizeDocumentStateInput(body?.target_state);
+
+		if (hasTargetState && !normalizedTargetState) {
+			return ApiResponse.badRequest(
+				`target_state must be one of: ${DOCUMENT_STATES.join(', ')}`
+			);
+		}
+
+		const targetState = normalizedTargetState ?? 'ready';
 
 		const linkResult = await ensureTaskDocumentLink(locals, taskId, documentId);
 		if ('error' in linkResult) {

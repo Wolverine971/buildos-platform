@@ -58,11 +58,11 @@ export class NotificationRealDataService {
 			case 'brief.failed':
 				return "Uses user's timezone and current date";
 			case 'brain_dump.processed':
-				return "Loads data from user's most recent brain dump with project";
+				return "Loads data from user's most recent processed brain dump";
 			case 'task.due_soon':
 				return "Loads user's next upcoming task";
 			case 'project.phase_scheduled':
-				return "Loads data from user's most recent scheduled phase";
+				return "Loads data from user's most recent scheduled phase plan";
 			case 'calendar.sync_failed':
 				return "Loads data from user's last calendar sync error";
 			case 'user.signup':

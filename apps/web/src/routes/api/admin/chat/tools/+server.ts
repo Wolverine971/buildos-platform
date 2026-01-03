@@ -12,6 +12,92 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { TOOL_METADATA } from '$lib/services/agentic-chat/tools/core/definitions';
+import { estimateToolTokens } from '$lib/services/agentic-chat/tools/core/tools.config';
+
+const CATEGORY_MAP: Record<string, string> = {
+	search: 'list',
+	read: 'detail',
+	write: 'action',
+	utility: 'utility'
+};
+
+const resolveToolCategory = (toolName: string): string => {
+	const metadataCategory = TOOL_METADATA[toolName]?.category;
+	if (metadataCategory && CATEGORY_MAP[metadataCategory]) {
+		return CATEGORY_MAP[metadataCategory];
+	}
+	return metadataCategory || 'unknown';
+};
+
+const normalizeToolCalls = (toolCalls: unknown): Array<Record<string, any>> => {
+	if (!toolCalls) return [];
+	if (Array.isArray(toolCalls)) return toolCalls as Array<Record<string, any>>;
+	if (typeof toolCalls === 'string') {
+		try {
+			const parsed = JSON.parse(toolCalls);
+			if (Array.isArray(parsed)) return parsed as Array<Record<string, any>>;
+			if (parsed && typeof parsed === 'object') return [parsed as Record<string, any>];
+		} catch {
+			return [];
+		}
+	}
+	if (typeof toolCalls === 'object') return [toolCalls as Record<string, any>];
+	return [];
+};
+
+const resolveToolName = (toolCall: Record<string, any>): string => {
+	const functionName = toolCall?.function?.name;
+	if (typeof functionName === 'string' && functionName.trim().length > 0) {
+		return functionName.trim();
+	}
+	const directName = toolCall?.name;
+	if (typeof directName === 'string' && directName.trim().length > 0) {
+		return directName.trim();
+	}
+	return 'unknown';
+};
+
+const parseToolResult = (
+	content: string | null | undefined
+): { success: boolean; errorMessage?: string } => {
+	if (!content) return { success: true };
+	const trimmed = content.trim();
+	if (!trimmed) return { success: true };
+	if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (parsed && typeof parsed === 'object') {
+				const errorValue =
+					(parsed as any).error ??
+					(parsed as any).error_message ??
+					(parsed as any).errorMessage ??
+					(parsed as any).message;
+				const successFlag = (parsed as any).success;
+				if (successFlag === false || (parsed as any).ok === false || errorValue) {
+					return {
+						success: false,
+						errorMessage: errorValue ? String(errorValue) : 'Tool execution error'
+					};
+				}
+			}
+		} catch {
+			return { success: true };
+		}
+	}
+	return { success: true };
+};
+
+type ToolExecutionRow = {
+	tool_name: string;
+	tool_category: string;
+	success: boolean | null;
+	execution_time_ms: number;
+	error_message: string | null;
+	tokens_consumed: number;
+	created_at: string;
+	session_id: string | null;
+};
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	// Check authentication
@@ -53,19 +139,89 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// ===================================================
 		// 1. TOOL EXECUTIONS DATA
 		// ===================================================
-		const { data: toolExecutionsData, error: toolExecutionsError } = await supabase
-			.from('chat_tool_executions')
+		const { data: toolMessages, error: toolMessagesError } = await supabase
+			.from('agent_chat_messages')
 			.select(
-				'tool_name, tool_category, success, execution_time_ms, error_message, tokens_consumed, created_at, session_id'
+				'agent_session_id, role, tool_calls, tool_call_id, content, tokens_used, created_at'
 			)
-			.gte('created_at', startDate.toISOString());
+			.gte('created_at', startDate.toISOString())
+			.or('tool_calls.not.is.null,tool_call_id.not.is.null,role.eq.tool');
 
-		if (toolExecutionsError) throw toolExecutionsError;
+		if (toolMessagesError) throw toolMessagesError;
 
-		const totalExecutions = toolExecutionsData?.length || 0;
+		const toolExecutionsData: ToolExecutionRow[] = [];
+		const executionsByCallId = new Map<string, ToolExecutionRow>();
+
+		(toolMessages || []).forEach((message: any) => {
+			const toolCalls = normalizeToolCalls(message.tool_calls);
+			if (toolCalls.length > 0) {
+				const tokensPerCall =
+					toolCalls.length > 0 ? (message.tokens_used || 0) / toolCalls.length : 0;
+
+				toolCalls.forEach((call) => {
+					const toolName = resolveToolName(call);
+					const toolCategory = resolveToolCategory(toolName);
+					const callId = typeof call?.id === 'string' ? call.id : null;
+					const tokensConsumed =
+						tokensPerCall > 0 ? tokensPerCall : estimateToolTokens(toolName);
+
+					const execution: ToolExecutionRow = {
+						tool_name: toolName,
+						tool_category: toolCategory,
+						success: null,
+						execution_time_ms: 0,
+						error_message: null,
+						tokens_consumed: tokensConsumed,
+						created_at: message.created_at,
+						session_id: message.agent_session_id
+					};
+
+					toolExecutionsData.push(execution);
+					if (callId) {
+						executionsByCallId.set(callId, execution);
+					}
+				});
+			}
+
+			if (message.role === 'tool' || message.tool_call_id) {
+				const callId = message.tool_call_id;
+				const { success, errorMessage } = parseToolResult(message.content);
+
+				let execution = callId ? executionsByCallId.get(callId) : undefined;
+				if (!execution) {
+					execution = {
+						tool_name: 'unknown',
+						tool_category: 'unknown',
+						success: null,
+						execution_time_ms: 0,
+						error_message: null,
+						tokens_consumed: 0,
+						created_at: message.created_at,
+						session_id: message.agent_session_id
+					};
+					toolExecutionsData.push(execution);
+					if (callId) {
+						executionsByCallId.set(callId, execution);
+					}
+				}
+
+				execution.success = success;
+				if (!success && errorMessage) {
+					execution.error_message = errorMessage;
+				}
+			}
+		});
+
+		toolExecutionsData.forEach((execution) => {
+			if (execution.success === null) {
+				execution.success = true;
+			}
+		});
+
+		const totalExecutions = toolExecutionsData.length;
 		const successfulExecutions =
-			toolExecutionsData?.filter((e) => e.success === true).length || 0;
-		const failedExecutions = toolExecutionsData?.filter((e) => e.success === false).length || 0;
+			toolExecutionsData.filter((e) => e.success === true).length || 0;
+		const failedExecutions = toolExecutionsData.filter((e) => e.success === false).length || 0;
 		const successRate =
 			totalExecutions > 0 ? (successfulExecutions / totalExecutions) * 100 : 0;
 

@@ -167,7 +167,7 @@ export async function resolveLinkedEntities(
 				name: p.name,
 				state_key: p.state_key,
 				type_key: p.type_key,
-				edge_rel: edgeInfo?.rel || 'belongs_to_plan',
+				edge_rel: edgeInfo?.rel || 'has_task',
 				edge_direction: edgeInfo?.direction || 'outgoing'
 			};
 		});

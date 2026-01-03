@@ -147,6 +147,7 @@ async function fetchAvailableForKind(
 		.from(table)
 		.select(columns.join(', '))
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: false })
 		.limit(100);
 

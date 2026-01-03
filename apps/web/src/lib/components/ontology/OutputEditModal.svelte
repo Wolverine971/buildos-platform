@@ -380,29 +380,28 @@
 			</div>
 			<div class="flex items-center gap-1.5">
 				<!-- Chat about this output button -->
-				<Button
-					variant="ghost"
-					size="sm"
+				<button
+					type="button"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isLoading || savingState || !output}
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 					title="Chat about this output"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this output"
-						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover"
+						class="w-5 h-5 rounded object-cover"
 					/>
-				</Button>
-				<!-- Inkprint close button -->
+				</button>
+				<!-- Close button -->
 				<button
 					type="button"
 					onclick={closeModal}
 					disabled={savingState}
-					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
 					aria-label="Close modal"
 				>
-					<X class="h-4 w-4" />
+					<X class="w-5 h-5" />
 				</button>
 			</div>
 		</div>
@@ -430,7 +429,9 @@
 								for="output-name"
 								class="flex items-center gap-2 text-sm font-medium text-foreground"
 							>
-								<span class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shrink-0"></span>
+								<span
+									class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shrink-0"
+								></span>
 								Output Name
 							</label>
 							<Button
@@ -574,7 +575,7 @@
 					variant="danger"
 					size="sm"
 					onclick={() => (showDeleteConfirm = true)}
-					class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+					class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 tx tx-grain tx-weak"
 				>
 					Delete
 				</Button>
@@ -585,7 +586,7 @@
 				size="sm"
 				onclick={closeModal}
 				disabled={savingState}
-				class="text-xs sm:text-sm px-2 sm:px-4"
+				class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 			>
 				Close
 			</Button>

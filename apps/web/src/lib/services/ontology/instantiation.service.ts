@@ -64,8 +64,11 @@ const PROJECT_STATE_MAP: Record<string, ProjectState> = {
 
 const DOCUMENT_STATE_MAP: Record<string, DocumentState> = {
 	draft: 'draft',
-	review: 'review',
+	review: 'in_review',
+	in_review: 'in_review',
+	ready: 'ready',
 	published: 'published',
+	archived: 'archived',
 	active: 'draft',
 	complete: 'published',
 	completed: 'published'
@@ -516,7 +519,7 @@ export async function instantiateProject(
 					dst_id: taskId
 				});
 
-				// Plan relationship via bidirectional edges (plan_id column removed)
+				// Plan relationship via canonical edge (plan_id column removed)
 				if (planId) {
 					// Plan -> Task (has_task)
 					edgesToInsert.push({
@@ -526,15 +529,6 @@ export async function instantiateProject(
 						rel: 'has_task',
 						dst_kind: 'task',
 						dst_id: taskId
-					});
-					// Task -> Plan (belongs_to_plan)
-					edgesToInsert.push({
-						project_id: typedProjectId,
-						src_kind: 'task',
-						src_id: taskId,
-						rel: 'belongs_to_plan',
-						dst_kind: 'plan',
-						dst_id: planId
 					});
 				}
 			}

@@ -36,14 +36,24 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 	try {
 		// ===================================================
-		// 1. FETCH SESSION DATA
+		// 1. FETCH AGENT SESSION DATA
 		// ===================================================
 		const { data: session, error: sessionError } = await supabase
-			.from('chat_sessions')
+			.from('agent_chat_sessions')
 			.select(
 				`
-        *,
-        users!inner(id, email, name)
+        id,
+        status,
+        created_at,
+        completed_at,
+        message_count,
+        session_type,
+        context_type,
+        entity_id,
+        initial_context,
+        user_id,
+        plan_id,
+        users!agent_chat_sessions_user_id_fkey(id, email, name)
       `
 			)
 			.eq('id', sessionId)
@@ -54,107 +64,61 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		}
 
 		// ===================================================
-		// 2. FETCH CONVERSATION MESSAGES
+		// 2. FETCH SESSION MESSAGES
 		// ===================================================
 		const { data: messages, error: messagesError } = await supabase
-			.from('chat_messages')
-			.select('*')
-			.eq('session_id', sessionId)
+			.from('agent_chat_messages')
+			.select('id, role, content, created_at, tokens_used, tool_calls')
+			.eq('agent_session_id', sessionId)
 			.order('created_at', { ascending: true });
 
 		if (messagesError) throw messagesError;
 
+		const formattedMessages =
+			messages?.map((message) => ({
+				...message,
+				total_tokens: message.tokens_used || 0
+			})) || [];
+
 		// ===================================================
 		// 3. FETCH AGENT PLAN (if exists)
 		// ===================================================
-		const { data: agentPlans, error: planError } = await supabase
-			.from('agent_plans')
-			.select('*')
-			.eq('session_id', sessionId)
-			.order('created_at', { ascending: false });
+		const { data: agentPlan, error: planError } = session.plan_id
+			? await supabase.from('agent_plans').select('*').eq('id', session.plan_id).single()
+			: { data: null, error: null };
 
 		if (planError) throw planError;
 
-		const agentPlan = agentPlans?.[0] || null;
-
 		// ===================================================
-		// 4. FETCH AGENT EXECUTIONS (with messages)
+		// 4. FETCH AGENT EXECUTIONS (per session)
 		// ===================================================
-		let agentExecutions: any[] = [];
-
-		if (agentPlan) {
-			const { data: executions, error: executionsError } = await supabase
-				.from('agent_executions')
-				.select('*')
-				.eq('plan_id', agentPlan.id)
-				.order('created_at', { ascending: true });
-
-			if (executionsError) throw executionsError;
-
-			// For each execution, fetch the agent-to-agent messages
-			if (executions && executions.length > 0) {
-				const executionIds = executions.map((e) => e.id);
-
-				const { data: agentMessages, error: agentMessagesError } = await supabase
-					.from('agent_chat_messages')
-					.select('*')
-					.in('execution_id', executionIds)
-					.order('created_at', { ascending: true });
-
-				if (agentMessagesError) throw agentMessagesError;
-
-				// Group messages by execution_id
-				const messagesByExecution = (agentMessages || []).reduce(
-					(acc, msg) => {
-						if (!acc[msg.execution_id]) {
-							acc[msg.execution_id] = [];
-						}
-						acc[msg.execution_id].push(msg);
-						return acc;
-					},
-					{} as Record<string, any[]>
-				);
-
-				// Attach messages to executions
-				agentExecutions = executions.map((execution) => ({
-					...execution,
-					messages: messagesByExecution[execution.id] || []
-				}));
-			}
-		}
-
-		// ===================================================
-		// 5. FETCH TOOL EXECUTIONS
-		// ===================================================
-		const { data: toolExecutions, error: toolError } = await supabase
-			.from('chat_tool_executions')
+		const { data: executions, error: executionsError } = await supabase
+			.from('agent_executions')
 			.select('*')
-			.eq('session_id', sessionId)
+			.eq('agent_session_id', sessionId)
 			.order('created_at', { ascending: true });
 
-		if (toolError) throw toolError;
+		if (executionsError) throw executionsError;
+
+		const agentExecutions =
+			(executions || []).map((execution) => ({
+				...execution,
+				messages: formattedMessages
+			})) || [];
 
 		// ===================================================
-		// 6. FETCH COMPRESSIONS
+		// 5. TOKEN USAGE + COSTS
 		// ===================================================
-		const { data: compressions, error: compressionsError } = await supabase
-			.from('chat_compressions')
-			.select('*')
-			.eq('session_id', sessionId)
-			.order('created_at', { ascending: true });
-
-		if (compressionsError) throw compressionsError;
-
-		// ===================================================
-		// FORMAT RESPONSE
-		// ===================================================
-		let totalTokens = session.total_tokens_used || 0;
-		let costEstimate = (totalTokens / 1000000) * 0.21; // $0.21 per 1M tokens fallback
+		let totalTokens = formattedMessages.reduce(
+			(sum, message) => sum + (message.total_tokens || 0),
+			0
+		);
+		let costEstimate = (totalTokens / 1000000) * 0.21;
 
 		const { data: usageLogs, error: usageError } = await supabase
 			.from('llm_usage_logs')
 			.select('total_tokens, total_cost_usd')
-			.eq('chat_session_id', sessionId);
+			.eq('agent_session_id', sessionId);
 
 		if (usageError) throw usageError;
 
@@ -172,26 +136,40 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			costEstimate = usageTotals.total_cost;
 		}
 
+		const context = session.initial_context as Record<string, any> | null;
+		const title =
+			context?.task?.title ||
+			context?.task?.name ||
+			context?.title ||
+			context?.user_message ||
+			(session.session_type === 'planner_thinking' ? 'Planner Session' : 'Agent Session');
+
+		const toolCallCount = formattedMessages.reduce((count, message) => {
+			if (!message.tool_calls) return count;
+			const toolCalls = Array.isArray(message.tool_calls) ? message.tool_calls.length : 1;
+			return count + toolCalls;
+		}, 0);
+
 		return ApiResponse.success({
 			session: {
 				id: session.id,
-				title: session.title || session.auto_title || 'Untitled Session',
+				title,
 				user: {
-					id: session.users.id,
-					email: session.users.email,
-					name: session.users.name
+					id: session.users?.id,
+					email: session.users?.email,
+					name: session.users?.name
 				},
-				context_type: session.context_type,
-				context_id: session.context_id,
+				context_type: session.context_type || session.session_type,
+				context_id: session.entity_id || null,
 				status: session.status,
-				message_count: session.message_count || 0,
+				message_count: session.message_count || formattedMessages.length,
 				total_tokens: totalTokens,
-				tool_call_count: session.tool_call_count || 0,
+				tool_call_count: toolCallCount,
 				created_at: session.created_at,
-				updated_at: session.updated_at,
+				updated_at: session.completed_at || session.created_at,
 				cost_estimate: costEstimate
 			},
-			messages: messages || [],
+			messages: formattedMessages,
 			agent_plan: agentPlan
 				? {
 						id: agentPlan.id,
@@ -203,8 +181,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					}
 				: null,
 			agent_executions: agentExecutions,
-			tool_executions: toolExecutions || [],
-			compressions: compressions || []
+			tool_executions: [],
+			compressions: []
 		});
 	} catch (err) {
 		console.error('Session detail error:', err);

@@ -54,7 +54,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Project Full API] Failed to get actor:', actorError);
-			return ApiResponse.error('Failed to resolve user actor', 500);
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to resolve user actor'),
+				'Failed to resolve user actor'
+			);
 		}
 
 		// OPTIMIZED: Single RPC call for all project data
@@ -70,7 +73,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (!data) {
-			return ApiResponse.notFound('Project not found or access denied');
+			return ApiResponse.notFound('Project');
 		}
 
 		return ApiResponse.success({

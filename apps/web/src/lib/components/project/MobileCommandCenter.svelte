@@ -223,8 +223,13 @@
 		switch (state) {
 			case 'published':
 				return 'text-emerald-500';
+			case 'ready':
+				return 'text-sky-500';
 			case 'review':
+			case 'in_review':
 				return 'text-amber-500';
+			case 'archived':
+				return 'text-muted-foreground';
 			default:
 				return 'text-muted-foreground';
 		}

@@ -83,11 +83,24 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			{ data: phaseGenerations },
 			{ data: smsPreferences }
 		] = await Promise.all([
-			supabase.from('brain_dumps').select('user_id').in('user_id', userIds),
-			supabase.from('daily_briefs').select('user_id').in('user_id', userIds),
-			supabase.from('projects').select('user_id').in('user_id', userIds),
+			supabase.from('onto_braindumps').select('user_id').in('user_id', userIds),
+			supabase
+				.from('ontology_daily_briefs')
+				.select('user_id')
+				.eq('generation_status', 'completed')
+				.in('user_id', userIds),
+			supabase
+				.from('onto_projects')
+				.select('created_by')
+				.in('created_by', userIds)
+				.is('deleted_at', null),
 			supabase.from('user_calendar_tokens').select('user_id').in('user_id', userIds),
-			supabase.from('phases').select('user_id').in('user_id', userIds),
+			supabase
+				.from('onto_plans')
+				.select('created_by')
+				.eq('type_key', 'plan.phase.project')
+				.in('created_by', userIds)
+				.is('deleted_at', null),
 			supabase
 				.from('user_sms_preferences')
 				.select(
@@ -118,7 +131,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const projectCountMap =
 			projectCounts?.reduce(
 				(acc, project) => {
-					acc[project.user_id] = (acc[project.user_id] || 0) + 1;
+					acc[project.created_by] = (acc[project.created_by] || 0) + 1;
 					return acc;
 				},
 				{} as Record<string, number>
@@ -138,7 +151,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const hasGeneratedPhasesMap =
 			phaseGenerations?.reduce(
 				(acc, generation) => {
-					acc[generation.user_id] = true;
+					acc[generation.created_by] = true;
 					return acc;
 				},
 				{} as Record<string, boolean>

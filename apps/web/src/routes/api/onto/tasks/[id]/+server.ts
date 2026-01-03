@@ -49,7 +49,7 @@ import { normalizeTaskStateInput } from '../../shared/task-state';
 export const GET: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
-		return ApiResponse.error('Unauthorized', 401);
+		return ApiResponse.unauthorized('Authentication required');
 	}
 
 	const supabase = locals.supabase;
@@ -80,52 +80,30 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Task GET] Failed to resolve actor:', actorError);
-			return ApiResponse.error('Failed to get user actor', 500);
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to get user actor'),
+				'Failed to get user actor'
+			);
 		}
 
 		if (error || !task) {
-			return ApiResponse.error('Task not found', 404);
+			return ApiResponse.notFound('Task');
 		}
 
 		// Check if user owns the project
 		if (task.project.created_by !== actorId) {
-			return ApiResponse.error('Access denied', 403);
+			return ApiResponse.forbidden('Access denied');
 		}
 
-		// Parallelize secondary queries: plan edge and linked entities
-		const [planEdgeResult, linkedEntities] = await Promise.all([
-			supabase
-				.from('onto_edges')
-				.select('dst_id')
-				.eq('src_kind', 'task')
-				.eq('src_id', params.id)
-				.eq('rel', 'belongs_to_plan')
-				.eq('dst_kind', 'plan')
-				.single(),
-			resolveLinkedEntities(supabase, params.id)
-		]);
+		const linkedEntities = await resolveLinkedEntities(supabase, params.id);
 
-		// Fetch plan data if edge exists (this is a dependent query)
-		let plan = null;
-		if (planEdgeResult.data?.dst_id) {
-			const { data: planData } = await supabase
-				.from('onto_plans')
-				.select('id, name, type_key')
-				.eq('id', planEdgeResult.data.dst_id)
-				.single();
-
-			if (planData) {
-				plan = planData;
-			}
-		}
-
-		// Remove nested project data from response, add plan
+		// Remove nested project data from response
 		const { project, ...taskData } = task;
 
-		return ApiResponse.success({ task: { ...taskData, plan }, linkedEntities });
+		return ApiResponse.success({ task: taskData, linkedEntities });
 	} catch (error) {
 		console.error('Error fetching task:', error);
-		return ApiResponse.error('Internal server error', 500);
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };
 
@@ -133,7 +111,7 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
-		return ApiResponse.error('Unauthorized', 401);
+		return ApiResponse.unauthorized('Authentication required');
 	}
 
 	const supabase = locals.supabase;
@@ -146,7 +124,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			description,
 			priority,
 			state_key,
-			plan_id, // Still accepted from UI, but stored as edge relationship
 			type_key,
 			props,
 			goal_id,
@@ -162,7 +139,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Task PATCH] Failed to resolve actor:', actorError);
-			return ApiResponse.error('Failed to get user actor', 500);
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to get user actor'),
+				'Failed to get user actor'
+			);
 		}
 
 		const hasGoalInput = Object.prototype.hasOwnProperty.call(body, 'goal_id');
@@ -187,15 +167,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			`
 			)
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !existingTask) {
-			return ApiResponse.error('Task not found', 404);
+			return ApiResponse.notFound('Task');
 		}
 
 		// Check if user owns the project
 		if (existingTask.project.created_by !== actorId) {
-			return ApiResponse.error('Access denied', 403);
+			return ApiResponse.forbidden('Access denied');
 		}
 
 		// Validate optional goal and milestone updates against the project
@@ -282,8 +263,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 		}
 
-		const hasPlanInput = Object.prototype.hasOwnProperty.call(body, 'plan_id');
-
 		// Handle props update - merge with existing (description no longer stored here)
 		const currentProps = (existingTask.props as Record<string, unknown> | null) ?? {};
 		const nextProps = { ...currentProps, ...(props || {}) };
@@ -325,7 +304,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('Error updating task:', updateError);
-			return ApiResponse.error('Failed to update task', 500);
+			return ApiResponse.databaseError(updateError);
 		}
 
 		// Maintain relationship edges when goal/milestone updates are provided
@@ -371,62 +350,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 		}
 
-		// Handle plan relationship via edges (plan_id is no longer a column)
-		if (hasPlanInput) {
-			// Remove existing plan relationships for this task
-			await supabase
-				.from('onto_edges')
-				.delete()
-				.eq('rel', 'belongs_to_plan')
-				.eq('src_kind', 'task')
-				.eq('src_id', params.id);
-
-			await supabase
-				.from('onto_edges')
-				.delete()
-				.eq('rel', 'has_task')
-				.eq('dst_kind', 'task')
-				.eq('dst_id', params.id)
-				.eq('src_kind', 'plan');
-
-			const targetPlanId =
-				typeof plan_id === 'string' && plan_id.trim().length > 0 ? plan_id : null;
-
-			if (targetPlanId) {
-				// Validate plan belongs to the same project
-				const { data: planData, error: planError } = await supabase
-					.from('onto_plans')
-					.select('id')
-					.eq('id', targetPlanId)
-					.eq('project_id', existingTask.project_id)
-					.single();
-
-				if (planError || !planData) {
-					return ApiResponse.notFound('Plan');
-				}
-
-				// Create bidirectional edges
-				await supabase.from('onto_edges').insert([
-					{
-						project_id: existingTask.project_id,
-						src_id: params.id,
-						src_kind: 'task',
-						dst_id: targetPlanId,
-						dst_kind: 'plan',
-						rel: 'belongs_to_plan'
-					},
-					{
-						project_id: existingTask.project_id,
-						src_id: targetPlanId,
-						src_kind: 'plan',
-						dst_id: params.id,
-						dst_kind: 'task',
-						rel: 'has_task'
-					}
-				]);
-			}
-		}
-
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			supabase,
@@ -451,7 +374,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ task: updatedTask });
 	} catch (error) {
 		console.error('Error updating task:', error);
-		return ApiResponse.error('Internal server error', 500);
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };
 
@@ -459,7 +382,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
-		return ApiResponse.error('Unauthorized', 401);
+		return ApiResponse.unauthorized('Authentication required');
 	}
 
 	const supabase = locals.supabase;
@@ -473,7 +396,10 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Task DELETE] Failed to resolve actor:', actorError);
-			return ApiResponse.error('Failed to get user actor', 500);
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to get user actor'),
+				'Failed to get user actor'
+			);
 		}
 
 		// Get task with project to verify ownership (fetch full data for logging)
@@ -493,12 +419,12 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !task) {
-			return ApiResponse.error('Task not found', 404);
+			return ApiResponse.notFound('Task');
 		}
 
 		// Check if user owns the project
 		if (task.project.created_by !== actorId) {
-			return ApiResponse.error('Access denied', 403);
+			return ApiResponse.forbidden('Access denied');
 		}
 
 		const projectId = task.project_id;

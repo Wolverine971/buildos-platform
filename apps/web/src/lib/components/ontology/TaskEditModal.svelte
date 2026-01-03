@@ -116,24 +116,12 @@
 	interface Props {
 		taskId: string;
 		projectId: string;
-		plans?: Array<{ id: string; name: string }>;
-		goals?: Array<{ id: string; name: string }>;
-		milestones?: Array<{ id: string; title: string; due_at?: string }>;
 		onClose: () => void;
 		onUpdated?: () => void;
 		onDeleted?: () => void;
 	}
 
-	let {
-		taskId,
-		projectId,
-		plans = [],
-		goals = [],
-		milestones = [],
-		onClose,
-		onUpdated,
-		onDeleted
-	}: Props = $props();
+	let { taskId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
 
 	let modalOpen = $state(true);
 	let task = $state<any>(null);
@@ -147,9 +135,6 @@
 	let title = $state('');
 	let description = $state('');
 	let priority = $state<number>(3);
-	let planId = $state('');
-	let goalId = $state('');
-	let milestoneId = $state('');
 	let stateKey = $state('todo');
 	let typeKey = $state('task.default');
 	let startAt = $state('');
@@ -258,27 +243,6 @@
 		// Cleanup
 	});
 
-	function extractGoalIdFromProps(props: Record<string, unknown> | null | undefined): string {
-		if (!props || typeof props !== 'object') return '';
-		const goalIdProp = (props as Record<string, unknown>).goal_id;
-		if (typeof goalIdProp === 'string' && goalIdProp.trim().length > 0) {
-			return goalIdProp;
-		}
-		const sourceGoalId = (props as Record<string, unknown>).source_goal_id;
-		if (typeof sourceGoalId === 'string' && sourceGoalId.trim().length > 0) {
-			return sourceGoalId;
-		}
-		return '';
-	}
-
-	function extractMilestoneIdFromProps(
-		props: Record<string, unknown> | null | undefined
-	): string {
-		if (!props || typeof props !== 'object') return '';
-		const milestoneId = (props as Record<string, unknown>).supporting_milestone_id;
-		return typeof milestoneId === 'string' && milestoneId.trim().length > 0 ? milestoneId : '';
-	}
-
 	function formatTimestamp(value: string | null | undefined): string | null {
 		if (!value) return null;
 		const date = new Date(value);
@@ -335,10 +299,6 @@
 				// Description is now a proper column (migrated from props.description)
 				description = task.description || '';
 				priority = task.priority || 3;
-				// Plan is now fetched via edge relationship, returned as task.plan object
-				planId = task.plan?.id || '';
-				goalId = extractGoalIdFromProps(task.props || null);
-				milestoneId = extractMilestoneIdFromProps(task.props || null);
 				stateKey = task.state_key || 'todo';
 				typeKey = task.type_key || 'task.default';
 				startAt = task.start_at ? formatDateTimeForInput(task.start_at) : '';
@@ -503,13 +463,10 @@
 				title: title.trim(),
 				description: description.trim() || null,
 				priority: Number(priority),
-				plan_id: planId || null,
 				state_key: stateKey,
 				type_key: typeKey || 'task.default',
 				start_at: parseDateTimeFromInput(startAt),
-				due_at: parseDateTimeFromInput(dueAt),
-				goal_id: goalId?.trim() || null,
-				supporting_milestone_id: milestoneId?.trim() || null
+				due_at: parseDateTimeFromInput(dueAt)
 			};
 
 			const response = await fetch(`/api/onto/tasks/${taskId}`, {
@@ -705,9 +662,9 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="p-1.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0"
 				>
-					<ListChecks class="w-4 h-4" />
+					<ListChecks class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
@@ -729,39 +686,38 @@
 			</div>
 			<div class="flex items-center gap-1.5">
 				<!-- Chat about this task button -->
-				<Button
-					variant="ghost"
-					size="sm"
+				<button
+					type="button"
 					onclick={openChatAbout}
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isLoading || isSaving || !task}
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 					title="Chat about this task"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this task"
-						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover"
+						class="w-5 h-5 rounded object-cover"
 					/>
-				</Button>
+				</button>
 				<!-- Focus mode button - open in dedicated page -->
 				{#if task && projectId}
 					<a
 						href="/projects/{projectId}/tasks/{taskId}"
-						class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 p-1.5 sm:p-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-grain tx-weak"
 						title="Open in focus mode"
 					>
-						<ExternalLink class="w-4 h-4 sm:w-5 sm:h-5" />
+						<ExternalLink class="w-5 h-5" />
 					</a>
 				{/if}
-				<!-- Inkprint close button -->
+				<!-- Close button -->
 				<button
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
 					aria-label="Close modal"
 				>
-					<X class="h-4 w-4" />
+					<X class="w-5 h-5" />
 				</button>
 			</div>
 		</div>
@@ -877,103 +833,27 @@
 											/>
 										</FormField>
 
-										<!-- Priority & Plan Grid -->
-										<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<FormField
-												label="Priority"
-												labelFor="priority"
-												required={true}
+										<!-- Priority -->
+										<FormField
+											label="Priority"
+											labelFor="priority"
+											required={true}
+										>
+											<Select
+												id="priority"
+												value={priority}
+												disabled={isSaving}
+												size="md"
+												placeholder="Select priority"
+												onchange={(val) => (priority = Number(val))}
 											>
-												<Select
-													id="priority"
-													value={priority}
-													disabled={isSaving}
-													size="md"
-													placeholder="Select priority"
-													onchange={(val) => (priority = Number(val))}
-												>
-													<option value={1}>P1 - Critical</option>
-													<option value={2}>P2 - High</option>
-													<option value={3}>P3 - Medium</option>
-													<option value={4}>P4 - Low</option>
-													<option value={5}>P5 - Nice to have</option>
-												</Select>
-											</FormField>
-
-											{#if plans.length > 0}
-												<FormField
-													label="Plan"
-													labelFor="plan"
-													hint="Optional project plan"
-												>
-													<Select
-														id="plan"
-														bind:value={planId}
-														disabled={isSaving}
-														size="md"
-														placeholder="No plan"
-													>
-														<option value="">No plan</option>
-														{#each plans as plan}
-															<option value={plan.id}
-																>{plan.name}</option
-															>
-														{/each}
-													</Select>
-												</FormField>
-											{/if}
-
-											{#if goals.length > 0}
-												<FormField
-													label="Goal"
-													labelFor="goal"
-													hint="Link to a project goal"
-												>
-													<Select
-														id="goal"
-														bind:value={goalId}
-														disabled={isSaving}
-														size="md"
-														placeholder="No goal"
-													>
-														<option value="">No goal</option>
-														{#each goals as goal}
-															<option value={goal.id}
-																>{goal.name}</option
-															>
-														{/each}
-													</Select>
-												</FormField>
-											{/if}
-
-											{#if milestones.length > 0}
-												<FormField
-													label="Supporting Milestone"
-													labelFor="milestone"
-													hint="Connect to a milestone"
-												>
-													<Select
-														id="milestone"
-														bind:value={milestoneId}
-														disabled={isSaving}
-														size="md"
-														placeholder="No milestone"
-													>
-														<option value="">No milestone</option>
-														{#each milestones as milestone}
-															<option value={milestone.id}>
-																{milestone.title}
-																{#if milestone.due_at}
-																	({new Date(
-																		milestone.due_at
-																	).toLocaleDateString()})
-																{/if}
-															</option>
-														{/each}
-													</Select>
-												</FormField>
-											{/if}
-										</div>
+												<option value={1}>P1 - Critical</option>
+												<option value={2}>P2 - High</option>
+												<option value={3}>P3 - Medium</option>
+												<option value={4}>P4 - Low</option>
+												<option value={5}>P5 - Nice to have</option>
+											</Select>
+										</FormField>
 
 										<!-- Task State & Type -->
 										<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1583,7 +1463,7 @@
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 tx tx-grain tx-weak"
 						icon={Trash2}
 					>
 						<span class="hidden sm:inline">Delete</span>
@@ -1599,7 +1479,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs sm:text-sm px-2 sm:px-4"
+						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						Cancel
 					</Button>
@@ -1610,7 +1490,7 @@
 						size="sm"
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
-						class="text-xs sm:text-sm px-2 sm:px-4"
+						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
 						<span class="hidden sm:inline">Save</span>
@@ -1623,7 +1503,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={() => setActiveView('details')}
-					class="text-xs sm:text-sm px-2 sm:px-4"
+					class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 				>
 					<span class="hidden sm:inline">← Details</span>
 					<span class="sm:hidden">←</span>
@@ -1635,7 +1515,7 @@
 							variant="secondary"
 							size="sm"
 							onclick={() => handlePromoteWorkspaceDocument(selectedWorkspaceDocId!)}
-							class="text-[10px] sm:text-xs px-2 py-1 sm:px-3"
+							class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 tx tx-grain tx-weak"
 						>
 							<CircleCheck class="w-3 h-3 sm:w-4 sm:h-4" />
 							<span class="hidden sm:inline">Promote</span>
@@ -1648,7 +1528,7 @@
 						onclick={saveWorkspaceDocument}
 						loading={workspaceDocSaving}
 						disabled={workspaceDocSaving || !selectedWorkspaceDocId}
-						class="text-xs sm:text-sm px-2 sm:px-4"
+						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
 						<span class="hidden sm:inline">Save Doc</span>
@@ -1730,9 +1610,6 @@
 	<TaskEditModal
 		taskId={selectedLinkedTaskId}
 		{projectId}
-		{plans}
-		{goals}
-		{milestones}
 		onClose={handleLinkedEntityModalClose}
 		onUpdated={handleLinkedEntityModalClose}
 		onDeleted={handleLinkedEntityModalClose}

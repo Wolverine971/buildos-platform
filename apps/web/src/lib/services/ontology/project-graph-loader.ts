@@ -72,30 +72,67 @@ export async function loadProjectGraphData(
 		decisionsResult,
 		edgesResult
 	] = await Promise.all([
-		supabase.from('onto_projects').select('*').eq('id', projectId).single(),
+		supabase
+			.from('onto_projects')
+			.select('*')
+			.eq('id', projectId)
+			.is('deleted_at', null)
+			.single(),
 		shouldFetch('plan')
-			? supabase.from('onto_plans').select('*').eq('project_id', projectId)
+			? supabase
+					.from('onto_plans')
+					.select('*')
+					.eq('project_id', projectId)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('task')
-			? supabase.from('onto_tasks').select('*').eq('project_id', projectId)
+			? supabase
+					.from('onto_tasks')
+					.select('*')
+					.eq('project_id', projectId)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('goal')
-			? supabase.from('onto_goals').select('*').eq('project_id', projectId)
+			? supabase
+					.from('onto_goals')
+					.select('*')
+					.eq('project_id', projectId)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('milestone')
-			? supabase.from('onto_milestones').select('*').eq('project_id', projectId)
+			? supabase
+					.from('onto_milestones')
+					.select('*')
+					.eq('project_id', projectId)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('output')
-			? supabase.from('onto_outputs').select('*').eq('project_id', projectId)
+			? supabase
+					.from('onto_outputs')
+					.select('*')
+					.eq('project_id', projectId)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('document')
-			? supabase.from('onto_documents').select('*').eq('project_id', projectId)
+			? supabase
+					.from('onto_documents')
+					.select('*')
+					.eq('project_id', projectId)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('risk')
-			? supabase.from('onto_risks').select('*').eq('project_id', projectId)
+			? supabase
+					.from('onto_risks')
+					.select('*')
+					.eq('project_id', projectId)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('decision')
-			? supabase.from('onto_decisions').select('*').eq('project_id', projectId)
+			? supabase
+					.from('onto_decisions')
+					.select('*')
+					.eq('project_id', projectId)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		// This is the key improvement - edges now have project_id!
 		supabase.from('onto_edges').select('*').eq('project_id', projectId)
@@ -184,30 +221,62 @@ export async function loadMultipleProjectGraphs(
 		decisionsResult,
 		edgesResult
 	] = await Promise.all([
-		supabase.from('onto_projects').select('*').in('id', projectIds),
+		supabase.from('onto_projects').select('*').in('id', projectIds).is('deleted_at', null),
 		shouldFetch('plan')
-			? supabase.from('onto_plans').select('*').in('project_id', projectIds)
+			? supabase
+					.from('onto_plans')
+					.select('*')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('task')
-			? supabase.from('onto_tasks').select('*').in('project_id', projectIds)
+			? supabase
+					.from('onto_tasks')
+					.select('*')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('goal')
-			? supabase.from('onto_goals').select('*').in('project_id', projectIds)
+			? supabase
+					.from('onto_goals')
+					.select('*')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('milestone')
-			? supabase.from('onto_milestones').select('*').in('project_id', projectIds)
+			? supabase
+					.from('onto_milestones')
+					.select('*')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('output')
-			? supabase.from('onto_outputs').select('*').in('project_id', projectIds)
+			? supabase
+					.from('onto_outputs')
+					.select('*')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('document')
-			? supabase.from('onto_documents').select('*').in('project_id', projectIds)
+			? supabase
+					.from('onto_documents')
+					.select('*')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('risk')
-			? supabase.from('onto_risks').select('*').in('project_id', projectIds)
+			? supabase
+					.from('onto_risks')
+					.select('*')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('decision')
-			? supabase.from('onto_decisions').select('*').in('project_id', projectIds)
+			? supabase
+					.from('onto_decisions')
+					.select('*')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		supabase.from('onto_edges').select('*').in('project_id', projectIds)
 	]);

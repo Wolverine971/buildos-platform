@@ -136,8 +136,8 @@
 	// State colors for output badges
 	const STATE_COLUMNS = [
 		{ key: 'draft', label: 'Draft', color: 'bg-muted' },
+		{ key: 'in_progress', label: 'In Progress', color: 'bg-accent/10' },
 		{ key: 'review', label: 'In Review', color: 'bg-amber-500/10' },
-		{ key: 'approved', label: 'Approved', color: 'bg-accent/10' },
 		{ key: 'published', label: 'Published', color: 'bg-emerald-500/10' }
 	];
 
@@ -406,8 +406,9 @@
 		if (s === 'complete' || s === 'completed' || s === 'shipped' || s === 'published')
 			return 'published';
 		if (s === 'in_review' || s === 'reviewing' || s === 'review') return 'review';
-		if (s === 'approved') return 'approved';
-		if (s === 'in_progress' || s === 'drafting' || s === 'draft') return 'draft';
+		if (s === 'approved') return 'published';
+		if (s === 'in_progress' || s === 'active') return 'in_progress';
+		if (s === 'drafting' || s === 'draft') return 'draft';
 		// Check if it's already a valid key
 		if (STATE_COLUMNS.some((c) => c.key === s)) return s;
 		return 'draft';
@@ -1858,9 +1859,6 @@
 	{#await import('$lib/components/ontology/TaskCreateModal.svelte') then { default: TaskCreateModal }}
 		<TaskCreateModal
 			projectId={project.id}
-			{plans}
-			{goals}
-			milestones={milestones.map((m) => ({ ...m, due_at: m.due_at ?? undefined }))}
 			onClose={() => (showTaskCreateModal = false)}
 			onCreated={handleTaskCreated}
 		/>
@@ -1872,9 +1870,6 @@
 	<TaskEditModal
 		taskId={editingTaskId}
 		projectId={project.id}
-		{plans}
-		{goals}
-		milestones={milestones.map((m) => ({ ...m, due_at: m.due_at ?? undefined }))}
 		onClose={() => (editingTaskId = null)}
 		onUpdated={handleTaskUpdated}
 		onDeleted={handleTaskDeleted}

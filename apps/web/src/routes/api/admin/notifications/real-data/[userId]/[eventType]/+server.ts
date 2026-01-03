@@ -24,14 +24,16 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			case 'brief.completed': {
 				// Fetch user's most recent brief
 				const { data: brief } = await supabase
-					.from('daily_briefs')
-					.select('id, brief_date, task_count, project_count')
+					.from('ontology_daily_briefs')
+					.select('id, brief_date, metadata')
 					.eq('user_id', userId)
+					.eq('generation_status', 'completed')
 					.order('brief_date', { ascending: false })
 					.limit(1)
 					.single();
 
 				if (brief) {
+					const metadata = (brief.metadata || {}) as Record<string, any>;
 					// Get user's timezone
 					const { data: userData } = await supabase
 						.from('users')
@@ -42,9 +44,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					payload = {
 						brief_id: brief.id,
 						brief_date: brief.brief_date,
-						timezone: userData?.timezone || 'America/Los_Angeles',
-						task_count: brief.task_count || 0,
-						project_count: brief.project_count || 0
+						timezone: metadata?.timezone || userData?.timezone || 'America/Los_Angeles',
+						task_count: metadata?.totalTasks || 0,
+						project_count: metadata?.totalProjects || 0
 					};
 				}
 				break;
@@ -69,34 +71,54 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			case 'brain_dump.processed': {
 				// Fetch user's most recent brain dump
 				const { data: brainDump } = await supabase
-					.from('brain_dumps')
-					.select(
-						`
-						id,
-						project_id,
-						processing_time_ms,
-						projects!inner(name)
-					`
-					)
+					.from('onto_braindumps')
+					.select('id, status, metadata, processed_at, created_at')
 					.eq('user_id', userId)
-					.not('project_id', 'is', null)
+					.eq('status', 'processed')
 					.order('created_at', { ascending: false })
 					.limit(1)
 					.single();
 
 				if (brainDump) {
-					// Count tasks created from this brain dump
-					const { count: taskCount } = await supabase
-						.from('tasks')
-						.select('id', { count: 'exact', head: true })
-						.eq('brain_dump_id', brainDump.id);
+					const metadata = (brainDump.metadata || {}) as Record<string, any>;
+					const projectId =
+						typeof metadata?.project_id === 'string'
+							? metadata.project_id
+							: typeof metadata?.projectId === 'string'
+								? metadata.projectId
+								: null;
+					let projectName = 'Unlinked Project';
+
+					if (projectId) {
+						const { data: project } = await supabase
+							.from('onto_projects')
+							.select('name')
+							.eq('id', projectId)
+							.single();
+						projectName = project?.name || 'Unnamed Project';
+					}
+
+					const tasksCreated =
+						typeof metadata?.tasks_created === 'number'
+							? metadata.tasks_created
+							: typeof metadata?.task_count === 'number'
+								? metadata.task_count
+								: 0;
+					const processingTimeMs =
+						typeof metadata?.processing_time_ms === 'number'
+							? metadata.processing_time_ms
+							: brainDump.processed_at && brainDump.created_at
+								? new Date(brainDump.processed_at).getTime() -
+									new Date(brainDump.created_at).getTime()
+								: 1500;
+					const safeProcessingTimeMs = Math.max(0, processingTimeMs);
 
 					payload = {
 						brain_dump_id: brainDump.id,
-						project_id: brainDump.project_id,
-						project_name: (brainDump.projects as any)?.name || 'Unnamed Project',
-						tasks_created: taskCount || 0,
-						processing_time_ms: brainDump.processing_time_ms || 1500
+						project_id: projectId || '',
+						project_name: projectName,
+						tasks_created: tasksCreated,
+						processing_time_ms: safeProcessingTimeMs
 					};
 				}
 				break;
@@ -106,24 +128,25 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				// Fetch user's next upcoming task
 				const now = new Date().toISOString();
 				const { data: task } = await supabase
-					.from('tasks')
+					.from('onto_tasks')
 					.select(
 						`
 						id,
 						title,
-						due_date,
-						projects!inner(id, name)
+						due_at,
+						onto_projects!inner(id, name)
 					`
 					)
-					.eq('user_id', userId)
-					.not('due_date', 'is', null)
-					.gte('due_date', now)
-					.order('due_date', { ascending: true })
+					.eq('created_by', userId)
+					.not('due_at', 'is', null)
+					.gte('due_at', now)
+					.neq('state_key', 'done')
+					.order('due_at', { ascending: true })
 					.limit(1)
 					.single();
 
-				if (task && task.due_date) {
-					const dueDate = new Date(task.due_date);
+				if (task && task.due_at) {
+					const dueDate = new Date(task.due_at);
 					const hoursUntilDue = Math.floor(
 						(dueDate.getTime() - Date.now()) / (1000 * 60 * 60)
 					);
@@ -131,9 +154,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					payload = {
 						task_id: task.id,
 						task_title: task.title,
-						project_id: (task.projects as any)?.id || '',
-						project_name: (task.projects as any)?.name || 'Unnamed Project',
-						due_date: task.due_date,
+						project_id: (task.onto_projects as any)?.id || '',
+						project_name: (task.onto_projects as any)?.name || 'Unnamed Project',
+						due_date: task.due_at,
 						hours_until_due: Math.max(0, hoursUntilDue)
 					};
 				}
@@ -142,35 +165,53 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 			case 'project.phase_scheduled': {
 				// Fetch user's most recent project with phases
-				const { data: phase } = await supabase
-					.from('project_phases')
+				const { data: phasePlans } = await supabase
+					.from('onto_plans')
 					.select(
 						`
 						id,
 						name,
-						target_date,
-						projects!inner(id, name)
+						project_id,
+						props,
+						created_at,
+						onto_projects!inner(id, name)
 					`
 					)
-					.eq('projects.user_id', userId)
-					.not('target_date', 'is', null)
-					.order('target_date', { ascending: false })
-					.limit(1)
-					.single();
+					.eq('type_key', 'plan.phase.project')
+					.eq('created_by', userId)
+					.is('deleted_at', null)
+					.order('created_at', { ascending: false })
+					.limit(5);
 
-				if (phase) {
+				const phasePlan =
+					(phasePlans || []).find((plan: any) => {
+						const dateRange = plan?.props?.date_range || plan?.props?.dateRange;
+						return dateRange?.start || dateRange?.end;
+					}) || (phasePlans || [])[0];
+
+				if (phasePlan) {
+					const dateRange =
+						(phasePlan.props as any)?.date_range ||
+						(phasePlan.props as any)?.dateRange ||
+						{};
+					const scheduledDate =
+						dateRange?.start ||
+						dateRange?.end ||
+						phasePlan.created_at ||
+						new Date().toISOString();
+
 					// Count tasks in this phase
 					const { count: taskCount } = await supabase
-						.from('tasks')
+						.from('onto_tasks')
 						.select('id', { count: 'exact', head: true })
-						.eq('phase_id', phase.id);
+						.eq('plan_id', phasePlan.id);
 
 					payload = {
-						project_id: (phase.projects as any)?.id || '',
-						project_name: (phase.projects as any)?.name || 'Unnamed Project',
-						phase_id: phase.id,
-						phase_name: phase.name,
-						scheduled_date: phase.target_date || new Date().toISOString(),
+						project_id: phasePlan.project_id || '',
+						project_name: (phasePlan.onto_projects as any)?.name || 'Unnamed Project',
+						phase_id: phasePlan.id,
+						phase_name: phasePlan.name,
+						scheduled_date: scheduledDate,
 						task_count: taskCount || 0
 					};
 				}

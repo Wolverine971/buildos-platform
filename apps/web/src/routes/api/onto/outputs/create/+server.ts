@@ -12,6 +12,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { OUTPUT_STATES } from '$lib/types/onto';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -33,6 +34,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('name is required');
 		}
 
+		if (state_key !== undefined && !OUTPUT_STATES.includes(String(state_key))) {
+			return ApiResponse.badRequest(`state_key must be one of: ${OUTPUT_STATES.join(', ')}`);
+		}
+
 		const supabase = locals.supabase;
 		const chatSessionId = getChatSessionIdFromRequest(request);
 
@@ -49,7 +54,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (!project) {
-			return ApiResponse.notFound('Project not found');
+			return ApiResponse.notFound('Project');
 		}
 
 		// Get user's actor ID for ownership check
@@ -97,7 +102,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (createError) {
 			console.error('[Output API] Failed to create output:', createError);
-			return ApiResponse.databaseError(`Failed to create output: ${createError.message}`);
+			return ApiResponse.databaseError(createError);
 		}
 
 		// Create edge from project to output
@@ -143,6 +148,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.success({ output });
 	} catch (err) {
 		console.error('[Output API] Unexpected error in POST:', err);
-		return ApiResponse.internalError('An unexpected error occurred');
+		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };

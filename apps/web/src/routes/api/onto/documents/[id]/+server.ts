@@ -14,6 +14,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { normalizeDocumentStateInput } from '../../shared/document-state';
 
 type Locals = App.Locals;
 
@@ -139,7 +140,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const { title, state_key, type_key, body_markdown, content, description, props } =
 			body as Record<string, unknown>;
 
-		if (state_key !== undefined && !DOCUMENT_STATES.includes(String(state_key))) {
+		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
+		const normalizedState = normalizeDocumentStateInput(state_key);
+
+		if (hasStateInput && !normalizedState) {
 			return ApiResponse.badRequest(
 				`state_key must be one of: ${DOCUMENT_STATES.join(', ')}`
 			);
@@ -155,8 +159,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			hasUpdates = true;
 		}
 
-		if (typeof state_key === 'string' && state_key.trim()) {
-			updatePayload.state_key = state_key.trim();
+		if (hasStateInput && normalizedState) {
+			updatePayload.state_key = normalizedState;
 			hasUpdates = true;
 		}
 

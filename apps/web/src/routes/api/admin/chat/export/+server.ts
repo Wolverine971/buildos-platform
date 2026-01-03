@@ -46,62 +46,28 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
-		// Get chat sessions with user info
-		const { data: sessionsData, error: sessionsError } = await supabase
-			.from('chat_sessions')
-			.select(
-				`
-        *,
-        users!inner(email, name)
-      `
-			)
-			.gte('created_at', startDate.toISOString())
-			.order('created_at', { ascending: false });
+		const countToolCalls = (toolCalls: unknown): number => {
+			if (!toolCalls) return 0;
+			if (Array.isArray(toolCalls)) return toolCalls.length;
+			if (typeof toolCalls === 'string') {
+				try {
+					const parsed = JSON.parse(toolCalls);
+					if (Array.isArray(parsed)) return parsed.length;
+				} catch {
+					return 1;
+				}
+			}
+			return 1;
+		};
 
-		if (sessionsError) throw sessionsError;
-
-		// Get messages for these sessions
-		const sessionIds = sessionsData?.map((s) => s.id) || [];
-
-		const { data: messagesData, error: messagesError } = await supabase
-			.from('chat_messages')
-			.select('*')
-			.in('session_id', sessionIds)
-			.order('created_at', { ascending: true });
-
-		if (messagesError) throw messagesError;
-
-		// Get tool executions
-		const { data: toolExecutionsData, error: toolExecutionsError } = await supabase
-			.from('chat_tool_executions')
-			.select('*')
-			.in('session_id', sessionIds)
-			.order('created_at', { ascending: true });
-
-		if (toolExecutionsError) throw toolExecutionsError;
-
-		// Get agent plans
-		const { data: plansData, error: plansError } = await supabase
-			.from('agent_plans')
-			.select('*')
-			.in('session_id', sessionIds)
-			.order('created_at', { ascending: true });
-
-		if (plansError) throw plansError;
-
-		// Get compressions
-		const { data: compressionsData, error: compressionsError } = await supabase
-			.from('chat_compressions')
-			.select('*')
-			.in('session_id', sessionIds)
-			.order('created_at', { ascending: true });
-
-		if (compressionsError) throw compressionsError;
-
-		// Get agent chat sessions
 		const { data: agentSessionsData, error: agentSessionsError } = await supabase
 			.from('agent_chat_sessions')
-			.select('*')
+			.select(
+				`
+				*,
+				users!agent_chat_sessions_user_id_fkey(email, name)
+			`
+			)
 			.gte('created_at', startDate.toISOString())
 			.order('created_at', { ascending: false });
 
@@ -111,47 +77,69 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		let agentChatMessagesData: any[] = [];
 		let agentExecutionsData: any[] = [];
+		let plansData: any[] = [];
 
 		if (agentSessionIds.length > 0) {
-			const { data: agentChatMessages, error: agentChatMessagesError } = await supabase
-				.from('agent_chat_messages')
-				.select('*')
-				.in('agent_session_id', agentSessionIds)
-				.order('created_at', { ascending: true });
+			const [
+				{ data: agentChatMessages, error: agentChatMessagesError },
+				{ data: agentExecutions, error: agentExecutionsError },
+				{ data: agentPlans, error: agentPlansError }
+			] = await Promise.all([
+				supabase
+					.from('agent_chat_messages')
+					.select('*')
+					.in('agent_session_id', agentSessionIds)
+					.order('created_at', { ascending: true }),
+				supabase
+					.from('agent_executions')
+					.select('*')
+					.in('agent_session_id', agentSessionIds)
+					.order('created_at', { ascending: true }),
+				supabase
+					.from('agent_plans')
+					.select('*')
+					.in('session_id', agentSessionIds)
+					.order('created_at', { ascending: true })
+			]);
 
 			if (agentChatMessagesError) throw agentChatMessagesError;
-			agentChatMessagesData = agentChatMessages || [];
-
-			const { data: agentExecutions, error: agentExecutionsError } = await supabase
-				.from('agent_executions')
-				.select('*')
-				.in('agent_session_id', agentSessionIds)
-				.order('created_at', { ascending: true });
-
 			if (agentExecutionsError) throw agentExecutionsError;
+			if (agentPlansError) throw agentPlansError;
+
+			agentChatMessagesData = agentChatMessages || [];
 			agentExecutionsData = agentExecutions || [];
+			plansData = agentPlans || [];
 		}
+
+		const tokensBySession = new Map<string, number>();
+		const toolCallsBySession = new Map<string, number>();
+
+		agentChatMessagesData.forEach((message) => {
+			if (!message.agent_session_id) return;
+			const tokens = message.tokens_used || 0;
+			const toolCalls = countToolCalls(message.tool_calls);
+			tokensBySession.set(
+				message.agent_session_id,
+				(tokensBySession.get(message.agent_session_id) || 0) + tokens
+			);
+			toolCallsBySession.set(
+				message.agent_session_id,
+				(toolCallsBySession.get(message.agent_session_id) || 0) + toolCalls
+			);
+		});
 
 		const exportData = {
 			export_date: now.toISOString(),
 			timeframe,
-			sessions: sessionsData,
-			messages: messagesData,
-			tool_executions: toolExecutionsData,
-			agent_plans: plansData,
-			compressions: compressionsData,
 			agent_chat_sessions: agentSessionsData,
 			agent_chat_messages: agentChatMessagesData,
 			agent_executions: agentExecutionsData,
+			agent_plans: plansData,
 			summary: {
-				total_sessions: sessionsData?.length || 0,
-				total_messages: messagesData?.length || 0,
-				total_tool_executions: toolExecutionsData?.length || 0,
-				total_plans: plansData?.length || 0,
-				total_compressions: compressionsData?.length || 0,
 				total_agent_sessions: agentSessionsData?.length || 0,
 				total_agent_messages: agentChatMessagesData?.length || 0,
-				total_agent_executions: agentExecutionsData?.length || 0
+				total_agent_executions: agentExecutionsData?.length || 0,
+				total_agent_plans: plansData?.length || 0
 			}
 		};
 
@@ -177,23 +165,26 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					'Tokens Used',
 					'Tool Calls',
 					'Created At',
-					'Updated At'
+					'Completed At'
 				].join(',')
 			];
 
 			// Data rows
-			sessionsData?.forEach((session) => {
+			agentSessionsData?.forEach((session) => {
+				const tokens = tokensBySession.get(session.id) || 0;
+				const toolCalls = toolCallsBySession.get(session.id) || 0;
+				const contextType = session.context_type || session.session_type || '';
 				csvRows.push(
 					[
 						session.id,
-						session.users.email,
+						session.users?.email || '',
 						session.status,
-						session.context_type,
+						contextType,
 						session.message_count || 0,
-						session.total_tokens_used || 0,
-						session.tool_call_count || 0,
+						tokens,
+						toolCalls,
 						session.created_at,
-						session.updated_at
+						session.completed_at || ''
 					].join(',')
 				);
 			});

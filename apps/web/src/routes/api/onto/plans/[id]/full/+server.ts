@@ -24,7 +24,7 @@ import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-help
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
-		return ApiResponse.error('Unauthorized', 401);
+		return ApiResponse.unauthorized('Authentication required');
 	}
 
 	const supabase = locals.supabase;
@@ -47,6 +47,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				`
 				)
 				.eq('id', planId)
+				.is('deleted_at', null)
 				.single()
 		]);
 
@@ -55,16 +56,19 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Plan Full GET] Failed to resolve actor:', actorError);
-			return ApiResponse.error('Failed to get user actor', 500);
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to get user actor'),
+				'Failed to get user actor'
+			);
 		}
 
 		if (planError || !plan) {
-			return ApiResponse.error('Plan not found', 404);
+			return ApiResponse.notFound('Plan');
 		}
 
 		// Authorization check
 		if (plan.project.created_by !== actorId) {
-			return ApiResponse.error('Access denied', 403);
+			return ApiResponse.forbidden('Access denied');
 		}
 
 		// Phase 2: Fetch linked entities (can run after auth is verified)
@@ -79,6 +83,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Plan Full GET] Error fetching plan data:', error);
-		return ApiResponse.error('Internal server error', 500);
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

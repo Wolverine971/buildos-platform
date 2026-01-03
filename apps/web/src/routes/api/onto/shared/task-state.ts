@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/onto/shared/task-state.ts
-import { TASK_STATES } from '$lib/types/onto';
+import { TASK_STATES, type TaskState } from '$lib/types/onto';
 
-const TASK_STATE_ALIASES: Record<string, string> = {
+const TASK_STATE_ALIASES: Record<string, TaskState> = {
 	pending: 'todo',
 	not_started: 'todo',
 	backlog: 'todo',
@@ -13,9 +13,9 @@ const TASK_STATE_ALIASES: Record<string, string> = {
 	complete: 'done'
 };
 
-const TASK_STATE_SET = new Set(TASK_STATES);
+const TASK_STATE_SET = new Set<TaskState>(TASK_STATES);
 
-export function normalizeTaskStateInput(state: unknown): string | undefined {
+export function normalizeTaskStateInput(state: unknown): TaskState | undefined {
 	if (state === undefined || state === null) return undefined;
 	if (typeof state !== 'string') return undefined;
 
@@ -26,5 +26,5 @@ export function normalizeTaskStateInput(state: unknown): string | undefined {
 	if (!normalized) return undefined;
 
 	const candidate = TASK_STATE_ALIASES[normalized] ?? normalized;
-	return TASK_STATE_SET.has(candidate) ? candidate : undefined;
+	return TASK_STATE_SET.has(candidate as TaskState) ? (candidate as TaskState) : undefined;
 }

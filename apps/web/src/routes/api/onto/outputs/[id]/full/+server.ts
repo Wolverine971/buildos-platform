@@ -24,7 +24,7 @@ import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-help
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const session = await locals.safeGetSession();
 	if (!session?.user) {
-		return ApiResponse.error('Unauthorized', 401);
+		return ApiResponse.unauthorized('Authentication required');
 	}
 
 	const supabase = locals.supabase;
@@ -56,16 +56,19 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Output Full GET] Failed to resolve actor:', actorError);
-			return ApiResponse.error('Failed to get user actor', 500);
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to get user actor'),
+				'Failed to get user actor'
+			);
 		}
 
 		if (outputError || !output) {
-			return ApiResponse.error('Output not found', 404);
+			return ApiResponse.notFound('Output');
 		}
 
 		// Authorization check
 		if (output.project.created_by !== actorId) {
-			return ApiResponse.error('Access denied', 403);
+			return ApiResponse.forbidden('Access denied');
 		}
 
 		// Phase 2: Fetch linked entities (can run after auth is verified)
@@ -80,6 +83,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Output Full GET] Error fetching output data:', error);
-		return ApiResponse.error('Internal server error', 500);
+		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

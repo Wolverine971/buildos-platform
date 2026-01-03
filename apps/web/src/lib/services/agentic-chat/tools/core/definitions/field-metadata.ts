@@ -150,7 +150,7 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 		plan_id: {
 			type: 'string',
 			description:
-				'Optional plan UUID (INPUT ONLY - not a database column). When provided during task creation/update, creates edge relationships in onto_edges table (task->plan with rel=belongs_to_plan). Query task-plan relationships via onto_edges, not directly on onto_tasks.',
+				'Optional plan UUID (INPUT ONLY - not a database column). When provided during task creation, creates a plan→task edge in onto_edges (rel=has_task). Query task-plan relationships via onto_edges, not directly on onto_tasks.',
 			required: false,
 			example: '9a9c0d90-736f-4a2b-8ac0-1234567890ab'
 		},

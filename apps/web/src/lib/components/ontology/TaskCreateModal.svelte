@@ -86,21 +86,11 @@
 
 	interface Props {
 		projectId: string;
-		plans?: Array<{ id: string; name: string }>;
-		goals?: Array<{ id: string; name: string }>;
-		milestones?: Array<{ id: string; title: string; due_at?: string }>;
 		onClose: () => void;
 		onCreated?: (taskId: string) => void;
 	}
 
-	let {
-		projectId,
-		plans = [],
-		goals = [],
-		milestones = [],
-		onClose,
-		onCreated
-	}: Props = $props();
+	let { projectId, onClose, onCreated }: Props = $props();
 
 	let selectedTemplate = $state<TaskType | null>(null);
 	let showTemplateSelection = $state(false);
@@ -112,9 +102,6 @@
 	let title = $state('');
 	let description = $state('');
 	let priority = $state(3);
-	let planId = $state('');
-	let goalId = $state('');
-	let milestoneId = $state('');
 	let stateKey = $state('todo');
 	let startAt = $state('');
 	let dueAt = $state('');
@@ -166,10 +153,7 @@
 				title: title.trim(),
 				description: description.trim() || null,
 				priority: Number(priority),
-				plan_id: planId || null,
 				state_key: stateKey || 'todo',
-				goal_id: goalId?.trim() || null,
-				supporting_milestone_id: milestoneId?.trim() || null,
 				start_at: parseDateTimeFromInput(startAt),
 				due_at: parseDateTimeFromInput(dueAt),
 				classification_source: 'create_modal'
@@ -207,9 +191,6 @@
 		title = '';
 		description = '';
 		priority = 3;
-		planId = '';
-		goalId = '';
-		milestoneId = '';
 		stateKey = 'todo';
 		startAt = '';
 		dueAt = '';
@@ -476,79 +457,6 @@
 											{/each}
 										</Select>
 									</FormField>
-								</div>
-
-								<!-- Optional Associations -->
-								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									{#if plans.length > 0}
-										<FormField
-											label="Plan"
-											labelFor="plan"
-											hint="Optional project plan"
-										>
-											<Select
-												id="plan"
-												bind:value={planId}
-												disabled={isSaving}
-												size="md"
-												placeholder="No plan"
-											>
-												<option value="">No plan</option>
-												{#each plans as plan}
-													<option value={plan.id}>{plan.name}</option>
-												{/each}
-											</Select>
-										</FormField>
-									{/if}
-
-									{#if goals.length > 0}
-										<FormField
-											label="Goal"
-											labelFor="goal"
-											hint="Link to a project goal"
-										>
-											<Select
-												id="goal"
-												bind:value={goalId}
-												disabled={isSaving}
-												size="md"
-												placeholder="No goal"
-											>
-												<option value="">No goal</option>
-												{#each goals as goal}
-													<option value={goal.id}>{goal.name}</option>
-												{/each}
-											</Select>
-										</FormField>
-									{/if}
-
-									{#if milestones.length > 0}
-										<FormField
-											label="Supporting Milestone"
-											labelFor="milestone"
-											hint="Connect to a milestone"
-										>
-											<Select
-												id="milestone"
-												bind:value={milestoneId}
-												disabled={isSaving}
-												size="md"
-												placeholder="No milestone"
-											>
-												<option value="">No milestone</option>
-												{#each milestones as milestone}
-													<option value={milestone.id}>
-														{milestone.title}
-														{#if milestone.due_at}
-															({new Date(
-																milestone.due_at
-															).toLocaleDateString()})
-														{/if}
-													</option>
-												{/each}
-											</Select>
-										</FormField>
-									{/if}
 								</div>
 
 								<!-- Scheduled Section -->

@@ -38,7 +38,7 @@
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
-	import type { ComponentType } from 'svelte';
+	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -48,12 +48,13 @@
 	import { RISK_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let AgentChatModalComponent = $state<Component<any> | null>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
 			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-			AgentChatModalComponent = mod.default;
+			AgentChatModalComponent = mod.default as Component<any>;
 		}
 		return AgentChatModalComponent;
 	}

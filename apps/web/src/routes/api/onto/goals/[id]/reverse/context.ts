@@ -66,6 +66,7 @@ export async function loadGoalReverseContext(
 		.from('onto_goals')
 		.select('id, project_id, name, type_key, props')
 		.eq('id', goalId)
+		.is('deleted_at', null)
 		.maybeSingle<GoalRow>();
 
 	if (goalError) {
@@ -102,6 +103,7 @@ export async function loadGoalReverseContext(
 		.from('onto_milestones')
 		.select('id, title, due_at')
 		.eq('project_id', projectRow.id)
+		.is('deleted_at', null)
 		.order('due_at', { ascending: true });
 
 	if (milestonesError) {
@@ -113,6 +115,7 @@ export async function loadGoalReverseContext(
 		.from('onto_tasks')
 		.select('id, title, state_key, type_key')
 		.eq('project_id', projectRow.id)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: true })
 		.limit(40);
 
@@ -129,14 +132,14 @@ export async function loadGoalReverseContext(
 		const { data: taskPlanEdges } = await supabase
 			.from('onto_edges')
 			.select('src_id, dst_id')
-			.eq('rel', 'belongs_to_plan')
-			.eq('src_kind', 'task')
-			.eq('dst_kind', 'plan')
-			.in('src_id', taskIds);
+			.eq('rel', 'has_task')
+			.eq('src_kind', 'plan')
+			.eq('dst_kind', 'task')
+			.in('dst_id', taskIds);
 
 		if (taskPlanEdges) {
 			for (const edge of taskPlanEdges) {
-				taskPlanMap.set(edge.src_id, edge.dst_id);
+				taskPlanMap.set(edge.dst_id, edge.src_id);
 			}
 		}
 	}

@@ -7,6 +7,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { Project, Document } from '$lib/types/onto';
+import { PROJECT_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
@@ -45,17 +46,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const project = projectResult.data;
 		if (!project) {
-			return ApiResponse.notFound('Project not found');
+			return ApiResponse.notFound('Project');
 		}
 
 		// Return 404 for soft-deleted projects (they shouldn't be accessed directly)
 		if (project.deleted_at) {
-			return ApiResponse.notFound('Project not found');
+			return ApiResponse.notFound('Project');
 		}
 
 		if (actorResult.error || !actorResult.data) {
 			console.error('[Project API] Failed to get actor:', actorResult.error);
-			return ApiResponse.error('Failed to resolve user actor', 500);
+			return ApiResponse.internalError(
+				actorResult.error || new Error('Failed to resolve user actor'),
+				'Failed to resolve user actor'
+			);
 		}
 
 		const actorId = actorResult.data;
@@ -64,7 +68,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		// OPTIMIZATION: Fetch ALL related entities in a single parallel batch
-		// Including context document (via JOIN), task-plan edges, and all entity tables
+		// Including context document (via JOIN) and all entity tables
 		// Note: FSM transitions removed - using simple enum states now (see FSM_SIMPLIFICATION_COMPLETE.md)
 		const [
 			goalsResult,
@@ -78,19 +82,63 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			risksResult,
 			decisionsResult,
 			metricsResult,
-			contextDocResult,
-			taskPlanEdgesResult
+			contextDocResult
 		] = await Promise.all([
-			supabase.from('onto_goals').select('*').eq('project_id', id).order('created_at'),
-			supabase.from('onto_requirements').select('*').eq('project_id', id).order('created_at'),
-			supabase.from('onto_plans').select('*').eq('project_id', id).order('created_at'),
-			supabase.from('onto_tasks').select('*').eq('project_id', id).order('created_at'),
-			supabase.from('onto_outputs').select('*').eq('project_id', id).order('created_at'),
-			supabase.from('onto_documents').select('*').eq('project_id', id).order('created_at'),
+			supabase
+				.from('onto_goals')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('created_at'),
+			supabase
+				.from('onto_requirements')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('created_at'),
+			supabase
+				.from('onto_plans')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('created_at'),
+			supabase
+				.from('onto_tasks')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('created_at'),
+			supabase
+				.from('onto_outputs')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('created_at'),
+			supabase
+				.from('onto_documents')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('created_at'),
 			supabase.from('onto_sources').select('*').eq('project_id', id).order('created_at'),
-			supabase.from('onto_milestones').select('*').eq('project_id', id).order('due_at'),
-			supabase.from('onto_risks').select('*').eq('project_id', id).order('created_at'),
-			supabase.from('onto_decisions').select('*').eq('project_id', id).order('decision_at'),
+			supabase
+				.from('onto_milestones')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('due_at'),
+			supabase
+				.from('onto_risks')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('created_at'),
+			supabase
+				.from('onto_decisions')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('decision_at'),
 			supabase.from('onto_metrics').select('*').eq('project_id', id).order('created_at'),
 			// OPTIMIZATION: Fetch context document via edge in single query with JOIN
 			supabase
@@ -100,14 +148,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.eq('src_id', id)
 				.eq('rel', 'has_context_document')
 				.eq('dst_kind', 'document')
-				.maybeSingle(),
-			// OPTIMIZATION: Fetch task-plan edges in parallel (not after tasks loaded)
-			supabase
-				.from('onto_edges')
-				.select('src_id, dst_id')
-				.eq('rel', 'belongs_to_plan')
-				.eq('src_kind', 'task')
-				.eq('dst_kind', 'plan')
+				.is('document.deleted_at', null)
+				.maybeSingle()
 		]);
 
 		// Log any errors (non-fatal)
@@ -134,33 +176,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// The !inner join creates an aliased property with the table name
 		const contextDocument: Document | null = (contextDocResult.data as any)?.document ?? null;
 
-		// Enrich tasks with plan information from pre-fetched edges
-		const tasks = tasksResult.data || [];
-		const plans = plansResult.data || [];
-		const taskPlanEdges = taskPlanEdgesResult.data || [];
-
-		if (tasks.length > 0 && taskPlanEdges.length > 0) {
-			// Build a set of task IDs for this project for filtering
-			const projectTaskIds = new Set(tasks.map((t: any) => t.id));
-
-			// Build map from task -> plan (only for tasks in this project)
-			const taskToPlanMap = new Map<string, string>();
-			for (const edge of taskPlanEdges) {
-				if (projectTaskIds.has(edge.src_id)) {
-					taskToPlanMap.set(edge.src_id, edge.dst_id);
-				}
-			}
-
-			// Add plan_id and plan object to each task for backward compatibility
-			for (const task of tasks) {
-				const planId = taskToPlanMap.get(task.id);
-				if (planId) {
-					(task as any).plan_id = planId;
-					(task as any).plan = plans.find((p: any) => p.id === planId) || null;
-				}
-			}
-		}
-
 		return ApiResponse.success({
 			project,
 			goals: goalsResult.data || [],
@@ -181,6 +196,27 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
+
+const FACET_CONTEXT_VALUES = new Set([
+	'personal',
+	'client',
+	'commercial',
+	'internal',
+	'open_source',
+	'community',
+	'academic',
+	'nonprofit',
+	'startup'
+]);
+const FACET_SCALE_VALUES = new Set(['micro', 'small', 'medium', 'large', 'epic']);
+const FACET_STAGE_VALUES = new Set([
+	'discovery',
+	'planning',
+	'execution',
+	'launch',
+	'maintenance',
+	'complete'
+]);
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -229,6 +265,32 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (!hasUpdates) {
 			return ApiResponse.badRequest('No update fields provided');
+		}
+
+		if (state_key !== undefined) {
+			if (typeof state_key !== 'string' || !PROJECT_STATES.includes(state_key)) {
+				return ApiResponse.badRequest(
+					`state_key must be one of: ${PROJECT_STATES.join(', ')}`
+				);
+			}
+		}
+
+		if (facet_context !== undefined && facet_context !== null) {
+			if (typeof facet_context !== 'string' || !FACET_CONTEXT_VALUES.has(facet_context)) {
+				return ApiResponse.badRequest('facet_context is invalid');
+			}
+		}
+
+		if (facet_scale !== undefined && facet_scale !== null) {
+			if (typeof facet_scale !== 'string' || !FACET_SCALE_VALUES.has(facet_scale)) {
+				return ApiResponse.badRequest('facet_scale is invalid');
+			}
+		}
+
+		if (facet_stage !== undefined && facet_stage !== null) {
+			if (typeof facet_stage !== 'string' || !FACET_STAGE_VALUES.has(facet_stage)) {
+				return ApiResponse.badRequest('facet_stage is invalid');
+			}
 		}
 
 		const supabase = locals.supabase;

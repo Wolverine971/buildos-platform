@@ -75,6 +75,10 @@
 		}
 		return formError;
 	});
+	const hasTags = $derived.by(() => {
+		const tags = documentProps?.tags;
+		return Array.isArray(tags) && tags.length > 0;
+	});
 
 	let lastLoadedId = $state<string | null>(null);
 	const datalistId = `document-type-${Math.random().toString(36).slice(2, 9)}`;
@@ -113,6 +117,22 @@
 		lastLoadedId = null;
 	}
 
+	function normalizeDocumentState(state?: string | null): string {
+		if (!state) return 'draft';
+		const normalized = state
+			.trim()
+			.toLowerCase()
+			.replace(/[\s-]+/g, '_');
+		if (!normalized) return 'draft';
+		if (normalized === 'review') return 'in_review';
+		if (normalized === 'inreview') return 'in_review';
+		if (normalized === 'archive') return 'archived';
+		if (!DOCUMENT_STATES.includes(normalized as (typeof DOCUMENT_STATES)[number])) {
+			return 'draft';
+		}
+		return normalized;
+	}
+
 	async function loadDocument(id: string) {
 		try {
 			loading = true;
@@ -133,7 +153,7 @@
 
 			title = document.title ?? '';
 			typeKey = document.type_key ?? '';
-			stateKey = document.state_key ?? 'draft';
+			stateKey = normalizeDocumentState(document.state_key ?? 'draft');
 			description = document.description ?? document.props?.description ?? '';
 			// Prefer content column, fall back to props.body_markdown for backwards compatibility
 			body = (document.content as string) ?? (document.props?.body_markdown as string) ?? '';
@@ -281,10 +301,13 @@
 
 	function getStateVariant(state: string): 'success' | 'warning' | 'info' | 'error' {
 		const normalized = state?.toLowerCase();
-		if (['approved', 'published'].includes(normalized)) {
+		if (normalized === 'published') {
 			return 'success';
 		}
-		if (normalized === 'review') {
+		if (normalized === 'ready') {
+			return 'info';
+		}
+		if (normalized === 'review' || normalized === 'in_review') {
 			return 'warning';
 		}
 		if (normalized === 'archived') {
@@ -347,8 +370,10 @@
 			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2"
 		>
 			<div class="flex items-center gap-2 min-w-0 flex-1">
-				<div class="p-1 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0">
-					<FileText class="w-3.5 h-3.5" />
+				<div
+					class="flex h-9 w-9 items-center justify-center rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0"
+				>
+					<FileText class="w-5 h-5" />
 				</div>
 				<span class="text-xs sm:text-sm font-semibold text-foreground truncate">
 					{isEditing ? 'Edit Document' : 'New Document'}
@@ -372,15 +397,15 @@
 						})}
 					</span>
 				{/if}
-				<!-- Inkprint close button -->
+				<!-- Close button -->
 				<button
 					type="button"
 					onclick={closeModal}
 					disabled={saving}
-					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
 					aria-label="Close modal"
 				>
-					<X class="h-4 w-4" />
+					<X class="w-5 h-5" />
 				</button>
 			</div>
 		</div>
@@ -520,7 +545,7 @@
 								{/if}
 
 								<!-- Tags Display -->
-								{#if isEditing && documentProps?.tags?.length}
+								{#if isEditing && hasTags}
 									<div class="pt-2 border-t border-border">
 										<TagsDisplay props={documentProps} />
 									</div>
@@ -584,7 +609,9 @@
 
 							<!-- Mobile: Linked entities and tags at bottom -->
 							{#if isEditing && documentId}
-								<div class="lg:hidden p-3 border-t border-border bg-muted/20 space-y-3">
+								<div
+									class="lg:hidden p-3 border-t border-border bg-muted/20 space-y-3"
+								>
 									<LinkedEntities
 										sourceId={documentId}
 										sourceKind="document"
@@ -593,7 +620,7 @@
 										onEntityClick={handleLinkedEntityClick}
 										onLinksChanged={handleLinksChanged}
 									/>
-									{#if documentProps?.tags?.length}
+									{#if hasTags}
 										<div class="pt-2 border-t border-border">
 											<TagsDisplay props={documentProps} />
 										</div>
@@ -616,7 +643,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30"
+			class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
 			{#if documentId}
 				<Button
@@ -624,7 +651,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={() => (deleteModalOpen = true)}
-					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 py-1"
+					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 py-1 tx tx-grain tx-weak"
 				>
 					<Trash2 class="w-3.5 h-3.5" />
 					<span class="hidden sm:inline ml-1">Delete</span>
@@ -639,7 +666,7 @@
 					size="sm"
 					onclick={closeModal}
 					disabled={saving}
-					class="text-xs px-3 py-1.5"
+					class="text-xs px-3 py-1.5 tx tx-grain tx-weak"
 				>
 					Cancel
 				</Button>
@@ -650,7 +677,7 @@
 					size="sm"
 					loading={saving}
 					disabled={saving || !title.trim() || (isEditing && !typeKey.trim())}
-					class="text-xs px-3 py-1.5"
+					class="text-xs px-3 py-1.5 tx tx-grain tx-weak"
 				>
 					<Save class="w-3.5 h-3.5" />
 					<span class="ml-1">{isEditing ? 'Save' : 'Create'}</span>

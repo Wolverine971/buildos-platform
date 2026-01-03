@@ -239,8 +239,106 @@ function buildDateTimeRange(range: DateRange) {
 	};
 }
 
+async function getTopActiveUsers(
+	client: TypedSupabaseClient,
+	timeframe: AnalyticsTimeframe
+): Promise<Array<{ email: string; last_activity: string | null; activity_count: number }>> {
+	const dateRange = resolveDateRange(timeframe);
+	const { startDateTime, endDateTime } = buildDateTimeRange(dateRange);
+
+	const [projectLogsResult, briefResult, braindumpsResult, agentSessionsResult] =
+		await Promise.all([
+			client
+				.from('onto_project_logs')
+				.select('changed_by, created_at')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime),
+			client
+				.from('ontology_daily_briefs')
+				.select('user_id, created_at')
+				.eq('generation_status', 'completed')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime),
+			client
+				.from('onto_braindumps')
+				.select('user_id, created_at')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime),
+			client
+				.from('agent_chat_sessions')
+				.select('user_id, created_at')
+				.gte('created_at', startDateTime)
+				.lte('created_at', endDateTime)
+		]);
+
+	if (projectLogsResult.error) throw new Error(projectLogsResult.error.message);
+	if (briefResult.error) throw new Error(briefResult.error.message);
+	if (braindumpsResult.error) throw new Error(braindumpsResult.error.message);
+	if (agentSessionsResult.error) throw new Error(agentSessionsResult.error.message);
+
+	const counts = new Map<string, { count: number; lastActivity: string | null }>();
+
+	const upsertActivity = (userId: string | null, createdAt: string | null) => {
+		if (!userId || !createdAt) return;
+		const entry = counts.get(userId) || { count: 0, lastActivity: null };
+		entry.count += 1;
+		if (
+			!entry.lastActivity ||
+			new Date(createdAt).getTime() > new Date(entry.lastActivity).getTime()
+		) {
+			entry.lastActivity = createdAt;
+		}
+		counts.set(userId, entry);
+	};
+
+	(projectLogsResult.data || []).forEach((log) => {
+		upsertActivity(log.changed_by, log.created_at);
+	});
+
+	(briefResult.data || []).forEach((brief) => {
+		upsertActivity(brief.user_id, brief.created_at);
+	});
+
+	(braindumpsResult.data || []).forEach((dump) => {
+		upsertActivity(dump.user_id, dump.created_at);
+	});
+
+	(agentSessionsResult.data || []).forEach((session) => {
+		upsertActivity(session.user_id, session.created_at);
+	});
+
+	const userIds = Array.from(counts.keys());
+	if (userIds.length === 0) return [];
+
+	const { data: users, error: usersError } = await client
+		.from('users')
+		.select('id, email')
+		.in('id', userIds);
+
+	if (usersError) throw new Error(usersError.message);
+
+	const emailById = new Map((users || []).map((user) => [user.id, user.email]));
+
+	return userIds
+		.map((userId) => ({
+			email: emailById.get(userId) || 'Unknown',
+			last_activity: counts.get(userId)?.lastActivity || null,
+			activity_count: counts.get(userId)?.count || 0
+		}))
+		.sort((a, b) => {
+			if (b.activity_count !== a.activity_count) {
+				return b.activity_count - a.activity_count;
+			}
+			const aTime = a.last_activity ? new Date(a.last_activity).getTime() : 0;
+			const bTime = b.last_activity ? new Date(b.last_activity).getTime() : 0;
+			return bTime - aTime;
+		})
+		.slice(0, 10);
+}
+
 export async function getSystemOverview(
-	client: TypedSupabaseClient
+	client: TypedSupabaseClient,
+	timeframe: AnalyticsTimeframe = '30d'
 ): Promise<typeof DEFAULT_SYSTEM_OVERVIEW> {
 	const { data, error } = await client.rpc('get_user_engagement_metrics');
 
@@ -248,7 +346,14 @@ export async function getSystemOverview(
 		throw new Error(error.message);
 	}
 
-	return (data?.[0] as typeof DEFAULT_SYSTEM_OVERVIEW | undefined) ?? DEFAULT_SYSTEM_OVERVIEW;
+	const baseOverview =
+		(data?.[0] as typeof DEFAULT_SYSTEM_OVERVIEW | undefined) ?? DEFAULT_SYSTEM_OVERVIEW;
+	const topActiveUsers = await getTopActiveUsers(client, timeframe);
+
+	return {
+		...baseOverview,
+		top_active_users: topActiveUsers
+	};
 }
 
 export async function getVisitorOverview(
@@ -383,50 +488,6 @@ type RecentActivityItem = {
 	entity_name?: string | null;
 };
 
-const ACTIVITY_PREFIXES = [
-	'brain_dump',
-	'project',
-	'task',
-	'note',
-	'goal',
-	'template',
-	'brief',
-	'calendar',
-	'admin',
-	'onboarding',
-	'synthesis'
-];
-
-function splitActivityType(activityType: string): { entity_type: string; action: string } {
-	if (!activityType) {
-		return { entity_type: 'activity', action: 'updated' };
-	}
-
-	const normalized = activityType.toLowerCase();
-	if (normalized === 'login' || normalized === 'logout') {
-		return { entity_type: 'session', action: normalized };
-	}
-
-	for (const prefix of ACTIVITY_PREFIXES) {
-		if (normalized.startsWith(`${prefix}_`)) {
-			return {
-				entity_type: prefix,
-				action: normalized.slice(prefix.length + 1)
-			};
-		}
-	}
-
-	const parts = normalized.split('_');
-	if (parts.length === 1) {
-		return { entity_type: 'activity', action: parts[0] };
-	}
-
-	return {
-		entity_type: parts[0] || 'activity',
-		action: parts.slice(1).join('_') || 'updated'
-	};
-}
-
 function extractEntityName(activityData: unknown): string | null {
 	if (!activityData || typeof activityData !== 'object') {
 		return null;
@@ -441,60 +502,62 @@ function extractEntityName(activityData: unknown): string | null {
 }
 
 export async function getRecentActivity(client: TypedSupabaseClient) {
-	const [userActivityResult, ontologyActivityResult] = await Promise.all([
-		client
-			.from('user_activity_logs')
-			.select(
-				`
-					activity_type,
-					activity_data,
-					created_at,
-					users (
-						email
-					)
-				`
-			)
-			.order('created_at', { ascending: false })
-			.limit(50),
+	const [projectLogsResult, briefsResult, braindumpsResult] = await Promise.all([
 		client
 			.from('onto_project_logs')
 			.select(
 				'project_id, entity_type, action, before_data, after_data, changed_by, created_at'
 			)
 			.order('created_at', { ascending: false })
-			.limit(50)
+			.limit(50),
+		client
+			.from('ontology_daily_briefs')
+			.select('id, brief_date, generation_status, user_id, created_at')
+			.eq('generation_status', 'completed')
+			.order('created_at', { ascending: false })
+			.limit(25),
+		client
+			.from('onto_braindumps')
+			.select('id, title, summary, user_id, created_at')
+			.order('created_at', { ascending: false })
+			.limit(25)
 	]);
 
-	if (userActivityResult.error) {
-		throw new Error(userActivityResult.error.message);
+	if (projectLogsResult.error) {
+		throw new Error(projectLogsResult.error.message);
 	}
 
-	if (ontologyActivityResult.error) {
-		throw new Error(ontologyActivityResult.error.message);
+	if (briefsResult.error) {
+		throw new Error(briefsResult.error.message);
 	}
 
-	const userActivity = (userActivityResult.data || []).map((activity) => {
-		const { entity_type, action } = splitActivityType(activity.activity_type);
-		return {
-			source: 'user_activity' as const,
-			entity_type,
-			action,
-			created_at: activity.created_at,
-			user_email: activity.users?.email || 'Unknown',
-			entity_name: extractEntityName(activity.activity_data)
-		};
-	});
+	if (braindumpsResult.error) {
+		throw new Error(braindumpsResult.error.message);
+	}
 
-	const ontologyLogs = ontologyActivityResult.data || [];
-	const ontologyUserIds = Array.from(new Set(ontologyLogs.map((log) => log.changed_by)));
-	const ontologyProjectIds = Array.from(new Set(ontologyLogs.map((log) => log.project_id)));
+	const projectLogs = projectLogsResult.data || [];
+	const briefs = briefsResult.data || [];
+	const braindumps = braindumpsResult.data || [];
+
+	const userIds = Array.from(
+		new Set(
+			[
+				...projectLogs.map((log) => log.changed_by),
+				...briefs.map((brief) => brief.user_id),
+				...braindumps.map((dump) => dump.user_id)
+			].filter(Boolean)
+		)
+	) as string[];
+	const projectIds = Array.from(
+		new Set(projectLogs.map((log) => log.project_id).filter(Boolean))
+	);
 
 	const [usersResult, projectsResult] = await Promise.all([
-		ontologyUserIds.length
-			? client.from('users').select('id, email').in('id', ontologyUserIds)
+		userIds.length
+			? client.from('users').select('id, email').in('id', userIds)
 			: Promise.resolve({ data: [], error: null }),
-		ontologyProjectIds.length
-			? client.from('onto_projects').select('id, name').in('id', ontologyProjectIds)
+		projectIds.length
+			? client.from('onto_projects').select('id, name').in('id', projectIds)
 			: Promise.resolve({ data: [], error: null })
 	]);
 
@@ -511,21 +574,47 @@ export async function getRecentActivity(client: TypedSupabaseClient) {
 		(projectsResult.data || []).map((project) => [project.id, project.name])
 	);
 
-	const ontologyActivity = ontologyLogs.map((log) => ({
-		source: 'ontology' as const,
-		entity_type: log.entity_type,
-		action: log.action,
-		created_at: log.created_at,
-		user_email: userEmailById.get(log.changed_by) || 'Unknown',
-		project_name: projectNameById.get(log.project_id) || null,
-		entity_name: extractEntityName(log.after_data ?? log.before_data)
-	}));
+	const activity: RecentActivityItem[] = [];
 
-	const combined = [...ontologyActivity, ...userActivity]
+	projectLogs.forEach((log) => {
+		activity.push({
+			source: 'ontology',
+			entity_type: log.entity_type,
+			action: log.action,
+			created_at: log.created_at,
+			user_email: userEmailById.get(log.changed_by) || 'Unknown',
+			project_name: projectNameById.get(log.project_id) || null,
+			entity_name: extractEntityName(log.after_data ?? log.before_data)
+		});
+	});
+
+	briefs.forEach((brief) => {
+		activity.push({
+			source: 'ontology',
+			entity_type: 'brief',
+			action: 'generated',
+			created_at: brief.created_at,
+			user_email: userEmailById.get(brief.user_id) || 'Unknown',
+			entity_name: brief.brief_date ? `Brief for ${brief.brief_date}` : 'Daily Brief'
+		});
+	});
+
+	braindumps.forEach((dump) => {
+		activity.push({
+			source: 'ontology',
+			entity_type: 'brain_dump',
+			action: 'created',
+			created_at: dump.created_at,
+			user_email: userEmailById.get(dump.user_id) || 'Unknown',
+			entity_name: dump.title || 'Brain Dump'
+		});
+	});
+
+	const combined = activity
 		.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 		.slice(0, 50);
 
-	return combined as RecentActivityItem[];
+	return combined;
 }
 
 export async function getFeedbackOverview(
@@ -725,10 +814,10 @@ export async function getSubscriptionOverview(client: TypedSupabaseClient) {
 					email,
 					name
 				),
-				subscription_plans (
+				subscription_plans!plan_id (
 					name,
-					price,
-					interval
+					price_cents,
+					billing_interval
 				)
 			`
 		)
@@ -804,10 +893,10 @@ export async function getComprehensiveAnalytics(
 		newUsersLast24h,
 		newBetaSignupsLast24h,
 		brainDumpStats,
-		projectStats,
+		newProjectStats,
+		updatedProjectStats,
 		calendarConnections,
-		brainDumpUsers,
-		projectUpdateUsers,
+		projectUpdateLogs,
 		taskCreators,
 		scheduledTaskUsers,
 		phaseCreators
@@ -826,45 +915,52 @@ export async function getComprehensiveAnalytics(
 			.select('id', { count: 'exact', head: true })
 			.gte('created_at', twentyFourHoursAgo.toISOString()),
 		client
-			.from('brain_dumps')
+			.from('onto_braindumps')
 			.select('id, content, created_at, user_id')
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString()),
 		client
-			.from('projects')
-			.select('id, created_at, updated_at, user_id')
+			.from('onto_projects')
+			.select('id, created_at, updated_at, created_by, deleted_at')
 			.gte('created_at', startDate.toISOString())
-			.lte('created_at', endDate.toISOString()),
+			.lte('created_at', endDate.toISOString())
+			.is('deleted_at', null),
+		client
+			.from('onto_projects')
+			.select('id, created_at, updated_at, deleted_at')
+			.gte('updated_at', startDate.toISOString())
+			.lte('updated_at', endDate.toISOString())
+			.is('deleted_at', null),
 		client
 			.from('user_calendar_tokens')
 			.select('user_id', { count: 'exact', head: true })
 			.not('access_token', 'is', null),
 		client
-			.from('brain_dumps')
-			.select('user_id, users!inner(email)')
+			.from('onto_project_logs')
+			.select('changed_by')
+			.eq('action', 'updated')
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString()),
 		client
-			.from('projects')
-			.select('user_id, updated_at, users!inner(email)')
-			.gte('updated_at', startDate.toISOString())
-			.lte('updated_at', endDate.toISOString())
-			.not('updated_at', 'is', null),
-		client
-			.from('tasks')
-			.select('user_id, users!inner(email)')
-			.gte('created_at', startDate.toISOString())
-			.lte('created_at', endDate.toISOString()),
-		client
-			.from('task_calendar_events')
-			.select('user_id, users!inner(email)')
-			.gte('created_at', startDate.toISOString())
-			.lte('created_at', endDate.toISOString()),
-		client
-			.from('phases')
-			.select('user_id, users!inner(email)')
+			.from('onto_tasks')
+			.select('created_by')
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString())
+			.is('deleted_at', null),
+		client
+			.from('onto_tasks')
+			.select('created_by, due_at')
+			.not('due_at', 'is', null)
+			.gte('due_at', startDate.toISOString())
+			.lte('due_at', endDate.toISOString())
+			.is('deleted_at', null),
+		client
+			.from('onto_plans')
+			.select('created_by, type_key')
+			.eq('type_key', 'plan.phase.project')
+			.gte('created_at', startDate.toISOString())
+			.lte('created_at', endDate.toISOString())
+			.is('deleted_at', null)
 	]);
 
 	if (
@@ -873,10 +969,10 @@ export async function getComprehensiveAnalytics(
 		newUsersLast24h.error ||
 		newBetaSignupsLast24h.error ||
 		brainDumpStats.error ||
-		projectStats.error ||
+		newProjectStats.error ||
+		updatedProjectStats.error ||
 		calendarConnections.error ||
-		brainDumpUsers.error ||
-		projectUpdateUsers.error ||
+		projectUpdateLogs.error ||
 		taskCreators.error ||
 		scheduledTaskUsers.error ||
 		phaseCreators.error
@@ -887,21 +983,44 @@ export async function getComprehensiveAnalytics(
 			newUsersLast24h.error ||
 			newBetaSignupsLast24h.error ||
 			brainDumpStats.error ||
-			projectStats.error ||
+			newProjectStats.error ||
+			updatedProjectStats.error ||
 			calendarConnections.error ||
-			brainDumpUsers.error ||
-			projectUpdateUsers.error ||
+			projectUpdateLogs.error ||
 			taskCreators.error ||
 			scheduledTaskUsers.error ||
 			phaseCreators.error;
 		throw new Error(errorSource?.message || 'Failed to load comprehensive analytics');
 	}
 
+	const leaderboardUserIds = Array.from(
+		new Set(
+			[
+				...(brainDumpStats.data || []).map((dump) => dump.user_id),
+				...(projectUpdateLogs.data || []).map((log) => log.changed_by),
+				...(taskCreators.data || []).map((task) => task.created_by),
+				...(scheduledTaskUsers.data || []).map((task) => task.created_by),
+				...(phaseCreators.data || []).map((plan) => plan.created_by)
+			].filter(Boolean)
+		)
+	) as string[];
+
+	const { data: leaderboardUsers, error: leaderboardUsersError } = leaderboardUserIds.length
+		? await client.from('users').select('id, email').in('id', leaderboardUserIds)
+		: { data: [], error: null };
+
+	if (leaderboardUsersError) {
+		throw new Error(leaderboardUsersError.message);
+	}
+
+	const emailByUserId = new Map((leaderboardUsers || []).map((user) => [user.id, user.email]));
+
 	const formatLeaderboard = (rows: any[], key: string) => {
 		const counts: Record<string, { email: string; count: number }> = {};
 		rows.forEach((row) => {
 			const userId = row[key];
-			const email = row.users?.email || 'Unknown';
+			if (!userId) return;
+			const email = emailByUserId.get(userId) || 'Unknown';
 			if (!counts[userId]) {
 				counts[userId] = { email, count: 0 };
 			}
@@ -932,20 +1051,21 @@ export async function getComprehensiveAnalytics(
 			uniqueUsers: new Set(brainDumpStats.data?.map((dump) => dump.user_id) ?? []).size
 		},
 		projectMetrics: {
-			newProjects: projectStats.data?.length || 0,
+			newProjects: newProjectStats.data?.length || 0,
 			updatedProjects:
-				projectStats.data?.filter(
+				updatedProjectStats.data?.filter(
 					(project) => project.updated_at && project.updated_at !== project.created_at
 				).length || 0,
-			uniqueUsers: new Set(projectStats.data?.map((project) => project.user_id) ?? []).size
+			uniqueUsers: new Set(newProjectStats.data?.map((project) => project.created_by) ?? [])
+				.size
 		},
 		calendarConnections: calendarConnections.count || 0,
 		leaderboards: {
-			brainDumps: formatLeaderboard(brainDumpUsers.data ?? [], 'user_id'),
-			projectUpdates: formatLeaderboard(projectUpdateUsers.data ?? [], 'user_id'),
-			tasksCreated: formatLeaderboard(taskCreators.data ?? [], 'user_id'),
-			tasksScheduled: formatLeaderboard(scheduledTaskUsers.data ?? [], 'user_id'),
-			phasesCreated: formatLeaderboard(phaseCreators.data ?? [], 'user_id')
+			brainDumps: formatLeaderboard(brainDumpStats.data ?? [], 'user_id'),
+			projectUpdates: formatLeaderboard(projectUpdateLogs.data ?? [], 'changed_by'),
+			tasksCreated: formatLeaderboard(taskCreators.data ?? [], 'created_by'),
+			tasksScheduled: formatLeaderboard(scheduledTaskUsers.data ?? [], 'created_by'),
+			phasesCreated: formatLeaderboard(phaseCreators.data ?? [], 'created_by')
 		}
 	};
 }
@@ -1048,24 +1168,15 @@ export async function getBriefDeliveryStats(
 	const dateRange = resolveDateRange(timeframe);
 	const { startDateTime, endDateTime } = buildDateTimeRange(dateRange);
 
-	const [
-		{ data: ontologyBriefs, error: ontologyBriefsError },
-		{ data: legacyBriefs, error: legacyBriefsError }
-	] = await Promise.all([
-		client
-			.from('ontology_daily_briefs')
-			.select('id, created_at')
-			.gte('created_at', startDateTime)
-			.lte('created_at', endDateTime),
-		client
-			.from('daily_briefs')
-			.select('id, created_at')
-			.gte('created_at', startDateTime)
-			.lte('created_at', endDateTime)
-	]);
+	const { data: ontologyBriefs, error: ontologyBriefsError } = await client
+		.from('ontology_daily_briefs')
+		.select('id, created_at')
+		.eq('generation_status', 'completed')
+		.gte('created_at', startDateTime)
+		.lte('created_at', endDateTime);
 
-	if (ontologyBriefsError || legacyBriefsError) {
-		throw new Error(ontologyBriefsError?.message || legacyBriefsError?.message);
+	if (ontologyBriefsError) {
+		throw new Error(ontologyBriefsError.message);
 	}
 
 	const { data: notificationPrefs, error: prefsError } = await client
@@ -1124,10 +1235,10 @@ export async function getBriefDeliveryStats(
 			.length || 0;
 
 	const ontologyCount = ontologyBriefs?.length || 0;
-	const legacyCount = legacyBriefs?.length || 0;
+	const legacyCount = 0;
 
 	return {
-		briefsGenerated: ontologyCount + legacyCount,
+		briefsGenerated: ontologyCount,
 		ontologyBriefs: ontologyCount,
 		legacyBriefs: legacyCount,
 		emailOptIn,
@@ -1268,7 +1379,7 @@ export async function getDashboardAnalytics(
 		safeFetch(
 			'system overview',
 			() => clone(DEFAULT_SYSTEM_OVERVIEW),
-			() => getSystemOverview(client)
+			() => getSystemOverview(client, timeframe)
 		),
 		safeFetch(
 			'visitor overview',

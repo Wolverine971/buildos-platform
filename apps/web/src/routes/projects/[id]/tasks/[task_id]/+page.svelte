@@ -86,9 +86,6 @@
 	let title = $state('');
 	let description = $state('');
 	let priority = $state<number>(3);
-	let planId = $state('');
-	let goalId = $state('');
-	let milestoneId = $state('');
 	let stateKey = $state('todo');
 	let dueAt = $state('');
 
@@ -197,9 +194,6 @@
 			title = task.title || '';
 			description = task.props?.description || '';
 			priority = task.priority || 3;
-			planId = task.plan?.id || '';
-			goalId = extractGoalIdFromProps(task.props);
-			milestoneId = extractMilestoneIdFromProps(task.props);
 			stateKey = task.state_key || 'todo';
 			dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
 		}
@@ -227,29 +221,6 @@
 	// ============================================================
 	// UTILITY FUNCTIONS
 	// ============================================================
-
-	function extractGoalIdFromProps(props: Record<string, unknown> | null | undefined): string {
-		if (!props || typeof props !== 'object') return '';
-		const goalIdProp = props.goal_id;
-		if (typeof goalIdProp === 'string' && goalIdProp.trim().length > 0) {
-			return goalIdProp;
-		}
-		const sourceGoalId = props.source_goal_id;
-		if (typeof sourceGoalId === 'string' && sourceGoalId.trim().length > 0) {
-			return sourceGoalId;
-		}
-		return '';
-	}
-
-	function extractMilestoneIdFromProps(
-		props: Record<string, unknown> | null | undefined
-	): string {
-		if (!props || typeof props !== 'object') return '';
-		const milestoneIdProp = props.supporting_milestone_id;
-		return typeof milestoneIdProp === 'string' && milestoneIdProp.trim().length > 0
-			? milestoneIdProp
-			: '';
-	}
 
 	function formatDateTimeForInput(date: Date | string | null): string {
 		if (!date) return '';
@@ -429,11 +400,8 @@
 				title: title.trim(),
 				description: description.trim() || null,
 				priority: Number(priority),
-				plan_id: planId || null,
 				state_key: stateKey,
-				due_at: parseDateTimeFromInput(dueAt),
-				goal_id: goalId?.trim() || null,
-				supporting_milestone_id: milestoneId?.trim() || null
+				due_at: parseDateTimeFromInput(dueAt)
 			};
 
 			const response = await fetch(`/api/onto/tasks/${task.id}`, {
@@ -654,65 +622,108 @@
 	<title>{task?.title || 'Task'} | {project?.name || 'Project'} | BuildOS</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background">
-	<!-- Sticky Header -->
+<div class="min-h-screen bg-background overflow-x-hidden">
+	<!-- Sticky Header - Compact Mobile-First -->
 	<header
 		class="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
 	>
-		<div class="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6">
-			<!-- Breadcrumb Row -->
-			<div class="flex items-center justify-between h-12 border-b border-border/50">
-				<div class="flex items-center gap-2 min-w-0">
+		<div
+			class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-1.5 sm:py-2 space-y-1 sm:space-y-2"
+		>
+			<!-- Title Row - Compact -->
+			<div class="flex items-center justify-between gap-1.5 sm:gap-2">
+				<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
 					<button
 						onclick={() => goto(`/projects/${project?.id}`)}
-						class="p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0"
+						class="p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0 pressable"
 						aria-label="Back to project"
 					>
-						<ArrowLeft class="w-4 h-4 text-muted-foreground" />
+						<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 					</button>
-					<nav class="flex items-center gap-1.5 text-sm min-w-0">
-						<a
-							href="/projects"
-							class="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-						>
-							Projects
-						</a>
-						<ChevronRight class="w-3 h-3 text-muted-foreground shrink-0" />
-						<a
-							href="/projects/{project?.id}"
-							class="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[150px] sm:max-w-[200px]"
-						>
-							{project?.name || 'Project'}
-						</a>
-						<ChevronRight class="w-3 h-3 text-muted-foreground shrink-0" />
-						<span
-							class="text-foreground font-medium truncate max-w-[150px] sm:max-w-[250px]"
-						>
-							{title || 'Task'}
-						</span>
-					</nav>
+					<div class="min-w-0 flex-1">
+						<div class="flex items-center gap-2">
+							<div
+								class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
+							>
+								<TaskIcon class="w-3.5 h-3.5 sm:w-4 sm:h-4 {taskVisuals.color}" />
+							</div>
+							<div class="min-w-0">
+								<h1
+									class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
+								>
+									{title || 'Untitled Task'}
+								</h1>
+								<!-- Desktop: Show project link -->
+								<a
+									href="/projects/{project?.id}"
+									class="text-xs text-muted-foreground hover:text-foreground transition-colors truncate hidden sm:block"
+								>
+									{project?.name || 'Project'}
+								</a>
+							</div>
+						</div>
+					</div>
 				</div>
 
-				<div class="flex items-center gap-1.5 shrink-0">
-					<!-- Chat button -->
+				<!-- Desktop Actions -->
+				<div class="hidden sm:flex items-center gap-1.5 shrink-0">
+					<StateDisplay state={stateKey} entityKind="task" />
 					<button
 						onclick={openChatModal}
-						class="p-2 rounded-lg hover:bg-muted transition-colors"
+						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
 						aria-label="Chat about this task"
 						title="Chat about this task"
 					>
-						<img
-							src="/brain-bolt.png"
-							alt="Chat"
-							class="w-5 h-5 rounded object-cover"
-						/>
+						<Sparkles class="w-5 h-5 text-accent" />
 					</button>
-					<!-- Refresh button -->
 					<button
 						onclick={refreshData}
 						disabled={dataRefreshing}
-						class="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
+						class="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 pressable"
 						aria-label="Refresh data"
+					>
+						<RefreshCw
+							class="w-4 h-4 text-muted-foreground {dataRefreshing
+								? 'animate-spin'
+								: ''}"
+						/>
+					</button>
+					<button
+						onclick={() => (showDeleteConfirm = true)}
+						disabled={isDeleting || isSaving}
+						class="p-2 rounded-lg hover:bg-destructive/10 transition-colors pressable"
+						aria-label="Delete task"
+					>
+						<Trash2 class="w-5 h-5 text-destructive" />
+					</button>
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={handleSave}
+						loading={isSaving}
+						disabled={isSaving || isDeleting || !title.trim()}
+						class="pressable"
+					>
+						<Save class="w-4 h-4" />
+						Save
+					</Button>
+				</div>
+
+				<!-- Mobile: State + Quick Actions -->
+				<div class="flex items-center gap-1.5 sm:hidden">
+					<StateDisplay state={stateKey} entityKind="task" />
+					<button
+						onclick={openChatModal}
+						class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
+						aria-label="AI Chat"
+					>
+						<Sparkles class="w-4 h-4 text-accent" />
+					</button>
+					<button
+						onclick={refreshData}
+						disabled={dataRefreshing}
+						class="p-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 pressable"
+						aria-label="Refresh"
 					>
 						<RefreshCw
 							class="w-4 h-4 text-muted-foreground {dataRefreshing
@@ -723,71 +734,59 @@
 				</div>
 			</div>
 
-			<!-- Task Header Row -->
-			<div class="py-3 sm:py-4">
-				<div class="flex items-start justify-between gap-4">
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center gap-3 mb-2">
-							<div
-								class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0"
-							>
-								<TaskIcon class="w-5 h-5 {taskVisuals.color}" />
-							</div>
-							<div class="min-w-0">
-								<h1
-									class="text-xl sm:text-2xl font-bold text-foreground leading-tight truncate"
-								>
-									{title || 'Untitled Task'}
-								</h1>
-								<div class="flex items-center gap-2 mt-1">
-									<StateDisplay state={stateKey} entityKind="task" />
-									{#if task?.due_at}
-										<span class="text-xs text-muted-foreground">
-											Due {formatDueDate(task.due_at)}
-										</span>
-									{/if}
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<!-- Desktop Save/Delete Actions -->
-					<div class="hidden sm:flex items-center gap-2 shrink-0">
-						<Button
-							variant="ghost"
-							size="sm"
-							onclick={() => (showDeleteConfirm = true)}
-							disabled={isDeleting || isSaving}
-							class="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-						>
-							<Trash2 class="w-4 h-4" />
-						</Button>
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={handleSave}
-							loading={isSaving}
-							disabled={isSaving || isDeleting || !title.trim()}
-						>
-							<Save class="w-4 h-4" />
-							Save
-						</Button>
-					</div>
-				</div>
+			<!-- Mobile: Project Context & Due Date Bar -->
+			<div class="flex sm:hidden items-center justify-between gap-2 text-muted-foreground">
+				<a
+					href="/projects/{project?.id}"
+					class="flex items-center gap-1 text-xs hover:text-foreground transition-colors truncate"
+				>
+					<ChevronRight class="w-3 h-3 rotate-180" />
+					<span class="truncate">{project?.name || 'Project'}</span>
+				</a>
+				{#if task?.due_at}
+					<span class="flex items-center gap-1 text-xs shrink-0">
+						<Clock class="w-3 h-3" />
+						{formatDueDate(task.due_at)}
+					</span>
+				{/if}
 			</div>
+
+			<!-- Mobile: Quick Entity Stats (Goals, Plans, Docs, Tasks) -->
+			{#if true}
+				{@const mobileStats = [
+					{ key: 'goals', count: goals.length, Icon: Target },
+					{ key: 'plans', count: plans.length, Icon: Calendar },
+					{ key: 'docs', count: documents.length, Icon: FileText },
+					{ key: 'outputs', count: outputs.length, Icon: Layers },
+					{ key: 'tasks', count: otherTasks.length, Icon: ListChecks }
+				].filter((s) => s.count > 0)}
+				{#if mobileStats.length > 0}
+					<div
+						class="flex sm:hidden items-center gap-2.5 text-muted-foreground overflow-x-auto pb-0.5"
+					>
+						{#each mobileStats as stat (stat.key)}
+							{@const StatIcon = stat.Icon}
+							<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
+								<StatIcon class="h-3 w-3" />
+								<span class="font-semibold text-[10px]">{stat.count}</span>
+							</span>
+						{/each}
+					</div>
+				{/if}
+			{/if}
 		</div>
 	</header>
 
 	<!-- Main Content -->
-	<main class="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
 		<div
-			class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_400px] gap-4 lg:gap-6"
+			class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] gap-2 sm:gap-4 lg:gap-6"
 		>
 			<!-- Left Column: Task Details & Workspace -->
-			<div class="min-w-0 space-y-4">
-				<!-- Tab Navigation -->
+			<div class="min-w-0 space-y-2 sm:space-y-4">
+				<!-- Tab Navigation - Compact -->
 				<div
-					class="inline-flex rounded-lg border border-border bg-muted/50 p-1 text-sm font-bold shadow-ink"
+					class="inline-flex rounded-lg border border-border bg-muted/50 p-0.5 sm:p-1 text-xs sm:text-sm font-semibold shadow-ink tx tx-frame tx-weak"
 					role="tablist"
 					aria-label="Task views"
 				>
@@ -796,7 +795,7 @@
 						role="tab"
 						aria-selected={activeView === 'details'}
 						aria-controls="details-panel"
-						class="relative rounded px-4 py-2 transition pressable {activeView ===
+						class="relative rounded px-3 sm:px-4 py-1.5 sm:py-2 transition pressable {activeView ===
 						'details'
 							? 'bg-accent text-accent-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
@@ -809,7 +808,7 @@
 						role="tab"
 						aria-selected={activeView === 'workspace'}
 						aria-controls="workspace-panel"
-						class="relative rounded px-4 py-2 transition pressable {activeView ===
+						class="relative rounded px-3 sm:px-4 py-1.5 sm:py-2 transition pressable {activeView ===
 						'workspace'
 							? 'bg-accent text-accent-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
@@ -817,8 +816,9 @@
 					>
 						Workspace
 						{#if deliverableDocuments.length > 0}
-							<Badge variant="info" size="sm" class="ml-2"
-								>{deliverableDocuments.length}</Badge
+							<span
+								class="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-accent/20 text-accent"
+								>{deliverableDocuments.length}</span
 							>
 						{/if}
 					</button>
@@ -827,15 +827,24 @@
 				<!-- Tab Content -->
 				{#if activeView === 'details'}
 					<!-- DETAILS TAB -->
-					<Card variant="elevated" class="overflow-hidden">
-						<CardBody padding="lg">
-							<form class="space-y-6" onsubmit={handleSave}>
+					<section
+						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-grain tx-weak overflow-hidden"
+					>
+						<div class="px-3 sm:px-4 py-2 sm:py-3 border-b border-border">
+							<p
+								class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide font-semibold"
+							>
+								Task Details
+							</p>
+						</div>
+						<div class="p-3 sm:p-4">
+							<form class="space-y-3 sm:space-y-4" onsubmit={handleSave}>
 								<!-- Task Title -->
 								<FormField
-									label="Task Title"
+									label="Title"
 									labelFor="title"
 									required={true}
-									error={!title.trim() && error ? 'Task title is required' : ''}
+									error={!title.trim() && error ? 'Required' : ''}
 								>
 									<TextInput
 										id="title"
@@ -846,44 +855,40 @@
 										required={true}
 										disabled={isSaving}
 										error={!title.trim() && error ? true : false}
-										size="lg"
-										class="text-lg font-medium"
+										size="md"
+										class="font-medium"
 									/>
 								</FormField>
 
 								<!-- Description -->
-								<FormField
-									label="Description"
-									labelFor="description"
-									hint="Provide additional context about this task"
-								>
+								<FormField label="Description" labelFor="description">
 									<Textarea
 										id="description"
 										bind:value={description}
 										enterkeyhint="next"
-										placeholder="Describe what needs to be accomplished..."
-										rows={4}
+										placeholder="Additional context..."
+										rows={3}
 										disabled={isSaving}
 										size="md"
 									/>
 								</FormField>
 
-								<!-- Grid: Priority, State, Due Date -->
-								<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+								<!-- Grid: Priority, State, Due Date - 2 cols on mobile, 3 on desktop -->
+								<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
 									<FormField label="Priority" labelFor="priority" required={true}>
 										<Select
 											id="priority"
 											value={priority}
 											disabled={isSaving}
-											size="md"
-											placeholder="Select priority"
+											size="sm"
+											placeholder="Priority"
 											onchange={(val) => (priority = Number(val))}
 										>
-											<option value={1}>P1 - Critical</option>
-											<option value={2}>P2 - High</option>
-											<option value={3}>P3 - Medium</option>
-											<option value={4}>P4 - Low</option>
-											<option value={5}>P5 - Nice to have</option>
+											<option value={1}>P1 Critical</option>
+											<option value={2}>P2 High</option>
+											<option value={3}>P3 Medium</option>
+											<option value={4}>P4 Low</option>
+											<option value={5}>P5 Nice</option>
 										</Select>
 									</FormField>
 
@@ -892,8 +897,8 @@
 											id="state"
 											bind:value={stateKey}
 											disabled={isSaving}
-											size="md"
-											placeholder="Select state"
+											size="sm"
+											placeholder="State"
 										>
 											{#each TASK_STATES as state}
 												<option value={state}>
@@ -911,7 +916,11 @@
 										</Select>
 									</FormField>
 
-									<FormField label="Due Date" labelFor="due-date">
+									<FormField
+										label="Due Date"
+										labelFor="due-date"
+										class="col-span-2 sm:col-span-1"
+									>
 										<TextInput
 											id="due-date"
 											type="datetime-local"
@@ -919,111 +928,45 @@
 											enterkeyhint="done"
 											bind:value={dueAt}
 											disabled={isSaving}
-											size="md"
+											size="sm"
 										/>
 									</FormField>
 								</div>
 
-								<!-- Grid: Plan, Goal, Milestone -->
-								<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-									{#if plans.length > 0}
-										<FormField
-											label="Plan"
-											labelFor="plan"
-											hint="Link to a plan"
-										>
-											<Select
-												id="plan"
-												bind:value={planId}
-												disabled={isSaving}
-												size="md"
-												placeholder="No plan"
-											>
-												<option value="">No plan</option>
-												{#each plans as plan}
-													<option value={plan.id}>{plan.name}</option>
-												{/each}
-											</Select>
-										</FormField>
-									{/if}
-
-									{#if goals.length > 0}
-										<FormField
-											label="Goal"
-											labelFor="goal"
-											hint="Link to a goal"
-										>
-											<Select
-												id="goal"
-												bind:value={goalId}
-												disabled={isSaving}
-												size="md"
-												placeholder="No goal"
-											>
-												<option value="">No goal</option>
-												{#each goals as goal}
-													<option value={goal.id}>{goal.name}</option>
-												{/each}
-											</Select>
-										</FormField>
-									{/if}
-
-									{#if milestones.length > 0}
-										<FormField
-											label="Milestone"
-											labelFor="milestone"
-											hint="Link to a milestone"
-										>
-											<Select
-												id="milestone"
-												bind:value={milestoneId}
-												disabled={isSaving}
-												size="md"
-												placeholder="No milestone"
-											>
-												<option value="">No milestone</option>
-												{#each milestones as milestone}
-													<option value={milestone.id}>
-														{milestone.title}
-														{#if milestone.due_at}
-															({new Date(
-																milestone.due_at
-															).toLocaleDateString()})
-														{/if}
-													</option>
-												{/each}
-											</Select>
-										</FormField>
-									{/if}
-								</div>
-
 								{#if error}
 									<div
-										class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+										class="p-2 sm:p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 									>
-										<p class="text-sm text-destructive">{error}</p>
+										<p class="text-xs sm:text-sm text-destructive">{error}</p>
 									</div>
 								{/if}
 							</form>
-						</CardBody>
-					</Card>
+						</div>
+					</section>
 
 					<!-- Compact secondary sections in a 2-column grid -->
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 						<!-- Connected Documents - Compact -->
-						<Card variant="elevated" class="overflow-hidden">
+						<section
+							class="bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden"
+						>
 							<button
 								onclick={() => togglePanel('connectedDocs')}
-								class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors"
+								class="w-full flex items-center justify-between gap-2 px-2.5 sm:px-3 py-2 text-left hover:bg-muted/60 transition-colors pressable"
 							>
 								<div class="flex items-center gap-2">
-									<FileText class="w-4 h-4 text-blue-500" />
-									<span class="text-sm font-semibold text-foreground"
-										>Documents</span
+									<div
+										class="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center"
+									>
+										<FileText class="w-3 h-3 text-sky-500" />
+									</div>
+									<span class="text-xs sm:text-sm font-semibold text-foreground"
+										>Docs</span
 									>
 									{#if deliverableDocuments.length > 0}
-										<Badge variant="info" size="sm"
-											>{deliverableDocuments.length}</Badge
+										<span
+											class="text-[10px] font-semibold text-muted-foreground"
+											>({deliverableDocuments.length})</span
 										>
 									{/if}
 								</div>
@@ -1042,20 +985,20 @@
 												openDocumentModal(null);
 											}
 										}}
-										class="p-1 rounded hover:bg-muted transition-colors cursor-pointer"
+										class="p-1 rounded hover:bg-muted transition-colors cursor-pointer pressable"
 										title="Add document"
 									>
-										<Plus class="w-3.5 h-3.5 text-muted-foreground" />
+										<Plus class="w-3 h-3 text-muted-foreground" />
 									</span>
 									<ChevronDown
-										class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.connectedDocs
+										class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.connectedDocs
 											? 'rotate-180'
 											: ''}"
 									/>
 								</div>
 							</button>
 							{#if expandedPanels.connectedDocs}
-								<div class="border-t border-border max-h-40 overflow-y-auto">
+								<div class="border-t border-border max-h-32 overflow-y-auto">
 									{#if deliverableDocuments.length > 0}
 										<ul class="divide-y divide-border/80">
 											{#each deliverableDocuments as doc}
@@ -1064,10 +1007,10 @@
 														type="button"
 														onclick={() =>
 															handleDocumentClick(doc.document.id)}
-														class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors"
+														class="w-full flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-left hover:bg-accent/5 transition-colors pressable"
 													>
 														<FileText
-															class="w-3.5 h-3.5 text-blue-500 shrink-0"
+															class="w-3 h-3 text-sky-500 shrink-0"
 														/>
 														<span
 															class="text-xs text-foreground truncate flex-1"
@@ -1075,7 +1018,7 @@
 															{doc.document.title || 'Untitled'}
 														</span>
 														<span
-															class="text-[10px] text-muted-foreground"
+															class="text-[9px] text-muted-foreground capitalize"
 														>
 															{doc.document.state_key || 'draft'}
 														</span>
@@ -1084,43 +1027,49 @@
 											{/each}
 										</ul>
 									{:else}
-										<div class="px-3 py-4 text-center">
-											<p class="text-xs text-muted-foreground mb-2">
+										<div class="px-2.5 py-3 text-center">
+											<p class="text-[10px] text-muted-foreground mb-1.5">
 												No documents yet
 											</p>
-											<Button
-												variant="secondary"
-												size="sm"
+											<button
+												type="button"
 												onclick={() => setActiveView('workspace')}
+												class="text-xs text-accent hover:text-accent/80 font-medium pressable"
 											>
-												Open Workspace
-											</Button>
+												Open Workspace →
+											</button>
 										</div>
 									{/if}
 								</div>
 							{/if}
-						</Card>
+						</section>
 
 						<!-- Linked Entities - Compact -->
-						<Card variant="elevated" class="overflow-hidden">
+						<section
+							class="bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden"
+						>
 							<button
 								onclick={() => togglePanel('linkedEntities')}
-								class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted/60 transition-colors"
+								class="w-full flex items-center justify-between gap-2 px-2.5 sm:px-3 py-2 text-left hover:bg-muted/60 transition-colors pressable"
 							>
 								<div class="flex items-center gap-2">
-									<Layers class="w-4 h-4 text-purple-500" />
-									<span class="text-sm font-semibold text-foreground"
-										>Linked Entities</span
+									<div
+										class="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center"
+									>
+										<Layers class="w-3 h-3 text-purple-500" />
+									</div>
+									<span class="text-xs sm:text-sm font-semibold text-foreground"
+										>Links</span
 									>
 								</div>
 								<ChevronDown
-									class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.linkedEntities
+									class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.linkedEntities
 										? 'rotate-180'
 										: ''}"
 								/>
 							</button>
 							{#if expandedPanels.linkedEntities}
-								<div class="border-t border-border p-2 max-h-48 overflow-y-auto">
+								<div class="border-t border-border p-2 max-h-40 overflow-y-auto">
 									<LinkedEntities
 										sourceId={task?.id}
 										sourceKind="task"
@@ -1130,205 +1079,219 @@
 									/>
 								</div>
 							{/if}
-						</Card>
+						</section>
 					</div>
 				{:else}
 					<!-- WORKSPACE TAB -->
-					<div class="space-y-4">
-						<!-- Document Selector -->
-						<Card variant="elevated">
-							<CardBody padding="md">
-								<div
-									class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
-								>
-									<div class="flex items-center gap-3 flex-1 min-w-0">
-										<FileText
-											class="w-5 h-5 text-accent shrink-0 hidden sm:block"
-										/>
-										<div class="flex-1 min-w-0">
-											<label for="workspace-doc-selector" class="sr-only">
-												Select document
-											</label>
-											<Select
-												id="workspace-doc-selector"
-												value={selectedWorkspaceDocId || ''}
-												onchange={(val) =>
-													selectWorkspaceDocument(String(val))}
-												size="md"
-											>
-												{#if deliverableDocuments.length === 0}
-													<option value="">No documents yet</option>
-												{:else}
-													{#each deliverableDocuments as doc}
-														<option value={doc.document.id}>
-															{doc.document.title || 'Untitled'} ({doc
-																.document.state_key})
-														</option>
-													{/each}
-												{/if}
-											</Select>
-										</div>
+					<div class="space-y-2 sm:space-y-3">
+						<!-- Document Selector - Compact -->
+						<section
+							class="bg-card border border-border rounded-lg shadow-ink tx tx-bloom tx-weak p-2 sm:p-3"
+						>
+							<div
+								class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+							>
+								<div class="flex items-center gap-2 flex-1 min-w-0">
+									<FileText
+										class="w-4 h-4 text-accent shrink-0 hidden sm:block"
+									/>
+									<div class="flex-1 min-w-0">
+										<label for="workspace-doc-selector" class="sr-only"
+											>Select document</label
+										>
+										<Select
+											id="workspace-doc-selector"
+											value={selectedWorkspaceDocId || ''}
+											onchange={(val) => selectWorkspaceDocument(String(val))}
+											size="sm"
+										>
+											{#if deliverableDocuments.length === 0}
+												<option value="">No documents yet</option>
+											{:else}
+												{#each deliverableDocuments as doc}
+													<option value={doc.document.id}>
+														{doc.document.title || 'Untitled'} ({doc
+															.document.state_key})
+													</option>
+												{/each}
+											{/if}
+										</Select>
 									</div>
-									<Button
-										size="sm"
-										variant="secondary"
-										onclick={() => openDocumentModal(null)}
-										class="w-full sm:w-auto"
-									>
-										<Plus class="w-4 h-4" />
-										New Document
-									</Button>
 								</div>
-							</CardBody>
-						</Card>
+								<button
+									type="button"
+									onclick={() => openDocumentModal(null)}
+									class="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground text-xs font-semibold rounded-lg shadow-ink pressable w-full sm:w-auto"
+								>
+									<Plus class="w-3.5 h-3.5" />
+									<span>New</span>
+								</button>
+							</div>
+						</section>
 
 						<!-- Editor -->
 						{#if selectedWorkspaceDoc}
-							<Card variant="elevated">
-								<CardBody padding="md">
+							<section
+								class="bg-card border border-border rounded-lg shadow-ink tx tx-grain tx-weak overflow-hidden"
+							>
+								<div class="p-2 sm:p-3">
 									<RichMarkdownEditor
 										bind:value={workspaceDocContent}
-										rows={24}
+										rows={18}
 										maxLength={50000}
 										size="base"
 										label="Document Content"
-										helpText="Full markdown support with live preview"
+										helpText="Markdown supported"
 									/>
-								</CardBody>
+								</div>
 								<div
-									class="flex items-center justify-between gap-4 px-4 py-3 border-t border-border bg-muted/30"
+									class="flex items-center justify-between gap-2 px-2 sm:px-3 py-2 border-t border-border bg-muted/30"
 								>
 									{#if !selectedWorkspaceDoc.edge?.props?.handed_off}
-										<Button
-											variant="secondary"
-											size="sm"
+										<button
+											type="button"
 											onclick={() =>
 												handlePromoteWorkspaceDocument(
 													selectedWorkspaceDocId!
 												)}
+											class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-foreground border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors pressable"
 										>
-											<CircleCheck class="w-4 h-4" />
-											Promote to Project
-										</Button>
+											<CircleCheck class="w-3.5 h-3.5" />
+											<span class="hidden xs:inline">Promote</span>
+										</button>
 									{:else}
-										<span class="text-xs text-muted-foreground"
-											>Already promoted</span
+										<span class="text-[10px] text-muted-foreground"
+											>Promoted</span
 										>
 									{/if}
-									<Button
-										variant="primary"
-										size="sm"
+									<button
+										type="button"
 										onclick={saveWorkspaceDocument}
-										loading={workspaceDocSaving}
 										disabled={workspaceDocSaving || !selectedWorkspaceDocId}
+										class="flex items-center gap-1.5 px-3 py-1.5 bg-accent text-accent-foreground text-xs font-semibold rounded-lg shadow-ink pressable disabled:opacity-50"
 									>
-										<Save class="w-4 h-4" />
-										Save Document
-									</Button>
+										{#if workspaceDocSaving}
+											<Loader class="w-3.5 h-3.5 animate-spin" />
+										{:else}
+											<Save class="w-3.5 h-3.5" />
+										{/if}
+										<span>Save</span>
+									</button>
 								</div>
-							</Card>
+							</section>
 						{:else if workspaceLoading}
-							<Card variant="elevated">
-								<CardBody padding="lg">
-									<div class="flex items-center justify-center py-12">
-										<Loader
-											class="w-8 h-8 animate-spin text-muted-foreground"
-										/>
-									</div>
-								</CardBody>
-							</Card>
+							<section
+								class="bg-card border border-border rounded-lg shadow-ink p-6 sm:p-8"
+							>
+								<div class="flex items-center justify-center">
+									<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
+								</div>
+							</section>
 						{:else}
-							<Card variant="outline" class="border-dashed">
-								<CardBody padding="lg">
-									<div class="text-center py-8">
-										<FileText
-											class="w-12 h-12 text-muted-foreground mx-auto mb-4"
-										/>
-										<p class="text-muted-foreground mb-4">
-											No document selected. Create one to get started.
-										</p>
-										<Button
-											variant="primary"
-											size="sm"
-											onclick={() => openDocumentModal(null)}
-										>
-											Create Document
-										</Button>
+							<section
+								class="bg-card border-2 border-dashed border-border rounded-lg p-4 sm:p-6 tx tx-bloom tx-weak"
+							>
+								<div class="text-center">
+									<div
+										class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-3"
+									>
+										<FileText class="w-5 h-5 text-accent" />
 									</div>
-								</CardBody>
-							</Card>
+									<p class="text-xs text-muted-foreground mb-3">
+										No document selected
+									</p>
+									<button
+										type="button"
+										onclick={() => openDocumentModal(null)}
+										class="px-3 py-1.5 bg-accent text-accent-foreground text-xs font-semibold rounded-lg shadow-ink pressable"
+									>
+										Create Document
+									</button>
+								</div>
+							</section>
 						{/if}
 					</div>
 				{/if}
 
-				<!-- Mobile Save/Delete Actions -->
+				<!-- Mobile Save/Delete Actions - Fixed Bottom Bar -->
 				<div
-					class="sm:hidden flex items-center justify-between gap-3 p-4 bg-card border border-border rounded-xl shadow-ink"
+					class="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 py-2.5 bg-card/95 backdrop-blur border-t border-border shadow-ink-strong"
 				>
-					<Button
-						variant="danger"
-						size="sm"
+					<button
+						type="button"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
+						class="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
 					>
-						<Trash2 class="w-4 h-4" />
-						Delete
-					</Button>
-					<Button
-						variant="primary"
-						size="sm"
+						<Trash2 class="w-3.5 h-3.5" />
+						<span>Delete</span>
+					</button>
+					<button
+						type="button"
 						onclick={handleSave}
-						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
+						class="flex items-center justify-center gap-1.5 px-4 py-2 bg-accent text-accent-foreground text-xs font-semibold rounded-lg shadow-ink pressable disabled:opacity-50 flex-1 max-w-[180px]"
 					>
-						<Save class="w-4 h-4" />
-						Save Task
-					</Button>
+						{#if isSaving}
+							<Loader class="w-3.5 h-3.5 animate-spin" />
+						{:else}
+							<Save class="w-3.5 h-3.5" />
+						{/if}
+						<span>Save Task</span>
+					</button>
 				</div>
+				<!-- Spacer for fixed bottom bar on mobile -->
+				<div class="sm:hidden h-16"></div>
 			</div>
 
-			<!-- Right Column: Project Context Sidebar -->
+			<!-- Right Column: Project Context Sidebar - Hidden on Mobile (shown via header stats) -->
 			<aside
-				class="min-w-0 space-y-3 lg:sticky lg:top-36 lg:max-h-[calc(100vh-160px)] lg:overflow-y-auto"
+				class="hidden lg:block min-w-0 space-y-2 lg:sticky lg:top-28 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto lg:pr-1"
 			>
+				<p
+					class="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mb-1"
+				>
+					Project Context
+				</p>
+
 				<!-- Goals Panel -->
 				{#if goals.length > 0}
-					<Card variant="elevated" class="overflow-hidden">
+					<section
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
 						<button
 							onclick={() => togglePanel('goals')}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+							class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors pressable"
 						>
-							<div class="flex items-center gap-3">
+							<div class="flex items-center gap-2">
 								<div
-									class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-amber-500/10 flex items-center justify-center"
 								>
-									<Target class="w-4 h-4 text-amber-500" />
+									<Target class="w-3 h-3 text-amber-500" />
 								</div>
-								<div>
-									<p class="text-sm font-semibold text-foreground">Goals</p>
-									<p class="text-xs text-muted-foreground">
-										{goals.length} defined
-									</p>
-								</div>
+								<span class="text-xs font-semibold text-foreground">Goals</span>
+								<span class="text-[10px] text-muted-foreground"
+									>({goals.length})</span
+								>
 							</div>
 							<ChevronDown
-								class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.goals
+								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.goals
 									? 'rotate-180'
 									: ''}"
 							/>
 						</button>
 						{#if expandedPanels.goals}
-							<div class="border-t border-border">
+							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
 									{#each goals as goal}
 										<li>
 											<button
 												type="button"
 												onclick={() => openGoalModal(goal.id)}
-												class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors"
+												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<Target class="w-4 h-4 text-amber-500 shrink-0" />
-												<span class="text-sm text-foreground truncate"
+												<Target class="w-3 h-3 text-amber-500 shrink-0" />
+												<span class="text-xs text-foreground truncate"
 													>{goal.name}</span
 												>
 											</button>
@@ -1337,47 +1300,49 @@
 								</ul>
 							</div>
 						{/if}
-					</Card>
+					</section>
 				{/if}
 
 				<!-- Plans Panel -->
 				{#if plans.length > 0}
-					<Card variant="elevated" class="overflow-hidden">
+					<section
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
 						<button
 							onclick={() => togglePanel('plans')}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+							class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors pressable"
 						>
-							<div class="flex items-center gap-3">
+							<div class="flex items-center gap-2">
 								<div
-									class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-indigo-500/10 flex items-center justify-center"
 								>
-									<Calendar class="w-4 h-4 text-blue-500" />
+									<Calendar class="w-3 h-3 text-indigo-500" />
 								</div>
-								<div>
-									<p class="text-sm font-semibold text-foreground">Plans</p>
-									<p class="text-xs text-muted-foreground">
-										{plans.length} active
-									</p>
-								</div>
+								<span class="text-xs font-semibold text-foreground">Plans</span>
+								<span class="text-[10px] text-muted-foreground"
+									>({plans.length})</span
+								>
 							</div>
 							<ChevronDown
-								class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.plans
+								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.plans
 									? 'rotate-180'
 									: ''}"
 							/>
 						</button>
 						{#if expandedPanels.plans}
-							<div class="border-t border-border">
+							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
 									{#each plans as plan}
 										<li>
 											<button
 												type="button"
 												onclick={() => openPlanModal(plan.id)}
-												class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors"
+												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<Calendar class="w-4 h-4 text-blue-500 shrink-0" />
-												<span class="text-sm text-foreground truncate"
+												<Calendar
+													class="w-3 h-3 text-indigo-500 shrink-0"
+												/>
+												<span class="text-xs text-foreground truncate"
 													>{plan.name}</span
 												>
 											</button>
@@ -1386,114 +1351,113 @@
 								</ul>
 							</div>
 						{/if}
-					</Card>
+					</section>
 				{/if}
 
 				<!-- Documents Panel -->
 				{#if documents.length > 0}
-					<Card variant="elevated" class="overflow-hidden">
+					<section
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
 						<button
 							onclick={() => togglePanel('documents')}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+							class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors pressable"
 						>
-							<div class="flex items-center gap-3">
+							<div class="flex items-center gap-2">
 								<div
-									class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center"
 								>
-									<FileText class="w-4 h-4 text-purple-500" />
+									<FileText class="w-3 h-3 text-sky-500" />
 								</div>
-								<div>
-									<p class="text-sm font-semibold text-foreground">
-										Project Documents
-									</p>
-									<p class="text-xs text-muted-foreground">
-										{documents.length} available
-									</p>
-								</div>
+								<span class="text-xs font-semibold text-foreground">Docs</span>
+								<span class="text-[10px] text-muted-foreground"
+									>({documents.length})</span
+								>
 							</div>
 							<ChevronDown
-								class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.documents
+								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.documents
 									? 'rotate-180'
 									: ''}"
 							/>
 						</button>
 						{#if expandedPanels.documents}
-							<div class="border-t border-border">
-								<ul class="divide-y divide-border/80 max-h-48 overflow-y-auto">
-									{#each documents.slice(0, 10) as doc}
+							<div class="border-t border-border max-h-32 overflow-y-auto">
+								<ul class="divide-y divide-border/80">
+									{#each documents.slice(0, 8) as doc}
 										<li>
 											<button
 												type="button"
 												onclick={() => openDocumentModal(doc.id)}
-												class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors"
+												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<FileText
-													class="w-4 h-4 text-purple-500 shrink-0"
-												/>
-												<span class="text-sm text-foreground truncate"
+												<FileText class="w-3 h-3 text-sky-500 shrink-0" />
+												<span class="text-xs text-foreground truncate"
 													>{doc.title}</span
 												>
 											</button>
 										</li>
 									{/each}
 								</ul>
-								{#if documents.length > 10}
+								{#if documents.length > 8}
 									<div
-										class="px-4 py-2 text-xs text-muted-foreground border-t border-border"
+										class="px-2.5 py-1.5 text-[10px] text-muted-foreground border-t border-border"
 									>
-										+{documents.length - 10} more documents
+										+{documents.length - 8} more
 									</div>
 								{/if}
 							</div>
 						{/if}
-					</Card>
+					</section>
 				{/if}
 
 				<!-- Milestones Panel -->
 				{#if milestones.length > 0}
-					<Card variant="elevated" class="overflow-hidden">
+					<section
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
 						<button
 							onclick={() => togglePanel('milestones')}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+							class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors pressable"
 						>
-							<div class="flex items-center gap-3">
+							<div class="flex items-center gap-2">
 								<div
-									class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center"
 								>
-									<Flag class="w-4 h-4 text-emerald-500" />
+									<Flag class="w-3 h-3 text-emerald-500" />
 								</div>
-								<div>
-									<p class="text-sm font-semibold text-foreground">Milestones</p>
-									<p class="text-xs text-muted-foreground">
-										{milestones.length} checkpoints
-									</p>
-								</div>
+								<span class="text-xs font-semibold text-foreground">Milestones</span
+								>
+								<span class="text-[10px] text-muted-foreground"
+									>({milestones.length})</span
+								>
 							</div>
 							<ChevronDown
-								class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.milestones
+								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.milestones
 									? 'rotate-180'
 									: ''}"
 							/>
 						</button>
 						{#if expandedPanels.milestones}
-							<div class="border-t border-border">
+							<div class="border-t border-border max-h-32 overflow-y-auto">
 								<ul class="divide-y divide-border/80">
 									{#each milestones as milestone}
 										<li>
 											<button
 												type="button"
 												onclick={() => openMilestoneModal(milestone.id)}
-												class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors"
+												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<Flag class="w-4 h-4 text-emerald-500 shrink-0" />
+												<Flag class="w-3 h-3 text-emerald-500 shrink-0" />
 												<div class="min-w-0 flex-1">
-													<p class="text-sm text-foreground truncate">
-														{milestone.title}
-													</p>
+													<span
+														class="text-xs text-foreground truncate block"
+														>{milestone.title}</span
+													>
 													{#if milestone.due_at}
-														<p class="text-xs text-muted-foreground">
-															{formatDueDate(milestone.due_at)}
-														</p>
+														<span
+															class="text-[10px] text-muted-foreground"
+															>{formatDueDate(milestone.due_at)}</span
+														>
 													{/if}
 												</div>
 											</button>
@@ -1502,108 +1466,122 @@
 								</ul>
 							</div>
 						{/if}
-					</Card>
+					</section>
 				{/if}
 
 				<!-- Other Tasks Panel -->
 				{#if otherTasks.length > 0}
-					<Card variant="elevated" class="overflow-hidden">
+					<section
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
 						<button
 							onclick={() => togglePanel('tasks')}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+							class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors pressable"
 						>
-							<div class="flex items-center gap-3">
+							<div class="flex items-center gap-2">
 								<div
-									class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-slate-500/10 flex items-center justify-center"
 								>
-									<ListChecks class="w-4 h-4 text-accent" />
+									<ListChecks class="w-3 h-3 text-slate-500" />
 								</div>
-								<div>
-									<p class="text-sm font-semibold text-foreground">Other Tasks</p>
-									<p class="text-xs text-muted-foreground">
-										{otherTasks.length} in project
-									</p>
-								</div>
+								<span class="text-xs font-semibold text-foreground">Tasks</span>
+								<span class="text-[10px] text-muted-foreground"
+									>({otherTasks.length})</span
+								>
 							</div>
 							<ChevronDown
-								class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.tasks
+								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.tasks
 									? 'rotate-180'
 									: ''}"
 							/>
 						</button>
 						{#if expandedPanels.tasks}
-							<div class="border-t border-border">
-								<ul class="divide-y divide-border/80 max-h-48 overflow-y-auto">
-									{#each otherTasks as otherTask}
+							<div class="border-t border-border max-h-32 overflow-y-auto">
+								<ul class="divide-y divide-border/80">
+									{#each otherTasks.slice(0, 8) as otherTask}
 										{@const visuals = getTaskVisuals(otherTask.state_key)}
-										{@const TaskIcon = visuals.icon}
+										{@const OtherTaskIcon = visuals.icon}
 										<li>
 											<a
 												href="/projects/{project?.id}/tasks/{otherTask.id}"
-												class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors"
+												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<TaskIcon
-													class="w-4 h-4 {visuals.color} shrink-0"
+												<OtherTaskIcon
+													class="w-3 h-3 {visuals.color} shrink-0"
 												/>
-												<span class="text-sm text-foreground truncate"
+												<span class="text-xs text-foreground truncate"
 													>{otherTask.title}</span
 												>
 											</a>
 										</li>
 									{/each}
 								</ul>
+								{#if otherTasks.length > 8}
+									<div
+										class="px-2.5 py-1.5 text-[10px] text-muted-foreground border-t border-border"
+									>
+										+{otherTasks.length - 8} more
+									</div>
+								{/if}
 							</div>
 						{/if}
-					</Card>
+					</section>
 				{/if}
 
 				<!-- Outputs Panel -->
 				{#if outputs.length > 0}
-					<Card variant="elevated" class="overflow-hidden">
+					<section
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
 						<button
 							onclick={() => togglePanel('outputs')}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+							class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors pressable"
 						>
-							<div class="flex items-center gap-3">
+							<div class="flex items-center gap-2">
 								<div
-									class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center"
 								>
-									<Layers class="w-4 h-4 text-cyan-500" />
+									<Layers class="w-3 h-3 text-purple-500" />
 								</div>
-								<div>
-									<p class="text-sm font-semibold text-foreground">Outputs</p>
-									<p class="text-xs text-muted-foreground">
-										{outputs.length} deliverables
-									</p>
-								</div>
+								<span class="text-xs font-semibold text-foreground">Outputs</span>
+								<span class="text-[10px] text-muted-foreground"
+									>({outputs.length})</span
+								>
 							</div>
 							<ChevronDown
-								class="w-4 h-4 text-muted-foreground transition-transform {expandedPanels.outputs
+								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.outputs
 									? 'rotate-180'
 									: ''}"
 							/>
 						</button>
 						{#if expandedPanels.outputs}
-							<div class="border-t border-border">
-								<ul class="divide-y divide-border/80 max-h-48 overflow-y-auto">
-									{#each outputs.slice(0, 10) as output}
+							<div class="border-t border-border max-h-32 overflow-y-auto">
+								<ul class="divide-y divide-border/80">
+									{#each outputs.slice(0, 8) as output}
 										<li>
 											<button
 												type="button"
 												onclick={() => openOutputModal(output.id)}
-												class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors"
+												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<Layers class="w-4 h-4 text-cyan-500 shrink-0" />
-												<span class="text-sm text-foreground truncate"
+												<Layers class="w-3 h-3 text-purple-500 shrink-0" />
+												<span class="text-xs text-foreground truncate"
 													>{output.name}</span
 												>
 											</button>
 										</li>
 									{/each}
 								</ul>
+								{#if outputs.length > 8}
+									<div
+										class="px-2.5 py-1.5 text-[10px] text-muted-foreground border-t border-border"
+									>
+										+{outputs.length - 8} more
+									</div>
+								{/if}
 							</div>
 						{/if}
-					</Card>
+					</section>
 				{/if}
 			</aside>
 		</div>
@@ -1673,9 +1651,6 @@
 	<TaskEditModal
 		taskId={selectedTaskId}
 		projectId={project?.id}
-		{plans}
-		{goals}
-		milestones={milestones.map((m) => ({ ...m, due_at: m.due_at ?? undefined }))}
 		onClose={handleModalClose}
 		onUpdated={handleModalClose}
 		onDeleted={handleModalClose}

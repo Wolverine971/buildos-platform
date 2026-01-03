@@ -9692,7 +9692,13 @@ export type Database = {
       brain_dump_status: "pending" | "parsed" | "saved" | "parsed_and_deleted"
       calendar_sync_status: "active" | "paused" | "error"
       calendar_visibility: "public" | "private" | "shared"
-      document_state: "draft" | "review" | "published"
+      document_state:
+        | "draft"
+        | "review"
+        | "published"
+        | "in_review"
+        | "ready"
+        | "archived"
       execution_status: "pending" | "executing" | "completed" | "failed"
       goal_state: "draft" | "active" | "achieved" | "abandoned"
       llm_operation_type:
@@ -9920,7 +9926,14 @@ export const Constants = {
       brain_dump_status: ["pending", "parsed", "saved", "parsed_and_deleted"],
       calendar_sync_status: ["active", "paused", "error"],
       calendar_visibility: ["public", "private", "shared"],
-      document_state: ["draft", "review", "published"],
+      document_state: [
+        "draft",
+        "review",
+        "published",
+        "in_review",
+        "ready",
+        "archived",
+      ],
       execution_status: ["pending", "executing", "completed", "failed"],
       goal_state: ["draft", "active", "achieved", "abandoned"],
       llm_operation_type: [

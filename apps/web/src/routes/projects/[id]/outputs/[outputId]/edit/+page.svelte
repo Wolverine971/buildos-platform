@@ -1,9 +1,22 @@
 <!-- apps/web/src/routes/projects/[id]/outputs/[outputId]/edit/+page.svelte -->
+<!--
+	Output Edit Page - Full-Screen Document Editor
+
+	A focused editing experience for project outputs:
+	- Compact mobile-first header with project context
+	- Full-height Tiptap editor with AI generation
+	- Fixed bottom save bar on mobile
+	- Inkprint design system throughout
+
+	Documentation:
+	- Ontology System: /apps/web/docs/features/ontology/README.md
+	- Inkprint Design: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
+-->
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { toastService } from '$lib/stores/toast.store';
 	import DocumentEditor from '$lib/components/ontology/DocumentEditor.svelte';
-	import { ArrowLeft } from 'lucide-svelte';
+	import { ArrowLeft, Layers, ChevronRight, ExternalLink, Save, Loader } from 'lucide-svelte';
 	import type { PageData } from './$types';
 
 	interface SaveData {
@@ -46,10 +59,11 @@
 				throw new Error(errorData.error || 'Failed to save output');
 			}
 
-			// Success - DocumentEditor handles UI feedback
+			toastService.success('Output saved');
 		} catch (error) {
 			saveError = error instanceof Error ? error.message : 'Failed to save output';
-			throw error; // Re-throw so DocumentEditor can handle it
+			toastService.error(saveError);
+			throw error;
 		} finally {
 			isSaving = false;
 		}
@@ -67,33 +81,83 @@
 	<title>Edit {data.output.name} - {data.project.name} | BuildOS</title>
 </svelte:head>
 
-<div class="output-edit-page h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-	<!-- Header - Responsive with mobile-first design and proper accessibility -->
+<div class="output-edit-page h-screen flex flex-col bg-background overflow-hidden">
+	<!-- Header - Compact Mobile-First with Inkprint -->
 	<header
-		class="page-header border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
+		class="shrink-0 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
 	>
-		<!-- Back button - Mobile only -->
-		<div class="lg:hidden">
-			<button
-				type="button"
-				onclick={goBack}
-				class="inline-flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/90 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-blue-400 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-200"
-				aria-label="Back to project"
-			>
-				<ArrowLeft class="h-4 w-4" aria-hidden="true" />
-				<span>Back to Project</span>
-			</button>
-		</div>
+		<div class="px-2 sm:px-4 lg:px-6 py-1.5 sm:py-2">
+			<!-- Title Row -->
+			<div class="flex items-center justify-between gap-2">
+				<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
+					<!-- Back Button -->
+					<button
+						type="button"
+						onclick={goBack}
+						class="p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0 pressable"
+						aria-label="Back to project"
+					>
+						<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+					</button>
 
-		<!-- Project name with responsive text and truncation -->
-		<div class="flex-1 min-w-0">
-			<p class="text-sm text-gray-600 dark:text-gray-400 truncate" title={data.project.name}>
-				{data.project.name}
-			</p>
+					<!-- Output Icon & Title -->
+					<div class="min-w-0 flex-1">
+						<div class="flex items-center gap-2">
+							<div
+								class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0"
+							>
+								<Layers class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500" />
+							</div>
+							<div class="min-w-0">
+								<h1
+									class="text-sm sm:text-lg font-semibold text-foreground leading-tight line-clamp-1"
+								>
+									{data.output.name || 'Untitled Output'}
+								</h1>
+								<!-- Desktop: Show type key -->
+								{#if data.output.type_key}
+									<span
+										class="text-[10px] sm:text-xs font-mono text-muted-foreground hidden sm:block"
+									>
+										{data.output.type_key}
+									</span>
+								{/if}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Desktop: View Project Link -->
+				<a
+					href="/projects/{data.project.id}"
+					class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground border border-border rounded-lg hover:border-accent hover:text-accent transition-colors pressable"
+				>
+					<span>View Project</span>
+					<ExternalLink class="w-3 h-3" />
+				</a>
+			</div>
+
+			<!-- Mobile: Project Context Row -->
+			<div
+				class="flex sm:hidden items-center justify-between gap-2 mt-1 text-muted-foreground"
+			>
+				<a
+					href="/projects/{data.project.id}"
+					class="flex items-center gap-1 text-xs hover:text-foreground transition-colors truncate"
+				>
+					<ChevronRight class="w-3 h-3 rotate-180" />
+					<span class="truncate">{data.project.name || 'Project'}</span>
+				</a>
+				{#if data.output.type_key}
+					<span class="text-[10px] font-mono text-muted-foreground shrink-0">
+						{data.output.type_key}
+					</span>
+				{/if}
+			</div>
 		</div>
 	</header>
 
-	<!-- Editor - Full height with overflow handling and proper semantics -->
+	<!-- Editor - Full Height with Inkprint Styling -->
 	<main class="flex-1 overflow-hidden">
 		<DocumentEditor
 			outputId={data.output.id}

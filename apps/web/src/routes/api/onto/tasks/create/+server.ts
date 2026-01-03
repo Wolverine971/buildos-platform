@@ -157,7 +157,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create the task
 		// Description is now a proper column (not just in props)
 		// completed_at is auto-set when state_key is 'done'
-		const taskData: Record<string, unknown> = {
+		const taskData = {
 			project_id,
 			title,
 			description: description || null,
@@ -171,13 +171,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				// Keep goal_id and milestone_id in props for edge reference
 				...(validatedGoalId ? { goal_id: validatedGoalId } : {}),
 				...(validatedMilestoneId ? { supporting_milestone_id: validatedMilestoneId } : {})
-			}
+			},
+			// Auto-set completed_at when creating a task as done
+			...(finalState === 'done' ? { completed_at: new Date().toISOString() } : {})
 		};
-
-		// Auto-set completed_at when creating a task as done
-		if (finalState === 'done') {
-			taskData.completed_at = new Date().toISOString();
-		}
 
 		const { data: task, error: createError } = await supabase
 			.from('onto_tasks')

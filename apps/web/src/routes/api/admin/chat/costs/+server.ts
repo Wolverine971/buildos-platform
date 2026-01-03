@@ -57,12 +57,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
-		const chatUsageFilter = [
-			'chat_session_id.not.is.null',
+		const agentUsageFilter = [
 			'agent_session_id.not.is.null',
 			'agent_plan_id.not.is.null',
 			'agent_execution_id.not.is.null',
-			'operation_type.ilike.chat_%',
 			'operation_type.ilike.agent_%',
 			'operation_type.ilike.planner_%',
 			'operation_type.ilike.executor_%',
@@ -75,11 +73,11 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const { data: usageLogs, error: usageError } = await supabase
 			.from('llm_usage_logs')
 			.select(
-				'user_id, chat_session_id, agent_session_id, agent_plan_id, agent_execution_id, operation_type, model_used, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, created_at'
+				'user_id, agent_session_id, agent_plan_id, agent_execution_id, operation_type, model_used, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, created_at'
 			)
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', now.toISOString())
-			.or(chatUsageFilter);
+			.or(agentUsageFilter);
 
 		if (usageError) throw usageError;
 
@@ -112,9 +110,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				}
 			>();
 
-			const agentPrefix =
-				/^(agent_|planner_|executor_|plan_|strategy_|response_|clarifying_)/i;
-
 			for (const row of usageRows) {
 				const promptTokens = row.prompt_tokens || 0;
 				const completionTokens = row.completion_tokens || 0;
@@ -130,18 +125,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				totals.outputCost += outputCost;
 				totals.totalCost += totalCost;
 
-				const operationType = String(row.operation_type || '');
-				const isAgent =
-					!!(row.agent_session_id || row.agent_plan_id || row.agent_execution_id) ||
-					agentPrefix.test(operationType);
-
-				if (isAgent) {
-					totals.agentTokens += totalTokens;
-					totals.agentCost += totalCost;
-				} else {
-					totals.chatTokens += totalTokens;
-					totals.chatCost += totalCost;
-				}
+				totals.agentTokens += totalTokens;
+				totals.agentCost += totalCost;
 
 				const model = row.model_used || 'unknown';
 				const modelEntry = modelStats.get(model) || { tokens: 0, cost: 0 };
@@ -171,14 +156,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					costByDate[date].total_cost += totalCost;
 				}
 
-				if (row.chat_session_id) {
-					const sessionEntry = sessionStats.get(row.chat_session_id) || {
+				if (row.agent_session_id) {
+					const sessionEntry = sessionStats.get(row.agent_session_id) || {
 						tokens: 0,
 						cost: 0
 					};
 					sessionEntry.tokens += totalTokens;
 					sessionEntry.cost += totalCost;
-					sessionStats.set(row.chat_session_id, sessionEntry);
+					sessionStats.set(row.agent_session_id, sessionEntry);
 				}
 
 				if (row.user_id) {
@@ -191,8 +176,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 					userEntry.total_tokens += totalTokens;
 					userEntry.total_cost += totalCost;
-					if (row.chat_session_id) {
-						userEntry.session_ids.add(row.chat_session_id);
+					if (row.agent_session_id) {
+						userEntry.session_ids.add(row.agent_session_id);
 					}
 					userStats.set(row.user_id, userEntry);
 				}
@@ -214,14 +199,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 			if (topSessionIds.length > 0) {
 				const { data: sessionsData, error: sessionsError } = await supabase
-					.from('chat_sessions')
+					.from('agent_chat_sessions')
 					.select(
 						`
 						id,
-						title,
-						auto_title,
 						created_at,
-						users!inner(email)
+						session_type,
+						initial_context,
+						users!agent_chat_sessions_user_id_fkey(email)
 					`
 					)
 					.in('id', topSessionIds);
@@ -233,9 +218,18 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 			const topSessions = topSessionEntries.map(([sessionId, stats]) => {
 				const session = sessionsById.get(sessionId);
+				const context = session?.initial_context as Record<string, any> | null;
+				const title =
+					context?.task?.title ||
+					context?.task?.name ||
+					context?.title ||
+					context?.user_message ||
+					(session?.session_type === 'planner_thinking'
+						? 'Planner Session'
+						: 'Agent Session');
 				return {
 					id: sessionId,
-					title: session?.title || session?.auto_title || 'Untitled Session',
+					title: title || 'Agent Session',
 					user_email: session?.users?.email || 'Unknown',
 					tokens: stats.tokens,
 					cost: stats.cost,
@@ -279,24 +273,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			const avgCostPerM =
 				totals.totalTokens > 0 ? (totals.totalCost / totals.totalTokens) * 1_000_000 : 0;
 
-			const { data: compressionsData, error: compressionsError } = await supabase
-				.from('chat_compressions')
-				.select('original_tokens, compressed_tokens, created_at')
-				.gte('created_at', startDate.toISOString());
-
-			if (compressionsError) throw compressionsError;
-
-			const tokensSaved =
-				compressionsData?.reduce(
-					(sum, c) => sum + ((c.original_tokens || 0) - (c.compressed_tokens || 0)),
-					0
-				) || 0;
-
-			const avgCostPerToken =
-				totals.totalTokens > 0
-					? totals.totalCost / totals.totalTokens
-					: PRICING.AVG_COST_PER_M / 1_000_000;
-			const costSavedByCompression = tokensSaved * avgCostPerToken;
+			const tokensSaved = 0;
+			const costSavedByCompression = 0;
 
 			return ApiResponse.success({
 				overview: {
@@ -330,36 +308,15 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// ===================================================
 		// Legacy fallback (no llm_usage_logs data)
 		// ===================================================
-		const { data: messagesData, error: messagesError } = await supabase
-			.from('chat_messages')
-			.select('prompt_tokens, completion_tokens, total_tokens, created_at, session_id')
-			.gte('created_at', startDate.toISOString())
-			.not('total_tokens', 'is', null);
-
-		if (messagesError) throw messagesError;
-
-		const totalPromptTokens =
-			messagesData?.reduce((sum, m) => sum + (m.prompt_tokens || 0), 0) || 0;
-		const totalCompletionTokens =
-			messagesData?.reduce((sum, m) => sum + (m.completion_tokens || 0), 0) || 0;
-		const totalChatTokens =
-			messagesData?.reduce((sum, m) => sum + (m.total_tokens || 0), 0) || 0;
-
-		const chatInputCost = (totalPromptTokens / 1000000) * PRICING.INPUT_COST_PER_M;
-		const chatOutputCost = (totalCompletionTokens / 1000000) * PRICING.OUTPUT_COST_PER_M;
-		const totalChatCost = chatInputCost + chatOutputCost;
-
 		const { data: agentMessagesData, error: agentMessagesError } = await supabase
 			.from('agent_chat_messages')
-			.select('tokens_used, model_used, created_at')
-			.gte('created_at', startDate.toISOString())
-			.not('tokens_used', 'is', null);
+			.select('agent_session_id, user_id, tokens_used, model_used, created_at')
+			.gte('created_at', startDate.toISOString());
 
 		if (agentMessagesError) throw agentMessagesError;
 
 		const totalAgentTokens =
 			agentMessagesData?.reduce((sum, m) => sum + (m.tokens_used || 0), 0) || 0;
-
 		const totalAgentCost = (totalAgentTokens / 1000000) * PRICING.AVG_COST_PER_M;
 
 		const tokensByModel =
@@ -372,81 +329,121 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				{} as Record<string, number>
 			) || {};
 
-		const totalTokens = totalChatTokens + totalAgentTokens;
-		const totalCost = totalChatCost + totalAgentCost;
+		const totalTokens = totalAgentTokens;
+		const totalCost = totalAgentCost;
 
-		const { data: sessionsData, error: sessionsError } = await supabase
-			.from('chat_sessions')
-			.select(
+		const sessionStats = new Map<string, { tokens: number }>();
+		const userStats = new Map<
+			string,
+			{
+				user_id: string;
+				total_tokens: number;
+				total_cost: number;
+				session_ids: Set<string>;
+			}
+		>();
+
+		(agentMessagesData || []).forEach((msg) => {
+			const tokens = msg.tokens_used || 0;
+			if (msg.agent_session_id) {
+				const current = sessionStats.get(msg.agent_session_id) || { tokens: 0 };
+				current.tokens += tokens;
+				sessionStats.set(msg.agent_session_id, current);
+			}
+
+			if (msg.user_id) {
+				const current = userStats.get(msg.user_id) || {
+					user_id: msg.user_id,
+					total_tokens: 0,
+					total_cost: 0,
+					session_ids: new Set<string>()
+				};
+				current.total_tokens += tokens;
+				current.total_cost += (tokens / 1000000) * PRICING.AVG_COST_PER_M;
+				if (msg.agent_session_id) {
+					current.session_ids.add(msg.agent_session_id);
+				}
+				userStats.set(msg.user_id, current);
+			}
+		});
+
+		const topSessionEntries = Array.from(sessionStats.entries())
+			.sort((a, b) => b[1].tokens - a[1].tokens)
+			.slice(0, 20);
+		const topSessionIds = topSessionEntries.map(([sessionId]) => sessionId);
+		const sessionsById = new Map<string, any>();
+
+		if (topSessionIds.length > 0) {
+			const { data: sessionsData, error: sessionsError } = await supabase
+				.from('agent_chat_sessions')
+				.select(
+					`
+					id,
+					created_at,
+					session_type,
+					initial_context,
+					users!agent_chat_sessions_user_id_fkey(email)
 				`
-				id,
-				title,
-				auto_title,
-				total_tokens_used,
-				created_at,
-				users!inner(id, email)
-			`
-			)
-			.gte('created_at', startDate.toISOString())
-			.not('total_tokens_used', 'is', null)
-			.order('total_tokens_used', { ascending: false })
-			.limit(20);
+				)
+				.in('id', topSessionIds);
 
-		if (sessionsError) throw sessionsError;
+			if (sessionsError) throw sessionsError;
 
-		const topSessions = (sessionsData || []).map((s) => {
-			const tokens = s.total_tokens_used || 0;
-			const costEstimate = (tokens / 1000000) * PRICING.AVG_COST_PER_M;
+			(sessionsData || []).forEach((session) => sessionsById.set(session.id, session));
+		}
+
+		const topSessions = topSessionEntries.map(([sessionId, stats]) => {
+			const session = sessionsById.get(sessionId);
+			const context = session?.initial_context as Record<string, any> | null;
+			const title =
+				context?.task?.title ||
+				context?.task?.name ||
+				context?.title ||
+				context?.user_message ||
+				(session?.session_type === 'planner_thinking'
+					? 'Planner Session'
+					: 'Agent Session');
+			const costEstimate = (stats.tokens / 1000000) * PRICING.AVG_COST_PER_M;
 			return {
-				id: s.id,
-				title: s.title || s.auto_title || 'Untitled Session',
-				user_email: s.users.email,
-				tokens: tokens,
+				id: sessionId,
+				title: title || 'Agent Session',
+				user_email: session?.users?.email || 'Unknown',
+				tokens: stats.tokens,
 				cost: costEstimate,
-				created_at: s.created_at
+				created_at: session?.created_at || null
 			};
 		});
 
-		const { data: allSessionsData, error: allSessionsError } = await supabase
-			.from('chat_sessions')
-			.select('user_id, total_tokens_used, users!inner(email)')
-			.gte('created_at', startDate.toISOString())
-			.not('total_tokens_used', 'is', null);
-
-		if (allSessionsError) throw allSessionsError;
-
-		const userStats = (allSessionsData || []).reduce(
-			(acc, session) => {
-				const userId = session.user_id;
-				const tokens = session.total_tokens_used || 0;
-				const cost = (tokens / 1000000) * PRICING.AVG_COST_PER_M;
-
-				if (!acc[userId]) {
-					acc[userId] = {
-						user_id: userId,
-						email: session.users.email,
-						total_tokens: 0,
-						total_cost: 0,
-						session_count: 0
-					};
-				}
-
-				acc[userId].total_tokens += tokens;
-				acc[userId].total_cost += cost;
-				acc[userId].session_count += 1;
-
-				return acc;
-			},
-			{} as Record<string, any>
-		);
-
-		const topUsers = Object.values(userStats)
-			.sort((a: any, b: any) => b.total_cost - a.total_cost)
+		const topUserEntries = Array.from(userStats.values())
+			.sort((a, b) => b.total_cost - a.total_cost)
 			.slice(0, 10);
+		const userIds = topUserEntries.map((user) => user.user_id);
+		const userEmailMap = new Map<string, string>();
 
-		const costByDate = (messagesData || []).reduce(
+		if (userIds.length > 0) {
+			const { data: usersData, error: usersError } = await supabase
+				.from('users')
+				.select('id, email')
+				.in('id', userIds);
+
+			if (usersError) throw usersError;
+
+			(usersData || []).forEach((user) => {
+				userEmailMap.set(user.id, user.email);
+			});
+		}
+
+		const topUsers = topUserEntries.map((user) => ({
+			user_id: user.user_id,
+			email: userEmailMap.get(user.user_id) || 'Unknown',
+			total_tokens: user.total_tokens,
+			total_cost: user.total_cost,
+			session_count: user.session_ids.size
+		}));
+
+		const costByDate = (agentMessagesData || []).reduce(
 			(acc, msg) => {
-				const date = msg.created_at.split('T')[0]; // YYYY-MM-DD
+				const date = msg.created_at.split('T')[0];
 				if (!acc[date]) {
 					acc[date] = {
 						date,
@@ -459,73 +456,35 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					};
 				}
 
-				const promptTokens = msg.prompt_tokens || 0;
-				const completionTokens = msg.completion_tokens || 0;
-				const totalTokens = msg.total_tokens || 0;
-
-				acc[date].prompt_tokens += promptTokens;
-				acc[date].completion_tokens += completionTokens;
-				acc[date].total_tokens += totalTokens;
-				acc[date].input_cost += (promptTokens / 1000000) * PRICING.INPUT_COST_PER_M;
-				acc[date].output_cost += (completionTokens / 1000000) * PRICING.OUTPUT_COST_PER_M;
-				acc[date].total_cost += acc[date].input_cost + acc[date].output_cost;
+				const tokens = msg.tokens_used || 0;
+				const cost = (tokens / 1000000) * PRICING.AVG_COST_PER_M;
+				acc[date].total_tokens += tokens;
+				acc[date].total_cost += cost;
 
 				return acc;
 			},
 			{} as Record<string, any>
 		);
 
-		(agentMessagesData || []).forEach((msg) => {
-			const date = msg.created_at.split('T')[0];
-			if (!costByDate[date]) {
-				costByDate[date] = {
-					date,
-					prompt_tokens: 0,
-					completion_tokens: 0,
-					total_tokens: 0,
-					input_cost: 0,
-					output_cost: 0,
-					total_cost: 0
-				};
-			}
-
-			const tokens = msg.tokens_used || 0;
-			const cost = (tokens / 1000000) * PRICING.AVG_COST_PER_M;
-			costByDate[date].total_tokens += tokens;
-			costByDate[date].total_cost += cost;
-		});
-
 		const costTrends = Object.values(costByDate).sort((a: any, b: any) =>
 			a.date.localeCompare(b.date)
 		);
 
-		const { data: compressionsData, error: compressionsError } = await supabase
-			.from('chat_compressions')
-			.select('original_tokens, compressed_tokens, created_at')
-			.gte('created_at', startDate.toISOString());
-
-		if (compressionsError) throw compressionsError;
-
-		const tokensSaved =
-			compressionsData?.reduce(
-				(sum, c) => sum + ((c.original_tokens || 0) - (c.compressed_tokens || 0)),
-				0
-			) || 0;
-
-		const costSavedByCompression = (tokensSaved / 1000000) * PRICING.AVG_COST_PER_M;
+		const tokensSaved = 0;
+		const costSavedByCompression = 0;
 
 		return ApiResponse.success({
 			overview: {
 				total_tokens: totalTokens,
 				total_cost: totalCost,
-				chat_tokens: totalChatTokens,
-				chat_cost: totalChatCost,
+				chat_tokens: 0,
+				chat_cost: 0,
 				agent_tokens: totalAgentTokens,
 				agent_cost: totalAgentCost,
-				prompt_tokens: totalPromptTokens,
-				completion_tokens: totalCompletionTokens,
-				input_cost: chatInputCost,
-				output_cost: chatOutputCost
+				prompt_tokens: 0,
+				completion_tokens: 0,
+				input_cost: 0,
+				output_cost: 0
 			},
 			by_model: Object.entries(tokensByModel).map(([model, tokens]) => ({
 				model,

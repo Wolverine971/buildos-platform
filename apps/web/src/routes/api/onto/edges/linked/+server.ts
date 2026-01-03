@@ -289,7 +289,11 @@ async function fetchEntityDetails(
 ): Promise<any[]> {
 	if (ids.length === 0) return [];
 
-	const { data, error } = await supabase.from(table).select(columns.join(', ')).in('id', ids);
+	const { data, error } = await supabase
+		.from(table)
+		.select(columns.join(', '))
+		.in('id', ids)
+		.is('deleted_at', null);
 
 	if (error) {
 		console.error(`[LinkedEntities API] Error fetching ${table}:`, error);
@@ -354,6 +358,7 @@ async function fetchAvailableEntities(
 		.from('onto_tasks')
 		.select('id, title, state_key, type_key')
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: false })
 		.limit(100);
 	if (sourceKind === 'task') tasksQuery.neq('id', sourceId);
@@ -362,6 +367,7 @@ async function fetchAvailableEntities(
 		.from('onto_plans')
 		.select('id, name, state_key, type_key')
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: false })
 		.limit(100);
 	if (sourceKind === 'plan') plansQuery.neq('id', sourceId);
@@ -370,6 +376,7 @@ async function fetchAvailableEntities(
 		.from('onto_goals')
 		.select('id, name, state_key, type_key')
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: false })
 		.limit(100);
 	if (sourceKind === 'goal') goalsQuery.neq('id', sourceId);
@@ -378,6 +385,7 @@ async function fetchAvailableEntities(
 		.from('onto_milestones')
 		.select('id, title, due_at, type_key')
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('due_at', { ascending: true })
 		.limit(100);
 	if (sourceKind === 'milestone') milestonesQuery.neq('id', sourceId);
@@ -386,6 +394,7 @@ async function fetchAvailableEntities(
 		.from('onto_documents')
 		.select('id, title, type_key, state_key')
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: false })
 		.limit(100);
 	if (sourceKind === 'document') documentsQuery.neq('id', sourceId);
@@ -394,6 +403,7 @@ async function fetchAvailableEntities(
 		.from('onto_outputs')
 		.select('id, name, type_key, state_key')
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: false })
 		.limit(100);
 	if (sourceKind === 'output') outputsQuery.neq('id', sourceId);
@@ -402,6 +412,7 @@ async function fetchAvailableEntities(
 		.from('onto_risks')
 		.select('id, title, state_key, type_key, impact')
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: false })
 		.limit(100);
 	if (sourceKind === 'risk') risksQuery.neq('id', sourceId);

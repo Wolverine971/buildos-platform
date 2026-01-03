@@ -239,9 +239,21 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		// Always update updated_at
 		updateData.updated_at = new Date().toISOString();
 
-		// Set mitigated_at when state changes to 'mitigated'
-		if (state_key === 'mitigated' && existingRisk.state_key !== 'mitigated') {
-			updateData.mitigated_at = new Date().toISOString();
+		// Handle mitigated_at timestamp based on state transitions
+		if (state_key !== undefined) {
+			const wasNotMitigated = existingRisk.state_key !== 'mitigated';
+			const isNowMitigated = state_key === 'mitigated';
+			const wasMitigated = existingRisk.state_key === 'mitigated';
+			const isNoLongerMitigated = state_key !== 'mitigated';
+
+			// Transitioning TO mitigated: set mitigated_at
+			if (wasNotMitigated && isNowMitigated) {
+				updateData.mitigated_at = new Date().toISOString();
+			}
+			// Transitioning FROM mitigated: clear mitigated_at
+			else if (wasMitigated && isNoLongerMitigated) {
+				updateData.mitigated_at = null;
+			}
 		}
 
 		// Only update if there's something to update

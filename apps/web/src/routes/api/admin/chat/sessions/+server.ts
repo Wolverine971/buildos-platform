@@ -53,11 +53,20 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	try {
 		// Build query
 		let query = supabase
-			.from('chat_sessions')
+			.from('agent_chat_sessions')
 			.select(
 				`
-        *,
-        users!inner(id, email, name)
+        id,
+        status,
+        created_at,
+        completed_at,
+        message_count,
+        session_type,
+        context_type,
+        initial_context,
+        user_id,
+        plan_id,
+        users!agent_chat_sessions_user_id_fkey(id, email, name)
       `,
 				{ count: 'exact' }
 			)
@@ -86,79 +95,101 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		if (sessionsError) throw sessionsError;
 
-		// For each session, check for agent plans, compressions, and errors
+		// For each session, check for token usage, tool calls, and errors
 		const sessionIds = sessionsData?.map((s) => s.id) || [];
 
 		const usageBySession = new Map<string, { total_tokens: number; total_cost: number }>();
+		const tokensBySession = new Map<string, number>();
+		const toolCallsBySession = new Map<string, number>();
+		const sessionsWithErrors = new Set<string>();
+
 		if (sessionIds.length > 0) {
-			const { data: usageLogs, error: usageError } = await supabase
-				.from('llm_usage_logs')
-				.select('chat_session_id, total_tokens, total_cost_usd')
-				.in('chat_session_id', sessionIds);
+			const [
+				{ data: usageLogs, error: usageError },
+				{ data: messageStats, error: messageStatsError },
+				{ data: executions, error: executionsError }
+			] = await Promise.all([
+				supabase
+					.from('llm_usage_logs')
+					.select('agent_session_id, total_tokens, total_cost_usd')
+					.in('agent_session_id', sessionIds),
+				supabase
+					.from('agent_chat_messages')
+					.select('agent_session_id, tokens_used, tool_calls')
+					.in('agent_session_id', sessionIds),
+				supabase
+					.from('agent_executions')
+					.select('agent_session_id, success')
+					.in('agent_session_id', sessionIds)
+			]);
 
 			if (usageError) throw usageError;
+			if (messageStatsError) throw messageStatsError;
+			if (executionsError) throw executionsError;
 
 			(usageLogs || []).forEach((log) => {
-				if (!log.chat_session_id) return;
-				const current = usageBySession.get(log.chat_session_id) || {
+				if (!log.agent_session_id) return;
+				const current = usageBySession.get(log.agent_session_id) || {
 					total_tokens: 0,
 					total_cost: 0
 				};
 				current.total_tokens += log.total_tokens || 0;
 				current.total_cost += Number(log.total_cost_usd || 0);
-				usageBySession.set(log.chat_session_id, current);
+				usageBySession.set(log.agent_session_id, current);
+			});
+
+			(messageStats || []).forEach((msg) => {
+				if (!msg.agent_session_id) return;
+				const tokenSum =
+					(tokensBySession.get(msg.agent_session_id) || 0) + (msg.tokens_used || 0);
+				tokensBySession.set(msg.agent_session_id, tokenSum);
+
+				if (msg.tool_calls) {
+					const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls.length : 1;
+					const current = toolCallsBySession.get(msg.agent_session_id) || 0;
+					toolCallsBySession.set(msg.agent_session_id, current + toolCalls);
+				}
+			});
+
+			(executions || []).forEach((execution) => {
+				if (execution.success === false && execution.agent_session_id) {
+					sessionsWithErrors.add(execution.agent_session_id);
+				}
 			});
 		}
-
-		// Check for agent plans
-		const { data: plansData } = await supabase
-			.from('agent_plans')
-			.select('session_id')
-			.in('session_id', sessionIds);
-
-		const sessionsWithPlans = new Set(plansData?.map((p) => p.session_id) || []);
-
-		// Check for compressions
-		const { data: compressionsData } = await supabase
-			.from('chat_compressions')
-			.select('session_id')
-			.in('session_id', sessionIds);
-
-		const sessionsWithCompressions = new Set(compressionsData?.map((c) => c.session_id) || []);
-
-		// Check for errors (messages with error_message)
-		const { data: errorMessagesData } = await supabase
-			.from('chat_messages')
-			.select('session_id')
-			.in('session_id', sessionIds)
-			.not('error_message', 'is', null);
-
-		const sessionsWithErrors = new Set(errorMessagesData?.map((m) => m.session_id) || []);
 
 		// Format sessions
 		const sessions = (sessionsData || []).map((session) => {
 			const usageStats = usageBySession.get(session.id);
-			const totalTokens = usageStats?.total_tokens ?? session.total_tokens_used ?? 0;
+			const fallbackTokens = tokensBySession.get(session.id) ?? 0;
+			const totalTokens = usageStats?.total_tokens ?? fallbackTokens;
 			const costEstimate = usageStats?.total_cost ?? (totalTokens / 1000000) * 0.21; // $0.21 per 1M tokens fallback
+			const context = session.initial_context as Record<string, any> | null;
+			const title =
+				context?.task?.title ||
+				context?.task?.name ||
+				context?.title ||
+				context?.user_message ||
+				(session.session_type === 'planner_thinking' ? 'Planner Session' : 'Agent Session');
 
 			return {
 				id: session.id,
-				title: session.title || session.auto_title || 'Untitled Session',
+				title,
 				user: {
-					id: session.users.id,
-					email: session.users.email,
-					name: session.users.name
+					id: session.users?.id,
+					email: session.users?.email,
+					name: session.users?.name
 				},
 				message_count: session.message_count || 0,
 				total_tokens: totalTokens,
-				tool_call_count: session.tool_call_count || 0,
-				context_type: session.context_type,
+				tool_call_count: toolCallsBySession.get(session.id) || 0,
+				context_type: session.context_type || session.session_type,
 				status: session.status,
 				created_at: session.created_at,
-				updated_at: session.updated_at,
-				has_agent_plan: sessionsWithPlans.has(session.id),
-				has_compression: sessionsWithCompressions.has(session.id),
-				has_errors: sessionsWithErrors.has(session.id),
+				updated_at: session.completed_at || session.created_at,
+				has_agent_plan: !!session.plan_id,
+				has_compression: false,
+				has_errors: sessionsWithErrors.has(session.id) || session.status === 'failed',
 				cost_estimate: costEstimate
 			};
 		});
