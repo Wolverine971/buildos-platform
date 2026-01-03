@@ -32,6 +32,7 @@ import { normalizeToolError } from '../shared/error-utils';
 import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import { TOOL_METADATA } from '../tools/core/definitions';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { dev } from '$app/environment';
 
 /**
  * Tool execution options
@@ -139,11 +140,13 @@ export class ToolExecutionService implements BaseService {
 			return result;
 		};
 
-		console.log('[ToolExecutionService] Executing tool', {
-			toolName,
-			callId: toolCall.id,
-			hasArgs: rawArguments !== undefined && rawArguments !== null
-		});
+		if (dev) {
+			console.log('[ToolExecutionService] Executing tool', {
+				toolName,
+				callId: toolCall.id,
+				hasArgs: rawArguments !== undefined && rawArguments !== null
+			});
+		}
 
 		if (!toolName) {
 			return finalizeResult({
@@ -348,10 +351,12 @@ export class ToolExecutionService implements BaseService {
 		availableTools: ChatToolDefinition[],
 		options: ToolExecutionOptions = {}
 	): Promise<ToolExecutionResult[]> {
-		console.log('[ToolExecutionService] Executing multiple tools', {
-			count: toolCalls.length,
-			tools: toolCalls.map((call) => this.resolveToolCall(call).name || 'unknown')
-		});
+		if (dev) {
+			console.log('[ToolExecutionService] Executing multiple tools', {
+				count: toolCalls.length,
+				tools: toolCalls.map((call) => this.resolveToolCall(call).name || 'unknown')
+			});
+		}
 
 		const results: ToolExecutionResult[] = [];
 

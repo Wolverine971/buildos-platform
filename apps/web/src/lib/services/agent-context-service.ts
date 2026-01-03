@@ -15,6 +15,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { dev } from '$app/environment';
 import type {
 	Database,
 	ChatContextType,
@@ -47,6 +48,12 @@ import {
 	buildExecutorContext as buildExecutorContextImpl,
 	extractRelevantDataForExecutor
 } from './context';
+
+const debugLog = (...args: unknown[]) => {
+	if (dev) {
+		console.log(...args);
+	}
+};
 
 // ============================================
 // TYPES
@@ -123,7 +130,7 @@ export class AgentContextService {
 		const ontologyContext = 'ontologyContext' in params ? params.ontologyContext : undefined;
 		const projectFocus = 'projectFocus' in params ? (params.projectFocus ?? null) : null;
 
-		console.log('[AgentContext] Building enhanced planner context', {
+		debugLog('[AgentContext] Building enhanced planner context', {
 			contextType,
 			hasOntology: !!ontologyContext,
 			hasLastTurn: !!lastTurnContext,
@@ -137,7 +144,7 @@ export class AgentContextService {
 		if (focus?.type && focus?.id && focus?.name) {
 			try {
 				const ontologyLoader = await this.getOntologyLoader(userId);
-				console.log(
+				debugLog(
 					'[AgentContext] Loading linked entities for focus:',
 					focus.type,
 					focus.id
@@ -148,7 +155,7 @@ export class AgentContextService {
 					focus.name,
 					{ maxPerType: 3, includeDescriptions: false }
 				);
-				console.log('[AgentContext] Linked entities loaded:', {
+				debugLog('[AgentContext] Linked entities loaded:', {
 					total: linkedEntitiesContext.counts.total,
 					truncated: linkedEntitiesContext.truncated
 				});
@@ -190,12 +197,12 @@ export class AgentContextService {
 			);
 			locationContext = standardContext.content;
 			locationMetadata = standardContext.metadata;
-			console.log('[AgentContext] Using standard context for project_create');
+			debugLog('[AgentContext] Using standard context for project_create');
 		} else if (ontologyContext?.type === 'combined' && projectFocus) {
 			const formatted = formatCombinedContext(ontologyContext, projectFocus);
 			locationContext = formatted.content;
 			locationMetadata = formatted.metadata;
-			console.log('[AgentContext] Using combined focus context', {
+			debugLog('[AgentContext] Using combined focus context', {
 				focusType: projectFocus.focusType,
 				entityId: projectFocus.focusEntityId
 			});
@@ -205,7 +212,7 @@ export class AgentContextService {
 			const formatted = formatOntologyContext(ontologyContext);
 			locationContext = formatted.content;
 			locationMetadata = formatted.metadata;
-			console.log('[AgentContext] Using ontology context', {
+			debugLog('[AgentContext] Using ontology context', {
 				type: ontologyContext.type
 			});
 		} else {
@@ -219,7 +226,7 @@ export class AgentContextService {
 			);
 			locationContext = standardContext.content;
 			locationMetadata = standardContext.metadata;
-			console.log('[AgentContext] Using standard context', {
+			debugLog('[AgentContext] Using standard context', {
 				contextType
 			});
 		}
@@ -239,7 +246,7 @@ export class AgentContextService {
 		]);
 
 		// Log token usage
-		console.log('[AgentContext] Token usage:', {
+		debugLog('[AgentContext] Token usage:', {
 			systemPrompt: Math.ceil(systemPrompt.length / 4),
 			locationContext: Math.ceil(locationContext.length / 4),
 			history: processedHistory.reduce((sum, m) => sum + Math.ceil(m.content.length / 4), 0),
@@ -306,7 +313,7 @@ export class AgentContextService {
 
 		if (needsCompression && this.compressionService && sessionId) {
 			try {
-				console.log('[AgentContext] Compressing conversation history', {
+				debugLog('[AgentContext] Compressing conversation history', {
 					originalTokens: estimatedTokens,
 					targetTokens: conversationBudget,
 					messageCount: history.length,

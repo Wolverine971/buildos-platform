@@ -748,7 +748,7 @@ export class StreamHandler {
 			interrupted: true,
 			interrupted_reason: 'user_cancelled',
 			stream_run_id: streamRunId ?? null,
-			partial_tokens: state.assistantResponse.length
+			partial_tokens: Math.ceil(state.assistantResponse.length / 4)
 		};
 
 		if (state.assistantResponse.trim()) {

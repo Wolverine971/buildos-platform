@@ -238,6 +238,7 @@
 	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
+	let currentAssistantMessageIndex = $state<number | null>(null);
 	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
 	const pendingToolResults = new Map<string, 'completed' | 'failed'>(); // Tool results that arrive before tool_call
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
@@ -423,6 +424,7 @@
 		error = null;
 		userHasScrolled = false;
 		currentAssistantMessageId = null;
+		currentAssistantMessageIndex = null;
 		currentThinkingBlockId = null; // NEW: Reset thinking block tracking
 		isStreaming = false;
 		// Reset ontology state
@@ -1363,6 +1365,26 @@
 			action: 'Listing documents',
 			target: args?.project_id
 		}),
+		list_onto_outputs: (args) => ({
+			action: 'Listing outputs',
+			target: args?.project_id
+		}),
+		list_onto_milestones: (args) => ({
+			action: 'Listing milestones',
+			target: args?.project_id
+		}),
+		list_onto_risks: (args) => ({
+			action: 'Listing risks',
+			target: args?.project_id
+		}),
+		list_onto_decisions: (args) => ({
+			action: 'Listing decisions',
+			target: args?.project_id
+		}),
+		list_onto_requirements: (args) => ({
+			action: 'Listing requirements',
+			target: args?.project_id
+		}),
 		search_onto_documents: (args) => ({
 			action: 'Searching documents',
 			target: args?.search || args?.query
@@ -1371,6 +1393,26 @@
 			action: 'Loading document',
 			target: args?.document_id
 		}),
+		get_onto_output_details: (args) => ({
+			action: 'Loading output',
+			target: args?.output_id
+		}),
+		get_onto_milestone_details: (args) => ({
+			action: 'Loading milestone',
+			target: args?.milestone_id
+		}),
+		get_onto_risk_details: (args) => ({
+			action: 'Loading risk',
+			target: args?.risk_id
+		}),
+		get_onto_decision_details: (args) => ({
+			action: 'Loading decision',
+			target: args?.decision_id
+		}),
+		get_onto_requirement_details: (args) => ({
+			action: 'Loading requirement',
+			target: args?.requirement_id
+		}),
 		create_onto_document: (args) => ({
 			action: 'Creating document',
 			target: args?.title || args?.name
@@ -1378,6 +1420,26 @@
 		update_onto_document: (args) => ({
 			action: 'Updating document',
 			target: args?.document_id || args?.title
+		}),
+		update_onto_output: (args) => ({
+			action: 'Updating output',
+			target: args?.output_id || args?.name
+		}),
+		update_onto_milestone: (args) => ({
+			action: 'Updating milestone',
+			target: args?.milestone_id || args?.title
+		}),
+		update_onto_risk: (args) => ({
+			action: 'Updating risk',
+			target: args?.risk_id || args?.title
+		}),
+		update_onto_decision: (args) => ({
+			action: 'Updating decision',
+			target: args?.decision_id || args?.title
+		}),
+		update_onto_requirement: (args) => ({
+			action: 'Updating requirement',
+			target: args?.requirement_id || args?.text
 		}),
 		delete_onto_document: (args) => ({
 			action: 'Deleting document',
@@ -1641,7 +1703,12 @@
 		'delete_onto_plan',
 		'create_onto_document',
 		'update_onto_document',
-		'delete_onto_document'
+		'delete_onto_document',
+		'update_onto_output',
+		'update_onto_milestone',
+		'update_onto_risk',
+		'update_onto_decision',
+		'update_onto_requirement'
 	]);
 
 	interface ActivityUpdateResult {
@@ -1831,10 +1898,14 @@
 	) {
 		const { senderType = 'user', suppressInputClear = false } = options;
 		const trimmed = (contentOverride ?? inputValue).trim();
-		if (!trimmed || isStreaming || isVoiceInitializing || isVoiceTranscribing) return;
+		if (!trimmed || isVoiceInitializing || isVoiceTranscribing) return;
 		if (!selectedContextType) {
 			error = 'Select a focus before starting the conversation.';
 			return;
+		}
+
+		if (isStreaming) {
+			handleStopGeneration('superseded');
 		}
 
 		const now = new Date();
@@ -1872,9 +1943,6 @@
 			inputValue = '';
 		}
 		error = null;
-		if (isStreaming) {
-			handleStopGeneration('superseded');
-		}
 
 		// Increment run id for stale-stream guard
 		activeStreamRunId = activeStreamRunId + 1;
@@ -2165,11 +2233,6 @@
 				}
 				break;
 			}
-
-			case 'executor_instructions':
-				// Executor instructions generated
-				addActivityToThinkingBlock('Executor instructions generated', 'general');
-				break;
 
 			case 'plan_created':
 				// Plan created with steps - enrich metadata for visualization
@@ -2594,14 +2657,29 @@
 	function addOrUpdateAssistantMessage(content: unknown) {
 		const normalizedContent = normalizeMessageContent(content);
 
+		if (currentAssistantMessageId && currentAssistantMessageIndex !== null) {
+			const existing = messages[currentAssistantMessageIndex];
+			if (existing?.id === currentAssistantMessageId) {
+				const nextMessages = [...messages];
+				nextMessages[currentAssistantMessageIndex] = {
+					...existing,
+					content: existing.content + normalizedContent
+				};
+				messages = nextMessages;
+				return;
+			}
+		}
+
 		if (currentAssistantMessageId) {
-			// ✅ Update existing message - creates new array reference
-			messages = messages.map((m) => {
+			let updatedIndex: number | null = null;
+			messages = messages.map((m, idx) => {
 				if (m.id === currentAssistantMessageId) {
+					updatedIndex = idx;
 					return { ...m, content: m.content + normalizedContent };
 				}
 				return m;
 			});
+			currentAssistantMessageIndex = updatedIndex;
 		} else {
 			// ✅ Create new assistant message - uses spread for new array reference
 			currentAssistantMessageId = crypto.randomUUID();
@@ -2613,12 +2691,14 @@
 				timestamp: new Date(),
 				created_at: new Date().toISOString()
 			};
+			currentAssistantMessageIndex = messages.length;
 			messages = [...messages, assistantMessage];
 		}
 	}
 
 	function finalizeAssistantMessage() {
 		currentAssistantMessageId = null;
+		currentAssistantMessageIndex = null;
 	}
 
 	function markAssistantInterrupted(

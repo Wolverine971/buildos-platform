@@ -2,7 +2,7 @@
 
 # Agentic Chat System - Architecture Documentation
 
-> **Last Updated:** 2025-12-17
+> **Last Updated:** 2026-01-03
 > **Status:** Comprehensive Technical Reference (Post-Refactor)
 > **Maintainer:** BuildOS Platform Team
 
@@ -558,6 +558,12 @@ type AgentLoopState = 'thinking' | 'executing_plan' | 'waiting_on_user';
 ---
 
 ## Known Issues & Improvements
+
+### Recent Updates (2026-01-03)
+
+- Allowed superseding active streams when sending a new message.
+- Expanded tool status/toast coverage for outputs, milestones, risks, decisions, and requirements.
+- Validated ontology access before persisting user messages; refined partial token estimates; reduced hot-path logging; optimized streaming message updates.
 
 ### Remediation Status (2025-12-17 Audit)
 

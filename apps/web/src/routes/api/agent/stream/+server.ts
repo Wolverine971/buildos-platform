@@ -200,14 +200,7 @@ export const POST: RequestHandler = async ({
 			metadata
 		);
 
-		// 7. Persist user message
-		await messagePersister.persistUserMessage({
-			sessionId: session.id,
-			userId,
-			content: streamRequest.message
-		});
-
-		// 8. Load ontology context with caching
+		// 7. Load ontology context with caching
 		let ontologyContext = null;
 		try {
 			const ontologyResult = await ontologyCacheService.loadWithSessionCache(
@@ -239,6 +232,13 @@ export const POST: RequestHandler = async ({
 			});
 			return ApiResponse.error(ERROR_MESSAGES.ONTOLOGY_LOAD_FAILED, 500);
 		}
+
+		// 8. Persist user message (only after ontology access is validated)
+		await messagePersister.persistUserMessage({
+			sessionId: session.id,
+			userId,
+			content: streamRequest.message
+		});
 
 		// 9. Create and return stream
 		return streamHandler.createAgentStream({
