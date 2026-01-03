@@ -5,7 +5,7 @@
 	import { Loader2, CheckCircle, AlertCircle, Sparkles, Repeat2 } from 'lucide-svelte';
 	import type { PhaseGenerationNotification, StepsProgress } from '$lib/types/notification.types';
 
-	let { notification } = $props<{ notification: PhaseGenerationNotification }>();
+	let { notification }: { notification: PhaseGenerationNotification } = $props();
 
 	const STRATEGY_LABELS: Record<
 		PhaseGenerationNotification['data']['strategy'],

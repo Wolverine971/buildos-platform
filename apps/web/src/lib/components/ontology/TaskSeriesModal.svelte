@@ -183,8 +183,11 @@
 	{#snippet children()}
 		<div class="space-y-4 sm:space-y-6">
 			<div class="space-y-1">
-				<label class="text-sm font-medium text-muted-foreground"> Timezone </label>
+				<label for="task-series-timezone" class="text-sm font-medium text-muted-foreground">
+					Timezone
+				</label>
 				<TextInput
+					id="task-series-timezone"
 					bind:value={timezone}
 					placeholder="e.g. America/Los_Angeles"
 					list="timezone-options"
@@ -192,7 +195,7 @@
 				/>
 				<datalist id="timezone-options">
 					{#each getTimezoneOptions(COMMON_TIMEZONES) as tz}
-						<option value={tz} />
+						<option value={tz}></option>
 					{/each}
 				</datalist>
 				<p class="text-xs text-muted-foreground">
@@ -201,8 +204,11 @@
 			</div>
 
 			<div class="space-y-1">
-				<label class="text-sm font-medium text-muted-foreground"> Start date & time </label>
+				<label for="task-series-start" class="text-sm font-medium text-muted-foreground">
+					Start date & time
+				</label>
 				<input
+					id="task-series-start"
 					type="datetime-local"
 					class="w-full rounded border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
 					bind:value={startAt}
@@ -212,8 +218,17 @@
 
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 				<div>
-					<label class="text-sm font-medium text-muted-foreground"> Frequency </label>
-					<Select bind:value={frequency} disabled={isSubmitting}>
+					<label
+						for="task-series-frequency"
+						class="text-sm font-medium text-muted-foreground"
+					>
+						Frequency
+					</label>
+					<Select
+						id="task-series-frequency"
+						bind:value={frequency}
+						disabled={isSubmitting}
+					>
 						<option value="DAILY">Daily</option>
 						<option value="WEEKLY">Weekly</option>
 						<option value="MONTHLY">Monthly</option>
@@ -221,8 +236,14 @@
 				</div>
 
 				<div>
-					<label class="text-sm font-medium text-muted-foreground"> Interval </label>
+					<label
+						for="task-series-interval"
+						class="text-sm font-medium text-muted-foreground"
+					>
+						Interval
+					</label>
 					<TextInput
+						id="task-series-interval"
 						type="number"
 						min="1"
 						bind:value={interval}
@@ -231,8 +252,14 @@
 				</div>
 
 				<div>
-					<label class="text-sm font-medium text-muted-foreground"> Occurrences </label>
+					<label
+						for="task-series-occurrences"
+						class="text-sm font-medium text-muted-foreground"
+					>
+						Occurrences
+					</label>
 					<TextInput
+						id="task-series-occurrences"
 						type="number"
 						min="1"
 						max="200"

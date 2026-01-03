@@ -6,9 +6,9 @@
 	import { onMount } from 'svelte';
 
 	interface Activity {
-		activity_type: string;
+		entity_type: string;
+		action: string;
 		object_name?: string;
-		title?: string;
 		created_at: string;
 		project_name?: string;
 		details?: string;
@@ -32,51 +32,43 @@
 			.slice(0, 20) // Show last 20 activities
 	);
 
-	function getActivityIcon(type: string) {
+	function getActivityIcon(type: string, action: string) {
 		switch (type) {
-			case 'brief_generated':
-			case 'brief_created':
+			case 'brief':
 				return FileText;
-			case 'project_created':
-			case 'project_updated':
+			case 'project':
 				return FolderOpen;
-			case 'task_created':
-			case 'task_completed':
-			case 'task_updated':
+			case 'task':
 				return CheckSquare;
-			case 'note_created':
-			case 'note_updated':
+			case 'note':
+			case 'document':
 				return StickyNote;
-			case 'brain_dump_created':
-			case 'brain_dump_updated':
+			case 'brain_dump':
 				return Brain;
-			case 'brief_scheduled':
+			case 'calendar':
 				return Calendar;
 			default:
 				return FileText;
 		}
 	}
 
-	function getActivityColor(type: string) {
+	function getActivityColor(type: string, action: string) {
 		switch (type) {
-			case 'brief_generated':
-			case 'brief_created':
+			case 'brief':
 				return 'text-blue-600 bg-blue-100 dark:bg-blue-900/20';
-			case 'project_created':
-			case 'project_updated':
+			case 'project':
 				return 'text-purple-600 bg-purple-100 dark:bg-purple-900/20';
-			case 'task_created':
-			case 'task_updated':
+			case 'task':
+				if (action === 'completed' || action === 'done') {
+					return 'text-green-600 bg-green-100 dark:bg-green-900/20';
+				}
 				return 'text-orange-600 bg-orange-100 dark:bg-orange-900/20';
-			case 'task_completed':
-				return 'text-green-600 bg-green-100 dark:bg-green-900/20';
-			case 'note_created':
-			case 'note_updated':
+			case 'note':
+			case 'document':
 				return 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/20';
-			case 'brain_dump_created':
-			case 'brain_dump_updated':
+			case 'brain_dump':
 				return 'text-indigo-600 bg-indigo-100 dark:bg-indigo-900/20';
-			case 'brief_scheduled':
+			case 'calendar':
 				return 'text-teal-600 bg-teal-100 dark:bg-teal-900/20';
 			default:
 				return 'text-gray-600 bg-gray-100 dark:bg-gray-900/20';
@@ -84,9 +76,10 @@
 	}
 
 	function formatActivityText(activity: Activity) {
-		const action = activity.activity_type.replace('_', ' ');
-		const object = activity.object_name || activity.title || 'item';
-		return `${action} "${object}"`;
+		const entityLabel = activity.entity_type.replace(/_/g, ' ');
+		const actionLabel = activity.action.replace(/_/g, ' ');
+		const object = activity.object_name || 'item';
+		return `${entityLabel} ${actionLabel} "${object}"`;
 	}
 
 	function formatRelativeTime(dateString: string): string {
@@ -180,7 +173,8 @@
 								<div class="space-y-2">
 									{#each dayActivities as activity}
 										{@const Activity_type = getActivityIcon(
-											activity.activity_type
+											activity.entity_type,
+											activity.action
 										)}
 
 										<div
@@ -188,7 +182,8 @@
 										>
 											<div
 												class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center {getActivityColor(
-													activity.activity_type
+													activity.entity_type,
+													activity.action
 												)}"
 											>
 												<Activity_type class="w-4 h-4" />

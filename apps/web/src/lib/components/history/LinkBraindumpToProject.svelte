@@ -172,7 +172,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="postcss">
 	/* Animation for dropdown appearance */
 	:global(.link-dropdown-enter) {
 		animation: slideDown 0.2s ease-out;

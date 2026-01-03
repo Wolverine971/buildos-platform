@@ -988,98 +988,62 @@
 									<!-- Why Interested -->
 									<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
 										<div class="max-w-md">
-											<div
-												class="text-sm leading-relaxed {signup.why_interested &&
-												signup.why_interested.length > 100
-													? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded'
-													: ''}"
-												title={signup.why_interested || 'Not provided'}
-												role={signup.why_interested &&
-												signup.why_interested.length > 100
-													? 'button'
-													: undefined}
-												aria-label={signup.why_interested &&
-												signup.why_interested.length > 100
-													? 'Click to view full text'
-													: undefined}
-												tabindex={signup.why_interested &&
-												signup.why_interested.length > 100
-													? 0
-													: undefined}
-												onclick={() => {
-													if (
-														signup.why_interested &&
-														signup.why_interested.length > 100
-													) {
+											{#if signup.why_interested && signup.why_interested.length > 100}
+												<button
+													type="button"
+													class="text-sm leading-relaxed cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded text-left w-full"
+													title={signup.why_interested}
+													aria-label="Click to view full text"
+													onclick={() => {
 														selectedItem = signup;
 														showModal = true;
-													}
-												}}
-												onkeydown={(e) => {
-													if (
-														signup.why_interested &&
-														signup.why_interested.length > 100 &&
-														(e.key === 'Enter' || e.key === ' ')
-													) {
-														e.preventDefault();
-														selectedItem = signup;
-														showModal = true;
-													}
-												}}
-											>
-												{signup.why_interested
-													? truncateText(signup.why_interested, 100)
-													: 'Not provided'}
-											</div>
+													}}
+												>
+													{truncateText(signup.why_interested, 100)}
+												</button>
+											{:else}
+												<div
+													class="text-sm leading-relaxed"
+													title={signup.why_interested || 'Not provided'}
+												>
+													{signup.why_interested
+														? truncateText(signup.why_interested, 100)
+														: 'Not provided'}
+												</div>
+											{/if}
 										</div>
 									</td>
 
 									<!-- Biggest Challenge -->
 									<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
 										<div class="max-w-md">
-											<div
-												class="text-sm leading-relaxed {signup.biggest_challenge &&
-												signup.biggest_challenge.length > 100
-													? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded'
-													: ''}"
-												title={signup.biggest_challenge || 'Not provided'}
-												role={signup.biggest_challenge &&
-												signup.biggest_challenge.length > 100
-													? 'button'
-													: undefined}
-												aria-label={signup.biggest_challenge &&
-												signup.biggest_challenge.length > 100
-													? 'Click to view full text'
-													: undefined}
-												tabindex={signup.biggest_challenge &&
-												signup.biggest_challenge.length > 100
-													? 0
-													: undefined}
-												onclick={() => {
-													if (
-														signup.biggest_challenge &&
-														signup.biggest_challenge.length > 100
-													) {
+											{#if signup.biggest_challenge && signup.biggest_challenge.length > 100}
+												<button
+													type="button"
+													class="text-sm leading-relaxed cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded text-left w-full"
+													title={signup.biggest_challenge}
+													aria-label="Click to view full text"
+													onclick={() => {
 														selectedItem = signup;
 														showModal = true;
-													}
-												}}
-												onkeydown={(e) => {
-													if (
-														signup.biggest_challenge &&
-														signup.biggest_challenge.length > 100 &&
-														(e.key === 'Enter' || e.key === ' ')
-													) {
-														e.preventDefault();
-														selectedItem = signup;
-														showModal = true;
-													}
-												}}
-											>
-												{signup.biggest_challenge
-													? truncateText(signup.biggest_challenge, 100)
-													: 'Not provided'}
-											</div>
+													}}
+												>
+													{truncateText(signup.biggest_challenge, 100)}
+												</button>
+											{:else}
+												<div
+													class="text-sm leading-relaxed"
+													title={signup.biggest_challenge ||
+														'Not provided'}
+												>
+													{signup.biggest_challenge
+														? truncateText(
+																signup.biggest_challenge,
+																100
+															)
+														: 'Not provided'}
+												</div>
+											{/if}
 										</div>
 									</td>
 

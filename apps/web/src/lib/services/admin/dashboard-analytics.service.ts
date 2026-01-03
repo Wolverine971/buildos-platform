@@ -373,32 +373,159 @@ export async function getSystemMetrics(client: TypedSupabaseClient) {
 	return data ?? [];
 }
 
-export async function getRecentActivity(client: TypedSupabaseClient) {
-	const { data, error } = await client
-		.from('user_activity_logs')
-		.select(
-			`
-				activity_type,
-				activity_data,
-				created_at,
-				users (
-					email
-				)
-			`
-		)
-		.order('created_at', { ascending: false })
-		.limit(50);
+type RecentActivityItem = {
+	source: 'ontology' | 'user_activity';
+	entity_type: string;
+	action: string;
+	created_at: string;
+	user_email: string;
+	project_name?: string | null;
+	entity_name?: string | null;
+};
 
-	if (error) {
-		throw new Error(error.message);
+const ACTIVITY_PREFIXES = [
+	'brain_dump',
+	'project',
+	'task',
+	'note',
+	'goal',
+	'template',
+	'brief',
+	'calendar',
+	'admin',
+	'onboarding',
+	'synthesis'
+];
+
+function splitActivityType(activityType: string): { entity_type: string; action: string } {
+	if (!activityType) {
+		return { entity_type: 'activity', action: 'updated' };
 	}
 
-	return (data || []).map((activity) => ({
-		activity_type: activity.activity_type,
-		user_email: activity.users?.email || 'Unknown',
-		created_at: activity.created_at,
-		activity_data: activity.activity_data
+	const normalized = activityType.toLowerCase();
+	if (normalized === 'login' || normalized === 'logout') {
+		return { entity_type: 'session', action: normalized };
+	}
+
+	for (const prefix of ACTIVITY_PREFIXES) {
+		if (normalized.startsWith(`${prefix}_`)) {
+			return {
+				entity_type: prefix,
+				action: normalized.slice(prefix.length + 1)
+			};
+		}
+	}
+
+	const parts = normalized.split('_');
+	if (parts.length === 1) {
+		return { entity_type: 'activity', action: parts[0] };
+	}
+
+	return {
+		entity_type: parts[0] || 'activity',
+		action: parts.slice(1).join('_') || 'updated'
+	};
+}
+
+function extractEntityName(activityData: unknown): string | null {
+	if (!activityData || typeof activityData !== 'object') {
+		return null;
+	}
+	const data = activityData as Record<string, unknown>;
+	return (
+		(data.title as string | undefined) ||
+		(data.name as string | undefined) ||
+		(data.rel as string | undefined) ||
+		null
+	);
+}
+
+export async function getRecentActivity(client: TypedSupabaseClient) {
+	const [userActivityResult, ontologyActivityResult] = await Promise.all([
+		client
+			.from('user_activity_logs')
+			.select(
+				`
+					activity_type,
+					activity_data,
+					created_at,
+					users (
+						email
+					)
+				`
+			)
+			.order('created_at', { ascending: false })
+			.limit(50),
+		client
+			.from('onto_project_logs')
+			.select(
+				'project_id, entity_type, action, before_data, after_data, changed_by, created_at'
+			)
+			.order('created_at', { ascending: false })
+			.limit(50)
+	]);
+
+	if (userActivityResult.error) {
+		throw new Error(userActivityResult.error.message);
+	}
+
+	if (ontologyActivityResult.error) {
+		throw new Error(ontologyActivityResult.error.message);
+	}
+
+	const userActivity = (userActivityResult.data || []).map((activity) => {
+		const { entity_type, action } = splitActivityType(activity.activity_type);
+		return {
+			source: 'user_activity' as const,
+			entity_type,
+			action,
+			created_at: activity.created_at,
+			user_email: activity.users?.email || 'Unknown',
+			entity_name: extractEntityName(activity.activity_data)
+		};
+	});
+
+	const ontologyLogs = ontologyActivityResult.data || [];
+	const ontologyUserIds = Array.from(new Set(ontologyLogs.map((log) => log.changed_by)));
+	const ontologyProjectIds = Array.from(new Set(ontologyLogs.map((log) => log.project_id)));
+
+	const [usersResult, projectsResult] = await Promise.all([
+		ontologyUserIds.length
+			? client.from('users').select('id, email').in('id', ontologyUserIds)
+			: Promise.resolve({ data: [], error: null }),
+		ontologyProjectIds.length
+			? client.from('onto_projects').select('id, name').in('id', ontologyProjectIds)
+			: Promise.resolve({ data: [], error: null })
+	]);
+
+	if (usersResult.error) {
+		throw new Error(usersResult.error.message);
+	}
+
+	if (projectsResult.error) {
+		throw new Error(projectsResult.error.message);
+	}
+
+	const userEmailById = new Map((usersResult.data || []).map((user) => [user.id, user.email]));
+	const projectNameById = new Map(
+		(projectsResult.data || []).map((project) => [project.id, project.name])
+	);
+
+	const ontologyActivity = ontologyLogs.map((log) => ({
+		source: 'ontology' as const,
+		entity_type: log.entity_type,
+		action: log.action,
+		created_at: log.created_at,
+		user_email: userEmailById.get(log.changed_by) || 'Unknown',
+		project_name: projectNameById.get(log.project_id) || null,
+		entity_name: extractEntityName(log.after_data ?? log.before_data)
 	}));
+
+	const combined = [...ontologyActivity, ...userActivity]
+		.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+		.slice(0, 50);
+
+	return combined as RecentActivityItem[];
 }
 
 export async function getFeedbackOverview(

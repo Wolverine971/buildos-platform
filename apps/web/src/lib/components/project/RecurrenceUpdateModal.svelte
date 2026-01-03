@@ -250,11 +250,12 @@
 				</div>
 			{/if}
 		</div>
+	{/snippet}
 
+	{#snippet footer()}
 		<!-- Actions -->
 		<div
 			class="flex flex-col sm:flex-row gap-3 sm:justify-end px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
-			slot="footer"
 		>
 			<Button type="button" onclick={handleCancel} variant="ghost" size="md">Cancel</Button>
 			<Button

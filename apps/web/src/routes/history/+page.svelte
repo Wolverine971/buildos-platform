@@ -495,6 +495,8 @@
 			<!-- Responsive grid: 2 cols mobile for density, 2 cols tablet, 3 cols desktop -->
 			<div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
 				{#each items as item (item.id)}
+					{@const TypeIcon = getTypeIcon(item.type)}
+					{@const StatusIcon = getStatusIcon(item.status)}
 					<button
 						onclick={() => openItem(item)}
 						class="group flex h-full flex-col rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable"
@@ -506,16 +508,12 @@
 									item.type
 								)}"
 							>
-								<svelte:component
-									this={getTypeIcon(item.type)}
-									class="h-2.5 w-2.5 sm:h-3 sm:w-3"
-								/>
+								<TypeIcon class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
 								<span class="hidden sm:inline"
 									>{item.type === 'chat_session' ? 'Chat' : 'Braindump'}</span
 								>
 							</span>
-							<svelte:component
-								this={getStatusIcon(item.status)}
+							<StatusIcon
 								class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 {getStatusColor(
 									item.status
 								)}"

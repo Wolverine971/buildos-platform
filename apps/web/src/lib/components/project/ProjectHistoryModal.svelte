@@ -17,7 +17,7 @@
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import { onMount } from 'svelte';
 
-	let { isOpen = false, projectId } = $props<{ isOpen?: boolean; projectId: string }>();
+	let { isOpen = false, projectId }: { isOpen?: boolean; projectId: string } = $props();
 
 	const dispatch = createEventDispatcher();
 

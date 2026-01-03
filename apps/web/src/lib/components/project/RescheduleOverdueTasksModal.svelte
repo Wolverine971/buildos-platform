@@ -9,22 +9,34 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { projectStoreV2 } from '$lib/stores/project.store';
 
-	export let isOpen = false;
-	export let projectId: string;
-	export let overdueTasks: TaskWithCalendarEvents[] = [];
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	export let phases: PhaseWithTasks[] = [];
-	export let calendarConnected = false;
+	interface Props {
+		isOpen?: boolean;
+		projectId: string;
+		overdueTasks?: TaskWithCalendarEvents[];
+		phases?: PhaseWithTasks[];
+		calendarConnected?: boolean;
+		onclose?: () => void;
+	}
+
+	let {
+		isOpen = false,
+		projectId,
+		overdueTasks = [],
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		phases = [],
+		calendarConnected = false,
+		onclose
+	}: Props = $props();
 
 	const dispatch = createEventDispatcher();
 
 	// Rescheduling options
-	let shiftExisting = true; // Shift existing tasks to make room
-	let targetStartDate = getNextWorkday(); // Default to next workday
+	let shiftExisting = $state(true); // Shift existing tasks to make room
+	let targetStartDate = $state(getNextWorkday()); // Default to next workday
 
 	// State
-	let loading = false;
-	let error: string | null = null;
+	let loading = $state(false);
+	let error = $state<string | null>(null);
 
 	// Get next workday as default start date
 	function getNextWorkday() {
@@ -119,32 +131,34 @@
 	}
 
 	function handleClose() {
+		onclose?.();
 		dispatch('close');
 	}
 
 	// Group overdue tasks by how overdue they are
-	$: overdueGroups = (() => {
-		const groups = {
-			recent: [] as TaskWithCalendarEvents[], // 1-3 days
-			moderate: [] as TaskWithCalendarEvents[], // 4-7 days
-			old: [] as TaskWithCalendarEvents[] // 8+ days
-		};
+	let overdueGroups = $derived(
+		(() => {
+			const groups = {
+				recent: [] as TaskWithCalendarEvents[], // 1-3 days
+				moderate: [] as TaskWithCalendarEvents[], // 4-7 days
+				old: [] as TaskWithCalendarEvents[] // 8+ days
+			};
 
-		overdueTasks.forEach((task) => {
-			const days = getDaysOverdue(task);
-			if (days <= 3) groups.recent.push(task);
-			else if (days <= 7) groups.moderate.push(task);
-			else groups.old.push(task);
-		});
+			overdueTasks.forEach((task) => {
+				const days = getDaysOverdue(task);
+				if (days <= 3) groups.recent.push(task);
+				else if (days <= 7) groups.moderate.push(task);
+				else groups.old.push(task);
+			});
 
-		return groups;
-	})();
+			return groups;
+		})()
+	);
 </script>
 
 <Modal {isOpen} onClose={handleClose} size="lg">
-	{#snippet children()}
+	{#snippet header()}
 		<div
-			slot="header"
 			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
 		>
 			<div class="flex items-center gap-2 sm:gap-2">
@@ -161,7 +175,9 @@
 				</div>
 			</div>
 		</div>
+	{/snippet}
 
+	{#snippet children()}
 		<div class="p-4 sm:p-5 md:p-6 space-y-6">
 			{#if error}
 				<div
@@ -308,9 +324,10 @@
 				</div>
 			</div>
 		</div>
+	{/snippet}
 
+	{#snippet footer()}
 		<div
-			slot="footer"
 			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 		>
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">

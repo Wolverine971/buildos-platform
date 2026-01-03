@@ -256,11 +256,13 @@
 				<!-- Status Filter -->
 				<div>
 					<label
+						for="session-status-filter"
 						class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
 					>
 						Status
 					</label>
 					<Select
+						id="session-status-filter"
 						bind:value={selectedStatus}
 						onchange={(e) => (selectedStatus = e.detail)}
 						size="md"
@@ -275,11 +277,13 @@
 				<!-- Context Type Filter -->
 				<div>
 					<label
+						for="session-context-filter"
 						class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
 					>
 						Context Type
 					</label>
 					<Select
+						id="session-context-filter"
 						bind:value={selectedContextType}
 						onchange={(e) => (selectedContextType = e.detail)}
 						size="md"

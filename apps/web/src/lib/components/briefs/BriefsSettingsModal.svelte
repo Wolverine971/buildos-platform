@@ -570,9 +570,10 @@
 				</div>
 			{/if}
 		</div>
+	{/snippet}
 
+	{#snippet footer()}
 		<div
-			slot="footer"
 			class="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
 		>
 			<div class="flex justify-end space-x-2">

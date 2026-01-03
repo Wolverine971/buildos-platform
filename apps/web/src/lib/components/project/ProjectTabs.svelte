@@ -6,11 +6,7 @@
 	// Define ExtendedTabType locally
 	type ExtendedTabType = 'overview' | 'tasks' | 'notes' | 'briefs' | 'synthesis' | 'braindumps';
 
-	let {
-		activeTab = 'overview' as ExtendedTabType,
-		tabCounts,
-		isMobile = false
-	} = $props<{
+	interface Props {
 		activeTab?: ExtendedTabType;
 		tabCounts: {
 			tasks: number;
@@ -23,7 +19,13 @@
 			braindumps: number;
 		};
 		isMobile?: boolean;
-	}>();
+	}
+
+	let {
+		activeTab = 'overview' as ExtendedTabType,
+		tabCounts,
+		isMobile = false
+	}: Props = $props();
 
 	const dispatch = createEventDispatcher<{ change: ExtendedTabType }>();
 

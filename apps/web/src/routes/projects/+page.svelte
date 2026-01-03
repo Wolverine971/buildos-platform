@@ -850,11 +850,12 @@
 							<!-- Mobile: Show up to 3 non-zero stats -->
 							<div class="flex sm:hidden items-center gap-2 overflow-hidden">
 								{#each mobileProjectStats as stat (stat.key)}
+									{@const StatIcon = stat.Icon}
 									<span
 										class="flex items-center gap-0.5 shrink-0"
 										title={stat.key}
 									>
-										<svelte:component this={stat.Icon} class="h-2.5 w-2.5" />
+										<StatIcon class="h-2.5 w-2.5" />
 										<span class="font-semibold text-[9px]">{stat.count}</span>
 									</span>
 								{/each}
@@ -869,15 +870,13 @@
 							<div class="hidden sm:flex flex-col gap-2 w-full">
 								<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
 									{#each projectStats as stat (stat.key)}
+										{@const StatIcon = stat.Icon}
 										<span
 											class="flex items-center gap-1"
 											aria-label="{stat.key} count"
 											title={stat.key}
 										>
-											<svelte:component
-												this={stat.Icon}
-												class="h-3.5 w-3.5"
-											/>
+											<StatIcon class="h-3.5 w-3.5" />
 											<span class="font-bold text-xs">{stat.count}</span>
 										</span>
 									{/each}

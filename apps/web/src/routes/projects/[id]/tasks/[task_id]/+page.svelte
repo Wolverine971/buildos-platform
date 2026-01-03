@@ -54,6 +54,7 @@
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import LinkedEntities from '$lib/components/ontology/linked-entities/LinkedEntities.svelte';
 	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
+	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import type { EntityKind } from '$lib/components/ontology/linked-entities/linked-entities.types';
 	import { format } from 'date-fns';
@@ -148,8 +149,6 @@
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let PlanEditModalComponent = $state<Component<any, any> | null>(null);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let TaskEditModalComponent = $state<Component<any, any> | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let OutputEditModalComponent = $state<Component<any, any> | null>(null);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let MilestoneEditModalComponent = $state<Component<any, any> | null>(null);
@@ -175,6 +174,7 @@
 
 	// Task visuals based on current state (used in header)
 	const taskVisuals = $derived(getTaskVisuals(stateKey));
+	const TaskIcon = $derived(taskVisuals.icon);
 
 	const entityFocus = $derived.by((): ProjectFocus | null => {
 		if (!task || !project?.id) return null;
@@ -542,13 +542,6 @@
 		}
 	}
 
-	async function loadTaskEditModal() {
-		if (!TaskEditModalComponent) {
-			const mod = await import('$lib/components/ontology/TaskEditModal.svelte');
-			TaskEditModalComponent = mod.default;
-		}
-	}
-
 	async function loadOutputEditModal() {
 		if (!OutputEditModalComponent) {
 			const mod = await import('$lib/components/ontology/OutputEditModal.svelte');
@@ -588,8 +581,7 @@
 		showPlanModal = true;
 	}
 
-	async function openTaskModal(id: string) {
-		await loadTaskEditModal();
+	function openTaskModal(id: string) {
 		selectedTaskId = id;
 		showTaskModal = true;
 	}
@@ -739,10 +731,7 @@
 							<div
 								class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0"
 							>
-								<svelte:component
-									this={taskVisuals.icon}
-									class="w-5 h-5 {taskVisuals.color}"
-								/>
+								<TaskIcon class="w-5 h-5 {taskVisuals.color}" />
 							</div>
 							<div class="min-w-0">
 								<h1
@@ -1547,13 +1536,13 @@
 								<ul class="divide-y divide-border/80 max-h-48 overflow-y-auto">
 									{#each otherTasks as otherTask}
 										{@const visuals = getTaskVisuals(otherTask.state_key)}
+										{@const TaskIcon = visuals.icon}
 										<li>
 											<a
 												href="/projects/{project?.id}/tasks/{otherTask.id}"
 												class="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/60 transition-colors"
 											>
-												<svelte:component
-													this={visuals.icon}
+												<TaskIcon
 													class="w-4 h-4 {visuals.color} shrink-0"
 												/>
 												<span class="text-sm text-foreground truncate"
@@ -1646,8 +1635,7 @@
 
 <!-- Document Modal (Lazy Loaded) -->
 {#if showDocumentModal && DocumentModalComponent}
-	<svelte:component
-		this={DocumentModalComponent}
+	<DocumentModalComponent
 		projectId={project?.id}
 		taskId={task?.id}
 		bind:isOpen={showDocumentModal}
@@ -1660,8 +1648,7 @@
 
 <!-- Goal Edit Modal (Lazy Loaded) -->
 {#if showGoalModal && selectedGoalId && GoalEditModalComponent}
-	<svelte:component
-		this={GoalEditModalComponent}
+	<GoalEditModalComponent
 		goalId={selectedGoalId}
 		projectId={project?.id}
 		onClose={handleModalClose}
@@ -1672,8 +1659,7 @@
 
 <!-- Plan Edit Modal (Lazy Loaded) -->
 {#if showPlanModal && selectedPlanId && PlanEditModalComponent}
-	<svelte:component
-		this={PlanEditModalComponent}
+	<PlanEditModalComponent
 		planId={selectedPlanId}
 		projectId={project?.id}
 		onClose={handleModalClose}
@@ -1682,10 +1668,9 @@
 	/>
 {/if}
 
-<!-- Task Edit Modal (Lazy Loaded) -->
-{#if showTaskModal && selectedTaskId && TaskEditModalComponent}
-	<svelte:component
-		this={TaskEditModalComponent}
+<!-- Task Edit Modal -->
+{#if showTaskModal && selectedTaskId}
+	<TaskEditModal
 		taskId={selectedTaskId}
 		projectId={project?.id}
 		{plans}
@@ -1699,8 +1684,7 @@
 
 <!-- Output Edit Modal (Lazy Loaded) -->
 {#if showOutputModal && selectedOutputId && OutputEditModalComponent}
-	<svelte:component
-		this={OutputEditModalComponent}
+	<OutputEditModalComponent
 		outputId={selectedOutputId}
 		projectId={project?.id}
 		onClose={handleModalClose}
@@ -1711,8 +1695,7 @@
 
 <!-- Milestone Edit Modal (Lazy Loaded) -->
 {#if showMilestoneModal && selectedMilestoneId && MilestoneEditModalComponent}
-	<svelte:component
-		this={MilestoneEditModalComponent}
+	<MilestoneEditModalComponent
 		milestoneId={selectedMilestoneId}
 		projectId={project?.id}
 		onClose={handleModalClose}
@@ -1723,8 +1706,7 @@
 
 <!-- Agent Chat Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
-	<svelte:component
-		this={AgentChatModalComponent}
+	<AgentChatModalComponent
 		isOpen={showChatModal}
 		initialProjectFocus={entityFocus}
 		onClose={() => (showChatModal = false)}

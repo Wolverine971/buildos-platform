@@ -8,9 +8,7 @@
 		StepsProgress
 	} from '$lib/types/notification.types';
 
-	let { notification } = $props<{
-		notification: ProjectSynthesisNotification;
-	}>();
+	let { notification }: { notification: ProjectSynthesisNotification } = $props();
 
 	// Module metadata for display
 	const MODULE_METADATA: Record<string, { name: string; shortLabel: string }> = {

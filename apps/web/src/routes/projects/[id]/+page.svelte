@@ -86,6 +86,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
 	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
+	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
 	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
 	import ProjectActivityLogPanel from '$lib/components/ontology/ProjectActivityLogPanel.svelte';
 	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
@@ -923,8 +924,9 @@
 						class="flex sm:hidden items-center gap-2.5 text-muted-foreground overflow-x-auto pb-0.5"
 					>
 						{#each mobileStats as stat (stat.key)}
+							{@const StatIcon = stat.Icon}
 							<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
-								<svelte:component this={stat.Icon} class="h-3 w-3" />
+								<StatIcon class="h-3 w-3" />
 								<span class="font-semibold text-[10px]">{stat.count}</span>
 							</span>
 						{/each}
@@ -989,10 +991,10 @@
 						<div class="flex flex-wrap gap-1.5">
 							<div
 								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-							/>
+							></div>
 							<div
 								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-							/>
+							></div>
 						</div>
 					{/each}
 				</div>
@@ -1383,6 +1385,7 @@
 				<aside class="min-w-0 space-y-2 sm:space-y-3 lg:sticky lg:top-24">
 					{#each insightPanels as section}
 						{@const isOpen = expandedPanels[section.key]}
+						{@const SectionIcon = section.icon}
 						<div
 							class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 						>
@@ -1394,8 +1397,7 @@
 									<div
 										class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
 									>
-										<svelte:component
-											this={section.icon}
+										<SectionIcon
 											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground"
 										/>
 									</div>
@@ -1452,6 +1454,7 @@
 													{@const visuals = getTaskVisuals(
 														task.state_key
 													)}
+													{@const TaskIcon = visuals.icon}
 													<li>
 														<div class="flex items-center min-w-0">
 															<button
@@ -1460,8 +1463,7 @@
 																	(editingTaskId = task.id)}
 																class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 															>
-																<svelte:component
-																	this={visuals.icon}
+																<TaskIcon
 																	class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 {visuals.color}"
 																/>
 																<div class="min-w-0 flex-1">
@@ -1867,18 +1869,16 @@
 
 <!-- Task Edit Modal -->
 {#if editingTaskId}
-	{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
-		<TaskEditModal
-			taskId={editingTaskId}
-			projectId={project.id}
-			{plans}
-			{goals}
-			milestones={milestones.map((m) => ({ ...m, due_at: m.due_at ?? undefined }))}
-			onClose={() => (editingTaskId = null)}
-			onUpdated={handleTaskUpdated}
-			onDeleted={handleTaskDeleted}
-		/>
-	{/await}
+	<TaskEditModal
+		taskId={editingTaskId}
+		projectId={project.id}
+		{plans}
+		{goals}
+		milestones={milestones.map((m) => ({ ...m, due_at: m.due_at ?? undefined }))}
+		onClose={() => (editingTaskId = null)}
+		onUpdated={handleTaskUpdated}
+		onDeleted={handleTaskDeleted}
+	/>
 {/if}
 
 <!-- Plan Create Modal -->

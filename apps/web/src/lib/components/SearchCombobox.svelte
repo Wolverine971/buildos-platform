@@ -107,47 +107,51 @@
 		if (!query || !text) return text;
 
 		const regex = new RegExp(`(${query})`, 'gi');
-		return text.replace(regex, '<mark class="bg-yellow-200 text-gray-900">$1</mark>');
+		return text.replace(
+			regex,
+			'<mark class="bg-accent/30 text-foreground font-semibold px-0.5 rounded-sm">$1</mark>'
+		);
 	}
 
-	// Format status badge
+	// Format status badge - uses semantic colors that work in both light/dark mode
 	function getStatusBadgeClass(status: string, isCompleted: boolean, isDeleted: boolean): string {
-		if (isDeleted) return 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400';
-		if (isCompleted) return 'bg-green-100 text-green-700';
+		if (isDeleted) return 'bg-destructive/10 text-destructive border border-destructive/30';
+		if (isCompleted)
+			return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30';
 
 		switch (status) {
 			// Project statuses
 			case 'active':
-				return 'bg-blue-100 text-blue-700';
+				return 'bg-accent/10 text-accent border border-accent/30';
 			case 'paused':
-				return 'bg-yellow-100 text-yellow-700';
+				return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30';
 			case 'completed':
-				return 'bg-green-100 text-green-700';
+				return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30';
 			case 'archived':
-				return 'bg-gray-100 text-gray-600';
+				return 'bg-muted text-muted-foreground border border-border';
 
 			// Task statuses
 			case 'backlog':
-				return 'bg-gray-100 text-gray-600';
+				return 'bg-muted text-muted-foreground border border-border';
 			case 'in_progress':
-				return 'bg-blue-100 text-blue-700';
+				return 'bg-accent/10 text-accent border border-accent/30';
 			case 'done':
-				return 'bg-green-100 text-green-700';
+				return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30';
 			case 'blocked':
-				return 'bg-red-100 text-red-700';
+				return 'bg-destructive/10 text-destructive border border-destructive/30';
 
 			// Brain dump statuses
 			case 'pending':
-				return 'bg-yellow-100 text-yellow-700';
+				return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30';
 			case 'parsed':
-				return 'bg-blue-100 text-blue-700';
+				return 'bg-accent/10 text-accent border border-accent/30';
 			case 'saved':
-				return 'bg-green-100 text-green-700';
+				return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30';
 			case 'parsed_and_deleted':
-				return 'bg-gray-100 text-gray-500';
+				return 'bg-muted text-muted-foreground border border-border';
 
 			default:
-				return 'bg-gray-100 text-gray-600';
+				return 'bg-muted text-muted-foreground border border-border';
 		}
 	}
 
@@ -186,11 +190,12 @@
 			type="text"
 			inputmode="search"
 			enterkeyhint="search"
+			role="combobox"
 			placeholder="Search brain dumps, projects, and tasks..."
-			class="w-full pl-10 pr-10 py-2.5 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800
-			       border-2 border-gray-300 dark:border-gray-600 rounded-lg
-			       focus:ring-2 focus:ring-primary-500 focus:border-transparent
-			       dark:focus:ring-primary-400 transition-all duration-200"
+			class="w-full pl-10 pr-10 py-2.5 text-foreground bg-card
+			       border border-border rounded-lg shadow-ink-inner
+			       focus:ring-2 focus:ring-ring focus:border-accent
+			       transition-all duration-200 placeholder:text-muted-foreground"
 			oninput={handleInput}
 			onkeydown={handleKeyDown}
 			aria-label="Search"
@@ -201,9 +206,9 @@
 
 		<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
 			{#if isLoading}
-				<Loader2 class="w-5 h-5 text-gray-400 dark:text-gray-500 animate-spin" />
+				<Loader2 class="w-5 h-5 text-muted-foreground animate-spin" />
 			{:else}
-				<Search class="w-5 h-5 text-gray-400 dark:text-gray-500" />
+				<Search class="w-5 h-5 text-muted-foreground" />
 			{/if}
 		</div>
 
@@ -213,9 +218,7 @@
 				class="absolute inset-y-0 right-0 flex items-center pr-3 transition-colors duration-200"
 				aria-label="Clear search"
 			>
-				<X
-					class="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-				/>
+				<X class="w-5 h-5 text-muted-foreground hover:text-foreground" />
 			</button>
 		{/if}
 	</div>
@@ -224,48 +227,39 @@
 	{#if isOpen && (flatResults.length > 0 || isLoading || error)}
 		<div
 			id="search-results"
-			class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800
-			       border-2 border-gray-200 dark:border-gray-700 rounded-lg
-			       shadow-xl dark:shadow-2xl max-h-[500px] overflow-y-auto"
+			class="absolute z-50 w-full mt-2 bg-card
+			       border border-border rounded-lg
+			       shadow-ink-strong max-h-[500px] overflow-y-auto tx tx-frame tx-weak"
 		>
 			{#if error}
-				<div class="px-4 py-3 text-red-600 dark:text-red-400">
+				<div class="px-4 py-3 text-destructive">
 					Error: {error}
 				</div>
 			{:else if flatResults.length === 0 && !isLoading}
-				<div class="px-4 py-3 text-gray-500 dark:text-gray-400">
+				<div class="px-4 py-3 text-muted-foreground">
 					No results found for "{searchQuery}"
 				</div>
 			{:else}
 				<!-- Brain Dumps Section -->
 				{#if results.braindumps.length > 0}
-					<div class="border-b border-gray-100 dark:border-gray-700">
+					<div class="border-b border-border">
 						<div
-							class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase
-							       bg-gradient-to-r from-gray-50 to-gray-50/50
-							       dark:from-gray-800 dark:to-gray-800/50
-							       dither-surface relative overflow-hidden"
+							class="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide
+							       bg-muted/50"
 						>
 							Brain Dumps
 						</div>
 						{#each results.braindumps as result, index}
 							<button
 								onclick={() => navigateToItem(result)}
-								class="w-full px-4 py-3 text-left transition-all duration-200 relative overflow-hidden
-								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
-								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:bg-gradient-to-r focus:from-blue-50/50 focus:to-purple-50/50
-								       dark:focus:from-blue-900/20 dark:focus:to-purple-900/20
-								       focus:outline-none
-								       dither-soft dither-fade-hover
-								       {selectedIndex === index
-									? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20'
-									: ''}"
+								class="w-full px-4 py-3 text-left transition-colors
+								       hover:bg-accent/10 focus:bg-accent/10 focus:outline-none
+								       {selectedIndex === index ? 'bg-accent/10' : ''}"
 							>
 								<div class="flex items-start justify-between">
 									<div class="flex-1 min-w-0">
 										<div
-											class="font-medium text-gray-900 dark:text-gray-100 {result.is_deleted
+											class="font-medium text-foreground {result.is_deleted
 												? 'line-through opacity-60'
 												: ''}"
 										>
@@ -276,7 +270,7 @@
 										</div>
 										{#if result.description}
 											<div
-												class="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2 {result.is_deleted
+												class="mt-1 text-sm text-muted-foreground line-clamp-2 {result.is_deleted
 													? 'opacity-60'
 													: ''}"
 											>
@@ -290,8 +284,8 @@
 											<div class="flex flex-wrap gap-1 mt-1">
 												{#each result.tags.slice(0, 3) as tag}
 													<span
-														class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700
-														       text-gray-600 dark:text-gray-300 rounded-full {result.is_deleted ? 'opacity-60' : ''}"
+														class="px-2 py-0.5 text-xs bg-muted
+														       text-muted-foreground rounded-full {result.is_deleted ? 'opacity-60' : ''}"
 													>
 														{tag}
 													</span>
@@ -317,11 +311,8 @@
 						{#if hasMore.braindumps}
 							<button
 								onclick={() => loadMore('braindump')}
-								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 relative overflow-hidden
-								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
-								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:outline-none transition-all duration-200
-								       dither-soft dither-fade-hover"
+								class="w-full px-4 py-2 text-sm font-medium text-accent
+								       hover:bg-accent/10 focus:outline-none transition-colors"
 							>
 								View all brain dump results →
 							</button>
@@ -331,33 +322,24 @@
 
 				<!-- Projects Section -->
 				{#if results.projects.length > 0}
-					<div class="border-b border-gray-100 dark:border-gray-700">
+					<div class="border-b border-border">
 						<div
-							class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase
-							       bg-gradient-to-r from-gray-50 to-gray-50/50
-							       dark:from-gray-800 dark:to-gray-800/50
-							       dither-surface relative overflow-hidden"
+							class="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide
+							       bg-muted/50"
 						>
 							Projects
 						</div>
 						{#each results.projects as result, index}
 							<button
 								onclick={() => navigateToItem(result)}
-								class="w-full px-4 py-3 text-left transition-all duration-200 relative overflow-hidden
-								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
-								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:bg-gradient-to-r focus:from-blue-50/50 focus:to-purple-50/50
-								       dark:focus:from-blue-900/20 dark:focus:to-purple-900/20
-								       focus:outline-none
-								       dither-soft dither-fade-hover
-								       {selectedIndex === results.braindumps.length + index
-									? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20'
-									: ''}"
+								class="w-full px-4 py-3 text-left transition-colors
+								       hover:bg-accent/10 focus:bg-accent/10 focus:outline-none
+								       {selectedIndex === results.braindumps.length + index ? 'bg-accent/10' : ''}"
 							>
 								<div class="flex items-start justify-between">
 									<div class="flex-1 min-w-0">
 										<div
-											class="font-medium text-gray-900 dark:text-gray-100 {result.is_deleted
+											class="font-medium text-foreground {result.is_deleted
 												? 'line-through opacity-60'
 												: ''}"
 										>
@@ -365,7 +347,7 @@
 										</div>
 										{#if result.description}
 											<div
-												class="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2 {result.is_deleted
+												class="mt-1 text-sm text-muted-foreground line-clamp-2 {result.is_deleted
 													? 'opacity-60'
 													: ''}"
 											>
@@ -379,8 +361,8 @@
 											<div class="flex flex-wrap gap-1 mt-1">
 												{#each result.tags.slice(0, 3) as tag}
 													<span
-														class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700
-														       text-gray-600 dark:text-gray-300 rounded-full {result.is_deleted ? 'opacity-60' : ''}"
+														class="px-2 py-0.5 text-xs bg-muted
+														       text-muted-foreground rounded-full {result.is_deleted ? 'opacity-60' : ''}"
 													>
 														{tag}
 													</span>
@@ -406,11 +388,8 @@
 						{#if hasMore.projects}
 							<button
 								onclick={() => loadMore('project')}
-								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 relative overflow-hidden
-								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
-								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:outline-none transition-all duration-200
-								       dither-soft dither-fade-hover"
+								class="w-full px-4 py-2 text-sm font-medium text-accent
+								       hover:bg-accent/10 focus:outline-none transition-colors"
 							>
 								View all project results →
 							</button>
@@ -422,31 +401,24 @@
 				{#if results.tasks.length > 0}
 					<div>
 						<div
-							class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase
-							       bg-gradient-to-r from-gray-50 to-gray-50/50
-							       dark:from-gray-800 dark:to-gray-800/50
-							       dither-surface relative overflow-hidden"
+							class="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide
+							       bg-muted/50"
 						>
 							Tasks
 						</div>
 						{#each results.tasks as result, index}
 							<button
 								onclick={() => navigateToItem(result)}
-								class="w-full px-4 py-3 text-left transition-all duration-200 relative overflow-hidden
-								       hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50
-								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:bg-gradient-to-r focus:from-blue-50/50 focus:to-purple-50/50
-								       dark:focus:from-blue-900/20 dark:focus:to-purple-900/20
-								       focus:outline-none
-								       dither-soft dither-fade-hover
+								class="w-full px-4 py-3 text-left transition-colors
+								       hover:bg-accent/10 focus:bg-accent/10 focus:outline-none
 								       {selectedIndex === results.braindumps.length + results.projects.length + index
-									? 'bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20'
+									? 'bg-accent/10'
 									: ''}"
 							>
 								<div class="flex items-start justify-between">
 									<div class="flex-1 min-w-0">
 										<div
-											class="font-medium text-gray-900 dark:text-gray-100 {result.is_deleted
+											class="font-medium text-foreground {result.is_deleted
 												? 'line-through opacity-60'
 												: result.is_completed
 													? 'line-through opacity-60'
@@ -456,7 +428,7 @@
 										</div>
 										{#if result.description}
 											<div
-												class="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-2 {result.is_deleted ||
+												class="mt-1 text-sm text-muted-foreground line-clamp-2 {result.is_deleted ||
 												result.is_completed
 													? 'opacity-60'
 													: ''}"
@@ -486,11 +458,8 @@
 						{#if hasMore.tasks}
 							<button
 								onclick={() => loadMore('task')}
-								class="w-full px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 relative overflow-hidden
-								       hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50
-								       dark:hover:from-blue-900/20 dark:hover:to-purple-900/20
-								       focus:outline-none transition-all duration-200
-								       dither-soft dither-fade-hover"
+								class="w-full px-4 py-2 text-sm font-medium text-accent
+								       hover:bg-accent/10 focus:outline-none transition-colors"
 							>
 								View all task results →
 							</button>
@@ -509,36 +478,5 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
-	}
-
-	:global(mark) {
-		position: relative;
-		overflow: hidden;
-		background: linear-gradient(to right, #fef3c7, #fde68a);
-		color: inherit;
-		font-weight: 600;
-		padding: 0 2px;
-		border-radius: 2px;
-	}
-
-	:global(mark::before) {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(0,0,0)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(0,0,0)'/%3E%3C/svg%3E");
-		background-size: 4px 4px;
-		mix-blend-mode: overlay;
-		opacity: 0.15;
-		pointer-events: none;
-	}
-
-	:global(.dark mark) {
-		background: linear-gradient(to right, rgba(251, 191, 36, 0.3), rgba(245, 158, 11, 0.3));
-	}
-
-	:global(.dark mark::before) {
-		background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='4' height='4' fill='rgba(0,0,0,0)'/%3E%3Ccircle cx='0' cy='0' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='2' cy='1' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='1' cy='2' r='0.5' fill='rgb(255,255,255)'/%3E%3Ccircle cx='3' cy='3' r='0.5' fill='rgb(255,255,255)'/%3E%3C/svg%3E");
-		mix-blend-mode: soft-light;
-		opacity: 0.2;
 	}
 </style>

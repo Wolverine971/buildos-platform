@@ -20,9 +20,7 @@
 	import type { PhaseGenerationNotification, StepsProgress } from '$lib/types/notification.types';
 	import { createEventDispatcher } from 'svelte';
 
-	let { notification } = $props<{
-		notification: PhaseGenerationNotification;
-	}>();
+	let { notification }: { notification: PhaseGenerationNotification } = $props();
 
 	const dispatch = createEventDispatcher();
 
@@ -108,10 +106,10 @@
 
 	const statusIconClasses = $derived(
 		notification.status === 'success'
-			? 'text-green-600 dark:text-green-400'
+			? 'text-emerald-600 dark:text-emerald-400'
 			: notification.status === 'error'
-				? 'text-red-600 dark:text-red-400'
-				: 'text-blue-600 dark:text-blue-400'
+				? 'text-destructive'
+				: 'text-accent'
 	);
 
 	const showRetry = $derived(notification.status === 'error');
@@ -130,11 +128,11 @@
 			<div class="space-y-6">
 				<!-- Overview -->
 				<section
-					class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/70"
+					class="rounded-xl border border-border bg-card p-6 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex flex-wrap items-center gap-3">
 						<div
-							class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/40"
+							class="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10"
 						>
 							{#if notification.status === 'success'}
 								<CheckCircle class={`h-6 w-6 ${statusIconClasses}`} />
@@ -145,21 +143,19 @@
 							{/if}
 						</div>
 						<div class="flex-1 min-w-[200px] space-y-1">
-							<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+							<h2 class="text-lg font-semibold text-foreground">
 								{notification.data.isRegeneration
 									? 'Regenerating phases'
 									: 'Generating phases'}
 							</h2>
 							{#if strategyMeta}
-								<p class="text-sm text-gray-500 dark:text-gray-400">
+								<p class="text-sm text-muted-foreground">
 									{strategyMeta.title}
 								</p>
 							{/if}
 						</div>
 
-						<div
-							class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400"
-						>
+						<div class="flex items-center gap-4 text-sm text-muted-foreground">
 							<div class="flex items-center gap-2">
 								<Layers class="h-4 w-4" />
 								<span>{notification.data.taskCount} tasks</span>
@@ -175,14 +171,12 @@
 
 					{#if notification.status === 'error' && notification.data.error}
 						<p
-							class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-200"
+							class="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive tx tx-static tx-weak"
 						>
 							{notification.data.error}
 						</p>
 					{:else if notification.status === 'success' && notification.data.requestPayload?.user_instructions}
-						<p
-							class="mt-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-800/40 dark:text-slate-300"
-						>
+						<p class="mt-4 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
 							Custom instructions applied: {notification.data.requestPayload
 								.user_instructions}
 						</p>
@@ -191,16 +185,16 @@
 
 				<!-- Progress timeline -->
 				<section
-					class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/70"
+					class="rounded-xl border border-border bg-card p-6 shadow-ink tx tx-grain tx-weak"
 				>
 					<header class="mb-4 flex items-center justify-between">
 						<h3
-							class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+							class="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
 						>
 							Progress
 						</h3>
 						{#if stepsProgress}
-							<span class="text-xs text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								{completedSteps}/{totalSteps} steps complete
 							</span>
 						{/if}
@@ -213,12 +207,12 @@
 									<div
 										class={`flex h-8 w-8 items-center justify-center rounded-full border ${
 											step.status === 'completed'
-												? 'border-green-200 bg-green-50 text-green-600 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300'
+												? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
 												: step.status === 'processing'
-													? 'border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300'
+													? 'border-accent/40 bg-accent/10 text-accent'
 													: step.status === 'error'
-														? 'border-red-200 bg-red-50 text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'
-														: 'border-gray-200 bg-white text-gray-400 dark:border-gray-800 dark:bg-gray-900'
+														? 'border-destructive/40 bg-destructive/10 text-destructive'
+														: 'border-border bg-card text-muted-foreground'
 										}`}
 									>
 										{#if step.status === 'completed'}
@@ -235,19 +229,19 @@
 										<p
 											class={`text-sm font-medium ${
 												step.status === 'processing'
-													? 'text-gray-900 dark:text-white'
-													: 'text-gray-600 dark:text-gray-300'
+													? 'text-foreground'
+													: 'text-muted-foreground'
 											}`}
 										>
 											{step.name}
 										</p>
 										{#if step.message}
-											<p class="text-xs text-gray-500 dark:text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												{step.message}
 											</p>
 										{/if}
 										{#if step.etaSeconds}
-											<p class="text-xs text-gray-400">
+											<p class="text-xs text-muted-foreground/70">
 												ETA ~{step.etaSeconds}s
 											</p>
 										{/if}
@@ -256,17 +250,17 @@
 							{/each}
 						</ol>
 					{:else}
-						<p class="text-sm text-gray-500 dark:text-gray-400">Tracking progress…</p>
+						<p class="text-sm text-muted-foreground">Tracking progress…</p>
 					{/if}
 				</section>
 
 				<!-- Result summary -->
 				{#if notification.status === 'success'}
 					<section
-						class="rounded-xl border border-green-200 bg-green-50 p-6 shadow-sm dark:border-green-800 dark:bg-green-900/20"
+						class="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-6 shadow-ink tx tx-frame tx-weak"
 					>
 						<header
-							class="mb-4 flex items-center gap-3 text-green-700 dark:text-green-200"
+							class="mb-4 flex items-center gap-3 text-emerald-600 dark:text-emerald-400"
 						>
 							<CheckCircle class="h-5 w-5" />
 							<h3 class="text-sm font-semibold uppercase tracking-wide">
@@ -274,7 +268,7 @@
 							</h3>
 						</header>
 
-						<div class="space-y-3 text-sm text-green-800 dark:text-green-100">
+						<div class="space-y-3 text-sm text-emerald-700 dark:text-emerald-300">
 							<p>
 								Successfully processed {notification.data.taskCount}
 								task{notification.data.taskCount === 1 ? '' : 's'} across
@@ -292,15 +286,17 @@
 
 							{#if result?.summaryMarkdown}
 								<div
-									class="rounded-md bg-white/80 p-3 text-sm text-green-700 shadow-inner dark:bg-green-950/40 dark:text-green-100"
+									class="rounded-md bg-card/80 p-3 text-sm text-emerald-700 dark:text-emerald-200 shadow-ink-inner"
 								>
 									<h4
-										class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-green-600 dark:text-green-200"
+										class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400"
 									>
 										<NotebookPen class="h-4 w-4" />
 										Summary
 									</h4>
-									<div class="prose prose-sm text-green-700 dark:prose-invert">
+									<div
+										class="prose prose-sm text-emerald-700 dark:prose-invert dark:text-emerald-200"
+									>
 										{@html result.summaryMarkdown}
 									</div>
 								</div>
@@ -310,19 +306,20 @@
 				{/if}
 			</div>
 		</div>
+	{/snippet}
 
+	{#snippet footer()}
 		<!-- Footer actions -->
 		<div
-			slot="footer"
-			class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40"
+			class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-border bg-muted/50"
 		>
 			<div
-				class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 w-full sm:w-auto"
+				class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground w-full sm:w-auto"
 			>
 				<span class="uppercase tracking-wide">Filters</span>
 				{#each notification.data.selectedStatuses as status (status)}
 					<span
-						class="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+						class="rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-foreground/80"
 					>
 						{status.replace(/_/g, ' ')}
 					</span>
@@ -362,8 +359,8 @@
 	{/snippet}
 </Modal>
 
-<style>
-	:global(.dark) .prose-invert a {
+<style lang="postcss">
+	:global(.dark .prose-invert a) {
 		color: #a5b4fc;
 	}
 </style>

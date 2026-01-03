@@ -293,17 +293,29 @@ export class EmailGenerationService {
 			throw new Error(`Failed to fetch user: ${userError?.message}`);
 		}
 
+		const { data: actorId, error: actorError } = await this.supabase.rpc(
+			'ensure_actor_for_user',
+			{
+				p_user_id: userId
+			}
+		);
+
+		if (actorError || !actorId) {
+			throw new Error(`Failed to resolve actor: ${actorError?.message || 'Unknown error'}`);
+		}
+
 		// Execute ALL remaining queries in parallel for maximum performance
 		const [
 			onboardingResult,
 			betaMemberResult,
 			betaSignupResult,
 			projectsResult,
+			projectCountResult,
 			tasksResult,
 			brainDumpsResult,
 			dailyBriefsResult,
-			phaseGenerationsResult,
-			notesResult,
+			planCountResult,
+			documentsResult,
 			calendarTokensResult,
 			emailHistoryResult
 		] = await Promise.all([
@@ -322,46 +334,57 @@ export class EmailGenerationService {
 			// Beta signup info (using user email)
 			this.supabase.from('beta_signups').select('*').eq('email', user.email).single(),
 
-			// Recent projects
+			// Recent projects (ontology)
 			this.supabase
-				.from('projects')
+				.from('onto_projects')
 				.select('id, name, updated_at')
-				.eq('user_id', userId)
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
 				.order('updated_at', { ascending: false })
 				.limit(EMAIL_CONFIG.defaults.includeProjectLimit),
 
-			// Task metrics
+			// Total projects (ontology)
 			this.supabase
-				.from('tasks')
-				.select('id, status, created_at')
-				.eq('user_id', userId)
+				.from('onto_projects')
+				.select('id', { count: 'exact', head: true })
+				.eq('created_by', actorId)
+				.is('deleted_at', null),
+
+			// Task metrics (ontology)
+			this.supabase
+				.from('onto_tasks')
+				.select('id, state_key, created_at')
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
 				.gte('created_at', thirtyDaysAgoISO),
 
 			// Brain dumps count
 			this.supabase
-				.from('brain_dumps')
+				.from('onto_braindumps')
 				.select('*', { count: 'exact', head: true })
 				.eq('user_id', userId)
 				.gte('created_at', thirtyDaysAgoISO),
 
 			// Daily briefs count
 			this.supabase
-				.from('daily_briefs')
+				.from('ontology_daily_briefs')
 				.select('*', { count: 'exact', head: true })
-				.eq('user_id', userId)
+				.eq('actor_id', actorId)
 				.gte('created_at', thirtyDaysAgoISO),
 
-			// Phases count (directly from phases table)
+			// Plans count (ontology)
 			this.supabase
-				.from('phases')
+				.from('onto_plans')
 				.select('*', { count: 'exact', head: true })
-				.eq('user_id', userId),
+				.eq('created_by', actorId)
+				.is('deleted_at', null),
 
-			// Notes count
+			// Documents count (ontology notes/documents)
 			this.supabase
-				.from('notes')
+				.from('onto_documents')
 				.select('*', { count: 'exact', head: true })
-				.eq('user_id', userId)
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
 				.gte('created_at', thirtyDaysAgoISO),
 
 			// Calendar connection
@@ -402,11 +425,12 @@ export class EmailGenerationService {
 		const { data: betaMember } = betaMemberResult;
 		const { data: betaSignup } = betaSignupResult;
 		const { data: projects } = projectsResult;
+		const { count: projectCount } = projectCountResult;
 		const { data: tasks } = tasksResult;
 		const { count: brainDumpsCount } = brainDumpsResult;
 		const { count: dailyBriefsCount } = dailyBriefsResult;
-		const { count: phaseGenerationsCount } = phaseGenerationsResult;
-		const { count: notesCount } = notesResult;
+		const { count: planCount } = planCountResult;
+		const { count: documentsCount } = documentsResult;
 		const { count: calendarTokensCount } = calendarTokensResult;
 		const { data: emailHistory } = emailHistoryResult;
 
@@ -457,16 +481,16 @@ export class EmailGenerationService {
 
 		// Calculate task metrics
 		const tasksCreated = tasks?.length || 0;
-		const tasksCompleted = tasks?.filter((t) => t.status === 'done').length || 0;
+		const tasksCompleted = tasks?.filter((t) => t.state_key === 'done').length || 0;
 
 		const activity: UserActivitySummary = {
-			project_count: projects?.length || 0,
+			project_count: projectCount || 0,
 			tasks_created: tasksCreated,
 			tasks_completed: tasksCompleted,
 			brain_dumps_count: brainDumpsCount || 0,
 			daily_briefs_count: dailyBriefsCount || 0,
-			phases_generated_count: phaseGenerationsCount || 0,
-			notes_count: notesCount || 0,
+			phases_generated_count: planCount || 0,
+			notes_count: documentsCount || 0,
 			calendar_connected: (calendarTokensCount || 0) > 0,
 			recent_projects:
 				projects?.map((p) => ({

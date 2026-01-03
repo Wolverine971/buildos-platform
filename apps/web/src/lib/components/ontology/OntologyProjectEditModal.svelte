@@ -20,6 +20,7 @@
 		Loader2
 	} from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
 	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -920,6 +921,13 @@
 									/>
 								</div>
 							</div>
+
+							<!-- Tags Section -->
+							{#if project?.props?.tags?.length}
+								<div class="pt-3 border-t border-border">
+									<TagsDisplay props={project.props} />
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -1009,8 +1017,7 @@
 
 <!-- Chat About Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
-	<svelte:component
-		this={AgentChatModalComponent}
+	<AgentChatModalComponent
 		isOpen={showChatModal}
 		initialProjectFocus={entityFocus}
 		onClose={handleChatClose}

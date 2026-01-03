@@ -9,48 +9,69 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { projectStoreV2 } from '$lib/stores/project.store';
 
-	export let isOpen = false;
-	export let phases: PhaseWithTasks[] = [];
-	export let scheduledTaskCount: number = 0;
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	export let scheduledTaskCountInPhases: number = 0;
-	export let totalTasksInPhases: number = 0;
-	export let projectId: string = '';
-	export let allTasks: any[] = [];
-	export let hasTasksWithDates: boolean = false;
+	interface Props {
+		isOpen?: boolean;
+		phases?: PhaseWithTasks[];
+		scheduledTaskCount?: number;
+		scheduledTaskCountInPhases?: number;
+		totalTasksInPhases?: number;
+		projectId?: string;
+		allTasks?: any[];
+		hasTasksWithDates?: boolean;
+		onclose?: () => void;
+		ontasksUnscheduled?: (detail: { unscheduledCount: number; clearDates: boolean }) => void;
+	}
+
+	let {
+		isOpen = false,
+		phases = [],
+		scheduledTaskCount = 0,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		scheduledTaskCountInPhases = 0,
+		totalTasksInPhases = 0,
+		projectId = '',
+		allTasks = [],
+		hasTasksWithDates = false,
+		onclose,
+		ontasksUnscheduled
+	}: Props = $props();
 
 	const dispatch = createEventDispatcher();
 
 	// Options for unscheduling
-	let clearDates = false; // Keep dates but remove calendar events
-	let removeCalendarEvents = true; // Always remove calendar events
-	let moveToBacklog = false; // Move tasks to backlog (remove from phases)
+	let clearDates = $state(false); // Keep dates but remove calendar events
+	let removeCalendarEvents = $state(true); // Always remove calendar events
+	let moveToBacklog = $state(false); // Move tasks to backlog (remove from phases)
 
 	// State
-	let loading = false;
-	let error: string | null = null;
+	let loading = $state(false);
+	let error = $state<string | null>(null);
 
 	// Calculate affected tasks based on selected options
-	$: affectedTasks = (() => {
-		if (clearDates && !moveToBacklog) {
-			// When clearing dates only, affect all tasks with dates (including backlog)
-			return allTasks.filter((task) => task.start_date);
-		} else if (moveToBacklog) {
-			// When moving to backlog, only affect tasks in phases
-			return phases.flatMap((phase) => phase.tasks || []);
-		} else {
-			// Default: tasks in phases with dates
-			return phases.flatMap((phase) =>
-				(phase.tasks || []).filter((task) => task.start_date || task.calendar_event_id)
-			);
-		}
-	})();
+	let affectedTasks = $derived(
+		(() => {
+			if (clearDates && !moveToBacklog) {
+				// When clearing dates only, affect all tasks with dates (including backlog)
+				return allTasks.filter((task) => task.start_date);
+			} else if (moveToBacklog) {
+				// When moving to backlog, only affect tasks in phases
+				return phases.flatMap((phase) => phase.tasks || []);
+			} else {
+				// Default: tasks in phases with dates
+				return phases.flatMap((phase) =>
+					(phase.tasks || []).filter((task) => task.start_date || task.calendar_event_id)
+				);
+			}
+		})()
+	);
 
-	$: affectedPhaseCount = moveToBacklog
-		? phases.filter((phase) => phase.tasks && phase.tasks.length > 0).length
-		: phases.filter((phase) =>
-				phase.tasks?.some((task) => task.start_date || task.calendar_event_id)
-			).length;
+	let affectedPhaseCount = $derived(
+		moveToBacklog
+			? phases.filter((phase) => phase.tasks && phase.tasks.length > 0).length
+			: phases.filter((phase) =>
+					phase.tasks?.some((task) => task.start_date || task.calendar_event_id)
+				).length
+	);
 
 	async function handleUnschedule() {
 		if (loading) return;
@@ -112,10 +133,12 @@
 			}
 
 			// Dispatch event to notify parent components
-			dispatch('tasksUnscheduled', {
+			const eventData = {
 				unscheduledCount: result.data?.totalUnscheduled || 0,
 				clearDates
-			});
+			};
+			ontasksUnscheduled?.(eventData);
+			dispatch('tasksUnscheduled', eventData);
 
 			handleClose();
 		} catch (err) {
@@ -128,14 +151,14 @@
 	}
 
 	function handleClose() {
+		onclose?.();
 		dispatch('close');
 	}
 </script>
 
 <Modal {isOpen} onClose={handleClose} size="md">
-	{#snippet children()}
+	{#snippet header()}
 		<div
-			slot="header"
 			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
 		>
 			<div class="flex items-center gap-2 sm:gap-2">
@@ -163,7 +186,9 @@
 				</div>
 			</div>
 		</div>
+	{/snippet}
 
+	{#snippet children()}
 		<div class="p-4 sm:p-5 md:p-6 space-y-6">
 			{#if error}
 				<div
@@ -325,9 +350,10 @@
 				</div>
 			{/if}
 		</div>
+	{/snippet}
 
+	{#snippet footer()}
 		<div
-			slot="footer"
 			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 		>
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">

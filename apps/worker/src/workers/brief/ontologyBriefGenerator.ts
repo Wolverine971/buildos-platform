@@ -68,6 +68,26 @@ function formatDate(dateStr: string): string {
 	return format(date, 'MMM d, yyyy');
 }
 
+function formatGoalTargetSummary(goal: GoalProgress): string | null {
+	if (!goal.targetDate) return null;
+
+	const formattedDate = formatDate(goal.targetDate);
+	if (goal.targetDaysAway === null) {
+		return `Target: ${formattedDate}`;
+	}
+	if (goal.targetDaysAway === 0) {
+		return `Target: ${formattedDate} (today)`;
+	}
+	if (goal.targetDaysAway > 0) {
+		const dayLabel = goal.targetDaysAway === 1 ? 'day' : 'days';
+		return `Target: ${formattedDate} (in ${goal.targetDaysAway} ${dayLabel})`;
+	}
+
+	const overdueDays = Math.abs(goal.targetDaysAway);
+	const overdueLabel = overdueDays === 1 ? 'day' : 'days';
+	return `Target: ${formattedDate} (${overdueDays} ${overdueLabel} overdue)`;
+}
+
 function formatDateInTimezone(
 	timestamp: string,
 	timezone: string,
@@ -157,9 +177,18 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 	if (activeGoals.length > 0) {
 		brief += `### Goal Progress\n`;
 		for (const goal of activeGoals) {
+			const targetSummary = formatGoalTargetSummary(goal);
 			const statusEmoji =
-				goal.status === 'on_track' ? '✅' : goal.status === 'at_risk' ? '⚠️' : '🔴';
-			brief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}% (${goal.completedTasks}/${goal.totalTasks} tasks)\n`;
+				targetSummary && goal.status === 'on_track'
+					? '✅'
+					: targetSummary && goal.status === 'at_risk'
+						? '⚠️'
+						: targetSummary && goal.status === 'behind'
+							? '🔴'
+							: '';
+			const statusPrefix = statusEmoji ? `${statusEmoji} ` : '';
+			const targetSuffix = targetSummary ? ` - ${targetSummary}` : '';
+			brief += `- ${statusPrefix}**${goal.goal.name}**${targetSuffix}\n`;
 		}
 		brief += '\n';
 	}
@@ -327,13 +356,23 @@ function generateMainBriefMarkdown(
 		mainBrief += `## Strategic Alignment\n\n`;
 		mainBrief += `### Goal Progress\n`;
 		for (const goal of activeGoals) {
-			const statusEmoji =
-				goal.status === 'on_track' ? '✅' : goal.status === 'at_risk' ? '⚠️' : '🔴';
 			const projectName = projectNameMap.get(goal.goal.project_id) || '';
-			const projectSuffix = projectName
-				? ` — [${projectName}](/projects/${goal.goal.project_id})`
+			const projectLink = projectName
+				? `[${projectName}](/projects/${goal.goal.project_id})`
 				: '';
-			mainBrief += `- ${statusEmoji} **${goal.goal.name}**: ${goal.progressPercent}%${projectSuffix}\n`;
+			const targetSummary = formatGoalTargetSummary(goal);
+			const statusEmoji =
+				targetSummary && goal.status === 'on_track'
+					? '✅'
+					: targetSummary && goal.status === 'at_risk'
+						? '⚠️'
+						: targetSummary && goal.status === 'behind'
+							? '🔴'
+							: '';
+			const details = [targetSummary, projectLink].filter(Boolean);
+			const detailSuffix = details.length > 0 ? ` - ${details.join(' - ')}` : '';
+			const statusPrefix = statusEmoji ? `${statusEmoji} ` : '';
+			mainBrief += `- ${statusPrefix}**${goal.goal.name}**${detailSuffix}\n`;
 		}
 		mainBrief += '\n';
 	}

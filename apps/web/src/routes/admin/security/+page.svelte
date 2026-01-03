@@ -130,10 +130,18 @@
 	<div class="admin-panel p-5">
 		<div class="grid grid-cols-1 gap-4 md:grid-cols-4">
 			<div class="space-y-2">
-				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+				<label
+					for="security-event-type-filter"
+					class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"
+				>
 					Event Type
 				</label>
-				<Select bind:value={eventTypeFilter} size="md" onchange={applyFilters}>
+				<Select
+					id="security-event-type-filter"
+					bind:value={eventTypeFilter}
+					size="md"
+					onchange={applyFilters}
+				>
 					<option value="all">All Events</option>
 					<option value="prompt_injection_blocked">Blocked</option>
 					<option value="prompt_injection_detected">Detected</option>
@@ -143,10 +151,18 @@
 			</div>
 
 			<div class="space-y-2">
-				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+				<label
+					for="security-status-filter"
+					class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"
+				>
 					Status
 				</label>
-				<Select bind:value={wasBlockedFilter} size="md" onchange={applyFilters}>
+				<Select
+					id="security-status-filter"
+					bind:value={wasBlockedFilter}
+					size="md"
+					onchange={applyFilters}
+				>
 					<option value="all">All</option>
 					<option value="true">Blocked</option>
 					<option value="false">Allowed</option>
@@ -154,10 +170,18 @@
 			</div>
 
 			<div class="space-y-2">
-				<label class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+				<label
+					for="security-date-filter"
+					class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"
+				>
 					Time Period
 				</label>
-				<Select bind:value={dateFilter} size="md" onchange={applyFilters}>
+				<Select
+					id="security-date-filter"
+					bind:value={dateFilter}
+					size="md"
+					onchange={applyFilters}
+				>
 					<option value="24hours">Last 24 Hours</option>
 					<option value="7days">Last 7 Days</option>
 					<option value="30days">Last 30 Days</option>

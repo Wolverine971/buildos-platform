@@ -254,49 +254,72 @@
 					{#each logs as log}
 						{@const ActionIcon = getActionIcon(log.action)}
 						{@const isClickable = log.entity_type !== 'edge' && onEntityClick}
-						<div
-							class="group flex items-start gap-2 px-4 py-2 {isClickable
-								? 'hover:bg-muted/60 cursor-pointer'
-								: ''}"
-							role={isClickable ? 'button' : undefined}
-							tabindex={isClickable ? 0 : undefined}
-							onclick={() => isClickable && handleEntityClick(log)}
-							onkeydown={(e) =>
-								e.key === 'Enter' && isClickable && handleEntityClick(log)}
-						>
-							<!-- Timestamp -->
-							<span class="text-muted-foreground shrink-0 w-24 tabular-nums">
-								{formatTimestamp(log.created_at)}
-							</span>
-
-							<!-- Action icon -->
-							<span class="shrink-0 {getActionColor(log.action)}">
-								<ActionIcon class="w-3.5 h-3.5" />
-							</span>
-
-							<!-- Content -->
-							<span class="flex-1 min-w-0">
-								<span class="text-muted-foreground">{log.action}</span>
-								<span class="mx-1 text-foreground font-medium">
-									{formatEntityType(log.entity_type)}:
+						{#if isClickable}
+							<button
+								type="button"
+								class="group flex items-start gap-2 px-4 py-2 hover:bg-muted/60 cursor-pointer text-left w-full"
+								onclick={() => handleEntityClick(log)}
+							>
+								<!-- Timestamp -->
+								<span class="text-muted-foreground shrink-0 w-24 tabular-nums">
+									{formatTimestamp(log.created_at)}
 								</span>
-								<span class="text-foreground truncate">
-									{log.entity_name || log.entity_id.slice(0, 8)}
+
+								<!-- Action icon -->
+								<span class="shrink-0 {getActionColor(log.action)}">
+									<ActionIcon class="w-3.5 h-3.5" />
 								</span>
-								{#if log.change_source}
-									<span class="text-muted-foreground/60 ml-1">
-										({getSourceBadge(log.change_source)})
+
+								<!-- Content -->
+								<span class="flex-1 min-w-0">
+									<span class="text-muted-foreground">{log.action}</span>
+									<span class="mx-1 text-foreground font-medium">
+										{formatEntityType(log.entity_type)}:
 									</span>
-								{/if}
-							</span>
+									<span class="text-foreground truncate">
+										{log.entity_name || log.entity_id.slice(0, 8)}
+									</span>
+									{#if log.change_source}
+										<span class="text-muted-foreground/60 ml-1">
+											({getSourceBadge(log.change_source)})
+										</span>
+									{/if}
+								</span>
 
-							<!-- Link indicator -->
-							{#if isClickable}
+								<!-- Link indicator -->
 								<ExternalLink
 									class="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
 								/>
-							{/if}
-						</div>
+							</button>
+						{:else}
+							<div class="group flex items-start gap-2 px-4 py-2">
+								<!-- Timestamp -->
+								<span class="text-muted-foreground shrink-0 w-24 tabular-nums">
+									{formatTimestamp(log.created_at)}
+								</span>
+
+								<!-- Action icon -->
+								<span class="shrink-0 {getActionColor(log.action)}">
+									<ActionIcon class="w-3.5 h-3.5" />
+								</span>
+
+								<!-- Content -->
+								<span class="flex-1 min-w-0">
+									<span class="text-muted-foreground">{log.action}</span>
+									<span class="mx-1 text-foreground font-medium">
+										{formatEntityType(log.entity_type)}:
+									</span>
+									<span class="text-foreground truncate">
+										{log.entity_name || log.entity_id.slice(0, 8)}
+									</span>
+									{#if log.change_source}
+										<span class="text-muted-foreground/60 ml-1">
+											({getSourceBadge(log.change_source)})
+										</span>
+									{/if}
+								</span>
+							</div>
+						{/if}
 					{/each}
 				</div>
 

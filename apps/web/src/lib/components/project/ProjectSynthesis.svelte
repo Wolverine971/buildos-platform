@@ -956,22 +956,23 @@
 	<p class="text-gray-600 dark:text-gray-400">
 		Are you sure you want to delete this synthesis? This action cannot be undone.
 	</p>
-	<div
-		slot="footer"
-		class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
-	>
-		<Button onclick={() => (deleteConfirmModalOpen = false)} variant="outline" size="sm">
-			Cancel
-		</Button>
-		<Button
-			onclick={deleteSynthesis}
-			variant="primary"
-			size="sm"
-			class="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+	{#snippet footer()}
+		<div
+			class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
 		>
-			Delete
-		</Button>
-	</div>
+			<Button onclick={() => (deleteConfirmModalOpen = false)} variant="outline" size="sm">
+				Cancel
+			</Button>
+			<Button
+				onclick={deleteSynthesis}
+				variant="primary"
+				size="sm"
+				class="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+			>
+				Delete
+			</Button>
+		</div>
+	{/snippet}
 </InfoModal>
 
 <!-- Discard Changes Confirmation Modal -->
@@ -984,15 +985,16 @@
 	<p class="text-gray-600 dark:text-gray-400">
 		Are you sure you want to discard your unsaved changes?
 	</p>
-	<div
-		slot="footer"
-		class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
-	>
-		<Button onclick={() => (discardConfirmModalOpen = false)} variant="outline" size="sm">
-			Cancel
-		</Button>
-		<Button onclick={discardChanges} variant="primary" size="sm">Discard</Button>
-	</div>
+	{#snippet footer()}
+		<div
+			class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+		>
+			<Button onclick={() => (discardConfirmModalOpen = false)} variant="outline" size="sm">
+				Cancel
+			</Button>
+			<Button onclick={discardChanges} variant="primary" size="sm">Discard</Button>
+		</div>
+	{/snippet}
 </InfoModal>
 
 <!-- Restore Draft Modal -->
@@ -1005,13 +1007,14 @@
 	<p class="text-gray-600 dark:text-gray-400">
 		Found unsaved synthesis draft. Would you like to restore it?
 	</p>
-	<div
-		slot="footer"
-		class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
-	>
-		<Button onclick={discardDraft} variant="outline" size="sm">Discard Draft</Button>
-		<Button onclick={restoreDraft} variant="primary" size="sm">Restore Draft</Button>
-	</div>
+	{#snippet footer()}
+		<div
+			class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+		>
+			<Button onclick={discardDraft} variant="outline" size="sm">Discard Draft</Button>
+			<Button onclick={restoreDraft} variant="primary" size="sm">Restore Draft</Button>
+		</div>
+	{/snippet}
 </InfoModal>
 
 <!-- Leave Page Confirmation Modal -->
@@ -1024,11 +1027,12 @@
 	<p class="text-gray-600 dark:text-gray-400">
 		You have unsaved changes. Are you sure you want to leave?
 	</p>
-	<div
-		slot="footer"
-		class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
-	>
-		<Button onclick={cancelLeave} variant="outline" size="sm">Stay on Page</Button>
-		<Button onclick={confirmLeave} variant="primary" size="sm">Leave Page</Button>
-	</div>
+	{#snippet footer()}
+		<div
+			class="flex justify-end space-x-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+		>
+			<Button onclick={cancelLeave} variant="outline" size="sm">Stay on Page</Button>
+			<Button onclick={confirmLeave} variant="primary" size="sm">Leave Page</Button>
+		</div>
+	{/snippet}
 </InfoModal>

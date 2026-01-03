@@ -27,9 +27,7 @@
 	} from '$lib/types/notification.types';
 	import { createEventDispatcher } from 'svelte';
 
-	let { notification } = $props<{
-		notification: ProjectSynthesisNotification;
-	}>();
+	let { notification }: { notification: ProjectSynthesisNotification } = $props();
 
 	const dispatch = createEventDispatcher();
 
@@ -406,10 +404,11 @@
 				{/if}
 			</div>
 		</div>
+	{/snippet}
 
+	{#snippet footer()}
 		<!-- Footer actions -->
 		<div
-			slot="footer"
 			class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40"
 		>
 			<div class="text-xs text-gray-500 dark:text-gray-400">

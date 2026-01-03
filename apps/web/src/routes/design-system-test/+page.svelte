@@ -422,10 +422,17 @@
 				<h3 class="text-lg font-semibold text-foreground mb-4">Select Inputs</h3>
 				<div class="grid gap-6 md:grid-cols-2">
 					<div>
-						<label class="block text-sm font-medium text-muted-foreground mb-2">
+						<label
+							for="ds-project-select"
+							class="block text-sm font-medium text-muted-foreground mb-2"
+						>
 							Project Selection
 						</label>
-						<Select bind:value={selectValue} placeholder="Choose a project...">
+						<Select
+							id="ds-project-select"
+							bind:value={selectValue}
+							placeholder="Choose a project..."
+						>
 							<option value="new">New Project</option>
 							<option value="1">Brain Dump System</option>
 							<option value="2">Ontology Migration</option>
@@ -434,10 +441,14 @@
 					</div>
 
 					<div>
-						<label class="block text-sm font-medium text-muted-foreground mb-2">
+						<label
+							for="ds-large-select"
+							class="block text-sm font-medium text-muted-foreground mb-2"
+						>
 							Large Select
 						</label>
 						<Select
+							id="ds-large-select"
 							bind:value={selectValue}
 							size="lg"
 							placeholder="Select an option..."

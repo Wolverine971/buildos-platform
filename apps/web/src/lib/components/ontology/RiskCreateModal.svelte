@@ -402,14 +402,14 @@
 							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
 								<!-- Selected Type Badge -->
 								{#if selectedType}
+									{@const SelectedTypeIcon = selectedType.icon}
 									<div
 										class="rounded-lg border border-border bg-muted/30 p-2.5 sm:p-4 tx tx-grain tx-weak"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3 flex-1 min-w-0">
 												<div class="p-2 rounded bg-card shadow-ink">
-													<svelte:component
-														this={selectedType.icon}
+													<SelectedTypeIcon
 														class="w-4 h-4 text-amber-500"
 													/>
 												</div>

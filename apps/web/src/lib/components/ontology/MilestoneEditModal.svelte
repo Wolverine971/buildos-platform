@@ -36,6 +36,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -45,6 +46,7 @@
 	import DocumentModal from './DocumentModal.svelte';
 	import RiskEditModal from './RiskEditModal.svelte';
 	import { MILESTONE_STATES } from '$lib/types/onto';
+	import { MILESTONE_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
@@ -102,6 +104,7 @@
 	let milestoneDetails = $state('');
 	let dueAt = $state('');
 	let stateKey = $state('pending');
+	let typeKey = $state('milestone.default');
 
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
@@ -175,6 +178,7 @@
 					dueAt = dateObj.toISOString().split('T')[0];
 				}
 				stateKey = milestone.state_key || 'pending';
+				typeKey = milestone.type_key || 'milestone.default';
 				description = milestone.description || milestone.props?.description || '';
 				milestoneDetails = milestone.milestone || milestone.props?.milestone || '';
 			}
@@ -208,6 +212,7 @@
 				title: title.trim(),
 				due_at: dueDateObj.toISOString(),
 				state_key: stateKey,
+				type_key: typeKey || 'milestone.default',
 				milestone: milestoneDetails.trim() || null,
 				description: description.trim() || null
 			};
@@ -501,26 +506,51 @@
 								/>
 							</FormField>
 
-							<FormField
-								label="State"
-								labelFor="state"
-								required={true}
-								hint="Current milestone status"
-							>
-								<Select
-									id="state"
-									bind:value={stateKey}
-									disabled={isSaving}
-									size="md"
-									placeholder="Select state"
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<FormField
+									label="State"
+									labelFor="state"
+									required={true}
+									hint="Current milestone status"
 								>
-									{#each STATE_OPTIONS as opt}
-										<option value={opt.value}
-											>{opt.label} - {opt.description}</option
-										>
-									{/each}
-								</Select>
-							</FormField>
+									<Select
+										id="state"
+										bind:value={stateKey}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select state"
+									>
+										{#each STATE_OPTIONS as opt}
+											<option value={opt.value}
+												>{opt.label} - {opt.description}</option
+											>
+										{/each}
+									</Select>
+								</FormField>
+
+								<FormField
+									label="Type"
+									labelFor="type-key"
+									hint="Milestone classification"
+								>
+									<Select
+										id="type-key"
+										bind:value={typeKey}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select type"
+									>
+										{#each MILESTONE_TYPE_KEYS as typeOption}
+											<option
+												value={typeOption.value}
+												title={typeOption.description}
+											>
+												{typeOption.label}
+											</option>
+										{/each}
+									</Select>
+								</FormField>
+							</div>
 
 							{#if error}
 								<div
@@ -542,6 +572,23 @@
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={loadMilestone}
 						/>
+
+						<!-- Tags (from classification) -->
+						{#if milestone?.props?.tags?.length}
+							<Card variant="elevated">
+								<CardHeader variant="default">
+									<h3
+										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
+									>
+										<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+										Tags
+									</h3>
+								</CardHeader>
+								<CardBody padding="sm">
+									<TagsDisplay props={milestone.props} size="sm" compact={true} />
+								</CardBody>
+							</Card>
+						{/if}
 
 						<!-- Due Date Card -->
 						<Card variant="elevated">
@@ -796,8 +843,7 @@
 
 <!-- Chat About Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
-	<svelte:component
-		this={AgentChatModalComponent}
+	<AgentChatModalComponent
 		isOpen={showChatModal}
 		initialProjectFocus={entityFocus}
 		onClose={handleChatClose}

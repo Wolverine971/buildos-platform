@@ -354,10 +354,11 @@
 				<p class="text-gray-600 dark:text-gray-400">No brief available</p>
 			</div>
 		{/if}
+	{/snippet}
 
+	{#snippet footer()}
 		<!-- Footer Actions -->
 		<div
-			slot="footer"
 			class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
 		>
 			<!-- Email opt-in banner if not opted in -->

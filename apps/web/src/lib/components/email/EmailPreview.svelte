@@ -235,7 +235,7 @@
 	{/if}
 </div>
 
-<style>
+<style lang="postcss">
 	/* Ensure email content in preview looks good */
 	:global(.email-content img) {
 		max-width: 100%;

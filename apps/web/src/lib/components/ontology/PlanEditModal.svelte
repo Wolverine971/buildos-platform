@@ -26,7 +26,9 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import { PLAN_STATES } from '$lib/types/onto';
+	import { PLAN_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -73,6 +75,7 @@
 	let startDate = $state('');
 	let endDate = $state('');
 	let stateKey = $state('draft');
+	let typeKey = $state('plan.default');
 
 	const stateOptions = PLAN_STATES.map((state) => ({
 		value: state,
@@ -150,6 +153,7 @@
 				startDate = plan.props?.start_date || '';
 				endDate = plan.props?.end_date || '';
 				stateKey = plan.state_key || 'draft';
+				typeKey = plan.type_key || 'plan.default';
 			}
 		} catch (err) {
 			console.error('Error loading plan:', err);
@@ -180,7 +184,8 @@
 				description: description.trim() || null,
 				start_date: startDate || null,
 				end_date: endDate || null,
-				state_key: stateKey
+				state_key: stateKey,
+				type_key: typeKey || 'plan.default'
 			};
 
 			const response = await fetch(`/api/onto/plans/${planId}`, {
@@ -496,30 +501,54 @@
 										</FormField>
 									</div>
 
-									<!-- Plan State -->
-									<FormField
-										label="State"
-										labelFor="plan-state"
-										showOptional={false}
-									>
-										<Select
-											id="plan-state"
-											bind:value={stateKey}
-											disabled={formDisabled}
+									<div class="grid gap-4 sm:grid-cols-2">
+										<!-- Plan State -->
+										<FormField
+											label="State"
+											labelFor="plan-state"
+											showOptional={false}
 										>
-											{#each PLAN_STATES as state}
-												<option value={state}>
-													{state === 'draft'
-														? 'Draft'
-														: state === 'active'
-															? 'Active'
-															: state === 'completed'
-																? 'Completed'
-																: state}
-												</option>
-											{/each}
-										</Select>
-									</FormField>
+											<Select
+												id="plan-state"
+												bind:value={stateKey}
+												disabled={formDisabled}
+											>
+												{#each PLAN_STATES as state}
+													<option value={state}>
+														{state === 'draft'
+															? 'Draft'
+															: state === 'active'
+																? 'Active'
+																: state === 'completed'
+																	? 'Completed'
+																	: state}
+													</option>
+												{/each}
+											</Select>
+										</FormField>
+
+										<!-- Plan Type -->
+										<FormField
+											label="Type"
+											labelFor="plan-type"
+											hint="Plan classification"
+										>
+											<Select
+												id="plan-type"
+												bind:value={typeKey}
+												disabled={formDisabled}
+											>
+												{#each PLAN_TYPE_KEYS as typeOption}
+													<option
+														value={typeOption.value}
+														title={typeOption.description}
+													>
+														{typeOption.label}
+													</option>
+												{/each}
+											</Select>
+										</FormField>
+									</div>
 
 									{#if error}
 										<div
@@ -578,6 +607,22 @@
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={handleLinksChanged}
 						/>
+
+						<!-- Tags (from classification) -->
+						{#if plan?.props?.tags?.length}
+							<Card class="shadow-ink">
+								<CardHeader class="flex items-center gap-2">
+									<h4
+										class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+									>
+										Tags
+									</h4>
+								</CardHeader>
+								<CardBody>
+									<TagsDisplay props={plan.props} size="sm" compact={true} />
+								</CardBody>
+							</Card>
+						{/if}
 					</div>
 				</div>
 			{/if}
@@ -689,8 +734,7 @@
 
 <!-- Chat About Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
-	<svelte:component
-		this={AgentChatModalComponent}
+	<AgentChatModalComponent
 		isOpen={showChatModal}
 		initialProjectFocus={entityFocus}
 		onClose={handleChatClose}

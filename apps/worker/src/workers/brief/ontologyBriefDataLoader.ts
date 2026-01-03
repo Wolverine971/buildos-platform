@@ -307,13 +307,45 @@ export function getWorkMode(typeKey: string | null): string | null {
 // GOAL PROGRESS UTILITIES
 // ============================================================================
 
+function getGoalTargetStatus(
+	goal: OntoGoal,
+	todayStr: string,
+	timezone: string
+): {
+	targetDate: string | null;
+	targetDaysAway: number | null;
+	status: 'on_track' | 'at_risk' | 'behind';
+} {
+	if (!goal.target_date) {
+		return { targetDate: null, targetDaysAway: null, status: 'on_track' };
+	}
+
+	const targetDate = formatInTimeZone(parseISO(goal.target_date), timezone, 'yyyy-MM-dd');
+	const today = parseISO(`${todayStr}T12:00:00`);
+	const targetDay = parseISO(`${targetDate}T12:00:00`);
+	const targetDaysAway = differenceInDays(targetDay, today);
+
+	let status: 'on_track' | 'at_risk' | 'behind';
+	if (targetDaysAway < 0) {
+		status = 'behind';
+	} else if (targetDaysAway <= 7) {
+		status = 'at_risk';
+	} else {
+		status = 'on_track';
+	}
+
+	return { targetDate, targetDaysAway, status };
+}
+
 /**
  * Calculate goal progress from supporting tasks via edges
  */
 export function calculateGoalProgress(
 	goal: OntoGoal,
 	edges: OntoEdge[],
-	allTasks: OntoTask[]
+	allTasks: OntoTask[],
+	todayStr: string,
+	timezone: string
 ): GoalProgress {
 	// Find tasks that support this goal (task -[supports_goal]-> goal)
 	const supportingEdges = edges.filter(
@@ -325,23 +357,14 @@ export function calculateGoalProgress(
 
 	const totalTasks = contributingTasks.length;
 	const completedTasks = contributingTasks.filter((t) => t.state_key === 'done').length;
-	const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-	// Determine status based on progress
-	let status: 'on_track' | 'at_risk' | 'behind';
-	if (progressPercent >= 70) {
-		status = 'on_track';
-	} else if (progressPercent >= 40) {
-		status = 'at_risk';
-	} else {
-		status = 'behind';
-	}
+	const { targetDate, targetDaysAway, status } = getGoalTargetStatus(goal, todayStr, timezone);
 
 	return {
 		goal,
 		totalTasks,
 		completedTasks,
-		progressPercent,
+		targetDate,
+		targetDaysAway,
 		status,
 		contributingTasks
 	};
@@ -585,7 +608,7 @@ export class OntologyBriefDataLoader {
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_goals')
-				.select('id, name, project_id, state_key, created_at')
+				.select('id, name, project_id, state_key, created_at, target_date')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
@@ -676,6 +699,8 @@ export class OntologyBriefDataLoader {
 			edges: edges.length
 		});
 
+		const briefDateStr = formatInTimeZone(briefDate, timezone, 'yyyy-MM-dd');
+
 		// Build project-specific data structures
 		return projects.map((project) => {
 			const projectTasks = tasks.filter((t) => t.project_id === project.id);
@@ -695,7 +720,9 @@ export class OntologyBriefDataLoader {
 			const goalProgress = this.buildGoalProgressMap(
 				projectGoals,
 				projectEdges,
-				projectTasks
+				projectTasks,
+				briefDateStr,
+				timezone
 			);
 			const recentUpdates = getRecentUpdates({
 				project,
@@ -804,12 +831,14 @@ export class OntologyBriefDataLoader {
 	private buildGoalProgressMap(
 		goals: OntoGoal[],
 		edges: OntoEdge[],
-		tasks: OntoTask[]
+		tasks: OntoTask[],
+		todayStr: string,
+		timezone: string
 	): Map<string, GoalProgress> {
 		const progressMap = new Map<string, GoalProgress>();
 
 		for (const goal of goals) {
-			progressMap.set(goal.id, calculateGoalProgress(goal, edges, tasks));
+			progressMap.set(goal.id, calculateGoalProgress(goal, edges, tasks, todayStr, timezone));
 		}
 
 		return progressMap;

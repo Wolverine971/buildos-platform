@@ -44,7 +44,10 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TaskEditModal from './TaskEditModal.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
+	import { TASK_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 
@@ -56,7 +59,6 @@
 	let DocumentModalComponent = $state<LazyComponent>(null);
 	let GoalEditModalComponent = $state<LazyComponent>(null);
 	let PlanEditModalComponent = $state<LazyComponent>(null);
-	let TaskEditModalSelfComponent = $state<LazyComponent>(null);
 	let AgentChatModalComponent = $state<LazyComponent>(null);
 
 	async function loadTaskSeriesModal() {
@@ -89,14 +91,6 @@
 			PlanEditModalComponent = mod.default;
 		}
 		return PlanEditModalComponent;
-	}
-
-	async function loadTaskEditModalSelf() {
-		if (!TaskEditModalSelfComponent) {
-			const mod = await import('./TaskEditModal.svelte');
-			TaskEditModalSelfComponent = mod.default;
-		}
-		return TaskEditModalSelfComponent;
 	}
 
 	async function loadAgentChatModal() {
@@ -157,6 +151,7 @@
 	let goalId = $state('');
 	let milestoneId = $state('');
 	let stateKey = $state('todo');
+	let typeKey = $state('task.default');
 	let startAt = $state('');
 	let dueAt = $state('');
 	let completedAt = $state('');
@@ -345,6 +340,7 @@
 				goalId = extractGoalIdFromProps(task.props || null);
 				milestoneId = extractMilestoneIdFromProps(task.props || null);
 				stateKey = task.state_key || 'todo';
+				typeKey = task.type_key || 'task.default';
 				startAt = task.start_at ? formatDateTimeForInput(task.start_at) : '';
 				dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
 				completedAt = task.completed_at || '';
@@ -509,6 +505,7 @@
 				priority: Number(priority),
 				plan_id: planId || null,
 				state_key: stateKey,
+				type_key: typeKey || 'task.default',
 				start_at: parseDateTimeFromInput(startAt),
 				due_at: parseDateTimeFromInput(dueAt),
 				goal_id: goalId?.trim() || null,
@@ -645,8 +642,7 @@
 		workspaceDocumentModalOpen = true;
 	}
 
-	async function openLinkedTaskModal(id: string) {
-		await loadTaskEditModalSelf();
+	function openLinkedTaskModal(id: string) {
 		selectedLinkedTaskId = id;
 		showLinkedTaskModal = true;
 	}
@@ -979,38 +975,64 @@
 											{/if}
 										</div>
 
-										<!-- Task State -->
-										<FormField label="State" labelFor="state" required={true}>
-											<Select
-												id="state"
-												bind:value={stateKey}
-												disabled={isSaving}
-												size="md"
-												placeholder="Select state"
+										<!-- Task State & Type -->
+										<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+											<FormField
+												label="State"
+												labelFor="state"
+												required={true}
 											>
-												{#each TASK_STATES as state}
-													<option value={state}>
-														{state === 'todo'
-															? 'To Do'
-															: state === 'in_progress'
-																? 'In Progress'
-																: state === 'blocked'
-																	? 'Blocked'
-																	: state === 'done'
-																		? 'Done'
-																		: state}
-													</option>
-												{/each}
-											</Select>
-											{#if stateKey === 'done' && completedAt}
-												<p class="mt-2 text-xs text-muted-foreground">
-													Completed at:
-													<span class="font-medium text-foreground">
-														{format(new Date(completedAt), 'PPpp')}
-													</span>
-												</p>
-											{/if}
-										</FormField>
+												<Select
+													id="state"
+													bind:value={stateKey}
+													disabled={isSaving}
+													size="md"
+													placeholder="Select state"
+												>
+													{#each TASK_STATES as state}
+														<option value={state}>
+															{state === 'todo'
+																? 'To Do'
+																: state === 'in_progress'
+																	? 'In Progress'
+																	: state === 'blocked'
+																		? 'Blocked'
+																		: state === 'done'
+																			? 'Done'
+																			: state}
+														</option>
+													{/each}
+												</Select>
+												{#if stateKey === 'done' && completedAt}
+													<p class="mt-2 text-xs text-muted-foreground">
+														Completed at:
+														<span class="font-medium text-foreground">
+															{format(new Date(completedAt), 'PPpp')}
+														</span>
+													</p>
+												{/if}
+											</FormField>
+
+											<FormField
+												label="Type"
+												labelFor="type"
+												hint="Task classification"
+											>
+												<Select
+													id="type"
+													bind:value={typeKey}
+													disabled={isSaving}
+													size="md"
+													placeholder="Select type"
+												>
+													{#each TASK_TYPE_KEYS as typeOption}
+														<option value={typeOption.value}>
+															{typeOption.label}
+														</option>
+													{/each}
+												</Select>
+											</FormField>
+										</div>
 
 										<!-- Connected Documents List -->
 										<div class="pt-6 border-t border-border">
@@ -1157,6 +1179,29 @@
 
 									<!-- Sidebar (Right column) -->
 									<div class="space-y-4">
+										<!-- Tags (from classification) -->
+										{#if task?.props?.tags?.length}
+											<Card variant="elevated">
+												<CardHeader variant="default">
+													<h3
+														class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
+													>
+														<span
+															class="w-1.5 h-1.5 bg-accent rounded-full"
+														></span>
+														Tags
+													</h3>
+												</CardHeader>
+												<CardBody padding="sm">
+													<TagsDisplay
+														props={task.props}
+														size="sm"
+														compact={true}
+													/>
+												</CardBody>
+											</Card>
+										{/if}
+
 										<!-- Linked Entities -->
 										<LinkedEntities
 											sourceId={taskId}
@@ -1681,9 +1726,8 @@
 	/>
 {/if}
 
-{#if showLinkedTaskModal && selectedLinkedTaskId && TaskEditModalSelfComponent}
-	{@const LinkedTaskModal = TaskEditModalSelfComponent}
-	<LinkedTaskModal
+{#if showLinkedTaskModal && selectedLinkedTaskId}
+	<TaskEditModal
 		taskId={selectedLinkedTaskId}
 		{projectId}
 		{plans}

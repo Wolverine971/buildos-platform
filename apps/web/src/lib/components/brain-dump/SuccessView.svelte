@@ -4,15 +4,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import OperationErrorsDisplay from './OperationErrorsDisplay.svelte';
 
-	let {
-		successData = {},
-		showNavigationOnSuccess = true,
-		inModal = false,
-		onStartNew,
-		onGoToProject,
-		onContinueWithAgent,
-		onNavigateToHistory
-	} = $props<{
+	interface Props {
 		successData?: {
 			brainDumpId?: string;
 			brainDumpType?: string;
@@ -35,7 +27,17 @@
 		onGoToProject?: () => void;
 		onContinueWithAgent?: (detail: { projectId: string }) => void;
 		onNavigateToHistory?: (detail: { url: string }) => void;
-	}>();
+	}
+
+	let {
+		successData = {},
+		showNavigationOnSuccess = true,
+		inModal = false,
+		onStartNew,
+		onGoToProject,
+		onContinueWithAgent,
+		onNavigateToHistory
+	}: Props = $props();
 
 	function handleStartNew(e: Event) {
 		e.stopPropagation();

@@ -11,6 +11,7 @@
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -56,6 +57,7 @@
 	let body = $state('');
 	let createdAt = $state<string | null>(null);
 	let updatedAt = $state<string | null>(null);
+	let documentProps = $state<Record<string, unknown> | null>(null);
 
 	const stateOptions = DOCUMENT_STATES.map((state) => ({
 		value: state,
@@ -107,6 +109,7 @@
 		formError = null;
 		createdAt = null;
 		updatedAt = null;
+		documentProps = null;
 		lastLoadedId = null;
 	}
 
@@ -136,6 +139,7 @@
 			body = (document.content as string) ?? (document.props?.body_markdown as string) ?? '';
 			createdAt = document.created_at ?? null;
 			updatedAt = document.updated_at ?? null;
+			documentProps = document.props ?? null;
 			lastLoadedId = id;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load document';
@@ -515,6 +519,13 @@
 									</div>
 								{/if}
 
+								<!-- Tags Display -->
+								{#if isEditing && documentProps?.tags?.length}
+									<div class="pt-2 border-t border-border">
+										<TagsDisplay props={documentProps} />
+									</div>
+								{/if}
+
 								<!-- Metadata - Compact display -->
 								{#if isEditing}
 									<div
@@ -571,9 +582,9 @@
 								</div>
 							</div>
 
-							<!-- Mobile: Linked entities at bottom -->
+							<!-- Mobile: Linked entities and tags at bottom -->
 							{#if isEditing && documentId}
-								<div class="lg:hidden p-3 border-t border-border bg-muted/20">
+								<div class="lg:hidden p-3 border-t border-border bg-muted/20 space-y-3">
 									<LinkedEntities
 										sourceId={documentId}
 										sourceKind="document"
@@ -582,6 +593,11 @@
 										onEntityClick={handleLinkedEntityClick}
 										onLinksChanged={handleLinksChanged}
 									/>
+									{#if documentProps?.tags?.length}
+										<div class="pt-2 border-t border-border">
+											<TagsDisplay props={documentProps} />
+										</div>
+									{/if}
 								</div>
 							{/if}
 						</div>

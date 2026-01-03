@@ -35,7 +35,9 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import { GOAL_STATES } from '$lib/types/onto';
+	import { GOAL_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -82,6 +84,7 @@
 	let targetDate = $state('');
 	let measurementCriteria = $state('');
 	let stateKey = $state('draft');
+	let typeKey = $state('goal.default');
 
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
@@ -137,6 +140,7 @@
 				targetDate = formatDateOnly(goal.target_date || goal.props?.target_date || null);
 				measurementCriteria = goal.props?.measurement_criteria || '';
 				stateKey = goal.state_key || 'draft';
+				typeKey = goal.type_key || 'goal.default';
 			}
 		} catch (err) {
 			console.error('Error loading goal:', err);
@@ -163,7 +167,8 @@
 				priority: priority || null,
 				target_date: targetDate || null,
 				measurement_criteria: measurementCriteria.trim() || null,
-				state_key: stateKey
+				state_key: stateKey,
+				type_key: typeKey || 'goal.default'
 			};
 
 			const response = await fetch(`/api/onto/goals/${goalId}`, {
@@ -467,35 +472,61 @@
 								/>
 							</FormField>
 
-							<!-- Goal State -->
-							<FormField
-								label="State"
-								labelFor="state"
-								required={true}
-								hint="Current goal status"
-							>
-								<Select
-									id="state"
-									bind:value={stateKey}
-									disabled={isSaving}
-									size="md"
-									placeholder="Select state"
+							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+								<!-- Goal State -->
+								<FormField
+									label="State"
+									labelFor="state"
+									required={true}
+									hint="Current goal status"
 								>
-									{#each GOAL_STATES as state}
-										<option value={state}>
-											{state === 'draft'
-												? 'Draft'
-												: state === 'active'
-													? 'Active'
-													: state === 'achieved'
-														? 'Achieved'
-														: state === 'abandoned'
-															? 'Abandoned'
-															: state}
-										</option>
-									{/each}
-								</Select>
-							</FormField>
+									<Select
+										id="state"
+										bind:value={stateKey}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select state"
+									>
+										{#each GOAL_STATES as state}
+											<option value={state}>
+												{state === 'draft'
+													? 'Draft'
+													: state === 'active'
+														? 'Active'
+														: state === 'achieved'
+															? 'Achieved'
+															: state === 'abandoned'
+																? 'Abandoned'
+																: state}
+											</option>
+										{/each}
+									</Select>
+								</FormField>
+
+								<!-- Goal Type -->
+								<FormField
+									label="Type"
+									labelFor="type-key"
+									hint="Goal classification"
+								>
+									<Select
+										id="type-key"
+										bind:value={typeKey}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select type"
+									>
+										{#each GOAL_TYPE_KEYS as typeOption}
+											<option
+												value={typeOption.value}
+												title={typeOption.description}
+											>
+												{typeOption.label}
+											</option>
+										{/each}
+									</Select>
+								</FormField>
+							</div>
 
 							{#if error}
 								<div
@@ -518,6 +549,23 @@
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={handleLinksChanged}
 						/>
+
+						<!-- Tags (from classification) -->
+						{#if goal?.props?.tags?.length}
+							<Card variant="elevated">
+								<CardHeader variant="default">
+									<h3
+										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
+									>
+										<span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+										Tags
+									</h3>
+								</CardHeader>
+								<CardBody padding="sm">
+									<TagsDisplay props={goal.props} size="sm" compact={true} />
+								</CardBody>
+							</Card>
+						{/if}
 
 						<!-- Goal Metadata -->
 						<Card variant="elevated">
@@ -679,8 +727,7 @@
 
 <!-- Chat About Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
-	<svelte:component
-		this={AgentChatModalComponent}
+	<AgentChatModalComponent
 		isOpen={showChatModal}
 		initialProjectFocus={entityFocus}
 		onClose={handleChatClose}

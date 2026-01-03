@@ -13,6 +13,7 @@ import {
 } from '$lib/types/onto';
 import { Json } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { logActivitiesAsync } from '$lib/services/async-activity-logger';
 
 type InstantiationCounts = {
 	goals: number;
@@ -808,6 +809,37 @@ export async function instantiateProject(
 			}
 
 			counts.edges = edgeRows?.length ?? 0;
+		}
+
+		if (projectId) {
+			const activityLogs = [
+				{ entityType: 'project', ids: [projectId] },
+				{ entityType: 'goal', ids: inserted.goals },
+				{ entityType: 'requirement', ids: inserted.requirements },
+				{ entityType: 'plan', ids: inserted.plans },
+				{ entityType: 'task', ids: inserted.tasks },
+				{ entityType: 'output', ids: inserted.outputs },
+				{ entityType: 'document', ids: inserted.documents },
+				{ entityType: 'source', ids: inserted.sources },
+				{ entityType: 'milestone', ids: inserted.milestones },
+				{ entityType: 'risk', ids: inserted.risks },
+				{ entityType: 'decision', ids: inserted.decisions }
+			]
+				.flatMap(({ entityType, ids }) =>
+					ids.map((entityId) => ({
+						projectId,
+						entityType,
+						entityId,
+						action: 'created' as const,
+						changedBy: userId,
+						changeSource: 'api' as const
+					}))
+				)
+				.filter((log) => Boolean(log.entityId));
+
+			if (activityLogs.length > 0) {
+				logActivitiesAsync(client as any, { logs: activityLogs });
+			}
 		}
 
 		return {

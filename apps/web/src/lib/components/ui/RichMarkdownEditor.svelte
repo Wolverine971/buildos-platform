@@ -1,6 +1,10 @@
 <!-- apps/web/src/lib/components/ui/RichMarkdownEditor.svelte -->
+<script module lang="ts">
+	let richMarkdownIdCounter = 0;
+</script>
+
 <script lang="ts">
-	import type { HTMLTextAreaAttributes } from 'svelte/elements';
+	import type { HTMLTextareaAttributes } from 'svelte/elements';
 	import {
 		Bold,
 		Italic,
@@ -19,7 +23,7 @@
 	type EditorSize = 'sm' | 'base' | 'lg';
 	type ToolbarAction = 'bold' | 'italic' | 'h1' | 'h2' | 'ul' | 'ol' | 'quote' | 'code' | 'link';
 
-	interface Props extends Omit<HTMLTextAreaAttributes, 'value'> {
+	interface Props extends Omit<HTMLTextareaAttributes, 'value'> {
 		value?: string;
 		label?: string;
 		helpText?: string;
@@ -30,6 +34,7 @@
 
 	let {
 		value = $bindable(''),
+		id,
 		label,
 		helpText,
 		placeholder = 'Write in Markdown...',
@@ -44,7 +49,9 @@
 	}: Props = $props();
 
 	let mode = $state<'edit' | 'preview'>('edit');
-	let textareaElement: HTMLTextAreaElement | null = null;
+	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	const generatedId = `rich-markdown-${++richMarkdownIdCounter}`;
+	const textareaId = $derived(id ?? generatedId);
 
 	const stats = $derived({
 		words: value.trim() ? value.trim().split(/\s+/).length : 0,
@@ -243,11 +250,11 @@
 <div class={`space-y-2 ${className}`}>
 	{#if label}
 		<div class="flex items-center justify-between">
-			<label class="font-medium text-gray-900 dark:text-gray-100 {sizeConfig[size].label}">
-				{label}{#if required}<span class="text-rose-500 ml-1">*</span>{/if}
+			<label for={textareaId} class="font-medium text-foreground {sizeConfig[size].label}">
+				{label}{#if required}<span class="text-destructive ml-1">*</span>{/if}
 			</label>
 			{#if maxLength}
-				<span class="text-xs text-gray-500 dark:text-gray-400">
+				<span class="text-xs text-muted-foreground">
 					{stats.chars}/{maxLength} characters
 				</span>
 			{/if}
@@ -255,22 +262,23 @@
 	{/if}
 
 	<div
-		class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden"
+		class="rounded-xl border border-border bg-card shadow-ink overflow-hidden tx tx-frame tx-weak"
 	>
 		<!-- Toolbar -->
 		<div
-			class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-800 px-3 py-2 bg-gray-50 dark:bg-gray-800/60"
+			class="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 bg-muted/50"
 		>
 			<div class="flex flex-wrap items-center gap-1">
 				{#each toolbarButtons as action}
+					{@const ActionIcon = action.icon}
 					<button
 						type="button"
 						onclick={() => handleToolbar(action.id)}
-						class="p-1.5 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50"
+						class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 transition-colors"
 						title={action.label}
 						{disabled}
 					>
-						<svelte:component this={action.icon} class="w-4 h-4" />
+						<ActionIcon class="w-4 h-4" />
 					</button>
 				{/each}
 			</div>
@@ -280,8 +288,8 @@
 					type="button"
 					class="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors {mode ===
 					'edit'
-						? 'bg-blue-600 text-white shadow-sm'
-						: 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}"
+						? 'bg-accent text-accent-foreground shadow-ink'
+						: 'bg-card border border-border text-muted-foreground hover:text-foreground'}"
 					onclick={() => toggleMode('edit')}
 					disabled={mode === 'edit'}
 				>
@@ -292,8 +300,8 @@
 					type="button"
 					class="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors {mode ===
 					'preview'
-						? 'bg-blue-600 text-white shadow-sm'
-						: 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'}"
+						? 'bg-accent text-accent-foreground shadow-ink'
+						: 'bg-card border border-border text-muted-foreground hover:text-foreground'}"
 					onclick={() => toggleMode('preview')}
 					disabled={mode === 'preview'}
 				>
@@ -306,8 +314,9 @@
 		<!-- Content area -->
 		{#if mode === 'edit'}
 			<textarea
+				id={textareaId}
 				bind:this={textareaElement}
-				class="w-full border-0 resize-none focus:ring-0 px-4 py-3 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 {sizeConfig[
+				class="w-full border-0 resize-none focus:ring-0 px-4 py-3 bg-card text-foreground placeholder:text-muted-foreground {sizeConfig[
 					size
 				].textarea}"
 				{placeholder}
@@ -319,15 +328,15 @@
 				{value}
 				oninput={handleInput}
 				{...restProps}
-			/>
+			></textarea>
 		{:else}
-			<div class="px-4 py-4 min-h-[200px] bg-white dark:bg-gray-900">
+			<div class="px-4 py-4 min-h-[200px] bg-card">
 				{#if value.trim()}
-					<div class={`${proseClasses} text-gray-800 dark:text-gray-200`}>
+					<div class={`${proseClasses} text-foreground`}>
 						{@html renderMarkdown(value)}
 					</div>
 				{:else}
-					<p class="text-gray-500 dark:text-gray-400 text-sm">
+					<p class="text-muted-foreground text-sm">
 						Nothing to preview yet. Switch back to edit mode to start writing.
 					</p>
 				{/if}
@@ -336,7 +345,7 @@
 
 		<!-- Footer stats -->
 		<div
-			class="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/80 text-xs text-gray-500 dark:text-gray-400"
+			class="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-t border-border bg-muted/50 text-xs text-muted-foreground"
 		>
 			<div class="flex items-center gap-4">
 				<span>{stats.words} words</span>
@@ -345,11 +354,9 @@
 			{#if maxLength}
 				<div class="flex items-center gap-2 text-[11px] uppercase tracking-wide">
 					<span>Remaining: {Math.max(0, maxLength - stats.chars)}</span>
-					<div
-						class="w-20 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
-					>
+					<div class="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
 						<div
-							class="h-full bg-blue-500 transition-all"
+							class="h-full bg-accent transition-all"
 							style={`width: ${Math.min(100, Math.round((stats.chars / maxLength) * 100))}%`}
 						></div>
 					</div>
@@ -359,6 +366,6 @@
 	</div>
 
 	{#if helpText}
-		<p class="text-xs text-gray-500 dark:text-gray-400">{helpText}</p>
+		<p class="text-xs text-muted-foreground">{helpText}</p>
 	{/if}
 </div>

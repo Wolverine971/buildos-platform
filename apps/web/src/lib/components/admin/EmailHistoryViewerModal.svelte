@@ -117,7 +117,7 @@
 	</Modal>
 {/if}
 
-<style>
+<style lang="postcss">
 	/* Safe HTML email styles */
 	:global(.prose) {
 		@apply text-gray-900 dark:text-gray-100;

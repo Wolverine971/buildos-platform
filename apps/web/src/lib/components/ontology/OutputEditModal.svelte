@@ -8,12 +8,15 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import DocumentEditor from '$lib/components/ontology/DocumentEditor.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import { OUTPUT_STATES } from '$lib/types/onto';
+	import { OUTPUT_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import { toastService } from '$lib/stores/toast.store';
+	import TextInput from '$lib/components/ui/TextInput.svelte';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,12 +58,16 @@
 	};
 
 	let output = $state<OutputRecord | null>(null);
+	let name = $state('');
 	let description = $state('');
+	let typeKey = $state('output.default');
 	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let isLoading = $state(true);
 	let loadError = $state<string | null>(null);
+	let savingName = $state(false);
 	let savingState = $state(false);
 	let savingDescription = $state(false);
+	let savingTypeKey = $state(false);
 	let deleting = $state(false);
 	let showDeleteConfirm = $state(false);
 	let stateKey = $state('draft');
@@ -125,7 +132,9 @@
 			};
 
 			output = normalized;
+			name = normalized.name;
 			stateKey = normalized.state_key;
+			typeKey = normalized.type_key || 'output.default';
 			description = (data.description as string) ?? '';
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load output';
@@ -139,6 +148,30 @@
 	function closeModal() {
 		isOpen = false;
 		onClose();
+	}
+
+	async function handleNameSave() {
+		if (!output || name === output.name) return;
+		try {
+			savingName = true;
+			const response = await fetch(`/api/onto/outputs/${outputId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: name.trim() })
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to update name');
+			}
+			output = output ? { ...output, name: name.trim() } : output;
+			toastService.success('Name updated');
+			onUpdated?.();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update name';
+			toastService.error(message);
+		} finally {
+			savingName = false;
+		}
 	}
 
 	async function handleStateChange(nextState: string) {
@@ -168,6 +201,31 @@
 			toastService.error(message);
 		} finally {
 			savingState = false;
+		}
+	}
+
+	async function handleTypeKeyChange(nextTypeKey: string) {
+		if (nextTypeKey === typeKey) return;
+		try {
+			savingTypeKey = true;
+			const response = await fetch(`/api/onto/outputs/${outputId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ type_key: nextTypeKey })
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to update type');
+			}
+			typeKey = nextTypeKey;
+			output = output ? { ...output, type_key: nextTypeKey } : output;
+			toastService.success('Type updated');
+			onUpdated?.();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update type';
+			toastService.error(message);
+		} finally {
+			savingTypeKey = false;
 		}
 	}
 
@@ -363,49 +421,81 @@
 				</div>
 			{:else if output}
 				<div class="px-4 sm:px-6 py-6">
-					<!-- Output Info Section -->
+					<!-- Output Name Section -->
 					<section
-						class="rounded border border-border bg-muted/30 p-4 sm:p-5 shadow-ink space-y-2 tx tx-grain tx-weak mb-6"
+						class="rounded border border-border bg-muted/30 p-4 sm:p-5 shadow-ink space-y-3 tx tx-grain tx-weak mb-6"
 					>
-						<div class="flex flex-wrap items-center gap-2">
-							<span class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shrink-0"
-							></span>
-							<h3 class="text-base font-semibold text-foreground">
-								{output.name}
-							</h3>
-						</div>
-						<div
-							class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
-						>
-							<span
-								>Type: <code
-									class="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-accent"
-									>{output.type_key}</code
-								></span
+						<div class="flex items-center justify-between gap-2">
+							<label
+								for="output-name"
+								class="flex items-center gap-2 text-sm font-medium text-foreground"
 							>
+								<span class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shrink-0"></span>
+								Output Name
+							</label>
+							<Button
+								size="sm"
+								variant="secondary"
+								onclick={handleNameSave}
+								disabled={savingName || name === output.name}
+								loading={savingName}
+							>
+								Save name
+							</Button>
 						</div>
+						<TextInput
+							id="output-name"
+							bind:value={name}
+							placeholder="Enter output name"
+							size="sm"
+							disabled={savingName}
+							class="font-medium"
+						/>
 					</section>
 
-					<!-- State Selector -->
-					<div class="mb-6">
-						<label
-							for="output-state"
-							class="block text-sm font-medium text-foreground mb-2"
-						>
-							Output State
-						</label>
-						<Select
-							id="output-state"
-							size="sm"
-							value={stateKey}
-							onchange={(val) => handleStateChange(String(val))}
-							disabled={savingState}
-							class="max-w-xs"
-						>
-							{#each stateOptions as option}
-								<option value={option.value}>{option.label}</option>
-							{/each}
-						</Select>
+					<!-- State & Type Grid -->
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+						<!-- State Selector -->
+						<div>
+							<label
+								for="output-state"
+								class="block text-sm font-medium text-foreground mb-2"
+							>
+								State
+							</label>
+							<Select
+								id="output-state"
+								size="sm"
+								value={stateKey}
+								onchange={(val) => handleStateChange(String(val))}
+								disabled={savingState}
+							>
+								{#each stateOptions as option}
+									<option value={option.value}>{option.label}</option>
+								{/each}
+							</Select>
+						</div>
+
+						<!-- Type Selector -->
+						<div>
+							<label
+								for="output-type"
+								class="block text-sm font-medium text-foreground mb-2"
+							>
+								Type
+							</label>
+							<Select
+								id="output-type"
+								size="sm"
+								value={typeKey}
+								onchange={(val) => handleTypeKeyChange(String(val))}
+								disabled={savingTypeKey}
+							>
+								{#each OUTPUT_TYPE_KEYS as option}
+									<option value={option.value}>{option.label}</option>
+								{/each}
+							</Select>
+						</div>
 					</div>
 
 					<!-- Description -->
@@ -447,6 +537,13 @@
 							onLinksChanged={handleLinksChanged}
 						/>
 					</div>
+
+					<!-- Tags Display -->
+					{#if output?.props?.tags?.length}
+						<div class="mb-6">
+							<TagsDisplay props={output.props} />
+						</div>
+					{/if}
 
 					<!-- Document Editor -->
 					<DocumentEditor

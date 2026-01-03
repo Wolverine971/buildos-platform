@@ -409,6 +409,7 @@ if (project.state_key === 'blocked') {
 				class="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto"
 			>
 				{#each integrationCategories as category, i}
+					{@const CategoryIcon = category.icon}
 					<Card
 						variant="interactive"
 						class="group relative overflow-hidden transition-all duration-300 hover:shadow-ink-strong shadow-ink tx tx-frame tx-weak pressable"
@@ -419,10 +420,7 @@ if (project.state_key === 'blocked') {
 							<div
 								class="mb-3 inline-flex rounded-xl bg-accent p-3 shadow-ink transform transition-transform duration-300 group-hover:scale-110"
 							>
-								<svelte:component
-									this={category.icon}
-									class="h-6 w-6 text-accent-foreground"
-								/>
+								<CategoryIcon class="h-6 w-6 text-accent-foreground" />
 							</div>
 							<h3 class="text-lg font-semibold text-foreground sm:text-xl">
 								{category.title}
@@ -547,6 +545,7 @@ if (project.state_key === 'blocked') {
 				class="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto"
 			>
 				{#each developerFeatures as feature}
+					{@const FeatureIcon = feature.icon}
 					<Card
 						variant="default"
 						class="group hover:shadow-ink-strong transition-all duration-300 shadow-ink tx tx-grain tx-weak pressable"
@@ -556,10 +555,7 @@ if (project.state_key === 'blocked') {
 								<div
 									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/10 border border-accent/20 group-hover:scale-110 transition-transform duration-300"
 								>
-									<svelte:component
-										this={feature.icon}
-										class="h-6 w-6 text-accent"
-									/>
+									<FeatureIcon class="h-6 w-6 text-accent" />
 								</div>
 								<div>
 									<h3 class="mb-1 font-semibold text-foreground">

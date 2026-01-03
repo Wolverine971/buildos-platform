@@ -55,7 +55,7 @@
 		const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
 		return text.replace(
 			regex,
-			'<mark class="bg-yellow-200 dark:bg-yellow-800/50 px-0.5 rounded">$1</mark>'
+			'<mark class="bg-accent/30 text-foreground font-semibold px-0.5 rounded-sm">$1</mark>'
 		);
 	}
 
@@ -64,22 +64,22 @@
 		switch (status) {
 			case 'processed':
 				return {
-					color: 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30',
+					color: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10',
 					icon: CheckCircle2
 				};
 			case 'processing':
 				return {
-					color: 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30',
+					color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10',
 					icon: Clock
 				};
 			case 'pending':
 				return {
-					color: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30',
+					color: 'text-accent bg-accent/10',
 					icon: Clock
 				};
 			default:
 				return {
-					color: 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700',
+					color: 'text-muted-foreground bg-muted',
 					icon: Brain
 				};
 		}
@@ -92,13 +92,13 @@
 				return {
 					label: 'Project',
 					icon: FolderOpen,
-					color: 'text-blue-600 dark:text-blue-400'
+					color: 'text-accent'
 				};
 			case 'task':
 				return {
 					label: 'Task',
 					icon: CheckCircle2,
-					color: 'text-green-600 dark:text-green-400'
+					color: 'text-emerald-600 dark:text-emerald-400'
 				};
 			case 'note':
 				return {
@@ -110,7 +110,7 @@
 				return {
 					label: type,
 					icon: FileText,
-					color: 'text-gray-600 dark:text-gray-400'
+					color: 'text-muted-foreground'
 				};
 		}
 	}
@@ -125,12 +125,12 @@
 
 <Card
 	variant="interactive"
-	class="group cursor-pointer border-2 transition-all duration-200
+	class="group cursor-pointer border transition-all duration-200 pressable
 	{isUnlinked
-		? 'border-amber-200 dark:border-amber-800 hover:border-amber-300 dark:hover:border-amber-700'
+		? 'border-amber-500/40 hover:border-amber-500/60'
 		: isNewProject
-			? 'border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700'
-			: 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'}"
+			? 'border-emerald-500/40 hover:border-emerald-500/60'
+			: 'border-border hover:border-accent/50'}"
 	onclick={onClick}
 	onkeydown={(e) => e.key === 'Enter' && onClick()}
 	role="button"
@@ -141,27 +141,25 @@
 		<div class="flex items-center justify-between">
 			<div class="flex items-center space-x-2 min-w-0 flex-1">
 				{#if isUnlinked}
-					<div class="flex items-center space-x-1 text-amber-700 dark:text-amber-300">
+					<div class="flex items-center space-x-1 text-amber-600 dark:text-amber-400">
 						<StickyNote class="w-4 h-4 flex-shrink-0" />
 						<span class="text-sm font-medium">Unlinked Note</span>
 					</div>
 				{:else if linkedProject}
-					<div
-						class="flex items-center space-x-1 text-blue-700 dark:text-blue-300 min-w-0"
-					>
+					<div class="flex items-center space-x-1 text-accent min-w-0">
 						<FolderOpen class="w-4 h-4 flex-shrink-0" />
 						<span class="text-sm font-medium truncate">{linkedProject.name}</span>
 					</div>
 					{#if isNewProject}
 						<div
-							class="flex items-center space-x-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium flex-shrink-0"
+							class="flex items-center space-x-1 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-xs font-medium flex-shrink-0"
 						>
 							<Sparkles class="w-3 h-3" />
 							<span>New</span>
 						</div>
 					{/if}
 				{:else}
-					<div class="flex items-center space-x-1 text-gray-600 dark:text-gray-400">
+					<div class="flex items-center space-x-1 text-muted-foreground">
 						<Brain class="w-4 h-4 flex-shrink-0" />
 						<span class="text-sm font-medium">Braindump</span>
 					</div>
@@ -169,7 +167,7 @@
 			</div>
 
 			<div class="flex items-center space-x-2 flex-shrink-0">
-				<span class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+				<span class="text-xs text-muted-foreground font-medium">
 					{timeDisplay}
 				</span>
 				<Button
@@ -177,7 +175,7 @@
 					variant="ghost"
 					size="sm"
 					btnType="container"
-					class="p-1.5 min-h-0 min-w-0 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all duration-200 opacity-0 group-hover:opacity-100"
+					class="p-1.5 min-h-0 min-w-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all duration-200 opacity-0 group-hover:opacity-100"
 					aria-label="Delete braindump"
 					title="Delete braindump"
 				>
@@ -192,7 +190,7 @@
 		<!-- Content preview -->
 		{#if braindump.content || braindump.ai_summary}
 			{@const contentToShow = braindump.ai_summary || braindump.content}
-			<div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+			<div class="text-xs sm:text-sm text-muted-foreground mb-3 line-clamp-2">
 				{#if highlightSearch}
 					{@html highlightText(truncateContent(contentToShow), highlightSearch)}
 				{:else}
@@ -218,7 +216,7 @@
 							</div>
 						{/each}
 						{#if linkedTypes.length > 2}
-							<span class="text-xs text-gray-500 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								+{linkedTypes.length - 2}
 							</span>
 						{/if}
@@ -229,7 +227,7 @@
 				{#if linkedProject?.id && !isUnlinked}
 					<a
 						href="/projects/{linkedProject.id}"
-						class="flex items-center space-x-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+						class="flex items-center space-x-1 text-xs text-accent hover:text-accent/80 transition-colors"
 						onclick={(e) => e.stopPropagation()}
 					>
 						<ExternalLink class="w-3 h-3" />
@@ -244,7 +242,8 @@
 					class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {statusInfo.color}"
 				>
 					{#if statusInfo.icon}
-						<svelte:component this={statusInfo.icon} class="w-3 h-3 mr-1" />
+						{@const StatusIcon = statusInfo.icon}
+						<StatusIcon class="w-3 h-3 mr-1" />
 					{/if}
 					<span class="capitalize">{braindump.status || 'draft'}</span>
 				</div>

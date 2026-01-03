@@ -31,6 +31,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -472,6 +473,15 @@
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={loadDecision}
 						/>
+
+						<!-- Tags Display -->
+						{#if decision?.props?.tags?.length}
+							<Card variant="elevated">
+								<CardBody padding="sm">
+									<TagsDisplay props={decision.props} />
+								</CardBody>
+							</Card>
+						{/if}
 
 						<!-- Decision Metadata -->
 						<Card variant="elevated">

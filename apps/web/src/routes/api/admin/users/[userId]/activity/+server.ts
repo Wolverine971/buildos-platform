@@ -2,15 +2,9 @@
 //
 // Admin endpoint: Retrieve comprehensive user activity data
 //
-// PERFORMANCE NOTE (2025-10-21):
-// This endpoint uses an optimized query pattern to avoid N+1 queries.
-// Previously made 1 + 2N queries (201 for 100 projects), now makes constant 9 queries.
-//
-// Pattern: Fetch all tasks and notes once, then aggregate in-memory by project_id.
-// This reuses data already needed for the activity timeline, eliminating redundant queries.
-//
-// DO NOT revert to per-project queries - this would recreate the N+1 anti-pattern.
-// See: /docs/audits/BUGFIX_CHANGELOG.md (2025-10-21 N+1 Query Fix)
+// PERFORMANCE NOTE (2026-01-03):
+// This endpoint batches ontology reads to avoid N+1 queries.
+// Pattern: Fetch onto_projects once, then load onto_tasks/onto_documents/logs in bulk.
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
@@ -44,44 +38,83 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			.eq('user_id', userId)
 			.single();
 
-		// Get projects
-		const { data: projects } = await supabase
-			.from('projects')
-			.select('*')
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false });
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: userId
+		});
 
-		// Get all tasks (needed for both activity timeline AND project stats aggregation)
-		// Filter out soft-deleted tasks to get accurate counts
-		const { data: tasks } = await supabase
-			.from('tasks')
-			.select('*, projects(name), completed_at')
-			.eq('user_id', userId)
+		if (actorError || !actorId) {
+			throw actorError || new Error('Failed to resolve actor');
+		}
+
+		// Get ontology projects
+		const { data: projects } = await supabase
+			.from('onto_projects')
+			.select('*')
+			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('created_at', { ascending: false });
 
-		// Get all notes (needed for both activity timeline AND project stats aggregation)
-		const { data: notes } = await supabase
-			.from('notes')
-			.select('*, projects(name)')
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false });
+		const projectIds = (projects || []).map((project) => project.id);
 
-		// Get brain dumps
-		const { data: brainDumps } = await supabase
-			.from('brain_dumps')
-			.select('*')
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false });
+		const [
+			tasksResult,
+			documentsResult,
+			brainDumpsResult,
+			dailyBriefsResult,
+			projectLogsResult,
+			scheduledBriefsResult
+		] = await Promise.all([
+			projectIds.length
+				? supabase
+						.from('onto_tasks')
+						.select('*')
+						.in('project_id', projectIds)
+						.is('deleted_at', null)
+						.order('created_at', { ascending: false })
+				: Promise.resolve({ data: [] }),
+			projectIds.length
+				? supabase
+						.from('onto_documents')
+						.select('*')
+						.in('project_id', projectIds)
+						.is('deleted_at', null)
+						.order('created_at', { ascending: false })
+				: Promise.resolve({ data: [] }),
+			supabase
+				.from('onto_braindumps')
+				.select('*')
+				.eq('user_id', userId)
+				.order('created_at', { ascending: false }),
+			supabase
+				.from('ontology_daily_briefs')
+				.select('*')
+				.eq('actor_id', actorId)
+				.order('created_at', { ascending: false }),
+			projectIds.length
+				? supabase
+						.from('onto_project_logs')
+						.select(
+							'project_id, entity_type, action, before_data, after_data, created_at'
+						)
+						.in('project_id', projectIds)
+						.order('created_at', { ascending: false })
+						.limit(200)
+				: Promise.resolve({ data: [] }),
+			supabase
+				.from('task_calendar_events')
+				.select('*')
+				.eq('user_id', userId)
+				.order('created_at', { ascending: false })
+		]);
 
-		// Get daily briefs
-		const { data: dailyBriefs } = await supabase
-			.from('daily_briefs')
-			.select('*')
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false });
+		const tasks = tasksResult.data || [];
+		const documents = documentsResult.data || [];
+		const brainDumps = brainDumpsResult.data || [];
+		const dailyBriefs = dailyBriefsResult.data || [];
+		const projectLogs = projectLogsResult.data || [];
+		const scheduledBriefs = scheduledBriefsResult.data || [];
 
-		// Aggregate task counts by project_id (in-memory, eliminates N+1 query pattern)
+		// Aggregate task counts by project_id
 		const taskCountsByProject: Record<string, { total: number; completed: number }> = {};
 		(tasks || []).forEach((task) => {
 			if (task.project_id) {
@@ -89,113 +122,67 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					taskCountsByProject[task.project_id] = { total: 0, completed: 0 };
 				}
 				taskCountsByProject[task.project_id].total++;
-				if (task.status === 'done') {
+				if (task.state_key === 'done') {
 					taskCountsByProject[task.project_id].completed++;
 				}
 			}
 		});
 
-		// Aggregate notes counts by project_id (in-memory, eliminates N+1 query pattern)
-		const notesCountsByProject: Record<string, number> = {};
-		(notes || []).forEach((note) => {
-			if (note.project_id) {
-				notesCountsByProject[note.project_id] =
-					(notesCountsByProject[note.project_id] || 0) + 1;
+		// Aggregate document counts by project_id
+		const documentsCountsByProject: Record<string, number> = {};
+		(documents || []).forEach((document) => {
+			if (document.project_id) {
+				documentsCountsByProject[document.project_id] =
+					(documentsCountsByProject[document.project_id] || 0) + 1;
 			}
 		});
 
-		// Build processed projects with aggregated stats (no async queries needed!)
+		// Build processed projects with aggregated stats
 		const processedProjects = (projects || []).map((project) => ({
 			...project,
 			task_count: taskCountsByProject[project.id]?.total || 0,
 			completed_task_count: taskCountsByProject[project.id]?.completed || 0,
-			notes_count: notesCountsByProject[project.id] || 0
+			notes_count: documentsCountsByProject[project.id] || 0,
+			status: project.state_key
 		}));
 
-		// Get scheduled briefs (task calendar events)
-		const { data: scheduledBriefs } = await supabase
-			.from('task_calendar_events')
-			.select('*')
-			.eq('user_id', userId)
-			.order('created_at', { ascending: false });
+		const projectNameById = new Map(
+			(processedProjects || []).map((project) => [project.id, project.name])
+		);
 
-		// Build recent activity timeline with proper timestamps
 		const activities: any[] = [];
 
-		// Add project activities
-		processedProjects.forEach((project) => {
+		projectLogs.forEach((log) => {
+			const data = log.after_data || log.before_data || {};
+			const objectName =
+				(data as any).title || (data as any).name || (data as any).rel || 'Untitled';
 			activities.push({
-				activity_type: 'project_created',
-				created_at: project.created_at,
-				object_name: project.name,
-				project_name: project.name,
-				details: project.description || 'No description',
-				icon_color: 'purple'
+				entity_type: log.entity_type,
+				action: log.action,
+				created_at: log.created_at,
+				object_name: objectName,
+				project_name: projectNameById.get(log.project_id) || 'Unassigned',
+				details: (data as any).description || null
 			});
 		});
 
-		// Add task activities - use completed_at for task_completed, not created_at
-		tasks?.forEach((task) => {
-			const isCompleted = task.status === 'done';
-			const timestamp =
-				isCompleted && task.completed_at ? task.completed_at : task.created_at;
-
+		brainDumps.forEach((dump) => {
 			activities.push({
-				activity_type: isCompleted ? 'task_completed' : 'task_created',
-				created_at: timestamp,
-				object_name: task.title,
-				project_name: task.projects?.name || 'Unassigned',
-				details: task.description || 'No description',
-				status: task.status,
-				icon_color: isCompleted ? 'green' : 'orange'
-			});
-		});
-
-		// Add note activities
-		notes?.forEach((note) => {
-			activities.push({
-				activity_type: 'note_created',
-				created_at: note.created_at,
-				object_name: note.title || 'Untitled Note',
-				project_name: note.projects?.name || 'Unassigned',
-				details: note.content ? note.content.substring(0, 150) : 'No content',
-				icon_color: 'emerald'
-			});
-		});
-
-		// Add brain dump activities
-		brainDumps?.forEach((dump) => {
-			activities.push({
-				activity_type: 'brain_dump_created',
+				entity_type: 'brain_dump',
+				action: 'created',
 				created_at: dump.created_at,
 				object_name: dump.title || 'Brain Dump',
-				details: dump.content ? dump.content.substring(0, 150) : 'No content',
-				icon_color: 'indigo'
+				details: dump.content ? dump.content.substring(0, 150) : 'No content'
 			});
 		});
 
-		// Add brief activities
-		dailyBriefs?.forEach((brief) => {
+		dailyBriefs.forEach((brief) => {
 			activities.push({
-				activity_type: 'brief_generated',
+				entity_type: 'brief',
+				action: 'generated',
 				created_at: brief.created_at,
 				object_name: 'Daily Brief',
-				details: brief.brief_date ? `Generated for ${brief.brief_date}` : 'Daily brief',
-				icon_color: 'blue'
-			});
-		});
-
-		// Add scheduled brief activities
-		scheduledBriefs?.forEach((scheduled) => {
-			activities.push({
-				activity_type: 'brief_scheduled',
-				created_at: scheduled.created_at,
-				object_name: scheduled.event_title || 'Scheduled Brief',
-				details: scheduled.event_start
-					? `Scheduled for ${new Date(scheduled.event_start).toLocaleDateString()}`
-					: 'Scheduled brief',
-				event_start: scheduled.event_start,
-				icon_color: 'teal'
+				details: brief.brief_date ? `Generated for ${brief.brief_date}` : 'Daily brief'
 			});
 		});
 
@@ -208,8 +195,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		const activityStats = {
 			total_projects: processedProjects.length,
 			total_tasks: tasks?.length || 0,
-			completed_tasks: tasks?.filter((t) => t.status === 'done').length || 0,
-			total_notes: notes?.length || 0,
+			completed_tasks: tasks?.filter((t) => t.state_key === 'done').length || 0,
+			total_notes: documents?.length || 0,
 			total_briefs: dailyBriefs?.length || 0,
 			total_brain_dumps: brainDumps?.length || 0,
 			scheduled_briefs: scheduledBriefs?.length || 0
@@ -224,7 +211,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			recent_activity: activities.slice(0, 50), // Last 50 activities sorted by date
 			activity_stats: activityStats,
 			tasks: tasks || [],
-			notes: notes || [],
+			notes: documents || [],
 			daily_briefs: dailyBriefs || [],
 			scheduled_briefs: scheduledBriefs || []
 		});

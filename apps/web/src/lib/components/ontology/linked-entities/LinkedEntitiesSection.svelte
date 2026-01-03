@@ -88,29 +88,26 @@
 
 <div class="border-b border-border last:border-b-0">
 	<!-- Section Header -->
-	<button
-		type="button"
-		class="w-full px-3 py-2 flex items-center justify-between transition-colors
-			{isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'}
-			focus:outline-none focus-visible:bg-muted/50"
-		onclick={toggleExpand}
-		disabled={isDisabled}
-		aria-expanded={expanded}
-		aria-controls="section-{config.kind}"
-	>
-		<!-- Left side: chevron, icon, label, count -->
-		<div class="flex items-center gap-2 min-w-0">
+	<div class="w-full px-3 py-2 flex items-center justify-between">
+		<button
+			type="button"
+			class="flex-1 flex items-center gap-2 min-w-0 transition-colors text-left
+				{isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'}
+				focus:outline-none focus-visible:bg-muted/50"
+			onclick={toggleExpand}
+			disabled={isDisabled}
+			aria-expanded={expanded}
+			aria-controls="section-{config.kind}"
+		>
+			<!-- Left side: chevron, icon, label, count -->
 			<ChevronRight
 				class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 flex-shrink-0
 					{expanded ? 'rotate-90' : ''} {!canExpand ? 'opacity-30' : ''}"
 			/>
-			<svelte:component
-				this={IconComponent}
-				class="w-3.5 h-3.5 flex-shrink-0 {config.iconColor}"
-			/>
+			<IconComponent class="w-3.5 h-3.5 flex-shrink-0 {config.iconColor}" />
 			<span class="text-sm text-foreground">{config.labelPlural}</span>
 			<span class="text-xs text-muted-foreground">({linkedCount})</span>
-		</div>
+		</button>
 
 		<!-- Right side: add button or loading indicator -->
 		{#if isLoadingAvailable}
@@ -128,7 +125,7 @@
 				<Plus class="w-3.5 h-3.5" />
 			</button>
 		{/if}
-	</button>
+	</div>
 
 	<!-- Expanded Content -->
 	{#if expanded && hasLinkedEntities}

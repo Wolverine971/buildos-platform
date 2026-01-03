@@ -10,7 +10,7 @@
 	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
 	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
 
-	let { notification } = $props<{ notification: CalendarAnalysisNotification }>();
+	let { notification }: { notification: CalendarAnalysisNotification } = $props();
 	const dispatch = createEventDispatcher();
 
 	function handleClose() {
@@ -52,38 +52,41 @@
 		closeOnBackdrop={true}
 		closeOnEscape={true}
 	>
-		<!-- Custom header with minimize button -->
-		<div
-			slot="header"
-			class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
-		>
-			<h2 class="text-xl font-bold text-gray-900 dark:text-white">Analyzing Calendar</h2>
-			<div class="flex items-center gap-2">
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={handleMinimize}
-					aria-label="Minimize"
-					icon={ChevronDown}
-				></Button>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={handleClose}
-					aria-label="Close notification"
-					icon={X}
-				></Button>
+		{#snippet header()}
+			<!-- Custom header with minimize button -->
+			<div
+				class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+			>
+				<h2 class="text-xl font-bold text-gray-900 dark:text-white">Analyzing Calendar</h2>
+				<div class="flex items-center gap-2">
+					<Button
+						variant="ghost"
+						size="sm"
+						onclick={handleMinimize}
+						aria-label="Minimize"
+						icon={ChevronDown}
+					></Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onclick={handleClose}
+						aria-label="Close notification"
+						icon={X}
+					></Button>
+				</div>
 			</div>
-		</div>
+		{/snippet}
 
-		<div class="flex flex-col items-center gap-4 px-6 py-8 text-center">
-			<Loader2 class="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
-			<p class="text-base text-gray-700 dark:text-gray-300">{progressMessage}</p>
-			<p class="text-sm text-gray-500 dark:text-gray-400">
-				You can minimize this window and continue working. We'll keep the results in the
-				notification tray when they're ready.
-			</p>
-		</div>
+		{#snippet children()}
+			<div class="flex flex-col items-center gap-4 px-6 py-8 text-center">
+				<Loader2 class="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
+				<p class="text-base text-gray-700 dark:text-gray-300">{progressMessage}</p>
+				<p class="text-sm text-gray-500 dark:text-gray-400">
+					You can minimize this window and continue working. We'll keep the results in the
+					notification tray when they're ready.
+				</p>
+			</div>
+		{/snippet}
 	</Modal>
 {:else}
 	<!-- Results State: Full CalendarAnalysisResults in embedded mode -->
@@ -96,41 +99,44 @@
 		closeOnBackdrop={true}
 		closeOnEscape={true}
 	>
-		<!-- Custom header with minimize button -->
-		<div
-			slot="header"
-			class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
-		>
-			<h2 class="text-xl font-bold text-gray-900 dark:text-white">
-				Calendar Analysis Results
-			</h2>
-			<div class="flex items-center gap-2">
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={handleMinimize}
-					aria-label="Minimize"
-					icon={ChevronDown}
-				></Button>
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={handleClose}
-					aria-label="Close notification"
-					icon={X}
-				></Button>
+		{#snippet header()}
+			<!-- Custom header with minimize button -->
+			<div
+				class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+			>
+				<h2 class="text-xl font-bold text-gray-900 dark:text-white">
+					Calendar Analysis Results
+				</h2>
+				<div class="flex items-center gap-2">
+					<Button
+						variant="ghost"
+						size="sm"
+						onclick={handleMinimize}
+						aria-label="Minimize"
+						icon={ChevronDown}
+					></Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onclick={handleClose}
+						aria-label="Close notification"
+						icon={X}
+					></Button>
+				</div>
 			</div>
-		</div>
+		{/snippet}
 
-		<!-- Embedded CalendarAnalysisResults without its own Modal wrapper -->
-		<CalendarAnalysisResults
-			isOpen={true}
-			analysisId={notification.data.analysisId}
-			bind:suggestions={notification.data.suggestions}
-			autoStart={false}
-			onClose={handleClose}
-			{errorMessage}
-			embedded={true}
-		/>
+		{#snippet children()}
+			<!-- Embedded CalendarAnalysisResults without its own Modal wrapper -->
+			<CalendarAnalysisResults
+				isOpen={true}
+				analysisId={notification.data.analysisId}
+				{suggestions}
+				autoStart={false}
+				onClose={handleClose}
+				{errorMessage}
+				embedded={true}
+			/>
+		{/snippet}
 	</Modal>
 {/if}

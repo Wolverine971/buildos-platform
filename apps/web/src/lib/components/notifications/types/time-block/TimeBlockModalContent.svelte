@@ -9,9 +9,7 @@
 	import { format } from 'date-fns';
 	import Button from '$components/ui/Button.svelte';
 
-	let { notification } = $props<{
-		notification: TimeBlockNotification;
-	}>();
+	let { notification }: { notification: TimeBlockNotification } = $props();
 
 	const dispatch = createEventDispatcher();
 

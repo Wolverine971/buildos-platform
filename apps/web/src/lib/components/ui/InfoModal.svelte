@@ -13,6 +13,7 @@
 		showIcon?: boolean;
 		size?: 'sm' | 'md' | 'lg' | 'xl';
 		children?: Snippet;
+		footer?: Snippet;
 		// Svelte 5 callback props (preferred)
 		onclose?: () => void;
 	}
@@ -24,6 +25,7 @@
 		showIcon = true,
 		size = 'sm',
 		children,
+		footer,
 		onclose
 	}: Props = $props();
 
@@ -63,12 +65,16 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div
-			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
-		>
-			<Button onclick={handleClose} variant="primary" size="md" class="w-full sm:w-auto">
-				{buttonText}
-			</Button>
-		</div>
+		{#if footer}
+			{@render footer()}
+		{:else}
+			<div
+				class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
+			>
+				<Button onclick={handleClose} variant="primary" size="md" class="w-full sm:w-auto">
+					{buttonText}
+				</Button>
+			</div>
+		{/if}
 	{/snippet}
 </Modal>

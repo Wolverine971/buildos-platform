@@ -57,6 +57,7 @@ function createMockGoal(overrides: Partial<OntoGoal> = {}): OntoGoal {
 		type_key: null,
 		created_by: 'actor-1',
 		created_at: '2025-12-17T00:00:00Z',
+		target_date: null,
 		props: {},
 		search_vector: null,
 		...overrides
@@ -357,77 +358,30 @@ describe('categorizeTasks', () => {
 // ============================================================================
 
 describe('calculateGoalProgress', () => {
-	it('should calculate 0% progress for goal with no supporting tasks', () => {
+	const todayStr = '2025-12-17';
+	const timezone = 'UTC';
+
+	it('should default to on_track when target date is missing', () => {
 		const goal = createMockGoal();
 		const edges: OntoEdge[] = [];
 		const tasks: OntoTask[] = [];
 
-		const result = calculateGoalProgress(goal, edges, tasks);
+		const result = calculateGoalProgress(goal, edges, tasks, todayStr, timezone);
 
 		expect(result.totalTasks).toBe(0);
 		expect(result.completedTasks).toBe(0);
-		expect(result.progressPercent).toBe(0);
-		expect(result.status).toBe('behind');
-	});
-
-	it('should calculate correct progress percentage', () => {
-		const goal = createMockGoal({ id: 'goal-1' });
-		const tasks = [
-			createMockTask({ id: 'task-1', state_key: 'done' }),
-			createMockTask({ id: 'task-2', state_key: 'done' }),
-			createMockTask({ id: 'task-3', state_key: 'todo' }),
-			createMockTask({ id: 'task-4', state_key: 'todo' })
-		];
-		const edges = tasks.map((t) =>
-			createMockEdge({
-				src_id: t.id,
-				src_kind: 'task',
-				dst_id: 'goal-1',
-				dst_kind: 'goal',
-				rel: 'supports_goal'
-			})
-		);
-
-		const result = calculateGoalProgress(goal, edges, tasks);
-
-		expect(result.totalTasks).toBe(4);
-		expect(result.completedTasks).toBe(2);
-		expect(result.progressPercent).toBe(50);
-		expect(result.status).toBe('at_risk'); // 50% is at_risk
-	});
-
-	it('should return on_track status for 70%+ progress', () => {
-		const goal = createMockGoal({ id: 'goal-1' });
-		const tasks = [
-			createMockTask({ id: 'task-1', state_key: 'done' }),
-			createMockTask({ id: 'task-2', state_key: 'done' }),
-			createMockTask({ id: 'task-3', state_key: 'done' }),
-			createMockTask({ id: 'task-4', state_key: 'todo' })
-		];
-		const edges = tasks.map((t) =>
-			createMockEdge({
-				src_id: t.id,
-				src_kind: 'task',
-				dst_id: 'goal-1',
-				dst_kind: 'goal',
-				rel: 'supports_goal'
-			})
-		);
-
-		const result = calculateGoalProgress(goal, edges, tasks);
-
-		expect(result.progressPercent).toBe(75);
+		expect(result.targetDate).toBeNull();
+		expect(result.targetDaysAway).toBeNull();
 		expect(result.status).toBe('on_track');
 	});
 
-	it('should return behind status for less than 40% progress', () => {
-		const goal = createMockGoal({ id: 'goal-1' });
+	it('should mark goals at risk when target date is within 7 days', () => {
+		const goal = createMockGoal({ id: 'goal-1', target_date: '2025-12-24T00:00:00Z' });
 		const tasks = [
 			createMockTask({ id: 'task-1', state_key: 'done' }),
-			createMockTask({ id: 'task-2', state_key: 'todo' }),
+			createMockTask({ id: 'task-2', state_key: 'done' }),
 			createMockTask({ id: 'task-3', state_key: 'todo' }),
-			createMockTask({ id: 'task-4', state_key: 'todo' }),
-			createMockTask({ id: 'task-5', state_key: 'todo' })
+			createMockTask({ id: 'task-4', state_key: 'todo' })
 		];
 		const edges = tasks.map((t) =>
 			createMockEdge({
@@ -439,9 +393,52 @@ describe('calculateGoalProgress', () => {
 			})
 		);
 
-		const result = calculateGoalProgress(goal, edges, tasks);
+		const result = calculateGoalProgress(goal, edges, tasks, todayStr, timezone);
 
-		expect(result.progressPercent).toBe(20);
+		expect(result.totalTasks).toBe(4);
+		expect(result.completedTasks).toBe(2);
+		expect(result.targetDate).toBe('2025-12-24');
+		expect(result.targetDaysAway).toBe(7);
+		expect(result.status).toBe('at_risk');
+	});
+
+	it('should mark goals on track when target date is more than 7 days away', () => {
+		const goal = createMockGoal({ id: 'goal-1', target_date: '2025-12-26T00:00:00Z' });
+		const tasks = [createMockTask({ id: 'task-1', state_key: 'done' })];
+		const edges = tasks.map((t) =>
+			createMockEdge({
+				src_id: t.id,
+				src_kind: 'task',
+				dst_id: 'goal-1',
+				dst_kind: 'goal',
+				rel: 'supports_goal'
+			})
+		);
+
+		const result = calculateGoalProgress(goal, edges, tasks, todayStr, timezone);
+
+		expect(result.targetDate).toBe('2025-12-26');
+		expect(result.targetDaysAway).toBe(9);
+		expect(result.status).toBe('on_track');
+	});
+
+	it('should mark goals behind when target date has passed', () => {
+		const goal = createMockGoal({ id: 'goal-1', target_date: '2025-12-15T00:00:00Z' });
+		const tasks = [createMockTask({ id: 'task-1', state_key: 'todo' })];
+		const edges = tasks.map((t) =>
+			createMockEdge({
+				src_id: t.id,
+				src_kind: 'task',
+				dst_id: 'goal-1',
+				dst_kind: 'goal',
+				rel: 'supports_goal'
+			})
+		);
+
+		const result = calculateGoalProgress(goal, edges, tasks, todayStr, timezone);
+
+		expect(result.targetDate).toBe('2025-12-15');
+		expect(result.targetDaysAway).toBe(-2);
 		expect(result.status).toBe('behind');
 	});
 });

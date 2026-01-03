@@ -28,7 +28,8 @@ export interface GoalProgress {
 	goal: OntoGoal;
 	totalTasks: number;
 	completedTasks: number;
-	progressPercent: number;
+	targetDate: string | null;
+	targetDaysAway: number | null;
 	status: 'on_track' | 'at_risk' | 'behind';
 	contributingTasks: OntoTask[];
 }
@@ -337,7 +338,8 @@ export interface OntologyGoalAnalysis {
 	id: string;
 	name: string;
 	stateKey: string;
-	progressPercent: number;
+	targetDate: string | null;
+	targetDaysAway: number | null;
 	status: 'on_track' | 'at_risk' | 'behind';
 	totalTasks: number;
 	completedTasks: number;

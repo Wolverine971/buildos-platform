@@ -9,11 +9,25 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { projectStoreV2 } from '$lib/stores/project.store';
 
-	export let isOpen = false;
-	export let projectId: string;
-	export let backlogTasks: TaskWithCalendarEvents[] = [];
-	export let phases: PhaseWithTasks[] = [];
-	export let calendarConnected = false;
+	interface Props {
+		isOpen?: boolean;
+		projectId: string;
+		backlogTasks?: TaskWithCalendarEvents[];
+		phases?: PhaseWithTasks[];
+		calendarConnected?: boolean;
+		onclose?: () => void;
+		ontasksAssigned?: (detail: { assignedTasks: any[]; totalAssigned: number }) => void;
+	}
+
+	let {
+		isOpen = false,
+		projectId,
+		backlogTasks = [],
+		phases = [],
+		calendarConnected = false,
+		onclose,
+		ontasksAssigned
+	}: Props = $props();
 
 	const dispatch = createEventDispatcher();
 
@@ -43,41 +57,46 @@
 	];
 
 	// State
-	let loading = false;
-	let selectedMethod = 'phases_only';
-	let taskPhaseAssignments: { [taskId: string]: string } = {};
-	let error: string | null = null;
-	let initialized = false;
-	let autoAssign = true; // Default to auto-assign
-	let sortedPhases: PhaseWithTasks[] = [];
+	let loading = $state(false);
+	let selectedMethod = $state('phases_only');
+	let taskPhaseAssignments = $state<{ [taskId: string]: string }>({});
+	let error = $state<string | null>(null);
+	let initialized = $state(false);
+	let autoAssign = $state(true); // Default to auto-assign
 
 	// Sort phases by start date when modal opens or phases change
-	$: if (phases.length > 0) {
-		sortedPhases = [...phases].sort((a, b) => {
-			// Phases without start dates go last
-			if (!a.start_date && !b.start_date) return a.order - b.order;
-			if (!a.start_date) return 1;
-			if (!b.start_date) return -1;
-			return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-		});
-	}
+	let sortedPhases = $derived(
+		phases.length > 0
+			? [...phases].sort((a, b) => {
+					// Phases without start dates go last
+					if (!a.start_date && !b.start_date) return a.order - b.order;
+					if (!a.start_date) return 1;
+					if (!b.start_date) return -1;
+					return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+				})
+			: []
+	);
 
 	// Initialize task assignments (evenly distribute) - only once when modal opens
-	$: if (
-		isOpen &&
-		backlogTasks.length > 0 &&
-		sortedPhases.length > 0 &&
-		!initialized &&
-		!autoAssign
-	) {
-		initializeAssignments();
-		initialized = true;
-	}
+	$effect(() => {
+		if (
+			isOpen &&
+			backlogTasks.length > 0 &&
+			sortedPhases.length > 0 &&
+			!initialized &&
+			!autoAssign
+		) {
+			initializeAssignments();
+			initialized = true;
+		}
+	});
 
 	// Reset initialized flag when modal closes
-	$: if (!isOpen) {
-		initialized = false;
-	}
+	$effect(() => {
+		if (!isOpen) {
+			initialized = false;
+		}
+	});
 
 	function initializeAssignments() {
 		const assignments: { [taskId: string]: string } = {};
@@ -168,10 +187,12 @@
 			toastService.success(`Successfully assigned ${backlogTasks.length} tasks to phases`);
 
 			// Emit a custom event to notify parent components about the update
-			dispatch('tasksAssigned', {
+			const eventData = {
 				assignedTasks: result.data?.assignedTasks || [],
 				totalAssigned: result.data?.totalAssigned || 0
-			});
+			};
+			ontasksAssigned?.(eventData);
+			dispatch('tasksAssigned', eventData);
 
 			handleClose();
 		} catch (err) {
@@ -184,14 +205,14 @@
 	}
 
 	function handleClose() {
+		onclose?.();
 		dispatch('close');
 	}
 </script>
 
 <Modal {isOpen} onClose={handleClose} size="lg">
-	{#snippet children()}
+	{#snippet header()}
 		<div
-			slot="header"
 			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
 		>
 			<div class="flex items-center gap-2 sm:gap-3">
@@ -208,7 +229,9 @@
 				</div>
 			</div>
 		</div>
+	{/snippet}
 
+	{#snippet children()}
 		<div class="p-4 sm:p-5 md:p-6 space-y-4">
 			{#if error}
 				<div
@@ -368,9 +391,10 @@
 				</div>
 			</div>
 		</div>
+	{/snippet}
 
+	{#snippet footer()}
 		<div
-			slot="footer"
 			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
 		>
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">

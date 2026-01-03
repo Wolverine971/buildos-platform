@@ -188,7 +188,7 @@
 	</div>
 </div>
 
-<style>
+<style lang="postcss">
 	/* Ensure overlay is above everything */
 	.calendar-overlay-root {
 		will-change: opacity;

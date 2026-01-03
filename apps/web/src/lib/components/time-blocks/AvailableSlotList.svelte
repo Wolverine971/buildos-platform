@@ -191,7 +191,7 @@
 	</div>
 {/if}
 
-<style>
+<style lang="postcss">
 	.available-slot-list {
 		@apply rounded-2xl border border-emerald-200/70 bg-emerald-50/50 backdrop-blur-xl;
 		@apply dark:border-emerald-500/30 dark:bg-emerald-950/20;

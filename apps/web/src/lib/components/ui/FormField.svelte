@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ui/FormField.svelte -->
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { Info, AlertCircle } from 'lucide-svelte';
 
 	// Svelte 5 runes: Use $props()
@@ -11,7 +12,8 @@
 		required = false,
 		showOptional = true,
 		uppercase = true,
-		class: className = ''
+		class: className = '',
+		children
 	}: {
 		label?: string;
 		labelFor?: string;
@@ -21,6 +23,7 @@
 		showOptional?: boolean;
 		uppercase?: boolean;
 		class?: string;
+		children?: Snippet;
 	} = $props();
 
 	// Tighter spacing: space-y-1 on mobile, space-y-1.5 on desktop
@@ -69,7 +72,7 @@
 		</label>
 	{/if}
 
-	<slot />
+	{@render children?.()}
 
 	<!--
 		Error/hint message space:

@@ -5,7 +5,7 @@
 	import { Loader2, CheckCircle, AlertCircle, CalendarCheck, CalendarClock } from 'lucide-svelte';
 	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
 
-	let { notification } = $props<{ notification: CalendarAnalysisNotification }>();
+	let { notification }: { notification: CalendarAnalysisNotification } = $props();
 
 	const DEFAULT_RANGE_LABEL = 'Analyzing recent calendar activity';
 

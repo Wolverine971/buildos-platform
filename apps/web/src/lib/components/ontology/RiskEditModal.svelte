@@ -36,6 +36,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import TagsDisplay from './TagsDisplay.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -44,6 +45,7 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
 	import { RISK_STATES } from '$lib/types/onto';
+	import { RISK_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
@@ -109,6 +111,7 @@
 	let probability = $state<string>('0.5');
 	let mitigationStrategy = $state('');
 	let stateKey = $state('identified');
+	let typeKey = $state('risk.default');
 	let owner = $state('');
 
 	// Modal states for linked entity navigation
@@ -165,6 +168,7 @@
 				impact = risk.impact || 'medium';
 				probability = risk.probability?.toString() || '0.5';
 				stateKey = risk.state_key || 'identified';
+				typeKey = risk.type_key || 'risk.default';
 				content = risk.content || risk.props?.description || '';
 				mitigationStrategy = risk.props?.mitigation_strategy || '';
 				owner = risk.props?.owner || '';
@@ -192,6 +196,7 @@
 				impact,
 				probability: probability ? parseFloat(probability) : null,
 				state_key: stateKey,
+				type_key: typeKey || 'risk.default',
 				content: content.trim() || null,
 				description: content.trim() || null,
 				mitigation_strategy: mitigationStrategy.trim() || null,
@@ -527,6 +532,25 @@
 								</FormField>
 							</div>
 
+							<FormField label="Type" labelFor="type-key" hint="Risk classification">
+								<Select
+									id="type-key"
+									bind:value={typeKey}
+									disabled={isSaving}
+									size="md"
+									placeholder="Select type"
+								>
+									{#each RISK_TYPE_KEYS as typeOption}
+										<option
+											value={typeOption.value}
+											title={typeOption.description}
+										>
+											{typeOption.label}
+										</option>
+									{/each}
+								</Select>
+							</FormField>
+
 							{#if error}
 								<div
 									class="p-4 bg-destructive/10 border border-destructive/30 rounded"
@@ -547,6 +571,23 @@
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={loadRisk}
 						/>
+
+						<!-- Tags (from classification) -->
+						{#if risk?.props?.tags?.length}
+							<Card variant="elevated">
+								<CardHeader variant="default">
+									<h3
+										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
+									>
+										<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+										Tags
+									</h3>
+								</CardHeader>
+								<CardBody padding="sm">
+									<TagsDisplay props={risk.props} size="sm" compact={true} />
+								</CardBody>
+							</Card>
+						{/if}
 
 						<!-- Risk Metadata -->
 						<Card variant="elevated">
@@ -773,8 +814,7 @@
 
 <!-- Chat About Modal (Lazy Loaded) -->
 {#if showChatModal && AgentChatModalComponent && entityFocus}
-	<svelte:component
-		this={AgentChatModalComponent}
+	<AgentChatModalComponent
 		isOpen={showChatModal}
 		initialProjectFocus={entityFocus}
 		onClose={handleChatClose}

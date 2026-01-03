@@ -179,10 +179,13 @@
 	>([]);
 	let recentActivity = $state<
 		Array<{
-			activity_type: string;
+			entity_type: string;
+			action: string;
+			source: 'ontology' | 'user_activity';
 			user_email: string;
 			created_at: string;
-			activity_data: unknown;
+			project_name?: string | null;
+			entity_name?: string | null;
 		}>
 	>([]);
 	let agentChatUsage = $state({
@@ -567,7 +570,7 @@
 			key: 'projectUpdates',
 			title: 'Top Project Updaters',
 			icon: RefreshCw,
-			accent: 'text-blue-600'
+			accent: 'text-accent'
 		},
 		{
 			key: 'tasksCreated',
@@ -805,7 +808,7 @@
 			if (value <= 500) return 'text-yellow-600';
 			return 'text-red-600';
 		}
-		return 'text-gray-600';
+		return 'text-muted-foreground';
 	}
 
 	function formatMilliseconds(ms: number): string {
@@ -835,27 +838,42 @@
 		return parts.join(' ');
 	}
 
-	function getActivityIcon(activityType: string) {
-		switch (activityType) {
-			case 'brief_generated':
+	function getActivityIcon(entityType: string, action: string) {
+		switch (entityType) {
+			case 'brief':
 				return FileText;
-			case 'login':
+			case 'session':
 				return Users;
-			case 'template_created':
+			case 'template':
 				return Settings;
+			case 'task':
+				return Workflow;
+			case 'project':
+				return GitBranch;
+			case 'note':
+			case 'document':
+				return FileText;
+			case 'brain_dump':
+				return MessageSquare;
 			default:
 				return Activity;
 		}
 	}
 
+	function formatActivityLabel(entityType: string, action: string) {
+		const typeLabel = entityType.replace(/_/g, ' ');
+		const actionLabel = action.replace(/_/g, ' ');
+		return `${typeLabel} ${actionLabel}`.trim();
+	}
+
 	function getCategoryColor(category: string): string {
 		const colors = {
-			feature: 'text-blue-600',
-			bug: 'text-red-600',
-			improvement: 'text-green-600',
-			general: 'text-gray-600'
+			feature: 'text-accent',
+			bug: 'text-red-600 dark:text-red-400',
+			improvement: 'text-emerald-600 dark:text-emerald-400',
+			general: 'text-muted-foreground'
 		};
-		return colors[category as keyof typeof colors] || 'text-gray-600';
+		return colors[category as keyof typeof colors] || 'text-muted-foreground';
 	}
 
 	async function exportAnalytics() {
@@ -898,13 +916,11 @@
 			slot="actions"
 			class="flex w-full flex-wrap items-center gap-3 sm:gap-4 sm:justify-end"
 		>
-			<label
-				class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400"
-			>
+			<label class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
 				<input
 					type="checkbox"
 					bind:checked={autoRefresh}
-					class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
+					class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer bg-background"
 				/>
 				<span>Auto Refresh</span>
 			</label>
@@ -967,8 +983,8 @@
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
 				{#each Array(12) as _}
 					<AdminCard padding="lg" class="animate-pulse space-y-3" aria-hidden="true">
-						<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-						<div class="h-6 sm:h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+						<div class="h-4 bg-muted rounded w-3/4"></div>
+						<div class="h-6 sm:h-8 bg-muted rounded w-1/2"></div>
 					</AdminCard>
 				{/each}
 			</div>
@@ -1044,9 +1060,9 @@
 
 			<!-- Agent Chat Analytics Section -->
 			<div class="mb-4 sm:mb-6">
-				<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
+				<h2 class="text-lg sm:text-xl font-bold text-foreground mb-4">
 					Agent Chat Analytics
-					<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
+					<span class="text-sm font-normal text-muted-foreground">
 						({timeframeRangeLabel})
 					</span>
 				</h2>
@@ -1061,9 +1077,9 @@
 
 			<!-- User Leaderboards -->
 			<div class="mb-4 sm:mb-6">
-				<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
+				<h2 class="text-lg sm:text-xl font-bold text-foreground mb-4">
 					User Activity Leaderboards
-					<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
+					<span class="text-sm font-normal text-muted-foreground">
 						({timeframeRangeLabel})
 					</span>
 				</h2>
@@ -1075,7 +1091,7 @@
 						{@const Icon = board.icon}
 						<AdminCard padding="lg" class="space-y-4">
 							<div class="flex items-center justify-between">
-								<h3 class="text-base font-semibold text-gray-900 dark:text-white">
+								<h3 class="text-base font-semibold text-foreground">
 									{board.title}
 								</h3>
 								<Icon class={`h-5 w-5 ${board.accent}`} />
@@ -1085,16 +1101,16 @@
 								<div class="space-y-2">
 									{#each rows as user, index}
 										<div
-											class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+											class="flex items-center justify-between py-2 border-b border-border last:border-0"
 										>
 											<div class="flex items-center space-x-3">
 												<span
-													class="text-xs font-semibold text-gray-500 w-6"
+													class="text-xs font-semibold text-muted-foreground w-6"
 												>
 													#{index + 1}
 												</span>
 												<span
-													class="text-sm text-gray-900 dark:text-white truncate max-w-[150px]"
+													class="text-sm text-foreground truncate max-w-[150px]"
 												>
 													{user.email}
 												</span>
@@ -1106,7 +1122,7 @@
 									{/each}
 								</div>
 							{:else}
-								<p class="text-gray-500 text-center py-4 text-sm">
+								<p class="text-muted-foreground text-center py-4 text-sm">
 									No data available
 								</p>
 							{/if}
@@ -1118,7 +1134,7 @@
 			<!-- Subscription Overview (if Stripe is enabled) -->
 			{#if subscriptionData.stripeEnabled}
 				<div class="mb-4 sm:mb-6 space-y-4 sm:space-y-6">
-					<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+					<h2 class="text-lg sm:text-xl font-bold text-foreground">
 						Subscription Analytics
 					</h2>
 
@@ -1160,14 +1176,14 @@
 
 					{#if subscriptionData.recentChanges.length > 0}
 						<AdminCard padding="lg">
-							<h3 class="text-base font-semibold text-gray-900 dark:text-white mb-4">
+							<h3 class="text-base font-semibold text-foreground mb-4">
 								Recent Subscription Activity
 							</h3>
 							<div class="space-y-3">
 								{#each subscriptionData.recentChanges.slice(0, 5) as change, idx (idx)}
 									{@const typedChange = change as any}
 									<div
-										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700 last:border-0"
+										class="flex items-center justify-between py-2 border-b border-border last:border-0"
 									>
 										<div class="flex items-center space-x-3">
 											<div class="flex-shrink-0">
@@ -1181,33 +1197,31 @@
 													></div>
 												{:else if typedChange.status === 'trialing'}
 													<div
-														class="w-2 h-2 bg-blue-500 rounded-full"
+														class="w-2 h-2 bg-sky-500 rounded-full"
 													></div>
 												{:else}
 													<div
-														class="w-2 h-2 bg-gray-500 rounded-full"
+														class="w-2 h-2 bg-muted-foreground rounded-full"
 													></div>
 												{/if}
 											</div>
 											<div>
-												<p
-													class="text-sm font-medium text-gray-900 dark:text-white"
-												>
+												<p class="text-sm font-medium text-foreground">
 													{typedChange.users?.email || 'Unknown User'}
 												</p>
-												<p class="text-xs text-gray-500 dark:text-gray-400">
+												<p class="text-xs text-muted-foreground">
 													{typedChange.subscription_plans?.name} · {typedChange.status}
 												</p>
 											</div>
 										</div>
 										<div class="text-right">
-											<p class="text-sm text-gray-600 dark:text-gray-400">
+											<p class="text-sm text-muted-foreground">
 												${(
 													typedChange.subscription_plans?.price / 100
 												).toFixed(2)}/{typedChange.subscription_plans
 													?.interval}
 											</p>
-											<p class="text-xs text-gray-500 dark:text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												{new Date(
 													typedChange.updated_at
 												).toLocaleDateString()}
@@ -1219,7 +1233,7 @@
 							<div class="mt-4">
 								<a
 									href="/admin/subscriptions"
-									class="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+									class="text-sm text-accent hover:text-accent/80"
 								>
 									View all subscription activity →
 								</a>
@@ -1243,9 +1257,9 @@
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 mb-4 sm:mb-6">
 				<!-- Daily Active Users Chart -->
 				<div class="admin-panel p-4 sm:p-6">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+					<h3 class="text-lg font-semibold text-foreground mb-4">
 						Daily Active Users
-						<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
+						<span class="text-sm font-normal text-muted-foreground">
 							({timeframeRangeLabel})
 						</span>
 					</h3>
@@ -1253,17 +1267,15 @@
 						<div class="space-y-2">
 							{#each dailyActiveUsers.slice(-10) as day}
 								<div class="flex items-center justify-between">
-									<span
-										class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate"
-									>
+									<span class="text-xs sm:text-sm text-muted-foreground truncate">
 										{new Date(day.date).toLocaleDateString()}
 									</span>
 									<div class="flex items-center ml-2">
 										<div
-											class="w-20 sm:w-32 bg-gray-200 rounded-full h-2 mr-2 sm:mr-3 dark:bg-gray-700"
+											class="w-20 sm:w-32 bg-muted rounded-full h-2 mr-2 sm:mr-3"
 										>
 											<div
-												class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+												class="bg-accent h-2 rounded-full transition-all duration-300"
 												style="width: {Math.min(
 													(day.active_users /
 														Math.max(
@@ -1277,7 +1289,7 @@
 											></div>
 										</div>
 										<span
-											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white"
+											class="text-xs sm:text-sm font-medium text-foreground"
 										>
 											{day.active_users}
 										</span>
@@ -1286,19 +1298,17 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-gray-500 text-center py-8">No data available</p>
+						<p class="text-muted-foreground text-center py-8">No data available</p>
 					{/if}
 				</div>
 
 				<!-- Feedback Category Breakdown -->
 				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Feedback Categories
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Feedback Categories</h3>
 						<a
 							href="/admin/feedback"
-							class="text-blue-600 hover:text-blue-700 text-sm flex items-center"
+							class="text-accent hover:text-accent/80 text-sm flex items-center"
 						>
 							<span class="hidden sm:inline">View All</span>
 							<ExternalLink class="ml-1 h-4 w-4" />
@@ -1311,17 +1321,15 @@
 								<div class="flex items-center justify-between">
 									<div class="flex items-center flex-1 min-w-0">
 										<span
-											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white capitalize truncate"
+											class="text-xs sm:text-sm font-medium text-foreground capitalize truncate"
 										>
 											{category}
 										</span>
 									</div>
 									<div class="flex items-center ml-2">
-										<div
-											class="w-16 sm:w-20 bg-gray-200 rounded-full h-2 mr-2 dark:bg-gray-700"
-										>
+										<div class="w-16 sm:w-20 bg-muted rounded-full h-2 mr-2">
 											<div
-												class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+												class="bg-accent h-2 rounded-full transition-all duration-300"
 												style="width: {Math.min(
 													(typedCount /
 														Math.max(
@@ -1335,7 +1343,7 @@
 											></div>
 										</div>
 										<span
-											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white w-6 sm:w-8 text-right"
+											class="text-xs sm:text-sm font-medium text-foreground w-6 sm:w-8 text-right"
 										>
 											{typedCount}
 										</span>
@@ -1344,7 +1352,7 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-gray-500 text-center py-8">No feedback data</p>
+						<p class="text-muted-foreground text-center py-8">No feedback data</p>
 					{/if}
 				</div>
 			</div>
@@ -1354,12 +1362,10 @@
 				<!-- Recent Feedback -->
 				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Recent Feedback
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Recent Feedback</h3>
 						<a
 							href="/admin/feedback"
-							class="text-blue-600 hover:text-blue-700 text-sm flex items-center"
+							class="text-accent hover:text-accent/80 text-sm flex items-center"
 						>
 							<span class="hidden sm:inline">View All</span>
 							<ExternalLink class="ml-1 h-4 w-4" />
@@ -1369,7 +1375,7 @@
 						<div class="space-y-3">
 							{#each feedbackOverview.recent_feedback as feedback, idx (idx)}
 								{@const typedFeedback = feedback as any}
-								<div class="border-l-4 border-blue-200 pl-3 sm:pl-4 py-2">
+								<div class="border-l-4 border-accent/30 pl-3 sm:pl-4 py-2">
 									<div class="flex items-center justify-between mb-1">
 										<span
 											class="text-xs sm:text-sm font-medium {getCategoryColor(
@@ -1378,25 +1384,23 @@
 										>
 											{typedFeedback.category}
 										</span>
-										<span class="text-xs text-gray-500">
+										<span class="text-xs text-muted-foreground">
 											{new Date(
 												typedFeedback.created_at
 											).toLocaleDateString()}
 										</span>
 									</div>
-									<p
-										class="text-xs sm:text-sm text-gray-900 dark:text-white line-clamp-2"
-									>
+									<p class="text-xs sm:text-sm text-foreground line-clamp-2">
 										{typedFeedback.feedback_text.substring(0, 100)}...
 									</p>
 									<div class="flex items-center justify-between mt-1">
-										<span class="text-xs text-gray-500 truncate">
+										<span class="text-xs text-muted-foreground truncate">
 											{typedFeedback.user_email || 'Anonymous'}
 										</span>
 										{#if typedFeedback.rating}
 											<div class="flex items-center ml-2">
 												<Star class="h-3 w-3 text-yellow-500 mr-1" />
-												<span class="text-xs text-gray-600"
+												<span class="text-xs text-muted-foreground"
 													>{typedFeedback.rating}/5</span
 												>
 											</div>
@@ -1406,19 +1410,17 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-gray-500 text-center py-8">No recent feedback</p>
+						<p class="text-muted-foreground text-center py-8">No recent feedback</p>
 					{/if}
 				</div>
 
 				<!-- Beta Program Activity -->
 				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-							Beta Program Activity
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Beta Program Activity</h3>
 						<a
 							href="/admin/beta"
-							class="text-blue-600 hover:text-blue-700 text-sm flex items-center"
+							class="text-accent hover:text-accent/80 text-sm flex items-center"
 						>
 							<span class="hidden sm:inline">Manage</span>
 							<ExternalLink class="ml-1 h-4 w-4" />
@@ -1430,9 +1432,7 @@
 								{@const typedActivity = activity as any}
 								<div class="flex items-start space-x-3">
 									{#if typedActivity.type === 'signup'}
-										<UserPlus
-											class="h-4 w-4 text-blue-500 flex-shrink-0 mt-1"
-										/>
+										<UserPlus class="h-4 w-4 text-accent flex-shrink-0 mt-1" />
 									{:else}
 										<MessageSquare
 											class="h-4 w-4 text-green-500 flex-shrink-0 mt-1"
@@ -1440,36 +1440,34 @@
 									{/if}
 									<div class="flex-1 min-w-0">
 										{#if typedActivity.type === 'signup'}
-											<div
-												class="text-xs sm:text-sm text-gray-900 dark:text-white"
-											>
+											<div class="text-xs sm:text-sm text-foreground">
 												<span class="font-medium truncate"
 													>{typedActivity.user}</span
 												>
 												signed up for beta
 											</div>
-											<div class="text-xs text-gray-500 capitalize">
+											<div class="text-xs text-muted-foreground capitalize">
 												Status: {typedActivity.status}
 											</div>
 										{:else}
-											<div
-												class="text-xs sm:text-sm text-gray-900 dark:text-white"
-											>
+											<div class="text-xs sm:text-sm text-foreground">
 												New {typedActivity.feedback_type} feedback
 											</div>
-											<div class="text-xs text-gray-500 capitalize">
+											<div class="text-xs text-muted-foreground capitalize">
 												Status: {typedActivity.status}
 											</div>
 										{/if}
 									</div>
-									<div class="text-xs text-gray-500 flex-shrink-0">
+									<div class="text-xs text-muted-foreground flex-shrink-0">
 										{new Date(typedActivity.created_at).toLocaleDateString()}
 									</div>
 								</div>
 							{/each}
 						</div>
 					{:else}
-						<p class="text-gray-500 text-center py-8">No recent beta activity</p>
+						<p class="text-muted-foreground text-center py-8">
+							No recent beta activity
+						</p>
 					{/if}
 				</div>
 			</div>
@@ -1478,9 +1476,7 @@
 			<div class="mb-4 sm:mb-6">
 				<!-- System Health Metrics -->
 				<div class="admin-panel p-4 sm:p-6">
-					<h3
-						class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
-					>
+					<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
 						<Zap class="mr-2 h-5 w-5 text-yellow-600" />
 						System Health
 					</h3>
@@ -1490,11 +1486,11 @@
 								<div class="flex items-center justify-between">
 									<div class="flex-1 min-w-0">
 										<div
-											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate"
+											class="text-xs sm:text-sm font-medium text-foreground truncate"
 										>
 											{metric.metric_description || metric.metric_name}
 										</div>
-										<div class="text-xs text-gray-500">
+										<div class="text-xs text-muted-foreground">
 											Last updated: {new Date(
 												metric.recorded_at
 											).toLocaleString()}
@@ -1520,7 +1516,7 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-gray-500 text-center py-8">No metrics available</p>
+						<p class="text-muted-foreground text-center py-8">No metrics available</p>
 					{/if}
 				</div>
 			</div>
@@ -1530,15 +1526,15 @@
 				<!-- Top Active Users -->
 				<div class="admin-panel p-4 sm:p-6">
 					<div class="flex items-center justify-between mb-4">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-foreground">
 							Top Active Users
-							<span class="text-sm font-normal text-gray-600 dark:text-gray-400">
+							<span class="text-sm font-normal text-muted-foreground">
 								({timeframeRangeLabel})
 							</span>
 						</h3>
 						<a
 							href="/admin/users"
-							class="text-blue-600 hover:text-blue-700 text-sm flex items-center"
+							class="text-accent hover:text-accent/80 text-sm flex items-center"
 						>
 							<span class="hidden sm:inline">View All</span>
 							<ExternalLink class="ml-1 h-4 w-4" />
@@ -1551,11 +1547,11 @@
 								<div class="flex items-center justify-between">
 									<div class="flex-1 min-w-0">
 										<div
-											class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate"
+											class="text-xs sm:text-sm font-medium text-foreground truncate"
 										>
 											{typedUser.email}
 										</div>
-										<div class="text-xs text-gray-500">
+										<div class="text-xs text-muted-foreground">
 											Last brief: {typedUser.last_brief
 												? new Date(
 														typedUser.last_brief
@@ -1563,40 +1559,51 @@
 												: 'Never'}
 										</div>
 									</div>
-									<div class="text-xs sm:text-sm font-medium text-blue-600 ml-2">
+									<div class="text-xs sm:text-sm font-medium text-accent ml-2">
 										{typedUser.brief_count} briefs
 									</div>
 								</div>
 							{/each}
 						</div>
 					{:else}
-						<p class="text-gray-500 text-center py-8">No active users data</p>
+						<p class="text-muted-foreground text-center py-8">No active users data</p>
 					{/if}
 				</div>
 
 				<!-- Recent Activity -->
 				<div class="admin-panel p-4 sm:p-6">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-						Recent Activity
-					</h3>
+					<h3 class="text-lg font-semibold text-foreground mb-4">Recent Activity</h3>
 					{#if recentActivity.length > 0}
 						<div class="space-y-3">
 							{#each recentActivity.slice(0, 8) as activity}
-								{@const ActivityIcon = getActivityIcon(activity.activity_type)}
+								{@const ActivityIcon = getActivityIcon(
+									activity.entity_type,
+									activity.action
+								)}
 								<div class="flex items-start space-x-3">
 									<ActivityIcon
-										class="h-4 w-4 text-gray-400 flex-shrink-0 mt-1"
+										class="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1"
 									/>
 									<div class="flex-1 min-w-0">
-										<div
-											class="text-xs sm:text-sm text-gray-900 dark:text-white"
-										>
+										<div class="text-xs sm:text-sm text-foreground">
 											<span class="font-medium truncate"
 												>{activity.user_email}</span
 											>
-											{activity.activity_type.replace('_', ' ')}
+											{formatActivityLabel(
+												activity.entity_type,
+												activity.action
+											)}
+											{#if activity.entity_name}
+												<span class="text-muted-foreground">
+													• {activity.entity_name}
+												</span>
+											{:else if activity.project_name}
+												<span class="text-muted-foreground">
+													• {activity.project_name}
+												</span>
+											{/if}
 										</div>
-										<div class="text-xs text-gray-500">
+										<div class="text-xs text-muted-foreground">
 											{new Date(activity.created_at).toLocaleString()}
 										</div>
 									</div>
@@ -1604,7 +1611,7 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-gray-500 text-center py-8">No recent activity</p>
+						<p class="text-muted-foreground text-center py-8">No recent activity</p>
 					{/if}
 				</div>
 			</div>

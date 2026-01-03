@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/admin/AdminShell.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
+	import type { Snippet } from 'svelte';
 	import {
 		Menu,
 		X,
@@ -31,7 +32,15 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar, { type AdminNavGroup } from '$lib/components/admin/AdminSidebar.svelte';
 
-	let { user }: { user?: { name?: string | null; email?: string | null } } = $props();
+	let {
+		user,
+		children,
+		hero
+	}: {
+		user?: { name?: string | null; email?: string | null };
+		children?: Snippet;
+		hero?: Snippet;
+	} = $props();
 
 	let mobileOpen = $state(false);
 
@@ -273,16 +282,16 @@
 		<!-- Main Content Area -->
 		<main class="relative flex-1 overflow-y-auto">
 			<div class="min-h-full">
-				{#if $$slots.hero}
+				{#if hero}
 					<div class="border-b border-border bg-muted/30">
 						<div class="px-4 py-6 sm:px-6 lg:px-8">
-							<slot name="hero" />
+							{@render hero?.()}
 						</div>
 					</div>
 				{/if}
 				<div class="px-4 py-6 sm:px-6 lg:px-8">
 					<div class="mx-auto max-w-7xl">
-						<slot />
+						{@render children?.()}
 					</div>
 				</div>
 			</div>
@@ -296,7 +305,7 @@
 				class="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
 				onclick={() => (mobileOpen = false)}
 				aria-label="Close menu"
-			/>
+			></button>
 			<div
 				class="relative ml-auto flex h-full w-80 flex-col bg-card shadow-ink-strong animate-slide-in tx tx-frame tx-weak"
 			>

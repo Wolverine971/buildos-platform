@@ -32,7 +32,7 @@
 					<div>
 						<a
 							href={backHref}
-							class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-slate-600 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-all duration-200 hover:border-accent hover:bg-muted hover:text-foreground shadow-ink pressable"
 						>
 							<ArrowLeft class="h-3 w-3" />
 							<span class="hidden sm:inline">{backLabel}</span>
@@ -44,19 +44,17 @@
 					{#if icon}
 						{@const Icon = icon}
 						<span
-							class="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 text-blue-600 dark:from-blue-950/30 dark:to-purple-950/30 dark:text-blue-400"
+							class="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-accent shadow-ink"
 						>
 							<Icon class="h-6 w-6" />
 						</span>
 					{/if}
 					<div>
-						<h1
-							class="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl lg:text-3xl"
-						>
+						<h1 class="text-xl font-bold text-foreground sm:text-2xl lg:text-3xl">
 							{title}
 						</h1>
 						{#if description}
-							<p class="mt-1 text-sm text-slate-600 dark:text-slate-400 sm:text-base">
+							<p class="mt-1 text-sm text-muted-foreground sm:text-base">
 								{description}
 							</p>
 						{/if}
@@ -72,9 +70,7 @@
 		</div>
 
 		{#if controls}
-			<div
-				class="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4 dark:border-slate-700"
-			>
+			<div class="flex flex-wrap items-center gap-3 border-t border-border pt-4">
 				{@render controls()}
 			</div>
 		{/if}

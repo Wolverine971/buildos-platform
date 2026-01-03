@@ -252,7 +252,9 @@
 	<div class="min-h-screen bg-background text-foreground">
 		<!-- hero -->
 		<section class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-10 sm:py-12 grid md:grid-cols-2 gap-8 items-center">
+			<div
+				class="mx-auto max-w-6xl px-4 py-10 sm:py-12 grid md:grid-cols-2 gap-8 items-center"
+			>
 				<div class="space-y-6">
 					<a
 						href="/blogs/getting-started/who-is-buildos-for"

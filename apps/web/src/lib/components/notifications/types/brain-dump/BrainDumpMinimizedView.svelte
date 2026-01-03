@@ -13,7 +13,7 @@
 	import { Loader2, CheckCircle, AlertCircle, XCircle, Settings } from 'lucide-svelte';
 	import type { BrainDumpNotification } from '$lib/types/notification.types';
 
-	let { notification } = $props<{ notification: BrainDumpNotification }>();
+	let { notification }: { notification: BrainDumpNotification } = $props();
 
 	// Derive status info from notification state
 	let statusInfo = $derived(

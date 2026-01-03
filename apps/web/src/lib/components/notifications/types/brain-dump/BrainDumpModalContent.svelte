@@ -24,7 +24,7 @@
 
 	const MULTI_BRAINDUMP_ENABLED = true;
 
-	let { notification } = $props<{ notification: BrainDumpNotification }>();
+	let { notification }: { notification: BrainDumpNotification } = $props();
 
 	const dispatch = createEventDispatcher();
 
@@ -604,148 +604,151 @@
 	closeOnBackdrop={true}
 	closeOnEscape={true}
 >
-	<!-- Modal Header -->
-	<div
-		slot="header"
-		class="{currentView === 'parseResults'
-			? 'hidden'
-			: ''} text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-gray-200 dark:border-gray-700"
-	>
-		<div class="flex justify-between items-start mb-4">
-			<div class="flex items-center gap-3">
-				<div>
-					{#if statusInfo.icon === 'processing'}
-						<Loader2
-							class="w-6 h-6 text-primary-600 dark:text-primary-400 animate-spin"
-						/>
-					{:else if statusInfo.icon === 'success'}
-						<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
-					{:else if statusInfo.icon === 'error'}
-						<AlertCircle class="w-6 h-6 text-red-600 dark:text-red-400" />
-					{/if}
+	{#snippet header()}
+		<!-- Modal Header -->
+		<div
+			class="{currentView === 'parseResults'
+				? 'hidden'
+				: ''} text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-gray-200 dark:border-gray-700"
+		>
+			<div class="flex justify-between items-start mb-4">
+				<div class="flex items-center gap-3">
+					<div>
+						{#if statusInfo.icon === 'processing'}
+							<Loader2
+								class="w-6 h-6 text-primary-600 dark:text-primary-400 animate-spin"
+							/>
+						{:else if statusInfo.icon === 'success'}
+							<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
+						{:else if statusInfo.icon === 'error'}
+							<AlertCircle class="w-6 h-6 text-red-600 dark:text-red-400" />
+						{/if}
+					</div>
+					<div class="text-left">
+						<h2 class="text-xl font-bold text-gray-900 dark:text-white">
+							{statusInfo.title}
+						</h2>
+						{#if statusInfo.subtitle}
+							<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+								{statusInfo.subtitle}
+							</p>
+						{/if}
+					</div>
 				</div>
-				<div class="text-left">
-					<h2 class="text-xl font-bold text-gray-900 dark:text-white">
-						{statusInfo.title}
-					</h2>
-					{#if statusInfo.subtitle}
-						<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-							{statusInfo.subtitle}
-						</p>
-					{/if}
-				</div>
-			</div>
 
-			<div class="flex items-center gap-2">
-				<Button
-					variant="ghost"
-					onclick={handleMinimize}
-					aria-label="Minimize"
-					icon={ChevronDown}
-				></Button>
-				<Button
-					variant="ghost"
-					onclick={handleClose}
-					aria-label="Close notification"
-					icon={X}
-				></Button>
+				<div class="flex items-center gap-2">
+					<Button
+						variant="ghost"
+						onclick={handleMinimize}
+						aria-label="Minimize"
+						icon={ChevronDown}
+					></Button>
+					<Button
+						variant="ghost"
+						onclick={handleClose}
+						aria-label="Close notification"
+						icon={X}
+					></Button>
+				</div>
 			</div>
 		</div>
-	</div>
+	{/snippet}
 
-	<!-- Modal Content -->
-	<div class="px-4 sm:px-6 py-4 sm:py-5">
-		{#if currentView === 'success'}
-			<!-- Success View -->
-			{#if SuccessView && successData}
-				<SuccessView
-					{successData}
-					showNavigationOnSuccess={true}
-					inModal={true}
-					on:goToProject={handleGoToProject}
-					on:startNew={handleStartNew}
-					on:close={handleClose}
-					on:navigateToHistory={handleNavigateToHistory}
-				/>
-			{:else}
-				<!-- Loading success view -->
-				<div class="flex items-center justify-center py-8">
-					<Loader2 class="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin" />
-				</div>
-			{/if}
-		{:else if currentView === 'parseResults'}
-			<!-- Parse Results View -->
-			{#if ParseResultsDiffView && notification.data.parseResults}
-				<ParseResultsDiffView
-					parseResults={notification.data.parseResults}
-					disabledOperations={new Set()}
-					enabledOperationsCount={notification.data.parseResults.operations?.length || 0}
-					isProcessing={false}
-					isApplying={isApplyingOperations}
-					showAutoAcceptToggle={true}
-					autoAcceptEnabled={false}
-					canAutoAcceptCurrent={true}
-					projectId={notification.data.selectedProject?.id === 'new'
-						? null
-						: notification.data.selectedProject?.id}
-					on:toggleOperation={handleToggleOperation}
-					on:updateOperation={handleUpdateOperation}
-					on:removeOperation={handleRemoveOperation}
-					on:editOperation={handleEditOperation}
-					on:toggleAutoAccept={handleToggleAutoAccept}
-					on:applyAutoAccept={handleApplyAutoAccept}
-					on:apply={handleApplyOperations}
-					on:cancel={handleCancel}
-				/>
-			{:else}
-				<!-- Loading parse results view -->
-				<div class="flex items-center justify-center py-8">
-					<Loader2 class="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin" />
-				</div>
-			{/if}
-		{:else if currentView === 'processing'}
-			<!-- Processing View -->
-			{#if DualProcessingResults && realtimeStreamingState}
-				<DualProcessingResults
-					bind:this={dualProcessingComponent}
-					analysisStatus={realtimeStreamingState.analysisStatus ?? 'not_needed'}
-					contextStatus={realtimeStreamingState.contextStatus}
-					tasksStatus={realtimeStreamingState.tasksStatus}
-					analysisResult={realtimeStreamingState.analysisResult}
-					contextResult={realtimeStreamingState.contextResult}
-					tasksResult={realtimeStreamingState.tasksResult}
-					isShortBraindump={notification.data.processingType === 'short'}
-					showContextPanel={notification.data.processingType === 'dual'}
-					showAnalysisPanel={!!notification.data.selectedProject?.id &&
-						notification.data.selectedProject.id !== 'new'}
-					isProcessing={true}
-				/>
-			{:else}
-				<!-- Loading processing view or simple spinner -->
-				<div class="text-center space-y-4">
-					<div class="flex justify-center">
+	{#snippet children()}
+		<!-- Modal Content -->
+		<div class="px-4 sm:px-6 py-4 sm:py-5">
+			{#if currentView === 'success'}
+				<!-- Success View -->
+				{#if SuccessView && successData}
+					<SuccessView
+						{successData}
+						showNavigationOnSuccess={true}
+						inModal={true}
+						on:goToProject={handleGoToProject}
+						on:startNew={handleStartNew}
+						on:close={handleClose}
+						on:navigateToHistory={handleNavigateToHistory}
+					/>
+				{:else}
+					<!-- Loading success view -->
+					<div class="flex items-center justify-center py-8">
 						<Loader2
 							class="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin"
 						/>
 					</div>
-					<div>
-						<p class="text-sm text-gray-600 dark:text-gray-300">
-							{notification.data.processingType === 'dual'
-								? 'Analyzing content for context and tasks...'
-								: notification.data.processingType === 'short'
-									? 'Processing quick update...'
-									: 'Processing your brain dump...'}
-						</p>
+				{/if}
+			{:else if currentView === 'parseResults'}
+				<!-- Parse Results View -->
+				{#if ParseResultsDiffView && notification.data.parseResults}
+					<ParseResultsDiffView
+						parseResults={notification.data.parseResults}
+						disabledOperations={new Set()}
+						isProcessing={false}
+						isApplying={isApplyingOperations}
+						showAutoAcceptToggle={true}
+						autoAcceptEnabled={false}
+						canAutoAcceptCurrent={true}
+						on:toggleOperation={handleToggleOperation}
+						on:updateOperation={handleUpdateOperation}
+						on:removeOperation={handleRemoveOperation}
+						on:editOperation={handleEditOperation}
+						on:toggleAutoAccept={handleToggleAutoAccept}
+						on:applyAutoAccept={handleApplyAutoAccept}
+						on:apply={handleApplyOperations}
+						on:cancel={handleCancel}
+					/>
+				{:else}
+					<!-- Loading parse results view -->
+					<div class="flex items-center justify-center py-8">
+						<Loader2
+							class="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin"
+						/>
 					</div>
+				{/if}
+			{:else if currentView === 'processing'}
+				<!-- Processing View -->
+				{#if DualProcessingResults && realtimeStreamingState}
+					<DualProcessingResults
+						bind:this={dualProcessingComponent}
+						analysisStatus={realtimeStreamingState.analysisStatus ?? 'not_needed'}
+						contextStatus={realtimeStreamingState.contextStatus}
+						tasksStatus={realtimeStreamingState.tasksStatus}
+						analysisResult={realtimeStreamingState.analysisResult}
+						contextResult={realtimeStreamingState.contextResult}
+						tasksResult={realtimeStreamingState.tasksResult}
+						isShortBraindump={notification.data.processingType === 'short'}
+						showContextPanel={notification.data.processingType === 'dual'}
+						showAnalysisPanel={!!notification.data.selectedProject?.id &&
+							notification.data.selectedProject.id !== 'new'}
+						isProcessing={true}
+					/>
+				{:else}
+					<!-- Loading processing view or simple spinner -->
+					<div class="text-center space-y-4">
+						<div class="flex justify-center">
+							<Loader2
+								class="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin"
+							/>
+						</div>
+						<div>
+							<p class="text-sm text-gray-600 dark:text-gray-300">
+								{notification.data.processingType === 'dual'
+									? 'Analyzing content for context and tasks...'
+									: notification.data.processingType === 'short'
+										? 'Processing quick update...'
+										: 'Processing your brain dump...'}
+							</p>
+						</div>
+					</div>
+				{/if}
+			{:else}
+				<!-- Empty/Idle state -->
+				<div class="text-center py-8">
+					<p class="text-gray-500 dark:text-gray-400">No content to display</p>
 				</div>
 			{/if}
-		{:else}
-			<!-- Empty/Idle state -->
-			<div class="text-center py-8">
-				<p class="text-gray-500 dark:text-gray-400">No content to display</p>
-			</div>
-		{/if}
-	</div>
+		</div>
+	{/snippet}
 </Modal>
 
 <!-- Operation Edit Modal -->
@@ -772,22 +775,24 @@
 		closeOnBackdrop={true}
 		closeOnEscape={true}
 	>
-		<div class="p-6 text-center">
-			<CheckCircle class="w-12 h-12 mx-auto mb-4 text-green-600 dark:text-green-400" />
-			<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-				{pendingProjectUpdate.projectName} has been updated
-			</h3>
-			<p class="text-gray-600 dark:text-gray-400 mb-6">
-				Your changes have been applied. Refresh the page to see the latest updates.
-			</p>
-			<div class="flex gap-3 justify-center">
-				<Button variant="ghost" onclick={handleRefreshCancel} class="min-w-[100px]">
-					Later
-				</Button>
-				<Button variant="primary" onclick={handleRefreshConfirm} class="min-w-[100px]">
-					Refresh Now
-				</Button>
+		{#snippet children()}
+			<div class="p-6 text-center">
+				<CheckCircle class="w-12 h-12 mx-auto mb-4 text-green-600 dark:text-green-400" />
+				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					{pendingProjectUpdate.projectName} has been updated
+				</h3>
+				<p class="text-gray-600 dark:text-gray-400 mb-6">
+					Your changes have been applied. Refresh the page to see the latest updates.
+				</p>
+				<div class="flex gap-3 justify-center">
+					<Button variant="ghost" onclick={handleRefreshCancel} class="min-w-[100px]">
+						Later
+					</Button>
+					<Button variant="primary" onclick={handleRefreshConfirm} class="min-w-[100px]">
+						Refresh Now
+					</Button>
+				</div>
 			</div>
-		</div>
+		{/snippet}
 	</Modal>
 {/if}

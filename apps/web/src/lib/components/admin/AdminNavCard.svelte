@@ -31,7 +31,7 @@
 <a
 	{href}
 	class={twMerge(
-		'block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
+		'block focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl',
 		active && 'order-first'
 	)}
 >
@@ -41,59 +41,90 @@
 		interactive
 		class="h-full admin-panel--tinted"
 	>
-		<div class={`flex h-full flex-col ${compact ? 'gap-2' : 'gap-3'}`}>
-			<div class="flex items-start justify-between gap-3">
-				<div class={`flex items-center flex-1 min-w-0 ${compact ? 'gap-2.5' : 'gap-3'}`}>
+		{#if compact}
+			<!-- Compact: Vertical stacked layout for better title visibility -->
+			<div class="flex h-full flex-col gap-2">
+				<div class="flex items-start justify-between gap-2">
 					{#if icon}
 						{@const Icon = icon}
 						<span
-							class={`flex flex-shrink-0 ${compact ? 'h-8 w-8' : 'h-9 w-9'} items-center justify-center rounded-lg bg-gray-900/5 text-gray-700 dark:bg-white/5 dark:text-gray-200`}
+							class="flex flex-shrink-0 h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground"
 						>
-							<Icon class={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+							<Icon class="h-4 w-4" />
 						</span>
 					{/if}
-					<div class="min-w-0 flex-1">
-						<p
-							class={`font-semibold text-gray-900 dark:text-white truncate ${compact ? 'text-sm' : 'text-base'}`}
+					{#if stat !== null && stat !== undefined && stat !== ''}
+						<span
+							class="flex-shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold text-foreground"
 						>
-							{title}
-						</p>
-						{#if description}
-							<p
-								class={`text-gray-600 dark:text-gray-400 truncate ${compact ? 'text-xs mt-0.5' : 'text-sm mt-1'}`}
-							>
-								{description}
-							</p>
-						{/if}
-					</div>
+							{stat}
+						</span>
+					{/if}
 				</div>
-
-				{#if stat !== null && stat !== undefined && stat !== ''}
-					<span
-						class="flex-shrink-0 rounded-lg bg-gray-900/5 px-2 py-0.5 text-xs font-semibold text-gray-900 dark:bg-white/10 dark:text-white"
-					>
-						{stat}
-					</span>
+				<div class="flex-1 min-w-0">
+					<p class="font-semibold text-foreground text-sm leading-tight">
+						{title}
+					</p>
+					{#if description}
+						<p class="text-muted-foreground text-xs mt-0.5 line-clamp-1">
+							{description}
+						</p>
+					{/if}
+				</div>
+				{#if badge}
+					<div class="mt-auto pt-1">
+						<Badge variant="info" size="sm">{badge}</Badge>
+					</div>
 				{/if}
 			</div>
+		{:else}
+			<!-- Standard: Horizontal layout -->
+			<div class="flex h-full flex-col gap-3">
+				<div class="flex items-start justify-between gap-3">
+					<div class="flex items-center flex-1 min-w-0 gap-3">
+						{#if icon}
+							{@const Icon = icon}
+							<span
+								class="flex flex-shrink-0 h-9 w-9 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+							>
+								<Icon class="h-5 w-5" />
+							</span>
+						{/if}
+						<div class="min-w-0 flex-1">
+							<p class="font-semibold text-foreground text-base truncate">
+								{title}
+							</p>
+							{#if description}
+								<p class="text-muted-foreground text-sm mt-1 truncate">
+									{description}
+								</p>
+							{/if}
+						</div>
+					</div>
 
-			{#if badge || !compact}
+					{#if stat !== null && stat !== undefined && stat !== ''}
+						<span
+							class="flex-shrink-0 rounded-lg bg-muted px-2 py-0.5 text-xs font-semibold text-foreground"
+						>
+							{stat}
+						</span>
+					{/if}
+				</div>
+
 				<div
-					class="mt-auto flex items-center justify-between text-xs pt-1 border-t border-gray-200/50 dark:border-gray-700/50"
+					class="mt-auto flex items-center justify-between text-xs pt-1 border-t border-border/50"
 				>
 					{#if badge}
 						<Badge variant="info" size="sm">{badge}</Badge>
 					{:else}
-						<span class="text-gray-500 dark:text-gray-500 text-xs"
-							>{meta || 'Explore'}</span
-						>
+						<span class="text-muted-foreground text-xs">{meta || 'Explore'}</span>
 					{/if}
 
-					<span class="text-xs font-medium text-gray-500 dark:text-gray-500">
+					<span class="text-xs font-medium text-muted-foreground">
 						{active ? 'Active' : 'View'}
 					</span>
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</AdminCard>
 </a>

@@ -432,8 +432,8 @@
 		message={getLoadingMessage('projectEdit')}
 	/>
 	{#if componentCache.projectEdit && !loadingStates.projectEdit}
-		<svelte:component
-			this={componentCache.projectEdit}
+		{@const ProjectEditComponent = componentCache.projectEdit}
+		<ProjectEditComponent
 			isOpen={true}
 			{project}
 			on:close={() => handleCloseModal('projectEdit')}
@@ -449,8 +449,8 @@
 		message={getLoadingMessage('projectContext')}
 	/>
 	{#if componentCache.projectContext && !loadingStates.projectContext}
-		<svelte:component
-			this={componentCache.projectContext}
+		{@const ProjectContextComponent = componentCache.projectContext}
+		<ProjectContextComponent
 			isOpen={true}
 			{project}
 			on:close={() => handleCloseModal('projectContext')}
@@ -465,8 +465,8 @@
 		message={getLoadingMessage('projectHistory')}
 	/>
 	{#if componentCache.projectHistory && !loadingStates.projectHistory}
-		<svelte:component
-			this={componentCache.projectHistory}
+		{@const ProjectHistoryComponent = componentCache.projectHistory}
+		<ProjectHistoryComponent
 			isOpen={true}
 			projectId={project?.id}
 			on:close={() => handleCloseModal('projectHistory')}
@@ -481,8 +481,8 @@
 		message={getLoadingMessage('projectCalendarConnect')}
 	/>
 	{#if componentCache.projectCalendarConnect && !loadingStates.projectCalendarConnect}
-		<svelte:component
-			this={componentCache.projectCalendarConnect}
+		{@const ProjectCalendarConnectComponent = componentCache.projectCalendarConnect}
+		<ProjectCalendarConnectComponent
 			isOpen={true}
 			{project}
 			redirectPath={calendarConnectData?.redirectPath || null}
@@ -498,8 +498,8 @@
 		message={getLoadingMessage('projectCalendarSettings')}
 	/>
 	{#if componentCache.projectCalendarSettings && !loadingStates.projectCalendarSettings}
-		<svelte:component
-			this={componentCache.projectCalendarSettings}
+		{@const ProjectCalendarSettingsComponent = componentCache.projectCalendarSettings}
+		<ProjectCalendarSettingsComponent
 			isOpen={true}
 			{project}
 			userId={project?.user_id}
@@ -541,8 +541,8 @@
 		message={getLoadingMessage('task')}
 	/>
 	{#if componentCache.task && !loadingStates.task}
-		<svelte:component
-			this={componentCache.task}
+		{@const TaskComponent = componentCache.task}
+		<TaskComponent
 			isOpen={true}
 			task={taskData}
 			projectId={project?.id}
@@ -565,8 +565,8 @@
 		message={getLoadingMessage('note')}
 	/>
 	{#if componentCache.note && !loadingStates.note}
-		<svelte:component
-			this={componentCache.note}
+		{@const NoteComponent = componentCache.note}
+		<NoteComponent
 			isOpen={true}
 			note={noteData}
 			projectId={project?.id}
@@ -584,8 +584,8 @@
 		message={getLoadingMessage('scheduling')}
 	/>
 	{#if componentCache.scheduling && !loadingStates.scheduling && schedulingData}
-		<svelte:component
-			this={componentCache.scheduling}
+		{@const SchedulingComponent = componentCache.scheduling}
+		<SchedulingComponent
 			isOpen={true}
 			phase={schedulingData}
 			projectId={project?.id}
@@ -604,8 +604,8 @@
 		message={getLoadingMessage('projectDates')}
 	/>
 	{#if componentCache.projectDates && !loadingStates.projectDates}
-		<svelte:component
-			this={componentCache.projectDates}
+		{@const ProjectDatesComponent = componentCache.projectDates}
+		<ProjectDatesComponent
 			isOpen={true}
 			projectStartDate={project?.start_date}
 			projectEndDate={project?.end_date}
@@ -624,8 +624,8 @@
 		message={getLoadingMessage('phaseGenerationConfirmation')}
 	/>
 	{#if componentCache.phaseGenerationConfirmation && !loadingStates.phaseGenerationConfirmation && phaseGenerationData}
-		<svelte:component
-			this={componentCache.phaseGenerationConfirmation}
+		{@const PhaseGenerationComponent = componentCache.phaseGenerationConfirmation}
+		<PhaseGenerationComponent
 			isOpen={true}
 			projectId={phaseGenerationData.projectId}
 			projectStartDate={phaseGenerationData.projectStartDate}
@@ -731,8 +731,8 @@
 		message="Loading unschedule options..."
 	/>
 	{#if componentCache.unscheduleConfirmation && !loadingStates.unscheduleConfirmation && unscheduleData}
-		<svelte:component
-			this={componentCache.unscheduleConfirmation}
+		{@const UnscheduleComponent = componentCache.unscheduleConfirmation}
+		<UnscheduleComponent
 			isOpen={true}
 			phases={unscheduleData.phases || []}
 			scheduledTaskCount={unscheduleData.scheduledTaskCount || 0}
@@ -804,8 +804,8 @@
 		message={getLoadingMessage('assignBacklogTasks')}
 	/>
 	{#if componentCache.assignBacklogTasks && !loadingStates.assignBacklogTasks && assignBacklogData}
-		<svelte:component
-			this={componentCache.assignBacklogTasks}
+		{@const AssignBacklogComponent = componentCache.assignBacklogTasks}
+		<AssignBacklogComponent
 			isOpen={true}
 			projectId={assignBacklogData.projectId}
 			backlogTasks={assignBacklogData.backlogTasks}
@@ -827,8 +827,8 @@
 		message={getLoadingMessage('rescheduleOverdueTasks')}
 	/>
 	{#if componentCache.rescheduleOverdueTasks && !loadingStates.rescheduleOverdueTasks && rescheduleOverdueData}
-		<svelte:component
-			this={componentCache.rescheduleOverdueTasks}
+		{@const RescheduleOverdueComponent = componentCache.rescheduleOverdueTasks}
+		<RescheduleOverdueComponent
 			isOpen={true}
 			projectId={rescheduleOverdueData.projectId}
 			overdueTasks={rescheduleOverdueData.overdueTasks}
@@ -846,8 +846,8 @@
 		message={getLoadingMessage('scheduleAllPhases')}
 	/>
 	{#if componentCache.scheduleAllPhases && !loadingStates.scheduleAllPhases}
-		<svelte:component
-			this={componentCache.scheduleAllPhases}
+		{@const ScheduleAllPhasesComponent = componentCache.scheduleAllPhases}
+		<ScheduleAllPhasesComponent
 			isOpen={true}
 			{phases}
 			projectId={project?.id}

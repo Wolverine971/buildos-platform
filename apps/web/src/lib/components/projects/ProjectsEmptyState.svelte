@@ -46,8 +46,8 @@
 			border border-gray-200 dark:border-gray-700"
 	>
 		{#if icon}
-			<svelte:component
-				this={icon}
+			{@const EmptyStateIcon = icon}
+			<EmptyStateIcon
 				class="w-{hasFilters ? '12' : '16'} h-{hasFilters ? '12' : '16'}
 					text-gray-400 mx-auto mb-4"
 			/>

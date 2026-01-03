@@ -28,10 +28,7 @@
 
 	export let parseResults: BrainDumpParseResult;
 	export let disabledOperations: Set<string>;
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	export let enabledOperationsCount: number;
 	export let isProcessing: boolean;
-	export let projectId: string | null = null;
 	export let isApplying: boolean = false; // Parent-controlled loading state
 
 	// NEW: Auto-accept props

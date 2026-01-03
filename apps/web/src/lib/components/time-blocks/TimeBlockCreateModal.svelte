@@ -283,7 +283,7 @@
 	{/snippet}
 </FormModal>
 
-<style>
+<style lang="postcss">
 	:global(.modal-content) {
 		z-index: 100;
 	}

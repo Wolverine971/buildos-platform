@@ -62,25 +62,25 @@
 			case 'down':
 				return 'text-rose-600 dark:text-rose-400';
 			default:
-				return 'text-gray-600 dark:text-gray-400';
+				return 'text-muted-foreground';
 		}
 	});
 
 	let labelClasses = $derived(
 		twMerge(
-			'font-semibold uppercase tracking-[0.15em] text-gray-600 dark:text-gray-400',
+			'font-semibold uppercase tracking-[0.15em] text-muted-foreground',
 			compact ? 'text-[0.65rem]' : 'text-[0.7rem]'
 		)
 	);
 
 	let valueClasses = $derived(
 		compact
-			? 'text-2xl font-semibold text-gray-900 dark:text-white sm:text-[1.7rem]'
-			: 'text-[2rem] font-semibold text-gray-900 dark:text-white sm:text-[2.35rem]'
+			? 'text-2xl font-semibold text-foreground sm:text-[1.7rem]'
+			: 'text-[2rem] font-semibold text-foreground sm:text-[2.35rem]'
 	);
 
 	let iconWrapperClasses = $derived(
-		`flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-xl bg-gray-900/5 text-gray-700 dark:bg-white/5 dark:text-gray-200`
+		`flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-xl bg-muted text-muted-foreground`
 	);
 
 	let iconSize = $derived(compact ? 'h-5 w-5' : 'h-6 w-6');
@@ -110,7 +110,7 @@
 			{:else if resolvedDirection === 'down'}
 				<TrendingDown class="h-4 w-4 text-rose-500" />
 			{:else}
-				<span class="h-2 w-2 rounded-full bg-gray-400"></span>
+				<span class="h-2 w-2 rounded-full bg-muted-foreground/50"></span>
 			{/if}
 			<div class="flex items-baseline gap-2">
 				<span class={changeClasses}>
@@ -119,14 +119,14 @@
 					{changeText}
 				</span>
 				{#if changeLabel}
-					<span class="text-gray-600 dark:text-gray-400">{changeLabel}</span>
+					<span class="text-muted-foreground">{changeLabel}</span>
 				{/if}
 			</div>
 		</div>
 	{/if}
 
 	{#if footnote}
-		<p class={`${compact ? 'mt-3' : 'mt-4'} text-sm text-gray-600 dark:text-gray-400`}>
+		<p class={`${compact ? 'mt-3' : 'mt-4'} text-sm text-muted-foreground`}>
 			{footnote}
 		</p>
 	{/if}

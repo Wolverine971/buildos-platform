@@ -17,7 +17,7 @@ import type {
 	ProjectBriefData,
 	RecentUpdates
 } from './ontologyBriefTypes.js';
-import { parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { getWorkMode } from './ontologyBriefDataLoader.js';
 
 // ============================================================================
@@ -32,15 +32,34 @@ function formatMinutes(minutes: number): string {
 	return `${mins}m`;
 }
 
-function formatGoalProgress(goal: GoalProgress): string {
-	const statusEmoji =
-		goal.status === 'on_track'
-			? '**On Track**'
-			: goal.status === 'at_risk'
-				? '**At Risk**'
-				: '**Behind**';
+function formatGoalTarget(goal: GoalProgress): string | null {
+	if (!goal.targetDate) return null;
 
-	return `- **${goal.goal.name}**: ${goal.progressPercent}% (${goal.completedTasks}/${goal.totalTasks} tasks) - ${statusEmoji}`;
+	const formattedDate = format(parseISO(`${goal.targetDate}T00:00:00`), 'MMM d, yyyy');
+	if (goal.targetDaysAway === null) {
+		return `Target: ${formattedDate}`;
+	}
+
+	if (goal.targetDaysAway === 0) {
+		return `Target: ${formattedDate} (today)`;
+	}
+	if (goal.targetDaysAway > 0) {
+		const dayLabel = goal.targetDaysAway === 1 ? 'day' : 'days';
+		return `Target: ${formattedDate} (in ${goal.targetDaysAway} ${dayLabel})`;
+	}
+
+	const overdueDays = Math.abs(goal.targetDaysAway);
+	const overdueLabel = overdueDays === 1 ? 'day' : 'days';
+	return `Target: ${formattedDate} (${overdueDays} ${overdueLabel} overdue)`;
+}
+
+function formatGoalProgress(goal: GoalProgress): string {
+	const targetSummary = formatGoalTarget(goal);
+	if (!targetSummary) {
+		return `- **${goal.goal.name}**`;
+	}
+
+	return `- **${goal.goal.name}**: ${targetSummary}`;
 }
 
 function formatTaskForPrompt(task: OntoTask, projectName?: string): string {
@@ -103,7 +122,7 @@ Structure your response as:
    - Any strategic concerns or opportunities?
 
 2. **Goal Progress** (brief summary of each active goal)
-   - Progress percentage and trajectory
+   - Target date (if set) and urgency
    - Key contributing tasks
 
 3. **Today's Focus** (prioritized action list)
@@ -387,7 +406,7 @@ Structure (200 words max):
    - Any critical concerns
 
 2. **Key Focus Areas** (3-5 bullets)
-   - Most impactful tasks for goal progress
+   - Most impactful tasks for goal targets
    - Unblocking work that enables others
    - Outputs needing attention
 
@@ -549,7 +568,7 @@ export class OntologyProjectBriefPrompt {
 		return `You are a BuildOS productivity strategist writing a project-specific daily brief.
 
 Focus on:
-- Goal progress within this project
+- Goal targets within this project
 - Outputs being produced
 - Today's tasks and their strategic alignment
 - Blockers and risks specific to this project
@@ -677,7 +696,7 @@ export class OntologyReengagementPrompt {
 
 Your tone should be ${tone}. Focus on:
 1. Acknowledging their absence without guilt
-2. Leading with GOAL progress - show them where they stand on their objectives
+2. Leading with goal targets (if set) - show upcoming or overdue dates
 3. Highlighting outputs in progress that may need attention
 4. Surfacing any active risks or blockers
 5. Making it easy to jump back in with clear next actions
@@ -771,7 +790,7 @@ Last login: ${lastLoginDate}
 
 		prompt += `
 Write a re-engagement message following the system instructions.
-Lead with goal progress and make it easy to jump back in.`;
+Lead with goal targets (if set) and make it easy to jump back in.`;
 
 		return prompt;
 	}
