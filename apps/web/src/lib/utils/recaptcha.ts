@@ -1,5 +1,5 @@
 // apps/web/src/lib/utils/recaptcha.ts
-import { PRIVATE_RECAPTCHA_SECRET_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
 
 interface RecaptchaVerifyResponse {
@@ -32,7 +32,7 @@ export async function verifyRecaptcha(token: string, ip?: string): Promise<boole
 	}
 
 	// Use test key in development if no real key is configured
-	const secretKey = PRIVATE_RECAPTCHA_SECRET_KEY || (dev ? RECAPTCHA_TEST_SECRET_KEY : null);
+	const secretKey = env.PRIVATE_RECAPTCHA_SECRET_KEY || (dev ? RECAPTCHA_TEST_SECRET_KEY : null);
 
 	if (!secretKey) {
 		console.error('PRIVATE_RECAPTCHA_SECRET_KEY is not configured');

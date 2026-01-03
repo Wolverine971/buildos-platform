@@ -5,7 +5,7 @@ import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
 import { validateEmail } from '$lib/utils/email-validation';
 import { verifyRecaptcha } from '$lib/utils/recaptcha';
-import { PRIVATE_RECAPTCHA_SECRET_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
 
 interface BetaSignupRequest {
@@ -266,7 +266,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		// Parse request body
 		const data: BetaSignupRequest = await request.json();
 
-		const recaptchaEnabled = !!PRIVATE_RECAPTCHA_SECRET_KEY || dev;
+		const recaptchaEnabled = !!env.PRIVATE_RECAPTCHA_SECRET_KEY || dev;
 		if (recaptchaEnabled) {
 			// Get client IP for reCAPTCHA verification
 			const clientIP = getClientIP(request);

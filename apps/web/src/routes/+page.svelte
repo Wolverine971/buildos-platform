@@ -252,7 +252,7 @@
 	<div class="min-h-screen bg-background text-foreground">
 		<!-- hero -->
 		<section class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-14 grid md:grid-cols-2 gap-10 items-center">
+			<div class="mx-auto max-w-6xl px-4 py-10 sm:py-12 grid md:grid-cols-2 gap-8 items-center">
 				<div class="space-y-6">
 					<a
 						href="/blogs/getting-started/who-is-buildos-for"
@@ -296,17 +296,17 @@
 				</div>
 
 				<div
-					class="rounded-3xl border border-border bg-card shadow-ink-strong tx tx-frame tx-weak ink-frame overflow-hidden"
+					class="rounded-xl border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden"
 				>
 					<div
 						class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground"
 					>
 						Project: Raise Seed & Ship v1
 					</div>
-					<div class="p-5 space-y-4">
-						<div class="grid sm:grid-cols-2 gap-4">
+					<div class="p-4 space-y-3">
+						<div class="grid sm:grid-cols-2 gap-3">
 							<div
-								class="rounded-2xl border border-border bg-background tx tx-static tx-weak p-3"
+								class="rounded-lg border border-border bg-background tx tx-static tx-weak p-3"
 							>
 								<div
 									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
@@ -319,7 +319,7 @@
 								</p>
 							</div>
 							<div
-								class="rounded-2xl border border-border bg-background tx tx-grain tx-weak p-3"
+								class="rounded-lg border border-border bg-background tx tx-grain tx-weak p-3"
 							>
 								<div
 									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
@@ -336,14 +336,14 @@
 						</div>
 
 						<div
-							class="rounded-2xl border border-border bg-background tx tx-thread tx-weak p-3 flex items-center justify-between gap-3"
+							class="rounded-lg border border-border bg-background tx tx-thread tx-weak p-3 flex items-center justify-between gap-3"
 						>
 							<p class="text-[0.85rem]">
 								<span class="text-muted-foreground">Next move:</span> Follow up with
 								the 4 investors who opened your deck twice.
 							</p>
 							<button
-								class="pressable rounded-full border border-border bg-card px-3 py-1.5 text-xs shadow-ink"
+								class="pressable rounded-full border border-border bg-card px-3 py-1.5 text-xs shadow-ink shrink-0"
 							>
 								Do this now
 							</button>
@@ -355,7 +355,7 @@
 
 		<!-- how it works -->
 		<section id="how" class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-14 space-y-8">
+			<div class="mx-auto max-w-6xl px-4 py-10 space-y-6">
 				<div class="flex items-end justify-between gap-4 flex-wrap">
 					<div>
 						<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
@@ -374,9 +374,9 @@
 					</a>
 				</div>
 
-				<div class="grid md:grid-cols-3 gap-5">
+				<div class="grid md:grid-cols-3 gap-4">
 					<article
-						class="rounded-3xl border border-border bg-card shadow-ink tx tx-bloom tx-weak ink-frame p-5"
+						class="rounded-xl border border-border bg-card shadow-ink tx tx-bloom tx-weak p-4"
 					>
 						<div
 							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
@@ -391,7 +391,7 @@
 					</article>
 
 					<article
-						class="rounded-3xl border border-border bg-card shadow-ink tx tx-grain tx-weak ink-frame p-5"
+						class="rounded-xl border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
 					>
 						<div
 							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
@@ -406,7 +406,7 @@
 					</article>
 
 					<article
-						class="rounded-3xl border border-border bg-card shadow-ink tx tx-pulse tx-weak ink-frame p-5"
+						class="rounded-xl border border-border bg-card shadow-ink tx tx-pulse tx-weak p-4"
 					>
 						<div
 							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
@@ -425,7 +425,7 @@
 
 		<!-- under the hood -->
 		<section id="stack" class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-14 space-y-8">
+			<div class="mx-auto max-w-6xl px-4 py-10 space-y-6">
 				<div class="flex items-end justify-between gap-4 flex-wrap">
 					<div>
 						<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
@@ -445,8 +445,8 @@
 					</a>
 				</div>
 
-				<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
+				<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
 						<div class="flex items-center gap-2 mb-1">
 							<FolderKanban class="w-3.5 h-3.5 text-emerald-500" />
 							<span
@@ -458,7 +458,7 @@
 							The big containers for everything you're working toward.
 						</p>
 					</div>
-					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
 						<div class="flex items-center gap-2 mb-1">
 							<Target class="w-3.5 h-3.5 text-amber-500" />
 							<span
@@ -470,7 +470,7 @@
 							The outcomes you're driving toward. The "why."
 						</p>
 					</div>
-					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
 						<div class="flex items-center gap-2 mb-1">
 							<Calendar class="w-3.5 h-3.5 text-indigo-500" />
 							<span
@@ -482,7 +482,7 @@
 							Strategic groupings of work. Phases and sprints.
 						</p>
 					</div>
-					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
 						<div class="flex items-center gap-2 mb-1">
 							<ListChecks class="w-3.5 h-3.5 text-slate-500" />
 							<span
@@ -492,7 +492,7 @@
 						</div>
 						<p class="text-sm text-foreground">The actual work. What you do today.</p>
 					</div>
-					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
 						<div class="flex items-center gap-2 mb-1">
 							<Flag class="w-3.5 h-3.5 text-emerald-500" />
 							<span
@@ -504,7 +504,7 @@
 							Significant markers. Progress made visible.
 						</p>
 					</div>
-					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
 						<div class="flex items-center gap-2 mb-1">
 							<FileText class="w-3.5 h-3.5 text-sky-500" />
 							<span
@@ -516,7 +516,7 @@
 							Notes, specs, context. The knowledge you need.
 						</p>
 					</div>
-					<div class="rounded-2xl border border-border bg-card tx tx-frame tx-weak p-4">
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
 						<div class="flex items-center gap-2 mb-1">
 							<AlertTriangle class="w-3.5 h-3.5 text-red-500" />
 							<span
@@ -529,7 +529,7 @@
 						</p>
 					</div>
 					<div
-						class="rounded-2xl border border-border bg-accent/10 tx tx-bloom tx-weak p-4"
+						class="rounded-lg border border-border bg-accent/10 tx tx-bloom tx-weak p-3"
 					>
 						<div class="flex items-center gap-2 mb-1">
 							<Sparkles class="w-3.5 h-3.5 text-accent" />
@@ -549,25 +549,25 @@
 		<ExampleProjectGraph />
 
 		<!-- final CTA -->
-		<section class="py-20">
+		<section class="py-12 sm:py-16">
 			<div class="mx-auto max-w-6xl px-4 text-center">
-				<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-4">
+				<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-3">
 					Ready to turn chaos into clarity?
 				</h2>
-				<p class="text-sm text-muted-foreground mb-8 max-w-lg mx-auto">
+				<p class="text-sm text-muted-foreground mb-6 max-w-lg mx-auto">
 					14-day free trial. No credit card required. Built for how your brain actually
 					works.
 				</p>
 				<div class="flex flex-wrap justify-center gap-3">
 					<a
 						href="/auth/register"
-						class="pressable rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background shadow-ink"
+						class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink"
 					>
 						Get started free
 					</a>
 					<a
 						href="/blogs/getting-started/how-buildos-works"
-						class="pressable rounded-full border border-border bg-card px-6 py-3 text-sm shadow-ink hover:opacity-95"
+						class="pressable rounded-full border border-border bg-card px-6 py-2.5 text-sm shadow-ink hover:border-accent/50 transition-colors"
 					>
 						Learn more
 					</a>
