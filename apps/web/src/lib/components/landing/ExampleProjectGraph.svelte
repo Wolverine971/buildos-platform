@@ -249,7 +249,7 @@
 </script>
 
 <section id="example" class="border-t border-border bg-muted/30">
-	<div class="mx-auto max-w-6xl px-4 py-14 space-y-8">
+	<div class="mx-auto max-w-6xl px-4 py-4 space-y-8">
 		<!-- Section Header -->
 		<div class="space-y-4">
 			<div class="flex items-center gap-2">
@@ -544,18 +544,5 @@
 				</button>
 			</div>
 		{/if}
-
-		<!-- Call to Action -->
-		<div class="text-center pt-4">
-			<p class="text-sm text-muted-foreground mb-4">
-				Ready to organize your own complex projects with BuildOS?
-			</p>
-			<a
-				href="/auth/register"
-				class="inline-flex items-center gap-2 pressable rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-ink"
-			>
-				Start building your project brain
-			</a>
-		</div>
 	</div>
 </section>

@@ -187,7 +187,8 @@ export function validateEnvironment(): { valid: boolean; errors: string[] } {
 	const requiredVars = [
 		'PUBLIC_SUPABASE_URL',
 		'PRIVATE_SUPABASE_SERVICE_KEY',
-		'PRIVATE_OPENROUTER_API_KEY' // Required for LLM analysis in briefs
+		'PRIVATE_OPENROUTER_API_KEY', // Required for LLM analysis in briefs
+		'PRIVATE_RAILWAY_WORKER_TOKEN' // Required for authenticated worker API calls
 	];
 
 	for (const varName of requiredVars) {

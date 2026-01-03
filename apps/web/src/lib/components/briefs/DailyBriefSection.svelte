@@ -347,8 +347,15 @@
 						{#if displayDailyBrief.priority_actions?.length}
 							<span class="preview-pill">
 								<ArrowRight class="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-								<span class="hidden sm:inline">{displayDailyBrief.priority_actions.length} priority action{displayDailyBrief.priority_actions.length !== 1 ? 's' : ''}</span>
-								<span class="sm:hidden">{displayDailyBrief.priority_actions.length}</span>
+								<span class="hidden sm:inline"
+									>{displayDailyBrief.priority_actions.length} priority action{displayDailyBrief
+										.priority_actions.length !== 1
+										? 's'
+										: ''}</span
+								>
+								<span class="sm:hidden"
+									>{displayDailyBrief.priority_actions.length}</span
+								>
 							</span>
 						{/if}
 					</div>
@@ -359,9 +366,13 @@
 			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
 				<div class="email-cta-banner mt-2 sm:mt-3">
 					<div class="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
-						<Mail class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent dark:text-accent flex-shrink-0" />
+						<Mail
+							class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent dark:text-accent flex-shrink-0"
+						/>
 						<p class="text-xs sm:text-sm text-muted-foreground truncate">
-							<span class="hidden sm:inline">Want this delivered to your inbox each morning?</span>
+							<span class="hidden sm:inline"
+								>Want this delivered to your inbox each morning?</span
+							>
 							<span class="sm:hidden">Get this via email?</span>
 						</p>
 					</div>

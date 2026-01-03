@@ -175,7 +175,7 @@
 			formError = 'Title is required';
 			return false;
 		}
-		if (!typeKey.trim()) {
+		if (isEditing && !typeKey.trim()) {
 			formError = 'Type key is required';
 			return false;
 		}
@@ -190,14 +190,21 @@
 			saving = true;
 			formError = null;
 
-			const payload = {
+			const payload: Record<string, unknown> = {
 				title: title.trim(),
-				type_key: typeKey.trim(),
 				state_key: stateKey,
 				description: description.trim() || null,
 				// Use content column (API handles backwards compatibility with props.body_markdown)
 				content: body
 			};
+
+			if (isEditing && typeKey.trim()) {
+				payload.type_key = typeKey.trim();
+			}
+
+			if (!isEditing) {
+				payload.classification_source = 'create_modal';
+			}
 
 			let request: Response;
 			if (documentId) {
@@ -443,51 +450,56 @@
 											{/each}
 										</Select>
 									</FormField>
-									<FormField
-										label="Type"
-										labelFor="document-type-input"
-										uppercase={false}
-										error={typeFieldError}
-									>
-										<input
-											id="document-type-input"
-											list={datalistId}
-											class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-all"
-											bind:value={typeKey}
-											placeholder="document.type"
-										/>
-										<datalist id={datalistId}>
-											{#each docTypeOptions as option}
-												<option value={option}></option>
-											{/each}
-										</datalist>
-									</FormField>
+									{#if isEditing}
+										<FormField
+											label="Type"
+											labelFor="document-type-input"
+											uppercase={false}
+											error={typeFieldError}
+										>
+											<input
+												id="document-type-input"
+												list={datalistId}
+												class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-all"
+												bind:value={typeKey}
+												placeholder="document.type"
+											/>
+											<datalist id={datalistId}>
+												{#each docTypeOptions as option}
+													<option value={option}></option>
+												{/each}
+											</datalist>
+										</FormField>
+									{/if}
 								</div>
 
 								<!-- Type suggestions - compact -->
-								<div class="flex flex-wrap gap-1 text-[10px] font-mono">
-									<button
-										type="button"
-										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-										onclick={() => (typeKey = 'document.context.project')}
-									>
-										.context
-									</button>
-									<button
-										type="button"
-										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-										onclick={() => (typeKey = 'document.spec.product')}
-									>
-										.spec
-									</button>
-									<button
-										type="button"
-										class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-										onclick={() => (typeKey = 'document.knowledge.research')}
-									>
-										.note
-									</button>
-								</div>
+								{#if isEditing}
+									<div class="flex flex-wrap gap-1 text-[10px] font-mono">
+										<button
+											type="button"
+											class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+											onclick={() => (typeKey = 'document.context.project')}
+										>
+											.context
+										</button>
+										<button
+											type="button"
+											class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+											onclick={() => (typeKey = 'document.spec.product')}
+										>
+											.spec
+										</button>
+										<button
+											type="button"
+											class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+											onclick={() =>
+												(typeKey = 'document.knowledge.research')}
+										>
+											.note
+										</button>
+									</div>
+								{/if}
 
 								<!-- Linked Entities - Desktop sidebar | Mobile: after content -->
 								{#if isEditing && documentId}
@@ -621,7 +633,7 @@
 					variant="primary"
 					size="sm"
 					loading={saving}
-					disabled={saving || !title.trim() || !typeKey.trim()}
+					disabled={saving || !title.trim() || (isEditing && !typeKey.trim())}
 					class="text-xs px-3 py-1.5"
 				>
 					<Save class="w-3.5 h-3.5" />

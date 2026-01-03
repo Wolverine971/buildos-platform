@@ -5,6 +5,7 @@
  */
 
 import type { RequestHandler } from './$types';
+import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { DOCUMENT_STATES } from '$lib/types/onto';
 import {
@@ -12,6 +13,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -28,13 +30,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const {
 			project_id,
 			title,
-			type_key,
 			state_key = 'draft',
 			body_markdown,
 			content,
-			description,
-			props
+			description
 		} = body as Record<string, unknown>;
+		const classificationSource =
+			(body as Record<string, unknown>)?.classification_source ??
+			(body as Record<string, unknown>)?.classificationSource;
 
 		if (!project_id || typeof project_id !== 'string') {
 			return ApiResponse.badRequest('project_id is required');
@@ -42,10 +45,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (!title || typeof title !== 'string' || !title.trim()) {
 			return ApiResponse.badRequest('title is required');
-		}
-
-		if (!type_key || typeof type_key !== 'string') {
-			return ApiResponse.badRequest('type_key is required');
 		}
 
 		if (state_key !== undefined && !DOCUMENT_STATES.includes(String(state_key))) {
@@ -91,26 +90,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		// Resolve content: prefer content param, fall back to body_markdown, then props.body_markdown
+		// Resolve content: prefer content param, fall back to body_markdown
 		const normalizedContent =
 			typeof content === 'string'
 				? content
 				: typeof body_markdown === 'string'
 					? body_markdown
-					: typeof props === 'object' &&
-						  props !== null &&
-						  typeof (props as Record<string, unknown>).body_markdown === 'string'
-						? ((props as Record<string, unknown>).body_markdown as string)
-						: null;
+					: null;
 
 		const normalizedDescription = typeof description === 'string' ? description : null;
 
-		const propsObject =
-			typeof props === 'object' && props !== null ? (props as Record<string, unknown>) : {};
-
 		// Store body_markdown in props for backwards compatibility during migration
 		const documentProps = {
-			...propsObject,
 			...(normalizedContent ? { body_markdown: normalizedContent } : {})
 		};
 
@@ -119,7 +110,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.insert({
 				project_id,
 				title: title.trim(),
-				type_key,
+				type_key: 'document.default',
 				state_key: typeof state_key === 'string' && state_key.trim() ? state_key : 'draft',
 				content: normalizedContent,
 				description: normalizedDescription,
@@ -160,6 +151,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
+
+		if (classificationSource === 'create_modal') {
+			void classifyOntologyEntity({
+				entityType: 'document',
+				entityId: document.id,
+				userId: session.user.id,
+				classificationSource: 'create_modal'
+			}).catch((err) => {
+				if (dev) console.warn('[Document Create] Classification failed:', err);
+			});
+		}
 
 		return ApiResponse.success({ document });
 	} catch (error) {

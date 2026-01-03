@@ -2,9 +2,8 @@
 <!--
 	Risk Creation Modal Component
 
-	Creates risks within the BuildOS ontology system using a two-step flow:
-	1. Risk type selection (optional - can skip with "General Risk")
-	2. Risk details entry with impact, probability, and mitigation
+	Creates risks within the BuildOS ontology system.
+	Type is auto-classified after creation.
 
 	Documentation:
 	- Ontology System Overview: /apps/web/docs/features/ontology/README.md
@@ -131,7 +130,7 @@
 	];
 
 	let selectedType = $state<(typeof RISK_TYPES)[0] | null>(null);
-	let showTypeSelection = $state(true);
+	let showTypeSelection = $state(false);
 	let isSaving = $state(false);
 	let error = $state('');
 	let slideDirection = $state<1 | -1>(1);
@@ -191,14 +190,14 @@
 		try {
 			const requestBody = {
 				project_id: projectId,
-				type_key: selectedType?.type_key || 'risk.general',
 				title: title.trim(),
 				impact,
 				probability: probability ? parseFloat(probability) : null,
 				state_key: stateKey || 'identified',
 				content: content.trim() || null,
 				description: content.trim() || null,
-				mitigation_strategy: mitigationStrategy.trim() || null
+				mitigation_strategy: mitigationStrategy.trim() || null,
+				classification_source: 'create_modal'
 			};
 
 			const response = await fetch('/api/onto/risks/create', {
@@ -268,10 +267,10 @@
 					<h2
 						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						{showTypeSelection ? 'New Risk' : title || 'New Risk'}
+						{title || 'New Risk'}
 					</h2>
 					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{showTypeSelection ? 'Select a risk type' : 'Define the risk details'}
+						Type will be auto-classified
 					</p>
 				</div>
 			</div>

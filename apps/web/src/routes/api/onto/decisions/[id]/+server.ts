@@ -93,7 +93,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { title, description, outcome, rationale, state_key, decision_at, props } = body;
+		const { title, description, outcome, rationale, state_key, decision_at, props, type_key } =
+			body;
 
 		if (title !== undefined && (typeof title !== 'string' || !title.trim())) {
 			return ApiResponse.badRequest('Title cannot be empty');
@@ -113,6 +114,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (rationale !== undefined && rationale !== null && typeof rationale !== 'string') {
 			return ApiResponse.badRequest('rationale must be a string');
+		}
+
+		if (type_key !== undefined && type_key !== null && typeof type_key !== 'string') {
+			return ApiResponse.badRequest('type_key must be a string');
 		}
 
 		// Validate state_key if provided
@@ -192,6 +197,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (decision_at !== undefined) {
 			updateData.decision_at = decision_at ? new Date(decision_at).toISOString() : null;
+		}
+
+		if (type_key !== undefined && type_key !== null) {
+			const trimmedTypeKey = String(type_key).trim();
+			if (!trimmedTypeKey) {
+				return ApiResponse.badRequest('type_key cannot be empty');
+			}
+			updateData.type_key = trimmedTypeKey;
 		}
 
 		if (props !== undefined && typeof props === 'object' && props !== null) {

@@ -12,12 +12,12 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (default: 'milestone.general') - Template type key
+ * - type_key: string (ignored; auto-classified) - Template type key
  * - title: string (required) - Milestone title
  * - due_at: string (required) - ISO 8601 date/timestamp
  * - state_key?: string - Initial state (default: 'pending')
  * - description?: string - Detailed description
- * - props?: object - Additional properties
+ * - props?: object (ignored; auto-classified)
  *
  * Related Files:
  * - UI Component: /apps/web/src/lib/components/ontology/MilestoneCreateModal.svelte
@@ -30,6 +30,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
 import {
@@ -39,6 +40,7 @@ import {
 } from '$lib/services/async-activity-logger';
 import { MILESTONE_STATES } from '$lib/types/onto';
 import { normalizeMilestoneStateInput } from '../../shared/milestone-state';
+import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -53,16 +55,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Parse request body
 		const body = await request.json();
-		const {
-			project_id,
-			type_key = 'milestone.general',
-			title,
-			milestone,
-			due_at,
-			state_key,
-			description,
-			props = {}
-		} = body;
+		const { project_id, title, milestone, due_at, state_key, description } = body;
+		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
 		if (!project_id) {
@@ -117,7 +111,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create the milestone
 		const milestoneData = {
 			project_id,
-			type_key,
+			type_key: 'milestone.default',
 			title: title.trim(),
 			milestone: milestone?.trim() || null,
 			due_at: dueDate.toISOString(),
@@ -125,14 +119,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			description: description?.trim() || null, // Use dedicated column
 			created_by: actorId,
 			props: {
-				...props,
 				// Maintain backwards compatibility by also storing in props
 				description: description?.trim() || null,
 				state_key: finalState
 			}
 		};
 
-		const { data: milestone, error: createError } = await supabase
+		const { data: createdMilestone, error: createError } = await supabase
 			.from('onto_milestones')
 			.insert(milestoneData)
 			.select('*')
@@ -148,7 +141,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id: project_id,
 			src_id: project_id,
 			src_kind: 'project',
-			dst_id: milestone.id,
+			dst_id: createdMilestone.id,
 			dst_kind: 'milestone',
 			rel: 'contains'
 		});
@@ -158,14 +151,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			supabase,
 			project_id,
 			'milestone',
-			milestone.id,
-			{ title: milestone.title, type_key: milestone.type_key, due_at: milestone.due_at },
+			createdMilestone.id,
+			{
+				title: createdMilestone.title,
+				type_key: createdMilestone.type_key,
+				due_at: createdMilestone.due_at
+			},
 			user.id,
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
 
-		return ApiResponse.created({ milestone });
+		if (classificationSource === 'create_modal') {
+			void classifyOntologyEntity({
+				entityType: 'milestone',
+				entityId: createdMilestone.id,
+				userId: user.id,
+				classificationSource: 'create_modal'
+			}).catch((err) => {
+				if (dev) console.warn('[Milestone Create] Classification failed:', err);
+			});
+		}
+
+		return ApiResponse.created({ milestone: createdMilestone });
 	} catch (error) {
 		console.error('[Milestone Create] Unexpected error:', error);
 		return ApiResponse.internalError(error);

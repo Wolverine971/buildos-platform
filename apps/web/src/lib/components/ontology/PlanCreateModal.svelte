@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/ontology/PlanCreateModal.svelte -->
 <!--
-	Plan Creation Modal Component (Template-Free)
-	Creates plans without template selection - uses type_key directly
+	Plan Creation Modal Component (Auto-Classified)
+	Creates plans without type selection; type_key is classified after creation.
 
 	Related files:
 	- API Endpoint: /apps/web/src/routes/api/onto/plans/create/+server.ts
@@ -91,7 +91,7 @@
 	let { projectId, onClose, onCreated }: Props = $props();
 
 	let templateSearch = $state('');
-	let showTemplateSelection = $state(true);
+	let showTemplateSelection = $state(false);
 	let slideDirection = $state<1 | -1>(1);
 	let selectedTemplate = $state<PlanType | null>(null);
 	let isSaving = $state(false);
@@ -159,9 +159,7 @@
 	const startLabel = $derived(formatDateOnly(startDate) ?? 'Not scheduled');
 	const endLabel = $derived(formatDateOnly(endDate) ?? 'Not scheduled');
 	const formattedStateLabel = $derived(formatStateLabel(stateKey));
-	const canSubmit = $derived(
-		Boolean(name.trim()) && Boolean(selectedTemplate) && !isSaving && !dateError
-	);
+	const canSubmit = $derived(Boolean(name.trim()) && !isSaving && !dateError);
 
 	function applyTemplateDefaults(template: PlanType) {
 		name = template.name || name;
@@ -224,7 +222,7 @@
 
 	async function handleSubmit(event: Event) {
 		event.preventDefault();
-		if (!canSubmit || !selectedTemplate) return;
+		if (!canSubmit) return;
 
 		isSaving = true;
 		error = '';
@@ -232,19 +230,13 @@
 		try {
 			const body = {
 				project_id: projectId,
-				type_key: selectedTemplate.type_key,
 				name: name.trim(),
 				plan: planDetails.trim() || null,
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
 				start_date: startDate || null,
 				end_date: endDate || null,
-				props: {
-					plan: planDetails.trim() || null,
-					description: description.trim() || null,
-					start_date: startDate || null,
-					end_date: endDate || null
-				}
+				classification_source: 'create_modal'
 			};
 
 			const response = await fetch('/api/onto/plans/create', {
@@ -285,10 +277,10 @@
 					<h2
 						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						{showTemplateSelection ? 'New Plan' : name || 'New Plan'}
+						{name || 'New Plan'}
 					</h2>
 					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{showTemplateSelection ? 'Select a template' : 'Configure your plan'}
+						Type will be auto-classified
 					</p>
 				</div>
 			</div>

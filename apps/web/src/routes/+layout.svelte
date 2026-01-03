@@ -707,11 +707,11 @@
 	}
 </script>
 
-	<svelte:head>
-		<title>BuildOS - Your Personal Operating System</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<svelte:head>
+	<title>BuildOS - Your Personal Operating System</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-		<!-- Open Graph / Social Media -->
+	<!-- Open Graph / Social Media -->
 	<meta property="og:site_name" content="BuildOS" />
 	<meta property="og:title" content="BuildOS - The Productivity System for the Builder" />
 	<meta

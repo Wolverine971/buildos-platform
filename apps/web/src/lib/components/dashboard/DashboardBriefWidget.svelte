@@ -307,18 +307,23 @@
 							Today's Brief
 						</h3>
 						<!-- Mobile: Show priority count inline if exists - with icon for context -->
-						{#if brief.priority_actions && brief.priority_actions.length > 0}
-							<span
-								class="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-accent/15 text-accent border border-accent/20"
-								title="{brief.priority_actions.length} priority action{brief.priority_actions.length === 1 ? '' : 's'}"
-							>
-								<AlertCircle class="w-2.5 h-2.5" />
-								{brief.priority_actions.length}
-							</span>
-						{/if}
-						<ChevronRight
-							class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/50 group-hover:text-accent transition-colors flex-shrink-0"
-						/>
+						<div class="flex items-center justify-between gap-1.5 sm:gap-2">
+							{#if brief.priority_actions && brief.priority_actions.length > 0}
+								<span
+									class="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-accent/15 text-accent border border-accent/20"
+									title="{brief.priority_actions.length} priority action{brief
+										.priority_actions.length === 1
+										? ''
+										: 's'}"
+								>
+									<AlertCircle class="w-2.5 h-2.5" />
+									{brief.priority_actions.length}
+								</span>
+							{/if}
+							<ChevronRight
+								class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/50 group-hover:text-accent transition-colors flex-shrink-0"
+							/>
+						</div>
 					</div>
 					<!-- Desktop: Show snippet and priority actions -->
 					<p

@@ -9,6 +9,7 @@ import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
 import { queue, startWorker } from './worker';
+import { classifyOntologyEntity } from './workers/ontology/ontologyClassifier';
 
 dotenv.config();
 
@@ -91,6 +92,14 @@ function getSafeTimezone(timezone: string | null | undefined, userId: string): s
 	return 'UTC';
 }
 
+function isWorkerAuthorized(authHeader: string | undefined): boolean {
+	const token = process.env.PRIVATE_RAILWAY_WORKER_TOKEN;
+	if (!token) return false;
+	if (!authHeader) return false;
+	const [scheme, value] = authHeader.split(' ');
+	return scheme === 'Bearer' && value === token;
+}
+
 // Health check endpoint
 app.get('/health', async (_req, res) => {
 	try {
@@ -117,6 +126,64 @@ app.get('/health', async (_req, res) => {
 			service: 'daily-brief-worker',
 			queue: 'supabase',
 			stats: { error: 'Stats unavailable' }
+		});
+	}
+});
+
+// Immediate ontology classification (fire-and-forget caller)
+app.post('/classify/ontology', async (req, res) => {
+	try {
+		if (!isWorkerAuthorized(req.headers.authorization)) {
+			return res.status(401).json({ error: 'Unauthorized' });
+		}
+
+		const { entityType, entityId, userId, classificationSource } = req.body || {};
+
+		if (!entityType || !entityId || !userId || !classificationSource) {
+			return res.status(400).json({
+				error: 'entityType, entityId, userId, and classificationSource are required'
+			});
+		}
+
+		if (classificationSource !== 'create_modal') {
+			return res.status(400).json({
+				error: 'Invalid classificationSource'
+			});
+		}
+
+		const validTypes = new Set([
+			'task',
+			'output',
+			'plan',
+			'goal',
+			'risk',
+			'milestone',
+			'decision',
+			'document'
+		]);
+
+		if (!validTypes.has(entityType)) {
+			return res.status(400).json({ error: 'Invalid entityType' });
+		}
+
+		const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+		if (!uuidRegex.test(entityId) || !uuidRegex.test(userId)) {
+			return res.status(400).json({ error: 'Invalid entityId or userId format' });
+		}
+
+		await classifyOntologyEntity({
+			entityType,
+			entityId,
+			userId,
+			classificationSource
+		});
+
+		return res.status(202).json({ success: true });
+	} catch (error: any) {
+		console.error('[Ontology Classification] Failed:', error);
+		return res.status(500).json({
+			error: 'Failed to classify ontology entity',
+			message: error.message
 		});
 	}
 });

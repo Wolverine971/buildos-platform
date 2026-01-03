@@ -16,11 +16,11 @@
  * - description?: string - Task description (stored in column)
  * - priority?: number (1-5) - Task priority
  * - plan_id?: string - Associated plan UUID (creates edge relationship)
- * - type_key?: string (default: 'task.execute') - Task type (e.g., task.create, task.review)
+ * - type_key?: string (ignored; auto-classified) - Task type
  * - state_key?: string (default: 'todo') - Initial state
  * - start_at?: string - Start date ISO string (when work should begin)
  * - due_at?: string - Due date ISO string
- * - props?: object - Additional properties
+ * - props?: object (ignored; auto-classified)
  *
  * Related Files:
  * - UI Component: /apps/web/src/lib/components/ontology/TaskCreateModal.svelte
@@ -33,6 +33,7 @@
  * - Verifies project ownership
  */
 import type { RequestHandler } from './$types';
+import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
 import { TASK_STATES } from '$lib/types/onto';
@@ -42,6 +43,7 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { normalizeTaskStateInput } from '../../shared/task-state';
+import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -63,13 +65,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			priority = 3,
 			plan_id,
 			state_key,
-			type_key,
-			props = {},
 			goal_id,
 			supporting_milestone_id,
 			start_at,
 			due_at
 		} = body;
+		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
 		if (!project_id || !title) {
@@ -160,14 +161,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			title,
 			description: description || null,
-			type_key: type_key || 'task.execute',
+			type_key: 'task.default',
 			state_key: finalState,
 			priority,
 			start_at: start_at || null,
 			due_at: due_at || null,
 			created_by: actorId,
 			props: {
-				...props,
 				// Keep goal_id and milestone_id in props for edge reference
 				...(validatedGoalId ? { goal_id: validatedGoalId } : {}),
 				...(validatedMilestoneId ? { supporting_milestone_id: validatedMilestoneId } : {})
@@ -252,6 +252,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
+
+		if (classificationSource === 'create_modal') {
+			void classifyOntologyEntity({
+				entityType: 'task',
+				entityId: task.id,
+				userId: user.id,
+				classificationSource: 'create_modal'
+			}).catch((err) => {
+				if (dev) console.warn('[Task Create] Classification failed:', err);
+			});
+		}
 
 		return ApiResponse.created({ task });
 	} catch (error) {

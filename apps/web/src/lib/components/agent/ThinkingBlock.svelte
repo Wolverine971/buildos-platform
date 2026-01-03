@@ -28,6 +28,24 @@
 		planCollapseStates = new Map(planCollapseStates);
 	}
 
+	// Derive if thinking is complete (check for completion phrases in content)
+	const isThinkingComplete = $derived.by(() => {
+		if (block.status !== 'active') return true;
+		// Check for completion phrases in content
+		const content = block.content?.toLowerCase() || '';
+		return (
+			content.includes('ready for your response') ||
+			content.includes('complete') ||
+			content.includes('waiting on your')
+		);
+	});
+
+	// Derive header label - changes from "Thinking" to "Thoughts" when complete
+	const headerLabel = $derived(isThinkingComplete ? 'BuildOS Thoughts' : 'BuildOS Thinking');
+
+	// Show animated hammer only when actively thinking
+	const showAnimatedHammer = $derived(block.status === 'active' && !isThinkingComplete);
+
 	// Derive status label and color
 	const statusLabel = $derived.by(() => {
 		if (block.status === 'active') {
@@ -137,10 +155,13 @@
 			{:else}
 				<ChevronDown class="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
 			{/if}
+			{#if showAnimatedHammer}
+				<span class="glowing-hammer shrink-0" aria-hidden="true">⚒</span>
+			{/if}
 			<span
 				class="truncate font-mono text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-foreground sm:text-xs"
 			>
-				BuildOS Thinking
+				{headerLabel}
 			</span>
 		</div>
 		<div class="flex shrink-0 items-center gap-1.5 text-[0.65rem] sm:gap-2 sm:text-xs">
@@ -269,5 +290,50 @@
 
 	:global(.dark) .thinking-log::-webkit-scrollbar-thumb:hover {
 		background: hsl(var(--accent));
+	}
+
+	/* Glowing hammer animation for active thinking state */
+	@keyframes pulse-glow {
+		0%,
+		100% {
+			text-shadow:
+				0 0 2px currentColor,
+				0 0 4px currentColor;
+			opacity: 1;
+		}
+		50% {
+			text-shadow:
+				0 0 6px currentColor,
+				0 0 12px currentColor,
+				0 0 18px currentColor;
+			opacity: 0.9;
+		}
+	}
+
+	@keyframes rotate-sway {
+		0%,
+		100% {
+			transform: rotate(-8deg);
+		}
+		50% {
+			transform: rotate(8deg);
+		}
+	}
+
+	.glowing-hammer {
+		animation:
+			pulse-glow 2s ease-in-out infinite,
+			rotate-sway 3s ease-in-out infinite;
+		display: inline-block;
+		text-shadow: 0 0 0 currentColor;
+		/* Use symbol fonts for bare/terminal-style emoji rendering */
+		font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', 'Symbola', monospace, sans-serif;
+		font-size: 0.75rem;
+		line-height: 1;
+		color: hsl(var(--accent));
+	}
+
+	:global(.dark) .glowing-hammer {
+		color: hsl(var(--accent));
 	}
 </style>

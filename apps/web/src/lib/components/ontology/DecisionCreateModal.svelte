@@ -65,7 +65,8 @@
 			const requestBody: Record<string, unknown> = {
 				project_id: projectId,
 				title: title.trim(),
-				state_key: stateKey
+				state_key: stateKey,
+				classification_source: 'create_modal'
 			};
 
 			if (description.trim()) {

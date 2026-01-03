@@ -25,6 +25,8 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { dev } from '$app/environment';
+import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 // GET /api/onto/decisions?project_id=X - List decisions for a project
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -98,16 +100,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const {
-			project_id,
-			title,
-			description,
-			outcome,
-			rationale,
-			state_key,
-			decision_at,
-			props
-		} = body;
+		const { project_id, title, description, outcome, rationale, state_key, decision_at } = body;
+		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
 		if (!project_id) {
@@ -189,7 +183,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			title: title.trim(),
 			state_key: finalStateKey,
 			created_by: actorId,
-			props: props || {}
+			type_key: 'decision.default',
+			props: {}
 		};
 
 		if (description !== undefined) {
@@ -230,6 +225,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
+
+		if (classificationSource === 'create_modal') {
+			void classifyOntologyEntity({
+				entityType: 'decision',
+				entityId: decision.id,
+				userId: session.user.id,
+				classificationSource: 'create_modal'
+			}).catch((err) => {
+				if (dev) console.warn('[Decision Create] Classification failed:', err);
+			});
+		}
 
 		return ApiResponse.success({ decision }, 201);
 	} catch (error) {

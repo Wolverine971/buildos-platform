@@ -5,12 +5,14 @@
  */
 
 import type { RequestHandler } from './$types';
+import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	logCreateAsync,
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -20,14 +22,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { project_id, type_key, name, state_key, description, props } = body;
+		const { project_id, name, state_key, description } = body;
+		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		if (!project_id) {
 			return ApiResponse.badRequest('project_id is required');
-		}
-
-		if (!type_key) {
-			return ApiResponse.badRequest('type_key is required');
 		}
 
 		if (!name) {
@@ -76,8 +75,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Build props with default values
 		const mergedProps = {
-			...props,
-			content: props?.content || '',
+			content: '',
 			content_type: 'html',
 			word_count: 0
 		};
@@ -88,7 +86,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.insert({
 				project_id,
 				name,
-				type_key,
+				type_key: 'output.default',
 				state_key: state_key || 'draft',
 				description: description?.trim() || null,
 				props: mergedProps,
@@ -130,6 +128,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
+
+		if (classificationSource === 'create_modal') {
+			void classifyOntologyEntity({
+				entityType: 'output',
+				entityId: output.id,
+				userId: user.id,
+				classificationSource: 'create_modal'
+			}).catch((err) => {
+				if (dev) console.warn('[Output Create] Classification failed:', err);
+			});
+		}
 
 		return ApiResponse.success({ output });
 	} catch (err) {

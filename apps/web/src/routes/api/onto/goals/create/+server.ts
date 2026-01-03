@@ -12,13 +12,13 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (default: 'goal.outcome.project') - Template type key
+ * - type_key: string (ignored; auto-classified) - Template type key
  * - name: string (required) - Goal name
  * - description?: string - Goal description
  * - target_date?: string - Target date ISO string
  * - measurement_criteria?: string - How success is measured
  * - priority?: 'high' | 'medium' | 'low' - Goal priority
- * - props?: object - Additional properties
+ * - props?: object (ignored; auto-classified)
  *
  * Related Files:
  * - UI Component: /apps/web/src/lib/components/ontology/GoalCreateModal.svelte
@@ -31,6 +31,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
 import { GOAL_STATES } from '$lib/types/onto';
@@ -39,6 +40,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -55,16 +57,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const {
 			project_id,
-			type_key = 'goal.outcome.project',
 			name,
 			goal,
 			description,
 			target_date,
 			state_key = 'draft',
 			measurement_criteria,
-			priority,
-			props = {}
+			priority
 		} = body;
+		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
 		if (!project_id || !name) {
@@ -102,7 +103,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create the goal
 		const goalData = {
 			project_id,
-			type_key,
+			type_key: 'goal.default',
 			name,
 			goal: goal || null,
 			description: description || null, // Use dedicated column
@@ -111,7 +112,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			created_by: actorId,
 			completed_at: state_key === 'achieved' ? new Date().toISOString() : null,
 			props: {
-				...props,
 				// Maintain backwards compatibility by also storing in props
 				goal: goal || null,
 				description: description || null,
@@ -153,6 +153,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
+
+		if (classificationSource === 'create_modal') {
+			void classifyOntologyEntity({
+				entityType: 'goal',
+				entityId: createdGoal.id,
+				userId: user.id,
+				classificationSource: 'create_modal'
+			}).catch((err) => {
+				if (dev) console.warn('[Goal Create] Classification failed:', err);
+			});
+		}
 
 		return ApiResponse.created({ goal: createdGoal });
 	} catch (error) {

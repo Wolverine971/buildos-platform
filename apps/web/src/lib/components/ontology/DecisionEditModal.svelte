@@ -70,6 +70,15 @@
 		}
 	];
 
+	const TYPE_OPTIONS = [
+		{ value: 'decision.default', label: 'Unclassified' },
+		{ value: 'decision.technical', label: 'Technical' },
+		{ value: 'decision.process', label: 'Process' },
+		{ value: 'decision.resource', label: 'Resource' },
+		{ value: 'decision.strategic', label: 'Strategic' },
+		{ value: 'decision.operational', label: 'Operational' }
+	];
+
 	function formatDateTimeLocal(value?: string | null): string {
 		if (!value) return '';
 		const date = new Date(value);
@@ -95,6 +104,7 @@
 	let rationale = $state('');
 	let stateKey = $state('pending');
 	let decisionAt = $state('');
+	let typeKey = $state('decision.default');
 
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
@@ -132,6 +142,7 @@
 				rationale = decision.rationale || '';
 				stateKey = decision.state_key || 'pending';
 				decisionAt = formatDateTimeLocal(decision.decision_at);
+				typeKey = decision.type_key || 'decision.default';
 			}
 		} catch (err) {
 			console.error('Error loading decision:', err);
@@ -146,6 +157,10 @@
 			error = 'Decision title is required';
 			return;
 		}
+		if (!typeKey.trim()) {
+			error = 'Decision type is required';
+			return;
+		}
 
 		isSaving = true;
 		error = '';
@@ -156,7 +171,8 @@
 				state_key: stateKey,
 				description: description.trim() || null,
 				outcome: outcome.trim() || null,
-				rationale: rationale.trim() || null
+				rationale: rationale.trim() || null,
+				type_key: typeKey.trim()
 			};
 
 			if (decisionAt) {
@@ -343,6 +359,24 @@
 									disabled={isSaving}
 									error={!title.trim() && error ? true : false}
 								/>
+							</FormField>
+
+							<FormField
+								label="Decision Type"
+								labelFor="type_key"
+								required={true}
+								error={!typeKey.trim() && error ? 'Decision type is required' : ''}
+							>
+								<Select
+									id="type_key"
+									bind:value={typeKey}
+									disabled={isSaving}
+									size="md"
+								>
+									{#each TYPE_OPTIONS as opt}
+										<option value={opt.value}>{opt.label}</option>
+									{/each}
+								</Select>
 							</FormField>
 
 							<FormField

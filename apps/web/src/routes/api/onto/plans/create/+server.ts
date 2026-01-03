@@ -12,13 +12,13 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (default: 'plan.phase.base') - Template type key
+ * - type_key: string (ignored; auto-classified) - Template type key
  * - name: string (required) - Plan name
  * - description?: string - Plan description
  * - state_key?: string - Initial state (draft, active, completed)
  * - start_date?: string - Start date ISO string
  * - end_date?: string - End date ISO string
- * - props?: object - Additional properties
+ * - props?: object (ignored; auto-classified)
  *
  * Related Files:
  * - UI Component: /apps/web/src/lib/components/ontology/PlanCreateModal.svelte
@@ -31,6 +31,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { PLAN_STATES } from '$lib/types/onto';
 import {
@@ -38,6 +39,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -54,15 +56,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const {
 			project_id,
-			type_key = 'plan.phase.base',
 			name,
 			plan,
 			description,
 			state_key = 'draft',
 			start_date,
-			end_date,
-			props = {}
+			end_date
 		} = body;
+		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
 		if (!project_id || !name) {
@@ -98,14 +99,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create the plan
 		const planData = {
 			project_id,
-			type_key,
+			type_key: 'plan.default',
 			name,
 			state_key,
 			plan: plan || null,
 			description: description || null, // Use dedicated column
 			created_by: actorId,
 			props: {
-				...props,
 				// Maintain backwards compatibility by also storing in props
 				plan: plan || null,
 				description: description || null,
@@ -114,7 +114,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		};
 
-		const { data: plan, error: createError } = await supabase
+		const { data: createdPlan, error: createError } = await supabase
 			.from('onto_plans')
 			.insert(planData)
 			.select('*')
@@ -130,7 +130,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id: project_id,
 			src_id: project_id,
 			src_kind: 'project',
-			dst_id: plan.id,
+			dst_id: createdPlan.id,
 			dst_kind: 'plan',
 			rel: 'contains'
 		});
@@ -140,14 +140,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			supabase,
 			project_id,
 			'plan',
-			plan.id,
-			{ name: plan.name, type_key: plan.type_key, state_key: plan.state_key },
+			createdPlan.id,
+			{
+				name: createdPlan.name,
+				type_key: createdPlan.type_key,
+				state_key: createdPlan.state_key
+			},
 			user.id,
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
 
-		return ApiResponse.created({ plan });
+		if (classificationSource === 'create_modal') {
+			void classifyOntologyEntity({
+				entityType: 'plan',
+				entityId: createdPlan.id,
+				userId: user.id,
+				classificationSource: 'create_modal'
+			}).catch((err) => {
+				if (dev) console.warn('[Plan Create] Classification failed:', err);
+			});
+		}
+
+		return ApiResponse.created({ plan: createdPlan });
 	} catch (error) {
 		console.error('Error in plan create endpoint:', error);
 		return ApiResponse.internalError(error);

@@ -12,14 +12,14 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (default: 'risk.general') - Template type key
+ * - type_key: string (ignored; auto-classified) - Template type key
  * - title: string (required) - Risk title
  * - impact: 'low' | 'medium' | 'high' | 'critical' (required) - Impact severity
  * - probability?: number (0-1) - Likelihood of occurrence
  * - state_key?: string - Initial state (default: 'identified')
  * - description?: string - Detailed description
  * - mitigation_strategy?: string - How to mitigate
- * - props?: object - Additional properties
+ * - props?: object (ignored; auto-classified)
  *
  * Related Files:
  * - UI Component: /apps/web/src/lib/components/ontology/RiskCreateModal.svelte
@@ -32,6 +32,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
 import { RISK_STATES } from '$lib/types/onto';
@@ -40,6 +41,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -59,16 +61,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const {
 			project_id,
-			type_key = 'risk.general',
 			title,
 			impact,
 			probability,
 			state_key = 'identified',
 			content,
 			description,
-			mitigation_strategy,
-			props = {}
+			mitigation_strategy
 		} = body;
+		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
 		if (!project_id) {
@@ -126,7 +127,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create the risk
 		const riskData = {
 			project_id,
-			type_key,
+			type_key: 'risk.default',
 			title: title.trim(),
 			impact,
 			probability:
@@ -135,7 +136,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			content: normalizedContent,
 			created_by: actorId,
 			props: {
-				...props,
 				description: normalizedContent,
 				mitigation_strategy: mitigation_strategy?.trim() || null
 			}
@@ -182,6 +182,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
+
+		if (classificationSource === 'create_modal') {
+			void classifyOntologyEntity({
+				entityType: 'risk',
+				entityId: risk.id,
+				userId: user.id,
+				classificationSource: 'create_modal'
+			}).catch((err) => {
+				if (dev) console.warn('[Risk Create] Classification failed:', err);
+			});
+		}
 
 		return ApiResponse.created({ risk });
 	} catch (error) {

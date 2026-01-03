@@ -472,11 +472,20 @@
 						variant="outline"
 						size="sm"
 						btnType="container"
-						icon={showMobileMenu ? X : Menu}
-						class="md:hidden flex items-center justify-center w-10 h-10 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 hover:text-accent pressable transition-all duration-200 text-muted-foreground min-h-0"
+						class="md:hidden flex items-center justify-center px-3 h-9 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
-					></Button>
+					>
+						{#if showMobileMenu}
+							<X
+								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
+							/>
+						{:else}
+							<Menu
+								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
+							/>
+						{/if}
+					</Button>
 
 					<!-- Desktop User menu -->
 					<div class="hidden md:block relative" data-user-menu>
@@ -689,10 +698,20 @@
 						variant="outline"
 						size="sm"
 						btnType="container"
-						icon={showMobileMenu ? X : Menu}
-						class="md:hidden flex items-center justify-center w-10 h-10 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 hover:text-accent pressable transition-all duration-200 text-muted-foreground min-h-0"
+						class="md:hidden flex items-center justify-center px-3 h-9 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group"
 						aria-expanded={showMobileMenu}
-					></Button>
+						aria-label="Toggle mobile menu"
+					>
+						{#if showMobileMenu}
+							<X
+								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
+							/>
+						{:else}
+							<Menu
+								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
+							/>
+						{/if}
+					</Button>
 				{/if}
 			</div>
 		</div>

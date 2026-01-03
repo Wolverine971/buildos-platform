@@ -2,9 +2,8 @@
 <!--
 	Milestone Creation Modal Component
 
-	Creates milestones within the BuildOS ontology system using a two-step flow:
-	1. Milestone type selection (optional - can skip with "General Milestone")
-	2. Milestone details entry with due date, description, and state
+	Creates milestones within the BuildOS ontology system.
+	Type is auto-classified after creation.
 
 	Documentation:
 	- Ontology System Overview: /apps/web/docs/features/ontology/README.md
@@ -117,7 +116,7 @@
 	}));
 
 	let selectedType = $state<(typeof MILESTONE_TYPES)[0] | null>(null);
-	let showTypeSelection = $state(true);
+	let showTypeSelection = $state(false);
 	let isSaving = $state(false);
 	let error = $state('');
 	let slideDirection = $state<1 | -1>(1);
@@ -193,12 +192,12 @@
 
 			const requestBody = {
 				project_id: projectId,
-				type_key: selectedType?.type_key || 'milestone.general',
 				title: title.trim(),
 				milestone: milestoneDetails.trim() || null,
 				due_at: dueDateObj.toISOString(),
 				state_key: stateKey || 'pending',
-				description: description.trim() || null
+				description: description.trim() || null,
+				classification_source: 'create_modal'
 			};
 
 			const response = await fetch('/api/onto/milestones/create', {
@@ -267,12 +266,10 @@
 					<h2
 						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						{showTypeSelection ? 'New Milestone' : title || 'New Milestone'}
+						{title || 'New Milestone'}
 					</h2>
 					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{showTypeSelection
-							? 'Select a milestone type'
-							: 'Define the milestone details'}
+						Type will be auto-classified
 					</p>
 				</div>
 			</div>

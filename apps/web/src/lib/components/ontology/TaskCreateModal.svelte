@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/ontology/TaskCreateModal.svelte -->
 <!--
-	Task Creation Modal Component (Template-Free)
-	Creates tasks without template selection - uses type_key directly
+	Task Creation Modal Component (Auto-Classified)
+	Creates tasks without type selection; type_key is classified after creation.
 
 	Related Files:
 	- API Endpoint: /apps/web/src/routes/api/onto/tasks/create/+server.ts
@@ -103,7 +103,7 @@
 	}: Props = $props();
 
 	let selectedTemplate = $state<TaskType | null>(null);
-	let showTemplateSelection = $state(true);
+	let showTemplateSelection = $state(false);
 	let isSaving = $state(false);
 	let error = $state('');
 	let slideDirection = $state<1 | -1>(1);
@@ -157,18 +157,12 @@
 			return;
 		}
 
-		if (!selectedTemplate) {
-			error = 'Please select a task type';
-			return;
-		}
-
 		isSaving = true;
 		error = '';
 
 		try {
 			const requestBody = {
 				project_id: projectId,
-				type_key: selectedTemplate.type_key,
 				title: title.trim(),
 				description: description.trim() || null,
 				priority: Number(priority),
@@ -177,7 +171,8 @@
 				goal_id: goalId?.trim() || null,
 				supporting_milestone_id: milestoneId?.trim() || null,
 				start_at: parseDateTimeFromInput(startAt),
-				due_at: parseDateTimeFromInput(dueAt)
+				due_at: parseDateTimeFromInput(dueAt),
+				classification_source: 'create_modal'
 			};
 
 			const response = await fetch('/api/onto/tasks/create', {
@@ -248,10 +243,10 @@
 					<h2
 						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						{showTemplateSelection ? 'New Task' : title || 'New Task'}
+						{title || 'New Task'}
 					</h2>
 					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{showTemplateSelection ? 'Select a template' : 'Define your task'}
+						Type will be auto-classified
 					</p>
 				</div>
 			</div>

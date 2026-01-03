@@ -11,7 +11,9 @@
 
 ## Overview
 
-This specification defines the implementation for automatic LLM-based classification of ontology entities. Instead of requiring users to pre-select entity types in create modals, entities will be created with default type_keys and then asynchronously classified by an LLM worker job.
+This specification defines the implementation for automatic LLM-based classification of ontology entities. Instead of requiring users to pre-select entity types in create modals, entities will be created with default type_keys and then asynchronously classified by an LLM worker call.
+
+Create modals must not accept or set `type_key` or `props`. Those fields are only editable in data update modals. The LLM classification flow is responsible for setting `type_key` and `props.tags` after creation.
 
 ### Goals
 
@@ -38,29 +40,25 @@ This specification defines the implementation for automatic LLM-based classifica
 │                     CREATE MODAL (Simplified)                    │
 │  1. User fills: title, description, associations                │
 │  2. Entity created with default type_key (e.g., "task.default") │
-│  3. Non-blocking: queue classification job                      │
+│  3. Response returns immediately                                │
+│  4. Non-blocking: fire-and-forget worker call                   │
 └────────────────────────────┬────────────────────────────────────┘
-                             │
-                             ↓ HTTP POST (fire-and-forget)
-              ┌──────────────────────────────────┐
-              │  RailwayWorkerService            │
-              │  .queueOntologyClassification()  │
-              └──────────────┬───────────────────┘
                              │
                              ↓
               ┌──────────────────────────────────┐
-              │  Worker API                      │
-              │  POST /queue/ontology/classify   │
+              │  RailwayWorkerService            │
+              │  .classifyOntologyEntity()       │
               └──────────────┬───────────────────┘
                              │
-                             ↓ queue.add()
+                             ↓ HTTP POST (fire-and-forget)
               ┌──────────────────────────────────┐
-              │  Supabase queue_jobs             │
-              │  job_type: classify_ontology     │
-              │  priority: 7 (moderate)          │
+              │  Worker API                      │
+              │  POST /classify/ontology         │
+              │  Auth: Bearer token              │
+              │  classificationSource: create_modal │
               └──────────────┬───────────────────┘
                              │
-                             ↓ Worker processor (5s polling)
+                             ↓
               ┌──────────────────────────────────┐
               │  SmartLLMService.getJSONResponse │
               │  Profile: 'fast' or 'balanced'   │
@@ -110,7 +108,7 @@ Body: { type_key: "task.execute", title, description, ... }
 
 ```
 POST /api/onto/tasks/create
-Body: { title, description, ... }  // No type_key required
+Body: { title, description, classification_source: "create_modal", ... }  // No type_key or props accepted
 
 Response: {
   success: true,
@@ -119,17 +117,27 @@ Response: {
   }
 }
 
-// After response, non-blocking:
-RailwayWorkerService.queueOntologyClassification({
+// After response, non-blocking (fire-and-forget):
+// Note: Do not await. Ignore response. Log errors only in dev.
+// Only run when classification_source === 'create_modal'
+RailwayWorkerService.classifyOntologyEntity({
   entityType: 'task',
   entityId: task.id,
-  userId: actorId
+  userId: actorId,
+  classificationSource: 'create_modal'
 });
 ```
 
-### 2. Classification Queue Endpoint (New)
+**Server-side rule:** Ignore any `type_key` or `props` sent by clients on create. Always set defaults.
 
-**Endpoint:** `POST /queue/ontology/classify`
+### 2. Classification Endpoint (New, Immediate)
+
+**Endpoint:** `POST /classify/ontology`
+
+**Auth:** `Authorization: Bearer ${PRIVATE_RAILWAY_WORKER_TOKEN}`
+
+**Security:** The classification call must be issued from server-side code only (create API routes),
+so the token is never exposed to browsers.
 
 **Request:**
 
@@ -146,6 +154,7 @@ interface ClassifyOntologyRequest {
 		| 'document';
 	entityId: string; // UUID
 	userId: string; // UUID (for RLS and logging)
+	classificationSource: 'create_modal'; // required trigger
 }
 ```
 
@@ -154,24 +163,23 @@ interface ClassifyOntologyRequest {
 ```typescript
 // Success (202 Accepted)
 {
-  success: true,
-  jobId: "queue_job_id",
-  message: "Classification queued"
-}
-
-// Duplicate (409 Conflict)
-{
-  error: "Classification already in progress",
-  existingJobId: "queue_job_id"
+	success: true;
 }
 
 // Validation Error (400)
 {
-  error: "Invalid entityType or UUID format"
+	error: 'Invalid entityType, UUID format, or classificationSource';
+}
+
+// Auth Error (401)
+{
+	error: 'Unauthorized';
 }
 ```
 
 ### 3. Classification Result (Worker Output)
+
+Returned for worker logging/diagnostics only; callers do not await or rely on this response.
 
 ```typescript
 interface OntologyClassificationResult {
@@ -308,6 +316,47 @@ Per existing `SmartLLMService` patterns:
 2. **Fallback 1:** Gemini 2.5 Flash Lite (ultra-fast)
 3. **Fallback 2:** GPT-4o Mini (reliable JSON)
 
+### Output Validation & Normalization
+
+Validate the LLM output before updating the entity. If validation fails, keep the default `type_key`
+and do not add tags.
+
+```typescript
+const MAX_TAGS = 7;
+const MAX_TAG_LENGTH = 32;
+const MIN_TAG_LENGTH = 2;
+
+function normalizeTags(tags: unknown): string[] {
+	if (!Array.isArray(tags)) return [];
+
+	const normalized = tags
+		.map((tag) => (typeof tag === 'string' ? tag.trim().toLowerCase() : ''))
+		.map((tag) => tag.replace(/[^a-z0-9\s-]/g, ''))
+		.map((tag) => tag.replace(/\s+/g, '-').replace(/-+/g, '-'))
+		.filter((tag) => tag.length >= MIN_TAG_LENGTH && tag.length <= MAX_TAG_LENGTH);
+
+	return [...new Set(normalized)].slice(0, MAX_TAGS);
+}
+
+function isValidTypeKey(entityType: string, typeKey: string): boolean {
+	// Validate scope + allowed families/variants per taxonomy
+	// (Use TYPE_KEY_TAXONOMY.md as the source of truth)
+	const [scope] = typeKey.split('.');
+	if (scope !== entityType) return false;
+	return true;
+}
+
+function validateClassification(entityType: string, result: OntologyClassificationResult) {
+	const tags = normalizeTags(result.tags);
+	const validTypeKey = isValidTypeKey(entityType, result.type_key);
+	return { validTypeKey, tags };
+}
+```
+
+Apply `validateClassification` before updating the entity. If `validTypeKey` is false, treat the
+classification as failed (keep the default `type_key` and do not add tags). Always use the
+normalized `tags` output for updates.
+
 ---
 
 ## Props Update Pattern (Critical)
@@ -336,8 +385,10 @@ async function updateEntityWithClassification(
 	const currentProps = (existing.props as Record<string, unknown>) ?? {};
 	const existingTags = Array.isArray(currentProps.tags) ? (currentProps.tags as string[]) : [];
 
-	// Deduplicate tags
-	const allTags = [...new Set([...existingTags, ...classification.tags])];
+	// Normalize and merge tags with limits
+	const normalizedTags = normalizeTags(classification.tags);
+	const mergedTags = [...new Set([...existingTags, ...normalizedTags])];
+	const allTags = existingTags.length >= MAX_TAGS ? existingTags : mergedTags.slice(0, MAX_TAGS);
 
 	// Step 3: Build new props (preserving all existing fields)
 	const nextProps = {
@@ -370,6 +421,9 @@ async function updateEntityWithClassification(
 ---
 
 ## Modal Changes
+
+Create modals should not expose or set `type_key` or `props`. Those fields are only editable in
+data update modals.
 
 ### Before (Two-Step Flow)
 
@@ -435,6 +489,11 @@ Per requirements: **Keep default type_key, log error for debugging**
 ```typescript
 try {
 	const classification = await classifyEntity(entity, entityType);
+	const { validTypeKey, tags } = validateClassification(entityType, classification);
+	if (!validTypeKey) {
+		throw new Error('Invalid type_key from classifier');
+	}
+	classification.tags = tags;
 	await updateEntityWithClassification(supabase, tableName, entityId, classification);
 } catch (error) {
 	// Log error for debugging
@@ -449,7 +508,7 @@ try {
 	});
 
 	// Entity keeps default type_key - no user notification
-	// Return success=false for job tracking
+	// Return success=false for diagnostics/logging
 	return {
 		success: false,
 		entityType,
@@ -465,7 +524,15 @@ try {
 Skip LLM call for entities that don't need classification:
 
 ```typescript
-function shouldSkipClassification(entity: OntologyEntity): boolean {
+function shouldSkipClassification(
+	entity: OntologyEntity,
+	classificationSource: string | undefined
+): boolean {
+	// Only classify when explicitly triggered by create modals
+	if (classificationSource !== 'create_modal') {
+		return true;
+	}
+
 	// Skip if title is too short to classify meaningfully
 	if (!entity.title || entity.title.trim().length < 3) {
 		return true;
@@ -486,38 +553,42 @@ function shouldSkipClassification(entity: OntologyEntity): boolean {
 
 ### Phase 1: Worker Infrastructure
 
-- [ ] Add `ClassifyOntologyJobMetadata` type to `/packages/shared-types/src/queue-types.ts`
-- [ ] Create `ontologyClassifier.ts` processor in `/apps/worker/src/workers/ontology/`
-- [ ] Add `POST /queue/ontology/classify` endpoint to `/apps/worker/src/index.ts`
-- [ ] Register processor in `/apps/worker/src/worker.ts`
-- [ ] Add `queueOntologyClassification()` to `RailwayWorkerService`
+- [x] Add `ClassifyOntologyRequest` type to `/packages/shared-types/src/queue-types.ts` (or move to a new non-queue types file)
+- [x] Create `ontologyClassifier.ts` handler in `/apps/worker/src/workers/ontology/`
+- [x] Add `POST /classify/ontology` endpoint to `/apps/worker/src/index.ts`
+- [x] Add auth middleware/check for `Authorization: Bearer ${PRIVATE_RAILWAY_WORKER_TOKEN}`
+- [x] Add server-side `classifyOntologyEntity()` helper for fire-and-forget calls
+- [x] Add output validation + tag limits in worker
 
 ### Phase 2: API Updates
 
-- [ ] Update `/api/onto/tasks/create` - use default type_key, queue classification
-- [ ] Update `/api/onto/outputs/create` - same pattern
-- [ ] Update `/api/onto/plans/create` - same pattern
-- [ ] Update `/api/onto/goals/create` - same pattern
-- [ ] Update `/api/onto/risks/create` - same pattern
-- [ ] Update `/api/onto/milestones/create` - same pattern
-- [ ] Update `/api/onto/decisions` - same pattern (if POST exists)
-- [ ] Update `/api/onto/documents` - same pattern
+- [x] Update `/api/onto/tasks/create` - use default type_key, fire-and-forget classification with `classificationSource: 'create_modal'`
+- [x] Update `/api/onto/outputs/create` - same pattern
+- [x] Update `/api/onto/plans/create` - same pattern
+- [x] Update `/api/onto/goals/create` - same pattern
+- [x] Update `/api/onto/risks/create` - same pattern
+- [x] Update `/api/onto/milestones/create` - same pattern
+- [x] Update `/api/onto/decisions` - same pattern (if POST exists)
+- [x] Update `/api/onto/documents` - same pattern
+- [x] Ensure create endpoints ignore any `type_key` or `props` provided by clients
+- [x] Add `type_key` column to `onto_decisions` with default `decision.default`
 
 ### Phase 3: Modal Simplification
 
-- [ ] Simplify `TaskCreateModal.svelte` - remove template step
-- [ ] Simplify `OutputCreateModal.svelte` - remove type grid
-- [ ] Simplify `PlanCreateModal.svelte` - remove type selection
-- [ ] Simplify `GoalCreateModal.svelte` - remove type selection
-- [ ] Simplify `RiskCreateModal.svelte` - remove category selection
-- [ ] Simplify `MilestoneCreateModal.svelte` - remove type selection
-- [ ] Update `DecisionCreateModal.svelte` - ensure default type_key
-- [ ] Update `DocumentModal.svelte` - remove type input
+- [x] Simplify `TaskCreateModal.svelte` - remove template step
+- [x] Simplify `OutputCreateModal.svelte` - remove type grid
+- [x] Simplify `PlanCreateModal.svelte` - remove type selection
+- [x] Simplify `GoalCreateModal.svelte` - remove type selection
+- [x] Simplify `RiskCreateModal.svelte` - remove category selection
+- [x] Simplify `MilestoneCreateModal.svelte` - remove type selection
+- [x] Update `DecisionCreateModal.svelte` - ensure default type_key
+- [x] Update `DocumentModal.svelte` - remove type input
 
 ### Phase 4: Testing & Validation
 
 - [ ] Unit tests for classification prompt/response parsing
-- [ ] Integration tests for queue flow
+- [ ] Unit tests for output validation + tag limits
+- [ ] Integration tests for worker `/classify/ontology` endpoint
 - [ ] E2E test: create entity → verify classification updates
 - [ ] Load test: multiple simultaneous classifications
 
@@ -546,11 +617,11 @@ Already included in spec - the `_classification` object in props provides:
 
 ### 3. Consider Batch Classification
 
-For bulk imports or migrations, consider a batch endpoint:
+For bulk imports or migrations, consider a batch endpoint (server-only):
 
 ```
-POST /queue/ontology/classify-batch
-Body: { entities: [{ entityType, entityId }], userId }
+POST /classify/ontology/batch
+Body: { entities: [{ entityType, entityId }], userId, classificationSource }
 ```
 
 ### 4. User Override Tracking
@@ -573,6 +644,17 @@ Add metrics to track:
 
 ---
 
+## Decisions (Confirmed)
+
+- Classification only runs when `classificationSource: 'create_modal'` is provided, and create
+  endpoints ignore any `type_key` or `props` supplied by clients.
+- Enforce tag limits and normalization: `MAX_TAGS = 7`, `MIN_TAG_LENGTH = 2`,
+  `MAX_TAG_LENGTH = 32`, lowercase + hyphenated.
+- Worker API calls require `Authorization: Bearer ${PRIVATE_RAILWAY_WORKER_TOKEN}` and must be
+  server-side only.
+
+---
+
 ## Open Questions
 
 1. **Reclassification trigger:** Should edits to title/description trigger reclassification?
@@ -588,14 +670,14 @@ Add metrics to track:
 
 ## File Locations Summary
 
-| Component               | Path                                                            |
-| ----------------------- | --------------------------------------------------------------- |
-| **Shared Types**        | `/packages/shared-types/src/queue-types.ts`                     |
-| **Worker Processor**    | `/apps/worker/src/workers/ontology/ontologyClassifier.ts` (new) |
-| **Worker API**          | `/apps/worker/src/index.ts`                                     |
-| **Worker Registration** | `/apps/worker/src/worker.ts`                                    |
-| **Web Service**         | `/apps/web/src/lib/services/railwayWorker.service.ts`           |
-| **Create APIs**         | `/apps/web/src/routes/api/onto/*/create/+server.ts`             |
-| **Create Modals**       | `/apps/web/src/lib/components/ontology/*CreateModal.svelte`     |
-| **Type Key Taxonomy**   | `/apps/web/docs/features/ontology/TYPE_KEY_TAXONOMY.md`         |
-| **This Spec**           | `/docs/specs/ONTOLOGY_LLM_CLASSIFICATION_SPEC.md`               |
+| Component              | Path                                                               |
+| ---------------------- | ------------------------------------------------------------------ |
+| **Shared Types**       | `/packages/shared-types/src/queue-types.ts`                        |
+| **Worker Processor**   | `/apps/worker/src/workers/ontology/ontologyClassifier.ts` (new)    |
+| **Worker API**         | `/apps/worker/src/index.ts`                                        |
+| **Web Service**        | `/apps/web/src/lib/server/ontology-classification.service.ts`      |
+| **Create APIs**        | `/apps/web/src/routes/api/onto/*/create/+server.ts`                |
+| **Create Modals**      | `/apps/web/src/lib/components/ontology/*CreateModal.svelte`        |
+| **Type Key Taxonomy**  | `/apps/web/docs/features/ontology/TYPE_KEY_TAXONOMY.md`            |
+| **This Spec**          | `/docs/specs/ONTOLOGY_LLM_CLASSIFICATION_SPEC.md`                  |
+| **Decision Migration** | `/supabase/migrations/20260125_add_type_key_to_onto_decisions.sql` |

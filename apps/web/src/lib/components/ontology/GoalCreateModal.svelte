@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/ontology/GoalCreateModal.svelte -->
 <!--
-	Goal Creation Modal Component (Template-Free)
-	Creates goals without template selection - uses type_key directly
+	Goal Creation Modal Component (Auto-Classified)
+	Creates goals without type selection; type_key is classified after creation.
 
 	Related Files:
 	- API Endpoint: /apps/web/src/routes/api/onto/goals/create/+server.ts
@@ -82,7 +82,7 @@
 	let { projectId, onClose, onCreated }: Props = $props();
 
 	let selectedTemplate = $state<GoalType | null>(null);
-	let showTemplateSelection = $state(true);
+	let showTemplateSelection = $state(false);
 	let isSaving = $state(false);
 	let error = $state('');
 	let slideDirection = $state<1 | -1>(1);
@@ -124,28 +124,20 @@
 			return;
 		}
 
-		if (!selectedTemplate) {
-			error = 'Please select a goal type';
-			return;
-		}
-
 		isSaving = true;
 		error = '';
 
 		try {
 			const requestBody = {
 				project_id: projectId,
-				type_key: selectedTemplate.type_key,
 				name: name.trim(),
 				goal: goalDetails.trim() || null,
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
 				target_date: targetDate || null,
-				props: {
-					target_date: targetDate || null,
-					measurement_criteria: measurementCriteria.trim() || null,
-					priority: priority || 'medium'
-				}
+				measurement_criteria: measurementCriteria.trim() || null,
+				priority: priority || 'medium',
+				classification_source: 'create_modal'
 			};
 
 			const response = await fetch('/api/onto/goals/create', {
@@ -214,10 +206,10 @@
 					<h2
 						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						{showTemplateSelection ? 'New Goal' : name || 'New Goal'}
+						{name || 'New Goal'}
 					</h2>
 					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{showTemplateSelection ? 'Select a template' : 'Define your goal'}
+						Type will be auto-classified
 					</p>
 				</div>
 			</div>

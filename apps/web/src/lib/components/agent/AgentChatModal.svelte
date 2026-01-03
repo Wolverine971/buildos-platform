@@ -2967,8 +2967,9 @@
 					/>
 				{/if}
 
-				{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity}
+				{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity && !currentThinkingBlockId}
 					<!-- INKPRINT activity indicator with Grain texture -->
+					<!-- NOTE: Hidden when thinking block is active to prevent duplicate status displays -->
 					<div
 						class="border-t border-border bg-muted p-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground tx tx-grain tx-weak sm:p-2.5"
 					>
