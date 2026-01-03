@@ -916,52 +916,51 @@
 		icon={BarChart3}
 		showBack={false}
 	>
-		<div
-			slot="actions"
-			class="flex w-full flex-wrap items-center gap-3 sm:gap-4 sm:justify-end"
-		>
-			<label class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-				<input
-					type="checkbox"
-					bind:checked={autoRefresh}
-					class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer bg-background"
-				/>
-				<span>Auto Refresh</span>
-			</label>
+		{#snippet actions()}
+			<div class="flex w-full flex-wrap items-center gap-3 sm:gap-4 sm:justify-end">
+				<label class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+					<input
+						type="checkbox"
+						bind:checked={autoRefresh}
+						class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer bg-background"
+					/>
+					<span>Auto Refresh</span>
+				</label>
 
-			<Select
-				bind:value={selectedTimeframe}
-				size="md"
-				placeholder="Last 30 Days"
-				class="w-full sm:w-44"
-			>
-				<option value="7d">Last 7 Days</option>
-				<option value="30d">Last 30 Days</option>
-				<option value="90d">Last 90 Days</option>
-			</Select>
+				<Select
+					bind:value={selectedTimeframe}
+					size="md"
+					placeholder="Last 30 Days"
+					class="w-full sm:w-44"
+				>
+					<option value="7d">Last 7 Days</option>
+					<option value="30d">Last 30 Days</option>
+					<option value="90d">Last 90 Days</option>
+				</Select>
 
-			<Button
-				onclick={exportAnalytics}
-				variant="primary"
-				size="sm"
-				icon={Download}
-				class="w-full sm:w-auto"
-			>
-				Export
-			</Button>
+				<Button
+					onclick={exportAnalytics}
+					variant="primary"
+					size="sm"
+					icon={Download}
+					class="w-full sm:w-auto"
+				>
+					Export
+				</Button>
 
-			<Button
-				onclick={() => loadAnalytics()}
-				disabled={isLoading}
-				variant="secondary"
-				size="sm"
-				icon={RefreshCw}
-				loading={isLoading}
-				class="w-full sm:w-auto"
-			>
-				Refresh
-			</Button>
-		</div>
+				<Button
+					onclick={() => loadAnalytics()}
+					disabled={isLoading}
+					variant="secondary"
+					size="sm"
+					icon={RefreshCw}
+					loading={isLoading}
+					class="w-full sm:w-auto"
+				>
+					Refresh
+				</Button>
+			</div>
+		{/snippet}
 	</AdminPageHeader>
 
 	<div class="admin-page">

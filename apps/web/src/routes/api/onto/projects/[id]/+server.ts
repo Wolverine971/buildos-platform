@@ -311,6 +311,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			.from('onto_projects')
 			.select('*')
 			.eq('id', id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !existingProject) {
@@ -490,6 +491,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			.from('onto_projects')
 			.select('id, name, type_key, created_by')
 			.eq('id', id)
+			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !project) {

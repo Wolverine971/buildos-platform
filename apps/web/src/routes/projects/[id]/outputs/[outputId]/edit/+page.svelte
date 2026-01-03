@@ -77,6 +77,18 @@
 	}
 </script>
 
+<!-- Keyboard Shortcuts - Cmd+S/Ctrl+S to save -->
+<svelte:window
+	onkeydown={(e) => {
+		if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+			e.preventDefault();
+			// DocumentEditor handles its own save via onSave callback
+			// This is a fallback notification
+			toastService.info('Press Save in editor or use editor shortcuts');
+		}
+	}}
+/>
+
 <svelte:head>
 	<title>Edit {data.output.name} - {data.project.name} | BuildOS</title>
 </svelte:head>

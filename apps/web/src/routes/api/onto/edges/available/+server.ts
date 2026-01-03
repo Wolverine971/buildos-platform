@@ -85,6 +85,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			.from('onto_projects')
 			.select('id')
 			.eq('id', projectId)
+			.is('deleted_at', null)
 			.eq('created_by', actorId)
 			.single();
 

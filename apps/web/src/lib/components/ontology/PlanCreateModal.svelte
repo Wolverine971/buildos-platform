@@ -270,8 +270,10 @@
 			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="p-1.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0">
-					<Clock class="w-4 h-4" />
+				<div
+					class="flex h-9 w-9 items-center justify-center rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0"
+				>
+					<Clock class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
@@ -284,14 +286,14 @@
 					</p>
 				</div>
 			</div>
-			<Button
-				variant="ghost"
-				size="sm"
+			<button
+				type="button"
 				onclick={onClose}
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
 				disabled={isSaving}
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
+				aria-label="Close modal"
 			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -299,7 +301,7 @@
 						d="M6 18L18 6M6 6l12 12"
 					></path>
 				</svg>
-			</Button>
+			</button>
 		</div>
 	{/snippet}
 
@@ -422,10 +424,9 @@
 																				size="sm"
 																				variant="info"
 																			>
-																				<Calendar
-																					class="w-3 h-3"
-																					slot="icon"
-																				/>
+																				{#snippet icon()}<Calendar
+																						class="w-3 h-3"
+																					/>{/snippet}
 																				{template.metadata
 																					.typical_scope}
 																			</Badge>
@@ -435,10 +436,9 @@
 																				size="sm"
 																				variant="success"
 																			>
-																				<Target
-																					class="w-3 h-3"
-																					slot="icon"
-																				/>
+																				{#snippet icon()}<Target
+																						class="w-3 h-3"
+																					/>{/snippet}
 																				{template.metadata
 																					.measurement_type}
 																			</Badge>
@@ -683,7 +683,7 @@
 										variant="ghost"
 										type="button"
 										onclick={handleBackToTemplates}
-										class="text-xs sm:text-sm px-2 sm:px-4"
+										class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 									>
 										<span class="hidden sm:inline">← Back</span>
 										<span class="sm:hidden">←</span>
@@ -693,7 +693,7 @@
 										variant="primary"
 										loading={isSaving}
 										disabled={!canSubmit}
-										class="text-xs sm:text-sm px-2 sm:px-4"
+										class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 									>
 										<span class="hidden sm:inline">Create Plan</span>
 										<span class="sm:hidden">Create</span>

@@ -21,14 +21,14 @@ Operate exclusively on ontology entities (`onto_projects`, `onto_plans`, `onto_t
 3. **State enums (reference)**
     - Plans: `draft`, `active`, `completed`
     - Goals: `draft`, `active`, `achieved`, `abandoned`
-    - Documents: `draft`, `review`, `published`
+    - Documents: `draft`, `in_review`, `ready`, `published`, `archived`
     - Outputs: `draft`, `in_progress`, `review`, `published`
     - Milestones: `pending`, `in_progress`, `completed`, `missed`
     - Risks: `identified`, `mitigated`, `occurred`, `closed`
     - Decisions: no `state_key`
 4. **Detail tools**
     - `get_onto_project_details` – full project graph (goals, plans, tasks, documents, allowed transitions)
-    - `get_onto_task_details` – complete task payload including props and linked plan
+    - `get_onto_task_details` – complete task payload including props and linked entities
 5. **Relationship graphs**
     - `get_entity_relationships({ entity_id, direction })` reveals nodes connected via `onto_edges`. Use it to answer prompts like "what connects this task to the rest of the project?"
 

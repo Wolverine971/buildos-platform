@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { cleanDataForTable, validateRequiredFields } from '$lib/utils/data-cleaner';
+import { validatePagination } from '$lib/utils/api-helpers';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -11,11 +12,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	try {
 		const mode = url.searchParams.get('mode');
-		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(
-			url.searchParams.get('limit') || (mode === 'context-selection' ? '100' : '20')
-		);
-		const offset = (page - 1) * limit;
+		// Use mode-specific defaults but enforce max limits (security fix: 2026-01-03)
+		const defaultLimit = mode === 'context-selection' ? 100 : 20;
+		const { page, limit, offset } = validatePagination(url, {
+			defaultLimit,
+			maxLimit: 100
+		});
 		const statusParam = url.searchParams.get('status');
 		const statuses = statusParam
 			? statusParam

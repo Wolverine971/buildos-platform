@@ -12,7 +12,6 @@ last_updated_by: Claude (Anthropic)
 path: thoughts/shared/research/2025-10-05_00-00-00_buildos-web-comprehensive-audit.md
 ---
 
-<!-- todo: priority 5 -->
 
 # Research: Comprehensive Senior Engineer Audit of BuildOS Web Application
 

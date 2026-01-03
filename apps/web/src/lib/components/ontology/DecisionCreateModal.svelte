@@ -128,9 +128,9 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="p-1.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
 				>
-					<Scale class="w-4 h-4" />
+					<Scale class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
@@ -143,14 +143,14 @@
 					</p>
 				</div>
 			</div>
-			<Button
-				variant="ghost"
-				size="sm"
+			<button
+				type="button"
 				onclick={handleClose}
-				class="text-muted-foreground hover:text-foreground shrink-0 !p-1 sm:!p-1.5"
 				disabled={isSaving}
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
+				aria-label="Close modal"
 			>
-				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path
 						stroke-linecap="round"
 						stroke-linejoin="round"
@@ -158,7 +158,7 @@
 						d="M6 18L18 6M6 6l12 12"
 					></path>
 				</svg>
-			</Button>
+			</button>
 		</div>
 	{/snippet}
 
@@ -268,7 +268,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-end gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30"
+			class="flex flex-row items-center justify-end gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
 			<Button
 				type="button"
@@ -276,7 +276,7 @@
 				size="sm"
 				onclick={handleClose}
 				disabled={isSaving}
-				class="text-xs sm:text-sm px-2 sm:px-4"
+				class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 			>
 				Cancel
 			</Button>
@@ -287,7 +287,7 @@
 				disabled={isSaving || !title.trim()}
 				onclick={handleSubmit}
 				loading={isSaving}
-				class="text-xs sm:text-sm px-2 sm:px-4"
+				class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 			>
 				<Save class="w-3 h-3 sm:w-4 sm:h-4" />
 				<span class="hidden sm:inline">Create Decision</span>

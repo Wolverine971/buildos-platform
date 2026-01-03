@@ -96,6 +96,7 @@ export async function enableTaskSeries(
 		.select('*')
 		.eq('props->>series_id', seriesId)
 		.eq('project_id', task.project_id)
+		.is('deleted_at', null)
 		.order('due_at', { ascending: true });
 
 	if (instanceError) {
@@ -285,6 +286,7 @@ function loadTask(client: TypedSupabaseClient, taskId: string) {
 		.from('onto_tasks')
 		.select('*')
 		.eq('id', taskId)
+		.is('deleted_at', null)
 		.single()
 		.then(({ data, error }) => {
 			if (error || !data) {

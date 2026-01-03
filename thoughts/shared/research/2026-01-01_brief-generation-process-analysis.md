@@ -14,7 +14,6 @@ tags:
 path: thoughts/shared/research/2026-01-01_brief-generation-process-analysis.md
 ---
 
-<!-- todo -->
 
 # Brief Generation Process - Comprehensive Analysis & Recommendations
 

@@ -205,7 +205,8 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 					},
 					state_key: {
 						type: 'string',
-						description: 'Document state (draft, review, published)',
+						description:
+							'Document state (draft, in_review, ready, published, archived)',
 						default: 'draft'
 					},
 					content: {
@@ -249,7 +250,8 @@ Also ensures the project has_document edge exists for discovery.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Document state (draft, review, published)',
+						description:
+							'Document state (draft, in_review, ready, published, archived)',
 						default: 'draft'
 					},
 					role: {
@@ -536,7 +538,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 							state_key: {
 								type: 'string',
 								description:
-									'Document state (defaults to draft). Valid: draft, review, published.'
+									'Document state (defaults to draft). Valid: draft, in_review, ready, published, archived.'
 							},
 							props: {
 								type: 'object',
@@ -602,7 +604,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 		function: {
 			name: 'update_onto_task',
 			description: `Update an existing task in the ontology system.
-Can modify title, description, state, priority, plan assignment, and custom properties.
+Can modify title, description, state, priority, scheduling, and custom properties.
 Only updates fields that are provided - omitted fields remain unchanged.`,
 			parameters: {
 				type: 'object',
@@ -642,11 +644,6 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					priority: {
 						type: 'number',
 						description: 'New priority (1-5)'
-					},
-					plan_id: {
-						type: 'string',
-						description:
-							'Assign to different plan (or null to unassign). Uses edge relationships internally.'
 					},
 					start_at: {
 						type: 'string',
@@ -844,7 +841,7 @@ Use for edits to titles, states, body markdown, or metadata.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Document state (draft, review, published)'
+						description: 'Document state (draft, in_review, ready, published, archived)'
 					},
 					content: {
 						type: 'string',

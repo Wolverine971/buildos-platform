@@ -1,5 +1,4 @@
 <!-- apps/web/docs/features/notifications/generic-stackable-notification-system-spec.md -->
-<!-- TODO: priority 3 -->
 
 # Generic Stackable Notification System - Comprehensive Specification
 

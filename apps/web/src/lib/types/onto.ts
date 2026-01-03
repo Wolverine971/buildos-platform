@@ -804,12 +804,14 @@ export const TYPE_KEY_PATTERNS: Record<string, RegExp> = {
 	task: /^task\.[a-z_]+(\.[a-z_]+)?$/,
 	plan: /^plan\.[a-z_]+(\.[a-z_]+)?$/,
 	goal: /^goal\.[a-z_]+(\.[a-z_]+)?$/,
+	milestone: /^milestone\.[a-z_]+(\.[a-z_]+)?$/,
 	// Output supports both legacy output.* and new deliverable.* patterns
 	output: /^(output|deliverable)\.[a-z_]+(\.[a-z_]+)?$/,
 	// Deliverable-specific pattern: deliverable.{primitive}.{variant}
 	deliverable: /^deliverable\.(document|event|collection|external)\.[a-z_]+$/,
 	document: /^document\.[a-z_]+(\.[a-z_]+)?$/,
 	risk: /^risk\.[a-z_]+(\.[a-z_]+)?$/,
+	decision: /^decision\.[a-z_]+(\.[a-z_]+)?$/,
 	event: /^event\.[a-z_]+(\.[a-z_]+)?$/,
 	requirement: /^requirement\.[a-z_]+(\.[a-z_]+)?$/
 };
@@ -903,8 +905,8 @@ export function extractTypeKeyParts(typeKey: string): {
 } {
 	const parts = typeKey.split('.');
 	return {
-		scope: parts[0],
-		family: parts[1],
+		scope: parts[0] ?? '',
+		family: parts[1] ?? '',
 		variant: parts[2]
 	};
 }

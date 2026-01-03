@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/projects/search/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { validatePagination, buildSearchFilter } from '$lib/utils/api-helpers';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -9,13 +10,22 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
-		// Get search parameters
-		const query = url.searchParams.get('q') || '';
-		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(url.searchParams.get('limit') || '20');
-		const offset = (page - 1) * limit;
+		// Get and validate search parameters (security fix: 2026-01-03)
+		const rawQuery = url.searchParams.get('q') || '';
+		const { page, limit, offset } = validatePagination(url, { defaultLimit: 20, maxLimit: 50 });
 
-		if (query.length < 2) {
+		if (rawQuery.length < 2) {
+			return ApiResponse.success({
+				projects: [],
+				total: 0,
+				page,
+				limit
+			});
+		}
+
+		// Build sanitized search filter (security fix: 2026-01-03)
+		const searchFilter = buildSearchFilter(rawQuery, ['name', 'description']);
+		if (!searchFilter) {
 			return ApiResponse.success({
 				projects: [],
 				total: 0,
@@ -30,7 +40,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.select('*', { count: 'exact', head: true })
 			.eq('user_id', user.id)
 			.eq('status', 'active')
-			.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+			.or(searchFilter);
 
 		if (countError) {
 			return ApiResponse.databaseError(countError);
@@ -42,7 +52,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.select('*')
 			.eq('user_id', user.id)
 			.eq('status', 'active')
-			.or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+			.or(searchFilter)
 			.order('updated_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 
@@ -55,7 +65,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			total: count || 0,
 			page,
 			limit,
-			query
+			query: rawQuery
 		});
 	} catch (err) {
 		return ApiResponse.internalError(err);

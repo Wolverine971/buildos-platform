@@ -106,9 +106,9 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="p-1.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
 				>
-					<Layers class="w-4 h-4" />
+					<Layers class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
@@ -126,10 +126,10 @@
 			<button
 				type="button"
 				onclick={onClose}
-				class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
 				aria-label="Close modal"
 			>
-				<X class="h-4 w-4" />
+				<X class="w-5 h-5" />
 			</button>
 		</div>
 
@@ -183,7 +183,13 @@
 				{/if}
 
 				<div class="flex flex-row items-center justify-between gap-2 pt-2">
-					<Button onclick={onClose} variant="ghost" size="sm" disabled={isCreating}>
+					<Button
+						onclick={onClose}
+						variant="ghost"
+						size="sm"
+						disabled={isCreating}
+						class="tx tx-grain tx-weak"
+					>
 						Cancel
 					</Button>
 					<Button
@@ -192,6 +198,7 @@
 						loading={isCreating}
 						variant="primary"
 						size="sm"
+						class="tx tx-grain tx-weak"
 					>
 						Create & Edit
 					</Button>

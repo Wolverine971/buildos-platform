@@ -369,34 +369,42 @@
 		<div
 			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2"
 		>
-			<div class="flex items-center gap-2 min-w-0 flex-1">
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
 					class="flex h-9 w-9 items-center justify-center rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0"
 				>
 					<FileText class="w-5 h-5" />
 				</div>
-				<span class="text-xs sm:text-sm font-semibold text-foreground truncate">
-					{isEditing ? 'Edit Document' : 'New Document'}
-				</span>
-				{#if isEditing}
-					<Badge
-						variant={getStateVariant(stateKey)}
-						size="sm"
-						class="capitalize hidden sm:inline-flex"
-					>
-						{stateKey.replace('_', ' ')}
-					</Badge>
-				{/if}
+				<div class="min-w-0 flex-1">
+					<div class="flex items-center gap-2">
+						<h2
+							class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+						>
+							{title || (isEditing ? 'Document' : 'New Document')}
+						</h2>
+						{#if isEditing}
+							<Badge
+								variant={getStateVariant(stateKey)}
+								size="sm"
+								class="capitalize hidden sm:inline-flex shrink-0"
+							>
+								{stateKey.replace('_', ' ')}
+							</Badge>
+						{/if}
+					</div>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+						{#if createdAt}Created {new Date(createdAt).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}{#if updatedAt && updatedAt !== createdAt}
+							· Updated {new Date(updatedAt).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}
+					</p>
+				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
-				{#if updatedAt}
-					<span class="text-[10px] text-muted-foreground hidden md:inline">
-						Updated {new Date(updatedAt).toLocaleDateString(undefined, {
-							month: 'short',
-							day: 'numeric'
-						})}
-					</span>
-				{/if}
 				<!-- Close button -->
 				<button
 					type="button"

@@ -52,6 +52,7 @@ async function ensureDocumentAccess(
 		.from('onto_projects')
 		.select('id, created_by')
 		.eq('id', document.project_id)
+		.is('deleted_at', null)
 		.maybeSingle();
 
 	if (projectError) {

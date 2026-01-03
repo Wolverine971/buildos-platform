@@ -81,6 +81,11 @@ export async function fetchProjectSummaries(
 		)
 		.eq('created_by', actorId)
 		.is('deleted_at', null) // Exclude soft-deleted projects
+		.is('onto_tasks.deleted_at', null)
+		.is('onto_outputs.deleted_at', null)
+		.is('onto_goals.deleted_at', null)
+		.is('onto_plans.deleted_at', null)
+		.is('onto_documents.deleted_at', null)
 		.order('updated_at', { ascending: false });
 
 	if (error) {

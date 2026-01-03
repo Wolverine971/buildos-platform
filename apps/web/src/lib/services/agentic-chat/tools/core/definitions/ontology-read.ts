@@ -84,7 +84,8 @@ Use for queries about project documentation, briefs, specs, or research artifact
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by document state (draft, review, published)'
+						description:
+							'Filter by document state (draft, in_review, ready, published, archived)'
 					},
 					limit: {
 						type: 'number',
@@ -398,7 +399,8 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 					},
 					state_key: {
 						type: 'string',
-						description: 'Filter by document state (draft, review, published)'
+						description:
+							'Filter by document state (draft, in_review, ready, published, archived)'
 					},
 					limit: {
 						type: 'number',

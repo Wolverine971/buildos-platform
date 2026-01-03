@@ -538,7 +538,6 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			updateData.state_key = this.normalizeTaskState(args.state_key);
 		}
 		if (args.priority !== undefined) updateData.priority = args.priority;
-		if (args.plan_id !== undefined) updateData.plan_id = args.plan_id;
 		if (args.start_at !== undefined) updateData.start_at = args.start_at;
 		if (args.due_at !== undefined) updateData.due_at = args.due_at;
 		if (args.props !== undefined) updateData.props = args.props;

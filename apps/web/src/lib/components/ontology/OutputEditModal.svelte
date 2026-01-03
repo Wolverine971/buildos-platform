@@ -96,6 +96,12 @@
 		};
 	});
 
+	// Helper to safely check if tags exist
+	const hasTags = $derived.by(() => {
+		const tags = output?.props?.tags;
+		return Array.isArray(tags) && tags.length > 0;
+	});
+
 	$effect(() => {
 		if (!browser || !outputId) return;
 		if (previousOutputId === outputId) return;
@@ -365,17 +371,28 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="p-1.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
 				>
-					<Layers class="w-4 h-4" />
+					<Layers class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
 						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						{output?.name || 'Output'}
+						{name || output?.name || 'Output'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Deliverable</p>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+						{#if output?.created_at}Created {new Date(
+								output.created_at
+							).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}{#if output?.updated_at && output.updated_at !== output.created_at}
+							· Updated {new Date(output.updated_at).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}
+					</p>
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
@@ -540,7 +557,7 @@
 					</div>
 
 					<!-- Tags Display -->
-					{#if output?.props?.tags?.length}
+					{#if hasTags}
 						<div class="mb-6">
 							<TagsDisplay props={output.props} />
 						</div>

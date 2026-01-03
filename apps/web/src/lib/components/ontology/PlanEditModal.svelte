@@ -27,10 +27,10 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
-	import { PLAN_STATES } from '$lib/types/onto';
+	import { PLAN_STATES, type Plan } from '$lib/types/onto';
 	import { PLAN_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
-	import type { ComponentType } from 'svelte';
+	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import GoalEditModal from './GoalEditModal.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
@@ -38,12 +38,13 @@
 	import { getPlanStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let AgentChatModalComponent = $state<Component<any> | null>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
 			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-			AgentChatModalComponent = mod.default;
+			AgentChatModalComponent = mod.default as Component<any>;
 		}
 		return AgentChatModalComponent;
 	}
@@ -59,7 +60,7 @@
 	let { planId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
 
 	let modalOpen = $state(true);
-	let plan = $state<any>(null);
+	let plan = $state<Plan | null>(null);
 	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let isLoading = $state(true);
 	let isSaving = $state(false);

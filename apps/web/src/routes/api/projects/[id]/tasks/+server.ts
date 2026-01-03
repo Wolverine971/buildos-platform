@@ -4,6 +4,7 @@ import type { Database } from '@buildos/shared-types';
 import { CalendarService, CalendarConnectionError } from '$lib/services/calendar-service';
 import { sanitizeTaskData } from '$lib/utils/sanitize-data';
 import { ApiResponse, parseRequestBody, validateRequiredFields } from '$lib/utils/api-response';
+import { validatePagination } from '$lib/utils/api-helpers';
 
 export const POST: RequestHandler = async ({
 	params,
@@ -276,8 +277,8 @@ async function handlePhaseAssignment(
 
 export const GET: RequestHandler = async ({
 	params,
-	locals: { supabase, safeGetSession },
-	request
+	url,
+	locals: { supabase, safeGetSession }
 }) => {
 	try {
 		const { user } = await safeGetSession();
@@ -287,9 +288,19 @@ export const GET: RequestHandler = async ({
 
 		const { id: projectId } = params;
 
+		// Validate pagination parameters (security fix: 2026-01-03)
+		const { page, limit, offset } = validatePagination(url, {
+			defaultLimit: 100,
+			maxLimit: 500
+		});
+
 		// PERFORMANCE: Single optimized query with strategic field selection
 		// Uses LEFT joins to include tasks without calendar events/phases
-		const { data: tasks, error } = await supabase
+		const {
+			data: tasks,
+			error,
+			count
+		} = await supabase
 			.from('tasks')
 			.select(
 				`
@@ -317,19 +328,31 @@ export const GET: RequestHandler = async ({
 						end_date
 					)
 				)
-			`
+			`,
+				{ count: 'exact' }
 			)
 			.eq('project_id', projectId)
 			.eq('user_id', user.id)
 			.is('deleted_at', null)
 			.order('created_at', { ascending: false })
-			.limit(500);
+			.range(offset, offset + limit - 1);
 
 		if (error) {
 			throw error;
 		}
 
-		return ApiResponse.success({ tasks });
+		const total = count ?? 0;
+		const hasMore = offset + (tasks?.length ?? 0) < total;
+
+		return ApiResponse.success({
+			tasks,
+			pagination: {
+				page,
+				limit,
+				total,
+				hasMore
+			}
+		});
 	} catch (error) {
 		return ApiResponse.internalError(error, 'Failed to fetch tasks');
 	}

@@ -82,6 +82,7 @@ export async function loadGoalReverseContext(
 		.from('onto_projects')
 		.select('id, name, description, state_key, type_key, props, created_by')
 		.eq('id', goalRow.project_id)
+		.is('deleted_at', null)
 		.maybeSingle<ProjectRow>();
 
 	if (projectError) {

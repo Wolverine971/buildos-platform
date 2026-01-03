@@ -6,6 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { validatePaginationCustom, verifyProjectAccess } from '$lib/utils/api-helpers';
 
 export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
@@ -19,34 +20,21 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			return ApiResponse.badRequest('Project ID required');
 		}
 
-		// Parse pagination params
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '5', 10), 20);
-		const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+		// Validate pagination params (security fix: 2026-01-03)
+		const { limit, offset } = validatePaginationCustom(
+			{
+				limit: url.searchParams.get('limit'),
+				offset: url.searchParams.get('offset')
+			},
+			{ defaultLimit: 5, maxLimit: 20 }
+		);
 
 		const supabase = locals.supabase;
 
-		// Verify project access
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
-
-		if (actorError || !actorId) {
-			console.error('[Project Briefs API] Failed to get actor:', actorError);
-			return ApiResponse.error('Failed to resolve user actor', 500);
-		}
-
-		const { data: project, error: projectError } = await supabase
-			.from('onto_projects')
-			.select('id, created_by')
-			.eq('id', projectId)
-			.single();
-
-		if (projectError || !project) {
-			return ApiResponse.notFound('Project not found');
-		}
-
-		if (project.created_by !== actorId) {
-			return ApiResponse.forbidden('You do not have permission to access this project');
+		// Verify project access using shared helper (refactor: 2026-01-03)
+		const authResult = await verifyProjectAccess(supabase, projectId, user.id);
+		if (!authResult.authorized) {
+			return authResult.error!;
 		}
 
 		// Fetch briefs from ontology_project_briefs with join to daily brief for date

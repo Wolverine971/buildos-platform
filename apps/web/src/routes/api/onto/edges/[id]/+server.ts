@@ -104,6 +104,7 @@ async function verifyEdgeAccess(
 				.from('onto_projects')
 				.select('id')
 				.eq('id', edge.src_id)
+				.is('deleted_at', null)
 				.eq('created_by', actorId)
 				.single();
 			return !!data;
@@ -116,6 +117,7 @@ async function verifyEdgeAccess(
 		.from(entityTable)
 		.select('project_id')
 		.eq('id', edge.src_id)
+		.is('deleted_at', null)
 		.single();
 
 	if (!entity?.project_id) return false;
@@ -124,6 +126,7 @@ async function verifyEdgeAccess(
 		.from('onto_projects')
 		.select('id')
 		.eq('id', entity.project_id)
+		.is('deleted_at', null)
 		.eq('created_by', actorId)
 		.single();
 

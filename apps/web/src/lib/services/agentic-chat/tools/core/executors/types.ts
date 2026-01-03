@@ -182,7 +182,6 @@ export interface CreateOntoTaskArgs {
 	type_key?: string;
 	state_key?: string;
 	priority?: number;
-	plan_id?: string;
 	start_at?: string;
 	due_at?: string;
 	props?: Record<string, unknown>;

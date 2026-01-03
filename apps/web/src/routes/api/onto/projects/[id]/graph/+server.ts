@@ -74,6 +74,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			.from('onto_projects')
 			.select('id, created_by')
 			.eq('id', id)
+			.is('deleted_at', null)
 			.single();
 
 		if (projectError || !project) {

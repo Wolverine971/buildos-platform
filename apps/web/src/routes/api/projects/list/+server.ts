@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/projects/list/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, handleConditionalRequest } from '$lib/utils/api-response';
+import { validatePagination, sanitizeSearchQuery } from '$lib/utils/api-helpers';
 
 // Feature flag to toggle between old and new implementation
 const USE_RPC_FUNCTION = true;
@@ -11,15 +12,18 @@ export const GET: RequestHandler = async ({ locals, url, request }) => {
 	try {
 		const { user } = await safeGetSession();
 		if (!user) {
-			return ApiResponse.error('Unauthorized', 401);
+			return ApiResponse.unauthorized();
 		}
 
-		// Get query parameters for pagination and filtering
-		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(url.searchParams.get('limit') || '50');
+		// Validate pagination parameters (security fix: 2026-01-03)
+		const { page, limit, offset } = validatePagination(url, {
+			defaultLimit: 50,
+			maxLimit: 100
+		});
 		const status = url.searchParams.get('status') || 'all';
-		const search = url.searchParams.get('search') || '';
-		const offset = (page - 1) * limit;
+		// Sanitize search input (security fix: 2026-01-03)
+		const rawSearch = url.searchParams.get('search') || '';
+		const search = sanitizeSearchQuery(rawSearch);
 
 		// Use new RPC function for optimized performance
 		if (USE_RPC_FUNCTION) {
@@ -131,7 +135,7 @@ async function handleOriginalProjectsList({
 		query = query.eq('status', status);
 	}
 
-	// Apply search filter
+	// Apply search filter (already sanitized from caller)
 	if (search) {
 		query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
 	}

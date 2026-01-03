@@ -289,9 +289,9 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="p-1.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
 				>
-					<Scale class="w-4 h-4" />
+					<Scale class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
@@ -305,6 +305,10 @@
 							).toLocaleDateString(undefined, {
 								month: 'short',
 								day: 'numeric'
+							})}{/if}{#if decision?.updated_at && decision.updated_at !== decision.created_at}
+							· Updated {new Date(decision.updated_at).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
 							})}{/if}
 					</p>
 				</div>
@@ -314,10 +318,10 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
 					aria-label="Close modal"
 				>
-					<X class="h-4 w-4" />
+					<X class="w-5 h-5" />
 				</button>
 			</div>
 		</div>
@@ -556,7 +560,7 @@
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 tx tx-grain tx-weak"
 						icon={Trash2}
 					>
 						<span class="hidden sm:inline">Delete</span>
@@ -572,7 +576,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs sm:text-sm px-2 sm:px-4"
+						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						Cancel
 					</Button>
@@ -583,7 +587,7 @@
 						onclick={handleSave}
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
-						class="text-xs sm:text-sm px-2 sm:px-4"
+						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
 						<span class="hidden sm:inline">Save Changes</span>

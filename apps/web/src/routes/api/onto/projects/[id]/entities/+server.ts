@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/onto/projects/[id]/entities/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { verifyProjectAccess, sanitizeSearchQuery } from '$lib/utils/api-helpers';
 import type { FocusEntitySummary } from '@buildos/shared-types';
 
 type FocusEntityType =
@@ -77,6 +78,14 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			return ApiResponse.badRequest('Project ID required');
 		}
 
+		const supabase = locals.supabase;
+
+		// Verify user has access to this project (security fix: 2026-01-03)
+		const authResult = await verifyProjectAccess(supabase, projectId, session.user.id);
+		if (!authResult.authorized) {
+			return authResult.error!;
+		}
+
 		const typeParam = (url.searchParams.get('type') ?? 'task') as FocusEntityType;
 		if (!(typeParam in ENTITY_CONFIG)) {
 			return ApiResponse.badRequest('Invalid focus entity type');
@@ -84,7 +93,6 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 		const search = url.searchParams.get('search');
 		const { table, select, searchField } = ENTITY_CONFIG[typeParam];
-		const supabase = locals.supabase;
 
 		let query = supabase
 			.from(table)
@@ -93,8 +101,12 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			.is('deleted_at', null)
 			.limit(50);
 
+		// Sanitize search input to prevent SQL injection (security fix: 2026-01-03)
 		if (search) {
-			query = query.ilike(searchField, `%${search}%`);
+			const sanitizedSearch = sanitizeSearchQuery(search);
+			if (sanitizedSearch) {
+				query = query.ilike(searchField, `%${sanitizedSearch}%`);
+			}
 		}
 
 		if (typeParam === 'task') {

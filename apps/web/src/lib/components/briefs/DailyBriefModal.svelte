@@ -17,7 +17,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import { renderMarkdown } from '$lib/utils/markdown';
-	import { formatFullDate, formatTimeOnly } from '$lib/utils/date-utils';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 	import { browser } from '$app/environment';

@@ -38,7 +38,9 @@
 		ExternalLink,
 		CircleCheck,
 		Sparkles,
-		RefreshCw
+		RefreshCw,
+		X,
+		FolderOpen
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -96,6 +98,14 @@
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
 	let dataRefreshing = $state(false);
+	let initialLoaded = $state(false);
+
+	// Mark initial load complete after first data load
+	$effect(() => {
+		if (task && !initialLoaded) {
+			initialLoaded = true;
+		}
+	});
 
 	// View state
 	const VIEW_STORAGE_KEY = 'task_focus_view';
@@ -111,6 +121,12 @@
 	let workspaceDocContent = $state('');
 	let workspaceDocSaving = $state(false);
 
+	// Auto-save state
+	let autoSaveTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
+	let hasUnsavedChanges = $state(false);
+	let lastSavedContent = $state('');
+	const AUTO_SAVE_DELAY = 2000; // 2 seconds debounce
+
 	// Sidebar panels state
 	let expandedPanels = $state<Record<string, boolean>>({
 		goals: true,
@@ -122,6 +138,9 @@
 		connectedDocs: false,
 		linkedEntities: false
 	});
+
+	// Mobile context sheet state
+	let showMobileContextSheet = $state(false);
 
 	// Modal states for editing other entities
 	let showDocumentModal = $state(false);
@@ -218,6 +237,43 @@
 		}
 	});
 
+	// Auto-save effect with debounce
+	$effect(() => {
+		if (!browser) return;
+		if (!selectedWorkspaceDocId) return;
+		if (workspaceDocContent === lastSavedContent) {
+			hasUnsavedChanges = false;
+			return;
+		}
+
+		hasUnsavedChanges = true;
+
+		// Clear existing timeout
+		if (autoSaveTimeout) {
+			clearTimeout(autoSaveTimeout);
+		}
+
+		// Set new timeout for auto-save
+		autoSaveTimeout = setTimeout(async () => {
+			if (workspaceDocContent !== lastSavedContent && selectedWorkspaceDocId) {
+				try {
+					await saveWorkspaceDocument();
+					lastSavedContent = workspaceDocContent;
+					hasUnsavedChanges = false;
+				} catch {
+					// Error already shown via toast in saveWorkspaceDocument
+				}
+			}
+		}, AUTO_SAVE_DELAY);
+
+		// Cleanup on unmount
+		return () => {
+			if (autoSaveTimeout) {
+				clearTimeout(autoSaveTimeout);
+			}
+		};
+	});
+
 	// ============================================================
 	// UTILITY FUNCTIONS
 	// ============================================================
@@ -301,7 +357,10 @@
 		selectedWorkspaceDocId = documentId;
 		const doc = workspaceDocuments.find((d) => d.document.id === documentId);
 		if (doc) {
-			workspaceDocContent = (doc.document?.props?.body_markdown as string) ?? '';
+			const content = (doc.document?.props?.body_markdown as string) ?? '';
+			workspaceDocContent = content;
+			lastSavedContent = content; // Track baseline for auto-save
+			hasUnsavedChanges = false;
 		}
 	}
 
@@ -313,8 +372,9 @@
 			const result = await fetchTaskDocuments(task.id);
 			workspaceDocuments = result.documents ?? [];
 
-			if (!selectedWorkspaceDocId && deliverableDocuments.length > 0) {
-				selectWorkspaceDocument(deliverableDocuments[0].document.id);
+			const firstDoc = deliverableDocuments[0];
+			if (!selectedWorkspaceDocId && firstDoc) {
+				selectWorkspaceDocument(firstDoc.document.id);
 			}
 
 			workspaceInitialized = true;
@@ -617,6 +677,20 @@
 		setActiveView('workspace', documentId);
 	}
 </script>
+
+<!-- Keyboard Shortcuts -->
+<svelte:window
+	onkeydown={(e) => {
+		if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+			e.preventDefault();
+			if (activeView === 'workspace' && selectedWorkspaceDocId) {
+				saveWorkspaceDocument();
+			} else {
+				handleSave();
+			}
+		}
+	}}
+/>
 
 <svelte:head>
 	<title>{task?.title || 'Task'} | {project?.name || 'Project'} | BuildOS</title>
@@ -1147,23 +1221,36 @@
 								<div
 									class="flex items-center justify-between gap-2 px-2 sm:px-3 py-2 border-t border-border bg-muted/30"
 								>
-									{#if !selectedWorkspaceDoc.edge?.props?.handed_off}
-										<button
-											type="button"
-											onclick={() =>
-												handlePromoteWorkspaceDocument(
-													selectedWorkspaceDocId!
-												)}
-											class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-foreground border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors pressable"
-										>
-											<CircleCheck class="w-3.5 h-3.5" />
-											<span class="hidden xs:inline">Promote</span>
-										</button>
-									{:else}
-										<span class="text-[10px] text-muted-foreground"
-											>Promoted</span
-										>
-									{/if}
+									<div class="flex items-center gap-2">
+										{#if !selectedWorkspaceDoc.edge?.props?.handed_off}
+											<button
+												type="button"
+												onclick={() =>
+													handlePromoteWorkspaceDocument(
+														selectedWorkspaceDocId!
+													)}
+												class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-foreground border border-border rounded-lg hover:border-accent hover:bg-accent/5 transition-colors pressable"
+											>
+												<CircleCheck class="w-3.5 h-3.5" />
+												<span class="hidden xs:inline">Promote</span>
+											</button>
+										{:else}
+											<span class="text-[10px] text-muted-foreground"
+												>Promoted</span
+											>
+										{/if}
+										<!-- Unsaved changes indicator -->
+										{#if hasUnsavedChanges}
+											<span
+												class="flex items-center gap-1 text-[10px] text-amber-500"
+											>
+												<span
+													class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"
+												></span>
+												<span class="hidden sm:inline">Unsaved</span>
+											</span>
+										{/if}
+									</div>
 									<button
 										type="button"
 										onclick={saveWorkspaceDocument}
@@ -1180,11 +1267,39 @@
 								</div>
 							</section>
 						{:else if workspaceLoading}
+							<!-- Skeleton Loading State -->
 							<section
-								class="bg-card border border-border rounded-lg shadow-ink p-6 sm:p-8"
+								class="bg-card border border-border rounded-lg shadow-ink tx tx-pulse tx-weak overflow-hidden"
 							>
-								<div class="flex items-center justify-center">
-									<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
+								<div class="p-3 sm:p-4 space-y-3">
+									<!-- Skeleton toolbar -->
+									<div class="flex items-center gap-2">
+										<div class="h-8 w-8 rounded bg-muted animate-pulse"></div>
+										<div class="h-8 w-8 rounded bg-muted animate-pulse"></div>
+										<div class="h-8 w-8 rounded bg-muted animate-pulse"></div>
+										<div class="flex-1"></div>
+										<div class="h-8 w-20 rounded bg-muted animate-pulse"></div>
+									</div>
+									<!-- Skeleton content lines -->
+									<div class="space-y-2 pt-2">
+										<div class="h-4 w-3/4 rounded bg-muted animate-pulse"></div>
+										<div
+											class="h-4 w-full rounded bg-muted animate-pulse"
+										></div>
+										<div class="h-4 w-5/6 rounded bg-muted animate-pulse"></div>
+										<div class="h-4 w-2/3 rounded bg-muted animate-pulse"></div>
+										<div class="h-4 w-0"></div>
+										<div
+											class="h-4 w-full rounded bg-muted animate-pulse"
+										></div>
+										<div class="h-4 w-4/5 rounded bg-muted animate-pulse"></div>
+									</div>
+								</div>
+								<div
+									class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 border-t border-border bg-muted/30"
+								>
+									<div class="h-8 w-20 rounded bg-muted animate-pulse"></div>
+									<div class="h-8 w-16 rounded bg-muted animate-pulse"></div>
 								</div>
 							</section>
 						{:else}
@@ -1686,4 +1801,298 @@
 		initialProjectFocus={entityFocus}
 		onClose={() => (showChatModal = false)}
 	/>
+{/if}
+
+<!-- Mobile Project Context Floating Button -->
+{#if goals.length > 0 || plans.length > 0 || documents.length > 0 || outputs.length > 0 || otherTasks.length > 0}
+	<button
+		type="button"
+		onclick={() => (showMobileContextSheet = true)}
+		class="lg:hidden fixed bottom-20 right-3 z-30 flex items-center justify-center w-12 h-12 bg-accent text-accent-foreground rounded-full shadow-ink-strong pressable"
+		aria-label="View project context"
+	>
+		<FolderOpen class="w-5 h-5" />
+	</button>
+{/if}
+
+<!-- Mobile Project Context Slide-up Sheet -->
+{#if showMobileContextSheet}
+	<!-- Backdrop -->
+	<div
+		class="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+		onclick={() => (showMobileContextSheet = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showMobileContextSheet = false)}
+		role="button"
+		tabindex="0"
+		aria-label="Close context sheet"
+	></div>
+
+	<!-- Sheet -->
+	<div
+		class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-2xl shadow-ink-strong max-h-[75vh] flex flex-col animate-in slide-in-from-bottom duration-300"
+	>
+		<!-- Handle & Header -->
+		<div class="sticky top-0 bg-card border-b border-border rounded-t-2xl">
+			<div class="flex justify-center py-2">
+				<div class="w-10 h-1 bg-muted-foreground/30 rounded-full"></div>
+			</div>
+			<div class="flex items-center justify-between px-4 pb-3">
+				<div class="flex items-center gap-2">
+					<FolderOpen class="w-4 h-4 text-accent" />
+					<span class="text-sm font-semibold text-foreground">Project Context</span>
+				</div>
+				<button
+					type="button"
+					onclick={() => (showMobileContextSheet = false)}
+					class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
+					aria-label="Close"
+				>
+					<X class="w-4 h-4 text-muted-foreground" />
+				</button>
+			</div>
+		</div>
+
+		<!-- Scrollable Content -->
+		<div class="flex-1 overflow-y-auto p-3 space-y-2">
+			<!-- Goals -->
+			{#if goals.length > 0}
+				<div
+					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+						<div
+							class="w-6 h-6 rounded-md bg-amber-500/10 flex items-center justify-center"
+						>
+							<Target class="w-3 h-3 text-amber-500" />
+						</div>
+						<span class="text-xs font-semibold text-foreground">Goals</span>
+						<span class="text-[10px] text-muted-foreground">({goals.length})</span>
+					</div>
+					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
+						{#each goals as goal}
+							<li>
+								<button
+									type="button"
+									onclick={() => {
+										showMobileContextSheet = false;
+										openGoalModal(goal.id);
+									}}
+									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
+								>
+									<Target class="w-3 h-3 text-amber-500 shrink-0" />
+									<span class="text-xs text-foreground truncate">{goal.name}</span
+									>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+
+			<!-- Plans -->
+			{#if plans.length > 0}
+				<div
+					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+						<div
+							class="w-6 h-6 rounded-md bg-indigo-500/10 flex items-center justify-center"
+						>
+							<Calendar class="w-3 h-3 text-indigo-500" />
+						</div>
+						<span class="text-xs font-semibold text-foreground">Plans</span>
+						<span class="text-[10px] text-muted-foreground">({plans.length})</span>
+					</div>
+					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
+						{#each plans as plan}
+							<li>
+								<button
+									type="button"
+									onclick={() => {
+										showMobileContextSheet = false;
+										openPlanModal(plan.id);
+									}}
+									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
+								>
+									<Calendar class="w-3 h-3 text-indigo-500 shrink-0" />
+									<span class="text-xs text-foreground truncate">{plan.name}</span
+									>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+
+			<!-- Documents -->
+			{#if documents.length > 0}
+				<div
+					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+						<div
+							class="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center"
+						>
+							<FileText class="w-3 h-3 text-sky-500" />
+						</div>
+						<span class="text-xs font-semibold text-foreground">Documents</span>
+						<span class="text-[10px] text-muted-foreground">({documents.length})</span>
+					</div>
+					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
+						{#each documents.slice(0, 10) as doc}
+							<li>
+								<button
+									type="button"
+									onclick={() => {
+										showMobileContextSheet = false;
+										openDocumentModal(doc.id);
+									}}
+									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
+								>
+									<FileText class="w-3 h-3 text-sky-500 shrink-0" />
+									<span class="text-xs text-foreground truncate">{doc.title}</span
+									>
+								</button>
+							</li>
+						{/each}
+					</ul>
+					{#if documents.length > 10}
+						<div
+							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
+						>
+							+{documents.length - 10} more
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Outputs -->
+			{#if outputs.length > 0}
+				<div
+					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+						<div
+							class="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center"
+						>
+							<Layers class="w-3 h-3 text-purple-500" />
+						</div>
+						<span class="text-xs font-semibold text-foreground">Outputs</span>
+						<span class="text-[10px] text-muted-foreground">({outputs.length})</span>
+					</div>
+					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
+						{#each outputs.slice(0, 10) as output}
+							<li>
+								<button
+									type="button"
+									onclick={() => {
+										showMobileContextSheet = false;
+										openOutputModal(output.id);
+									}}
+									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
+								>
+									<Layers class="w-3 h-3 text-purple-500 shrink-0" />
+									<span class="text-xs text-foreground truncate"
+										>{output.name}</span
+									>
+								</button>
+							</li>
+						{/each}
+					</ul>
+					{#if outputs.length > 10}
+						<div
+							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
+						>
+							+{outputs.length - 10} more
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Other Tasks -->
+			{#if otherTasks.length > 0}
+				<div
+					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+						<div
+							class="w-6 h-6 rounded-md bg-slate-500/10 flex items-center justify-center"
+						>
+							<ListChecks class="w-3 h-3 text-slate-500" />
+						</div>
+						<span class="text-xs font-semibold text-foreground">Other Tasks</span>
+						<span class="text-[10px] text-muted-foreground">({otherTasks.length})</span>
+					</div>
+					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
+						{#each otherTasks.slice(0, 10) as otherTask}
+							{@const visuals = getTaskVisuals(otherTask.state_key)}
+							{@const OtherTaskIcon = visuals.icon}
+							<li>
+								<a
+									href="/projects/{project?.id}/tasks/{otherTask.id}"
+									onclick={() => (showMobileContextSheet = false)}
+									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
+								>
+									<OtherTaskIcon class="w-3 h-3 {visuals.color} shrink-0" />
+									<span class="text-xs text-foreground truncate"
+										>{otherTask.title}</span
+									>
+								</a>
+							</li>
+						{/each}
+					</ul>
+					{#if otherTasks.length > 10}
+						<div
+							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
+						>
+							+{otherTasks.length - 10} more
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Milestones -->
+			{#if milestones.length > 0}
+				<div
+					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+						<div
+							class="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center"
+						>
+							<Flag class="w-3 h-3 text-emerald-500" />
+						</div>
+						<span class="text-xs font-semibold text-foreground">Milestones</span>
+						<span class="text-[10px] text-muted-foreground">({milestones.length})</span>
+					</div>
+					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
+						{#each milestones as milestone}
+							<li>
+								<button
+									type="button"
+									onclick={() => {
+										showMobileContextSheet = false;
+										openMilestoneModal(milestone.id);
+									}}
+									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
+								>
+									<Flag class="w-3 h-3 text-emerald-500 shrink-0" />
+									<div class="min-w-0 flex-1">
+										<span class="text-xs text-foreground truncate block"
+											>{milestone.title}</span
+										>
+										{#if milestone.due_at}
+											<span class="text-[10px] text-muted-foreground"
+												>{formatDueDate(milestone.due_at)}</span
+											>
+										{/if}
+									</div>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</div>
+	</div>
 {/if}

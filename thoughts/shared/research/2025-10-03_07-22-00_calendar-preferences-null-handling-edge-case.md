@@ -12,7 +12,6 @@ last_updated_by: Claude
 path: thoughts/shared/research/2025-10-03_07-22-00_calendar-preferences-null-handling-edge-case.md
 ---
 
-<!-- todo: priority 4 -->
 
 # Research: Calendar Preferences Null Handling Edge Case in Task Scheduling
 

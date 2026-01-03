@@ -188,7 +188,7 @@ These query the ontology system and return abbreviated data:
 - Tasks: project_id, state_key (filter by state: 'todo', 'in_progress', 'blocked', 'done')
 - Plans: project_id
 - Goals: project_id
-- Documents: project_id, type_key, state_key (draft, review, published)
+- Documents: project_id, type_key, state_key (draft, in_review, ready, published, archived)
 - Outputs: project_id, state_key (draft, in_progress, review, published)
 - Milestones: project_id, state_key (pending, in_progress, completed, missed)
 - Risks: project_id, state_key (identified, mitigated, occurred, closed), impact
@@ -222,7 +222,7 @@ Create, update, and delete ontology entities:
 - create_onto_document → Create project document (required: project_id, title, type_key)
 
 **UPDATE Tools** (Modify existing):
-- update_onto_task → Update task fields (required: task_id, optional: title, description, state_key, priority, plan_id, due_at, props)
+- update_onto_task → Update task fields (required: task_id, optional: title, description, state_key, priority, due_at, props)
 - update_onto_project → Update project fields (required: project_id, optional: name, description, state_key, props)
 - update_onto_goal → Update goal fields (required: goal_id, optional: name, description, priority, target_date, props)
 - update_onto_plan → Update plan fields (required: plan_id, optional: name, description, state_key, dates, props)

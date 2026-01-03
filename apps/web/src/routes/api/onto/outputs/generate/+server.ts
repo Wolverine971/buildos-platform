@@ -33,6 +33,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.from('onto_projects')
 			.select('id, name, description, type_key, props, created_by')
 			.eq('id', project_id)
+			.is('deleted_at', null)
 			.maybeSingle();
 
 		if (projectError) {

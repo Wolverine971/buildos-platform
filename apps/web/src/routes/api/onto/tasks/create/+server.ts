@@ -101,6 +101,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.from('onto_projects')
 			.select('id, created_by')
 			.eq('id', project_id)
+			.is('deleted_at', null)
 			.eq('created_by', actorId)
 			.single();
 
@@ -114,6 +115,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.from('onto_plans')
 				.select('id')
 				.eq('id', plan_id)
+				.is('deleted_at', null)
 				.eq('project_id', project_id)
 				.single();
 
@@ -131,6 +133,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.from('onto_goals')
 				.select('id')
 				.eq('id', goal_id)
+				.is('deleted_at', null)
 				.eq('project_id', project_id)
 				.single();
 
@@ -145,6 +148,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.from('onto_milestones')
 				.select('id')
 				.eq('id', supporting_milestone_id)
+				.is('deleted_at', null)
 				.eq('project_id', project_id)
 				.single();
 
