@@ -139,17 +139,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			edgePayloads.push(
 				buildEdgePayload(
 					context.project.id,
-					'project',
-					context.project.id,
-					'contains',
-					'milestone',
-					milestone.id
-				),
-				buildEdgePayload(
-					context.project.id,
 					'goal',
 					goalId,
-					'supports_goal',
+					'has_milestone',
 					'milestone',
 					milestone.id
 				)
@@ -162,30 +154,22 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			edgePayloads.push(
 				buildEdgePayload(
 					context.project.id,
-					'project',
-					context.project.id,
-					'contains',
 					'task',
-					task.id
-				),
-				buildEdgePayload(
-					context.project.id,
-					'goal',
-					goalId,
+					task.id,
 					'supports_goal',
-					'task',
-					task.id
+					'goal',
+					goalId
 				)
 			);
 			if (supportingMilestoneId) {
 				edgePayloads.push(
 					buildEdgePayload(
 						context.project.id,
-						'milestone',
-						supportingMilestoneId,
-						'contains',
 						'task',
-						task.id
+						task.id,
+						'targets_milestone',
+						'milestone',
+						supportingMilestoneId
 					)
 				);
 			}

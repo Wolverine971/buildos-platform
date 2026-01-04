@@ -29,7 +29,8 @@ export type EntityKind =
 	| 'milestone'
 	| 'document'
 	| 'output'
-	| 'risk';
+	| 'risk'
+	| 'decision';
 
 /**
  * Valid relationship types
@@ -43,7 +44,10 @@ export const RELATIONSHIP_DIRECTIONS = {
 	has_goal: { description: 'Project contains goal', srcKinds: ['project'] },
 	has_document: { description: 'Project contains document', srcKinds: ['project'] },
 	has_risk: { description: 'Project contains risk', srcKinds: ['project'] },
-	has_milestone: { description: 'Project contains milestone', srcKinds: ['project'] },
+	has_milestone: {
+		description: 'Project or goal contains milestone',
+		srcKinds: ['project', 'goal']
+	},
 	has_metric: { description: 'Project contains metric', srcKinds: ['project'] },
 	has_requirement: { description: 'Project contains requirement', srcKinds: ['project'] },
 	has_source: { description: 'Project contains source', srcKinds: ['project'] },
@@ -53,12 +57,15 @@ export const RELATIONSHIP_DIRECTIONS = {
 		srcKinds: ['project']
 	},
 
-	// Goal relationships (task → goal it supports)
-	supports_goal: { description: 'Task supports goal', srcKinds: ['task'] },
-	achieved_by: { description: 'Goal achieved by task', srcKinds: ['goal'] },
+	// Goal relationships (task/plan → goal it supports)
+	supports_goal: { description: 'Task or plan supports goal', srcKinds: ['task', 'plan'] },
+	achieved_by: { description: 'Goal achieved by plan or task', srcKinds: ['goal'] },
 
-	// Milestone relationships (milestone → task)
-	targets_milestone: { description: 'Task targets milestone', srcKinds: ['task'] },
+	// Milestone relationships (task/plan → milestone)
+	targets_milestone: {
+		description: 'Task or plan targets milestone',
+		srcKinds: ['task', 'plan']
+	},
 
 	// Dependency relationships (dependent → dependency)
 	depends_on: { description: 'Entity depends on another', srcKinds: ['task', 'plan', 'goal'] },
@@ -68,7 +75,7 @@ export const RELATIONSHIP_DIRECTIONS = {
 	// Reference relationships (referrer → referenced)
 	references: {
 		description: 'Entity references another',
-		srcKinds: ['task', 'document', 'plan']
+		srcKinds: ['task', 'document', 'plan', 'goal', 'decision']
 	},
 	referenced_by: { description: 'Reverse reference (deprecated)', srcKinds: [] }, // Deprecated - use references
 	relates_to: { description: 'Document relates to entity', srcKinds: ['document'] },
@@ -100,7 +107,8 @@ export const DEPRECATED_RELATIONSHIPS: Record<
 	referenced_by: { canonical: 'references', swapDirection: true },
 	produced_by: { canonical: 'produces', swapDirection: true },
 	mitigated_by: { canonical: 'mitigates', swapDirection: true },
-	has_output: { canonical: 'produces', swapDirection: false }
+	has_output: { canonical: 'produces', swapDirection: false },
+	achieved_by: { canonical: 'supports_goal', swapDirection: true }
 };
 
 /**
@@ -176,6 +184,20 @@ export function normalizeEdgeDirection(edge: EdgeInput): NormalizedEdge | null {
 	// Check if the relationship is valid
 	if (!(rel in RELATIONSHIP_DIRECTIONS)) {
 		return null;
+	}
+
+	const directionInfo = RELATIONSHIP_DIRECTIONS[rel as RelationshipType];
+	const srcKinds = directionInfo.srcKinds as readonly string[];
+
+	if (srcKinds.length > 0 && !srcKinds.includes(src_kind) && srcKinds.includes(dst_kind)) {
+		return {
+			src_kind: dst_kind as EntityKind,
+			src_id: dst_id,
+			dst_kind: src_kind as EntityKind,
+			dst_id: src_id,
+			rel: rel as RelationshipType,
+			props
+		};
 	}
 
 	// Return as-is (already canonical)

@@ -1,3 +1,4 @@
+-- supabase/migrations/20260128_update_onto_search_entities_soft_delete.sql
 -- Ensure ontology search excludes soft-deleted entities and projects.
 
 create or replace function onto_search_entities(

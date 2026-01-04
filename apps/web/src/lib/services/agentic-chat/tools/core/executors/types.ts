@@ -182,6 +182,9 @@ export interface CreateOntoTaskArgs {
 	type_key?: string;
 	state_key?: string;
 	priority?: number;
+	plan_id?: string;
+	goal_id?: string;
+	supporting_milestone_id?: string;
 	start_at?: string;
 	due_at?: string;
 	props?: Record<string, unknown>;
@@ -318,10 +321,24 @@ export interface UpdateOntoTaskArgs {
 	type_key?: string;
 	state_key?: string;
 	priority?: number;
-	plan_id?: string;
+	goal_id?: string;
+	supporting_milestone_id?: string;
 	start_at?: string;
 	due_at?: string;
 	props?: Record<string, unknown>;
+}
+
+export interface LinkOntoEntitiesArgs {
+	src_kind: string;
+	src_id: string;
+	dst_kind: string;
+	dst_id: string;
+	rel: string;
+	props?: Record<string, unknown>;
+}
+
+export interface UnlinkOntoEdgeArgs {
+	edge_id: string;
 }
 
 export interface UpdateOntoProjectArgs {

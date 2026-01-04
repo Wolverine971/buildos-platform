@@ -20,7 +20,7 @@
 		onChangeFocus: () => void;
 		onClearFocus: () => void;
 		ontologyLoaded: boolean;
-		agentStateLabel: string | null;
+		hasActiveThinkingBlock: boolean;
 		currentActivity: string;
 		contextUsage: ContextUsageSnapshot | null;
 	}
@@ -38,7 +38,7 @@
 		onChangeFocus,
 		onClearFocus,
 		ontologyLoaded,
-		agentStateLabel,
+		hasActiveThinkingBlock,
 		currentActivity,
 		contextUsage
 	}: Props = $props();
@@ -144,7 +144,7 @@
 	<!-- Right side: Status pills, Project link, Close button -->
 	<div class="flex shrink-0 items-center gap-2">
 		<!-- INKPRINT status pills with micro-label styling -->
-		{#if ontologyLoaded || contextUsage || (currentActivity && !agentStateLabel)}
+		{#if ontologyLoaded || contextUsage || (currentActivity && !hasActiveThinkingBlock)}
 			<div class="flex items-center gap-1.5">
 				{#if ontologyLoaded}
 					<span
@@ -185,7 +185,7 @@
 					</span>
 				{/if}
 
-				{#if currentActivity && !agentStateLabel}
+				{#if currentActivity && !hasActiveThinkingBlock}
 					<span
 						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"
 						title={currentActivity}

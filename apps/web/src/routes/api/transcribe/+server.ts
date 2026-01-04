@@ -10,10 +10,10 @@ const openai = new OpenAI({
 });
 
 // Transcription model configuration
-// gpt-4o-mini-transcribe: ~50% lower WER than whisper-1, 89% fewer hallucinations
-// gpt-4o-transcribe: State-of-the-art accuracy, best for accented/noisy speech
+// gpt-4o-transcribe: State-of-the-art accuracy (~8.9% WER), best for accented/noisy speech
+// gpt-4o-mini-transcribe: Good balance of cost/accuracy (~13.2% WER), half the price
 // whisper-1: Legacy model (deprecated for new projects)
-const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
+const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
 
 // Timeout and retry configuration
 const TRANSCRIPTION_TIMEOUT_MS = 30000; // 30 seconds timeout
@@ -206,13 +206,18 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				}
 
 				// Execute transcription with timeout
+				// Custom vocabulary prompt helps the model recognize domain-specific terms
+				const vocabularyPrompt =
+					'BuildOS, brain dump, ontology, daily brief, phase, project context';
+
 				transcription = await withTimeout(
 					openai.audio.transcriptions.create({
 						model: TRANSCRIPTION_MODEL,
 						file: transcriptionFile,
 						// No language specified - enables automatic language detection
 						response_format: 'json',
-						temperature: 0.2 // Lower temperature for more consistent results
+						temperature: 0.2, // Lower temperature for more consistent results
+						prompt: vocabularyPrompt // Guides model to recognize custom vocabulary
 					}),
 					TRANSCRIPTION_TIMEOUT_MS
 				);

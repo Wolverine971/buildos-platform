@@ -38,7 +38,7 @@
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
-	import type { ComponentType } from 'svelte';
+	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -47,14 +47,15 @@
 	import RiskEditModal from './RiskEditModal.svelte';
 	import { MILESTONE_STATES, type Milestone } from '$lib/types/onto';
 	import { MILESTONE_TYPE_KEYS } from '$lib/types/onto-taxonomy';
+	import { formatDateForInput, parseDateFromInput } from '$lib/utils/date-utils';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+	let AgentChatModalComponent = $state<Component<any> | null>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
 			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-			AgentChatModalComponent = mod.default;
+			AgentChatModalComponent = mod.default as Component<any>;
 		}
 		return AgentChatModalComponent;
 	}
@@ -135,7 +136,14 @@
 	const stateBadge = $derived(STATE_OPTIONS.find((o) => o.value === stateKey));
 
 	// Computed due date info
-	const dueDate = $derived(dueAt ? new Date(dueAt) : null);
+	function parseDateOnlyToLocal(dateOnly: string): Date | null {
+		const [year, month, day] = dateOnly.split('-').map(Number);
+		if (!year || !month || !day) return null;
+		const date = new Date(year, month - 1, day);
+		return Number.isNaN(date.getTime()) ? null : date;
+	}
+
+	const dueDate = $derived.by(() => (dueAt ? parseDateOnlyToLocal(dueAt) : null));
 	const daysUntilDue = $derived.by(() => {
 		if (!dueDate) return null;
 		const now = new Date();
@@ -173,10 +181,7 @@
 			if (milestone) {
 				title = milestone.title || '';
 				// Extract date portion for input
-				if (milestone.due_at) {
-					const dateObj = new Date(milestone.due_at);
-					dueAt = dateObj.toISOString().split('T')[0];
-				}
+				dueAt = formatDateForInput(milestone.due_at);
 				stateKey = milestone.state_key || 'pending';
 				typeKey = milestone.type_key || 'milestone.default';
 				description = milestone.description || milestone.props?.description || '';
@@ -205,12 +210,16 @@
 		error = '';
 
 		try {
-			// Convert local date to ISO timestamp (end of day)
-			const dueDateObj = new Date(dueAt + 'T23:59:59');
+			const dueDateIso = parseDateFromInput(dueAt);
+			if (!dueDateIso) {
+				error = 'Due date must be a valid date';
+				isSaving = false;
+				return;
+			}
 
 			const requestBody = {
 				title: title.trim(),
-				due_at: dueDateObj.toISOString(),
+				due_at: dueDateIso,
 				state_key: stateKey,
 				type_key: typeKey || 'milestone.default',
 				milestone: milestoneDetails.trim() || null,

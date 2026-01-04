@@ -18,8 +18,8 @@ Enhance the TaskEditModal right-side panel to display and navigate to all linked
 The TaskEditModal (`/apps/web/src/lib/components/ontology/TaskEditModal.svelte`) currently:
 
 1. **Plan Association**: Shows a dropdown to select a plan (stored as edge relationship `belongs_to_plan`)
-2. **Goal Association**: Shows a dropdown to select a goal (stored in `props.goal_id` + edge `supports_goal`)
-3. **Milestone Association**: Shows a dropdown to select a milestone (stored in `props.supporting_milestone_id` + edge `contains`)
+2. **Goal Association**: Shows a dropdown to select a goal (stored in `props.goal_id` + edge `supports_goal` from task → goal)
+3. **Milestone Association**: Shows a dropdown to select a milestone (stored in `props.supporting_milestone_id` + edge `targets_milestone` from task → milestone)
 4. **Documents**: Shows connected documents in the workspace tab via `fetchTaskDocuments()` service
 
 ### onto_edges Relationship Types
@@ -31,7 +31,7 @@ interface OntoEdge {
 	id: uuid;
 	src_kind: text; // 'task', 'goal', 'plan', 'milestone', 'document', etc.
 	src_id: uuid;
-	rel: text; // 'belongs_to_plan', 'supports_goal', 'contains', 'references', etc.
+	rel: text; // 'belongs_to_plan', 'supports_goal', 'targets_milestone', 'references', etc.
 	dst_kind: text;
 	dst_id: uuid;
 	props: jsonb; // Additional edge metadata
@@ -41,14 +41,15 @@ interface OntoEdge {
 
 **Common Task Relationships:**
 
-| Relationship Direction | Edge `rel`                 | Description             |
-| ---------------------- | -------------------------- | ----------------------- |
-| `task` → `plan`        | `belongs_to_plan`          | Task belongs to a plan  |
-| `goal` → `task`        | `supports_goal`            | Task supports a goal    |
-| `milestone` → `task`   | `contains`                 | Milestone contains task |
-| `task` → `document`    | `has_document`, `produces` | Task linked to document |
-| `task` → `task`        | `depends_on`, `blocks`     | Task dependencies       |
-| `output` → `task`      | `produced_by`              | Output produced by task |
+| Relationship Direction | Edge `rel`                        | Description              |
+| ---------------------- | --------------------------------- | ------------------------ |
+| `task` → `plan`        | `belongs_to_plan`                 | Task belongs to a plan   |
+| `task` → `goal`        | `supports_goal`                   | Task supports a goal     |
+| `task` → `milestone`   | `targets_milestone`               | Task targets a milestone |
+| `task` → `document`    | `task_has_document`, `references` | Task linked to document  |
+| `task` → `decision`    | `references`                      | Task references decision |
+| `task` → `task`        | `depends_on`, `blocks`            | Task dependencies        |
+| `task` → `output`      | `produces`                        | Task produces output     |
 
 ## Requirements
 
@@ -59,8 +60,9 @@ interface OntoEdge {
 2. **Entity Types to Display**:
     - 📋 **Plans** - Tasks belong to plans
     - 🎯 **Goals** - Tasks support goals
-    - 🏁 **Milestones** - Tasks contained by milestones
+    - 🏁 **Milestones** - Tasks target milestones
     - 📄 **Documents** - Documents linked to tasks (excluding workspace/scratch docs)
+    - 🧭 **Decisions** - Decisions referenced by tasks
     - ✅ **Dependent Tasks** - Tasks this task depends on or blocks
 
 3. **Clickable Navigation**: Each linked entity opens its respective modal:
@@ -131,6 +133,14 @@ interface LinkedEntitiesResponse {
 		state_key: string;
 		edge_rel: string;
 	}>;
+	decisions: Array<{
+		id: string;
+		title: string;
+		state_key?: string;
+		type_key?: string;
+		decision_at?: string;
+		edge_rel: string;
+	}>;
 }
 ```
 
@@ -152,6 +162,9 @@ let showPlanModal = $state(false);
 
 let selectedDocumentId = $state<string | null>(null);
 let showDocumentModal = $state(false);
+
+let selectedDecisionId = $state<string | null>(null);
+let showDecisionModal = $state(false);
 
 let selectedLinkedTaskId = $state<string | null>(null);
 let showLinkedTaskModal = $state(false);
@@ -241,6 +254,16 @@ Add after the "Task Information" card in the sidebar:
 					/>
 				{/if}
 
+				<!-- Decisions Section -->
+				{#if linkedEntities.decisions.length > 0}
+					<LinkedEntitySection
+						label="Decisions"
+						icon={ClipboardCheck}
+						items={linkedEntities.decisions}
+						onItemClick={(id) => openDecisionModal(id)}
+					/>
+				{/if}
+
 				<!-- Dependent Tasks Section -->
 				{#if linkedEntities.dependentTasks.length > 0}
 					<LinkedEntitySection
@@ -256,7 +279,8 @@ Add after the "Task Information" card in the sidebar:
 				<Link2Off class="w-6 h-6 text-gray-400 mx-auto mb-2" />
 				<p class="text-xs text-gray-500 dark:text-slate-400">No linked entities yet</p>
 				<p class="text-xs text-gray-400 dark:text-slate-500 mt-1">
-					Link this task to plans, goals, or documents using the form fields
+					Link this task to plans, goals, milestones, decisions, or documents using the
+					form fields
 				</p>
 			</div>
 		{/if}
@@ -317,6 +341,11 @@ function openDocumentModal(id: string) {
 	workspaceDocumentId = id;
 }
 
+function openDecisionModal(id: string) {
+	selectedDecisionId = id;
+	showDecisionModal = true;
+}
+
 function openTaskModal(id: string) {
 	selectedLinkedTaskId = id;
 	showLinkedTaskModal = true;
@@ -326,9 +355,11 @@ function handleLinkedEntityModalClose() {
 	selectedGoalId = null;
 	selectedPlanIdForModal = null;
 	selectedDocumentId = null;
+	selectedDecisionId = null;
 	selectedLinkedTaskId = null;
 	showGoalModal = false;
 	showPlanModal = false;
+	showDecisionModal = false;
 	showLinkedTaskModal = false;
 	// Refresh task data to get updated linked entities
 	loadTask();
@@ -357,6 +388,16 @@ function handleLinkedEntityModalClose() {
     onClose={() => { showPlanModal = false; loadTask(); }}
     onUpdated={() => { showPlanModal = false; loadTask(); }}
     onDeleted={() => { showPlanModal = false; loadTask(); }}
+  />
+{/if}
+
+{#if showDecisionModal && selectedDecisionId}
+  <DecisionEditModal
+    decisionId={selectedDecisionId}
+    projectId={projectId}
+    onClose={() => { showDecisionModal = false; loadTask(); }}
+    onUpdated={() => { showDecisionModal = false; loadTask(); }}
+    onDeleted={() => { showDecisionModal = false; loadTask(); }}
   />
 {/if}
 
@@ -400,6 +441,7 @@ interface LinkedEntitiesResult {
 	documents: LinkedEntity[];
 	dependentTasks: LinkedEntity[];
 	outputs: LinkedEntity[];
+	decisions: LinkedEntity[];
 }
 
 export async function resolveLinkedEntities(
@@ -412,7 +454,8 @@ export async function resolveLinkedEntities(
 		milestones: [],
 		documents: [],
 		dependentTasks: [],
-		outputs: []
+		outputs: [],
+		decisions: []
 	};
 
 	// Fetch all edges where task is source or destination
@@ -432,6 +475,7 @@ export async function resolveLinkedEntities(
 	const documentIds: string[] = [];
 	const taskIds: string[] = [];
 	const outputIds: string[] = [];
+	const decisionIds: string[] = [];
 
 	const edgeMap = new Map<string, string>(); // entityId -> rel
 
@@ -461,40 +505,53 @@ export async function resolveLinkedEntities(
 			case 'output':
 				if (!outputIds.includes(linkedId)) outputIds.push(linkedId);
 				break;
+			case 'decision':
+				if (!decisionIds.includes(linkedId)) decisionIds.push(linkedId);
+				break;
 		}
 	}
 
 	// Fetch entity details in parallel
-	const [plansData, goalsData, milestonesData, documentsData, tasksData, outputsData] =
-		await Promise.all([
-			planIds.length > 0
-				? supabase.from('onto_plans').select('id, name, state_key').in('id', planIds)
-				: Promise.resolve({ data: [] }),
-			goalIds.length > 0
-				? supabase.from('onto_goals').select('id, name, state_key').in('id', goalIds)
-				: Promise.resolve({ data: [] }),
-			milestoneIds.length > 0
-				? supabase
-						.from('onto_milestones')
-						.select('id, title, due_at')
-						.in('id', milestoneIds)
-				: Promise.resolve({ data: [] }),
-			documentIds.length > 0
-				? supabase
-						.from('onto_documents')
-						.select('id, title, type_key, state_key')
-						.in('id', documentIds)
-				: Promise.resolve({ data: [] }),
-			taskIds.length > 0
-				? supabase.from('onto_tasks').select('id, title, state_key').in('id', taskIds)
-				: Promise.resolve({ data: [] }),
-			outputIds.length > 0
-				? supabase
-						.from('onto_outputs')
-						.select('id, name, type_key, state_key')
-						.in('id', outputIds)
-				: Promise.resolve({ data: [] })
-		]);
+	const [
+		plansData,
+		goalsData,
+		milestonesData,
+		documentsData,
+		tasksData,
+		outputsData,
+		decisionsData
+	] = await Promise.all([
+		planIds.length > 0
+			? supabase.from('onto_plans').select('id, name, state_key').in('id', planIds)
+			: Promise.resolve({ data: [] }),
+		goalIds.length > 0
+			? supabase.from('onto_goals').select('id, name, state_key').in('id', goalIds)
+			: Promise.resolve({ data: [] }),
+		milestoneIds.length > 0
+			? supabase.from('onto_milestones').select('id, title, due_at').in('id', milestoneIds)
+			: Promise.resolve({ data: [] }),
+		documentIds.length > 0
+			? supabase
+					.from('onto_documents')
+					.select('id, title, type_key, state_key')
+					.in('id', documentIds)
+			: Promise.resolve({ data: [] }),
+		taskIds.length > 0
+			? supabase.from('onto_tasks').select('id, title, state_key').in('id', taskIds)
+			: Promise.resolve({ data: [] }),
+		outputIds.length > 0
+			? supabase
+					.from('onto_outputs')
+					.select('id, name, type_key, state_key')
+					.in('id', outputIds)
+			: Promise.resolve({ data: [] }),
+		decisionIds.length > 0
+			? supabase
+					.from('onto_decisions')
+					.select('id, title, state_key, type_key, decision_at')
+					.in('id', decisionIds)
+			: Promise.resolve({ data: [] })
+	]);
 
 	// Map results with edge relationships
 	if (plansData.data) {
@@ -514,7 +571,7 @@ export async function resolveLinkedEntities(
 	if (milestonesData.data) {
 		result.milestones = milestonesData.data.map((m: any) => ({
 			...m,
-			edge_rel: edgeMap.get(m.id) || 'contains'
+			edge_rel: edgeMap.get(m.id) || 'targets_milestone'
 		}));
 	}
 
@@ -539,6 +596,13 @@ export async function resolveLinkedEntities(
 		result.outputs = outputsData.data.map((o: any) => ({
 			...o,
 			edge_rel: edgeMap.get(o.id) || 'produces'
+		}));
+	}
+
+	if (decisionsData.data) {
+		result.decisions = decisionsData.data.map((d: any) => ({
+			...d,
+			edge_rel: edgeMap.get(d.id) || 'references'
 		}));
 	}
 

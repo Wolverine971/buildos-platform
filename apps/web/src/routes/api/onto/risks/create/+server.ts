@@ -164,7 +164,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			src_kind: 'project',
 			dst_id: risk.id,
 			dst_kind: 'risk',
-			rel: 'contains'
+			rel: 'has_risk'
 		});
 
 		// Log activity async (non-blocking)

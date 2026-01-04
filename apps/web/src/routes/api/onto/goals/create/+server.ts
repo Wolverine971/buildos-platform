@@ -140,7 +140,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			src_kind: 'project',
 			dst_id: createdGoal.id,
 			dst_kind: 'goal',
-			rel: 'contains'
+			rel: 'has_goal'
 		});
 
 		// Log activity async (non-blocking)

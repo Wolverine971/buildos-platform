@@ -6,6 +6,31 @@ import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarService } from '$lib/services/calendar-service';
 
+const CALENDAR_SYNC_BATCH_SIZE = 5;
+const DB_BATCH_SIZE = 100;
+
+async function mapInBatches<T, R>(
+	items: T[],
+	batchSize: number,
+	mapper: (item: T) => Promise<R>
+): Promise<R[]> {
+	const results: R[] = [];
+	for (let i = 0; i < items.length; i += batchSize) {
+		const batch = items.slice(i, i + batchSize);
+		const batchResults = await Promise.all(batch.map(mapper));
+		results.push(...batchResults);
+	}
+	return results;
+}
+
+function chunk<T>(items: T[], batchSize: number): T[][] {
+	const batches: T[][] = [];
+	for (let i = 0; i < items.length; i += batchSize) {
+		batches.push(items.slice(i, i + batchSize));
+	}
+	return batches;
+}
+
 /**
  * Background process to migrate all project tasks to use the new project calendar
  * This runs asynchronously and doesn't block the API response
@@ -41,52 +66,63 @@ async function migrateTasksToProjectCalendar(
 		} else {
 			console.log(`Found ${taskEvents.length} task calendar events to migrate`);
 
-			// Process existing events: delete from old calendar and recreate in new calendar
-			for (const taskEvent of taskEvents) {
+			type TaskEventUpdate =
+				Database['public']['Tables']['task_calendar_events']['Update'] & {
+					id: string;
+				};
+			const now = new Date().toISOString();
+
+			const eventsToDelete = taskEvents.filter(
+				(taskEvent) =>
+					taskEvent.calendar_event_id &&
+					taskEvent.calendar_id &&
+					taskEvent.calendar_id !== googleCalendarId
+			);
+
+			await mapInBatches(eventsToDelete, CALENDAR_SYNC_BATCH_SIZE, async (taskEvent) => {
+				const oldCalendarId = taskEvent.calendar_id;
+				const oldEventId = taskEvent.calendar_event_id;
+				if (!oldEventId || !oldCalendarId) return;
+
+				console.log(`Deleting old event ${oldEventId} from calendar ${oldCalendarId}`);
 				try {
-					const oldCalendarId = taskEvent.calendar_id;
-					const oldEventId = taskEvent.calendar_event_id;
+					await calendarService.deleteCalendarEvent(userId, {
+						event_id: oldEventId,
+						calendar_id: oldCalendarId,
+						send_notifications: false
+					});
+					console.log(`Successfully deleted old event ${oldEventId}`);
+				} catch (deleteError: any) {
+					console.log(`Could not delete old event ${oldEventId}: ${deleteError.message}`);
+				}
+			});
 
-					// Delete the old event from Google Calendar if it exists
-					if (oldEventId && oldCalendarId && oldCalendarId !== googleCalendarId) {
-						console.log(
-							`Deleting old event ${oldEventId} from calendar ${oldCalendarId}`
-						);
-						try {
-							await calendarService.deleteCalendarEvent(userId, {
-								event_id: oldEventId,
-								calendar_id: oldCalendarId,
-								send_notifications: false
-							});
-							console.log(`Successfully deleted old event ${oldEventId}`);
-						} catch (deleteError: any) {
-							// Event might not exist in Google Calendar anymore
-							console.log(
-								`Could not delete old event ${oldEventId}: ${deleteError.message}`
-							);
-						}
-					}
-
-					// Create new event in the project calendar
+			const updates = await mapInBatches(
+				taskEvents,
+				CALENDAR_SYNC_BATCH_SIZE,
+				async (taskEvent): Promise<TaskEventUpdate | null> => {
 					const task = taskEvent.tasks;
-					// Use event_start from task_calendar_events or fall back to task.start_date
 					const eventStartTime = taskEvent.event_start || task?.start_date;
 
-					if (eventStartTime) {
-						console.log(
-							`Creating new event for task ${taskEvent.task_id} in project calendar`
+					if (!eventStartTime) {
+						console.log(`Skipping task ${taskEvent.task_id} - no start time available`);
+						return null;
+					}
+
+					console.log(
+						`Creating new event for task ${taskEvent.task_id} in project calendar`
+					);
+
+					let durationMinutes = task?.duration_minutes || 60;
+					if (taskEvent.event_end && taskEvent.event_start) {
+						durationMinutes = Math.floor(
+							(new Date(taskEvent.event_end).getTime() -
+								new Date(taskEvent.event_start).getTime()) /
+								60000
 						);
+					}
 
-						// Calculate duration from existing event or use task duration
-						let durationMinutes = task?.duration_minutes || 60;
-						if (taskEvent.event_end && taskEvent.event_start) {
-							durationMinutes = Math.floor(
-								(new Date(taskEvent.event_end).getTime() -
-									new Date(taskEvent.event_start).getTime()) /
-									60000
-							);
-						}
-
+					try {
 						const scheduleResult = await calendarService.scheduleTask(userId, {
 							task_id: taskEvent.task_id,
 							start_time: eventStartTime,
@@ -99,59 +135,80 @@ async function migrateTasksToProjectCalendar(
 						});
 
 						if (scheduleResult.success && scheduleResult.event_id) {
-							// Update the task_calendar_events record with new event info
-							await supabase
-								.from('task_calendar_events')
-								.update({
-									project_calendar_id: projectCalendarId,
-									calendar_id: googleCalendarId,
-									calendar_event_id: scheduleResult.event_id || '',
-									event_link: scheduleResult.event_link || null,
-									sync_status:
-										'synced' as Database['public']['Enums']['sync_status'],
-									last_synced_at: new Date().toISOString(),
-									sync_error: null,
-									updated_at: new Date().toISOString()
-								})
-								.eq('id', taskEvent.id);
-
 							console.log(
 								`Successfully migrated event for task ${taskEvent.task_id}`
 							);
-						} else {
-							console.error(
-								`Failed to create new event for task ${taskEvent.task_id}:`,
-								'No event ID returned'
-							);
-							// Update with error status
-							await supabase
-								.from('task_calendar_events')
-								.update({
-									project_calendar_id: projectCalendarId,
-									calendar_id: googleCalendarId,
-									sync_status:
-										'error' as Database['public']['Enums']['sync_status'],
-									sync_error: 'Failed to create event - no event ID returned',
-									updated_at: new Date().toISOString()
-								})
-								.eq('id', taskEvent.id);
+							return {
+								id: taskEvent.id,
+								project_calendar_id: projectCalendarId,
+								calendar_id: googleCalendarId,
+								calendar_event_id: scheduleResult.event_id,
+								event_link: scheduleResult.event_link || null,
+								sync_status: 'synced' as Database['public']['Enums']['sync_status'],
+								last_synced_at: now,
+								sync_error: null,
+								updated_at: now
+							};
 						}
-					} else {
-						console.log(`Skipping task ${taskEvent.task_id} - no start time available`);
-					}
-				} catch (error) {
-					console.error(`Error migrating event ${taskEvent.id}:`, error);
-					// Update with error status
-					await supabase
-						.from('task_calendar_events')
-						.update({
+
+						console.error(
+							`Failed to create new event for task ${taskEvent.task_id}:`,
+							'No event ID returned'
+						);
+						return {
+							id: taskEvent.id,
 							project_calendar_id: projectCalendarId,
 							calendar_id: googleCalendarId,
+							calendar_event_id: taskEvent.calendar_event_id,
+							event_link: taskEvent.event_link || null,
 							sync_status: 'error' as Database['public']['Enums']['sync_status'],
+							last_synced_at: taskEvent.last_synced_at,
+							sync_error: 'Failed to create event - no event ID returned',
+							updated_at: now
+						};
+					} catch (error) {
+						console.error(`Error migrating event ${taskEvent.id}:`, error);
+						return {
+							id: taskEvent.id,
+							project_calendar_id: projectCalendarId,
+							calendar_id: googleCalendarId,
+							calendar_event_id: taskEvent.calendar_event_id,
+							event_link: taskEvent.event_link || null,
+							sync_status: 'error' as Database['public']['Enums']['sync_status'],
+							last_synced_at: taskEvent.last_synced_at,
 							sync_error: error instanceof Error ? error.message : 'Migration failed',
-							updated_at: new Date().toISOString()
-						})
-						.eq('id', taskEvent.id);
+							updated_at: now
+						};
+					}
+				}
+			);
+
+			const cleanedUpdates = updates.filter(
+				(update): update is TaskEventUpdate => update !== null
+			);
+
+			if (cleanedUpdates.length > 0) {
+				for (const batch of chunk(cleanedUpdates, DB_BATCH_SIZE)) {
+					const { error: upsertError } = await supabase
+						.from('task_calendar_events')
+						.upsert(batch, { onConflict: 'id' });
+
+					if (upsertError) {
+						console.error('Error updating task calendar events batch:', upsertError);
+						for (const update of batch) {
+							const { id, ...updateData } = update;
+							const { error: singleError } = await supabase
+								.from('task_calendar_events')
+								.update(updateData)
+								.eq('id', id);
+							if (singleError) {
+								console.error(
+									'Error updating task calendar event fallback:',
+									singleError
+								);
+							}
+						}
+					}
 				}
 			}
 		}
@@ -185,70 +242,89 @@ async function migrateTasksToProjectCalendar(
 			if (tasksWithoutEvents.length > 0) {
 				console.log(`Found ${tasksWithoutEvents.length} tasks without calendar events`);
 
-				for (const task of tasksWithoutEvents) {
-					try {
-						// Skip if no start_date (shouldn't happen due to filter, but be safe)
-						if (!task.start_date) {
-							console.log(`Skipping task ${task.id} - no start_date`);
-							continue;
-						}
+				type TaskEventInsert =
+					Database['public']['Tables']['task_calendar_events']['Insert'];
+				const insertTimestamp = new Date().toISOString();
 
-						// Create a new calendar event in Google Calendar
-						const scheduleResult = await calendarService.scheduleTask(userId, {
-							task_id: task.id,
-							start_time: task.start_date,
-							duration_minutes: task.duration_minutes || 60,
-							calendar_id: googleCalendarId,
-							description: task.description || task.title,
-							recurrence_pattern: task.recurrence_pattern || undefined,
-							recurrence_ends: task.recurrence_ends || undefined
-						});
-
-						if (scheduleResult.success && scheduleResult.event_id) {
-							// Calculate event end time based on duration
-							const eventStart = new Date(task.start_date);
-							const eventEnd = new Date(
-								eventStart.getTime() + (task.duration_minutes || 60) * 60000
-							);
-
-							// Create the task_calendar_events record
-							const eventData = {
-								task_id: task.id,
-								user_id: userId,
-								calendar_id: googleCalendarId,
-								project_calendar_id: projectCalendarId,
-								calendar_event_id: scheduleResult.event_id || '',
-								event_title: task.title,
-								event_start: task.start_date,
-								event_end: eventEnd.toISOString(),
-								event_link: scheduleResult.event_link || null,
-								sync_status: 'synced' as Database['public']['Enums']['sync_status'],
-								sync_source: 'build_os',
-								last_synced_at: new Date().toISOString()
-							};
-
-							const { error: insertError } = await supabase
-								.from('task_calendar_events')
-								.insert(eventData);
-
-							if (insertError) {
-								console.error(
-									`Error creating calendar event record for task ${task.id}:`,
-									insertError
-								);
-							} else {
-								console.log(
-									`Successfully created calendar event for task ${task.id}`
-								);
+				const newEvents = await mapInBatches(
+					tasksWithoutEvents,
+					CALENDAR_SYNC_BATCH_SIZE,
+					async (task): Promise<TaskEventInsert | null> => {
+						try {
+							if (!task.start_date) {
+								console.log(`Skipping task ${task.id} - no start_date`);
+								return null;
 							}
-						} else {
+
+							const scheduleResult = await calendarService.scheduleTask(userId, {
+								task_id: task.id,
+								start_time: task.start_date,
+								duration_minutes: task.duration_minutes || 60,
+								calendar_id: googleCalendarId,
+								description: task.description || task.title,
+								recurrence_pattern: task.recurrence_pattern || undefined,
+								recurrence_ends: task.recurrence_ends || undefined
+							});
+
+							if (scheduleResult.success && scheduleResult.event_id) {
+								const eventStart = new Date(task.start_date);
+								const eventEnd = new Date(
+									eventStart.getTime() + (task.duration_minutes || 60) * 60000
+								);
+
+								return {
+									task_id: task.id,
+									user_id: userId,
+									calendar_id: googleCalendarId,
+									project_calendar_id: projectCalendarId,
+									calendar_event_id: scheduleResult.event_id,
+									event_title: task.title,
+									event_start: task.start_date,
+									event_end: eventEnd.toISOString(),
+									event_link: scheduleResult.event_link || null,
+									sync_status:
+										'synced' as Database['public']['Enums']['sync_status'],
+									sync_source: 'build_os',
+									last_synced_at: insertTimestamp
+								};
+							}
+
 							console.error(
 								`Failed to schedule task ${task.id}:`,
 								'No event ID returned'
 							);
+							return null;
+						} catch (error) {
+							console.error(`Error processing task ${task.id}:`, error);
+							return null;
 						}
-					} catch (error) {
-						console.error(`Error processing task ${task.id}:`, error);
+					}
+				);
+
+				const inserts = newEvents.filter(
+					(event): event is TaskEventInsert => event !== null
+				);
+
+				if (inserts.length > 0) {
+					for (const batch of chunk(inserts, DB_BATCH_SIZE)) {
+						const { error: insertError } = await supabase
+							.from('task_calendar_events')
+							.insert(batch);
+
+						if (insertError) {
+							console.error('Error creating calendar event batch:', insertError);
+							for (const eventData of batch) {
+								const { error: singleError } = await supabase
+									.from('task_calendar_events')
+									.insert(eventData);
+								if (singleError) {
+									console.error(
+										'Error creating calendar event record fallback:',
+										singleError
+									);
+								}
+							}
+						}
 					}
 				}
 

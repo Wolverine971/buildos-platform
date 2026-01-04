@@ -30,6 +30,8 @@ import type {
 	UpdateOntoRiskArgs,
 	UpdateOntoDecisionArgs,
 	UpdateOntoRequirementArgs,
+	LinkOntoEntitiesArgs,
+	UnlinkOntoEdgeArgs,
 	DeleteOntoTaskArgs,
 	DeleteOntoGoalArgs,
 	DeleteOntoPlanArgs,
@@ -340,7 +342,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		task: any;
 		message: string;
 	}> {
-		const payload = {
+		const payload: Record<string, unknown> = {
 			project_id: args.project_id,
 			title: args.title,
 			description: args.description ?? null,
@@ -352,6 +354,14 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			due_at: args.due_at ?? null,
 			props: args.props ?? {}
 		};
+
+		if (args.goal_id !== undefined) {
+			payload.goal_id = args.goal_id;
+		}
+
+		if (args.supporting_milestone_id !== undefined) {
+			payload.supporting_milestone_id = args.supporting_milestone_id;
+		}
 
 		const data = await this.apiRequest('/api/onto/tasks/create', {
 			method: 'POST',
@@ -473,6 +483,48 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		};
 	}
 
+	async linkOntoEntities(args: LinkOntoEntitiesArgs): Promise<{
+		created: number;
+		message: string;
+	}> {
+		const payload = {
+			edges: [
+				{
+					src_kind: args.src_kind,
+					src_id: args.src_id,
+					dst_kind: args.dst_kind,
+					dst_id: args.dst_id,
+					rel: args.rel,
+					props: args.props ?? {}
+				}
+			]
+		};
+
+		const data = await this.apiRequest('/api/onto/edges', {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		});
+
+		return {
+			created: data.created ?? 0,
+			message: 'Linked entities successfully.'
+		};
+	}
+
+	async unlinkOntoEdge(args: UnlinkOntoEdgeArgs): Promise<{
+		deleted: boolean;
+		message: string;
+	}> {
+		const data = await this.apiRequest(`/api/onto/edges/${args.edge_id}`, {
+			method: 'DELETE'
+		});
+
+		return {
+			deleted: Boolean(data.deleted),
+			message: 'Unlinked entities successfully.'
+		};
+	}
+
 	// ============================================
 	// UPDATE OPERATIONS
 	// ============================================
@@ -538,6 +590,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			updateData.state_key = this.normalizeTaskState(args.state_key);
 		}
 		if (args.priority !== undefined) updateData.priority = args.priority;
+		if (args.goal_id !== undefined) updateData.goal_id = args.goal_id;
+		if (args.supporting_milestone_id !== undefined) {
+			updateData.supporting_milestone_id = args.supporting_milestone_id;
+		}
 		if (args.start_at !== undefined) updateData.start_at = args.start_at;
 		if (args.due_at !== undefined) updateData.due_at = args.due_at;
 		if (args.props !== undefined) updateData.props = args.props;

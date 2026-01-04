@@ -128,29 +128,15 @@ export function validatePaginationCustom(
  *
  * @example
  * const sanitized = sanitizeSearchQuery(userInput);
- * query = query.or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`);
+ * query = query.ilike('name', `%${sanitized}%`);
  */
 export function sanitizeSearchQuery(query: string): string {
-	if (!query || typeof query !== 'string') {
+	const normalized = normalizeSearchQuery(query);
+	if (!normalized) {
 		return '';
 	}
 
-	// Trim whitespace
-	let sanitized = query.trim();
-
-	// Limit length to prevent abuse (reasonable search query length)
-	if (sanitized.length > 200) {
-		sanitized = sanitized.substring(0, 200);
-	}
-
-	// Escape special characters used in PostgreSQL LIKE patterns
-	// % and _ are wildcards, \ is escape character
-	sanitized = sanitized
-		.replace(/\\/g, '\\\\') // Escape backslashes first
-		.replace(/%/g, '\\%') // Escape percent signs
-		.replace(/_/g, '\\_'); // Escape underscores
-
-	return sanitized;
+	return escapeLikePattern(normalized);
 }
 
 /**
@@ -167,12 +153,40 @@ export function sanitizeSearchQuery(query: string): string {
  * }
  */
 export function buildSearchFilter(query: string, fields: string[]): string | null {
-	const sanitized = sanitizeSearchQuery(query);
-	if (!sanitized) {
+	const normalized = normalizeSearchQuery(query);
+	if (!normalized) {
 		return null;
 	}
 
-	return fields.map((field) => `${field}.ilike.%${sanitized}%`).join(',');
+	const pattern = escapeLikePattern(normalized);
+	const quotedValue = `"${escapePostgrestValue(`%${pattern}%`)}"`;
+	return fields.map((field) => `${field}.ilike.${quotedValue}`).join(',');
+}
+
+function normalizeSearchQuery(query: string): string {
+	if (!query || typeof query !== 'string') {
+		return '';
+	}
+
+	let normalized = query.trim();
+
+	// Remove control characters to keep filters predictable
+	normalized = normalized.replace(/[\u0000-\u001f\u007f]/g, '');
+
+	// Limit length to prevent abuse (reasonable search query length)
+	if (normalized.length > 200) {
+		normalized = normalized.substring(0, 200);
+	}
+
+	return normalized;
+}
+
+function escapeLikePattern(value: string): string {
+	return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
+function escapePostgrestValue(value: string): string {
+	return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 // ============================================

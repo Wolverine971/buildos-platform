@@ -83,6 +83,14 @@ Default: task.execute`
 						type: 'string',
 						description: 'Optional plan UUID to associate this task with'
 					},
+					goal_id: {
+						type: 'string',
+						description: 'Optional goal UUID that this task supports'
+					},
+					supporting_milestone_id: {
+						type: 'string',
+						description: 'Optional milestone UUID this task targets'
+					},
 					start_at: {
 						type: 'string',
 						description: 'Optional start date in ISO format (when work should begin)'
@@ -268,6 +276,67 @@ Also ensures the project has_document edge exists for discovery.`,
 					}
 				},
 				required: ['task_id']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'link_onto_entities',
+			description: `Create a relationship edge between two ontology entities.
+Use this to connect plans, goals, milestones, tasks, documents, outputs, risks, or decisions.
+Avoid creating project edges unless the entity is truly a root-level item.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					src_kind: {
+						type: 'string',
+						description:
+							'Source entity kind (project, plan, goal, milestone, task, document, output, risk, decision, requirement, metric, source)'
+					},
+					src_id: {
+						type: 'string',
+						description: 'Source entity UUID'
+					},
+					dst_kind: {
+						type: 'string',
+						description:
+							'Destination entity kind (project, plan, goal, milestone, task, document, output, risk, decision, requirement, metric, source)'
+					},
+					dst_id: {
+						type: 'string',
+						description: 'Destination entity UUID'
+					},
+					rel: {
+						type: 'string',
+						description:
+							'Relationship type (e.g., supports_goal, targets_milestone, produces, references, has_milestone, addresses, mitigates)'
+					},
+					props: {
+						type: 'object',
+						description: 'Optional edge metadata as JSON object'
+					}
+				},
+				required: ['src_kind', 'src_id', 'dst_kind', 'dst_id', 'rel']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'unlink_onto_edge',
+			description: `Remove a relationship edge by its ID.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					edge_id: {
+						type: 'string',
+						description: 'Edge UUID to delete'
+					}
+				},
+				required: ['edge_id']
 			}
 		}
 	},
@@ -644,6 +713,14 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					priority: {
 						type: 'number',
 						description: 'New priority (1-5)'
+					},
+					goal_id: {
+						type: 'string',
+						description: 'Optional goal UUID that this task supports (null clears)'
+					},
+					supporting_milestone_id: {
+						type: 'string',
+						description: 'Optional milestone UUID this task targets (null clears)'
 					},
 					start_at: {
 						type: 'string',

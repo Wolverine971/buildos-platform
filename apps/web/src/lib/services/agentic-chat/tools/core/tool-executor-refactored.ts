@@ -356,6 +356,12 @@ export class ChatToolExecutor {
 			case 'create_task_document':
 				return this.writeExecutor.createTaskDocument(args);
 
+			case 'link_onto_entities':
+				return this.writeExecutor.linkOntoEntities(args);
+
+			case 'unlink_onto_edge':
+				return this.writeExecutor.unlinkOntoEdge(args);
+
 			case 'update_onto_project':
 				return this.writeExecutor.updateOntoProject(args);
 

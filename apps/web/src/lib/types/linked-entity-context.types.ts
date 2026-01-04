@@ -133,8 +133,9 @@ export const RELATIONSHIP_LABELS: Record<string, string> = {
 	has_task: 'has task',
 
 	// Goal relationships
-	requires: 'requires',
+	has_milestone: 'has milestone',
 	achieved_by: 'achieved by',
+	requires: 'requires',
 
 	// Document relationships
 	referenced_by: 'referenced by',

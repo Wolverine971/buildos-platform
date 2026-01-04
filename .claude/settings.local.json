@@ -18,7 +18,9 @@
       "Bash(find:*)",
       "Bash(npx tsc:*)",
       "Bash(ls:*)",
-      "Bash(npx svelte-check:*)"
+      "Bash(npx svelte-check:*)",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:openai.com)"
     ],
     "deny": [],
     "ask": []

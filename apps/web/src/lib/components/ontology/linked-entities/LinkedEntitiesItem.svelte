@@ -8,6 +8,11 @@
 	import { X } from 'lucide-svelte';
 	import type { LinkedEntity, EntityKind } from './linked-entities.types';
 	import { getEntityDisplayName, formatRelationshipLabel } from './linked-entities.types';
+	import {
+		RELATIONSHIP_DIRECTIONS,
+		getRelationshipLabel,
+		type RelationshipType
+	} from '$lib/services/ontology/edge-direction';
 
 	interface Props {
 		entity: LinkedEntity;
@@ -20,7 +25,17 @@
 	let { entity, kind, readOnly = false, onRemove, onClick }: Props = $props();
 
 	const displayName = $derived(getEntityDisplayName(entity));
-	const relationshipLabel = $derived(formatRelationshipLabel(entity.edge_rel));
+	const relationshipLabel = $derived(() => {
+		const rel = entity.edge_rel || '';
+		if (rel in RELATIONSHIP_DIRECTIONS) {
+			const label = getRelationshipLabel(
+				rel as RelationshipType,
+				entity.edge_direction === 'outgoing'
+			);
+			return label ? label.charAt(0).toLowerCase() + label.slice(1) : '';
+		}
+		return formatRelationshipLabel(rel);
+	});
 
 	function handleClick() {
 		onClick?.(kind, entity.id);

@@ -70,7 +70,8 @@
 		milestones: [],
 		documents: [],
 		outputs: [],
-		risks: []
+		risks: [],
+		decisions: []
 	});
 
 	// Track which kinds have been loaded for available entities
@@ -82,7 +83,8 @@
 		milestone: [],
 		document: [],
 		output: [],
-		risk: []
+		risk: [],
+		decision: []
 	});
 	let loadingAvailableKind = $state<EntityKind | null>(null);
 
@@ -119,7 +121,8 @@
 				milestone: [],
 				document: [],
 				output: [],
-				risk: []
+				risk: [],
+				decision: []
 			};
 
 			// Use initial data if provided, otherwise fetch

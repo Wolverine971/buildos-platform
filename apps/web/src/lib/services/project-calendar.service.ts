@@ -376,6 +376,29 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Failed to fetch project tasks', 500);
 			}
 
+			const total = tasks?.length ?? 0;
+			const calendarId = projectCalendar.calendar_id;
+
+			if (total === 0) {
+				await this.supabase
+					.from('project_calendars')
+					.update({
+						last_synced_at: new Date().toISOString(),
+						sync_status: 'active'
+					})
+					.eq('id', projectCalendar.id);
+
+				return ApiResponse.success(
+					{
+						synced: 0,
+						failed: 0,
+						total: 0,
+						calendarId
+					},
+					'No scheduled tasks to sync'
+				);
+			}
+
 			// Schedule each task to the project calendar
 			const results = [];
 			for (const task of tasks || []) {
@@ -383,7 +406,7 @@ export class ProjectCalendarService {
 					task_id: task.id,
 					start_time: task.start_date!,
 					duration_minutes: task.duration_minutes || 60,
-					calendar_id: projectCalendar.calendar_id,
+					calendar_id: calendarId,
 					description: task.description || undefined
 					// Don't set color_id - let events inherit the calendar's default color
 				});
@@ -400,14 +423,24 @@ export class ProjectCalendarService {
 				.eq('id', projectCalendar.id);
 
 			const failedCount = results.filter((r) => !r.success).length;
-			if (failedCount > 0) {
-				return ApiResponse.error(
-					`Synced ${results.length - failedCount} of ${results.length} tasks`,
-					undefined
-				);
+			const syncedCount = results.length - failedCount;
+			const responseData = {
+				synced: syncedCount,
+				failed: failedCount,
+				total: results.length,
+				calendarId
+			};
+
+			if (failedCount === results.length) {
+				return ApiResponse.error('Failed to sync any tasks', 500, undefined, responseData);
 			}
 
-			return ApiResponse.success(undefined, `Successfully synced ${results.length} tasks`);
+			const message =
+				failedCount > 0
+					? `Synced ${syncedCount} of ${results.length} tasks`
+					: `Successfully synced ${results.length} tasks`;
+
+			return ApiResponse.success(responseData, message);
 		} catch (error) {
 			console.error('Error syncing project to calendar:', error);
 			return ApiResponse.error('Failed to sync project to calendar', 500);

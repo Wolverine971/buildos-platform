@@ -194,16 +194,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create edges linking the task to the project, plan (if any), goal, and milestone
 		// All edges include project_id for efficient project-scoped queries
 		// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
-		const edges = [
-			{
+		const edges: Array<{
+			src_id: string;
+			src_kind: string;
+			dst_id: string;
+			dst_kind: string;
+			rel: string;
+			project_id: string;
+		}> = [];
+
+		const isRootTask = !plan_id && !validatedMilestoneId && !validatedGoalId;
+		if (isRootTask) {
+			edges.push({
 				src_id: project_id,
 				src_kind: 'project',
 				dst_id: task.id,
 				dst_kind: 'task',
 				rel: 'contains',
 				project_id: project_id
-			}
-		];
+			});
+		}
 
 		// Plan relationship via edge (plan_id is no longer a column on onto_tasks)
 		// Convention: Store directionally (plan → task), query bidirectionally
@@ -220,10 +230,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (validatedGoalId) {
 			edges.push({
-				src_id: validatedGoalId,
-				src_kind: 'goal',
-				dst_id: task.id,
-				dst_kind: 'task',
+				src_id: task.id,
+				src_kind: 'task',
+				dst_id: validatedGoalId,
+				dst_kind: 'goal',
 				rel: 'supports_goal',
 				project_id: project_id
 			});
@@ -231,16 +241,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (validatedMilestoneId) {
 			edges.push({
-				src_id: validatedMilestoneId,
-				src_kind: 'milestone',
-				dst_id: task.id,
-				dst_kind: 'task',
-				rel: 'contains',
+				src_id: task.id,
+				src_kind: 'task',
+				dst_id: validatedMilestoneId,
+				dst_kind: 'milestone',
+				rel: 'targets_milestone',
 				project_id: project_id
 			});
 		}
 
-		await supabase.from('onto_edges').insert(edges);
+		if (edges.length > 0) {
+			await supabase.from('onto_edges').insert(edges);
+		}
 
 		// Log activity async (non-blocking)
 		logCreateAsync(

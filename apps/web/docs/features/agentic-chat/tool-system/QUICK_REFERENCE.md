@@ -2,27 +2,26 @@
 
 # BuildOS Tool System - Quick Reference
 
-**Last Updated:** 2025-12-02
+**Last Updated:** 2026-01-03
 
 > **Task Schema Reference**: See [TYPE_KEY_TAXONOMY.md](../../ontology/TYPE_KEY_TAXONOMY.md#onto_tasks) for task work mode taxonomy.
 
 ## Tool Count & Categories
 
-Total: **38 tools** (+ 1 virtual tool)
+Total: **53 tools** (+ 1 virtual tool)
 
 | Category                     | Count | Token Cost | Usage              |
 | ---------------------------- | ----- | ---------- | ------------------ |
-| Search (list/search)         | 12    | 350        | Discovery phase    |
-| Read (detail)                | 5     | 350        | Deep dives         |
-| Write (create/update/delete) | 15    | 400        | Execution phase    |
-| Template                     | 2     | 300        | Template mgmt      |
-| Utility/Knowledge            | 4     | 80-900     | Reference/guidance |
+| Search (list/search)         | 16    | 350        | Discovery phase    |
+| Read (detail/relations)      | 12    | 350        | Deep dives         |
+| Write (create/update/delete) | 22    | 400        | Execution phase    |
+| Utility/Knowledge            | 3     | 80-900     | Reference/guidance |
 
 ---
 
-## All 38 Tools by Category
+## All 53 Tools by Category
 
-### Search Tools (12)
+### Search Tools (16)
 
 ```
 list_onto_projects
@@ -33,13 +32,17 @@ list_onto_plans
 list_onto_goals
 list_onto_documents
 search_onto_documents
-list_onto_templates
+list_onto_outputs
+list_onto_milestones
+list_onto_risks
+list_onto_decisions
+list_onto_requirements
 list_task_documents
 search_ontology
-get_entity_relationships
+web_search
 ```
 
-### Read Tools (5)
+### Read Tools (12)
 
 ```
 get_onto_project_details
@@ -47,9 +50,16 @@ get_onto_task_details
 get_onto_goal_details
 get_onto_plan_details
 get_onto_document_details
+get_onto_output_details
+get_onto_milestone_details
+get_onto_risk_details
+get_onto_decision_details
+get_onto_requirement_details
+get_entity_relationships
+get_linked_entities
 ```
 
-### Write Tools (15)
+### Write Tools (22)
 
 Create (6):
 
@@ -59,14 +69,23 @@ Create (6):
 - create_onto_plan
 - create_onto_document
 - create_task_document
+  Link (2):
 
-Update (5):
+- link_onto_entities
+- unlink_onto_edge
+
+Update (10):
 
 - update_onto_project
 - update_onto_task
 - update_onto_goal
 - update_onto_plan
 - update_onto_document
+- update_onto_output
+- update_onto_milestone
+- update_onto_risk
+- update_onto_decision
+- update_onto_requirement
 
 Delete (4):
 
@@ -75,18 +94,10 @@ Delete (4):
 - delete_onto_plan
 - delete_onto_document
 
-### Template Tools (2)
-
-```
-request_template_creation
-suggest_template
-```
-
-### Utility/Knowledge Tools (4)
+### Utility/Knowledge Tools (3)
 
 ```
 get_field_info
-web_search
 get_buildos_overview
 get_buildos_usage_guide
 ```
@@ -101,15 +112,15 @@ agent_create_plan  (handled by orchestrator, not a real API tool)
 
 ## Tool Selection by Context
 
-| Context              | Available Tools                          | Use Case               |
-| -------------------- | ---------------------------------------- | ---------------------- |
-| `global`             | Base (4) + Global (7)                    | Workspace discovery    |
-| `project_create`     | Base (4) + Create (3)                    | Bootstrap new projects |
-| `project`            | Base (4) + Global (7) + Project ops (12) | Project work           |
-| `calendar`           | Base (4) + Global (7)                    | Calendar planning      |
-| `project_audit`      | Base (4) + Project (12)                  | Project review         |
-| `project_forecast`   | Base (4) + Project (12)                  | Scenario planning      |
-| `daily_brief_update` | Base (4)                                 | Brief generation       |
+| Context              | Available Tools                   | Use Case               |
+| -------------------- | --------------------------------- | ---------------------- |
+| `global`             | Base + Global                     | Workspace discovery    |
+| `project_create`     | Base + Project Create             | Bootstrap new projects |
+| `project`            | Base + Project                    | Project work           |
+| `calendar`           | Base + Global                     | Calendar planning      |
+| `project_audit`      | Base + Project + Project Audit    | Project review         |
+| `project_forecast`   | Base + Project + Project Forecast | Scenario planning      |
+| `daily_brief_update` | Base                              | Brief generation       |
 
 **Note:** Focused task/goal/plan/document conversations use `project` context with `project_focus` set.
 
@@ -135,13 +146,13 @@ User message → ProjectCreationAnalyzer → Sufficient? → Yes → Proceed to 
 
 ## Core File Locations
 
-| Purpose       | File                                                                         | Key Exports                                                 |
-| ------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Definitions   | `apps/web/src/lib/chat/tool-definitions.ts`                                  | CHAT_TOOL_DEFINITIONS, TOOL_METADATA, ENTITY_FIELD_INFO     |
-| Config        | `apps/web/src/lib/chat/tools.config.ts`                                      | getToolsForContextType, TOOL_CATEGORIES, estimateToolTokens |
-| Executor      | `apps/web/src/lib/chat/tool-executor.ts`                                     | ChatToolExecutor class (50+ methods)                        |
-| Service       | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts` | ToolExecutionService (validation, telemetry)                |
-| BuildOS Tools | `apps/web/src/lib/services/agentic-chat/tools/buildos/`                      | getBuildosOverviewDocument, getBuildosUsageGuide            |
+| Purpose       | File                                                                            | Key Exports                                                 |
+| ------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Definitions   | `apps/web/src/lib/services/agentic-chat/tools/core/definitions/index.ts`        | CHAT_TOOL_DEFINITIONS, TOOL_METADATA, ENTITY_FIELD_INFO     |
+| Config        | `apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`             | getToolsForContextType, TOOL_CATEGORIES, estimateToolTokens |
+| Executor      | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts` | ChatToolExecutor                                            |
+| Service       | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`    | ToolExecutionService (validation, telemetry)                |
+| BuildOS Tools | `apps/web/src/lib/services/agentic-chat/tools/buildos/`                         | getBuildosOverviewDocument, getBuildosUsageGuide            |
 
 ---
 

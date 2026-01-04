@@ -18,7 +18,15 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk';
+type EntityKind =
+	| 'task'
+	| 'plan'
+	| 'goal'
+	| 'milestone'
+	| 'document'
+	| 'output'
+	| 'risk'
+	| 'decision';
 
 interface LinkedEntity {
 	id: string;
@@ -50,6 +58,7 @@ interface LinkedEntitiesResult {
 	documents: LinkedEntity[];
 	outputs: LinkedEntity[];
 	risks: LinkedEntity[];
+	decisions: LinkedEntity[];
 }
 
 interface AvailableEntitiesResult {
@@ -60,6 +69,7 @@ interface AvailableEntitiesResult {
 	documents: AvailableEntity[];
 	outputs: AvailableEntity[];
 	risks: AvailableEntity[];
+	decisions: AvailableEntity[];
 }
 
 const VALID_KINDS: EntityKind[] = [
@@ -69,7 +79,8 @@ const VALID_KINDS: EntityKind[] = [
 	'milestone',
 	'document',
 	'output',
-	'risk'
+	'risk',
+	'decision'
 ];
 
 function isValidKind(kind: string): kind is EntityKind {
@@ -133,7 +144,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			milestones: [],
 			documents: [],
 			outputs: [],
-			risks: []
+			risks: [],
+			decisions: []
 		};
 
 		if (includeAvailable) {
@@ -168,7 +180,8 @@ async function fetchLinkedEntities(
 		milestones: [],
 		documents: [],
 		outputs: [],
-		risks: []
+		risks: [],
+		decisions: []
 	};
 
 	// Fetch all edges where entity is source or destination
@@ -214,7 +227,8 @@ async function fetchLinkedEntities(
 		milestone: [],
 		document: [],
 		output: [],
-		risk: []
+		risk: [],
+		decision: []
 	};
 
 	for (const [id, info] of entityMap) {
@@ -222,51 +236,59 @@ async function fetchLinkedEntities(
 	}
 
 	// Fetch entity details in parallel
-	const [tasks, plans, goals, milestones, documents, outputs, risks] = await Promise.all([
-		fetchEntityDetails(supabase, 'onto_tasks', idsByKind.task, [
-			'id',
-			'title',
-			'state_key',
-			'type_key'
-		]),
-		fetchEntityDetails(supabase, 'onto_plans', idsByKind.plan, [
-			'id',
-			'name',
-			'state_key',
-			'type_key'
-		]),
-		fetchEntityDetails(supabase, 'onto_goals', idsByKind.goal, [
-			'id',
-			'name',
-			'state_key',
-			'type_key'
-		]),
-		fetchEntityDetails(supabase, 'onto_milestones', idsByKind.milestone, [
-			'id',
-			'title',
-			'due_at',
-			'type_key'
-		]),
-		fetchEntityDetails(supabase, 'onto_documents', idsByKind.document, [
-			'id',
-			'title',
-			'type_key',
-			'state_key'
-		]),
-		fetchEntityDetails(supabase, 'onto_outputs', idsByKind.output, [
-			'id',
-			'name',
-			'type_key',
-			'state_key'
-		]),
-		fetchEntityDetails(supabase, 'onto_risks', idsByKind.risk, [
-			'id',
-			'title',
-			'state_key',
-			'type_key',
-			'impact'
-		])
-	]);
+	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions] =
+		await Promise.all([
+			fetchEntityDetails(supabase, 'onto_tasks', idsByKind.task, [
+				'id',
+				'title',
+				'state_key',
+				'type_key'
+			]),
+			fetchEntityDetails(supabase, 'onto_plans', idsByKind.plan, [
+				'id',
+				'name',
+				'state_key',
+				'type_key'
+			]),
+			fetchEntityDetails(supabase, 'onto_goals', idsByKind.goal, [
+				'id',
+				'name',
+				'state_key',
+				'type_key'
+			]),
+			fetchEntityDetails(supabase, 'onto_milestones', idsByKind.milestone, [
+				'id',
+				'title',
+				'due_at',
+				'type_key'
+			]),
+			fetchEntityDetails(supabase, 'onto_documents', idsByKind.document, [
+				'id',
+				'title',
+				'type_key',
+				'state_key'
+			]),
+			fetchEntityDetails(supabase, 'onto_outputs', idsByKind.output, [
+				'id',
+				'name',
+				'type_key',
+				'state_key'
+			]),
+			fetchEntityDetails(supabase, 'onto_risks', idsByKind.risk, [
+				'id',
+				'title',
+				'state_key',
+				'type_key',
+				'impact'
+			]),
+			fetchEntityDetails(supabase, 'onto_decisions', idsByKind.decision, [
+				'id',
+				'title',
+				'state_key',
+				'type_key',
+				'decision_at'
+			])
+		]);
 
 	// Map results with edge info
 	result.tasks = mapEntitiesToLinked(tasks, entityMap, 'task');
@@ -278,6 +300,7 @@ async function fetchLinkedEntities(
 	);
 	result.outputs = mapEntitiesToLinked(outputs, entityMap, 'output');
 	result.risks = mapEntitiesToLinked(risks, entityMap, 'risk');
+	result.decisions = mapEntitiesToLinked(decisions, entityMap, 'decision');
 
 	return result;
 }
@@ -350,7 +373,8 @@ async function fetchAvailableEntities(
 		milestones: new Set(linked.milestones.map((e) => e.id)),
 		documents: new Set(linked.documents.map((e) => e.id)),
 		outputs: new Set(linked.outputs.map((e) => e.id)),
-		risks: new Set(linked.risks.map((e) => e.id))
+		risks: new Set(linked.risks.map((e) => e.id)),
+		decisions: new Set(linked.decisions.map((e) => e.id))
 	};
 
 	// Build queries - only add .neq filter when querying the same entity type as source
@@ -418,16 +442,27 @@ async function fetchAvailableEntities(
 		.limit(100);
 	if (sourceKind === 'risk') risksQuery.neq('id', sourceId);
 
+	const decisionsQuery = supabase
+		.from('onto_decisions')
+		.select('id, title, state_key, type_key, decision_at')
+		.eq('project_id', projectId)
+		.is('deleted_at', null)
+		.order('created_at', { ascending: false })
+		.limit(100);
+	if (sourceKind === 'decision') decisionsQuery.neq('id', sourceId);
+
 	// Fetch all entities from the project in parallel
-	const [tasks, plans, goals, milestones, documents, outputs, risks] = await Promise.all([
-		tasksQuery,
-		plansQuery,
-		goalsQuery,
-		milestonesQuery,
-		documentsQuery,
-		outputsQuery,
-		risksQuery
-	]);
+	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions] =
+		await Promise.all([
+			tasksQuery,
+			plansQuery,
+			goalsQuery,
+			milestonesQuery,
+			documentsQuery,
+			outputsQuery,
+			risksQuery,
+			decisionsQuery
+		]);
 
 	return {
 		tasks: mapToAvailable(tasks.data || [], linkedIds.tasks),
@@ -438,7 +473,8 @@ async function fetchAvailableEntities(
 			mapToAvailable(documents.data || [], linkedIds.documents)
 		),
 		outputs: mapToAvailable(outputs.data || [], linkedIds.outputs),
-		risks: mapToAvailable(risks.data || [], linkedIds.risks)
+		risks: mapToAvailable(risks.data || [], linkedIds.risks),
+		decisions: mapToAvailable(decisions.data || [], linkedIds.decisions)
 	};
 }
 

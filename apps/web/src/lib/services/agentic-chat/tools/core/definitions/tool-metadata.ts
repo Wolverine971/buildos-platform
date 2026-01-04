@@ -234,6 +234,22 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
+	link_onto_entities: {
+		summary: 'Create a relationship edge between two ontology entities.',
+		capabilities: [
+			'Normalizes edge direction',
+			'Validates ownership and project scope',
+			'Use for plans/goals/milestones/tasks/docs/risks/decisions'
+		],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	unlink_onto_edge: {
+		summary: 'Remove a relationship edge by ID.',
+		capabilities: ['Deletes a single edge', 'Validates ownership before removal'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
 	update_onto_task: {
 		summary: 'Modify task status, assignment, or metadata.',
 		capabilities: [

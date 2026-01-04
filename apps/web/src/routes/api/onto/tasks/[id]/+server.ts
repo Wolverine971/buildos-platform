@@ -313,23 +313,28 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			await supabase
 				.from('onto_edges')
 				.delete()
-				.eq('rel', 'supports_goal')
-				.eq('dst_kind', 'task')
-				.eq('dst_id', params.id);
+				.in('rel', ['supports_goal', 'achieved_by'])
+				.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
 
 			if (validatedGoalId) {
 				await supabase.from('onto_edges').insert({
 					project_id: existingTask.project_id,
-					src_id: validatedGoalId,
-					src_kind: 'goal',
-					dst_id: params.id,
-					dst_kind: 'task',
+					src_id: params.id,
+					src_kind: 'task',
+					dst_id: validatedGoalId,
+					dst_kind: 'goal',
 					rel: 'supports_goal'
 				});
 			}
 		}
 
 		if (hasMilestoneInput) {
+			await supabase
+				.from('onto_edges')
+				.delete()
+				.eq('rel', 'targets_milestone')
+				.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
+
 			await supabase
 				.from('onto_edges')
 				.delete()
@@ -341,11 +346,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			if (validatedMilestoneId) {
 				await supabase.from('onto_edges').insert({
 					project_id: existingTask.project_id,
-					src_id: validatedMilestoneId,
-					src_kind: 'milestone',
-					dst_id: params.id,
-					dst_kind: 'task',
-					rel: 'contains'
+					src_id: params.id,
+					src_kind: 'task',
+					dst_id: validatedMilestoneId,
+					dst_kind: 'milestone',
+					rel: 'targets_milestone'
 				});
 			}
 		}

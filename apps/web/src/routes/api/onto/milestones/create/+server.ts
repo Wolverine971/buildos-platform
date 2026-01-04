@@ -144,7 +144,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			src_kind: 'project',
 			dst_id: createdMilestone.id,
 			dst_kind: 'milestone',
-			rel: 'contains'
+			rel: 'has_milestone'
 		});
 
 		// Log activity async (non-blocking)

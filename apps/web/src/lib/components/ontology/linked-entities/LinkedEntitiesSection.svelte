@@ -17,6 +17,7 @@
 		FileText,
 		FileOutput,
 		AlertTriangle,
+		Scale,
 		Loader
 	} from 'lucide-svelte';
 	import type { LinkedEntity, EntityKind, EntitySectionConfig } from './linked-entities.types';
@@ -69,7 +70,8 @@
 		milestone: Flag,
 		document: FileText,
 		output: FileOutput,
-		risk: AlertTriangle
+		risk: AlertTriangle,
+		decision: Scale
 	};
 
 	const IconComponent = $derived(iconComponents[config.kind]);

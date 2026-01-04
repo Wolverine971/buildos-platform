@@ -2,15 +2,15 @@
 
 # BuildOS Agentic Chat Tool System Documentation
 
-**Last Updated:** 2025-11-17
+**Last Updated:** 2026-01-03
 
 This document provides a complete overview of the tool system used by the agentic chat in BuildOS. It covers tool definitions, categorization, registration, execution, and result formatting.
 
 ## Quick Navigation
 
-- **Tool Definitions:** `/apps/web/src/lib/chat/tool-definitions.ts`
-- **Tool Configuration:** `/apps/web/src/lib/chat/tools.config.ts`
-- **Tool Execution:** `/apps/web/src/lib/chat/tool-executor.ts`
+- **Tool Definitions:** `/apps/web/src/lib/services/agentic-chat/tools/core/definitions/index.ts`
+- **Tool Configuration:** `/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`
+- **Tool Execution:** `/apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts`
 - **BuildOS-Specific Tools:** `/apps/web/src/lib/services/agentic-chat/tools/buildos/`
 - **Execution Service:** `/apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`
 
@@ -57,72 +57,101 @@ This file contains:
 
 ### 1.1 Tool Categories & Count
 
-The tool system contains **31 tools** organized into 4 categories:
+The tool system contains **53 tools** organized into 4 categories:
 
-#### 1.1.1 Search Tools (8 tools)
+#### 1.1.1 Search Tools (16 tools)
 
 Tools for discovery and listing across the ontology:
 
-| Tool Name                  | Purpose                            | Parameters                                                   |
-| -------------------------- | ---------------------------------- | ------------------------------------------------------------ |
-| `list_onto_projects`       | List projects with filtering       | `state_key`, `type_key`, `limit`                             |
-| `search_onto_projects`     | Keyword search for projects        | `search` (required), `state_key`, `type_key`, `limit`        |
-| `list_onto_tasks`          | List tasks with optional filtering | `project_id`, `state_key`, `limit`                           |
-| `search_onto_tasks`        | Keyword search for tasks           | `search` (required), `project_id`, `state_key`, `limit`      |
-| `list_onto_plans`          | List plans for a project           | `project_id`, `limit`                                        |
-| `list_onto_goals`          | List goals for a project           | `project_id`, `limit`                                        |
-| `list_onto_templates`      | Discover available templates       | `scope`, `realm`, `search`, `context`, `scale`, `stage`      |
-| `get_entity_relationships` | Graph traversal of connections     | `entity_id` (required), `direction` (outgoing/incoming/both) |
+| Tool Name                | Purpose                               | Parameters                                                 |
+| ------------------------ | ------------------------------------- | ---------------------------------------------------------- |
+| `list_onto_projects`     | List projects with filtering          | `state_key`, `type_key`, `limit`                           |
+| `search_onto_projects`   | Keyword search for projects           | `search` (required), `state_key`, `type_key`, `limit`      |
+| `list_onto_tasks`        | List tasks with optional filtering    | `project_id`, `state_key`, `limit`                         |
+| `search_onto_tasks`      | Keyword search for tasks              | `search` (required), `project_id`, `state_key`, `limit`    |
+| `list_onto_plans`        | List plans for a project              | `project_id`, `limit`                                      |
+| `list_onto_goals`        | List goals for a project              | `project_id`, `limit`                                      |
+| `list_onto_documents`    | List documents with filters           | `project_id`, `type_key`, `state_key`, `limit`             |
+| `search_onto_documents`  | Keyword search for documents          | `search` (required), `project_id`, `type_key`, `state_key` |
+| `list_onto_outputs`      | List outputs with status              | `project_id`, `state_key`, `limit`                         |
+| `list_onto_milestones`   | List milestones with dates            | `project_id`, `state_key`, `limit`                         |
+| `list_onto_risks`        | List risks with impact                | `project_id`, `state_key`, `impact`, `limit`               |
+| `list_onto_decisions`    | List decisions                        | `project_id`, `limit`                                      |
+| `list_onto_requirements` | List requirements                     | `project_id`, `type_key`, `limit`                          |
+| `list_task_documents`    | List documents linked to a task       | `task_id` (required)                                       |
+| `search_ontology`        | Fuzzy search across ontology entities | `query` (required), `project_id`, `types`, `limit`         |
+| `web_search`             | Web research                          | `query` (required), `max_results`, `search_depth`          |
 
 **Token Cost:** Low (350 tokens average per category)
 
-#### 1.1.2 Read Tools (3 tools)
+#### 1.1.2 Read Tools (12 tools)
 
 Tools for fetching detailed entity information:
 
-| Tool Name                  | Purpose                               | Parameters              |
-| -------------------------- | ------------------------------------- | ----------------------- |
-| `get_onto_project_details` | Get full project with nested entities | `project_id` (required) |
-| `get_onto_task_details`    | Get complete task information         | `task_id` (required)    |
-| N/A                        | N/A                                   | N/A                     |
+| Tool Name                      | Purpose                               | Parameters                          |
+| ------------------------------ | ------------------------------------- | ----------------------------------- |
+| `get_onto_project_details`     | Get full project with nested entities | `project_id` (required)             |
+| `get_onto_task_details`        | Get complete task information         | `task_id` (required)                |
+| `get_onto_goal_details`        | Get complete goal information         | `goal_id` (required)                |
+| `get_onto_plan_details`        | Get complete plan information         | `plan_id` (required)                |
+| `get_onto_document_details`    | Get complete document information     | `document_id` (required)            |
+| `get_onto_output_details`      | Get complete output information       | `output_id` (required)              |
+| `get_onto_milestone_details`   | Get complete milestone information    | `milestone_id` (required)           |
+| `get_onto_risk_details`        | Get complete risk information         | `risk_id` (required)                |
+| `get_onto_decision_details`    | Get complete decision information     | `decision_id` (required)            |
+| `get_onto_requirement_details` | Get complete requirement information  | `requirement_id` (required)         |
+| `get_entity_relationships`     | Graph traversal of connections        | `entity_id` (required), `direction` |
+| `get_linked_entities`          | Rich linked entity details            | `entity_id`, `entity_kind`          |
 
 **Token Cost:** Medium (350 tokens average)
 
-#### 1.1.3 Write/Action Tools (12 tools)
+#### 1.1.3 Write/Action Tools (22 tools)
 
 Tools for creating, updating, and deleting entities:
 
-**Create Tools (4):**
+**Create Tools (6):**
 | Tool Name | Purpose | Key Parameters |
 |-----------|---------|-----------------|
 | `create_onto_project` | Create new project with full structure | `project` (required), `goals`, `plans`, `tasks`, `outputs`, `documents`, `context_document` |
-| `create_onto_task` | Create task within a project | `project_id` (required), `title` (required), `type_key` (default: task.execute), `description`, `priority`, `plan_id` (edge-based) |
+| `create_onto_task` | Create task within a project | `project_id` (required), `title` (required), `type_key`, `description`, `priority`, `plan_id`, `goal_id`, `supporting_milestone_id` |
 | `create_onto_goal` | Create goal for a project | `project_id` (required), `name` (required) |
 | `create_onto_plan` | Create plan for grouping tasks | `project_id` (required), `name` (required) |
+| `create_onto_document` | Create document for a project | `project_id`, `title`, `type_key` |
+| `create_task_document` | Create/attach document to a task | `task_id` (required) |
 
-> **Task type_key Reference**: See [TYPE_KEY_TAXONOMY.md](../../ontology/TYPE_KEY_TAXONOMY.md#onto_tasks) for work mode taxonomy (execute, create, refine, research, review, coordinate, admin, plan).
+> **Task type_key Reference**: See [TYPE_KEY_TAXONOMY.md](../../ontology/TYPE_KEY_TAXONOMY.md#onto_tasks) for work mode taxonomy.
 
-**Update Tools (2):**
+**Link Tools (2):**
+| Tool Name | Purpose | Key Parameters |
+|-----------|---------|-----------------|
+| `link_onto_entities` | Create a relationship edge | `src_kind`, `src_id`, `dst_kind`, `dst_id`, `rel` |
+| `unlink_onto_edge` | Remove a relationship edge | `edge_id` (required) |
+
+**Update Tools (10):**
 | Tool Name | Purpose | Key Parameters |
 |-----------|---------|-----------------|
 | `update_onto_project` | Modify project details | `project_id` (required), `name`, `state_key`, `props` |
-| `update_onto_task` | Modify task details | `task_id` (required), `type_key`, `state_key`, `priority`, `plan_id` (edge-based) |
+| `update_onto_task` | Modify task details | `task_id` (required), `type_key`, `state_key`, `priority`, `goal_id`, `supporting_milestone_id` |
+| `update_onto_goal` | Modify goal details | `goal_id` (required), `name`, `state_key`, `props` |
+| `update_onto_plan` | Modify plan details | `plan_id` (required), `name`, `state_key`, `props` |
+| `update_onto_document` | Modify document details | `document_id` (required), `title`, `state_key`, `content` |
+| `update_onto_output` | Modify output details | `output_id` (required), `name`, `state_key`, `props` |
+| `update_onto_milestone` | Modify milestone details | `milestone_id` (required), `title`, `due_at`, `state_key` |
+| `update_onto_risk` | Modify risk details | `risk_id` (required), `title`, `state_key`, `props` |
+| `update_onto_decision` | Modify decision details | `decision_id` (required), `title`, `decision_at`, `props` |
+| `update_onto_requirement` | Modify requirement details | `requirement_id` (required), `text`, `priority`, `props` |
 
-**Delete Tools (3):**
+**Delete Tools (4):**
 | Tool Name | Purpose | Key Parameters |
 |-----------|---------|-----------------|
 | `delete_onto_task` | Remove a task | `task_id` (required) |
 | `delete_onto_goal` | Remove a goal | `goal_id` (required) |
 | `delete_onto_plan` | Remove a plan | `plan_id` (required) |
-
-**Special (3):**
-| Tool Name | Purpose | Key Parameters |
-|-----------|---------|-----------------|
-| `request_template_creation` | Escalate for new template | `braindump` (required), `realm` (required) |
+| `delete_onto_document` | Remove a document | `document_id` (required) |
 
 **Token Cost:** Medium (400 tokens average)
 
-#### 1.1.4 Utility/Knowledge Tools (8 tools)
+#### 1.1.4 Utility/Knowledge Tools (3 tools)
 
 Tools for schema info, documentation, and reference:
 

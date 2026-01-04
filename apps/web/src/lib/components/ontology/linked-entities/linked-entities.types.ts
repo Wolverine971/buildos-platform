@@ -8,7 +8,15 @@
 /**
  * Supported entity kinds that can be linked.
  */
-export type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk';
+export type EntityKind =
+	| 'task'
+	| 'plan'
+	| 'goal'
+	| 'milestone'
+	| 'document'
+	| 'output'
+	| 'risk'
+	| 'decision';
 
 /**
  * Entity that is currently linked via an edge.
@@ -49,6 +57,7 @@ export interface LinkedEntitiesResult {
 	documents: LinkedEntity[];
 	outputs: LinkedEntity[];
 	risks: LinkedEntity[];
+	decisions: LinkedEntity[];
 }
 
 /**
@@ -62,6 +71,7 @@ export interface AvailableEntitiesResult {
 	documents: AvailableEntity[];
 	outputs: AvailableEntity[];
 	risks: AvailableEntity[];
+	decisions: AvailableEntity[];
 }
 
 /**
@@ -94,22 +104,26 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	'task-milestone': 'targets_milestone',
 	'task-document': 'references',
 	'task-output': 'produces',
+	'task-decision': 'references',
 
 	// Plan relationships
 	'plan-goal': 'supports_goal',
 	'plan-task': 'has_task',
 	'plan-milestone': 'targets_milestone',
 	'plan-document': 'references',
+	'plan-decision': 'references',
 
 	// Goal relationships
-	'goal-task': 'requires',
-	'goal-plan': 'achieved_by',
+	'goal-task': 'supports_goal',
+	'goal-plan': 'supports_goal',
+	'goal-milestone': 'has_milestone',
 	'goal-document': 'references',
 
 	// Document relationships
 	'document-task': 'referenced_by',
 	'document-plan': 'referenced_by',
 	'document-goal': 'referenced_by',
+	'document-decision': 'referenced_by',
 
 	// Milestone relationships
 	'milestone-task': 'contains',
@@ -117,6 +131,11 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 
 	// Output relationships
 	'output-task': 'produced_by',
+
+	// Decision relationships
+	'decision-task': 'references',
+	'decision-plan': 'references',
+	'decision-document': 'references',
 
 	// Risk relationships
 	'risk-task': 'mitigated_by',
@@ -148,7 +167,8 @@ export const ENTITY_SECTIONS: EntitySectionConfig[] = [
 	{ kind: 'milestone', label: 'Milestone', labelPlural: 'Milestones', iconColor: 'text-amber-500' },
 	{ kind: 'document', label: 'Document', labelPlural: 'Documents', iconColor: 'text-cyan-500' },
 	{ kind: 'output', label: 'Output', labelPlural: 'Outputs', iconColor: 'text-violet-500' },
-	{ kind: 'risk', label: 'Risk', labelPlural: 'Risks', iconColor: 'text-red-500' }
+	{ kind: 'risk', label: 'Risk', labelPlural: 'Risks', iconColor: 'text-red-500' },
+	{ kind: 'decision', label: 'Decision', labelPlural: 'Decisions', iconColor: 'text-indigo-500' }
 ];
 
 /**

@@ -154,6 +154,20 @@ export const ENTITY_FIELD_INFO: Record<string, Record<string, FieldInfo>> = {
 			required: false,
 			example: '9a9c0d90-736f-4a2b-8ac0-1234567890ab'
 		},
+		goal_id: {
+			type: 'string',
+			description:
+				'Optional goal UUID (INPUT ONLY). When provided, creates a task→goal supports_goal edge via onto_edges.',
+			required: false,
+			example: 'd4f2a7b1-2f88-4a88-9c3f-1234567890ab'
+		},
+		supporting_milestone_id: {
+			type: 'string',
+			description:
+				'Optional milestone UUID (INPUT ONLY). When provided, creates a task→milestone targets_milestone edge via onto_edges.',
+			required: false,
+			example: '1c9b0f42-7e64-4b6a-8a4f-1234567890ab'
+		},
 		type_key: {
 			type: 'string',
 			description: `Task work mode taxonomy. Format: task.{work_mode}[.{specialization}]

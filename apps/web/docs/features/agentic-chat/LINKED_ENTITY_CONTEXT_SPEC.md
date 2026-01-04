@@ -452,7 +452,7 @@ tool to see full details including descriptions and properties.
 ### Relationship Direction
 
 - **Outgoing:** This entity points TO another (e.g., task → plan)
-- **Incoming:** Another entity points TO this one (e.g., goal → task)
+- **Incoming:** Another entity points TO this one (e.g., plan → task)
 
 Understanding direction helps interpret the relationship meaning:
 
@@ -650,18 +650,18 @@ Full list of valid relationship types:
 const RELATIONSHIP_TYPES = {
 	// Task relationships
 	belongs_to_plan: 'Task belongs to a plan',
-	supports_goal: 'Task supports achieving a goal',
+	supports_goal: 'Task or plan supports achieving a goal',
 	depends_on: 'Task depends on another task',
-	targets_milestone: 'Task targets a milestone',
-	references: 'Entity references a document',
+	targets_milestone: 'Task or plan targets a milestone',
+	references: 'Entity references a document or decision',
 	produces: 'Task produces an output',
 
 	// Plan relationships
 	has_task: 'Plan contains a task',
 
 	// Goal relationships
-	requires: 'Goal requires a task',
-	achieved_by: 'Goal is achieved by a plan',
+	has_milestone: 'Goal has milestone',
+	achieved_by: 'Goal is achieved by a plan or task',
 
 	// Document relationships
 	referenced_by: 'Document is referenced by another entity',

@@ -9,6 +9,8 @@ tags: [research, agentic-chat, streaming, tools, prompts, performance]
 status: complete
 last_updated: 2026-01-03
 last_updated_by: Codex
+last_updated_note: Follow-up review after applied fixes; updated progress and recommendations.
+path: thoughts/shared/research/2026-01-03_12-38-25_agentic-chat-flow-audit.md
 ---
 
 # Research: Agentic chat flow audit (frontend to /api/agent/stream)
@@ -23,11 +25,33 @@ Where are the bugs, mismatches, and performance risks across the AgentChatModal 
 
 ## Summary
 
-- The frontend currently blocks "send while streaming" despite comments implying it should cancel and replace the active run, which hurts responsiveness.
-- Streaming UX and tool feedback are inconsistent: auto-scroll does not follow streaming content, and newer ontology tools lack display/toast coverage.
-- Backend/prompt alignment issues exist (write confirmation is only a prompt rule, not enforced), plus a few persistence and telemetry gaps.
+- Core chat-flow fixes landed: streaming can be superseded, ontology tool UX coverage expanded, persistence/telemetry cleaned up, and hot-path logging gated behind `$app/environment` `dev`.
+- Remaining UX/perf risks: write confirmation is still prompt-only, tool selection adds LLM latency, rate limiting is disabled, and braindump system notes still use assistant role.
+- Streaming UX is intentionally non-intrusive; prefer a "New messages" indicator plus explicit jump control over auto-scroll.
+
+## Follow-up Update (2026-01-03T13:06-0600)
+
+### Progress
+
+- Allow send while streaming by superseding the active run in `sendMessage`, so a new request cancels the old stream.
+- Expanded tool UX coverage for outputs/milestones/risks/decisions/requirements and added update_* tools to mutation toasts; removed dead `executor_instructions` UI handling.
+- Persist user messages only after ontology context access is validated to avoid orphaned user messages on access errors.
+- `partial_tokens` now uses a lightweight token estimate (`Math.ceil(length / 4)`) instead of character count.
+- Gated hot-path logging behind `$app/environment` `dev`.
+- Optimized streaming chunk updates by tracking the current assistant message index (avoids full array map each chunk; still clones array for Svelte reactivity).
+
+### Updated Recommendations
+
+- Send-while-streaming is still limited on touch devices because the composer swaps to a Stop button and Enter inserts a newline; consider a visible "Send & stop" action or dual controls while streaming. `apps/web/src/lib/components/agent/AgentComposer.svelte:80`
+- Auto-scroll: keep it manual to avoid interrupting readers; add a "New messages" badge and a "Jump to latest" button when `userHasScrolled` is true. `apps/web/src/lib/components/agent/AgentChatModal.svelte:1157`
+- Braindump "system" notes still use `role: 'assistant'`; confirm intent and either change to `system` or exclude from history. `apps/web/src/lib/components/agent/AgentChatModal.svelte:521`
+- Enforce confirmation for write tools at execution time (server-side), not only in prompts. `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts:97`
+- Tool selection runs an LLM call every turn; consider caching or skipping when context is unchanged. `apps/web/src/lib/services/agentic-chat/analysis/tool-selection-service.ts:173`
+- `/api/agent/stream` rate limiting is disabled; consider a lenient cap or concurrency guard. `apps/web/src/routes/api/agent/stream/constants.ts:18`
 
 ## Detailed Findings
+
+Initial audit findings from 2026-01-03; see the follow-up update above for current status and resolved items.
 
 - High: Users cannot send a new message while streaming because `sendMessage` returns early when `isStreaming` is true, so the intended "supersede and send" flow never executes. This contradicts inline comments and blocks quick course correction. `apps/web/src/lib/components/agent/AgentChatModal.svelte:1834`
 - Medium: Auto-scroll only triggers when message count changes, not when streaming text grows. If the user has not scrolled, the latest tokens can stream below the viewport. Consider a throttled scroll update during streaming when `userHasScrolled` is false. `apps/web/src/lib/components/agent/AgentChatModal.svelte:1162`
@@ -51,6 +75,8 @@ Where are the bugs, mismatches, and performance risks across the AgentChatModal 
 
 ## Code References
 
+Line numbers reflect the initial audit snapshot and may drift after fixes; see follow-up references for current locations.
+
 - `apps/web/src/lib/components/agent/AgentChatModal.svelte:1834` - sendMessage exits early when streaming, blocking superseded sends.
 - `apps/web/src/lib/components/agent/AgentChatModal.svelte:1162` - auto-scroll only on message count changes.
 - `apps/web/src/lib/components/agent/AgentChatModal.svelte:523` - braindump system note uses assistant role.
@@ -70,6 +96,18 @@ Where are the bugs, mismatches, and performance risks across the AgentChatModal 
 - `apps/web/src/lib/services/agent-context-service.ts:126` - high-frequency context logging.
 - `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts:142` - tool execution logging.
 - `apps/web/src/lib/components/agent/AgentChatModal.svelte:2594` - streaming updates map full message array.
+
+## Follow-up Code References
+
+- `apps/web/src/lib/components/agent/AgentChatModal.svelte:1907` - sendMessage supersedes active stream instead of returning early.
+- `apps/web/src/lib/components/agent/AgentComposer.svelte:80` - streaming swaps send button for stop (touch users cannot send while streaming).
+- `apps/web/src/lib/components/agent/AgentChatModal.svelte:1368` - tool display formatter coverage for outputs/milestones/risks/decisions/requirements.
+- `apps/web/src/lib/components/agent/AgentChatModal.svelte:1691` - mutation toast coverage includes update_onto_* tools.
+- `apps/web/src/routes/api/agent/stream/+server.ts:236` - user message persisted after ontology context validation.
+- `apps/web/src/routes/api/agent/stream/services/stream-handler.ts:747` - partial_tokens uses an approximate token estimate.
+- `apps/web/src/lib/services/agent-context-service.ts:52` - debugLog gated by `$app/environment` dev.
+- `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts:143` - tool execution logging gated behind dev.
+- `apps/web/src/lib/components/agent/AgentChatModal.svelte:2656` - streaming chunk updates use message index optimization.
 
 ## Related Research
 

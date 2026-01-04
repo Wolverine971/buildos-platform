@@ -110,7 +110,7 @@ A self-contained, reusable component for displaying and managing entity relation
 interface LinkedEntitiesProps {
 	// Required
 	sourceId: string; // ID of the entity being edited
-	sourceKind: EntityKind; // 'task' | 'plan' | 'goal' | 'document' | 'output' | 'milestone'
+	sourceKind: EntityKind; // 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk' | 'decision'
 	projectId: string; // Current project context for scoping available entities
 
 	// Callbacks
@@ -122,7 +122,15 @@ interface LinkedEntitiesProps {
 	readOnly?: boolean; // Hide +/× buttons (default: false)
 }
 
-type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output';
+type EntityKind =
+	| 'task'
+	| 'plan'
+	| 'goal'
+	| 'milestone'
+	| 'document'
+	| 'output'
+	| 'risk'
+	| 'decision';
 ```
 
 ---
@@ -131,24 +139,28 @@ type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output'
 
 Relationships are automatically determined based on entity type pairs:
 
-| Source Kind | Target Kind | Relationship        | Direction        |
-| ----------- | ----------- | ------------------- | ---------------- |
-| task        | plan        | `belongs_to_plan`   | task → plan      |
-| task        | goal        | `supports_goal`     | task → goal      |
-| task        | task        | `depends_on`        | task → task      |
-| task        | milestone   | `targets_milestone` | task → milestone |
-| task        | document    | `references`        | task → document  |
-| task        | output      | `produces`          | task → output    |
-| plan        | goal        | `supports_goal`     | plan → goal      |
-| plan        | task        | `has_task`          | plan → task      |
-| plan        | milestone   | `targets_milestone` | plan → milestone |
-| plan        | document    | `references`        | plan → document  |
-| goal        | task        | `requires`          | goal → task      |
-| goal        | plan        | `achieved_by`       | goal → plan      |
-| goal        | document    | `references`        | goal → document  |
-| document    | task        | `referenced_by`     | document → task  |
-| document    | plan        | `referenced_by`     | document → plan  |
-| document    | goal        | `referenced_by`     | document → goal  |
+| Source Kind | Target Kind | Relationship        | Direction           |
+| ----------- | ----------- | ------------------- | ------------------- |
+| task        | plan        | `belongs_to_plan`   | task → plan         |
+| task        | goal        | `supports_goal`     | task → goal         |
+| task        | task        | `depends_on`        | task → task         |
+| task        | milestone   | `targets_milestone` | task → milestone    |
+| task        | document    | `references`        | task → document     |
+| task        | output      | `produces`          | task → output       |
+| plan        | goal        | `supports_goal`     | plan → goal         |
+| plan        | task        | `has_task`          | plan → task         |
+| plan        | milestone   | `targets_milestone` | plan → milestone    |
+| plan        | document    | `references`        | plan → document     |
+| plan        | decision    | `references`        | plan → decision     |
+| goal        | task        | `achieved_by`       | goal → task         |
+| goal        | plan        | `achieved_by`       | goal → plan         |
+| goal        | milestone   | `has_milestone`     | goal → milestone    |
+| goal        | document    | `references`        | goal → document     |
+| task        | decision    | `references`        | task → decision     |
+| document    | task        | `referenced_by`     | document → task     |
+| document    | plan        | `referenced_by`     | document → plan     |
+| document    | goal        | `referenced_by`     | document → goal     |
+| document    | decision    | `referenced_by`     | document → decision |
 
 **Note:** Edges are created in a single direction. The component queries both directions when fetching.
 
@@ -174,7 +186,9 @@ Fetches linked entities for a given source. Used by the component on mount.
       goals: LinkedEntity[],
       milestones: LinkedEntity[],
       documents: LinkedEntity[],
-      outputs: LinkedEntity[]
+      outputs: LinkedEntity[],
+      risks: LinkedEntity[],
+      decisions: LinkedEntity[]
     },
     availableEntities: {
       tasks: AvailableEntity[],
@@ -182,7 +196,9 @@ Fetches linked entities for a given source. Used by the component on mount.
       goals: AvailableEntity[],
       milestones: AvailableEntity[],
       documents: AvailableEntity[],
-      outputs: AvailableEntity[]
+      outputs: AvailableEntity[],
+      risks: AvailableEntity[],
+      decisions: AvailableEntity[]
     }
   }
 }

@@ -282,11 +282,6 @@
 	let agentProjectsLoading = $state(false);
 
 	let agentState = $state<AgentLoopState | null>(null);
-	let agentStateDetails = $state<string | null>(null);
-	const agentStateLabel = $derived.by(() => {
-		if (!agentState) return null;
-		return agentStateDetails ?? AGENT_STATE_MESSAGES[agentState];
-	});
 
 	let voiceInputRef = $state<TextareaWithVoiceComponent | null>(null);
 	let isVoiceRecording = $state(false);
@@ -384,12 +379,13 @@
 
 	// ✅ Svelte 5: Use $derived for computed values
 	// Note: isVoiceRecording is NOT included - clicking send while recording will
-	// stop the recording and auto-send after transcription completes
+	// stop the recording and auto-send after transcription completes.
+	// Streaming only blocks send on non-touch devices (touch uses Send & Stop).
 	const isSendDisabled = $derived(
 		agentToAgentMode ||
 			!selectedContextType ||
 			(!inputValue.trim() && !isVoiceRecording) || // Allow send if recording (will get transcribed text)
-			isStreaming ||
+			(isStreaming && !isTouchDevice) ||
 			isVoiceInitializing ||
 			isVoiceTranscribing ||
 			pendingSendAfterTranscription // Prevent double-clicks while waiting for transcription
@@ -430,7 +426,6 @@
 		// Reset ontology state
 		lastTurnContext = null;
 		agentState = null;
-		agentStateDetails = null;
 		ontologyLoaded = false;
 		ontologySummary = null;
 		contextUsage = null;
@@ -1955,7 +1950,6 @@
 
 		currentActivity = 'Analyzing request...';
 		agentState = 'thinking';
-		agentStateDetails = 'BuildOS is processing your request...';
 		updateThinkingBlockState('thinking', 'BuildOS is processing your request...');
 
 		currentPlan = null;
@@ -2026,7 +2020,6 @@
 					currentActivity = '';
 					currentStreamController = null;
 					agentState = null;
-					agentStateDetails = null;
 					finalizeThinkingBlock('error');
 					finalizeAssistantMessage();
 				},
@@ -2036,7 +2029,6 @@
 					currentActivity = '';
 					currentStreamController = null;
 					agentState = null;
-					agentStateDetails = null;
 					if (!receivedStreamEvent && !error) {
 						error = 'BuildOS did not return a response. Please try again.';
 					}
@@ -2060,7 +2052,6 @@
 				isStreaming = false;
 				currentActivity = '';
 				agentState = null;
-				agentStateDetails = null;
 				finalizeThinkingBlock('interrupted', 'Stopped');
 				finalizeAssistantMessage();
 				return;
@@ -2071,7 +2062,6 @@
 			isStreaming = false;
 			currentActivity = '';
 			agentState = null;
-			agentStateDetails = null;
 			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
 			finalizeAssistantMessage();
 
@@ -2184,7 +2174,6 @@
 			case 'agent_state': {
 				const state = event.state as AgentLoopState;
 				agentState = state;
-				agentStateDetails = event.details ?? null;
 				updateThinkingBlockState(state, event.details);
 				if (event.details) {
 					addActivityToThinkingBlock(event.details, 'state_change', {
@@ -2225,7 +2214,6 @@
 					);
 					currentActivity = 'Waiting on your clarifications to continue...';
 					agentState = 'waiting_on_user';
-					agentStateDetails = 'Waiting on your clarifications to continue...';
 					updateThinkingBlockState(
 						'waiting_on_user',
 						'Waiting on your clarifications to continue...'
@@ -2239,7 +2227,6 @@
 				currentPlan = event.plan;
 				currentActivity = `Executing plan with ${event.plan?.steps?.length || 0} steps...`;
 				agentState = 'executing_plan';
-				agentStateDetails = currentActivity;
 				updateThinkingBlockState('executing_plan', currentActivity);
 
 				// Extract rich metadata for enhanced visualization
@@ -2299,7 +2286,6 @@
 				);
 				currentActivity = 'Waiting on your feedback about the plan...';
 				agentState = 'waiting_on_user';
-				agentStateDetails = summary;
 				updateThinkingBlockState('waiting_on_user', summary);
 				break;
 			}
@@ -2319,7 +2305,6 @@
 				// Executor agent spawned
 				currentActivity = `Executor working on task...`;
 				agentState = 'executing_plan';
-				agentStateDetails = currentActivity;
 				updateThinkingBlockState('executing_plan', currentActivity);
 				addActivityToThinkingBlock(
 					`Executor started for: ${event.task?.description}`,
@@ -2347,11 +2332,9 @@
 						: 'Waiting on plan revisions...';
 				if (event.verdict === 'approved') {
 					agentState = 'executing_plan';
-					agentStateDetails = currentActivity;
 					updateThinkingBlockState('executing_plan', currentActivity);
 				} else {
 					agentState = 'waiting_on_user';
-					agentStateDetails = currentActivity;
 					updateThinkingBlockState('waiting_on_user', currentActivity);
 				}
 				break;
@@ -2525,7 +2508,6 @@
 				// All done - clear activity and re-enable input
 				currentActivity = '';
 				agentState = null;
-				agentStateDetails = null;
 				finalizeAssistantMessage();
 				finalizeThinkingBlock(); // NEW: Close thinking block
 				// Note: isStreaming will be set to false by onComplete callback
@@ -2549,7 +2531,6 @@
 				isStreaming = false;
 				currentActivity = '';
 				agentState = null;
-				agentStateDetails = null;
 				break;
 		}
 	}
@@ -2754,7 +2735,6 @@
 		isStreaming = false;
 		currentActivity = '';
 		agentState = null;
-		agentStateDetails = null;
 	}
 
 	// ========================================================================
@@ -2866,7 +2846,7 @@
 				onChangeFocus={openFocusSelector}
 				onClearFocus={handleFocusClear}
 				{ontologyLoaded}
-				{agentStateLabel}
+				hasActiveThinkingBlock={!!currentThinkingBlockId}
 				{currentActivity}
 				{contextUsage}
 			/>
@@ -3173,6 +3153,7 @@
 							bind:voiceSupportsLiveTranscript
 							{isStreaming}
 							{isSendDisabled}
+							allowSendWhileStreaming={isTouchDevice}
 							{displayContextLabel}
 							onKeyDownHandler={handleKeyDown}
 							onSend={handleSendMessage}

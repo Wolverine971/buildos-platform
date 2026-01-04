@@ -21,7 +21,15 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
-type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk';
+type EntityKind =
+	| 'task'
+	| 'plan'
+	| 'goal'
+	| 'milestone'
+	| 'document'
+	| 'output'
+	| 'risk'
+	| 'decision';
 
 interface AvailableEntity {
 	id: string;
@@ -40,7 +48,8 @@ const VALID_KINDS: EntityKind[] = [
 	'milestone',
 	'document',
 	'output',
-	'risk'
+	'risk',
+	'decision'
 ];
 
 function isValidKind(kind: string): kind is EntityKind {
@@ -128,7 +137,8 @@ async function fetchAvailableForKind(
 		milestone: 'onto_milestones',
 		document: 'onto_documents',
 		output: 'onto_outputs',
-		risk: 'onto_risks'
+		risk: 'onto_risks',
+		decision: 'onto_decisions'
 	};
 
 	const columnsMap: Record<EntityKind, string[]> = {
@@ -138,7 +148,8 @@ async function fetchAvailableForKind(
 		milestone: ['id', 'title', 'due_at', 'type_key'],
 		document: ['id', 'title', 'type_key', 'state_key'],
 		output: ['id', 'name', 'type_key', 'state_key'],
-		risk: ['id', 'title', 'state_key', 'type_key', 'impact']
+		risk: ['id', 'title', 'state_key', 'type_key', 'impact'],
+		decision: ['id', 'title', 'state_key', 'type_key', 'decision_at']
 	};
 
 	const table = tableMap[targetKind];

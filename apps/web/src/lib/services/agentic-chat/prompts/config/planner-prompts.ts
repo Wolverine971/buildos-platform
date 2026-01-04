@@ -92,7 +92,19 @@ const DATA_MODEL_OVERVIEW: PromptSection = {
 **Key Concepts:**
 - **type_key**: Classification string (e.g., \`project.creative.book\`, \`task.execute\`)
 - **props**: Flexible JSONB field for AI-inferred properties (deadlines, budgets, constraints)
-- **Edges**: Relationships between entities (e.g., project → has_task → task)`,
+- **Edges**: Relationships between entities (e.g., project → has_task → task)
+
+### Relationship Sense Rules
+- Entities already belong to a project via \`project_id\`; only add project edges for root-level grouping.
+- Prefer specific relationships (supports_goal, targets_milestone, produces, references) over relates_to.
+- Plans can link directly to goals and milestones; tasks can reference decisions.
+- Link risks to work they threaten, and link work that addresses or mitigates them.
+- If the intended relationship is unclear, ask a short clarification before linking.
+
+### Plan Semantics
+- A plan is a lightweight sequence of steps from point A to point B.
+- Keep strategy/tactics brief inside the plan; use a document for detailed strategy or methodology.
+- Plans should reference that document and specify how it is used.`,
 	includeHeader: true
 };
 
