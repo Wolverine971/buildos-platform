@@ -29,7 +29,8 @@ type EntityKind =
 	| 'document'
 	| 'output'
 	| 'risk'
-	| 'decision';
+	| 'decision'
+	| 'event';
 
 interface AvailableEntity {
 	id: string;
@@ -49,7 +50,8 @@ const VALID_KINDS: EntityKind[] = [
 	'document',
 	'output',
 	'risk',
-	'decision'
+	'decision',
+	'event'
 ];
 
 function isValidKind(kind: string): kind is EntityKind {
@@ -138,7 +140,8 @@ async function fetchAvailableForKind(
 		document: 'onto_documents',
 		output: 'onto_outputs',
 		risk: 'onto_risks',
-		decision: 'onto_decisions'
+		decision: 'onto_decisions',
+		event: 'onto_events'
 	};
 
 	const columnsMap: Record<EntityKind, string[]> = {
@@ -149,7 +152,8 @@ async function fetchAvailableForKind(
 		document: ['id', 'title', 'type_key', 'state_key'],
 		output: ['id', 'name', 'type_key', 'state_key'],
 		risk: ['id', 'title', 'state_key', 'type_key', 'impact'],
-		decision: ['id', 'title', 'state_key', 'type_key', 'decision_at']
+		decision: ['id', 'title', 'state_key', 'type_key', 'decision_at'],
+		event: ['id', 'title', 'state_key', 'type_key', 'start_at']
 	};
 
 	const table = tableMap[targetKind];

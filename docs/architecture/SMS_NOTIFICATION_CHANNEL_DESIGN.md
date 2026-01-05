@@ -4,7 +4,9 @@
 
 ## Overview
 
-This document specifies the design and implementation plan for integrating SMS as a delivery channel within BuildOS's extensible notification system. While the SMS infrastructure (Twilio integration, phone verification, and SMS messaging) already exists, it is not yet integrated with the notification system's event-driven architecture.
+This document specifies the design and implementation plan for integrating SMS as a delivery channel within BuildOS's extensible notification system.
+
+**Update (2026-02-05):** SMS is now integrated via `apps/worker/src/workers/notification/smsAdapter.ts`, and daily brief SMS uses `should_sms_daily_brief` with explicit opt-in subscriptions.
 
 ## Current State
 
@@ -37,36 +39,21 @@ This document specifies the design and implementation plan for integrating SMS a
     - `notification_events` - Immutable event log
     - `notification_deliveries` - Multi-channel delivery tracking
     - `notification_subscriptions` - User event subscriptions
-    - `user_notification_preferences` - Per-event channel preferences
+    - `user_notification_preferences` - Per-user channel preferences (one row per user)
     - `push_subscriptions` - Browser push subscriptions
 - **Channels Implemented**:
     - ✅ Browser Push (full implementation)
     - ✅ Email (adapter using existing email infrastructure)
     - ✅ In-App (direct database insertion)
-    - ⚠️ SMS (placeholder only - NOT IMPLEMENTED)
+    - ✅ SMS (adapter wired to existing SMS infrastructure)
 - **Worker**:
     - `notificationWorker.ts` - Processes `send_notification` jobs
     - Routes to channel-specific adapters
     - Retry logic and error handling
 
-### ❌ Current Gap
+### ✅ Current State
 
-The SMS channel adapter in the notification worker is a **placeholder**:
-
-```typescript
-// Current state in notificationWorker.ts
-case 'sms':
-  console.log('SMS notifications not yet implemented');
-  await updateDeliveryStatus(delivery.id, 'failed', 'SMS notifications not yet implemented');
-  break;
-```
-
-**What's Missing:**
-
-1. No integration between `notification_deliveries` and `sms_messages`
-2. No phone verification requirement in notification subscription flow
-3. No SMS adapter implementation in notification worker
-4. No channel availability checks for SMS
+The SMS channel adapter is wired in `notificationWorker.ts` and creates `sms_messages` records plus `send_sms` jobs for the existing SMS worker. SMS eligibility and quiet hours are enforced in `smsAdapter.ts` and `smsPreferenceChecks.ts`.
 
 ---
 
@@ -483,7 +470,7 @@ After the daily brief notification refactor, several SMS preference fields becam
 **Current SMS Architecture**:
 
 ```
-user_notification_preferences (event_type='user')
+user_notification_preferences (one row per user)
 ├── should_email_daily_brief → Controls daily brief email
 └── should_sms_daily_brief   → Controls daily brief SMS
 

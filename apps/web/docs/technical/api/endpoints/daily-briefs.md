@@ -1077,7 +1077,7 @@ if (!user) {
 }
 ```
 
-**Note:** The `email_daily_brief` field is deprecated as of 2025-10-13. Use `user_notification_preferences` with `event_type='user'` for daily brief notification settings. See [Notification Preferences Refactor](#notification-preferences-refactor-2025-10-13) below.
+**Note:** The `email_daily_brief` field is deprecated as of 2025-10-13. Use `user_notification_preferences.should_email_daily_brief` / `should_sms_daily_brief` for daily brief notification settings. See [Notification Preferences Refactor](#notification-preferences-refactor-2025-10-13) below.
 
 ### project_brief_templates
 
@@ -1198,7 +1198,6 @@ const { results, total } = await response.json();
 ```typescript
 {
 	user_id: string;
-	event_type: string; // Use 'user' for daily brief notifications
 	push_enabled: boolean | null;
 	email_enabled: boolean | null;
 	sms_enabled: boolean | null;
@@ -1208,7 +1207,6 @@ const { results, total } = await response.json();
 	quiet_hours_enabled: boolean | null;
 	quiet_hours_start: string | null;
 	quiet_hours_end: string | null;
-	timezone: string | null;
 	priority: string | null;
 	batch_enabled: boolean | null;
 	batch_interval_minutes: number | null;
@@ -1219,7 +1217,7 @@ const { results, total } = await response.json();
 }
 ```
 
-**Note:** Daily brief notifications use `event_type='user'` to distinguish user-level preferences from event-based notifications. See [Notification Preferences Refactor](#notification-preferences-refactor-2025-10-13) below.
+**Note:** Preferences are one row per user (no `event_type` column). Daily brief notifications are gated by `should_*_daily_brief` plus an active `notification_subscriptions` row for `brief.completed` / `brief.failed`.
 
 ---
 
@@ -1240,7 +1238,7 @@ On 2025-10-13, the daily brief notification system underwent a major refactor to
 **After:**
 
 - `user_brief_preferences` → Controls WHEN briefs are generated (frequency, timing, timezone)
-- `user_notification_preferences` (with `event_type='user'`) → Controls HOW users are notified (email, SMS)
+- `user_notification_preferences` (one row per user) → Controls HOW users are notified (email, SMS, push, in-app)
 
 #### 2. New Fields
 
@@ -1249,19 +1247,11 @@ Added to `user_notification_preferences`:
 - `should_email_daily_brief` → Controls email notifications for daily briefs
 - `should_sms_daily_brief` → Controls SMS notifications for daily briefs (with phone verification)
 
-#### 3. User-Level vs Event-Based Preferences
+#### 3. Subscription Gating (Explicit Opt-in)
 
-**User-Level Preferences** (`event_type='user'`):
-
-- Daily brief email notifications (`should_email_daily_brief`)
-- Daily brief SMS notifications (`should_sms_daily_brief`)
-
-**Event-Based Preferences** (`event_type='brief.completed'`):
-
-- Push notifications for brief completion events
-- In-app notifications for brief completion events
-
-This architecture maintains the composite primary key `(user_id, event_type)` while allowing clear separation of user-level settings from event-driven notifications.
+- Daily brief email/SMS are controlled by `should_email_daily_brief` / `should_sms_daily_brief`.
+- Push/in-app for daily briefs are controlled by `push_enabled` / `in_app_enabled`.
+- Delivery is only attempted when the user has an active `notification_subscriptions` row for `brief.completed` / `brief.failed` (created via explicit opt-in).
 
 ### Migration
 
@@ -1269,6 +1259,13 @@ This architecture maintains the composite primary key `(user_id, event_type)` wh
 - **Data Migration:** Automatically migrated existing `email_daily_brief` values to `should_email_daily_brief`
 - **Backward Compatibility:** Old `email_daily_brief` field preserved but marked as deprecated
 - **Index:** Performance index added on new columns
+
+### Opt-in Enforcement Update (2026-02-05)
+
+- New users default to all channels disabled (explicit opt-in).
+- `emit_notification_event` fails closed if preferences are missing.
+- Daily brief email/SMS uses `should_*_daily_brief`; push/in-app uses global channel toggles.
+- Subscriptions are activated only via explicit opt-in (`created_by` set) or `admin_only=true`.
 
 ### API Changes
 
@@ -1313,7 +1310,7 @@ Returns user-level daily brief notification preferences:
 }
 ```
 
-**POST `/api/notification-preferences?daily_brief=true`**
+**PUT `/api/notification-preferences?daily_brief=true`**
 
 Updates user-level daily brief notification preferences:
 
@@ -1338,7 +1335,8 @@ Updates user-level daily brief notification preferences:
 **Validation:**
 
 - Enabling SMS requires verified phone number
-- Returns 400 error if phone not verified: `{ error: "phone_verification_required" }`
+- Returns 400 error if phone not verified
+- Activates `notification_subscriptions` for `brief.completed` and `brief.failed` when any channel is enabled
 
 ### Usage Examples
 
@@ -1363,7 +1361,7 @@ const response = await fetch('/api/brief-preferences', {
 ```typescript
 // Update HOW users are notified about briefs
 const response = await fetch('/api/notification-preferences?daily_brief=true', {
-	method: 'POST',
+	method: 'PUT',
 	body: JSON.stringify({
 		should_email_daily_brief: true,
 		should_sms_daily_brief: false
@@ -1393,30 +1391,22 @@ console.log('SMS notifications:', prefs.should_sms_daily_brief);
 
 #### Brief Generation Worker
 
-After successfully generating a brief, the worker checks notification preferences:
+After successfully generating a brief, the worker emits a `brief.completed` notification event. Delivery is handled by the notification system (subscriptions + preferences):
 
 ```typescript
-// Query user-level notification preferences
-const { data: notificationPrefs } = await supabase
-	.from('user_notification_preferences')
-	.select('should_email_daily_brief, should_sms_daily_brief')
-	.eq('user_id', userId)
-	.eq('event_type', 'user') // IMPORTANT: Filter by event_type
-	.single();
-
-// Send email if enabled
-if (notificationPrefs?.should_email_daily_brief) {
-	// Create email record and queue job
-}
-
-// Send SMS if enabled AND phone verified
-if (notificationPrefs?.should_sms_daily_brief) {
-	// Check phone verification
-	// Queue SMS notification if verified
-}
+await supabase.rpc('emit_notification_event', {
+	p_event_type: 'brief.completed',
+	p_event_source: 'worker_job',
+	p_target_user_id: userId,
+	p_payload: {
+		brief_id: briefId,
+		brief_date: briefDate,
+		timezone
+	}
+});
 ```
 
-**Critical:** All worker queries must include `.eq("event_type", "user")` to avoid conflicts with event-based preference rows.
+**Note:** Delivery is gated by an active `notification_subscriptions` row and user preferences. Daily brief email/SMS uses `should_email_daily_brief` / `should_sms_daily_brief`; push/in-app uses `push_enabled` / `in_app_enabled`.
 
 ### Benefits
 

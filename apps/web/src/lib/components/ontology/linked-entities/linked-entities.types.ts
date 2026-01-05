@@ -16,7 +16,8 @@ export type EntityKind =
 	| 'document'
 	| 'output'
 	| 'risk'
-	| 'decision';
+	| 'decision'
+	| 'event';
 
 /**
  * Entity that is currently linked via an edge.
@@ -58,6 +59,7 @@ export interface LinkedEntitiesResult {
 	outputs: LinkedEntity[];
 	risks: LinkedEntity[];
 	decisions: LinkedEntity[];
+	events: LinkedEntity[];
 }
 
 /**
@@ -72,6 +74,7 @@ export interface AvailableEntitiesResult {
 	outputs: AvailableEntity[];
 	risks: AvailableEntity[];
 	decisions: AvailableEntity[];
+	events: AvailableEntity[];
 }
 
 /**
@@ -146,7 +149,25 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	// Reverse risk relationships (from other entities to risks)
 	'task-risk': 'mitigates',
 	'plan-risk': 'addresses',
-	'goal-risk': 'has_risk'
+	'goal-risk': 'has_risk',
+
+	// Event relationships
+	'event-task': 'scheduled_for',
+	'event-plan': 'part_of_plan',
+	'event-goal': 'supports_goal',
+	'event-milestone': 'targets_milestone',
+	'event-document': 'references',
+	'event-output': 'relates_to',
+	'event-decision': 'references',
+
+	// Reverse event relationships (from other entities to events)
+	'task-event': 'has_event',
+	'plan-event': 'has_event',
+	'goal-event': 'has_event',
+	'milestone-event': 'has_event',
+	'document-event': 'referenced_by',
+	'output-event': 'has_event',
+	'decision-event': 'discussed_in'
 };
 
 /**
@@ -168,7 +189,8 @@ export const ENTITY_SECTIONS: EntitySectionConfig[] = [
 	{ kind: 'document', label: 'Document', labelPlural: 'Documents', iconColor: 'text-cyan-500' },
 	{ kind: 'output', label: 'Output', labelPlural: 'Outputs', iconColor: 'text-violet-500' },
 	{ kind: 'risk', label: 'Risk', labelPlural: 'Risks', iconColor: 'text-red-500' },
-	{ kind: 'decision', label: 'Decision', labelPlural: 'Decisions', iconColor: 'text-indigo-500' }
+	{ kind: 'decision', label: 'Decision', labelPlural: 'Decisions', iconColor: 'text-indigo-500' },
+	{ kind: 'event', label: 'Event', labelPlural: 'Events', iconColor: 'text-orange-500' }
 ];
 
 /**

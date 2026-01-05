@@ -2051,7 +2051,7 @@ export class CalendarService {
 					organizer: args.organizerMetadata,
 					attendees: args.attendees,
 					recurrence_rule: args.recurrence[0] ?? null
-				} as Json,
+				} as unknown as Json,
 				createdBy: args.task.user_id
 			});
 		} catch (error) {

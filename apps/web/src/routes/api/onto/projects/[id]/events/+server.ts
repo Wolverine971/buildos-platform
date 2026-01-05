@@ -142,10 +142,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('owner_entity_id is required for this owner type');
 	}
 
+	let taskMetadata: { id: string; title: string; projectId: string } | null = null;
+
 	if (taskId) {
 		const { data: task, error: taskError } = await locals.supabase
 			.from('onto_tasks')
-			.select('id, project_id')
+			.select('id, project_id, title')
 			.eq('id', taskId)
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
@@ -158,7 +160,23 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		if (!task) {
 			return ApiResponse.notFound('Task');
 		}
+
+		taskMetadata = {
+			id: task.id,
+			title: task.title ?? 'Task',
+			projectId: task.project_id
+		};
 	}
+
+	const mergedProps = taskMetadata
+		? {
+				...(props ?? {}),
+				task_id: taskMetadata.id,
+				task_title: taskMetadata.title,
+				task_link: `/projects/${taskMetadata.projectId}/tasks/${taskMetadata.id}`,
+				project_id: taskMetadata.projectId
+			}
+		: props;
 
 	const eventService = new OntoEventSyncService(locals.supabase);
 	const result = await eventService.createEvent(access.userId, {
@@ -177,7 +195,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		endAt,
 		allDay,
 		timezone,
-		props,
+		props: mergedProps,
 		createdBy: access.actorId,
 		calendarScope,
 		calendarId,

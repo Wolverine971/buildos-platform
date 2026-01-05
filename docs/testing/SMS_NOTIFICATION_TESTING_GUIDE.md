@@ -4,6 +4,14 @@
 
 This guide walks through testing the SMS notification integration end-to-end, including Phase 3 UX enhancements.
 
+**Update (2026-02-05):** Notifications are explicit opt-in. You must have:
+
+- `user_notification_preferences.should_sms_daily_brief = true`
+- An active `notification_subscriptions` row for `brief.completed` with `created_by` set
+- Verified phone number in `user_sms_preferences`
+
+**Important:** Any `notification_subscriptions` inserts in this guide should include `created_by` (or set `admin_only=true`) or deliveries will be skipped.
+
 ## Phase 3 UX Testing (New!)
 
 Phase 3 adds UI components for phone verification and SMS notification preferences. Test these flows first:
@@ -44,15 +52,15 @@ Phase 3 adds UI components for phone verification and SMS notification preferenc
 ### Test 4: API Endpoint
 
 ```bash
-# Test GET notification preferences
-curl -X GET "https://your-domain.com/api/notification-preferences?event_type=brief.completed" \
+# Test GET daily brief preferences
+curl -X GET "https://your-domain.com/api/notification-preferences?daily_brief=true" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN"
 
-# Test PUT notification preferences
+# Test PUT daily brief preferences (enables subscription + SMS)
 curl -X PUT "https://your-domain.com/api/notification-preferences" \
   -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"event_type":"brief.completed","sms_enabled":true}'
+  -d '{"should_sms_daily_brief":true}'
 ```
 
 ---
@@ -60,6 +68,21 @@ curl -X PUT "https://your-domain.com/api/notification-preferences" \
 ## Phase 4 Webhook Testing (New!)
 
 Phase 4 enhances the Twilio webhook handler with comprehensive logging, error categorization, and intelligent retry logic.
+
+**Prerequisites (SQL):**
+
+```sql
+-- Ensure explicit opt-in subscription exists
+INSERT INTO notification_subscriptions (user_id, event_type, is_active, created_by)
+VALUES (
+  (SELECT id FROM users WHERE email = 'your@email.com'),
+  'brief.completed',
+  true,
+  (SELECT id FROM users WHERE email = 'your@email.com')
+)
+ON CONFLICT (user_id, event_type) DO UPDATE
+SET is_active = true, created_by = EXCLUDED.created_by;
+```
 
 ### Test 1: Successful SMS Delivery Flow
 

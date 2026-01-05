@@ -26,7 +26,8 @@ type EntityKind =
 	| 'document'
 	| 'output'
 	| 'risk'
-	| 'decision';
+	| 'decision'
+	| 'event';
 
 interface LinkedEntity {
 	id: string;
@@ -59,6 +60,7 @@ interface LinkedEntitiesResult {
 	outputs: LinkedEntity[];
 	risks: LinkedEntity[];
 	decisions: LinkedEntity[];
+	events: LinkedEntity[];
 }
 
 interface AvailableEntitiesResult {
@@ -70,6 +72,7 @@ interface AvailableEntitiesResult {
 	outputs: AvailableEntity[];
 	risks: AvailableEntity[];
 	decisions: AvailableEntity[];
+	events: AvailableEntity[];
 }
 
 const VALID_KINDS: EntityKind[] = [
@@ -80,7 +83,8 @@ const VALID_KINDS: EntityKind[] = [
 	'document',
 	'output',
 	'risk',
-	'decision'
+	'decision',
+	'event'
 ];
 
 function isValidKind(kind: string): kind is EntityKind {
@@ -145,7 +149,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			documents: [],
 			outputs: [],
 			risks: [],
-			decisions: []
+			decisions: [],
+			events: []
 		};
 
 		if (includeAvailable) {
@@ -181,7 +186,8 @@ async function fetchLinkedEntities(
 		documents: [],
 		outputs: [],
 		risks: [],
-		decisions: []
+		decisions: [],
+		events: []
 	};
 
 	// Fetch all edges where entity is source or destination
@@ -228,7 +234,8 @@ async function fetchLinkedEntities(
 		document: [],
 		output: [],
 		risk: [],
-		decision: []
+		decision: [],
+		event: []
 	};
 
 	for (const [id, info] of entityMap) {
@@ -236,7 +243,7 @@ async function fetchLinkedEntities(
 	}
 
 	// Fetch entity details in parallel
-	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions] =
+	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions, events] =
 		await Promise.all([
 			fetchEntityDetails(supabase, 'onto_tasks', idsByKind.task, [
 				'id',
@@ -287,6 +294,13 @@ async function fetchLinkedEntities(
 				'state_key',
 				'type_key',
 				'decision_at'
+			]),
+			fetchEntityDetails(supabase, 'onto_events', idsByKind.event, [
+				'id',
+				'title',
+				'state_key',
+				'type_key',
+				'start_at'
 			])
 		]);
 
@@ -301,6 +315,7 @@ async function fetchLinkedEntities(
 	result.outputs = mapEntitiesToLinked(outputs, entityMap, 'output');
 	result.risks = mapEntitiesToLinked(risks, entityMap, 'risk');
 	result.decisions = mapEntitiesToLinked(decisions, entityMap, 'decision');
+	result.events = mapEntitiesToLinked(events, entityMap, 'event');
 
 	return result;
 }
@@ -374,7 +389,8 @@ async function fetchAvailableEntities(
 		documents: new Set(linked.documents.map((e) => e.id)),
 		outputs: new Set(linked.outputs.map((e) => e.id)),
 		risks: new Set(linked.risks.map((e) => e.id)),
-		decisions: new Set(linked.decisions.map((e) => e.id))
+		decisions: new Set(linked.decisions.map((e) => e.id)),
+		events: new Set(linked.events.map((e) => e.id))
 	};
 
 	// Build queries - only add .neq filter when querying the same entity type as source
@@ -451,8 +467,17 @@ async function fetchAvailableEntities(
 		.limit(100);
 	if (sourceKind === 'decision') decisionsQuery.neq('id', sourceId);
 
+	const eventsQuery = supabase
+		.from('onto_events')
+		.select('id, title, state_key, type_key, start_at')
+		.eq('project_id', projectId)
+		.is('deleted_at', null)
+		.order('start_at', { ascending: true })
+		.limit(100);
+	if (sourceKind === 'event') eventsQuery.neq('id', sourceId);
+
 	// Fetch all entities from the project in parallel
-	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions] =
+	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions, events] =
 		await Promise.all([
 			tasksQuery,
 			plansQuery,
@@ -461,7 +486,8 @@ async function fetchAvailableEntities(
 			documentsQuery,
 			outputsQuery,
 			risksQuery,
-			decisionsQuery
+			decisionsQuery,
+			eventsQuery
 		]);
 
 	return {
@@ -474,7 +500,8 @@ async function fetchAvailableEntities(
 		),
 		outputs: mapToAvailable(outputs.data || [], linkedIds.outputs),
 		risks: mapToAvailable(risks.data || [], linkedIds.risks),
-		decisions: mapToAvailable(decisions.data || [], linkedIds.decisions)
+		decisions: mapToAvailable(decisions.data || [], linkedIds.decisions),
+		events: mapToAvailable(events.data || [], linkedIds.events)
 	};
 }
 

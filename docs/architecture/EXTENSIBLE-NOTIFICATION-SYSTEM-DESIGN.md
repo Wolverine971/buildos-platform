@@ -349,27 +349,28 @@ INSERT INTO notification_subscriptions (user_id, event_type, admin_only)
 VALUES ('admin-user-id', 'user.signup', true);
 
 -- User subscribes to their own daily briefs
-INSERT INTO notification_subscriptions (user_id, event_type)
-VALUES ('user-id', 'brief.completed', false);
+INSERT INTO notification_subscriptions (user_id, event_type, created_by)
+VALUES ('user-id', 'brief.completed', 'user-id');
 ```
+
+**Note:** User subscriptions require explicit opt-in. The notification dispatcher only delivers to subscriptions with `created_by IS NOT NULL` or `admin_only = true`.
 
 ---
 
 ### user_notification_preferences
 
-**Purpose:** Per-user, per-event-type, per-channel preferences
+**Purpose:** Per-user, global notification preferences (one row per user)
 
 ```sql
 CREATE TABLE user_notification_preferences (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-  event_type TEXT NOT NULL,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL UNIQUE,
 
-  -- Channel preferences
-  push_enabled BOOLEAN DEFAULT TRUE,
-  email_enabled BOOLEAN DEFAULT TRUE,
+  -- Channel preferences (explicit opt-in)
+  push_enabled BOOLEAN DEFAULT FALSE,
+  email_enabled BOOLEAN DEFAULT FALSE,
   sms_enabled BOOLEAN DEFAULT FALSE,
-  in_app_enabled BOOLEAN DEFAULT TRUE,
+  in_app_enabled BOOLEAN DEFAULT FALSE,
 
   -- Delivery preferences
   priority TEXT DEFAULT 'normal',    -- 'urgent', 'normal', 'low'
@@ -380,41 +381,41 @@ CREATE TABLE user_notification_preferences (
   quiet_hours_enabled BOOLEAN DEFAULT FALSE,
   quiet_hours_start TIME DEFAULT '22:00:00',
   quiet_hours_end TIME DEFAULT '08:00:00',
-  timezone TEXT DEFAULT 'UTC',
 
   -- Frequency limits
   max_per_day INTEGER,               -- Null = unlimited
   max_per_hour INTEGER,
 
+  -- Daily brief preferences (user-level)
+  should_email_daily_brief BOOLEAN DEFAULT FALSE,
+  should_sms_daily_brief BOOLEAN DEFAULT FALSE,
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-  UNIQUE(user_id, event_type)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_user_notif_prefs_user_id ON user_notification_preferences(user_id);
-CREATE INDEX idx_user_notif_prefs_event_type ON user_notification_preferences(event_type);
 ```
 
 **Default Preferences:**
 
 ```sql
--- Auto-create default preferences when user subscribes
-CREATE OR REPLACE FUNCTION create_default_notification_prefs()
+-- Auto-create preferences on user creation (explicit opt-in defaults)
+CREATE OR REPLACE FUNCTION ensure_user_notification_preferences()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO user_notification_preferences (user_id, event_type)
-  VALUES (NEW.user_id, NEW.event_type)
-  ON CONFLICT (user_id, event_type) DO NOTHING;
+  INSERT INTO user_notification_preferences (user_id)
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
 
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER create_notif_prefs_on_subscribe
-AFTER INSERT ON notification_subscriptions
-FOR EACH ROW EXECUTE FUNCTION create_default_notification_prefs();
+CREATE TRIGGER after_user_insert_create_notification_prefs
+AFTER INSERT ON users
+FOR EACH ROW EXECUTE FUNCTION ensure_user_notification_preferences();
 ```
 
 ---
@@ -488,15 +489,10 @@ ALTER TYPE queue_type ADD VALUE 'send_notification';
 -- Metadata schema for send_notification jobs
 {
   "event_id": "uuid",
-  "recipient_user_id": "uuid",
-  "channel": "push|email|sms|in_app",
   "delivery_id": "uuid",
-  "payload": {
-    "title": "New User Signup",
-    "body": "user@example.com just signed up",
-    "action_url": "/admin/users",
-    "icon_url": "/icons/user-signup.png"
-  }
+  "channel": "push|email|sms|in_app",
+  "event_type": "brief.completed",
+  "correlationId": "uuid"
 }
 ```
 
@@ -767,6 +763,8 @@ export class InAppAdapter extends ChannelAdapter {
 		try {
 			// Insert into user_notifications table (existing infrastructure)
 			await supabase.from('user_notifications').insert({
+				delivery_id: formattedPayload.delivery_id,
+				event_id: formattedPayload.event_id,
 				user_id: userId,
 				type: formattedPayload.type,
 				title: formattedPayload.title,
@@ -866,6 +864,12 @@ $$ LANGUAGE plpgsql;
 
 **2. Event Emission Function**
 
+**Note (2026-02-05):** The authoritative implementation lives in
+`supabase/migrations/20260205_002_emit_notification_event_opt_in.sql`. It enforces
+explicit opt-in (subscriptions require `created_by` or `admin_only`), fails closed
+when preferences are missing, uses `should_*_daily_brief` for brief events, and
+stores `event_id` + `event_type` in queue metadata.
+
 ```sql
 -- RPC function to emit events
 CREATE OR REPLACE FUNCTION emit_notification_event(
@@ -906,8 +910,7 @@ BEGIN
     -- Get preferences
     SELECT * INTO v_prefs
     FROM user_notification_preferences
-    WHERE user_id = v_subscription.user_id
-      AND event_type = p_event_type;
+    WHERE user_id = v_subscription.user_id;
 
     -- Check quiet hours (simplified - full logic in worker)
     IF v_prefs.quiet_hours_enabled THEN

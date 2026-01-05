@@ -93,7 +93,10 @@ export class TaskEventSyncService {
 					props: {
 						...((existing.props as Record<string, unknown>) ?? {}),
 						task_event_kind: spec.kind,
-						task_id: task.id
+						task_id: task.id,
+						task_title: task.title ?? 'Task',
+						task_link: `/projects/${task.project_id}/tasks/${task.id}`,
+						project_id: task.project_id
 					},
 					syncTaskFromEvent: false
 				});
@@ -109,7 +112,10 @@ export class TaskEventSyncService {
 					createdBy: actorId,
 					props: {
 						task_event_kind: spec.kind,
-						task_id: task.id
+						task_id: task.id,
+						task_title: task.title ?? 'Task',
+						task_link: `/projects/${task.project_id}/tasks/${task.id}`,
+						project_id: task.project_id
 					}
 				});
 

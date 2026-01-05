@@ -17,6 +17,11 @@
 			"components": ["AgentChatModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -69,11 +74,6 @@
 			"components": ["AgentChatModal", "DailyBriefModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
@@ -104,6 +104,11 @@
 			"file": "src/lib/components/ontology/DocumentModal.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/lib/components/ontology/EventEditModal.svelte",
+			"type": "component",
+			"components": ["TaskEditModal", "GoalEditModal", "PlanEditModal", "DocumentModal"]
 		},
 		{
 			"file": "src/lib/components/ontology/GoalEditModal.svelte",
@@ -926,10 +931,17 @@
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/RiskEditModal.svelte",
 			"src/lib/components/ontology/MilestoneEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
+		],
+		"src/lib/components/ontology/EventEditModal.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte",
+			"src/lib/components/ontology/DocumentModal.svelte"
 		],
 		"src/lib/components/ontology/TaskEditModal.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",
@@ -951,7 +963,6 @@
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
-		"src/lib/components/ontology/TaskEditModal.svelte",
 		"src/lib/components/project/PhasesSection.svelte",
 		"src/lib/components/project/ProjectHeaderMinimal.svelte",
 		"src/lib/components/project/ProjectModals.svelte",

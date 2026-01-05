@@ -10,6 +10,8 @@
 - `/thoughts/shared/research/2025-10-13_06-00-00_daily-brief-notification-refactor-plan.md`
 - Migration: `/supabase/migrations/20251013_refactor_daily_brief_notification_prefs.sql`
 
+**Update (2026-02-05):** `user_notification_preferences` is now one row per user (no `event_type` column), and explicit opt-in is enforced. This ADR remains as historical context for the 2025-10-13 refactor.
+
 ## Context
 
 During the daily brief notification refactor, we needed to separate:

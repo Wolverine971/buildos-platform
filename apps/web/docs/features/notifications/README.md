@@ -4,6 +4,8 @@
 
 Generic stackable notification system for long-running processes with minimized and modal views, plus user notification preferences for daily briefs and events.
 
+**Update (2026-02-05):** User notifications are now explicit opt-in. `user_notification_preferences` is one row per user (no `event_type` column), and `notification_subscriptions` are activated only via explicit opt-in (`created_by` set) or `admin_only=true`.
+
 ## Documentation in This Folder
 
 - `NOTIFICATION_SYSTEM_CHECKPOINT.md` - Development checkpoint
@@ -28,8 +30,8 @@ Generic stackable notification system for long-running processes with minimized 
 
 - **Multi-Channel**: Email, SMS, push, and in-app notifications
 - **Daily Brief Notifications**: User-level control over brief delivery
-- **Event-Based Notifications**: Channel preferences for specific events
-- **User-Level vs Event-Based**: Clear separation of preference types (2025-10-13 refactor)
+- **Event Subscriptions**: `notification_subscriptions` controls which events are delivered
+- **Explicit Opt-In**: No auto-subscribe; defaults are disabled
 - **SMS with Verification**: Phone verification required for SMS notifications
 
 ## Key Files
@@ -80,21 +82,18 @@ Generic stackable notification system for long-running processes with minimized 
 - User preference management
 - Quiet hours and batching support
 
-### User Notification Preferences (2025-10-13 Refactor)
+### User Notification Preferences (Current Model)
 
-The notification preferences system was refactored on 2025-10-13 to separate **user-level preferences** from **event-based preferences**:
-
-**User-Level Preferences** (`event_type='user'`):
+**Global Preferences (one row per user):**
 
 - Daily brief email: `should_email_daily_brief`
 - Daily brief SMS: `should_sms_daily_brief`
-- Controls delivery of user-level features (daily briefs)
+- Channel toggles: `push_enabled`, `email_enabled`, `sms_enabled`, `in_app_enabled`
 
-**Event-Based Preferences** (`event_type='brief.completed'`, etc.):
+**Subscriptions (explicit opt-in):**
 
-- Push notifications: `push_enabled`
-- In-app notifications: `in_app_enabled`
-- Controls notification channels for specific events
+- `notification_subscriptions` determines which events are delivered
+- Daily brief subscriptions are activated when a user opts in via `/profile` (API sets `created_by`)
 
 **Architecture:**
 
@@ -105,9 +104,11 @@ user_brief_preferences
   ↓
 Brief Generated
   ↓
-user_notification_preferences (event_type='user')
-  ↓ (HOW users are notified)
-  should_email_daily_brief, should_sms_daily_brief
+emit_notification_event('brief.completed')
+  ↓
+notification_subscriptions (explicit opt-in)
+  ↓
+user_notification_preferences (HOW users are notified)
   ↓
 Notifications Delivered
 ```

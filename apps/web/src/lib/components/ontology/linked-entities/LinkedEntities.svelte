@@ -71,7 +71,8 @@
 		documents: [],
 		outputs: [],
 		risks: [],
-		decisions: []
+		decisions: [],
+		events: []
 	});
 
 	// Track which kinds have been loaded for available entities
@@ -84,7 +85,8 @@
 		document: [],
 		output: [],
 		risk: [],
-		decision: []
+		decision: [],
+		event: []
 	});
 	let loadingAvailableKind = $state<EntityKind | null>(null);
 
@@ -122,7 +124,8 @@
 				document: [],
 				output: [],
 				risk: [],
-				decision: []
+				decision: [],
+				event: []
 			};
 
 			// Use initial data if provided, otherwise fetch

@@ -117,6 +117,7 @@ Owner: Product + Platform
     - Store `task_id`, `task_title`, and `task_link` (path `/projects/{project_id}/tasks/{task_id}`)
       in `onto_events.props`.
     - Ensure `owner_entity_type = 'task'` and create the `task -> event` edge if missing.
+    - Set `props.task_event_kind` (defaults to `range` unless only a start time was provided).
 
 ## Implementation Plan
 
@@ -274,6 +275,9 @@ Add a calendar tool category and executor:
 - Task-event sync now creates 30-minute start/due events when only one task date is set,
   and event edits sync back to task dates when `task_event_kind` is present.
 - Agentic chat now enriches task-linked events with task metadata and a task link path.
+- Task-linked events now store task metadata (`task_id`, `task_title`, `task_link`) on create/update.
+- Backfill script added for existing task-linked events:
+    - `apps/web/scripts/backfill-task-event-metadata.ts`
 
 ## Open Questions
 

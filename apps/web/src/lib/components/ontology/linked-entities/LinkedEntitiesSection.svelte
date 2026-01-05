@@ -18,6 +18,7 @@
 		FileOutput,
 		AlertTriangle,
 		Scale,
+		Calendar,
 		Loader
 	} from 'lucide-svelte';
 	import type { LinkedEntity, EntityKind, EntitySectionConfig } from './linked-entities.types';
@@ -71,7 +72,8 @@
 		document: FileText,
 		output: FileOutput,
 		risk: AlertTriangle,
-		decision: Scale
+		decision: Scale,
+		event: Calendar
 	};
 
 	const IconComponent = $derived(iconComponents[config.kind]);

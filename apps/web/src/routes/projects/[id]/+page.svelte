@@ -2585,6 +2585,7 @@
 	{#await import('$lib/components/ontology/EventEditModal.svelte') then { default: EventEditModal }}
 		<EventEditModal
 			eventId={editingEventId}
+			projectId={project.id}
 			onClose={() => (editingEventId = null)}
 			onUpdated={handleEventUpdated}
 			onDeleted={handleEventDeleted}

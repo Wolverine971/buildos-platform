@@ -9,6 +9,13 @@
 
 ---
 
+**Update (2026-02-05):** The production notification system now enforces explicit opt-in.
+`user_notification_preferences` is one row per user with defaults set to false, subscriptions are
+activated only via explicit opt-in (`created_by` set) or `admin_only=true`, and
+`emit_notification_event` fails closed when preferences are missing. See
+`supabase/migrations/20260205_001_notification_opt_in_defaults.sql` and
+`supabase/migrations/20260205_002_emit_notification_event_opt_in.sql` for the current logic.
+
 ## Overview
 
 Phase 1 of the Extensible Notification System implements **admin-only user signup notifications** via browser push and in-app channels. This serves as the foundation for a scalable, multi-channel notification infrastructure.
@@ -21,7 +28,7 @@ Phase 1 of the Extensible Notification System implements **admin-only user signu
 ✅ **Worker Processor** - Background job processing for notifications
 ✅ **Browser Push** - Service worker + subscription management
 ✅ **In-App Notifications** - Integration with existing notification system
-✅ **User Preferences** - Granular channel and event type preferences
+✅ **User Preferences** - Global per-user channel preferences
 ✅ **Admin Subscriptions** - Auto-subscribe admins to user.signup events
 
 ### Architecture

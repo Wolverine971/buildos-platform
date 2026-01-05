@@ -302,6 +302,16 @@ export class CalendarExecutor extends BaseExecutor {
 				}
 			}
 
+			const props = (event.props as Record<string, unknown>) ?? {};
+			const taskLink =
+				typeof props.task_link === 'string'
+					? props.task_link
+					: event.owner_entity_type === 'task' &&
+						  event.project_id &&
+						  event.owner_entity_id
+						? `/projects/${event.project_id}/tasks/${event.owner_entity_id}`
+						: null;
+
 			merged.push({
 				source: 'ontology',
 				is_synced: Boolean(externalId),
@@ -312,6 +322,7 @@ export class CalendarExecutor extends BaseExecutor {
 				end_at: event.end_at,
 				owner_entity_type: event.owner_entity_type,
 				owner_entity_id: event.owner_entity_id,
+				task_link: taskLink,
 				sync_status: event.sync_status,
 				sync_error: event.sync_error,
 				event
@@ -391,14 +402,12 @@ export class CalendarExecutor extends BaseExecutor {
 
 		const actorId = await this.getActorId();
 		let projectId = args.project_id ?? null;
-		let taskMetadata:
-			| {
-					taskId: string;
-					taskTitle: string;
-					projectId: string;
-					taskLink: string;
-			  }
-			| null = null;
+		let taskMetadata: {
+			taskId: string;
+			taskTitle: string;
+			projectId: string;
+			taskLink: string;
+		} | null = null;
 
 		if (args.task_id) {
 			taskMetadata = await this.resolveTaskMetadata(args.task_id, projectId ?? undefined);
@@ -428,8 +437,8 @@ export class CalendarExecutor extends BaseExecutor {
 		const props = taskMetadata
 			? {
 					...this.enrichTaskProps({}, taskMetadata),
-					task_event_kind: 'range'
-			  }
+					task_event_kind: args.end_at ? 'range' : 'start'
+				}
 			: undefined;
 
 		const result = await this.eventSyncService.createEvent(this.userId, {
@@ -484,14 +493,21 @@ export class CalendarExecutor extends BaseExecutor {
 
 			let nextProps: Record<string, unknown> | undefined;
 			if (existing.owner_entity_type === 'task' && existing.owner_entity_id) {
+				const existingProps = (existing.props as Record<string, unknown>) ?? {};
 				const taskMetadata = await this.resolveTaskMetadata(
 					existing.owner_entity_id,
 					existing.project_id ?? undefined
 				);
-				nextProps = this.enrichTaskProps(
-					(existing.props as Record<string, unknown>) ?? {},
-					taskMetadata
-				);
+				nextProps = this.enrichTaskProps(existingProps, taskMetadata);
+
+				if (!('task_event_kind' in existingProps)) {
+					const inferredKind =
+						args.end_at !== undefined ? (args.end_at ? 'range' : 'start') : 'range';
+					nextProps = {
+						...nextProps,
+						task_event_kind: inferredKind
+					};
+				}
 
 				const { data: existingEdge } = await this.supabase
 					.from('onto_edges')

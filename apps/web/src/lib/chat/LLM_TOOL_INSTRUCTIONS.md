@@ -95,6 +95,21 @@ Guidelines:
 - Prefer `calendar_scope="project"` when working inside a project.
 - Use `calendar_scope="user"` for the user's primary calendar.
 - Dedupe relies on `onto_event_sync.external_event_id` when available; ontology-only events may be unsynced.
+- When linking an event to a task, include `task_id`; the tool will attach task metadata
+  (`task_id`, `task_title`, `task_link`) on the ontology event.
+
+Example:
+
+```javascript
+await create_calendar_event({
+	title: 'Design review',
+	start_at: '2026-03-04T18:00:00.000Z',
+	end_at: '2026-03-04T19:00:00.000Z',
+	project_id: 'proj_uuid',
+	task_id: 'task_uuid',
+	calendar_scope: 'project'
+});
+```
 
 ## Schema Questions
 

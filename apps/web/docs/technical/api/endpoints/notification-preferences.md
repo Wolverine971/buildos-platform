@@ -27,6 +27,8 @@ The current architecture uses **one row per user** in the `user_notification_pre
 
 **Key Principle**: User has ONE global preference set controlling ALL notifications across ALL channels.
 
+**Opt-in Requirement (2026-02-05)**: Notification delivery requires an active `notification_subscriptions` row created via explicit opt-in (or `admin_only=true`). New users start with all channels disabled, and the API only activates subscriptions when the user opts in.
+
 ### Preference Fields
 
 **Channel Controls:**
@@ -137,15 +139,15 @@ See [Notification Preferences Refactor](#notification-preferences-refactor-2025-
 
 #### Default Values
 
-If no preferences exist, the endpoint returns sensible defaults:
+If no preferences exist, the endpoint returns explicit opt-in defaults:
 
 ```typescript
 {
   preferences: {
-    push_enabled: true,
-    email_enabled: true,
+    push_enabled: false,
+    email_enabled: false,
     sms_enabled: false,
-    in_app_enabled: true,
+    in_app_enabled: false,
     priority: 'normal',
     batch_enabled: false,
     quiet_hours_enabled: false,
@@ -276,6 +278,8 @@ If no preferences exist, the endpoint returns sensible defaults:
 - When updating `should_email_daily_brief` or `should_sms_daily_brief`:
     - System checks if `user_brief_preferences.is_active = true`
     - Returns error if brief generation is disabled
+    - Also upserts `notification_subscriptions` for `brief.completed` and `brief.failed`
+    - Subscription is active if any daily brief channel is enabled (email/SMS/push/in-app)
 
 **Quiet Hours:**
 
@@ -353,7 +357,7 @@ ADD COLUMN event_type TEXT;  -- Tracks notification trigger
 
 - Used "most permissive" approach for boolean fields
 - If ANY event type had `email_enabled = true` → global `email_enabled = true`
-- Preferred `event_type='user'` settings for user-level fields
+- Preferred legacy user-level settings when present (pre-refactor data)
 - Created backup table: `user_notification_preferences_backup` (7-day retention)
 
 **Example Consolidation:**
@@ -404,6 +408,25 @@ Result: Most permissive settings win
 - **Simpler Queries**: Single row lookup instead of filtering by event_type
 - **Clearer UX**: One preference screen, not per-event configuration
 - **Faster Indexing**: Unique key on user_id only
+
+---
+
+## Opt-in Enforcement Update (2026-02-05)
+
+### Summary
+
+- New users start with all channels disabled (explicit opt-in).
+- `emit_notification_event` fails closed when preferences are missing.
+- Daily brief deliveries use `should_email_daily_brief` / `should_sms_daily_brief` instead of `email_enabled` / `sms_enabled`.
+- Subscriptions are activated only via explicit opt-in (`created_by` set) or `admin_only=true`.
+- Queue metadata now includes `event_id` + `event_type` for worker fallback.
+- In-app notifications link to delivery/event records.
+
+### Migration Files
+
+- `supabase/migrations/20260205_001_notification_opt_in_defaults.sql`
+- `supabase/migrations/20260205_002_emit_notification_event_opt_in.sql`
+- `supabase/migrations/20260205_003_user_notifications_linkage.sql`
 
 ---
 
@@ -465,6 +488,8 @@ Result: Most permissive settings win
 	message: string;
 	type: string; // Display type ('payment_warning', etc.)
 	event_type: string | null; // ✅ NEW: Trigger event ('brief.completed', etc.)
+	delivery_id: string | null; // Link to notification_deliveries
+	event_id: string | null; // Link to notification_events
 	action_url: string | null;
 	priority: string;
 	created_at: string;
@@ -474,7 +499,7 @@ Result: Most permissive settings win
 }
 ```
 
-**Note:** `event_type` added in 2025-10-16 refactor to track what triggered the notification.
+**Note:** `event_type` added in 2025-10-16 refactor to track what triggered the notification; `delivery_id` + `event_id` added in 2026-02-05 for lifecycle correlation.
 
 ---
 
