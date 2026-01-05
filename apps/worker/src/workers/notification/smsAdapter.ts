@@ -654,43 +654,14 @@ export async function sendSMSNotification(
 		if (!safetyCheck.allowed) {
 			// Handle different failure reasons
 			if (safetyCheck.checks.quietHours.inQuietHours) {
-				// Reschedule to end of quiet hours
-				const rescheduleTime = safetyCheck.rescheduleTime;
-				if (rescheduleTime) {
-					smsLogger.info('SMS in quiet hours - rescheduling delivery', {
-						notificationDeliveryId: delivery.id,
-						originalTime: new Date().toISOString(),
-						rescheduleTime: rescheduleTime.toISOString()
-					});
-
-					// Update notification delivery to reschedule
-					const { error: rescheduleError } = await supabase
-						.from('notification_deliveries')
-						.update({
-							status: 'scheduled',
-							sent_at: null, // Clear sent_at if it was set
-							scheduled_for: rescheduleTime.toISOString(),
-							updated_at: new Date().toISOString()
-						})
-						.eq('id', delivery.id);
-
-					if (rescheduleError) {
-						smsLogger.error(
-							'Failed to reschedule delivery for quiet hours',
-							rescheduleError,
-							{
-								notificationDeliveryId: delivery.id,
-								rescheduleTime: rescheduleTime.toISOString()
-							}
-						);
-						// Still return failure - we can't send during quiet hours
-					}
-
-					return {
-						success: false,
-						error: `Rescheduled due to quiet hours: ${safetyCheck.reason}`
-					};
-				}
+				smsLogger.info('SMS in quiet hours - cancelling send', {
+					notificationDeliveryId: delivery.id,
+					reason: safetyCheck.reason
+				});
+				return {
+					success: false,
+					error: `Cancelled: ${safetyCheck.reason}`
+				};
 			}
 
 			// Rate limit reached or phone not verified - mark as failed

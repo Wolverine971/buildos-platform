@@ -1,6 +1,6 @@
 // apps/worker/src/workers/phases/phasesWorker.ts
 import { supabase } from '../../lib/supabase';
-import { notifyUser, PhasesJobData, updateJobStatus } from '../shared/queueUtils';
+import { broadcastUserEvent, PhasesJobData, updateJobStatus } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 
 export async function processPhasesJob(job: LegacyJob<PhasesJobData>) {
@@ -19,7 +19,7 @@ export async function processPhasesJob(job: LegacyJob<PhasesJobData>) {
 
 		await updateJobStatus(job.id, 'completed', 'phases');
 
-		await notifyUser(job.data.userId, 'phases_completed', {
+		await broadcastUserEvent(job.data.userId, 'phases_completed', {
 			projectId: job.data.projectId,
 			phasesCount: phases.length,
 			message: 'Project phases generated successfully!'
@@ -35,7 +35,7 @@ export async function processPhasesJob(job: LegacyJob<PhasesJobData>) {
 
 		await updateJobStatus(job.id, 'failed', 'phases', errorMessage);
 
-		await notifyUser(job.data.userId, 'phases_failed', {
+		await broadcastUserEvent(job.data.userId, 'phases_failed', {
 			error: errorMessage,
 			jobId: job.id,
 			projectId: job.data.projectId,

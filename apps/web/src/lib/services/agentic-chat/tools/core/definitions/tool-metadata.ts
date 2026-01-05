@@ -190,6 +190,53 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 
 	// ============================================
+	// CALENDAR TOOLS
+	// ============================================
+
+	list_calendar_events: {
+		summary: 'List calendar events across Google Calendar and ontology events.',
+		capabilities: ['Supports time range filters', 'Merges Google + ontology events'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_calendar_event_details: {
+		summary: 'Fetch detailed info for a specific calendar event.',
+		capabilities: ['Supports ontology or Google event ids'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	create_calendar_event: {
+		summary: 'Create a calendar event and optionally sync to Google.',
+		capabilities: ['Supports project or user scope', 'Optionally links to tasks'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	update_calendar_event: {
+		summary: 'Update a calendar event (ontology or Google).',
+		capabilities: ['Updates titles, times, and descriptions', 'Syncs to Google when linked'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	delete_calendar_event: {
+		summary: 'Delete a calendar event (ontology or Google).',
+		capabilities: ['Deletes ontology events and mirrors to Google if linked'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	get_project_calendar: {
+		summary: 'Fetch the project calendar mapping and settings.',
+		capabilities: ['Returns calendar id, color, and sync state'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	set_project_calendar: {
+		summary: 'Create or update the project calendar configuration.',
+		capabilities: ['Creates calendars after connect', 'Updates name/color/sync'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+
+	// ============================================
 	// ONTOLOGY WRITE TOOLS
 	// ============================================
 

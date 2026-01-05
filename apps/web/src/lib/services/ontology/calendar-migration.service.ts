@@ -75,9 +75,8 @@ export class CalendarMigrationService {
 		if (ontoProjectId && !context.dryRun) {
 			const { data, error } = await this.client
 				.from('project_calendars')
-				.update({ onto_project_id: ontoProjectId })
+				.update({ project_id: ontoProjectId })
 				.eq('project_id', projectId)
-				.is('onto_project_id', null)
 				.select('id');
 
 			if (error) {
@@ -129,7 +128,6 @@ export class CalendarMigrationService {
 								end_at: event.event_end,
 								all_day: false,
 								timezone: null,
-								template_snapshot: {},
 								props: {
 									legacy_task_calendar_event_id: event.id,
 									calendar_id: event.project_calendar_id,

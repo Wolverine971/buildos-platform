@@ -942,13 +942,18 @@ Use get_task_details('${taskId}') for complete information.`;
 		const today = new Date();
 		const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+		const { data: actorId } = await this.supabase.rpc('ensure_actor_for_user', {
+			p_user_id: userId
+		});
+
 		const { data: events } = await this.supabase
-			.from('task_calendar_events')
-			.select('id, event_title, event_start, event_end')
-			.eq('user_id', userId)
-			.gte('event_start', today.toISOString())
-			.lte('event_start', nextWeek.toISOString())
-			.order('event_start')
+			.from('onto_events')
+			.select('id, title, start_at, end_at')
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.gte('start_at', today.toISOString())
+			.lte('start_at', nextWeek.toISOString())
+			.order('start_at')
 			.limit(10);
 
 		const content = `
@@ -960,9 +965,9 @@ Use get_task_details('${taskId}') for complete information.`;
 ${
 	events
 		?.map((e) => {
-			const start = e.event_start ? new Date(e.event_start) : null;
+			const start = e.start_at ? new Date(e.start_at) : null;
 			if (!start) return '';
-			return `- ${start.toLocaleDateString()} ${start.toLocaleTimeString()}: ${e.event_title || 'Untitled'}`;
+			return `- ${start.toLocaleDateString()} ${start.toLocaleTimeString()}: ${e.title || 'Untitled'}`;
 		})
 		.filter(Boolean)
 		.join('\n') || 'No upcoming events'

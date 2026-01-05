@@ -1,0 +1,202 @@
+// apps/web/src/routes/api/onto/projects/[id]/events/+server.ts
+import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
+import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
+
+type ProjectAccessResult =
+	| {
+			ok: true;
+			userId: string;
+			actorId: string;
+	  }
+	| {
+			ok: false;
+			response: Response;
+	  };
+
+async function requireProjectAccess(
+	locals: App.Locals,
+	projectId: string
+): Promise<ProjectAccessResult> {
+	const { user } = await locals.safeGetSession();
+	if (!user) {
+		return { ok: false, response: ApiResponse.unauthorized('Authentication required') };
+	}
+
+	const supabase = locals.supabase;
+	const [actorResult, projectResult] = await Promise.all([
+		supabase.rpc('ensure_actor_for_user', { p_user_id: user.id }),
+		supabase
+			.from('onto_projects')
+			.select('id, created_by')
+			.eq('id', projectId)
+			.is('deleted_at', null)
+			.maybeSingle()
+	]);
+
+	if (actorResult.error || !actorResult.data) {
+		console.error('[Project Events API] Failed to resolve actor:', actorResult.error);
+		return {
+			ok: false,
+			response: ApiResponse.internalError(
+				actorResult.error || new Error('Failed to resolve user actor'),
+				'Failed to resolve user actor'
+			)
+		};
+	}
+
+	if (projectResult.error) {
+		console.error('[Project Events API] Failed to fetch project:', projectResult.error);
+		return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
+	}
+
+	if (!projectResult.data) {
+		return { ok: false, response: ApiResponse.notFound('Project') };
+	}
+
+	const actorId = actorResult.data as string;
+	if (projectResult.data.created_by !== actorId) {
+		return { ok: false, response: ApiResponse.forbidden('Access denied') };
+	}
+
+	return { ok: true, userId: user.id, actorId };
+}
+
+export const GET: RequestHandler = async ({ params, url, locals }) => {
+	const projectId = params.id;
+	if (!projectId) {
+		return ApiResponse.badRequest('Project ID required');
+	}
+
+	const access = await requireProjectAccess(locals, projectId);
+	if (!access.ok) return access.response;
+
+	const timeMin = url.searchParams.get('timeMin');
+	const timeMax = url.searchParams.get('timeMax');
+	const ownerType = url.searchParams.get('owner_type');
+	const ownerId = url.searchParams.get('owner_id');
+	const includeDeleted = url.searchParams.get('includeDeleted') === 'true';
+	const limitParam = url.searchParams.get('limit');
+	const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 0, 1000) : null;
+
+	const eventService = new OntoEventSyncService(locals.supabase);
+	const events = await eventService.listProjectEvents(projectId, {
+		timeMin,
+		timeMax,
+		ownerType,
+		ownerId,
+		includeDeleted,
+		limit
+	});
+
+	return ApiResponse.success({ events });
+};
+
+export const POST: RequestHandler = async ({ params, request, locals }) => {
+	const projectId = params.id;
+	if (!projectId) {
+		return ApiResponse.badRequest('Project ID required');
+	}
+
+	const access = await requireProjectAccess(locals, projectId);
+	if (!access.ok) return access.response;
+
+	const body = await request.json().catch(() => null);
+	if (!body || typeof body !== 'object') {
+		return ApiResponse.badRequest('Invalid request body');
+	}
+
+	const title = body.title as string | undefined;
+	const startAt = body.start_at as string | undefined;
+	const endAt = body.end_at as string | undefined;
+	const description = body.description as string | undefined;
+	const location = body.location as string | undefined;
+	const allDay = body.all_day as boolean | undefined;
+	const timezone = body.timezone as string | undefined;
+	const typeKey = body.type_key as string | undefined;
+	const stateKey = body.state_key as string | undefined;
+	const props = body.props as Record<string, unknown> | undefined;
+	const ownerType = body.owner_entity_type as string | undefined;
+	const ownerId = body.owner_entity_id as string | undefined;
+	const taskId = body.task_id as string | undefined;
+	const calendarScope = body.calendar_scope as 'project' | 'user' | 'calendar_id' | undefined;
+	const calendarId = body.calendar_id as string | undefined;
+	const syncToCalendar = body.sync_to_calendar as boolean | undefined;
+
+	if (!title || !startAt) {
+		return ApiResponse.badRequest('title and start_at are required');
+	}
+
+	let resolvedOwnerType = ownerType;
+	let resolvedOwnerId = ownerId;
+
+	if (!resolvedOwnerType) {
+		resolvedOwnerType = taskId ? 'task' : 'project';
+	}
+
+	if (resolvedOwnerType === 'task' && taskId) {
+		resolvedOwnerId = taskId;
+	}
+
+	if (resolvedOwnerType !== 'standalone' && !resolvedOwnerId) {
+		return ApiResponse.badRequest('owner_entity_id is required for this owner type');
+	}
+
+	if (taskId) {
+		const { data: task, error: taskError } = await locals.supabase
+			.from('onto_tasks')
+			.select('id, project_id')
+			.eq('id', taskId)
+			.eq('project_id', projectId)
+			.is('deleted_at', null)
+			.maybeSingle();
+
+		if (taskError) {
+			return ApiResponse.databaseError(taskError);
+		}
+
+		if (!task) {
+			return ApiResponse.notFound('Task');
+		}
+	}
+
+	const eventService = new OntoEventSyncService(locals.supabase);
+	const result = await eventService.createEvent(access.userId, {
+		orgId: null,
+		projectId,
+		owner: {
+			type: resolvedOwnerType as any,
+			id: resolvedOwnerType === 'standalone' ? null : (resolvedOwnerId ?? null)
+		},
+		typeKey: typeKey ?? (resolvedOwnerType === 'task' ? 'event.task_work' : 'event.general'),
+		stateKey,
+		title,
+		description,
+		location,
+		startAt,
+		endAt,
+		allDay,
+		timezone,
+		props,
+		createdBy: access.actorId,
+		calendarScope,
+		calendarId,
+		syncToCalendar
+	});
+
+	if (resolvedOwnerType === 'task' && resolvedOwnerId) {
+		await locals.supabase.from('onto_edges').insert({
+			project_id: projectId,
+			src_id: resolvedOwnerId,
+			src_kind: 'task',
+			dst_id: result.event.id,
+			dst_kind: 'event',
+			rel: 'has_event'
+		});
+	}
+
+	return ApiResponse.created({
+		event: result.event,
+		sync: result.sync ?? null
+	});
+};

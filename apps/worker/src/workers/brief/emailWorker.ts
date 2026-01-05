@@ -7,7 +7,7 @@
 // Railway blocks SMTP ports - all email sending must go through webhooks to /web.
 
 import { supabase } from '../../lib/supabase';
-import { notifyUser, updateJobStatus } from '../shared/queueUtils';
+import { broadcastUserEvent, updateJobStatus } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 import { WebhookEmailService } from '../../lib/services/webhook-email-service';
 // ⚠️ DO NOT USE: EmailService uses direct SMTP which fails on Railway
@@ -139,7 +139,7 @@ export async function processEmailBriefJob(job: LegacyJob<EmailBriefJobData>): P
 			await supabase.from('emails').update({ status: 'cancelled' }).eq('id', emailId);
 
 			await updateJobStatus(job.id, 'completed', 'email_cancelled');
-			await notifyUser(userId, {
+			await broadcastUserEvent(userId, {
 				type: 'email_cancelled',
 				emailId,
 				briefId,
@@ -204,7 +204,7 @@ export async function processEmailBriefJob(job: LegacyJob<EmailBriefJobData>): P
 		// 6. Complete job
 		await updateJobStatus(job.id, 'completed', 'email_sent');
 
-		await notifyUser(userId, {
+		await broadcastUserEvent(userId, {
 			type: 'brief_email_sent',
 			emailId,
 			briefId,
@@ -252,7 +252,7 @@ export async function processEmailBriefJob(job: LegacyJob<EmailBriefJobData>): P
 
 		if (failedEmail) {
 			const failedTemplateData = failedEmail.template_data as Record<string, any> | null;
-			await notifyUser(failedEmail.created_by, {
+			await broadcastUserEvent(failedEmail.created_by, {
 				type: 'brief_email_failed',
 				emailId: job.data.emailId,
 				briefId: failedTemplateData?.brief_id,

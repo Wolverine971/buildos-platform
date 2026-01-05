@@ -1,6 +1,10 @@
 // apps/worker/src/workers/onboarding/onboardingWorker.ts
 import { supabase } from '../../lib/supabase';
-import { updateJobStatus, notifyUser, OnboardingAnalysisJobData } from '../shared/queueUtils';
+import {
+	updateJobStatus,
+	broadcastUserEvent,
+	OnboardingAnalysisJobData
+} from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 import { OnboardingAnalysisService } from './onboardingAnalysisService';
 
@@ -26,7 +30,7 @@ export async function processOnboardingAnalysisJob(job: LegacyJob<OnboardingAnal
 		await updateJobStatus(job.id, 'completed', 'onboarding');
 
 		// Notify user
-		await notifyUser(userId, 'onboarding_analysis_completed', {
+		await broadcastUserEvent(userId, 'onboarding_analysis_completed', {
 			questionsGenerated: result.questions.length,
 			analysis: result.analysis,
 			message: 'Your personalized questions are ready!'
@@ -54,7 +58,7 @@ export async function processOnboardingAnalysisJob(job: LegacyJob<OnboardingAnal
 
 		await updateJobStatus(job.id, 'failed', 'onboarding', errorMessage);
 
-		await notifyUser(job.data.userId, 'onboarding_analysis_failed', {
+		await broadcastUserEvent(job.data.userId, 'onboarding_analysis_failed', {
 			error: errorMessage,
 			jobId: job.id,
 			message: 'Onboarding analysis failed. Please try again.'

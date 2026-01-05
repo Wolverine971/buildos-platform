@@ -121,7 +121,7 @@ export async function updateJobStatus(
 }
 
 // Send notification to user via Supabase Realtime
-export async function notifyUser(
+export async function broadcastUserEvent(
 	userId: string,
 	event:
 		| string
@@ -153,6 +153,9 @@ export async function notifyUser(
 		console.error('Failed to send notification:', error);
 	}
 }
+
+// Backward compatibility alias (realtime broadcast, not persistent notification delivery)
+export const notifyUser = broadcastUserEvent;
 
 /**
  * Validate BriefJobData and throw if invalid

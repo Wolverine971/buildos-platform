@@ -111,6 +111,9 @@ class NotificationPreferencesService {
 				user_id: user.id,
 				event_type: eventType,
 				is_active: true,
+				admin_only: false,
+				created_by: user.id,
+				updated_at: new Date().toISOString(),
 				filters: filters || null
 			},
 			{
@@ -139,7 +142,7 @@ class NotificationPreferencesService {
 
 		const { error } = await this.supabase
 			.from('notification_subscriptions')
-			.update({ is_active: false })
+			.update({ is_active: false, updated_at: new Date().toISOString() })
 			.eq('user_id', user.id)
 			.eq('event_type', eventType);
 
@@ -210,10 +213,10 @@ class NotificationPreferencesService {
 		// Default global channel preferences (apply to all event types)
 		// Note: timezone removed from preferences table, now stored in users table
 		return {
-			push_enabled: true,
-			email_enabled: true,
+			push_enabled: false,
+			email_enabled: false,
 			sms_enabled: false,
-			in_app_enabled: true,
+			in_app_enabled: false,
 			priority: 'normal',
 			batch_enabled: false,
 			quiet_hours_enabled: false,

@@ -19,6 +19,21 @@
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
 	import { FileText, Loader, Save, Trash2, X } from 'lucide-svelte';
+	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import type { Component } from 'svelte';
+
+	// Lazy-loaded AgentChatModal for better initial load performance
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	type LazyComponent = Component<any, any, any> | null;
+	let AgentChatModalComponent = $state<LazyComponent>(null);
+
+	async function loadAgentChatModal() {
+		if (!AgentChatModalComponent) {
+			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
+			AgentChatModalComponent = mod.default;
+		}
+		return AgentChatModalComponent;
+	}
 
 	interface Props {
 		projectId: string;
@@ -90,6 +105,19 @@
 	let selectedPlanIdForModal = $state<string | null>(null);
 	let showGoalModal = $state(false);
 	let selectedGoalIdForModal = $state<string | null>(null);
+	let showChatModal = $state(false);
+
+	// Build focus for chat about this document
+	const entityFocus = $derived.by((): ProjectFocus | null => {
+		if (!documentId || !projectId) return null;
+		return {
+			focusType: 'document',
+			focusEntityId: documentId,
+			focusEntityName: title || 'Untitled Document',
+			projectId: projectId,
+			projectName: 'Project' // We don't have project name in this modal
+		};
+	});
 
 	const docTypeOptions = $derived.by(() => {
 		const set = new Set<string>();
@@ -353,6 +381,17 @@
 	function handleLinksChanged() {
 		hasChanges = true;
 	}
+
+	// Chat about this document handlers
+	async function openChatAbout() {
+		if (!documentId || !projectId) return;
+		await loadAgentChatModal();
+		showChatModal = true;
+	}
+
+	function handleChatClose() {
+		showChatModal = false;
+	}
 </script>
 
 <Modal
@@ -405,6 +444,22 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
+				<!-- Chat about this document button -->
+				{#if isEditing}
+					<button
+						type="button"
+						onclick={openChatAbout}
+						disabled={loading || saving}
+						class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+						title="Chat about this document"
+					>
+						<img
+							src="/brain-bolt.png"
+							alt="Chat about this document"
+							class="w-5 h-5 rounded object-cover"
+						/>
+					</button>
+				{/if}
 				<!-- Close button -->
 				<button
 					type="button"
@@ -743,4 +798,10 @@
 		onUpdated={closeLinkedEntityModals}
 		onDeleted={closeLinkedEntityModals}
 	/>
+{/if}
+
+<!-- Chat About Modal (Lazy Loaded) -->
+{#if showChatModal && AgentChatModalComponent && entityFocus}
+	{@const ChatModal = AgentChatModalComponent}
+	<ChatModal isOpen={showChatModal} initialProjectFocus={entityFocus} onClose={handleChatClose} />
 {/if}

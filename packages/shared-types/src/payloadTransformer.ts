@@ -85,7 +85,8 @@ function transformBriefCompleted(payload: BriefCompletedEventPayload): Notificat
 			timezone: payload.timezone,
 			todays_task_count: todaysCount,
 			overdue_task_count: overdueCount,
-			upcoming_task_count: upcomingCount
+			upcoming_task_count: upcomingCount,
+			blocked_task_count: payload.blocked_task_count
 		}
 	};
 }

@@ -5722,7 +5722,6 @@ export type Database = {
           id: string
           is_primary: boolean | null
           last_synced_at: string | null
-          onto_project_id: string | null
           project_id: string
           sync_enabled: boolean | null
           sync_error: string | null
@@ -5742,7 +5741,6 @@ export type Database = {
           id?: string
           is_primary?: boolean | null
           last_synced_at?: string | null
-          onto_project_id?: string | null
           project_id: string
           sync_enabled?: boolean | null
           sync_error?: string | null
@@ -5762,7 +5760,6 @@ export type Database = {
           id?: string
           is_primary?: boolean | null
           last_synced_at?: string | null
-          onto_project_id?: string | null
           project_id?: string
           sync_enabled?: boolean | null
           sync_error?: string | null
@@ -5775,17 +5772,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "project_calendars_onto_project_id_fkey"
-            columns: ["onto_project_id"]
-            isOneToOne: false
-            referencedRelation: "onto_projects"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "project_calendars_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
           {
@@ -8030,7 +8020,9 @@ export type Database = {
         Row: {
           action_url: string | null
           created_at: string | null
+          delivery_id: string | null
           dismissed_at: string | null
+          event_id: string | null
           event_type: string | null
           expires_at: string | null
           id: string
@@ -8044,7 +8036,9 @@ export type Database = {
         Insert: {
           action_url?: string | null
           created_at?: string | null
+          delivery_id?: string | null
           dismissed_at?: string | null
+          event_id?: string | null
           event_type?: string | null
           expires_at?: string | null
           id?: string
@@ -8058,7 +8052,9 @@ export type Database = {
         Update: {
           action_url?: string | null
           created_at?: string | null
+          delivery_id?: string | null
           dismissed_at?: string | null
+          event_id?: string | null
           event_type?: string | null
           expires_at?: string | null
           id?: string
@@ -8070,6 +8066,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_notifications_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "notification_deliveries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "notification_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_notifications_user_id_fkey"
             columns: ["user_id"]

@@ -4,7 +4,7 @@
 
 ## Core Principle
 
-Operate exclusively on ontology entities (`onto_projects`, `onto_plans`, `onto_tasks`, `onto_goals`). All mutations must go through the `/api/onto/*` endpoints. Never touch legacy tables, calendar services, or direct SQL updates—everything routes through the existing API + ChatToolExecutor.
+Operate exclusively on ontology entities (`onto_projects`, `onto_plans`, `onto_tasks`, `onto_goals`) and ontology calendar events (`onto_events`). All mutations must go through the `/api/onto/*` endpoints or the approved calendar tools. Never touch legacy tables or direct SQL updates—everything routes through the existing API + ChatToolExecutor.
 
 ## Reading Ontology Data
 
@@ -79,6 +79,23 @@ Use these standard type_key patterns:
 - `create_onto_task` / `create_onto_goal` / `create_onto_plan` all require a `project_id`. Ensure the project has been identified earlier in the conversation.
 - When linking tasks to plans, pass the `plan_id` from prior tool output—never invent one.
 
+## Calendar Tools
+
+Use the calendar toolset for scheduling and event operations:
+
+- `list_calendar_events` – merges Google events and ontology events (deduped when possible)
+- `get_calendar_event_details` – full event payload (ontology or Google)
+- `create_calendar_event` – creates ontology event, optionally syncs to Google
+- `update_calendar_event` – updates ontology or Google event
+- `delete_calendar_event` – deletes ontology or Google event
+- `get_project_calendar` / `set_project_calendar` – manage project calendar mappings
+
+Guidelines:
+
+- Prefer `calendar_scope="project"` when working inside a project.
+- Use `calendar_scope="user"` for the user's primary calendar.
+- Dedupe relies on `onto_event_sync.external_event_id` when available; ontology-only events may be unsynced.
+
 ## Schema Questions
 
 Use `get_field_info` for any question about valid states, priority ranges, or required fields. Supported entity types:
@@ -110,7 +127,7 @@ const rels = await get_entity_relationships({ entity_id: 'task_uuid', direction:
 ## Checklist Before Responding
 
 1. **Did you list before fetching details?** Avoid costly detail calls unless the user explicitly needs them.
-2. **Are you using only `onto_*` tools?** Legacy and calendar tools are removed—do not reference them.
+2. **Are you using only `onto_*` tools and calendar tools?** Legacy tools are removed—do not reference them.
 3. **Did you confirm ownership via prior tool output?** Never mutate entities you haven't surfaced in the conversation.
 4. **Did you answer schema questions with `get_field_info`?** No guessing valid values.
 

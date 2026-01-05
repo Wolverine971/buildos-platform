@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { createServiceClient } from '@buildos/supabase-client';
 import {
 	BriefJobData,
-	notifyUser,
+	broadcastUserEvent,
 	updateJobStatus,
 	validateBriefJobData
 } from '../shared/queueUtils';
@@ -197,6 +197,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 			let upcomingTaskCount = 0;
 			let nextSevenDaysTaskCount = 0;
 			let recentlyCompletedCount = 0;
+			let blockedTaskCount = 0;
 
 			if (useOntology) {
 				// Query ontology_project_briefs for ontology-based briefs
@@ -238,9 +239,26 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 							(typeof meta?.blockedTaskCount === 'number' ? meta.blockedTaskCount : 0)
 						);
 					}, 0) || 0;
+				blockedTaskCount = blockedCount;
+
+				// Fetch aggregate counts from ontology_daily_briefs metadata
+				const { data: ontologyDailyBrief } = await supabase
+					.from('ontology_daily_briefs')
+					.select('metadata')
+					.eq('id', brief.id)
+					.single();
+
+				const ontologyMeta = ontologyDailyBrief?.metadata as Record<string, unknown> | null;
+				overdueTaskCount =
+					typeof ontologyMeta?.overdueCount === 'number' ? ontologyMeta.overdueCount : 0;
+				recentlyCompletedCount =
+					typeof ontologyMeta?.recentUpdatesCount === 'number'
+						? ontologyMeta.recentUpdatesCount
+						: 0;
+				nextSevenDaysTaskCount = upcomingTaskCount;
 
 				console.log(
-					`🧬 Ontology brief stats - Projects: ${projectCount}, Today's tasks: ${todaysTaskCount}, This week: ${upcomingTaskCount}, Blocked: ${blockedCount}`
+					`🧬 Ontology brief stats - Projects: ${projectCount}, Today's tasks: ${todaysTaskCount}, This week: ${upcomingTaskCount}, Overdue: ${overdueTaskCount}, Blocked: ${blockedCount}`
 				);
 			} else {
 				// Query legacy project_daily_briefs
@@ -318,6 +336,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 					upcoming_task_count: upcomingTaskCount,
 					next_seven_days_task_count: nextSevenDaysTaskCount,
 					recently_completed_count: recentlyCompletedCount,
+					blocked_task_count: blockedTaskCount,
 					project_count: projectCount,
 					correlationId, // Add correlation ID to payload
 					is_ontology_brief: useOntology // Flag for downstream consumers
@@ -350,11 +369,31 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
 		await updateJobStatus(job.id, 'failed', 'brief', errorMessage);
 
-		await notifyUser(job.data.userId, 'brief_failed', {
+		await broadcastUserEvent(job.data.userId, 'brief_failed', {
 			error: errorMessage,
 			jobId: job.id,
 			message: 'Brief generation failed. Click to retry.'
 		});
+
+		// Emit notification event for brief failure (opt-in via subscriptions)
+		try {
+			const serviceClient = createServiceClient();
+			const briefDate = job.data.briefDate || new Date().toISOString().slice(0, 10);
+			const timezone = job.data.timezone || 'UTC';
+			await (serviceClient.rpc as any)('emit_notification_event', {
+				p_event_type: 'brief.failed',
+				p_event_source: 'worker_job',
+				p_target_user_id: job.data.userId,
+				p_payload: {
+					brief_date: briefDate,
+					timezone,
+					error_message: errorMessage,
+					retry_count: job.attemptsMade || 0
+				}
+			});
+		} catch (notificationError) {
+			console.error('Failed to emit brief.failed notification event:', notificationError);
+		}
 
 		throw error;
 	}

@@ -1472,6 +1472,34 @@
 		get_calendar_events: (args) => ({
 			action: 'Loading calendar',
 			target: args.date
+		}),
+		list_calendar_events: (args) => ({
+			action: 'Listing calendar events',
+			target: args?.project_id || args?.calendar_scope
+		}),
+		get_calendar_event_details: (args) => ({
+			action: 'Loading calendar event',
+			target: args?.onto_event_id || args?.event_id
+		}),
+		create_calendar_event: (args) => ({
+			action: 'Creating calendar event',
+			target: args?.title
+		}),
+		update_calendar_event: (args) => ({
+			action: 'Updating calendar event',
+			target: args?.onto_event_id || args?.event_id
+		}),
+		delete_calendar_event: (args) => ({
+			action: 'Deleting calendar event',
+			target: args?.onto_event_id || args?.event_id
+		}),
+		get_project_calendar: (args) => ({
+			action: 'Loading project calendar',
+			target: args?.project_id
+		}),
+		set_project_calendar: (args) => ({
+			action: 'Updating project calendar',
+			target: args?.project_id
 		})
 	};
 
@@ -1703,7 +1731,11 @@
 		'update_onto_milestone',
 		'update_onto_risk',
 		'update_onto_decision',
-		'update_onto_requirement'
+		'update_onto_requirement',
+		'create_calendar_event',
+		'update_calendar_event',
+		'delete_calendar_event',
+		'set_project_calendar'
 	]);
 
 	interface ActivityUpdateResult {

@@ -192,6 +192,11 @@ describe('PUT /api/notification-preferences', () => {
 					}))
 				};
 			}
+			if (table === 'notification_subscriptions') {
+				return {
+					upsert: vi.fn().mockResolvedValue({ error: null })
+				};
+			}
 			// For user_notification_preferences upsert
 			return {
 				upsert: vi.fn(() => ({
@@ -279,6 +284,11 @@ describe('PUT /api/notification-preferences', () => {
 					}))
 				};
 			}
+			if (table === 'notification_subscriptions') {
+				return {
+					upsert: vi.fn().mockResolvedValue({ error: null })
+				};
+			}
 			// For user_notification_preferences upsert
 			return {
 				upsert: vi.fn(() => ({
@@ -341,15 +351,22 @@ describe('PUT /api/notification-preferences', () => {
 		const event = createMockRequestEvent({}, body);
 
 		const supabase = event.locals.supabase as any;
-		supabase.from.mockReturnValue({
-			upsert: vi.fn().mockReturnValue({
-				select: vi.fn().mockReturnValue({
-					single: vi.fn().mockResolvedValue({
-						data: { ...body, user_id: 'test-user-id' },
-						error: null
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'notification_subscriptions') {
+				return {
+					upsert: vi.fn().mockResolvedValue({ error: null })
+				};
+			}
+			return {
+				upsert: vi.fn().mockReturnValue({
+					select: vi.fn().mockReturnValue({
+						single: vi.fn().mockResolvedValue({
+							data: { ...body, user_id: 'test-user-id' },
+							error: null
+						})
 					})
 				})
-			})
+			};
 		});
 
 		const response = await PUT(event);

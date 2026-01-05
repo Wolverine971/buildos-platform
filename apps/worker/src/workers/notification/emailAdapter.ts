@@ -211,58 +211,66 @@ export async function sendEmailNotification(
 		let text: string;
 		let subject: string;
 
-		if (eventType === 'brief.completed' && delivery.payload.data?.brief_id) {
-			// Fetch the full brief with LLM analysis
-			const { data: brief, error: briefError } = await supabase
-				.from('daily_briefs')
-				.select('*')
-				.eq('id', delivery.payload.data?.brief_id)
-				.single();
+		if (eventType === 'brief.completed') {
+			const briefId = delivery.payload.data?.brief_id || delivery.payload.brief_id;
+			const briefDate =
+				delivery.payload.data?.brief_date ||
+				delivery.payload.brief_date ||
+				new Date().toISOString();
+			const isOntologyBrief = Boolean(
+				delivery.payload.is_ontology_brief || delivery.payload.data?.is_ontology_brief
+			);
 
-			if (briefError || !brief) {
-				emailLogger.warn(
-					'Failed to fetch brief for email - falling back to notification template',
-					{
-						briefId: delivery.payload.data?.brief_id,
-						error: briefError?.message
-					}
-				);
-				const emailContent = formatEmailTemplate(delivery);
-				html = emailContent.html;
-				text = emailContent.text;
-				subject = delivery.payload.title;
-			} else {
-				// Use the full brief content (LLM analysis or summary)
-				const briefContent = brief.llm_analysis || brief.summary_content || '';
+			if (briefId) {
+				if (isOntologyBrief) {
+					const { data: brief, error: briefError } = await supabase
+						.from('ontology_daily_briefs')
+						.select('executive_summary, llm_analysis, brief_date')
+						.eq('id', briefId)
+						.single();
 
-				if (!briefContent) {
-					emailLogger.warn(
-						'Brief has no content - falling back to notification template',
-						{
-							briefId: delivery.payload.data?.brief_id
-						}
-					);
-					const emailContent = formatEmailTemplate(delivery);
-					html = emailContent.html;
-					text = emailContent.text;
-					subject = delivery.payload.title;
-				} else {
-					// Format the full brief email (matching webhook format)
-					const { renderMarkdown } = await import('../../lib/utils/markdown.js');
-					const contentHtml = renderMarkdown(briefContent);
+					if (briefError || !brief) {
+						emailLogger.warn(
+							'Failed to fetch ontology brief for email - falling back to notification template',
+							{
+								briefId,
+								error: briefError?.message
+							}
+						);
+						const emailContent = formatEmailTemplate(delivery);
+						html = emailContent.html;
+						text = emailContent.text;
+						subject = delivery.payload.title;
+					} else {
+						const briefContent = brief.executive_summary || brief.llm_analysis || '';
 
-					const briefDate = delivery.payload.data?.brief_date || new Date().toISOString();
-					const dateFormatted = new Date(briefDate).toLocaleDateString('en-US', {
-						weekday: 'long',
-						year: 'numeric',
-						month: 'long',
-						day: 'numeric'
-					});
+						if (!briefContent) {
+							emailLogger.warn(
+								'Ontology brief has no content - falling back to notification template',
+								{
+									briefId
+								}
+							);
+							const emailContent = formatEmailTemplate(delivery);
+							html = emailContent.html;
+							text = emailContent.text;
+							subject = delivery.payload.title;
+						} else {
+							const { renderMarkdown } = await import('../../lib/utils/markdown.js');
+							const contentHtml = renderMarkdown(briefContent);
 
-					subject = `BuildOS Daily Brief - ${dateFormatted}`;
+							const dateFormatted = new Date(
+								brief.brief_date || briefDate
+							).toLocaleDateString('en-US', {
+								weekday: 'long',
+								year: 'numeric',
+								month: 'long',
+								day: 'numeric'
+							});
 
-					// Inkprint Design System colors
-					const fullContent = `
+							subject = `BuildOS Daily Brief - ${dateFormatted}`;
+
+							const fullContent = `
             <div style="margin: 20px 0;">
               ${contentHtml}
             </div>
@@ -270,13 +278,13 @@ export async function sendEmailNotification(
             <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
 
             <div style="text-align: center; margin-top: 24px;">
-              <a href="${baseUrl}/projects?briefDate=${delivery.payload.data?.brief_date || ''}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
+              <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
               <span style="color: #8C8B91; margin: 0 8px;">|</span>
               <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
             </div>
           `;
 
-					html = `
+							html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -290,8 +298,96 @@ export async function sendEmailNotification(
 </html>
           `.trim();
 
-					text = briefContent; // Plain text version
+							text = briefContent;
+						}
+					}
+				} else {
+					// Fetch the full brief with LLM analysis
+					const { data: brief, error: briefError } = await supabase
+						.from('daily_briefs')
+						.select('*')
+						.eq('id', briefId)
+						.single();
+
+					if (briefError || !brief) {
+						emailLogger.warn(
+							'Failed to fetch brief for email - falling back to notification template',
+							{
+								briefId,
+								error: briefError?.message
+							}
+						);
+						const emailContent = formatEmailTemplate(delivery);
+						html = emailContent.html;
+						text = emailContent.text;
+						subject = delivery.payload.title;
+					} else {
+						// Use the full brief content (LLM analysis or summary)
+						const briefContent = brief.llm_analysis || brief.summary_content || '';
+
+						if (!briefContent) {
+							emailLogger.warn(
+								'Brief has no content - falling back to notification template',
+								{
+									briefId
+								}
+							);
+							const emailContent = formatEmailTemplate(delivery);
+							html = emailContent.html;
+							text = emailContent.text;
+							subject = delivery.payload.title;
+						} else {
+							// Format the full brief email (matching webhook format)
+							const { renderMarkdown } = await import('../../lib/utils/markdown.js');
+							const contentHtml = renderMarkdown(briefContent);
+
+							const dateFormatted = new Date(briefDate).toLocaleDateString('en-US', {
+								weekday: 'long',
+								year: 'numeric',
+								month: 'long',
+								day: 'numeric'
+							});
+
+							subject = `BuildOS Daily Brief - ${dateFormatted}`;
+
+							// Inkprint Design System colors
+							const fullContent = `
+            <div style="margin: 20px 0;">
+              ${contentHtml}
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
+
+            <div style="text-align: center; margin-top: 24px;">
+              <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
+              <span style="color: #8C8B91; margin: 0 8px;">|</span>
+              <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+            </div>
+          `;
+
+							html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1A1A1D; max-width: 600px; margin: 0 auto; padding: 20px;">
+  ${fullContent}
+</body>
+</html>
+          `.trim();
+
+							text = briefContent; // Plain text version
+						}
+					}
 				}
+			} else {
+				const emailContent = formatEmailTemplate(delivery);
+				html = emailContent.html;
+				text = emailContent.text;
+				subject = delivery.payload.title;
 			}
 		} else {
 			// Use standard notification template for other events

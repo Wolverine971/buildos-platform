@@ -150,6 +150,19 @@ export const TOOL_CATEGORIES = {
 		tools: ['get_buildos_overview', 'get_buildos_usage_guide'],
 		averageTokens: 900,
 		costTier: 'medium'
+	},
+	calendar: {
+		tools: [
+			'list_calendar_events',
+			'get_calendar_event_details',
+			'create_calendar_event',
+			'update_calendar_event',
+			'delete_calendar_event',
+			'get_project_calendar',
+			'set_project_calendar'
+		],
+		averageTokens: 350,
+		costTier: 'medium'
 	}
 };
 
@@ -180,7 +193,12 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'list_onto_risks',
 		'list_onto_decisions',
 		'list_onto_requirements',
-		'search_onto_documents'
+		'search_onto_documents',
+		'list_calendar_events',
+		'get_calendar_event_details',
+		'create_calendar_event',
+		'update_calendar_event',
+		'delete_calendar_event'
 	],
 	project_create: ['create_onto_project'],
 	project: [
@@ -229,7 +247,14 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'delete_onto_task',
 		'delete_onto_goal',
 		'delete_onto_plan',
-		'delete_onto_document'
+		'delete_onto_document',
+		'list_calendar_events',
+		'get_calendar_event_details',
+		'create_calendar_event',
+		'update_calendar_event',
+		'delete_calendar_event',
+		'get_project_calendar',
+		'set_project_calendar'
 	],
 	project_audit: [], // TODO: Add diagnostics/audit-specific tools
 	project_forecast: [] // TODO: Add forecasting/simulation tools

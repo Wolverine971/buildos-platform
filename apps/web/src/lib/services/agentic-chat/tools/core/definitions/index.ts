@@ -21,11 +21,13 @@ export { TOOL_METADATA } from './tool-metadata';
 export { ONTOLOGY_READ_TOOLS } from './ontology-read';
 export { ONTOLOGY_WRITE_TOOLS } from './ontology-write';
 export { UTILITY_TOOL_DEFINITIONS } from './utility';
+export { CALENDAR_TOOL_DEFINITIONS } from './calendar';
 
 // Import for combination
 import { ONTOLOGY_READ_TOOLS } from './ontology-read';
 import { ONTOLOGY_WRITE_TOOLS } from './ontology-write';
 import { UTILITY_TOOL_DEFINITIONS } from './utility';
+import { CALENDAR_TOOL_DEFINITIONS } from './calendar';
 
 /**
  * Complete set of tools available to the chat system.
@@ -34,5 +36,6 @@ import { UTILITY_TOOL_DEFINITIONS } from './utility';
 export const CHAT_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	...ONTOLOGY_READ_TOOLS,
 	...ONTOLOGY_WRITE_TOOLS,
-	...UTILITY_TOOL_DEFINITIONS
+	...UTILITY_TOOL_DEFINITIONS,
+	...CALENDAR_TOOL_DEFINITIONS
 ];

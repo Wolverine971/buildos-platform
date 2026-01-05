@@ -17,6 +17,30 @@
 			"components": ["AgentChatModal"]
 		},
 		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"OutputCreateModal",
+				"OutputEditModal",
+				"DocumentModal",
+				"TaskCreateModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"RiskCreateModal",
+				"RiskEditModal",
+				"MilestoneCreateModal",
+				"MilestoneEditModal",
+				"DecisionCreateModal",
+				"DecisionEditModal",
+				"EventCreateModal",
+				"EventEditModal",
+				"ProjectCalendarSettingsModal",
+				"OntologyProjectEditModal"
+			]
+		},
+		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
 			"type": "component",
 			"components": [
@@ -45,6 +69,11 @@
 			"components": ["AgentChatModal", "DailyBriefModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
@@ -70,6 +99,11 @@
 				"CalendarAnalysisModalContent",
 				"TimeBlockModalContent"
 			]
+		},
+		{
+			"file": "src/lib/components/ontology/DocumentModal.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/ontology/GoalEditModal.svelte",
@@ -149,45 +183,9 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"OutputCreateModal",
-				"OutputEditModal",
-				"DocumentModal",
-				"TaskCreateModal",
-				"PlanCreateModal",
-				"PlanEditModal",
-				"GoalCreateModal",
-				"GoalEditModal",
-				"RiskCreateModal",
-				"RiskEditModal",
-				"MilestoneCreateModal",
-				"MilestoneEditModal",
-				"DecisionCreateModal",
-				"DecisionEditModal",
-				"OntologyProjectEditModal"
-			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
 			"type": "page",
 			"components": ["SvelteFlowGraph", "G6Graph"]
-		},
-		{
-			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
-			"type": "component",
-			"components": [
-				"ParseResultsDiffView",
-				"DualProcessingResults",
-				"SuccessView",
-				"OperationEditModal"
-			]
 		},
 		{
 			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
@@ -199,6 +197,16 @@
 				"OutputEditModal",
 				"MilestoneEditModal",
 				"AgentChatModal"
+			]
+		},
+		{
+			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
+			"type": "component",
+			"components": [
+				"ParseResultsDiffView",
+				"DualProcessingResults",
+				"SuccessView",
+				"OperationEditModal"
 			]
 		},
 		{
@@ -845,6 +853,29 @@
 			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
 		},
 		{
+			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"TASK_CONFIG",
+				"PLAN_CONFIG",
+				"GOAL_CONFIG",
+				"MILESTONE_CONFIG",
+				"RISK_CONFIG",
+				"EVENT_CONFIG",
+				"PANEL_CONFIGS",
+				"getPriorityGroup",
+				"getImpactWeight",
+				"calculateRiskScore",
+				"isWithinTimeframe",
+				"STAGE_ORDER",
+				"IMPACT_ORDER",
+				"getSortValueDisplay",
+				"createDefaultPanelState",
+				"createDefaultPanelStates"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 			"type": "component",
 			"components": [],
@@ -888,22 +919,25 @@
 		}
 	],
 	"dependencies": {
-		"src/lib/components/notifications/NotificationModal.svelte": [
-			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
-		],
-		"src/lib/components/ontology/TaskEditModal.svelte": [
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte"
-		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/ontology/OutputEditModal.svelte",
+			"src/lib/components/ontology/DocumentModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/RiskEditModal.svelte",
 			"src/lib/components/ontology/MilestoneEditModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
+		"src/lib/components/notifications/NotificationModal.svelte": [
+			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
+		],
+		"src/lib/components/ontology/TaskEditModal.svelte": [
+			"src/lib/components/ontology/DocumentModal.svelte",
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte"
+		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
+			"src/lib/components/ontology/DocumentModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte",
 			"src/lib/components/ontology/OutputEditModal.svelte",
@@ -925,6 +959,7 @@
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
+		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",

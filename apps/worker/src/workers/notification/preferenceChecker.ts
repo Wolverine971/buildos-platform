@@ -23,6 +23,9 @@ export interface PreferenceCheckResult {
 		in_app_enabled?: boolean | null;
 		email_enabled?: boolean | null;
 		sms_enabled?: boolean | null;
+		quiet_hours_enabled?: boolean | null;
+		quiet_hours_start?: string | null;
+		quiet_hours_end?: string | null;
 	};
 }
 
@@ -58,7 +61,7 @@ export async function checkUserPreferences(
 		const { data: prefs, error: prefError } = await supabase
 			.from('user_notification_preferences')
 			.select(
-				'push_enabled, in_app_enabled, email_enabled, sms_enabled, should_email_daily_brief, should_sms_daily_brief'
+				'push_enabled, in_app_enabled, email_enabled, sms_enabled, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, should_email_daily_brief, should_sms_daily_brief'
 			)
 			.eq('user_id', userId)
 			.single();
@@ -82,6 +85,8 @@ export async function checkUserPreferences(
 			};
 		}
 
+		const isDailyBriefEvent = eventType === 'brief.completed' || eventType === 'brief.failed';
+
 		// Check channel-specific preference
 		let channelEnabled = false;
 		switch (channel) {
@@ -92,16 +97,16 @@ export async function checkUserPreferences(
 				channelEnabled = prefs.in_app_enabled || false;
 				break;
 			case 'email':
-				// For brief.completed events, also check should_email_daily_brief
-				if (eventType === 'brief.completed') {
+				// For daily brief events, also check should_email_daily_brief
+				if (isDailyBriefEvent) {
 					channelEnabled = prefs.should_email_daily_brief ?? false;
 				} else {
 					channelEnabled = prefs.email_enabled || false;
 				}
 				break;
 			case 'sms':
-				// For brief.completed events, also check should_sms_daily_brief
-				if (eventType === 'brief.completed') {
+				// For daily brief events, also check should_sms_daily_brief
+				if (isDailyBriefEvent) {
 					channelEnabled = prefs.should_sms_daily_brief ?? false;
 				} else {
 					channelEnabled = prefs.sms_enabled || false;

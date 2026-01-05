@@ -35,6 +35,7 @@
 	let showPhoneVerificationModal = $state(false);
 	let phoneVerified = $state(false);
 	let phoneNumber = $state<string | null>(null);
+	let isChannelSaving = $state(false);
 
 	// Daily brief notification preferences
 	let dailyBriefEmailEnabled = $state(false);
@@ -48,10 +49,10 @@
 	let pushSubscriptionError = $state<string | null>(null);
 
 	// Preference settings for brief.completed (with defaults)
-	let pushEnabled = $state(true);
-	let emailEnabled = $state(true);
+	let pushEnabled = $state(false);
+	let emailEnabled = $state(false);
 	let smsEnabled = $state(false);
-	let inAppEnabled = $state(true);
+	let inAppEnabled = $state(false);
 	let quietHoursEnabled = $state(false);
 	let quietHoursStart = $state('22:00');
 	let quietHoursEnd = $state('08:00');
@@ -161,6 +162,21 @@
 		smsEnabled = enabled;
 	}
 
+	async function saveChannelPreferences(
+		updates: Partial<UserNotificationPreferences>
+	): Promise<void> {
+		isChannelSaving = true;
+		try {
+			await notificationPreferencesService.update(updates);
+		} catch (error) {
+			console.error('Failed to save notification channel preferences:', error);
+			toastService.error('Failed to save notification preferences');
+			await loadPreferences();
+		} finally {
+			isChannelSaving = false;
+		}
+	}
+
 	async function handlePhoneVerified() {
 		// Reload preferences to get updated phone status
 		await loadPreferences();
@@ -182,6 +198,7 @@
 	}
 
 	async function handlePushToggle(enabled: boolean) {
+		let nextValue = enabled;
 		if (enabled) {
 			// User wants to enable push notifications
 			pushSubscriptionError = null;
@@ -196,9 +213,10 @@
 				// Request permission from browser
 				const hasPermission = await browserPushService.requestPermission();
 				if (!hasPermission) {
-					pushEnabled = false;
+					nextValue = false;
 					pushSubscriptionError =
 						'Notification permission was denied. Please enable notifications in your browser settings and try again.';
+					await saveChannelPreferences({ push_enabled: nextValue });
 					return;
 				}
 
@@ -209,7 +227,7 @@
 
 				toastService.success('Push notifications enabled!');
 			} catch (error) {
-				pushEnabled = false;
+				nextValue = false;
 				pushSubscriptionError =
 					error instanceof Error ? error.message : 'Failed to enable push notifications';
 				console.error('Failed to subscribe to push notifications:', error);
@@ -227,9 +245,14 @@
 		}
 
 		// Update the toggle state
-		pushEnabled = enabled;
+		pushEnabled = nextValue;
+		await saveChannelPreferences({ push_enabled: nextValue });
 	}
-	// fix this
+
+	async function handleInAppToggle(enabled: boolean) {
+		inAppEnabled = enabled;
+		await saveChannelPreferences({ in_app_enabled: enabled });
+	}
 
 	async function savePreferences() {
 		isSaving = true;
@@ -259,60 +282,28 @@
 
 <div class="space-y-6">
 	{#if isLoading}
-		<div class="flex flex-col items-center justify-center py-12 gap-3">
-			<svg
-				class="animate-spin h-8 w-8 text-primary"
-				xmlns="http://www.w3.org/2000/svg"
-				fill="none"
-				viewBox="0 0 24 24"
-			>
-				<circle
-					class="opacity-25"
-					cx="12"
-					cy="12"
-					r="10"
-					stroke="currentColor"
-					stroke-width="4"
-				></circle>
-				<path
-					class="opacity-75"
-					fill="currentColor"
-					d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-				></path>
-			</svg>
-			<p class="text-sm text-gray-500 dark:text-gray-400">
-				Loading notification preferences...
-			</p>
+		<div class="flex flex-col items-center justify-center py-8 gap-2">
+			<Loader class="animate-spin h-6 w-6 text-accent" />
+			<p class="text-sm text-muted-foreground">Loading notification preferences...</p>
 		</div>
 	{:else if loadError}
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg border border-red-200 dark:border-red-800 shadow-lg"
-		>
-			<div class="p-6">
+		<div class="bg-card rounded-lg border border-red-500/30 shadow-ink tx tx-static tx-weak">
+			<div class="p-4">
 				<div class="flex items-start gap-3">
-					<div class="flex-shrink-0">
-						<svg
-							class="w-6 h-6 text-red-600 dark:text-red-400"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-							/>
-						</svg>
-					</div>
+					<AlertCircle class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
 					<div class="flex-1">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						<h3 class="text-base font-semibold text-foreground mb-1">
 							Unable to Load Preferences
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+						<p class="text-sm text-muted-foreground mb-3">
 							{loadError}
 						</p>
-						<Button onclick={loadPreferences} variant="outline" size="sm">
+						<Button
+							onclick={loadPreferences}
+							variant="outline"
+							size="sm"
+							class="pressable"
+						>
 							Try Again
 						</Button>
 					</div>
@@ -321,37 +312,35 @@
 		</div>
 	{:else}
 		<!-- Daily Brief Notification Settings (User-Level Preferences) -->
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg"
-		>
-			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+		<div class="bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak">
+			<div class="px-4 py-3 border-b border-border">
 				<div class="flex items-center gap-3">
-					<Bell class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+					<Bell class="w-5 h-5 text-purple-500" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-base font-semibold text-foreground">
 							Daily Brief Notifications
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<p class="text-sm text-muted-foreground">
 							Choose how you want to be notified when your daily brief is ready
 						</p>
 					</div>
 				</div>
 			</div>
-			<div class="p-6 space-y-4">
+			<div class="p-4 space-y-3">
 				<!-- Daily Brief Email -->
 				<div
-					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+						<Mail class="w-5 h-5 text-blue-500 mt-0.5" />
 						<div>
 							<label
 								for="daily-brief-email"
-								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								class="font-medium text-foreground cursor-pointer"
 							>
 								Email Daily Brief
 							</label>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+							<p class="text-sm text-muted-foreground mt-0.5">
 								Get your daily brief via email when it's ready
 							</p>
 						</div>
@@ -365,38 +354,36 @@
 							onchange={(e) => handleDailyBriefEmailToggle(e.currentTarget.checked)}
 						/>
 						<div
-							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
 						></div>
 					</label>
 				</div>
 
 				<!-- Daily Brief SMS -->
 				<div
-					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<MessageSquare
-							class="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5"
-						/>
+						<MessageSquare class="w-5 h-5 text-orange-500 mt-0.5" />
 						<div class="flex-1">
 							<label
 								for="daily-brief-sms"
-								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								class="font-medium text-foreground cursor-pointer"
 							>
 								SMS Daily Brief
 							</label>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+							<p class="text-sm text-muted-foreground mt-0.5">
 								Receive text messages when your brief is ready
 							</p>
 							{#if !phoneVerified}
 								<div
-									class="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+									class="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600"
 								>
 									<AlertCircle class="w-3.5 h-3.5" />
 									<span>Phone verification required</span>
 								</div>
 							{:else if phoneNumber}
-								<div class="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
+								<div class="mt-1 text-xs text-muted-foreground">
 									Verified: {phoneNumber}
 								</div>
 							{/if}
@@ -411,7 +398,7 @@
 							onchange={(e) => handleDailyBriefSmsToggle(e.currentTarget.checked)}
 						/>
 						<div
-							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"
+							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"
 						></div>
 					</label>
 				</div>
@@ -419,69 +406,61 @@
 		</div>
 
 		<!-- Additional Notification Channels -->
-		<div
-			class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg"
-		>
-			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+		<div class="bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak">
+			<div class="px-4 py-3 border-b border-border">
 				<div class="flex items-center gap-3">
-					<Bell class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+					<Bell class="w-5 h-5 text-purple-500" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-base font-semibold text-foreground">
 							Additional Notification Channels
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<p class="text-sm text-muted-foreground">
 							Configure push and in-app notifications for your daily briefs
 						</p>
 					</div>
 				</div>
 			</div>
-			<div class="p-6 space-y-6">
+			<div class="p-4 space-y-4">
 				<!-- Push Notifications -->
 				<div
-					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Smartphone class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+						<Smartphone class="w-5 h-5 text-green-500 mt-0.5" />
 						<div class="flex-1">
 							<label
 								for="push-notifications"
-								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								class="font-medium text-foreground cursor-pointer"
 							>
 								Push Notifications
 							</label>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+							<p class="text-sm text-muted-foreground mt-0.5">
 								Get instant browser notifications
 							</p>
 							{#if !pushSupported}
 								<div
-									class="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-500"
+									class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
 								>
 									<AlertCircle class="w-3.5 h-3.5" />
 									<span>Not supported in this browser</span>
 								</div>
 							{:else if pushEnabled && !pushSubscribed}
 								<div
-									class="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+									class="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600"
 								>
 									<AlertCircle class="w-3.5 h-3.5" />
 									<span>Browser permission required</span>
 								</div>
 							{:else if pushEnabled && pushSubscribed}
-								<div class="mt-1.5 text-xs text-green-600 dark:text-green-400">
-									✓ Active subscription
-								</div>
+								<div class="mt-1 text-xs text-green-600">✓ Active subscription</div>
 							{:else if pushPermissionStatus === 'denied'}
-								<div
-									class="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400"
-								>
+								<div class="mt-1.5 flex items-center gap-1.5 text-xs text-red-500">
 									<AlertCircle class="w-3.5 h-3.5" />
 									<span>Permission denied - check browser settings</span>
 								</div>
 							{/if}
 							{#if pushSubscriptionError}
-								<div
-									class="mt-2 flex items-start gap-1.5 text-xs text-red-600 dark:text-red-400"
-								>
+								<div class="mt-1.5 flex items-start gap-1.5 text-xs text-red-500">
 									<AlertCircle class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
 									<span>{pushSubscriptionError}</span>
 								</div>
@@ -498,25 +477,25 @@
 							disabled={!pushSupported}
 						/>
 						<div
-							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 						></div>
 					</label>
 				</div>
 
 				<!-- In-App Notifications -->
 				<div
-					class="flex items-start justify-between p-4 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Bell class="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
+						<Bell class="w-5 h-5 text-purple-500 mt-0.5" />
 						<div>
 							<label
 								for="in-app-notifications"
-								class="font-medium text-gray-900 dark:text-white cursor-pointer"
+								class="font-medium text-foreground cursor-pointer"
 							>
 								In-App Notifications
 							</label>
-							<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+							<p class="text-sm text-muted-foreground mt-0.5">
 								See notifications within the BuildOS app
 							</p>
 						</div>
@@ -527,21 +506,20 @@
 							id="in-app-notifications"
 							class="sr-only peer"
 							bind:checked={inAppEnabled}
+							onchange={(e) => handleInAppToggle(e.currentTarget.checked)}
 						/>
 						<div
-							class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"
+							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"
 						></div>
 					</label>
 				</div>
 
 				{#if !hasAnyChannelEnabled}
 					<div
-						class="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800"
+						class="flex items-start gap-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30"
 					>
-						<Moon
-							class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5"
-						/>
-						<p class="text-sm text-amber-800 dark:text-amber-200">
+						<Moon class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+						<p class="text-sm text-foreground">
 							All notification channels are disabled. Enable at least one channel
 							above to receive daily brief notifications.
 						</p>
@@ -549,16 +527,14 @@
 				{/if}
 
 				<!-- Quiet Hours -->
-				<div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-					<div class="flex items-start gap-3 mb-4">
-						<Moon class="w-5 h-5 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+				<div class="border-t border-border pt-4">
+					<div class="flex items-start gap-3 mb-3">
+						<Moon class="w-5 h-5 text-indigo-500 mt-0.5" />
 						<div class="flex-1">
 							<div class="flex items-center justify-between">
 								<div>
-									<h4 class="font-medium text-gray-900 dark:text-white">
-										Quiet Hours
-									</h4>
-									<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+									<h4 class="font-medium text-foreground">Quiet Hours</h4>
+									<p class="text-sm text-muted-foreground mt-0.5">
 										Don't send push notifications during these hours
 									</p>
 								</div>
@@ -570,14 +546,14 @@
 										bind:checked={quietHoursEnabled}
 									/>
 									<div
-										class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"
+										class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"
 									></div>
 								</label>
 							</div>
 						</div>
 					</div>
 					{#if quietHoursEnabled}
-						<div class="grid grid-cols-2 gap-4">
+						<div class="grid grid-cols-2 gap-3 ml-8">
 							<FormField label="Start Time" labelFor="quiet-start">
 								<TextInput
 									id="quiet-start"
@@ -593,13 +569,14 @@
 				</div>
 
 				<!-- Save Button -->
-				<div class="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
+				<div class="flex justify-end pt-4 border-t border-border">
 					<Button
 						onclick={savePreferences}
 						disabled={isSaving}
 						variant="primary"
 						loading={isSaving}
 						icon={isSaving ? Loader : Check}
+						class="shadow-ink pressable"
 					>
 						{isSaving ? 'Saving...' : 'Save Preferences'}
 					</Button>

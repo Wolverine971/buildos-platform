@@ -427,10 +427,10 @@
 
 				{#if smsPreferences.eventReminders || smsPreferences.morningKickoff || smsPreferences.eveningRecap}
 					<div
-						class="mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800"
+						class="mt-4 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30 tx tx-grain tx-weak"
 					>
 						<p
-							class="text-sm text-emerald-700 dark:text-emerald-300 flex items-center gap-2"
+							class="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2"
 						>
 							<CheckCircle2 class="w-4 h-4" />
 							{[
@@ -481,7 +481,7 @@
 			size="lg"
 			onclick={saveAndContinue}
 			loading={isSaving}
-			class="flex-1 sm:flex-initial min-w-[200px] order-1 sm:order-2"
+			class="flex-1 sm:flex-initial min-w-[200px] order-1 sm:order-2 shadow-ink pressable"
 		>
 			{#if isSaving}
 				Saving...

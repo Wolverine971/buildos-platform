@@ -28,5 +28,6 @@ export {
 	// Individual arrays (for selective imports)
 	ONTOLOGY_READ_TOOLS,
 	ONTOLOGY_WRITE_TOOLS,
-	UTILITY_TOOL_DEFINITIONS
+	UTILITY_TOOL_DEFINITIONS,
+	CALENDAR_TOOL_DEFINITIONS
 } from './definitions';

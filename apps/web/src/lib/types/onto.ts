@@ -761,8 +761,6 @@ export const OntoEventSchema = z.object({
 	owner_entity_id: z.string().uuid().nullable().optional(),
 	type_key: z.string(),
 	state_key: z.string(),
-	template_id: z.string().uuid().nullable().optional(),
-	template_snapshot: z.record(z.unknown()),
 	title: z.string(),
 	description: z.string().nullable().optional(),
 	location: z.string().nullable().optional(),

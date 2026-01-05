@@ -54,11 +54,11 @@
 >
 	<!-- Header - matches real panel header exactly -->
 	<div
-		class="w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left"
+		class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
 		aria-busy="true"
 		aria-label="Loading {label}"
 	>
-		<div class="flex items-start gap-2 sm:gap-3">
+		<div class="flex items-center gap-2 sm:gap-3 flex-1">
 			<div
 				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
 			>
@@ -83,22 +83,20 @@
 				</p>
 			</div>
 		</div>
-		<ChevronDown
-			class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform {expanded
-				? 'rotate-180'
-				: ''}"
-		/>
+		<div class="flex items-center gap-1 sm:gap-2">
+			<!-- Skeleton add button placeholder -->
+			<div class="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-muted/50"></div>
+			<ChevronDown
+				class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform {expanded
+					? 'rotate-180'
+					: ''}"
+			/>
+		</div>
 	</div>
 
 	<!-- Expanded content with skeleton list items -->
 	{#if expanded}
 		<div class="border-t border-border">
-			<!-- Section header skeleton -->
-			<div class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2">
-				<div class="h-2.5 sm:h-3 w-10 sm:w-12 rounded bg-muted animate-pulse"></div>
-				<div class="h-5 sm:h-6 w-14 sm:w-20 rounded bg-muted animate-pulse"></div>
-			</div>
-
 			<!-- Skeleton list items -->
 			<div class="divide-y divide-border/80">
 				{#each Array(Math.min(count, 3)) as _, i}

@@ -4,7 +4,7 @@ import { SMSService, TwilioClient } from '@buildos/twilio-service';
 import { createServiceClient } from '@buildos/supabase-client';
 import {
 	type SMSJobData,
-	notifyUser,
+	broadcastUserEvent,
 	updateJobStatus,
 	validateSMSJobData
 } from './shared/queueUtils';
@@ -322,7 +322,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		await updateJobStatus(job.id, 'completed', 'send_sms');
 
 		// Notify user of successful send (optional)
-		await notifyUser(user_id, 'sms_sent', {
+		await broadcastUserEvent(user_id, 'sms_sent', {
 			message_id,
 			phone_number,
 			scheduled_sms_id

@@ -33,6 +33,7 @@ import {
 	OntologyWriteExecutor,
 	UtilityExecutor,
 	ExternalExecutor,
+	CalendarExecutor,
 	type ExecutorContext
 } from './executors';
 
@@ -61,6 +62,7 @@ export class ChatToolExecutor {
 	private _writeExecutor?: OntologyWriteExecutor;
 	private _utilityExecutor?: UtilityExecutor;
 	private _externalExecutor?: ExternalExecutor;
+	private _calendarExecutor?: CalendarExecutor;
 
 	constructor(
 		private supabase: SupabaseClient,
@@ -121,6 +123,13 @@ export class ChatToolExecutor {
 			this._externalExecutor = new ExternalExecutor(this.getExecutorContext());
 		}
 		return this._externalExecutor;
+	}
+
+	private get calendarExecutor(): CalendarExecutor {
+		if (!this._calendarExecutor) {
+			this._calendarExecutor = new CalendarExecutor(this.getExecutorContext());
+		}
+		return this._calendarExecutor;
 	}
 
 	// ============================================
@@ -256,6 +265,30 @@ export class ChatToolExecutor {
 
 			case 'web_search':
 				return this.externalExecutor.webSearch(args as WebSearchArgs);
+
+			// ==================
+			// CALENDAR TOOLS
+			// ==================
+			case 'list_calendar_events':
+				return this.calendarExecutor.listCalendarEvents(args);
+
+			case 'get_calendar_event_details':
+				return this.calendarExecutor.getCalendarEventDetails(args);
+
+			case 'create_calendar_event':
+				return this.calendarExecutor.createCalendarEvent(args);
+
+			case 'update_calendar_event':
+				return this.calendarExecutor.updateCalendarEvent(args);
+
+			case 'delete_calendar_event':
+				return this.calendarExecutor.deleteCalendarEvent(args);
+
+			case 'get_project_calendar':
+				return this.calendarExecutor.getProjectCalendar(args);
+
+			case 'set_project_calendar':
+				return this.calendarExecutor.setProjectCalendar(args);
 
 			// ==================
 			// ONTOLOGY READ TOOLS

@@ -44,6 +44,7 @@ import {
 } from '$lib/services/async-activity-logger';
 import { normalizeTaskStateInput } from '../../shared/task-state';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -252,6 +253,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (edges.length > 0) {
 			await supabase.from('onto_edges').insert(edges);
+		}
+
+		// Create or update linked events when task is scheduled
+		try {
+			const taskEventSync = new TaskEventSyncService(supabase);
+			await taskEventSync.syncTaskEvents(user.id, actorId, task);
+		} catch (eventError) {
+			console.warn('[Task Create] Failed to sync task events:', eventError);
 		}
 
 		// Log activity async (non-blocking)

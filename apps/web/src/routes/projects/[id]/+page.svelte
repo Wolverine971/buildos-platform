@@ -76,7 +76,15 @@
 		MoreVertical,
 		GitBranch
 	} from 'lucide-svelte';
-	import type { Project, Task, Output, Document, Plan, Decision } from '$lib/types/onto';
+	import type {
+		Project,
+		Task,
+		Output,
+		Document,
+		Plan,
+		Decision,
+		OntoEvent
+	} from '$lib/types/onto';
 	import {
 		getDeliverablePrimitive,
 		isCollectionDeliverable,
@@ -90,8 +98,23 @@
 	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
 	import ProjectActivityLogPanel from '$lib/components/ontology/ProjectActivityLogPanel.svelte';
 	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
-	import type { EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
+	import type { Database, EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
+	import {
+		InsightFilterDropdown,
+		InsightSortDropdown,
+		InsightSpecialToggles,
+		PANEL_CONFIGS,
+		createDefaultPanelStates,
+		getPriorityGroup,
+		calculateRiskScore,
+		isWithinTimeframe,
+		getSortValueDisplay,
+		STAGE_ORDER,
+		IMPACT_ORDER,
+		type InsightPanelState,
+		type InsightPanelKey as ConfigPanelKey
+	} from '$lib/components/ontology/insight-panels';
 
 	// ============================================================
 	// TYPES
@@ -120,10 +143,14 @@
 		props?: Record<string, unknown> | null;
 	}
 
+	type OntoEventWithSync = OntoEvent & {
+		onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];
+	};
+
 	// Import MobileCommandCenter for mobile-first layout
 	import MobileCommandCenter from '$lib/components/project/MobileCommandCenter.svelte';
 
-	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'milestones';
+	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'milestones' | 'events';
 
 	type InsightPanel = {
 		key: InsightPanelKey;
@@ -210,6 +237,9 @@
 	let decisions = $state(
 		data.skeleton ? ([] as Decision[]) : ((data.decisions || []) as Decision[])
 	);
+	let events = $state(
+		data.skeleton ? ([] as OntoEventWithSync[]) : ((data.events || []) as OntoEventWithSync[])
+	);
 	let contextDocument = $state(
 		data.skeleton ? null : ((data.context_document || null) as Document | null)
 	);
@@ -223,6 +253,7 @@
 	let showGoalCreateModal = $state(false);
 	let showProjectEditModal = $state(false);
 	let showDeleteProjectModal = $state(false);
+	let showProjectCalendarSettingsModal = $state(false);
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let editingTaskId = $state<string | null>(null);
@@ -235,6 +266,8 @@
 	let editingMilestoneId = $state<string | null>(null);
 	let showDecisionCreateModal = $state(false);
 	let editingDecisionId = $state<string | null>(null);
+	let showEventCreateModal = $state(false);
+	let editingEventId = $state<string | null>(null);
 
 	// UI State
 	let dataRefreshing = $state(false);
@@ -244,10 +277,14 @@
 		tasks: false,
 		plans: false,
 		goals: true,
+		events: false,
 		risks: false,
 		milestones: false
 	});
 	let showMobileMenu = $state(false);
+
+	// Insight panel filter/sort state
+	let panelStates = $state(createDefaultPanelStates());
 
 	// Graph visibility state - load from localStorage on mount
 	let graphHidden = $state(
@@ -293,6 +330,7 @@
 			contextDocument = fullData.context_document || null;
 
 			isHydrating = false;
+			void loadProjectEvents();
 		} catch (err) {
 			console.error('[Project Page] Hydration failed:', err);
 			hydrationError = err instanceof Error ? err.message : 'Failed to load project data';
@@ -321,6 +359,8 @@
 
 			// Hydrate full data
 			hydrateFullData();
+		} else {
+			void loadProjectEvents();
 		}
 	});
 
@@ -355,40 +395,340 @@
 		}))
 	);
 
+	// ============================================================
+	// INSIGHT PANEL FILTERING & SORTING
+	// ============================================================
+
+	/**
+	 * Generic filter function for entities
+	 */
+	function filterEntity<T extends Record<string, unknown>>(
+		item: T,
+		filters: Record<string, string[]>,
+		toggles: Record<string, boolean>,
+		entityType: ConfigPanelKey
+	): boolean {
+		// Check deleted_at filter (all entity types)
+		if (!toggles.showDeleted && item.deleted_at) {
+			return false;
+		}
+
+		// Entity-specific terminal state filtering
+		if (entityType === 'tasks') {
+			if (!toggles.showCompleted && item.state_key === 'done') return false;
+		} else if (entityType === 'plans') {
+			if (!toggles.showCompleted && item.state_key === 'completed') return false;
+		} else if (entityType === 'goals') {
+			if (!toggles.showAchieved && item.state_key === 'achieved') return false;
+			if (!toggles.showAbandoned && item.state_key === 'abandoned') return false;
+		} else if (entityType === 'milestones') {
+			if (!toggles.showCompleted && item.state_key === 'completed') return false;
+			if (!toggles.showMissed && item.state_key === 'missed') return false;
+		} else if (entityType === 'risks') {
+			if (!toggles.showClosed && item.state_key === 'closed') return false;
+		} else if (entityType === 'events') {
+			if (!toggles.showCancelled && item.state_key === 'cancelled') return false;
+		}
+
+		// Check multi-select filters
+		for (const [field, selectedValues] of Object.entries(filters)) {
+			if (!selectedValues || selectedValues.length === 0) continue;
+
+			// Special handling for priority (grouped)
+			if (field === 'priority' && entityType === 'tasks') {
+				const priorityGroup = getPriorityGroup(item.priority as number | null);
+				if (!selectedValues.includes(priorityGroup)) return false;
+				continue;
+			}
+
+			// Special handling for timeframe (milestones)
+			if (field === 'timeframe' && entityType === 'milestones') {
+				const timeframe = selectedValues[0] || 'all';
+				if (timeframe !== 'all') {
+					if (!isWithinTimeframe(item.due_at as string | null, timeframe)) return false;
+				}
+				continue;
+			}
+
+			// Standard field filter
+			const itemValue = item[field];
+			if (itemValue != null && !selectedValues.includes(String(itemValue))) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Generic sort function for entities
+	 */
+	function sortEntities<T extends Record<string, unknown>>(
+		items: T[],
+		sort: { field: string; direction: 'asc' | 'desc' },
+		entityType: ConfigPanelKey
+	): T[] {
+		return [...items].sort((a, b) => {
+			let aVal = a[sort.field];
+			let bVal = b[sort.field];
+
+			// Special handling for computed fields
+			if (sort.field === 'risk_score' && entityType === 'risks') {
+				aVal = calculateRiskScore(a.impact as string, a.probability as number);
+				bVal = calculateRiskScore(b.impact as string, b.probability as number);
+			}
+
+			// Special handling for stage ordering (plans)
+			if (sort.field === 'facet_stage' && entityType === 'plans') {
+				aVal = STAGE_ORDER[String(a.facet_stage)] ?? 99;
+				bVal = STAGE_ORDER[String(b.facet_stage)] ?? 99;
+			}
+
+			// Special handling for impact ordering (risks)
+			if (sort.field === 'impact' && entityType === 'risks') {
+				aVal = IMPACT_ORDER[String(a.impact)] ?? 99;
+				bVal = IMPACT_ORDER[String(b.impact)] ?? 99;
+			}
+
+			// Handle nulls (always sort to end)
+			if (aVal == null && bVal == null) return 0;
+			if (aVal == null) return 1;
+			if (bVal == null) return -1;
+
+			// Compare values
+			let comparison = 0;
+			if (typeof aVal === 'string' && typeof bVal === 'string') {
+				comparison = aVal.localeCompare(bVal);
+			} else if (typeof aVal === 'number' && typeof bVal === 'number') {
+				comparison = aVal - bVal;
+			} else {
+				comparison = String(aVal).localeCompare(String(bVal));
+			}
+
+			return sort.direction === 'asc' ? comparison : -comparison;
+		});
+	}
+
+	// Filtered and sorted tasks
+	const filteredTasks = $derived.by(() => {
+		const state = panelStates.tasks;
+		const filtered = tasks.filter((t) =>
+			filterEntity(
+				t as unknown as Record<string, unknown>,
+				state.filters,
+				state.toggles,
+				'tasks'
+			)
+		);
+		return sortEntities(
+			filtered as unknown as Record<string, unknown>[],
+			state.sort,
+			'tasks'
+		) as unknown as Task[];
+	});
+
+	// Filtered and sorted plans
+	const filteredPlans = $derived.by(() => {
+		const state = panelStates.plans;
+		const filtered = plans.filter((p) =>
+			filterEntity(
+				p as unknown as Record<string, unknown>,
+				state.filters,
+				state.toggles,
+				'plans'
+			)
+		);
+		return sortEntities(
+			filtered as unknown as Record<string, unknown>[],
+			state.sort,
+			'plans'
+		) as unknown as Plan[];
+	});
+
+	// Filtered and sorted goals
+	const filteredGoals = $derived.by(() => {
+		const state = panelStates.goals;
+		const filtered = goals.filter((g) =>
+			filterEntity(
+				g as unknown as Record<string, unknown>,
+				state.filters,
+				state.toggles,
+				'goals'
+			)
+		);
+		return sortEntities(
+			filtered as unknown as Record<string, unknown>[],
+			state.sort,
+			'goals'
+		) as unknown as Goal[];
+	});
+
+	// Filtered and sorted milestones
+	const filteredMilestones = $derived.by(() => {
+		const state = panelStates.milestones;
+		const filtered = milestones.filter((m) =>
+			filterEntity(
+				m as unknown as Record<string, unknown>,
+				state.filters,
+				state.toggles,
+				'milestones'
+			)
+		);
+		return sortEntities(
+			filtered as unknown as Record<string, unknown>[],
+			state.sort,
+			'milestones'
+		) as unknown as Milestone[];
+	});
+
+	// Filtered and sorted risks
+	const filteredRisks = $derived.by(() => {
+		const state = panelStates.risks;
+		const filtered = risks.filter((r) =>
+			filterEntity(
+				r as unknown as Record<string, unknown>,
+				state.filters,
+				state.toggles,
+				'risks'
+			)
+		);
+		return sortEntities(
+			filtered as unknown as Record<string, unknown>[],
+			state.sort,
+			'risks'
+		) as unknown as Risk[];
+	});
+
+	// Filtered and sorted events
+	const filteredEvents = $derived.by(() => {
+		const state = panelStates.events;
+		const filtered = events.filter((e) =>
+			filterEntity(
+				e as unknown as Record<string, unknown>,
+				state.filters,
+				state.toggles,
+				'events'
+			)
+		);
+		return sortEntities(
+			filtered as unknown as Record<string, unknown>[],
+			state.sort,
+			'events'
+		) as unknown as OntoEventWithSync[];
+	});
+
+	// Counts for special toggles
+	const panelCounts = $derived.by(() => ({
+		tasks: {
+			showCompleted: tasks.filter((t) => t.state_key === 'done').length,
+			showDeleted: tasks.filter((t) => t.deleted_at).length
+		},
+		plans: {
+			showCompleted: plans.filter((p) => p.state_key === 'completed').length,
+			showDeleted: plans.filter((p) => p.deleted_at).length
+		},
+		goals: {
+			showAchieved: goals.filter((g) => g.state_key === 'achieved').length,
+			showAbandoned: goals.filter((g) => g.state_key === 'abandoned').length,
+			showDeleted: goals.filter((g) => (g as unknown as Record<string, unknown>).deleted_at)
+				.length
+		},
+		milestones: {
+			showCompleted: milestones.filter((m) => m.state_key === 'completed').length,
+			showMissed: milestones.filter((m) => m.state_key === 'missed').length,
+			showDeleted: milestones.filter(
+				(m) => (m as unknown as Record<string, unknown>).deleted_at
+			).length
+		},
+		risks: {
+			showClosed: risks.filter((r) => r.state_key === 'closed').length,
+			showDeleted: risks.filter((r) => (r as unknown as Record<string, unknown>).deleted_at)
+				.length
+		},
+		events: {
+			showCancelled: events.filter((e) => e.state_key === 'cancelled').length,
+			showDeleted: events.filter((e) => e.deleted_at).length
+		}
+	}));
+
+	// Panel state update handlers
+	function updatePanelFilters(panelKey: ConfigPanelKey, filters: Record<string, string[]>) {
+		panelStates = {
+			...panelStates,
+			[panelKey]: {
+				...panelStates[panelKey],
+				filters
+			}
+		};
+	}
+
+	function updatePanelSort(
+		panelKey: ConfigPanelKey,
+		sort: { field: string; direction: 'asc' | 'desc' }
+	) {
+		panelStates = {
+			...panelStates,
+			[panelKey]: {
+				...panelStates[panelKey],
+				sort
+			}
+		};
+	}
+
+	function updatePanelToggle(panelKey: ConfigPanelKey, toggleId: string, value: boolean) {
+		panelStates = {
+			...panelStates,
+			[panelKey]: {
+				...panelStates[panelKey],
+				toggles: {
+					...panelStates[panelKey].toggles,
+					[toggleId]: value
+				}
+			}
+		};
+	}
+
 	const insightPanels: InsightPanel[] = $derived([
 		{
 			key: 'goals',
 			label: 'Goals',
 			icon: Target,
-			items: goals,
+			items: filteredGoals,
 			description: 'What success looks like'
 		},
 		{
 			key: 'milestones',
 			label: 'Milestones',
 			icon: Flag,
-			items: milestones,
+			items: filteredMilestones,
 			description: 'Checkpoints and dates'
+		},
+		{
+			key: 'events',
+			label: 'Events',
+			icon: Clock,
+			items: filteredEvents,
+			description: 'Meetings and time blocks'
 		},
 		{
 			key: 'plans',
 			label: 'Plans',
 			icon: Calendar,
-			items: plans,
+			items: filteredPlans,
 			description: 'Execution scaffolding'
 		},
 		{
 			key: 'tasks',
 			label: 'Tasks',
 			icon: ListChecks,
-			items: tasks,
+			items: filteredTasks,
 			description: 'What needs to move'
 		},
 		{
 			key: 'risks',
 			label: 'Risks',
 			icon: AlertTriangle,
-			items: risks,
+			items: filteredRisks,
 			description: 'What could go wrong'
 		}
 	]);
@@ -471,6 +811,29 @@
 		expandedPanels = { ...expandedPanels, [key]: !expandedPanels[key] };
 	}
 
+	function openCreateModalForPanel(key: InsightPanelKey) {
+		switch (key) {
+			case 'tasks':
+				showTaskCreateModal = true;
+				break;
+			case 'plans':
+				showPlanCreateModal = true;
+				break;
+			case 'goals':
+				showGoalCreateModal = true;
+				break;
+			case 'risks':
+				showRiskCreateModal = true;
+				break;
+			case 'milestones':
+				showMilestoneCreateModal = true;
+				break;
+			case 'events':
+				showEventCreateModal = true;
+				break;
+		}
+	}
+
 	function getTaskVisuals(state: string) {
 		const normalized = state?.toLowerCase() || '';
 		if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') {
@@ -493,9 +856,63 @@
 		});
 	}
 
+	function formatEventWindow(event: OntoEventWithSync): string {
+		const start = new Date(event.start_at);
+		if (Number.isNaN(start.getTime())) return 'No time';
+
+		const startLabel = start.toLocaleString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		});
+
+		if (!event.end_at) {
+			return startLabel;
+		}
+
+		const end = new Date(event.end_at);
+		if (Number.isNaN(end.getTime())) {
+			return startLabel;
+		}
+
+		const endLabel = end.toLocaleTimeString(undefined, {
+			hour: 'numeric',
+			minute: '2-digit'
+		});
+
+		return `${startLabel} – ${endLabel}`;
+	}
+
+	function isEventSynced(event: OntoEventWithSync): boolean {
+		return Boolean(event.onto_event_sync && event.onto_event_sync.length > 0);
+	}
+
 	// ============================================================
 	// DATA MANAGEMENT
 	// ============================================================
+
+	async function loadProjectEvents(showToast = false) {
+		if (!project?.id) return;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}/events`);
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to load events');
+			}
+
+			events = (payload?.data?.events || []) as OntoEventWithSync[];
+		} catch (error) {
+			console.error('[Project] Failed to load events', error);
+			if (showToast) {
+				toastService.error(
+					error instanceof Error ? error.message : 'Failed to load events'
+				);
+			}
+		}
+	}
 
 	async function refreshData() {
 		if (!project?.id) return;
@@ -519,6 +936,7 @@
 			milestones = newData.milestones || [];
 			risks = newData.risks || [];
 			contextDocument = newData.context_document || null;
+			await loadProjectEvents();
 
 			toastService.success('Data refreshed');
 		} catch (error) {
@@ -648,6 +1066,21 @@
 	async function handleDecisionDeleted() {
 		await refreshData();
 		editingDecisionId = null;
+	}
+
+	async function handleEventCreated() {
+		await loadProjectEvents(true);
+		showEventCreateModal = false;
+	}
+
+	async function handleEventUpdated() {
+		await loadProjectEvents(true);
+		editingEventId = null;
+	}
+
+	async function handleEventDeleted() {
+		await loadProjectEvents(true);
+		editingEventId = null;
 	}
 
 	async function handleProjectDeleteConfirm() {
@@ -831,6 +1264,14 @@
 						</button>
 					{/if}
 					<button
+						onclick={() => (showProjectCalendarSettingsModal = true)}
+						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+						aria-label="Project calendar settings"
+						title="Project calendar settings"
+					>
+						<Calendar class="w-5 h-5 text-muted-foreground" />
+					</button>
+					<button
 						onclick={() => (showProjectEditModal = true)}
 						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
 						aria-label="Edit project"
@@ -893,6 +1334,16 @@
 								>
 									<Pencil class="w-4 h-4 text-muted-foreground" />
 									Edit project
+								</button>
+								<button
+									onclick={() => {
+										showMobileMenu = false;
+										showProjectCalendarSettingsModal = true;
+									}}
+									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+								>
+									<Calendar class="w-4 h-4 text-muted-foreground" />
+									Calendar settings
 								</button>
 								<hr class="my-1 border-border" />
 								<button
@@ -1315,6 +1766,12 @@
 						description="Checkpoints and dates"
 					/>
 					<InsightPanelSkeleton
+						icon={Clock}
+						label="Events"
+						count={0}
+						description="Meetings and time blocks"
+					/>
+					<InsightPanelSkeleton
 						icon={Calendar}
 						label="Plans"
 						count={skeletonCounts.plan_count}
@@ -1390,11 +1847,13 @@
 						<div
 							class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 						>
-							<button
-								onclick={() => togglePanel(section.key)}
-								class="w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
+							<div
+								class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
 							>
-								<div class="flex items-start gap-2 sm:gap-3">
+								<button
+									onclick={() => togglePanel(section.key)}
+									class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors"
+								>
 									<div
 										class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
 									>
@@ -1417,45 +1876,68 @@
 											{/if}
 										</p>
 									</div>
+								</button>
+								<div class="flex items-center gap-1 sm:gap-2">
+									<button
+										onclick={() => openCreateModalForPanel(section.key)}
+										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+										aria-label="Add {section.label.toLowerCase()}"
+									>
+										<Plus
+											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
+										/>
+									</button>
+									<button
+										onclick={() => togglePanel(section.key)}
+										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+										aria-label={isOpen
+											? `Collapse ${section.label.toLowerCase()}`
+											: `Expand ${section.label.toLowerCase()}`}
+									>
+										<ChevronDown
+											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isOpen
+												? 'rotate-180'
+												: ''}"
+										/>
+									</button>
 								</div>
-								<ChevronDown
-									class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isOpen
-										? 'rotate-180'
-										: ''}"
-								/>
-							</button>
+							</div>
 
 							{#if isOpen}
 								<div
 									class="border-t border-border"
 									transition:slide={{ duration: 120 }}
 								>
+									<!-- Filter/Sort Controls -->
+									<div
+										class="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20"
+									>
+										<InsightFilterDropdown
+											filterGroups={PANEL_CONFIGS[section.key].filters}
+											activeFilters={panelStates[section.key].filters}
+											onchange={(filters) =>
+												updatePanelFilters(section.key, filters)}
+										/>
+										<InsightSortDropdown
+											sortOptions={PANEL_CONFIGS[section.key].sorts}
+											currentSort={panelStates[section.key].sort}
+											onchange={(sort) => updatePanelSort(section.key, sort)}
+										/>
+									</div>
+
 									{#if section.key === 'tasks'}
-										<div
-											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
-										>
-											<p
-												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Tasks
-											</p>
-											<button
-												type="button"
-												onclick={() => (showTaskCreateModal = true)}
-												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
-											>
-												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-												<span class="hidden sm:inline">New Task</span>
-												<span class="sm:hidden">Add</span>
-											</button>
-										</div>
-										{#if tasks.length > 0}
+										{#if filteredTasks.length > 0}
 											<ul class="divide-y divide-border/80">
-												{#each tasks as task}
+												{#each filteredTasks as task}
 													{@const visuals = getTaskVisuals(
 														task.state_key
 													)}
 													{@const TaskIcon = visuals.icon}
+													{@const sortDisplay = getSortValueDisplay(
+														task as unknown as Record<string, unknown>,
+														panelStates.tasks.sort.field,
+														'tasks'
+													)}
 													<li>
 														<div class="flex items-center min-w-0">
 															<button
@@ -1474,12 +1956,27 @@
 																		{task.title}
 																	</p>
 																	<p
-																		class="text-[10px] sm:text-xs text-muted-foreground capitalize hidden sm:block"
+																		class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
 																	>
-																		{(
-																			task.state_key ||
-																			'draft'
-																		).replace(/_/g, ' ')}
+																		<span class="capitalize"
+																			>{(
+																				task.state_key ||
+																				'draft'
+																			).replace(
+																				/_/g,
+																				' '
+																			)}</span
+																		>
+																		<span
+																			class="mx-1 opacity-50"
+																			>·</span
+																		>
+																		<span
+																			class={sortDisplay.color ||
+																				''}
+																		>
+																			{sortDisplay.value}
+																		</span>
 																	</p>
 																</div>
 															</button>
@@ -1509,27 +2006,14 @@
 											</div>
 										{/if}
 									{:else if section.key === 'plans'}
-										<div
-											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
-										>
-											<p
-												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Plans
-											</p>
-											<button
-												type="button"
-												onclick={() => (showPlanCreateModal = true)}
-												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
-											>
-												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-												<span class="hidden sm:inline">New Plan</span>
-												<span class="sm:hidden">Add</span>
-											</button>
-										</div>
-										{#if plans.length > 0}
+										{#if filteredPlans.length > 0}
 											<ul class="divide-y divide-border/80">
-												{#each plans as plan}
+												{#each filteredPlans as plan}
+													{@const sortDisplay = getSortValueDisplay(
+														plan as unknown as Record<string, unknown>,
+														panelStates.plans.sort.field,
+														'plans'
+													)}
 													<li>
 														<button
 															type="button"
@@ -1547,11 +2031,23 @@
 																	{plan.name}
 																</p>
 																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground capitalize hidden sm:block"
+																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
 																>
-																	{(
-																		plan.state_key || 'draft'
-																	).replace(/_/g, ' ')}
+																	<span class="capitalize"
+																		>{(
+																			plan.state_key ||
+																			'draft'
+																		).replace(/_/g, ' ')}</span
+																	>
+																	<span class="mx-1 opacity-50"
+																		>·</span
+																	>
+																	<span
+																		class={sortDisplay.color ||
+																			''}
+																	>
+																		{sortDisplay.value}
+																	</span>
 																</p>
 															</div>
 														</button>
@@ -1571,27 +2067,14 @@
 											</div>
 										{/if}
 									{:else if section.key === 'goals'}
-										<div
-											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
-										>
-											<p
-												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Goals
-											</p>
-											<button
-												type="button"
-												onclick={() => (showGoalCreateModal = true)}
-												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
-											>
-												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-												<span class="hidden sm:inline">New Goal</span>
-												<span class="sm:hidden">Add</span>
-											</button>
-										</div>
-										{#if goals.length > 0}
+										{#if filteredGoals.length > 0}
 											<ul class="divide-y divide-border/80">
-												{#each goals as goal}
+												{#each filteredGoals as goal}
+													{@const sortDisplay = getSortValueDisplay(
+														goal as unknown as Record<string, unknown>,
+														panelStates.goals.sort.field,
+														'goals'
+													)}
 													<li>
 														<button
 															type="button"
@@ -1609,11 +2092,23 @@
 																	{goal.name}
 																</p>
 																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground capitalize hidden sm:block"
+																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
 																>
-																	{(
-																		goal.state_key || 'draft'
-																	).replace(/_/g, ' ')}
+																	<span class="capitalize"
+																		>{(
+																			goal.state_key ||
+																			'draft'
+																		).replace(/_/g, ' ')}</span
+																	>
+																	<span class="mx-1 opacity-50"
+																		>·</span
+																	>
+																	<span
+																		class={sortDisplay.color ||
+																			''}
+																	>
+																		{sortDisplay.value}
+																	</span>
 																</p>
 															</div>
 														</button>
@@ -1633,27 +2128,9 @@
 											</div>
 										{/if}
 									{:else if section.key === 'risks'}
-										<div
-											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
-										>
-											<p
-												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Risks
-											</p>
-											<button
-												type="button"
-												onclick={() => (showRiskCreateModal = true)}
-												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
-											>
-												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-												<span class="hidden sm:inline">New Risk</span>
-												<span class="sm:hidden">Add</span>
-											</button>
-										</div>
-										{#if risks.length > 0}
+										{#if filteredRisks.length > 0}
 											<ul class="divide-y divide-border/80">
-												{#each risks as risk}
+												{#each filteredRisks as risk}
 													{@const impactColor =
 														risk.impact === 'critical'
 															? 'text-destructive'
@@ -1662,6 +2139,11 @@
 																: risk.impact === 'medium'
 																	? 'text-amber-500'
 																	: 'text-emerald-500'}
+													{@const sortDisplay = getSortValueDisplay(
+														risk as unknown as Record<string, unknown>,
+														panelStates.risks.sort.field,
+														'risks'
+													)}
 													<li>
 														<button
 															type="button"
@@ -1679,12 +2161,23 @@
 																	{risk.title}
 																</p>
 																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground capitalize hidden sm:block"
+																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
 																>
-																	{risk.impact || 'Unrated'} · {risk.state_key?.replace(
-																		/_/g,
-																		' '
-																	) || 'identified'}
+																	<span class="capitalize"
+																		>{risk.state_key?.replace(
+																			/_/g,
+																			' '
+																		) || 'identified'}</span
+																	>
+																	<span class="mx-1 opacity-50"
+																		>·</span
+																	>
+																	<span
+																		class={sortDisplay.color ||
+																			''}
+																	>
+																		{sortDisplay.value}
+																	</span>
 																</p>
 															</div>
 														</button>
@@ -1704,27 +2197,9 @@
 											</div>
 										{/if}
 									{:else if section.key === 'milestones'}
-										<div
-											class="flex items-center justify-between px-3 sm:px-4 pt-2 sm:pt-3 pb-1.5 sm:pb-2"
-										>
-											<p
-												class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide"
-											>
-												Milestones
-											</p>
-											<button
-												type="button"
-												onclick={() => (showMilestoneCreateModal = true)}
-												class="inline-flex items-center gap-1 sm:gap-2 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded-md border border-border bg-muted/60 hover:bg-accent/10 hover:border-accent/50 transition-colors pressable"
-											>
-												<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-												<span class="hidden sm:inline">New Milestone</span>
-												<span class="sm:hidden">Add</span>
-											</button>
-										</div>
-										{#if milestones.length > 0}
+										{#if filteredMilestones.length > 0}
 											<ul class="divide-y divide-border/80">
-												{#each milestones as milestone}
+												{#each filteredMilestones as milestone}
 													{@const stateKey =
 														milestone.props?.state_key || 'pending'}
 													{@const stateColor =
@@ -1737,6 +2212,14 @@
 																	: stateKey === 'deferred'
 																		? 'text-amber-500'
 																		: 'text-muted-foreground'}
+													{@const sortDisplay = getSortValueDisplay(
+														milestone as unknown as Record<
+															string,
+															unknown
+														>,
+														panelStates.milestones.sort.field,
+														'milestones'
+													)}
 													<li>
 														<button
 															type="button"
@@ -1754,11 +2237,23 @@
 																	{milestone.title}
 																</p>
 																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground"
+																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
 																>
-																	{formatDueDate(
-																		milestone.due_at
-																	)}
+																	<span class="capitalize"
+																		>{String(stateKey).replace(
+																			/_/g,
+																			' '
+																		)}</span
+																	>
+																	<span class="mx-1 opacity-50"
+																		>·</span
+																	>
+																	<span
+																		class={sortDisplay.color ||
+																			''}
+																	>
+																		{sortDisplay.value}
+																	</span>
 																</p>
 															</div>
 														</button>
@@ -1777,7 +2272,84 @@
 												</p>
 											</div>
 										{/if}
+									{:else if section.key === 'events'}
+										{#if filteredEvents.length > 0}
+											<ul class="divide-y divide-border/80">
+												{#each filteredEvents as event}
+													{@const sortDisplay = getSortValueDisplay(
+														event as unknown as Record<string, unknown>,
+														panelStates.events.sort.field,
+														'events'
+													)}
+													<li>
+														<button
+															type="button"
+															onclick={() =>
+																(editingEventId = event.id)}
+															class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
+														>
+															<Clock
+																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mt-0.5"
+															/>
+															<div class="min-w-0 flex-1">
+																<p
+																	class="text-xs sm:text-sm text-foreground truncate"
+																>
+																	{event.title}
+																</p>
+																<p
+																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+																>
+																	<span class="capitalize"
+																		>{(
+																			event.state_key ||
+																			'scheduled'
+																		).replace(/_/g, ' ')}</span
+																	>
+																	<span class="mx-1 opacity-50"
+																		>·</span
+																	>
+																	<span
+																		class={sortDisplay.color ||
+																			''}
+																	>
+																		{sortDisplay.value}
+																	</span>
+																</p>
+																{#if !isEventSynced(event)}
+																	<p
+																		class="text-[10px] sm:text-xs text-amber-500"
+																	>
+																		Local only
+																	</p>
+																{/if}
+															</div>
+														</button>
+													</li>
+												{/each}
+											</ul>
+										{:else}
+											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
+												<p class="text-xs sm:text-sm text-muted-foreground">
+													No events yet
+												</p>
+												<p
+													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
+												>
+													Add events to track time
+												</p>
+											</div>
+										{/if}
 									{/if}
+
+									<!-- Special Toggles (Show Completed/Deleted) -->
+									<InsightSpecialToggles
+										toggles={PANEL_CONFIGS[section.key].specialToggles}
+										values={panelStates[section.key].toggles}
+										counts={panelCounts[section.key]}
+										onchange={(toggleId, value) =>
+											updatePanelToggle(section.key, toggleId, value)}
+									/>
 								</div>
 							{/if}
 						</div>
@@ -1993,6 +2565,37 @@
 			onUpdated={handleDecisionUpdated}
 			onDeleted={handleDecisionDeleted}
 		/>
+	{/await}
+{/if}
+
+<!-- Event Create Modal -->
+{#if showEventCreateModal}
+	{#await import('$lib/components/ontology/EventCreateModal.svelte') then { default: EventCreateModal }}
+		<EventCreateModal
+			projectId={project.id}
+			{tasks}
+			onClose={() => (showEventCreateModal = false)}
+			onCreated={handleEventCreated}
+		/>
+	{/await}
+{/if}
+
+<!-- Event Edit Modal -->
+{#if editingEventId}
+	{#await import('$lib/components/ontology/EventEditModal.svelte') then { default: EventEditModal }}
+		<EventEditModal
+			eventId={editingEventId}
+			onClose={() => (editingEventId = null)}
+			onUpdated={handleEventUpdated}
+			onDeleted={handleEventDeleted}
+		/>
+	{/await}
+{/if}
+
+<!-- Project Calendar Settings Modal -->
+{#if showProjectCalendarSettingsModal}
+	{#await import('$lib/components/project/ProjectCalendarSettingsModal.svelte') then { default: ProjectCalendarSettingsModal }}
+		<ProjectCalendarSettingsModal bind:isOpen={showProjectCalendarSettingsModal} {project} />
 	{/await}
 {/if}
 

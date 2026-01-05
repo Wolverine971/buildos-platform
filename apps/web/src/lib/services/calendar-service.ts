@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/calendar-service.ts
 import { calendar_v3, google } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { GoogleOAuthService, GoogleOAuthConnectionError } from './google-oauth-service';
@@ -69,6 +69,11 @@ export interface UpdateCalendarEventParams {
 	// For single instance updates - the specific instance date
 	instance_date?: string;
 	sendUpdates?: CalendarSendUpdatesOption;
+}
+
+export interface GetCalendarEventParams {
+	event_id: string;
+	calendar_id?: string;
 }
 
 export interface DeleteCalendarEventParams {
@@ -297,7 +302,7 @@ export class CalendarService {
 	}
 
 	private get typedClient(): TypedSupabaseClient {
-		return this.supabase as TypedSupabaseClient;
+		return this.supabase as unknown as TypedSupabaseClient;
 	}
 
 	/**
@@ -560,6 +565,35 @@ export class CalendarService {
 			};
 		} catch (error: any) {
 			console.error('Error getting calendar events:', error);
+			if (error instanceof GoogleOAuthConnectionError && error.requiresReconnection) {
+				await this.handleConnectionFailure(userId, error.message);
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Get a single calendar event by ID
+	 */
+	async getCalendarEvent(userId: string, params: GetCalendarEventParams): Promise<CalendarEvent> {
+		try {
+			const auth = await this.oAuthService.getAuthenticatedClient(userId);
+			const calendar = google.calendar({ version: 'v3', auth });
+
+			const { event_id, calendar_id = 'primary' } = params;
+
+			const response = await calendar.events.get({
+				calendarId: calendar_id,
+				eventId: event_id
+			});
+
+			if (!response.data) {
+				throw new Error('Event not found');
+			}
+
+			return response.data as CalendarEvent;
+		} catch (error: any) {
+			console.error('Error getting calendar event:', error);
 			if (error instanceof GoogleOAuthConnectionError && error.requiresReconnection) {
 				await this.handleConnectionFailure(userId, error.message);
 			}
@@ -2014,10 +2048,10 @@ export class CalendarService {
 					legacy_task_calendar_event_id: args.legacyTaskCalendarEventId ?? null,
 					google_calendar_event_id: args.googleEvent.id,
 					google_calendar_id: args.calendarId,
-					organizer: args.organizerMetadata as unknown as Record<string, unknown>,
-					attendees: args.attendees as unknown as Record<string, unknown>[],
+					organizer: args.organizerMetadata,
+					attendees: args.attendees,
 					recurrence_rule: args.recurrence[0] ?? null
-				} as unknown as Record<string, unknown>,
+				} as Json,
 				createdBy: args.task.user_id
 			});
 		} catch (error) {

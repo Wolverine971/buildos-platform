@@ -44,6 +44,7 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { normalizeTaskStateInput } from '../../shared/task-state';
+import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 
 // GET /api/onto/tasks/[id] - Get a single task
 export const GET: RequestHandler = async ({ params, request, locals }) => {
@@ -352,6 +353,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 					dst_kind: 'milestone',
 					rel: 'targets_milestone'
 				});
+			}
+		}
+
+		const shouldSyncEvents =
+			title !== undefined || start_at !== undefined || due_at !== undefined;
+
+		if (shouldSyncEvents) {
+			try {
+				const taskEventSync = new TaskEventSyncService(supabase);
+				await taskEventSync.syncTaskEvents(session.user.id, actorId, updatedTask);
+			} catch (eventError) {
+				console.warn('[Task Update] Failed to sync task events:', eventError);
 			}
 		}
 

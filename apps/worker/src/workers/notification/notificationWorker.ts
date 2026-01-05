@@ -26,7 +26,7 @@ import {
 import type { ProcessingJob } from '../../lib/supabaseQueue.js';
 import webpush from 'web-push';
 import { sendEmailNotification } from './emailAdapter.js';
-// import { sendSMSNotification } from "./smsAdapter.js"; // SMS disabled in notification system
+import { sendSMSNotification } from './smsAdapter.js';
 import {
 	createLogger,
 	generateCorrelationId,
@@ -51,6 +51,116 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 	logger.info('VAPID keys configured successfully');
 } else {
 	logger.warn('VAPID keys not configured - push notifications will not work');
+}
+
+// =====================================================
+// QUIET HOURS HELPERS (PUSH ONLY)
+// =====================================================
+
+function parseTimeToMinutes(value?: string | null): number | null {
+	if (!value) {
+		return null;
+	}
+	const parts = value.split(':');
+	if (parts.length < 2) {
+		return null;
+	}
+	const hours = Number(parts[0]);
+	const minutes = Number(parts[1]);
+	if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+		return null;
+	}
+	return hours * 60 + minutes;
+}
+
+function getLocalMinutes(timezone: string): number | null {
+	try {
+		const formatter = new Intl.DateTimeFormat('en-US', {
+			timeZone: timezone,
+			hour12: false,
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+		const parts = formatter.formatToParts(new Date());
+		const hourPart = parts.find((p) => p.type === 'hour');
+		const minutePart = parts.find((p) => p.type === 'minute');
+		if (!hourPart || !minutePart) {
+			return null;
+		}
+		const hours = Number(hourPart.value);
+		const minutes = Number(minutePart.value);
+		if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+			return null;
+		}
+		return hours * 60 + minutes;
+	} catch (error) {
+		return null;
+	}
+}
+
+function isWithinQuietHours(
+	currentMinutes: number,
+	startMinutes: number,
+	endMinutes: number
+): boolean {
+	if (startMinutes === endMinutes) {
+		return false;
+	}
+	if (startMinutes < endMinutes) {
+		return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+	}
+	return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+}
+
+async function isPushQuietHours(
+	userId: string,
+	preferences: {
+		quiet_hours_enabled?: boolean | null;
+		quiet_hours_start?: string | null;
+		quiet_hours_end?: string | null;
+	},
+	jobLogger: Logger
+): Promise<boolean> {
+	if (!preferences.quiet_hours_enabled) {
+		return false;
+	}
+
+	const startMinutes = parseTimeToMinutes(preferences.quiet_hours_start);
+	const endMinutes = parseTimeToMinutes(preferences.quiet_hours_end);
+	if (startMinutes === null || endMinutes === null) {
+		return false;
+	}
+
+	const { data: user, error } = await supabase
+		.from('users')
+		.select('timezone')
+		.eq('id', userId)
+		.single();
+
+	if (error) {
+		jobLogger.warn('Failed to fetch user timezone for quiet hours check', {
+			userId,
+			error: error.message
+		});
+	}
+
+	const timezone = user?.timezone || 'UTC';
+	const currentMinutes = getLocalMinutes(timezone);
+	if (currentMinutes === null) {
+		return false;
+	}
+
+	const inQuietHours = isWithinQuietHours(currentMinutes, startMinutes, endMinutes);
+	if (inQuietHours) {
+		jobLogger.info('Push notification suppressed during quiet hours', {
+			userId,
+			timezone,
+			quietHoursStart: preferences.quiet_hours_start,
+			quietHoursEnd: preferences.quiet_hours_end
+		});
+	}
+
+	return inQuietHours;
 }
 
 // =====================================================
@@ -314,15 +424,18 @@ async function sendInAppNotification(
 
 		// Insert into existing user_notifications table
 		// Note: user_notifications schema doesn't have metadata column
-		// Schema: id, user_id, type, title, message, priority, action_url, read_at, dismissed_at, expires_at, created_at
+		// Schema: id, user_id, type, title, message, priority, action_url, delivery_id, event_id, read_at, dismissed_at, expires_at, created_at
 		// Note: payload is guaranteed to have title and body by enrichDeliveryPayload
 		const { error } = await supabase.from('user_notifications').insert({
+			delivery_id: delivery.id,
+			event_id: delivery.event_id,
 			user_id: delivery.recipient_user_id,
 			type: delivery.payload.type || 'info',
 			title: delivery.payload.title,
 			message: delivery.payload.body,
 			priority: delivery.payload.priority || 'normal',
 			action_url: delivery.payload.action_url || undefined,
+			event_type: delivery.payload.event_type || undefined,
 			expires_at: delivery.payload.expires_at || undefined
 		});
 
@@ -430,14 +543,7 @@ async function sendNotification(
 			return sendEmailNotification(delivery, jobLogger);
 
 		case 'sms':
-			// SMS disabled in notification system - only scheduled SMS (calendar reminders) are sent
-			// Scheduled SMS uses add_queue_job directly, not the notification system
-			jobLogger.info('SMS notifications disabled - skipping', {
-				notificationDeliveryId: delivery.id
-			});
-			return {
-				success: true
-			};
+			return sendSMSNotification(delivery, jobLogger);
 
 		default:
 			jobLogger.error('Unknown notification channel', undefined, {
@@ -586,8 +692,19 @@ export async function processNotification(
 		};
 
 		// Enrich payload with transformed event data if needed
-		// Pass event_type from job metadata as fallback
-		typedDelivery = await enrichDeliveryPayload(typedDelivery, job.data.event_type, jobLogger);
+		// Pass event_type from job metadata as fallback (with payload fallback for legacy jobs)
+		const payloadEventType =
+			typeof typedDelivery.payload?.event_type === 'string'
+				? typedDelivery.payload.event_type
+				: undefined;
+		const fallbackEventType = (job.data.event_type || payloadEventType || 'brief.completed') as
+			| EventType
+			| string;
+		typedDelivery = await enrichDeliveryPayload(
+			typedDelivery,
+			fallbackEventType as EventType,
+			jobLogger
+		);
 
 		// Validate that we have a proper payload after transformation
 		if (!validateNotificationPayload(typedDelivery.payload as any)) {
@@ -642,6 +759,43 @@ export async function processNotification(
 				notificationDeliveryId: delivery_id
 			});
 			return; // Exit successfully - job will be marked as completed
+		}
+
+		// Push quiet hours enforcement (skip sending during quiet hours)
+		if (
+			channel === 'push' &&
+			prefCheck.preferences?.quiet_hours_enabled &&
+			(await isPushQuietHours(
+				typedDelivery.recipient_user_id,
+				prefCheck.preferences,
+				jobLogger
+			))
+		) {
+			const { error: quietHoursError } = await supabase
+				.from('notification_deliveries')
+				.update({
+					status: 'failed',
+					failed_at: new Date().toISOString(),
+					last_error: 'Cancelled: push quiet hours',
+					attempts: (delivery.attempts || 0) + 1,
+					updated_at: new Date().toISOString()
+				})
+				.eq('id', delivery_id);
+
+			if (quietHoursError) {
+				jobLogger.error(
+					'Failed to mark delivery as quiet-hours cancelled',
+					quietHoursError,
+					{
+						notificationDeliveryId: delivery_id
+					}
+				);
+			}
+
+			jobLogger.debug('Marked delivery as quiet-hours cancelled', {
+				notificationDeliveryId: delivery_id
+			});
+			return;
 		}
 
 		jobLogger.info('Sending notification', {

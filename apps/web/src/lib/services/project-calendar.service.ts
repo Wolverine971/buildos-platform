@@ -8,7 +8,7 @@ import { GOOGLE_CALENDAR_COLORS, type GoogleColorId } from '$lib/config/calendar
 type ProjectCalendar = Database['public']['Tables']['project_calendars']['Row'];
 type ProjectCalendarInsert = Database['public']['Tables']['project_calendars']['Insert'];
 type ProjectCalendarUpdate = Database['public']['Tables']['project_calendars']['Update'];
-type Project = Database['public']['Tables']['projects']['Row'];
+type Project = Database['public']['Tables']['onto_projects']['Row'];
 
 export interface CreateProjectCalendarOptions {
 	projectId: string;
@@ -40,10 +40,10 @@ export class ProjectCalendarService {
 	 */
 	async createProjectCalendar(options: CreateProjectCalendarOptions): Promise<Response> {
 		try {
-			// Get project details
+			// Get project details (ontology-first)
 			const { data: project, error: projectError } = await this.supabase
-				.from('projects')
-				.select('*')
+				.from('onto_projects')
+				.select('id, name, description, props')
 				.eq('id', options.projectId)
 				.single();
 
@@ -63,6 +63,12 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Calendar already exists for this project', 409);
 			}
 
+			const projectProps = (project.props as Record<string, unknown> | null) ?? {};
+			const calendarProps = (projectProps.calendar as Record<string, unknown> | null) ?? {};
+			const propsColorId = (calendarProps.color_id || projectProps.calendar_color_id) as
+				| GoogleColorId
+				| undefined;
+
 			// Create calendar name with project name
 			const calendarName = options.name || `${project.name} - Tasks`;
 			const calendarDescription =
@@ -71,32 +77,21 @@ export class ProjectCalendarService {
 				`Tasks and events for ${project.name}`;
 
 			// Get user's timezone from users table (centralized source of truth)
-			// Fallback to calendar preferences for backward compatibility
 			const { data: user } = await this.supabase
 				.from('users')
 				.select('timezone')
 				.eq('id', options.userId)
 				.single();
 
-			let userTimezone = user?.timezone;
+			const timeZone = options.timeZone || user?.timezone || 'America/New_York';
 
-			// Fallback to calendar preferences if users.timezone is not set
-			if (!userTimezone) {
-				const { data: userPrefs } = await this.supabase
-					.from('user_calendar_preferences')
-					.select('timezone')
-					.eq('user_id', options.userId)
-					.single();
-				userTimezone = userPrefs?.timezone;
-			}
-
-			const timeZone = options.timeZone || userTimezone || 'America/New_York';
+			const resolvedColorId = options.colorId || propsColorId || '7';
 
 			// Create the Google Calendar
 			const createResult = await this.calendarService.createProjectCalendar(options.userId, {
 				name: calendarName,
 				description: calendarDescription,
-				colorId: options.colorId || project.calendar_color_id || '7',
+				colorId: resolvedColorId,
 				timeZone
 			});
 
@@ -113,11 +108,8 @@ export class ProjectCalendarService {
 				user_id: options.userId,
 				calendar_id: createResult.calendarId,
 				calendar_name: calendarName,
-				color_id: options.colorId || project.calendar_color_id || '7',
-				hex_color:
-					GOOGLE_CALENDAR_COLORS[
-						(options.colorId || project.calendar_color_id || '7') as GoogleColorId
-					].hex,
+				color_id: resolvedColorId,
+				hex_color: GOOGLE_CALENDAR_COLORS[resolvedColorId as GoogleColorId].hex,
 				is_primary: false,
 				sync_enabled: true,
 				visibility: 'private',
@@ -139,12 +131,20 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Failed to save calendar mapping', 500);
 			}
 
-			// Update project with calendar settings
+			// Store calendar metadata on project props for UI hints
+			const nextProps = {
+				...projectProps,
+				calendar: {
+					...calendarProps,
+					color_id: resolvedColorId,
+					sync_enabled: true
+				}
+			};
+
 			await this.supabase
-				.from('projects')
+				.from('onto_projects')
 				.update({
-					calendar_color_id: options.colorId || project.calendar_color_id || '7',
-					calendar_sync_enabled: true,
+					props: nextProps,
 					updated_at: new Date().toISOString()
 				})
 				.eq('id', options.projectId);
@@ -244,15 +244,39 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Failed to update calendar settings', 500);
 			}
 
-			// Update project if color changed
-			if (updates.colorId) {
-				await this.supabase
-					.from('projects')
-					.update({
-						calendar_color_id: updates.colorId,
-						updated_at: new Date().toISOString()
-					})
-					.eq('id', projectId);
+			// Update project props if calendar settings changed
+			if (updates.colorId || updates.syncEnabled !== undefined) {
+				const projectResult = await this.supabase
+					.from('onto_projects')
+					.select('props')
+					.eq('id', projectId)
+					.single();
+
+				if (!projectResult.error && projectResult.data) {
+					const projectProps =
+						(projectResult.data.props as Record<string, unknown> | null) ?? {};
+					const calendarProps =
+						(projectProps.calendar as Record<string, unknown> | null) ?? {};
+
+					const nextProps = {
+						...projectProps,
+						calendar: {
+							...calendarProps,
+							...(updates.colorId ? { color_id: updates.colorId } : {}),
+							...(updates.syncEnabled !== undefined
+								? { sync_enabled: updates.syncEnabled }
+								: {})
+						}
+					};
+
+					await this.supabase
+						.from('onto_projects')
+						.update({
+							props: nextProps,
+							updated_at: new Date().toISOString()
+						})
+						.eq('id', projectId);
+				}
 			}
 
 			return ApiResponse.success(updatedCalendar, 'Calendar settings updated successfully');
@@ -302,14 +326,31 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Failed to delete calendar mapping', 500);
 			}
 
-			// Update project to disable calendar sync
-			await this.supabase
-				.from('projects')
-				.update({
-					calendar_sync_enabled: false,
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', projectId);
+			// Update project props to disable calendar sync
+			const projectResult = await this.supabase
+				.from('onto_projects')
+				.select('props')
+				.eq('id', projectId)
+				.single();
+
+			if (!projectResult.error && projectResult.data) {
+				const projectProps =
+					(projectResult.data.props as Record<string, unknown> | null) ?? {};
+				const calendarProps =
+					(projectProps.calendar as Record<string, unknown> | null) ?? {};
+				const nextProps = {
+					...projectProps,
+					calendar: { ...calendarProps, sync_enabled: false }
+				};
+
+				await this.supabase
+					.from('onto_projects')
+					.update({
+						props: nextProps,
+						updated_at: new Date().toISOString()
+					})
+					.eq('id', projectId);
+			}
 
 			return ApiResponse.success(undefined, 'Project calendar deleted successfully');
 		} catch (error) {
@@ -328,7 +369,7 @@ export class ProjectCalendarService {
 				.select(
 					`
 					*,
-					project:projects!project_calendars_project_id_fkey(*)
+					project:onto_projects!project_calendars_project_id_fkey(*)
 				`
 				)
 				.eq('user_id', userId)

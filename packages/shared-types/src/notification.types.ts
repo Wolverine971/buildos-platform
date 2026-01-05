@@ -169,7 +169,9 @@ export interface BriefCompletedEventPayload {
   upcoming_task_count: number;
   next_seven_days_task_count: number;
   recently_completed_count: number;
+  blocked_task_count?: number;
   project_count: number;
+  is_ontology_brief?: boolean;
 }
 
 export interface BriefFailedEventPayload {

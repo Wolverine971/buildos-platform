@@ -153,6 +153,35 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 
 		if (error) throw error;
 
+		// Ensure daily brief subscriptions are explicitly opted in/out
+		// A user is considered opted-in if any daily brief channel is enabled
+		const wantsDailyBriefNotifications = Boolean(
+			data?.should_email_daily_brief ||
+				data?.should_sms_daily_brief ||
+				data?.push_enabled ||
+				data?.in_app_enabled
+		);
+
+		const { error: subscriptionError } = await supabase
+			.from('notification_subscriptions')
+			.upsert(
+				['brief.completed', 'brief.failed'].map((eventType) => ({
+					user_id: user.id,
+					event_type: eventType,
+					is_active: wantsDailyBriefNotifications,
+					admin_only: false,
+					updated_at: new Date().toISOString(),
+					created_by: user.id
+				})),
+				{
+					onConflict: 'user_id,event_type'
+				}
+			);
+
+		if (subscriptionError) {
+			throw subscriptionError;
+		}
+
 		return ApiResponse.success(
 			{ preference: data },
 			'Notification preferences updated successfully'

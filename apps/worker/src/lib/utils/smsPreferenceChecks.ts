@@ -289,22 +289,7 @@ export async function performSMSSafetyChecks(
 			};
 		}
 
-		// Check 2: Rate limit
-		const rateLimitResult = await checkAndUpdateRateLimit(userId, smsPrefs, supabase);
-
-		if (!rateLimitResult.allowed) {
-			return {
-				allowed: false,
-				reason: rateLimitResult.reason,
-				checks: {
-					phoneVerification: true,
-					quietHours: { inQuietHours: false },
-					rateLimit: rateLimitResult
-				}
-			};
-		}
-
-		// Check 3: Quiet hours
+		// Check 2: Quiet hours
 		// Fetch timezone from users table (centralized source of truth - ADR-002)
 		const { data: user } = await supabase
 			.from('users')
@@ -326,6 +311,21 @@ export async function performSMSSafetyChecks(
 				allowed: false,
 				reason: quietHoursResult.reason,
 				rescheduleTime: quietHoursResult.rescheduleTime,
+				checks: {
+					phoneVerification: true,
+					quietHours: quietHoursResult,
+					rateLimit: { allowed: true }
+				}
+			};
+		}
+
+		// Check 3: Rate limit (increment only when we're allowed to send)
+		const rateLimitResult = await checkAndUpdateRateLimit(userId, smsPrefs, supabase);
+
+		if (!rateLimitResult.allowed) {
+			return {
+				allowed: false,
+				reason: rateLimitResult.reason,
 				checks: {
 					phoneVerification: true,
 					quietHours: quietHoursResult,

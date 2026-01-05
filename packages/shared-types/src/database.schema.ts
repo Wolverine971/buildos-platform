@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2026-01-04T19:27:25.829Z
+// Generated on: 2026-01-05T06:02:08.177Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1396,7 +1396,6 @@ export type DatabaseSchema = {
 		id: string;
 		is_primary: boolean | null;
 		last_synced_at: string | null;
-		onto_project_id: string | null;
 		project_id: string;
 		sync_enabled: boolean | null;
 		sync_error: string | null;
@@ -1976,7 +1975,9 @@ export type DatabaseSchema = {
 	user_notifications: {
 		action_url: string | null;
 		created_at: string | null;
+		delivery_id: string | null;
 		dismissed_at: string | null;
+		event_id: string | null;
 		event_type: string | null;
 		expires_at: string | null;
 		id: string;
