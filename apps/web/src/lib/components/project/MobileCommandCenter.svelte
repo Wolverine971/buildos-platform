@@ -3,13 +3,14 @@
 	Mobile Command Center Component
 
 	Ultra-compact mobile layout for project data models.
-	Organizes 8 entity types into 4 paired rows with single-expansion behavior.
+	Organizes 9 entity types into 5 rows with single-expansion behavior.
 
 	Row Layout:
 	1. Goals + Milestones (Strategic)
 	2. Tasks + Plans (Execution)
 	3. Risks + Decisions (Governance)
 	4. Documents + Outputs (Artifacts)
+	5. Events (Scheduling) - Standalone
 
 	Documentation:
 	- Mobile Command Center: /apps/web/docs/features/mobile-command-center/MOBILE_COMMAND_CENTER_SPEC.md
@@ -21,6 +22,7 @@
 		Flag,
 		ListChecks,
 		Calendar,
+		Clock,
 		AlertTriangle,
 		Scale,
 		FileText,
@@ -36,7 +38,8 @@
 		Risk,
 		Decision,
 		Document,
-		Output
+		Output,
+		OntoEvent
 	} from '$lib/types/onto';
 
 	type PanelKey =
@@ -47,7 +50,8 @@
 		| 'risks'
 		| 'decisions'
 		| 'documents'
-		| 'outputs';
+		| 'outputs'
+		| 'events';
 
 	interface Props {
 		// Data
@@ -59,6 +63,7 @@
 		decisions: Decision[];
 		documents: Document[];
 		outputs: Output[];
+		events: OntoEvent[];
 
 		// Add callbacks
 		onAddGoal: () => void;
@@ -69,6 +74,7 @@
 		onAddDecision: () => void;
 		onAddDocument: () => void;
 		onAddOutput: () => void;
+		onAddEvent: () => void;
 
 		// Edit callbacks
 		onEditGoal: (id: string) => void;
@@ -79,6 +85,7 @@
 		onEditDecision: (id: string) => void;
 		onEditDocument: (id: string) => void;
 		onEditOutput: (id: string) => void;
+		onEditEvent: (id: string) => void;
 	}
 
 	let {
@@ -90,6 +97,7 @@
 		decisions,
 		documents,
 		outputs,
+		events,
 		onAddGoal,
 		onAddMilestone,
 		onAddTask,
@@ -98,6 +106,7 @@
 		onAddDecision,
 		onAddDocument,
 		onAddOutput,
+		onAddEvent,
 		onEditGoal,
 		onEditMilestone,
 		onEditTask,
@@ -105,7 +114,8 @@
 		onEditRisk,
 		onEditDecision,
 		onEditDocument,
-		onEditOutput
+		onEditOutput,
+		onEditEvent
 	}: Props = $props();
 
 	// Single expansion state - only one panel can be expanded at a time
@@ -117,7 +127,10 @@
 
 	// Helper to check if a panel's partner is expanded
 	function isPartnerExpanded(key: PanelKey): boolean {
-		const pairs: Record<PanelKey, PanelKey> = {
+		// Events is standalone - no partner
+		if (key === 'events') return false;
+
+		const pairs: Record<Exclude<PanelKey, 'events'>, PanelKey> = {
 			goals: 'milestones',
 			milestones: 'goals',
 			tasks: 'plans',
@@ -231,6 +244,22 @@
 			case 'archived':
 				return 'text-muted-foreground';
 			default:
+				return 'text-muted-foreground';
+		}
+	}
+
+	function getEventStateColor(state: string): string {
+		switch (state) {
+			case 'completed':
+				return 'text-emerald-500';
+			case 'confirmed':
+				return 'text-sky-500';
+			case 'in_progress':
+				return 'text-amber-500';
+			case 'cancelled':
+				return 'text-red-500';
+			default:
+				// Default 'scheduled' state
 				return 'text-muted-foreground';
 		}
 	}
@@ -490,6 +519,40 @@
 							class="text-[10px] capitalize shrink-0 {getOutputStateColor(
 								output.state_key
 							)}">{output.state_key.replace('_', ' ')}</span
+						>
+					</div>
+				</button>
+			{/each}
+		</CommandCenterPanel>
+	</CommandCenterRow>
+
+	<!-- Row 5: Events (Scheduling) - Standalone -->
+	<CommandCenterRow>
+		<!-- Events Panel -->
+		<CommandCenterPanel
+			panelKey="events"
+			label="Events"
+			icon={Clock}
+			iconColor="text-teal-500"
+			count={events.length}
+			expanded={expandedPanel === 'events'}
+			partnerExpanded={isPartnerExpanded('events')}
+			onToggle={togglePanel}
+			onAdd={onAddEvent}
+			emptyMessage="Schedule meetings and events"
+		>
+			{#each events as event (event.id)}
+				<button
+					type="button"
+					onclick={() => onEditEvent(event.id)}
+					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
+				>
+					<div class="flex items-center justify-between gap-2">
+						<span class="text-xs text-foreground truncate">{event.title}</span>
+						<span
+							class="text-[10px] capitalize shrink-0 {getEventStateColor(
+								event.state_key
+							)}">{(event.state_key || 'scheduled').replace(/_/g, ' ')}</span
 						>
 					</div>
 				</button>

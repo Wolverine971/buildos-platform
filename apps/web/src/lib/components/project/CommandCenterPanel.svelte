@@ -22,7 +22,8 @@
 		| 'risks'
 		| 'decisions'
 		| 'documents'
-		| 'outputs';
+		| 'outputs'
+		| 'events';
 
 	interface Props {
 		panelKey: PanelKey;

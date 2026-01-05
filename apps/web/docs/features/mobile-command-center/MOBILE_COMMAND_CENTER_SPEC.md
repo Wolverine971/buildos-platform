@@ -2,9 +2,10 @@
 
 # Mobile Command Center Specification
 
-> **Version:** 1.0
+> **Version:** 1.1
 > **Created:** 2025-12-31
-> **Status:** Implementation Ready
+> **Updated:** 2026-01-05
+> **Status:** Implementation Complete
 > **Author:** BuildOS Design System
 
 ---
@@ -28,16 +29,17 @@
 
 ### Problem Statement
 
-The current project detail page (`/projects/[id]`) on mobile requires excessive vertical scrolling to access all project data models. Users cannot quickly scan and navigate between Goals, Milestones, Tasks, Plans, Risks, Documents, and Outputs. The layout is not optimized for the "command center" mental model that power users need.
+The current project detail page (`/projects/[id]`) on mobile requires excessive vertical scrolling to access all project data models. Users cannot quickly scan and navigate between Goals, Milestones, Tasks, Plans, Risks, Documents, Outputs, and Events. The layout is not optimized for the "command center" mental model that power users need.
 
 ### Solution
 
 Transform the mobile project page into an **ultra-condensed command center** with:
 
-- **Paired panel rows** - Two related data models per row
+- **Paired panel rows** - Two related data models per row (plus standalone Events row)
 - **Single-expansion accordion** - Only one panel open at a time globally
 - **Fluid wrap behavior** - Expanded panel takes full width, partner wraps below
 - **New Decisions entity** - Complete the ontology with decision tracking
+- **Events integration** - Standalone row for calendar events and scheduling
 
 ### Key Decisions Made
 
@@ -56,7 +58,7 @@ Transform the mobile project page into an **ultra-condensed command center** wit
 
 The mobile layout should feel like a **mission control dashboard**:
 
-- **At-a-glance status** - See all 8 data models with counts instantly
+- **At-a-glance status** - See all 9 data models with counts instantly
 - **One-tap access** - Any section accessible with a single tap
 - **Zero cognitive overload** - Only one expanded section at a time
 - **Spatial memory** - Consistent positions help users build muscle memory
@@ -89,7 +91,7 @@ Following the Inkprint design system's density guidelines:
 
 ### 3.1 Row Configuration
 
-The command center organizes 8 data models into 4 paired rows:
+The command center organizes 9 data models into 5 rows (4 paired + 1 standalone):
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -117,17 +119,23 @@ The command center organizes 8 data models into 4 paired rows:
 │  │      (7)        │  │                 │   Artifacts      │
 │  └─────────────────┘  └─────────────────┘                  │
 │                                                             │
+│  ┌─────────────────────────────────────┐                   │
+│  │       🕐 Events (5)                 │   ROW 5          │
+│  │                                     │   Scheduling     │
+│  └─────────────────────────────────────┘   (Standalone)   │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.2 Row Semantic Groupings
 
-| Row | Left Panel | Right Panel | Theme                                 |
-| --- | ---------- | ----------- | ------------------------------------- |
-| 1   | Goals      | Milestones  | **Strategic** - Where we're going     |
-| 2   | Tasks      | Plans       | **Execution** - How we get there      |
-| 3   | Risks      | Decisions   | **Governance** - Managing uncertainty |
-| 4   | Documents  | Outputs     | **Artifacts** - What we produce       |
+| Row | Left Panel | Right Panel | Theme                                      |
+| --- | ---------- | ----------- | ------------------------------------------ |
+| 1   | Goals      | Milestones  | **Strategic** - Where we're going          |
+| 2   | Tasks      | Plans       | **Execution** - How we get there           |
+| 3   | Risks      | Decisions   | **Governance** - Managing uncertainty      |
+| 4   | Documents  | Outputs     | **Artifacts** - What we produce            |
+| 5   | Events     | (Standalone)| **Scheduling** - Calendar events & meetings|
 
 ### 3.3 Collapsed State Dimensions
 
@@ -280,7 +288,7 @@ export interface Decision {
 ```
 MobileCommandCenter.svelte
 │
-├── CommandCenterRow.svelte (× 4)
+├── CommandCenterRow.svelte (× 4 paired rows)
 │   │
 │   ├── CommandCenterPanel.svelte (left)
 │   │   └── [Entity-specific item list]
@@ -288,12 +296,17 @@ MobileCommandCenter.svelte
 │   └── CommandCenterPanel.svelte (right)
 │       └── [Entity-specific item list]
 │
+├── CommandCenterRow.svelte (× 1 standalone row)
+│   │
+│   └── CommandCenterPanel.svelte (Events - standalone)
+│       └── [Events item list]
+│
 └── [Existing modals for create/edit]
 ```
 
 ### 5.2 MobileCommandCenter.svelte
 
-**Purpose:** Container component that orchestrates the 4 rows and manages global expansion state.
+**Purpose:** Container component that orchestrates the 5 rows and manages global expansion state.
 
 **Props:**
 
@@ -308,6 +321,7 @@ interface MobileCommandCenterProps {
 	decisions: Decision[];
 	documents: Document[];
 	outputs: Output[];
+	events: OntoEvent[];
 
 	// Callbacks
 	onAddGoal: () => void;
@@ -318,6 +332,7 @@ interface MobileCommandCenterProps {
 	onAddDecision: () => void;
 	onAddDocument: () => void;
 	onAddOutput: () => void;
+	onAddEvent: () => void;
 
 	onEditGoal: (id: string) => void;
 	onEditMilestone: (id: string) => void;
@@ -327,6 +342,7 @@ interface MobileCommandCenterProps {
 	onEditDecision: (id: string) => void;
 	onEditDocument: (id: string) => void;
 	onEditOutput: (id: string) => void;
+	onEditEvent: (id: string) => void;
 }
 ```
 
@@ -341,12 +357,19 @@ type PanelKey =
 	| 'risks'
 	| 'decisions'
 	| 'documents'
-	| 'outputs';
+	| 'outputs'
+	| 'events';
 
 let expandedPanel = $state<PanelKey | null>(null);
 
 function togglePanel(key: PanelKey) {
 	expandedPanel = expandedPanel === key ? null : key;
+}
+
+// Events is standalone - no partner
+function isPartnerExpanded(key: PanelKey): boolean {
+	if (key === 'events') return false;
+	// ... partner lookup for paired panels
 }
 ```
 
@@ -457,16 +480,17 @@ When a panel expands:
 
 Each panel type has a contextual empty state message:
 
-| Panel      | Empty Message                    |
-| ---------- | -------------------------------- |
-| Goals      | "Define what success looks like" |
-| Milestones | "Set checkpoints and dates"      |
-| Tasks      | "Add tasks to track work"        |
-| Plans      | "Create a plan to organize work" |
-| Risks      | "Track potential blockers"       |
-| Decisions  | "Record key choices"             |
-| Documents  | "Add notes and research"         |
-| Outputs    | "Create deliverables"            |
+| Panel      | Empty Message                      |
+| ---------- | ---------------------------------- |
+| Goals      | "Define what success looks like"   |
+| Milestones | "Set checkpoints and dates"        |
+| Tasks      | "Add tasks to track work"          |
+| Plans      | "Create a plan to organize work"   |
+| Risks      | "Track potential blockers"         |
+| Decisions  | "Record key choices"               |
+| Documents  | "Add notes and research"           |
+| Outputs    | "Create deliverables"              |
+| Events     | "Schedule meetings and events"     |
 
 ---
 
@@ -518,6 +542,7 @@ Each panel type has a contextual empty state message:
 | Decisions  | `Scale`         | `text-violet-500`  | `tx tx-frame tx-weak` |
 | Documents  | `FileText`      | `text-sky-500`     | `tx tx-frame tx-weak` |
 | Outputs    | `Layers`        | `text-purple-500`  | `tx tx-frame tx-weak` |
+| Events     | `Clock`         | `text-teal-500`    | `tx tx-frame tx-weak` |
 
 ### 7.3 Typography Scale
 
@@ -638,11 +663,13 @@ All panels use consistent Inkprint tokens:
 - [ ] Single expansion constraint works across all panels
 - [ ] Expanding panel A closes panel B
 - [ ] Partner panel wraps correctly below expanded panel
+- [ ] Events panel (standalone) expands to full width correctly
 - [ ] All "Add" buttons trigger correct modals
 - [ ] All item clicks trigger correct edit modals
 - [ ] Empty states display when no items
 - [ ] Counts update after create/edit/delete
 - [ ] Decisions CRUD operations work correctly
+- [ ] Events CRUD operations work correctly
 
 ### 10.3 Visual Tests
 

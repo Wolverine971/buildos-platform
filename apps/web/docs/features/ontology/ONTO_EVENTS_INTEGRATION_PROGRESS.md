@@ -171,6 +171,20 @@ EventEditModal has been redesigned to match TaskEditModal:
 
 - [x] Add `projectId={project.id}` prop to EventEditModal
 
+### Task 8: Add Events to MobileCommandCenter
+
+- [x] Add `'events'` to PanelKey union type
+- [x] Import `Clock` icon for events (Calendar already used for Plans)
+- [x] Import `OntoEvent` type
+- [x] Add `events` prop to Props interface
+- [x] Add `onAddEvent` and `onEditEvent` callbacks to Props
+- [x] Update pairs mapping to handle events as standalone (no partner)
+- [x] Add `getEventStateColor()` function
+- [x] Add Row 5: Events (Scheduling) as standalone panel
+- [x] Update /projects/[id]/+page.svelte to pass events props to MobileCommandCenter
+- [x] Update CommandCenterPanel.svelte PanelKey type to include 'events'
+- [x] Update MOBILE_COMMAND_CENTER_SPEC.md documentation
+
 ---
 
 ## Progress Log
@@ -198,6 +212,25 @@ EventEditModal has been redesigned to match TaskEditModal:
     - Toast notifications
 - Updated /projects/[id]/+page.svelte to pass projectId to EventEditModal
 
+### 2026-01-05: MobileCommandCenter Events Integration
+
+- Added events to MobileCommandCenter.svelte:
+    - Row 5: Events (Scheduling) - standalone panel with Clock icon
+    - PanelKey union type updated to include 'events'
+    - Props interface extended with events array and callbacks
+    - getEventStateColor() function for state badge colors
+    - Events handled as standalone panel (no partner pairing)
+- Updated /projects/[id]/+page.svelte to pass events props to MobileCommandCenter
+- Fixed CommandCenterPanel.svelte PanelKey type to include 'events'
+- Updated MOBILE_COMMAND_CENTER_SPEC.md with:
+    - Version 1.1, updated date
+    - 9 data models in 5 rows (4 paired + 1 standalone)
+    - Row 5 for Events (Scheduling)
+    - Events in Props interface and PanelKey type
+    - Events color palette (Clock icon, text-teal-500)
+    - Events empty state message
+    - Testing requirements for Events
+
 ---
 
 ## Files Modified
@@ -209,6 +242,9 @@ EventEditModal has been redesigned to match TaskEditModal:
 5. `apps/web/src/routes/api/onto/edges/available/+server.ts`
 6. `apps/web/src/lib/components/ontology/EventEditModal.svelte`
 7. `apps/web/src/routes/projects/[id]/+page.svelte`
+8. `apps/web/src/lib/components/project/MobileCommandCenter.svelte`
+9. `apps/web/src/lib/components/project/CommandCenterPanel.svelte`
+10. `apps/web/docs/features/mobile-command-center/MOBILE_COMMAND_CENTER_SPEC.md`
 
 ---
 
@@ -224,3 +260,8 @@ EventEditModal has been redesigned to match TaskEditModal:
 - [ ] API endpoints return events in linked/available queries
 - [ ] Calendar sync toggle works correctly
 - [ ] Delete confirmation modal works with calendar delete option
+- [ ] MobileCommandCenter displays Events panel in Row 5
+- [ ] Events panel shows correct count and event list
+- [ ] Add event button opens EventCreateModal
+- [ ] Clicking an event opens EventEditModal
+- [ ] Event state badges display correct colors

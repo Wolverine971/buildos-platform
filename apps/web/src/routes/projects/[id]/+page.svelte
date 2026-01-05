@@ -1460,6 +1460,7 @@
 					{decisions}
 					{documents}
 					{outputs}
+					{events}
 					onAddGoal={() => (showGoalCreateModal = true)}
 					onAddMilestone={() => (showMilestoneCreateModal = true)}
 					onAddTask={() => (showTaskCreateModal = true)}
@@ -1471,6 +1472,7 @@
 						showDocumentModal = true;
 					}}
 					onAddOutput={() => (showOutputCreateModal = true)}
+					onAddEvent={() => (showEventCreateModal = true)}
 					onEditGoal={(id) => (editingGoalId = id)}
 					onEditMilestone={(id) => (editingMilestoneId = id)}
 					onEditTask={(id) => (editingTaskId = id)}
@@ -1482,6 +1484,7 @@
 						showDocumentModal = true;
 					}}
 					onEditOutput={(id) => (editingOutputId = id)}
+					onEditEvent={(id) => (editingEventId = id)}
 				/>
 			{/if}
 		</div>

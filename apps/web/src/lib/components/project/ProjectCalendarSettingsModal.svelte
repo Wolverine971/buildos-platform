@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/project/ProjectCalendarSettingsModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -27,43 +26,62 @@
 
 	type ProjectCalendar = Database['public']['Tables']['project_calendars']['Row'];
 
-	export let isOpen = false;
-	export let project: Project | null;
+	// Props using Svelte 5 $props() rune
+	interface Props {
+		isOpen: boolean;
+		project: Project | null;
+		onClose?: () => void;
+		onCalendarCreated?: (calendar: ProjectCalendar) => void;
+		onCalendarUpdated?: (calendar: ProjectCalendar) => void;
+		onCalendarDeleted?: () => void;
+	}
 
-	const dispatch = createEventDispatcher();
+	let {
+		isOpen = $bindable(false),
+		project,
+		onClose,
+		onCalendarCreated,
+		onCalendarUpdated,
+		onCalendarDeleted
+	}: Props = $props();
 
-	// State
-	let loading = false;
-	let saving = false;
-	let deleting = false;
-	let errors: string[] = [];
+	// State using Svelte 5 $state() rune
+	let loading = $state(false);
+	let saving = $state(false);
+	let deleting = $state(false);
+	let errors = $state<string[]>([]);
 
 	// Calendar data
-	let projectCalendar: ProjectCalendar | null = null;
-	let calendarExists = false;
+	let projectCalendar = $state<ProjectCalendar | null>(null);
+	let calendarExists = $state(false);
 
 	// Form fields
-	let formData = {
+	let formData = $state({
 		calendarName: '',
 		calendarDescription: '',
 		selectedColorId: DEFAULT_CALENDAR_COLOR as GoogleColorId,
 		syncEnabled: true
-	};
+	});
 
-	// Initialize form data when modal opens
-	$: if (browser && project && isOpen) {
-		loadCalendarSettings();
-	}
+	// Derived state for default color from project props
+	let defaultColorId = $derived.by(() => {
+		const projectProps = (project?.props as Record<string, unknown> | null) ?? {};
+		const calendarProps = (projectProps.calendar as Record<string, unknown> | null) ?? {};
+		return (calendarProps.color_id || DEFAULT_CALENDAR_COLOR) as GoogleColorId;
+	});
+
+	// Load calendar settings when modal opens - using $effect instead of $:
+	$effect(() => {
+		if (browser && project && isOpen) {
+			loadCalendarSettings();
+		}
+	});
 
 	async function loadCalendarSettings() {
 		if (!project?.id) return;
 
 		loading = true;
 		errors = [];
-
-		const projectProps = (project.props as Record<string, unknown> | null) ?? {};
-		const calendarProps = (projectProps.calendar as Record<string, unknown> | null) ?? {};
-		const defaultColorId = (calendarProps.color_id || DEFAULT_CALENDAR_COLOR) as GoogleColorId;
 
 		try {
 			const response = await fetch(`/api/onto/projects/${project.id}/calendar`);
@@ -134,7 +152,7 @@
 					projectCalendar = result.data;
 					calendarExists = true;
 					toastService.success('Project calendar created successfully');
-					dispatch('calendarCreated', projectCalendar);
+					onCalendarCreated?.(result.data);
 				} else {
 					throw new Error(result.error || 'Failed to create calendar');
 				}
@@ -154,14 +172,15 @@
 				if (result.success) {
 					projectCalendar = result.data;
 					toastService.success('Calendar settings updated');
-					dispatch('calendarUpdated', projectCalendar);
+					onCalendarUpdated?.(result.data);
 				} else {
 					throw new Error(result.error || 'Failed to update calendar');
 				}
 			}
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error('Error saving calendar:', error);
-			errors = [error.message || 'Failed to save calendar settings'];
+			const message = error instanceof Error ? error.message : 'Failed to save calendar settings';
+			errors = [message];
 		} finally {
 			saving = false;
 		}
@@ -189,7 +208,7 @@
 				projectCalendar = null;
 				calendarExists = false;
 				toastService.success('Calendar deleted successfully');
-				dispatch('calendarDeleted');
+				onCalendarDeleted?.();
 				handleClose();
 			} else {
 				toastService.error(result.error || 'Failed to delete calendar');
@@ -204,7 +223,11 @@
 
 	function handleClose() {
 		isOpen = false;
-		dispatch('close');
+		onClose?.();
+	}
+
+	function selectColor(colorId: string) {
+		formData.selectedColorId = colorId as GoogleColorId;
 	}
 </script>
 
@@ -366,8 +389,7 @@
 								{#each Object.entries(GOOGLE_CALENDAR_COLORS) as [colorId, colorInfo]}
 									<button
 										type="button"
-										onclick={() =>
-											(formData.selectedColorId = colorId as GoogleColorId)}
+										onclick={() => selectColor(colorId)}
 										class="group relative aspect-square w-full rounded-lg border-2 transition-all hover:scale-105 pressable {formData.selectedColorId ===
 										colorId
 											? 'border-foreground shadow-ink-strong ring-2 ring-offset-1 ring-accent/30 scale-105'

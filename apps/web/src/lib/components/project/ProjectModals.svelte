@@ -502,17 +502,18 @@
 		<ProjectCalendarSettingsComponent
 			isOpen={true}
 			{project}
-			userId={project?.user_id}
-			on:close={() => handleCloseModal('projectCalendarSettings')}
-			on:calendarCreated={() => {
-				// Optionally refresh project data
-				// toastService.success('Calendar created successfully');
+			onClose={() => handleCloseModal('projectCalendarSettings')}
+			onCalendarCreated={(calendar) => {
+				// Dispatch to parent for potential state refresh
+				onProjectUpdated(new CustomEvent('updated', { detail: { calendarCreated: true, calendar } }));
 			}}
-			on:calendarUpdated={() => {
-				console.log('Calendar settings updated');
+			onCalendarUpdated={(calendar) => {
+				// Dispatch to parent for potential state refresh
+				onProjectUpdated(new CustomEvent('updated', { detail: { calendarUpdated: true, calendar } }));
 			}}
-			on:calendarDeleted={() => {
-				console.log('Calendar deleted');
+			onCalendarDeleted={() => {
+				// Dispatch to parent for potential state refresh
+				onProjectUpdated(new CustomEvent('updated', { detail: { calendarDeleted: true } }));
 			}}
 		/>
 	{/if}
