@@ -17,11 +17,6 @@
 			"components": ["AgentChatModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -44,6 +39,11 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",

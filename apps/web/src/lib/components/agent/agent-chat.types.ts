@@ -61,6 +61,15 @@ export interface ThinkingBlockMessage extends UIMessage {
 	isCollapsed?: boolean;
 }
 
+export interface DataMutationSummary {
+	/** Whether any successful data mutation occurred */
+	hasChanges: boolean;
+	/** Count of successful mutations recorded during the session */
+	totalMutations: number;
+	/** Project IDs affected (best-effort, may be empty) */
+	affectedProjectIds: string[];
+}
+
 export function isThinkingBlockMessage(message: UIMessage): message is ThinkingBlockMessage {
 	return message.type === 'thinking_block';
 }

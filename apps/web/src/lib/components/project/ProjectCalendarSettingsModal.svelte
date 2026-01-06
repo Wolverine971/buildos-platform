@@ -179,7 +179,8 @@
 			}
 		} catch (error: unknown) {
 			console.error('Error saving calendar:', error);
-			const message = error instanceof Error ? error.message : 'Failed to save calendar settings';
+			const message =
+				error instanceof Error ? error.message : 'Failed to save calendar settings';
 			errors = [message];
 		} finally {
 			saving = false;

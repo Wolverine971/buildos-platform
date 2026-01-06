@@ -14,11 +14,13 @@ import type {
 	TemplateCreationStatus,
 	TemplateRecommendationSet,
 	TemplateSchemaSummary,
+	LocationContext,
 	LastTurnContext,
 	ProjectFocus,
 	FocusEntitySummary,
 	Database
 } from '@buildos/shared-types';
+import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
 
 export type {
 	TemplateCreationEvent,
@@ -431,6 +433,28 @@ export interface EnhancedPlannerContext {
 	};
 }
 
+// ============================================
+// CONTEXT PREWARM CACHES
+// ============================================
+
+export interface LocationContextCache {
+	cacheKey: string;
+	loadedAt: number;
+	content: string;
+	metadata?: LocationContext['metadata'];
+}
+
+export interface LinkedEntitiesCache {
+	cacheKey: string;
+	loadedAt: number;
+	context: EntityLinkedContext;
+}
+
+export interface ContextCacheHint {
+	location?: LocationContextCache;
+	linkedEntities?: LinkedEntitiesCache;
+}
+
 export interface EnhancedBuildPlannerContextParams {
 	sessionId: string;
 	userId: string;
@@ -441,4 +465,6 @@ export interface EnhancedBuildPlannerContextParams {
 	lastTurnContext?: LastTurnContext;
 	ontologyContext?: OntologyContext;
 	projectFocus?: ProjectFocus | null;
+	contextCache?: ContextCacheHint;
+	deferCompression?: boolean;
 }

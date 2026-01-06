@@ -24,7 +24,12 @@ import type {
 	ProjectFocus
 } from '@buildos/shared-types';
 
-import type { OntologyContext, LastTurnContext } from '$lib/types/agent-chat-enhancement';
+import type {
+	OntologyContext,
+	LastTurnContext,
+	LocationContextCache,
+	LinkedEntitiesCache
+} from '$lib/types/agent-chat-enhancement';
 
 // Import types that already exist - don't recreate them
 import type { ProjectClarificationMetadata } from '$lib/services/agentic-chat/shared/types';
@@ -62,6 +67,10 @@ export interface AgentSessionMetadata {
 	focus?: ProjectFocus | null;
 	/** Cached ontology context for faster subsequent requests */
 	ontologyCache?: OntologyCache;
+	/** Cached location context for faster subsequent requests */
+	locationContextCache?: LocationContextCache;
+	/** Cached linked-entities context for focused entities */
+	linkedEntitiesCache?: LinkedEntitiesCache;
 	/** Metadata for project creation clarification rounds */
 	projectClarification?: ProjectClarificationMetadata;
 	/** Last context usage snapshot */

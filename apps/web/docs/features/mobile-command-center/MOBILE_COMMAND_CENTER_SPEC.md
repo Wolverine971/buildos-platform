@@ -129,13 +129,13 @@ The command center organizes 9 data models into 5 rows (4 paired + 1 standalone)
 
 ### 3.2 Row Semantic Groupings
 
-| Row | Left Panel | Right Panel | Theme                                      |
-| --- | ---------- | ----------- | ------------------------------------------ |
-| 1   | Goals      | Milestones  | **Strategic** - Where we're going          |
-| 2   | Tasks      | Plans       | **Execution** - How we get there           |
-| 3   | Risks      | Decisions   | **Governance** - Managing uncertainty      |
-| 4   | Documents  | Outputs     | **Artifacts** - What we produce            |
-| 5   | Events     | (Standalone)| **Scheduling** - Calendar events & meetings|
+| Row | Left Panel | Right Panel  | Theme                                       |
+| --- | ---------- | ------------ | ------------------------------------------- |
+| 1   | Goals      | Milestones   | **Strategic** - Where we're going           |
+| 2   | Tasks      | Plans        | **Execution** - How we get there            |
+| 3   | Risks      | Decisions    | **Governance** - Managing uncertainty       |
+| 4   | Documents  | Outputs      | **Artifacts** - What we produce             |
+| 5   | Events     | (Standalone) | **Scheduling** - Calendar events & meetings |
 
 ### 3.3 Collapsed State Dimensions
 
@@ -480,17 +480,17 @@ When a panel expands:
 
 Each panel type has a contextual empty state message:
 
-| Panel      | Empty Message                      |
-| ---------- | ---------------------------------- |
-| Goals      | "Define what success looks like"   |
-| Milestones | "Set checkpoints and dates"        |
-| Tasks      | "Add tasks to track work"          |
-| Plans      | "Create a plan to organize work"   |
-| Risks      | "Track potential blockers"         |
-| Decisions  | "Record key choices"               |
-| Documents  | "Add notes and research"           |
-| Outputs    | "Create deliverables"              |
-| Events     | "Schedule meetings and events"     |
+| Panel      | Empty Message                    |
+| ---------- | -------------------------------- |
+| Goals      | "Define what success looks like" |
+| Milestones | "Set checkpoints and dates"      |
+| Tasks      | "Add tasks to track work"        |
+| Plans      | "Create a plan to organize work" |
+| Risks      | "Track potential blockers"       |
+| Decisions  | "Record key choices"             |
+| Documents  | "Add notes and research"         |
+| Outputs    | "Create deliverables"            |
+| Events     | "Schedule meetings and events"   |
 
 ---
 

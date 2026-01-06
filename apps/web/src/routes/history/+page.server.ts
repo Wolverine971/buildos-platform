@@ -59,6 +59,7 @@ export interface HistoryItem {
 	messageCount?: number;
 	contextType?: string;
 	entityId?: string | null;
+	needsClassification?: boolean;
 	originalData: OntoBraindump | ChatSession;
 }
 
@@ -76,7 +77,8 @@ const DEFAULT_CHAT_TITLES = [
 	'Project Forecast',
 	'Task Update',
 	'Daily Brief Settings',
-	'Chat session'
+	'Chat session',
+	'Untitled Chat'
 ].map((title) => title.toLowerCase());
 
 const isPlaceholderChatTitle = (title?: string | null) => {
@@ -98,6 +100,23 @@ const resolveChatTitle = (session: ChatSession): string => {
 	}
 
 	return rawTitle || 'Untitled Chat';
+};
+
+const hasMeaningfulChatTitle = (session: ChatSession): boolean => {
+	const rawTitle = session.title?.trim() || '';
+	const autoTitle = session.auto_title?.trim() || '';
+
+	if (autoTitle) return true;
+	if (!rawTitle) return false;
+	return !isPlaceholderChatTitle(rawTitle);
+};
+
+const needsChatClassification = (session: ChatSession): boolean => {
+	const hasTopics = (session.chat_topics?.length ?? 0) > 0;
+	const hasSummary = !!session.summary;
+	const hasTitle = hasMeaningfulChatTitle(session);
+
+	return !(hasTitle && hasTopics && hasSummary);
 };
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -313,6 +332,7 @@ async function loadHistoryData(
 					messageCount: c.message_count || 0,
 					contextType: c.context_type,
 					entityId: c.entity_id,
+					needsClassification: needsChatClassification(c),
 					originalData: c
 				})
 			)
@@ -356,6 +376,7 @@ async function loadHistoryData(
 						messageCount: found.message_count || 0,
 						contextType: found.context_type,
 						entityId: found.entity_id,
+						needsClassification: needsChatClassification(found),
 						originalData: found
 					};
 				}

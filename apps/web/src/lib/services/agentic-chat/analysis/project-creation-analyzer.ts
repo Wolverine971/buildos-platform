@@ -15,6 +15,8 @@
  * @module agentic-chat/analysis
  */
 
+import type { TextProfile } from '$lib/services/smart-llm-service';
+
 /**
  * Interface for LLM service (subset of SmartLLMService)
  */
@@ -26,6 +28,7 @@ interface LLMService {
 		maxTokens?: number;
 		userId?: string;
 		operationType?: string;
+		profile?: TextProfile;
 		chatSessionId?: string;
 		agentSessionId?: string;
 		agentPlanId?: string;
@@ -438,17 +441,7 @@ Heuristic pre-analysis found:
 
 Is there enough context to create a meaningful project? If not, what 1-2 questions would help most?`;
 
-		const response = await this.llmService.generateText({
-			systemPrompt,
-			prompt,
-			temperature: 0.3,
-			maxTokens: 400,
-			userId,
-			operationType: 'project_creation_analysis',
-			chatSessionId
-		});
-
-		try {
+		const parseAnalysis = (response: string): ProjectCreationIntentAnalysis => {
 			// Parse JSON response
 			let jsonString = response.trim();
 			if (jsonString.startsWith('```json')) {
@@ -472,10 +465,37 @@ Is there enough context to create a meaningful project? If not, what 1-2 questio
 				reasoning: parsed.reasoning ?? 'Analysis complete',
 				inferredProjectType: parsed.inferredProjectType ?? quickAnalysis.inferredType
 			};
+		};
+
+		const runAnalysis = async (
+			profile?: TextProfile
+		): Promise<ProjectCreationIntentAnalysis> => {
+			const response = await this.llmService.generateText({
+				systemPrompt,
+				prompt,
+				temperature: 0.3,
+				maxTokens: 400,
+				userId,
+				operationType: 'project_creation_analysis',
+				chatSessionId,
+				profile
+			});
+			return parseAnalysis(response);
+		};
+
+		// Speed-first clarification analysis for responsiveness; revert to quality-only if accuracy drops.
+		let primaryAnalysis: ProjectCreationIntentAnalysis;
+		try {
+			primaryAnalysis = await runAnalysis('speed');
 		} catch (error) {
-			console.error('[ProjectCreationAnalyzer] Failed to parse LLM response:', error);
-			throw error;
+			return runAnalysis('quality');
 		}
+
+		if (primaryAnalysis.confidence < 0.6) {
+			return runAnalysis('quality');
+		}
+
+		return primaryAnalysis;
 	}
 
 	/**

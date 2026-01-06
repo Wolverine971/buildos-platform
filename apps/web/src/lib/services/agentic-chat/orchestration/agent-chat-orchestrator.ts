@@ -38,7 +38,6 @@ import type {
 	ChatContextType,
 	ChatToolResult
 } from '@buildos/shared-types';
-import type { TextProfile } from '../../smart-llm-service';
 import { SmartLLMService } from '../../smart-llm-service';
 // import type { ErrorLoggerService } from '$lib/services/errorLogger.service';
 // import { ErrorLoggerService } from '$lib/services/errorLogger.service';
@@ -138,6 +137,15 @@ export class AgentChatOrchestrator {
 		let plannerAgentId: string | undefined;
 		let doneEmitted = false;
 
+		if (request.contextType === 'project_create') {
+			const ackEvent: StreamEvent = {
+				type: 'text',
+				content: 'Got it — give me a moment to review your project details...'
+			};
+			yield ackEvent;
+			await callback(ackEvent);
+		}
+
 		try {
 			plannerContext = await contextService.buildPlannerContext({
 				sessionId: request.sessionId,
@@ -148,7 +156,9 @@ export class AgentChatOrchestrator {
 				entityId: request.entityId,
 				...(request.ontologyContext ? { ontologyContext: request.ontologyContext } : {}),
 				...(request.lastTurnContext ? { lastTurnContext: request.lastTurnContext } : {}),
-				projectFocus: request.projectFocus ?? null
+				projectFocus: request.projectFocus ?? null,
+				contextCache: request.contextCache,
+				deferCompression: true
 			});
 
 			const contextScope =
@@ -526,7 +536,9 @@ export class AgentChatOrchestrator {
 				...(serviceContext.lastTurnContext
 					? { lastTurnContext: serviceContext.lastTurnContext }
 					: {}),
-				projectFocus: serviceContext.projectFocus ?? null
+				projectFocus: serviceContext.projectFocus ?? null,
+				contextCache: request.contextCache,
+				deferCompression: true
 			});
 
 			refreshedPlannerContext = await this.applyToolSelection({

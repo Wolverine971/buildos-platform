@@ -439,6 +439,35 @@ Compressed summary:`;
 	}
 
 	/**
+	 * Fetch the latest compression summary for a session.
+	 */
+	async getLatestCompressionSummary(
+		sessionId: string
+	): Promise<Pick<
+		ChatCompression,
+		'id' | 'summary' | 'first_message_id' | 'last_message_id' | 'created_at'
+	> | null> {
+		try {
+			const { data, error } = await this.supabase
+				.from('chat_compressions')
+				.select('id, summary, first_message_id, last_message_id, created_at')
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: false })
+				.limit(1);
+
+			if (error) {
+				console.error('Failed to fetch latest compression summary:', error);
+				return null;
+			}
+
+			return data?.[0] ?? null;
+		} catch (error) {
+			console.error('Failed to fetch latest compression summary:', error);
+			return null;
+		}
+	}
+
+	/**
 	 * Get compression history for a session
 	 */
 	async getCompressionHistory(sessionId: string): Promise<ChatCompression[]> {

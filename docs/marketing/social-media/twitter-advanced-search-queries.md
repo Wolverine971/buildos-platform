@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/twitter-advanced-search-queries.md -->
+
 # Twitter/X Advanced Search Queries for BuildOS
 
 **Account:** @djwayne3
@@ -409,20 +411,21 @@ ADHD productivity -is:retweet lang:en since:2026-01-04
 
 ### Daily Focus (Pick 2-3 per day)
 
-| Day | Focus Area | Suggested Queries |
-|-----|------------|-------------------|
-| Monday | ADHD Community | ADHD productivity, executive dysfunction |
-| Tuesday | Tool Frustration | Notion abandoned, productivity app "gave up" |
-| Wednesday | AI Context Problems | ChatGPT "forgot" context, AI memory |
-| Thursday | Brain Dump/Overwhelm | "brain dump" tasks, "mental load" |
-| Friday | Building in Public | indie hacker, "building in public" |
-| Weekend | High-Intent | "looking for" productivity app, "recommend" |
+| Day       | Focus Area           | Suggested Queries                            |
+| --------- | -------------------- | -------------------------------------------- |
+| Monday    | ADHD Community       | ADHD productivity, executive dysfunction     |
+| Tuesday   | Tool Frustration     | Notion abandoned, productivity app "gave up" |
+| Wednesday | AI Context Problems  | ChatGPT "forgot" context, AI memory          |
+| Thursday  | Brain Dump/Overwhelm | "brain dump" tasks, "mental load"            |
+| Friday    | Building in Public   | indie hacker, "building in public"           |
+| Weekend   | High-Intent          | "looking for" productivity app, "recommend"  |
 
 ---
 
 ## 💡 Engagement Tips for Search Results
 
 ### DO:
+
 - Reply with empathy first ("I feel this")
 - Share a quick tip without selling
 - Ask a follow-up question
@@ -430,6 +433,7 @@ ADHD productivity -is:retweet lang:en since:2026-01-04
 - Mention BuildOS ONLY if directly relevant and helpful
 
 ### DON'T:
+
 - Copy-paste the same reply
 - Immediately pitch BuildOS
 - Be the first to reply with a product link
@@ -439,12 +443,15 @@ ADHD productivity -is:retweet lang:en since:2026-01-04
 ### Sample Reply Templates:
 
 **For Notion frustration:**
+
 > "I abandoned Notion 6 times. The problem isn't you - complex tools make scattered minds more scattered. What specifically made you give up?"
 
 **For AI context problems:**
+
 > "This is the #1 problem nobody talks about. AI is smart but has amnesia. Context > intelligence."
 
 **For ADHD overwhelm:**
+
 > "Your brain isn't broken, the tool is wrong. ADHD minds need simplicity, not more features. What's worked for you?"
 
 ---
@@ -452,6 +459,7 @@ ADHD productivity -is:retweet lang:en since:2026-01-04
 ## 🔄 Query Maintenance
 
 Review and update this document monthly:
+
 - [ ] Remove queries with no results
 - [ ] Add new terms people are using
 - [ ] Track which queries lead to best engagement

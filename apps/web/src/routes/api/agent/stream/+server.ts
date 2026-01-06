@@ -18,6 +18,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnhancedAgentStreamRequest } from '$lib/types/agent-chat-enhancement';
 import { createLogger } from '$lib/utils/logger';
+import { SSEResponse } from '$lib/utils/sse-response';
 
 // Local imports
 import type { StreamRequest, AuthResult } from './types';
@@ -179,85 +180,143 @@ export const POST: RequestHandler = async ({
 	}
 	const streamRequest = parseResult.data;
 
-	try {
-		// 4. Create services
-		const sessionManager = createSessionManager(supabase);
-		const ontologyCacheService = createOntologyCacheService(supabase, actorId);
-		const messagePersister = createMessagePersister(supabase);
-		const streamHandler = createStreamHandler(supabase);
+	// Create stream early so the UI can show server-side activity immediately.
+	const agentStream = SSEResponse.createChatStream();
+	void agentStream.sendMessage({
+		type: 'agent_state',
+		state: 'thinking',
+		contextType: streamRequest.context_type,
+		details: 'BuildOS is processing your request...'
+	});
 
-		// 5. Resolve session
-		const sessionResult = await sessionManager.resolveSession(streamRequest, userId);
-		if (!sessionResult.success) {
-			return sessionResult.response;
-		}
-		const { session, metadata, conversationHistory } = sessionResult;
-
-		// 6. Resolve project focus
-		const focusResult = await sessionManager.resolveProjectFocus(
-			streamRequest,
-			session,
-			metadata
-		);
-
-		// 7. Load ontology context with caching
-		let ontologyContext = null;
+	void (async () => {
 		try {
-			const ontologyResult = await ontologyCacheService.loadWithSessionCache(
+			// 4. Create services
+			const sessionManager = createSessionManager(supabase);
+			const ontologyCacheService = createOntologyCacheService(supabase, actorId);
+			const messagePersister = createMessagePersister(supabase);
+			const streamHandler = createStreamHandler(supabase);
+
+			// 5. Resolve session
+			const sessionResult = await sessionManager.resolveSession(streamRequest, userId);
+			if (!sessionResult.success) {
+				await agentStream.sendMessage({
+					type: 'error',
+					error: 'Session not found.'
+				});
+				await agentStream.sendMessage({
+					type: 'done',
+					usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+					finished_reason: 'error'
+				});
+				await agentStream.close();
+				return;
+			}
+			const { session, metadata, conversationHistory } = sessionResult;
+
+			// 6. Resolve project focus
+			const focusResult = await sessionManager.resolveProjectFocus(
 				streamRequest,
-				focusResult.metadata
+				session,
+				metadata
 			);
 
-			ontologyContext = ontologyResult.context;
+			// 7. Load ontology context with caching
+			let ontologyContext = null;
+			try {
+				const ontologyResult = await ontologyCacheService.loadWithSessionCache(
+					streamRequest,
+					focusResult.metadata
+				);
 
-			// Update metadata with cache if changed
-			if (ontologyResult.cacheUpdated && ontologyResult.cacheMetadata) {
-				focusResult.metadata.ontologyCache = ontologyResult.cacheMetadata;
+				ontologyContext = ontologyResult.context;
+
+				// Update metadata with cache if changed
+				if (ontologyResult.cacheUpdated && ontologyResult.cacheMetadata) {
+					focusResult.metadata.ontologyCache = ontologyResult.cacheMetadata;
+				}
+
+				logger.debug('Ontology context loaded', {
+					hasOntology: !!ontologyContext,
+					type: ontologyContext?.type,
+					entityCount: ontologyContext?.metadata?.entity_count
+				});
+			} catch (ontologyError) {
+				if (
+					ontologyError instanceof Error &&
+					ontologyError.message.includes('access denied')
+				) {
+					await agentStream.sendMessage({
+						type: 'error',
+						error: ERROR_MESSAGES.CONTEXT_ACCESS_DENIED
+					});
+					await agentStream.sendMessage({
+						type: 'done',
+						usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+						finished_reason: 'error'
+					});
+					await agentStream.close();
+					return;
+				}
+
+				logger.error('Failed to load ontology context', {
+					error: ontologyError,
+					contextType: streamRequest.context_type,
+					entityId: streamRequest.entity_id
+				});
+				await agentStream.sendMessage({
+					type: 'error',
+					error: ERROR_MESSAGES.ONTOLOGY_LOAD_FAILED
+				});
+				await agentStream.sendMessage({
+					type: 'done',
+					usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+					finished_reason: 'error'
+				});
+				await agentStream.close();
+				return;
 			}
 
-			logger.debug('Ontology context loaded', {
-				hasOntology: !!ontologyContext,
-				type: ontologyContext?.type,
-				entityCount: ontologyContext?.metadata?.entity_count
+			// 8. Persist user message (only after ontology access is validated)
+			await messagePersister.persistUserMessage({
+				sessionId: session.id,
+				userId,
+				content: streamRequest.message
 			});
-		} catch (ontologyError) {
-			if (ontologyError instanceof Error && ontologyError.message.includes('access denied')) {
-				return ApiResponse.forbidden(ERROR_MESSAGES.CONTEXT_ACCESS_DENIED);
-			}
 
-			logger.error('Failed to load ontology context', {
-				error: ontologyError,
-				contextType: streamRequest.context_type,
-				entityId: streamRequest.entity_id
+			// 9. Start stream orchestration on the already-open SSE stream
+			streamHandler.startAgentStream(
+				{
+					supabase,
+					fetch,
+					request: streamRequest,
+					requestAbortSignal: request.signal,
+					session,
+					ontologyContext,
+					metadata: focusResult.metadata,
+					conversationHistory,
+					userId,
+					actorId,
+					httpReferer: request.headers.get('referer') ?? undefined
+				},
+				agentStream
+			);
+		} catch (err) {
+			logger.error('Agent API error', { error: err });
+			await agentStream.sendMessage({
+				type: 'error',
+				error: ERROR_MESSAGES.STREAM_ERROR
 			});
-			return ApiResponse.error(ERROR_MESSAGES.ONTOLOGY_LOAD_FAILED, 500);
+			await agentStream.sendMessage({
+				type: 'done',
+				usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+				finished_reason: 'error'
+			});
+			await agentStream.close();
 		}
+	})();
 
-		// 8. Persist user message (only after ontology access is validated)
-		await messagePersister.persistUserMessage({
-			sessionId: session.id,
-			userId,
-			content: streamRequest.message
-		});
-
-		// 9. Create and return stream
-		return streamHandler.createAgentStream({
-			supabase,
-			fetch,
-			request: streamRequest,
-			requestAbortSignal: request.signal,
-			session,
-			ontologyContext,
-			metadata: focusResult.metadata,
-			conversationHistory,
-			userId,
-			actorId,
-			httpReferer: request.headers.get('referer') ?? undefined
-		});
-	} catch (err) {
-		logger.error('Agent API error', { error: err });
-		return ApiResponse.internalError(err, 'Internal server error');
-	}
+	return agentStream.response;
 };
 
 // ============================================

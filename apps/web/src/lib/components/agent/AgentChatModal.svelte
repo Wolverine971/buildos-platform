@@ -35,7 +35,6 @@
 		requestAgentToAgentMessage,
 		type AgentToAgentMessageHistory
 	} from '$lib/services/agentic-chat/agent-to-agent-service';
-	import { RailwayWorkerService } from '$lib/services/railwayWorker.service';
 	// Add ontology integration imports
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
@@ -49,6 +48,7 @@
 		type ActivityEntry,
 		type ActivityType,
 		type AgentLoopState,
+		type DataMutationSummary,
 		type ThinkingBlockMessage,
 		type UIMessage
 	} from './agent-chat.types';
@@ -56,6 +56,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
+	import { createProjectInvalidation } from '$lib/utils/invalidation';
 
 	type ProjectAction = 'workspace' | 'audit' | 'forecast';
 
@@ -79,7 +80,7 @@
 		isOpen?: boolean;
 		contextType?: ChatContextType;
 		entityId?: string;
-		onClose?: () => void;
+		onClose?: (summary?: DataMutationSummary) => void;
 		autoInitProject?: AutoInitProjectConfig | null;
 		initialBraindump?: InitialBraindump | null;
 		initialChatSessionId?: string | null;
@@ -115,6 +116,7 @@
 	let autoInitDismissed = $state(false);
 	let lastAutoInitProjectId = $state<string | null>(null);
 	let wasOpen = $state(false);
+	let lastPrewarmKey = $state<string | null>(null);
 
 	const contextDescriptor = $derived(
 		selectedContextType ? CONTEXT_DESCRIPTORS[selectedContextType] : null
@@ -172,6 +174,40 @@
 		return projectFocus ?? defaultProjectFocus;
 	});
 
+	function buildPrewarmKey(
+		sessionId: string,
+		contextType: ChatContextType | null,
+		entityId?: string,
+		focus?: ProjectFocus | null
+	): string | null {
+		if (!contextType) return null;
+		const focusKey = focus?.focusType
+			? `${focus.focusType}:${focus.focusEntityId ?? 'project-wide'}`
+			: 'none';
+		return [sessionId, contextType, entityId ?? 'global', focusKey].join('|');
+	}
+
+	async function prewarmAgentContext(payload: {
+		session_id: string;
+		context_type: ChatContextType;
+		entity_id?: string;
+		projectFocus?: ProjectFocus | null;
+	}) {
+		try {
+			await fetch('/api/agent/prewarm', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+		} catch (err) {
+			if (dev) {
+				console.warn('[AgentChat] Prewarm failed:', err);
+			}
+		}
+	}
+
 	// Chat session title helpers - avoid showing placeholder titles when auto titles exist
 	const DEFAULT_CHAT_SESSION_TITLES = [
 		'Agent Session',
@@ -182,7 +218,8 @@
 		'Project Audit',
 		'Project Forecast',
 		'Daily Brief Settings',
-		'Chat session'
+		'Chat session',
+		'Untitled Chat'
 	].map((title) => title.toLowerCase());
 
 	function isPlaceholderSessionTitle(title?: string | null): boolean {
@@ -245,6 +282,7 @@
 	let composerContainer = $state<HTMLElement | undefined>(undefined);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 	let keyboardAvoidingCleanup = $state<(() => void) | null>(null);
+	let hasFinalizedSession = false;
 
 	// Ontology integration state
 	let lastTurnContext = $state<LastTurnContext | null>(null);
@@ -430,6 +468,7 @@
 		ontologySummary = null;
 		contextUsage = null;
 		pendingToolResults.clear();
+		resetMutationTracking();
 		voiceErrorMessage = '';
 		pendingSendAfterTranscription = false;
 		showFocusSelector = false;
@@ -889,12 +928,14 @@
 				lastAutoInitProjectId = null;
 				lastLoadedSessionId = null; // Reset to allow reloading same session
 				showProjectActionSelector = false;
+				lastPrewarmKey = null;
 			}
 			return;
 		}
 
 		if (!wasOpen) {
 			wasOpen = true;
+			hasFinalizedSession = false;
 
 			// If resuming a session, skip any auto-init flows that would create a new one
 			if (initialChatSessionId) {
@@ -946,6 +987,25 @@
 		}
 
 		initializeFromAutoInit(autoInitProject);
+	});
+
+	$effect(() => {
+		if (!browser || !isOpen || !currentSession?.id || !selectedContextType) return;
+		const key = buildPrewarmKey(
+			currentSession.id,
+			selectedContextType,
+			selectedEntityId,
+			resolvedProjectFocus
+		);
+		if (!key || key === lastPrewarmKey) return;
+		lastPrewarmKey = key;
+
+		void prewarmAgentContext({
+			session_id: currentSession.id,
+			context_type: selectedContextType,
+			entity_id: selectedEntityId,
+			projectFocus: resolvedProjectFocus
+		});
 	});
 
 	// Handle initialBraindump prop - when opening from history to explore an existing braindump
@@ -1738,6 +1798,99 @@
 		'set_project_calendar'
 	]);
 
+	const MUTATION_TRACKED_TOOLS = new Set([
+		...DATA_MUTATION_TOOLS,
+		'create_task_document',
+		'link_onto_entities',
+		'unlink_onto_edge'
+	]);
+
+	let mutationCount = 0;
+	const mutatedProjectIds = new Set<string>();
+
+	function resetMutationTracking() {
+		mutationCount = 0;
+		mutatedProjectIds.clear();
+	}
+
+	function safeParseArgs(argsJson: string | Record<string, unknown> | undefined) {
+		if (!argsJson) return {};
+		if (typeof argsJson === 'string') {
+			try {
+				return JSON.parse(argsJson) as Record<string, unknown>;
+			} catch (e) {
+				if (dev) {
+					console.warn('[AgentChat] Failed to parse tool args for mutation tracking', e);
+				}
+				return {};
+			}
+		}
+		return argsJson;
+	}
+
+	function resolveProjectId(
+		args: Record<string, unknown>,
+		toolResult?: { data?: any }
+	): string | undefined {
+		const argsProjectId = args?.project_id;
+		if (typeof argsProjectId === 'string' && argsProjectId.length > 0) {
+			return argsProjectId;
+		}
+
+		const data = toolResult?.data;
+		const dataProjectId =
+			data?.project_id ??
+			data?.project?.id ??
+			data?.task?.project_id ??
+			data?.goal?.project_id ??
+			data?.plan?.project_id ??
+			data?.document?.project_id ??
+			data?.output?.project_id ??
+			data?.milestone?.project_id ??
+			data?.risk?.project_id ??
+			data?.decision?.project_id ??
+			data?.requirement?.project_id ??
+			data?.event?.project_id;
+		if (typeof dataProjectId === 'string' && dataProjectId.length > 0) {
+			return dataProjectId;
+		}
+
+		if (isProjectContext(selectedContextType) && selectedEntityId) {
+			return selectedEntityId;
+		}
+
+		return undefined;
+	}
+
+	function recordDataMutation(
+		toolName: string | undefined,
+		argsJson: string | Record<string, unknown> | undefined,
+		success: boolean,
+		toolResult?: { data?: any }
+	) {
+		if (!toolName || !success || !MUTATION_TRACKED_TOOLS.has(toolName)) return;
+
+		if (toolName === 'create_onto_project' && toolResult?.data?.clarifications?.length) {
+			return;
+		}
+
+		const args = safeParseArgs(argsJson);
+		const projectId = resolveProjectId(args, toolResult);
+
+		mutationCount += 1;
+		if (projectId) {
+			mutatedProjectIds.add(projectId);
+		}
+	}
+
+	function buildMutationSummary(): DataMutationSummary {
+		return {
+			hasChanges: mutationCount > 0,
+			totalMutations: mutationCount,
+			affectedProjectIds: Array.from(mutatedProjectIds)
+		};
+	}
+
 	interface ActivityUpdateResult {
 		matched: boolean;
 		toolName?: string;
@@ -1842,7 +1995,33 @@
 		}
 	}
 
+	function finalizeSession(reason: 'close' | 'destroy') {
+		if (hasFinalizedSession) return;
+		if (!currentSession?.id) return;
+
+		const contextType =
+			selectedContextType ??
+			(currentSession.context_type as ChatContextType | undefined) ??
+			'global';
+		const entityId = selectedEntityId ?? currentSession.entity_id ?? null;
+
+		hasFinalizedSession = true;
+
+		fetch(`/api/chat/sessions/${currentSession.id}/close`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				context_type: contextType,
+				entity_id: entityId,
+				reason
+			})
+		}).catch((err) => {
+			if (dev) console.warn('[AgentChat] Session finalize failed:', err);
+		});
+	}
+
 	function handleClose() {
+		finalizeSession('close');
 		stopVoiceInput();
 		if (currentStreamController && isStreaming) {
 			handleStopGeneration('user_cancelled');
@@ -1855,20 +2034,20 @@
 		// Clear any pending tool results to prevent memory leaks
 		pendingToolResults.clear();
 
-		// Trigger chat session classification in the background (fire-and-forget)
-		// Only classify if we have a session with messages
-		if (currentSession?.id && currentSession.user_id && messages.length > 1) {
-			// Don't await - let it run in background
-			RailwayWorkerService.queueChatSessionClassification(
-				currentSession.id,
-				currentSession.user_id
-			).catch((err) => {
-				// Silently ignore errors - classification is a background task
-				if (dev) console.warn('Chat classification queue failed:', err);
-			});
+		const summary = buildMutationSummary();
+		if (summary.hasChanges && isProjectContext(selectedContextType) && selectedEntityId) {
+			void createProjectInvalidation(selectedEntityId)
+				.all()
+				.catch((err) => {
+					if (dev) {
+						console.warn('[AgentChat] Project invalidation failed on close:', err);
+					}
+				});
 		}
 
-		if (onClose) onClose();
+		resetMutationTracking();
+
+		if (onClose) onClose(summary);
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
@@ -2433,6 +2612,8 @@
 				const resultToolCallId = toolResult?.toolCallId ?? toolResult?.tool_call_id;
 				const success = toolResult?.success ?? true;
 				const toolError = toolResult?.error;
+				let resolvedToolName: string | undefined;
+				let resolvedArgs: string | Record<string, unknown> | undefined;
 
 				if (dev) {
 					console.log('[AgentChat] Tool result:', {
@@ -2454,7 +2635,10 @@
 					} else if (result.toolName && result.args !== undefined) {
 						// Show toast for data mutation operations
 						showToolResultToast(result.toolName, result.args, success);
+						resolvedToolName = result.toolName;
+						resolvedArgs = result.args;
 					}
+					resolvedToolName = resolvedToolName ?? toolResult?.toolName;
 				} else {
 					// No matching tool call ID - log warning but don't add duplicate message
 					if (dev) {
@@ -2463,7 +2647,10 @@
 							event
 						);
 					}
+					resolvedToolName = toolResult?.toolName;
 				}
+
+				recordDataMutation(resolvedToolName, resolvedArgs, success, toolResult);
 				break;
 			}
 			case 'context_shift': {
@@ -2840,6 +3027,7 @@
 	}
 
 	onDestroy(() => {
+		finalizeSession('destroy');
 		stopVoiceInput();
 		if (currentStreamController && isStreaming) {
 			handleStopGeneration('user_cancelled');

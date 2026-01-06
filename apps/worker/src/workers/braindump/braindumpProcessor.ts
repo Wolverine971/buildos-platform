@@ -29,6 +29,16 @@ interface BraindumpProcessingResponse {
 	summary: string; // 2-3 sentence summary
 }
 
+const DEFAULT_BRAINDUMP_TITLES = new Set(
+	['untitled braindump', 'braindump', 'untitled'].map((title) => title.toLowerCase())
+);
+
+const isPlaceholderBraindumpTitle = (title?: string | null) => {
+	const normalized = title?.trim().toLowerCase();
+	if (!normalized) return true;
+	return DEFAULT_BRAINDUMP_TITLES.has(normalized);
+};
+
 /**
  * System prompt for braindump processing
  */
@@ -90,8 +100,15 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			);
 		}
 
-		// Skip if already processed (has title, topics, and summary)
-		if (braindump.title && (braindump.topics?.length ?? 0) > 0 && braindump.summary) {
+		const hasPlaceholderTitle = isPlaceholderBraindumpTitle(braindump.title);
+
+		// Skip if already processed (has non-placeholder title, topics, and summary)
+		if (
+			braindump.title &&
+			!hasPlaceholderTitle &&
+			(braindump.topics?.length ?? 0) > 0 &&
+			braindump.summary
+		) {
 			console.log(`⏭️  Braindump ${validatedData.braindumpId} already processed, skipping`);
 			await updateJobStatus(job.id, 'completed', 'process_onto_braindump');
 			return { success: true, skipped: true, reason: 'already_processed' };

@@ -181,7 +181,7 @@
 		name="twitter:description"
 		content="Finally, a productivity tool that gets how your brain works. Transform scattered thoughts into organized action. 14-day free trial."
 	/>
-	<meta name="twitter:image" content="https://build-os.com/twitter-card-1200x628.webp" />
+	<meta name="twitter:image" content="https://build-os.com/twitter_card_light.webp" />
 	<meta name="twitter:image:alt" content="BuildOS - AI-First Project Organization Platform" />
 
 	<!-- Additional Meta Tags -->

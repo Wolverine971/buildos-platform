@@ -40,6 +40,7 @@ import {
 	type ProjectCreationIntentAnalysis
 } from './project-creation-analyzer';
 import type { ChatToolDefinition } from '@buildos/shared-types';
+import type { TextProfile } from '$lib/services/smart-llm-service';
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -52,6 +53,7 @@ interface LLMService {
 		maxTokens?: number;
 		userId?: string;
 		operationType?: string;
+		profile?: TextProfile;
 		chatSessionId?: string;
 		agentSessionId?: string;
 		agentPlanId?: string;
@@ -340,48 +342,67 @@ export class StrategyAnalyzer {
 			toolSelectionContext
 		);
 
-		const response = await this.llmService.generateText({
-			systemPrompt,
-			prompt: analysisPrompt,
-			temperature: 0.3,
-			maxTokens: 500,
-			userId: context.userId,
-			operationType: 'strategy_analysis',
-			chatSessionId: context.sessionId
-		});
+		const parseAnalysis = (response: string): StrategyAnalysis => {
+			try {
+				// Extract JSON from response - handle various LLM response formats
+				let jsonString = response.trim();
 
+				// Try 1: Handle markdown code blocks (```json ... ``` or ``` ... ```)
+				if (jsonString.includes('```json')) {
+					const match = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
+					if (match?.[1]) {
+						jsonString = match[1].trim();
+					}
+				} else if (jsonString.includes('```')) {
+					const match = jsonString.match(/```\s*([\s\S]*?)\s*```/);
+					if (match?.[1]) {
+						jsonString = match[1].trim();
+					}
+				}
+
+				// Try 2: If still not valid JSON, extract JSON object from response
+				// This handles cases where LLM adds preamble text like "Here's my analysis:"
+				if (!jsonString.startsWith('{')) {
+					const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+					if (jsonMatch) {
+						jsonString = jsonMatch[0];
+					}
+				}
+
+				return JSON.parse(jsonString) as StrategyAnalysis;
+			} catch (error) {
+				console.error('[StrategyAnalyzer] Failed to parse LLM response:', error);
+				console.error('[StrategyAnalyzer] Raw response:', response);
+				throw new Error('Invalid LLM response format');
+			}
+		};
+
+		const runAnalysis = async (profile?: TextProfile): Promise<StrategyAnalysis> => {
+			const response = await this.llmService.generateText({
+				systemPrompt,
+				prompt: analysisPrompt,
+				temperature: 0.3,
+				maxTokens: 500,
+				userId: context.userId,
+				operationType: 'strategy_analysis',
+				chatSessionId: context.sessionId,
+				profile
+			});
+			return parseAnalysis(response);
+		};
+
+		// Speed-first strategy analysis for responsiveness; revert to quality-only if this hurts accuracy.
+		let primaryAnalysis: StrategyAnalysis;
 		try {
-			// Extract JSON from response - handle various LLM response formats
-			let jsonString = response.trim();
-
-			// Try 1: Handle markdown code blocks (```json ... ``` or ``` ... ```)
-			if (jsonString.includes('```json')) {
-				const match = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
-				if (match?.[1]) {
-					jsonString = match[1].trim();
-				}
-			} else if (jsonString.includes('```')) {
-				const match = jsonString.match(/```\s*([\s\S]*?)\s*```/);
-				if (match?.[1]) {
-					jsonString = match[1].trim();
-				}
-			}
-
-			// Try 2: If still not valid JSON, extract JSON object from response
-			// This handles cases where LLM adds preamble text like "Here's my analysis:"
-			if (!jsonString.startsWith('{')) {
-				const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-				if (jsonMatch) {
-					jsonString = jsonMatch[0];
-				}
-			}
-
-			return JSON.parse(jsonString) as StrategyAnalysis;
+			primaryAnalysis = await runAnalysis('speed');
 		} catch (error) {
-			console.error('[StrategyAnalyzer] Failed to parse LLM response:', error);
-			console.error('[StrategyAnalyzer] Raw response:', response);
-			throw new Error('Invalid LLM response format');
+			return runAnalysis('quality');
 		}
+		if (primaryAnalysis.confidence < 0.6) {
+			return runAnalysis('quality');
+		}
+
+		return primaryAnalysis;
 	}
 
 	/**

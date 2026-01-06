@@ -15,7 +15,8 @@ import type {
 import type {
 	LastTurnContext,
 	OntologyContext,
-	ProjectFocus
+	ProjectFocus,
+	ContextCacheHint
 } from '$lib/types/agent-chat-enhancement';
 
 // Re-export PlannerContext from canonical location
@@ -82,6 +83,7 @@ export interface BuildPlannerContextParams {
 	userMessage: string;
 	contextType: ChatContextType;
 	entityId?: string;
+	deferCompression?: boolean;
 }
 
 /**
@@ -91,6 +93,7 @@ export interface EnhancedBuildPlannerContextParams extends BuildPlannerContextPa
 	ontologyContext?: OntologyContext;
 	lastTurnContext?: LastTurnContext;
 	projectFocus?: ProjectFocus | null;
+	contextCache?: ContextCacheHint;
 }
 
 /**

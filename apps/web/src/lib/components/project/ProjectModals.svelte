@@ -505,11 +505,15 @@
 			onClose={() => handleCloseModal('projectCalendarSettings')}
 			onCalendarCreated={(calendar) => {
 				// Dispatch to parent for potential state refresh
-				onProjectUpdated(new CustomEvent('updated', { detail: { calendarCreated: true, calendar } }));
+				onProjectUpdated(
+					new CustomEvent('updated', { detail: { calendarCreated: true, calendar } })
+				);
 			}}
 			onCalendarUpdated={(calendar) => {
 				// Dispatch to parent for potential state refresh
-				onProjectUpdated(new CustomEvent('updated', { detail: { calendarUpdated: true, calendar } }));
+				onProjectUpdated(
+					new CustomEvent('updated', { detail: { calendarUpdated: true, calendar } })
+				);
 			}}
 			onCalendarDeleted={() => {
 				// Dispatch to parent for potential state refresh

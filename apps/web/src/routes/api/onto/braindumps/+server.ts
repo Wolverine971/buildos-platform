@@ -15,7 +15,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { RailwayWorkerService } from '$lib/services/railwayWorker.service';
+import { queueBraindumpProcessing } from '$lib/server/braindump-processing.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Queue async processing (fire-and-forget)
 		// This will generate title, topics, and summary in the background
-		RailwayWorkerService.queueBraindumpProcessing(braindump.id, user.id).catch((err) => {
+		queueBraindumpProcessing({ braindumpId: braindump.id, userId: user.id }).catch((err) => {
 			// Silently log - processing is optional enhancement
 			console.warn('Failed to queue braindump processing:', err);
 		});

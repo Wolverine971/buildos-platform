@@ -34,7 +34,8 @@ import type {
 	StrategyAnalysis,
 	ResearchResult,
 	ProjectFocus,
-	OntologyContextScope
+	OntologyContextScope,
+	ContextCacheHint
 } from '$lib/types/agent-chat-enhancement';
 
 // ============================================
@@ -208,6 +209,7 @@ export interface AgentChatRequest {
 	ontologyContext?: OntologyContext;
 	lastTurnContext?: LastTurnContext;
 	projectFocus?: ProjectFocus | null;
+	contextCache?: ContextCacheHint;
 	/** Metadata for project creation clarification flow */
 	projectClarificationMetadata?: ProjectClarificationMetadata;
 	/** Abort signal to cancel streaming work when the client disconnects */

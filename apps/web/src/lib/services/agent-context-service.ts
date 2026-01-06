@@ -39,6 +39,11 @@ import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types
 import { OntologyContextLoader } from './ontology-context-loader';
 import { ensureActorId } from './ontology/ontology-projects.service';
 import { normalizeContextType } from '../../routes/api/agent/stream/utils/context-utils';
+import {
+	buildLinkedEntitiesCacheKey,
+	buildLocationCacheKey,
+	isCacheFresh
+} from '$lib/services/agentic-chat/context-prewarm';
 
 // Import from new context module
 import {
@@ -129,6 +134,9 @@ export class AgentContextService {
 		const lastTurnContext = 'lastTurnContext' in params ? params.lastTurnContext : undefined;
 		const ontologyContext = 'ontologyContext' in params ? params.ontologyContext : undefined;
 		const projectFocus = 'projectFocus' in params ? (params.projectFocus ?? null) : null;
+		const contextCache = 'contextCache' in params ? params.contextCache : undefined;
+		const deferCompression =
+			'deferCompression' in params ? params.deferCompression === true : false;
 
 		debugLog('[AgentContext] Building enhanced planner context', {
 			contextType,
@@ -138,94 +146,130 @@ export class AgentContextService {
 			hasFocus: !!projectFocus
 		});
 
-		// Step 0: Load linked entities if there's a focus entity (for element/combined contexts)
-		let linkedEntitiesContext: EntityLinkedContext | undefined;
-		const focus = ontologyContext?.scope?.focus;
-		if (focus?.type && focus?.id && focus?.name) {
-			try {
-				const ontologyLoader = await this.getOntologyLoader(userId);
-				debugLog('[AgentContext] Loading linked entities for focus:', focus.type, focus.id);
-				linkedEntitiesContext = await ontologyLoader.loadLinkedEntitiesContext(
-					focus.id,
-					focus.type,
-					focus.name,
-					{ maxPerType: 3, includeDescriptions: false }
-				);
-				debugLog('[AgentContext] Linked entities loaded:', {
-					total: linkedEntitiesContext.counts.total,
-					truncated: linkedEntitiesContext.truncated
-				});
-			} catch (error) {
-				console.error('[AgentContext] Failed to load linked entities:', error);
-				// Continue without linked entities - non-critical failure
+		const resolvedEntityId = entityId ?? projectFocus?.projectId;
+		const linkedEntitiesCacheKey = buildLinkedEntitiesCacheKey(projectFocus);
+		const locationCacheKey = buildLocationCacheKey(normalizedContext, resolvedEntityId);
+
+		const linkedEntitiesPromise = (async (): Promise<EntityLinkedContext | undefined> => {
+			const cachedLinked = contextCache?.linkedEntities;
+			if (
+				linkedEntitiesCacheKey &&
+				cachedLinked?.cacheKey === linkedEntitiesCacheKey &&
+				isCacheFresh(cachedLinked.loadedAt)
+			) {
+				debugLog('[AgentContext] Using prewarmed linked entities context');
+				return cachedLinked.context;
 			}
-		}
+
+			const focus = ontologyContext?.scope?.focus;
+			if (focus?.type && focus?.id && focus?.name) {
+				try {
+					const ontologyLoader = await this.getOntologyLoader(userId);
+					debugLog(
+						'[AgentContext] Loading linked entities for focus:',
+						focus.type,
+						focus.id
+					);
+					const linkedEntities = await ontologyLoader.loadLinkedEntitiesContext(
+						focus.id,
+						focus.type,
+						focus.name,
+						{ maxPerType: 3, includeDescriptions: false }
+					);
+					debugLog('[AgentContext] Linked entities loaded:', {
+						total: linkedEntities.counts.total,
+						truncated: linkedEntities.truncated
+					});
+					return linkedEntities;
+				} catch (error) {
+					console.error('[AgentContext] Failed to load linked entities:', error);
+				}
+			}
+
+			return undefined;
+		})();
+
+		const historyPromise = this.processConversationHistory(conversationHistory, {
+			lastTurnContext,
+			sessionId,
+			contextType: normalizedContext,
+			userId,
+			deferCompression
+		});
+
+		const locationPromise = (async (): Promise<{ content: string; metadata: any }> => {
+			const cachedLocation = contextCache?.location;
+			if (
+				!ontologyContext &&
+				cachedLocation?.cacheKey === locationCacheKey &&
+				isCacheFresh(cachedLocation.loadedAt)
+			) {
+				debugLog('[AgentContext] Using prewarmed location context');
+				return {
+					content: cachedLocation.content,
+					metadata: cachedLocation.metadata ?? {}
+				};
+			}
+
+			// Project creation path: Use standard context
+			if (normalizedContext === 'project_create') {
+				const standardContext = await this.chatContextService.loadLocationContext(
+					normalizedContext,
+					resolvedEntityId,
+					true,
+					userId
+				);
+				debugLog('[AgentContext] Using standard context for project_create');
+				return { content: standardContext.content, metadata: standardContext.metadata };
+			}
+
+			if (ontologyContext?.type === 'combined' && projectFocus) {
+				const formatted = formatCombinedContext(ontologyContext, projectFocus);
+				debugLog('[AgentContext] Using combined focus context', {
+					focusType: projectFocus.focusType,
+					entityId: projectFocus.focusEntityId
+				});
+				return { content: formatted.content, metadata: formatted.metadata };
+			}
+
+			if (ontologyContext) {
+				const formatted = formatOntologyContext(ontologyContext);
+				debugLog('[AgentContext] Using ontology context', { type: ontologyContext.type });
+				return { content: formatted.content, metadata: formatted.metadata };
+			}
+
+			const standardContext = await this.chatContextService.loadLocationContext(
+				normalizedContext,
+				resolvedEntityId,
+				true,
+				userId
+			);
+			debugLog('[AgentContext] Using standard context', { contextType: normalizedContext });
+			return { content: standardContext.content, metadata: standardContext.metadata };
+		})();
+
+		const userProfilePromise = this.loadUserProfile(userId);
+
+		const [linkedEntitiesContext, historyResult, locationResult, userProfileData] =
+			await Promise.all([
+				linkedEntitiesPromise,
+				historyPromise,
+				locationPromise,
+				userProfilePromise
+			]);
 
 		// Step 1: Build system prompt with ontology awareness (delegated to PromptGenerationService)
 		const systemPrompt = await this.promptService.buildPlannerSystemPrompt({
 			contextType: normalizedContext,
 			ontologyContext,
 			lastTurnContext,
-			entityId,
+			entityId: resolvedEntityId,
 			linkedEntitiesContext
 		});
 
-		// Step 2: Process conversation history with compression if needed
-		const { messages: processedHistory, usageSnapshot: compressionUsage } =
-			await this.processConversationHistory(conversationHistory, {
-				lastTurnContext,
-				sessionId,
-				contextType: normalizedContext,
-				userId
-			});
-
-		// Step 3: Format location context (priority order: project_create → ontology → standard)
-		let locationContext: string;
-		let locationMetadata: any = {};
-
-		if (contextType === 'project_create') {
-			// Project creation path: Use standard context
-			const standardContext = await this.chatContextService.loadLocationContext(
-				normalizedContext,
-				entityId,
-				true, // abbreviated
-				userId
-			);
-			locationContext = standardContext.content;
-			locationMetadata = standardContext.metadata;
-			debugLog('[AgentContext] Using standard context for project_create');
-		} else if (ontologyContext?.type === 'combined' && projectFocus) {
-			const formatted = formatCombinedContext(ontologyContext, projectFocus);
-			locationContext = formatted.content;
-			locationMetadata = formatted.metadata;
-			debugLog('[AgentContext] Using combined focus context', {
-				focusType: projectFocus.focusType,
-				entityId: projectFocus.focusEntityId
-			});
-		} else if (ontologyContext) {
-			// Ontology path: Format pre-loaded ontology context
-			// Used when entity-specific or project-specific context is available
-			const formatted = formatOntologyContext(ontologyContext);
-			locationContext = formatted.content;
-			locationMetadata = formatted.metadata;
-			debugLog('[AgentContext] Using ontology context', {
-				type: ontologyContext.type
-			});
-		} else {
-			// Standard path: Load context using legacy chat context service
-			// Fallback for contexts without ontology support
-			const standardContext = await this.chatContextService.loadLocationContext(
-				normalizedContext,
-				entityId,
-				true, // abbreviated
-				userId
-			);
-			locationContext = standardContext.content;
-			locationMetadata = standardContext.metadata;
-			debugLog('[AgentContext] Using standard context', {
-				contextType
-			});
-		}
+		const { messages: processedHistory, usageSnapshot: compressionUsage } = historyResult;
+		const locationContext = locationResult.content;
+		const locationMetadata = locationResult.metadata ?? {};
 
 		// Step 4: Pass ALL_TOOLS - ToolSelectionService owns default pool logic
 		// The orchestrator will call ToolSelectionService.selectTools() which:
@@ -253,11 +297,10 @@ export class AgentContextService {
 				TOKEN_BUDGETS.PLANNER.LOCATION_CONTEXT
 		});
 
-		// Load user profile
-		const userProfileData = await this.loadUserProfile(userId);
 		const userProfileStr = userProfileData?.summary;
 		const contextScope =
-			ontologyContext?.scope ?? (entityId ? { projectId: entityId } : undefined);
+			ontologyContext?.scope ??
+			(resolvedEntityId ? { projectId: resolvedEntityId } : undefined);
 
 		return {
 			systemPrompt,
@@ -271,7 +314,7 @@ export class AgentContextService {
 			metadata: {
 				sessionId,
 				contextType: normalizedContext,
-				entityId,
+				entityId: resolvedEntityId,
 				totalTokens,
 				hasOntology: !!ontologyContext,
 				focus: projectFocus ?? null,
@@ -291,9 +334,10 @@ export class AgentContextService {
 			sessionId?: string;
 			contextType?: ChatContextType;
 			userId?: string;
+			deferCompression?: boolean;
 		} = {}
 	): Promise<{ messages: LLMMessage[]; usageSnapshot?: ContextUsageSnapshot }> {
-		const { lastTurnContext, sessionId, contextType, userId } = options;
+		const { lastTurnContext, sessionId, contextType, userId, deferCompression } = options;
 		const messages: LLMMessage[] = [];
 		let usageSnapshot: ContextUsageSnapshot | undefined;
 
@@ -308,6 +352,75 @@ export class AgentContextService {
 		const needsCompression = estimatedTokens > conversationBudget;
 
 		if (needsCompression && this.compressionService && sessionId) {
+			if (deferCompression) {
+				// Defer LLM compression to keep first response fast; use stored summary or last N.
+				const latestCompression =
+					await this.compressionService.getLatestCompressionSummary(sessionId);
+				const lastMessageId = latestCompression?.last_message_id ?? null;
+				const lastMessageIndex = lastMessageId
+					? history.findIndex((msg) => msg.id === lastMessageId)
+					: -1;
+
+				if (latestCompression?.summary && lastMessageIndex >= 0) {
+					messages.push({
+						role: 'system',
+						content: `Previous conversation summary:\n${latestCompression.summary}`
+					});
+
+					const recentMessages = history.slice(lastMessageIndex + 1);
+					messages.push(
+						...recentMessages.map((m) => ({
+							role: m.role as any,
+							content: m.content,
+							tool_calls: m.tool_calls as any,
+							tool_call_id: m.tool_call_id ?? undefined
+						}))
+					);
+				} else {
+					const recentMessages = history.slice(-10);
+					messages.push(
+						...recentMessages.map((m) => ({
+							role: m.role as any,
+							content: m.content,
+							tool_calls: m.tool_calls as any,
+							tool_call_id: m.tool_call_id ?? undefined
+						}))
+					);
+				}
+
+				if (this.compressionService && sessionId) {
+					try {
+						usageSnapshot = await this.compressionService.getContextUsageSnapshot(
+							sessionId,
+							messages.map((m) => ({ content: m.content })),
+							conversationBudget
+						);
+					} catch (error) {
+						console.error(
+							'Failed to compute usage snapshot for deferred compression',
+							error
+						);
+					}
+				}
+
+				const shouldScheduleCompression =
+					!latestCompression?.last_message_id ||
+					latestCompression.last_message_id !== history[history.length - 1]?.id;
+
+				if (shouldScheduleCompression) {
+					void this.compressionService
+						.smartCompress(sessionId, history, contextType ?? 'global', userId)
+						.catch((error) => {
+							console.error(
+								'[AgentContext] Deferred compression failed (will retry next turn):',
+								error
+							);
+						});
+				}
+
+				return { messages, usageSnapshot };
+			}
+
 			try {
 				debugLog('[AgentContext] Compressing conversation history', {
 					originalTokens: estimatedTokens,
@@ -360,11 +473,6 @@ export class AgentContextService {
 				originalTokens: estimatedTokens,
 				targetTokens: conversationBudget,
 				messageCount: history.length
-			});
-
-			messages.push({
-				role: 'system',
-				content: `Previous conversation trimmed to the most recent messages to stay within the ${conversationBudget} token budget.`
 			});
 
 			const recentMessages = history.slice(-10);

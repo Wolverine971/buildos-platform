@@ -102,6 +102,19 @@ export class StreamHandler {
 	 * @returns SSE Response
 	 */
 	createAgentStream(params: StreamHandlerParams): Response {
+		const agentStream = SSEResponse.createChatStream();
+		this.startAgentStream(params, agentStream);
+		return agentStream.response;
+	}
+
+	/**
+	 * Start orchestration on a provided SSE stream.
+	 * Used to open the stream early before preflight work completes.
+	 */
+	startAgentStream(
+		params: StreamHandlerParams,
+		agentStream: ReturnType<typeof SSEResponse.createChatStream>
+	): void {
 		const {
 			supabase,
 			fetch: fetchFn,
@@ -155,9 +168,6 @@ export class StreamHandler {
 			}) ??
 			undefined;
 
-		// Create SSE stream
-		const agentStream = SSEResponse.createChatStream();
-
 		// Send quick usage estimate immediately
 		const historyForUsage = [
 			...conversationHistory,
@@ -202,8 +212,6 @@ export class StreamHandler {
 				// Ignore - stream may already be closed
 			}
 		});
-
-		return agentStream.response;
 	}
 
 	/**
@@ -301,6 +309,10 @@ export class StreamHandler {
 				ontologyContext: ontologyContext || undefined,
 				lastTurnContext: lastTurnContextForPlanner || undefined,
 				projectFocus: resolvedFocus || undefined,
+				contextCache: {
+					location: sessionMetadata.locationContextCache,
+					linkedEntities: sessionMetadata.linkedEntitiesCache
+				},
 				projectClarificationMetadata,
 				abortSignal
 			};

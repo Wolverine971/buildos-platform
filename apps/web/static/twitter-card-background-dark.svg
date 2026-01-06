@@ -1,0 +1,68 @@
+<svg width="1200" height="628" viewBox="0 0 1200 628" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Inkprint Dark Mode Background (Ink Room) -->
+
+  <!-- Base near-black background -->
+  <rect width="1200" height="628" fill="#0E0E10"/>
+
+  <defs>
+    <!-- Subtle dark gradient -->
+    <linearGradient id="darkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0E0E10" stop-opacity="1"/>
+      <stop offset="50%" stop-color="#17171A" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#0E0E10" stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- Subtle texture pattern (grain effect for dark) -->
+    <pattern id="grainDark" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="transparent"/>
+      <circle cx="25" cy="25" r="0.5" fill="#EDEBE8" opacity="0.02"/>
+      <circle cx="75" cy="25" r="0.5" fill="#EDEBE8" opacity="0.015"/>
+      <circle cx="50" cy="50" r="0.5" fill="#EDEBE8" opacity="0.02"/>
+      <circle cx="25" cy="75" r="0.5" fill="#EDEBE8" opacity="0.015"/>
+      <circle cx="75" cy="75" r="0.5" fill="#EDEBE8" opacity="0.02"/>
+    </pattern>
+
+    <!-- Accent glow gradient -->
+    <radialGradient id="accentGlow" cx="0%" cy="100%" r="50%">
+      <stop offset="0%" stop-color="#ED8136" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ED8136" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Secondary accent glow -->
+    <radialGradient id="accentGlow2" cx="100%" cy="0%" r="60%">
+      <stop offset="0%" stop-color="#ED8136" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#ED8136" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Main gradient fill -->
+  <rect width="1200" height="628" fill="url(#darkGradient)"/>
+
+  <!-- Subtle grain texture -->
+  <rect width="1200" height="628" fill="url(#grainDark)"/>
+
+  <!-- Decorative accent strip at top -->
+  <rect x="0" y="0" width="1200" height="4" fill="#ED8136" opacity="0.9"/>
+
+  <!-- Subtle accent glows -->
+  <rect width="1200" height="628" fill="url(#accentGlow)"/>
+  <rect width="1200" height="628" fill="url(#accentGlow2)"/>
+
+  <!-- Border frame (subtle) -->
+  <rect x="40" y="40" width="1120" height="548" rx="12" stroke="#2A2A2E" stroke-width="1" fill="none"/>
+
+  <!-- Color Swatches Reference (bottom right) -->
+  <g transform="translate(900, 500)">
+    <rect x="0" y="0" width="24" height="24" rx="4" fill="#0E0E10" stroke="#2A2A2E"/>
+    <rect x="30" y="0" width="24" height="24" rx="4" fill="#17171A" stroke="#2A2A2E"/>
+    <rect x="60" y="0" width="24" height="24" rx="4" fill="#1F1F23" stroke="#2A2A2E"/>
+    <rect x="90" y="0" width="24" height="24" rx="4" fill="#ED8136"/>
+    <rect x="120" y="0" width="24" height="24" rx="4" fill="#EDEBE8"/>
+
+    <text x="0" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">BG</text>
+    <text x="30" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">Card</text>
+    <text x="60" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">Muted</text>
+    <text x="90" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">Accent</text>
+    <text x="120" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">Text</text>
+  </g>
+</svg>

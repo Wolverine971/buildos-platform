@@ -8,7 +8,7 @@
 		'AI project management, ADHD productivity tool, brain dump app, task organization, Google Calendar sync, daily briefs, voice notes, context management';
 	export let ogType = 'website';
 	export let ogImage = 'https://build-os.com/brain-bolt.png';
-	export let twitterImage = 'https://build-os.com/twitter-card-1200x628.webp';
+	export let twitterImage = 'https://build-os.com/twitter_card_light.webp';
 	export let twitterImageAlt = 'BuildOS - AI-First Project Organization Platform';
 	export let twitterCardType: 'summary' | 'summary_large_image' = 'summary_large_image';
 	export let author = 'DJ Wayne';

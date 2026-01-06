@@ -1,0 +1,61 @@
+<svg width="1200" height="628" viewBox="0 0 1200 628" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Inkprint Light Mode Background (Paper Studio) -->
+
+  <!-- Base warm off-white background -->
+  <rect width="1200" height="628" fill="#FCF9F5"/>
+
+  <!-- Subtle warm gradient overlay -->
+  <defs>
+    <linearGradient id="warmGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCF9F5" stop-opacity="1"/>
+      <stop offset="50%" stop-color="#F8F5F1" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#FCF9F5" stop-opacity="1"/>
+    </linearGradient>
+
+    <!-- Subtle texture pattern (grain effect) -->
+    <pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="transparent"/>
+      <circle cx="25" cy="25" r="0.5" fill="#17171A" opacity="0.03"/>
+      <circle cx="75" cy="25" r="0.5" fill="#17171A" opacity="0.02"/>
+      <circle cx="50" cy="50" r="0.5" fill="#17171A" opacity="0.03"/>
+      <circle cx="25" cy="75" r="0.5" fill="#17171A" opacity="0.02"/>
+      <circle cx="75" cy="75" r="0.5" fill="#17171A" opacity="0.03"/>
+    </pattern>
+
+    <!-- Accent gradient for decorative elements -->
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E07830" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#E07830" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Main gradient fill -->
+  <rect width="1200" height="628" fill="url(#warmGradient)"/>
+
+  <!-- Subtle grain texture -->
+  <rect width="1200" height="628" fill="url(#grain)"/>
+
+  <!-- Decorative accent strip at top (like Inkprint "strip" texture) -->
+  <rect x="0" y="0" width="1200" height="4" fill="#E07830" opacity="0.8"/>
+
+  <!-- Subtle accent glow in corner -->
+  <ellipse cx="100" cy="528" rx="300" ry="200" fill="url(#accentGradient)"/>
+
+  <!-- Border frame (subtle) -->
+  <rect x="40" y="40" width="1120" height="548" rx="12" stroke="#DBD8D2" stroke-width="1" fill="none"/>
+
+  <!-- Color Swatches Reference (bottom right) -->
+  <g transform="translate(900, 500)">
+    <rect x="0" y="0" width="24" height="24" rx="4" fill="#FCF9F5" stroke="#DBD8D2"/>
+    <rect x="30" y="0" width="24" height="24" rx="4" fill="#F8F5F1" stroke="#DBD8D2"/>
+    <rect x="60" y="0" width="24" height="24" rx="4" fill="#EDEBE8" stroke="#DBD8D2"/>
+    <rect x="90" y="0" width="24" height="24" rx="4" fill="#E07830"/>
+    <rect x="120" y="0" width="24" height="24" rx="4" fill="#17171A"/>
+
+    <text x="0" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">BG</text>
+    <text x="30" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">Card</text>
+    <text x="60" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">Muted</text>
+    <text x="90" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">Accent</text>
+    <text x="120" y="44" font-family="system-ui, sans-serif" font-size="8" fill="#6E6E73">Text</text>
+  </g>
+</svg>

@@ -44,7 +44,8 @@ const DEFAULT_SESSION_TITLES = new Set(
 		'Project Forecast',
 		'Task Update',
 		'Daily Brief Settings',
-		'Chat session' // Sanitized fallback title
+		'Chat session', // Sanitized fallback title
+		'Untitled Chat'
 	].map((title) => title.toLowerCase())
 );
 

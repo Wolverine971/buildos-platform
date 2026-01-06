@@ -8,7 +8,7 @@
 --   onto_tasks, onto_decisions, onto_risks, onto_documents, onto_edges
 --
 -- Policy Structure:
---   1. Users can perform all CRUD on their own data (created_by = auth.uid())
+--   1. Users can perform all CRUD on their own data (created_by = current_actor_id())
 --   2. Admins can perform all CRUD on all data (users.is_admin = true)
 --   3. Service role has full access (for background workers)
 --   4. Anonymous users can read public projects (is_public = true)
@@ -36,6 +36,23 @@ $$;
 
 COMMENT ON FUNCTION is_admin() IS
   'Returns true if the current authenticated user has is_admin=true in the users table. Uses SECURITY DEFINER to bypass RLS.';
+
+-- Function to map the current auth user to an onto_actors.id (if present)
+-- Uses SECURITY DEFINER to bypass table privileges when evaluating RLS
+CREATE OR REPLACE FUNCTION current_actor_id()
+RETURNS uuid
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT id
+  FROM onto_actors
+  WHERE user_id = auth.uid();
+$$;
+
+COMMENT ON FUNCTION current_actor_id() IS
+  'Returns the onto_actors.id for the current authenticated user, or null if no actor exists.';
 
 -- ============================================
 -- STEP 2: Enable RLS on all ontology tables
@@ -81,7 +98,7 @@ END $$;
 -- Owners can read their own projects
 CREATE POLICY "project_select_owner"
   ON onto_projects FOR SELECT
-  USING (created_by = auth.uid());
+  USING (created_by = current_actor_id());
 
 -- Admins can read all projects
 CREATE POLICY "project_select_admin"
@@ -96,7 +113,7 @@ CREATE POLICY "project_select_public"
 -- Owners can insert projects (as themselves)
 CREATE POLICY "project_insert_owner"
   ON onto_projects FOR INSERT
-  WITH CHECK (created_by = auth.uid());
+  WITH CHECK (created_by = current_actor_id());
 
 -- Admins can insert projects
 CREATE POLICY "project_insert_admin"
@@ -106,8 +123,8 @@ CREATE POLICY "project_insert_admin"
 -- Owners can update their own projects
 CREATE POLICY "project_update_owner"
   ON onto_projects FOR UPDATE
-  USING (created_by = auth.uid())
-  WITH CHECK (created_by = auth.uid());
+  USING (created_by = current_actor_id())
+  WITH CHECK (created_by = current_actor_id());
 
 -- Admins can update all projects
 CREATE POLICY "project_update_admin"
@@ -117,7 +134,7 @@ CREATE POLICY "project_update_admin"
 -- Owners can delete their own projects
 CREATE POLICY "project_delete_owner"
   ON onto_projects FOR DELETE
-  USING (created_by = auth.uid());
+  USING (created_by = current_actor_id());
 
 -- Admins can delete all projects
 CREATE POLICY "project_delete_admin"
@@ -133,7 +150,7 @@ CREATE POLICY "goal_select_owner"
   ON onto_goals FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_goals.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_goals.project_id AND p.created_by = current_actor_id()
   ));
 
 -- Admins can read all goals
@@ -154,7 +171,7 @@ CREATE POLICY "goal_insert_owner"
   ON onto_goals FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_goals.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_goals.project_id AND p.created_by = current_actor_id()
   ));
 
 -- Admins can insert goals
@@ -167,7 +184,7 @@ CREATE POLICY "goal_update_owner"
   ON onto_goals FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_goals.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_goals.project_id AND p.created_by = current_actor_id()
   ));
 
 -- Admins can update all goals
@@ -180,7 +197,7 @@ CREATE POLICY "goal_delete_owner"
   ON onto_goals FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_goals.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_goals.project_id AND p.created_by = current_actor_id()
   ));
 
 -- Admins can delete all goals
@@ -196,7 +213,7 @@ CREATE POLICY "milestone_select_owner"
   ON onto_milestones FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_milestones.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_milestones.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "milestone_select_admin"
@@ -214,7 +231,7 @@ CREATE POLICY "milestone_insert_owner"
   ON onto_milestones FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_milestones.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_milestones.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "milestone_insert_admin"
@@ -225,7 +242,7 @@ CREATE POLICY "milestone_update_owner"
   ON onto_milestones FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_milestones.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_milestones.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "milestone_update_admin"
@@ -236,7 +253,7 @@ CREATE POLICY "milestone_delete_owner"
   ON onto_milestones FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_milestones.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_milestones.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "milestone_delete_admin"
@@ -251,7 +268,7 @@ CREATE POLICY "plan_select_owner"
   ON onto_plans FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_plans.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_plans.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "plan_select_admin"
@@ -269,7 +286,7 @@ CREATE POLICY "plan_insert_owner"
   ON onto_plans FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_plans.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_plans.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "plan_insert_admin"
@@ -280,7 +297,7 @@ CREATE POLICY "plan_update_owner"
   ON onto_plans FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_plans.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_plans.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "plan_update_admin"
@@ -291,7 +308,7 @@ CREATE POLICY "plan_delete_owner"
   ON onto_plans FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_plans.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_plans.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "plan_delete_admin"
@@ -306,7 +323,7 @@ CREATE POLICY "task_select_owner"
   ON onto_tasks FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_tasks.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_tasks.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "task_select_admin"
@@ -324,7 +341,7 @@ CREATE POLICY "task_insert_owner"
   ON onto_tasks FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_tasks.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_tasks.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "task_insert_admin"
@@ -335,7 +352,7 @@ CREATE POLICY "task_update_owner"
   ON onto_tasks FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_tasks.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_tasks.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "task_update_admin"
@@ -346,7 +363,7 @@ CREATE POLICY "task_delete_owner"
   ON onto_tasks FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_tasks.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_tasks.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "task_delete_admin"
@@ -361,7 +378,7 @@ CREATE POLICY "decision_select_owner"
   ON onto_decisions FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_decisions.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_decisions.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "decision_select_admin"
@@ -379,7 +396,7 @@ CREATE POLICY "decision_insert_owner"
   ON onto_decisions FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_decisions.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_decisions.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "decision_insert_admin"
@@ -390,7 +407,7 @@ CREATE POLICY "decision_update_owner"
   ON onto_decisions FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_decisions.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_decisions.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "decision_update_admin"
@@ -401,7 +418,7 @@ CREATE POLICY "decision_delete_owner"
   ON onto_decisions FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_decisions.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_decisions.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "decision_delete_admin"
@@ -416,7 +433,7 @@ CREATE POLICY "risk_select_owner"
   ON onto_risks FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_risks.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_risks.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "risk_select_admin"
@@ -434,7 +451,7 @@ CREATE POLICY "risk_insert_owner"
   ON onto_risks FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_risks.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_risks.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "risk_insert_admin"
@@ -445,7 +462,7 @@ CREATE POLICY "risk_update_owner"
   ON onto_risks FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_risks.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_risks.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "risk_update_admin"
@@ -456,7 +473,7 @@ CREATE POLICY "risk_delete_owner"
   ON onto_risks FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_risks.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_risks.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "risk_delete_admin"
@@ -471,7 +488,7 @@ CREATE POLICY "document_select_owner"
   ON onto_documents FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_documents.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_documents.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "document_select_admin"
@@ -489,7 +506,7 @@ CREATE POLICY "document_insert_owner"
   ON onto_documents FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_documents.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_documents.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "document_insert_admin"
@@ -500,7 +517,7 @@ CREATE POLICY "document_update_owner"
   ON onto_documents FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_documents.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_documents.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "document_update_admin"
@@ -511,7 +528,7 @@ CREATE POLICY "document_delete_owner"
   ON onto_documents FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_documents.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_documents.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "document_delete_admin"
@@ -526,7 +543,7 @@ CREATE POLICY "edge_select_owner"
   ON onto_edges FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_edges.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_edges.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "edge_select_admin"
@@ -544,7 +561,7 @@ CREATE POLICY "edge_insert_owner"
   ON onto_edges FOR INSERT
   WITH CHECK (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_edges.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_edges.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "edge_insert_admin"
@@ -555,7 +572,7 @@ CREATE POLICY "edge_update_owner"
   ON onto_edges FOR UPDATE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_edges.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_edges.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "edge_update_admin"
@@ -566,7 +583,7 @@ CREATE POLICY "edge_delete_owner"
   ON onto_edges FOR DELETE
   USING (EXISTS (
     SELECT 1 FROM onto_projects p
-    WHERE p.id = onto_edges.project_id AND p.created_by = auth.uid()
+    WHERE p.id = onto_edges.project_id AND p.created_by = current_actor_id()
   ));
 
 CREATE POLICY "edge_delete_admin"
@@ -603,6 +620,10 @@ GRANT SELECT ON onto_edges TO anon;
 GRANT EXECUTE ON FUNCTION is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION is_admin() TO anon;
 
+-- Grant current_actor_id function to authenticated and anon
+GRANT EXECUTE ON FUNCTION current_actor_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION current_actor_id() TO anon;
+
 -- ============================================
 -- VERIFICATION
 -- ============================================
@@ -637,5 +658,7 @@ BEGIN
   RAISE NOTICE '';
   RAISE NOTICE 'Helper function: is_admin()';
   RAISE NOTICE '  Uses SECURITY DEFINER to check users.is_admin';
+  RAISE NOTICE 'Helper function: current_actor_id()';
+  RAISE NOTICE '  Uses SECURITY DEFINER to map auth.uid() to onto_actors.id';
   RAISE NOTICE '============================================';
 END $$;

@@ -104,6 +104,7 @@ export const DEPRECATED_RELATIONSHIPS: Record<
 	{ canonical: RelationshipType; swapDirection: boolean }
 > = {
 	belongs_to_plan: { canonical: 'has_task', swapDirection: true },
+	part_of: { canonical: 'contains', swapDirection: true },
 	referenced_by: { canonical: 'references', swapDirection: true },
 	produced_by: { canonical: 'produces', swapDirection: true },
 	mitigated_by: { canonical: 'mitigates', swapDirection: true },

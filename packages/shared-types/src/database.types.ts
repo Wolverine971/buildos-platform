@@ -8742,6 +8742,7 @@ export type Database = {
         Args: { p_delivery_id: string; p_destination_url: string }
         Returns: string
       }
+      current_actor_id: { Args: never; Returns: string }
       decrement_phase_order: {
         Args: { p_order_threshold: number; p_project_id: string }
         Returns: undefined

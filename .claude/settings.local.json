@@ -21,7 +21,9 @@
       "Bash(npx svelte-check:*)",
       "WebFetch(domain:platform.openai.com)",
       "WebFetch(domain:openai.com)",
-      "Bash(pnpm run check:*)"
+      "Bash(pnpm run check:*)",
+      "Bash(convert:*)",
+      "Bash(cwebp:*)"
     ],
     "deny": [],
     "ask": []

@@ -24,11 +24,11 @@
 		AlertCircle,
 		Loader2,
 		MessageSquare,
-		Tag,
 		ChevronRight,
 		X,
 		Brain,
-		MessagesSquare
+		MessagesSquare,
+		Sparkles
 	} from 'lucide-svelte';
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import HistoryListSkeleton from '$lib/components/history/HistoryListSkeleton.svelte';
@@ -126,6 +126,7 @@
 	let selectedBraindumpForChat = $state<OntoBraindump | null>(null);
 	let selectedChatSessionId = $state<string | null>(null);
 	let isLoadingChatSession = $state(false);
+	let chatClassificationState = $state<Record<string, 'loading' | 'queued' | 'error'>>({});
 
 	// Open modal if we have a selectedItem from streamed data
 	$effect(() => {
@@ -279,6 +280,36 @@
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			applyFilters();
+		}
+	}
+
+	function handleItemKeydown(event: KeyboardEvent, item: HistoryItem) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			openItem(item);
+		}
+	}
+
+	async function classifyChatSession(item: HistoryItem) {
+		if (item.type !== 'chat_session') return;
+		if (chatClassificationState[item.id] === 'loading') return;
+
+		chatClassificationState = { ...chatClassificationState, [item.id]: 'loading' };
+
+		try {
+			const response = await fetch(`/api/chat/sessions/${item.id}/classify`, {
+				method: 'POST'
+			});
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok || !payload?.success) {
+				throw new Error(payload?.error || 'Failed to queue chat classification');
+			}
+
+			chatClassificationState = { ...chatClassificationState, [item.id]: 'queued' };
+		} catch (error) {
+			console.error('Failed to classify chat session:', error);
+			chatClassificationState = { ...chatClassificationState, [item.id]: 'error' };
 		}
 	}
 </script>
@@ -497,8 +528,12 @@
 				{#each items as item (item.id)}
 					{@const TypeIcon = getTypeIcon(item.type)}
 					{@const StatusIcon = getStatusIcon(item.status)}
-					<button
+					{@const classifyStatus = chatClassificationState[item.id] ?? 'idle'}
+					<div
+						role="button"
+						tabindex="0"
 						onclick={() => openItem(item)}
+						onkeydown={(event) => handleItemKeydown(event, item)}
 						class="group flex h-full flex-col rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable"
 					>
 						<!-- Header: Type badge and status -->
@@ -513,11 +548,36 @@
 									>{item.type === 'chat_session' ? 'Chat' : 'Braindump'}</span
 								>
 							</span>
-							<StatusIcon
-								class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 {getStatusColor(
-									item.status
-								)}"
-							/>
+							<div class="flex items-center gap-1 sm:gap-2">
+								{#if item.type === 'chat_session' && item.needsClassification}
+									<button
+										type="button"
+										on:click|stopPropagation={() => classifyChatSession(item)}
+										disabled={classifyStatus === 'loading' || classifyStatus === 'queued'}
+										class="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-70"
+										aria-label="Classify chat session"
+									>
+										{#if classifyStatus === 'loading'}
+											<Loader2 class="h-2.5 w-2.5 animate-spin" />
+											<span class="hidden sm:inline">Queueing</span>
+										{:else if classifyStatus === 'queued'}
+											<Sparkles class="h-2.5 w-2.5 text-emerald-500" />
+											<span class="hidden sm:inline">Queued</span>
+										{:else if classifyStatus === 'error'}
+											<Sparkles class="h-2.5 w-2.5 text-destructive" />
+											<span class="hidden sm:inline">Retry</span>
+										{:else}
+											<Sparkles class="h-2.5 w-2.5" />
+											<span class="hidden sm:inline">Classify</span>
+										{/if}
+									</button>
+								{/if}
+								<StatusIcon
+									class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 {getStatusColor(
+										item.status
+									)}"
+								/>
+							</div>
 						</div>
 
 						<!-- Title -->
@@ -572,7 +632,7 @@
 								/>
 							</div>
 						</div>
-					</button>
+					</div>
 				{/each}
 			</div>
 
