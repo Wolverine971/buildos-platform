@@ -552,7 +552,7 @@
 								{#if item.type === 'chat_session' && item.needsClassification}
 									<button
 										type="button"
-										on:click|stopPropagation={() => classifyChatSession(item)}
+										onclick={(e) => { e.stopPropagation(); classifyChatSession(item); }}
 										disabled={classifyStatus === 'loading' || classifyStatus === 'queued'}
 										class="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-70"
 										aria-label="Classify chat session"

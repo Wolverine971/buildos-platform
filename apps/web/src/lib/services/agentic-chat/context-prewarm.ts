@@ -5,7 +5,7 @@
 
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import { normalizeContextType } from '../../routes/api/agent/stream/utils/context-utils';
+import { normalizeContextType } from '../../../routes/api/agent/stream/utils/context-utils';
 
 export const CONTEXT_PREWARM_TTL_MS = 5 * 60 * 1000;
 

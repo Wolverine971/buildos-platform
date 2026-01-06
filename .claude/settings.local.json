@@ -23,7 +23,8 @@
       "WebFetch(domain:openai.com)",
       "Bash(pnpm run check:*)",
       "Bash(convert:*)",
-      "Bash(cwebp:*)"
+      "Bash(cwebp:*)",
+      "Bash(pnpm build:*)"
     ],
     "deny": [],
     "ask": []
