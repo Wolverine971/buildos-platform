@@ -30,7 +30,16 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
-	import { FileText, Loader, Save, Trash2, X, ChevronDown, ChevronUp, Settings2 } from 'lucide-svelte';
+	import {
+		FileText,
+		Loader,
+		Save,
+		Trash2,
+		X,
+		ChevronDown,
+		ChevronUp,
+		Settings2
+	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { Component } from 'svelte';
 
@@ -110,10 +119,12 @@
 	// Count linked entities for mobile toggle badge
 	const linkedCount = $derived.by(() => {
 		if (!linkedEntities) return 0;
-		return (linkedEntities.tasks?.length ?? 0) +
+		return (
+			(linkedEntities.tasks?.length ?? 0) +
 			(linkedEntities.goals?.length ?? 0) +
 			(linkedEntities.plans?.length ?? 0) +
-			(linkedEntities.documents?.length ?? 0);
+			(linkedEntities.documents?.length ?? 0)
+		);
 	});
 
 	const tagCount = $derived.by(() => {
@@ -443,9 +454,7 @@
 				</div>
 				<div class="min-w-0 flex-1">
 					<div class="flex items-center gap-2">
-						<h2
-							class="text-sm font-semibold leading-tight truncate text-foreground"
-						>
+						<h2 class="text-sm font-semibold leading-tight truncate text-foreground">
 							{title || (isEditing ? 'Document' : 'New Document')}
 						</h2>
 						{#if isEditing}
@@ -723,7 +732,9 @@
 										<Settings2 class="w-4 h-4 text-muted-foreground" />
 										Document Settings
 										{#if linkedCount > 0 || tagCount > 0}
-											<span class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+											<span
+												class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full"
+											>
 												{linkedCount + tagCount}
 											</span>
 										{/if}
@@ -768,7 +779,9 @@
 													class="w-full text-xs"
 												>
 													{#each stateOptions as option}
-														<option value={option.value}>{option.label}</option>
+														<option value={option.value}
+															>{option.label}</option
+														>
 													{/each}
 												</Select>
 											</FormField>
@@ -801,14 +814,16 @@
 												<button
 													type="button"
 													class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-													onclick={() => (typeKey = 'document.context.project')}
+													onclick={() =>
+														(typeKey = 'document.context.project')}
 												>
 													.context
 												</button>
 												<button
 													type="button"
 													class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-													onclick={() => (typeKey = 'document.spec.product')}
+													onclick={() =>
+														(typeKey = 'document.spec.product')}
 												>
 													.spec
 												</button>
@@ -853,7 +868,9 @@
 													<span>Created</span>
 													<span class="font-mono"
 														>{createdAt
-															? new Date(createdAt).toLocaleDateString()
+															? new Date(
+																	createdAt
+																).toLocaleDateString()
 															: '—'}</span
 													>
 												</div>
@@ -861,7 +878,9 @@
 													<span>Updated</span>
 													<span class="font-mono"
 														>{updatedAt
-															? new Date(updatedAt).toLocaleDateString()
+															? new Date(
+																	updatedAt
+																).toLocaleDateString()
 															: '—'}</span
 													>
 												</div>

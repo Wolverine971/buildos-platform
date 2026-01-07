@@ -944,6 +944,27 @@ export class AgentChatOrchestrator {
 
 		const execution = await this.executePlan(plan, plannerContext, serviceContext);
 		streamEvents.push(...execution.events);
+		if (execution.error) {
+			streamEvents.push(
+				this.buildAgentStateEvent(
+					'waiting_on_user',
+					serviceContext.contextType,
+					'Plan failed. Review the error details and try again.'
+				)
+			);
+			return {
+				success: false,
+				error: execution.error,
+				data: {
+					status: 'failed',
+					plan_id: plan.id,
+					summary: execution.summary
+				},
+				streamEvents,
+				toolName: 'agent_create_plan',
+				toolCallId: `virtual-${uuidv4()}`
+			};
+		}
 		streamEvents.push(
 			this.buildAgentStateEvent(
 				'waiting_on_user',
@@ -1028,6 +1049,28 @@ export class AgentChatOrchestrator {
 			);
 			const execution = await this.executePlan(plan, plannerContext, serviceContext);
 			streamEvents.push(...execution.events);
+			if (execution.error) {
+				streamEvents.push(
+					this.buildAgentStateEvent(
+						'waiting_on_user',
+						serviceContext.contextType,
+						'Plan failed after review. Review the errors and try again.'
+					)
+				);
+				return {
+					success: false,
+					error: execution.error,
+					data: {
+						status: 'failed',
+						plan_id: plan.id,
+						summary: execution.summary,
+						review
+					},
+					streamEvents,
+					toolName: 'agent_create_plan',
+					toolCallId: `virtual-${uuidv4()}`
+				};
+			}
 			streamEvents.push(
 				this.buildAgentStateEvent(
 					'waiting_on_user',
@@ -1084,35 +1127,53 @@ export class AgentChatOrchestrator {
 		plan: AgentPlan,
 		plannerContext: PlannerContext,
 		serviceContext: ServiceContext
-	): Promise<{ events: StreamEvent[]; summary: string; usage?: { total_tokens: number } }> {
+	): Promise<{
+		events: StreamEvent[];
+		summary: string;
+		usage?: { total_tokens: number };
+		error?: string;
+	}> {
 		const events: StreamEvent[] = [];
 		const executorResults: ExecutorResult[] = [];
 		const collectedToolResults: ToolExecutionResult[] = [];
 		let planUsage: { total_tokens: number } | undefined;
 
-		for await (const event of this.deps.planOrchestrator.executePlan(
-			plan,
-			plannerContext,
-			serviceContext,
-			async () => {}
-		)) {
-			if (event.type === 'done') {
-				if (event.usage) {
-					planUsage = event.usage;
+		try {
+			for await (const event of this.deps.planOrchestrator.executePlan(
+				plan,
+				plannerContext,
+				serviceContext,
+				async () => {}
+			)) {
+				if (event.type === 'done') {
+					if (event.usage) {
+						planUsage = event.usage;
+					}
+					continue;
 				}
-				continue;
-			}
 
-			events.push(event);
+				events.push(event);
 
-			switch (event.type) {
-				case 'executor_result':
-					executorResults.push(event.result);
-					break;
-				case 'tool_result':
-					collectedToolResults.push(event.result);
-					break;
+				switch (event.type) {
+					case 'executor_result':
+						executorResults.push(event.result);
+						break;
+					case 'tool_result':
+						collectedToolResults.push(event.result);
+						break;
+				}
 			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			if (!events.some((event) => event.type === 'error')) {
+				events.push({ type: 'error', error: errorMessage });
+			}
+			return {
+				events,
+				summary: errorMessage,
+				usage: planUsage,
+				error: errorMessage
+			};
 		}
 
 		const combinedResults =

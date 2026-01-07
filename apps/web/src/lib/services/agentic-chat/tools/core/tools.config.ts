@@ -142,7 +142,7 @@ export const TOOL_CATEGORIES = {
 		costTier: 'low'
 	},
 	web_research: {
-		tools: ['web_search'],
+		tools: ['web_search', 'web_visit'],
 		averageTokens: 700,
 		costTier: 'medium'
 	},
@@ -176,6 +176,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'get_entity_relationships',
 		'get_linked_entities',
 		'web_search',
+		'web_visit',
 		'get_buildos_overview',
 		'get_buildos_usage_guide'
 	],
@@ -384,7 +385,7 @@ export const UTILITY_TOOLS = extractTools([
 	'get_buildos_usage_guide'
 ]);
 
-export const WEB_TOOLS = extractTools(['web_search']);
+export const WEB_TOOLS = extractTools(['web_search', 'web_visit']);
 
 export const DEFAULT_TOOLS = getToolsForContextType('global');
 

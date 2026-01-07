@@ -332,12 +332,18 @@
 	}
 
 	// Toolbar button component helper
-	const isActive = (name: string, attrs?: Record<string, unknown>) => {
-		return editor?.isActive(name, attrs) ?? false;
+	// Supports both: isActive('bold') and isActive({ textAlign: 'left' })
+	const isActive = (nameOrAttrs: string | Record<string, unknown>, attrs?: Record<string, unknown>) => {
+		if (typeof nameOrAttrs === 'string') {
+			return editor?.isActive(nameOrAttrs, attrs) ?? false;
+		}
+		return editor?.isActive(nameOrAttrs) ?? false;
 	};
 </script>
 
-<div class="document-editor flex flex-col h-full bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-frame tx-weak">
+<div
+	class="document-editor flex flex-col h-full bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-frame tx-weak"
+>
 	<!-- Compact Header -->
 	<div class="editor-header border-b border-border px-3 py-2 bg-muted/30">
 		<!-- Title Row -->
@@ -355,12 +361,16 @@
 			/>
 			<div class="flex items-center gap-1.5 shrink-0">
 				{#if isDirty}
-					<span class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-medium">
+					<span
+						class="text-[10px] sm:text-xs text-amber-600 dark:text-amber-400 font-medium"
+					>
 						Unsaved
 					</span>
 				{/if}
 				{#if saveSuccess}
-					<span class="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+					<span
+						class="text-[10px] sm:text-xs text-emerald-600 dark:text-emerald-400 font-medium"
+					>
 						✓ Saved
 					</span>
 				{/if}
@@ -428,7 +438,7 @@
 				</button>
 			</div>
 
-			<div class="toolbar-divider" />
+			<div class="toolbar-divider"></div>
 
 			<!-- Core formatting (always visible) -->
 			<div class="flex items-center gap-0.5">
@@ -463,7 +473,7 @@
 				</button>
 			</div>
 
-			<div class="toolbar-divider" />
+			<div class="toolbar-divider"></div>
 
 			<!-- Headings -->
 			<div class="flex items-center gap-0.5">
@@ -505,7 +515,7 @@
 				</button>
 			</div>
 
-			<div class="toolbar-divider" />
+			<div class="toolbar-divider"></div>
 
 			<!-- Lists & Blocks -->
 			<div class="flex items-center gap-0.5">
@@ -547,7 +557,7 @@
 				</button>
 			</div>
 
-			<div class="toolbar-divider hidden md:block" />
+			<div class="toolbar-divider hidden md:block"></div>
 
 			<!-- Alignment (visible on md+) -->
 			<div class="hidden md:flex items-center gap-0.5">
@@ -580,7 +590,7 @@
 				</button>
 			</div>
 
-			<div class="toolbar-divider hidden sm:block" />
+			<div class="toolbar-divider hidden sm:block"></div>
 
 			<!-- Media & Links -->
 			<div class="hidden sm:flex items-center gap-0.5">
@@ -622,7 +632,7 @@
 			</div>
 
 			<!-- Spacer -->
-			<div class="flex-1 min-w-2" />
+			<div class="flex-1 min-w-2"></div>
 
 			<!-- More tools button (mobile/tablet) -->
 			<button
@@ -656,7 +666,9 @@
 
 		<!-- Expanded tools row (mobile/tablet) -->
 		{#if showMoreTools}
-			<div class="md:hidden flex items-center gap-0.5 px-1.5 py-1.5 border-t border-border/50 bg-muted/30 overflow-x-auto scrollbar-hide">
+			<div
+				class="md:hidden flex items-center gap-0.5 px-1.5 py-1.5 border-t border-border/50 bg-muted/30 overflow-x-auto scrollbar-hide"
+			>
 				<!-- Strikethrough (mobile) -->
 				<button
 					onclick={toggleStrikethrough}
@@ -687,7 +699,7 @@
 					<Type class="w-4 h-4" />
 				</button>
 
-				<div class="toolbar-divider" />
+				<div class="toolbar-divider"></div>
 
 				<!-- Quote & Code (mobile) -->
 				<button
@@ -716,7 +728,7 @@
 					<Minus class="w-4 h-4" />
 				</button>
 
-				<div class="toolbar-divider" />
+				<div class="toolbar-divider"></div>
 
 				<!-- Alignment (mobile/tablet) -->
 				<button
@@ -744,7 +756,7 @@
 					<AlignRight class="w-4 h-4" />
 				</button>
 
-				<div class="toolbar-divider sm:hidden" />
+				<div class="toolbar-divider sm:hidden"></div>
 
 				<!-- Media (mobile) -->
 				<div class="sm:hidden flex items-center gap-0.5">
@@ -757,19 +769,11 @@
 							<Unlink class="w-4 h-4" />
 						</button>
 					{:else}
-						<button
-							onclick={addLink}
-							class="toolbar-btn"
-							aria-label="Add link"
-						>
+						<button onclick={addLink} class="toolbar-btn" aria-label="Add link">
 							<LinkIcon class="w-4 h-4" />
 						</button>
 					{/if}
-					<button
-						onclick={addImage}
-						class="toolbar-btn"
-						aria-label="Add image"
-					>
+					<button onclick={addImage} class="toolbar-btn" aria-label="Add image">
 						<ImageIcon class="w-4 h-4" />
 					</button>
 				</div>
@@ -785,7 +789,9 @@
 			aria-label="AI content generation"
 		>
 			<div class="flex items-start gap-3">
-				<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent shrink-0">
+				<div
+					class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent shrink-0"
+				>
 					<Sparkles class="w-4 h-4" />
 				</div>
 				<div class="flex-1 min-w-0">
@@ -796,7 +802,8 @@
 						AI Writing Assistant
 					</label>
 					<p class="text-xs text-muted-foreground mb-2">
-						Describe what you want to write. Be specific about tone, length, and key points.
+						Describe what you want to write. Be specific about tone, length, and key
+						points.
 					</p>
 					<textarea
 						id="ai-instructions"
@@ -841,10 +848,7 @@
 
 	<!-- Editor Content -->
 	<div class="editor-content flex-1 overflow-y-auto bg-background">
-		<div
-			bind:this={editorElement}
-			class="editor px-4 py-4 sm:px-5 sm:py-5 lg:px-6"
-		></div>
+		<div bind:this={editorElement} class="editor px-4 py-4 sm:px-5 sm:py-5 lg:px-6"></div>
 	</div>
 
 	<!-- Footer Stats Bar -->
@@ -853,18 +857,24 @@
 	>
 		<div class="flex items-center gap-2 sm:gap-3">
 			<span class="font-medium tabular-nums">
-				{wordCount.toLocaleString()} {wordCount === 1 ? 'word' : 'words'}
+				{wordCount.toLocaleString()}
+				{wordCount === 1 ? 'word' : 'words'}
 			</span>
 			<span class="hidden sm:inline text-muted-foreground/60">|</span>
-			<span class="hidden sm:inline tabular-nums">{charCount.toLocaleString()} characters</span>
+			<span class="hidden sm:inline tabular-nums"
+				>{charCount.toLocaleString()} characters</span
+			>
 			{#if props.target_word_count}
 				<span class="hidden md:inline text-muted-foreground/60">|</span>
 				<span class="hidden md:flex items-center gap-1">
 					<span>Target: {(props.target_word_count as number).toLocaleString()}</span>
 					{#if wordCount > 0}
-						{@const progress = Math.round((wordCount / (props.target_word_count as number)) * 100)}
+						{@const progress = Math.round(
+							(wordCount / (props.target_word_count as number)) * 100
+						)}
 						<span
-							class="px-1.5 py-0.5 rounded-full text-[9px] font-medium {progress >= 100
+							class="px-1.5 py-0.5 rounded-full text-[9px] font-medium {progress >=
+							100
 								? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
 								: progress >= 75
 									? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
@@ -877,7 +887,9 @@
 			{/if}
 		</div>
 		{#if propsData.typeKey}
-			<div class="font-mono text-[9px] sm:text-[10px] truncate max-w-[100px] sm:max-w-[200px] opacity-60 bg-muted/50 px-1.5 py-0.5 rounded">
+			<div
+				class="font-mono text-[9px] sm:text-[10px] truncate max-w-[100px] sm:max-w-[200px] opacity-60 bg-muted/50 px-1.5 py-0.5 rounded"
+			>
 				{propsData.typeKey}
 			</div>
 		{/if}

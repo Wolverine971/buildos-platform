@@ -426,6 +426,10 @@ const MAX_SESSION_DURATION_MS = 90_000; // 90 seconds
 | `done`                  | `done`                  | `{ usage?: { total_tokens } }`         |
 | `error`                 | `error`                 | `{ error: string }`                    |
 
+Notes:
+- Plan step failures surface `step.status = failed` plus `step.error` on `step_complete`, and the UI logs the error details in the thinking block and plan visualization.
+- Plan execution failures include the failed step context in the `error` message when available.
+
 ### SSE-Only Events (Passthrough)
 
 These events bypass the mapper and are sent directly:

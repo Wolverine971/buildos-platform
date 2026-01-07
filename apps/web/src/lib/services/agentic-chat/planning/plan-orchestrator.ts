@@ -447,25 +447,28 @@ export class PlanOrchestrator implements BaseService {
 							step
 						);
 
-						return { events: emittedEvents, error: outcomeError, fatalFailure };
+						return { events: emittedEvents, error: outcomeError, fatalFailure, step };
 					})
 				);
 
-				let fatalError: { error?: unknown } | undefined;
+				let fatalError: { error?: unknown; step?: PlanStep } | undefined;
 				for (const outcome of stepOutcomes) {
 					for (const event of outcome.events) {
 						yield event;
 						await callback(event);
 					}
 					if (outcome.fatalFailure && !fatalError) {
-						fatalError = { error: outcome.error };
+						fatalError = { error: outcome.error, step: outcome.step };
 					}
 				}
 
 				if (fatalError) {
 					throw new PlanExecutionError('Critical plan step failed', {
 						plan,
-						error: fatalError.error
+						error: fatalError.error,
+						step: fatalError.step,
+						stepNumber: fatalError.step?.stepNumber,
+						stepDescription: fatalError.step?.description
 					});
 				}
 			}
@@ -502,7 +505,7 @@ export class PlanOrchestrator implements BaseService {
 			// Emit error event
 			const errorEvent: StreamEvent = {
 				type: 'error',
-				error: error instanceof Error ? error.message : 'Plan execution failed'
+				error: this.formatPlanExecutionError(error)
 			};
 			yield errorEvent;
 			await callback(errorEvent);
@@ -1649,6 +1652,71 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		}
 
 		return undefined;
+	}
+
+	private formatPlanExecutionError(error: unknown): string {
+		const fallback = this.extractErrorMessage(error) || 'Plan execution failed';
+		if (!(error instanceof PlanExecutionError)) {
+			return fallback;
+		}
+
+		const details = error.details ?? {};
+		const typedDetails = details as Record<string, any>;
+		const step = typedDetails.step as PlanStep | undefined;
+		const stepNumber =
+			typeof typedDetails.stepNumber === 'number' ? typedDetails.stepNumber : step?.stepNumber;
+		const stepDescription =
+			typeof typedDetails.stepDescription === 'string'
+				? typedDetails.stepDescription
+				: step?.description;
+		const rootError = this.extractErrorMessage(typedDetails.error);
+		const baseMessage = error.message || fallback;
+		const stepLabel =
+			stepNumber !== undefined
+				? `Step ${stepNumber}${stepDescription ? `: ${stepDescription}` : ''}`
+				: undefined;
+
+		if (stepLabel) {
+			const messageWithStep = `${baseMessage} (${stepLabel})`;
+			if (rootError && rootError !== baseMessage) {
+				return `${messageWithStep} - ${rootError}`;
+			}
+			return messageWithStep;
+		}
+
+		if (rootError && rootError !== baseMessage) {
+			return `${baseMessage} - ${rootError}`;
+		}
+
+		return baseMessage || fallback;
+	}
+
+	private extractErrorMessage(error: unknown): string {
+		if (!error) {
+			return '';
+		}
+
+		if (error instanceof Error && error.message) {
+			return error.message;
+		}
+
+		if (typeof error === 'string') {
+			return error;
+		}
+
+		if (typeof error === 'object') {
+			const message = (error as { message?: unknown }).message;
+			if (typeof message === 'string') {
+				return message;
+			}
+			try {
+				return JSON.stringify(error);
+			} catch {
+				return String(error);
+			}
+		}
+
+		return String(error);
 	}
 
 	private inferFieldInfoEntityType(context: ServiceContext): string {

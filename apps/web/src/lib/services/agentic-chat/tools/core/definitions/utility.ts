@@ -47,7 +47,7 @@ Use this when users ask questions like:
 		function: {
 			name: 'web_search',
 			description: `Perform a live web search using the Tavily API for current or external information not present in BuildOS.
-Use when the user asks for recent facts, market research, competitive intel, or requests citations.
+Use this to discover sources or answer broad research questions. If the user provides a specific URL, use web_visit instead.
 Return the concise answer plus the most relevant sources so the assistant can cite URLs in its reply.`,
 			parameters: {
 				type: 'object',
@@ -85,6 +85,49 @@ Return the concise answer plus the most relevant sources so the assistant can ci
 					}
 				},
 				required: ['query']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'web_visit',
+			description: `Fetch and summarize a specific URL.
+Use this when the user provides a direct link or asks to review a known page.
+For discovery or multiple sources, use web_search first.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					url: {
+						type: 'string',
+						description: 'Absolute http/https URL to fetch (required).'
+					},
+					mode: {
+						type: 'string',
+						enum: ['auto', 'reader', 'raw'],
+						description:
+							'Content extraction mode. "auto" uses reader-style extraction for HTML.'
+					},
+					max_chars: {
+						type: 'number',
+						default: 6000,
+						maximum: 12000,
+						description: 'Maximum number of characters to return.'
+					},
+					include_links: {
+						type: 'boolean',
+						description: 'Include a short list of outbound links when available.'
+					},
+					allow_redirects: {
+						type: 'boolean',
+						description: 'Follow redirects up to a fixed cap (default true).'
+					},
+					prefer_language: {
+						type: 'string',
+						description: 'Optional Accept-Language hint (e.g., "en-US").'
+					}
+				},
+				required: ['url']
 			}
 		}
 	},

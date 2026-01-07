@@ -23,6 +23,9 @@
 		"PRIVATE_ANTHROPIC_API_KEY",
 		"PRIVATE_OPENROUTER_API_KEY",
 		"PRIVATE_TAVILY_API_KEY",
+		"WEB_VISIT_TIMEOUT_MS",
+		"WEB_VISIT_MAX_BYTES",
+		"WEB_VISIT_MAX_CHARS",
 		"OPENAI_API_KEY",
 		"ENABLE_STRIPE",
 		"STRIPE_SECRET_KEY",
@@ -50,13 +53,7 @@
 	"tasks": {
 		"build": {
 			"dependsOn": ["^build"],
-			"outputs": [
-				"apps/web/.vercel/**",
-				"apps/web/.svelte-kit/**",
-				"dist/**",
-				"build/**",
-				".tsbuildinfo"
-			],
+			"outputs": [".vercel/**", ".svelte-kit/**", "dist/**", "build/**", ".tsbuildinfo"],
 			"env": [
 				"NODE_ENV",
 				"PUBLIC_SUPABASE_URL",
@@ -78,6 +75,9 @@
 				"PRIVATE_ANTHROPIC_API_KEY",
 				"PRIVATE_OPENROUTER_API_KEY",
 				"PRIVATE_TAVILY_API_KEY",
+				"WEB_VISIT_TIMEOUT_MS",
+				"WEB_VISIT_MAX_BYTES",
+				"WEB_VISIT_MAX_CHARS",
 				"PRIVATE_ENABLE_STRIPE",
 				"PRIVATE_STRIPE_SECRET_KEY",
 				"PUBLIC_STRIPE_PUBLISHABLE_KEY",

@@ -6,8 +6,6 @@ import sanitizeHtml from 'sanitize-html';
 marked.setOptions({
 	breaks: true, // Convert line breaks to <br>
 	gfm: true, // Enable GitHub Flavored Markdown
-	headerIds: false, // Disable header IDs for security
-	mangle: false, // Don't mangle email addresses
 	async: false // Force synchronous operation
 });
 
@@ -75,9 +73,8 @@ export function renderMarkdown(text: string | null | undefined): string {
 	if (!text || typeof text !== 'string') return '';
 
 	try {
-		// Use marked.parse for synchronous operation in newer versions
-		const html = marked(text.trim());
-		// marked.parse(text.trim());
+		// Use marked.parse for synchronous operation (async: false is set globally)
+		const html = marked.parse(text.trim()) as string;
 		return sanitizeHtml(html, sanitizeOptions);
 	} catch (error) {
 		console.error('Error rendering markdown:', error);

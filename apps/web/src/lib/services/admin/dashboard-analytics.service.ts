@@ -4,6 +4,8 @@
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@buildos/shared-types';
 import { StripeService } from '$lib/services/stripe-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
@@ -20,7 +22,7 @@ const DEFAULT_SYSTEM_OVERVIEW = {
 	active_users_30d: 0,
 	total_briefs: 0,
 	avg_brief_length: 0,
-	top_active_users: []
+	top_active_users: [] as Array<{ email: string; last_activity: string | null; activity_count: number }>
 };
 
 const DEFAULT_VISITOR_OVERVIEW = {
@@ -1071,7 +1073,8 @@ export async function getComprehensiveAnalytics(
 }
 
 export async function getErrorSummary(client: TypedSupabaseClient) {
-	const errorLogger = ErrorLoggerService.getInstance(client);
+	// Type assertion needed due to module resolution differences between TypedSupabaseClient and SupabaseClient<Database>
+	const errorLogger = ErrorLoggerService.getInstance(client as SupabaseClient<Database>);
 	const summary = await errorLogger.getErrorSummary();
 	const first = summary?.[0];
 

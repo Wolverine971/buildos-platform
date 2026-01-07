@@ -117,10 +117,12 @@
 	// Count linked entities
 	const linkedCount = $derived.by(() => {
 		if (!linkedEntities) return 0;
-		return (linkedEntities.tasks?.length ?? 0) +
+		return (
+			(linkedEntities.tasks?.length ?? 0) +
 			(linkedEntities.goals?.length ?? 0) +
 			(linkedEntities.plans?.length ?? 0) +
-			(linkedEntities.documents?.length ?? 0);
+			(linkedEntities.documents?.length ?? 0)
+		);
 	});
 
 	// Count tags
@@ -357,10 +359,13 @@
 									day: 'numeric'
 								})}
 								{#if output.updated_at && output.updated_at !== output.created_at}
-									· Updated {new Date(output.updated_at).toLocaleDateString(undefined, {
-										month: 'short',
-										day: 'numeric'
-									})}
+									· Updated {new Date(output.updated_at).toLocaleDateString(
+										undefined,
+										{
+											month: 'short',
+											day: 'numeric'
+										}
+									)}
 								{/if}
 							</p>
 						{/if}
@@ -398,7 +403,10 @@
 			{#if output}
 				<div class="flex items-center gap-2 px-3 pb-2">
 					<div class="flex items-center gap-1.5 flex-1 min-w-0">
-						<label for="output-state-select" class="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0">
+						<label
+							for="output-state-select"
+							class="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0"
+						>
 							State
 						</label>
 						<Select
@@ -415,7 +423,10 @@
 						</Select>
 					</div>
 					<div class="flex items-center gap-1.5 flex-1 min-w-0">
-						<label for="output-type-select" class="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0">
+						<label
+							for="output-type-select"
+							class="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0"
+						>
 							Type
 						</label>
 						<Select
@@ -437,13 +448,18 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="flex flex-col lg:flex-row h-full overflow-hidden" style="max-height: calc(100vh - 180px);">
+		<div
+			class="flex flex-col lg:flex-row h-full overflow-hidden"
+			style="max-height: calc(100vh - 180px);"
+		>
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12 w-full">
 					<div class="animate-pulse text-muted-foreground text-sm">Loading editor…</div>
 				</div>
 			{:else if loadError}
-				<div class="flex flex-col items-center justify-center gap-3 text-center px-6 py-12 w-full">
+				<div
+					class="flex flex-col items-center justify-center gap-3 text-center px-6 py-12 w-full"
+				>
 					<p class="text-muted-foreground text-sm">{loadError}</p>
 					<Button variant="secondary" size="sm" onclick={loadOutput}>Try again</Button>
 				</div>
@@ -464,7 +480,9 @@
 				</div>
 
 				<!-- Details sidebar (desktop) / Collapsible section (mobile) -->
-				<div class="lg:w-64 xl:w-72 border-t lg:border-t-0 lg:border-l border-border bg-muted/20 shrink-0">
+				<div
+					class="lg:w-64 xl:w-72 border-t lg:border-t-0 lg:border-l border-border bg-muted/20 shrink-0"
+				>
 					<!-- Mobile toggle -->
 					<button
 						type="button"
@@ -488,7 +506,11 @@
 					</button>
 
 					<!-- Details content -->
-					<div class="hidden lg:block lg:p-3 lg:space-y-4 {showDetails ? '!block p-3 space-y-3 border-t border-border/50' : ''}">
+					<div
+						class="hidden lg:block lg:p-3 lg:space-y-4 {showDetails
+							? '!block p-3 space-y-3 border-t border-border/50'
+							: ''}"
+					>
 						<!-- Linked Entities -->
 						<LinkedEntities
 							sourceId={outputId}
@@ -507,7 +529,9 @@
 						{/if}
 
 						<!-- Metadata -->
-						<div class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground">
+						<div
+							class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground"
+						>
 							<div class="flex items-center justify-between">
 								<span>Created</span>
 								<span class="font-mono">
@@ -532,7 +556,9 @@
 					</div>
 				</div>
 			{:else}
-				<div class="flex items-center justify-center py-12 text-muted-foreground text-sm w-full">
+				<div
+					class="flex items-center justify-center py-12 text-muted-foreground text-sm w-full"
+				>
 					Unable to load editor for this output.
 				</div>
 			{/if}
@@ -540,7 +566,9 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30">
+		<div
+			class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30"
+		>
 			<!-- Delete -->
 			<Button
 				variant="ghost"

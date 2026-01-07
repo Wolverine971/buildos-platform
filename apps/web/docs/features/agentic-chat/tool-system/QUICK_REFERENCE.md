@@ -8,20 +8,20 @@
 
 ## Tool Count & Categories
 
-Total: **53 tools** (+ 1 virtual tool)
+Total: **54 tools** (+ 1 virtual tool)
 
 | Category                     | Count | Token Cost | Usage              |
 | ---------------------------- | ----- | ---------- | ------------------ |
-| Search (list/search)         | 16    | 350        | Discovery phase    |
+| Search (list/search)         | 17    | 350        | Discovery phase    |
 | Read (detail/relations)      | 12    | 350        | Deep dives         |
 | Write (create/update/delete) | 22    | 400        | Execution phase    |
 | Utility/Knowledge            | 3     | 80-900     | Reference/guidance |
 
 ---
 
-## All 53 Tools by Category
+## All 54 Tools by Category
 
-### Search Tools (16)
+### Search Tools (17)
 
 ```
 list_onto_projects
@@ -40,6 +40,7 @@ list_onto_requirements
 list_task_documents
 search_ontology
 web_search
+web_visit
 ```
 
 ### Read Tools (12)

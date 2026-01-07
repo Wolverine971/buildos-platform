@@ -57,9 +57,9 @@ This file contains:
 
 ### 1.1 Tool Categories & Count
 
-The tool system contains **53 tools** organized into 4 categories:
+The tool system contains **54 tools** organized into 4 categories:
 
-#### 1.1.1 Search Tools (16 tools)
+#### 1.1.1 Search Tools (17 tools)
 
 Tools for discovery and listing across the ontology:
 
@@ -81,6 +81,7 @@ Tools for discovery and listing across the ontology:
 | `list_task_documents`    | List documents linked to a task       | `task_id` (required)                                       |
 | `search_ontology`        | Fuzzy search across ontology entities | `query` (required), `project_id`, `types`, `limit`         |
 | `web_search`             | Web research                          | `query` (required), `max_results`, `search_depth`          |
+| `web_visit`              | Read a specific URL                   | `url` (required), `mode`, `max_chars`                      |
 
 **Token Cost:** Low (350 tokens average per category)
 

@@ -7,6 +7,7 @@
 - Give the agent a safe, single entry point for live web research with citation-ready sources.
 - Keep the orchestration consistent with existing tool patterns (schema, categories, result shape).
 - Minimize token bloat by requesting concise results and trimming snippets before passing to the LLM.
+- Use `web_visit` for deep reads once a specific URL is known.
 
 ## Tool surface (`web_search`)
 
@@ -35,7 +36,8 @@
 
 ## LLM usage guidance (prompt-facing)
 
-- Use `web_search` only when the user requests external/current info or citations beyond BuildOS data.
+- Use `web_search` when the user requests external/current info or citations beyond BuildOS data.
+- If the user provides a specific URL, prefer `web_visit` to fetch and summarize that page.
 - Prefer `search_depth=basic` for quick fact checks; use `advanced` for research/comparisons.
 - Keep `max_results` modest (<=5) unless the user requests breadth; cite URLs in replies.
 - Respect `include_domains`/`exclude_domains` if the user specifies trusted or blocked sources.

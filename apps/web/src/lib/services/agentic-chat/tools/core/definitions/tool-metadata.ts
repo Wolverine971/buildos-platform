@@ -433,6 +433,24 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 60000,
 		category: 'search'
 	},
+	web_visit: {
+		summary: 'Fetch and summarize a specific URL with lightweight extraction.',
+		capabilities: [
+			'Best for reading known pages',
+			'Optional link list for related sources',
+			'Pairs with web_search for discovery'
+		],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
+		timeoutMs: 20000,
+		category: 'read'
+	},
 	get_buildos_overview: {
 		summary:
 			'High-level BuildOS overview covering mission, architecture, and documentation map.',

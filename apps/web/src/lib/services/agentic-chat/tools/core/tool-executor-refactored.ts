@@ -10,7 +10,7 @@
  * - OntologyReadExecutor: list_*, search_*, get_* (17 tools)
  * - OntologyWriteExecutor: create_*, update_*, delete_* (15 tools)
  * - UtilityExecutor: get_field_info, relationships (3 tools)
- * - ExternalExecutor: web_search, buildos docs (3 tools)
+ * - ExternalExecutor: web_search, web_visit, buildos docs (4 tools)
  *
  * Benefits:
  * - Each executor ~200-400 LOC (was 2,075 LOC total)
@@ -38,6 +38,7 @@ import {
 } from './executors';
 
 import type { WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
+import type { WebVisitArgs } from '$lib/services/agentic-chat/tools/webvisit';
 
 /**
  * Chat Tool Executor - Orchestration Layer
@@ -265,6 +266,9 @@ export class ChatToolExecutor {
 
 			case 'web_search':
 				return this.externalExecutor.webSearch(args as WebSearchArgs);
+
+			case 'web_visit':
+				return this.externalExecutor.webVisit(args as WebVisitArgs);
 
 			// ==================
 			// CALENDAR TOOLS

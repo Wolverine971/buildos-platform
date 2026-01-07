@@ -290,7 +290,10 @@
 	let currentAssistantMessageId = $state<string | null>(null);
 	let currentAssistantMessageIndex = $state<number | null>(null);
 	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
-	const pendingToolResults = new Map<string, 'completed' | 'failed'>(); // Tool results that arrive before tool_call
+	const pendingToolResults = new Map<
+		string,
+		{ status: 'completed' | 'failed'; errorMessage?: string }
+	>(); // Tool results that arrive before tool_call
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
 	let composerContainer = $state<HTMLElement | undefined>(undefined);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
@@ -1633,21 +1636,57 @@
 		return [pastVerb, ...rest].join(' ');
 	}
 
+	function formatErrorMessage(error: unknown, maxLength = 160): string | undefined {
+		if (!error) return undefined;
+
+		let message = '';
+		if (typeof error === 'string') {
+			message = error;
+		} else if (error instanceof Error && error.message) {
+			message = error.message;
+		} else if (typeof error === 'object') {
+			const candidate = (error as { message?: unknown }).message;
+			if (typeof candidate === 'string') {
+				message = candidate;
+			} else {
+				try {
+					message = JSON.stringify(error);
+				} catch {
+					message = String(error);
+				}
+			}
+		} else {
+			message = String(error);
+		}
+
+		const trimmed = message.trim();
+		if (!trimmed) return undefined;
+		if (trimmed.length <= maxLength) return trimmed;
+		return `${trimmed.slice(0, Math.max(0, maxLength - 3))}...`;
+	}
+
+	function formatErrorSuffix(errorMessage?: string): string {
+		if (!errorMessage) return '';
+		return ` - ${errorMessage}`;
+	}
+
 	/**
 	 * Formats a tool message based on tool name, arguments, and status
 	 */
 	function formatToolMessage(
 		toolName: string,
 		argsJson: string | Record<string, any>,
-		status: 'pending' | 'completed' | 'failed'
+		status: 'pending' | 'completed' | 'failed',
+		errorMessage?: string
 	): string {
+		const errorSuffix = status === 'failed' ? formatErrorSuffix(errorMessage) : '';
 		const formatter = TOOL_DISPLAY_FORMATTERS[toolName];
 
 		if (!formatter) {
 			// Fallback for unknown tools
 			if (status === 'pending') return `Using tool: ${toolName}`;
 			if (status === 'completed') return `Tool ${toolName} completed`;
-			return `Tool ${toolName} failed`;
+			return `Tool ${toolName} failed${errorSuffix}`;
 		}
 
 		try {
@@ -1661,7 +1700,7 @@
 				} else if (status === 'completed') {
 					return toPastTenseAction(action);
 				} else {
-					return `Failed to ${action.toLowerCase()}`;
+					return `Failed to ${action.toLowerCase()}${errorSuffix}`;
 				}
 			}
 
@@ -1673,7 +1712,7 @@
 				const pastTense = toPastTenseAction(action);
 				return `${pastTense}: "${target}"`;
 			} else {
-				return `Failed to ${action.toLowerCase()}: "${target}"`;
+				return `Failed to ${action.toLowerCase()}: "${target}"${errorSuffix}`;
 			}
 		} catch (e) {
 			if (dev) {
@@ -1732,7 +1771,8 @@
 	function addActivityToThinkingBlock(
 		content: string,
 		activityType: ActivityType,
-		metadata?: Record<string, any>
+		metadata?: Record<string, any>,
+		status?: ActivityEntry['status']
 	) {
 		const blockId = ensureThinkingBlock();
 		const activity: ActivityEntry = {
@@ -1740,7 +1780,8 @@
 			content,
 			timestamp: new Date(),
 			activityType,
-			metadata
+			metadata,
+			status
 		};
 
 		updateThinkingBlock(blockId, (block) => ({
@@ -1788,8 +1829,20 @@
 	}
 
 	// Update plan step status in thinking block
-	function updatePlanStepStatus(stepNumber: number | undefined, status: string) {
+	function updatePlanStepStatus(
+		stepNumber: number | undefined,
+		status: string,
+		stepUpdate?: { error?: string; result?: any }
+	) {
 		if (!stepNumber || !currentPlan || !currentThinkingBlockId) return;
+
+		const stepPatch: Record<string, any> = { status };
+		if (stepUpdate?.error !== undefined) {
+			stepPatch.error = stepUpdate.error;
+		}
+		if (stepUpdate?.result !== undefined) {
+			stepPatch.result = stepUpdate.result;
+		}
 
 		updateThinkingBlock(currentThinkingBlockId, (block) => {
 			// Find the plan activity
@@ -1804,7 +1857,7 @@
 					const updatedPlan = {
 						...existingMetadata.plan,
 						steps: existingMetadata.plan.steps.map((step: any) =>
-							step.stepNumber === stepNumber ? { ...step, status } : step
+							step.stepNumber === stepNumber ? { ...step, ...stepPatch } : step
 						)
 					};
 
@@ -1956,7 +2009,8 @@
 
 	function updateActivityStatus(
 		toolCallId: string,
-		status: 'completed' | 'failed'
+		status: 'completed' | 'failed',
+		errorMessage?: string
 	): ActivityUpdateResult {
 		if (!currentThinkingBlockId) return { matched: false };
 
@@ -1980,7 +2034,7 @@
 			const args = activity.metadata?.arguments || '';
 			foundToolName = toolName;
 			foundArgs = args;
-			const newContent = formatToolMessage(toolName, args, status);
+			const newContent = formatToolMessage(toolName, args, status, errorMessage);
 
 			const updatedActivity: ActivityEntry = {
 				...activity,
@@ -1991,7 +2045,8 @@
 				status,
 				metadata: {
 					...activity.metadata,
-					status
+					status,
+					...(errorMessage ? { error: errorMessage } : {})
 				}
 			};
 
@@ -2657,7 +2712,11 @@
 				if (toolCallId && pendingToolResults.has(toolCallId)) {
 					const pendingStatus = pendingToolResults.get(toolCallId);
 					if (pendingStatus) {
-						updateActivityStatus(toolCallId, pendingStatus);
+						updateActivityStatus(
+							toolCallId,
+							pendingStatus.status,
+							pendingStatus.errorMessage
+						);
 					}
 					pendingToolResults.delete(toolCallId);
 				}
@@ -2669,6 +2728,7 @@
 				const resultToolCallId = toolResult?.toolCallId ?? toolResult?.tool_call_id;
 				const success = toolResult?.success ?? true;
 				const toolError = toolResult?.error;
+				const toolErrorMessage = success ? undefined : formatErrorMessage(toolError);
 				let resolvedToolName: string | undefined;
 				let resolvedArgs: string | Record<string, unknown> | undefined;
 
@@ -2684,11 +2744,15 @@
 					// Update the matching activity status
 					const result = updateActivityStatus(
 						resultToolCallId,
-						success ? 'completed' : 'failed'
+						success ? 'completed' : 'failed',
+						toolErrorMessage
 					);
 
 					if (!result.matched) {
-						pendingToolResults.set(resultToolCallId, success ? 'completed' : 'failed');
+						pendingToolResults.set(resultToolCallId, {
+							status: success ? 'completed' : 'failed',
+							errorMessage: toolErrorMessage
+						});
 					} else if (result.toolName && result.args !== undefined) {
 						// Show toast for data mutation operations
 						showToolResultToast(result.toolName, result.args, success);
@@ -2769,16 +2833,51 @@
 
 			case 'step_complete':
 				// Step completed - update visualization
-				updatePlanStepStatus(event.step?.stepNumber, 'completed');
-				addActivityToThinkingBlock(
-					`Step ${event.step?.stepNumber} complete`,
-					'step_complete',
-					{
-						stepNumber: event.step?.stepNumber,
-						result: event.step?.result,
-						planId: currentPlan?.id
-					}
-				);
+				const stepStatus = event.step?.status ?? 'completed';
+				const stepNumber = event.step?.stepNumber;
+				const stepLabel = stepNumber ? `Step ${stepNumber}` : 'Step';
+				const stepError = event.step?.error;
+				const stepErrorSummary = formatErrorMessage(stepError, 200);
+				updatePlanStepStatus(stepNumber, stepStatus, {
+					error: stepError,
+					result: event.step?.result
+				});
+				if (stepStatus === 'failed') {
+					addActivityToThinkingBlock(
+						`${stepLabel} failed${stepErrorSummary ? `: ${stepErrorSummary}` : ''}`,
+						'step_complete',
+						{
+							stepNumber,
+							error: stepError,
+							planId: currentPlan?.id,
+							status: stepStatus
+						},
+						'failed'
+					);
+				} else if (stepStatus === 'skipped') {
+					addActivityToThinkingBlock(
+						`${stepLabel} skipped${stepErrorSummary ? `: ${stepErrorSummary}` : ''}`,
+						'step_complete',
+						{
+							stepNumber,
+							error: stepError,
+							planId: currentPlan?.id,
+							status: stepStatus
+						}
+					);
+				} else {
+					addActivityToThinkingBlock(
+						`${stepLabel} complete`,
+						'step_complete',
+						{
+							stepNumber,
+							result: event.step?.result,
+							planId: currentPlan?.id,
+							status: stepStatus
+						},
+						'completed'
+					);
+				}
 				break;
 			case 'done':
 				// All done - clear activity and re-enable input
@@ -2803,10 +2902,20 @@
 				break;
 
 			case 'error':
-				error = event.error || 'An error occurred';
+				const streamErrorMessage = event.error || 'An error occurred';
+				error = streamErrorMessage;
 				isStreaming = false;
 				currentActivity = '';
 				agentState = null;
+				if (currentThinkingBlockId) {
+					addActivityToThinkingBlock(
+						streamErrorMessage,
+						'general',
+						{ error: streamErrorMessage },
+						'failed'
+					);
+					finalizeThinkingBlock('error');
+				}
 				break;
 		}
 	}

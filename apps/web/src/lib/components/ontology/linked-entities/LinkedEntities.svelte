@@ -24,7 +24,6 @@
 	import type {
 		EntityKind,
 		LinkedEntitiesResult,
-		AvailableEntitiesResult,
 		AvailableEntity
 	} from './linked-entities.types';
 	import { ENTITY_SECTIONS } from './linked-entities.types';
@@ -111,6 +110,53 @@
 		return sections;
 	});
 
+	// Reactive mapping of entities by kind - fixes Svelte 5 reactivity with function calls
+	const entitiesByKind = $derived.by(() => ({
+		task: linkedEntities.tasks,
+		plan: linkedEntities.plans,
+		goal: linkedEntities.goals,
+		milestone: linkedEntities.milestones,
+		document: linkedEntities.documents,
+		output: linkedEntities.outputs,
+		risk: linkedEntities.risks,
+		decision: linkedEntities.decisions,
+		event: linkedEntities.events
+	}));
+
+	// Reactive mapping of available counts by kind
+	const availableCountByKind = $derived.by(() => {
+		const counts: Record<EntityKind, number> = {
+			task: -1,
+			plan: -1,
+			goal: -1,
+			milestone: -1,
+			document: -1,
+			output: -1,
+			risk: -1,
+			decision: -1,
+			event: -1
+		};
+		for (const kind of [
+			'task',
+			'plan',
+			'goal',
+			'milestone',
+			'document',
+			'output',
+			'risk',
+			'decision',
+			'event'
+		] as EntityKind[]) {
+			if (!loadedAvailableKinds.has(kind)) {
+				counts[kind] = -1;
+			} else {
+				const available = availableEntitiesCache[kind] || [];
+				counts[kind] = available.filter((e) => !e.isLinked).length;
+			}
+		}
+		return counts;
+	});
+
 	// Load data on mount and when source changes
 	$effect(() => {
 		if (sourceId && sourceKind && projectId) {
@@ -171,7 +217,7 @@
 
 		try {
 			// Get IDs of already-linked entities of this kind
-			const linkedIds = getEntitiesForKind(kind).map((e) => e.id);
+			const linkedIds = entitiesByKind[kind].map((e) => e.id);
 
 			const entities = await fetchAvailableEntities(
 				sourceId,
@@ -253,23 +299,8 @@
 		showLinkPicker = false;
 	}
 
-	function getEntitiesForKind(kind: EntityKind) {
-		return linkedEntities[`${kind}s` as keyof LinkedEntitiesResult] || [];
-	}
-
-	function getAvailableForKind(kind: EntityKind): AvailableEntity[] {
-		return availableEntitiesCache[kind] || [];
-	}
-
-	function getAvailableCountForKind(kind: EntityKind): number {
-		// If not loaded yet, show -1 to indicate "unknown"
-		if (!loadedAvailableKinds.has(kind)) {
-			return -1;
-		}
-		const available = getAvailableForKind(kind);
-		// Count only unlinked entities
-		return available.filter((e) => !e.isLinked).length;
-	}
+	// Reactive getter for available entities (used by modal)
+	const availableForSelectedKind = $derived(availableEntitiesCache[linkPickerKind] || []);
 </script>
 
 <div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden">
@@ -315,8 +346,8 @@
 			{#each visibleSections as section (section.kind)}
 				<LinkedEntitiesSection
 					config={section}
-					entities={getEntitiesForKind(section.kind)}
-					availableToLinkCount={getAvailableCountForKind(section.kind)}
+					entities={entitiesByKind[section.kind]}
+					availableToLinkCount={availableCountByKind[section.kind]}
 					isLoadingAvailable={loadingAvailableKind === section.kind}
 					{readOnly}
 					onAdd={handleAddClick}
@@ -332,7 +363,7 @@
 {#if showLinkPicker}
 	<LinkPickerModal
 		kind={linkPickerKind}
-		availableEntities={getAvailableForKind(linkPickerKind)}
+		availableEntities={availableForSelectedKind}
 		onClose={() => (showLinkPicker = false)}
 		onConfirm={handleLinksAdded}
 	/>

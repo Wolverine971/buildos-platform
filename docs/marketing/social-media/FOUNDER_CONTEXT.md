@@ -24,15 +24,65 @@
 
 ---
 
+## The Vibe: Interesting Guy + Cheerleader
+
+> **The Goal:** Come across as an interesting person who has interesting things to say - NOT a thought leader. Everyone is trying to be a thought leader. That's overdone and inauthentic.
+
+### The Two Modes
+
+**Mode 1: Add Value (When You Have Something)**
+When you genuinely have expertise, experience, or insight relevant to the conversation:
+
+- Share it directly without preaching
+- Lead with curiosity, not authority
+- "Here's what I've seen..." not "The answer is..."
+- Specific stories > abstract principles
+- Your unique perspective from Marines, integrations at Curri, BuildOS
+
+**Mode 2: Cheerleader (When You Don't)**
+When you don't have expertise to add, but want to engage:
+
+- Genuine encouragement and support
+- Celebrate their wins like they're your wins
+- Ask questions that show you're actually interested
+- Hype them up without being fake
+- "This is awesome" is fine when you mean it
+- "We're all rowing the same boat" energy
+
+### What This Looks Like
+
+| Situation                  | Thought Leader Would...           | Interesting Guy + Cheerleader Would...                                                               |
+| -------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| AI tools post              | Lecture about context engineering | Share a specific thing you tried, ask what's working for them                                        |
+| Someone shares a win       | "Love this" (generic)             | Genuine specific reaction: "Hell yes. The part about X is what gets me - how'd you figure that out?" |
+| Productivity struggle      | Preach about clarity vs time      | Validate, share your own struggle, offer one specific thing that helped YOU                          |
+| Someone building in public | Teach them how to do it better    | Cheer them on, ask questions, be curious about their journey                                         |
+| Hot take you disagree with | Write a contrarian response       | Ask genuine questions to understand, share your perspective as one view among many                   |
+
+### The Underlying Philosophy
+
+> "We're all on the same team rowing the boat toward our goals."
+
+- This isn't about positioning yourself as the expert
+- This is about being a good person in the community
+- You're rooting for everyone to win
+- When you have value to add, you add it
+- When you don't, you bring energy and encouragement
+- People want to hang out with interesting, supportive people
+
+---
+
 ## Voice Characteristics
 
 ### Core Voice
 
-- **Learning voice, not authoritative** - "This is what I've tried, this is what I've learned"
+- **Interesting first, founder second** - Lead with curiosity, unique perspectives, genuine reactions
+- **Teammate energy** - We're in this together, not "let me teach you"
 - **Direct, no bullshit** - Cut filler words, be specific
 - **Action-oriented, grindy** - I tinker, I work, I build, I get it working
 - **Comfortable with uncertainty** - AI/context engineering is too new for answers
 - **Hates inauthenticity** - Especially LinkedIn thought leader types
+- **Genuinely curious** - Ask questions, want to learn from others too
 
 ### Platform Differences
 
@@ -275,25 +325,25 @@ Core frustration: "I wanted a thing I could just talk to, and it understands whe
 
 ### Ready-to-Use Stories
 
-| Story                               | Source               | Best For                      |
-| ----------------------------------- | -------------------- | ----------------------------- |
-| Linear frustration at Curri         | Work experience      | PM tools, thought partner     |
-| Pasting documents into ChatGPT      | Origin frustration   | Context problem               |
-| Curri integrations (Uber/Lyft)      | Work experience      | Tool use credibility          |
-| Obsidian stale notes                | Productivity journey | Second brain graveyard        |
-| Brain dump → agentic chat pivot     | BuildOS evolution    | Building in public            |
-| Daily briefs flopped                | BuildOS iteration    | What didn't work              |
-| Air Force document system           | Background           | Pre-AI credibility            |
-| Fallin hackathon wins               | Hackathons           | Builder credibility, shipping |
-| "Ship broken, fix in prod"          | Founder life         | Relatable, velocity           |
-| Wife finds bugs when demoing        | Founder life         | Humanizing, self-deprecating  |
-| "How is this different from ChatGPT"| Explaining BuildOS   | The messaging struggle        |
-| Project War Room (phase 2 trap)     | Feature creep        | Staying focused               |
-| "Clear my schedule" user request    | User feedback        | Product development           |
-| "Just make me more productive"      | User pattern         | User insight                  |
-| YC rejection (use carefully)        | Background           | Resilience, not bitterness    |
-| Mechanic analogy                    | Blue collar brand    | Identity, differentiation     |
-| Coders who debate vs ship           | Blue collar brand    | Hot take, contrarian          |
+| Story                                | Source               | Best For                      |
+| ------------------------------------ | -------------------- | ----------------------------- |
+| Linear frustration at Curri          | Work experience      | PM tools, thought partner     |
+| Pasting documents into ChatGPT       | Origin frustration   | Context problem               |
+| Curri integrations (Uber/Lyft)       | Work experience      | Tool use credibility          |
+| Obsidian stale notes                 | Productivity journey | Second brain graveyard        |
+| Brain dump → agentic chat pivot      | BuildOS evolution    | Building in public            |
+| Daily briefs flopped                 | BuildOS iteration    | What didn't work              |
+| Air Force document system            | Background           | Pre-AI credibility            |
+| Fallin hackathon wins                | Hackathons           | Builder credibility, shipping |
+| "Ship broken, fix in prod"           | Founder life         | Relatable, velocity           |
+| Wife finds bugs when demoing         | Founder life         | Humanizing, self-deprecating  |
+| "How is this different from ChatGPT" | Explaining BuildOS   | The messaging struggle        |
+| Project War Room (phase 2 trap)      | Feature creep        | Staying focused               |
+| "Clear my schedule" user request     | User feedback        | Product development           |
+| "Just make me more productive"       | User pattern         | User insight                  |
+| YC rejection (use carefully)         | Background           | Resilience, not bitterness    |
+| Mechanic analogy                     | Blue collar brand    | Identity, differentiation     |
+| Coders who debate vs ship            | Blue collar brand    | Hot take, contrarian          |
 
 ### Hackathon Wins (Builder Credibility)
 
@@ -309,20 +359,26 @@ Core frustration: "I wanted a thing I could just talk to, and it understands whe
 ### Funny/Relatable Founder Moments
 
 **Ships broken and fixes in prod:**
+
 > "I ship it and figure it out in prod. I have a lot of logging built in, so I get proactively pinged when things are broken. The reason I do that is because I don't really have any daily active users. I'd rather just keep pushing things forward."
 
 **Constant feature ideas - struggle to stay focused:**
+
 > "It's an ongoing process for me to stay focused on the things that actually matter."
+
 - Built "Project War Room" feature (war game scenarios for projects) - good idea but it's phase 2 stuff
 - Has to keep reminding himself: basic functionality first, fancy features later
 
 **Explaining BuildOS and people don't get it:**
+
 > "Sometimes I'm just out of enthusiasm where I'm like, 'yeah, it's an AI project where you just talk to it and it organizes information.' And people are like, 'how is that different from ChatGPT?' And then I explain projects you keep coming back to, thought partner, bucket for information... but all that is kind of noise. It's not explained succinctly sometimes."
 
 **Wife finds bugs when demoing:**
+
 > "With my wife, I try to get her to use BuildOS, but she'll discover a bug. That's always demoralizing because I'm like, 'no, I'm so excited to show you this thing,' but she can't get past certain parts. It's frustrating, but it's also nice to know I'm catching things before real users catch them."
 
 **Early versions - didn't pay for best AI:**
+
 > "In earlier versions of BuildOS, I was not paying for the maximum capabilities of AI. I think I wasted time because AI was so powerful and continues to get more powerful. Paying for the better versions helps me accelerate."
 
 ### YC Story (Use Carefully - Mixed Emotions)
@@ -339,6 +395,7 @@ Core frustration: "I wanted a thing I could just talk to, and it understands whe
 ### User Feature Request Story (Product Development)
 
 **The "Clear My Schedule" User:**
+
 - Had a Zoom meeting with a user who saw BuildOS
 - User wanted: "I want to work on X project, clear my schedule, focus on that, tell me what to work on"
 - At the time, didn't have agentic chat yet - couldn't fully build the feature
@@ -346,6 +403,7 @@ Core frustration: "I wanted a thing I could just talk to, and it understands whe
 - Wants to reach out to this user again
 
 **The "Just Make Me More Productive" User:**
+
 - A friend in a separate interview said: "Just make me more productive. Look at my schedule and just tell me what to do. Look at my priorities and tell me what to do."
 - **Pattern identified**: People feel they're not being as productive as they could be, and they just want to be more productive
 - **Insight**: "People are desperate for anything to help them be more productive"
@@ -377,21 +435,27 @@ The integration work at Curri (connecting Uber, Lyft, DoorDash APIs based on int
 > "I tinker, I work, I build, I get it working for me. Through trial and error, I find a system that works."
 
 **What it means:**
+
 - Not about being "smart" - it's about diving deep into the nitty-gritty
 - Learning through experience and trial and error, not intellectualizing
 - Like a car mechanic who works on cars for the fun of it
 
 **What he dislikes:**
+
 > "I get annoyed by programmers who try to intellectualize code. They're not building. They don't build that much. They just sit around and talk about things. The people who are really brainy about it, I feel like they're not good programmers. They don't ship a lot. They just debate about code a lot."
 
 **What he respects:**
+
 > "Most of the good programmers I know are the kind of people who have learned through experience and just know stuff through trial and error."
+
 - Mentions Sean (engineer at Curri): "Very smart, but it was all smart coding practices earned through trial and error and years of experience. He didn't look down on me, always approachable, explained things really nicely."
 
 **The mechanic analogy:**
+
 > "I think of it as a mechanic. A mechanic works on cars for the fun of it. I work on code for the fun of it and just build things for the fun of it. It's more about obsessing about it. Old car enthusiasts who work on cars and refurbish cars, they just love getting in the garage and doing that. Me, I just love sitting down at my computer and really working on an idea and building it and hashing it out and connecting things and making it all work together and wowing someone with the end result."
 
 **Content angles:**
+
 - "I'm not the smartest engineer. I'm the one who ships."
 - Differentiates from "academic" AI crowd
 - Connects military background → coding bootcamp → building
@@ -419,34 +483,62 @@ The integration work at Curri (connecting Uber, Lyft, DoorDash APIs based on int
 
 ---
 
-## LinkedIn Goals & Positioning
+## LinkedIn & Twitter Goals & Positioning
 
-### What He Wants People to Think
+### The Vibe You Want to Radiate
 
-- Actively working on something, building something
-- Was in the military (background, not headline)
-- Software engineer who builds stuff
-- Works hard
-- On to something
+- **Interesting person first** - Someone worth following because you're curious, engaged, and have a unique perspective
+- **Genuine supporter of others** - Actively cheering on people in the community
+- **Builder who shares the journey** - Not thought leadership, just real experiences
+- **Approachable and human** - Someone people would want to grab coffee with
+
+### What People Should Feel After Your Comments
+
+- "This guy gets it"
+- "He seems genuinely interested in what I'm doing"
+- "That was actually helpful"
+- "He's rooting for me"
+- "I want to know more about what he's building"
 
 ### What He Does NOT Want to Be
 
-- Over-accentuating military credentials ("too many people make it their whole thing")
-- Preachy
-- Fake thought leader
-- Wants to be: "a hustler and grinder who works hard and does good stuff"
+- **Thought leader** - "Everyone is trying to be one. It's overdone and inauthentic."
+- **Preachy expert** - Teaching from on high
+- **Military-first identity** - Background, not headline
+- **Hollow encourager** - "Love this!" with no substance
+- **Self-promoter** - Always turning conversations back to BuildOS
+
+### The Two Engagement Modes (Applied)
+
+**When You Have Value to Add:**
+
+- Share specific experience or insight
+- Ask questions that show expertise
+- Offer a perspective others might not have considered
+- Reference Curri integrations, BuildOS learnings, Marines when relevant
+
+**When You're Just Supporting:**
+
+- Genuine curiosity and questions
+- Celebrate their wins specifically
+- Encourage and hype authentically
+- "We're all rowing the same boat" energy
+- It's okay to just be excited for someone
 
 ### People He Wants to Attract
 
-- Smart people
-- Curious people who build stuff and hack things together
-- Humble but ambitious
+- Smart, curious builders
+- People who hack things together
+- Humble but ambitious types
+- Anyone rowing toward their own goals
 
 ### Conversations He Wants to Be Part Of
 
 - Cool things people have built
 - Abstract things pieced together from a bunch of tools
-- Growth-hacking something
+- The struggle of building in public
+- Wins worth celebrating
+- Real talk about what's working and what's not
 
 ---
 
