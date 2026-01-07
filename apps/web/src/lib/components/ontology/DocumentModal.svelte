@@ -1,4 +1,16 @@
 <!-- apps/web/src/lib/components/ontology/DocumentModal.svelte -->
+<!--
+	Document Modal - Markdown Document Editing
+
+	Features:
+	- Two-column layout (metadata sidebar + content)
+	- RichMarkdownEditor for Markdown content
+	- Linked entities and tags management
+	- High information density layout
+	- Inkprint design language
+
+	Documentation: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
+-->
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -18,7 +30,7 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
-	import { FileText, Loader, Save, Trash2, X } from 'lucide-svelte';
+	import { FileText, Loader, Save, Trash2, X, ChevronDown, ChevronUp, Settings2 } from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { Component } from 'svelte';
 
@@ -95,6 +107,20 @@
 		return Array.isArray(tags) && tags.length > 0;
 	});
 
+	// Count linked entities for mobile toggle badge
+	const linkedCount = $derived.by(() => {
+		if (!linkedEntities) return 0;
+		return (linkedEntities.tasks?.length ?? 0) +
+			(linkedEntities.goals?.length ?? 0) +
+			(linkedEntities.plans?.length ?? 0) +
+			(linkedEntities.documents?.length ?? 0);
+	});
+
+	const tagCount = $derived.by(() => {
+		const tags = documentProps?.tags;
+		return Array.isArray(tags) ? tags.length : 0;
+	});
+
 	let lastLoadedId = $state<string | null>(null);
 	const datalistId = `document-type-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -106,6 +132,7 @@
 	let showGoalModal = $state(false);
 	let selectedGoalIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
+	let showMobileMetadata = $state(false);
 
 	// Build focus for chat about this document
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -404,20 +431,20 @@
 	customClasses="lg:!max-w-5xl xl:!max-w-6xl"
 >
 	{#snippet header()}
-		<!-- Ultra-compact Inkprint header -->
+		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 flex items-center justify-between gap-2"
 		>
-			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+			<div class="flex items-center gap-2 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0"
+					class="flex h-8 w-8 items-center justify-center rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0"
 				>
-					<FileText class="w-5 h-5" />
+					<FileText class="w-4 h-4" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<div class="flex items-center gap-2">
 						<h2
-							class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+							class="text-sm font-semibold leading-tight truncate text-foreground"
 						>
 							{title || (isEditing ? 'Document' : 'New Document')}
 						</h2>
@@ -450,13 +477,13 @@
 						type="button"
 						onclick={openChatAbout}
 						disabled={loading || saving}
-						class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+						class="flex h-8 w-8 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 						title="Chat about this document"
 					>
 						<img
 							src="/brain-bolt.png"
-							alt="Chat about this document"
-							class="w-5 h-5 rounded object-cover"
+							alt="Chat"
+							class="w-4 h-4 rounded object-cover"
 						/>
 					</button>
 				{/if}
@@ -465,10 +492,10 @@
 					type="button"
 					onclick={closeModal}
 					disabled={saving}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-8 w-8 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					aria-label="Close modal"
 				>
-					<X class="w-5 h-5" />
+					<X class="w-4 h-4" />
 				</button>
 			</div>
 		</div>
@@ -482,11 +509,11 @@
 				</div>
 			{:else}
 				<form id={documentFormId} class="h-full" onsubmit={handleSave}>
-					<!-- Desktop: Two-column layout | Mobile: Stacked -->
+					<!-- Desktop: Two-column layout | Mobile: Content-first with collapsible metadata -->
 					<div class="flex flex-col lg:flex-row h-full">
-						<!-- Left sidebar (metadata) - Desktop: Fixed width | Mobile: Collapsible top section -->
+						<!-- Left sidebar (metadata) - Desktop only, hidden on mobile -->
 						<div
-							class="lg:w-72 xl:w-80 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-border bg-muted/20"
+							class="hidden lg:block lg:w-72 xl:w-80 flex-shrink-0 lg:border-r border-border bg-muted/20"
 						>
 							<div class="p-3 space-y-3">
 								<!-- Title field -->
@@ -524,7 +551,7 @@
 									/>
 								</FormField>
 
-								<!-- State & Type - Compact inline on mobile -->
+								<!-- State & Type -->
 								<div class="grid grid-cols-2 gap-2">
 									<FormField
 										label="State"
@@ -565,7 +592,7 @@
 									{/if}
 								</div>
 
-								<!-- Type suggestions - compact -->
+								<!-- Type suggestions -->
 								{#if isEditing}
 									<div class="flex flex-wrap gap-1 text-[10px] font-mono">
 										<button
@@ -593,9 +620,9 @@
 									</div>
 								{/if}
 
-								<!-- Linked Entities - Desktop sidebar | Mobile: after content -->
+								<!-- Linked Entities -->
 								{#if isEditing && documentId}
-									<div class="hidden lg:block pt-2 border-t border-border">
+									<div class="pt-2 border-t border-border">
 										<LinkedEntities
 											sourceId={documentId}
 											sourceKind="document"
@@ -614,7 +641,7 @@
 									</div>
 								{/if}
 
-								<!-- Metadata - Compact display -->
+								<!-- Metadata -->
 								{#if isEditing}
 									<div
 										class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground"
@@ -646,8 +673,22 @@
 							</div>
 						</div>
 
-						<!-- Right main area (content) - The star of the show -->
+						<!-- Main content area -->
 						<div class="flex-1 flex flex-col min-w-0">
+							<!-- Mobile: Compact title input at top -->
+							<div class="lg:hidden p-3 pb-0">
+								<TextInput
+									id="document-title-mobile"
+									bind:value={title}
+									required
+									placeholder="Document title..."
+									aria-label="Document title"
+									class="text-base font-semibold border-none bg-transparent p-0 focus:ring-0"
+									disabled={saving}
+								/>
+							</div>
+
+							<!-- Content editor - the main focus -->
 							<div class="p-3 flex-1 flex flex-col">
 								<div class="flex items-center justify-between gap-2 mb-2">
 									<h4
@@ -659,7 +700,7 @@
 										>Markdown supported</span
 									>
 								</div>
-								<div class="flex-1 min-h-[300px] lg:min-h-[400px]">
+								<div class="flex-1 min-h-[250px] sm:min-h-[300px] lg:min-h-[400px]">
 									<RichMarkdownEditor
 										bind:value={body}
 										label="Document content"
@@ -670,26 +711,171 @@
 								</div>
 							</div>
 
-							<!-- Mobile: Linked entities and tags at bottom -->
-							{#if isEditing && documentId}
-								<div
-									class="lg:hidden p-3 border-t border-border bg-muted/20 space-y-3"
+							<!-- Mobile: Collapsible metadata section at bottom -->
+							<div class="lg:hidden border-t border-border bg-muted/20">
+								<!-- Toggle button -->
+								<button
+									type="button"
+									onclick={() => (showMobileMetadata = !showMobileMetadata)}
+									class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
 								>
-									<LinkedEntities
-										sourceId={documentId}
-										sourceKind="document"
-										{projectId}
-										initialLinkedEntities={linkedEntities}
-										onEntityClick={handleLinkedEntityClick}
-										onLinksChanged={handleLinksChanged}
-									/>
-									{#if hasTags}
-										<div class="pt-2 border-t border-border">
-											<TagsDisplay props={documentProps} />
-										</div>
+									<span class="flex items-center gap-2">
+										<Settings2 class="w-4 h-4 text-muted-foreground" />
+										Document Settings
+										{#if linkedCount > 0 || tagCount > 0}
+											<span class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+												{linkedCount + tagCount}
+											</span>
+										{/if}
+									</span>
+									{#if showMobileMetadata}
+										<ChevronUp class="w-4 h-4 text-muted-foreground" />
+									{:else}
+										<ChevronDown class="w-4 h-4 text-muted-foreground" />
 									{/if}
-								</div>
-							{/if}
+								</button>
+
+								<!-- Collapsible content -->
+								{#if showMobileMetadata}
+									<div class="p-3 pt-0 space-y-3 border-t border-border/50">
+										<!-- Description -->
+										<FormField
+											label="Description"
+											labelFor="document-description-mobile"
+											uppercase={false}
+										>
+											<Textarea
+												id="document-description-mobile"
+												bind:value={description}
+												placeholder="Short summary"
+												rows={2}
+												disabled={saving}
+												size="sm"
+											/>
+										</FormField>
+
+										<!-- State & Type -->
+										<div class="grid grid-cols-2 gap-2">
+											<FormField
+												label="State"
+												labelFor="document-state-mobile"
+												uppercase={false}
+											>
+												<Select
+													id="document-state-mobile"
+													bind:value={stateKey}
+													size="sm"
+													class="w-full text-xs"
+												>
+													{#each stateOptions as option}
+														<option value={option.value}>{option.label}</option>
+													{/each}
+												</Select>
+											</FormField>
+											{#if isEditing}
+												<FormField
+													label="Type"
+													labelFor="document-type-input-mobile"
+													uppercase={false}
+													error={typeFieldError}
+												>
+													<input
+														id="document-type-input-mobile"
+														list="{datalistId}-mobile"
+														class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-all"
+														bind:value={typeKey}
+														placeholder="document.type"
+													/>
+													<datalist id="{datalistId}-mobile">
+														{#each docTypeOptions as option}
+															<option value={option}></option>
+														{/each}
+													</datalist>
+												</FormField>
+											{/if}
+										</div>
+
+										<!-- Type suggestions -->
+										{#if isEditing}
+											<div class="flex flex-wrap gap-1 text-[10px] font-mono">
+												<button
+													type="button"
+													class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+													onclick={() => (typeKey = 'document.context.project')}
+												>
+													.context
+												</button>
+												<button
+													type="button"
+													class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+													onclick={() => (typeKey = 'document.spec.product')}
+												>
+													.spec
+												</button>
+												<button
+													type="button"
+													class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+													onclick={() =>
+														(typeKey = 'document.knowledge.research')}
+												>
+													.note
+												</button>
+											</div>
+										{/if}
+
+										<!-- Linked Entities -->
+										{#if isEditing && documentId}
+											<div class="pt-2 border-t border-border">
+												<LinkedEntities
+													sourceId={documentId}
+													sourceKind="document"
+													{projectId}
+													initialLinkedEntities={linkedEntities}
+													onEntityClick={handleLinkedEntityClick}
+													onLinksChanged={handleLinksChanged}
+												/>
+											</div>
+										{/if}
+
+										<!-- Tags Display -->
+										{#if isEditing && hasTags}
+											<div class="pt-2 border-t border-border">
+												<TagsDisplay props={documentProps} />
+											</div>
+										{/if}
+
+										<!-- Metadata -->
+										{#if isEditing}
+											<div
+												class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground"
+											>
+												<div class="flex items-center justify-between">
+													<span>Created</span>
+													<span class="font-mono"
+														>{createdAt
+															? new Date(createdAt).toLocaleDateString()
+															: '—'}</span
+													>
+												</div>
+												<div class="flex items-center justify-between">
+													<span>Updated</span>
+													<span class="font-mono"
+														>{updatedAt
+															? new Date(updatedAt).toLocaleDateString()
+															: '—'}</span
+													>
+												</div>
+												<div class="flex items-start justify-between gap-2">
+													<span class="shrink-0">ID</span>
+													<span class="font-mono truncate text-right"
+														>{documentId}</span
+													>
+												</div>
+											</div>
+										{/if}
+									</div>
+								{/if}
+							</div>
 						</div>
 					</div>
 
@@ -706,7 +892,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+			class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30"
 		>
 			{#if documentId}
 				<Button
@@ -714,7 +900,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={() => (deleteModalOpen = true)}
-					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 py-1 tx tx-grain tx-weak"
+					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
 				>
 					<Trash2 class="w-3.5 h-3.5" />
 					<span class="hidden sm:inline ml-1">Delete</span>
@@ -729,7 +915,7 @@
 					size="sm"
 					onclick={closeModal}
 					disabled={saving}
-					class="text-xs px-3 py-1.5 tx tx-grain tx-weak"
+					class="text-xs h-8"
 				>
 					Cancel
 				</Button>
@@ -740,7 +926,7 @@
 					size="sm"
 					loading={saving}
 					disabled={saving || !title.trim() || (isEditing && !typeKey.trim())}
-					class="text-xs px-3 py-1.5 tx tx-grain tx-weak"
+					class="text-xs h-8 pressable"
 				>
 					<Save class="w-3.5 h-3.5" />
 					<span class="ml-1">{isEditing ? 'Save' : 'Create'}</span>

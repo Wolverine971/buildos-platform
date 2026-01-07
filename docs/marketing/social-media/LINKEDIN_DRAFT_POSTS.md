@@ -308,6 +308,219 @@ Just "piecing it together to make it useful."
 
 ---
 
+## Post 9: The Mechanic (Pillar 4 - Contrarian)
+
+**Recommended:** Week 5, Tuesday
+
+```
+I think of coding like being a mechanic.
+
+A mechanic works on cars for the fun of it.
+I work on code for the fun of it.
+
+Old car enthusiasts who refurbish cars—they just love getting in the garage and doing that.
+
+Me, I just love sitting down at my computer and really working on an idea.
+Building it.
+Hashing it out.
+Connecting things.
+Making it all work together.
+Wowing someone with the end result.
+
+That's blue collar software engineering.
+
+Not intellectualizing code.
+Not debating architecture.
+Just building.
+
+Most of the good programmers I know learned through trial and error.
+They just know stuff through experience.
+
+The programmers who try to intellectualize code?
+They don't ship much. They just debate.
+
+I'd rather be a mechanic than a professor.
+```
+
+**Why this works:**
+
+- Your authentic positioning crystallized
+- Differentiates from "academic" tech crowd
+- Relatable analogy (everyone knows a car guy)
+- Hot take that will generate discussion
+
+---
+
+## Post 10: What I Learned Building in 48 Hours (Pillar 2 - Building in Public)
+
+**Recommended:** Week 5, Thursday
+
+```
+I won a few hackathons for veterans.
+
+Built data ingestion + map visualization. Veteran resources on Mapbox.
+48 hours. Stay up late grinding. Ship something that works.
+
+Those hackathons taught me:
+
+→ First exposure to React
+→ First exposure to SvelteKit
+→ How to ship under pressure
+
+Classic hackathon vibes. Not all-nighters, but late nights grinding.
+
+The pattern: Learn by building, not by studying.
+
+That's still how I build BuildOS.
+Ship it. Fix it in prod. Keep pushing forward.
+
+The best learning happens when you're building something real, with a deadline.
+
+Anyone else learn more from hackathons than from courses?
+```
+
+**Why this works:**
+
+- Builder credibility (you won, not just participated)
+- Learning voice, not preachy
+- Shows pattern of shipping fast
+- Connects to how you build now
+- Ends with engagement question
+
+---
+
+## Post 11: The Real Founder Life (Pillar 2 - Building in Public)
+
+**Recommended:** Week 6, Tuesday
+
+```
+Real founder life:
+
+I ship things broken to prod.
+
+I have a lot of logging built in, so I get proactively pinged when things break.
+Then I fix them.
+
+Why? Because I don't have daily active users yet.
+I'd rather keep pushing forward than perfect something nobody's using.
+
+More real founder life:
+
+My wife tries to use BuildOS.
+She finds bugs.
+Every. Time.
+
+It's demoralizing in the moment. I'm like "no, I'm so excited to show you this!"
+But she can't get past certain parts.
+
+Silver lining: Better she catches it than a real user.
+
+The reality of building something:
+It's not the polished demos you see on LinkedIn.
+It's shipping, breaking, fixing, shipping again.
+
+Anyone else demo to family and have it explode?
+```
+
+**Why this works:**
+
+- Self-deprecating humor builds trust
+- Real vulnerability (wife finding bugs)
+- Shows velocity mindset
+- Relatable to other founders
+- Humanizing content
+
+---
+
+## Post 12: What Users Actually Want (Pillar 3 - AI Productivity)
+
+**Recommended:** Week 6, Thursday
+
+```
+Had a few conversations with users about BuildOS.
+
+Different people. Same request:
+
+"Just make me more productive."
+
+"Look at my schedule and just tell me what to do."
+
+"Clear my schedule, focus on this project, tell me what to work on."
+
+The pattern:
+
+People feel like they're not being as productive as they could be.
+They're desperate for anything that helps.
+
+Not more features.
+Not more settings.
+Not more customization.
+
+Just: "Tell me what to do next."
+
+That's what I'm building toward.
+
+AI that doesn't just organize your stuff.
+AI that knows your context and tells you what matters.
+
+Simple ask. Hard to build.
+```
+
+**Why this works:**
+
+- Real user feedback (not hypothetical)
+- Shows you listen to users
+- Identifies a pattern (insight)
+- Positions BuildOS direction
+- Keeps it focused and simple
+
+---
+
+## Post 13: The Feature Trap (Pillar 2 - Building in Public)
+
+**Recommended:** Week 7, Tuesday
+
+```
+Constant struggle as a solo founder:
+
+Staying focused on what actually matters.
+
+I built a "Project War Room" feature.
+War game scenarios for your projects.
+Walk through different situations.
+
+Good idea?
+Sure.
+
+Right now?
+No.
+
+What matters right now:
+- Basic functionality
+- Organizing your project
+- AI that knows your project and helps you
+
+The fancy stuff is phase 2.
+
+It's an ongoing process for me to stay focused.
+
+I have to keep reminding myself:
+What does the user need TODAY?
+Not what would be cool to build.
+
+Anyone else fight this battle?
+```
+
+**Why this works:**
+
+- Honest about the struggle
+- Shows self-awareness
+- Relatable to other builders
+- Learning voice
+- Opens conversation
+
+---
+
 ## Bonus: Marine Corps Angle (Use Sparingly)
 
 **Save for occasional use - not the main identity**
@@ -357,17 +570,24 @@ Background colors the work. It doesn't define it.
 
 Based on your context, here are more angles to develop:
 
-| Angle                                                    | Story Source         | Post Type           |
-| -------------------------------------------------------- | -------------------- | ------------------- |
-| "I was doing tool use before AI made it trendy"          | Curri integrations   | Credibility         |
-| "AI knows things about you that you don't know it knows" | AI frustration       | Thought leadership  |
-| "Daily briefs flopped - here's what I learned"           | BuildOS iteration    | Vulnerability       |
-| "Focus mode + AI guidance"                               | User feature request | Product development |
-| "MVP isn't the thing anymore"                            | Best advice received | Contrarian          |
-| "Document ingest for Air Force before LLMs"              | Background           | Credibility         |
+| Angle                                                    | Story Source         | Post Type          | Status           |
+| -------------------------------------------------------- | -------------------- | ------------------ | ---------------- |
+| "I was doing tool use before AI made it trendy"          | Curri integrations   | Credibility        | ✅ Post 5        |
+| "AI knows things about you that you don't know it knows" | AI frustration       | Thought leadership | ✅ Post 3        |
+| "Daily briefs flopped - here's what I learned"           | BuildOS iteration    | Vulnerability      | Ready to draft   |
+| "Focus mode + AI guidance"                               | User feature request | Product dev        | ✅ Post 12       |
+| "MVP isn't the thing anymore"                            | Best advice received | Contrarian         | Ready to draft   |
+| "Document ingest for Air Force before LLMs"              | Background           | Credibility        | Ready to draft   |
+| YC rejection - "I didn't get in. Here's what I'm doing." | YC story             | Resilience         | Use carefully    |
+| Sean the engineer - respecting builders over debaters    | Blue collar brand    | Contrarian         | ✅ Post 9        |
+| Hackathon wins at Fallin                                 | Hackathons           | Builder cred       | ✅ Post 10       |
+| Wife finds bugs when demoing                             | Founder life         | Humanizing         | ✅ Post 11       |
+| Project War Room feature trap                            | Feature creep        | Building in public | ✅ Post 13       |
 
 ---
 
 _Created: 2026-01-07_
-_Based on: FOUNDER_CONTEXT.md_
+_Last Updated: 2026-01-07_
+_Based on: FOUNDER_CONTEXT.md (including follow-up interview answers)_
+_Total Posts: 13 (+ 1 bonus Marine Corps post)_
 _Review: Founder approval needed before publishing_

@@ -275,26 +275,80 @@ Core frustration: "I wanted a thing I could just talk to, and it understands whe
 
 ### Ready-to-Use Stories
 
-| Story                             | Source               | Best For                  |
-| --------------------------------- | -------------------- | ------------------------- |
-| Linear frustration at Curri       | Work experience      | PM tools, thought partner |
-| Pasting documents into ChatGPT    | Origin frustration   | Context problem           |
-| Curri integrations (Uber/Lyft)    | Work experience      | Tool use credibility      |
-| Obsidian stale notes              | Productivity journey | Second brain graveyard    |
-| Brain dump → agentic chat pivot   | BuildOS evolution    | Building in public        |
-| Daily briefs flopped              | BuildOS iteration    | What didn't work          |
-| User "focus mode" feature request | User feedback        | Product development       |
-| Air Force document system         | Background           | Pre-AI credibility        |
+| Story                               | Source               | Best For                      |
+| ----------------------------------- | -------------------- | ----------------------------- |
+| Linear frustration at Curri         | Work experience      | PM tools, thought partner     |
+| Pasting documents into ChatGPT      | Origin frustration   | Context problem               |
+| Curri integrations (Uber/Lyft)      | Work experience      | Tool use credibility          |
+| Obsidian stale notes                | Productivity journey | Second brain graveyard        |
+| Brain dump → agentic chat pivot     | BuildOS evolution    | Building in public            |
+| Daily briefs flopped                | BuildOS iteration    | What didn't work              |
+| Air Force document system           | Background           | Pre-AI credibility            |
+| Fallin hackathon wins               | Hackathons           | Builder credibility, shipping |
+| "Ship broken, fix in prod"          | Founder life         | Relatable, velocity           |
+| Wife finds bugs when demoing        | Founder life         | Humanizing, self-deprecating  |
+| "How is this different from ChatGPT"| Explaining BuildOS   | The messaging struggle        |
+| Project War Room (phase 2 trap)     | Feature creep        | Staying focused               |
+| "Clear my schedule" user request    | User feedback        | Product development           |
+| "Just make me more productive"      | User pattern         | User insight                  |
+| YC rejection (use carefully)        | Background           | Resilience, not bitterness    |
+| Mechanic analogy                    | Blue collar brand    | Identity, differentiation     |
+| Coders who debate vs ship           | Blue collar brand    | Hot take, contrarian          |
 
-### Stories Still Needed (Follow-ups)
+### Hackathon Wins (Builder Credibility)
 
-| Topic                        | Status    | Use Case                         |
-| ---------------------------- | --------- | -------------------------------- |
-| Hackathon details            | [PENDING] | Builder credibility              |
-| Blue collar engineering      | [PENDING] | Brand identity                   |
-| Funny/relatable moments      | [PENDING] | Humanizing content               |
-| YC story (optional)          | [PENDING] | Rejection/resilience             |
-| User feature request details | [PENDING] | Product development storytelling |
+- **Fallin Hackathons** (fallin.today) - hackathons for veterans
+- Run by a friend who also went to Sabio coding bootcamp
+- **Won 2-3 times** with his team
+- **What he built**: Data ingestion + map visualization (veteran resources on Mapbox)
+- First got exposed to **React** in one hackathon, **SvelteKit** in another
+- Classic hackathon vibes - stayed up late grinding (not all-nighters)
+- A few years ago
+- **Content angle**: "Here's what I learned building X in 48 hours"
+
+### Funny/Relatable Founder Moments
+
+**Ships broken and fixes in prod:**
+> "I ship it and figure it out in prod. I have a lot of logging built in, so I get proactively pinged when things are broken. The reason I do that is because I don't really have any daily active users. I'd rather just keep pushing things forward."
+
+**Constant feature ideas - struggle to stay focused:**
+> "It's an ongoing process for me to stay focused on the things that actually matter."
+- Built "Project War Room" feature (war game scenarios for projects) - good idea but it's phase 2 stuff
+- Has to keep reminding himself: basic functionality first, fancy features later
+
+**Explaining BuildOS and people don't get it:**
+> "Sometimes I'm just out of enthusiasm where I'm like, 'yeah, it's an AI project where you just talk to it and it organizes information.' And people are like, 'how is that different from ChatGPT?' And then I explain projects you keep coming back to, thought partner, bucket for information... but all that is kind of noise. It's not explained succinctly sometimes."
+
+**Wife finds bugs when demoing:**
+> "With my wife, I try to get her to use BuildOS, but she'll discover a bug. That's always demoralizing because I'm like, 'no, I'm so excited to show you this thing,' but she can't get past certain parts. It's frustrating, but it's also nice to know I'm catching things before real users catch them."
+
+**Early versions - didn't pay for best AI:**
+> "In earlier versions of BuildOS, I was not paying for the maximum capabilities of AI. I think I wasted time because AI was so powerful and continues to get more powerful. Paying for the better versions helps me accelerate."
+
+### YC Story (Use Carefully - Mixed Emotions)
+
+- Applied **twice with NineTakes**, once with **BuildOS**
+- Never got an interview, no feedback
+- Feels like he doesn't have the best credentials - "more of a wildcard"
+- Thinks the idea wasn't differentiated enough or explained well enough
+- **Curri connection**: Previous company was YC-backed, feels he's almost on their level
+- Friend from Curri got into YC - complicated feelings
+- **How to use**: Can share the "I didn't get in" story, but frame as learning/resilience, not bitterness
+- **Quote**: "I don't feel backstabbed. It's just... mixed emotions when I think about Y Combinator."
+
+### User Feature Request Story (Product Development)
+
+**The "Clear My Schedule" User:**
+- Had a Zoom meeting with a user who saw BuildOS
+- User wanted: "I want to work on X project, clear my schedule, focus on that, tell me what to work on"
+- At the time, didn't have agentic chat yet - couldn't fully build the feature
+- Now the agent can do what users ask in that way
+- Wants to reach out to this user again
+
+**The "Just Make Me More Productive" User:**
+- A friend in a separate interview said: "Just make me more productive. Look at my schedule and just tell me what to do. Look at my priorities and tell me what to do."
+- **Pattern identified**: People feel they're not being as productive as they could be, and they just want to be more productive
+- **Insight**: "People are desperate for anything to help them be more productive"
 
 ---
 
@@ -318,13 +372,29 @@ Core frustration: "I wanted a thing I could just talk to, and it understands whe
 
 The integration work at Curri (connecting Uber, Lyft, DoorDash APIs based on intelligent criteria) is essentially what he's now doing with AI tools at BuildOS. He's been doing "agentic tool use" before it was called that.
 
-### "Blue Collar Software Engineering"
+### "Blue Collar Software Engineering" (Core Brand Identity)
 
 > "I tinker, I work, I build, I get it working for me. Through trial and error, I find a system that works."
 
-- Not intellectual with AI - just trying to make it useful
-- Thought partner, clarify thinking
-- "Piecing it together to make it useful" vs "I have the answer"
+**What it means:**
+- Not about being "smart" - it's about diving deep into the nitty-gritty
+- Learning through experience and trial and error, not intellectualizing
+- Like a car mechanic who works on cars for the fun of it
+
+**What he dislikes:**
+> "I get annoyed by programmers who try to intellectualize code. They're not building. They don't build that much. They just sit around and talk about things. The people who are really brainy about it, I feel like they're not good programmers. They don't ship a lot. They just debate about code a lot."
+
+**What he respects:**
+> "Most of the good programmers I know are the kind of people who have learned through experience and just know stuff through trial and error."
+- Mentions Sean (engineer at Curri): "Very smart, but it was all smart coding practices earned through trial and error and years of experience. He didn't look down on me, always approachable, explained things really nicely."
+
+**The mechanic analogy:**
+> "I think of it as a mechanic. A mechanic works on cars for the fun of it. I work on code for the fun of it and just build things for the fun of it. It's more about obsessing about it. Old car enthusiasts who work on cars and refurbish cars, they just love getting in the garage and doing that. Me, I just love sitting down at my computer and really working on an idea and building it and hashing it out and connecting things and making it all work together and wowing someone with the end result."
+
+**Content angles:**
+- "I'm not the smartest engineer. I'm the one who ships."
+- Differentiates from "academic" AI crowd
+- Connects military background → coding bootcamp → building
 
 ---
 

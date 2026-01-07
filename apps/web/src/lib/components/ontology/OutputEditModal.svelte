@@ -1,7 +1,19 @@
 <!-- apps/web/src/lib/components/ontology/OutputEditModal.svelte -->
+<!--
+	Output Edit Modal - Streamlined Document Editing
+
+	Features:
+	- Compact metadata controls in header
+	- DocumentEditor for rich content editing
+	- Collapsible linked entities section on mobile
+	- High information density layout
+	- Inkprint design language
+
+	Documentation: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
+-->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Trash2, Layers, X } from 'lucide-svelte';
+	import { Trash2, Layers, X, ChevronDown, ChevronUp, Link2, Tag } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
@@ -16,7 +28,6 @@
 	import { OUTPUT_STATES } from '$lib/types/onto';
 	import { OUTPUT_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import { toastService } from '$lib/stores/toast.store';
-	import TextInput from '$lib/components/ui/TextInput.svelte';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,24 +66,25 @@
 		type_key: string;
 		description?: string | null;
 		props?: Record<string, unknown> | null;
+		created_at?: string;
+		updated_at?: string;
 	};
 
 	let output = $state<OutputRecord | null>(null);
-	let name = $state('');
-	let description = $state('');
-	let typeKey = $state('output.default');
 	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let isLoading = $state(true);
 	let loadError = $state<string | null>(null);
-	let savingName = $state(false);
 	let savingState = $state(false);
-	let savingDescription = $state(false);
 	let savingTypeKey = $state(false);
 	let deleting = $state(false);
 	let showDeleteConfirm = $state(false);
 	let stateKey = $state('draft');
+	let typeKey = $state('output.default');
 	let previousOutputId = $state<string | null>(null);
 	let hasChanges = $state(false);
+
+	// Mobile UI state
+	let showDetails = $state(false);
 
 	const stateOptions = OUTPUT_STATES.map((state) => ({
 		value: state,
@@ -102,6 +114,21 @@
 		return Array.isArray(tags) && tags.length > 0;
 	});
 
+	// Count linked entities
+	const linkedCount = $derived.by(() => {
+		if (!linkedEntities) return 0;
+		return (linkedEntities.tasks?.length ?? 0) +
+			(linkedEntities.goals?.length ?? 0) +
+			(linkedEntities.plans?.length ?? 0) +
+			(linkedEntities.documents?.length ?? 0);
+	});
+
+	// Count tags
+	const tagCount = $derived.by(() => {
+		const tags = output?.props?.tags;
+		return Array.isArray(tags) ? tags.length : 0;
+	});
+
 	$effect(() => {
 		if (!browser || !outputId) return;
 		if (previousOutputId === outputId) return;
@@ -114,7 +141,6 @@
 			isLoading = true;
 			loadError = null;
 
-			// Use /full endpoint for optimized single-request loading
 			const response = await fetch(`/api/onto/outputs/${outputId}/full`);
 			const payload = await response.json().catch(() => null);
 
@@ -134,14 +160,14 @@
 				state_key: data.state_key ?? 'draft',
 				type_key: data.type_key ?? '',
 				description: data.description ?? '',
-				props: data.props ?? {}
+				props: data.props ?? {},
+				created_at: data.created_at,
+				updated_at: data.updated_at
 			};
 
 			output = normalized;
-			name = normalized.name;
 			stateKey = normalized.state_key;
 			typeKey = normalized.type_key || 'output.default';
-			description = (data.description as string) ?? '';
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load output';
 			loadError = message;
@@ -154,30 +180,6 @@
 	function closeModal() {
 		isOpen = false;
 		onClose();
-	}
-
-	async function handleNameSave() {
-		if (!output || name === output.name) return;
-		try {
-			savingName = true;
-			const response = await fetch(`/api/onto/outputs/${outputId}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ name: name.trim() })
-			});
-			const payload = await response.json().catch(() => null);
-			if (!response.ok) {
-				throw new Error(payload?.error || 'Failed to update name');
-			}
-			output = output ? { ...output, name: name.trim() } : output;
-			toastService.success('Name updated');
-			onUpdated?.();
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update name';
-			toastService.error(message);
-		} finally {
-			savingName = false;
-		}
 	}
 
 	async function handleStateChange(nextState: string) {
@@ -194,12 +196,7 @@
 				throw new Error(payload?.error || 'Failed to update state');
 			}
 			stateKey = nextState;
-			output = output
-				? {
-						...output,
-						state_key: nextState
-					}
-				: output;
+			output = output ? { ...output, state_key: nextState } : output;
 			toastService.success('State updated');
 			onUpdated?.();
 		} catch (error) {
@@ -235,30 +232,6 @@
 		}
 	}
 
-	async function handleDescriptionSave() {
-		if (!output) return;
-		try {
-			savingDescription = true;
-			const response = await fetch(`/api/onto/outputs/${outputId}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ description: description.trim() || null })
-			});
-			const payload = await response.json().catch(() => null);
-			if (!response.ok) {
-				throw new Error(payload?.error || 'Failed to update description');
-			}
-			output = { ...output, description: description.trim() || null };
-			toastService.success('Description saved');
-			onUpdated?.();
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update description';
-			toastService.error(message);
-		} finally {
-			savingDescription = false;
-		}
-	}
-
 	async function handleContentSave(data: {
 		title: string;
 		content: string;
@@ -271,8 +244,7 @@
 				body: JSON.stringify({
 					name: data.title,
 					props: data.props,
-					state_key: stateKey,
-					description: description.trim() || null
+					state_key: stateKey
 				})
 			});
 
@@ -286,8 +258,7 @@
 				? {
 						...output,
 						name: data.title,
-						props: data.props,
-						description: description.trim() || null
+						props: data.props
 					}
 				: output;
 
@@ -333,7 +304,6 @@
 	function closeLinkedEntityModals() {
 		showTaskModal = false;
 		selectedTaskIdForModal = null;
-		// Smart refresh: only reload if links were changed
 		if (hasChanges) {
 			loadOutput();
 			hasChanges = false;
@@ -363,189 +333,163 @@
 	closeOnBackdrop={false}
 	closeOnEscape={!savingState}
 	showCloseButton={false}
+	customClasses="lg:!max-w-5xl"
 >
 	{#snippet header()}
-		<!-- Compact Inkprint header -->
-		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
-		>
-			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
-				>
-					<Layers class="w-5 h-5" />
-				</div>
-				<div class="min-w-0 flex-1">
-					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+		<!-- Compact Inkprint header with inline metadata -->
+		<div class="flex-shrink-0 bg-muted/50 border-b border-border">
+			<!-- Top row: Icon, Title, Actions -->
+			<div class="flex items-center justify-between gap-2 px-3 py-2">
+				<div class="flex items-center gap-2 min-w-0 flex-1">
+					<div
+						class="flex h-8 w-8 items-center justify-center rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
 					>
-						{name || output?.name || 'Output'}
-					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{#if output?.created_at}Created {new Date(
-								output.created_at
-							).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}{#if output?.updated_at && output.updated_at !== output.created_at}
-							· Updated {new Date(output.updated_at).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}
-					</p>
+						<Layers class="w-4 h-4" />
+					</div>
+					<div class="min-w-0 flex-1">
+						<h2 class="text-sm font-semibold leading-tight truncate text-foreground">
+							{output?.name || 'Output'}
+						</h2>
+						{#if output?.created_at}
+							<p class="text-[10px] text-muted-foreground">
+								Created {new Date(output.created_at).toLocaleDateString(undefined, {
+									month: 'short',
+									day: 'numeric'
+								})}
+								{#if output.updated_at && output.updated_at !== output.created_at}
+									· Updated {new Date(output.updated_at).toLocaleDateString(undefined, {
+										month: 'short',
+										day: 'numeric'
+									})}
+								{/if}
+							</p>
+						{/if}
+					</div>
+				</div>
+				<div class="flex items-center gap-1.5 shrink-0">
+					<!-- Chat button -->
+					<button
+						type="button"
+						onclick={openChatAbout}
+						disabled={isLoading || savingState || !output}
+						class="flex h-8 w-8 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+						title="Chat about this output"
+					>
+						<img
+							src="/brain-bolt.png"
+							alt="Chat"
+							class="w-4 h-4 rounded object-cover"
+						/>
+					</button>
+					<!-- Close button -->
+					<button
+						type="button"
+						onclick={closeModal}
+						disabled={savingState}
+						class="flex h-8 w-8 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+						aria-label="Close modal"
+					>
+						<X class="w-4 h-4" />
+					</button>
 				</div>
 			</div>
-			<div class="flex items-center gap-1.5">
-				<!-- Chat about this output button -->
-				<button
-					type="button"
-					onclick={openChatAbout}
-					disabled={isLoading || savingState || !output}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
-					title="Chat about this output"
-				>
-					<img
-						src="/brain-bolt.png"
-						alt="Chat about this output"
-						class="w-5 h-5 rounded object-cover"
-					/>
-				</button>
-				<!-- Close button -->
-				<button
-					type="button"
-					onclick={closeModal}
-					disabled={savingState}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
-					aria-label="Close modal"
-				>
-					<X class="w-5 h-5" />
-				</button>
-			</div>
+
+			<!-- Metadata row: State + Type (compact inline) -->
+			{#if output}
+				<div class="flex items-center gap-2 px-3 pb-2">
+					<div class="flex items-center gap-1.5 flex-1 min-w-0">
+						<label for="output-state-select" class="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0">
+							State
+						</label>
+						<Select
+							id="output-state-select"
+							size="sm"
+							value={stateKey}
+							onchange={(val) => handleStateChange(String(val))}
+							disabled={savingState}
+							class="flex-1 min-w-0 text-xs h-7"
+						>
+							{#each stateOptions as option}
+								<option value={option.value}>{option.label}</option>
+							{/each}
+						</Select>
+					</div>
+					<div class="flex items-center gap-1.5 flex-1 min-w-0">
+						<label for="output-type-select" class="text-[10px] text-muted-foreground uppercase tracking-wide shrink-0">
+							Type
+						</label>
+						<Select
+							id="output-type-select"
+							size="sm"
+							value={typeKey}
+							onchange={(val) => handleTypeKeyChange(String(val))}
+							disabled={savingTypeKey}
+							class="flex-1 min-w-0 text-xs h-7"
+						>
+							{#each OUTPUT_TYPE_KEYS as option}
+								<option value={option.value}>{option.label}</option>
+							{/each}
+						</Select>
+					</div>
+				</div>
+			{/if}
 		</div>
 	{/snippet}
 
 	{#snippet children()}
-		<div class="overflow-y-auto" style="max-height: 70vh;">
+		<div class="flex flex-col lg:flex-row h-full overflow-hidden" style="max-height: calc(100vh - 180px);">
 			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
-					<div class="animate-pulse text-muted-foreground">Loading editor…</div>
+				<div class="flex items-center justify-center py-12 w-full">
+					<div class="animate-pulse text-muted-foreground text-sm">Loading editor…</div>
 				</div>
 			{:else if loadError}
-				<div class="flex flex-col items-center justify-center gap-3 text-center px-6 py-12">
-					<p class="text-muted-foreground">{loadError}</p>
-					<Button variant="secondary" onclick={loadOutput}>Try again</Button>
+				<div class="flex flex-col items-center justify-center gap-3 text-center px-6 py-12 w-full">
+					<p class="text-muted-foreground text-sm">{loadError}</p>
+					<Button variant="secondary" size="sm" onclick={loadOutput}>Try again</Button>
 				</div>
 			{:else if output}
-				<div class="px-4 sm:px-6 py-6">
-					<!-- Output Name Section -->
-					<section
-						class="rounded border border-border bg-muted/30 p-4 sm:p-5 shadow-ink space-y-3 tx tx-grain tx-weak mb-6"
-					>
-						<div class="flex items-center justify-between gap-2">
-							<label
-								for="output-name"
-								class="flex items-center gap-2 text-sm font-medium text-foreground"
-							>
-								<span
-									class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shrink-0"
-								></span>
-								Output Name
-							</label>
-							<Button
-								size="sm"
-								variant="secondary"
-								onclick={handleNameSave}
-								disabled={savingName || name === output.name}
-								loading={savingName}
-							>
-								Save name
-							</Button>
-						</div>
-						<TextInput
-							id="output-name"
-							bind:value={name}
-							placeholder="Enter output name"
-							size="sm"
-							disabled={savingName}
-							class="font-medium"
+				<!-- Main editor area -->
+				<div class="flex-1 overflow-y-auto min-w-0">
+					<div class="p-3">
+						<DocumentEditor
+							outputId={output.id}
+							typeKey={output.type_key}
+							initialContent={(output.props?.content as string) ?? ''}
+							initialTitle={output.name}
+							initialProps={output.props ?? {}}
+							{projectId}
+							onSave={handleContentSave}
 						/>
-					</section>
-
-					<!-- State & Type Grid -->
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-						<!-- State Selector -->
-						<div>
-							<label
-								for="output-state"
-								class="block text-sm font-medium text-foreground mb-2"
-							>
-								State
-							</label>
-							<Select
-								id="output-state"
-								size="sm"
-								value={stateKey}
-								onchange={(val) => handleStateChange(String(val))}
-								disabled={savingState}
-							>
-								{#each stateOptions as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</Select>
-						</div>
-
-						<!-- Type Selector -->
-						<div>
-							<label
-								for="output-type"
-								class="block text-sm font-medium text-foreground mb-2"
-							>
-								Type
-							</label>
-							<Select
-								id="output-type"
-								size="sm"
-								value={typeKey}
-								onchange={(val) => handleTypeKeyChange(String(val))}
-								disabled={savingTypeKey}
-							>
-								{#each OUTPUT_TYPE_KEYS as option}
-									<option value={option.value}>{option.label}</option>
-								{/each}
-							</Select>
-						</div>
 					</div>
+				</div>
 
-					<!-- Description -->
-					<div class="mb-6 space-y-2">
-						<div class="flex items-center justify-between gap-2">
-							<label
-								for="output-description"
-								class="block text-sm font-medium text-foreground"
-							>
-								Description
-							</label>
-							<Button
-								size="sm"
-								variant="secondary"
-								onclick={handleDescriptionSave}
-								disabled={savingDescription}
-								loading={savingDescription}
-							>
-								Save description
-							</Button>
-						</div>
-						<textarea
-							id="output-description"
-							class="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-							rows="3"
-							bind:value={description}
-							placeholder="What does this output cover?"
-						></textarea>
-					</div>
+				<!-- Details sidebar (desktop) / Collapsible section (mobile) -->
+				<div class="lg:w-64 xl:w-72 border-t lg:border-t-0 lg:border-l border-border bg-muted/20 shrink-0">
+					<!-- Mobile toggle -->
+					<button
+						type="button"
+						onclick={() => (showDetails = !showDetails)}
+						class="lg:hidden w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+					>
+						<span class="flex items-center gap-2">
+							<Link2 class="w-4 h-4 text-muted-foreground" />
+							Details & Links
+							{#if linkedCount > 0 || tagCount > 0}
+								<span class="text-xs text-muted-foreground">
+									({linkedCount + tagCount})
+								</span>
+							{/if}
+						</span>
+						{#if showDetails}
+							<ChevronUp class="w-4 h-4 text-muted-foreground" />
+						{:else}
+							<ChevronDown class="w-4 h-4 text-muted-foreground" />
+						{/if}
+					</button>
 
-					<!-- Linked Entities -->
-					<div class="mb-6">
+					<!-- Details content -->
+					<div class="hidden lg:block lg:p-3 lg:space-y-4 {showDetails ? '!block p-3 space-y-3 border-t border-border/50' : ''}">
+						<!-- Linked Entities -->
 						<LinkedEntities
 							sourceId={outputId}
 							sourceKind="output"
@@ -554,56 +498,68 @@
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={handleLinksChanged}
 						/>
-					</div>
 
-					<!-- Tags Display -->
-					{#if hasTags}
-						<div class="mb-6">
-							<TagsDisplay props={output.props} />
+						<!-- Tags Display -->
+						{#if hasTags}
+							<div class="pt-2 border-t border-border">
+								<TagsDisplay props={output.props} />
+							</div>
+						{/if}
+
+						<!-- Metadata -->
+						<div class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground">
+							<div class="flex items-center justify-between">
+								<span>Created</span>
+								<span class="font-mono">
+									{output.created_at
+										? new Date(output.created_at).toLocaleDateString()
+										: '—'}
+								</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span>Updated</span>
+								<span class="font-mono">
+									{output.updated_at
+										? new Date(output.updated_at).toLocaleDateString()
+										: '—'}
+								</span>
+							</div>
+							<div class="flex items-start justify-between gap-2">
+								<span class="shrink-0">ID</span>
+								<span class="font-mono truncate text-right">{outputId}</span>
+							</div>
 						</div>
-					{/if}
-
-					<!-- Document Editor -->
-					<DocumentEditor
-						outputId={output.id}
-						typeKey={output.type_key}
-						initialContent={(output.props?.content as string) ?? ''}
-						initialTitle={output.name}
-						initialProps={output.props ?? {}}
-						{projectId}
-						onSave={handleContentSave}
-					/>
+					</div>
 				</div>
 			{:else}
-				<div class="flex items-center justify-center py-12 text-muted-foreground">
+				<div class="flex items-center justify-center py-12 text-muted-foreground text-sm w-full">
 					Unable to load editor for this output.
 				</div>
 			{/if}
 		</div>
 	{/snippet}
+
 	{#snippet footer()}
-		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
-		>
-			<!-- Danger zone inline on mobile -->
-			<div class="flex items-center gap-1.5 sm:gap-2">
-				<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
-				<Button
-					variant="danger"
-					size="sm"
-					onclick={() => (showDeleteConfirm = true)}
-					class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 tx tx-grain tx-weak"
-				>
-					Delete
-				</Button>
-			</div>
+		<div class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30">
+			<!-- Delete -->
+			<Button
+				variant="ghost"
+				size="sm"
+				onclick={() => (showDeleteConfirm = true)}
+				class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
+			>
+				<Trash2 class="w-3.5 h-3.5" />
+				<span class="hidden sm:inline ml-1">Delete</span>
+			</Button>
+
+			<!-- Close -->
 			<Button
 				type="button"
 				variant="secondary"
 				size="sm"
 				onclick={closeModal}
 				disabled={savingState}
-				class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+				class="text-xs h-8"
 			>
 				Close
 			</Button>
@@ -624,7 +580,7 @@
 >
 	{#snippet content()}
 		<p class="text-sm text-muted-foreground">
-			This removes the text document and any references in the project. This action cannot be
+			This removes the document and any references in the project. This action cannot be
 			undone.
 		</p>
 	{/snippet}
