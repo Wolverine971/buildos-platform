@@ -24,7 +24,9 @@
       "Bash(pnpm run check:*)",
       "Bash(convert:*)",
       "Bash(cwebp:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Skill(twitter-warmup)",
+      "WebFetch(domain:x.com)"
     ],
     "deny": [],
     "ask": []

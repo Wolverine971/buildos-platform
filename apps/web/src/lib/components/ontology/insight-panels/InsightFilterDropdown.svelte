@@ -148,6 +148,7 @@
 				bg-card border border-border rounded-lg shadow-ink-strong
 				tx tx-frame tx-weak"
 			role="menu"
+			tabindex="-1"
 			transition:scale={{ duration: 150, easing: quintOut, start: 0.95 }}
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => {

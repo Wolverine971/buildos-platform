@@ -2,9 +2,10 @@
 
 # LinkedIn Engagement Targets
 
-**Account:** [Your LinkedIn URL]
-**Last Updated:** 2026-01-06
+**Account:** DJ
+**Last Updated:** 2026-01-07
 **Purpose:** People to engage with for BuildOS awareness and personal brand growth
+**Voice Reference:** See `docs/marketing/social-media/FOUNDER_CONTEXT.md`
 
 ---
 
@@ -48,14 +49,15 @@
 | **Jack Butcher**  | Visualize Value          | Design + ideas             | Visual thinking, business     |
 | **Arvid Kahl**    | Bootstrapper             | Indie hackers, authentic   | Building products, audience   |
 
-### ADHD & Neurodivergent Professionals
+### Solo Founders & Indie Hackers
 
-| Name                  | Role                   | Why Engage               | Topics They Cover          |
-| --------------------- | ---------------------- | ------------------------ | -------------------------- |
-| **[Research needed]** | ADHD coach/advocate    | Direct target audience   | ADHD at work, productivity |
-| **[Research needed]** | Neurodivergent founder | Founder-market fit angle | Building with ADHD         |
+| Name                  | Role                     | Why Engage            | Topics They Cover            |
+| --------------------- | ------------------------ | --------------------- | ---------------------------- |
+| **Justin Welsh**      | Solopreneur, creator     | Solo founder audience | Content, building audience   |
+| **[Research needed]** | Solo founder building AI | Similar journey       | Building in public, AI tools |
+| **[Research needed]** | Bootstrapped founder     | Similar journey       | Indie, no-VC path            |
 
-> **Action Item:** Use LinkedIn search to find 5-10 ADHD/neurodivergent advocates who are active on LinkedIn
+> **Action Item:** Use LinkedIn search to find 5-10 solo founders/indie hackers who are active on LinkedIn
 
 ---
 
@@ -117,31 +119,37 @@
 #### When someone posts about AI agents:
 
 ```
-The agents conversation always comes back to context for me. These tools are impressive, but every new session starts from zero. Been thinking about this as "context engineering" vs "agent engineering" — what if the breakthrough is memory, not autonomy?
+What I keep coming back to: these agents are smart but stateless. Every new session starts from zero. I was connecting Uber/Lyft/DoorDash APIs at Curri before "AI tool use" was trendy — the insight was always about selecting the right tool for the context, not throwing everything at the problem. What if the breakthrough is memory, not autonomy?
 ```
 
 #### When someone complains about AI limitations:
 
 ```
-This is the conversation I wish more people were having. The "smart but amnesiac AI" problem is real. I've been building in this space and context/memory feels like the unlock. What have you tried?
+This is the conversation I wish more people were having. I kept pasting the same documents into ChatGPT, over and over. It knows things about me, but I don't know what it knows. Context/memory feels like the unlock. What have you tried?
 ```
 
 #### When someone shares productivity tips:
 
 ```
-Love this. Something I've found works for my ADHD brain — [relevant tip]. The challenge is tools that assume neurotypical executive function. What's your take on designing for scattered minds?
+What I'm finding is that clarity beats time management every time. Most productivity tools slow me down — spending all my time organizing instead of executing. What actually works is something that builds context over time instead of requiring constant maintenance.
 ```
 
 #### When someone shares a founder journey:
 
 ```
-Really appreciate the transparency here. Going through a similar inflection point with BuildOS — [parallel situation]. The [specific thing they mentioned] resonates. How did you ultimately decide?
+Really appreciate the transparency here. Going through similar things with BuildOS — [parallel situation]. Speaking from experience, not authority — this stuff is too new for anyone to have the answers. How did you ultimately decide?
 ```
 
 #### When someone discusses context/memory in AI:
 
 ```
-YES. This is exactly what I'm obsessed with right now. Building context infrastructure at BuildOS and this is the core bet — AI that knows your work beats generic AI every time. What solutions are you seeing emerge?
+This is exactly what I'm building toward. AI is already smart as fuck — but being smart is only one piece. You need frameworks, context. It's like JavaScript — you can code anything, but everyone uses React, Vue, Svelte. Same with AI. What solutions are you seeing?
+```
+
+#### When someone posts about PM/productivity tools:
+
+```
+This hits home. At my last job, my manager wanted Linear kept up to date. My reaction: "Just look at my pull requests." It was helping managers, not helping me. What I actually wanted was a thought partner that updates as I talk to it. How do you think about tools for makers vs managers?
 ```
 
 ### Engagement Rules
@@ -238,6 +246,7 @@ Hi [Name] — came across your work on [topic] and it really resonated with what
 "AI memory" workflow
 "RAG" productivity
 LLM context engineering
+"context engineering"
 ```
 
 **Productivity & Tools:**
@@ -247,15 +256,16 @@ LLM context engineering
 "second brain" AI
 "knowledge management" LLM
 Notion AI alternative
+productivity app frustrated
 ```
 
-**ADHD Professional:**
+**Building in Public / Founders:**
 
 ```
-ADHD executive
-ADHD entrepreneur
-neurodivergent workplace
-ADHD productivity professional
+building in public AI
+solo founder AI
+indie hacker AI tool
+founder journey startup
 ```
 
 ### Hashtags to Monitor
@@ -282,14 +292,14 @@ ADHD productivity professional
 
 ## Research Needed
 
-### Finding ADHD Advocates on LinkedIn
+### Finding Solo Founders Building in Public
 
-LinkedIn's ADHD/neurodivergent professional space is less developed than Twitter. Action items:
+LinkedIn has a growing community of solo founders and indie hackers. Action items:
 
-1. [ ] Search "ADHD coach" on LinkedIn
-2. [ ] Search "neurodivergent at work"
-3. [ ] Find ADHD advocates with 10k+ followers
-4. [ ] Identify ADHD founders sharing their journey
+1. [ ] Search "solo founder" on LinkedIn
+2. [ ] Search "building in public" on LinkedIn
+3. [ ] Find bootstrapped founders with 10k+ followers
+4. [ ] Identify indie hackers sharing their journey
 5. [ ] Add 5-10 to Tier 1 or Tier 2 lists
 
 ### Identifying Context Engineering Voices

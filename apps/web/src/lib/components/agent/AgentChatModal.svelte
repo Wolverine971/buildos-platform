@@ -355,6 +355,8 @@
 	let isLoadingSession = $state(false);
 	let sessionLoadError = $state<string | null>(null);
 	let lastLoadedSessionId = $state<string | null>(null);
+	let sessionLoadRequestId = 0;
+	let sessionLoadController: AbortController | null = null;
 
 	// Helper to check if we're in braindump context
 	const isBraindumpContext = $derived(selectedContextType === 'brain_dump');
@@ -942,6 +944,11 @@
 				lastLoadedSessionId = null; // Reset to allow reloading same session
 				showProjectActionSelector = false;
 				lastPrewarmKey = null;
+				if (sessionLoadController) {
+					sessionLoadController.abort();
+					sessionLoadController = null;
+				}
+				isLoadingSession = false;
 			}
 			return;
 		}
@@ -1004,8 +1011,9 @@
 
 	$effect(() => {
 		if (!browser || !isOpen || !selectedContextType) return;
+		const prewarmSessionId = currentSession?.id ?? initialChatSessionId ?? null;
 		const key = buildPrewarmKey(
-			currentSession?.id ?? null,
+			prewarmSessionId,
 			selectedContextType,
 			selectedEntityId,
 			resolvedProjectFocus
@@ -1015,13 +1023,13 @@
 
 		void (async () => {
 			const session = await prewarmAgentContext({
-				session_id: currentSession?.id,
+				session_id: prewarmSessionId ?? undefined,
 				context_type: selectedContextType,
 				entity_id: selectedEntityId,
 				projectFocus: resolvedProjectFocus
 			});
 
-			if (session && (!currentSession || currentSession.id !== session.id)) {
+			if (session) {
 				currentSession = session;
 				const refreshedKey = buildPrewarmKey(
 					session.id,
@@ -1130,7 +1138,13 @@
 
 	// Load a chat session and restore its messages for resumption
 	async function loadChatSession(sessionId: string) {
-		if (isLoadingSession) return;
+		sessionLoadRequestId += 1;
+		const requestId = sessionLoadRequestId;
+		if (sessionLoadController) {
+			sessionLoadController.abort();
+		}
+		const controller = new AbortController();
+		sessionLoadController = controller;
 
 		isLoadingSession = true;
 		sessionLoadError = null;
@@ -1141,11 +1155,17 @@
 		resetConversation({ preserveContext: false });
 
 		try {
-			const response = await fetch(`/api/chat/sessions/${sessionId}`);
-			const result = await response.json();
+			const response = await fetch(`/api/chat/sessions/${sessionId}`, {
+				signal: controller.signal
+			});
+			const result = await response.json().catch(() => null);
 
-			if (!response.ok || !result.success) {
-				throw new Error(result.error || 'Failed to load chat session');
+			if (requestId !== sessionLoadRequestId) {
+				return;
+			}
+
+			if (!response.ok || !result?.success) {
+				throw new Error(result?.error || 'Failed to load chat session');
 			}
 
 			const { session, messages: loadedMessages, truncated } = result.data;
@@ -1232,11 +1252,17 @@
 			};
 			messages = [...messages, welcomeMessage];
 		} catch (err: any) {
+			if (controller.signal.aborted || requestId !== sessionLoadRequestId) {
+				return;
+			}
 			console.error('Failed to load chat session:', err);
 			sessionLoadError = err.message || 'Failed to load chat session';
 			error = sessionLoadError;
 		} finally {
-			isLoadingSession = false;
+			if (requestId === sessionLoadRequestId) {
+				isLoadingSession = false;
+				sessionLoadController = null;
+			}
 		}
 	}
 
@@ -3058,6 +3084,10 @@
 	}
 
 	onDestroy(() => {
+		if (sessionLoadController) {
+			sessionLoadController.abort();
+			sessionLoadController = null;
+		}
 		finalizeSession('destroy');
 		stopVoiceInput();
 		if (currentStreamController && isStreaming) {

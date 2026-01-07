@@ -122,7 +122,9 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		// Fetch the chat session to verify it exists and get current state
 		const { data: session, error: sessionError } = await supabase
 			.from('chat_sessions')
-			.select('id, title, auto_title, chat_topics, summary, message_count, status')
+			.select(
+				'id, title, auto_title, chat_topics, summary, message_count, status, last_message_at, last_classified_at'
+			)
 			.eq('id', validatedData.sessionId)
 			.eq('user_id', validatedData.userId)
 			.single();
@@ -134,16 +136,38 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		}
 
 		const hasPlaceholderTitle = isPlaceholderTitle(session.title);
-
-		// Skip if already classified (has auto_title, topics, and summary)
-		if (
-			session.auto_title &&
-			session.chat_topics &&
+		const hasClassification =
+			!!session.auto_title &&
+			!!session.chat_topics &&
 			session.chat_topics.length > 0 &&
-			session.summary &&
-			!hasPlaceholderTitle
-		) {
-			console.log(`⏭️  Session ${validatedData.sessionId} already classified, skipping`);
+			!!session.summary;
+		const lastMessageAt = session.last_message_at ? new Date(session.last_message_at) : null;
+		const lastClassifiedAt = session.last_classified_at
+			? new Date(session.last_classified_at)
+			: null;
+		const hasNewMessages =
+			lastMessageAt && lastClassifiedAt ? lastMessageAt > lastClassifiedAt : false;
+
+		// Skip if already classified and no new messages since last classification
+		if (hasClassification && !hasNewMessages) {
+			if (!session.last_classified_at) {
+				const classificationTimestamp = session.last_message_at ?? new Date().toISOString();
+				const { error: stampError } = await supabase
+					.from('chat_sessions')
+					.update({ last_classified_at: classificationTimestamp })
+					.eq('id', validatedData.sessionId);
+
+				if (stampError) {
+					console.warn(
+						`⚠️ Failed to backfill last_classified_at for session ${validatedData.sessionId}:`,
+						stampError.message
+					);
+				}
+			}
+
+			console.log(
+				`⏭️  Session ${validatedData.sessionId} already classified (no new messages), skipping`
+			);
 			await updateJobStatus(job.id, 'completed', 'chat_classification');
 			return { success: true, skipped: true, reason: 'already_classified' };
 		}
@@ -169,10 +193,12 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			const defaultSummary = 'A brief conversation captured for reference.';
 
 			// Update with default values
+			const classificationTimestamp = session.last_message_at ?? new Date().toISOString();
 			const updatePayload: Record<string, any> = {
 				auto_title: 'Quick chat',
 				chat_topics: ['general'],
 				summary: defaultSummary,
+				last_classified_at: classificationTimestamp,
 				updated_at: new Date().toISOString()
 			};
 
@@ -233,11 +259,13 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		console.log(`📝 Summary: ${summary.slice(0, 100)}${summary.length > 100 ? '...' : ''}`);
 
 		// Update the chat session with classification results
+		const classificationTimestamp = session.last_message_at ?? new Date().toISOString();
 		const updatePayload: Record<string, any> = {
 			// Preserve any user-provided title; only set the auto title
 			auto_title: title,
 			chat_topics: topics,
 			summary: summary,
+			last_classified_at: classificationTimestamp,
 			updated_at: new Date().toISOString()
 		};
 

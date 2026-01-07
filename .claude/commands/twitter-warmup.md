@@ -13,13 +13,16 @@ Create a daily engagement doc at:
 
 ### Read These Files (Required)
 
-1. **Voice Reference** (compact):
+1. **Founder Context** (shared across platforms):
+   - `docs/marketing/social-media/FOUNDER_CONTEXT.md`
+
+2. **Voice Reference** (platform-specific):
    - `docs/marketing/social-media/twitter-voice-quick-ref.md`
 
-2. **Engagement Targets** (accounts to scan):
+3. **Engagement Targets** (accounts to scan):
    - `docs/marketing/social-media/twitter-engagement-targets.md`
 
-3. **Search Queries** (for topic searches):
+4. **Search Queries** (for topic searches):
    - `docs/marketing/social-media/twitter-advanced-search-queries.md`
 
 ### Check for Duplicates
@@ -38,6 +41,7 @@ Extract tweet links from previous docs and maintain a "seen" list.
 **Round 1: Tier 1 Accounts (High Priority)**
 Scan these profiles for posts from last 24 hours:
 - @ShaanVP (https://x.com/ShaanVP) - Startup wisdom, My First Million
+- @thesamparr (https://x.com/thesamparr) - My First Million co-host, The Hustle
 - @lennysan (https://x.com/lennysan) - Product leadership
 - @danshipper (https://x.com/danshipper) - AI productivity, Every
 - @levelsio (https://x.com/levelsio) - Indie hacker GOAT
@@ -47,21 +51,41 @@ Scan these profiles for posts from last 24 hours:
 - @simonw (https://x.com/simonw) - Datasette, LLM writing
 - @emollick (https://x.com/emollick) - Wharton, AI applications
 - @hwchase17 (https://x.com/hwchase17) - LangChain, AI agents
+- @karpathy (https://x.com/karpathy) - Context engineering coiner (monitor only, too big)
 
 **Round 3: Tier 2 Accounts (Indie Hackers)**
 - @arvidkahl (https://x.com/arvidkahl) - Zero to Sold
 - @tdinh_me (https://x.com/tdinh_me) - TypingMind
 - @robwalling (https://x.com/robwalling) - MicroConf
 - @csallen (https://x.com/csallen) - Indie Hackers founder
+- @thepatwalls (https://x.com/thepatwalls) - Starter Story
+- @marclou (https://x.com/marclou) - ShipFast, indie maker
+- @dannypostma (https://x.com/dannypostma) - HeadshotPro, AI tools
 
-**Round 4: Tier 2 Accounts (ADHD/Productivity)**
+**Round 4: Tier 2 Accounts (ADHD/Productivity/PKM)**
 - @danidonovan (https://x.com/danidonovan) - ADHD comics
 - @ADHD_Alien (https://x.com/ADHD_Alien) - ADHD Alien Comics
 - @HowtoADHD (https://x.com/HowtoADHD) - ADHD education
+- @womenwithadhd (https://x.com/womenwithadhd) - Women with ADHD community
+- @StructuredSucc (https://x.com/StructuredSucc) - ADHD coaching
 - @fortelabs (https://x.com/fortelabs) - Building a Second Brain
+- @TfTHacker (https://x.com/TfTHacker) - PKM, Obsidian workflows
+- @NicoleVDH (https://x.com/nicolevanderhoeven) - Obsidian tutorials
+- @saboristudio (https://x.com/saboristudio) - Notion templates
 
-**Round 5: Outreach Targets (Relationship Building)**
-These are high-profile accounts you're actively building relationships with. Engage authentically to warm up before direct outreach. See full outreach plans: `/buildos-outreach.md`
+**Round 5: Tier 2 Accounts (Creator Economy / Media)**
+Your people - creators building audiences and businesses around content.
+- @businessbarista (https://x.com/businessbarista) - Alex Lieberman, Morning Brew
+- @gregisenberg (https://x.com/gregisenberg) - Startup Ideas pod, community
+- @thejustinwelsh (https://x.com/thejustinwelsh) - Solopreneur, LinkedIn growth
+- @david_perell (https://x.com/david_perell) - Write of Passage, writing online
+- @jeremygiffon (https://x.com/jeremygiffon) - Business philosophy, investor
+- @stephsmithio (https://x.com/stephsmithio) - a16z, content strategy (want to work with)
+- @lulumeservey (https://x.com/lulumeservey) - PR/comms expert (learning from)
+- @NicoleBehnam (https://x.com/NicoleBehnam) - Creator, authentic voice
+
+**Round 6: Outreach Targets (Relationship Building)**
+These are high-profile accounts you're actively building relationships with. Engage authentically to warm up before direct outreach. See full outreach plans: `docs/marketing/social-media/buildos-outreach.md`
 
 *Productivity/Creator Influencers:*
 - @aliabdaal (https://x.com/aliabdaal) - Productivity YouTuber, Deep Dive podcast
@@ -75,9 +99,10 @@ These are high-profile accounts you're actively building relationships with. Eng
 - @stevenbartlett (https://x.com/stevenbartlett) - Diary of a CEO
 - @GrahamDuncanNYC (https://x.com/GrahamDuncanNYC) - Talent Whisperer, hiring
 - @johncoogan (https://x.com/johncoogan) - TBPN podcast
+- @joseph_tsar_ (https://x.com/joseph_tsar_) - YouTube growth, opinion articulation
 - @TheMafiaAI (https://x.com/TheMafiaAI) - AI app builders
 
-**Round 6: Topic Searches**
+**Round 7: Topic Searches**
 Use Twitter's search (Latest tab) with these queries:
 
 *AI Context & Memory:*
@@ -100,7 +125,7 @@ Use Twitter's search (Latest tab) with these queries:
 - `"building in public" AI -is:retweet lang:en`
 - `indie hacker AI tool -is:retweet lang:en`
 
-**Round 7: Following Feed Discovery (New Accounts)**
+**Round 8: Following Feed Discovery (New Accounts)**
 Navigate to https://x.com/home (Following tab) and scroll through recent posts to discover:
 - Accounts posting relevant content that aren't in Tier 1/2/3 lists
 - People you follow who are actively discussing AI, productivity, ADHD, or building

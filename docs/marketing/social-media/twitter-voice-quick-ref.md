@@ -4,13 +4,14 @@
 
 **Account:** @djwayne3
 **Purpose:** Condensed reference for daily engagement
+**Full Context:** See `docs/marketing/social-media/FOUNDER_CONTEXT.md`
 
 ---
 
 ## Identity
 
-- **Who:** DJ Wayne, solo founder, Marines veteran, ADHD brain
-- **Building:** BuildOS - context infrastructure for AI era / productivity for scattered minds
+- **Who:** DJ, solo founder, Marines veteran (use sparingly), builder
+- **Building:** BuildOS - context infrastructure for AI era / AI-first project organization
 - **Angle:** Context engineering > agent engineering, AI that remembers
 
 ---
@@ -19,7 +20,7 @@
 
 1. **Can I visualize it?** - Specific details, not abstractions
 2. **Can I falsify it?** - Real experience you could defend
-3. **Can nobody else say this?** - Use Marines, solo founder, ADHD
+3. **Can nobody else say this?** - Use Marines (sparingly), solo founder, Curri integrations
 
 ---
 
@@ -37,9 +38,9 @@
 | Pillar                 | Your Angle                                                          |
 | ---------------------- | ------------------------------------------------------------------- |
 | **Context/Memory**     | "AI has amnesia. Context that compounds > intelligence that resets" |
-| **ADHD/Productivity**  | "Complex tools make scattered minds more scattered"                 |
-| **Building in Public** | Marines experience, solo founder journey, real struggles            |
-| **AI Tools**           | Daily Claude Code user, context files, markdown brain               |
+| **Productivity**       | "Clarity > time management. Complex tools slow you down."           |
+| **Building in Public** | Marines (sparingly), solo founder journey, real struggles           |
+| **AI Tools**           | Daily Claude Code user, Curri integrations, context engineering     |
 
 ---
 
@@ -91,23 +92,33 @@
 
 ## Tier 1 Accounts (Engage Every Post)
 
-| Account     | Focus              | Your Angle                              |
-| ----------- | ------------------ | --------------------------------------- |
-| @ShaanVP    | Startup wisdom     | Business/execution, "help billionaire"  |
-| @lennysan   | Product leadership | Product decisions, context engineering  |
-| @danshipper | AI productivity    | Direct competitor space, context/memory |
+| Account     | Focus                     | Your Angle                              |
+| ----------- | ------------------------- | --------------------------------------- |
+| @ShaanVP    | Startup wisdom, MFM       | Business/execution, "help billionaire"  |
+| @thesamparr | MFM co-host, The Hustle   | Business execution, content strategy    |
+| @lennysan   | Product leadership        | Product decisions, context engineering  |
+| @danshipper | AI productivity, Every    | Direct competitor space, context/memory |
+| @levelsio   | Indie hacker GOAT         | Solo founder, revenue transparency      |
+| @swyx       | AI Engineer, Latent Space | Context engineering, AI tools           |
 
 ## Tier 2 Accounts (Engage When Relevant)
 
-| Account      | Focus             |
-| ------------ | ----------------- |
-| @chamath     | Tech takes        |
-| @danidonovan | ADHD comics       |
-| @HowtoADHD   | ADHD productivity |
+| Category              | Accounts                                                        |
+| --------------------- | --------------------------------------------------------------- |
+| **AI/LLM**            | @simonw, @emollick, @hwchase17, @karpathy (monitor)             |
+| **Indie Hackers**     | @arvidkahl, @tdinh_me, @robwalling, @csallen, @thepatwalls      |
+| **ADHD/Productivity** | @danidonovan, @ADHD_Alien, @HowtoADHD, @fortelabs               |
+| **PKM**               | @TfTHacker, @NicoleVDH, @saboristudio                           |
+| **Creator Economy**   | @businessbarista, @gregisenberg, @thejustinwelsh, @david_perell |
+| **Want to Work With** | @stephsmithio, @lulumeservey, @jeremygiffon, @NicoleBehnam      |
+| **Outreach Targets**  | @aliabdaal, @noahkagan, @shl, @FoundersPodcast                  |
 
 ## Tier 3 Accounts (Weekly Check)
 
-@adhd_couple, @stephsmithio, AI tool accounts
+**Big Names:** @chamath, @paulg, @naval, @dhh
+**Tools:** @AnthropicAI, @OpenAI, @NotionHQ, @obsdmd
+**Rising:** @minchoi, @yongfook
+**Outreach:** @tferriss, @lexfridman, @stevenbartlett, @johncoogan, @TheMafiaAI
 
 ## Following Feed (Discovery)
 
@@ -117,6 +128,8 @@ Scan your Following feed to find new accounts worth adding to tiers:
 - 1K-100K followers (engagement sweet spot)
 - Practitioners, not just commentators
 - Consistent posters with good engagement ratios
+
+**Full list:** See `docs/marketing/social-media/twitter-engagement-targets.md`
 
 ---
 

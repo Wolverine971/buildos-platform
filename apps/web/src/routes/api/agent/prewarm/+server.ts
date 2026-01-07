@@ -7,7 +7,7 @@
  */
 
 import type { RequestHandler } from './$types';
-import type { ChatContextType, ProjectFocus } from '@buildos/shared-types';
+import type { ChatContextType, ChatSession, ProjectFocus } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import { ChatContextService } from '$lib/services/chat-context-service';
@@ -73,12 +73,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const normalizedContextType = normalizeContextType(context_type);
 	const sessionManager = createSessionManager(supabase);
 
-	let session: {
-		id: string;
-		agent_metadata: unknown | null;
-		context_type: string;
-		entity_id: string | null;
-	} | null = null;
+	let session: ChatSession | null = null;
 	let createdSession = false;
 
 	const focusProvided = Object.prototype.hasOwnProperty.call(body, 'projectFocus');
@@ -99,12 +94,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				contextType: normalizedContextType,
 				entityId: candidateEntityId
 			});
-			session = {
-				id: created.id,
-				agent_metadata: created.agent_metadata ?? null,
-				context_type: created.context_type,
-				entity_id: created.entity_id ?? null
-			};
+			session = created;
 			createdSession = true;
 		} catch (error) {
 			logger.error('Failed to create session for prewarm', {
@@ -156,12 +146,16 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 	const locationPromise =
 		shouldWarmLocation && !hasFreshLocationCache
-			? new ChatContextService(supabase).loadLocationContext(
-					normalizedContextType,
-					resolvedEntityId,
-					true,
-					userId
-				)
+			? new ChatContextService(supabase)
+					.loadLocationContext(normalizedContextType, resolvedEntityId, true, userId)
+					.catch((error) => {
+						logger.warn('Location context prewarm failed', {
+							error,
+							contextType: normalizedContextType,
+							entityId: resolvedEntityId
+						});
+						return null;
+					})
 			: null;
 
 	const linkedEntitiesPromise =
@@ -171,12 +165,21 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		resolvedFocus.focusType !== 'project-wide' &&
 		resolvedFocus.focusEntityId &&
 		resolvedFocus.focusEntityName
-			? new OntologyContextLoader(supabase, actorId).loadLinkedEntitiesContext(
-					resolvedFocus.focusEntityId,
-					resolvedFocus.focusType,
-					resolvedFocus.focusEntityName,
-					{ maxPerType: 3, includeDescriptions: false }
-				)
+			? new OntologyContextLoader(supabase, actorId)
+					.loadLinkedEntitiesContext(
+						resolvedFocus.focusEntityId,
+						resolvedFocus.focusType,
+						resolvedFocus.focusEntityName,
+						{ maxPerType: 3, includeDescriptions: false }
+					)
+					.catch((error) => {
+						logger.warn('Linked entities prewarm failed', {
+							error,
+							focusType: resolvedFocus.focusType,
+							focusEntityId: resolvedFocus.focusEntityId
+						});
+						return null;
+					})
 			: null;
 
 	const [locationContext, linkedEntitiesContext] = await Promise.all([
@@ -207,11 +210,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 	if (updated) {
 		await sessionManager.updateSessionMetadata(session.id, metadata);
+		session.agent_metadata = metadata as ChatSession['agent_metadata'];
 	}
 
 	return ApiResponse.success({
 		warmed: updated,
-		session: createdSession ? session : undefined,
+		session: session ?? undefined,
 		created: createdSession
 	});
 };

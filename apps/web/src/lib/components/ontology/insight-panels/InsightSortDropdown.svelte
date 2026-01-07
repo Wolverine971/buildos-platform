@@ -129,7 +129,13 @@
 				tx tx-frame tx-weak overflow-hidden"
 			transition:scale={{ duration: 150, easing: quintOut, start: 0.95 }}
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') {
+					isOpen = false;
+				}
+			}}
 			role="listbox"
+			tabindex="-1"
 			aria-label="Sort options"
 		>
 			<div class="py-1">

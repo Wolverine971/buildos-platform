@@ -232,7 +232,6 @@ When someone sees my LinkedIn content, I want them to know that I'm actively wor
 
 63. What would make someone follow you specifically vs. the dozens of other founders posting?
 
-
 What do you know or have experienced that most people in the AI productivity space haven't? Um, I've done Scott Sniper stuff, which is all about planning missions and going on missions and that's intense. I've won a few hackathons, and so I really feel like I know how to build. Um, I think people in AI are just trying to get too intellectual with AI versus me. I'm just trying to leverage AI and make it useful, make it my thought partner, help me help clarify my thinking. So that I can do more rather than figure out this secret answer that no one's thought about. Like, I'm more about piecing it together to make it useful rather than coming at it from a position of I have the answer. Um, what perspective do I bring that's different from others building in the space? I'm more sort of blue collar with software engineering where it's like I tinker, I work, I build, and I get it working for me. And I think through trial and error, I find a system that kind of works. Um, I think people would want to follow me because they're curious about what I'm building and the kind of energy I bring to what I'm building. I don't know, something like that.
 
 ---
@@ -276,7 +275,6 @@ Okay, the biggest myth about productivity is that you're not going to get that m
 77. Anything else that would help me understand your voice and perspective?
 
 no this is good for now
-
 
 ---
 

@@ -1803,6 +1803,7 @@ export type Database = {
           created_at: string | null
           entity_id: string | null
           id: string
+          last_classified_at: string | null
           last_message_at: string | null
           message_count: number | null
           preferences: Json | null
@@ -1826,6 +1827,7 @@ export type Database = {
           created_at?: string | null
           entity_id?: string | null
           id?: string
+          last_classified_at?: string | null
           last_message_at?: string | null
           message_count?: number | null
           preferences?: Json | null
@@ -1849,6 +1851,7 @@ export type Database = {
           created_at?: string | null
           entity_id?: string | null
           id?: string
+          last_classified_at?: string | null
           last_message_at?: string | null
           message_count?: number | null
           preferences?: Json | null

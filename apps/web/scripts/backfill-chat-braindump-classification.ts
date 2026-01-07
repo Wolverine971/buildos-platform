@@ -17,9 +17,9 @@ const WORKER_TOKEN = process.env.PRIVATE_RAILWAY_WORKER_TOKEN;
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const FORCE_DIRECT = process.argv.includes('--direct');
-const MAX_ITEMS = Number.parseInt(getArgValue('--max') ?? process.env.MAX_ITEMS ?? '0', 10);
-const BATCH_SIZE = Number.parseInt(process.env.BATCH_SIZE || '200', 10);
-const CONCURRENCY = Number.parseInt(process.env.CONCURRENCY || '5', 10);
+const MAX_ITEMS = parseNonNegativeInt(getArgValue('--max') ?? process.env.MAX_ITEMS, 0);
+const BATCH_SIZE = parsePositiveInt(process.env.BATCH_SIZE, 200);
+const CONCURRENCY = parsePositiveInt(process.env.CONCURRENCY, 5);
 const ONLY_CHATS = process.argv.includes('--chats-only');
 const ONLY_BRAINDUMPS = process.argv.includes('--braindumps-only');
 
@@ -114,6 +114,18 @@ function getArgValue(flag: string): string | undefined {
 	const index = process.argv.indexOf(flag);
 	if (index === -1) return undefined;
 	return process.argv[index + 1];
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (Number.isFinite(parsed) && parsed > 0) return parsed;
+	return fallback;
+}
+
+function parseNonNegativeInt(value: string | undefined, fallback: number): number {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+	return fallback;
 }
 
 function shouldFallbackToDirect(error: unknown): boolean {

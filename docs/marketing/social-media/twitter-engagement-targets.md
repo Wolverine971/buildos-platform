@@ -17,6 +17,7 @@ Core accounts in your direct space. Reply within 30 mins when they post.
 | Account         | Followers | Focus                                          | Your Angle                             | Link                                |
 | --------------- | --------- | ---------------------------------------------- | -------------------------------------- | ----------------------------------- |
 | **@ShaanVP**    | 500K+     | Startup wisdom, My First Million               | Business execution, building journey   | [Profile](https://x.com/ShaanVP)    |
+| **@thesamparr** | 400K+     | My First Million co-host, The Hustle founder   | Business execution, content strategy   | [Profile](https://x.com/thesamparr) |
 | **@lennysan**   | 600K+     | Product leadership, scaling                    | Product decisions, context engineering | [Profile](https://x.com/lennysan)   |
 | **@danshipper** | 200K+     | AI productivity, Every                         | Direct competitor space, AI memory     | [Profile](https://x.com/danshipper) |
 | **@levelsio**   | 791K      | Indie hacker GOAT, building in public          | Solo founder, revenue transparency     | [Profile](https://x.com/levelsio)   |
@@ -68,6 +69,21 @@ Engage when they post about AI, productivity, ADHD, or building.
 | **@NicoleVDH**    | 50K+      | Obsidian tutorials, PKM workflows    | Digital organization, note systems | [Profile](https://x.com/nicolevanderhoeven) |
 | **@saboristudio** | 30K+      | Notion templates, digital planning   | Organization systems, templates    | [Profile](https://x.com/saboristudio)       |
 
+#### Creator Economy / Media Influencers
+
+People building audiences and businesses around content. Your people.
+
+| Account              | Followers | Focus                                              | Your Angle                              | Link                                     |
+| -------------------- | --------- | -------------------------------------------------- | --------------------------------------- | ---------------------------------------- |
+| **@businessbarista** | 300K+     | Alex Lieberman, Morning Brew founder               | Media building, creator business        | [Profile](https://x.com/businessbarista) |
+| **@gregisenberg**    | 400K+     | Startup Ideas pod, community building              | Business ideas, community-led growth    | [Profile](https://x.com/gregisenberg)    |
+| **@thejustinwelsh**  | 500K+     | Solopreneur, LinkedIn growth, Saturday Solopreneur | Solo founder, content leverage          | [Profile](https://x.com/thejustinwelsh)  |
+| **@david_perell**    | 500K+     | Write of Passage, writing online                   | Writing, thinking, learning in public   | [Profile](https://x.com/david_perell)    |
+| **@jeremygiffon**    | 100K+     | Business philosophy, investor                      | Deep thinking, unconventional wisdom    | [Profile](https://x.com/jeremygiffon)    |
+| **@stephsmithio**    | 100K+     | Career growth, a16z, Doing Content Right           | Content strategy, want to work with her | [Profile](https://x.com/stephsmithio)    |
+| **@lulumeservey**    | 80K+      | PR/comms expert, authenticity                      | Comms strategy, learning from her       | [Profile](https://x.com/lulumeservey)    |
+| **@NicoleBehnam**    | 50K+      | Creator, authentic voice                           | Engaging, awesome human                 | [Profile](https://x.com/NicoleBehnam)    |
+
 #### Productivity/Creator Influencers (Outreach Targets)
 
 These are high-profile accounts you're actively building relationships with. Engage authentically to warm up before outreach.
@@ -107,16 +123,14 @@ Monitor weekly and engage on high-performing posts.
 
 #### Rising Voices to Watch
 
-| Account           | Followers | Focus                     | Link                                  |
-| ----------------- | --------- | ------------------------- | ------------------------------------- |
-| **@stephsmithio** | 100K+     | Career growth, a16z       | [Profile](https://x.com/stephsmithio) |
-| **@lulumeservey** | 80K+      | PR/comms, authenticity    | [Profile](https://x.com/lulumeservey) |
-| **@minchoi**      | 50K+      | AI commentary, tech takes | [Profile](https://x.com/minchoi)      |
-| **@yongfook**     | 40K+      | Bannerbear, SaaS building | [Profile](https://x.com/yongfook)     |
+| Account       | Followers | Focus                     | Link                              |
+| ------------- | --------- | ------------------------- | --------------------------------- |
+| **@minchoi**  | 50K+      | AI commentary, tech takes | [Profile](https://x.com/minchoi)  |
+| **@yongfook** | 40K+      | Bannerbear, SaaS building | [Profile](https://x.com/yongfook) |
 
 #### High-Profile Outreach Targets (Monitor & Engage Strategically)
 
-These are big accounts from your outreach list. Too large for regular engagement, but engage strategically on high-value posts. See full outreach plans: `/buildos-outreach.md`
+These are big accounts from your outreach list. Too large for regular engagement, but engage strategically on high-value posts. See full outreach plans: `docs/marketing/social-media/buildos-outreach.md`
 
 | Account              | Followers | Focus                                    | Outreach Status | Link                                     |
 | -------------------- | --------- | ---------------------------------------- | --------------- | ---------------------------------------- |
@@ -125,7 +139,7 @@ These are big accounts from your outreach list. Too large for regular engagement
 | **@stevenbartlett**  | 2M+       | Diary of a CEO, founder stories          | Planned         | [Profile](https://x.com/stevenbartlett)  |
 | **@GrahamDuncanNYC** | 100K+     | East Rock Capital, "Talent Whisperer"    | Planned         | [Profile](https://x.com/GrahamDuncanNYC) |
 | **@johncoogan**      | 200K+     | TBPN podcast, tech commentary            | Planned         | [Profile](https://x.com/johncoogan)      |
-| **@joseph_tsar_**    | 50K+      | YouTube growth, opinion articulation     | Planned         | [Profile](https://x.com/joseph_tsar_)    |
+| **@joseph*tsar***    | 50K+      | YouTube growth, opinion articulation     | Planned         | [Profile](https://x.com/joseph_tsar_)    |
 | **@TheMafiaAI**      | 20K+      | AI app builders, Twitter Spaces          | Planned         | [Profile](https://x.com/TheMafiaAI)      |
 
 ---

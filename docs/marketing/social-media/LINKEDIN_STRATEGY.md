@@ -26,11 +26,13 @@ LinkedIn differs fundamentally from Twitter/X:
 
 ### Your LinkedIn Positioning
 
-**Primary Identity:** Builder/Founder working deeply with AI agents & context engineering
+**Primary Identity:** Builder/Founder working deeply with AI and context engineering
 
-**Secondary Identity:** Productivity thinker challenging conventional wisdom
+**Secondary Identity:** "Blue collar software engineering" — I tinker, I work, I build, I get it working. Through trial and error, find a system that works.
 
 **Implicit Mission:** Raise curiosity about the problems BuildOS solves (context, memory, AI)
+
+**Voice:** Learning voice, not authoritative. "This is what I've tried, this is what I've learned." AI/context engineering is all so new—speak from experience, not from "I have the answer."
 
 ### The Opportunity
 
@@ -66,36 +68,35 @@ Context Engineer | Building @BuildOS | AI should remember your projects, not sta
 ### About Section (2,600 chars max)
 
 ```markdown
-I've abandoned Notion 6 times. Bought 47 planners. Tried every productivity system.
+At Curri, I was the integrations guy. I hooked up Uber, Lyft, DoorDash APIs—building systems that connected intelligently based on search radius, price, and criteria.
 
-Why? I have ADHD, and traditional tools are designed for brains that don't work like mine.
+I was doing "agentic tool use" before anyone called it that.
 
-Then I went deep into AI—and discovered something nobody was talking about:
+Now I'm building BuildOS.
 
-The problem isn't that AI isn't smart enough.
-The problem is AI has amnesia.
+Here's the problem I kept hitting:
+→ Scattered chats on random topics
+→ Never going back to those chats
+→ ChatGPT knows things about me but I don't know what it knows
+→ Pasting the same documents into every new conversation
 
-Every ChatGPT conversation starts from zero. You explain your project. Your constraints. Your context. Then close the chat and... it's gone.
+AI is already smart as fuck. But being smart is only one piece of the puzzle.
 
-This is insane.
+You need frameworks. You need context.
 
-So I'm building BuildOS—context infrastructure for the AI era.
+It's like JavaScript—you can code anything with it, but everyone uses React, Vue, Svelte. Same with AI. It knows everything, but you need a framework + context for it to give you actionable information.
 
-What does that mean?
-→ Brain dump once, context compounds forever
-→ AI that actually knows YOUR projects
-→ Goals, plans, tasks, documents—all connected
-→ Zoom in to one task, zoom out to see everything
+So I'm building context infrastructure:
+→ Brain dump → AI organizes
+→ Projects with goals, milestones, plans, documents
+→ An AI that actually knows where to look
+→ Keep coming back to the same project and build on it
 
-I write about:
-• Context engineering (why it beats "AI agents")
-• Building in public with ADHD
-• The future of AI + productivity
-• Contrarian takes on productivity culture
+Background: Marine Corps (Scout Sniper), coding bootcamp, built document systems for the Air Force before LLMs existed.
 
-Currently: Deeply down the rabbit hole of making AI actually useful.
+I write from experience, not authority. AI/context engineering is too new for anyone to have the answers. I'm just sharing what I'm learning as I build.
 
-Let's connect if you're thinking about context, AI, or building products for scattered minds.
+Let's connect if you're thinking about context, AI, or building in public.
 ```
 
 ### Featured Section
@@ -134,46 +135,46 @@ Visual showing: `Scattered thoughts → [BuildOS] → Organized context with AI`
 **Example Posts:**
 
 ```
-Everyone's obsessed with AI agents.
+At my last job, my manager wanted Linear kept up to date with progress.
 
-"Let the AI do it for you!"
-"Autonomous workflows!"
-"10x your productivity!"
+My reaction: "Just look at my pull requests. This is such a hassle."
 
-Here's what nobody mentions:
+Linear wasn't helping me with my project.
+It was only helping managers.
 
-These agents are stateless.
+That's when I realized something:
 
-Every time you start a new chat, the AI knows nothing about:
-- Your projects
-- Your constraints
-- Your history
-- Your decisions
+Most project management tools are for managers, not makers.
 
-It's like having a brilliant assistant with total amnesia.
+What I actually wanted:
+→ A thought partner that updates as I talk to it
+→ Something that helps ME think, not just reports up
+→ Context that builds over time
 
-Context engineering > agent engineering.
+That's what I'm building at BuildOS.
 
-AI that remembers beats AI that does.
-
-(Building this at BuildOS)
+(If you've ever felt like PM tools slow you down more than help, I'd love to hear your story)
 ```
 
 ```
-I've been building with AI for 2 years.
+MCPs and tool use are hot right now.
 
-Here's what I wish someone told me day 1:
+Here's what I'm learning:
 
-The context window isn't a limitation.
-It's the entire game.
+You're not going to throw all the tools at AI and have it do a great job.
+You need to give it the specific tools for the job.
+Otherwise, the rest is noise.
 
-What you feed AI matters more than which model you use.
+I was connecting Uber, Lyft, DoorDash APIs at Curri.
+Algorithm searched drivers based on search radius, price, time spent searching.
+If criteria not met → fall back to next option.
 
-Structured context + GPT-4 beats unstructured prompts + any model.
+This is "intelligent tool use"—and I was doing it before AI made it trendy.
 
-This is context engineering.
+The insight: It's not about how many tools you have.
+It's about selecting the right tool for the context.
 
-And almost nobody talks about it.
+Same applies to AI agents.
 ```
 
 ### Pillar 2: Founder Journey / Building in Public (30%)
@@ -198,45 +199,49 @@ And almost nobody talks about it.
 **Example Posts:**
 
 ```
-Last month I almost pivoted BuildOS.
+Here's what I was wrong about when building BuildOS:
 
-A VC said: "AI agents are hot. You should build agents."
+I loved the brain dump feature.
+Users could just dump thoughts, AI would organize them.
 
-I said: "We're building context infrastructure."
+But I should have gotten to agentic chat sooner.
 
-They said: "Nobody searches for that."
+Brain dumping is great—but the agent should talk back.
+The agent knows shit too.
 
-Here's why I didn't pivot:
+The pivot: Not just projects/tasks/calendars.
+Projects with defined goals, documents, milestones, plans.
 
-Every AI agent product I've tried has the same problem.
-Smart AI. Zero memory.
+The system should help you get to the end state:
+"Here's the goal. Here are milestones. Here's the plan. Here are tasks. Go step by step."
 
-Agents don't fix the fundamental issue:
-AI doesn't know YOUR work.
+Speaking from experience, not authority here. This stuff is too new.
 
-So I'm betting on context.
-
-Maybe I'm wrong. But I'd rather build what I believe in than chase what's hot.
-
-Anyone else choosing the contrarian path?
+What are you learning as you build?
 ```
 
 ```
-Revenue update: $2,847 MRR
+What keeps me up at night:
 
-What's working:
-→ Users who try brain dump → 80% retention
-→ Daily brief feature → most requested
-→ "It finally remembers" → top feedback theme
+"Is BuildOS solving a real problem?"
 
-What's hard:
-→ Explaining "context infrastructure" (it's abstract)
-→ Competing with "AI agents" SEO
-→ Getting people to trust a new category
+It's solving it for me.
+But explaining it to others is hard.
+Differentiating from ChatGPT and Claude is hard.
 
-Lesson: The best product in the world doesn't matter if you can't explain it in 10 seconds.
+What I love about it:
+It's building context. That part is really powerful.
 
-Working on that.
+~70 signups. Few beta users. No active users yet.
+
+I'm not pretending this is a rocketship.
+I'm sharing the grind.
+
+There's going to be a lot of trial and error.
+Set yourself up for maximum iteration.
+Talk to users sooner rather than later.
+
+Anyone else in the "it works for me but how do I explain it?" phase?
 ```
 
 ### Pillar 3: AI + Productivity Insights (20%)
@@ -260,45 +265,50 @@ Working on that.
 **Example Posts:**
 
 ```
-The best AI prompt I've ever written wasn't clever.
+The context problem nobody talks about:
 
-It was context.
+I kept pasting documents into ChatGPT.
+Same context. Different chats.
+Over and over.
 
-Here's what I included:
-→ Who I am and what I'm working on
-→ My constraints and preferences
-→ What I've already tried
-→ The specific outcome I need
-→ Examples of good/bad outputs
+ChatGPT knows about me.
+But I don't know what it knows.
 
-The AI's response? Better than any "prompt engineering" trick.
+I wanted transparency:
+"What does it know about me? Let me fill in the gaps."
 
-Context >> clever prompts.
+I wanted a system that knows where to look.
 
-This is true for every AI tool.
-More context = better outputs.
+This is context engineering.
 
-But nobody wants to re-type their context every conversation.
+It's not about prompts.
+It's about: How do you pull in relevant information strategically?
+With all the data possible, what's actually relevant to what you're trying to do?
 
-(That's what I'm solving.)
+If you want the AI agent to be good, you've got to give it the right context.
+
+That's the core insight.
 ```
 
 ```
-5 things I do every morning that actually work for my ADHD brain:
+People are focused on tools.
 
-1. Brain dump for 60 seconds (no structure, just words)
-2. Look at ONE thing to do first (not the whole list)
-3. Tell AI what I'm working on (context first)
-4. Set a 25-minute timer (not goals, just time)
-5. Forgive yesterday (it's gone)
+They should be focused on building context about the user and their goals.
 
-Notice what's missing:
-- Perfect morning routine
-- Elaborate system setup
-- Notion template organization
-- Goal visualization
+Context engineering = the information relevant to the task at hand.
 
-ADHD brains need momentum, not perfection.
+It's not "feed AI everything."
+It's "feed AI what matters for THIS moment."
+
+You don't get more productive by budgeting time better.
+You get more productive by getting clarity.
+
+People are already doing their best.
+They just need more clarity to be more productive.
+
+If you get people thinking clearly, they'll be more productive.
+
+That's the bet I'm making with BuildOS.
 ```
 
 ### Pillar 4: Contrarian Takes / Industry Commentary (15%)
@@ -322,48 +332,52 @@ ADHD brains need momentum, not perfection.
 **Example Posts:**
 
 ```
-Unpopular opinion:
+Biggest productivity myth:
 
-AI agents are the new blockchain.
+"Timeboxing makes you more productive."
 
-Everyone's building them.
-VCs are funding them.
-Nobody's actually using them.
+No. Clarity of thought makes you more productive.
 
-Why?
+Biggest AI myth:
 
-Agents have a context problem.
-They're smart but have amnesia.
+"Being smart/knowledge acquisition is the thing."
 
-In 3 years, we'll talk about "AI agents" like we talk about "web3 productivity tools" today.
+No. Systems and context around AI make it powerful.
 
-What will remain?
-Context. Memory. Personalization.
+Most productivity tools and project management apps slow you down.
+You spend all your time organizing information and not executing.
 
-AI that knows YOUR work beats AI that does generic work.
+I tinker. I work. I build. I get it working for me.
+Through trial and error, I find a system that works.
 
-Fight me in the comments.
+Blue collar software engineering.
+
+Not "I have the answer."
+Just "piecing it together to make it useful."
 ```
 
 ```
-Productivity advice I've stopped following:
+Your second brain is a graveyard.
 
-❌ "Eat the frog first" (my frog changes hourly)
-❌ "Time block everything" (my brain laughs)
-❌ "Use ONE tool consistently" (I need flexibility)
-❌ "Review your goals daily" (executive dysfunction says no)
-❌ "Morning routine" (every day is different)
+I have tons of stale notes in Obsidian.
+Static. High maintenance to organize.
+Never going back to them.
 
-What actually works:
+Same problem with Apple Notes.
+Tons of notes. No organization.
 
-✅ Capture thoughts the moment they appear
-✅ Let AI handle structure
-✅ One next step, not ten
-✅ Progress over perfection
-✅ Build systems for YOUR brain
+Notion? Too complicated.
+Moleskines? Physical, no AI.
 
-Productivity culture is optimized for neurotypical brains.
-Most of us don't have those.
+Here's what I actually wanted:
+
+A thing I could just talk to.
+And it understands where I'm coming from.
+
+Not a database I have to maintain.
+A conversation I keep coming back to.
+
+That's the difference.
 ```
 
 ---
@@ -375,22 +389,23 @@ Most of us don't have those.
 **Tier 1 - Engage Daily (Comment on most posts)**
 
 - AI/ML thought leaders (actively posting about agents, context, productivity)
-- Founder accounts in adjacent spaces (productivity, AI tools, ADHD)
+- Founder accounts in adjacent spaces (productivity, AI tools, knowledge management)
 - VCs discussing AI trends
 - People actively building in public
+- Other solo founders shipping fast
 
 **Tier 2 - Engage 2-3x/week**
 
 - Productivity thought leaders
 - Tech executives discussing AI adoption
-- ADHD/neurodivergent professionals
 - People complaining about AI limitations
+- Indie hackers and builders
 
 **Tier 3 - Engage weekly**
 
 - General startup community
 - Product managers discussing AI features
-- Enterprise AI accounts
+- Knowledge management / PKM community
 
 ### Engagement Rules
 
@@ -576,22 +591,26 @@ Write 4-6 posts at once, schedule throughout the week. This helps maintain:
 ### Week 1
 
 **Post 1 (Pillar 1 - Context Engineering):**
-Topic: "AI agents vs context engineering—why I'm betting on context"
-Hook: "Everyone's obsessed with AI agents. Here's what nobody mentions:"
+Topic: "Project management tools are for managers, not makers"
+Hook: "At my last job, my manager wanted Linear kept up to date with progress."
+Source: Curri/Linear frustration story
 
 **Post 2 (Pillar 2 - Building in Public):**
-Topic: "Why I didn't pivot when a VC said to"
-Hook: "Last month I almost pivoted BuildOS."
+Topic: "What I was wrong about when building BuildOS"
+Hook: "Here's what I was wrong about when building BuildOS:"
+Source: Brain dump → agentic chat pivot story
 
 ### Week 2
 
 **Post 3 (Pillar 3 - AI Productivity):**
-Topic: "The best AI prompt I've ever written"
-Hook: "The best AI prompt I've ever written wasn't clever. It was context."
+Topic: "The context problem nobody talks about"
+Hook: "I kept pasting documents into ChatGPT. Same context. Different chats."
+Source: Origin frustration story
 
 **Post 4 (Pillar 4 - Contrarian):**
-Topic: "Productivity advice I've stopped following"
-Hook: "Productivity advice I've stopped following: [list]"
+Topic: "Your second brain is a graveyard"
+Hook: "I have tons of stale notes in Obsidian."
+Source: Productivity tool journey
 
 ---
 
@@ -604,7 +623,7 @@ Hook: "Productivity advice I've stopped following: [list]"
 | Core message     | Same            | Same                  |
 | Personality      | Same            | Same                  |
 | Content depth    | Short, punchy   | Longer, more nuanced  |
-| Audience focus   | ADHD community  | Tech professionals    |
+| Audience focus   | Indie hackers   | Tech professionals    |
 | Engagement style | Quick, frequent | Thoughtful, strategic |
 | Product mentions | More casual     | More implicit         |
 
@@ -613,7 +632,7 @@ Hook: "Productivity advice I've stopped following: [list]"
 - Don't directly cross-post (different formats)
 - Same ideas can be expanded for LinkedIn
 - Link between platforms in bio, not posts
-- Keep Twitter for ADHD community, LinkedIn for professional positioning
+- Keep Twitter for quick takes, LinkedIn for deeper professional positioning
 
 ---
 

@@ -30,7 +30,9 @@ export const POST: RequestHandler = async ({
 
 	const { data: session, error: sessionError } = await supabase
 		.from('chat_sessions')
-		.select('id, user_id, message_count, context_type, entity_id')
+		.select(
+			'id, user_id, message_count, context_type, entity_id, last_message_at, last_classified_at, auto_title, chat_topics, summary'
+		)
 		.eq('id', sessionId)
 		.eq('user_id', user.id)
 		.single();
@@ -65,7 +67,41 @@ export const POST: RequestHandler = async ({
 	}
 
 	const messageCount = session.message_count ?? 0;
+	const lastMessageAt = session.last_message_at ? new Date(session.last_message_at) : null;
+	const lastClassifiedAt = session.last_classified_at
+		? new Date(session.last_classified_at)
+		: null;
+	const hasClassification =
+		!!session.auto_title &&
+		!!session.summary &&
+		Array.isArray(session.chat_topics) &&
+		session.chat_topics.length > 0;
+
+	let shouldQueueClassification = false;
+
 	if (messageCount > 1) {
+		if (lastClassifiedAt && lastMessageAt) {
+			shouldQueueClassification = lastMessageAt > lastClassifiedAt;
+		} else if (!lastClassifiedAt && !hasClassification) {
+			shouldQueueClassification = true;
+		} else if (!lastClassifiedAt && hasClassification) {
+			const classificationTimestamp = session.last_message_at ?? new Date().toISOString();
+			const { error: stampError } = await supabase
+				.from('chat_sessions')
+				.update({ last_classified_at: classificationTimestamp })
+				.eq('id', sessionId)
+				.eq('user_id', user.id);
+
+			if (stampError) {
+				console.warn(
+					`[Chat Close] Failed to backfill last_classified_at for session ${sessionId}:`,
+					stampError.message
+				);
+			}
+		}
+	}
+
+	if (shouldQueueClassification) {
 		try {
 			await queueChatSessionClassification({ sessionId, userId: user.id });
 		} catch (err) {
@@ -75,6 +111,6 @@ export const POST: RequestHandler = async ({
 
 	return ApiResponse.success({
 		updated: Object.keys(updates).length > 0,
-		classificationQueued: messageCount > 1
+		classificationQueued: shouldQueueClassification
 	});
 };
