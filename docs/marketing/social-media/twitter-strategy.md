@@ -278,6 +278,98 @@ More casual, behind-the-scenes, or community engagement
 
 ---
 
+## Reply & Engagement Voice (Updated Jan 2026)
+
+This section captures the authentic DJ voice for replies - learned from real engagement, not theory.
+
+### Core Philosophy
+
+**Be an insider sharing what's working, not a guru dispensing wisdom.**
+
+You're in the trenches building with AI daily. You see what smart people are doing. Share that perspective directly without the preachy setup.
+
+### The 3 Rules (Every Reply Must Pass)
+
+1. **Can I visualize it?** - Use specific details, not abstract concepts
+2. **Can I falsify it?** - Is this your real experience? Could you defend it if challenged?
+3. **Can nobody else say this?** - Use your marines background, solo founder journey, ADHD brain
+
+### Voice Principles
+
+- Lowercase casual. perfect grammar not required.
+- Short punchy sentences. fragments fine.
+- Start with observation or reaction, not "I think..."
+- Be direct. cut filler words.
+- Longer replies are fine when you have real substance.
+
+### How to Plug BuildOS
+
+**Be self-aware about it.** Don't sneak it in. Call it out.
+
+✅ Good:
+
+- "**shameless plug incoming** - this is literally why i built build-os"
+- "**shameless plug:** this is why i built build-os 😅"
+- "a good place to do this is in build-os 😉"
+
+❌ Bad:
+
+- "this is why i'm building context infrastructure..." (sounds like thought leader speak)
+- "your projects deserve to be remembered" (preachy, vague)
+- Sneaking it in hoping people don't notice
+
+### How to State Insights
+
+**Lead with what smart people are already doing.** Position yourself as an insider observer, not a teacher.
+
+✅ Good:
+
+- "everyone across the board, if they are smart, is creating context by creating a ton of markdown files..."
+- "this is exactly the pattern. everyone figures this out eventually..."
+- "been building with claude code daily for 6 months. the pattern is clear..."
+
+❌ Bad:
+
+- "here's what's actually expensive..." (preachy setup)
+- "this is why i'm obsessed with X over Y" (generic thought leader phrase)
+- "the bottleneck isn't intelligence. it's memory." (sounds like a LinkedIn post)
+
+### Playful Language
+
+Use casual, vivid language when it fits. Makes you sound human, not like a content machine.
+
+- "slurping up all that yummy slack context"
+- "way too long to figure this out"
+- "going for help billionaire status over here"
+
+### Engaging Big Accounts
+
+When replying to people like Shaan, Lenny, etc:
+
+1. **Reference their content** - Show you actually follow them (pinned tweets, past themes)
+2. **Ask direct questions** - "who should i be trying to impress with build-os.com?"
+3. **Tie to their frameworks** - Use their language/concepts back at them
+4. **Be cheeky, not sycophantic** - No "love this" or "great insight"
+
+**Example (Shaan reply using his "Help Billionaire" concept):**
+
+> ok but who should i be trying to impress?
+>
+> building build-os.com for scattered ADHD brains. going for "help billionaire" status over here.
+>
+> who's the right audience to care about?
+
+### What NOT to Do
+
+- Open with "love this" or "this resonated"
+- Say "great post!" or generic praise
+- Use phrases like "obsessed with X over Y"
+- Sound preachy or lecture-y
+- Hedge with "I think..." or "in my experience..."
+- Write something that could've been written by anyone
+
+---
+
 ## Key Metrics to Track
 
 - Mentions of "home base" in replies

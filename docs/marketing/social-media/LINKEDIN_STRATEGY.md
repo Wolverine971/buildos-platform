@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/LINKEDIN_STRATEGY.md -->
+
 # BuildOS LinkedIn Strategy
 
 > **Purpose:** Position DJ as a thought leader in context engineering and AI productivity while building awareness for BuildOS

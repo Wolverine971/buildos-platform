@@ -721,7 +721,8 @@ export class SmartLLMService {
 
 		// Add model routing if multiple models provided
 		if (params.models && params.models.length > 1) {
-			body.models = params.models;
+			const routingModels = [...new Set([params.model, ...params.models])].slice(0, 3);
+			body.models = routingModels;
 			body.route = params.route || 'fallback';
 		}
 

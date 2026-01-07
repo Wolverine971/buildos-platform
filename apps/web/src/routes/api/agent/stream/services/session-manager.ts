@@ -106,6 +106,18 @@ export class SessionManager {
 	}
 
 	/**
+	 * Create a new chat session explicitly.
+	 * Used for prewarming before the first message.
+	 */
+	async createSession(params: {
+		userId: string;
+		contextType: ChatContextType;
+		entityId?: string;
+	}): Promise<ChatSession> {
+		return this.createChatSession(params);
+	}
+
+	/**
 	 * Resolve and update project focus.
 	 * Handles focus comparison and metadata updates.
 	 *

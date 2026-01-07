@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/linkedin-search-discovery.md -->
+
 # LinkedIn Search & Discovery Strategy
 
 **Last Updated:** 2026-01-06

@@ -69,35 +69,80 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	const { session_id, context_type, entity_id, projectFocus } = body;
-	if (!session_id) {
-		return ApiResponse.success({ warmed: false, reason: 'no_session' });
-	}
 
 	const normalizedContextType = normalizeContextType(context_type);
 	const sessionManager = createSessionManager(supabase);
 
-	const { data: session, error: sessionError } = await supabase
-		.from('chat_sessions')
-		.select('id, agent_metadata, context_type, entity_id')
-		.eq('id', session_id)
-		.eq('user_id', userId)
-		.single();
+	let session: {
+		id: string;
+		agent_metadata: unknown | null;
+		context_type: string;
+		entity_id: string | null;
+	} | null = null;
+	let createdSession = false;
 
-	if (sessionError || !session) {
-		return ApiResponse.notFound('Session');
-	}
-
-	const metadata: AgentSessionMetadata = (session.agent_metadata as AgentSessionMetadata) ?? {};
-	const resolvedFocus = projectFocus ?? (metadata.focus as ProjectFocus | null) ?? null;
-	const resolvedEntityId = entity_id ?? resolvedFocus?.projectId ?? session.entity_id ?? undefined;
-
-	const locationCacheKey = buildLocationCacheKey(normalizedContextType, resolvedEntityId);
-	const linkedEntitiesCacheKey = buildLinkedEntitiesCacheKey(resolvedFocus);
-
+	const focusProvided = Object.prototype.hasOwnProperty.call(body, 'projectFocus');
+	const candidateEntityId = entity_id ?? projectFocus?.projectId ?? undefined;
 	const requiresEntityId =
 		normalizedContextType === 'project' ||
 		normalizedContextType === 'project_audit' ||
 		normalizedContextType === 'project_forecast';
+
+	if (!session_id) {
+		if (requiresEntityId && !candidateEntityId) {
+			return ApiResponse.success({ warmed: false, reason: 'missing_entity' });
+		}
+
+		try {
+			const created = await sessionManager.createSession({
+				userId,
+				contextType: normalizedContextType,
+				entityId: candidateEntityId
+			});
+			session = {
+				id: created.id,
+				agent_metadata: created.agent_metadata ?? null,
+				context_type: created.context_type,
+				entity_id: created.entity_id ?? null
+			};
+			createdSession = true;
+		} catch (error) {
+			logger.error('Failed to create session for prewarm', {
+				error,
+				userId,
+				contextType: normalizedContextType
+			});
+			return ApiResponse.error('Failed to create session', 500, 'SESSION_CREATE_FAILED');
+		}
+	} else {
+		const { data: existing, error: sessionError } = await supabase
+			.from('chat_sessions')
+			.select('id, agent_metadata, context_type, entity_id')
+			.eq('id', session_id)
+			.eq('user_id', userId)
+			.single();
+
+		if (sessionError || !existing) {
+			return ApiResponse.notFound('Session');
+		}
+
+		session = existing;
+	}
+
+	if (!session) {
+		return ApiResponse.error('Failed to resolve session', 500, 'SESSION_RESOLUTION_FAILED');
+	}
+
+	const metadata: AgentSessionMetadata = (session.agent_metadata as AgentSessionMetadata) ?? {};
+	const resolvedFocus = focusProvided
+		? (projectFocus ?? null)
+		: ((metadata.focus as ProjectFocus | null) ?? null);
+	const resolvedEntityId =
+		candidateEntityId ?? resolvedFocus?.projectId ?? session.entity_id ?? undefined;
+
+	const locationCacheKey = buildLocationCacheKey(normalizedContextType, resolvedEntityId);
+	const linkedEntitiesCacheKey = buildLinkedEntitiesCacheKey(resolvedFocus);
+
 	const shouldWarmLocation = !requiresEntityId || !!resolvedEntityId;
 
 	const hasFreshLocationCache =
@@ -164,5 +209,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		await sessionManager.updateSessionMetadata(session.id, metadata);
 	}
 
-	return ApiResponse.success({ warmed: updated });
+	return ApiResponse.success({
+		warmed: updated,
+		session: createdSession ? session : undefined,
+		created: createdSession
+	});
 };

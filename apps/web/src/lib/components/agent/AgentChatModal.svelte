@@ -175,36 +175,49 @@
 	});
 
 	function buildPrewarmKey(
-		sessionId: string,
+		sessionId: string | null | undefined,
 		contextType: ChatContextType | null,
 		entityId?: string,
 		focus?: ProjectFocus | null
 	): string | null {
 		if (!contextType) return null;
+		const sessionKey = sessionId ?? 'new';
 		const focusKey = focus?.focusType
 			? `${focus.focusType}:${focus.focusEntityId ?? 'project-wide'}`
 			: 'none';
-		return [sessionId, contextType, entityId ?? 'global', focusKey].join('|');
+		return [sessionKey, contextType, entityId ?? 'global', focusKey].join('|');
 	}
 
 	async function prewarmAgentContext(payload: {
-		session_id: string;
+		session_id?: string;
 		context_type: ChatContextType;
 		entity_id?: string;
 		projectFocus?: ProjectFocus | null;
-	}) {
+	}): Promise<ChatSession | null> {
 		try {
-			await fetch('/api/agent/prewarm', {
+			const response = await fetch('/api/agent/prewarm', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify(payload)
 			});
+			if (!response.ok) {
+				return null;
+			}
+
+			const result = await response.json();
+			if (!result?.success) {
+				return null;
+			}
+
+			const session = result?.data?.session ?? null;
+			return session as ChatSession | null;
 		} catch (err) {
 			if (dev) {
 				console.warn('[AgentChat] Prewarm failed:', err);
 			}
+			return null;
 		}
 	}
 
@@ -990,9 +1003,9 @@
 	});
 
 	$effect(() => {
-		if (!browser || !isOpen || !currentSession?.id || !selectedContextType) return;
+		if (!browser || !isOpen || !selectedContextType) return;
 		const key = buildPrewarmKey(
-			currentSession.id,
+			currentSession?.id ?? null,
 			selectedContextType,
 			selectedEntityId,
 			resolvedProjectFocus
@@ -1000,12 +1013,27 @@
 		if (!key || key === lastPrewarmKey) return;
 		lastPrewarmKey = key;
 
-		void prewarmAgentContext({
-			session_id: currentSession.id,
-			context_type: selectedContextType,
-			entity_id: selectedEntityId,
-			projectFocus: resolvedProjectFocus
-		});
+		void (async () => {
+			const session = await prewarmAgentContext({
+				session_id: currentSession?.id,
+				context_type: selectedContextType,
+				entity_id: selectedEntityId,
+				projectFocus: resolvedProjectFocus
+			});
+
+			if (session && (!currentSession || currentSession.id !== session.id)) {
+				currentSession = session;
+				const refreshedKey = buildPrewarmKey(
+					session.id,
+					selectedContextType,
+					selectedEntityId,
+					resolvedProjectFocus
+				);
+				if (refreshedKey) {
+					lastPrewarmKey = refreshedKey;
+				}
+			}
+		})();
 	});
 
 	// Handle initialBraindump prop - when opening from history to explore an existing braindump
@@ -1106,6 +1134,9 @@
 
 		isLoadingSession = true;
 		sessionLoadError = null;
+		// Immediately hide context selection when loading a session to prevent flash
+		showContextSelection = false;
+		showProjectActionSelector = false;
 		// Clear any prior session state to avoid bleed-through while loading
 		resetConversation({ preserveContext: false });
 
@@ -1149,8 +1180,8 @@
 				projectFocus = null;
 			}
 
-			showContextSelection = false;
-			showProjectActionSelector = false;
+			// Note: showContextSelection and showProjectActionSelector were already
+			// set to false at the start of loadChatSession to prevent flash
 
 			// Convert loaded messages to UIMessages
 			const filteredMessages = (loadedMessages || []).filter(

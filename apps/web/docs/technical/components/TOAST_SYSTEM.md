@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/TOAST_SYSTEM.md -->
+
 # Toast Notification System
 
 > **Version:** 2.0

@@ -16,6 +16,7 @@ const WORKER_URL = process.env.PUBLIC_RAILWAY_WORKER_URL;
 const WORKER_TOKEN = process.env.PRIVATE_RAILWAY_WORKER_TOKEN;
 
 const DRY_RUN = process.argv.includes('--dry-run');
+const FORCE_DIRECT = process.argv.includes('--direct');
 const MAX_ITEMS = Number.parseInt(getArgValue('--max') ?? process.env.MAX_ITEMS ?? '0', 10);
 const BATCH_SIZE = Number.parseInt(process.env.BATCH_SIZE || '200', 10);
 const CONCURRENCY = Number.parseInt(process.env.CONCURRENCY || '5', 10);
@@ -32,10 +33,8 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 	process.exit(1);
 }
 
-if (!WORKER_URL && !DRY_RUN) {
-	console.error('Missing PUBLIC_RAILWAY_WORKER_URL (required to queue jobs)');
-	process.exit(1);
-}
+const USE_DIRECT_QUEUE = FORCE_DIRECT || !WORKER_URL;
+let workerUnavailable = USE_DIRECT_QUEUE;
 
 const supabase = createCustomClient(SUPABASE_URL, SERVICE_KEY, {
 	auth: { autoRefreshToken: false, persistSession: false }
@@ -117,37 +116,51 @@ function getArgValue(flag: string): string | undefined {
 	return process.argv[index + 1];
 }
 
-async function queueChatClassification(session: ChatSessionRow): Promise<'queued' | 'skipped'> {
-	if (DRY_RUN || !WORKER_URL) {
+function shouldFallbackToDirect(error: unknown): boolean {
+	if (!error) return false;
+	if (typeof error === 'object' && 'cause' in error) {
+		const cause = (error as { cause?: { code?: string } }).cause;
+		if (cause?.code === 'ECONNREFUSED') return true;
+	}
+	return (error as Error)?.message?.includes('fetch failed') ?? false;
+}
+
+async function queueJobDirect(params: {
+	jobType: 'classify_chat_session' | 'process_onto_braindump';
+	userId: string;
+	metadata: Record<string, unknown>;
+	dedupKey: string;
+	priority: number;
+}): Promise<'queued'> {
+	if (DRY_RUN) {
 		return 'queued';
 	}
 
-	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-	if (WORKER_TOKEN) {
-		headers.Authorization = `Bearer ${WORKER_TOKEN}`;
-	}
-
-	const response = await fetch(`${WORKER_URL}/queue/chat/classify`, {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ sessionId: session.id, userId: session.user_id })
+	const { error } = await supabase.rpc('add_queue_job', {
+		p_user_id: params.userId,
+		p_job_type: params.jobType,
+		p_metadata: params.metadata,
+		p_priority: params.priority,
+		p_scheduled_for: new Date().toISOString(),
+		p_dedup_key: params.dedupKey
 	});
 
-	if (response.status === 409) {
-		return 'skipped';
-	}
-
-	if (!response.ok) {
-		const payload = await response.json().catch(() => null);
-		throw new Error(payload?.error || `HTTP ${response.status}`);
+	if (error) {
+		throw new Error(error.message);
 	}
 
 	return 'queued';
 }
 
-async function queueBraindumpProcessing(braindump: BraindumpRow): Promise<'queued' | 'skipped'> {
-	if (DRY_RUN || !WORKER_URL) {
-		return 'queued';
+async function queueChatClassification(session: ChatSessionRow): Promise<'queued' | 'skipped'> {
+	if (USE_DIRECT_QUEUE || workerUnavailable) {
+		return queueJobDirect({
+			jobType: 'classify_chat_session',
+			userId: session.user_id,
+			metadata: { sessionId: session.id, userId: session.user_id },
+			dedupKey: `classify-session-${session.id}`,
+			priority: 8
+		});
 	}
 
 	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -155,22 +168,90 @@ async function queueBraindumpProcessing(braindump: BraindumpRow): Promise<'queue
 		headers.Authorization = `Bearer ${WORKER_TOKEN}`;
 	}
 
-	const response = await fetch(`${WORKER_URL}/queue/braindump/process`, {
-		method: 'POST',
-		headers,
-		body: JSON.stringify({ braindumpId: braindump.id, userId: braindump.user_id })
-	});
+	try {
+		const response = await fetch(`${WORKER_URL}/queue/chat/classify`, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ sessionId: session.id, userId: session.user_id })
+		});
 
-	if (response.status === 409) {
-		return 'skipped';
+		if (response.status === 409) {
+			return 'skipped';
+		}
+
+		if (!response.ok) {
+			const payload = await response.json().catch(() => null);
+			throw new Error(payload?.error || `HTTP ${response.status}`);
+		}
+
+		return 'queued';
+	} catch (error) {
+		if (shouldFallbackToDirect(error)) {
+			if (!workerUnavailable) {
+				console.warn('Worker unreachable. Falling back to direct queueing.');
+			}
+			workerUnavailable = true;
+			return queueJobDirect({
+				jobType: 'classify_chat_session',
+				userId: session.user_id,
+				metadata: { sessionId: session.id, userId: session.user_id },
+				dedupKey: `classify-session-${session.id}`,
+				priority: 8
+			});
+		}
+		throw error;
+	}
+}
+
+async function queueBraindumpProcessing(braindump: BraindumpRow): Promise<'queued' | 'skipped'> {
+	if (USE_DIRECT_QUEUE || workerUnavailable) {
+		return queueJobDirect({
+			jobType: 'process_onto_braindump',
+			userId: braindump.user_id,
+			metadata: { braindumpId: braindump.id, userId: braindump.user_id },
+			dedupKey: `process-onto-braindump-${braindump.id}`,
+			priority: 7
+		});
 	}
 
-	if (!response.ok) {
-		const payload = await response.json().catch(() => null);
-		throw new Error(payload?.error || `HTTP ${response.status}`);
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+	if (WORKER_TOKEN) {
+		headers.Authorization = `Bearer ${WORKER_TOKEN}`;
 	}
 
-	return 'queued';
+	try {
+		const response = await fetch(`${WORKER_URL}/queue/braindump/process`, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({ braindumpId: braindump.id, userId: braindump.user_id })
+		});
+
+		if (response.status === 409) {
+			return 'skipped';
+		}
+
+		if (!response.ok) {
+			const payload = await response.json().catch(() => null);
+			throw new Error(payload?.error || `HTTP ${response.status}`);
+		}
+
+		return 'queued';
+	} catch (error) {
+		if (shouldFallbackToDirect(error)) {
+			if (!workerUnavailable) {
+				console.warn('Worker unreachable. Falling back to direct queueing.');
+			}
+			workerUnavailable = true;
+			return queueJobDirect({
+				jobType: 'process_onto_braindump',
+				userId: braindump.user_id,
+				metadata: { braindumpId: braindump.id, userId: braindump.user_id },
+				dedupKey: `process-onto-braindump-${braindump.id}`,
+				priority: 7
+			});
+		}
+		throw error;
+	}
 }
 
 async function processInBatches<T>(
@@ -229,7 +310,10 @@ async function runChatBackfill() {
 			console.log(`Chats: queueing ${targets.length} sessions (offset ${offset})`);
 		}
 
-		const { queued, skipped, failed } = await processInBatches(targets, queueChatClassification);
+		const { queued, skipped, failed } = await processInBatches(
+			targets,
+			queueChatClassification
+		);
 		queuedTotal += queued;
 		skippedTotal += skipped;
 		failedTotal += failed;
@@ -297,6 +381,9 @@ async function main() {
 	if (DRY_RUN) {
 		console.log('DRY RUN MODE - No jobs will be queued');
 	}
+	if (USE_DIRECT_QUEUE) {
+		console.log('Direct queue mode enabled (add_queue_job RPC).');
+	}
 
 	if (!ONLY_BRAINDUMPS) {
 		await runChatBackfill();
@@ -304,6 +391,12 @@ async function main() {
 
 	if (!ONLY_CHATS) {
 		await runBraindumpBackfill();
+	}
+
+	if (workerUnavailable) {
+		console.warn(
+			'Worker unreachable or disabled. Jobs were queued directly; ensure a worker is running to process them.'
+		);
 	}
 
 	console.log('Backfill finished.');
