@@ -8574,6 +8574,15 @@ export type Database = {
         }
         Returns: string
       }
+      apply_graph_reorg_changes: {
+        Args: {
+          p_deletes: Json
+          p_inserts: Json
+          p_project_id: string
+          p_updates: Json
+        }
+        Returns: Json
+      }
       approve_generated_phases: {
         Args: { p_generation_id: string; p_phase_ids?: string[] }
         Returns: {

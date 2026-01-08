@@ -412,6 +412,73 @@ Avoid creating project edges unless the entity is truly a root-level item.`,
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'reorganize_onto_project_graph',
+			description: `Reorganize part of a project graph by providing a node-centric structure.
+Accepts nodes with desired connections and applies auto-organization rules to reparent and relink edges.
+Use dry_run to preview edge changes before applying.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project UUID to reorganize'
+					},
+					nodes: {
+						type: 'array',
+						description: 'Entities to reorganize with desired connections',
+						items: {
+							type: 'object',
+							properties: {
+								id: { type: 'string' },
+								kind: { type: 'string' },
+								connections: {
+									type: 'array',
+									items: {
+										type: 'object',
+										properties: {
+											kind: { type: 'string' },
+											id: { type: 'string' },
+											intent: {
+												type: 'string',
+												enum: ['containment', 'semantic']
+											},
+											rel: { type: 'string' }
+										}
+									}
+								},
+								mode: { type: 'string', enum: ['replace', 'merge'] },
+								semantic_mode: {
+									type: 'string',
+									enum: ['replace_auto', 'merge', 'preserve']
+								},
+								allow_project_fallback: { type: 'boolean' },
+								allow_multi_parent: { type: 'boolean' }
+							},
+							required: ['id', 'kind']
+						}
+					},
+					options: {
+						type: 'object',
+						description: 'Global defaults for node options',
+						properties: {
+							mode: { type: 'string', enum: ['replace', 'merge'] },
+							semantic_mode: {
+								type: 'string',
+								enum: ['replace_auto', 'merge', 'preserve']
+							},
+							allow_project_fallback: { type: 'boolean' },
+							allow_multi_parent: { type: 'boolean' },
+							dry_run: { type: 'boolean' }
+						}
+					}
+				},
+				required: ['project_id', 'nodes']
+			}
+		}
+	},
 
 	{
 		type: 'function',
@@ -433,9 +500,9 @@ to build the project graph:
 - Props extracted from user's message - CRITICAL!
 
 **Start Simple (CRITICAL):**
-- Most new projects just need: project + 1 goal + maybe a few tasks
+- Most new projects just need: project + 1 goal (if an outcome is stated) + maybe a few tasks (if explicit actions are mentioned)
 - Don't add plans/milestones unless user mentions phases, dates, or workstreams
-- Don't add peripheral entities (risks, decisions, documents) unless explicitly mentioned
+- Don't add peripheral entities (risks, decisions, documents, requirements, metrics, sources, outputs) unless explicitly mentioned
 - Simple projects are GOOD - structure grows over time
 
 **Props Extraction (CRITICAL)**:

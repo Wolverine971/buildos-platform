@@ -9,6 +9,60 @@ Create a daily engagement doc at:
 
 ---
 
+## Related Documentation
+
+**Cross-Links (Read for Full Context):**
+- `/docs/marketing/social-media/twitter-profiles/INDEX.md` - Master list of all tracked accounts
+- `/docs/marketing/strategy/adhd-productivity-os-strategy.md` - ADHD market positioning
+- `/docs/marketing/social-media/twitter-context-engineering-strategy.md` - Context Engineering positioning
+- `/docs/marketing/content/blog-skeletons/context-engineering-for-productivity.md` - Blog strategy
+- `/docs/marketing/user-segments/users-adhd.md` - ADHD user messaging
+
+---
+
+## Competitor Monitoring (PRIORITY)
+
+**Check these accounts FIRST every scan. Monitor for:**
+- New features they're shipping (can we incorporate?)
+- Content strategy and positioning
+- Community response and engagement patterns
+- Partnership opportunities or collaboration potential
+- Weaknesses we can address
+
+### Direct Competitors
+
+| Account | Product | Why Monitor | Strategy |
+|---------|---------|-------------|----------|
+| @dannypostma (103K) | PostmaOS - AI Life OS | Direct competitor, building similar vision | Learn from features, differentiate on ADHD focus |
+| @danidonovan (126.3K) | Anti-Planner | Competing ADHD philosophy (no structure) | Respect, don't attack. Potential partnership. |
+| @tdinh_me (61.5K) | TypingMind | AI chat UI, Claude power user | Watch for productivity features |
+
+### Context Engineering Space (Own This Term)
+
+| Account | Relevance | Why Monitor | Strategy |
+|---------|-----------|-------------|----------|
+| @dexhorthy (3.2K) | Coined "Context Engineering" | LAND GRAB - he owns the term | Engage, credit, build relationship |
+| @datachaz (16.7K) | 16-page Claude guide | Deep context engineering practitioner | Learn from, cite, engage |
+| @NinaLopatina | Works at ContextualAI | Industry insider | Monitor for trends |
+
+### What to Look For
+
+**When scanning competitors:**
+1. **New features announced** - Can BuildOS implement better?
+2. **User complaints** - Pain points we can solve
+3. **Pricing changes** - Market positioning shifts
+4. **Partnership announcements** - Who are they working with?
+5. **Community sentiment** - Are users happy or frustrated?
+
+**When scanning Context Engineering accounts:**
+1. **New definitions/frameworks** - Incorporate into our narrative
+2. **Viral threads** - Engagement opportunities
+3. **Technical insights** - Product improvement ideas
+
+**Flag anything notable in the daily engagement doc under "Competitor Intelligence" section.**
+
+---
+
 ## Phase 1: Load Context
 
 ### Read These Files (Required)
@@ -24,6 +78,9 @@ Create a daily engagement doc at:
 
 4. **Search Queries** (for topic searches):
    - `docs/marketing/social-media/twitter-advanced-search-queries.md`
+
+5. **Twitter Profile Database** (detailed account info):
+   - `docs/marketing/social-media/twitter-profiles/INDEX.md`
 
 ### Check for Duplicates
 
@@ -49,9 +106,17 @@ Scan these profiles for posts from last 24 hours:
 
 **Round 2: Tier 2 Accounts (AI/LLM)**
 - @simonw (https://x.com/simonw) - Datasette, LLM writing
-- @emollick (https://x.com/emollick) - Wharton, AI applications
-- @hwchase17 (https://x.com/hwchase17) - LangChain, AI agents
-- @karpathy (https://x.com/karpathy) - Context engineering coiner (monitor only, too big)
+- @emollick (https://x.com/emollick) - Wharton, AI applications (300.8K)
+- @hwchase17 (https://x.com/hwchase17) - LangChain, AI agents ($1.25B valuation)
+- @karpathy (https://x.com/karpathy) - AI legend, "English is programming" (1.5M - monitor, too big)
+- @minchoi (https://x.com/minchoi) - AI Educator, practical AI (342.5K)
+
+**Round 2.5: Context Engineering Accounts (PRIORITY - Own This Space)**
+- @dexhorthy (https://x.com/dexhorthy) - Coined "Context Engineering" (3.2K - ENGAGE HEAVILY)
+- @datachaz (https://x.com/datachaz) - 16-page Claude guide author (16.7K)
+- @NinaLopatina (https://x.com/NinaLopatina) - Works at ContextualAI
+- @mckaywrigley (https://x.com/mckaywrigley) - AI product builder (125K)
+- @skirano (https://x.com/skirano) - Cursor/AI dev (30.7K)
 
 **Round 3: Tier 2 Accounts (Indie Hackers)**
 - @arvidkahl (https://x.com/arvidkahl) - Zero to Sold
@@ -63,13 +128,17 @@ Scan these profiles for posts from last 24 hours:
 - @dannypostma (https://x.com/dannypostma) - HeadshotPro, AI tools
 
 **Round 4: Tier 2 Accounts (ADHD/Productivity/PKM)**
-- @danidonovan (https://x.com/danidonovan) - ADHD comics
-- @ADHD_Alien (https://x.com/ADHD_Alien) - ADHD Alien Comics
-- @HowtoADHD (https://x.com/HowtoADHD) - ADHD education
-- @womenwithadhd (https://x.com/womenwithadhd) - Women with ADHD community
-- @StructuredSucc (https://x.com/StructuredSucc) - ADHD coaching
-- @fortelabs (https://x.com/fortelabs) - Building a Second Brain
-- @TfTHacker (https://x.com/TfTHacker) - PKM, Obsidian workflows
+*ADHD Accounts (CRITICAL for BuildOS positioning):*
+- @danidonovan (https://x.com/danidonovan) - ADHD comics, Anti-Planner creator (126.3K - COMPETITOR)
+- @ADHD_Alien (https://x.com/ADHD_Alien) - ADHD Alien Comics (184.8K)
+- @HowtoADHD (https://x.com/HowtoADHD) - ADHD education, 1M+ YouTube (134.9K)
+- @womenwithadhd (https://x.com/womenwithadhd) - Women with ADHD community (20K)
+- @StructuredSucc (https://x.com/StructuredSucc) - ADHD coaching (55.3K)
+- @ChaleneJohnson (https://x.com/ChaleneJohnson) - Lifestyle/ADHD (83.8K)
+
+*PKM/Second Brain Accounts:*
+- @fortelabs (https://x.com/fortelabs) - Building a Second Brain (134K)
+- @TfTHacker (https://x.com/TfTHacker) - PKM, Obsidian workflows (25K)
 - @NicoleVDH (https://x.com/nicolevanderhoeven) - Obsidian tutorials
 - @saboristudio (https://x.com/saboristudio) - Notion templates
 
@@ -83,6 +152,8 @@ Your people - creators building audiences and businesses around content.
 - @stephsmithio (https://x.com/stephsmithio) - a16z, content strategy (want to work with)
 - @lulumeservey (https://x.com/lulumeservey) - PR/comms expert (learning from)
 - @NicoleBehnam (https://x.com/NicoleBehnam) - Creator, authentic voice
+- @SahilBloom (https://x.com/SahilBloom) - NYT bestseller, 5 Types of Wealth (1.1M)
+- @dickiebush (https://x.com/dickiebush) - Ship30for30, writing cohorts (431.8K)
 
 **Round 6: Outreach Targets (Relationship Building)**
 These are high-profile accounts you're actively building relationships with. Engage authentically to warm up before direct outreach. See full outreach plans: `docs/marketing/social-media/buildos-outreach.md`
@@ -384,6 +455,25 @@ Accounts from your Following feed worth adding to engagement tiers:
 
 ---
 
+## Competitor Intelligence
+
+[Only include if notable competitor activity observed]
+
+### @dannypostma (PostmaOS)
+**Activity:** [new feature, content, etc.]
+**Implications:** [what this means for BuildOS]
+**Action:** [what we should do]
+
+### @danidonovan (Anti-Planner)
+**Activity:** [new content, product updates]
+**Implications:** [partnership opportunity? differentiation needed?]
+
+### @dexhorthy (Context Engineering)
+**Activity:** [new posts about context engineering]
+**Implications:** [content opportunities, engagement needed]
+
+---
+
 ## Voice Reminder
 
 ### The Philosophy
@@ -465,3 +555,88 @@ If new accounts are discovered, ask the user:
 ```
 I found X new accounts worth engaging with regularly. Should I update your engagement targets doc (twitter-engagement-targets.md) to add them to the appropriate tiers?
 ```
+
+---
+
+## Profile Update Instructions
+
+**IMPORTANT:** During each warmup scan, update the profile docs if you notice significant changes.
+
+### When to Update Profiles
+
+Update a profile doc (`/docs/marketing/social-media/twitter-profiles/[category]/[handle].md`) when you notice:
+
+1. **Follower count changed significantly** (±5% or ±1K, whichever is larger)
+2. **Bio changed** - New role, product, or positioning
+3. **New product launched** - Add to Known Products section
+4. **Viral post** - Note in Recent Activity or Notes section
+5. **Competitor activity** - New features, partnerships, or strategy shifts
+
+### How to Update
+
+```bash
+# Update the frontmatter fields:
+followers: [new count]
+scraped_date: [today's date YYYY-MM-DD]
+
+# Add to Notes section if significant:
+- [YYYY-MM-DD] [Notable observation]
+```
+
+### Priority Profiles to Keep Updated
+
+**Always check and update these during scans:**
+1. **Competitors:** @dannypostma, @danidonovan, @tdinh_me
+2. **Context Engineering:** @dexhorthy, @datachaz
+3. **ADHD Leaders:** @ADHD_Alien, @HowtoADHD, @StructuredSucc
+
+### Profile Update Summary (Add to Daily Doc)
+
+At the end of each warmup doc, include:
+
+```markdown
+## Profile Updates Made
+
+| Account | Change | Old → New |
+|---------|--------|-----------|
+| @handle | Followers | 10K → 12K |
+| @handle | Bio | [brief note] |
+
+No significant changes observed for other profiles.
+```
+
+---
+
+## Strategic Alerts
+
+**Flag immediately if you see:**
+
+1. **@dannypostma announces PostmaOS feature** that overlaps with BuildOS
+2. **@danidonovan launches Anti-Planner digital version** or app
+3. **@dexhorthy posts viral context engineering thread** - engage within hours
+4. **Any ADHD account with 50K+ followers mentions "AI productivity"**
+5. **@karpathy or @emollick posts about personal AI/productivity**
+
+**Action for Strategic Alerts:**
+1. Note in daily engagement doc with HIGH PRIORITY flag
+2. Draft engagement options immediately
+3. Consider whether this warrants a BuildOS content response
+4. Update relevant strategy docs if landscape is shifting
+
+---
+
+## Cross-Reference Files
+
+After completing a warmup scan, ensure these files stay in sync:
+
+| File | Update If... |
+|------|--------------|
+| `twitter-profiles/INDEX.md` | New accounts added or follower counts significantly changed |
+| `twitter-engagement-targets.md` | New accounts should be added to engagement tiers |
+| `adhd-productivity-os-strategy.md` | Competitor landscape changes |
+| `twitter-context-engineering-strategy.md` | Context engineering space evolves |
+
+---
+
+*Last Updated: 2026-01-08*
+*Profile Database: `/docs/marketing/social-media/twitter-profiles/INDEX.md`*

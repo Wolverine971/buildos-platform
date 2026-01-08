@@ -330,3 +330,26 @@ Myth-busting content about ADHD and productivity. "You don't need more disciplin
 - "Time blindness"
 - "Rejection sensitive dysphoria (RSD)"
 - "Hyperfocus hijacking"
+
+---
+
+## Related Documentation
+
+### Strategy
+
+- **[ADHD Productivity OS Strategy](/docs/marketing/strategy/adhd-productivity-os-strategy.md)** - Full strategic positioning for ADHD market
+- **[Context Engineering Blog Skeleton](/docs/marketing/content/blog-skeletons/context-engineering-for-productivity.md)** - Thought leadership content
+
+### Market Intelligence
+
+- **[Twitter Profile Database - ADHD Accounts](/docs/marketing/social-media/twitter-profiles/adhd-neurodivergent/)** - Key ADHD influencers
+- **[Twitter Profiles INDEX](/docs/marketing/social-media/twitter-profiles/INDEX.md)** - Full engagement target database
+
+### Competitors to Monitor
+
+- **@danidonovan** (126K) - Anti-Planner creator (competing philosophy)
+- **@dannypostma** (103K) - PostmaOS (AI life OS competitor)
+
+---
+
+_Last Updated: 2026-01-08_

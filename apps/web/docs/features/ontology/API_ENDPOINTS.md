@@ -2,10 +2,12 @@
 
 # Ontology System API Endpoints Reference
 
-**Last Updated**: December 20, 2025
+**Last Updated**: January 8, 2026
 **Status**: Production Ready
 **Base Path**: `/api/onto/`
 
+> **Recent Updates (2026-01-08)**: Added project graph reorg + full-graph endpoints for node-centric restructuring and planning.
+>
 > **Recent Updates (2024-12-20)**: Schema migration complete. All entities now support soft deletes via `deleted_at`, dedicated `description` columns, and entity-specific fields. See [ONTOLOGY_SCHEMA_MIGRATION_PLAN.md](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) for details.
 
 ## 📋 Overview
@@ -690,6 +692,42 @@ POST /api/onto/edges
 
 ```http
 GET /api/onto/edges?src_id=uuid&rel=contains
+```
+
+### Get Full Project Graph
+
+```http
+GET /api/onto/projects/[id]/graph/full
+```
+
+Returns `ProjectGraphData` for a single project (entities + edges).
+
+### Reorganize Project Graph
+
+```http
+POST /api/onto/projects/[id]/reorganize
+```
+
+Reorganizes a subset of entities using a node-centric payload. Use `options.dry_run=true` to preview edge diffs.
+
+**Request Body (example):**
+
+```json
+{
+	"project_id": "uuid",
+	"nodes": [
+		{
+			"id": "uuid",
+			"kind": "task",
+			"connections": [
+				{ "kind": "plan", "id": "uuid" }
+			],
+			"mode": "replace",
+			"semantic_mode": "replace_auto"
+		}
+	],
+	"options": { "dry_run": true }
+}
 ```
 
 ---

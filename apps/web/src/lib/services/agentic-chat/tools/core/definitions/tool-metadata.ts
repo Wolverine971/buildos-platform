@@ -111,6 +111,13 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 45000,
 		category: 'read'
 	},
+	get_onto_project_graph: {
+		summary: 'Load the full project graph payload (all entities + edges).',
+		capabilities: ['Returns full graph data', 'Use before reorganizing structure'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		timeoutMs: 45000,
+		category: 'read'
+	},
 	get_onto_task_details: {
 		summary: 'Load full task details including props and relationships.',
 		capabilities: ['Validates ownership', 'Great for deep task updates'],
@@ -294,6 +301,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	unlink_onto_edge: {
 		summary: 'Remove a relationship edge by ID.',
 		capabilities: ['Deletes a single edge', 'Validates ownership before removal'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	reorganize_onto_project_graph: {
+		summary: 'Reorganize a subset of a project graph from a node-centric structure.',
+		capabilities: [
+			'Reparents containment edges',
+			'Rebuilds auto-managed semantics',
+			'Supports dry-run previews'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},

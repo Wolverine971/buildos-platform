@@ -321,5 +321,32 @@ Evolution options:
 
 Remember: The goal is to build authority in the context engineering space while keeping BuildOS's competitive advantage secret. You're educating the market about the problem while positioning BuildOS as the inevitable solution.
 
-**Last Updated:** 2025-09-02  
-**Next Review:** 2025-10-02
+---
+
+## Related Documentation
+
+### Strategy
+
+- **[ADHD Productivity OS Strategy](/docs/marketing/strategy/adhd-productivity-os-strategy.md)** - ADHD market positioning (complementary angle)
+- **[Context Engineering Blog Skeleton](/docs/marketing/content/blog-skeletons/context-engineering-for-productivity.md)** - Definitive blog post to own the term
+
+### Market Intelligence
+
+- **[Twitter Profile Database](/docs/marketing/social-media/twitter-profiles/INDEX.md)** - All engagement targets
+- **[Context Engineering Accounts](/docs/marketing/social-media/twitter-profiles/context-engineering/)** - Key CE space players
+
+### Key Accounts for Context Engineering
+
+- **@dexhorthy (3.2K)** - Coined the term - CRITICAL to engage
+- **@datachaz (149K)** - 16-page Claude guide author
+- **@NinaLopatina** - Works at ContextualAI
+- **@karpathy (1.5M)** - "English is the new programming language"
+
+### Workflows
+
+- **[Twitter Warmup Skill](/.claude/commands/twitter-warmup.md)** - Daily engagement workflow
+
+---
+
+**Last Updated:** 2026-01-08
+**Next Review:** 2026-02-08

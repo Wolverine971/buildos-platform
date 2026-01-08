@@ -484,6 +484,24 @@ Use when you need full project information after identifying it with list_onto_p
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_onto_project_graph',
+			description: `Get the full project graph payload (all entities + edges) for a project.
+Use when you need to reorganize or analyze the complete project graph structure.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project ID to retrieve the full graph for'
+					}
+				},
+				required: ['project_id']
+			}
+		}
+	},
 
 	{
 		type: 'function',

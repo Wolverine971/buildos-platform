@@ -584,7 +584,30 @@ The integration work at Curri (connecting Uber, Lyft, DoorDash APIs based on int
 
 ---
 
+## Related Documentation
+
+### Strategy
+
+- **[ADHD Productivity OS Strategy](/docs/marketing/strategy/adhd-productivity-os-strategy.md)** - Market positioning (DJ's ADHD background is key)
+- **[Context Engineering Strategy](/docs/marketing/social-media/twitter-context-engineering-strategy.md)** - Owning "Context Engineering"
+
+### Content
+
+- **[Context Engineering Blog Skeleton](/docs/marketing/content/blog-skeletons/context-engineering-for-productivity.md)** - Uses DJ's voice and vision
+
+### Market Intelligence
+
+- **[Twitter Profile Database](/docs/marketing/social-media/twitter-profiles/INDEX.md)** - Engagement targets
+- **[ADHD User Segment](/docs/marketing/user-segments/users-adhd.md)** - ADHD messaging
+
+### Workflows Using This Document
+
+- **[Twitter Warmup](/.claude/commands/twitter-warmup.md)** - Daily Twitter engagement
+- **LinkedIn Warmup** - LinkedIn content
+
+---
+
 _Document created: 2026-01-06_
-_Last updated: 2026-01-07_
+_Last updated: 2026-01-08_
 _Source: Founder interview sections 1-10 + follow-up questions_
 _Used by: twitter-warmup.md, linkedin-warmup.md_

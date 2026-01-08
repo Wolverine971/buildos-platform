@@ -32,6 +32,7 @@ import type {
 	UpdateOntoRequirementArgs,
 	LinkOntoEntitiesArgs,
 	UnlinkOntoEdgeArgs,
+	ReorganizeOntoProjectGraphArgs,
 	DeleteOntoTaskArgs,
 	DeleteOntoGoalArgs,
 	DeleteOntoPlanArgs,
@@ -560,6 +561,39 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			deleted: Boolean(data.deleted),
 			message: 'Unlinked entities successfully.'
+		};
+	}
+
+	async reorganizeOntoProjectGraph(args: ReorganizeOntoProjectGraphArgs): Promise<{
+		dry_run: boolean;
+		node_count: number;
+		counts: { create: number; delete: number; update: number };
+		changes?: {
+			edges_to_create: any[];
+			edges_to_delete: any[];
+			edges_to_update: any[];
+		};
+		message: string;
+	}> {
+		const payload = {
+			project_id: args.project_id,
+			nodes: args.nodes,
+			options: args.options
+		};
+
+		const data = await this.apiRequest(`/api/onto/projects/${args.project_id}/reorganize`, {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		});
+
+		return {
+			dry_run: Boolean(data.dry_run),
+			node_count: data.node_count ?? 0,
+			counts: data.counts ?? { create: 0, delete: 0, update: 0 },
+			changes: data.changes,
+			message: data.dry_run
+				? 'Graph reorganize dry run completed.'
+				: 'Project graph reorganized.'
 		};
 	}
 

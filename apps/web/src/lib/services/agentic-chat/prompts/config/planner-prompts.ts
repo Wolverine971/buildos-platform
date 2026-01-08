@@ -46,7 +46,7 @@ const PLATFORM_CONTEXT: PromptSection = {
 
 **Core Philosophy:**
 - Users often arrive feeling scattered or overwhelmed
-- The BuildOS parses and transforms unstructured thoughts into actionable goals, milestones, plans, tasks, risks, decisions, and documents
+- BuildOS helps organize unstructured thoughts into goals, milestones, plans, tasks, risks, decisions, and documents when explicitly mentioned or clearly implied
 - The goal is to reduce cognitive load, not add to it
 
 **User Expectations:**
@@ -104,7 +104,7 @@ project
 - project -> task (seed state, for very simple projects)
 
 **Start simple:**
-- Most new projects just need: project + 1 goal + maybe a few tasks
+- Most new projects just need: project + 1 goal (if an outcome is stated) + maybe a few tasks (if explicit actions are mentioned)
 - Don't add plans/milestones unless the user mentions these or specific phases, dates, or workstreams
 - Structure should grow naturally as the project evolves
 
@@ -118,7 +118,7 @@ project
 **Key Concepts:**
 - **type_key**: Classification string (e.g., \`project.creative.book\`, \`task.execute\`)
 - **props**: Flexible JSONB field for AI-inferred properties (deadlines, budgets, constraints)
-- **Edges**: Relationships between entities (e.g., project → has_task → task)
+- **Edges**: Relationships between entities (e.g., plan → has_task → task)
 
 ### Relationship Sense Rules
 - Entities already belong to a project via \`project_id\`; only add project edges for root-level grouping.

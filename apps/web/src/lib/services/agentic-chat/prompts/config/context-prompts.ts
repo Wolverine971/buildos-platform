@@ -123,7 +123,7 @@ const PROJECT_CREATION_WORKFLOW: PromptSection = {
 	id: 'project-creation-workflow',
 	title: 'Enhanced Workflow',
 	content: `**Step 1: Deep Intent Analysis**
-- Analyze the user's request for both explicit and implicit requirements
+- Analyze the user's request for explicit requirements and implied constraints (use implications for props/description, not extra entities)
 - Identify the domain (e.g., software, business, creative, research)
 - Determine deliverable, constraints, audience, timelines, and success criteria
 
@@ -150,7 +150,7 @@ From the user's message, infer:
 - **Goal**: Include if user states a clear outcome ("I want to...", "The goal is...")
 - **Tasks**: ONLY if user mentions SPECIFIC FUTURE ACTIONS ("call vendor", "schedule meeting")
 - **Plans/Milestones**: ONLY if user describes these entities or phases, deadlines, or workstreams
-- **Don't add** peripheral entities (risks, decisions, documents) unless explicitly mentioned
+- **Don't add** peripheral entities (risks, decisions, documents, requirements, metrics, sources, outputs) unless explicitly mentioned
 
 **Anti-Inference Rules:**
 - "I want to write a book" -> project + 1 goal ("Finish the book"), NO tasks

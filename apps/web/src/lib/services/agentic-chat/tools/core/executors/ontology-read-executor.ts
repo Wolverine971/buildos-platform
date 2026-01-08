@@ -28,6 +28,7 @@ import type {
 	SearchOntoDocumentsArgs,
 	SearchOntologyArgs,
 	GetOntoProjectDetailsArgs,
+	GetOntoProjectGraphArgs,
 	GetOntoTaskDetailsArgs,
 	GetOntoGoalDetailsArgs,
 	GetOntoPlanDetailsArgs,
@@ -721,6 +722,18 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			...details,
 			message: 'Complete ontology project details loaded.'
+		};
+	}
+
+	async getOntoProjectGraph(args: GetOntoProjectGraphArgs): Promise<any> {
+		const details = await this.apiRequest(`/api/onto/projects/${args.project_id}/graph/full`);
+		if (!details?.graph) {
+			throw new Error('Ontology project graph not found');
+		}
+
+		return {
+			...details,
+			message: 'Complete ontology project graph loaded.'
 		};
 	}
 

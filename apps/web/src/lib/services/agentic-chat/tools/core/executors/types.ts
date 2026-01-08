@@ -132,6 +132,10 @@ export interface GetOntoProjectDetailsArgs {
 	project_id: string;
 }
 
+export interface GetOntoProjectGraphArgs {
+	project_id: string;
+}
+
 export interface GetOntoTaskDetailsArgs {
 	task_id: string;
 }
@@ -308,6 +312,31 @@ export interface LinkOntoEntitiesArgs {
 
 export interface UnlinkOntoEdgeArgs {
 	edge_id: string;
+}
+
+export interface ReorganizeOntoProjectGraphArgs {
+	project_id: string;
+	nodes: Array<{
+		id: string;
+		kind: string;
+		connections?: Array<{
+			kind: string;
+			id: string;
+			intent?: 'containment' | 'semantic';
+			rel?: string;
+		}>;
+		mode?: 'replace' | 'merge';
+		semantic_mode?: 'replace_auto' | 'merge' | 'preserve';
+		allow_project_fallback?: boolean;
+		allow_multi_parent?: boolean;
+	}>;
+	options?: {
+		mode?: 'replace' | 'merge';
+		semantic_mode?: 'replace_auto' | 'merge' | 'preserve';
+		allow_project_fallback?: boolean;
+		allow_multi_parent?: boolean;
+		dry_run?: boolean;
+	};
 }
 
 export interface UpdateOntoProjectArgs {

@@ -56,6 +56,7 @@ Source: `apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-
 - Documented strict schema (entities + relationships only) and start-simple philosophy.
 
 Sources:
+
 - `apps/web/docs/features/agentic-chat/tool-system/DOCUMENTATION.md`
 - `apps/web/docs/features/agentic-chat/tool-system/QUICK_REFERENCE.md`
 
@@ -76,22 +77,24 @@ Sources:
 
 Manual tests to run (not executed in this review):
 
-| Prompt | Expected result | Status |
-|--------|-----------------|--------|
-| "I want to learn Spanish" | project + 1 goal, no tasks | pending |
-| "Start a side project to build a habit tracker" | project + 1 goal, tasks only if actions are explicit | pending |
-| "Plan my wedding with venue search and guest list" | project + 1 goal + 2 plans (venue, guests) | pending |
-| "Help me brainstorm ideas for my podcast" | no project (conversation only) | pending |
-| "Create a project to launch my product by February with a marketing phase and sales phase" | project + 1 goal + 2 plans + milestone | pending |
+| Prompt                                                                                     | Expected result                                      | Status  |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------- | ------- |
+| "I want to learn Spanish"                                                                  | project + 1 goal, no tasks                           | pending |
+| "Start a side project to build a habit tracker"                                            | project + 1 goal, tasks only if actions are explicit | pending |
+| "Plan my wedding with venue search and guest list"                                         | project + 1 goal + 2 plans (venue, guests)           | pending |
+| "Help me brainstorm ideas for my podcast"                                                  | no project (conversation only)                       | pending |
+| "Create a project to launch my product by February with a marketing phase and sales phase" | project + 1 goal + 2 plans + milestone               | pending |
 
 ## References
 
 Specs and philosophy:
+
 - `docs/specs/PROJECT_ONTOLOGY_LINKING_PHILOSOPHY.md`
 - `docs/specs/ONTOLOGY_RELATIONSHIP_FSM_SPEC.md`
 - `docs/specs/ONTOLOGY_AUTO_ORGANIZATION_SPEC.md`
 
 Agentic chat docs:
+
 - `apps/web/docs/features/agentic-chat/PROJECT_CREATION_FLOW_UPDATE_PLAN.md`
 - `apps/web/docs/features/agentic-chat/tool-system/DOCUMENTATION.md`
 - `apps/web/docs/features/agentic-chat/tool-system/QUICK_REFERENCE.md`

@@ -342,6 +342,9 @@ export class ChatToolExecutor {
 			case 'get_onto_project_details':
 				return this.readExecutor.getOntoProjectDetails(args);
 
+			case 'get_onto_project_graph':
+				return this.readExecutor.getOntoProjectGraph(args);
+
 			case 'get_onto_task_details':
 				return this.readExecutor.getOntoTaskDetails(args);
 
@@ -398,6 +401,9 @@ export class ChatToolExecutor {
 
 			case 'unlink_onto_edge':
 				return this.writeExecutor.unlinkOntoEdge(args);
+
+			case 'reorganize_onto_project_graph':
+				return this.writeExecutor.reorganizeOntoProjectGraph(args);
 
 			case 'update_onto_project':
 				return this.writeExecutor.updateOntoProject(args);

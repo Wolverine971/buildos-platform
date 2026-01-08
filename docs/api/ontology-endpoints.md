@@ -1,12 +1,14 @@
 ---
 title: Ontology API Reference
 description: REST endpoints that power the BuildOS ontology system.
-last_updated: 2026-01-07
+last_updated: 2026-01-08
 path: docs/api/ontology-endpoints.md
 ---
 
 # Ontology API Reference
 
+> **Recent Updates (2026-01-08)**: Added project graph reorg + full-graph endpoints for node-centric restructuring and planning.
+>
 > **Recent Updates (2026-01-07)**: Auto-organization now manages containment edges for core entities via parent references. See [Ontology Auto-Organization Spec](/docs/specs/ONTOLOGY_AUTO_ORGANIZATION_SPEC.md).
 >
 > **Recent Updates (2024-12-20)**: Schema migration complete. All entities now support soft deletes via `deleted_at`. New dedicated columns: `description`, `content`, `target_date`, `completed_at`, `start_at`. See [Migration Plan](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) and [Detailed API Docs](/apps/web/docs/features/ontology/API_ENDPOINTS.md).
@@ -47,6 +49,8 @@ All ontology entities now support soft deletes:
     - [POST `/api/onto/outputs/generate`](#post-apiontooutputsgenerate)
 5. [Graph](#graph)
     - [GET `/api/onto/graph`](#get-apiontograph)
+    - [GET `/api/onto/projects/[id]/graph/full`](#get-apiontoprojectsidgraphfull)
+    - [POST `/api/onto/projects/[id]/reorganize`](#post-apiontoprojectsidreorganize)
 
 ---
 
@@ -501,6 +505,95 @@ Accept: application/json
 - `400 Bad Request` for invalid parameters (e.g., `viewMode`).
 - `413 Payload Too Large` when the resulting graph exceeds the configured node limit.
 - `500 Internal Server Error` for unexpected load failures.
+
+---
+
+### GET `/api/onto/projects/[id]/graph/full`
+
+Returns the full `ProjectGraphData` payload for a single project, including entities and edges.
+
+```http
+GET /api/onto/projects/09dfad24-f021-4a09-b2d5-1dbbaabd00f6/graph/full
+Authorization: Bearer <token>
+Accept: application/json
+```
+
+**Response excerpt**
+
+```json
+{
+	"project": { "...": "..." },
+	"tasks": [],
+	"plans": [],
+	"goals": [],
+	"documents": [],
+	"edges": []
+}
+```
+
+**Error Codes**
+
+- `401 Unauthorized` if the request lacks a valid session.
+- `403 Forbidden` if the user does not own the project.
+- `404 Not Found` if the project is missing.
+
+---
+
+### POST `/api/onto/projects/[id]/reorganize`
+
+Reorganizes a subset of entities using a node-centric connections payload. Supports dry runs that return edge diffs without applying changes.
+
+```http
+POST /api/onto/projects/09dfad24-f021-4a09-b2d5-1dbbaabd00f6/reorganize
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Request Body**
+
+```json
+{
+	"project_id": "09dfad24-f021-4a09-b2d5-1dbbaabd00f6",
+	"nodes": [
+		{
+			"id": "uuid",
+			"kind": "task",
+			"connections": [
+				{ "kind": "plan", "id": "uuid" },
+				{ "kind": "goal", "id": "uuid", "intent": "semantic", "rel": "supports_goal" }
+			],
+			"mode": "replace",
+			"semantic_mode": "replace_auto"
+		}
+	],
+	"options": {
+		"dry_run": true
+	}
+}
+```
+
+**Response (dry run)**
+
+```json
+{
+	"dry_run": true,
+	"node_count": 1,
+	"counts": { "create": 2, "delete": 1, "update": 0 },
+	"changes": {
+		"edges_to_create": [],
+		"edges_to_delete": [],
+		"edges_to_update": []
+	}
+}
+```
+
+**Error Codes**
+
+- `400 Bad Request` for validation failures (missing nodes, invalid kinds, etc.).
+- `401 Unauthorized` if the request lacks a valid session.
+- `403 Forbidden` if the user does not own the project.
+- `404 Not Found` if the project is missing.
+- `409 Conflict` if the graph changed since planning (retry after refetch).
 
 ---
 
