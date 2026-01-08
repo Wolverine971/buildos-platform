@@ -33,7 +33,7 @@
 		</div>
 
 		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">
-			Step 3: Flexibility - BuildOS Adapts to You
+			Step 4: Flexibility - BuildOS Adapts to You
 		</h2>
 		<p class="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
 			Life changes. Priorities shift. BuildOS keeps up. Here's how.

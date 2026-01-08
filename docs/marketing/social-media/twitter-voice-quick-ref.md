@@ -16,7 +16,30 @@
 
 ---
 
-## The 3 Rules (Every Reply Must Pass)
+## The Philosophy: Interesting Guy + Cheerleader
+
+> **NOT a thought leader.** Everyone is doing that. It's overdone and inauthentic.
+> **The goal:** Interesting person with interesting things to say, OR genuine supporter.
+
+### Two Modes of Engagement
+
+**Mode 1: Add Value (When You Have Something)**
+
+- Share specific experience or insight
+- Lead with curiosity, not authority
+- Be direct and lowercase casual
+- Teammate energy, not teaching
+
+**Mode 2: Cheerleader (When You Don't)**
+
+- Genuine hype and encouragement
+- Curious questions
+- Celebrate their wins specifically
+- "hell yes" energy - it's valid to just be excited for someone
+
+---
+
+## The 3 Rules (for Value Mode)
 
 1. **Can I visualize it?** - Specific details, not abstractions
 2. **Can I falsify it?** - Real experience you could defend
@@ -28,8 +51,9 @@
 
 - lowercase casual. fragments fine.
 - short punchy sentences. be direct.
-- lead with observation, not "I think..."
+- lead with observation OR genuine excitement (both valid)
 - longer replies OK when you have substance
+- teammate energy - we're all rowing together
 
 ---
 
@@ -64,20 +88,30 @@
 
 ---
 
-## Reply Starters (DO)
+## Reply Starters
+
+### Value Mode (DO)
 
 - Direct reaction: "yes." / "this." / "exactly."
 - Observation: "the pattern i keep seeing..."
-- Experience: "in the marines we called this..."
+- Experience: "in the marines we called this..." (sparingly)
 - Question: "curious how you think about..."
 
-## Reply Starters (DON'T)
+### Cheerleader Mode (DO)
 
-- "love this"
-- "this resonated"
-- "great post!"
-- "I think..."
-- "in my experience..." (just say it directly)
+- "hell yes."
+- "this is awesome - [specific thing that impressed you]"
+- "love seeing this. what's next?"
+- "[specific praise] - how'd you figure that out?"
+- Curious questions about their journey
+
+### DON'T
+
+- "love this" (hollow, no specifics)
+- "this resonated" (generic)
+- "great post!" (thought leader energy)
+- Preachy teaching when you're just supporting
+- Making it about you when cheering someone on
 
 ---
 

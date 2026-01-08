@@ -6,6 +6,8 @@ import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LLMMetadata } from '$lib/types/error-logging';
 import { rateLimiter, RATE_LIMITS } from '$lib/utils/rate-limiter';
+import { instantiateProject } from '$lib/services/ontology/instantiation.service';
+import { convertBrainDumpToProjectSpec } from '$lib/services/ontology/braindump-to-ontology-adapter';
 // Improved cache implementation using WeakMap for automatic garbage collection
 // WeakMap allows processor instances to be garbage collected when no longer referenced
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
@@ -335,7 +337,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 				const { data: existingDump, error: fetchError } = await supabase
 					.from('brain_dumps')
-					.select('status, title, content')
+					.select('status, title, content, parsed_results')
 					.eq('id', brainDumpId)
 					.eq('user_id', user.id)
 					.single();
@@ -352,30 +354,156 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				// 	);
 				// }
 
-				let operationsExecutor = new OperationsExecutor(supabase);
+				const isNewProject = !selectedProjectId || selectedProjectId === 'new';
 
 				// Enhanced error handling for operation execution
 				let executionResult;
+				let projectInfo = null;
+				let ontologyResult: {
+					project_id: string;
+					counts: {
+						goals: number;
+						requirements: number;
+						plans: number;
+						tasks: number;
+						outputs: number;
+						documents: number;
+						sources: number;
+						metrics: number;
+						milestones: number;
+						risks: number;
+						decisions: number;
+						edges: number;
+					};
+				} | null = null;
 				const executionStartTime = Date.now();
 
 				try {
-					executionResult = await operationsExecutor.executeOperations({
-						operations,
-						userId: user.id,
-						brainDumpId,
-						projectQuestions
-					});
+					if (isNewProject) {
+						const rawParsedResults = existingDump.parsed_results;
+						let parsedResults: any = undefined;
 
-					// Log any failed operations
-					if (executionResult.failed.length > 0) {
-						for (const failedOp of executionResult.failed) {
-							await errorLogger.logDatabaseError(
-								failedOp.error || 'Operation failed',
-								failedOp.operation,
-								failedOp.table,
-								failedOp.id,
-								failedOp.data
-							);
+						if (rawParsedResults) {
+							if (typeof rawParsedResults === 'string') {
+								try {
+									parsedResults = JSON.parse(rawParsedResults);
+								} catch (parseError) {
+									console.warn(
+										'Failed to parse stored parsed_results:',
+										parseError
+									);
+								}
+							} else if (typeof rawParsedResults === 'object') {
+								parsedResults = rawParsedResults;
+							}
+						}
+
+						const projectSpec = convertBrainDumpToProjectSpec(
+							operations,
+							originalText || existingDump.content || '',
+							{
+								projectSummary: summary || parsedResults?.summary,
+								projectContext: parsedResults?.contextResult?.projectCreate?.context
+							}
+						);
+
+						const { project_id, counts } = await instantiateProject(
+							supabase,
+							projectSpec,
+							user.id
+						);
+
+						const { data: project, error } = await supabase
+							.from('onto_projects')
+							.select('id, name')
+							.eq('id', project_id)
+							.single();
+
+						if (!error && project) {
+							projectInfo = {
+								id: project.id,
+								name: project.name,
+								isNew: true
+							};
+						}
+
+						ontologyResult = { project_id, counts };
+						executionResult = {
+							successful: operations,
+							failed: [],
+							results: []
+						};
+					} else {
+						const operationsExecutor = new OperationsExecutor(supabase);
+						executionResult = await operationsExecutor.executeOperations({
+							operations,
+							userId: user.id,
+							brainDumpId,
+							projectQuestions
+						});
+
+						// Log any failed operations
+						if (executionResult.failed.length > 0) {
+							for (const failedOp of executionResult.failed) {
+								await errorLogger.logDatabaseError(
+									failedOp.error || 'Operation failed',
+									failedOp.operation,
+									failedOp.table,
+									failedOp.id,
+									failedOp.data
+								);
+							}
+						}
+
+						// Better project information resolution
+						const createdProject = executionResult.results?.find(
+							(r: any) => r.table === 'projects' && r.operationType === 'create'
+						);
+
+						if (createdProject?.id) {
+							// New project was created - fetch the project details including slug
+							try {
+								const { data: project, error } = await supabase
+									.from('projects')
+									.select('id, name, slug, description')
+									.eq('id', createdProject.id)
+									.eq('user_id', user.id)
+									.single();
+
+								if (!error && project) {
+									projectInfo = {
+										id: project.id,
+										name: project.name,
+										isNew: true
+									};
+								} else {
+									console.warn('Failed to fetch created project details:', error);
+								}
+							} catch (error) {
+								console.warn('Failed to fetch created project details:', error);
+							}
+						} else if (selectedProjectId && selectedProjectId !== 'new') {
+							// Existing project was updated
+							try {
+								const { data: project, error } = await supabase
+									.from('projects')
+									.select('id, name, slug, description')
+									.eq('id', selectedProjectId)
+									.eq('user_id', user.id)
+									.single();
+
+								if (!error && project) {
+									projectInfo = {
+										id: project.id,
+										name: project.name,
+										isNew: false
+									};
+								} else {
+									console.warn('Failed to fetch updated project details:', error);
+								}
+							} catch (error) {
+								console.warn('Failed to fetch updated project details:', error);
+							}
 						}
 					}
 				} catch (error) {
@@ -413,60 +541,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					);
 				}
 
-				// Enhanced project handling for success screen
-				let projectInfo = null;
-
-				// Better project information resolution
-				const createdProject = executionResult.results?.find(
-					(r: any) => r.table === 'projects' && r.operationType === 'create'
-				);
-
-				if (createdProject?.id) {
-					// New project was created - fetch the project details including slug
-					try {
-						const { data: project, error } = await supabase
-							.from('projects')
-							.select('id, name, slug, description')
-							.eq('id', createdProject.id)
-							.eq('user_id', user.id)
-							.single();
-
-						if (!error && project) {
-							projectInfo = {
-								id: project.id,
-								name: project.name,
-								isNew: true
-							};
-						} else {
-							console.warn('Failed to fetch created project details:', error);
-						}
-					} catch (error) {
-						console.warn('Failed to fetch created project details:', error);
-					}
-				} else if (selectedProjectId && selectedProjectId !== 'new') {
-					// Existing project was updated
-					try {
-						const { data: project, error } = await supabase
-							.from('projects')
-							.select('id, name, slug, description')
-							.eq('id', selectedProjectId)
-							.eq('user_id', user.id)
-							.single();
-
-						if (!error && project) {
-							projectInfo = {
-								id: project.id,
-								name: project.name,
-								isNew: false
-							};
-						} else {
-							console.warn('Failed to fetch updated project details:', error);
-						}
-					} catch (error) {
-						console.warn('Failed to fetch updated project details:', error);
-					}
-				}
-
 				// Update the existing brain dump status to 'saved' instead of creating a new one
 				try {
 					const projectIdForSave = projectInfo?.id || selectedProjectId;
@@ -500,7 +574,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 									successful: executionResult.successful.length,
 									failed: executionResult.failed.length,
 									results: executionResult.results?.length || 0
-								}
+								},
+								ontology: ontologyResult || undefined
 							}),
 							updated_at: new Date().toISOString()
 						})

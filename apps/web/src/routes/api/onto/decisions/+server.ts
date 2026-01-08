@@ -27,6 +27,13 @@ import {
 } from '$lib/services/async-activity-logger';
 import { dev } from '$app/environment';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 // GET /api/onto/decisions?project_id=X - List decisions for a project
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -100,7 +107,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { project_id, title, description, outcome, rationale, state_key, decision_at } = body;
+		const {
+			project_id,
+			title,
+			description,
+			outcome,
+			rationale,
+			state_key,
+			decision_at,
+			parent,
+			parents,
+			connections
+		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
@@ -177,6 +195,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		const explicitParents = toParentRefs({ parent, parents });
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : explicitParents;
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: project_id,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
 		// Create the decision
 		const insertData: Record<string, unknown> = {
 			project_id,
@@ -214,6 +245,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error('Failed to create decision', 500);
 		}
 
+		await autoOrganizeConnections({
+			supabase,
+			projectId: project_id,
+			entity: { kind: 'decision', id: decision.id },
+			connections: connectionList,
+			options: { mode: 'replace' }
+		});
+
 		// Log the creation
 		logCreateAsync(
 			supabase,
@@ -239,6 +278,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return ApiResponse.created({ decision });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('[Decisions POST] Unexpected error:', error);
 		return ApiResponse.internalError(error);
 	}

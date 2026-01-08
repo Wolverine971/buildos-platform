@@ -15,29 +15,61 @@
 
 ---
 
+## The Philosophy: Interesting Guy + Cheerleader
+
+> **NOT a thought leader.** Everyone is doing that. It's overdone and inauthentic.
+> **The goal:** Interesting person with interesting things to say, OR genuine supporter.
+
+### Two Modes of Engagement
+
+**Mode 1: Add Value (When You Have Something)**
+
+- Share specific experience or insight
+- Lead with curiosity, not authority
+- "Here's what I've seen..." not "The answer is..."
+- Teammate energy, not teaching
+
+**Mode 2: Cheerleader (When You Don't)**
+
+- Genuine excitement for their work
+- Curious questions about their journey
+- Celebrate their wins specifically
+- "We're all rowing the same boat" energy
+
+---
+
 ## Voice (LinkedIn-Specific)
 
 - Professional but authentic - not corporate
-- Learning voice, not authoritative: "What I'm finding..." not "The answer is..."
+- Interesting first, founder second
 - Longer, more nuanced than Twitter (2-4 sentence comments minimum)
 - Direct, no bullshit - but professional
 - Hates inauthenticity - especially LinkedIn thought leader types
 
-### DO
+### DO (Value Mode)
 
-- Lead with observation or insight
-- Be specific - use real examples from your experience
-- Ask thoughtful questions to open dialogue
+- Lead with observation or insight from experience
+- Be specific - use real examples
+- Ask questions that show expertise
 - "What I'm finding..." / "In my experience building..."
 - Reference their past content when engaging big accounts
 
+### DO (Cheerleader Mode)
+
+- Genuine excitement for their work/win
+- Specific praise - what exactly impressed you
+- Curious questions about their journey
+- "Hell yes" and "this is awesome" when you mean it
+- "We're all rowing the same boat" energy
+
 ### DON'T
 
-- "Love this!" / "Great post!" / "This resonated"
+- "Love this!" / "Great post!" (hollow)
 - Generic observations anyone could make
 - Preachy setups ("Most people don't realize...")
-- Sycophantic praise
-- "I think..." (just say it directly)
+- Teaching when you're just supporting
+- Thought leader energy
+- Making it about you/BuildOS when cheering someone on
 
 ---
 

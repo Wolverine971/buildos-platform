@@ -12,18 +12,27 @@
 	} = $props();
 
 	const steps = Object.values(ONBOARDING_V2_CONFIG.steps).sort((a, b) => a.order - b.order);
-	const totalSteps = steps.length;
+	const visibleSteps = steps.filter((step) => step.id !== 'welcome' && step.id !== 'summary');
+	const totalSteps = visibleSteps.length;
+	const currentVisibleIndex = $derived(
+		Math.max(
+			visibleSteps.findIndex((step) => step.order === currentStep),
+			0
+		)
+	);
 
-	const progressPercentage = $derived(Math.round((currentStep / (totalSteps - 1)) * 100));
+	const progressPercentage = $derived(
+		totalSteps > 1 ? Math.round((currentVisibleIndex / (totalSteps - 1)) * 100) : 0
+	);
 </script>
 
 <div class="mb-8">
 	<!-- Progress bar -->
 	<div class="relative mb-6">
 		<div class="flex items-center justify-between">
-			{#each steps as step, index}
-				{@const isCompleted = index < currentStep}
-				{@const isCurrent = index === currentStep}
+			{#each visibleSteps as step, index}
+				{@const isCompleted = index < currentVisibleIndex}
+				{@const isCurrent = index === currentVisibleIndex}
 
 				<div class="relative flex flex-col items-center flex-1">
 					<!-- Connector line (not for first step) -->
@@ -50,7 +59,7 @@
 							: isCurrent
 								? 'bg-accent shadow-ink animate-pulse scale-110'
 								: 'bg-muted hover:bg-muted/80'}"
-						onclick={() => onStepClick(index)}
+						onclick={() => onStepClick(step.order)}
 						aria-label="Go to step {index + 1}: {step.title}"
 						title="Go to step {index + 1}: {step.title}"
 					>
@@ -81,10 +90,10 @@
 	<!-- Progress text -->
 	<div class="text-center">
 		<p class="text-sm font-medium text-foreground">
-			Step {currentStep + 1} of {totalSteps}
+			Step {currentVisibleIndex + 1} of {totalSteps}
 		</p>
 		<p class="text-xs text-muted-foreground mt-1">
-			{currentStep} completed · {progressPercentage}% done
+			{currentVisibleIndex} completed · {progressPercentage}% done
 		</p>
 	</div>
 </div>

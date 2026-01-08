@@ -15,6 +15,15 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { normalizeDocumentStateInput } from '../../shared/document-state';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ParentRef } from '$lib/services/ontology/containment-organizer';
+import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 type Locals = App.Locals;
 
@@ -138,8 +147,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const { document } = accessResult;
 
-		const { title, state_key, type_key, body_markdown, content, description, props } =
-			body as Record<string, unknown>;
+		const {
+			title,
+			state_key,
+			type_key,
+			body_markdown,
+			content,
+			description,
+			props,
+			parent,
+			parents,
+			connections
+		} = body as Record<string, unknown>;
 
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeDocumentStateInput(state_key);
@@ -179,7 +198,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		// Handle content column - prefer content param, fall back to body_markdown for backwards compatibility
 		const newContent = content !== undefined ? content : body_markdown;
 		if (newContent !== undefined) {
-			const contentValue = typeof newContent === 'string' ? newContent : null;
+			const contentValue = normalizeMarkdownInput(newContent);
 			updatePayload.content = contentValue;
 			hasUpdates = true;
 		}
@@ -194,7 +213,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		// Keep body_markdown in props for backwards compatibility during migration
 		if (newContent !== undefined) {
-			const markdownContent = typeof newContent === 'string' ? newContent : '';
+			const markdownContent =
+				typeof updatePayload.content === 'string' ? updatePayload.content : '';
 			mergedProps = { ...mergedProps, body_markdown: markdownContent };
 			shouldUpdateProps = true;
 		}
@@ -220,6 +240,46 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
+		const hasParentField = Object.prototype.hasOwnProperty.call(body, 'parent');
+		const hasParentsField = Object.prototype.hasOwnProperty.call(body, 'parents');
+		const hasConnectionsInput = Array.isArray(connections);
+		const explicitParents = toParentRefs({
+			parent: parent as ParentRef | null,
+			parents: parents as ParentRef[] | null
+		});
+
+		const connectionInput: ConnectionRef[] = Array.isArray(connections)
+			? (connections as ConnectionRef[])
+			: [];
+		const connectionList: ConnectionRef[] =
+			hasConnectionsInput && connectionInput.length > 0 ? connectionInput : explicitParents;
+
+		if (hasParentField || hasParentsField || hasConnectionsInput) {
+			if (connectionList.length > 0) {
+				await assertEntityRefsInProject({
+					supabase: locals.supabase,
+					projectId: document.project_id,
+					refs: connectionList,
+					allowProject: true
+				});
+			}
+
+			const hasDocumentConnection = connectionList.some(
+				(connection) => connection.kind === 'document'
+			);
+
+			await autoOrganizeConnections({
+				supabase: locals.supabase,
+				projectId: document.project_id,
+				entity: { kind: 'document', id: documentId },
+				connections: connectionList,
+				options: {
+					mode: 'replace',
+					skipContainment: !hasDocumentConnection
+				}
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			locals.supabase,
@@ -239,6 +299,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		return ApiResponse.success({ document: updatedDocument });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('[Document API] Unexpected PATCH error:', error);
 		return ApiResponse.internalError(error, 'Failed to update document');
 	}

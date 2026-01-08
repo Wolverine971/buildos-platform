@@ -20,6 +20,7 @@ function createMockSupabase(tableData: TableData) {
 			const builder: any = {
 				select: () => builder,
 				eq: () => builder,
+				is: () => builder,
 				in: () => builder,
 				single: () => Promise.resolve({ data: singleData, error: null }),
 				maybeSingle: () => Promise.resolve({ data: singleData, error: null }),

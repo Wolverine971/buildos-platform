@@ -41,6 +41,13 @@ import {
 import { MILESTONE_STATES } from '$lib/types/onto';
 import { normalizeMilestoneStateInput } from '../../shared/milestone-state';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -55,7 +62,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Parse request body
 		const body = await request.json();
-		const { project_id, title, milestone, due_at, state_key, description } = body;
+		const {
+			project_id,
+			title,
+			milestone,
+			due_at,
+			state_key,
+			description,
+			goal_id,
+			parent,
+			parents,
+			connections
+		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		// Validate required fields
@@ -109,6 +127,41 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
+		let validatedGoalId: string | null = null;
+		const explicitParents = toParentRefs({ parent, parents });
+		const normalizedGoalId =
+			typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
+
+		const invalidParent = explicitParents.find((parentRef) => parentRef.kind !== 'goal');
+		if (invalidParent) {
+			return ApiResponse.badRequest('Milestones must be linked to a goal');
+		}
+
+		if (normalizedGoalId) {
+			validatedGoalId = normalizedGoalId;
+		}
+
+		const legacyConnections: ConnectionRef[] = [
+			...explicitParents,
+			...(validatedGoalId ? [{ kind: 'goal', id: validatedGoalId }] : [])
+		];
+
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : legacyConnections;
+
+		const hasGoalConnection = connectionList.some((connection) => connection.kind === 'goal');
+
+		if (!hasGoalConnection) {
+			return ApiResponse.badRequest('goal_id (or parent goal) is required for milestones');
+		}
+
+		await assertEntityRefsInProject({
+			supabase,
+			projectId: project_id,
+			refs: connectionList,
+			allowProject: false
+		});
+
 		// Create the milestone
 		const milestoneData = {
 			project_id,
@@ -137,14 +190,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Create an edge linking the milestone to the project
-		await supabase.from('onto_edges').insert({
-			project_id: project_id,
-			src_id: project_id,
-			src_kind: 'project',
-			dst_id: createdMilestone.id,
-			dst_kind: 'milestone',
-			rel: 'has_milestone'
+		await autoOrganizeConnections({
+			supabase,
+			projectId: project_id,
+			entity: { kind: 'milestone', id: createdMilestone.id },
+			connections: connectionList,
+			options: { mode: 'replace' }
 		});
 
 		// Log activity async (non-blocking)
@@ -176,6 +227,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return ApiResponse.created({ milestone: createdMilestone });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('[Milestone Create] Unexpected error:', error);
 		return ApiResponse.internalError(error);
 	}

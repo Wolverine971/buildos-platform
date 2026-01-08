@@ -42,6 +42,13 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { normalizeMilestoneStateInput } from '../../shared/milestone-state';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 // GET /api/onto/milestones/[id] - Get a single milestone
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -113,7 +120,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { title, due_at, state_key, milestone, description, props } = body;
+		const {
+			title,
+			due_at,
+			state_key,
+			milestone,
+			description,
+			props,
+			goal_id,
+			parent,
+			parents,
+			connections
+		} = body;
 
 		// Validate state_key if provided
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
@@ -164,6 +182,37 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (existingMilestone.project.created_by !== actorId) {
 			return ApiResponse.forbidden('You do not have permission to modify this milestone');
 		}
+
+		const explicitParents = toParentRefs({ parent, parents });
+		const hasParentField = Object.prototype.hasOwnProperty.call(body, 'parent');
+		const hasParentsField = Object.prototype.hasOwnProperty.call(body, 'parents');
+		const hasGoalInput = Object.prototype.hasOwnProperty.call(body, 'goal_id');
+
+		let validatedGoalId: string | null = null;
+
+		const invalidParent = explicitParents.find((parentRef) => parentRef.kind !== 'goal');
+		if (invalidParent) {
+			return ApiResponse.badRequest('Milestones must be linked to a goal');
+		}
+
+		if (hasGoalInput) {
+			const targetGoalId =
+				typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
+			if (targetGoalId) {
+				validatedGoalId = targetGoalId;
+			} else {
+				validatedGoalId = null;
+			}
+		}
+
+		const legacyConnections: ConnectionRef[] = [
+			...explicitParents,
+			...(validatedGoalId ? [{ kind: 'goal', id: validatedGoalId }] : [])
+		];
+
+		const hasConnectionsInput = Array.isArray(connections);
+		const connectionList: ConnectionRef[] =
+			hasConnectionsInput && connections.length > 0 ? connections : legacyConnections;
 
 		// Build update object
 		const updateData: Record<string, unknown> = {};
@@ -243,6 +292,36 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update milestone', 500);
 		}
 
+		const hasContainmentInput =
+			hasGoalInput || hasParentField || hasParentsField || hasConnectionsInput;
+
+		if (hasContainmentInput) {
+			const hasGoalConnection = connectionList.some(
+				(connection) => connection.kind === 'goal'
+			);
+
+			if (!hasGoalConnection) {
+				return ApiResponse.badRequest(
+					'goal_id (or parent goal) is required for milestones'
+				);
+			}
+
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: existingMilestone.project_id,
+				refs: connectionList,
+				allowProject: false
+			});
+
+			await autoOrganizeConnections({
+				supabase,
+				projectId: existingMilestone.project_id,
+				entity: { kind: 'milestone', id: params.id },
+				connections: connectionList,
+				options: { mode: 'replace' }
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			supabase,
@@ -266,6 +345,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		return ApiResponse.success({ milestone: updatedMilestone });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('[Milestone PATCH] Unexpected error:', error);
 		return ApiResponse.internalError(error);
 	}

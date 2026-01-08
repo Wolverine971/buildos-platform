@@ -31,7 +31,7 @@
 		isLoadingAvailable?: boolean;
 		readOnly?: boolean;
 		onAdd?: (kind: EntityKind) => void;
-		onRemove?: (edgeId: string) => void;
+		onRemove?: (entity: LinkedEntity, kind: EntityKind) => void;
 		onEntityClick?: (kind: EntityKind, id: string) => void;
 	}
 

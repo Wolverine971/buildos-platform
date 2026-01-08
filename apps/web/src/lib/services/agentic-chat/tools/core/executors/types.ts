@@ -8,6 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
+import type { ProjectSpec } from '$lib/types/onto';
 
 // ============================================
 // EXECUTOR CONTEXT
@@ -188,6 +189,8 @@ export interface CreateOntoTaskArgs {
 	start_at?: string;
 	due_at?: string;
 	props?: Record<string, unknown>;
+	parent?: { kind: string; id: string; is_primary?: boolean };
+	parents?: Array<{ kind: string; id: string; is_primary?: boolean }>;
 }
 
 export interface CreateOntoGoalArgs {
@@ -205,6 +208,10 @@ export interface CreateOntoPlanArgs {
 	type_key?: string;
 	state_key?: string;
 	props?: Record<string, unknown>;
+	goal_id?: string;
+	milestone_id?: string;
+	parent?: { kind: string; id: string; is_primary?: boolean };
+	parents?: Array<{ kind: string; id: string; is_primary?: boolean }>;
 }
 
 export interface CreateOntoDocumentArgs {
@@ -217,6 +224,8 @@ export interface CreateOntoDocumentArgs {
 	/** @deprecated Use content instead. Kept for backwards compatibility. */
 	body_markdown?: string;
 	props?: Record<string, unknown>;
+	parent?: { kind: string; id: string; is_primary?: boolean };
+	parents?: Array<{ kind: string; id: string; is_primary?: boolean }>;
 }
 
 export interface CreateTaskDocumentArgs {
@@ -250,48 +259,8 @@ export interface CreateOntoProjectArgs {
 		start_at?: string;
 		end_at?: string;
 	};
-	goals?: Array<{
-		name: string;
-		type_key?: string;
-		description?: string;
-		props?: Record<string, unknown>;
-	}>;
-	requirements?: Array<{
-		text: string;
-		type_key?: string;
-		props?: Record<string, unknown>;
-	}>;
-	plans?: Array<{
-		name: string;
-		type_key: string;
-		state_key?: string;
-		props?: Record<string, unknown>;
-	}>;
-	tasks?: Array<{
-		title: string;
-		type_key?: string;
-		plan_name?: string;
-		state_key?: string;
-		priority?: number;
-		due_at?: string;
-		props?: Record<string, unknown>;
-	}>;
-	outputs?: Array<{
-		name: string;
-		type_key: string;
-		state_key?: string;
-		props?: Record<string, unknown>;
-	}>;
-	documents?: Array<{
-		title: string;
-		type_key: string;
-		state_key?: string;
-		/** Markdown content stored in the content column */
-		content?: string;
-		/** @deprecated Use content instead. Kept for backwards compatibility. */
-		body_markdown?: string;
-		props?: Record<string, unknown>;
-	}>;
+	entities: ProjectSpec['entities'];
+	relationships: ProjectSpec['relationships'];
 	context_document?: {
 		title: string;
 		/** Markdown content stored in the content column */

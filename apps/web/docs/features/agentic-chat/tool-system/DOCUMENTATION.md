@@ -113,7 +113,7 @@ Tools for creating, updating, and deleting entities:
 **Create Tools (6):**
 | Tool Name | Purpose | Key Parameters |
 |-----------|---------|-----------------|
-| `create_onto_project` | Create new project with full structure | `project` (required), `goals`, `plans`, `tasks`, `outputs`, `documents`, `context_document` |
+| `create_onto_project` | Create new project with full structure | `project` (required), `entities` (required), `relationships` (required), `context_document` |
 | `create_onto_task` | Create task within a project | `project_id` (required), `title` (required), `type_key`, `description`, `priority`, `plan_id`, `goal_id`, `supporting_milestone_id` |
 | `create_onto_goal` | Create goal for a project | `project_id` (required), `name` (required) |
 | `create_onto_plan` | Create plan for grouping tasks | `project_id` (required), `name` (required) |
@@ -121,6 +121,14 @@ Tools for creating, updating, and deleting entities:
 | `create_task_document` | Create/attach document to a task | `task_id` (required) |
 
 > **Task type_key Reference**: See [TYPE_KEY_TAXONOMY.md](../../ontology/TYPE_KEY_TAXONOMY.md#onto_tasks) for work mode taxonomy.
+> **Project creation**: `create_onto_project` accepts **only** `entities` + `relationships`. Legacy
+> arrays are rejected with a hard 400. `relationships` is required even if empty
+> (use `[]` for a single unlinked entity). See
+> `apps/web/docs/features/agentic-chat/PROJECT_CREATION_FLOW_UPDATE_PLAN.md`.
+>
+> **Structure Philosophy**: Start simple. Most new projects need just project + 1 goal.
+> Add plans/milestones only when the user describes phases or checkpoints.
+> The system auto-organizes containment; just express what connects to what.
 
 **Link Tools (2):**
 | Tool Name | Purpose | Key Parameters |
@@ -378,14 +386,14 @@ private async apiRequest<T = any>(
 
 **Key API Endpoints:**
 
-| Tool                   | Endpoint                    | Method |
-| ---------------------- | --------------------------- | ------ |
-| `list_onto_projects`   | `/api/onto/projects`        | GET    |
-| `search_onto_projects` | `/api/onto/projects/search` | POST   |
-| `list_onto_tasks`      | `/api/onto/tasks`           | GET    |
-| `create_onto_project`  | `/api/onto/projects`        | POST   |
-| `update_onto_task`     | `/api/onto/tasks/:id`       | PUT    |
-| `delete_onto_task`     | `/api/onto/tasks/:id`       | DELETE |
+| Tool                   | Endpoint                         | Method |
+| ---------------------- | -------------------------------- | ------ |
+| `list_onto_projects`   | `/api/onto/projects`             | GET    |
+| `search_onto_projects` | `/api/onto/projects/search`      | POST   |
+| `list_onto_tasks`      | `/api/onto/tasks`                | GET    |
+| `create_onto_project`  | `/api/onto/projects/instantiate` | POST   |
+| `update_onto_task`     | `/api/onto/tasks/:id`            | PUT    |
+| `delete_onto_task`     | `/api/onto/tasks/:id`            | DELETE |
 
 ### 3.4 Error Handling & Special Cases
 
@@ -685,8 +693,8 @@ interface ToolMetadata {
 
 ```typescript
 TOOL_METADATA['create_onto_project'] = {
-	summary: 'End-to-end project creation from a template brief plus nested entities.',
-	capabilities: ['Supports goals/plans/tasks scaffolding', 'Captures clarifications'],
+	summary: 'End-to-end project creation using entities + relationships.',
+	capabilities: ['Supports relationship-driven containment', 'Captures clarifications'],
 	contexts: ['project_create', 'project'],
 	category: 'write'
 };
@@ -793,8 +801,7 @@ private buildContextDocumentSpec(args: CreateOntoProjectArgs): CreateOntoProject
 If no context document provided, it generates one from:
 
 - Project name and description
-- Goals list
-- Initial tasks
+- Goals/tasks from entities (kind === goal/task)
 - Braindump metadata (if present)
 
 ---

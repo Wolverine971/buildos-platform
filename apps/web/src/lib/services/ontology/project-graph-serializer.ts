@@ -36,6 +36,9 @@ export interface SerializedEntitiesByKind {
 	document: EntityTypeMap['document'][];
 	risk: EntityTypeMap['risk'][];
 	decision: EntityTypeMap['decision'][];
+	requirement: EntityTypeMap['requirement'][];
+	metric: EntityTypeMap['metric'][];
+	source: EntityTypeMap['source'][];
 }
 
 /**
@@ -134,7 +137,10 @@ export function serializeProjectGraph(graph: ProjectGraph): SerializedProjectGra
 		output: Array.from(graph.entitiesByKind.output.values()),
 		document: Array.from(graph.entitiesByKind.document.values()),
 		risk: Array.from(graph.entitiesByKind.risk.values()),
-		decision: Array.from(graph.entitiesByKind.decision.values())
+		decision: Array.from(graph.entitiesByKind.decision.values()),
+		requirement: Array.from(graph.entitiesByKind.requirement.values()),
+		metric: Array.from(graph.entitiesByKind.metric.values()),
+		source: Array.from(graph.entitiesByKind.source.values())
 	};
 
 	// Convert edge index Maps to Records
@@ -192,6 +198,9 @@ export function deserializeProjectGraph(serialized: SerializedProjectGraph): Pro
 		milestones: serialized.entitiesByKind.milestone,
 		outputs: serialized.entitiesByKind.output,
 		documents: serialized.entitiesByKind.document,
+		requirements: serialized.entitiesByKind.requirement,
+		metrics: serialized.entitiesByKind.metric,
+		sources: serialized.entitiesByKind.source,
 		risks: serialized.entitiesByKind.risk,
 		decisions: serialized.entitiesByKind.decision,
 		edges: serialized.edges
@@ -280,7 +289,10 @@ export function serializeProjectGraphData(data: ProjectGraphData): SerializedPro
 			output: data.outputs,
 			document: data.documents,
 			risk: data.risks,
-			decision: data.decisions
+			decision: data.decisions,
+			requirement: data.requirements,
+			metric: data.metrics,
+			source: data.sources
 		},
 		edgeIndex: {
 			outgoing,

@@ -42,6 +42,13 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -67,7 +74,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			state_key = 'identified',
 			content,
 			description,
-			mitigation_strategy
+			mitigation_strategy,
+			parent,
+			parents,
+			connections
 		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
@@ -123,6 +133,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
+		const explicitParents = toParentRefs({ parent, parents });
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : explicitParents;
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: project_id,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
 		const normalizedContent = content?.trim() || description?.trim() || null;
 
 		// Create the risk
@@ -157,14 +180,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Create an edge linking the risk to the project
-		await supabase.from('onto_edges').insert({
-			project_id: project_id,
-			src_id: project_id,
-			src_kind: 'project',
-			dst_id: risk.id,
-			dst_kind: 'risk',
-			rel: 'has_risk'
+		await autoOrganizeConnections({
+			supabase,
+			projectId: project_id,
+			entity: { kind: 'risk', id: risk.id },
+			connections: connectionList,
+			options: { mode: 'replace' }
 		});
 
 		// Log activity async (non-blocking)
@@ -197,6 +218,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return ApiResponse.created({ risk });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('[Risk Create] Unexpected error:', error);
 		return ApiResponse.internalError(error);
 	}

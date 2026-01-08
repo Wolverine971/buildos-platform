@@ -264,6 +264,35 @@ Create a software development project for building a REST API
 
 **Expected:** Should classify as `project.software.api` or similar type_key
 
+### 4.5 Project Creation Payload (entities + relationships only)
+
+```
+Create a project called "Fundraising Sprint" with a plan for outreach and a task to draft the investor email
+```
+
+**Expected:** `create_onto_project` uses **entities + relationships** only (no legacy arrays),
+and includes `relationships` even if empty. Example payload shape:
+
+```json
+{
+	"project": {
+		"name": "Fundraising Sprint",
+		"type_key": "project.business.fundraising",
+		"description": "Organize outreach and materials for fundraising."
+	},
+	"entities": [
+		{ "temp_id": "plan-1", "kind": "plan", "name": "Outreach Plan" },
+		{ "temp_id": "task-1", "kind": "task", "title": "Draft investor email" }
+	],
+	"relationships": [
+		[
+			{ "temp_id": "plan-1", "kind": "plan" },
+			{ "temp_id": "task-1", "kind": "task" }
+		]
+	]
+}
+```
+
 ---
 
 ## 5. Brain Dump Context Tests

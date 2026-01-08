@@ -45,6 +45,13 @@ import {
 import { normalizeTaskStateInput } from '../../shared/task-state';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -69,7 +76,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			goal_id,
 			supporting_milestone_id,
 			start_at,
-			due_at
+			due_at,
+			parent,
+			parents,
+			connections
 		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
@@ -128,35 +138,50 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Validate optional goal and milestone relationships
 		let validatedGoalId: string | null = null;
 		let validatedMilestoneId: string | null = null;
+		const explicitParents = toParentRefs({ parent, parents });
+		const normalizedPlanId =
+			typeof plan_id === 'string' && plan_id.trim().length > 0 ? plan_id : null;
+		const normalizedGoalId =
+			typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
+		const normalizedMilestoneId =
+			typeof supporting_milestone_id === 'string' && supporting_milestone_id.trim().length > 0
+				? supporting_milestone_id
+				: null;
 
-		if (goal_id) {
-			const { data: goal, error: goalError } = await supabase
-				.from('onto_goals')
-				.select('id')
-				.eq('id', goal_id)
-				.is('deleted_at', null)
-				.eq('project_id', project_id)
-				.single();
-
-			if (goalError || !goal) {
-				return ApiResponse.notFound('Goal');
-			}
-			validatedGoalId = goal.id;
+		const invalidParent = explicitParents.find(
+			(parentRef) => !['project', 'plan', 'goal', 'milestone'].includes(parentRef.kind)
+		);
+		if (invalidParent) {
+			return ApiResponse.badRequest(`Unsupported parent kind: ${invalidParent.kind}`);
 		}
 
-		if (supporting_milestone_id) {
-			const { data: milestone, error: milestoneError } = await supabase
-				.from('onto_milestones')
-				.select('id')
-				.eq('id', supporting_milestone_id)
-				.is('deleted_at', null)
-				.eq('project_id', project_id)
-				.single();
+		const legacyConnections: ConnectionRef[] = [
+			...explicitParents,
+			...(normalizedPlanId ? [{ kind: 'plan', id: normalizedPlanId }] : []),
+			...(normalizedGoalId ? [{ kind: 'goal', id: normalizedGoalId }] : []),
+			...(normalizedMilestoneId
+				? [{ kind: 'milestone', id: normalizedMilestoneId, rel: 'targets_milestone' }]
+				: [])
+		];
 
-			if (milestoneError || !milestone) {
-				return ApiResponse.notFound('Milestone');
-			}
-			validatedMilestoneId = milestone.id;
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : legacyConnections;
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: project_id,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
+		if (normalizedGoalId) {
+			validatedGoalId = normalizedGoalId;
+		}
+
+		if (normalizedMilestoneId) {
+			validatedMilestoneId = normalizedMilestoneId;
 		}
 
 		// Create the task
@@ -192,68 +217,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Create edges linking the task to the project, plan (if any), goal, and milestone
-		// All edges include project_id for efficient project-scoped queries
-		// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
-		const edges: Array<{
-			src_id: string;
-			src_kind: string;
-			dst_id: string;
-			dst_kind: string;
-			rel: string;
-			project_id: string;
-		}> = [];
-
-		const isRootTask = !plan_id && !validatedMilestoneId && !validatedGoalId;
-		if (isRootTask) {
-			edges.push({
-				src_id: project_id,
-				src_kind: 'project',
-				dst_id: task.id,
-				dst_kind: 'task',
-				rel: 'contains',
-				project_id: project_id
-			});
-		}
-
-		// Plan relationship via edge (plan_id is no longer a column on onto_tasks)
-		// Convention: Store directionally (plan → task), query bidirectionally
-		if (plan_id) {
-			edges.push({
-				src_id: plan_id,
-				src_kind: 'plan',
-				dst_id: task.id,
-				dst_kind: 'task',
-				rel: 'has_task',
-				project_id: project_id
-			});
-		}
-
-		if (validatedGoalId) {
-			edges.push({
-				src_id: task.id,
-				src_kind: 'task',
-				dst_id: validatedGoalId,
-				dst_kind: 'goal',
-				rel: 'supports_goal',
-				project_id: project_id
-			});
-		}
-
-		if (validatedMilestoneId) {
-			edges.push({
-				src_id: task.id,
-				src_kind: 'task',
-				dst_id: validatedMilestoneId,
-				dst_kind: 'milestone',
-				rel: 'targets_milestone',
-				project_id: project_id
-			});
-		}
-
-		if (edges.length > 0) {
-			await supabase.from('onto_edges').insert(edges);
-		}
+		await autoOrganizeConnections({
+			supabase,
+			projectId: project_id,
+			entity: { kind: 'task', id: task.id },
+			connections: connectionList,
+			options: { mode: 'replace' }
+		});
 
 		// Create or update linked events when task is scheduled
 		try {
@@ -288,6 +258,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return ApiResponse.created({ task });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('Error in task create endpoint:', error);
 		return ApiResponse.internalError(error);
 	}

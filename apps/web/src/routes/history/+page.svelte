@@ -12,7 +12,7 @@
 -->
 
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidate, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import {
@@ -32,6 +32,7 @@
 	} from 'lucide-svelte';
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import HistoryListSkeleton from '$lib/components/history/HistoryListSkeleton.svelte';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import type { HistoryItem } from './+page.server';
 
 	interface OntoBraindump {
@@ -265,7 +266,7 @@
 		goto(`/history?${params.toString()}`, { replaceState: true });
 	}
 
-	function closeAgentModal() {
+	function closeAgentModal(summary?: DataMutationSummary) {
 		isAgentModalOpen = false;
 		selectedBraindumpForChat = null;
 		selectedChatSessionId = null;
@@ -274,7 +275,10 @@
 		params.delete('id');
 		params.delete('itemType');
 		const newUrl = params.toString() ? `/history?${params.toString()}` : '/history';
-		goto(newUrl, { replaceState: true });
+		replaceState(newUrl, {});
+		if (summary?.hasMessagesSent) {
+			void invalidate('history:data');
+		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {

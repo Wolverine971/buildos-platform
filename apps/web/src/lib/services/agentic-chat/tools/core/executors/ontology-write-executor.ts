@@ -177,17 +177,19 @@ function buildContextDocumentSpec(
 		extractMetaString(meta, 'summary') ??
 		(args.project.description ? args.project.description.trim() : '');
 
-	const goalsSection = (args.goals ?? [])
+	const entityGoals = (args.entities ?? []).filter(
+		(entity) => entity && entity.kind === 'goal'
+	) as Array<{ name: string; description?: string }>;
+	const entityTasks = (args.entities ?? []).filter(
+		(entity) => entity && entity.kind === 'task'
+	) as Array<{ title: string; state_key?: string }>;
+
+	const goalsSection = (entityGoals ?? [])
 		.map((goal) => `- ${goal.name}${goal.description ? ` — ${goal.description}` : ''}`)
 		.join('\n');
 
-	const tasksSection = (args.tasks ?? [])
-		.map(
-			(task) =>
-				`- ${task.title}${task.plan_name ? ` (Plan: ${task.plan_name})` : ''}${
-					task.state_key ? ` · ${task.state_key}` : ''
-				}`
-		)
+	const tasksSection = (entityTasks ?? [])
+		.map((task) => `- ${task.title}${task.state_key ? ` · ${task.state_key}` : ''}`)
 		.join('\n');
 
 	const body = [
@@ -214,6 +216,45 @@ function buildContextDocumentSpec(
 			braindump: braindump || undefined
 		}
 	};
+}
+
+function normalizeEntityDates(
+	entity: CreateOntoProjectArgs['entities'][number]
+): CreateOntoProjectArgs['entities'][number] {
+	const normalized = { ...entity } as Record<string, unknown>;
+	const normalizeField = (field: string, boundary: 'start' | 'end') => {
+		if (normalized[field] === undefined) return;
+		const next = normalizeIsoDateTime(String(normalized[field]), boundary);
+		if (next !== undefined) {
+			normalized[field] = next;
+		} else {
+			delete normalized[field];
+		}
+	};
+
+	switch (normalized.kind) {
+		case 'goal':
+			normalizeField('target_date', 'end');
+			break;
+		case 'milestone':
+			normalizeField('due_at', 'end');
+			break;
+		case 'plan':
+			normalizeField('start_date', 'start');
+			normalizeField('end_date', 'end');
+			break;
+		case 'task':
+			normalizeField('start_at', 'start');
+			normalizeField('due_at', 'end');
+			break;
+		case 'decision':
+			normalizeField('decision_at', 'end');
+			break;
+		default:
+			break;
+	}
+
+	return normalized as CreateOntoProjectArgs['entities'][number];
 }
 
 /**
@@ -243,6 +284,13 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			entity_type: 'project';
 		};
 	}> {
+		if (!Array.isArray(args.entities)) {
+			throw new Error('create_onto_project requires entities');
+		}
+		if (!Array.isArray(args.relationships)) {
+			throw new Error('create_onto_project requires relationships');
+		}
+
 		if (args.clarifications?.length) {
 			return {
 				project_id: '',
@@ -272,42 +320,20 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			delete normalizedProject.end_at;
 		}
 
-		const normalizedTasks = args.tasks?.map((task) => {
-			const normalizedDueAt = normalizeIsoDateTime(task.due_at, 'end');
-			if (normalizedDueAt !== undefined) {
-				return { ...task, due_at: normalizedDueAt };
-			}
-			if (task.due_at !== undefined) {
-				const { due_at: _ignored, ...rest } = task;
-				return rest;
-			}
-			return task;
-		});
-
+		const normalizedEntities = args.entities.map(normalizeEntityDates);
 		const normalizedArgs: CreateOntoProjectArgs = {
 			...args,
 			project: normalizedProject,
-			tasks: normalizedTasks ?? args.tasks
+			entities: normalizedEntities
 		};
 
 		const contextDocument = buildContextDocumentSpec(normalizedArgs);
 
-		const additionalDocuments =
-			normalizedArgs.documents?.filter(
-				(doc) => doc.type_key !== 'document.context.project'
-			) ?? [];
-
 		const spec = {
 			project: normalizedArgs.project,
-			...(normalizedArgs.goals?.length ? { goals: normalizedArgs.goals } : {}),
-			...(normalizedArgs.requirements?.length
-				? { requirements: normalizedArgs.requirements }
-				: {}),
-			...(normalizedArgs.plans?.length ? { plans: normalizedArgs.plans } : {}),
-			...(normalizedArgs.tasks?.length ? { tasks: normalizedArgs.tasks } : {}),
-			...(normalizedArgs.outputs?.length ? { outputs: normalizedArgs.outputs } : {}),
-			...(additionalDocuments.length ? { documents: additionalDocuments } : {}),
-			context_document: contextDocument
+			entities: normalizedArgs.entities,
+			relationships: normalizedArgs.relationships,
+			...(contextDocument ? { context_document: contextDocument } : {})
 		};
 
 		const data = await this.apiRequest('/api/onto/projects/instantiate', {
@@ -362,6 +388,12 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.supporting_milestone_id !== undefined) {
 			payload.supporting_milestone_id = args.supporting_milestone_id;
 		}
+		if (args.parent !== undefined) {
+			payload.parent = args.parent;
+		}
+		if (args.parents !== undefined) {
+			payload.parents = args.parents;
+		}
 
 		const data = await this.apiRequest('/api/onto/tasks/create', {
 			method: 'POST',
@@ -407,7 +439,11 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			description: args.description ?? null,
 			type_key: args.type_key ?? 'plan.phase.base',
 			state_key: args.state_key ?? 'draft',
-			props: args.props ?? {}
+			props: args.props ?? {},
+			goal_id: args.goal_id,
+			milestone_id: args.milestone_id,
+			parent: args.parent,
+			parents: args.parents
 		};
 
 		const data = await this.apiRequest('/api/onto/plans/create', {
@@ -435,7 +471,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			// Use content column (body_markdown is preserved for backwards compatibility via API)
 			content: documentContent,
 			body_markdown: documentContent ?? '',
-			props: args.props ?? {}
+			props: args.props ?? {},
+			parent: args.parent,
+			parents: args.parents
 		};
 
 		const data = await this.apiRequest('/api/onto/documents/create', {

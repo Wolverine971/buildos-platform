@@ -13,6 +13,7 @@ import { DOCUMENT_STATES } from '$lib/types/onto';
 import type { Json, Database } from '@buildos/shared-types';
 import { ensureTaskAccess, TASK_DOCUMENT_REL } from '../../task-document-helpers';
 import { normalizeDocumentStateInput } from '../../../shared/document-state';
+import { normalizeMarkdownInput } from '../../../shared/markdown-normalization';
 
 type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 
@@ -184,12 +185,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			const docType = type_key?.trim() || 'document.task.scratch';
 			const docState = normalizedState ?? 'draft';
 			// Prefer content param, fall back to body_markdown for backwards compatibility
-			const normalizedContent =
+			const rawContent =
 				typeof content === 'string'
 					? content
 					: typeof body_markdown === 'string'
 						? body_markdown
 						: null;
+			const normalizedContent = normalizeMarkdownInput(rawContent);
 			const normalizedDescription = typeof description === 'string' ? description : null;
 			// Store body_markdown in props for backwards compatibility during migration
 			const mergedProps = {

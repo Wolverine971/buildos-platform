@@ -2,7 +2,7 @@
 
 # Agentic Chat System - Architecture Documentation
 
-> **Last Updated:** 2026-01-03
+> **Last Updated:** 2026-01-07
 > **Status:** Comprehensive Technical Reference (Post-Refactor)
 > **Maintainer:** BuildOS Platform Team
 
@@ -427,6 +427,7 @@ const MAX_SESSION_DURATION_MS = 90_000; // 90 seconds
 | `error`                 | `error`                 | `{ error: string }`                    |
 
 Notes:
+
 - Plan step failures surface `step.status = failed` plus `step.error` on `step_complete`, and the UI logs the error details in the thinking block and plan visualization.
 - Plan execution failures include the failed step context in the `error` message when available.
 
@@ -563,8 +564,9 @@ type AgentLoopState = 'thinking' | 'executing_plan' | 'waiting_on_user';
 
 ## Known Issues & Improvements
 
-### Recent Updates (2026-01-03)
+### Recent Updates (2026-01-07)
 
+- Improved plan failure visibility: failed steps/tools now surface error details in the thinking log and plan visualization, and plan-level errors include step context. Docs: [Frontend Quick Reference](./FRONTEND_QUICK_REFERENCE.md), [Visual Guide](./VISUAL_GUIDE.md), [Backend Architecture Overview](./BACKEND_ARCHITECTURE_OVERVIEW.md), [Tool System README](./tool-system/README.md).
 - Allowed superseding active streams when sending a new message.
 - Expanded tool status/toast coverage for outputs, milestones, risks, decisions, and requirements.
 - Validated ontology access before persisting user messages; refined partial token estimates; reduced hot-path logging; optimized streaming message updates.

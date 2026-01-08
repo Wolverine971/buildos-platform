@@ -68,23 +68,23 @@ voiceSupportsLiveTranscript: boolean; // Live transcription available
 
 ### SSE Message Types → Handler Actions
 
-| Event Type                       | Key Updates                                           | User Sees                                      |
-| -------------------------------- | ----------------------------------------------------- | ---------------------------------------------- |
-| `session`                        | currentSession, selectedContextType, selectedEntityId | Session hydration                              |
-| `agent_state`                    | agentState, agentStateDetails, currentActivity        | "Thinking...", "Executing plan...", etc.       |
-| `ontology_loaded`                | ontologyLoaded, ontologySummary                       | Activity log entry: "Ontology context: ..."    |
-| `last_turn_context`              | lastTurnContext                                       | (hidden - used for next turn)                  |
-| `focus_active` / `focus_changed` | projectFocus                                          | Focus indicator updates                        |
-| `plan_created`                   | currentPlan, agentState → 'executing_plan'            | Plan with steps in activity log                |
-| `plan_ready_for_review`          | currentPlan, agentState → 'waiting_on_user'           | "Waiting for your approval"                    |
-| `tool_call`                      | Add pending activity with tool name + target          | "Creating task: 'X'..." (spinning)             |
-| `tool_result`                    | Update tool_call activity status                      | "Created task: 'X'" or "Failed to create task" |
-| `text`                           | Append to assistant message                           | Streaming response text                        |
-| `clarifying_questions`           | Create special clarification message                  | Numbered Q&A display                           |
-| `context_shift`                  | Switch context + focus                                | "Context updated to..."                        |
-| `template_creation_*`            | Track template lifecycle                              | Template creation progress                     |
-| `done`                           | Finalize thinking block, set isStreaming=false        | Input re-enabled                               |
-| `error`                          | error field                                           | Error message banner                           |
+| Event Type                       | Key Updates                                           | User Sees                                               |
+| -------------------------------- | ----------------------------------------------------- | ------------------------------------------------------- |
+| `session`                        | currentSession, selectedContextType, selectedEntityId | Session hydration                                       |
+| `agent_state`                    | agentState, agentStateDetails, currentActivity        | "Thinking...", "Executing plan...", etc.                |
+| `ontology_loaded`                | ontologyLoaded, ontologySummary                       | Activity log entry: "Ontology context: ..."             |
+| `last_turn_context`              | lastTurnContext                                       | (hidden - used for next turn)                           |
+| `focus_active` / `focus_changed` | projectFocus                                          | Focus indicator updates                                 |
+| `plan_created`                   | currentPlan, agentState → 'executing_plan'            | Plan with steps in activity log                         |
+| `plan_ready_for_review`          | currentPlan, agentState → 'waiting_on_user'           | "Waiting for your approval"                             |
+| `tool_call`                      | Add pending activity with tool name + target          | "Creating task: 'X'..." (spinning)                      |
+| `tool_result`                    | Update tool_call activity status + error details      | "Created task: 'X'" or "Failed to create task: <error>" |
+| `text`                           | Append to assistant message                           | Streaming response text                                 |
+| `clarifying_questions`           | Create special clarification message                  | Numbered Q&A display                                    |
+| `context_shift`                  | Switch context + focus                                | "Context updated to..."                                 |
+| `template_creation_*`            | Track template lifecycle                              | Template creation progress                              |
+| `done`                           | Finalize thinking block, set isStreaming=false        | Input re-enabled                                        |
+| `error`                          | error field                                           | Error message banner                                    |
 
 ## Function Quick Reference
 
@@ -92,14 +92,14 @@ voiceSupportsLiveTranscript: boolean; // Live transcription available
 
 ```typescript
 createThinkingBlock(); // Create new activity log
-addActivityToThinkingBlock(content, type, meta); // Add entry to log
+addActivityToThinkingBlock(content, type, meta, status?); // Add entry to log (optional status)
 updateThinkingBlockState(state, details); // Update header status
 finalizeThinkingBlock(); // Mark complete when done
 toggleThinkingBlockCollapse(blockId); // User collapse/expand
 
 addOrUpdateAssistantMessage(content); // Append to assistant message
 finalizeAssistantMessage(); // Done streaming text
-updateActivityStatus(toolCallId, status); // Update tool pending→complete
+updateActivityStatus(toolCallId, status, errorMessage?); // Update tool pending→complete (optional error)
 ```
 
 ### Scroll Management

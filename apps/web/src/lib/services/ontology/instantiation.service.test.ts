@@ -51,13 +51,15 @@ describe('validateProjectSpec', () => {
 		const { valid, errors } = validateProjectSpec({
 			project: {
 				name: 'Test Project',
-				type_key: 'writer.book',
+				type_key: 'project.creative.book',
 				props: {
 					facets: {
 						context: 'commercial'
 					}
 				}
-			}
+			},
+			entities: [],
+			relationships: []
 		});
 
 		expect(valid).toBe(true);
@@ -69,10 +71,48 @@ describe('validateProjectSpec', () => {
 			project: {
 				name: '',
 				type_key: 'INVALID_KEY'
-			}
+			},
+			entities: [],
+			relationships: []
 		});
 
 		expect(valid).toBe(false);
 		expect(errors.length).toBeGreaterThan(0);
+	});
+
+	it('rejects legacy arrays', () => {
+		const { valid, errors } = validateProjectSpec({
+			project: {
+				name: 'Legacy Test',
+				type_key: 'project.creative.book'
+			},
+			entities: [],
+			relationships: [],
+			goals: [{ name: 'Legacy goal' }]
+		});
+
+		expect(valid).toBe(false);
+		expect(errors.some((error) => error.includes('Legacy ProjectSpec field "goals"'))).toBe(
+			true
+		);
+	});
+
+	it('requires relationships when multiple entities exist', () => {
+		const { valid, errors } = validateProjectSpec({
+			project: {
+				name: 'Relationship Test',
+				type_key: 'project.creative.book'
+			},
+			entities: [
+				{ temp_id: 'goal-1', kind: 'goal', name: 'Goal 1' },
+				{ temp_id: 'task-1', kind: 'task', title: 'Task 1' }
+			],
+			relationships: []
+		});
+
+		expect(valid).toBe(false);
+		expect(
+			errors.some((error) => error.includes('relationships must include at least one pair'))
+		).toBe(true);
 	});
 });

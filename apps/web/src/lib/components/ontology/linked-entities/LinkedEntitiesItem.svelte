@@ -18,7 +18,7 @@
 		entity: LinkedEntity;
 		kind: EntityKind;
 		readOnly?: boolean;
-		onRemove?: (edgeId: string) => void;
+		onRemove?: (entity: LinkedEntity, kind: EntityKind) => void;
 		onClick?: (kind: EntityKind, id: string) => void;
 	}
 
@@ -43,7 +43,7 @@
 
 	function handleRemove(e: MouseEvent) {
 		e.stopPropagation();
-		onRemove?.(entity.edge_id);
+		onRemove?.(entity, kind);
 	}
 </script>
 

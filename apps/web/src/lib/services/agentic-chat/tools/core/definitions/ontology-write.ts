@@ -19,7 +19,7 @@ export const ONTOLOGY_WRITE_TOOLS: ChatToolDefinition[] = [
 			name: 'create_onto_task',
 			description: `Create a new task in the ontology system.
 Creates a task within a project and optionally assigns it to a plan.
-Automatically creates the onto_edges relationship linking task to project.
+Automatically creates containment edges based on parent inputs (plan/goal/project).
 
 **CRITICAL: When to create tasks vs. when NOT to:**
 
@@ -90,6 +90,28 @@ Default: task.execute`
 					supporting_milestone_id: {
 						type: 'string',
 						description: 'Optional milestone UUID this task targets'
+					},
+					parent: {
+						type: 'object',
+						description:
+							'Optional parent reference for containment (preferred over plan_id/goal_id)',
+						properties: {
+							kind: { type: 'string' },
+							id: { type: 'string' },
+							is_primary: { type: 'boolean' }
+						}
+					},
+					parents: {
+						type: 'array',
+						description: 'Optional multiple containment parents',
+						items: {
+							type: 'object',
+							properties: {
+								kind: { type: 'string' },
+								id: { type: 'string' },
+								is_primary: { type: 'boolean' }
+							}
+						}
 					},
 					start_at: {
 						type: 'string',
@@ -181,6 +203,35 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 					props: {
 						type: 'object',
 						description: 'Additional properties'
+					},
+					goal_id: {
+						type: 'string',
+						description: 'Optional goal UUID this plan supports/contains'
+					},
+					milestone_id: {
+						type: 'string',
+						description: 'Optional milestone UUID this plan is nested under'
+					},
+					parent: {
+						type: 'object',
+						description: 'Optional parent reference for containment',
+						properties: {
+							kind: { type: 'string' },
+							id: { type: 'string' },
+							is_primary: { type: 'boolean' }
+						}
+					},
+					parents: {
+						type: 'array',
+						description: 'Optional multiple containment parents',
+						items: {
+							type: 'object',
+							properties: {
+								kind: { type: 'string' },
+								id: { type: 'string' },
+								is_primary: { type: 'boolean' }
+							}
+						}
 					}
 				},
 				required: ['project_id', 'name']
@@ -224,6 +275,27 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 					props: {
 						type: 'object',
 						description: 'Additional properties/metadata'
+					},
+					parent: {
+						type: 'object',
+						description: 'Optional parent reference for semantic linking',
+						properties: {
+							kind: { type: 'string' },
+							id: { type: 'string' },
+							is_primary: { type: 'boolean' }
+						}
+					},
+					parents: {
+						type: 'array',
+						description: 'Optional multiple semantic parents',
+						items: {
+							type: 'object',
+							properties: {
+								kind: { type: 'string' },
+								id: { type: 'string' },
+								is_primary: { type: 'boolean' }
+							}
+						}
 					}
 				},
 				required: ['project_id', 'title', 'type_key']
@@ -347,20 +419,24 @@ Avoid creating project edges unless the entity is truly a root-level item.`,
 			name: 'create_onto_project',
 			description: `Create a new project in the ontology system with full structure.
 
-This is the PRIMARY tool for creating projects. It supports creating a complete project with:
-- Goals, requirements, plans, tasks
-- Outputs, documents, sources
-- Metrics, milestones, risks, decisions
-- Custom entity relationships
-- Context document linkage (document.context.project)
+This is the PRIMARY tool for creating projects. It uses **entities + relationships only**
+to build the project graph:
+- Entities represent goals, plans, tasks, documents, outputs, risks, decisions, etc.
+- Relationships are directional pairs that drive containment + semantic edges.
+- Context document linkage (document.context.project) is supported.
 
-**IMPORTANT**: You should INFER as much as possible from the user's message:
+**IMPORTANT**: Extract what the user explicitly mentioned. Don't add structure they didn't ask for:
 - Project name from context
 - Appropriate type_key classification using project.{realm}.{deliverable}[.{variant}]
 - Start date (default to today if not specified)
 - Facets (context, scale, stage) from user intent
-- Basic goals and tasks from user description
 - Props extracted from user's message - CRITICAL!
+
+**Start Simple (CRITICAL):**
+- Most new projects just need: project + 1 goal + maybe a few tasks
+- Don't add plans/milestones unless user mentions phases, dates, or workstreams
+- Don't add peripheral entities (risks, decisions, documents) unless explicitly mentioned
+- Simple projects are GOOD - structure grows over time
 
 **Props Extraction (CRITICAL)**:
 1. Use the prop conventions (snake_case, booleans as is_* or has_*)
@@ -375,6 +451,7 @@ Only add clarification questions if CRITICAL information is missing that you can
 For example:
 - If user says "create a book project", DON'T ask for project name - infer it's about a book
 - If user says "start a project", DO ask what kind of project
+When using clarifications, still include entities: [] and relationships: [] in the payload.
 
 **Workflow**:
 1. Infer the right type_key from taxonomy (project.creative.book, project.technical.app, etc.)
@@ -383,7 +460,44 @@ For example:
 4. Add clarifications[] only if essential info is missing
 5. Call this tool with the complete spec
 
-**ProjectSpec Structure**:
+**Examples (Start Simple):**
+
+SIMPLE PROJECT (just a goal, no tasks - most common for new projects):
+{
+  "project": { "name": "Learn Spanish", "type_key": "project.education.skill" },
+  "entities": [{ "temp_id": "g1", "kind": "goal", "name": "Conversational fluency" }],
+  "relationships": []
+}
+
+PROJECT WITH TASKS (user mentioned specific actions):
+{
+  "project": { "name": "Product Launch", "type_key": "project.business.product_launch" },
+  "entities": [
+    { "temp_id": "g1", "kind": "goal", "name": "Launch MVP by Q2" },
+    { "temp_id": "t1", "kind": "task", "title": "Schedule kickoff meeting" },
+    { "temp_id": "t2", "kind": "task", "title": "Review vendor proposals" }
+  ],
+  "relationships": [
+    [{ "temp_id": "g1", "kind": "goal" }, { "temp_id": "t1", "kind": "task" }],
+    [{ "temp_id": "g1", "kind": "goal" }, { "temp_id": "t2", "kind": "task" }]
+  ]
+}
+
+PROJECT WITH PHASES (user mentioned workstreams):
+{
+  "project": { "name": "Wedding Planning", "type_key": "project.service.event" },
+  "entities": [
+    { "temp_id": "g1", "kind": "goal", "name": "Perfect wedding day" },
+    { "temp_id": "p1", "kind": "plan", "name": "Venue & Catering" },
+    { "temp_id": "p2", "kind": "plan", "name": "Guest Management" }
+  ],
+  "relationships": [
+    [{ "temp_id": "g1", "kind": "goal" }, { "temp_id": "p1", "kind": "plan" }],
+    [{ "temp_id": "g1", "kind": "goal" }, { "temp_id": "p2", "kind": "plan" }]
+  ]
+}
+
+**ProjectSpec Structure (entities + relationships only)**:
 {
   project: {
     name: string (REQUIRED - infer from user message),
@@ -394,16 +508,20 @@ For example:
     start_at?: ISO datetime (default to now),
     end_at?: ISO datetime
   },
-  goals?: [{ name, description?, type_key?, props? }],
-  requirements?: [{ text, type_key?, props? }],
-  plans?: [{ name, type_key, state_key?, props? }],
-  tasks?: [{ title, plan_name?, state_key?, priority?, due_at?, props? }],
-  outputs?: [{ name, type_key, state_key?, props? }],
-  documents?: [{ title, type_key, state_key?, content?, props? }],
+  entities: [
+    { temp_id: string, kind: "goal|milestone|plan|task|document|output|risk|decision|requirement|metric|source", ... }
+  ],
+  relationships: [
+    [ { temp_id, kind }, { temp_id, kind } ],
+    { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }
+  ],
   context_document?: { title: string, content: string, props? },
   clarifications?: [{ key, question, required, choices?, help_text? }],
   meta?: { model, confidence, suggested_facets } (NOT sent to API)
-}`,
+}
+
+Relationships are directional: [from, to] treats "from" as the entity being created/updated and "to" as its connection.
+entities + relationships are required even if empty (use [] for no links or clarifications).`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -500,93 +618,117 @@ DO NOT leave props empty when information is available in the conversation!`,
 						},
 						required: ['name', 'type_key']
 					},
-					goals: {
+					entities: {
 						type: 'array',
-						description: 'Project goals (optional - infer from user message)',
+						description:
+							'Required entity list using temp_id + kind. Use entities + relationships only.',
 						items: {
 							type: 'object',
 							properties: {
-								name: { type: 'string' },
-								description: { type: 'string' },
-								type_key: { type: 'string' },
-								props: { type: 'object' }
-							},
-							required: ['name']
-						}
-					},
-					requirements: {
-						type: 'array',
-						description: 'Project requirements (optional)',
-						items: {
-							type: 'object',
-							properties: {
-								text: { type: 'string', description: 'Requirement description' },
-								type_key: { type: 'string' },
-								props: { type: 'object' }
-							},
-							required: ['text']
-						}
-					},
-					plans: {
-						type: 'array',
-						description: 'Execution plans (optional)',
-						items: {
-							type: 'object',
-							properties: {
-								name: { type: 'string' },
-								type_key: { type: 'string' },
-								state_key: { type: 'string' },
-								props: { type: 'object' }
-							},
-							required: ['name', 'type_key']
-						}
-					},
-					tasks: {
-						type: 'array',
-						description: 'Initial tasks (optional - infer from user message)',
-						items: {
-							type: 'object',
-							properties: {
-								title: { type: 'string' },
-								plan_name: { type: 'string' },
-								state_key: { type: 'string' },
-								priority: { type: 'number', minimum: 1, maximum: 5 },
-								due_at: { type: 'string' },
-								props: { type: 'object' }
-							},
-							required: ['title']
-						}
-					},
-					outputs: {
-						type: 'array',
-						description: 'Expected outputs/deliverables (optional)',
-						items: {
-							type: 'object',
-							properties: {
-								name: { type: 'string' },
-								type_key: { type: 'string' },
-								state_key: { type: 'string' },
-								props: { type: 'object' }
-							},
-							required: ['name', 'type_key']
-						}
-					},
-					documents: {
-						type: 'array',
-						description: 'Project documents (optional)',
-						items: {
-							type: 'object',
-							properties: {
-								title: { type: 'string' },
-								type_key: { type: 'string' },
-								state_key: { type: 'string' },
-								content: {
+								temp_id: { type: 'string' },
+								kind: {
 									type: 'string',
-									description: 'Markdown body stored in the content column'
+									enum: [
+										'goal',
+										'milestone',
+										'plan',
+										'task',
+										'document',
+										'output',
+										'risk',
+										'decision',
+										'requirement',
+										'metric',
+										'source'
+									]
 								},
+								name: { type: 'string' },
+								title: { type: 'string' },
+								text: { type: 'string' },
+								description: { type: 'string' },
+								target_date: { type: 'string' },
+								measurement_criteria: { type: 'string' },
+								priority: { type: 'number' },
+								due_at: { type: 'string' },
+								start_at: { type: 'string' },
+								start_date: { type: 'string' },
+								end_date: { type: 'string' },
+								body_markdown: { type: 'string' },
+								decision_at: { type: 'string' },
+								rationale: { type: 'string' },
+								outcome: { type: 'string' },
+								impact: { type: 'string' },
+								probability: { type: 'number' },
+								content: { type: 'string' },
+								unit: { type: 'string' },
+								definition: { type: 'string' },
+								target_value: { type: 'number' },
+								uri: { type: 'string' },
+								snapshot_uri: { type: 'string' },
+								type_key: { type: 'string' },
+								state_key: { type: 'string' },
 								props: { type: 'object' }
 							},
-							required: ['title', 'type_key']
+							required: ['temp_id', 'kind']
+						}
+					},
+					relationships: {
+						type: 'array',
+						description:
+							'Directional connections between entities using temp_id (required even if empty). Each item can be [from, to] or { from, to, rel?, intent? }.',
+						items: {
+							oneOf: [
+								{
+									type: 'array',
+									minItems: 2,
+									maxItems: 2,
+									items: [
+										{
+											type: 'object',
+											properties: {
+												temp_id: { type: 'string' },
+												kind: { type: 'string' }
+											},
+											required: ['temp_id', 'kind']
+										},
+										{
+											type: 'object',
+											properties: {
+												temp_id: { type: 'string' },
+												kind: { type: 'string' }
+											},
+											required: ['temp_id', 'kind']
+										}
+									]
+								},
+								{
+									type: 'object',
+									properties: {
+										from: {
+											type: 'object',
+											properties: {
+												temp_id: { type: 'string' },
+												kind: { type: 'string' }
+											},
+											required: ['temp_id', 'kind']
+										},
+										to: {
+											type: 'object',
+											properties: {
+												temp_id: { type: 'string' },
+												kind: { type: 'string' }
+											},
+											required: ['temp_id', 'kind']
+										},
+										rel: { type: 'string' },
+										intent: {
+											type: 'string',
+											enum: ['containment', 'semantic']
+										}
+									},
+									required: ['from', 'to']
+								}
+							]
 						}
 					},
 					context_document: {
@@ -659,7 +801,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 						}
 					}
 				},
-				required: ['project']
+				required: ['project', 'entities', 'relationships']
 			}
 		}
 	},

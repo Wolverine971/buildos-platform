@@ -9,6 +9,12 @@
  * - Planner Agent: 3000-5000 tokens (needs full picture: conversation, tools, location)
  * - Executor Agent: 1000-1500 tokens (minimal: specific task, relevant tools, scoped data)
  *
+ * User Preferences Integration:
+ * - loadUserProfileWithPreferences() (lines 567-684) handles preference injection
+ * - Merges global user preferences with project-specific preferences
+ * - Converts preferences to natural language prompt injections
+ *
+ * @see /apps/web/docs/features/preferences/README.md - User preferences system documentation
  * @see ./context/types.ts - Shared types
  * @see ./context/context-formatters.ts - Context formatting utilities
  * @see ./context/executor-context-builder.ts - Executor context building
@@ -36,6 +42,7 @@ import type {
 	ProjectFocus
 } from '$lib/types/agent-chat-enhancement';
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
+import type { UserPreferences, ProjectPreferences } from '$lib/types/user-preferences';
 import { OntologyContextLoader } from './ontology-context-loader';
 import { ensureActorId } from './ontology/ontology-projects.service';
 import { normalizeContextType } from '../../routes/api/agent/stream/utils/context-utils';
@@ -83,6 +90,17 @@ import type {
 	BuildExecutorContextParams,
 	BuildPlannerContextParams
 } from './context/types';
+
+type UserProfileWithPreferences = {
+	summary: string;
+	preferences: {
+		raw: UserPreferences & ProjectPreferences;
+		promptInjection: string;
+	};
+	metadata: {
+		userName?: string;
+	};
+};
 
 // ============================================
 // SERVICE
@@ -147,6 +165,12 @@ export class AgentContextService {
 		});
 
 		const resolvedEntityId = entityId ?? projectFocus?.projectId;
+		const projectIdForPreferences =
+			normalizedContext === 'project' ||
+			normalizedContext === 'project_audit' ||
+			normalizedContext === 'project_forecast'
+				? resolvedEntityId
+				: undefined;
 		const linkedEntitiesCacheKey = buildLinkedEntitiesCacheKey(projectFocus);
 		const locationCacheKey = buildLocationCacheKey(normalizedContext, resolvedEntityId);
 
@@ -248,7 +272,10 @@ export class AgentContextService {
 			return { content: standardContext.content, metadata: standardContext.metadata };
 		})();
 
-		const userProfilePromise = this.loadUserProfile(userId);
+		const userProfilePromise = this.loadUserProfileWithPreferences(
+			userId,
+			projectIdForPreferences
+		);
 
 		const [linkedEntitiesContext, historyResult, locationResult, userProfileData] =
 			await Promise.all([
@@ -297,7 +324,11 @@ export class AgentContextService {
 				TOKEN_BUDGETS.PLANNER.LOCATION_CONTEXT
 		});
 
-		const userProfileStr = userProfileData?.summary;
+		const userProfileStr = userProfileData
+			? [userProfileData.summary, userProfileData.preferences.promptInjection.trim()]
+					.filter((value) => value)
+					.join('\n')
+			: undefined;
 		const contextScope =
 			ontologyContext?.scope ??
 			(resolvedEntityId ? { projectId: resolvedEntityId } : undefined);
@@ -539,25 +570,143 @@ export class AgentContextService {
 	/**
 	 * Load user profile for planner
 	 */
-	private async loadUserProfile(
-		userId: string
-	): Promise<{ summary: string; metadata: { userName?: string } } | undefined> {
+	private async loadUserProfileWithPreferences(
+		userId: string,
+		projectId?: string
+	): Promise<UserProfileWithPreferences | undefined> {
 		const { data: user } = await this.supabase
 			.from('users')
-			.select('email, name')
+			.select('email, name, preferences')
 			.eq('id', userId)
 			.single();
 
 		if (!user) return undefined;
+
+		const userPreferences = this.coercePreferences(user.preferences) as UserPreferences;
+		let projectPreferences: ProjectPreferences = {};
+
+		if (projectId) {
+			const { data: project } = await this.supabase
+				.from('onto_projects')
+				.select('props')
+				.eq('id', projectId)
+				.single();
+
+			const projectProps = this.coercePreferences(project?.props);
+			projectPreferences = this.coercePreferences(
+				(projectProps as { preferences?: unknown }).preferences
+			) as ProjectPreferences;
+		}
+
+		const preferences = {
+			...userPreferences,
+			...projectPreferences
+		};
+
+		const prefParts: string[] = [];
+
+		const styleGuide: Record<string, string> = {
+			direct: 'Be direct and concise. Skip pleasantries and get to the point.',
+			supportive: 'Be encouraging and patient. Acknowledge their efforts.',
+			socratic: 'Ask guiding questions to help them think through problems.'
+		};
+
+		if (preferences.communication_style) {
+			const style = styleGuide[preferences.communication_style];
+			if (style) prefParts.push(style);
+		}
+
+		if (preferences.response_length === 'concise') {
+			prefParts.push('Keep responses concise unless detail is requested.');
+		} else if (preferences.response_length === 'detailed') {
+			prefParts.push('Provide detailed responses with context and examples.');
+		}
+
+		if (preferences.proactivity_level === 'minimal') {
+			prefParts.push('Only respond to what is asked. Do not volunteer unsolicited insights.');
+		} else if (preferences.proactivity_level === 'high') {
+			prefParts.push('Proactively surface risks, blockers, and opportunities.');
+		}
+
+		if (preferences.primary_role) {
+			prefParts.push(`User role: ${preferences.primary_role}`);
+		}
+
+		if (preferences.domain_context) {
+			prefParts.push(`Domain context: ${preferences.domain_context}`);
+		}
+
+		if (projectPreferences.deadline_flexibility === 'strict') {
+			prefParts.push('This project has strict deadlines - emphasize timeline adherence.');
+		} else if (projectPreferences.deadline_flexibility === 'flexible') {
+			prefParts.push('Deadlines are flexible for this project - prioritize quality.');
+		} else if (projectPreferences.deadline_flexibility === 'aspirational') {
+			prefParts.push('Deadlines are aspirational targets that can shift as needed.');
+		}
+
+		if (projectPreferences.planning_depth === 'rigorous') {
+			prefParts.push('User wants rigorous, detailed planning for this project.');
+		} else if (projectPreferences.planning_depth === 'detailed') {
+			prefParts.push('User wants detailed planning for this project.');
+		} else if (projectPreferences.planning_depth === 'lightweight') {
+			prefParts.push('Keep planning lightweight with minimal overhead.');
+		}
+
+		if (projectPreferences.update_frequency === 'daily') {
+			prefParts.push('Preferred update cadence: daily.');
+		} else if (projectPreferences.update_frequency === 'weekly') {
+			prefParts.push('Preferred update cadence: weekly.');
+		} else if (projectPreferences.update_frequency === 'as_needed') {
+			prefParts.push('Preferred update cadence: as needed.');
+		}
+
+		if (projectPreferences.collaboration_mode === 'solo') {
+			prefParts.push('Collaboration mode: solo.');
+		} else if (projectPreferences.collaboration_mode === 'async_team') {
+			prefParts.push('Collaboration mode: async team.');
+		} else if (projectPreferences.collaboration_mode === 'realtime') {
+			prefParts.push('Collaboration mode: real-time.');
+		}
+
+		if (projectPreferences.risk_tolerance === 'cautious') {
+			prefParts.push('Risk tolerance: cautious - avoid high-risk moves.');
+		} else if (projectPreferences.risk_tolerance === 'aggressive') {
+			prefParts.push('Risk tolerance: aggressive - prioritize speed and bold moves.');
+		}
 
 		const displayName = user.name || user.email;
 		const summary = `User: ${displayName}`;
 
 		return {
 			summary,
+			preferences: {
+				raw: preferences,
+				promptInjection: prefParts.join('\n')
+			},
 			metadata: {
 				userName: user.name || undefined
 			}
+		};
+	}
+
+	private coercePreferences(value: unknown): Record<string, unknown> {
+		if (!value || typeof value !== 'object' || Array.isArray(value)) {
+			return {};
+		}
+		return value as Record<string, unknown>;
+	}
+
+	/**
+	 * @deprecated Use loadUserProfileWithPreferences instead
+	 */
+	private async loadUserProfile(
+		userId: string
+	): Promise<{ summary: string; metadata: { userName?: string } } | undefined> {
+		const profile = await this.loadUserProfileWithPreferences(userId);
+		if (!profile) return undefined;
+		return {
+			summary: profile.summary,
+			metadata: profile.metadata
 		};
 	}
 

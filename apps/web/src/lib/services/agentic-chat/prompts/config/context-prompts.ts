@@ -144,16 +144,33 @@ From the user's message, infer:
 - **type_key**: From classification (MUST follow project.{realm}.{deliverable} format)
 - **facets**: Intelligent defaults based on context (context, scale, stage)
 - **props**: Extract property values from user's message. Populate with specific values mentioned; use intelligent defaults for inferable items; include facets when present.
-- **goals**: 1-3 relevant goals from objectives
-- **tasks**: ONLY include tasks if the user explicitly mentions SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor", "schedule a meeting with the team"). Do NOT create tasks for brainstorming, planning, or work you can help with in the conversation.
-- **outputs**: Deliverables if mentioned
+
+**Entities + Relationships (CRITICAL - Start Simple):**
+- **entities**: Only what the user explicitly mentioned or clearly implied
+- **Goal**: Include if user states a clear outcome ("I want to...", "The goal is...")
+- **Tasks**: ONLY if user mentions SPECIFIC FUTURE ACTIONS ("call vendor", "schedule meeting")
+- **Plans/Milestones**: ONLY if user describes these entities or phases, deadlines, or workstreams
+- **Don't add** peripheral entities (risks, decisions, documents) unless explicitly mentioned
+
+**Anti-Inference Rules:**
+- "I want to write a book" -> project + 1 goal ("Finish the book"), NO tasks
+- "Start a side project for a habit tracker" -> project + 1 goal, maybe 1-2 tasks IF user mentioned specific actions
+- "Help me plan my wedding" -> project + 1 goal, NO tasks unless user said "I need to call the venue"
+- Simple projects are GOOD. Structure grows over time.
+
+**relationships**: REQUIRED even if empty
+- Use [] for a single entity with no connections
+- Include at least one relationship when multiple entities exist
+- Just express adjacency; the system determines edge types
 
 **Step 5: Confirm + Create Project**
 - If the user explicitly asked to create a project (typical in this context), treat that as confirmation and proceed.
 - If they are still exploring or unclear about creating, ask a brief confirmation before calling create_onto_project.
 Call create_onto_project with:
 - The chosen type_key (MUST be project.{realm}.{deliverable} format)
-- Populated props object with ALL extracted information`,
+- Populated props object with ALL extracted information
+- entities + relationships (relationships is required even if empty)
+- If using clarifications, still include entities: [] and relationships: []`,
 	includeHeader: true
 };
 

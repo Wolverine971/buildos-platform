@@ -14,9 +14,52 @@ import type {
 	EntityKind,
 	LinkedEntitiesApiResponse,
 	LinkedEntitiesResult,
+	LinkedEntity,
 	AvailableEntity
 } from './linked-entities.types';
 import { getRelationship } from './linked-entities.types';
+
+type ParentRef = {
+	kind: EntityKind;
+	id: string;
+	is_primary?: boolean;
+};
+
+const PARENTING_RULES: Record<string, { childKind: EntityKind; parentKind: EntityKind }> = {
+	'plan-task': { childKind: 'task', parentKind: 'plan' },
+	'task-plan': { childKind: 'task', parentKind: 'plan' },
+	'goal-task': { childKind: 'task', parentKind: 'goal' },
+	'task-goal': { childKind: 'task', parentKind: 'goal' },
+	'goal-plan': { childKind: 'plan', parentKind: 'goal' },
+	'plan-goal': { childKind: 'plan', parentKind: 'goal' },
+	'milestone-plan': { childKind: 'plan', parentKind: 'milestone' },
+	'plan-milestone': { childKind: 'plan', parentKind: 'milestone' },
+	'goal-milestone': { childKind: 'milestone', parentKind: 'goal' },
+	'milestone-goal': { childKind: 'milestone', parentKind: 'goal' },
+	'output-task': { childKind: 'output', parentKind: 'task' },
+	'task-output': { childKind: 'output', parentKind: 'task' }
+};
+
+const ALLOWED_PARENTS_BY_CHILD: Partial<Record<EntityKind, EntityKind[]>> = {
+	task: ['plan', 'goal'],
+	plan: ['milestone', 'goal'],
+	milestone: ['goal'],
+	output: ['task']
+};
+
+const CHILD_KIND_BY_REL: Record<string, EntityKind> = {
+	has_task: 'task',
+	has_plan: 'plan',
+	has_milestone: 'milestone',
+	produces: 'output'
+};
+
+const PARENT_ENDPOINTS: Partial<Record<EntityKind, string>> = {
+	task: '/api/onto/tasks',
+	plan: '/api/onto/plans',
+	milestone: '/api/onto/milestones',
+	output: '/api/onto/outputs'
+};
 
 /**
  * Fetch linked entities for a source entity.
@@ -93,6 +136,103 @@ export async function fetchAvailableEntities(
 	return result.data?.entities || [];
 }
 
+function flattenLinkedEntities(
+	linked: LinkedEntitiesResult
+): Array<{ kind: EntityKind; entity: LinkedEntity }> {
+	const entries: Array<[EntityKind, LinkedEntity[]]> = [
+		['task', linked.tasks],
+		['plan', linked.plans],
+		['goal', linked.goals],
+		['milestone', linked.milestones],
+		['document', linked.documents],
+		['output', linked.outputs],
+		['risk', linked.risks],
+		['decision', linked.decisions],
+		['event', linked.events]
+	];
+
+	const flattened: Array<{ kind: EntityKind; entity: LinkedEntity }> = [];
+	for (const [kind, entities] of entries) {
+		for (const entity of entities) {
+			flattened.push({ kind, entity });
+		}
+	}
+
+	return flattened;
+}
+
+async function fetchExistingParents(
+	childKind: EntityKind,
+	childId: string,
+	projectId: string
+): Promise<ParentRef[]> {
+	const allowedParents = ALLOWED_PARENTS_BY_CHILD[childKind] ?? [];
+	if (allowedParents.length === 0) return [];
+
+	const result = await fetchLinkedEntities(childId, childKind, projectId, {
+		includeAvailable: false
+	});
+
+	const parents: ParentRef[] = [];
+	for (const { kind, entity } of flattenLinkedEntities(result.linkedEntities)) {
+		if (entity.edge_direction !== 'incoming') continue;
+		if (!allowedParents.includes(kind)) continue;
+		parents.push({ kind, id: entity.id });
+	}
+
+	return parents;
+}
+
+function mergeParents(existing: ParentRef[], additions: ParentRef[]): ParentRef[] {
+	const merged = new Map<string, ParentRef>();
+	for (const parent of existing) {
+		merged.set(`${parent.kind}:${parent.id}`, parent);
+	}
+	for (const parent of additions) {
+		const key = `${parent.kind}:${parent.id}`;
+		if (!merged.has(key)) {
+			merged.set(key, parent);
+		}
+	}
+	return Array.from(merged.values());
+}
+
+async function updateEntityParents(
+	childKind: EntityKind,
+	childId: string,
+	parents: ParentRef[]
+): Promise<void> {
+	const endpoint = PARENT_ENDPOINTS[childKind];
+	if (!endpoint) {
+		throw new Error(`Unsupported parent update for ${childKind}`);
+	}
+
+	const response = await fetch(`${endpoint}/${childId}`, {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ parents })
+	});
+
+	if (!response.ok) {
+		const error = await response.json().catch(() => ({ error: 'Failed to update links' }));
+		throw new Error(error.error || 'Failed to update links');
+	}
+}
+
+async function addParentsToChild(params: {
+	childKind: EntityKind;
+	childId: string;
+	parentKind: EntityKind;
+	parentIds: string[];
+	projectId: string;
+}): Promise<void> {
+	const { childKind, childId, parentKind, parentIds, projectId } = params;
+	const existingParents = await fetchExistingParents(childKind, childId, projectId);
+	const newParents = parentIds.map((id) => ({ kind: parentKind, id }));
+	const mergedParents = mergeParents(existingParents, newParents);
+	await updateEntityParents(childKind, childId, mergedParents);
+}
+
 /**
  * Create edge relationships between entities.
  */
@@ -127,6 +267,45 @@ export async function createEdges(
 	return result.data;
 }
 
+export async function linkEntities(params: {
+	sourceId: string;
+	sourceKind: EntityKind;
+	targetIds: string[];
+	targetKind: EntityKind;
+	projectId: string;
+}): Promise<{ created: number }> {
+	const { sourceId, sourceKind, targetIds, targetKind, projectId } = params;
+	const rule = PARENTING_RULES[`${sourceKind}-${targetKind}`];
+
+	if (!rule) {
+		return createEdges(sourceId, sourceKind, targetIds, targetKind);
+	}
+
+	if (rule.childKind === sourceKind) {
+		await addParentsToChild({
+			childKind: rule.childKind,
+			childId: sourceId,
+			parentKind: rule.parentKind,
+			parentIds: targetIds,
+			projectId
+		});
+		return { created: targetIds.length };
+	}
+
+	const tasks = targetIds.map((targetId) =>
+		addParentsToChild({
+			childKind: rule.childKind,
+			childId: targetId,
+			parentKind: rule.parentKind,
+			parentIds: [sourceId],
+			projectId
+		})
+	);
+
+	await Promise.all(tasks);
+	return { created: targetIds.length };
+}
+
 /**
  * Delete an edge by ID.
  */
@@ -139,6 +318,38 @@ export async function deleteEdge(edgeId: string): Promise<void> {
 		const error = await response.json().catch(() => ({ error: 'Failed to remove link' }));
 		throw new Error(error.error || 'Failed to remove link');
 	}
+}
+
+export async function unlinkEntity(params: {
+	sourceId: string;
+	sourceKind: EntityKind;
+	linkedEntity: LinkedEntity;
+	linkedKind: EntityKind;
+	projectId: string;
+}): Promise<void> {
+	const { sourceId, sourceKind, linkedEntity, linkedKind, projectId } = params;
+	const childKind = CHILD_KIND_BY_REL[linkedEntity.edge_rel];
+
+	if (!childKind) {
+		return deleteEdge(linkedEntity.edge_id);
+	}
+
+	const childIsSource = linkedEntity.edge_direction === 'incoming';
+	const childId = childIsSource ? sourceId : linkedEntity.id;
+	const parentId = childIsSource ? linkedEntity.id : sourceId;
+	const parentKind = childIsSource ? linkedKind : sourceKind;
+
+	const expectedChildKind = childIsSource ? sourceKind : linkedKind;
+	if (childKind !== expectedChildKind) {
+		return deleteEdge(linkedEntity.edge_id);
+	}
+
+	const existingParents = await fetchExistingParents(childKind, childId, projectId);
+	const remainingParents = existingParents.filter(
+		(parent) => !(parent.kind === parentKind && parent.id === parentId)
+	);
+
+	await updateEntityParents(childKind, childId, remainingParents);
 }
 
 /**

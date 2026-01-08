@@ -35,6 +35,7 @@
 	import CalendarTab from '$lib/components/profile/CalendarTab.svelte';
 	import AccountTab from '$lib/components/profile/AccountTab.svelte';
 	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
+	import PreferencesTab from '$lib/components/profile/PreferencesTab.svelte';
 
 	interface Props {
 		data: PageData;
@@ -88,7 +89,16 @@
 	$effect(() => {
 		const urlTab = $page.url.searchParams.get('tab');
 		if (urlTab && urlTab !== activeTab) {
-			if (['account', 'briefs', 'calendar', 'notifications', 'billing'].includes(urlTab)) {
+			if (
+				[
+					'account',
+					'preferences',
+					'briefs',
+					'calendar',
+					'notifications',
+					'billing'
+				].includes(urlTab)
+			) {
 				activeTab = urlTab;
 			}
 		}
@@ -96,6 +106,7 @@
 
 	let profileTabs = $derived<TabNavTab[]>([
 		{ id: 'account', label: 'Account', icon: User },
+		{ id: 'preferences', label: 'AI Preferences', icon: Sparkles },
 		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
 		{ id: 'notifications', label: 'Notifications', icon: Bell },
@@ -420,6 +431,8 @@
 				onsuccess={handleComponentSuccess}
 				onerror={handleComponentError}
 			/>
+		{:else if activeTab === 'preferences'}
+			<PreferencesTab />
 		{:else if activeTab === 'briefs'}
 			<!-- Use the new BriefsTab component -->
 			<BriefsTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />

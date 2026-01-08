@@ -22,7 +22,11 @@ const DEFAULT_SYSTEM_OVERVIEW = {
 	active_users_30d: 0,
 	total_briefs: 0,
 	avg_brief_length: 0,
-	top_active_users: [] as Array<{ email: string; last_activity: string | null; activity_count: number }>
+	top_active_users: [] as Array<{
+		email: string;
+		last_activity: string | null;
+		activity_count: number;
+	}>
 };
 
 const DEFAULT_VISITOR_OVERVIEW = {
@@ -999,7 +1003,14 @@ export async function getComprehensiveAnalytics(
 		new Set(
 			[
 				...(brainDumpStats.data || []).map((dump) => dump.user_id),
-				...(projectUpdateLogs.data || []).map((log) => log.changed_by),
+				...(projectUpdateLogs.data || []).map((log) => log.changed_by)
+			].filter(Boolean)
+		)
+	) as string[];
+
+	const leaderboardActorIds = Array.from(
+		new Set(
+			[
 				...(taskCreators.data || []).map((task) => task.created_by),
 				...(scheduledTaskUsers.data || []).map((task) => task.created_by),
 				...(phaseCreators.data || []).map((plan) => plan.created_by)
@@ -1007,8 +1018,27 @@ export async function getComprehensiveAnalytics(
 		)
 	) as string[];
 
-	const { data: leaderboardUsers, error: leaderboardUsersError } = leaderboardUserIds.length
-		? await client.from('users').select('id, email').in('id', leaderboardUserIds)
+	const { data: leaderboardActors, error: leaderboardActorsError } = leaderboardActorIds.length
+		? await client
+				.from('onto_actors')
+				.select('id, name, email, user_id')
+				.in('id', leaderboardActorIds)
+		: { data: [], error: null };
+
+	if (leaderboardActorsError) {
+		throw new Error(leaderboardActorsError.message);
+	}
+
+	const actorUserIds = (leaderboardActors || [])
+		.map((actor) => actor.user_id)
+		.filter(Boolean) as string[];
+
+	const combinedUserIds = Array.from(
+		new Set([...leaderboardUserIds, ...actorUserIds])
+	) as string[];
+
+	const { data: leaderboardUsers, error: leaderboardUsersError } = combinedUserIds.length
+		? await client.from('users').select('id, email').in('id', combinedUserIds)
 		: { data: [], error: null };
 
 	if (leaderboardUsersError) {
@@ -1017,12 +1047,26 @@ export async function getComprehensiveAnalytics(
 
 	const emailByUserId = new Map((leaderboardUsers || []).map((user) => [user.id, user.email]));
 
-	const formatLeaderboard = (rows: any[], key: string) => {
+	const labelByActorId = new Map(
+		(leaderboardActors || []).map((actor) => [
+			actor.id,
+			actor.email ||
+				(actor.user_id ? emailByUserId.get(actor.user_id) : undefined) ||
+				actor.name ||
+				'Unknown'
+		])
+	);
+
+	const resolveUserLabel = (id: string) => emailByUserId.get(id) || 'Unknown';
+	const resolveActorLabel = (id: string) =>
+		labelByActorId.get(id) || emailByUserId.get(id) || 'Unknown';
+
+	const formatLeaderboard = (rows: any[], key: string, resolveLabel: (id: string) => string) => {
 		const counts: Record<string, { email: string; count: number }> = {};
 		rows.forEach((row) => {
 			const userId = row[key];
 			if (!userId) return;
-			const email = emailByUserId.get(userId) || 'Unknown';
+			const email = resolveLabel(userId);
 			if (!counts[userId]) {
 				counts[userId] = { email, count: 0 };
 			}
@@ -1063,11 +1107,27 @@ export async function getComprehensiveAnalytics(
 		},
 		calendarConnections: calendarConnections.count || 0,
 		leaderboards: {
-			brainDumps: formatLeaderboard(brainDumpStats.data ?? [], 'user_id'),
-			projectUpdates: formatLeaderboard(projectUpdateLogs.data ?? [], 'changed_by'),
-			tasksCreated: formatLeaderboard(taskCreators.data ?? [], 'created_by'),
-			tasksScheduled: formatLeaderboard(scheduledTaskUsers.data ?? [], 'created_by'),
-			phasesCreated: formatLeaderboard(phaseCreators.data ?? [], 'created_by')
+			brainDumps: formatLeaderboard(brainDumpStats.data ?? [], 'user_id', resolveUserLabel),
+			projectUpdates: formatLeaderboard(
+				projectUpdateLogs.data ?? [],
+				'changed_by',
+				resolveUserLabel
+			),
+			tasksCreated: formatLeaderboard(
+				taskCreators.data ?? [],
+				'created_by',
+				resolveActorLabel
+			),
+			tasksScheduled: formatLeaderboard(
+				scheduledTaskUsers.data ?? [],
+				'created_by',
+				resolveActorLabel
+			),
+			phasesCreated: formatLeaderboard(
+				phaseCreators.data ?? [],
+				'created_by',
+				resolveActorLabel
+			)
 		}
 	};
 }

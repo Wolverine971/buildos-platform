@@ -1,4 +1,20 @@
 <!-- apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte -->
+<!--
+	Ontology Project Edit Modal
+
+	Full-featured modal for editing ontology projects. Includes:
+	- Basic info (name, description, status, dates)
+	- Context document editing
+	- AI Preferences section (lines 1006-1114) for project-specific preferences:
+	  - Planning depth, update frequency, collaboration mode
+	  - Risk tolerance, deadline flexibility
+	- Calendar integration
+	- AI-powered context regeneration
+
+	@see /apps/web/docs/features/preferences/README.md - Preferences system (project preferences section)
+	@see /apps/web/docs/features/ontology/README.md - Ontology system overview
+	@see /apps/web/docs/technical/components/modals/README.md - Modal component patterns
+-->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -22,12 +38,14 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
-	import type { ComponentType } from 'svelte';
+	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { hasEntityReferences } from '$lib/utils/entity-reference-parser';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	type LazyComponent = Component<any, any, any> | null;
+	let AgentChatModalComponent = $state<LazyComponent>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
@@ -67,6 +85,11 @@
 		'maintenance',
 		'complete'
 	];
+	const PLANNING_DEPTH_OPTIONS = ['lightweight', 'detailed', 'rigorous'];
+	const UPDATE_FREQUENCY_OPTIONS = ['daily', 'weekly', 'as_needed'];
+	const COLLABORATION_MODE_OPTIONS = ['solo', 'async_team', 'realtime'];
+	const RISK_TOLERANCE_OPTIONS = ['cautious', 'balanced', 'aggressive'];
+	const DEADLINE_FLEXIBILITY_OPTIONS = ['strict', 'flexible', 'aspirational'];
 
 	let {
 		isOpen = $bindable(false),
@@ -85,6 +108,11 @@
 	let facetStage = $state('');
 	let startDate = $state('');
 	let endDate = $state('');
+	let planningDepth = $state('');
+	let updateFrequency = $state('');
+	let collaborationMode = $state('');
+	let riskTolerance = $state('');
+	let deadlineFlexibility = $state('');
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
 	let showDeleteConfirm = $state(false);
@@ -131,6 +159,13 @@
 	const nextStepSource = $derived(project?.next_step_source);
 	const nextStepUpdatedAt = $derived(project?.next_step_updated_at);
 
+	const projectTags = $derived.by((): string[] => {
+		if (!project?.props || typeof project.props !== 'object') return [];
+		const tagsValue = (project.props as Record<string, unknown>).tags;
+		if (!Array.isArray(tagsValue)) return [];
+		return tagsValue.filter((tag): tag is string => typeof tag === 'string' && tag.length > 0);
+	});
+
 	// Computed: has existing next step
 	const hasNextStep = $derived(!!nextStepShort.trim());
 
@@ -164,6 +199,12 @@
 		facetStage = project.facet_stage ?? '';
 		startDate = toDateInput(project.start_at);
 		endDate = toDateInput(project.end_at);
+		const projectPreferences = extractProjectPreferences(project);
+		planningDepth = projectPreferences.planning_depth ?? '';
+		updateFrequency = projectPreferences.update_frequency ?? '';
+		collaborationMode = projectPreferences.collaboration_mode ?? '';
+		riskTolerance = projectPreferences.risk_tolerance ?? '';
+		deadlineFlexibility = projectPreferences.deadline_flexibility ?? '';
 		contextDocumentBody = initialContextBody;
 		nextStepShort = initialNextStepShort;
 		nextStepLong = initialNextStepLong;
@@ -184,6 +225,61 @@
 			return null;
 		}
 		return date.toISOString();
+	}
+
+	function extractProjectPreferences(source: Project | null): Record<string, string> {
+		if (!source?.props || typeof source.props !== 'object' || Array.isArray(source.props)) {
+			return {};
+		}
+		const raw = (source.props as Record<string, unknown>).preferences;
+		if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+			return {};
+		}
+		const prefs = raw as Record<string, unknown>;
+		const extracted: Record<string, string> = {};
+
+		if (typeof prefs.planning_depth === 'string') {
+			extracted.planning_depth = prefs.planning_depth;
+		}
+		if (typeof prefs.update_frequency === 'string') {
+			extracted.update_frequency = prefs.update_frequency;
+		}
+		if (typeof prefs.collaboration_mode === 'string') {
+			extracted.collaboration_mode = prefs.collaboration_mode;
+		}
+		if (typeof prefs.risk_tolerance === 'string') {
+			extracted.risk_tolerance = prefs.risk_tolerance;
+		}
+		if (typeof prefs.deadline_flexibility === 'string') {
+			extracted.deadline_flexibility = prefs.deadline_flexibility;
+		}
+
+		return extracted;
+	}
+
+	function buildProjectPreferences(): Record<string, string> {
+		const prefs: Record<string, string> = {};
+
+		if (planningDepth) prefs.planning_depth = planningDepth;
+		if (updateFrequency) prefs.update_frequency = updateFrequency;
+		if (collaborationMode) prefs.collaboration_mode = collaborationMode;
+		if (riskTolerance) prefs.risk_tolerance = riskTolerance;
+		if (deadlineFlexibility) prefs.deadline_flexibility = deadlineFlexibility;
+
+		return prefs;
+	}
+
+	function preferencesEqual(
+		current: Record<string, string>,
+		next: Record<string, string>
+	): boolean {
+		const keys = new Set([...Object.keys(current), ...Object.keys(next)]);
+		for (const key of keys) {
+			if ((current[key] ?? '') !== (next[key] ?? '')) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	function handleClose() {
@@ -286,6 +382,16 @@
 
 		if (parsedEnd !== (project.end_at ?? null)) {
 			payload.end_at = parsedEnd;
+		}
+
+		const currentPreferences = extractProjectPreferences(project);
+		const nextPreferences = buildProjectPreferences();
+		const preferencesChanged = !preferencesEqual(currentPreferences, nextPreferences);
+
+		if (preferencesChanged) {
+			payload.props = {
+				preferences: Object.keys(nextPreferences).length > 0 ? nextPreferences : null
+			};
 		}
 
 		// Check if next step changed
@@ -486,9 +592,7 @@
 			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="p-1.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0"
-				>
+				<div class="p-1.5 rounded bg-accent/10 text-accent shrink-0">
 					<FolderKanban class="w-4 h-4" />
 				</div>
 				<div class="min-w-0 flex-1">
@@ -533,7 +637,7 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving}
-					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					aria-label="Close modal"
 				>
 					<X class="h-4 w-4" />
@@ -922,8 +1026,118 @@
 								</div>
 							</div>
 
+							<!-- Project Preferences -->
+							<div class="pt-3 border-t border-border space-y-3">
+								<div
+									class="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+								>
+									<Sparkles class="w-3.5 h-3.5 text-accent" />
+									AI Preferences
+								</div>
+
+								<div>
+									<label
+										for="planning-depth"
+										class="text-xs text-muted-foreground mb-1 block"
+									>
+										Planning depth
+									</label>
+									<Select
+										id="planning-depth"
+										bind:value={planningDepth}
+										size="sm"
+										disabled={isSaving}
+									>
+										<option value="">Not set</option>
+										{#each PLANNING_DEPTH_OPTIONS as option}
+											<option value={option}>{facetLabel(option)}</option>
+										{/each}
+									</Select>
+								</div>
+
+								<div>
+									<label
+										for="update-frequency"
+										class="text-xs text-muted-foreground mb-1 block"
+									>
+										Update frequency
+									</label>
+									<Select
+										id="update-frequency"
+										bind:value={updateFrequency}
+										size="sm"
+										disabled={isSaving}
+									>
+										<option value="">Not set</option>
+										{#each UPDATE_FREQUENCY_OPTIONS as option}
+											<option value={option}>{facetLabel(option)}</option>
+										{/each}
+									</Select>
+								</div>
+
+								<div>
+									<label
+										for="collaboration-mode"
+										class="text-xs text-muted-foreground mb-1 block"
+									>
+										Collaboration mode
+									</label>
+									<Select
+										id="collaboration-mode"
+										bind:value={collaborationMode}
+										size="sm"
+										disabled={isSaving}
+									>
+										<option value="">Not set</option>
+										{#each COLLABORATION_MODE_OPTIONS as option}
+											<option value={option}>{facetLabel(option)}</option>
+										{/each}
+									</Select>
+								</div>
+
+								<div>
+									<label
+										for="risk-tolerance"
+										class="text-xs text-muted-foreground mb-1 block"
+									>
+										Risk tolerance
+									</label>
+									<Select
+										id="risk-tolerance"
+										bind:value={riskTolerance}
+										size="sm"
+										disabled={isSaving}
+									>
+										<option value="">Not set</option>
+										{#each RISK_TOLERANCE_OPTIONS as option}
+											<option value={option}>{facetLabel(option)}</option>
+										{/each}
+									</Select>
+								</div>
+
+								<div>
+									<label
+										for="deadline-flexibility"
+										class="text-xs text-muted-foreground mb-1 block"
+									>
+										Deadline flexibility
+									</label>
+									<Select
+										id="deadline-flexibility"
+										bind:value={deadlineFlexibility}
+										size="sm"
+										disabled={isSaving}
+									>
+										<option value="">Not set</option>
+										{#each DEADLINE_FLEXIBILITY_OPTIONS as option}
+											<option value={option}>{facetLabel(option)}</option>
+										{/each}
+									</Select>
+								</div>
+							</div>
+
 							<!-- Tags Section -->
-							{#if project?.props?.tags?.length}
+							{#if projectTags.length > 0}
 								<div class="pt-3 border-t border-border">
 									<TagsDisplay props={project.props} />
 								</div>
@@ -950,7 +1164,7 @@
 				>
 					<!-- Delete button on left -->
 					<div class="flex items-center gap-1.5 sm:gap-2">
-						<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-red-500 shrink-0" />
+						<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
 						<Button
 							type="button"
 							variant="danger"
@@ -1025,17 +1239,13 @@
 {/if}
 
 <style>
-	/* Mobile grab handle - Scratchpad Ops styling */
+	/* Mobile grab handle - Inkprint styling */
 	:global(.modal-grab-handle) {
 		width: 36px;
 		height: 4px;
-		background: rgb(62 68 89 / 0.4); /* slate-500 */
+		background: hsl(var(--muted-foreground) / 0.4);
 		border-radius: 2px;
 		margin: 0.5rem auto 1rem;
-	}
-
-	:global(.dark .modal-grab-handle) {
-		background: rgb(142 149 170 / 0.3); /* slate-400 */
 	}
 
 	/* Premium Apple-style shadows and effects */

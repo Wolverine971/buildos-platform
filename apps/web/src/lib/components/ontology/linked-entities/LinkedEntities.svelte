@@ -24,14 +24,15 @@
 	import type {
 		EntityKind,
 		LinkedEntitiesResult,
+		LinkedEntity,
 		AvailableEntity
 	} from './linked-entities.types';
 	import { ENTITY_SECTIONS } from './linked-entities.types';
 	import {
 		fetchLinkedEntities,
 		fetchAvailableEntities,
-		deleteEdge,
-		createEdges
+		linkEntities,
+		unlinkEntity
 	} from './linked-entities.service';
 	import LinkedEntitiesSection from './LinkedEntitiesSection.svelte';
 	import LinkPickerModal from './LinkPickerModal.svelte';
@@ -254,17 +255,23 @@
 		showLinkPicker = true;
 	}
 
-	async function handleRemoveLink(edgeId: string) {
+	async function handleRemoveLink(entity: LinkedEntity, kind: EntityKind) {
 		// Optimistic update: find and remove the entity
 		const backup = { ...linkedEntities };
 
 		// Remove from all arrays
 		for (const key of Object.keys(linkedEntities) as (keyof LinkedEntitiesResult)[]) {
-			linkedEntities[key] = linkedEntities[key].filter((e) => e.edge_id !== edgeId);
+			linkedEntities[key] = linkedEntities[key].filter((e) => e.edge_id !== entity.edge_id);
 		}
 
 		try {
-			await deleteEdge(edgeId);
+			await unlinkEntity({
+				sourceId,
+				sourceKind,
+				projectId,
+				linkedEntity: entity,
+				linkedKind: kind
+			});
 			toastService.success('Link removed');
 			// Invalidate available cache since something was unlinked
 			loadedAvailableKinds = new Set();
@@ -281,7 +288,13 @@
 		if (targetIds.length === 0) return;
 
 		try {
-			await createEdges(sourceId, sourceKind, targetIds, linkPickerKind);
+			await linkEntities({
+				sourceId,
+				sourceKind,
+				targetIds,
+				targetKind: linkPickerKind,
+				projectId
+			});
 			toastService.success(
 				`Linked ${targetIds.length} ${targetIds.length === 1 ? 'item' : 'items'}`
 			);

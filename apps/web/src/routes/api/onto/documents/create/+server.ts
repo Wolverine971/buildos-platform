@@ -15,6 +15,14 @@ import {
 } from '$lib/services/async-activity-logger';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import { normalizeDocumentStateInput } from '../../shared/document-state';
+import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -34,7 +42,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			state_key = 'draft',
 			body_markdown,
 			content,
-			description
+			description,
+			parent,
+			parents,
+			connections
 		} = body as Record<string, unknown>;
 		const classificationSource =
 			(body as Record<string, unknown>)?.classification_source ??
@@ -95,13 +106,27 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		const explicitParents = toParentRefs({ parent, parents });
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : explicitParents;
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: project_id as string,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
 		// Resolve content: prefer content param, fall back to body_markdown
-		const normalizedContent =
+		const rawContent =
 			typeof content === 'string'
 				? content
 				: typeof body_markdown === 'string'
 					? body_markdown
 					: null;
+		const normalizedContent = normalizeMarkdownInput(rawContent);
 
 		const normalizedDescription = typeof description === 'string' ? description : null;
 
@@ -130,20 +155,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(insertError);
 		}
 
-		const { error: edgeError } = await supabase.from('onto_edges').insert({
-			project_id: project_id as string,
-			src_kind: 'project',
-			src_id: project_id,
-			rel: 'has_document',
-			dst_kind: 'document',
-			dst_id: document.id,
-			props: {}
-		});
+		const hasDocumentConnection = connectionList.some(
+			(connection) => connection.kind === 'document'
+		);
 
-		if (edgeError) {
-			console.error('[Document API] Failed to create has_document edge:', edgeError);
-			// Do not fail the overall request; log for observability
-		}
+		await autoOrganizeConnections({
+			supabase,
+			projectId: project_id as string,
+			entity: { kind: 'document', id: document.id },
+			connections: connectionList,
+			options: {
+				mode: 'replace',
+				skipContainment: !hasDocumentConnection
+			}
+		});
 
 		// Log activity async (non-blocking)
 		logCreateAsync(
@@ -170,6 +195,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return ApiResponse.success({ document });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('[Document API] Unexpected create error:', error);
 		return ApiResponse.internalError(error, 'Failed to create document');
 	}

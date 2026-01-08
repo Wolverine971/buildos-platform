@@ -16,6 +16,13 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -30,7 +37,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { name, state_key, description, props } = body;
+		const { name, state_key, description, props, parent, parents, connections } = body;
 
 		if (state_key !== undefined && !OUTPUT_STATES.includes(state_key)) {
 			return ApiResponse.badRequest(`state_key must be one of: ${OUTPUT_STATES.join(', ')}`);
@@ -116,6 +123,36 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
+		const hasParentField = Object.prototype.hasOwnProperty.call(body, 'parent');
+		const hasParentsField = Object.prototype.hasOwnProperty.call(body, 'parents');
+		const hasConnectionsInput = Array.isArray(connections);
+		const explicitParents = toParentRefs({ parent, parents });
+
+		const connectionList: ConnectionRef[] =
+			hasConnectionsInput && connections.length > 0 ? connections : explicitParents;
+
+		if (hasParentField || hasParentsField || hasConnectionsInput) {
+			if (connectionList.length > 0) {
+				await assertEntityRefsInProject({
+					supabase,
+					projectId: existingOutput.project_id,
+					refs: connectionList,
+					allowProject: true
+				});
+			}
+
+			await autoOrganizeConnections({
+				supabase,
+				projectId: existingOutput.project_id,
+				entity: { kind: 'output', id },
+				connections: connectionList,
+				options: {
+					mode: 'replace',
+					skipContainment: true
+				}
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			supabase,
@@ -134,6 +171,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		return ApiResponse.success({ output: updatedOutput });
 	} catch (err) {
+		if (err instanceof AutoOrganizeError) {
+			return ApiResponse.error(err.message, err.status);
+		}
 		console.error('[Output API] Unexpected error in PATCH:', err);
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}

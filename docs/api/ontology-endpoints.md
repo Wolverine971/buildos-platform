@@ -1,12 +1,14 @@
 ---
 title: Ontology API Reference
 description: REST endpoints that power the BuildOS ontology system.
-last_updated: 2025-12-20
+last_updated: 2026-01-07
 path: docs/api/ontology-endpoints.md
 ---
 
 # Ontology API Reference
 
+> **Recent Updates (2026-01-07)**: Auto-organization now manages containment edges for core entities via parent references. See [Ontology Auto-Organization Spec](/docs/specs/ONTOLOGY_AUTO_ORGANIZATION_SPEC.md).
+>
 > **Recent Updates (2024-12-20)**: Schema migration complete. All entities now support soft deletes via `deleted_at`. New dedicated columns: `description`, `content`, `target_date`, `completed_at`, `start_at`. See [Migration Plan](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) and [Detailed API Docs](/apps/web/docs/features/ontology/API_ENDPOINTS.md).
 
 All endpoints are served from the SvelteKit application (`apps/web`). Requests **require an authenticated user session** unless otherwise noted. Payloads use `application/json`.
@@ -19,6 +21,12 @@ All ontology entities now support soft deletes:
 - `GET` endpoints automatically filter out soft-deleted records
 - Add `?include_deleted=true` to include soft-deleted records
 - Use `PATCH` with `{ "deleted_at": null }` to restore entities
+
+## Related docs
+
+- [Project Ontology Linking Philosophy](/docs/specs/PROJECT_ONTOLOGY_LINKING_PHILOSOPHY.md)
+- [Ontology Auto-Organization Spec](/docs/specs/ONTOLOGY_AUTO_ORGANIZATION_SPEC.md)
+- [Project Graph Query Pattern Spec](/docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md)
 
 ## Table of Contents
 
@@ -130,10 +138,23 @@ Content-Type: application/json
 			"target_word_count": 5000
 		}
 	},
-	"goals": [{ "name": "Ship launch brief" }],
-	"tasks": [{ "title": "Draft messaging pillars" }]
+	"entities": [
+		{ "temp_id": "goal-1", "kind": "goal", "name": "Ship launch brief" },
+		{ "temp_id": "task-1", "kind": "task", "title": "Draft messaging pillars" }
+	],
+	"relationships": [
+		[
+			{ "temp_id": "goal-1", "kind": "goal" },
+			{ "temp_id": "task-1", "kind": "task" }
+		]
+	]
 }
 ```
+
+Legacy arrays (`goals`, `tasks`, `plans`, etc.) are **rejected**. The only supported
+shape is `project` + `entities` + `relationships`.
+Relationships are directional: `[from, to]` is interpreted as "from connects to to".
+`relationships` is required even when empty (use `[]` for a single entity).
 
 **Response**
 
@@ -158,6 +179,10 @@ Content-Type: application/json
 - `400 INVALID_TEMPLATE` — The supplied `type_key` has no active, non-abstract template.
 - `400 INVALID_FACET_VALUE` — Facet values are not strings or are not allowed for the entity scope.
 - `400 INVALID_FACET_SCOPE` — Facet keys that do not apply to the entity scope (`validate_facet_values` now checks `applies_to`).
+- `400 INVALID_PROJECT_SPEC` — Missing `relationships`, empty relationships with multiple entities, or any legacy arrays present.
+
+See `apps/web/docs/features/agentic-chat/PROJECT_CREATION_FLOW_UPDATE_PLAN.md` for the
+agentic chat prompt/tool alignment checklist.
 
 ---
 

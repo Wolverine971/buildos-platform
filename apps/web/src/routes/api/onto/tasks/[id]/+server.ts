@@ -45,6 +45,14 @@ import {
 } from '$lib/services/async-activity-logger';
 import { normalizeTaskStateInput } from '../../shared/task-state';
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import type { EntityKind } from '$lib/services/ontology/edge-direction';
 
 // GET /api/onto/tasks/[id] - Get a single task
 export const GET: RequestHandler = async ({ params, request, locals }) => {
@@ -127,10 +135,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			state_key,
 			type_key,
 			props,
+			plan_id,
 			goal_id,
 			supporting_milestone_id,
 			start_at,
-			due_at
+			due_at,
+			parent,
+			parents,
+			connections
 		} = body;
 
 		// Get user's actor ID
@@ -147,13 +159,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const hasGoalInput = Object.prototype.hasOwnProperty.call(body, 'goal_id');
+		const hasPlanInput = Object.prototype.hasOwnProperty.call(body, 'plan_id');
 		const hasMilestoneInput = Object.prototype.hasOwnProperty.call(
 			body,
 			'supporting_milestone_id'
 		);
+		const hasParentField = Object.prototype.hasOwnProperty.call(body, 'parent');
+		const hasParentsField = Object.prototype.hasOwnProperty.call(body, 'parents');
+		const explicitParents = toParentRefs({ parent, parents });
 
 		let validatedGoalId: string | null | undefined = undefined;
 		let validatedMilestoneId: string | null | undefined = undefined;
+		let normalizedPlanId: string | null | undefined = undefined;
 
 		// Get task with project to verify ownership
 		const { data: existingTask, error: fetchError } = await supabase
@@ -180,22 +197,23 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.forbidden('Access denied');
 		}
 
-		// Validate optional goal and milestone updates against the project
+		const invalidParent = explicitParents.find(
+			(parentRef) => !['project', 'plan', 'goal', 'milestone'].includes(parentRef.kind)
+		);
+		if (invalidParent) {
+			return ApiResponse.badRequest(`Unsupported parent kind: ${invalidParent.kind}`);
+		}
+
+		if (hasPlanInput) {
+			normalizedPlanId =
+				typeof plan_id === 'string' && plan_id.trim().length > 0 ? plan_id : null;
+		}
+
 		if (hasGoalInput) {
 			const targetGoalId =
 				typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
 			if (targetGoalId) {
-				const { data: goal, error: goalError } = await supabase
-					.from('onto_goals')
-					.select('id')
-					.eq('id', targetGoalId)
-					.eq('project_id', existingTask.project_id)
-					.single();
-
-				if (goalError || !goal) {
-					return ApiResponse.notFound('Goal');
-				}
-				validatedGoalId = goal.id;
+				validatedGoalId = targetGoalId;
 			} else {
 				validatedGoalId = null;
 			}
@@ -208,20 +226,40 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 					? supporting_milestone_id
 					: null;
 			if (targetMilestoneId) {
-				const { data: milestone, error: milestoneError } = await supabase
-					.from('onto_milestones')
-					.select('id')
-					.eq('id', targetMilestoneId)
-					.eq('project_id', existingTask.project_id)
-					.single();
-
-				if (milestoneError || !milestone) {
-					return ApiResponse.notFound('Milestone');
-				}
-				validatedMilestoneId = milestone.id;
+				validatedMilestoneId = targetMilestoneId;
 			} else {
 				validatedMilestoneId = null;
 			}
+		}
+
+		const makeConnection = (
+			kind: EntityKind,
+			id: string,
+			rel?: ConnectionRef['rel']
+		): ConnectionRef => (rel ? { kind, id, rel } : { kind, id });
+
+		const legacyConnections: ConnectionRef[] = [
+			...explicitParents.map((parent) => makeConnection(parent.kind, parent.id)),
+			...(normalizedPlanId ? [makeConnection('plan', normalizedPlanId)] : []),
+			...(validatedGoalId ? [makeConnection('goal', validatedGoalId)] : []),
+			...(validatedMilestoneId
+				? [makeConnection('milestone', validatedMilestoneId, 'targets_milestone')]
+				: [])
+		];
+
+		const hasConnectionsInput = Array.isArray(connections);
+		const connectionList: ConnectionRef[] =
+			hasConnectionsInput && connections.length > 0
+				? (connections as ConnectionRef[])
+				: legacyConnections;
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: existingTask.project_id,
+				refs: connectionList,
+				allowProject: true
+			});
 		}
 
 		// Build update object
@@ -308,52 +346,37 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
-		// Maintain relationship edges when goal/milestone updates are provided
-		if (hasGoalInput) {
-			// Remove existing goal relationships for this task
-			await supabase
-				.from('onto_edges')
-				.delete()
-				.in('rel', ['supports_goal', 'achieved_by'])
-				.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
+		const hasContainmentInput =
+			hasPlanInput ||
+			hasGoalInput ||
+			hasParentField ||
+			hasParentsField ||
+			hasConnectionsInput;
+		const hasSemanticInput = hasMilestoneInput;
+		const shouldOrganize = hasContainmentInput || hasSemanticInput;
 
-			if (validatedGoalId) {
-				await supabase.from('onto_edges').insert({
-					project_id: existingTask.project_id,
-					src_id: params.id,
-					src_kind: 'task',
-					dst_id: validatedGoalId,
-					dst_kind: 'goal',
-					rel: 'supports_goal'
-				});
+		if (shouldOrganize) {
+			const explicitKinds: EntityKind[] = [];
+			if (hasConnectionsInput) {
+				explicitKinds.push('goal', 'milestone');
+			} else {
+				if (hasGoalInput) explicitKinds.push('goal');
+				if (hasMilestoneInput) explicitKinds.push('milestone');
 			}
-		}
 
-		if (hasMilestoneInput) {
-			await supabase
-				.from('onto_edges')
-				.delete()
-				.eq('rel', 'targets_milestone')
-				.or(`src_id.eq.${params.id},dst_id.eq.${params.id}`);
+			const skipContainment = !hasContainmentInput && hasSemanticInput;
 
-			await supabase
-				.from('onto_edges')
-				.delete()
-				.eq('rel', 'contains')
-				.eq('src_kind', 'milestone')
-				.eq('dst_kind', 'task')
-				.eq('dst_id', params.id);
-
-			if (validatedMilestoneId) {
-				await supabase.from('onto_edges').insert({
-					project_id: existingTask.project_id,
-					src_id: params.id,
-					src_kind: 'task',
-					dst_id: validatedMilestoneId,
-					dst_kind: 'milestone',
-					rel: 'targets_milestone'
-				});
-			}
+			await autoOrganizeConnections({
+				supabase,
+				projectId: existingTask.project_id,
+				entity: { kind: 'task', id: params.id },
+				connections: connectionList,
+				options: {
+					mode: 'replace',
+					explicitKinds,
+					skipContainment
+				}
+			});
 		}
 
 		const shouldSyncEvents =
@@ -391,6 +414,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		return ApiResponse.success({ task: updatedTask });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('Error updating task:', error);
 		return ApiResponse.internalError(error, 'Internal server error');
 	}

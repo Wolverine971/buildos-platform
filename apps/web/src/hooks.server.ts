@@ -71,6 +71,15 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	});
 
+	let sessionCache: {
+		session: typeof event.locals.session;
+		user: typeof event.locals.user;
+	} | null = null;
+	let sessionPromise: Promise<{
+		session: typeof event.locals.session;
+		user: typeof event.locals.user;
+	}> | null = null;
+
 	// PERFORMANCE: Skip session loading for static assets and API routes that don't need auth
 	const pathname = event.url.pathname;
 
@@ -99,57 +108,75 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	 * JWT before returning the session.
 	 */
 	event.locals.safeGetSession = async () => {
+		if (sessionCache) {
+			return sessionCache;
+		}
+
+		if (sessionPromise) {
+			return sessionPromise;
+		}
+
 		const { supabase } = event.locals;
 
-		try {
-			// Check if explicitly logged out
-			if (event.locals._explicitlyCleared === true) {
+		sessionPromise = (async () => {
+			try {
+				// Check if explicitly logged out
+				if (event.locals._explicitlyCleared === true) {
+					return { session: null, user: null };
+				}
+
+				// Get session first (doesn't validate JWT)
+				const {
+					data: { session },
+					error: sessionError
+				} = await supabase.auth.getSession();
+
+				if (sessionError || !session) {
+					return { session: null, user: null };
+				}
+
+				// Validate JWT by calling getUser
+				const {
+					data: { user: authUser },
+					error: userError
+				} = await supabase.auth.getUser();
+
+				if (userError || !authUser) {
+					// JWT validation failed
+					return { session: null, user: null };
+				}
+
+				// Get user data from public.users table
+				const { data: userData, error: dbError } = await supabase
+					.from('users')
+					.select('*')
+					.eq('id', authUser.id)
+					.single();
+
+				if (dbError) {
+					// User exists in auth but not in public.users table
+					// This is handled properly during registration/login
+					console.error('User data not found for authenticated user:', authUser.id);
+					return { session, user: null };
+				}
+
+				return {
+					session,
+					user: userData
+				};
+			} catch (error) {
+				console.error('Error in safeGetSession:', error);
 				return { session: null, user: null };
 			}
+		})();
 
-			// Get session first (doesn't validate JWT)
-			const {
-				data: { session },
-				error: sessionError
-			} = await supabase.auth.getSession();
-
-			if (sessionError || !session) {
-				return { session: null, user: null };
-			}
-
-			// Validate JWT by calling getUser
-			const {
-				data: { user: authUser },
-				error: userError
-			} = await supabase.auth.getUser();
-
-			if (userError || !authUser) {
-				// JWT validation failed
-				return { session: null, user: null };
-			}
-
-			// Get user data from public.users table
-			const { data: userData, error: dbError } = await supabase
-				.from('users')
-				.select('*')
-				.eq('id', authUser.id)
-				.single();
-
-			if (dbError) {
-				// User exists in auth but not in public.users table
-				// This is handled properly during registration/login
-				console.error('User data not found for authenticated user:', authUser.id);
-				return { session, user: null };
-			}
-
-			return {
-				session,
-				user: userData
-			};
-		} catch (error) {
-			console.error('Error in safeGetSession:', error);
-			return { session: null, user: null };
+		sessionCache = await sessionPromise;
+		sessionPromise = null;
+		if (sessionCache.session && sessionCache.user) {
+			event.locals.session = sessionCache.session;
+			event.locals.user = sessionCache.user;
 		}
+		return sessionCache;
 	};
 
 	// PERFORMANCE: Lazy calendar token loader - only when needed

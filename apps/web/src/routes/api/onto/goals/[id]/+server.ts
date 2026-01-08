@@ -41,6 +41,12 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { GOAL_STATES } from '$lib/types/onto';
+import {
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	AutoOrganizeError
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 // GET /api/onto/goals/[id] - Get a single goal
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -117,7 +123,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			target_date,
 			measurement_criteria,
 			state_key,
-			props
+			props,
+			connections
 		} = body;
 
 		if (state_key !== undefined && !GOAL_STATES.includes(state_key)) {
@@ -237,6 +244,29 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update goal', 500);
 		}
 
+		const hasConnectionsInput = Array.isArray(connections);
+		const connectionList: ConnectionRef[] =
+			hasConnectionsInput && connections.length > 0 ? connections : [];
+
+		if (hasConnectionsInput) {
+			if (connectionList.length > 0) {
+				await assertEntityRefsInProject({
+					supabase,
+					projectId: existingGoal.project_id,
+					refs: connectionList,
+					allowProject: true
+				});
+			}
+
+			await autoOrganizeConnections({
+				supabase,
+				projectId: existingGoal.project_id,
+				entity: { kind: 'goal', id: params.id },
+				connections: connectionList,
+				options: { mode: 'replace' }
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			supabase,
@@ -252,6 +282,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		return ApiResponse.success({ goal: updatedGoal });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('Error updating goal:', error);
 		return ApiResponse.error('Internal server error', 500);
 	}

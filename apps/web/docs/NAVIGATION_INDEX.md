@@ -2,7 +2,7 @@
 
 # BuildOS Web App Documentation Navigation Index
 
-**Last Updated**: November 4, 2025
+**Last Updated**: January 7, 2026
 **Purpose**: Quick navigation guide to all documentation in the web app
 **Location**: `/apps/web/docs/`
 
@@ -28,6 +28,7 @@
 - **Calendar**: [`/features/calendar-integration/README.md`](./features/calendar-integration/README.md) - Google Calendar sync
 - **Notifications**: [`/features/notifications/README.md`](./features/notifications/README.md) - Notification system
 - **Onboarding**: [`/features/onboarding/README.md`](./features/onboarding/README.md) - User onboarding flow
+- **User Preferences**: [`/features/preferences/README.md`](./features/preferences/README.md) - AI behavior preferences (NEW)
 
 ## 📁 Complete Directory Structure
 
@@ -54,10 +55,14 @@
 │   │   └── API_REFERENCE.md               # Notification API
 │   │
 │   ├── /onboarding/                       # User onboarding
-│   │   ├── README.md                      # Onboarding flow
-│   │   └── CHECKLIST.md                   # Implementation checklist
+│   │   ├── README.md                      # Onboarding flow overview
+│   │   ├── ONBOARDING_V2_UPDATE_ASSESSMENT.md  # V2 implementation spec
+│   │   └── ONBOARDING_V2_UPDATED_SPEC.md  # Detailed V2 specification
 │   │
-│   └── /ontology/                         # Ontology system (NEW)
+│   ├── /preferences/                      # User preferences (NEW)
+│   │   └── README.md                      # Preference system documentation
+│   │
+│   └── /ontology/                         # Ontology system
 │       ├── README.md                      # Ontology overview & quick start
 │       ├── DATA_MODELS.md                 # Complete database schema (31KB)
 │       └── IMPLEMENTATION_SUMMARY.md      # CRUD implementation status
@@ -175,6 +180,17 @@ All documentation should include:
 
 ## 🆕 Recently Added Documentation
 
+### January 7, 2026
+
+- ✅ Created user preferences documentation in `/features/preferences/`
+    - Global and project-level preferences
+    - Prompt injection system
+    - API reference
+- ✅ Updated onboarding documentation for V2 completion
+    - All 3 phases complete (Ontology, Education, Preferences)
+    - Cross-linked to preferences system
+- ✅ Updated navigation index with new features
+
 ### November 4, 2025
 
 - ✅ Created comprehensive ontology documentation in `/features/ontology/`
@@ -214,9 +230,11 @@ Based on common development tasks:
 - **Update the database?** → `/technical/database/MIGRATIONS.md`
 - **Fix a bug?** → Check relevant feature docs first
 - **Deploy changes?** → `/technical/deployment/README.md`
+- **Add AI preferences?** → `/features/preferences/README.md`
+- **Update onboarding?** → `/features/onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md`
 
 ---
 
 **Note**: This index is maintained as documentation is added or reorganized. If you find missing or incorrect links, please update this file.
 
-**Last Major Update**: November 4, 2025 - Added ontology and modal documentation
+**Last Major Update**: January 7, 2026 - Added user preferences documentation, updated onboarding docs

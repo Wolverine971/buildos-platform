@@ -131,6 +131,9 @@ describe('buildProjectGraph', () => {
 		milestones: [],
 		outputs: [],
 		documents: [],
+		requirements: [],
+		metrics: [],
+		sources: [],
 		risks: [],
 		decisions: [],
 		edges: [
@@ -302,6 +305,9 @@ describe('buildProjectGraph', () => {
 			milestones: [],
 			outputs: [createMockOutput('output-1', projectId, 'Output 1')],
 			documents: [],
+			requirements: [],
+			metrics: [],
+			sources: [],
 			risks: [],
 			decisions: [],
 			edges: [
@@ -345,6 +351,9 @@ describe('buildProjectTree', () => {
 		milestones: [],
 		outputs: [],
 		documents: [],
+		requirements: [],
+		metrics: [],
+		sources: [],
 		risks: [],
 		decisions: [],
 		edges: [
@@ -387,6 +396,9 @@ describe('getEdgesBetween', () => {
 		milestones: [],
 		outputs: [],
 		documents: [],
+		requirements: [],
+		metrics: [],
+		sources: [],
 		risks: [],
 		decisions: [],
 		edges: [
@@ -427,6 +439,9 @@ describe('findConnectedEntities', () => {
 		milestones: [],
 		outputs: [],
 		documents: [],
+		requirements: [],
+		metrics: [],
+		sources: [],
 		risks: [],
 		decisions: [],
 		edges: [
@@ -471,6 +486,9 @@ describe('getGraphStats', () => {
 		milestones: [],
 		outputs: [],
 		documents: [],
+		requirements: [],
+		metrics: [],
+		sources: [],
 		risks: [],
 		decisions: [],
 		edges: [
@@ -576,6 +594,9 @@ describe('project-level traversal methods', () => {
 			createMockDocument('doc-1', projectId, 'Document 1'),
 			createMockDocument('doc-2', projectId, 'Document 2')
 		],
+		requirements: [],
+		metrics: [],
+		sources: [],
 		risks: [createMockRisk('risk-1', projectId, 'Risk 1')],
 		decisions: [
 			createMockDecision('decision-1', projectId, 'Decision 1'),

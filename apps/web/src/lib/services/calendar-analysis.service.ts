@@ -2,12 +2,20 @@
 import { ApiService, type ServiceResponse } from './base/api-service';
 import { CalendarService, type CalendarEvent } from './calendar-service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
-import { OperationsExecutor } from '$lib/utils/operations/operations-executor';
-import type { ParsedOperation } from '$lib/types/brain-dump';
-import type { Database } from '@buildos/shared-types';
+import { instantiateProject } from '$lib/services/ontology/instantiation.service';
+import {
+	convertCalendarSuggestionToProjectSpec,
+	inferTaskTypeKey,
+	normalizeDueAt,
+	normalizePriority,
+	type CalendarSuggestionInput,
+	type CalendarSuggestionEventPatterns,
+	type CalendarSuggestionTask
+} from '$lib/services/ontology/braindump-to-ontology-adapter';
+import type { TaskState } from '$lib/types/onto';
+import type { Database, Json } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from './errorLogger.service';
-import { generateSlug } from '$lib/utils/operations/validation-utils';
 import {
 	getProjectModel,
 	getTaskModel,
@@ -146,6 +154,200 @@ interface EventGroupAnalysis {
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.4; // Lowered from 0.6 for more suggestions
 const PREFERENCES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const DEBUG_LOGGING = true; // Enable debug logging for calendar analysis
+
+const CALENDAR_TASK_STATE_MAP: Record<string, TaskState> = {
+	backlog: 'todo',
+	in_progress: 'in_progress',
+	done: 'done',
+	blocked: 'blocked'
+};
+
+type CalendarSuggestionModifications = {
+	name?: string;
+	description?: string;
+	context?: string;
+	includeTasks?: boolean;
+	taskSelections?: Record<string, boolean>;
+	taskModifications?: Record<number, any>;
+};
+
+function parseJsonValue<T>(value: unknown): T | null {
+	if (!value) return null;
+	if (typeof value === 'string') {
+		try {
+			return JSON.parse(value) as T;
+		} catch (error) {
+			console.warn('[Calendar Analysis] Failed to parse JSON value:', error);
+			return null;
+		}
+	}
+	if (typeof value === 'object') {
+		return value as T;
+	}
+	return null;
+}
+
+function prepareCalendarTasks(
+	tasks: CalendarSuggestionTask[],
+	suggestionId: string,
+	modifications?: CalendarSuggestionModifications
+): CalendarSuggestionTask[] {
+	if (modifications?.includeTasks === false) {
+		return [];
+	}
+
+	const normalizedToday = new Date();
+	normalizedToday.setHours(0, 0, 0, 0);
+	const todayDateString = normalizedToday.toISOString().slice(0, 10);
+
+	const preparedTasks: CalendarSuggestionTask[] = [];
+
+	tasks.forEach((task, index) => {
+		const taskKey = `${suggestionId}-${index}`;
+		if (modifications?.taskSelections && modifications.taskSelections[taskKey] === false) {
+			return;
+		}
+
+		const modifiedTask = modifications?.taskModifications?.[index]
+			? { ...task, ...modifications.taskModifications[index] }
+			: { ...task };
+
+		let rescheduledFromPast = false;
+		if (modifiedTask.start_date) {
+			const taskDate = new Date(modifiedTask.start_date);
+			if (taskDate < normalizedToday) {
+				const taskTime = modifiedTask.start_date.includes('T')
+					? modifiedTask.start_date.split('T')[1]
+					: '09:00:00';
+
+				modifiedTask.start_date = `${todayDateString}T${taskTime}`;
+				rescheduledFromPast = true;
+			}
+		}
+
+		if (rescheduledFromPast) {
+			const note = `⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`;
+			modifiedTask.details = modifiedTask.details
+				? `${modifiedTask.details}\n\n${note}`
+				: note;
+		}
+
+		preparedTasks.push(modifiedTask);
+	});
+
+	return preparedTasks;
+}
+
+async function addTasksToExistingProject(
+	supabase: SupabaseClient<Database>,
+	projectId: string,
+	userId: string,
+	tasks: CalendarSuggestionTask[]
+): Promise<{ taskCount: number; planId?: string }> {
+	if (!tasks?.length) {
+		return { taskCount: 0 };
+	}
+
+	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+		p_user_id: userId
+	});
+
+	if (actorError || !actorId) {
+		throw new Error(`Failed to resolve actor: ${actorError?.message}`);
+	}
+
+	const { data: existingPlans } = await supabase
+		.from('onto_plans')
+		.select('id, name')
+		.eq('project_id', projectId)
+		.is('deleted_at', null)
+		.order('created_at', { ascending: false })
+		.limit(1);
+
+	let planId: string | undefined;
+
+	if (!existingPlans?.length) {
+		const { data: newPlan, error: planError } = await supabase
+			.from('onto_plans')
+			.insert({
+				project_id: projectId,
+				name: 'Calendar-Imported Tasks',
+				type_key: 'plan.phase',
+				state_key: 'active',
+				props: { source: 'calendar_analysis' } as Json,
+				created_by: actorId
+			})
+			.select('id')
+			.single();
+
+		if (planError || !newPlan) {
+			throw new Error(`Failed to create plan: ${planError?.message}`);
+		}
+
+		planId = newPlan.id;
+
+		await supabase.from('onto_edges').insert({
+			project_id: projectId,
+			src_kind: 'project',
+			src_id: projectId,
+			rel: 'has_plan',
+			dst_kind: 'plan',
+			dst_id: planId
+		});
+	} else {
+		planId = existingPlans[0].id;
+	}
+
+	const taskInserts = tasks.map((task) => {
+		const title = task.title?.trim() || 'Untitled Task';
+
+		return {
+			project_id: projectId,
+			title,
+			type_key: inferTaskTypeKey(title),
+			state_key: CALENDAR_TASK_STATE_MAP[task.status ?? 'backlog'] ?? 'todo',
+			priority: normalizePriority(task.priority) ?? 3,
+			start_at: normalizeDueAt(task.start_date) ?? null,
+			due_at: normalizeDueAt(task.start_date) ?? null,
+			description: task.description ?? null,
+			props: {
+				details: task.details,
+				calendar_event_id: task.event_id,
+				task_type: task.task_type,
+				recurrence_pattern: task.recurrence_pattern,
+				recurrence_ends: task.recurrence_ends,
+				recurrence_rrule: task.recurrence_rrule,
+				duration_minutes: task.duration_minutes,
+				tags: task.tags
+			} as Json,
+			created_by: actorId
+		};
+	});
+
+	const { data: insertedTasks, error: tasksError } = await supabase
+		.from('onto_tasks')
+		.insert(taskInserts)
+		.select('id');
+
+	if (tasksError) {
+		throw new Error(`Failed to insert tasks: ${tasksError.message}`);
+	}
+
+	const edgeInserts = (insertedTasks ?? []).map((task) => ({
+		project_id: projectId,
+		src_kind: 'plan',
+		src_id: planId,
+		rel: 'has_task',
+		dst_kind: 'task',
+		dst_id: task.id
+	}));
+
+	if (edgeInserts.length > 0) {
+		await supabase.from('onto_edges').insert(edgeInserts);
+	}
+
+	return { taskCount: insertedTasks?.length ?? 0, planId };
+}
 
 export class CalendarAnalysisService extends ApiService {
 	private static instance: CalendarAnalysisService;
@@ -1440,13 +1642,7 @@ IMPORTANT:
 	async acceptSuggestion(
 		suggestionId: string,
 		userId: string,
-		modifications?: {
-			name?: string;
-			description?: string;
-			includeTasks?: boolean;
-			taskSelections?: Record<string, boolean>; // Which tasks to include
-			taskModifications?: Record<number, any>; // Task edits
-		}
+		modifications?: CalendarSuggestionModifications
 	): Promise<ServiceResponse<any>> {
 		try {
 			const suggestion = await this.getSuggestion(suggestionId, userId);
@@ -1454,19 +1650,27 @@ IMPORTANT:
 				throw new Error('Suggestion not found');
 			}
 
-			// Extract additional metadata from event_patterns if available
-			const eventPatterns = suggestion.event_patterns as any;
-			const executiveSummary = eventPatterns?.executive_summary;
-			const startDate = eventPatterns?.start_date;
-			const endDate = eventPatterns?.end_date;
-			const tags = eventPatterns?.tags || [];
-			const addToExisting = eventPatterns?.add_to_existing;
-			const existingProjectId = eventPatterns?.existing_project_id;
-			const normalizedToday = new Date();
-			normalizedToday.setHours(0, 0, 0, 0);
-			const todayDateString = normalizedToday.toISOString().slice(0, 10);
+			const parsedEventPatterns =
+				parseJsonValue<CalendarSuggestionEventPatterns>(suggestion.event_patterns) ??
+				({} as CalendarSuggestionEventPatterns);
+			const parsedTasks =
+				parseJsonValue<CalendarSuggestionTask[]>(suggestion.suggested_tasks) ?? [];
 
-			// Check if this should add tasks to an existing project instead of creating new
+			const preparedTasks = prepareCalendarTasks(
+				Array.isArray(parsedTasks) ? parsedTasks : [],
+				suggestionId,
+				modifications
+			);
+
+			const suggestionInput: CalendarSuggestionInput = {
+				...suggestion,
+				suggested_tasks: preparedTasks,
+				event_patterns: parsedEventPatterns
+			};
+
+			const addToExisting = !!parsedEventPatterns?.add_to_existing;
+			const existingProjectId = parsedEventPatterns?.existing_project_id ?? null;
+
 			if (addToExisting && existingProjectId) {
 				if (DEBUG_LOGGING) {
 					console.log(
@@ -1474,256 +1678,48 @@ IMPORTANT:
 					);
 				}
 
-				// Create task operations only
-				const operations: ParsedOperation[] = [];
+				const { taskCount, planId } = await addTasksToExistingProject(
+					this.supabase,
+					existingProjectId,
+					userId,
+					preparedTasks
+				);
 
-				if (modifications?.includeTasks !== false && suggestion.suggested_tasks) {
-					const tasksData = suggestion.suggested_tasks;
-					const tasks = tasksData && Array.isArray(tasksData) ? tasksData : [];
-
-					const taskOperations: ParsedOperation[] = [];
-
-					tasks.forEach((task: any, index: number) => {
-						const taskKey = `${suggestionId}-${index}`;
-						if (
-							modifications?.taskSelections &&
-							modifications.taskSelections[taskKey] === false
-						) {
-							return;
-						}
-
-						const modifiedTask = modifications?.taskModifications?.[index]
-							? { ...task, ...modifications.taskModifications[index] }
-							: task;
-
-						let rescheduledFromPast = false;
-						if (modifiedTask.start_date) {
-							const taskDate = new Date(modifiedTask.start_date);
-							if (taskDate < normalizedToday) {
-								const taskTime = modifiedTask.start_date.includes('T')
-									? modifiedTask.start_date.split('T')[1]
-									: '09:00:00';
-								modifiedTask.start_date = `${todayDateString}T${taskTime}`;
-								rescheduledFromPast = true;
-							}
-						}
-
-						const newOperation: ParsedOperation = {
-							id: `calendar-task-${suggestionId}-${index}`,
-							operation: 'create',
-							table: 'tasks',
-							data: {
-								title: modifiedTask.title || 'Untitled Task',
-								description: modifiedTask.description || '',
-								details: rescheduledFromPast
-									? `${modifiedTask.details || ''}\n\n⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`
-									: modifiedTask.details || '',
-								status: modifiedTask.status || 'backlog',
-								priority: modifiedTask.priority || 'medium',
-								task_type: modifiedTask.task_type || 'one_off',
-								duration_minutes: modifiedTask.duration_minutes,
-								start_date: modifiedTask.start_date,
-								recurrence_pattern: modifiedTask.recurrence_pattern,
-								recurrence_ends: modifiedTask.recurrence_ends,
-								recurrence_rrule: modifiedTask.recurrence_rrule || null,
-								project_id: existingProjectId,
-								source: 'calendar_analysis',
-								source_calendar_event_id: modifiedTask.event_id,
-								tags: modifiedTask.tags
-							},
-							enabled: true
-						};
-
-						taskOperations.push(newOperation);
-					});
-
-					if (taskOperations.length > 0) {
-						operations.push(...taskOperations);
-					}
-				}
-
-				// Execute operations for adding tasks to existing project
-				const executor = new OperationsExecutor(this.supabase);
-				const result = await executor.executeOperations({
-					operations,
-					userId
-				});
-
-				if (result.error || result.failed.length > 0) {
-					return {
-						success: false,
-						errors: result.error
-							? [result.error]
-							: [`Failed to add ${result.failed.length} task(s) to existing project`]
-					};
-				}
-
-				// Update suggestion status
 				await this.updateSuggestionStatus(suggestionId, 'accepted');
 
 				return {
 					success: true,
 					data: {
 						projectId: existingProjectId,
-						tasksCreated: operations.length,
-						addedToExisting: true
+						tasksCreated: taskCount,
+						addedToExisting: true,
+						planId
 					}
 				};
 			}
 
-			// Generate operations for creating NEW project
-			const projectName = modifications?.name || suggestion.suggested_name;
-			const operations: ParsedOperation[] = [
-				{
-					id: `calendar-project-${suggestionId}`,
-					operation: 'create' as const,
-					table: 'projects' as const,
-					ref: 'project-0', // Reference for tasks to use
-					data: {
-						name: projectName,
-						slug: generateSlug(projectName), // Explicitly generate slug
-						description: modifications?.description || suggestion.suggested_description,
-						context: suggestion.suggested_context,
-						executive_summary: executiveSummary,
-						status: 'active',
-						start_date: startDate || new Date().toISOString().slice(0, 10),
-						end_date: endDate,
-						tags: tags,
-						source: 'calendar_analysis',
-						source_metadata: {
-							analysis_id: suggestion.analysis_id,
-							suggestion_id: suggestion.id,
-							event_ids: suggestion.calendar_event_ids,
-							confidence: suggestion.confidence_score,
-							detected_keywords: suggestion.detected_keywords
-						}
-					},
-					enabled: true
-				}
-			];
-
-			// Add task operations if requested and tasks exist
-			if (modifications?.includeTasks !== false && suggestion.suggested_tasks) {
-				// Safely handle suggested_tasks which might be JSON or null
-				const tasksData = suggestion.suggested_tasks;
-				const tasks = tasksData && Array.isArray(tasksData) ? tasksData : [];
-
-				const taskOperations: ParsedOperation[] = [];
-
-				tasks.forEach((task: any, index: number) => {
-					// Check if task is selected
-					const taskKey = `${suggestionId}-${index}`;
-					if (
-						modifications?.taskSelections &&
-						modifications.taskSelections[taskKey] === false
-					) {
-						return;
-					}
-
-					// Apply task modifications if provided
-					const modifiedTask = modifications?.taskModifications?.[index]
-						? { ...task, ...modifications.taskModifications[index] }
-						: task;
-
-					// Validate and reschedule tasks with past dates
-					// Note: LLM should NOT generate past tasks, but this is a safety net
-					let rescheduledFromPast = false;
-					if (modifiedTask.start_date) {
-						const taskDate = new Date(modifiedTask.start_date);
-						if (taskDate < normalizedToday) {
-							const originalDate = modifiedTask.start_date;
-							const taskTime = modifiedTask.start_date.includes('T')
-								? modifiedTask.start_date.split('T')[1]
-								: '09:00:00';
-
-							if (modifiedTask.task_type === 'one_off') {
-								// Reschedule one-off tasks to today
-								modifiedTask.start_date = `${todayDateString}T${taskTime}`;
-								rescheduledFromPast = true;
-
-								if (DEBUG_LOGGING) {
-									console.log(
-										`[Calendar Analysis] Rescheduled one-off task "${modifiedTask.title}" from ${originalDate} to ${modifiedTask.start_date}`
-									);
-								}
-							} else if (modifiedTask.task_type === 'recurring') {
-								// For recurring tasks, move to today and keep the recurrence pattern
-								modifiedTask.start_date = `${todayDateString}T${taskTime}`;
-								rescheduledFromPast = true;
-
-								if (DEBUG_LOGGING) {
-									console.log(
-										`[Calendar Analysis] Rescheduled recurring task "${modifiedTask.title}" from ${originalDate} to ${modifiedTask.start_date}`
-									);
-								}
-							}
-						}
-					}
-
-					taskOperations.push({
-						id: `calendar-task-${suggestionId}-${index}`,
-						operation: 'create' as const,
-						table: 'tasks' as const,
-						data: {
-							title: modifiedTask.title || 'Untitled Task',
-							description: modifiedTask.description || '',
-							details: rescheduledFromPast
-								? `${modifiedTask.details || ''}\n\n⚠️ Note: This task was originally scheduled for ${task.start_date} but was rescheduled because it was in the past.`
-								: modifiedTask.details || '',
-							status: modifiedTask.status || 'backlog',
-							priority: modifiedTask.priority || 'medium',
-							task_type: modifiedTask.task_type || 'one_off',
-							duration_minutes: modifiedTask.duration_minutes || null,
-							start_date: modifiedTask.start_date || null,
-							recurrence_pattern: modifiedTask.recurrence_pattern || null,
-							recurrence_ends: modifiedTask.recurrence_ends || null,
-							recurrence_rrule: modifiedTask.recurrence_rrule || null, // Preserve exact RRULE from Google Calendar
-							project_ref: 'project-0', // Reference to the project created above
-							source: 'calendar_event',
-							source_calendar_event_id: modifiedTask.event_id || null
-						},
-						enabled: true
-					});
-				});
-
-				if (taskOperations.length > 0) {
-					operations.push(...taskOperations);
-				}
-			}
-
-			// Execute operations using existing executor
-			const executor = new OperationsExecutor(this.supabase);
-			const results = await executor.executeOperations({
-				operations,
-				userId
+			const projectSpec = convertCalendarSuggestionToProjectSpec(suggestionInput, {
+				name: modifications?.name,
+				description: modifications?.description,
+				context: modifications?.context,
+				includeTasks: modifications?.includeTasks
 			});
 
-			// Update suggestion status - find the created project from results
-			const createdProject = results.results?.find(
-				(r) => r.table === 'projects' && r.operationType === 'create'
+			const { project_id, counts } = await instantiateProject(
+				this.supabase,
+				projectSpec,
+				userId
 			);
 
-			// If we found the created project, update the suggestion status
-			if (createdProject?.id) {
-				await this.updateSuggestionStatus(suggestionId, 'accepted', createdProject.id);
-			}
+			await this.updateSuggestionStatus(suggestionId, 'accepted', project_id);
 
-			// Return the complete project data for the API response
 			return {
 				success: true,
-				data: createdProject
-					? {
-							...createdProject, // Spread first to allow overrides
-							name:
-								createdProject.name ||
-								modifications?.name ||
-								suggestion.suggested_name,
-							description:
-								createdProject.description ||
-								modifications?.description ||
-								suggestion.suggested_description
-						}
-					: null
+				data: {
+					projectId: project_id,
+					counts,
+					addedToExisting: false
+				}
 			};
 		} catch (error) {
 			this.errorLogger.logError(error, {

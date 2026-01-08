@@ -19,6 +19,9 @@ import type {
 	OntoDocument,
 	OntoRisk,
 	OntoDecision,
+	OntoRequirement,
+	OntoMetric,
+	OntoSource,
 	OntoEdge
 } from './onto-api';
 
@@ -27,9 +30,8 @@ import type { EntityKind as BaseEntityKind } from '$lib/services/ontology/edge-d
 
 /**
  * Entity kinds in the ontology system.
- * Extended from base EntityKind to include 'decision'.
  */
-export type EntityKind = BaseEntityKind | 'decision';
+export type EntityKind = BaseEntityKind;
 
 /**
  * Raw data returned from loadProjectGraphData.
@@ -43,6 +45,9 @@ export interface ProjectGraphData {
 	milestones: OntoMilestone[];
 	outputs: OntoOutput[];
 	documents: OntoDocument[];
+	requirements: OntoRequirement[];
+	metrics: OntoMetric[];
+	sources: OntoSource[];
 	risks: OntoRisk[];
 	decisions: OntoDecision[];
 	edges: OntoEdge[];
@@ -60,7 +65,10 @@ export type AnyEntity =
 	| OntoOutput
 	| OntoDocument
 	| OntoRisk
-	| OntoDecision;
+	| OntoDecision
+	| OntoRequirement
+	| OntoMetric
+	| OntoSource;
 
 /**
  * Map from entity kind to entity type for type-safe lookups.
@@ -75,6 +83,9 @@ export interface EntityTypeMap {
 	document: OntoDocument;
 	risk: OntoRisk;
 	decision: OntoDecision;
+	requirement: OntoRequirement;
+	metric: OntoMetric;
+	source: OntoSource;
 }
 
 /**
@@ -199,6 +210,15 @@ export interface ProjectGraph {
 
 	/** Get outputs directly under the project (via has_output edge) */
 	getOutputsForProject(): OntoOutput[];
+
+	/** Get requirements for the project (via has_requirement edge) */
+	getRequirementsForProject(): OntoRequirement[];
+
+	/** Get metrics for the project (via has_metric edge) */
+	getMetricsForProject(): OntoMetric[];
+
+	/** Get sources for the project (via has_source edge) */
+	getSourcesForProject(): OntoSource[];
 
 	/**
 	 * Get all entities of a specific kind that are direct children of the project.

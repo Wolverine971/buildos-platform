@@ -497,15 +497,43 @@ interface ProjectSpec {
 		start_at?: string;
 		end_at?: string;
 	};
-	goals?: GoalSpec[];
-	requirements?: RequirementSpec[];
-	plans?: PlanSpec[];
-	tasks?: TaskSpec[];
-	outputs?: OutputSpec[];
-	documents?: DocumentSpec[];
+	entities: Array<{
+		temp_id: string;
+		kind:
+			| 'goal'
+			| 'milestone'
+			| 'plan'
+			| 'task'
+			| 'document'
+			| 'output'
+			| 'risk'
+			| 'decision'
+			| 'requirement'
+			| 'metric'
+			| 'source';
+		// per-kind fields omitted for brevity
+	}>;
+	relationships: Array<
+		| [{ temp_id: string; kind: string }, { temp_id: string; kind: string }]
+		| {
+				from: { temp_id: string; kind: string };
+				to: { temp_id: string; kind: string };
+				rel?: string;
+				intent?: 'containment' | 'semantic';
+		  }
+	>;
 	context_document?: ContextDocumentSpec;
 }
 ```
+
+**Rules:**
+
+- `entities` and `relationships` are required.
+- Legacy arrays (`goals`, `plans`, `tasks`, etc.) are invalid.
+- Relationship direction is `[from, to]` and drives containment/semantic inference.
+- If multiple entities are present, `relationships` must include at least one pair.
+- See `apps/web/docs/features/agentic-chat/PROJECT_CREATION_FLOW_UPDATE_PLAN.md` for the
+  enforcement checklist and prompt/tool alignment plan.
 
 ---
 

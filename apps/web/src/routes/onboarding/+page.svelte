@@ -34,13 +34,16 @@
 
 	// V2 Onboarding Components
 	import WelcomeStep from '$lib/components/onboarding-v2/WelcomeStep.svelte';
+	import CapabilitiesStep from '$lib/components/onboarding-v2/CapabilitiesStep.svelte';
 	import ProjectsCaptureStep from '$lib/components/onboarding-v2/ProjectsCaptureStep.svelte';
 	import NotificationsStep from '$lib/components/onboarding-v2/NotificationsStep.svelte';
 	import FlexibilityStep from '$lib/components/onboarding-v2/FlexibilityStep.svelte';
+	import PreferencesStep from '$lib/components/onboarding-v2/PreferencesStep.svelte';
 	import CombinedProfileStep from '$lib/components/onboarding-v2/CombinedProfileStep.svelte';
 	import AdminTourStep from '$lib/components/onboarding-v2/AdminTourStep.svelte';
 	import SummaryStep from '$lib/components/onboarding-v2/SummaryStep.svelte';
 	import ProgressIndicator from '$lib/components/onboarding-v2/ProgressIndicator.svelte';
+	import { ONBOARDING_V2_CONFIG } from '$lib/config/onboarding.config';
 
 	let { data }: { data: PageData } = $props();
 
@@ -48,9 +51,25 @@
 	const useV2 = $derived($page.url.searchParams.get('v2') === 'true');
 
 	// V2 State
+	type OntologyCounts = {
+		goals: number;
+		requirements: number;
+		plans: number;
+		tasks: number;
+		outputs: number;
+		documents: number;
+		sources: number;
+		metrics: number;
+		milestones: number;
+		risks: number;
+		decisions: number;
+		edges: number;
+	};
+
 	let v2CurrentStep = $state(0);
 	let v2OnboardingData = $state({
 		projectsCreated: 0,
+		ontologyCounts: undefined as OntologyCounts | undefined,
 		calendarAnalyzed: false,
 		smsEnabled: false,
 		emailEnabled: false,
@@ -58,12 +77,24 @@
 		challenges: [] as string[]
 	});
 
+	const v2TotalSteps = Object.values(ONBOARDING_V2_CONFIG.steps).length;
+	const v2SummaryStep = v2TotalSteps - 1;
+
 	function handleV2Next() {
 		v2CurrentStep++;
 	}
 
-	function handleV2ProjectsCreated(projectIds: string[]) {
+	function handleV2ProjectsCreated(projectIds: string[], ontologyCounts?: OntologyCounts) {
 		v2OnboardingData.projectsCreated = projectIds.length;
+		if (ontologyCounts) {
+			v2OnboardingData.ontologyCounts = ontologyCounts;
+		}
+	}
+
+	function handleV2CalendarAnalyzed(completed: boolean) {
+		if (completed) {
+			v2OnboardingData.calendarAnalyzed = true;
+		}
 	}
 
 	function handleV2SMSEnabled(enabled: boolean) {
@@ -481,38 +512,43 @@
 	<!-- V2 Onboarding Flow -->
 	<div class="min-h-screen bg-background">
 		<div class="container mx-auto py-8 px-4">
-			<!-- Progress Indicator (show for steps 1-5, not welcome or summary) -->
-			{#if v2CurrentStep > 0 && v2CurrentStep < 6}
+			<!-- Progress Indicator (show for steps between welcome and summary) -->
+			{#if v2CurrentStep > 0 && v2CurrentStep < v2SummaryStep}
 				<ProgressIndicator currentStep={v2CurrentStep} onStepClick={handleV2StepClick} />
 			{/if}
 
 			{#if v2CurrentStep === 0}
 				<WelcomeStep onStart={handleV2Next} />
 			{:else if v2CurrentStep === 1}
+				<CapabilitiesStep onNext={handleV2Next} />
+			{:else if v2CurrentStep === 2}
 				<ProjectsCaptureStep
 					userContext={data.userContext}
 					onNext={handleV2Next}
 					onProjectsCreated={handleV2ProjectsCreated}
+					onCalendarAnalyzed={handleV2CalendarAnalyzed}
 				/>
-			{:else if v2CurrentStep === 2}
+			{:else if v2CurrentStep === 3}
 				<NotificationsStep
 					userId={data.user.id}
 					onNext={handleV2Next}
 					onSMSEnabled={handleV2SMSEnabled}
 					onEmailEnabled={handleV2EmailEnabled}
 				/>
-			{:else if v2CurrentStep === 3}
-				<FlexibilityStep onNext={handleV2Next} />
 			{:else if v2CurrentStep === 4}
+				<FlexibilityStep onNext={handleV2Next} />
+			{:else if v2CurrentStep === 5}
+				<PreferencesStep userId={data.user.id} onNext={handleV2Next} />
+			{:else if v2CurrentStep === 6}
 				<CombinedProfileStep
 					userId={data.user.id}
 					onNext={handleV2Next}
 					onArchetypeSelected={handleV2ArchetypeSelected}
 					onChallengesSelected={handleV2ChallengesSelected}
 				/>
-			{:else if v2CurrentStep === 5}
+			{:else if v2CurrentStep === 7}
 				<AdminTourStep onNext={handleV2Next} onSkip={handleV2Next} />
-			{:else if v2CurrentStep === 6}
+			{:else if v2CurrentStep === v2SummaryStep}
 				<SummaryStep userId={data.user.id} summary={v2OnboardingData} />
 			{/if}
 		</div>

@@ -5,15 +5,38 @@ import {
 	type FacetDefaults,
 	type Facets,
 	type FSMDef,
+	type GoalState,
+	type MilestoneState,
+	type TaskState,
+	type RiskState,
+	type DecisionState,
 	type ProjectState,
 	type DocumentState,
 	type PlanState,
 	type OutputState,
-	type ProjectSpec
+	type ProjectSpec,
+	GOAL_STATES,
+	MILESTONE_STATES,
+	TASK_STATES,
+	RISK_STATES,
+	DECISION_STATES
 } from '$lib/types/onto';
-import { Json } from '@buildos/shared-types';
+import type { Json, ProjectLogEntityType } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { logActivitiesAsync } from '$lib/services/async-activity-logger';
+import { autoOrganizeConnections } from '$lib/services/ontology/auto-organizer.service';
+import {
+	DEPRECATED_RELATIONSHIPS,
+	RELATIONSHIP_DIRECTIONS,
+	type EntityKind,
+	type RelationshipType
+} from '$lib/services/ontology/edge-direction';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import {
+	getAllowedParents,
+	isContainmentRel,
+	TASK_DISALLOWS_PROJECT_FALLBACK_KINDS
+} from '$lib/services/ontology/relationship-policy';
 
 type InstantiationCounts = {
 	goals: number;
@@ -22,6 +45,11 @@ type InstantiationCounts = {
 	tasks: number;
 	outputs: number;
 	documents: number;
+	sources: number;
+	metrics: number;
+	milestones: number;
+	risks: number;
+	decisions: number;
 	edges: number;
 };
 
@@ -96,6 +124,12 @@ const OUTPUT_STATE_MAP: Record<string, OutputState> = {
 	approved: 'published'
 };
 
+const DEFAULT_GOAL_STATE: GoalState = 'draft';
+const DEFAULT_MILESTONE_STATE: MilestoneState = 'pending';
+const DEFAULT_TASK_STATE: TaskState = 'todo';
+const DEFAULT_RISK_STATE: RiskState = 'identified';
+const DEFAULT_DECISION_STATE: DecisionState = 'pending';
+
 const INITIAL_COUNTS: InstantiationCounts = {
 	goals: 0,
 	requirements: 0,
@@ -103,8 +137,46 @@ const INITIAL_COUNTS: InstantiationCounts = {
 	tasks: 0,
 	outputs: 0,
 	documents: 0,
+	sources: 0,
+	metrics: 0,
+	milestones: 0,
+	risks: 0,
+	decisions: 0,
 	edges: 0
 };
+
+function normalizeStateKey<T extends string>(
+	raw: string | undefined,
+	allowed: readonly T[],
+	fallback: T
+): T {
+	if (!raw) return fallback;
+	const normalized = raw.trim().toLowerCase();
+	return allowed.includes(normalized as T) ? (normalized as T) : fallback;
+}
+
+function normalizeRelationshipType(rel?: string): RelationshipType | undefined {
+	if (!rel) return undefined;
+	if (rel in RELATIONSHIP_DIRECTIONS) {
+		return rel as RelationshipType;
+	}
+	const deprecated = DEPRECATED_RELATIONSHIPS[rel];
+	return deprecated?.canonical;
+}
+
+function getEntityKey(entity: { kind: EntityKind; id: string }): string {
+	return `${entity.kind}:${entity.id}`;
+}
+
+function shouldSkipContainmentForEntity(kind: EntityKind, connections: ConnectionRef[]): boolean {
+	if (kind === 'document') {
+		return !connections.some((connection) => connection.kind === 'document');
+	}
+	if (kind === 'output') {
+		return true;
+	}
+	return false;
+}
 
 type DocumentInsertSpec = {
 	title: string;
@@ -112,6 +184,7 @@ type DocumentInsertSpec = {
 	state_key?: string;
 	props?: Record<string, unknown>;
 	body_markdown?: string;
+	description?: string | null;
 };
 
 async function insertDocument(
@@ -139,6 +212,7 @@ async function insertDocument(
 			title: spec.title,
 			type_key: spec.type_key,
 			state_key: normalizedState,
+			description: spec.description ?? null,
 			// Use new content column
 			content: spec.body_markdown ?? null,
 			props: props as Json,
@@ -220,12 +294,8 @@ export async function instantiateProject(
 		'planning';
 
 	const edgesToInsert: EdgeInsert[] = [];
-	const planIdByName = new Map<string, string>();
-	const documentIdByTitle = new Map<string, string>();
 
 	let projectId: string | undefined;
-	let contextDocumentId: string | null = null;
-
 	try {
 		// Insert project first
 		const { data: projectRows, error: projectError } = await client
@@ -269,9 +339,8 @@ export async function instantiateProject(
 				props: parsed.context_document.props ?? {}
 			});
 
-			contextDocumentId = contextDocId;
 			inserted.documents.push(contextDocId);
-			documentIdByTitle.set(parsed.context_document.title, contextDocId);
+			counts.documents += 1;
 
 			// Use has_context_document edge to link the context document
 			edgesToInsert.push({
@@ -284,508 +353,544 @@ export async function instantiateProject(
 			});
 		}
 
-		// Goals
-		if (parsed.goals?.length) {
-			const goalInserts = parsed.goals.map((goal) => ({
-				project_id: typedProjectId,
-				name: goal.name,
-				type_key: goal.type_key ?? null,
-				props: (goal.props ?? {}) as Json,
-				created_by: actorId
-			}));
+		const entityIdByTempId = new Map<string, { kind: EntityKind; id: string }>();
 
-			const { data: goalRows, error: goalsError } = await client
-				.from('onto_goals')
-				.insert(goalInserts)
-				.select('id');
-
-			if (goalsError) {
+		for (const entity of parsed.entities) {
+			if (entityIdByTempId.has(entity.temp_id)) {
 				throw new OntologyInstantiationError(
-					`Failed to insert goals: ${goalsError.message}`
+					`Duplicate temp_id "${entity.temp_id}" in entities list`
 				);
 			}
 
-			for (const row of goalRows ?? []) {
-				inserted.goals.push(row.id);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_goal',
-					dst_kind: 'goal',
-					dst_id: row.id
-				});
-			}
-
-			counts.goals = goalRows?.length ?? 0;
-		}
-
-		// Requirements
-		if (parsed.requirements?.length) {
-			const requirementInserts = parsed.requirements.map((req) => ({
-				project_id: typedProjectId,
-				text: req.text,
-				type_key: req.type_key ?? 'requirement.general',
-				props: (req.props ?? {}) as Json,
-				created_by: actorId
-			}));
-
-			const { data: reqRows, error: reqError } = await client
-				.from('onto_requirements')
-				.insert(requirementInserts)
-				.select('id');
-
-			if (reqError) {
-				throw new OntologyInstantiationError(
-					`Failed to insert requirements: ${reqError.message}`
-				);
-			}
-
-			for (const row of reqRows ?? []) {
-				inserted.requirements.push(row.id);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_requirement',
-					dst_kind: 'requirement',
-					dst_id: row.id
-				});
-			}
-
-			counts.requirements = reqRows?.length ?? 0;
-		}
-
-		// Documents (sequential so we can capture context doc)
-		if (parsed.documents?.length) {
-			for (const doc of parsed.documents) {
-				const docId = await insertDocument(client, typedProjectId, actorId, {
-					title: doc.title,
-					type_key: doc.type_key,
-					state_key: doc.state_key,
-					body_markdown: doc.body_markdown,
-					props: doc.props ?? {}
-				});
-
-				inserted.documents.push(docId);
-				documentIdByTitle.set(doc.title, docId);
-
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_document',
-					dst_kind: 'document',
-					dst_id: docId
-				});
-			}
-
-			counts.documents = inserted.documents.length;
-
-			// Link first intake/brief doc as project context when applicable (only if not already set)
-			if (!contextDocumentId) {
-				const firstDoc = parsed.documents[0];
-				if (firstDoc) {
-					const fallbackContextDocId = documentIdByTitle.get(firstDoc.title);
-					if (fallbackContextDocId) {
-						// Create has_context_document edge for the fallback context doc
-						edgesToInsert.push({
-							project_id: typedProjectId,
-							src_kind: 'project',
-							src_id: projectId,
-							rel: 'has_context_document',
-							dst_kind: 'document',
-							dst_id: fallbackContextDocId
-						});
-					}
-				}
-			}
-		} else if (contextDocumentId) {
-			counts.documents = inserted.documents.length;
-		}
-
-		// Plans
-		if (parsed.plans?.length) {
-			for (const plan of parsed.plans) {
-				const resolvedPlanFacets = resolveFacets(
-					undefined,
-					(plan.props?.facets as Facets | undefined) ?? undefined
-				);
-				await assertValidFacets(client, resolvedPlanFacets, 'plan', `plan "${plan.name}"`);
-
-				const mergedPlanProps = mergeProps(plan.props ?? {});
-				if (hasFacetValues(resolvedPlanFacets)) {
-					mergedPlanProps.facets = resolvedPlanFacets;
-				} else {
-					delete mergedPlanProps.facets;
-				}
-
-				const normalizedPlanState: PlanState =
-					PLAN_STATE_MAP[plan.state_key?.trim().toLowerCase() ?? 'draft'] ?? 'draft';
-
-				const { data: planRow, error: planError } = await client
-					.from('onto_plans')
-					.insert({
-						project_id: typedProjectId,
-						name: plan.name,
-						type_key: plan.type_key,
-						state_key: normalizedPlanState,
-						props: mergedPlanProps as Json,
-						created_by: actorId
-					})
-					.select('id')
-					.single();
-
-				if (planError || !planRow) {
-					throw new OntologyInstantiationError(
-						`Failed to insert plan "${plan.name}": ${planError?.message ?? 'Unknown error'}`
+			switch (entity.kind) {
+				case 'goal': {
+					const normalizedState = normalizeStateKey(
+						entity.state_key,
+						GOAL_STATES,
+						DEFAULT_GOAL_STATE
 					);
-				}
 
-				inserted.plans.push(planRow.id);
-				planIdByName.set(plan.name, planRow.id);
+					const goalProps = mergeProps(entity.props ?? {}, {
+						description: entity.description ?? null,
+						target_date: entity.target_date ?? null,
+						measurement_criteria: entity.measurement_criteria ?? null,
+						priority: entity.priority ?? null
+					});
 
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_plan',
-					dst_kind: 'plan',
-					dst_id: planRow.id
-				});
-			}
+					const { data, error } = await client
+						.from('onto_goals')
+						.insert({
+							project_id: typedProjectId,
+							name: entity.name,
+							type_key: entity.type_key ?? 'goal.default',
+							description: entity.description ?? null,
+							target_date: entity.target_date ?? null,
+							state_key: normalizedState,
+							props: goalProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
 
-			counts.plans = inserted.plans.length;
-		}
-
-		// Tasks - now have type_key column and use edges for plan relationships
-		if (parsed.tasks?.length) {
-			for (const task of parsed.tasks) {
-				let planId: string | null = null;
-				if (task.plan_name) {
-					const mappedPlanId = planIdByName.get(task.plan_name);
-					if (!mappedPlanId) {
+					if (error || !data) {
 						throw new OntologyInstantiationError(
-							`Task "${task.title}" references unknown plan "${task.plan_name}"`
+							`Failed to insert goal "${entity.name}": ${error?.message ?? 'Unknown error'}`
 						);
 					}
-					planId = mappedPlanId;
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'goal', id: data.id });
+					inserted.goals.push(data.id);
+					counts.goals += 1;
+					break;
 				}
-
-				const taskTypeKey = task.type_key ?? 'task.execute';
-
-				const resolvedTaskFacets = resolveFacets(
-					undefined,
-					(task.props?.facets as Facets | undefined) ?? undefined
-				);
-				await assertValidFacets(client, resolvedTaskFacets, 'task', `task "${task.title}"`);
-
-				const finalTaskProps = mergeProps(task.props ?? {});
-				if (hasFacetValues(resolvedTaskFacets)) {
-					finalTaskProps.facets = resolvedTaskFacets;
-				} else {
-					delete finalTaskProps.facets;
-				}
-
-				const { data: taskRow, error: taskError } = await client
-					.from('onto_tasks')
-					.insert({
-						project_id: typedProjectId,
-						title: task.title,
-						type_key: taskTypeKey,
-						state_key: task.state_key ?? 'todo',
-						priority: task.priority ?? null,
-						due_at: task.due_at ?? null,
-						props: finalTaskProps as Json,
-						created_by: actorId
-					})
-					.select('id')
-					.single();
-
-				if (taskError || !taskRow) {
-					throw new OntologyInstantiationError(
-						`Failed to insert task "${task.title}": ${taskError?.message ?? 'Unknown error'}`
+				case 'milestone': {
+					const normalizedState = normalizeStateKey(
+						entity.state_key,
+						MILESTONE_STATES,
+						DEFAULT_MILESTONE_STATE
 					);
-				}
 
-				const taskId = taskRow.id;
-				inserted.tasks.push(taskId);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_task',
-					dst_kind: 'task',
-					dst_id: taskId
-				});
-
-				// Plan relationship via canonical edge (plan_id column removed)
-				if (planId) {
-					// Plan -> Task (has_task)
-					edgesToInsert.push({
-						project_id: typedProjectId,
-						src_kind: 'plan',
-						src_id: planId,
-						rel: 'has_task',
-						dst_kind: 'task',
-						dst_id: taskId
+					const milestoneProps = mergeProps(entity.props ?? {}, {
+						description: entity.description ?? null
 					});
+
+					const { data, error } = await client
+						.from('onto_milestones')
+						.insert({
+							project_id: typedProjectId,
+							title: entity.title,
+							type_key: entity.type_key ?? 'milestone.default',
+							due_at: entity.due_at,
+							description: entity.description ?? null,
+							state_key: normalizedState,
+							props: milestoneProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert milestone "${entity.title}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'milestone', id: data.id });
+					inserted.milestones.push(data.id);
+					counts.milestones += 1;
+					break;
 				}
-			}
+				case 'plan': {
+					const normalizedPlanState: PlanState =
+						PLAN_STATE_MAP[entity.state_key?.trim().toLowerCase() ?? 'draft'] ??
+						'draft';
 
-			counts.tasks = inserted.tasks.length;
-		}
+					const resolvedPlanFacets = resolveFacets(
+						undefined,
+						(entity.props?.facets as Facets | undefined) ?? undefined
+					);
+					await assertValidFacets(
+						client,
+						resolvedPlanFacets,
+						'plan',
+						`plan "${entity.name}"`
+					);
 
-		// Outputs
-		if (parsed.outputs?.length) {
-			for (const output of parsed.outputs) {
-				const resolvedOutputFacets = resolveFacets(
-					undefined,
-					(output.props?.facets as Facets | undefined) ?? undefined
-				);
-				await assertValidFacets(
-					client,
-					resolvedOutputFacets,
-					'output',
-					`output "${output.name}"`
-				);
+					const mergedPlanProps = mergeProps(entity.props ?? {}, {
+						description: entity.description ?? null,
+						start_date: entity.start_date ?? null,
+						end_date: entity.end_date ?? null
+					});
+					if (hasFacetValues(resolvedPlanFacets)) {
+						mergedPlanProps.facets = resolvedPlanFacets;
+					} else {
+						delete mergedPlanProps.facets;
+					}
 
-				const mergedOutputProps = mergeProps(output.props ?? {});
-				if (hasFacetValues(resolvedOutputFacets)) {
-					mergedOutputProps.facets = resolvedOutputFacets;
-				} else {
-					delete mergedOutputProps.facets;
+					const { data, error } = await client
+						.from('onto_plans')
+						.insert({
+							project_id: typedProjectId,
+							name: entity.name,
+							type_key: entity.type_key ?? 'plan.default',
+							state_key: normalizedPlanState,
+							description: entity.description ?? null,
+							props: mergedPlanProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert plan "${entity.name}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'plan', id: data.id });
+					inserted.plans.push(data.id);
+					counts.plans += 1;
+					break;
 				}
+				case 'task': {
+					const normalizedState = normalizeStateKey(
+						entity.state_key,
+						TASK_STATES,
+						DEFAULT_TASK_STATE
+					);
 
-				const normalizedOutputState: OutputState =
-					OUTPUT_STATE_MAP[output.state_key?.trim().toLowerCase() ?? 'draft'] ?? 'draft';
+					const resolvedTaskFacets = resolveFacets(
+						undefined,
+						(entity.props?.facets as Facets | undefined) ?? undefined
+					);
+					await assertValidFacets(
+						client,
+						resolvedTaskFacets,
+						'task',
+						`task "${entity.title}"`
+					);
 
-				const { data: outputRow, error: outputError } = await client
-					.from('onto_outputs')
-					.insert({
-						project_id: typedProjectId,
-						name: output.name,
-						type_key: output.type_key,
-						state_key: normalizedOutputState,
-						props: mergedOutputProps as Json,
-						created_by: actorId
-					})
-					.select('id')
-					.single();
+					const mergedTaskProps = mergeProps(entity.props ?? {}, {
+						description: entity.description ?? null
+					});
+					if (hasFacetValues(resolvedTaskFacets)) {
+						mergedTaskProps.facets = resolvedTaskFacets;
+					} else {
+						delete mergedTaskProps.facets;
+					}
 
-				if (outputError || !outputRow) {
+					const { data, error } = await client
+						.from('onto_tasks')
+						.insert({
+							project_id: typedProjectId,
+							title: entity.title,
+							type_key: entity.type_key ?? 'task.default',
+							state_key: normalizedState,
+							priority: entity.priority ?? null,
+							start_at: entity.start_at ?? null,
+							due_at: entity.due_at ?? null,
+							description: entity.description ?? null,
+							props: mergedTaskProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert task "${entity.title}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'task', id: data.id });
+					inserted.tasks.push(data.id);
+					counts.tasks += 1;
+					break;
+				}
+				case 'document': {
+					const normalizedState: DocumentState =
+						DOCUMENT_STATE_MAP[entity.state_key?.trim().toLowerCase() ?? 'draft'] ??
+						'draft';
+					const body_markdown =
+						entity.body_markdown ?? (entity as { content?: string }).content;
+
+					const docId = await insertDocument(client, typedProjectId, actorId, {
+						title: entity.title,
+						type_key: entity.type_key ?? 'document.default',
+						state_key: normalizedState,
+						body_markdown,
+						description: entity.description ?? null,
+						props: entity.props ?? {}
+					});
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'document', id: docId });
+					inserted.documents.push(docId);
+					counts.documents += 1;
+					break;
+				}
+				case 'output': {
+					const normalizedOutputState: OutputState =
+						OUTPUT_STATE_MAP[entity.state_key?.trim().toLowerCase() ?? 'draft'] ??
+						'draft';
+
+					const resolvedOutputFacets = resolveFacets(
+						undefined,
+						(entity.props?.facets as Facets | undefined) ?? undefined
+					);
+					await assertValidFacets(
+						client,
+						resolvedOutputFacets,
+						'output',
+						`output "${entity.name}"`
+					);
+
+					const mergedOutputProps = mergeProps(entity.props ?? {});
+					if (hasFacetValues(resolvedOutputFacets)) {
+						mergedOutputProps.facets = resolvedOutputFacets;
+					} else {
+						delete mergedOutputProps.facets;
+					}
+
+					const { data, error } = await client
+						.from('onto_outputs')
+						.insert({
+							project_id: typedProjectId,
+							name: entity.name,
+							type_key: entity.type_key ?? 'output.default',
+							state_key: normalizedOutputState,
+							description: entity.description ?? null,
+							props: mergedOutputProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert output "${entity.name}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'output', id: data.id });
+					inserted.outputs.push(data.id);
+					counts.outputs += 1;
+					break;
+				}
+				case 'risk': {
+					const normalizedState = normalizeStateKey(
+						entity.state_key,
+						RISK_STATES,
+						DEFAULT_RISK_STATE
+					);
+
+					const riskProps = mergeProps(entity.props ?? {});
+
+					const { data, error } = await client
+						.from('onto_risks')
+						.insert({
+							project_id: typedProjectId,
+							title: entity.title,
+							type_key: entity.type_key ?? 'risk.default',
+							probability: entity.probability ?? null,
+							impact: entity.impact ?? 'medium',
+							state_key: normalizedState,
+							content: entity.content ?? null,
+							props: riskProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert risk "${entity.title}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'risk', id: data.id });
+					inserted.risks.push(data.id);
+					counts.risks += 1;
+					break;
+				}
+				case 'decision': {
+					const normalizedState = normalizeStateKey(
+						entity.state_key,
+						DECISION_STATES,
+						DEFAULT_DECISION_STATE
+					);
+
+					const decisionProps = mergeProps(entity.props ?? {});
+
+					const { data, error } = await client
+						.from('onto_decisions')
+						.insert({
+							project_id: typedProjectId,
+							title: entity.title,
+							type_key: entity.type_key ?? 'decision.default',
+							state_key: normalizedState,
+							decision_at: entity.decision_at ?? null,
+							rationale: entity.rationale ?? null,
+							outcome: entity.outcome ?? null,
+							props: decisionProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert decision "${entity.title}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'decision', id: data.id });
+					inserted.decisions.push(data.id);
+					counts.decisions += 1;
+					break;
+				}
+				case 'requirement': {
+					const requirementProps = mergeProps(entity.props ?? {});
+
+					const { data, error } = await client
+						.from('onto_requirements')
+						.insert({
+							project_id: typedProjectId,
+							text: entity.text,
+							type_key: entity.type_key ?? 'requirement.general',
+							props: requirementProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert requirement "${entity.text}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'requirement', id: data.id });
+					inserted.requirements.push(data.id);
+					counts.requirements += 1;
+					break;
+				}
+				case 'metric': {
+					const metricProps = mergeProps(entity.props ?? {}, {
+						target_value: entity.target_value ?? null
+					});
+
+					const { data, error } = await client
+						.from('onto_metrics')
+						.insert({
+							project_id: typedProjectId,
+							name: entity.name,
+							unit: entity.unit,
+							type_key: entity.type_key ?? null,
+							definition: entity.definition ?? null,
+							props: metricProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert metric "${entity.name}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'metric', id: data.id });
+					inserted.metrics.push(data.id);
+					counts.metrics += 1;
+					break;
+				}
+				case 'source': {
+					const sourceProps = mergeProps(entity.props ?? {}, {
+						name: entity.name ?? null
+					});
+
+					const { data, error } = await client
+						.from('onto_sources')
+						.insert({
+							project_id: typedProjectId,
+							uri: entity.uri,
+							snapshot_uri: entity.snapshot_uri ?? null,
+							props: sourceProps as Json,
+							created_by: actorId
+						})
+						.select('id')
+						.single();
+
+					if (error || !data) {
+						throw new OntologyInstantiationError(
+							`Failed to insert source "${entity.uri}": ${error?.message ?? 'Unknown error'}`
+						);
+					}
+
+					entityIdByTempId.set(entity.temp_id, { kind: 'source', id: data.id });
+					inserted.sources.push(data.id);
+					counts.sources += 1;
+					break;
+				}
+				default: {
+					const exhaustiveCheck: never = entity;
 					throw new OntologyInstantiationError(
-						`Failed to insert output "${output.name}": ${outputError?.message ?? 'Unknown error'}`
+						`Unsupported entity kind: ${String(exhaustiveCheck)}`
 					);
 				}
-
-				inserted.outputs.push(outputRow.id);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_output',
-					dst_kind: 'output',
-					dst_id: outputRow.id
-				});
 			}
-
-			counts.outputs = inserted.outputs.length;
 		}
 
-		// Sources
-		if (parsed.sources?.length) {
-			const sourceInserts = parsed.sources.map((source) => ({
-				project_id: typedProjectId,
-				uri: source.uri,
-				snapshot_uri: source.snapshot_uri ?? null,
-				props: (source.props ?? {}) as Json,
-				created_by: actorId
-			}));
+		const connectionsByEntityKey = new Map<string, ConnectionRef[]>();
+		const incomingContainmentKeys = new Set<string>();
+		const taskStructuralKeys = new Set<string>();
+		const relationships = parsed.relationships;
 
-			const { data: sourceRows, error: sourcesError } = await client
-				.from('onto_sources')
-				.insert(sourceInserts)
-				.select('id');
+		for (const relation of relationships) {
+			const normalized = Array.isArray(relation)
+				? { from: relation[0], to: relation[1] }
+				: relation;
 
-			if (sourcesError) {
+			const relValue = !Array.isArray(relation) ? relation.rel : undefined;
+			const relProvided = typeof relValue === 'string' && relValue.trim().length > 0;
+			const normalizedRel = relProvided ? normalizeRelationshipType(relValue) : undefined;
+			const hasInvalidRel = relProvided && !normalizedRel;
+
+			const fromEntity = entityIdByTempId.get(normalized.from.temp_id);
+			const toEntity = entityIdByTempId.get(normalized.to.temp_id);
+
+			if (!fromEntity) {
 				throw new OntologyInstantiationError(
-					`Failed to insert sources: ${sourcesError.message}`
+					`Unknown relationship temp_id "${normalized.from.temp_id}"`
+				);
+			}
+			if (!toEntity) {
+				throw new OntologyInstantiationError(
+					`Unknown relationship temp_id "${normalized.to.temp_id}"`
+				);
+			}
+			if (fromEntity.kind !== normalized.from.kind) {
+				throw new OntologyInstantiationError(
+					`Relationship from kind mismatch for temp_id "${normalized.from.temp_id}"`
+				);
+			}
+			if (toEntity.kind !== normalized.to.kind) {
+				throw new OntologyInstantiationError(
+					`Relationship to kind mismatch for temp_id "${normalized.to.temp_id}"`
 				);
 			}
 
-			for (const row of sourceRows ?? []) {
-				inserted.sources.push(row.id);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_source',
-					dst_kind: 'source',
-					dst_id: row.id
-				});
+			const fromKey = getEntityKey(fromEntity);
+			const toKey = getEntityKey(toEntity);
+			if (
+				fromEntity.kind === 'task' &&
+				TASK_DISALLOWS_PROJECT_FALLBACK_KINDS.has(toEntity.kind)
+			) {
+				taskStructuralKeys.add(fromKey);
+			}
+			if (
+				toEntity.kind === 'task' &&
+				TASK_DISALLOWS_PROJECT_FALLBACK_KINDS.has(fromEntity.kind)
+			) {
+				taskStructuralKeys.add(toKey);
+			}
+
+			const isExplicitSemantic =
+				!Array.isArray(relation) &&
+				(relation.intent === 'semantic' ||
+					(relProvided && (!normalizedRel || !isContainmentRel(normalizedRel))));
+
+			if (!isExplicitSemantic) {
+				const allowedParents = getAllowedParents(toEntity.kind);
+				if (allowedParents.includes(fromEntity.kind)) {
+					incomingContainmentKeys.add(toKey);
+				}
+			}
+
+			const list = connectionsByEntityKey.get(fromKey) ?? [];
+			const connection: ConnectionRef = {
+				kind: toEntity.kind,
+				id: toEntity.id
+			};
+
+			if (!Array.isArray(relation)) {
+				if (normalizedRel) {
+					connection.rel = normalizedRel;
+				}
+				if (relation.intent) {
+					connection.intent = relation.intent;
+				}
+			}
+			if (!hasInvalidRel) {
+				list.push(connection);
+				connectionsByEntityKey.set(fromKey, list);
 			}
 		}
 
-		// Metrics
-		if (parsed.metrics?.length) {
-			const metricInserts = parsed.metrics.map((metric) => ({
-				project_id: typedProjectId,
-				name: metric.name,
-				type_key: metric.type_key ?? null,
-				unit: metric.unit,
-				definition: metric.definition ?? null,
-				props: (metric.props ?? {}) as Json,
-				created_by: actorId
-			}));
+		for (const entity of parsed.entities) {
+			const created = entityIdByTempId.get(entity.temp_id);
+			if (!created) continue;
+			const key = getEntityKey(created);
+			const connections = connectionsByEntityKey.get(key) ?? [];
+			const skipContainment = shouldSkipContainmentForEntity(created.kind, connections);
+			const hasIncomingParent = incomingContainmentKeys.has(key);
+			const mode = hasIncomingParent ? 'merge' : connections.length > 0 ? 'replace' : 'merge';
+			const allowProjectFallback =
+				created.kind === 'task' && taskStructuralKeys.has(key) ? false : undefined;
 
-			const { data: metricRows, error: metricError } = await client
-				.from('onto_metrics')
-				.insert(metricInserts)
-				.select('id');
-
-			if (metricError) {
-				throw new OntologyInstantiationError(
-					`Failed to insert metrics: ${metricError.message}`
-				);
-			}
-
-			for (const row of metricRows ?? []) {
-				inserted.metrics.push(row.id);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_metric',
-					dst_kind: 'metric',
-					dst_id: row.id
-				});
-			}
+			await autoOrganizeConnections({
+				supabase: client as any,
+				projectId: typedProjectId,
+				entity: created,
+				connections,
+				options: {
+					mode,
+					skipContainment,
+					allowProjectFallback
+				}
+			});
 		}
 
-		// Milestones
-		if (parsed.milestones?.length) {
-			const milestoneInserts = parsed.milestones.map((milestone) => ({
-				project_id: typedProjectId,
-				title: milestone.title,
-				type_key: milestone.type_key ?? null,
-				due_at: milestone.due_at,
-				props: (milestone.props ?? {}) as Json,
-				created_by: actorId
-			}));
-
-			const { data: milestoneRows, error: milestoneError } = await client
-				.from('onto_milestones')
-				.insert(milestoneInserts)
-				.select('id');
-
-			if (milestoneError) {
-				throw new OntologyInstantiationError(
-					`Failed to insert milestones: ${milestoneError.message}`
-				);
-			}
-
-			for (const row of milestoneRows ?? []) {
-				inserted.milestones.push(row.id);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_milestone',
-					dst_kind: 'milestone',
-					dst_id: row.id
-				});
-			}
-		}
-
-		// Risks
-		if (parsed.risks?.length) {
-			const riskInserts = parsed.risks.map((risk) => ({
-				project_id: typedProjectId,
-				title: risk.title,
-				type_key: risk.type_key ?? null,
-				probability: risk.probability ?? null,
-				impact: risk.impact ?? 'medium',
-				state_key: 'open',
-				props: (risk.props ?? {}) as Json,
-				created_by: actorId
-			}));
-
-			const { data: riskRows, error: riskError } = await client
-				.from('onto_risks')
-				.insert(riskInserts)
-				.select('id');
-
-			if (riskError) {
-				throw new OntologyInstantiationError(
-					`Failed to insert risks: ${riskError.message}`
-				);
-			}
-
-			for (const row of riskRows ?? []) {
-				inserted.risks.push(row.id);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_risk',
-					dst_kind: 'risk',
-					dst_id: row.id
-				});
-			}
-		}
-
-		// Decisions
-		if (parsed.decisions?.length) {
-			const decisionInserts = parsed.decisions.map((decision) => ({
-				project_id: typedProjectId,
-				title: decision.title,
-				decision_at: decision.decision_at,
-				rationale: decision.rationale ?? null,
-				props: (decision.props ?? {}) as Json,
-				created_by: actorId
-			}));
-
-			const { data: decisionRows, error: decisionError } = await client
-				.from('onto_decisions')
-				.insert(decisionInserts)
-				.select('id');
-
-			if (decisionError) {
-				throw new OntologyInstantiationError(
-					`Failed to insert decisions: ${decisionError.message}`
-				);
-			}
-
-			for (const row of decisionRows ?? []) {
-				inserted.decisions.push(row.id);
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: 'project',
-					src_id: projectId,
-					rel: 'has_decision',
-					dst_kind: 'decision',
-					dst_id: row.id
-				});
-			}
-		}
-
-		// Explicit edges provided in spec
-		if (parsed.edges?.length) {
-			for (const edge of parsed.edges) {
-				edgesToInsert.push({
-					project_id: typedProjectId,
-					src_kind: edge.src_kind,
-					src_id: edge.src_id,
-					rel: edge.rel,
-					dst_kind: edge.dst_kind,
-					dst_id: edge.dst_id,
-					props: (edge.props ?? {}) as Json
-				});
-			}
-		}
-
-		// Insert accumulated edges
 		if (edgesToInsert.length > 0) {
 			const { data: edgeRows, error: edgesError } = await client
 				.from('onto_edges')
@@ -801,43 +906,48 @@ export async function instantiateProject(
 			for (const row of edgeRows ?? []) {
 				inserted.edges.push(row.id);
 			}
-
-			counts.edges = edgeRows?.length ?? 0;
 		}
 
-		if (projectId) {
-			const activityLogs = [
-				{ entityType: 'project', ids: [projectId] },
-				{ entityType: 'goal', ids: inserted.goals },
-				{ entityType: 'requirement', ids: inserted.requirements },
-				{ entityType: 'plan', ids: inserted.plans },
-				{ entityType: 'task', ids: inserted.tasks },
-				{ entityType: 'output', ids: inserted.outputs },
-				{ entityType: 'document', ids: inserted.documents },
-				{ entityType: 'source', ids: inserted.sources },
-				{ entityType: 'milestone', ids: inserted.milestones },
-				{ entityType: 'risk', ids: inserted.risks },
-				{ entityType: 'decision', ids: inserted.decisions }
-			]
-				.flatMap(({ entityType, ids }) =>
-					ids.map((entityId) => ({
-						projectId,
-						entityType,
-						entityId,
-						action: 'created' as const,
-						changedBy: userId,
-						changeSource: 'api' as const
-					}))
-				)
-				.filter((log) => Boolean(log.entityId));
+		const { count: edgeCount } = await client
+			.from('onto_edges')
+			.select('id', { count: 'exact', head: true })
+			.eq('project_id', typedProjectId);
+		if (typeof edgeCount === 'number') {
+			counts.edges = edgeCount;
+		}
 
-			if (activityLogs.length > 0) {
-				logActivitiesAsync(client as any, { logs: activityLogs });
-			}
+		const activityLogs = [
+			{ entityType: 'project', ids: [typedProjectId] },
+			{ entityType: 'goal', ids: inserted.goals },
+			{ entityType: 'requirement', ids: inserted.requirements },
+			{ entityType: 'plan', ids: inserted.plans },
+			{ entityType: 'task', ids: inserted.tasks },
+			{ entityType: 'output', ids: inserted.outputs },
+			{ entityType: 'document', ids: inserted.documents },
+			{ entityType: 'source', ids: inserted.sources },
+			{ entityType: 'metric', ids: inserted.metrics },
+			{ entityType: 'milestone', ids: inserted.milestones },
+			{ entityType: 'risk', ids: inserted.risks },
+			{ entityType: 'decision', ids: inserted.decisions }
+		]
+			.flatMap(({ entityType, ids }) =>
+				ids.map((entityId) => ({
+					projectId: typedProjectId,
+					entityType: entityType as ProjectLogEntityType,
+					entityId,
+					action: 'created' as const,
+					changedBy: userId,
+					changeSource: 'api' as const
+				}))
+			)
+			.filter((log) => Boolean(log.entityId));
+
+		if (activityLogs.length > 0) {
+			logActivitiesAsync(client as any, { logs: activityLogs });
 		}
 
 		return {
-			project_id: projectId,
+			project_id: typedProjectId,
 			counts
 		};
 	} catch (error) {

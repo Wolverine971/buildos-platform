@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { ProjectSpec } from '$lib/types/onto';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import {
 	instantiateProject,
 	validateProjectSpec,
@@ -26,7 +27,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const spec = body as ProjectSpec;
 
-		const supabase = locals.supabase;
+		const supabase = locals.supabase as unknown as TypedSupabaseClient;
 		const result = await instantiateProject(supabase, spec, user.id);
 
 		return ApiResponse.success({

@@ -8,11 +8,17 @@
  * - Productivity challenges
  * - Skip state management
  * - Completion tracking
+ * - User preferences capture (saveUserPreferences method)
+ *
+ * @see /apps/web/docs/features/onboarding/README.md - Onboarding flow overview
+ * @see /apps/web/docs/features/onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md - Implementation details
+ * @see /apps/web/docs/features/preferences/README.md - User preferences system
  */
 
 import { supabase } from '$lib/supabase';
 import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { UserPreferences } from '$lib/types/user-preferences';
 
 type User = Database['public']['Tables']['users']['Row'];
 type UserSMSPreferences = Database['public']['Tables']['user_sms_preferences']['Row'];
@@ -118,6 +124,50 @@ export class OnboardingV2Service {
 		if (error) {
 			console.error('Failed to save challenges:', error);
 			throw new Error('Failed to save challenges');
+		}
+
+		return { success: true, data };
+	}
+
+	/**
+	 * Save user communication preferences
+	 */
+	async savePreferences(userId: string, preferences: UserPreferences) {
+		const client = this.client;
+
+		const { data: existing, error: fetchError } = await client
+			.from('users')
+			.select('preferences')
+			.eq('id', userId)
+			.single();
+
+		if (fetchError) {
+			console.error('Failed to fetch existing preferences:', fetchError);
+			throw new Error('Failed to fetch existing preferences');
+		}
+
+		const existingPrefs =
+			existing?.preferences &&
+			typeof existing.preferences === 'object' &&
+			!Array.isArray(existing.preferences)
+				? (existing.preferences as Record<string, unknown>)
+				: {};
+
+		const mergedPreferences = {
+			...existingPrefs,
+			...preferences
+		};
+
+		const { data, error } = await client
+			.from('users')
+			.update({ preferences: mergedPreferences })
+			.eq('id', userId)
+			.select()
+			.single();
+
+		if (error) {
+			console.error('Failed to save preferences:', error);
+			throw new Error('Failed to save preferences');
 		}
 
 		return { success: true, data };

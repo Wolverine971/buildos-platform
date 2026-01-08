@@ -45,11 +45,11 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			};
 		}
 
-		// FAST: Get project count immediately (simple count query, ~20-50ms)
+		// FAST: Get project count immediately (estimated count to reduce DB load)
 		// This enables instant skeleton card rendering
 		const { count: projectCount, error: countError } = await supabase
 			.from('onto_projects')
-			.select('*', { count: 'exact', head: true })
+			.select('*', { count: 'estimated', head: true })
 			.eq('created_by', actorId)
 			.is('deleted_at', null);
 

@@ -68,6 +68,8 @@ export interface DataMutationSummary {
 	totalMutations: number;
 	/** Project IDs affected (best-effort, may be empty) */
 	affectedProjectIds: string[];
+	/** Whether the user sent at least one message during this modal session */
+	hasMessagesSent: boolean;
 }
 
 export function isThinkingBlockMessage(message: UIMessage): message is ThinkingBlockMessage {

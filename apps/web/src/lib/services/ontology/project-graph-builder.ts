@@ -28,7 +28,10 @@ import type {
 	OntoDocument,
 	OntoRisk,
 	OntoDecision,
-	OntoOutput
+	OntoOutput,
+	OntoRequirement,
+	OntoMetric,
+	OntoSource
 } from '$lib/types/onto-api';
 
 /**
@@ -45,6 +48,10 @@ const CONTAINMENT_RELATIONSHIPS = new Set([
 	'has_milestone',
 	'has_decision',
 	'has_output',
+	'has_requirement',
+	'has_metric',
+	'has_source',
+	'has_part',
 	// Canonical output relationship
 	'produces'
 ]);
@@ -62,13 +69,16 @@ const DEPENDENCY_RELATIONSHIPS = new Set(['depends_on', 'requires', 'blocks']);
 const PROJECT_CONTAINMENT_RELS: Record<EntityKind, string | null> = {
 	project: null, // Project cannot be a child of itself
 	plan: 'has_plan',
-	task: null, // Tasks belong to plans
+	task: 'has_task',
 	goal: 'has_goal',
 	milestone: 'has_milestone',
 	output: 'has_output',
 	document: 'has_document',
 	risk: 'has_risk',
-	decision: null // Decisions are project-scoped without a required containment edge
+	decision: 'has_decision',
+	requirement: 'has_requirement',
+	metric: 'has_metric',
+	source: 'has_source'
 };
 
 /**
@@ -111,7 +121,10 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 		output: new Map(),
 		document: new Map(),
 		risk: new Map(),
-		decision: new Map()
+		decision: new Map(),
+		requirement: new Map(),
+		metric: new Map(),
+		source: new Map()
 	};
 
 	// Index project
@@ -135,6 +148,9 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 	indexEntities(data.documents, 'document');
 	indexEntities(data.risks, 'risk');
 	indexEntities(data.decisions, 'decision');
+	indexEntities(data.requirements, 'requirement');
+	indexEntities(data.metrics, 'metric');
+	indexEntities(data.sources, 'source');
 
 	// ─────────────────────────────────────────────────────────────
 	// Build edge indexes
@@ -363,8 +379,50 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 			return outputs;
 		},
 
+		getRequirementsForProject(): OntoRequirement[] {
+			const edges = outgoing.get(data.project.id) ?? [];
+			const requirements: OntoRequirement[] = [];
+
+			for (const edge of edges) {
+				if (edge.rel === 'has_requirement') {
+					const requirement = entitiesByKind.requirement.get(edge.dst_id);
+					if (requirement) requirements.push(requirement);
+				}
+			}
+
+			return requirements;
+		},
+
+		getMetricsForProject(): OntoMetric[] {
+			const edges = outgoing.get(data.project.id) ?? [];
+			const metrics: OntoMetric[] = [];
+
+			for (const edge of edges) {
+				if (edge.rel === 'has_metric') {
+					const metric = entitiesByKind.metric.get(edge.dst_id);
+					if (metric) metrics.push(metric);
+				}
+			}
+
+			return metrics;
+		},
+
+		getSourcesForProject(): OntoSource[] {
+			const edges = outgoing.get(data.project.id) ?? [];
+			const sources: OntoSource[] = [];
+
+			for (const edge of edges) {
+				if (edge.rel === 'has_source') {
+					const source = entitiesByKind.source.get(edge.dst_id);
+					if (source) sources.push(source);
+				}
+			}
+
+			return sources;
+		},
+
 		getEntitiesForProject<K extends EntityKind>(kind: K): EntityTypeMap[K][] {
-			// Special case: decisions don't have a specific containment edge
+			// Special case: decisions are always project-scoped even when nested
 			if (kind === 'decision') {
 				return Array.from(entitiesByKind.decision.values()) as EntityTypeMap[K][];
 			}
@@ -542,7 +600,10 @@ export function getGraphStats(graph: ProjectGraph): {
 		output: graph.entitiesByKind.output.size,
 		document: graph.entitiesByKind.document.size,
 		risk: graph.entitiesByKind.risk.size,
-		decision: graph.entitiesByKind.decision.size
+		decision: graph.entitiesByKind.decision.size,
+		requirement: graph.entitiesByKind.requirement.size,
+		metric: graph.entitiesByKind.metric.size,
+		source: graph.entitiesByKind.source.size
 	};
 
 	const edgesByRelationship: Record<string, number> = {};

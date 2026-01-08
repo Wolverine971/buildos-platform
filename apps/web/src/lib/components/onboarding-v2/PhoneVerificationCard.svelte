@@ -133,7 +133,6 @@
 	}
 
 	function handleKeyPress(event: KeyboardEvent) {
-		console.log(event);
 		if (event.key === 'Enter') {
 			if (!codeSent) {
 				sendVerificationCode();

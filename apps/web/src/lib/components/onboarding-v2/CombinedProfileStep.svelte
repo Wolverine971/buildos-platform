@@ -95,7 +95,7 @@
 		</div>
 
 		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">
-			Step 4: Tell Us About Your Workflow
+			Step 6: Tell Us About Your Workflow
 		</h2>
 		<p class="text-lg text-muted-foreground leading-relaxed">
 			Help us personalize BuildOS to work the way you do.

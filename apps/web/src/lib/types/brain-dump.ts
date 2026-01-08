@@ -133,6 +133,25 @@ export interface BrainDumpParseResult {
 		slug?: string | null;
 	};
 
+	// Optional ontology creation result (onboarding new project path)
+	ontology?: {
+		project_id: string;
+		counts: {
+			goals: number;
+			requirements: number;
+			plans: number;
+			tasks: number;
+			outputs: number;
+			documents: number;
+			sources: number;
+			metrics: number;
+			milestones: number;
+			risks: number;
+			decisions: number;
+			edges: number;
+		};
+	};
+
 	// Question analysis and generation
 	questionAnalysis?: Record<
 		string,

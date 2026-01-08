@@ -188,19 +188,44 @@ Select **top 5-7 opportunities** based on total score.
 
 For each selected post, create 2-3 comment options following DJ's voice:
 
+### The Core Philosophy: Interesting Guy + Cheerleader
+
+> **NOT a thought leader.** Everyone is trying to be a thought leader. That's overdone and inauthentic.
+> **The goal:** Come across as an interesting person who has interesting things to say, OR as a genuine supporter when you don't have specific expertise.
+
+### Two Modes of Engagement
+
+**Mode 1: Add Value (When You Have Something)**
+Use when the topic touches your actual experience - Curri integrations, BuildOS, Marines, context engineering, solo founder journey.
+- Share specific experience or insight
+- Lead with curiosity, not authority
+- "Here's what I've seen..." not "The answer is..."
+- Offer a perspective others might not have considered
+- Ask questions that show expertise
+
+**Mode 2: Cheerleader (When You Don't)**
+Use when you don't have specific expertise but want to engage.
+- Genuine encouragement and support - this is valid!
+- Ask curious questions that show you're actually interested
+- Celebrate their wins like they're your wins
+- Hype them up authentically
+- "We're all rowing the same boat toward our goals" energy
+
 ### Comment Generation Rules
 
-1. **Add value, don't agree** - No "great post" or "love this" - extend the thought
-2. **Use specific experience** - Curri integrations, solo founder journey, Marines (sparingly)
-3. **Context engineering angle** - When discussing AI, frame around memory/context
-4. **Learning voice, not authoritative** - "What I'm finding..." not "The answer is..."
-5. **BuildOS mentions** - Only when genuinely relevant, be transparent about it
-6. **Ask questions** - Opens dialogue, shows curiosity
-7. **2-4 sentences minimum** - LinkedIn rewards thoughtful comments
+1. **Decide your mode first** - Do you have value to add, or are you here to support?
+2. **Be genuinely curious** - Ask questions that show real interest, not just "great point!"
+3. **Celebrate specifically** - If cheering someone on, reference exactly what impressed you
+4. **Use specific experience when relevant** - Curri integrations, solo founder journey, Marines (sparingly)
+5. **Context engineering angle** - When discussing AI, frame around memory/context IF relevant
+6. **Teammate energy, not teaching** - "What I'm finding..." not "Here's how to do it..."
+7. **BuildOS mentions** - Only when genuinely relevant, be transparent about it
+8. **2-4 sentences minimum** - LinkedIn rewards thoughtful comments
+9. **It's okay to just encourage** - Sometimes the most valuable thing is genuine support
 
 ### Comment Templates by Topic
 
-**AI/Context Posts:**
+**AI/Context Posts - Value Mode:**
 ```
 [Observation about the context/memory problem]
 
@@ -211,7 +236,16 @@ For each selected post, create 2-3 comment options following DJ's voice:
 [Optional: soft BuildOS mention if natural - be transparent]
 ```
 
-**Productivity/Tool Posts:**
+**AI/Context Posts - Cheerleader Mode:**
+```
+[Genuine reaction to what they shared]
+
+[Specific thing that stood out to you]
+
+[Curious question about their approach/experience]
+```
+
+**Productivity/Tool Posts - Value Mode:**
 ```
 [Validate with specific experience - "I hit this same wall with..."]
 
@@ -222,7 +256,16 @@ For each selected post, create 2-3 comment options following DJ's voice:
 [Question to open dialogue]
 ```
 
-**Building/Founder Posts:**
+**Productivity/Tool Posts - Cheerleader Mode:**
+```
+[Validate their struggle/insight genuinely]
+
+[Ask about their experience - what's working for them?]
+
+[Encouraging note - we're all figuring this out together]
+```
+
+**Building/Founder Posts - Value Mode:**
 ```
 [Direct reaction - acknowledge their insight]
 
@@ -233,7 +276,25 @@ For each selected post, create 2-3 comment options following DJ's voice:
 [Optional: ask about their approach]
 ```
 
-**AI Agents Posts (Contrarian):**
+**Building/Founder Posts - Cheerleader Mode:**
+```
+[Genuine excitement for their win/progress]
+
+[Specific thing about their journey that impressed you]
+
+[Encouraging question or note of support]
+
+[The "we're all rowing the same boat" energy]
+```
+
+**Someone Sharing a Win - Cheerleader Mode:**
+```
+Hell yes. [Specific thing about the win that impressed you].
+
+[Curious question about how they did it / what's next]
+```
+
+**AI Agents Posts (Contrarian) - Value Mode:**
 ```
 [Acknowledge the point, but...]
 
@@ -248,7 +309,7 @@ For each selected post, create 2-3 comment options following DJ's voice:
 ```
 [Reference their past content, framework, or specific work]
 
-[Add unique angle from your experience]
+[Add unique angle from your experience OR genuine curiosity]
 
 [Ask a direct question - not generic praise]
 
@@ -257,19 +318,30 @@ For each selected post, create 2-3 comment options following DJ's voice:
 
 ### Voice Reminders
 
-**DO:**
-- Lead with observation or insight
+**The Philosophy:** Interesting guy + cheerleader. NOT a thought leader.
+
+**DO (Value Mode):**
+- Lead with observation or insight from experience
 - Be specific - use real examples
-- Ask thoughtful questions
-- Professional but authentic
+- Ask questions that show expertise
 - "What I'm finding..." / "In my experience building..."
+- Teammate energy, not teaching
+
+**DO (Cheerleader Mode):**
+- Genuine excitement for their work/win
+- Specific praise - what exactly impressed you
+- Curious questions about their journey
+- "Hell yes" and "this is awesome" when you mean it
+- "We're all rowing the same boat" energy
 
 **DON'T:**
-- "Love this!" / "Great post!"
+- "Love this!" / "Great post!" (hollow)
 - Generic observations anyone could make
 - Preachy setups ("Most people don't realize...")
+- Teaching when you're just supporting
 - Sycophantic praise
-- "I think..." (just say it directly)
+- Making it about you/BuildOS when cheering someone on
+- Thought leader energy
 
 ---
 

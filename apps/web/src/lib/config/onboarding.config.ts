@@ -15,37 +15,49 @@ export const ONBOARDING_V2_CONFIG = {
 	// Step configuration
 	steps: {
 		welcome: { id: 'welcome', order: 0, skippable: false, title: 'Welcome to BuildOS' },
+		capabilities: {
+			id: 'capabilities',
+			order: 1,
+			skippable: true,
+			title: 'How BuildOS Works'
+		},
 		clarity: {
 			id: 'clarity',
-			order: 1,
+			order: 2,
 			skippable: false,
 			title: 'Capture Current Projects (Clarity)'
 		},
 		focus: {
 			id: 'focus',
-			order: 2,
+			order: 3,
 			skippable: true,
 			title: 'Accountability & Notifications (Focus)'
 		},
 		flexibility: {
 			id: 'flexibility',
-			order: 3,
+			order: 4,
 			skippable: true,
 			title: 'Knobs and Whistles (Flexibility)'
 		},
+		preferences: {
+			id: 'preferences',
+			order: 5,
+			skippable: false,
+			title: 'Communication Preferences'
+		},
 		profile: {
 			id: 'profile',
-			order: 4,
+			order: 6,
 			skippable: false,
 			title: 'Your Profile'
 		},
 		admin_tour: {
 			id: 'admin_tour',
-			order: 5,
+			order: 7,
 			skippable: true,
 			title: 'Explore More'
 		},
-		summary: { id: 'summary', order: 6, skippable: false, title: 'Summary & First Win' }
+		summary: { id: 'summary', order: 8, skippable: false, title: 'Summary & First Win' }
 	},
 
 	// User archetypes - how users want to use BuildOS

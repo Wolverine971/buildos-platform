@@ -78,9 +78,35 @@ const DATA_MODEL_OVERVIEW: PromptSection = {
 | **Task** | Actionable work items | \`task.{work_mode}\` |
 | **Plan** | Logical groupings/phases | \`plan.{family}\` |
 | **Goal** | Strategic objectives | \`goal.{family}\` |
+| **Milestone** | Time-bound checkpoints or intermediate steps before a goal | (date-based) |
 | **Document** | Reference materials, notes | \`document.{family}\` |
 | **Output** | Deliverables produced | \`output.{family}\` |
-| **Milestone** | Time-bound markers | (date-based) |
+| **Risk** | Potential problems/blockers | \`risk.{family}\` |
+| **Decision** | Tracked choices & rationale | \`decision.{family}\` |
+| **Requirement** | Needs, constraints, criteria | \`requirement.{type}\` |
+| **Metric** | Measurable success indicators | \`metric.{family}\` |
+| **Source** | External references/links | \`source.{family}\` |
+
+### Project Graph Structure
+
+The **baseline project hierarchy** (happy path):
+\`\`\`
+project
+  -> goal (what success looks like)
+      -> milestone (checkpoint toward the goal) [optional]
+          -> plan (how to reach milestone/goal) [optional]
+              -> task (individual work item)
+\`\`\`
+
+**Flexible skips** (all valid):
+- goal -> task (skip plan entirely)
+- goal -> plan -> task (skip milestone)
+- project -> task (seed state, for very simple projects)
+
+**Start simple:**
+- Most new projects just need: project + 1 goal + maybe a few tasks
+- Don't add plans/milestones unless the user mentions these or specific phases, dates, or workstreams
+- Structure should grow naturally as the project evolves
 
 **Type Key Quick Reference:**
 - **Projects** (6 realms): creative, technical, business, service, education, personal
@@ -104,7 +130,24 @@ const DATA_MODEL_OVERVIEW: PromptSection = {
 ### Plan Semantics
 - A plan is a lightweight sequence of steps from point A to point B.
 - Keep strategy/tactics brief inside the plan; use a document for detailed strategy or methodology.
-- Plans should reference that document and specify how it is used.`,
+- Plans should reference that document and specify how it is used.
+
+### Supporting Entities (Use When Mentioned)
+- **Risk**: When user mentions concerns, blockers, "what could go wrong", uncertainties
+  - States: identified → mitigated → closed (or → occurred)
+  - Links: threatens work items; mitigated by tasks/plans
+- **Decision**: When user faces choices, needs to track rationale, records past decisions
+  - States: pending → made (or deferred); can reverse
+  - Links: attached to project/goal/plan/task
+- **Requirement**: When user specifies must-haves, constraints, acceptance criteria
+  - Types: functional, non_functional, constraint
+  - Links: attached to project/milestone/plan/task/decision
+- **Metric**: When user wants to track KPIs, progress numbers, success measures
+  - Fields: name, unit, target_value, current_value
+  - Links: attached to project/goal/milestone/plan/task
+- **Source**: When user provides external links, references, documents to preserve
+  - Fields: uri, name, snapshot_uri
+  - Links: project-level; can be referenced by any entity`,
 	includeHeader: true
 };
 
@@ -316,6 +359,7 @@ const STRATEGIES: PromptSection = {
 
 2. **project_creation**: Only when the user is starting a new project (context_type === project_create)
    - Classify the project (type_key) using taxonomy, gather missing details/props, and call \`create_onto_project\`
+   - Use **entities + relationships only** (relationships is required even if empty)
    - Populate the context document so the new project has a narrative summary
 
 3. **ask_clarifying_questions**: When ambiguity remains AFTER attempting research

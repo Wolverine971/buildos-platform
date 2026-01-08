@@ -266,11 +266,14 @@ export class StreamHandler {
 			if (toolResultsFromHistory.length === 0) {
 				const loadedToolResults = await this.safeLoadRecentToolResults(session.id);
 				if (loadedToolResults.length > 0) {
-					lastTurnContextForPlanner = generateLastTurnContext(
+					const generatedContext = generateLastTurnContext(
 						conversationHistory,
 						normalizedContextType,
 						{ toolResults: loadedToolResults }
 					);
+					if (generatedContext) {
+						lastTurnContextForPlanner = generatedContext;
+					}
 				}
 			}
 		}

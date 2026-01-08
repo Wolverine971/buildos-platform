@@ -15,10 +15,26 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { ONBOARDING_V2_CONFIG } from '$lib/config/onboarding.config';
 
+	type OntologyCounts = {
+		goals: number;
+		requirements: number;
+		plans: number;
+		tasks: number;
+		outputs: number;
+		documents: number;
+		sources: number;
+		metrics: number;
+		milestones: number;
+		risks: number;
+		decisions: number;
+		edges: number;
+	};
+
 	interface Props {
 		userId: string;
 		summary: {
 			projectsCreated: number;
+			ontologyCounts?: OntologyCounts;
 			calendarAnalyzed: boolean;
 			smsEnabled: boolean;
 			emailEnabled: boolean;
@@ -46,6 +62,28 @@
 			},
 			{} as Record<string, string>
 		)
+	);
+
+	const ontologyCountItems: Array<{ key: keyof OntologyCounts; label: string }> = [
+		{ key: 'goals', label: 'Goals' },
+		{ key: 'requirements', label: 'Requirements' },
+		{ key: 'plans', label: 'Plans' },
+		{ key: 'tasks', label: 'Tasks' },
+		{ key: 'milestones', label: 'Milestones' },
+		{ key: 'outputs', label: 'Outputs' },
+		{ key: 'documents', label: 'Documents' },
+		{ key: 'sources', label: 'Sources' },
+		{ key: 'metrics', label: 'Metrics' },
+		{ key: 'risks', label: 'Risks' },
+		{ key: 'decisions', label: 'Decisions' },
+		{ key: 'edges', label: 'Edges' }
+	];
+
+	// Filter to only show non-zero counts
+	const nonZeroOntologyCounts = $derived(
+		summary.ontologyCounts
+			? ontologyCountItems.filter((item) => summary.ontologyCounts![item.key] > 0)
+			: []
 	);
 
 	async function completeOnboarding() {
@@ -121,6 +159,25 @@
 						<div class="mt-2 flex items-center gap-2 text-sm text-accent">
 							<Calendar class="w-4 h-4" />
 							<span>Analyzed your Google Calendar</span>
+						</div>
+					{/if}
+					{#if nonZeroOntologyCounts.length > 0}
+						<div class="mt-4 border-t border-border/60 pt-3">
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Ontology Graph Created
+							</p>
+							<div class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
+								{#each nonZeroOntologyCounts as item}
+									<div
+										class="flex items-center gap-2 text-xs text-muted-foreground"
+									>
+										<span class="font-semibold text-foreground">
+											{summary.ontologyCounts?.[item.key]}
+										</span>
+										<span>{item.label}</span>
+									</div>
+								{/each}
+							</div>
 						</div>
 					{/if}
 				</div>

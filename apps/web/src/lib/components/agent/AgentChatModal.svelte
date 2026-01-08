@@ -290,6 +290,7 @@
 	let currentAssistantMessageId = $state<string | null>(null);
 	let currentAssistantMessageIndex = $state<number | null>(null);
 	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
+	let hasSentMessage = $state(false);
 	const pendingToolResults = new Map<
 		string,
 		{ status: 'completed' | 'failed'; errorMessage?: string }
@@ -959,6 +960,7 @@
 		if (!wasOpen) {
 			wasOpen = true;
 			hasFinalizedSession = false;
+			hasSentMessage = false;
 
 			// If resuming a session, skip any auto-init flows that would create a new one
 			if (initialChatSessionId) {
@@ -1997,7 +1999,8 @@
 		return {
 			hasChanges: mutationCount > 0,
 			totalMutations: mutationCount,
-			affectedProjectIds: Array.from(mutatedProjectIds)
+			affectedProjectIds: Array.from(mutatedProjectIds),
+			hasMessagesSent: hasSentMessage
 		};
 	}
 
@@ -2257,6 +2260,7 @@
 			}));
 
 		messages = [...messages, userMessage];
+		hasSentMessage = true;
 		if (!suppressInputClear) {
 			inputValue = '';
 		}

@@ -42,6 +42,14 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import type { EntityKind } from '$lib/services/ontology/edge-direction';
 
 // GET /api/onto/plans/[id] - Get a single plan
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -110,7 +118,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 	try {
 		const body = await request.json();
-		const { name, plan, description, start_date, end_date, state_key, props } = body;
+		const {
+			name,
+			plan,
+			description,
+			start_date,
+			end_date,
+			state_key,
+			props,
+			goal_id,
+			milestone_id,
+			parent,
+			parents,
+			connections
+		} = body;
 
 		if (state_key !== undefined && !PLAN_STATES.includes(state_key)) {
 			return ApiResponse.badRequest(`state_key must be one of: ${PLAN_STATES.join(', ')}`);
@@ -149,6 +170,65 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		// Check if user owns the project
 		if (existingPlan.project.created_by !== actorId) {
 			return ApiResponse.error('Access denied', 403);
+		}
+
+		const explicitParents = toParentRefs({ parent, parents });
+		const hasParentField = Object.prototype.hasOwnProperty.call(body, 'parent');
+		const hasParentsField = Object.prototype.hasOwnProperty.call(body, 'parents');
+		const hasGoalInput = Object.prototype.hasOwnProperty.call(body, 'goal_id');
+		const hasMilestoneInput = Object.prototype.hasOwnProperty.call(body, 'milestone_id');
+
+		let validatedGoalId: string | null = null;
+		let validatedMilestoneId: string | null = null;
+		let normalizedMilestoneId: string | null | undefined = undefined;
+		let normalizedGoalId: string | null | undefined = undefined;
+
+		const invalidParent = explicitParents.find(
+			(parentRef) => !['project', 'goal', 'milestone'].includes(parentRef.kind)
+		);
+		if (invalidParent) {
+			return ApiResponse.badRequest(`Unsupported parent kind: ${invalidParent.kind}`);
+		}
+
+		if (hasGoalInput) {
+			normalizedGoalId =
+				typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
+			if (normalizedGoalId) {
+				validatedGoalId = normalizedGoalId;
+			} else {
+				validatedGoalId = null;
+			}
+		}
+
+		if (hasMilestoneInput) {
+			normalizedMilestoneId =
+				typeof milestone_id === 'string' && milestone_id.trim().length > 0
+					? milestone_id
+					: null;
+			if (normalizedMilestoneId) {
+				validatedMilestoneId = normalizedMilestoneId;
+			} else {
+				validatedMilestoneId = null;
+			}
+		}
+
+		const legacyConnections: ConnectionRef[] = [
+			...explicitParents,
+			...(validatedGoalId ? [{ kind: 'goal', id: validatedGoalId }] : []),
+			...(validatedMilestoneId ? [{ kind: 'milestone', id: validatedMilestoneId }] : [])
+		];
+
+		const hasConnectionsInput = Array.isArray(connections);
+		const connectionList: ConnectionRef[] =
+			hasConnectionsInput && connections.length > 0 ? connections : legacyConnections;
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: existingPlan.project_id,
+				refs: connectionList,
+				allowProject: true
+			});
 		}
 
 		// Build update object
@@ -214,6 +294,34 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update plan', 500);
 		}
 
+		const hasContainmentInput =
+			hasGoalInput ||
+			hasMilestoneInput ||
+			hasParentField ||
+			hasParentsField ||
+			hasConnectionsInput;
+		const shouldOrganize = hasContainmentInput;
+
+		if (shouldOrganize) {
+			const explicitKinds: EntityKind[] = [];
+			if (hasConnectionsInput) {
+				explicitKinds.push('goal');
+			} else if (hasGoalInput) {
+				explicitKinds.push('goal');
+			}
+
+			await autoOrganizeConnections({
+				supabase,
+				projectId: existingPlan.project_id,
+				entity: { kind: 'plan', id: params.id },
+				connections: connectionList,
+				options: {
+					mode: 'replace',
+					explicitKinds
+				}
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			supabase,
@@ -233,6 +341,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		return ApiResponse.success({ plan: updatedPlan });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('Error updating plan:', error);
 		return ApiResponse.error('Internal server error', 500);
 	}

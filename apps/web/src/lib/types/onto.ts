@@ -319,13 +319,117 @@ const ProjectSpecProjectSchema = z.object({
 	end_at: z.string().datetime().optional()
 });
 
-const ProjectSpecDocumentSchema = z.object({
-	title: z.string(),
-	type_key: z.string(),
+const ProjectSpecEntityKindSchema = z.enum([
+	'goal',
+	'milestone',
+	'plan',
+	'task',
+	'document',
+	'output',
+	'risk',
+	'decision',
+	'requirement',
+	'metric',
+	'source'
+]);
+
+const ProjectSpecEntityBaseSchema = z.object({
+	temp_id: z.string().min(1),
+	kind: ProjectSpecEntityKindSchema,
+	type_key: z.string().optional(),
 	state_key: z.string().optional(),
-	body_markdown: z.string().optional(),
 	props: z.record(z.unknown()).optional()
 });
+
+const ProjectSpecEntitySchema = z.discriminatedUnion('kind', [
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('goal'),
+		name: z.string().min(1),
+		description: z.string().optional(),
+		target_date: z.string().datetime().optional(),
+		measurement_criteria: z.string().optional(),
+		priority: z.enum(['high', 'medium', 'low']).optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('milestone'),
+		title: z.string().min(1),
+		due_at: z.string().datetime(),
+		description: z.string().optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('plan'),
+		name: z.string().min(1),
+		description: z.string().optional(),
+		start_date: z.string().datetime().optional(),
+		end_date: z.string().datetime().optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('task'),
+		title: z.string().min(1),
+		description: z.string().optional(),
+		priority: z.number().int().min(1).max(5).optional(),
+		start_at: z.string().datetime().optional(),
+		due_at: z.string().datetime().optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('document'),
+		title: z.string().min(1),
+		content: z.string().optional(),
+		body_markdown: z.string().optional(),
+		description: z.string().optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('output'),
+		name: z.string().min(1),
+		description: z.string().optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('risk'),
+		title: z.string().min(1),
+		impact: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+		probability: z.number().min(0).max(1).optional(),
+		content: z.string().optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('decision'),
+		title: z.string().min(1),
+		decision_at: z.string().datetime().optional(),
+		rationale: z.string().optional(),
+		outcome: z.string().optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('requirement'),
+		text: z.string().min(1)
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('metric'),
+		name: z.string().min(1),
+		unit: z.string(),
+		definition: z.string().optional(),
+		target_value: z.number().optional()
+	}),
+	ProjectSpecEntityBaseSchema.extend({
+		kind: z.literal('source'),
+		uri: z.string().url(),
+		snapshot_uri: z.string().url().optional(),
+		name: z.string().optional()
+	})
+]);
+
+const ProjectSpecRelationshipNodeSchema = z.object({
+	temp_id: z.string().min(1),
+	kind: ProjectSpecEntityKindSchema
+});
+
+const ProjectSpecRelationshipSchema = z.union([
+	z.tuple([ProjectSpecRelationshipNodeSchema, ProjectSpecRelationshipNodeSchema]),
+	z.object({
+		from: ProjectSpecRelationshipNodeSchema,
+		to: ProjectSpecRelationshipNodeSchema,
+		rel: z.string().optional(),
+		intent: z.enum(['containment', 'semantic']).optional()
+	})
+]);
 
 const ContextDocumentSchema = z.object({
 	title: z.string().min(1),
@@ -335,185 +439,47 @@ const ContextDocumentSchema = z.object({
 	props: z.record(z.unknown()).optional()
 });
 
-export const ProjectSpecSchema = z.object({
-	project: ProjectSpecProjectSchema,
-	goals: z
-		.array(
-			z.object({
-				name: z.string(),
-				type_key: z.string().optional(),
-				props: z.record(z.unknown()).optional()
+export const ProjectSpecSchema = z
+	.object({
+		project: ProjectSpecProjectSchema,
+		entities: z.array(ProjectSpecEntitySchema),
+		relationships: z.array(ProjectSpecRelationshipSchema),
+		context_document: ContextDocumentSchema.optional(),
+		clarifications: z
+			.array(
+				z.object({
+					key: z.string(),
+					question: z.string(),
+					required: z.boolean(),
+					choices: z.array(z.string()).optional(),
+					help_text: z.string().optional()
+				})
+			)
+			.optional(),
+		meta: z
+			.object({
+				model: z.string().optional(),
+				template_keys: z.array(z.string()).optional(),
+				confidence: z.number().min(0).max(1).optional(),
+				suggested_facets: FacetsSchema.optional()
 			})
-		)
-		.optional(),
-	requirements: z
-		.array(
-			z.object({
-				text: z.string(),
-				type_key: z.string().optional(),
-				props: z.record(z.unknown()).optional()
-			})
-		)
-		.optional(),
-	plans: z
-		.array(
-			z.object({
-				name: z.string(),
-				type_key: z.string(),
-				state_key: z.string().optional(),
-				props: z
-					.object({
-						facets: FacetsSchema.optional()
-					})
-					.passthrough()
-					.optional()
-			})
-		)
-		.optional(),
-	tasks: z
-		.array(
-			z.object({
-				title: z.string(),
-				plan_name: z.string().optional(),
-				type_key: z
-					.string()
-					.regex(
-						/^task\.[a-z_]+(\.[a-z_]+)?$/,
-						'task type_key must start with "task." followed by 1-2 lowercase segments (e.g., "task.execute", "task.coordinate.meeting")'
-					)
-					.optional()
-					.default('task.execute'),
-				state_key: z.string().optional(),
-				priority: z.number().int().min(1).max(5).optional(),
-				due_at: z.string().datetime().optional(),
-				props: z
-					.object({
-						facets: z
-							.object({
-								scale: z
-									.enum(['micro', 'small', 'medium', 'large', 'epic'])
-									.optional()
-							})
-							.optional()
-					})
-					.passthrough()
-					.optional()
-			})
-		)
-		.optional(),
-	outputs: z
-		.array(
-			z.object({
-				name: z.string(),
-				type_key: z.string(),
-				state_key: z.string().optional(),
-				props: z
-					.object({
-						facets: z
-							.object({
-								stage: z
-									.enum([
-										'discovery',
-										'planning',
-										'execution',
-										'launch',
-										'maintenance',
-										'complete'
-									])
-									.optional()
-							})
-							.optional()
-					})
-					.passthrough()
-					.optional()
-			})
-		)
-		.optional(),
-	documents: z.array(ProjectSpecDocumentSchema).optional(),
-	context_document: ContextDocumentSchema.optional(),
-	sources: z
-		.array(
-			z.object({
-				uri: z.string().url(),
-				snapshot_uri: z.string().url().optional(),
-				props: z.record(z.unknown()).optional()
-			})
-		)
-		.optional(),
-	metrics: z
-		.array(
-			z.object({
-				name: z.string(),
-				unit: z.string(),
-				type_key: z.string().optional(),
-				definition: z.string().optional(),
-				props: z.record(z.unknown()).optional()
-			})
-		)
-		.optional(),
-	milestones: z
-		.array(
-			z.object({
-				title: z.string(),
-				due_at: z.string().datetime(),
-				type_key: z.string().optional(),
-				props: z.record(z.unknown()).optional()
-			})
-		)
-		.optional(),
-	risks: z
-		.array(
-			z.object({
-				title: z.string(),
-				type_key: z.string().optional(),
-				probability: z.number().min(0).max(1).optional(),
-				impact: z.enum(['low', 'medium', 'high', 'critical']).optional(),
-				props: z.record(z.unknown()).optional()
-			})
-		)
-		.optional(),
-	decisions: z
-		.array(
-			z.object({
-				title: z.string(),
-				decision_at: z.string().datetime(),
-				rationale: z.string().optional(),
-				props: z.record(z.unknown()).optional()
-			})
-		)
-		.optional(),
-	edges: z
-		.array(
-			z.object({
-				src_kind: z.string(),
-				src_id: z.string().uuid(),
-				rel: z.string(),
-				dst_kind: z.string(),
-				dst_id: z.string().uuid(),
-				props: z.record(z.unknown()).optional()
-			})
-		)
-		.optional(),
-	clarifications: z
-		.array(
-			z.object({
-				key: z.string(),
-				question: z.string(),
-				required: z.boolean(),
-				choices: z.array(z.string()).optional(),
-				help_text: z.string().optional()
-			})
-		)
-		.optional(),
-	meta: z
-		.object({
-			model: z.string().optional(),
-			template_keys: z.array(z.string()).optional(),
-			confidence: z.number().min(0).max(1).optional(),
-			suggested_facets: FacetsSchema.optional()
-		})
-		.optional()
-});
+			.optional()
+	})
+	.strict()
+	.superRefine((spec, ctx) => {
+		if (spec.entities.length === 0 && spec.relationships.length > 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'relationships require at least one entity'
+			});
+		}
+		if (spec.entities.length > 1 && spec.relationships.length === 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'relationships must include at least one pair when multiple entities exist'
+			});
+		}
+	});
 
 export type ProjectSpec = z.infer<typeof ProjectSpecSchema>;
 
@@ -951,6 +917,34 @@ export function validateFSMDef(fsm: unknown): { valid: boolean; errors: string[]
  * Validate ProjectSpec before instantiation
  */
 export function validateProjectSpec(spec: unknown): { valid: boolean; errors: string[] } {
+	const legacyKeys = [
+		'goals',
+		'requirements',
+		'plans',
+		'tasks',
+		'outputs',
+		'documents',
+		'sources',
+		'metrics',
+		'milestones',
+		'risks',
+		'decisions',
+		'edges'
+	];
+	const errors: string[] = [];
+
+	if (spec && typeof spec === 'object' && !Array.isArray(spec)) {
+		for (const key of legacyKeys) {
+			if (Object.prototype.hasOwnProperty.call(spec, key)) {
+				errors.push(`Legacy ProjectSpec field "${key}" is not allowed`);
+			}
+		}
+	}
+
+	if (errors.length) {
+		return { valid: false, errors };
+	}
+
 	const result = ProjectSpecSchema.safeParse(spec);
 
 	if (result.success) {

@@ -25,6 +25,8 @@ import { SSEResponse } from '$lib/utils/sse-response';
 import { validateSynthesisResult } from '$lib/services/prompts/core/validations';
 import { BrainDumpValidator } from '$lib/utils/braindump-validation';
 import { rateLimiter, RATE_LIMITS } from '$lib/utils/rate-limiter';
+import { instantiateProject } from '$lib/services/ontology/instantiation.service';
+import { convertBrainDumpToProjectSpec } from '$lib/services/ontology/braindump-to-ontology-adapter';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -414,111 +416,186 @@ async function processBrainDumpWithStreaming({
 
 		// If auto-accept is enabled, execute the operations
 		let finalResult = result;
+		const isNewProject = !selectedProjectId || selectedProjectId === 'new';
+
 		if (autoAccept && result.operations?.length > 0) {
 			try {
-				// Import operation executor
-				const { OperationsExecutor } = await import(
-					'$lib/utils/operations/operations-executor'
-				);
-				const executor = new OperationsExecutor(supabase);
-
-				// Execute all operations
-				const executionResult = await executor.executeOperations({
-					operations: result.operations,
-					userId,
-					brainDumpId: brainDumpId || 'temp',
-					projectQuestions: result.projectQuestions
-				});
-
-				// Get project info for the success view
+				let executionResult: ExecutionResult | undefined;
 				let projectInfo:
 					| { id: string; name: string; isNew: boolean; slug?: string | null }
 					| undefined = undefined;
-
-				// Check if a new project was created
-				const createdProject = executionResult.results?.find(
-					(r: any) => r.table === 'projects' && r.operationType === 'create'
-				);
-
-				if (createdProject?.id) {
-					// New project was created - fetch the project details
-					try {
-						const { data: project, error } = await supabase
-							.from('projects')
-							.select('id, name, slug, description')
-							.eq('id', createdProject.id)
-							.eq('user_id', userId)
-							.single();
-
-						if (!error && project) {
-							projectInfo = {
-								id: project.id,
-								name: project.name,
-								slug: project.slug,
-								isNew: true
+				let ontologyResult:
+					| {
+							project_id: string;
+							counts: {
+								goals: number;
+								requirements: number;
+								plans: number;
+								tasks: number;
+								outputs: number;
+								documents: number;
+								sources: number;
+								metrics: number;
+								milestones: number;
+								risks: number;
+								decisions: number;
+								edges: number;
 							};
-						}
-					} catch (error) {
-						console.warn('Failed to fetch created project details:', error);
-					}
-				} else if (selectedProjectId && selectedProjectId !== 'new') {
-					// Existing project was updated
-					try {
-						const { data: project, error } = await supabase
-							.from('projects')
-							.select('id, name, slug, description')
-							.eq('id', selectedProjectId)
-							.eq('user_id', userId)
-							.single();
+					  }
+					| undefined = undefined;
 
-						if (!error && project) {
-							projectInfo = {
-								id: project.id,
-								name: project.name,
-								slug: project.slug,
-								isNew: false
-							};
-						}
-					} catch (error) {
-						console.warn('Failed to fetch updated project details:', error);
+				if (isNewProject) {
+					const projectSpec = convertBrainDumpToProjectSpec(result.operations, content, {
+						projectSummary: result.summary,
+						projectContext: result.contextResult?.projectCreate?.context
+					});
+
+					const { project_id, counts } = await instantiateProject(
+						supabase,
+						projectSpec,
+						userId
+					);
+
+					const { data: project, error } = await supabase
+						.from('onto_projects')
+						.select('id, name')
+						.eq('id', project_id)
+						.single();
+
+					if (!error && project) {
+						projectInfo = {
+							id: project.id,
+							name: project.name,
+							isNew: true
+						};
 					}
+
+					ontologyResult = { project_id, counts };
+					executionResult = {
+						successful: result.operations,
+						failed: [],
+						results: []
+					};
+					finalResult = {
+						...result,
+						executionResult,
+						projectInfo,
+						ontology: ontologyResult
+					};
+				} else {
+					// Import operation executor
+					const { OperationsExecutor } = await import(
+						'$lib/utils/operations/operations-executor'
+					);
+					const executor = new OperationsExecutor(supabase);
+
+					// Execute all operations
+					executionResult = await executor.executeOperations({
+						operations: result.operations,
+						userId,
+						brainDumpId: brainDumpId || 'temp',
+						projectQuestions: result.projectQuestions
+					});
+
+					// Check if a new project was created
+					const createdProject = executionResult.results?.find(
+						(r: any) => r.table === 'projects' && r.operationType === 'create'
+					);
+
+					if (createdProject?.id) {
+						// New project was created - fetch the project details
+						try {
+							const { data: project, error } = await supabase
+								.from('projects')
+								.select('id, name, slug, description')
+								.eq('id', createdProject.id)
+								.eq('user_id', userId)
+								.single();
+
+							if (!error && project) {
+								projectInfo = {
+									id: project.id,
+									name: project.name,
+									slug: project.slug,
+									isNew: true
+								};
+							}
+						} catch (error) {
+							console.warn('Failed to fetch created project details:', error);
+						}
+					} else if (selectedProjectId && selectedProjectId !== 'new') {
+						// Existing project was updated
+						try {
+							const { data: project, error } = await supabase
+								.from('projects')
+								.select('id, name, slug, description')
+								.eq('id', selectedProjectId)
+								.eq('user_id', userId)
+								.single();
+
+							if (!error && project) {
+								projectInfo = {
+									id: project.id,
+									name: project.name,
+									slug: project.slug,
+									isNew: false
+								};
+							}
+						} catch (error) {
+							console.warn('Failed to fetch updated project details:', error);
+						}
+					}
+
+					// Add execution result and project info to the response
+					finalResult = {
+						...result,
+						executionResult,
+						projectInfo
+					};
 				}
 
-				// Add execution result and project info to the response
-				finalResult = {
-					...result,
-					executionResult,
-					projectInfo
-				};
-
-				console.log('Auto-accept: Operations executed', {
-					total: result.operations.length,
-					successful: executionResult.successful?.length || 0,
-					failed: executionResult.failed?.length || 0
-				});
+				if (executionResult) {
+					console.log('Auto-accept: Operations executed', {
+						total: result.operations.length,
+						successful: executionResult.successful?.length || 0,
+						failed: executionResult.failed?.length || 0
+					});
+				} else if (ontologyResult) {
+					console.log('Auto-accept: Ontology project created', {
+						projectId: ontologyResult.project_id,
+						counts: ontologyResult.counts
+					});
+				}
 
 				// Update brain dump status to 'saved' after auto-accept
 				// Note: Zero operations is valid when analysis determines no updates needed
 				if (brainDumpId) {
 					try {
+						const operationsForMetadata =
+							executionResult?.successful || result.operations || [];
+						const executionSummary = executionResult
+							? {
+									successful: executionResult.successful?.length || 0,
+									failed: executionResult.failed?.length || 0,
+									results: executionResult.results?.length || 0
+								}
+							: undefined;
+
 						const { error: updateError } = await supabase
 							.from('brain_dumps')
 							.update({
 								status: 'saved' as const,
 								project_id: projectInfo?.id || selectedProjectId,
 								metaData: JSON.stringify({
-									operations: executionResult.successful || [],
+									operations: operationsForMetadata,
 									summary: result.summary || 'Brain dump processed successfully',
 									insights: result.insights || 'Operations executed',
 									totalOperations: result.operations.length,
 									processingTime: Date.now(),
 									timestamp: new Date().toISOString(),
 									project_info: projectInfo,
-									executionSummary: {
-										successful: executionResult.successful?.length || 0,
-										failed: executionResult.failed?.length || 0,
-										results: executionResult.results?.length || 0
-									},
+									executionSummary,
+									ontology: ontologyResult,
 									autoAccepted: true,
 									zeroOperationsReason:
 										result.operations.length === 0
@@ -538,7 +615,7 @@ async function processBrainDumpWithStreaming({
 						} else {
 							console.log('Brain dump status updated to saved after auto-accept', {
 								operationsCount: result.operations.length,
-								successfulCount: executionResult.successful?.length || 0
+								successfulCount: executionResult?.successful?.length || 0
 							});
 						}
 					} catch (error) {

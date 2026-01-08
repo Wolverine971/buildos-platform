@@ -101,8 +101,8 @@ export interface EntitySectionConfig {
  */
 export const RELATIONSHIP_MAP: Record<string, string> = {
 	// Task relationships
-	'task-plan': 'belongs_to_plan',
-	'task-goal': 'supports_goal',
+	'task-plan': 'has_task',
+	'task-goal': 'has_task',
 	'task-task': 'depends_on',
 	'task-milestone': 'targets_milestone',
 	'task-document': 'references',
@@ -110,30 +110,32 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	'task-decision': 'references',
 
 	// Plan relationships
-	'plan-goal': 'supports_goal',
+	'plan-goal': 'has_plan',
 	'plan-task': 'has_task',
-	'plan-milestone': 'targets_milestone',
+	'plan-milestone': 'has_plan',
 	'plan-document': 'references',
 	'plan-decision': 'references',
 
 	// Goal relationships
-	'goal-task': 'supports_goal',
-	'goal-plan': 'supports_goal',
+	'goal-task': 'has_task',
+	'goal-plan': 'has_plan',
 	'goal-milestone': 'has_milestone',
 	'goal-document': 'references',
 
 	// Document relationships
-	'document-task': 'referenced_by',
-	'document-plan': 'referenced_by',
-	'document-goal': 'referenced_by',
-	'document-decision': 'referenced_by',
+	'document-task': 'references',
+	'document-plan': 'references',
+	'document-goal': 'references',
+	'document-decision': 'references',
+	'document-risk': 'references',
 
 	// Milestone relationships
-	'milestone-task': 'contains',
-	'milestone-plan': 'contains',
+	'milestone-task': 'targets_milestone',
+	'milestone-plan': 'has_plan',
+	'milestone-goal': 'has_milestone',
 
 	// Output relationships
-	'output-task': 'produced_by',
+	'output-task': 'produces',
 
 	// Decision relationships
 	'decision-task': 'references',
@@ -141,7 +143,7 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	'decision-document': 'references',
 
 	// Risk relationships
-	'risk-task': 'mitigated_by',
+	'risk-task': 'threatens',
 	'risk-plan': 'addressed_in',
 	'risk-goal': 'threatens',
 	'risk-document': 'documented_in',
@@ -149,7 +151,7 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	// Reverse risk relationships (from other entities to risks)
 	'task-risk': 'mitigates',
 	'plan-risk': 'addresses',
-	'goal-risk': 'has_risk',
+	'goal-risk': 'threatens',
 
 	// Event relationships
 	'event-task': 'scheduled_for',

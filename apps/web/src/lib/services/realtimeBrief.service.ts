@@ -3,7 +3,7 @@ import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
 import { toastService } from '$lib/stores/toast.store';
 import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import { invalidateAll } from '$app/navigation';
+import { briefGenerationCompletedWritable } from '$lib/stores/unifiedBriefGeneration.store';
 import {
 	getCurrentDateInTimezone,
 	formatTimeInTimezone,
@@ -46,6 +46,26 @@ interface ServiceState {
 }
 
 export class RealtimeBriefService {
+	private static lastCompletionKey: string | null = null;
+	private static lastCompletionAt = 0;
+
+	private static emitCompletionEvent(briefDate?: string): void {
+		const key = briefDate || 'unknown';
+		const now = Date.now();
+
+		// Avoid duplicate refreshes when multiple realtime signals arrive for the same brief.
+		if (this.lastCompletionKey === key && now - this.lastCompletionAt < 5000) {
+			return;
+		}
+
+		this.lastCompletionKey = key;
+		this.lastCompletionAt = now;
+		briefGenerationCompletedWritable.set({
+			briefDate: briefDate || '',
+			timestamp: now
+		});
+	}
+
 	private static state: ServiceState = {
 		channel: null,
 		userId: null,
@@ -455,8 +475,7 @@ export class RealtimeBriefService {
 			isGenerating: false
 		});
 
-		// Refresh data
-		invalidateAll();
+		this.emitCompletionEvent(briefDate);
 	}
 
 	/**
@@ -610,8 +629,7 @@ export class RealtimeBriefService {
 			briefNotificationStatus.set({ isGenerating: false });
 		}
 
-		// Refresh data
-		invalidateAll();
+		this.emitCompletionEvent(newRecord.brief_date);
 	}
 
 	/**
@@ -623,8 +641,7 @@ export class RealtimeBriefService {
 		// Clear the status - don't keep showing completed status
 		briefNotificationStatus.set({ isGenerating: false });
 
-		// Refresh data
-		invalidateAll();
+		this.emitCompletionEvent(briefDate);
 	}
 
 	/**

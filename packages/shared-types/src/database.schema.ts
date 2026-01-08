@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2026-01-07T13:52:31.579Z
+// Generated on: 2026-01-08T04:54:12.998Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2027,6 +2027,7 @@ export type DatabaseSchema = {
 		onboarding_v2_completed_at: string | null;
 		onboarding_v2_skipped_calendar: boolean | null;
 		onboarding_v2_skipped_sms: boolean | null;
+		preferences: Json | null;
 		productivity_challenges: Json | null;
 		stripe_customer_id: string | null;
 		subscription_plan_id: string | null;

@@ -12,6 +12,11 @@
 			]
 		},
 		{
+			"file": "src/routes/+page.svelte",
+			"type": "page",
+			"components": ["ExampleProjectGraph"]
+		},
+		{
 			"file": "src/routes/projects/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
@@ -159,6 +164,11 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -181,11 +191,6 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -888,7 +893,9 @@
 				"fetchLinkedEntities",
 				"fetchAvailableEntities",
 				"createEdges",
+				"linkEntities",
 				"deleteEdge",
+				"unlinkEntity",
 				"filterEntities"
 			]
 		},

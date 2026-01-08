@@ -13,7 +13,6 @@
 	import { page } from '$app/state';
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
-	import ExampleProjectGraph from '$lib/components/landing/ExampleProjectGraph.svelte';
 	// PERFORMANCE: Static import eliminates "Preparing dashboard..." loading phase
 	import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
 	// Canonical data model icons (consistent with InsightPanels on /projects/[id])
@@ -34,6 +33,10 @@
 	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
 		return !!value && typeof (value as PromiseLike<T>).then === 'function';
 	}
+
+	let ExampleProjectGraphComponent = $state<any>(null);
+	let exampleGraphTarget = $state<HTMLElement | null>(null);
+	let exampleGraphLoading = $state(false);
 
 	let isAuthenticated = $derived(!!data?.user);
 
@@ -87,6 +90,20 @@
 		await invalidateAll();
 	}
 
+	async function loadExampleProjectGraph() {
+		if (ExampleProjectGraphComponent || exampleGraphLoading) return;
+		exampleGraphLoading = true;
+
+		try {
+			const module = await import('$lib/components/landing/ExampleProjectGraph.svelte');
+			ExampleProjectGraphComponent = module.default;
+		} catch (error) {
+			console.error('[Landing] Failed to load example project graph:', error);
+		} finally {
+			exampleGraphLoading = false;
+		}
+	}
+
 	// Handle any messages on mount
 	onMount(() => {
 		const message = page.url.searchParams.get('message');
@@ -105,6 +122,31 @@
 			url.searchParams.delete('error');
 			replaceState(url.toString(), {});
 		}
+	});
+
+	onMount(() => {
+		if (isAuthenticated) return;
+
+		if (!('IntersectionObserver' in window)) {
+			loadExampleProjectGraph();
+			return;
+		}
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					observer.disconnect();
+					loadExampleProjectGraph();
+				}
+			},
+			{ rootMargin: '200px 0px' }
+		);
+
+		if (exampleGraphTarget) {
+			observer.observe(exampleGraphTarget);
+		}
+
+		return () => observer.disconnect();
 	});
 </script>
 
@@ -548,7 +590,21 @@
 		</section>
 
 		<!-- Example Project Graph -->
-		<ExampleProjectGraph />
+		<div bind:this={exampleGraphTarget}>
+			{#if ExampleProjectGraphComponent}
+				<ExampleProjectGraphComponent />
+			{:else}
+				<section id="example" class="border-t border-border bg-muted/30">
+					<div class="mx-auto max-w-6xl px-4 py-6">
+						<div
+							class="rounded-lg border border-border bg-card/60 p-6 text-sm text-muted-foreground"
+						>
+							Loading example project graph...
+						</div>
+					</div>
+				</section>
+			{/if}
+		</div>
 
 		<!-- final CTA -->
 		<section class="py-12 sm:py-16">

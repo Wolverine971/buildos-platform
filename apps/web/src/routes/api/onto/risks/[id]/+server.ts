@@ -41,6 +41,13 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -124,7 +131,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			description,
 			mitigation_strategy,
 			owner,
-			props
+			props,
+			parent,
+			parents,
+			connections
 		} = body;
 
 		// Validate impact if provided
@@ -274,6 +284,33 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to update risk', 500);
 		}
 
+		const hasParentField = Object.prototype.hasOwnProperty.call(body, 'parent');
+		const hasParentsField = Object.prototype.hasOwnProperty.call(body, 'parents');
+		const hasConnectionsInput = Array.isArray(connections);
+		const explicitParents = toParentRefs({ parent, parents });
+
+		const connectionList: ConnectionRef[] =
+			hasConnectionsInput && connections.length > 0 ? connections : explicitParents;
+
+		if (hasParentField || hasParentsField || hasConnectionsInput) {
+			if (connectionList.length > 0) {
+				await assertEntityRefsInProject({
+					supabase,
+					projectId: existingRisk.project_id,
+					refs: connectionList,
+					allowProject: true
+				});
+			}
+
+			await autoOrganizeConnections({
+				supabase,
+				projectId: existingRisk.project_id,
+				entity: { kind: 'risk', id: params.id },
+				connections: connectionList,
+				options: { mode: 'replace' }
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			supabase,
@@ -297,6 +334,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		return ApiResponse.success({ risk: updatedRisk });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('[Risk PATCH] Unexpected error:', error);
 		return ApiResponse.internalError(error);
 	}

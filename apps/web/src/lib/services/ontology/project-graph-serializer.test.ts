@@ -105,6 +105,9 @@ const mockData: ProjectGraphData = {
 	milestones: [],
 	outputs: [],
 	documents: [],
+	requirements: [],
+	metrics: [],
+	sources: [],
 	risks: [],
 	decisions: [],
 	edges: [

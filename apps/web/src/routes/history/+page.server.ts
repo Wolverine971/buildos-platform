@@ -119,7 +119,8 @@ const needsChatClassification = (session: ChatSession): boolean => {
 	return !(hasTitle && hasTopics && hasSummary);
 };
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, url, depends }) => {
+	depends('history:data');
 	const { safeGetSession, supabase } = locals;
 	const { user } = await safeGetSession();
 

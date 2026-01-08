@@ -333,7 +333,10 @@
 
 	// Toolbar button component helper
 	// Supports both: isActive('bold') and isActive({ textAlign: 'left' })
-	const isActive = (nameOrAttrs: string | Record<string, unknown>, attrs?: Record<string, unknown>) => {
+	const isActive = (
+		nameOrAttrs: string | Record<string, unknown>,
+		attrs?: Record<string, unknown>
+	) => {
 		if (typeof nameOrAttrs === 'string') {
 			return editor?.isActive(nameOrAttrs, attrs) ?? false;
 		}

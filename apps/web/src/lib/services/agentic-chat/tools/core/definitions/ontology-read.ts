@@ -442,7 +442,11 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 								'milestone',
 								'document',
 								'output',
-								'requirement'
+								'requirement',
+								'risk',
+								'decision',
+								'metric',
+								'source'
 							]
 						}
 					},
@@ -708,7 +712,9 @@ The initial context shows abbreviated linked entities. Use this tool to get full
 							'output',
 							'risk',
 							'decision',
-							'requirement'
+							'requirement',
+							'metric',
+							'source'
 						],
 						description: 'Type of the source entity'
 					},
@@ -724,6 +730,8 @@ The initial context shows abbreviated linked entities. Use this tool to get full
 							'risk',
 							'decision',
 							'requirement',
+							'metric',
+							'source',
 							'all'
 						],
 						default: 'all',

@@ -8195,6 +8195,7 @@ export type Database = {
           onboarding_v2_completed_at: string | null
           onboarding_v2_skipped_calendar: boolean | null
           onboarding_v2_skipped_sms: boolean | null
+          preferences: Json | null
           productivity_challenges: Json | null
           stripe_customer_id: string | null
           subscription_plan_id: string | null
@@ -8219,6 +8220,7 @@ export type Database = {
           onboarding_v2_completed_at?: string | null
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
+          preferences?: Json | null
           productivity_challenges?: Json | null
           stripe_customer_id?: string | null
           subscription_plan_id?: string | null
@@ -8243,6 +8245,7 @@ export type Database = {
           onboarding_v2_completed_at?: string | null
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
+          preferences?: Json | null
           productivity_challenges?: Json | null
           stripe_customer_id?: string | null
           subscription_plan_id?: string | null

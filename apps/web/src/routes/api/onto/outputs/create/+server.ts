@@ -14,6 +14,13 @@ import {
 } from '$lib/services/async-activity-logger';
 import { OUTPUT_STATES } from '$lib/types/onto';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -23,7 +30,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { project_id, name, state_key, description } = body;
+		const { project_id, name, state_key, description, parent, parents, connections } = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
 		if (!project_id) {
@@ -79,6 +86,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		const explicitParents = toParentRefs({ parent, parents });
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : explicitParents;
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: project_id,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
 		// Build props with default values
 		const mergedProps = {
 			content: '',
@@ -106,22 +126,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Create edge from project to output
-		const { error: edgeError } = await supabase.from('onto_edges').insert({
-			project_id: project_id,
-			src_kind: 'project',
-			src_id: project_id,
-			rel: 'has_output',
-			dst_kind: 'output',
-			dst_id: output.id,
-			props: {}
+		await autoOrganizeConnections({
+			supabase,
+			projectId: project_id,
+			entity: { kind: 'output', id: output.id },
+			connections: connectionList,
+			options: {
+				mode: 'replace',
+				skipContainment: true
+			}
 		});
-
-		if (edgeError) {
-			console.error('[Output API] Failed to create edge:', edgeError);
-			// Don't fail the whole operation, just log the error
-			// The output was created successfully
-		}
 
 		// Log activity async (non-blocking)
 		logCreateAsync(
@@ -148,6 +162,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return ApiResponse.success({ output });
 	} catch (err) {
+		if (err instanceof AutoOrganizeError) {
+			return ApiResponse.error(err.message, err.status);
+		}
 		console.error('[Output API] Unexpected error in POST:', err);
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}

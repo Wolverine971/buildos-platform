@@ -40,6 +40,13 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject,
+	toParentRefs
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -61,7 +68,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			description,
 			state_key = 'draft',
 			start_date,
-			end_date
+			end_date,
+			goal_id,
+			milestone_id,
+			parent,
+			parents,
+			connections
 		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
@@ -97,6 +109,49 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
+		// Validate optional goal or milestone parent
+		let validatedGoalId: string | null = null;
+		let validatedMilestoneId: string | null = null;
+		const explicitParents = toParentRefs({ parent, parents });
+		const normalizedGoalId =
+			typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
+		const normalizedMilestoneId =
+			typeof milestone_id === 'string' && milestone_id.trim().length > 0
+				? milestone_id
+				: null;
+
+		const invalidParent = explicitParents.find(
+			(parentRef) => !['project', 'goal', 'milestone'].includes(parentRef.kind)
+		);
+		if (invalidParent) {
+			return ApiResponse.badRequest(`Unsupported parent kind: ${invalidParent.kind}`);
+		}
+
+		if (normalizedGoalId) {
+			validatedGoalId = normalizedGoalId;
+		}
+		if (normalizedMilestoneId) {
+			validatedMilestoneId = normalizedMilestoneId;
+		}
+
+		const legacyConnections: ConnectionRef[] = [
+			...explicitParents,
+			...(validatedGoalId ? [{ kind: 'goal', id: validatedGoalId }] : []),
+			...(validatedMilestoneId ? [{ kind: 'milestone', id: validatedMilestoneId }] : [])
+		];
+
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : legacyConnections;
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: project_id,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
 		// Create the plan
 		const planData = {
 			project_id,
@@ -126,14 +181,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Create an edge linking the plan to the project
-		await supabase.from('onto_edges').insert({
-			project_id: project_id,
-			src_id: project_id,
-			src_kind: 'project',
-			dst_id: createdPlan.id,
-			dst_kind: 'plan',
-			rel: 'has_plan'
+		await autoOrganizeConnections({
+			supabase,
+			projectId: project_id,
+			entity: { kind: 'plan', id: createdPlan.id },
+			connections: connectionList,
+			options: { mode: 'replace' }
 		});
 
 		// Log activity async (non-blocking)
@@ -165,6 +218,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return ApiResponse.created({ plan: createdPlan });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('Error in plan create endpoint:', error);
 		return ApiResponse.internalError(error);
 	}

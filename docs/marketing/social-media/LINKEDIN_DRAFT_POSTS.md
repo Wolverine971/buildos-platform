@@ -570,19 +570,19 @@ Background colors the work. It doesn't define it.
 
 Based on your context, here are more angles to develop:
 
-| Angle                                                    | Story Source         | Post Type          | Status           |
-| -------------------------------------------------------- | -------------------- | ------------------ | ---------------- |
-| "I was doing tool use before AI made it trendy"          | Curri integrations   | Credibility        | ✅ Post 5        |
-| "AI knows things about you that you don't know it knows" | AI frustration       | Thought leadership | ✅ Post 3        |
-| "Daily briefs flopped - here's what I learned"           | BuildOS iteration    | Vulnerability      | Ready to draft   |
-| "Focus mode + AI guidance"                               | User feature request | Product dev        | ✅ Post 12       |
-| "MVP isn't the thing anymore"                            | Best advice received | Contrarian         | Ready to draft   |
-| "Document ingest for Air Force before LLMs"              | Background           | Credibility        | Ready to draft   |
-| YC rejection - "I didn't get in. Here's what I'm doing." | YC story             | Resilience         | Use carefully    |
-| Sean the engineer - respecting builders over debaters    | Blue collar brand    | Contrarian         | ✅ Post 9        |
-| Hackathon wins at Fallin                                 | Hackathons           | Builder cred       | ✅ Post 10       |
-| Wife finds bugs when demoing                             | Founder life         | Humanizing         | ✅ Post 11       |
-| Project War Room feature trap                            | Feature creep        | Building in public | ✅ Post 13       |
+| Angle                                                    | Story Source         | Post Type          | Status         |
+| -------------------------------------------------------- | -------------------- | ------------------ | -------------- |
+| "I was doing tool use before AI made it trendy"          | Curri integrations   | Credibility        | ✅ Post 5      |
+| "AI knows things about you that you don't know it knows" | AI frustration       | Thought leadership | ✅ Post 3      |
+| "Daily briefs flopped - here's what I learned"           | BuildOS iteration    | Vulnerability      | Ready to draft |
+| "Focus mode + AI guidance"                               | User feature request | Product dev        | ✅ Post 12     |
+| "MVP isn't the thing anymore"                            | Best advice received | Contrarian         | Ready to draft |
+| "Document ingest for Air Force before LLMs"              | Background           | Credibility        | Ready to draft |
+| YC rejection - "I didn't get in. Here's what I'm doing." | YC story             | Resilience         | Use carefully  |
+| Sean the engineer - respecting builders over debaters    | Blue collar brand    | Contrarian         | ✅ Post 9      |
+| Hackathon wins at Fallin                                 | Hackathons           | Builder cred       | ✅ Post 10     |
+| Wife finds bugs when demoing                             | Founder life         | Humanizing         | ✅ Post 11     |
+| Project War Room feature trap                            | Feature creep        | Building in public | ✅ Post 13     |
 
 ---
 

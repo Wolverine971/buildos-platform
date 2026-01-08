@@ -41,6 +41,12 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import {
+	AutoOrganizeError,
+	autoOrganizeConnections,
+	assertEntityRefsInProject
+} from '$lib/services/ontology/auto-organizer.service';
+import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -63,7 +69,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			target_date,
 			state_key = 'draft',
 			measurement_criteria,
-			priority
+			priority,
+			connections
 		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
@@ -133,14 +140,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(createError);
 		}
 
-		// Create an edge linking the goal to the project
-		await supabase.from('onto_edges').insert({
-			project_id: project_id,
-			src_id: project_id,
-			src_kind: 'project',
-			dst_id: createdGoal.id,
-			dst_kind: 'goal',
-			rel: 'has_goal'
+		const connectionList: ConnectionRef[] =
+			Array.isArray(connections) && connections.length > 0 ? connections : [];
+
+		if (connectionList.length > 0) {
+			await assertEntityRefsInProject({
+				supabase,
+				projectId: project_id,
+				refs: connectionList,
+				allowProject: true
+			});
+		}
+
+		await autoOrganizeConnections({
+			supabase,
+			projectId: project_id,
+			entity: { kind: 'goal', id: createdGoal.id },
+			connections: connectionList,
+			options: { mode: 'replace' }
 		});
 
 		// Log activity async (non-blocking)
@@ -168,6 +185,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return ApiResponse.created({ goal: createdGoal });
 	} catch (error) {
+		if (error instanceof AutoOrganizeError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		console.error('Error in goal create endpoint:', error);
 		return ApiResponse.internalError(error);
 	}

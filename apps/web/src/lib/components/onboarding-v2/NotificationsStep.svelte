@@ -148,7 +148,7 @@
 		</div>
 
 		<h2 class="text-3xl sm:text-4xl font-bold mb-3 text-foreground">
-			Step 2: Focus - Reminders & Calendar Integration
+			Step 3: Focus - Reminders & Calendar Integration
 		</h2>
 		<p class="text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto mb-4">
 			You've got <strong class="text-foreground">clarity</strong> from brain dumping your

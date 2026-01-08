@@ -172,7 +172,7 @@ User message → ProjectCreationAnalyzer → Sufficient? → Yes → Proceed to 
 
 ### For Creating
 
-1. `create_onto_project` - Bootstrap complete project structure
+1. `create_onto_project` - Bootstrap complete project structure (entities + relationships only)
 2. `create_onto_task` - Add task to project ⚠️ **See Task Creation Philosophy below**
 3. `request_template_creation` - Escalate for new template
 
@@ -284,18 +284,22 @@ draft → active → blocked → complete
 
 ## API Endpoints
 
-| Tool                     | Endpoint                    | Method |
-| ------------------------ | --------------------------- | ------ |
-| list_onto_projects       | `/api/onto/projects`        | GET    |
-| search_onto_projects     | `/api/onto/projects/search` | POST   |
-| list_onto_tasks          | `/api/onto/tasks`           | GET    |
-| search_onto_tasks        | `/api/onto/tasks/search`    | POST   |
-| get_onto_project_details | `/api/onto/projects/{id}`   | GET    |
-| get_onto_task_details    | `/api/onto/tasks/{id}`      | GET    |
-| create_onto_project      | `/api/onto/projects`        | POST   |
-| create_onto_task         | `/api/onto/tasks`           | POST   |
-| update_onto_task         | `/api/onto/tasks/{id}`      | PUT    |
-| delete_onto_task         | `/api/onto/tasks/{id}`      | DELETE |
+| Tool                     | Endpoint                         | Method |
+| ------------------------ | -------------------------------- | ------ |
+| list_onto_projects       | `/api/onto/projects`             | GET    |
+| search_onto_projects     | `/api/onto/projects/search`      | POST   |
+| list_onto_tasks          | `/api/onto/tasks`                | GET    |
+| search_onto_tasks        | `/api/onto/tasks/search`         | POST   |
+| get_onto_project_details | `/api/onto/projects/{id}`        | GET    |
+| get_onto_task_details    | `/api/onto/tasks/{id}`           | GET    |
+| create_onto_project      | `/api/onto/projects/instantiate` | POST   |
+| create_onto_task         | `/api/onto/tasks`                | POST   |
+| update_onto_task         | `/api/onto/tasks/{id}`           | PUT    |
+| delete_onto_task         | `/api/onto/tasks/{id}`           | DELETE |
+
+Note: `create_onto_project` requires `entities` + `relationships`. Legacy arrays are invalid,
+and `relationships` must be present even if empty (use `[]` for a single entity).
+See `apps/web/docs/features/agentic-chat/PROJECT_CREATION_FLOW_UPDATE_PLAN.md`.
 
 ---
 
@@ -350,6 +354,43 @@ draft → active → blocked → complete
 2. Can I help RIGHT NOW? → Don't create, just help
 3. Did user EXPLICITLY ask? → Create
 4. Am I about to do this myself? → Don't create
+
+---
+
+## Project Structure Philosophy
+
+**The Golden Rule:** Start simple. Structure grows as the project evolves.
+
+### When to Add Structure
+
+| User says...                                       | Add...    |
+| -------------------------------------------------- | --------- |
+| Clear outcome ("I want to ship...")                | 1 Goal    |
+| Specific future action ("I need to call...")       | Task      |
+| Phases or workstreams ("first we'll do X, then Y") | Plan(s)   |
+| Dates or checkpoints ("by next month")             | Milestone |
+| Research or context to preserve                    | Document  |
+
+### When NOT to Add Structure
+
+| User says...             | Don't add...                           |
+| ------------------------ | -------------------------------------- |
+| "Help me plan X"         | Don't add tasks (help them now)        |
+| "I want to write a book" | Don't add plans/milestones (just goal) |
+| "Start a side project"   | Don't add peripheral entities          |
+| No mention of phases     | Don't add plans                        |
+
+### Containment Hierarchy (Happy Path)
+
+```
+project
+  -> goal (what success looks like)
+      -> milestone (checkpoint) [optional]
+          -> plan (how to reach) [optional]
+              -> task (work item)
+```
+
+**Flexible skips allowed:** goal -> task, goal -> plan -> task, project -> task (seed state)
 
 ---
 

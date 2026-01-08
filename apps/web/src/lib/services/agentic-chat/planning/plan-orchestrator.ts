@@ -706,7 +706,7 @@ export class PlanOrchestrator implements BaseService {
 				? `
 PROJECT CREATION REQUIREMENTS (CRITICAL):
 - Step 1 MUST classify the project (type_key) using taxonomy and gather key props/facets (template-free).
-- A step MUST call create_onto_project with a complete spec (name, description, type_key, facets, starter goals). Only include starter tasks if the user explicitly mentioned SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor"). Do NOT add tasks for planning, brainstorming, or work you can help with in the conversation.
+- A step MUST call create_onto_project with a complete spec (name, description, type_key, facets, entities + relationships). Only include task entities if the user explicitly mentioned SPECIFIC FUTURE ACTIONS they need to track (e.g., "I need to call the vendor"). Do NOT add tasks for planning, brainstorming, or work you can help with in the conversation. relationships is required even when empty; include at least one relationship when multiple entities exist.
 - Include a context_document payload summarizing the braindump and plan so the project has a linked narrative.
 - Only after create_onto_project succeeds may later steps expand on additional artifacts.
 - Do NOT skip project creation; the user must leave this flow with a real ontology project.`
@@ -1664,7 +1664,9 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		const typedDetails = details as Record<string, any>;
 		const step = typedDetails.step as PlanStep | undefined;
 		const stepNumber =
-			typeof typedDetails.stepNumber === 'number' ? typedDetails.stepNumber : step?.stepNumber;
+			typeof typedDetails.stepNumber === 'number'
+				? typedDetails.stepNumber
+				: step?.stepNumber;
 		const stepDescription =
 			typeof typedDetails.stepDescription === 'string'
 				? typedDetails.stepDescription

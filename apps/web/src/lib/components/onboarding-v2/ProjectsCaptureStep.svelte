@@ -21,10 +21,27 @@
 	interface Props {
 		userContext?: any; // From previous onboarding inputs
 		onNext: () => void;
-		onProjectsCreated: (projectIds: string[]) => void;
+		onProjectsCreated: (
+			projectIds: string[],
+			ontologyCounts?: {
+				goals: number;
+				requirements: number;
+				plans: number;
+				tasks: number;
+				outputs: number;
+				documents: number;
+				sources: number;
+				metrics: number;
+				milestones: number;
+				risks: number;
+				decisions: number;
+				edges: number;
+			}
+		) => void;
+		onCalendarAnalyzed?: (completed: boolean) => void;
 	}
 
-	let { userContext, onNext, onProjectsCreated }: Props = $props();
+	let { userContext, onNext, onProjectsCreated, onCalendarAnalyzed }: Props = $props();
 
 	let projectInput = $state('');
 	let isProcessing = $state(false);
@@ -43,6 +60,7 @@
 	let createdProjects = $state<string[]>([]);
 	let showSuccess = $state(false);
 	let calendarAnalysisStarted = $state(false);
+	let calendarAnalysisCompleted = $state(false);
 
 	// Reference to TextareaWithVoice for cleanup
 	let textareaWithVoiceRef = $state<TextareaWithVoice | null>(null);
@@ -181,7 +199,7 @@
 			}
 
 			// Start calendar analysis via notification stack
-			const { notificationId } = await startCalendarAnalysis({
+			const { completion } = await startCalendarAnalysis({
 				daysBack: 7,
 				daysForward: 60,
 				expandOnStart: false, // Keep minimized
@@ -189,6 +207,12 @@
 			});
 
 			calendarAnalysisStarted = true;
+			void completion.finally(() => {
+				if (!calendarAnalysisCompleted) {
+					calendarAnalysisCompleted = true;
+					onCalendarAnalyzed?.(true);
+				}
+			});
 
 			toastService.success(
 				'Calendar analysis started! Check the notification in the bottom-right corner.'
@@ -240,14 +264,18 @@
 						console.log('Processing:', status);
 					},
 					onComplete: (result) => {
-						if (result.projectInfo) {
-							createdProjects.push(result.projectInfo.id);
+						const createdProjectId =
+							result.ontology?.project_id || result.projectInfo?.id;
+						const projectName = result.projectInfo?.name || 'Project';
+
+						if (createdProjectId) {
+							createdProjects.push(createdProjectId);
 							showSuccess = true;
-							toastService.success(`🎉 Created "${result.projectInfo.name}"!`);
+							toastService.success(`🎉 Created "${projectName}"!`);
 
 							// Wait a moment to show success, then continue
 							setTimeout(() => {
-								onProjectsCreated(createdProjects);
+								onProjectsCreated(createdProjects, result.ontology?.counts);
 								onNext();
 							}, 1500);
 						} else {
@@ -291,7 +319,7 @@
 		</div>
 
 		<h2 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
-			Step 1: Clarity - Projects & Brain Dumping
+			Step 2: Clarity - Projects & Brain Dumping
 		</h2>
 		<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
 			Get organized by getting things out of your head and onto the screen.

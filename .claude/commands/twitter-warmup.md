@@ -193,50 +193,107 @@ Select **top 5-7 opportunities** based on total score.
 
 For each selected tweet, create 2-3 reply options following DJ's voice:
 
+### The Core Philosophy: Interesting Guy + Cheerleader
+
+> **NOT a thought leader.** Everyone is trying to be a thought leader. That's overdone and inauthentic.
+> **The goal:** Come across as an interesting person who has interesting things to say, OR as a genuine supporter when you don't have specific expertise.
+
+### Two Modes of Engagement
+
+**Mode 1: Add Value (When You Have Something)**
+Use when the topic touches your actual experience - Curri integrations, BuildOS, Marines, context engineering, solo founder journey.
+- Share specific experience or insight
+- Lead with curiosity, not authority
+- Offer a perspective others might not have considered
+- Be direct and lowercase casual
+
+**Mode 2: Cheerleader (When You Don't)**
+Use when you don't have specific expertise but want to engage.
+- Genuine hype and encouragement
+- Ask curious questions
+- Celebrate their wins specifically
+- "We're all rowing the same boat" energy
+- It's valid to just be excited for someone
+
 ### Reply Generation Rules
 
-1. **Lead with insight, not agreement** - No "love this" or "great point"
-2. **Use specific experience** - Marines, ADHD, solo founder journey
-3. **Context engineering angle** - When discussing AI, frame around memory/context
-4. **Be direct** - Cut filler words, lowercase casual
-5. **BuildOS mentions** - Only when genuinely relevant, use "shameless plug" framing
+1. **Decide your mode first** - Do you have value to add, or are you here to support?
+2. **Lead with insight OR genuine excitement** - Both are valid, not just insight
+3. **Use specific experience when relevant** - Marines (sparingly), solo founder journey, Curri integrations
+4. **Context engineering angle** - When discussing AI, frame around memory/context IF relevant
+5. **Be direct** - Cut filler words, lowercase casual
+6. **Teammate energy** - We're in this together
+7. **BuildOS mentions** - Only when genuinely relevant, use "shameless plug" framing
+8. **It's okay to just encourage** - Not every reply needs to teach something
 
 ### Reply Templates by Topic
 
-**AI/Context Posts:**
+**AI/Context Posts - Value Mode:**
 ```
-[observation about AI memory problem]
+[observation about AI memory problem from experience]
 
-[your experience or what you're seeing]
+[your experience - Curri integrations, BuildOS building]
 
-[optional: soft BuildOS mention if natural]
+[question to extend the conversation]
 ```
 
-**ADHD/Productivity Posts:**
+**AI/Context Posts - Cheerleader Mode:**
 ```
-[validate the struggle with specific detail]
+[genuine reaction to what they're sharing]
+
+[curious question about their approach]
+```
+
+**Productivity Posts - Value Mode:**
+```
+[validate the struggle with specific detail from your experience]
 
 [what actually works / what you've learned]
 
-[optional: ADHD brain reference]
+[question to open dialogue]
 ```
 
-**Building/Startup Posts:**
+**Productivity Posts - Cheerleader Mode:**
+```
+[validate their struggle/insight genuinely]
+
+[ask what's working for them]
+
+[encouraging note - we're all figuring this out]
+```
+
+**Building/Startup Posts - Value Mode:**
 ```
 [direct reaction or agreement]
 
-[add your experience - marines, solo founder]
+[add your experience - solo founder journey]
 
 [extend their point with your angle]
+```
+
+**Building/Startup Posts - Cheerleader Mode:**
+```
+[hell yes energy for their win/progress]
+
+[specific thing that impressed you]
+
+[curious question about what's next]
+```
+
+**Someone Sharing a Win:**
+```
+hell yes. [specific thing about the win that's impressive].
+
+[curious question or genuine hype]
 ```
 
 **Big Account Engagement:**
 ```
 [reference their past content or framework]
 
-[ask a direct question OR add unique angle]
+[add unique angle from your experience OR genuine curiosity]
 
-[optional: tie to your BuildOS journey]
+[ask a direct question - not generic praise]
 ```
 
 ---
@@ -329,15 +386,30 @@ Accounts from your Following feed worth adding to engagement tiers:
 
 ## Voice Reminder
 
-### The 3 Rules
-1. Can I visualize it?
-2. Can I falsify it?
-3. Can nobody else say this?
+### The Philosophy
+**Interesting guy + cheerleader. NOT a thought leader.**
+
+### Two Modes
+1. **Value Mode:** When you have experience to share - lead with insight, be specific, ask smart questions
+2. **Cheerleader Mode:** When you don't - genuine hype, curious questions, celebrate their wins
+
+### The 3 Rules (for Value Mode)
+1. Can I visualize it? (specific details)
+2. Can I falsify it? (real experience)
+3. Can nobody else say this? (unique perspective)
+
+### Quick Do's
+- Genuine excitement when cheering someone on
+- "hell yes" and specific praise for wins
+- Curious questions about their journey
+- Teammate energy - we're all rowing together
 
 ### Quick Don'ts
-- No "love this" or "great post"
-- No preachy setups
-- No generic observations anyone could make
+- "love this" or "great post" (hollow)
+- Preachy setups ("Most people don't realize...")
+- Generic observations anyone could make
+- Teaching when you're just supporting
+- Thought leader energy
 
 ---
 
