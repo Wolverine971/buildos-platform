@@ -6,7 +6,9 @@
 **Location:** `docs/marketing/social-media/buildos-outreach.md`
 **Related Docs:**
 
-- Twitter Engagement: `docs/marketing/social-media/twitter-engagement-targets.md`
+- **[Following Audit](./2026-01-08_twitter-following-audit.md)** - Accounts to unfollow, bot detection, peer accounts
+- [Twitter Engagement](./twitter-engagement-targets.md) - Who to engage with daily
+- [Follow Recommendations](./twitter-follow-recommendations.md) - Who to follow and get notifications from
 - Daily Warmup Command: `.claude/commands/twitter-warmup.md`
 - Voice Quick Ref: `docs/marketing/social-media/twitter-voice-quick-ref.md`
 

@@ -310,9 +310,152 @@ Your optimized feed should surface content about:
 
 ---
 
+## SECOND PASS AUDIT (Updated)
+
+**Account Stats:** 262 Followers | 1,150 Following (after partial cleanup)
+
+### STILL NOT UNFOLLOWED - Priority Action Required
+
+The following accounts from the original DEFINITE UNFOLLOWS list are **still being followed**:
+
+#### Politics/Local Government (Unfollow Immediately)
+
+| Handle            | Bio                                  | Status             |
+| ----------------- | ------------------------------------ | ------------------ |
+| **@DropSiteNews** | Independent news on politics and war | Still following    |
+| **@MayorBMScott** | 52nd Mayor of Baltimore              | Still following    |
+| **@RecNParks**    | Baltimore City Recreation & Parks    | Still following    |
+| **@ryangrim**     | Reporter at @DropSiteNews            | Still following    |
+
+#### Entertainment/Random (Unfollow Immediately)
+
+| Handle               | Bio                                  | Status          |
+| -------------------- | ------------------------------------ | --------------- |
+| **@KaiCenat**        | "Any Means Possible" - Streamer      | Still following |
+| **@Limbouniverse**   | LIMBO, Illustrator, retro artist     | Still following |
+| **@RetroTechDreams** | Retro tech nostalgia, 80s/90s/2000s  | Still following |
+| **@bigcontentguy**   | Yao Ming fan, baseball, Planet Coaster | Still following |
+
+#### Off-Topic Self-Improvement (Unfollow Immediately)
+
+| Handle             | Bio                                    | Status          |
+| ------------------ | -------------------------------------- | --------------- |
+| **@jerr_rrej**     | "Writer for fatherless men"            | Still following |
+| **@PathOfMen\_**   | Masculinity self-improvement           | Still following |
+| **@isaacfrench\_** | Building inns, orchards, villages      | Still following |
+
+---
+
+### BOT/SUSPICIOUS ACCOUNTS (New Finding)
+
+| Handle               | Red Flags                                                                 | Action   |
+| -------------------- | ------------------------------------------------------------------------- | -------- |
+| **@greg16676935420** | Random numbers in handle (BOT PATTERN), incoherent bio: "football, stocks, golf, Kentucky, subscribe for 10¢" | UNFOLLOW |
+| **@1PwnNoobs**       | Gaming-style handle, no clear professional alignment                      | Review   |
+
+---
+
+### CONSIDER UNFOLLOWING - Still Followed
+
+These were flagged in the original audit and are still being followed:
+
+| Handle              | Category         | Reason                              |
+| ------------------- | ---------------- | ----------------------------------- |
+| **@neuronpowers**   | Generic self-help | "Unleash the power of your mind"   |
+| **@TommiPedruzzi**  | Hustle/KDP       | 7-figure eBooks without writing     |
+| **@CandiceHorbacz** | Political        | "Freedom Maximalist"                |
+| **@RealRossU**      | Political/crypto | Ross Ulbricht - Silk Road founder   |
+| **@PatricGagne**    | Tangential       | SOCIOPATH memoir author             |
+| **@thetalesoftayls**| Personal         | Digital journal, vision board       |
+| **@Meldougherty77** | Religious        | Ex New Thoughter, YouTuber          |
+| **@besties_app**    | Kids apps        | Screen-time for children 4+         |
+| **@omnius_eacc**    | E/ACC memes      | "e/acc memetarded"                  |
+| **@adele_bloch**    | Tangential       | Deep talks, community building      |
+| **@IamProHuman**    | Spiritual        | "Soul-Tender. Spiritus Contra Spiritum" |
+
+---
+
+### PEER ACCOUNTS FOR ENGAGEMENT (New Section)
+
+These accounts have similar follower counts (200-2,000 range) and aligned themes. Perfect for mutual engagement and growth:
+
+| Handle              | Bio                                      | Follower Range | Alignment          |
+| ------------------- | ---------------------------------------- | -------------- | ------------------ |
+| **@pattybuilds**    | 22, scaling stealth                      | Similar        | Young builder      |
+| **@alim_721**       | Mobile App Entrepreneur, $77k MRR        | Similar        | Indie hacker       |
+| **@zach_yadegari**  | 19, CEO calai.app                        | Similar        | Young founder      |
+| **@NewAgeRetroNerd**| CS student, 21, data science             | Similar        | Young dev          |
+| **@timbuilds21**    | "I like to build things"                 | Similar        | Builder            |
+| **@lifeof_scoop**   | Local Newsletter Guy, Annapolis MD       | Similar        | **Local connection!** |
+| **@ItsKieranDrew**  | Ex-dentist, $500k/yr internet business   | Growing        | Career pivot story |
+
+**Strategy:** Engage with these accounts' content regularly. They're more likely to engage back than big accounts.
+
+---
+
+### ACCOUNTS THAT FOLLOW YOU (Protect These Relationships)
+
+| Handle              | Bio                          | Action                    |
+| ------------------- | ---------------------------- | ------------------------- |
+| **@arvidkahl**      | Zero to Sold, indie hacker   | High-value, engage often  |
+| **@TheZachEffect**  | Zach Smith                   | Maintain relationship     |
+| **@joecole**        | e/acc, ex-SaaS founder       | Maintain relationship     |
+| **@ahmed_armond**   | Design strategist            | Maintain relationship     |
+| **@Alexander_9306** | Full-stack developer         | Maintain relationship     |
+| **@ZachTh3Jack**    | "Make money while you sleep" | Follows you (keep?)       |
+| **@build_os**       | Your product account         | Obviously keep            |
+
+---
+
+### ACCOUNTS TO FOLLOW (Recommended)
+
+Based on Twitter's "Who to follow" suggestions, these align perfectly with BuildOS:
+
+| Handle           | Bio                    | Why Follow                         |
+| ---------------- | ---------------------- | ---------------------------------- |
+| **@swyx**        | Smol AI, AI Engineer   | Context engineering, AI, building  |
+| **@HuggingFace** | ML/AI platform         | AI ecosystem awareness             |
+
+---
+
+## Updated Statistics
+
+| Metric                              | Original Audit | After Partial Cleanup | After Full Cleanup (Est.) |
+| ----------------------------------- | -------------- | --------------------- | ------------------------- |
+| **Total Following**                 | ~1,200+        | 1,150                 | ~1,100                    |
+| **DEFINITE UNFOLLOWS remaining**    | 20             | 12                    | 0                         |
+| **CONSIDER UNFOLLOWS remaining**    | 17             | 11                    | Your call                 |
+| **Bot/Suspicious accounts found**   | -              | 2                     | 0                         |
+| **Peer accounts identified**        | -              | 7                     | -                         |
+| **Feed relevance**                  | ~70%           | ~80%                  | ~95%                      |
+
+---
+
+## Action Items (Priority Order)
+
+### Immediate (Do Now)
+
+1. **Unfollow the 12 remaining DEFINITE UNFOLLOWS** (listed above)
+2. **Unfollow @greg16676935420** (bot pattern account)
+
+### This Week
+
+3. **Review the 11 CONSIDER UNFOLLOWS** and decide
+4. **Engage with 3-5 peer accounts** from the new list daily
+5. **Follow @swyx** - highly aligned, context engineering focus
+
+### Ongoing
+
+6. **Protect relationships** with accounts that follow you back
+7. **Weekly feed check** - unfollow anything off-topic immediately
+8. **Target:** Get following count under 1,000
+
+---
+
 **Next Steps:** Would you like me to help you execute the unfollows, or create that "BuildOS Engagement" Twitter List?
 
 ---
 
 _Generated: 2026-01-08_
+_Updated: 2026-01-08 (Second Pass Audit)_
 _For: @djwayne3 / BuildOS_

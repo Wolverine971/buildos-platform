@@ -3,9 +3,20 @@
 # LinkedIn Engagement Targets
 
 **Account:** DJ
-**Last Updated:** 2026-01-07
+**Last Updated:** 2026-01-08
 **Purpose:** People to engage with for BuildOS awareness and personal brand growth
 **Voice Reference:** See `docs/marketing/social-media/FOUNDER_CONTEXT.md`
+
+---
+
+## Content Pillar Distribution
+
+| Pillar                      | % Focus | Your Angle                                                            |
+| --------------------------- | ------- | --------------------------------------------------------------------- |
+| **Context Engineering**     | 35%     | "AI has amnesia. Context that compounds > intelligence that resets"   |
+| **Building in Public**      | 30%     | Solo founder, Marines (sparingly), what's working/not                 |
+| **AI + Productivity**       | 20%     | Clarity > time management. Context > prompts. Daily Claude Code user. |
+| **ADHD/Scattered Minds**    | 15%     | Complex tools slow you down. Simple + consistent > complex + abandoned |
 
 ---
 
@@ -51,17 +62,52 @@
 
 ### Solo Founders & Indie Hackers
 
-| Name                  | Role                     | Why Engage            | Topics They Cover            |
-| --------------------- | ------------------------ | --------------------- | ---------------------------- |
-| **Justin Welsh**      | Solopreneur, creator     | Solo founder audience | Content, building audience   |
-| **[Research needed]** | Solo founder building AI | Similar journey       | Building in public, AI tools |
-| **[Research needed]** | Bootstrapped founder     | Similar journey       | Indie, no-VC path            |
+| Name                  | Role                           | Why Engage                              | Topics They Cover               |
+| --------------------- | ------------------------------ | --------------------------------------- | ------------------------------- |
+| **Justin Welsh**      | Solopreneur, creator           | Solo founder audience                   | Content, building audience      |
+| **Marc Lou**          | ShipFast ($84K MRR)            | Ships fast, indie hacker energy         | Building in public, shipping    |
+| **Tony Dinh**         | TypingMind ($137K/m!)          | Solo builder, public revenue, AI tools  | AI tools, bootstrapped SaaS     |
+| **Danny Postma** ⭐   | HeadshotPro, PostmaOS          | Building "PostmaOS" - similar philosophy! 7-fig exit to Jasper.AI | [Profile](https://www.linkedin.com/in/dannypostma/) |
+| **Jon Yongfook**      | Bannerbear ($79K MRR)          | 12 startups in 12 months veteran        | SaaS building, automation       |
+| **Pat Walls**         | Starter Story                  | Founder stories, revenue journeys       | Case studies, founder interviews|
+| **KP (Build In Public)** | BIP brand leader            | "Build In Public" community leader      | Transparency, founder journey   |
+| **Rob Walling**       | TinySeed, MicroConf            | Bootstrapped SaaS godfather             | SaaS strategy, funding          |
+| **Cory Zue**          | SaaS Pegasus                   | Openly shares failures + successes      | Django SaaS, building in public |
+| **Courtland Allen**   | Indie Hackers founder          | Community building, indie business      | Indie business, community       |
 
-> **Action Item:** Use LinkedIn search to find 5-10 solo founders/indie hackers who are active on LinkedIn
+> **Note:** These accounts are all active on Twitter - find their LinkedIn profiles for cross-platform engagement.
 
 ---
 
 ## Tier 2 - Engage 2-3x/Week
+
+### Context Engineering Practitioners (NEW - From Twitter Strategy)
+
+These accounts focus specifically on context engineering and AI memory - your core positioning.
+
+| Name                    | Role                           | Why Engage                                                 | LinkedIn Profile                                                                 |
+| ----------------------- | ------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Dexter Horthy** ⭐    | Coined "Context Engineering"   | THE originator of your core term - CRITICAL to engage. Already following! | [Profile](https://www.linkedin.com/in/dexterihorthy/) |
+| **Philipp Schmid**      | Google DeepMind, CE author     | Wrote definitive context engineering piece                 | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=philipp%20schmid%20deepmind) |
+| **Jim Fan**             | NVIDIA AI Scientist            | Practical AI agents focus, Stanford PhD                    | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=jim%20fan%20nvidia) |
+| **Nina Lopatina**       | ContextualAI                   | RAG/Context expert, NeurIPS speaker on context engineering | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=nina%20lopatina%20contextual) |
+| **Charles "DataChaz" Acheronti** | Claude Code expert     | 16-page Claude Code patterns guide author                  | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=charles%20acheronti) |
+
+> **FOUND:** Dexter Horthy is on LinkedIn with 11K followers. Banner literally says "Context Engineering". You're already following him!
+
+### ADHD/Neurodivergent Community (NEW - From Twitter Strategy)
+
+BuildOS's core audience. These creators have massive reach in the ADHD productivity space.
+
+| Name                | Role                             | Why Engage                                              | LinkedIn Profile                                                            |
+| ------------------- | -------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Dani Donovan** ⭐ | "Anti-Planner" creator           | ADHD comics, NYT/WashPo/Guardian featured - directly competing philosophy | [Profile](https://www.linkedin.com/in/danidonovan/) |
+| **Jessica McCabe** ⭐| How to ADHD (1M+ YouTube subs)   | NYT Bestseller author, ADHD "toolbox" philosophy = BuildOS | [Profile](https://www.linkedin.com/in/jessica-mccabe-9868ab1ab/) |
+| **Matt Jarman, PhD** | Productivity Psychologist, ADHD Coach | "Fast change beats slow change for ADHD brains" - active poster | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=matt%20jarman%20adhd) |
+| **Pina (ADHD Alien)** | ADHD Alien Comics, book 2026   | 185K Twitter, massive ADHD audience                     | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=pina%20adhd%20alien) |
+| **Chalene Johnson** | Lifestyle/ADHD, 84K Twitter      | "ADHD is a superpower for entrepreneurs"                | [Search LinkedIn](https://www.linkedin.com/in/chalenejohnson/) |
+
+> **FOUND:** Dani Donovan & Jessica McCabe are both active on LinkedIn. Also discovered Matt Jarman, PhD posting about ADHD productivity. Run `#ADHDproductivity` search for fresh engagement opportunities.
 
 ### VCs Talking About AI
 
@@ -249,6 +295,19 @@ LLM context engineering
 "context engineering"
 ```
 
+**ADHD & Productivity (NEW - High Value):**
+
+```
+#ADHDproductivity
+ADHD productivity
+"brain dump" overwhelmed
+"executive dysfunction"
+neurodivergent productivity
+ADHD entrepreneur
+```
+
+> **Note:** ADHD searches yield fresh, low-competition engagement opportunities. Run `#ADHDproductivity` daily.
+
 **Productivity & Tools:**
 
 ```
@@ -321,6 +380,17 @@ LinkedIn has a growing community of solo founders and indie hackers. Action item
 3. **5 min:** Send 2-3 connection requests
 4. **5 min:** Check feeds from Tier 2 accounts
 
+### Weekly Content Calendar (From Twitter Strategy)
+
+| Day           | Focus Area              | Priority Accounts                                | Search Queries                       |
+| ------------- | ----------------------- | ------------------------------------------------ | ------------------------------------ |
+| **Monday**    | AI Context/Memory       | @swyx, Simon Willison, Harrison Chase equivalents | "AI memory", "context engineering"   |
+| **Tuesday**   | Indie Hackers/Building  | Pieter Levels, Arvid Kahl, Tony Dinh types       | "building in public", "shipping"     |
+| **Wednesday** | Context Engineering     | Dexter Horthy, Philipp Schmid equivalents        | "context engineering", "AI agents"   |
+| **Thursday**  | Product/Startup Wisdom  | Lenny Rachitsky, Dan Shipper, Shaan Puri types   | "product leadership", "AI workflow"  |
+| **Friday**    | ADHD/Productivity       | ADHD community, Tiago Forte equivalents          | "ADHD productivity", "brain dump"    |
+| **Weekend**   | Broad Scan + Catch-up   | All Tier 1 + Following feed                      | High-intent queries                  |
+
 ### Weekly Routine (1 hour additional)
 
 1. Review engagement log — what worked?
@@ -331,4 +401,27 @@ LinkedIn has a growing community of solo founders and indie hackers. Action item
 ---
 
 _Document created: 2026-01-06_
-_Next update: After 2 weeks of engagement_
+_Last updated: 2026-01-08 (Cross-platform audit from Twitter strategy)_
+
+---
+
+## Change Log
+
+### 2026-01-08 - Cross-Platform Strategy Audit
+**Source:** Twitter strategy docs review
+
+**Added:**
+- Content Pillar Distribution (35% Context Engineering, 30% Building in Public, 20% AI + Productivity, 15% ADHD/Scattered Minds)
+- Weekly Content Calendar with daily focus themes
+- **Context Engineering Practitioners** category (Tier 2) - 5 accounts
+- **ADHD/Neurodivergent Community** category (Tier 2) - 5 accounts
+- Expanded Solo Founders & Indie Hackers - 10 accounts
+- ADHD search queries to discovery rotation
+
+**LinkedIn Profiles Found:**
+- Dexter Horthy: https://www.linkedin.com/in/dexterihorthy/ (Context Engineering originator)
+- Danny Postma: https://www.linkedin.com/in/dannypostma/ (PostmaOS/HeadshotPro)
+- Dani Donovan: https://www.linkedin.com/in/danidonovan/ (Anti-Planner)
+- Jessica McCabe: https://www.linkedin.com/in/jessica-mccabe-9868ab1ab/ (How to ADHD)
+
+**Key Insight:** ADHD community was completely missing from LinkedIn but is a core BuildOS audience. Now aligned with Twitter strategy.

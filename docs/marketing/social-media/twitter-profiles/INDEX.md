@@ -6,6 +6,11 @@
 > Last Updated: 2026-01-08
 > Total Profiles: 40
 
+**Related Docs:**
+- **[Following Audit](../2026-01-08_twitter-following-audit.md)** - Accounts to unfollow, bot detection, peer accounts
+- [Engagement Targets](../twitter-engagement-targets.md) - Daily engagement strategy
+- [Follow Recommendations](../twitter-follow-recommendations.md) - Who to follow
+
 ## Overview
 
 This database contains detailed profiles of Twitter accounts strategically relevant to BuildOS for engagement, community building, and brand awareness. Profiles are organized by niche and include engagement strategies.
@@ -19,8 +24,8 @@ This database contains detailed profiles of Twitter accounts strategically relev
 | Indie Hackers         | 12       | ~1.6M              |
 | ADHD/Neurodivergent   | 7        | ~605K              |
 | AI/LLM                | 4        | ~2.2M              |
-| Creator Economy       | 2        | ~1.5M              |
-| **TOTAL**             | **40**   | **~9.7M**          |
+| Creator Economy       | 5        | ~2.6M              |
+| **TOTAL**             | **43**   | **~10.8M**         |
 
 ---
 
@@ -132,14 +137,23 @@ AI researchers, educators, and builders shaping the AI landscape.
 
 ---
 
-## ✨ Creator Economy (2)
+## ✨ Creator Economy (5)
 
 Major creator economy voices with massive audiences.
 
-| Handle                                       | Name        | Followers | Focus         | Priority   |
-| -------------------------------------------- | ----------- | --------- | ------------- | ---------- |
-| [@SahilBloom](creator-economy/sahilbloom.md) | Sahil Bloom | 1.1M      | Wealth/Wisdom | High Value |
-| [@dickiebush](creator-economy/dickiebush.md) | Dickie Bush | 432K      | Ship30for30   | High Value |
+| Handle                                       | Name           | Followers | Focus              | Priority   |
+| -------------------------------------------- | -------------- | --------- | ------------------ | ---------- |
+| [@SahilBloom](creator-economy/sahilbloom.md) | Sahil Bloom    | 1.1M      | Wealth/Wisdom      | High Value |
+| [@shl](creator-economy/shl.md)               | Sahil Lavingia | 450K      | Gumroad/Minimalist | High Value |
+| [@dickiebush](creator-economy/dickiebush.md) | Dickie Bush    | 432K      | Ship30for30        | High Value |
+| [@noahkagan](creator-economy/noahkagan.md)   | Noah Kagan     | 370K      | AppSumo            | High Value |
+| [@Julian](creator-economy/julian.md)         | Julian Shapiro | 215K      | Growth/Handbooks   | High Value |
+
+### Distribution Opportunities
+
+- **@noahkagan** - AppSumo could be launch distribution channel
+- **@shl** - Gumroad creator audience, potential investor
+- **@Julian** - Framework thinking aligns with BuildOS approach
 
 ---
 

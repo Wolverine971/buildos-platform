@@ -186,7 +186,14 @@ function mergeParents(existing: ParentRef[], additions: ParentRef[]): ParentRef[
 function shouldSkipContainment(kind: EntityKind, connections: ConnectionRef[]): boolean {
 	if (kind === 'output' || kind === 'source') return true;
 	if (kind === 'document') {
-		return !connections.some((connection) => connection.kind === 'document');
+		return !connections.some((connection) => {
+			if (connection.kind !== 'document') return false;
+			if (connection.intent === 'semantic') return false;
+			if (connection.rel && !CONTAINMENT_RELS.includes(connection.rel as RelationshipType)) {
+				return false;
+			}
+			return true;
+		});
 	}
 	return false;
 }
@@ -413,7 +420,7 @@ export async function planGraphReorg(params: {
 	const defaultAllowMultiParent = options?.allow_multi_parent ?? false;
 
 	const listedKeys = new Set(nodes.map((node) => `${node.kind}:${node.id}`));
-	const nodeIds = nodes.map((node) => node.id);
+	const nodeIds = Array.from(new Set(nodes.map((node) => node.id)));
 
 	const [srcEdgesResult, dstEdgesResult] = await Promise.all([
 		supabase.from('onto_edges').select('*').eq('project_id', projectId).in('src_id', nodeIds),
@@ -428,11 +435,16 @@ export async function planGraphReorg(params: {
 	}
 
 	const edgesById = new Map<string, OntoEdge>();
+	const isListedEdge = (edge: OntoEdge): boolean =>
+		listedKeys.has(`${edge.src_kind}:${edge.src_id}`) ||
+		listedKeys.has(`${edge.dst_kind}:${edge.dst_id}`);
 	for (const edge of srcEdgesResult.data ?? []) {
-		edgesById.set(edge.id, edge);
+		if (isListedEdge(edge)) {
+			edgesById.set(edge.id, edge);
+		}
 	}
 	for (const edge of dstEdgesResult.data ?? []) {
-		if (!edgesById.has(edge.id)) {
+		if (!edgesById.has(edge.id) && isListedEdge(edge)) {
 			edgesById.set(edge.id, edge);
 		}
 	}
@@ -461,14 +473,12 @@ export async function planGraphReorg(params: {
 	for (const node of nodes) {
 		const connections = node.connections ?? [];
 		const mode = node.mode ?? defaultMode;
+		const hasExplicitSemanticMode =
+			node.semantic_mode !== undefined || options?.semantic_mode !== undefined;
 		let semanticMode = node.semantic_mode ?? defaultSemanticMode;
 		const allowProjectFallback = node.allow_project_fallback ?? defaultAllowProjectFallback;
 		const allowMultiParent = node.allow_multi_parent ?? defaultAllowMultiParent;
 		const skipContainment = shouldSkipContainment(node.kind, connections);
-
-		if (node.kind === 'document' && connections.length === 0) {
-			semanticMode = 'preserve';
-		}
 
 		const plan = resolveConnections({
 			entity: { kind: node.kind, id: node.id },
@@ -479,6 +489,14 @@ export async function planGraphReorg(params: {
 				mode
 			}
 		});
+
+		if (!hasExplicitSemanticMode && plan.entitySemantic.length === 0) {
+			semanticMode = 'preserve';
+		}
+
+		if (node.kind === 'document' && connections.length === 0) {
+			semanticMode = 'preserve';
+		}
 
 		nodePlans.push({
 			node,

@@ -322,6 +322,77 @@ Priority engagement with accounts in `/docs/marketing/social-media/twitter-profi
 
 ---
 
+## Partnership Strategy
+
+### Tier 1: Strategic Partnerships
+
+#### @danidonovan (Anti-Planner)
+**Relationship Status:** Not yet contacted
+**Opportunity:** Complementary positioning - "Capture with Anti-Planner, Execute with BuildOS"
+
+**Approach:**
+1. Engage genuinely with ADHD content for 2-3 weeks
+2. Look for natural conversation about digital tools
+3. Position as complement, not competitor
+4. Potential: Affiliate partnership, guest content exchange
+
+**Talking Points:**
+- "I love the Anti-Planner philosophy"
+- "We're both anti-YOU-maintaining-structure"
+- "What if AI could maintain the structure for you?"
+
+#### @HowtoADHD (Jessica McCabe)
+**Relationship Status:** Not yet contacted
+**Opportunity:** Podcast guest, potential tool feature
+
+**Approach:**
+1. Follow her "toolbox" content closely
+2. Engage with helpful comments
+3. Reference specific videos in outreach
+4. Pitch: "The AI-powered ADHD toolbox"
+
+**Goal:** Podcast appearance or tool mention
+
+#### ADHD Coaches Network
+**Targets:** @StructuredSucc, @neurodiverging, independent coaches
+**Opportunity:** BuildOS for coaches + clients
+
+**Approach:**
+1. Offer free accounts to coaches
+2. Create "coach mode" features
+3. Build referral program
+4. Position as accountability tool between sessions
+
+### Tier 2: Distribution Partnerships
+
+#### @noahkagan (AppSumo)
+**Opportunity:** AppSumo deal for launch distribution
+**Timing:** When product is more mature
+**Approach:** Build relationship, then pitch deal
+
+#### @shl (Sahil Lavingia / Gumroad)
+**Opportunity:** Creator audience, potential investor
+**Approach:** Engage on creator tools, minimalist building
+
+### Tier 3: Content Collaborations
+
+#### Podcast Appearances
+**Target:** 3-5 ADHD podcasts in Q1 2026
+**Full List:** [ADHD Podcast Outreach](/docs/marketing/outreach/adhd-podcast-outreach.md)
+
+**Priority Podcasts:**
+1. How to ADHD (Jessica McCabe)
+2. ADHD reWired (Eric Tivers)
+3. Hacking Your ADHD (William Curb)
+4. Translating ADHD (Brendan Mahan)
+
+#### Content Exchanges
+- Guest posts on ADHD blogs
+- Twitter thread collaborations
+- "ADHD productivity toolkit" roundups
+
+---
+
 ## Risks and Mitigations
 
 ### Risk: Anti-Planner dominates ADHD market
@@ -346,21 +417,35 @@ Priority engagement with accounts in `/docs/marketing/social-media/twitter-profi
 
 ### Immediate (This Week)
 
-- [ ] Update twitter-warmup.md with ADHD account monitoring
-- [ ] Set notifications for @danidonovan, @ADHD_Alien, @HowtoADHD
-- [ ] Draft "Why I built BuildOS" founder story with ADHD angle
+- [x] Update twitter-warmup.md with ADHD account monitoring
+- [x] Set notifications for @danidonovan, @ADHD_Alien, @HowtoADHD
+- [x] Draft "Why I built BuildOS" founder story with ADHD angle
+- [ ] Turn on Twitter notifications for top 5 ADHD accounts
+- [ ] Create "Context Engineering" Twitter list
 
 ### Short-term (This Month)
 
 - [ ] Publish "Context Engineering for Productivity" blog post
-- [ ] Engage daily with ADHD Twitter accounts
+- [ ] Engage daily with ADHD Twitter accounts (use twitter-warmup skill)
 - [ ] Reach out to 2-3 ADHD creators for potential collaboration
+- [ ] Listen to 3 ADHD podcasts and take notes for outreach
+- [ ] Begin @danidonovan relationship building (genuine engagement)
 
 ### Medium-term (This Quarter)
 
-- [ ] Guest on one ADHD podcast
+- [ ] Guest on 1-2 ADHD podcasts (see outreach list)
 - [ ] Ship one ADHD-specific feature (energy tracking or forgiveness mode)
 - [ ] Build relationship with @danidonovan (respect, not competition)
+- [ ] Explore AppSumo relationship via @noahkagan
+- [ ] Create "BuildOS for ADHD Coaches" offering
+
+### Long-term (This Year)
+
+- [ ] 5+ ADHD podcast appearances
+- [ ] @danidonovan partnership or collaboration
+- [ ] AppSumo deal at product maturity
+- [ ] ADHD coach referral program live
+- [ ] "ADHD Productivity OS" search term #1
 
 ---
 
@@ -373,17 +458,29 @@ Priority engagement with accounts in `/docs/marketing/social-media/twitter-profi
 - [Founder Context](/docs/marketing/social-media/FOUNDER_CONTEXT.md)
 - [Context Engineering Blog Skeleton](/docs/marketing/content/blog-skeletons/context-engineering-for-productivity.md)
 
+### Content & Outreach
+
+- [Why I Built BuildOS](/docs/marketing/content/drafts/why-i-built-buildos.md) - Founder story draft
+- [ADHD Podcast Outreach](/docs/marketing/outreach/adhd-podcast-outreach.md) - Podcast targets and tracking
+- [Competitor Feature Comparison](/docs/marketing/competitive-analysis/competitor-feature-comparison.md) - Competitive intelligence
+
 ### Twitter Profiles to Monitor
 
 - [ADHD/Neurodivergent Accounts](/docs/marketing/social-media/twitter-profiles/adhd-neurodivergent/)
 - [Context Engineering Accounts](/docs/marketing/social-media/twitter-profiles/context-engineering/)
 - [AI/LLM Accounts](/docs/marketing/social-media/twitter-profiles/ai-llm/)
+- [Creator Economy Accounts](/docs/marketing/social-media/twitter-profiles/creator-economy/) - Distribution channels
+- [Full Profile INDEX](/docs/marketing/social-media/twitter-profiles/INDEX.md)
 
 ### Product Documentation
 
 - [Brain Dump Feature](/apps/web/docs/features/brain-dump/)
 - [Ontology System](/apps/web/docs/features/ontology/)
 - [Daily Briefs](/apps/worker/docs/features/daily-briefs/)
+
+### Workflows
+
+- [Twitter Warmup](/.claude/commands/twitter-warmup.md) - Daily engagement workflow
 
 ---
 

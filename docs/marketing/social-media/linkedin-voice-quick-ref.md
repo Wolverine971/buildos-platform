@@ -75,12 +75,14 @@
 
 ## Content Pillars (What to Engage With)
 
-| Pillar                  | Your Angle                                                          |
-| ----------------------- | ------------------------------------------------------------------- |
-| **Context Engineering** | "AI has amnesia. Context that compounds > intelligence that resets" |
-| **Building in Public**  | Solo founder, learning voice, the grind, what's working/not         |
-| **AI + Productivity**   | Clarity > time management. Context > prompts.                       |
-| **Contrarian Takes**    | Blue collar software engineering. PM tools for managers not makers. |
+| Pillar                      | % Focus | Your Angle                                                          |
+| --------------------------- | ------- | ------------------------------------------------------------------- |
+| **Context Engineering**     | 35%     | "AI has amnesia. Context that compounds > intelligence that resets" |
+| **Building in Public**      | 30%     | Solo founder, learning voice, the grind, what's working/not         |
+| **AI + Productivity**       | 20%     | Clarity > time management. Context > prompts.                       |
+| **ADHD/Scattered Minds**    | 15%     | Complex tools slow you down. Simple + consistent > complex + abandoned. |
+
+> **Cross-Platform Note:** ADHD pillar was MISSING from LinkedIn but is strong on Twitter. BuildOS's core audience includes scattered minds - engage with this community on LinkedIn too.
 
 ---
 
@@ -141,12 +143,16 @@
 
 ## Tier 2 Accounts (Engage When Relevant)
 
-| Category               | Accounts                                      |
-| ---------------------- | --------------------------------------------- |
-| **AI/LLM**             | Simon Willison, Harrison Chase, AI founders   |
-| **Productivity/PKM**   | Tiago Forte, Ali Abdaal, productivity leaders |
-| **Indie Hackers**      | Justin Welsh, Arvid Kahl, solo founders       |
-| **Building in Public** | Founders sharing their journey                |
+| Category                   | Accounts                                                      |
+| -------------------------- | ------------------------------------------------------------- |
+| **Context Engineering**    | Dexter Horthy, Philipp Schmid, Jim Fan, Nina Lopatina (NEW)   |
+| **AI/LLM**                 | Simon Willison, Harrison Chase, DataChaz, AI founders         |
+| **ADHD/Neurodivergent**    | Dani Donovan, Jessica McCabe, ADHD Alien, Chalene (NEW)       |
+| **Productivity/PKM**       | Tiago Forte, Ali Abdaal, productivity leaders                 |
+| **Indie Hackers**          | Justin Welsh, Arvid Kahl, Tony Dinh, Marc Lou, solo founders  |
+| **Building in Public**     | Founders sharing their journey                                |
+
+> **NEW Categories from Twitter:** Context Engineering and ADHD/Neurodivergent were completely missing. These map directly to BuildOS positioning.
 
 **Full list:** See `docs/marketing/social-media/linkedin-engagement-targets.md`
 
@@ -154,23 +160,48 @@
 
 ## Search Topics
 
-- Context engineering AI
+**Context Engineering & AI Memory:**
+- "context engineering" AI
 - AI memory problem
+- "AI agents" context / autonomous
+
+**AI & Productivity:**
 - ChatGPT workflow / AI productivity
+- Claude Code daily
+- AI productivity workflow
+
+**ADHD & Scattered Minds (NEW):**
+- ADHD productivity
+- "brain dump" overwhelmed
+- "executive dysfunction"
+- neurodivergent productivity
+
+**Building & Tools:**
 - Productivity app overwhelm
 - Building in public / founder journey
+- Notion frustrated / abandoned
 - AI agents (for contrarian takes)
 
 ---
 
 ## Hashtags to Check
 
+**Primary:**
 - #ArtificialIntelligence
 - #Productivity
 - #BuildingInPublic
-- #FutureOfWork
 - #FounderLife
+
+**ADHD/Neurodivergent (NEW):**
+- #ADHDproductivity
+- #ADHD
+- #neurodivergent
+- #executivefunction
+
+**Context & Knowledge:**
+- #FutureOfWork
 - #KnowledgeManagement
+- #ContextEngineering (emerging)
 
 ---
 
@@ -181,3 +212,7 @@
 - **Spacing**: 15-30 min between comments
 - **Target**: 5-7 quality engagements per day
 - **Best times**: Tue-Thu, 8-9 AM EST or 12-1 PM EST
+
+---
+
+_Last updated: 2026-01-08 (Added ADHD pillar, Context Engineering category, expanded accounts from Twitter audit)_

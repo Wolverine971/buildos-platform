@@ -13,7 +13,7 @@ Provide an agent-facing, node-centric tool that can reorganize (reparent/relink)
 - Reorg is **node-centric**: each node lists desired connections.
 - Reorg updates only **listed nodes**. No new entities are created.
 - Containment is recomputed via resolver rules (same precedence + project fallback rules).
-- Semantic edges are rebuilt based on connections, with a **replace_auto** default for auto-managed semantics.
+- Semantic edges are rebuilt based on connections. If no semantic connections are provided and `semantic_mode` is omitted, semantics are preserved; otherwise the default is **replace_auto** for auto-managed rels.
 - Parent→child reparenting only applies when the **child is explicitly listed**.
 - Dry-run returns **edge diff** without writes.
 - Apply uses a **transactional RPC** with optimistic checks to prevent partial writes.
@@ -36,9 +36,12 @@ Provide an agent-facing, node-centric tool that can reorganize (reparent/relink)
     - `semantic_mode=replace_auto` replaces only auto-managed rels; other semantics are preserved.
     - `semantic_mode=merge` merges semantics without pruning.
     - `semantic_mode=preserve` skips semantic changes.
+- **Validation**:
+    - `connections[].intent` must be `semantic` or `containment` when provided.
+    - `connections[].rel` must be a valid relationship type (deprecated rels are accepted and normalized).
 - **Documents**:
     - If a document node has **no connections**, existing references are preserved.
-    - Document containment changes only apply for document→document `has_part`.
+    - Document containment changes only apply when a document→document connection is provided with containment intent or a containment rel (`has_part`).
 - **Project Fallback**:
     - Uses existing resolver rules (tasks disable project fallback when they have structural links).
 
@@ -129,7 +132,7 @@ The full graph tool returns `ProjectGraphData`:
     - Responsibilities:
         - Plan edge diffs from node-centric payloads.
         - Respect containment precedence + project fallback rules.
-        - Rebuild auto-managed semantics with replace_auto default.
+        - Rebuild auto-managed semantics; default is replace_auto when semantic connections are supplied, otherwise preserve.
         - Apply diff or return dry-run.
 
 ## Guidance for Auditors
@@ -137,7 +140,7 @@ The full graph tool returns `ProjectGraphData`:
 Focus review areas:
 
 - **Containment merge behavior**: merge still applies precedence, which can drop lower-priority parents.
-- **Edge scope**: planning only loads edges with src_id or dst_id in listed nodes; verify this is sufficient for all delete/update scopes.
+- **Edge scope**: planning only loads edges with src_id or dst_id in listed nodes (and matching kinds); verify this is sufficient for all delete/update scopes.
 - **Document zero-connection rule**: semantic changes should be skipped for listed documents with no connections.
 - **Child reparenting**: ensure unlisted children are not reparented.
 - **Dry-run diff**: verify delete/update/create counts match planned changes.
@@ -253,7 +256,7 @@ The following behaviors were verified as correctly implemented:
 
 3. **Project Kind Rejection:** The endpoint correctly validates that `project` kind is not included in the nodes array (line 31 of reorganize endpoint).
 
-4. **Edge Loading Scope:** The edge query correctly filters to edges where `src_id` OR `dst_id` is in the listed node IDs, ensuring all relevant edges are considered.
+4. **Edge Loading Scope:** The edge query correctly filters to edges where `src_id` OR `dst_id` is in the listed node IDs (and kinds match), ensuring all relevant edges are considered.
 
 5. **Containment Precedence:** The resolver correctly applies FSM precedence rules via `relationship-resolver.ts` and `containment-organizer.ts`.
 

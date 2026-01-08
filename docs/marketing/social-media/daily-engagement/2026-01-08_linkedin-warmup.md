@@ -436,3 +436,51 @@ did they share any details on how it's working? or just the headline?
 
 **Created:** 2026-01-08 morning
 **Next Scan:** 2026-01-09
+
+---
+
+## Cross-Platform Strategy Update (From Twitter Audit)
+
+### LinkedIn Profiles Discovered
+
+Based on cross-referencing Twitter strategy, found these key accounts on LinkedIn:
+
+#### Context Engineering (NEW CATEGORY)
+| Account | LinkedIn URL | Notes |
+|---------|-------------|-------|
+| **Dexter Horthy** | https://www.linkedin.com/in/dexterihorthy/ | Coined "Context Engineering" - 11K followers, banner literally says "Context Engineering". Already following! |
+
+#### Indie Hackers
+| Account | LinkedIn URL | Notes |
+|---------|-------------|-------|
+| **Danny Postma** | https://www.linkedin.com/in/dannypostma/ | HeadshotPro founder, 7-figure exit to Jasper.AI, building PostmaOS |
+
+#### ADHD Community (NEW CATEGORY - Previously Missing!)
+| Account | LinkedIn URL | Notes |
+|---------|-------------|-------|
+| **Dani Donovan** | https://www.linkedin.com/in/danidonovan/ | Anti-Planner creator, ADHD comics, NYT/WashPo/Guardian featured |
+| **Jessica McCabe** | https://www.linkedin.com/in/jessica-mccabe-9868ab1ab/ | How to ADHD (1M+ YouTube), NYT Bestseller author |
+| **Matt Jarman, PhD** | Search: "matt jarman adhd" | Productivity Psychologist & ADHD Coach - active LinkedIn poster |
+
+### #ADHDproductivity Search Results
+
+Fresh posts found (add to daily search rotation):
+- **Mary Obiye** (5h ago) - "I built a To-Do Task spreadsheet specifically to help organize an ADHD brain"
+- **Matt Jarman, PhD** (1d ago) - "Fast behavior change is possible, and often EASIER, for ADHDers"
+- **Thought Partner Coaching** (1d ago) - "Most productivity advice assumes a neurotypical brain"
+
+### Strategy Gap Identified
+
+**ADHD community was COMPLETELY MISSING from LinkedIn strategy** but is well-developed on Twitter. This is a core BuildOS audience. Added:
+- ADHD/Scattered Minds as 15% content pillar
+- 5 ADHD accounts to Tier 2 targets
+- `#ADHDproductivity` to daily search rotation
+- ADHD hashtags to monitor
+
+### Action Items
+- [ ] Connect with Dexter Horthy (already following)
+- [ ] Connect with Dani Donovan
+- [ ] Connect with Jessica McCabe
+- [ ] Connect with Danny Postma
+- [ ] Run `#ADHDproductivity` search daily for fresh engagement opportunities
+- [ ] Engage with Matt Jarman, PhD posts

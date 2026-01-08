@@ -20,10 +20,12 @@ import {
 	AutoOrganizeError
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
-import type { EntityKind } from '$lib/services/ontology/edge-direction';
+import { VALID_RELS, type EntityKind } from '$lib/services/ontology/edge-direction';
 
 const VALID_MODES = new Set<GraphReorgMode>(['replace', 'merge']);
 const VALID_SEMANTIC_MODES = new Set<GraphReorgSemanticMode>(['replace_auto', 'merge', 'preserve']);
+const VALID_INTENTS = new Set<ConnectionRef['intent']>(['containment', 'semantic']);
+const VALID_RELATIONSHIPS = new Set<string>(VALID_RELS);
 
 function parseMode(value: unknown): GraphReorgMode | undefined {
 	if (typeof value !== 'string') return undefined;
@@ -49,8 +51,14 @@ function parseConnections(value: unknown): ConnectionRef[] {
 	return value.filter(Boolean).map((entry) => ({
 		kind: typeof (entry as ConnectionRef).kind === 'string' ? (entry as any).kind.trim() : '',
 		id: typeof (entry as ConnectionRef).id === 'string' ? (entry as any).id.trim() : '',
-		intent: (entry as ConnectionRef).intent,
-		rel: (entry as ConnectionRef).rel
+		intent:
+			typeof (entry as ConnectionRef).intent === 'string'
+				? (((entry as any).intent.trim() as ConnectionRef['intent']) || undefined)
+				: undefined,
+		rel:
+			typeof (entry as ConnectionRef).rel === 'string'
+				? (((entry as any).rel.trim() as ConnectionRef['rel']) || undefined)
+				: undefined
 	}));
 }
 
@@ -144,6 +152,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				if (!(connection.kind in ENTITY_TABLES) && connection.kind !== 'project') {
 					return ApiResponse.badRequest(
 						`Unsupported connection kind: ${connection.kind}`
+					);
+				}
+				if (connection.intent && !VALID_INTENTS.has(connection.intent)) {
+					return ApiResponse.badRequest(
+						`Invalid connection intent for node ${nodeKey}`
+					);
+				}
+				if (connection.rel && !VALID_RELATIONSHIPS.has(connection.rel)) {
+					return ApiResponse.badRequest(
+						`Invalid connection rel for node ${nodeKey}: ${connection.rel}`
 					);
 				}
 				connectionRefs.push(connection);

@@ -730,6 +730,12 @@ Reorganizes a subset of entities using a node-centric payload. Use `options.dry_
 }
 ```
 
+**Notes**
+
+- `connections[].intent` (when provided) must be `containment` or `semantic`.
+- `connections[].rel` (when provided) must be a valid relationship type (see `apps/web/src/lib/services/ontology/edge-direction.ts`).
+- If `semantic_mode` is omitted and a node has no semantic connections, existing semantic edges are preserved.
+
 ---
 
 ## 🚨 Error Responses

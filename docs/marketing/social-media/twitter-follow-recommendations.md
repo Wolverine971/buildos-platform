@@ -6,6 +6,11 @@
 **Created:** 2026-01-08
 **Purpose:** Strategic analysis of who to follow and get notifications from based on BuildOS content pillars and growth strategy
 
+**Related Docs:**
+- **[Following Audit](./2026-01-08_twitter-following-audit.md)** - Accounts to unfollow, bot detection, peer accounts
+- [Engagement Targets](./twitter-engagement-targets.md) - Who to engage with daily
+- [Outreach Targets](./buildos-outreach.md) - Influencer outreach plans
+
 ---
 
 ## Who You Should Get Notifications From (Tier 1)
