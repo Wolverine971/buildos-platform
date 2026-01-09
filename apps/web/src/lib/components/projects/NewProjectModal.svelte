@@ -6,7 +6,7 @@
 	import { createEventDispatcher } from 'svelte';
 
 	export let isOpen: boolean = false;
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 	export let creatingProject: boolean = false;
 	export let isFirstProject: boolean = false;
 

@@ -4,8 +4,8 @@
  * Based on the reorganization plan recommendations
  */
 
-import { readdir, readFile, writeFile, stat, mkdir } from 'fs/promises';
-import { join, relative, dirname } from 'path';
+import { readdir, readFile, writeFile, mkdir } from 'fs/promises';
+import { join, relative } from 'path';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 const babelTraverse = traverse.default || traverse;

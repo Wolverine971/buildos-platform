@@ -6,7 +6,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import type { Project, Document } from '$lib/types/onto';
+import type { Document } from '$lib/types/onto';
 import { PROJECT_STATES } from '$lib/types/onto';
 import {
 	logUpdateAsync,

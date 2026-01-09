@@ -182,12 +182,16 @@ export const POST: RequestHandler = async ({
 
 	// Create stream early so the UI can show server-side activity immediately.
 	const agentStream = SSEResponse.createChatStream();
-	void agentStream.sendMessage({
-		type: 'agent_state',
-		state: 'thinking',
-		contextType: streamRequest.context_type,
-		details: 'BuildOS is processing your request...'
-	});
+	void agentStream
+		.sendMessage({
+			type: 'agent_state',
+			state: 'thinking',
+			contextType: streamRequest.context_type,
+			details: 'BuildOS is processing your request...'
+		})
+		.catch((error) => {
+			logger.warn('Failed to emit initial agent state', { error });
+		});
 
 	void (async () => {
 		try {

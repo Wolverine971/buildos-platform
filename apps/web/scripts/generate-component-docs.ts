@@ -6,7 +6,7 @@
  */
 
 import { readdir, readFile, writeFile, mkdir } from 'fs/promises';
-import { join, relative, dirname, basename } from 'path';
+import { join, basename } from 'path';
 import { existsSync } from 'fs';
 
 interface ComponentInfo {

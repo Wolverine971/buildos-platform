@@ -53,7 +53,7 @@
 
 	// Lazy-loaded modal components for better initial load performance
 	// Using Component<any, any, any> for Svelte 5 function-based components
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	type LazyComponent = Component<any, any, any> | null;
 	let TaskSeriesModalComponent = $state<LazyComponent>(null);
 	let DocumentModalComponent = $state<LazyComponent>(null);

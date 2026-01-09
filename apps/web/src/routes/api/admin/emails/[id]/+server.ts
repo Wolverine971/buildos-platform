@@ -1,6 +1,5 @@
 // apps/web/src/routes/api/admin/emails/[id]/+server.ts
 
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 

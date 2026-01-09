@@ -1,15 +1,19 @@
 // apps/web/src/lib/services/stripe-service.ts
 import Stripe from 'stripe';
-import { PRIVATE_STRIPE_SECRET_KEY, PRIVATE_ENABLE_STRIPE } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { PUBLIC_STRIPE_PUBLISHABLE_KEY } from '$env/static/public';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { INVOICE_CONFIG } from '$lib/config/stripe-invoice';
 import { ErrorLoggerService } from './errorLogger.service';
 
+// Support legacy and PRIVATE_ env names without breaking existing deploys.
+const stripeEnabledFlag = (env.PRIVATE_ENABLE_STRIPE ?? env.ENABLE_STRIPE ?? 'false') === 'true';
+const stripeSecretKey = env.PRIVATE_STRIPE_SECRET_KEY ?? env.STRIPE_SECRET_KEY ?? '';
+
 // Initialize Stripe only if enabled
 const stripeClient =
-	PRIVATE_ENABLE_STRIPE === 'true' && PRIVATE_STRIPE_SECRET_KEY
-		? new Stripe(PRIVATE_STRIPE_SECRET_KEY, {
+	stripeEnabledFlag && stripeSecretKey
+		? new Stripe(stripeSecretKey, {
 				typescript: true
 			})
 		: null;
@@ -65,7 +69,7 @@ export class StripeService {
 	 * Check if Stripe is enabled
 	 */
 	static isEnabled(): boolean {
-		return PRIVATE_ENABLE_STRIPE === 'true' && !!stripeClient;
+		return stripeEnabledFlag && !!stripeClient;
 	}
 
 	/**

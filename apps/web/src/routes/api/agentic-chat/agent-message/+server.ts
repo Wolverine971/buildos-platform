@@ -25,7 +25,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	let body: AgentMessageRequest;
 	try {
 		body = await request.json();
-	} catch (err) {
+	} catch (_err) {
 		return ApiResponse.badRequest('Invalid JSON body');
 	}
 

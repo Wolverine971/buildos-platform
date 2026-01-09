@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/braindumps/draft/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
-import type { Database } from '@buildos/shared-types';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -64,7 +63,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					parseResults = null;
 				}
 			} catch (e) {
-				console.warn('Could not parse parse results as JSON, may be corrupted');
+				console.warn('Could not parse parse results as JSON, may be corrupted', e);
 				parseResults = null;
 			}
 		}

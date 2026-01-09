@@ -7,7 +7,6 @@
 
 import { createCustomClient } from '@buildos/supabase-client';
 import { ErrorLoggerService } from '../src/lib/services/errorLogger.service';
-import type { Database } from '@buildos/shared-types';
 import dotenv from 'dotenv';
 
 // Load environment variables

@@ -8,7 +8,7 @@
 // Service Worker version - increment to force update
 const SW_VERSION = '1.1.0';
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', (_event) => {
 	console.log(`[ServiceWorker v${SW_VERSION}] Installing...`);
 	self.skipWaiting(); // Activate immediately
 });

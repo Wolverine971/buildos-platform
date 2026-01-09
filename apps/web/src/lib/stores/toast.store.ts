@@ -106,9 +106,10 @@ export const toastService = {
 			toastTimeouts.delete(id);
 		}
 
-		// Calculate remaining time
+		// Calculate remaining time based on current remaining window
 		const elapsed = Date.now() - state.startTime;
-		state.remainingTime = Math.max(0, (state.toast.duration || 0) - elapsed);
+		const baseDuration = state.remainingTime || state.toast.duration || 0;
+		state.remainingTime = Math.max(0, baseDuration - elapsed);
 		state.isPaused = true;
 		toastStates.set(id, state);
 	},

@@ -35,7 +35,7 @@ async function extractTypes(): Promise<TypeDefinition[]> {
 		const fullPath = join(process.cwd(), typeDir);
 		try {
 			await extractTypesFromPath(fullPath, types);
-		} catch (error) {
+		} catch (_error) {
 			console.warn(`Warning: Could not read ${typeDir}`);
 		}
 	}

@@ -74,7 +74,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const linkedEntities = await resolveLinkedEntitiesGeneric(supabase, documentId, 'document');
 
 		// Remove nested project data from response
-		const { project, ...documentData } = document;
+		const { project: _project, ...documentData } = document;
 
 		return ApiResponse.success({
 			document: documentData,

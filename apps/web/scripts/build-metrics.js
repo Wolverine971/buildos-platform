@@ -14,7 +14,7 @@ function getDirectorySize(dir) {
 				size += statSync(path).size;
 			}
 		}
-	} catch (e) {
+	} catch (_e) {
 		// Directory doesn't exist
 	}
 	return size;
@@ -39,7 +39,7 @@ function getFileCount(dir) {
 				count++;
 			}
 		}
-	} catch (e) {
+	} catch (_e) {
 		// Directory doesn't exist
 	}
 	return count;
@@ -99,7 +99,7 @@ try {
 	console.log('-'.repeat(50));
 	console.log('Total chunks:'.padEnd(35) + chunks.length);
 	console.log('Total size:'.padEnd(35) + formatBytes(totalChunksSize));
-} catch (e) {
+} catch (_e) {
 	console.log('No chunks directory found. Run build first.');
 }
 
@@ -125,7 +125,7 @@ try {
 	for (const [ext, data] of Object.entries(assetTypes)) {
 		console.log(ext.padEnd(15) + data.count.toString().padEnd(10) + formatBytes(data.size));
 	}
-} catch (e) {
+} catch (_e) {
 	console.log('No assets directory found. Run build first.');
 }
 

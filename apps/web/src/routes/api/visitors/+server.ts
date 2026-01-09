@@ -1,5 +1,4 @@
 // apps/web/src/routes/api/visitors/+server.ts
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 

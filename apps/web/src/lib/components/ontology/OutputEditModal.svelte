@@ -30,7 +30,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let AgentChatModalComponent = $state<Component<any, any, any> | null>(null);
 
 	async function loadAgentChatModal() {

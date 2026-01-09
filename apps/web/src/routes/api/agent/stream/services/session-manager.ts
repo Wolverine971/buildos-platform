@@ -153,7 +153,7 @@ export class SessionManager {
 				focusChanged = true;
 
 				// Persist focus change immediately (not deferred)
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 				const { error: metadataError } = await (this.supabase as any)
 					.from('chat_sessions')
 					.update({ agent_metadata: metadata })
@@ -184,7 +184,6 @@ export class SessionManager {
 	 * @param metadata - The metadata to persist
 	 */
 	async updateSessionMetadata(sessionId: string, metadata: AgentSessionMetadata): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const { error } = await (this.supabase as any)
 			.from('chat_sessions')
 			.update({ agent_metadata: metadata })

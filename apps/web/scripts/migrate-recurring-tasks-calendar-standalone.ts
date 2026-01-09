@@ -13,7 +13,6 @@
  */
 
 import { createCustomClient } from '@buildos/supabase-client';
-import type { Database } from '@buildos/shared-types';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import * as dotenv from 'dotenv';

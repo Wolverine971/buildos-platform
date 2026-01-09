@@ -327,7 +327,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return accessResult.error;
 		}
 
-		const { document, actorId } = accessResult;
+		const { document, actorId: _actorId } = accessResult;
 		const projectId = document.project_id;
 		const documentDataForLog = {
 			title: document.title,

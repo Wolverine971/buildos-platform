@@ -17,6 +17,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { CONTAINMENT_RELS } from '$lib/services/ontology/containment-organizer';
 
 type EntityKind =
 	| 'task'
@@ -206,6 +207,9 @@ async function fetchLinkedEntities(
 		{ kind: EntityKind; edgeId: string; rel: string; direction: 'outgoing' | 'incoming' }
 	>();
 
+	const isContainmentRel = (rel: string): boolean =>
+		CONTAINMENT_RELS.includes(rel as (typeof CONTAINMENT_RELS)[number]);
+
 	for (const edge of edges) {
 		const isSource = edge.src_id === sourceId;
 		const linkedId = isSource ? edge.dst_id : edge.src_id;
@@ -214,8 +218,14 @@ async function fetchLinkedEntities(
 		// Skip self-references and invalid kinds
 		if (linkedId === sourceId || !isValidKind(linkedKind)) continue;
 
-		// Skip if already processed
-		if (entityMap.has(linkedId)) continue;
+		const existing = entityMap.get(linkedId);
+		if (existing) {
+			const existingIsContainment = isContainmentRel(existing.rel);
+			const nextIsContainment = isContainmentRel(edge.rel);
+			if (existingIsContainment || !nextIsContainment) {
+				continue;
+			}
+		}
 
 		entityMap.set(linkedId, {
 			kind: linkedKind,

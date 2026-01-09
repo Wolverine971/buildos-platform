@@ -106,7 +106,7 @@ export const GET: RequestHandler = async ({ request }) => {
 	}
 };
 
-function getNotificationTitle(reminderType: string, daysUntilEnd: number): string {
+function getNotificationTitle(reminderType: string, _daysUntilEnd: number): string {
 	switch (reminderType) {
 		case 'expired':
 			return 'Your trial has ended';
@@ -127,9 +127,10 @@ function getNotificationMessage(reminderType: string, daysUntilEnd: number): str
 	switch (reminderType) {
 		case 'expired':
 			return 'Subscribe now to continue using BuildOS with full access.';
-		case 'grace_period':
+		case 'grace_period': {
 			const graceDaysLeft = TRIAL_CONFIG.GRACE_PERIOD_DAYS + daysUntilEnd;
 			return `You have ${graceDaysLeft} days to subscribe before your account is suspended.`;
+		}
 		case '7_days':
 		case '3_days':
 		case '1_days':

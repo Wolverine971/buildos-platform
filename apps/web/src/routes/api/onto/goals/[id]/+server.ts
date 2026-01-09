@@ -94,7 +94,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		// Remove nested project data from response
-		const { project, ...goalData } = goal;
+		const { project: _project, ...goalData } = goal;
 
 		return ApiResponse.success({ goal: goalData });
 	} catch (error) {

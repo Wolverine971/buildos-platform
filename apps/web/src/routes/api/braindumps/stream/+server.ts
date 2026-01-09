@@ -153,10 +153,10 @@ async function processBrainDumpWithStreaming({
 		};
 		await sendSSEMessage(writer, encoder, statusMessage);
 
-		// Set up progress tracking
-		let contextProgress = { status: 'pending', data: null };
-		let tasksProgress = { status: 'pending', data: null };
-		let analysisProgress = { status: 'pending', data: null };
+		// Set up progress tracking (reserved for future SSE progress events)
+		let _contextProgress = { status: 'pending', data: null };
+		let _tasksProgress = { status: 'pending', data: null };
+		let _analysisProgress = { status: 'pending', data: null };
 
 		// Override runPreparatoryAnalysis to emit SSE events for analysis phase
 		const originalRunPreparatoryAnalysis = processor['runPreparatoryAnalysis']?.bind(processor);

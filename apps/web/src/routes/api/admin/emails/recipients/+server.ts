@@ -87,7 +87,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Validate email exists
-		const { data: email, error: emailError } = await supabase
+		const { data: _email, error: emailError } = await supabase
 			.from('emails')
 			.select('id')
 			.eq('id', email_id)

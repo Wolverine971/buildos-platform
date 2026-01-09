@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 console.log('Testing Prettier installation...\n');
 
 // Test 1: Check version
-exec('npx prettier --version', (error, stdout, stderr) => {
+exec('npx prettier --version', (error, stdout, _stderr) => {
 	if (error) {
 		console.error('❌ Error checking Prettier version:', error);
 		return;
@@ -21,7 +21,7 @@ exec('npx prettier --version', (error, stdout, stderr) => {
 });
 
 // Test 2: Check plugin
-exec('npx prettier --plugin-search-dir=. --print-config .prettierrc', (error, stdout, stderr) => {
+exec('npx prettier --plugin-search-dir=. --print-config .prettierrc', (error, _stdout, _stderr) => {
 	if (error) {
 		console.error('❌ Error checking Prettier config:', error);
 		return;
@@ -31,7 +31,7 @@ exec('npx prettier --plugin-search-dir=. --print-config .prettierrc', (error, st
 
 // Test 3: Format a test Svelte file
 const testFile = path.join(__dirname, '..', 'src', 'routes', '+page.svelte');
-exec(`npx prettier --check "${testFile}"`, (error, stdout, stderr) => {
+exec(`npx prettier --check "${testFile}"`, (error, _stdout, _stderr) => {
 	if (error && error.code === 1) {
 		console.log('⚠️  File needs formatting (this is normal)');
 	} else if (error) {

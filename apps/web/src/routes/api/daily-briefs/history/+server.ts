@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// Apply pagination and ordering
 		query = query.order('brief_date', { ascending: false }).range(offset, offset + limit - 1);
 
-		const { data: briefs, error, count } = await query;
+		const { data: briefs, error, count: _count } = await query;
 
 		if (error) throw error;
 

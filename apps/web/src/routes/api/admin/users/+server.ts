@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/admin/users/+server.ts
 import type { RequestHandler } from './$types';
-import { ApiResponse, validateRequiredFields } from '$lib/utils/api-response';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();

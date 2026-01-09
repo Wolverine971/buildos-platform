@@ -135,7 +135,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { action, userId, subscriptionId, reason } = await request.json();
 
 		switch (action) {
-			case 'cancel':
+			case 'cancel': {
 				// Cancel subscription
 				const { error: cancelError } = await supabase
 					.from('customer_subscriptions')
@@ -161,8 +161,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				});
 
 				break;
+			}
 
-			case 'extend_trial':
+			case 'extend_trial': {
 				// Extend trial period
 				const { error: extendError } = await supabase
 					.from('customer_subscriptions')
@@ -184,8 +185,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				});
 
 				break;
+			}
 
-			case 'add_discount':
+			case 'add_discount': {
 				// Add discount to user
 				const { discountCode } = await request.json();
 
@@ -201,6 +203,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				});
 
 				break;
+			}
 
 			default:
 				return ApiResponse.badRequest('Invalid action');

@@ -64,7 +64,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	let body: PrewarmRequestBody;
 	try {
 		body = (await request.json()) as PrewarmRequestBody;
-	} catch (error) {
+	} catch (_error) {
 		return ApiResponse.badRequest('Invalid request body');
 	}
 

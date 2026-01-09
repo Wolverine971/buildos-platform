@@ -177,6 +177,8 @@ async function fetchExistingParents(
 	for (const { kind, entity } of flattenLinkedEntities(result.linkedEntities)) {
 		if (entity.edge_direction !== 'incoming') continue;
 		if (!allowedParents.includes(kind)) continue;
+		const childKindFromRel = CHILD_KIND_BY_REL[entity.edge_rel];
+		if (!childKindFromRel || childKindFromRel !== childKind) continue;
 		parents.push({ kind, id: entity.id });
 	}
 

@@ -158,17 +158,17 @@
 	let showChatModal = $state(false);
 
 	// Lazy-loaded modal components
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let DocumentModalComponent = $state<Component<any, any> | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let GoalEditModalComponent = $state<Component<any, any> | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let PlanEditModalComponent = $state<Component<any, any> | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let OutputEditModalComponent = $state<Component<any, any> | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let MilestoneEditModalComponent = $state<Component<any, any> | null>(null);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let AgentChatModalComponent = $state<Component<any, any> | null>(null);
 
 	// ============================================================

@@ -28,7 +28,9 @@
       "Skill(twitter-warmup)",
       "WebFetch(domain:x.com)",
       "Bash(pnpm add:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []

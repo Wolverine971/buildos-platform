@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const supabase = locals.supabase;
-	const chatSessionId = getChatSessionIdFromRequest(request);
+	const _chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
 		// Parallelize initial queries: actor resolution and task fetch
@@ -107,7 +107,7 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 		const linkedEntities = await resolveLinkedEntities(supabase, params.id);
 
 		// Remove nested project data from response
-		const { project, ...taskData } = task;
+		const { project: _project, ...taskData } = task;
 
 		return ApiResponse.success({ task: taskData, linkedEntities });
 	} catch (error) {

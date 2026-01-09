@@ -112,7 +112,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		// Update the output
 		const { data: updatedOutput, error: updateError } = await supabase
 			.from('onto_outputs')
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			.update(updatePayload as any)
 			.eq('id', id)
 			.select('*')

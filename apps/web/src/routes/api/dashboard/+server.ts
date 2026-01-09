@@ -122,7 +122,7 @@ async function handleRpcDashboard({ user, supabase, timezone }: any) {
 			week_instances = [],
 			active_projects = [],
 			dates,
-			stats
+			stats: _stats
 		} = dashboardData || {};
 
 		// Process and categorize tasks

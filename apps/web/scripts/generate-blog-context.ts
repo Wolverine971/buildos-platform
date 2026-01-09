@@ -1,6 +1,6 @@
 // apps/web/scripts/generate-blog-context.ts
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 
 interface BlogPostMetadata {

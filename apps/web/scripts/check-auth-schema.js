@@ -12,7 +12,6 @@ import { createClient } from '@supabase/supabase-js';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,7 +44,7 @@ async function checkAuthSchema() {
 	try {
 		// 1. Check if auth schema exists
 		console.log('1️⃣ Checking if auth schema exists...');
-		const { data: schemaData, error: schemaError } = await supabase
+		const { data: _schemaData, error: schemaError } = await supabase
 			.rpc('auth_schema_check', {
 				check_type: 'schema_exists'
 			})
@@ -55,8 +54,8 @@ async function checkAuthSchema() {
 			// If RPC doesn't exist, try direct SQL
 			console.log('   Using direct SQL query...');
 
-			// Check auth.identities columns
-			const checkQuery = `
+			// Check auth.identities columns (query for documentation)
+			const _checkQuery = `
 				SELECT
 					column_name,
 					data_type

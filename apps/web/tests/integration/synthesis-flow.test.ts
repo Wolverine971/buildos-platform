@@ -2,7 +2,7 @@
 /**
  * Integration test for the complete project synthesis flow
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import type { CompositeTask } from '$lib/types';
 import type { ParsedOperation } from '$lib/types/brain-dump';
 import { buildPrompt } from '$lib/services/synthesis/task-synthesis-helpers';

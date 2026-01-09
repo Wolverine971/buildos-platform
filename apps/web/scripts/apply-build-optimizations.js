@@ -320,7 +320,7 @@ try {
 		console.log('✅ Updated .gitignore\n');
 	}
 } catch (e) {
-	console.log('⚠️  Could not update .gitignore\n');
+	console.log('⚠️  Could not update .gitignore', e);
 }
 
 console.log(`

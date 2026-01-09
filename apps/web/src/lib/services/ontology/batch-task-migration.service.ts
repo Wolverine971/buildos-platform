@@ -719,7 +719,7 @@ IMPORTANT: Include ALL ${tasksInMode.length} tasks. Use null for base work mode.
 	 * Get existing specializations for a work mode.
 	 * Returns common specializations since template table is no longer used.
 	 */
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 	private async getExistingSpecializations(_workMode: WorkMode): Promise<string[]> {
 		// Common specializations used across work modes
 		return ['meeting', 'standup', 'review', 'deploy', 'checklist', 'planning'];

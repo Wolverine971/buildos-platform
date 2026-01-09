@@ -17,7 +17,6 @@ import type {
 	ChatSession,
 	ChatContextType,
 	ChatMessage,
-	ChatToolCall,
 	ProjectFocus,
 	AgentSSEMessage
 } from '@buildos/shared-types';
@@ -116,7 +115,7 @@ export class StreamHandler {
 		agentStream: ReturnType<typeof SSEResponse.createChatStream>
 	): void {
 		const {
-			supabase,
+			supabase: _supabase,
 			fetch: fetchFn,
 			request,
 			requestAbortSignal,
@@ -125,7 +124,7 @@ export class StreamHandler {
 			metadata,
 			conversationHistory,
 			userId,
-			actorId,
+			actorId: _actorId,
 			httpReferer
 		} = params;
 
@@ -177,10 +176,14 @@ export class StreamHandler {
 			historyForUsage,
 			CONTEXT_USAGE_TOKEN_BUDGET
 		);
-		void agentStream.sendMessage({
-			type: 'context_usage',
-			usage: quickUsageSnapshot
-		});
+		void agentStream
+			.sendMessage({
+				type: 'context_usage',
+				usage: quickUsageSnapshot
+			})
+			.catch((error) => {
+				logger.warn('Failed to emit initial context usage snapshot', { error });
+			});
 
 		// Fetch richer usage stats in background
 		this.sendEnhancedUsageSnapshot(agentStream, session.id, historyForUsage);

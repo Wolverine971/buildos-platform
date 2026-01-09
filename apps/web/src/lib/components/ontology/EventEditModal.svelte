@@ -36,7 +36,7 @@
 	import type { Component } from 'svelte';
 
 	// Lazy-loaded modal components for linked entity navigation
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	type LazyComponent = Component<any, any, any> | null;
 	let TaskEditModalComponent = $state<LazyComponent>(null);
 	let GoalEditModalComponent = $state<LazyComponent>(null);

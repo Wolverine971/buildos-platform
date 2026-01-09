@@ -1,9 +1,9 @@
 // apps/web/src/routes/api/feedback/+server.ts
 import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
-import { createGmailTransporter, getDefaultSender, EMAIL_SENDERS } from '$lib/utils/email-config';
+import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
-import { emailColors, emailStyles, styleToString } from '$lib/utils/email-styles';
+import { emailColors } from '$lib/utils/email-styles';
 import { validateOptionalEmail } from '$lib/utils/email-validation';
 
 interface FeedbackRequest {

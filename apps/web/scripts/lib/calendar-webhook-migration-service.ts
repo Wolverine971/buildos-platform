@@ -2,7 +2,7 @@
 // Standalone version of CalendarWebhookService for migration scripts
 // This avoids SvelteKit-specific imports like $env
 
-import { google, calendar_v3 } from 'googleapis';
+import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as crypto from 'crypto';

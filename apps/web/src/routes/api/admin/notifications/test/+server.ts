@@ -191,7 +191,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					deliveries.push(delivery);
 
 					// Queue notification job using atomic RPC with deduplication
-					const { data: jobId, error: jobError } = await supabase.rpc('add_queue_job', {
+					const { data: _jobId, error: jobError } = await supabase.rpc('add_queue_job', {
 						p_user_id: recipientId,
 						p_job_type: 'send_notification',
 						p_metadata: {

@@ -1,12 +1,12 @@
 // apps/web/src/routes/webhooks/calendar-events/+server.ts
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createCustomClient } from '@buildos/supabase-client';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { PRIVATE_SUPABASE_SERVICE_KEY } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
 		// Create service role client for admin operations
 		const supabase = createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY);

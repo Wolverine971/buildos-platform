@@ -41,7 +41,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 
 	// LLM controls
 	const skipLLMClassification = Boolean(payload?.skipLLMClassification);
-	const maxTokenBudget =
+	// Reserved for future use with LLM token budgeting
+	const _maxTokenBudget =
 		typeof payload?.maxTokenBudget === 'number' ? payload.maxTokenBudget : undefined;
 
 	// Use admin client to bypass RLS

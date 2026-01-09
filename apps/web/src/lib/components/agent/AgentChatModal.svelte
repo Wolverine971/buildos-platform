@@ -3550,7 +3550,8 @@
 							{isSendDisabled}
 							allowSendWhileStreaming={isTouchDevice}
 							{displayContextLabel}
-							vocabularyTerms={resolvedProjectFocus?.projectName ?? displayContextLabel}
+							vocabularyTerms={resolvedProjectFocus?.projectName ??
+								displayContextLabel}
 							onKeyDownHandler={handleKeyDown}
 							onSend={handleSendMessage}
 							onStop={() => handleStopGeneration('user_cancelled')}

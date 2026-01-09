@@ -38,7 +38,7 @@
 	import { getPlanStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	let AgentChatModalComponent = $state<Component<any> | null>(null);
 
 	async function loadAgentChatModal() {

@@ -44,7 +44,7 @@
 	import type { Component } from 'svelte';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 	type LazyComponent = Component<any, any, any> | null;
 	let AgentChatModalComponent = $state<LazyComponent>(null);
 

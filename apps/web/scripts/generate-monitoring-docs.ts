@@ -5,7 +5,7 @@
  * Documents performance metrics, error tracking, and operational insights
  */
 
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 

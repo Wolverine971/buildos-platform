@@ -1,8 +1,8 @@
 // apps/web/src/routes/auth/login/+server.ts
-import { json, redirect } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request, locals: { supabase }, cookies }) => {
+export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
 	const { email, password } = await request.json();
 
 	if (!email || !password) {
@@ -31,53 +31,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase }, cook
 			user: data.user,
 			redirectTo: '/?auth_success=true&message=' + encodeURIComponent('Welcome back!')
 		});
-	} catch (err: any) {
+	} catch (err: unknown) {
 		console.error('Server login error:', err);
 		return json({ error: 'Login failed' }, { status: 500 });
 	}
 };
-
-// Update your login component to use this endpoint:
-// In src/routes/auth/login/+page.svelte
-async function handleLogin() {
-	if (loading || googleLoading) return;
-
-	// Validation
-	if (!email?.trim() || !password) {
-		error = 'Email and password are required';
-		return;
-	}
-
-	loading = true;
-	error = '';
-
-	try {
-		const response = await fetch('/api/auth/login', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				email: email.trim(),
-				password
-			})
-		});
-
-		const result = await response.json();
-
-		if (!response.ok) {
-			error = result.error || 'Login failed';
-			loading = false;
-			return;
-		}
-
-		console.log('Login successful via server');
-
-		// Server has set the cookies, now navigate
-		window.location.href = result.redirectTo;
-	} catch (err: any) {
-		console.error('Login error:', err);
-		error = err.message || 'Login failed';
-		loading = false;
-	}
-}

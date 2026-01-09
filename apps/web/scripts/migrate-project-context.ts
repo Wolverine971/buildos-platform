@@ -3,7 +3,6 @@
 // deprecated - no longer using project_context table
 
 import { createCustomClient } from '@buildos/supabase-client';
-import type { Database } from '@buildos/shared-types';
 import * as dotenv from 'dotenv';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';

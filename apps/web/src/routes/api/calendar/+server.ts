@@ -25,53 +25,62 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		// Route to appropriate CalendarService method
 		switch (method) {
-			case 'hasValidConnection':
+			case 'hasValidConnection': {
 				const isConnected = await calendarService.hasValidConnection(user.id);
 				return json({ success: true, data: isConnected });
+			}
 
-			case 'getCalendarEvents':
+			case 'getCalendarEvents': {
 				const events = await calendarService.getCalendarEvents(user.id, params);
 				return json({ success: true, data: events });
+			}
 
-			case 'findAvailableSlots':
+			case 'findAvailableSlots': {
 				const slots = await calendarService.findAvailableSlots(user.id, params);
 				return json({ success: true, data: slots });
+			}
 
-			case 'scheduleTask':
+			case 'scheduleTask': {
 				const scheduleResult = await calendarService.scheduleTask(user.id, params);
 				return json({ success: true, data: scheduleResult });
+			}
 
-			case 'updateCalendarEvent':
+			case 'updateCalendarEvent': {
 				const updateResult = await calendarService.updateCalendarEvent(user.id, params);
 				return json({ success: true, data: updateResult });
+			}
 
-			case 'deleteCalendarEvent':
+			case 'deleteCalendarEvent': {
 				const deleteResult = await calendarService.deleteCalendarEvent(user.id, params);
 				return json({ success: true, data: deleteResult });
+			}
 
-			case 'bulkDeleteCalendarEvents':
+			case 'bulkDeleteCalendarEvents': {
 				const bulkDeleteResult = await calendarService.bulkDeleteCalendarEvents(
 					user.id,
 					params.events,
 					params.options
 				);
 				return json({ success: true, data: bulkDeleteResult });
+			}
 
-			case 'bulkScheduleTasks':
+			case 'bulkScheduleTasks': {
 				const bulkScheduleResult = await calendarService.bulkScheduleTasks(
 					user.id,
 					params.tasks,
 					params.options
 				);
 				return json({ success: true, data: bulkScheduleResult });
+			}
 
-			case 'bulkUpdateCalendarEvents':
+			case 'bulkUpdateCalendarEvents': {
 				const bulkUpdateResult = await calendarService.bulkUpdateCalendarEvents(
 					user.id,
 					params.updates,
 					params.options
 				);
 				return json({ success: true, data: bulkUpdateResult });
+			}
 
 			case 'disconnectCalendar':
 				await calendarService.disconnectCalendar(user.id);

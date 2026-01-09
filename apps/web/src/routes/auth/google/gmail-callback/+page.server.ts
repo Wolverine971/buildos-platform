@@ -1,9 +1,8 @@
 // apps/web/src/routes/auth/google/gmail-callback/+page.server.ts
-import { redirect, error } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { PUBLIC_SUPABASE_PROJECT_ID } from '$env/static/public';
 
-export const load: PageServerLoad = async ({ url, locals: { supabase }, cookies }) => {
+export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	const code = url.searchParams.get('code');
 	const oauthError = url.searchParams.get('error');
 	const state = url.searchParams.get('state');
@@ -62,7 +61,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase }, cookies 
 	// Check and create user record if not exists
 	let isNewUser = false;
 
-	const { data: existingUser, error: fetchError } = await supabase
+	const { data: _existingUser, error: fetchError } = await supabase
 		.from('users')
 		.select('id, completed_onboarding')
 		.eq('id', data.user.id)

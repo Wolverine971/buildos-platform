@@ -144,7 +144,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				`Invalid user IDs format: ${invalidIds.slice(0, 3).join(', ')}${invalidIds.length > 3 ? '...' : ''}`
 			);
 		}
-	} catch (error) {
+	} catch (_error) {
 		return ApiResponse.badRequest('Invalid user_ids format. Expected JSON array.');
 	}
 

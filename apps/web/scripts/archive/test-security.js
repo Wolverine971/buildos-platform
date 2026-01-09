@@ -160,7 +160,7 @@ async function runTests() {
 	try {
 		// Check if server is running
 		await fetch(BASE_URL);
-	} catch (error) {
+	} catch (_error) {
 		log(
 			"\nError: Cannot connect to dev server. Make sure it's running with: pnpm run dev",
 			'red'
