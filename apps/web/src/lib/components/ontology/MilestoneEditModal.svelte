@@ -48,6 +48,7 @@
 	import { MILESTONE_STATES, type Milestone } from '$lib/types/onto';
 	import { MILESTONE_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import { formatDateForInput, parseDateFromInput } from '$lib/utils/date-utils';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	let AgentChatModalComponent = $state<Component<any> | null>(null);
@@ -189,6 +190,14 @@
 			}
 		} catch (err) {
 			console.error('Error loading milestone:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/milestones/${milestoneId}`,
+				method: 'GET',
+				projectId,
+				entityType: 'milestone',
+				entityId: milestoneId,
+				operation: 'milestone_load'
+			});
 			error = 'Failed to load milestone';
 		} finally {
 			isLoading = false;
@@ -247,6 +256,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error updating milestone:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/milestones/${milestoneId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'milestone',
+				entityId: milestoneId,
+				operation: 'milestone_update'
+			});
 			error = err instanceof Error ? err.message : 'Failed to update milestone';
 			isSaving = false;
 		}
@@ -274,6 +291,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error deleting milestone:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/milestones/${milestoneId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'milestone',
+				entityId: milestoneId,
+				operation: 'milestone_delete'
+			});
 			error = err instanceof Error ? err.message : 'Failed to delete milestone';
 			isDeleting = false;
 			showDeleteConfirm = false;

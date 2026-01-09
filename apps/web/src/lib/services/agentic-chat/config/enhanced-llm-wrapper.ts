@@ -17,6 +17,9 @@ import {
 	MAX_TOKENS_BY_OPERATION,
 	type AgentOperationType
 } from './model-selection-config';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('EnhancedLLMWrapper');
 
 /**
  * Enhanced parameters for text generation
@@ -51,7 +54,7 @@ export class EnhancedLLMWrapper {
 		const temperature = this.selectTemperature(params);
 		const maxTokens = this.selectMaxTokens(params);
 
-		console.log('[EnhancedLLMWrapper] Model selection:', {
+		logger.debug('Model selection', {
 			contextType: params.contextType,
 			operationType: params.operationType,
 			selectedProfile: profile,
@@ -127,7 +130,7 @@ export class EnhancedLLMWrapper {
 		const temperature = options.temperature ?? TEMPERATURE_BY_OPERATION[operationType] ?? 0.5;
 		const maxTokens = options.maxTokens ?? MAX_TOKENS_BY_OPERATION[operationType] ?? 1500;
 
-		console.log('[EnhancedLLMWrapper] Stream optimization:', {
+		logger.debug('Stream optimization', {
 			contextType,
 			operationType,
 			selectedProfile: profile,

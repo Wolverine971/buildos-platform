@@ -33,6 +33,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 // GET /api/onto/decisions/[id] - Get a single decision
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -50,6 +51,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Decision GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/decisions/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'decision',
+				entityId: params.id,
+				operation: 'decision_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -84,6 +95,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Decision GET] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/decisions/${params.id}`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'decision',
+			entityId: params.id,
+			operation: 'decision_get'
+		});
 		return ApiResponse.internalError(error);
 	}
 };
@@ -162,6 +183,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Decision PATCH] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/decisions/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				entityType: 'decision',
+				entityId: params.id,
+				operation: 'decision_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -181,6 +212,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !existingDecision) {
+			if (fetchError) {
+				await logOntologyApiError({
+					supabase,
+					error: fetchError,
+					endpoint: `/api/onto/decisions/${params.id}`,
+					method: 'PATCH',
+					userId: session.user.id,
+					entityType: 'decision',
+					entityId: params.id,
+					operation: 'decision_fetch',
+					tableName: 'onto_decisions'
+				});
+			}
 			return ApiResponse.notFound('Decision');
 		}
 
@@ -249,6 +293,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('[Decision PATCH] Error updating decision:', updateError);
+			await logOntologyApiError({
+				supabase,
+				error: updateError,
+				endpoint: `/api/onto/decisions/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingDecision.project_id,
+				entityType: 'decision',
+				entityId: params.id,
+				operation: 'decision_update',
+				tableName: 'onto_decisions'
+			});
 			return ApiResponse.error('Failed to update decision', 500);
 		}
 
@@ -305,6 +361,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('[Decision PATCH] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/decisions/${params.id}`,
+			method: 'PATCH',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'decision',
+			entityId: params.id,
+			operation: 'decision_update'
+		});
 		return ApiResponse.internalError(error);
 	}
 };
@@ -326,6 +392,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Decision DELETE] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/decisions/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				entityType: 'decision',
+				entityId: params.id,
+				operation: 'decision_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -345,6 +421,19 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !decision) {
+			if (fetchError) {
+				await logOntologyApiError({
+					supabase,
+					error: fetchError,
+					endpoint: `/api/onto/decisions/${params.id}`,
+					method: 'DELETE',
+					userId: session.user.id,
+					entityType: 'decision',
+					entityId: params.id,
+					operation: 'decision_fetch',
+					tableName: 'onto_decisions'
+				});
+			}
 			return ApiResponse.notFound('Decision');
 		}
 
@@ -365,6 +454,18 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (deleteError) {
 			console.error('[Decision DELETE] Error deleting decision:', deleteError);
+			await logOntologyApiError({
+				supabase,
+				error: deleteError,
+				endpoint: `/api/onto/decisions/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId,
+				entityType: 'decision',
+				entityId: params.id,
+				operation: 'decision_delete',
+				tableName: 'onto_decisions'
+			});
 			return ApiResponse.error('Failed to delete decision', 500);
 		}
 
@@ -382,6 +483,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ message: 'Decision deleted successfully' });
 	} catch (error) {
 		console.error('[Decision DELETE] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/decisions/${params.id}`,
+			method: 'DELETE',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'decision',
+			entityId: params.id,
+			operation: 'decision_delete'
+		});
 		return ApiResponse.internalError(error);
 	}
 };

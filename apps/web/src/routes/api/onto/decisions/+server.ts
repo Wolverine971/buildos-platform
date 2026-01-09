@@ -34,6 +34,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 // GET /api/onto/decisions?project_id=X - List decisions for a project
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -56,6 +57,16 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Decisions GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/decisions',
+				method: 'GET',
+				userId: session.user.id,
+				projectId,
+				entityType: 'decision',
+				operation: 'decisions_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -68,6 +79,19 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			.maybeSingle();
 
 		if (projectError || !project) {
+			if (projectError) {
+				await logOntologyApiError({
+					supabase,
+					error: projectError,
+					endpoint: '/api/onto/decisions',
+					method: 'GET',
+					userId: session.user.id,
+					projectId,
+					entityType: 'project',
+					operation: 'decisions_project_fetch',
+					tableName: 'onto_projects'
+				});
+			}
 			return ApiResponse.notFound('Project');
 		}
 
@@ -85,12 +109,33 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		if (error) {
 			console.error('[Decisions GET] Error fetching decisions:', error);
+			await logOntologyApiError({
+				supabase,
+				error,
+				endpoint: '/api/onto/decisions',
+				method: 'GET',
+				userId: session.user.id,
+				projectId,
+				entityType: 'decision',
+				operation: 'decisions_fetch',
+				tableName: 'onto_decisions'
+			});
 			return ApiResponse.error('Failed to fetch decisions', 500);
 		}
 
 		return ApiResponse.success({ decisions: decisions || [] });
 	} catch (error) {
 		console.error('[Decisions GET] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: '/api/onto/decisions',
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId,
+			entityType: 'decision',
+			operation: 'decisions_fetch'
+		});
 		return ApiResponse.internalError(error);
 	}
 };
@@ -174,6 +219,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Decisions POST] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/decisions',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id,
+				entityType: 'decision',
+				operation: 'decision_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -186,6 +241,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.maybeSingle();
 
 		if (projectError || !project) {
+			if (projectError) {
+				await logOntologyApiError({
+					supabase,
+					error: projectError,
+					endpoint: '/api/onto/decisions',
+					method: 'POST',
+					userId: session.user.id,
+					projectId: project_id,
+					entityType: 'project',
+					operation: 'decision_project_fetch',
+					tableName: 'onto_projects'
+				});
+			}
 			return ApiResponse.notFound('Project');
 		}
 
@@ -242,6 +310,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (insertError) {
 			console.error('[Decisions POST] Error creating decision:', insertError);
+			await logOntologyApiError({
+				supabase,
+				error: insertError,
+				endpoint: '/api/onto/decisions',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id,
+				entityType: 'decision',
+				entityId: decision?.id,
+				operation: 'decision_create',
+				tableName: 'onto_decisions'
+			});
 			return ApiResponse.error('Failed to create decision', 500);
 		}
 
@@ -282,6 +362,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('[Decisions POST] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: '/api/onto/decisions',
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'decision',
+			operation: 'decision_create'
+		});
 		return ApiResponse.internalError(error);
 	}
 };

@@ -14,8 +14,11 @@ import {
 } from '../../../../task-document-helpers';
 import { DOCUMENT_STATES } from '$lib/types/onto';
 import { normalizeDocumentStateInput } from '../../../../../shared/document-state';
+import { logOntologyApiError } from '../../../../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
+	let projectId: string | undefined;
+
 	try {
 		const session = await locals.safeGetSession();
 		if (!session?.user) {
@@ -36,6 +39,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const { task, project, actorId } = access;
+		projectId = project.id;
 
 		const supabase = locals.supabase;
 
@@ -65,6 +69,20 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		if (documentError || !document) {
 			console.error('[TaskDoc Promote] Failed to fetch document:', documentError);
+			if (documentError) {
+				await logOntologyApiError({
+					supabase,
+					error: documentError,
+					endpoint: `/api/onto/tasks/${taskId}/documents/${documentId}/promote`,
+					method: 'POST',
+					userId: session.user.id,
+					projectId: project.id,
+					entityType: 'document',
+					entityId: documentId,
+					operation: 'task_document_promote_fetch',
+					tableName: 'onto_documents'
+				});
+			}
 			return documentError
 				? ApiResponse.databaseError(documentError)
 				: ApiResponse.notFound('Document');
@@ -92,6 +110,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 			if (patchError || !patchedDoc) {
 				console.error('[TaskDoc Promote] Failed to update document state:', patchError);
+				await logOntologyApiError({
+					supabase,
+					error: patchError || new Error('Document update failed'),
+					endpoint: `/api/onto/tasks/${taskId}/documents/${documentId}/promote`,
+					method: 'POST',
+					userId: session.user.id,
+					projectId: project.id,
+					entityType: 'document',
+					entityId: documentId,
+					operation: 'task_document_promote_update',
+					tableName: 'onto_documents'
+				});
 				return ApiResponse.databaseError(patchError);
 			}
 
@@ -114,6 +144,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		if (edgeUpdateError) {
 			console.error('[TaskDoc Promote] Failed to update edge props:', edgeUpdateError);
+			await logOntologyApiError({
+				supabase,
+				error: edgeUpdateError,
+				endpoint: `/api/onto/tasks/${taskId}/documents/${documentId}/promote`,
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project.id,
+				entityType: 'edge',
+				entityId: edge.id,
+				operation: 'task_document_promote_edge',
+				tableName: 'onto_edges'
+			});
 			return ApiResponse.databaseError(edgeUpdateError);
 		}
 
@@ -128,6 +170,17 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		});
 	} catch (error) {
 		console.error('[TaskDoc Promote] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/tasks/${params.id ?? ''}/documents/${params.documentId ?? ''}/promote`,
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId,
+			entityType: 'document',
+			entityId: params.documentId,
+			operation: 'task_document_promote'
+		});
 		return ApiResponse.internalError(error, 'Failed to promote document');
 	}
 };

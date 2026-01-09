@@ -16,6 +16,9 @@ import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { ExecutorContext } from './types';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('BaseExecutor');
 
 /**
  * Base class providing common infrastructure for all tool executors.
@@ -129,7 +132,7 @@ export class BaseExecutor {
 					errorMessage = errorPayload.error || errorPayload.message || errorMessage;
 					errorDetails = errorPayload.details;
 				} catch (jsonError) {
-					console.warn('[BaseExecutor] Failed to parse error response as JSON:', {
+					logger.warn('Failed to parse error response as JSON', {
 						path,
 						status: response.status,
 						contentType,
@@ -158,7 +161,7 @@ export class BaseExecutor {
 		// Validate Content-Type before parsing JSON response
 		const responseContentType = response.headers.get('content-type');
 		if (!responseContentType?.includes('application/json')) {
-			console.warn('[BaseExecutor] Response is not JSON:', {
+			logger.warn('Response is not JSON', {
 				path,
 				contentType: responseContentType
 			});

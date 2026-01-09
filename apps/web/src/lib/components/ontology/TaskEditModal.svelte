@@ -112,6 +112,7 @@
 	} from '$lib/services/ontology/task-document.service';
 	import { format } from 'date-fns';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface Props {
 		taskId: string;
@@ -309,6 +310,14 @@
 			}
 		} catch (err) {
 			console.error('Error loading task:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/tasks/${taskId}/full`,
+				method: 'GET',
+				projectId,
+				entityType: 'task',
+				entityId: taskId,
+				operation: 'task_load'
+			});
 			error = 'Failed to load task';
 		} finally {
 			isLoading = false;
@@ -389,6 +398,15 @@
 			toastService.success('Document saved');
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to save document';
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/documents/${selectedWorkspaceDocId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'document',
+				entityId: selectedWorkspaceDocId ?? undefined,
+				operation: 'document_update',
+				metadata: { context: 'task_workspace' }
+			});
 			toastService.error(message);
 			throw err;
 		} finally {
@@ -415,6 +433,13 @@
 			workspaceInitialized = true;
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to load documents';
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/tasks/${taskId}/documents`,
+				method: 'GET',
+				projectId,
+				entityType: 'document',
+				operation: 'task_documents_load'
+			});
 			workspaceError = message;
 			toastService.error(message);
 		} finally {
@@ -445,6 +470,14 @@
 			await loadWorkspaceDocuments();
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to promote document';
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/tasks/${taskId}/documents/${documentId}/promote`,
+				method: 'POST',
+				projectId,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'task_document_promote'
+			});
 			toastService.error(message);
 		}
 	}
@@ -498,6 +531,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error updating task:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/tasks/${taskId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'task',
+				entityId: taskId,
+				operation: 'task_update'
+			});
 			error = err instanceof Error ? err.message : 'Failed to update task';
 			isSaving = false;
 		}
@@ -525,6 +566,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error deleting task:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/tasks/${taskId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'task',
+				entityId: taskId,
+				operation: 'task_delete'
+			});
 			error = err instanceof Error ? err.message : 'Failed to delete task';
 			isDeleting = false;
 			showDeleteConfirm = false;
@@ -561,6 +610,14 @@
 			onUpdated?.();
 		} catch (err) {
 			console.error('Failed to delete task series', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/task-series/${seriesId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'task_series',
+				entityId: seriesId,
+				operation: 'task_series_delete'
+			});
 			const message = err instanceof Error ? err.message : 'Failed to delete series';
 			seriesActionError = message;
 			toastService.error(message);

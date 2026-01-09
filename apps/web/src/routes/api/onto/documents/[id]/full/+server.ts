@@ -20,6 +20,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const session = await locals.safeGetSession();
@@ -52,9 +53,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const { data: actorId, error: actorError } = actorResult;
 		const { data: document, error: documentError } = documentResult;
+		const projectId = document?.project?.id;
 
 		if (actorError || !actorId) {
 			console.error('[Document Full GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/documents/${documentId}/full`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to get user actor'),
 				'Failed to get user actor'
@@ -62,6 +74,22 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (documentError || !document) {
+			if (documentError) {
+				console.error('[Document Full GET] Failed to fetch document:', documentError);
+				await logOntologyApiError({
+					supabase,
+					error: documentError,
+					endpoint: `/api/onto/documents/${documentId}/full`,
+					method: 'GET',
+					userId: session.user.id,
+					projectId,
+					entityType: 'document',
+					entityId: documentId,
+					operation: 'document_full_fetch',
+					tableName: 'onto_documents'
+				});
+				return ApiResponse.databaseError(documentError);
+			}
 			return ApiResponse.notFound('Document');
 		}
 
@@ -82,6 +110,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Document Full GET] Error fetching document data:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/documents/${params.id ?? ''}/full`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'document',
+			entityId: params.id,
+			operation: 'document_full_get'
+		});
 		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

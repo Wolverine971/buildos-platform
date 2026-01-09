@@ -27,6 +27,9 @@ import type {
 } from '../../agent-executor-service';
 import type { ExecutorTask } from '../../agent-context-service';
 import { TOOL_METADATA } from '../tools/core/definitions';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('ExecutorCoordinator');
 
 /**
  * Configuration options for the executor coordinator
@@ -77,10 +80,9 @@ export class ExecutorCoordinator {
 		const tools = this.filterToolsForPermission(resolvedTools, permissions);
 
 		if (tools.length === 0) {
-			console.warn(
-				'[ExecutorCoordinator] No tools resolved for executor step',
-				params.step.tools
-			);
+			logger.warn('No tools resolved for executor step', {
+				toolNames: params.step.tools
+			});
 		}
 
 		const executorSystemPrompt =
@@ -286,9 +288,9 @@ export class ExecutorCoordinator {
 				completed_at: new Date().toISOString()
 			});
 		} catch (error) {
-			console.warn('[ExecutorCoordinator] Failed to update executor status', {
+			logger.warn('Failed to update executor status', {
 				executorId,
-				error
+				error: error instanceof Error ? error.message : String(error)
 			});
 		}
 	}

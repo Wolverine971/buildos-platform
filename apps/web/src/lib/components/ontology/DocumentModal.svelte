@@ -30,6 +30,7 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import {
 		FileText,
 		Loader,
@@ -229,6 +230,14 @@
 			lastLoadedId = id;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load document';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${id}/full`,
+				method: 'GET',
+				projectId,
+				entityType: 'document',
+				entityId: id,
+				operation: 'document_load'
+			});
 			formError = message;
 			toastService.error(message);
 		} finally {
@@ -334,6 +343,21 @@
 			closeModal();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to save document';
+			const endpoint = documentId
+				? `/api/onto/documents/${documentId}`
+				: taskId
+					? `/api/onto/tasks/${taskId}/documents`
+					: '/api/onto/documents/create';
+			const method = documentId ? 'PATCH' : 'POST';
+			void logOntologyClientError(error, {
+				endpoint,
+				method,
+				projectId,
+				entityType: 'document',
+				entityId: documentId ?? undefined,
+				operation: documentId ? 'document_update' : 'document_create',
+				metadata: taskId ? { taskId } : undefined
+			});
 			formError = message;
 			toastService.error(message);
 		} finally {
@@ -359,6 +383,14 @@
 			closeModal();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to delete document';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${documentId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_delete'
+			});
 			toastService.error(message);
 		} finally {
 			deleting = false;

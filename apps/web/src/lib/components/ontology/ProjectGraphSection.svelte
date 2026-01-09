@@ -21,6 +21,7 @@
 	import { ChevronDown, Maximize2, EyeOff, GitBranch, Loader2 } from 'lucide-svelte';
 	import OntologyGraph from './graph/OntologyGraph.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import type {
 		GraphNode,
 		GraphSourceData,
@@ -115,6 +116,14 @@
 			nodeCount = payload.data?.graph?.nodes?.length ?? 0;
 		} catch (err) {
 			console.error('[ProjectGraphSection] Failed to load graph:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/graph`,
+				method: 'GET',
+				projectId,
+				entityType: 'project',
+				operation: 'project_graph_load',
+				metadata: { viewMode }
+			});
 			loadError = err instanceof Error ? err.message : 'Failed to load graph data';
 		} finally {
 			isLoading = false;

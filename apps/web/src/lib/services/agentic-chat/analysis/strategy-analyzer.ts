@@ -41,6 +41,11 @@ import {
 } from './project-creation-analyzer';
 import type { ChatToolDefinition } from '@buildos/shared-types';
 import type { TextProfile } from '$lib/services/smart-llm-service';
+import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogText } from '$lib/utils/logging-helpers';
+
+const logger = createLogger('StrategyAnalyzer');
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -100,8 +105,11 @@ export class StrategyAnalyzer {
 		'which'
 	];
 
-	constructor(private llmService: LLMService) {
-		this.projectCreationAnalyzer = new ProjectCreationAnalyzer(llmService);
+	constructor(
+		private llmService: LLMService,
+		private errorLogger?: ErrorLoggerService
+	) {
+		this.projectCreationAnalyzer = new ProjectCreationAnalyzer(llmService, errorLogger);
 	}
 
 	/**
@@ -119,8 +127,9 @@ export class StrategyAnalyzer {
 	): Promise<StrategyAnalysis> {
 		const availableToolNames = this.getAvailableToolNames(plannerContext.availableTools);
 
-		console.log('[StrategyAnalyzer] Analyzing user intent', {
-			message: message.substring(0, 100),
+		logger.info('Analyzing user intent', {
+			messagePreview: sanitizeLogText(message, 100),
+			messageLength: message.length,
 			contextType: context.contextType,
 			hasOntology: plannerContext.metadata?.hasOntology,
 			hasLastTurn: !!lastTurnContext,
@@ -192,7 +201,21 @@ export class StrategyAnalyzer {
 
 			return validated;
 		} catch (error) {
-			console.error('[StrategyAnalyzer] Failed to analyze intent:', error);
+			logger.error(error as Error, {
+				operation: 'analyze_user_intent',
+				sessionId: context.sessionId
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId: context.userId,
+					projectId: context.contextScope?.projectId ?? context.entityId,
+					operationType: 'strategy_analysis',
+					metadata: {
+						sessionId: context.sessionId,
+						contextType: context.contextType
+					}
+				});
+			}
 
 			// Fallback to heuristic-based analysis
 			return this.fallbackAnalysis(message, availableToolNames);
@@ -216,7 +239,8 @@ export class StrategyAnalyzer {
 	): Promise<StrategyAnalysis> {
 		const roundNumber = clarificationMetadata?.roundNumber ?? 0;
 
-		console.log('[StrategyAnalyzer] Analyzing project creation intent', {
+		logger.info('Analyzing project creation intent', {
+			messagePreview: sanitizeLogText(message, 80),
 			messageLength: message.length,
 			roundNumber,
 			hasAccumulatedContext: !!clarificationMetadata?.accumulatedContext
@@ -230,7 +254,7 @@ export class StrategyAnalyzer {
 				chatSessionId
 			);
 
-			console.log('[StrategyAnalyzer] Project creation analysis result', {
+			logger.debug('Project creation analysis result', {
 				hasSufficientContext: analysis.hasSufficientContext,
 				confidence: analysis.confidence,
 				missingInfo: analysis.missingInfo,
@@ -267,7 +291,20 @@ export class StrategyAnalyzer {
 				project_creation_analysis: analysis
 			};
 		} catch (error) {
-			console.error('[StrategyAnalyzer] Project creation analysis failed:', error);
+			logger.error(error as Error, {
+				operation: 'project_creation_intent',
+				chatSessionId
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId,
+					operationType: 'project_creation_intent',
+					metadata: {
+						chatSessionId,
+						roundNumber
+					}
+				});
+			}
 
 			// Fallback: if we've had at least one round, proceed; otherwise ask generic question
 			if (roundNumber >= 1) {
@@ -371,8 +408,11 @@ export class StrategyAnalyzer {
 
 				return JSON.parse(jsonString) as StrategyAnalysis;
 			} catch (error) {
-				console.error('[StrategyAnalyzer] Failed to parse LLM response:', error);
-				console.error('[StrategyAnalyzer] Raw response:', response);
+				logger.warn('Failed to parse LLM response', {
+					error: error instanceof Error ? error.message : String(error),
+					responsePreview: sanitizeLogText(response, 200),
+					responseLength: response.length
+				});
 				throw new Error('Invalid LLM response format');
 			}
 		};

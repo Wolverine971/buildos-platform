@@ -7,6 +7,7 @@
 import type { RequestHandler } from './$types';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ApiResponse } from '$lib/utils/api-response';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -38,6 +39,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (projectError) {
 			console.error('[Output Generate API] Failed to fetch project:', projectError);
+			await logOntologyApiError({
+				supabase,
+				error: projectError,
+				endpoint: '/api/onto/outputs/generate',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'project',
+				operation: 'output_generate_project_fetch',
+				tableName: 'onto_projects'
+			});
 			return ApiResponse.databaseError(projectError);
 		}
 
@@ -55,6 +67,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output Generate API] Failed to get actor:', actorCheckError);
+			await logOntologyApiError({
+				supabase,
+				error: actorCheckError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/outputs/generate',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'output',
+				operation: 'output_generate_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorCheckError || new Error('Failed to resolve user actor')
 			);
@@ -102,6 +124,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.success({ content });
 	} catch (err: any) {
 		console.error('[API] Output generation error:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: '/api/onto/outputs/generate',
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: (err as any)?.project_id,
+			entityType: 'output',
+			operation: 'output_generate'
+		});
 
 		// Handle LLM service errors
 		if (err.message?.includes('timeout')) {

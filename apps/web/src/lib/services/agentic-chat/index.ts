@@ -66,10 +66,11 @@ export function createAgentChatOrchestrator(
 		llmService,
 		sharedToolExecutor,
 		executorCoordinator,
-		persistenceService
+		persistenceService,
+		errorLogger
 	);
 
-	const responseSynthesizer = new ResponseSynthesizer(llmService);
+	const responseSynthesizer = new ResponseSynthesizer(llmService, errorLogger);
 
 	const dependencies: AgentChatOrchestratorDependencies = {
 		planOrchestrator,

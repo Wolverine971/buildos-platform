@@ -52,6 +52,7 @@
 	import { TextStyle } from '@tiptap/extension-text-style';
 	import Placeholder from '@tiptap/extension-placeholder';
 	import Button from '$lib/components/ui/Button.svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface DocumentEditorProps {
 		outputId?: string | null;
@@ -264,6 +265,13 @@
 		} catch (err) {
 			saveError = err instanceof Error ? err.message : 'AI generation failed';
 			console.error('AI generation error:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/outputs/generate',
+				method: 'POST',
+				projectId: propsData.projectId,
+				entityType: 'output',
+				operation: 'output_generate'
+			});
 		} finally {
 			isGenerating = false;
 		}

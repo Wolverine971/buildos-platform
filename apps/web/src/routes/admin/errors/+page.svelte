@@ -17,7 +17,15 @@
 		Search,
 		Filter,
 		ChevronLeft,
-		ChevronRight
+		ChevronRight,
+		Eye,
+		X,
+		Clock,
+		Bug,
+		Database,
+		Zap,
+		AlertCircle,
+		CheckCircle2
 	} from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -186,15 +194,13 @@
 	function toggleSelectAll() {
 		selectAll = !selectAll;
 		if (selectAll) {
-			// Select all visible errors
 			errors.forEach((error) => {
 				if (error.id) selectedErrorIds.add(error.id);
 			});
 		} else {
-			// Deselect all
 			selectedErrorIds.clear();
 		}
-		selectedErrorIds = selectedErrorIds; // Trigger reactivity
+		selectedErrorIds = selectedErrorIds;
 	}
 
 	function toggleErrorSelection(errorId: string) {
@@ -203,9 +209,8 @@
 		} else {
 			selectedErrorIds.add(errorId);
 		}
-		selectedErrorIds = selectedErrorIds; // Trigger reactivity
+		selectedErrorIds = selectedErrorIds;
 
-		// Update selectAll state
 		const allSelected = errors.every((error) => error.id && selectedErrorIds.has(error.id));
 		selectAll = allSelected;
 	}
@@ -215,28 +220,85 @@
 		loadErrors();
 	}
 
-	function getSeverityColor(severity: ErrorSeverity | undefined) {
+	function getSeverityStyles(severity: ErrorSeverity | undefined) {
 		switch (severity) {
 			case 'critical':
-				return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20';
+				return {
+					badge: 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30',
+					icon: AlertCircle,
+					dot: 'bg-red-500'
+				};
 			case 'error':
-				return 'text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-900/20';
+				return {
+					badge: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30',
+					icon: Bug,
+					dot: 'bg-orange-500'
+				};
 			case 'warning':
-				return 'text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-900/20';
+				return {
+					badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30',
+					icon: AlertTriangle,
+					dot: 'bg-amber-500'
+				};
 			case 'info':
-				return 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20';
+				return {
+					badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30',
+					icon: Zap,
+					dot: 'bg-blue-500'
+				};
 			default:
-				return 'text-gray-600 bg-gray-50 dark:text-gray-400 dark:bg-gray-900/20';
+				return {
+					badge: 'bg-muted text-muted-foreground border border-border',
+					icon: AlertCircle,
+					dot: 'bg-muted-foreground'
+				};
+		}
+	}
+
+	function getTypeIcon(type: string | undefined) {
+		switch (type) {
+			case 'brain_dump_processing':
+				return Zap;
+			case 'llm_error':
+				return Bug;
+			case 'database_error':
+				return Database;
+			default:
+				return AlertCircle;
 		}
 	}
 
 	function formatDate(date: string | undefined) {
 		if (!date) return '-';
-
 		const dateObj = new Date(date);
+		const now = new Date();
+		const diffMs = now.getTime() - dateObj.getTime();
+		const diffMins = Math.floor(diffMs / 60000);
+		const diffHours = Math.floor(diffMs / 3600000);
+		const diffDays = Math.floor(diffMs / 86400000);
 
-		// Format: "Jan 5, 2025 3:45:12 PM"
-		const options: Intl.DateTimeFormatOptions = {
+		// Relative time for recent errors
+		if (diffMins < 60) {
+			return `${diffMins}m ago`;
+		} else if (diffHours < 24) {
+			return `${diffHours}h ago`;
+		} else if (diffDays < 7) {
+			return `${diffDays}d ago`;
+		}
+
+		// Absolute date for older errors
+		return dateObj.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		});
+	}
+
+	function formatFullDate(date: string | undefined) {
+		if (!date) return '-';
+		const dateObj = new Date(date);
+		return dateObj.toLocaleString(undefined, {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric',
@@ -244,9 +306,7 @@
 			minute: '2-digit',
 			second: '2-digit',
 			hour12: true
-		};
-
-		return dateObj.toLocaleString(undefined, options);
+		});
 	}
 
 	function truncate(str: string | undefined, length: number) {
@@ -290,8 +350,8 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="admin-page">
-	<div class="admin-page">
+<div class="min-h-screen bg-background">
+	<div class="max-w-[1600px] mx-auto px-3 py-3 sm:px-4 sm:py-4">
 		<!-- Header -->
 		<AdminPageHeader
 			title="Error Logs"
@@ -299,7 +359,7 @@
 			icon={AlertTriangle}
 			showBack={true}
 		>
-			<div slot="actions" class="flex items-center space-x-4">
+			<div slot="actions" class="flex items-center gap-2">
 				{#if selectedErrorIds.size > 0}
 					<Button
 						onclick={openBulkResolveModal}
@@ -309,7 +369,8 @@
 						icon={Check}
 						loading={bulkProcessing}
 					>
-						Resolve {selectedErrorIds.size} Error{selectedErrorIds.size > 1 ? 's' : ''}
+						<span class="hidden sm:inline">Resolve</span>
+						{selectedErrorIds.size}
 					</Button>
 				{/if}
 				<Button
@@ -317,63 +378,72 @@
 						filterResolvedRaw = filterResolved === false ? 'null' : 'false';
 						loadErrors();
 					}}
-					variant="secondary"
+					variant="outline"
 					size="sm"
 				>
-					{filterResolved === false ? 'Show All' : 'Show Unresolved'}
+					{filterResolved === false ? 'All' : 'Unresolved'}
 				</Button>
 				<Button
 					onclick={loadErrors}
 					disabled={loading}
-					variant="secondary"
+					variant="outline"
 					size="sm"
 					icon={RefreshCw}
 					{loading}
 				>
-					Refresh
+					<span class="hidden sm:inline">Refresh</span>
 				</Button>
 			</div>
 		</AdminPageHeader>
 
 		<!-- Summary Cards -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
+		<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
 			{#each summary as item}
-				<div class="admin-panel p-4 sm:p-6">
-					<h3 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
-						{item.error_type}
-					</h3>
-					<div class="flex items-baseline justify-between">
+				{@const styles = getSeverityStyles(item.severity)}
+				<div
+					class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak"
+				>
+					<div class="flex items-start justify-between gap-2">
+						<div class="min-w-0 flex-1">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5 truncate"
+							>
+								{item.error_type?.replace(/_/g, ' ')}
+							</p>
+							<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+								{item.error_count}
+							</p>
+						</div>
 						<span
-							class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white"
-							>{item.error_count}</span
+							class="{styles.badge} px-1.5 py-0.5 rounded text-[0.65rem] font-medium shrink-0"
 						>
-						<span class="{getSeverityColor(item.severity)} px-2 py-1 rounded text-xs">
 							{item.severity}
 						</span>
 					</div>
-					<div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-2">
-						{item.resolved_count} resolved
+					<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+						<CheckCircle2 class="w-3 h-3 text-emerald-500" />
+						<span>{item.resolved_count} resolved</span>
 					</div>
 				</div>
 			{/each}
 		</div>
 
 		<!-- Filters -->
-		<div class="admin-panel p-4 sm:p-6">
-			<div class="flex items-center mb-4">
-				<Filter class="h-5 w-5 text-gray-400 mr-2" />
-				<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Filters</h2>
+		<div
+			class="bg-card border border-border rounded-lg shadow-ink mb-3 sm:mb-4 tx tx-grain tx-weak"
+		>
+			<div class="px-3 py-2 border-b border-border flex items-center gap-2">
+				<Filter class="w-4 h-4 text-muted-foreground" />
+				<span class="text-sm font-medium text-foreground">Filters</span>
 			</div>
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-				<div>
-					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-						Severity
-					</div>
+			<div class="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">Severity</label>
 					<Select
 						bind:value={filterSeverity}
 						onchange={loadErrors}
-						size="md"
-						placeholder="All Severities"
+						size="sm"
+						placeholder="All"
 					>
 						<option value="">All</option>
 						<option value="critical">Critical</option>
@@ -383,15 +453,13 @@
 					</Select>
 				</div>
 
-				<div>
-					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-						Type
-					</div>
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">Type</label>
 					<Select
 						bind:value={filterType}
 						onchange={loadErrors}
-						size="md"
-						placeholder="All Types"
+						size="sm"
+						placeholder="All"
 					>
 						<option value="">All</option>
 						<option value="brain_dump_processing">Brain Dump</option>
@@ -402,185 +470,195 @@
 					</Select>
 				</div>
 
-				<div>
-					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-						Status
-					</div>
-					<Select
-						bind:value={filterResolvedRaw}
-						onchange={loadErrors}
-						size="md"
-						placeholder="Unresolved"
-					>
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">Status</label>
+					<Select bind:value={filterResolvedRaw} onchange={loadErrors} size="sm">
 						<option value="false">Unresolved</option>
 						<option value="true">Resolved</option>
 						<option value="null">All</option>
 					</Select>
 				</div>
 
-				<div>
-					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-						User
-					</div>
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">User</label>
 					<TextInput
 						type="text"
 						bind:value={filterUserId}
 						onblur={loadErrors}
-						placeholder="Email or User ID..."
-						size="md"
+						placeholder="Email or ID..."
+						size="sm"
 					/>
 				</div>
 
-				<div>
-					<div class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-						Project ID
-					</div>
+				<div class="space-y-1">
+					<label class="text-xs font-medium text-muted-foreground">Project</label>
 					<TextInput
 						type="text"
 						bind:value={filterProjectId}
 						onblur={loadErrors}
-						placeholder="Filter by project..."
-						size="md"
+						placeholder="Project ID..."
+						size="sm"
 					/>
 				</div>
 			</div>
 		</div>
 
-		<!-- Error List -->
-		<div class="admin-panel overflow-hidden">
+		<!-- Error Table -->
+		<div
+			class="bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-static tx-weak"
+		>
 			<div class="overflow-x-auto">
-				<table class="w-full">
-					<thead
-						class="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600"
-					>
-						<tr>
-							<th class="px-4 py-3 text-left">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-border bg-muted/50">
+							<th class="px-3 py-2 text-left w-10">
 								<input
 									type="checkbox"
 									checked={selectAll}
 									onchange={toggleSelectAll}
-									class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
+									class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background"
 									aria-label="Select all errors"
 								/>
 							</th>
 							<th
-								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								>Time</th
+								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
 							>
+								Time
+							</th>
 							<th
-								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								>Severity</th
+								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
 							>
+								Severity
+							</th>
 							<th
-								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								>Type</th
+								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell"
 							>
+								Type
+							</th>
 							<th
-								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								>Message</th
+								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
 							>
+								Message
+							</th>
 							<th
-								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								>User</th
+								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell"
 							>
+								User
+							</th>
 							<th
-								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								>Status</th
+								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-16"
 							>
+								Status
+							</th>
 							<th
-								class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								>Actions</th
+								class="px-3 py-2 text-right text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider w-20"
 							>
+								Actions
+							</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+					<tbody class="divide-y divide-border">
 						{#each errors as error}
+							{@const styles = getSeverityStyles(error.severity)}
+							{@const isSelected = error.id && selectedErrorIds.has(error.id)}
 							<tr
-								class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors {error.id &&
-								selectedErrorIds.has(error.id)
-									? 'bg-blue-50 dark:bg-blue-900/20'
+								class="transition-colors hover:bg-muted/30 {isSelected
+									? 'bg-accent/10'
 									: ''}"
 							>
-								<td class="px-4 py-3">
+								<td class="px-3 py-2">
 									<input
 										type="checkbox"
-										checked={error.id && selectedErrorIds.has(error.id)}
+										checked={isSelected}
 										onchange={() => error.id && toggleErrorSelection(error.id)}
-										class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800"
+										class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background"
 										aria-label="Select error {error.id}"
 									/>
 								</td>
-								<td
-									class="px-4 py-3 text-sm text-gray-900 dark:text-white whitespace-nowrap"
-									>{formatDate(error.created_at || error.createdAt)}</td
-								>
-								<td class="px-4 py-3">
+								<td class="px-3 py-2 whitespace-nowrap">
+									<div class="flex items-center gap-1.5 text-foreground">
+										<Clock class="w-3 h-3 text-muted-foreground shrink-0" />
+										<span class="text-xs tabular-nums">
+											{formatDate(error.created_at || error.createdAt)}
+										</span>
+									</div>
+								</td>
+								<td class="px-3 py-2">
 									<span
-										class="{getSeverityColor(
-											error.severity
-										)} px-2 py-1 rounded text-xs font-medium"
+										class="{styles.badge} inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.65rem] font-medium"
 									>
+										<span class="w-1.5 h-1.5 rounded-full {styles.dot}"></span>
 										{error.severity}
 									</span>
 								</td>
-								<td class="px-4 py-3 text-sm text-gray-900 dark:text-white"
-									>{error.error_type || error.errorType}</td
-								>
-								<td
-									class="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-md"
-								>
-									{truncate(error.error_message || error.errorMessage, 100)}
+								<td class="px-3 py-2 hidden sm:table-cell">
+									<span class="text-xs text-muted-foreground">
+										{(error.error_type || error.errorType)?.replace(/_/g, ' ')}
+									</span>
 								</td>
-								<td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+								<td class="px-3 py-2 max-w-[200px] sm:max-w-xs lg:max-w-md">
+									<p
+										class="text-xs text-foreground truncate"
+										title={error.error_message || error.errorMessage}
+									>
+										{truncate(error.error_message || error.errorMessage, 80)}
+									</p>
+								</td>
+								<td class="px-3 py-2 hidden md:table-cell">
 									{#if error.user}
-										<div class="flex flex-col">
-											<span class="text-gray-900 dark:text-white font-medium">
+										<div class="text-xs">
+											<p
+												class="text-foreground font-medium truncate max-w-[120px]"
+											>
 												{error.user.email}
-											</span>
-											{#if error.user.name}
-												<span
-													class="text-xs text-gray-500 dark:text-gray-400"
-												>
-													{error.user.name}
-												</span>
-											{/if}
+											</p>
 										</div>
 									{:else if error.user_id || error.userId}
-										<span class="font-mono text-xs">
+										<span
+											class="font-mono text-[0.65rem] text-muted-foreground"
+										>
 											{truncate(error.user_id || error.userId, 8)}
 										</span>
 									{:else}
-										-
+										<span class="text-muted-foreground">-</span>
 									{/if}
 								</td>
-								<td class="px-4 py-3">
+								<td class="px-3 py-2">
 									{#if error.resolved}
 										<span
-											class="text-green-600 dark:text-green-400 text-sm font-medium"
-											>Resolved</span
+											class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium"
 										>
+											<CheckCircle2 class="w-3 h-3" />
+											<span class="hidden lg:inline">Done</span>
+										</span>
 									{:else}
 										<span
-											class="text-red-600 dark:text-red-400 text-sm font-medium"
-											>Open</span
+											class="inline-flex items-center gap-1 text-red-600 dark:text-red-400 text-xs font-medium"
 										>
+											<AlertCircle class="w-3 h-3" />
+											<span class="hidden lg:inline">Open</span>
+										</span>
 									{/if}
 								</td>
-								<td class="px-4 py-3">
-									<button
-										onclick={() => (selectedError = error)}
-										class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm mr-2 transition-colors"
-									>
-										View
-									</button>
-									{#if !error.resolved}
-										<Button
-											onclick={() => openResolveModal(error.id)}
-											class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 text-sm transition-colors"
+								<td class="px-3 py-2 text-right">
+									<div class="flex items-center justify-end gap-1">
+										<button
+											onclick={() => (selectedError = error)}
+											class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable"
+											title="View details"
 										>
-											Resolve
-										</Button>
-									{/if}
+											<Eye class="w-3.5 h-3.5" />
+										</button>
+										{#if !error.resolved}
+											<button
+												onclick={() => openResolveModal(error.id)}
+												class="p-1.5 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors pressable"
+												title="Resolve"
+											>
+												<Check class="w-3.5 h-3.5" />
+											</button>
+										{/if}
+									</div>
 								</td>
 							</tr>
 						{/each}
@@ -589,73 +667,71 @@
 			</div>
 
 			{#if errors.length === 0}
-				<div class="text-center py-8 text-gray-500 dark:text-gray-400">No errors found</div>
+				<div class="text-center py-8 px-4">
+					<CheckCircle2 class="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+					<p class="text-sm text-muted-foreground">No errors found</p>
+					<p class="text-xs text-muted-foreground mt-1">All clear!</p>
+				</div>
 			{/if}
 		</div>
 
 		<!-- Pagination -->
 		{#if errors.length > 0 || currentPage > 1}
-			<div class="admin-panel p-4 mt-6">
-				<div
-					class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0"
-				>
-					<div class="flex items-center space-x-2">
-						<Button
-							onclick={() => changePage(1)}
-							disabled={currentPage === 1 || loading}
-							variant="secondary"
-							size="sm"
-							title="First page"
-						>
-							First
-						</Button>
-						<Button
-							onclick={() => changePage(Math.max(1, currentPage - 1))}
-							disabled={currentPage === 1 || loading}
-							variant="secondary"
-							size="sm"
-							icon={ChevronLeft}
-						>
-							Previous
-						</Button>
-					</div>
+			<div class="mt-3 flex flex-col sm:flex-row items-center justify-between gap-3 px-1">
+				<div class="flex items-center gap-2">
+					<Button
+						onclick={() => changePage(1)}
+						disabled={currentPage === 1 || loading}
+						variant="outline"
+						size="sm"
+					>
+						First
+					</Button>
+					<Button
+						onclick={() => changePage(Math.max(1, currentPage - 1))}
+						disabled={currentPage === 1 || loading}
+						variant="outline"
+						size="sm"
+						icon={ChevronLeft}
+					>
+						<span class="hidden sm:inline">Prev</span>
+					</Button>
+				</div>
 
-					<div class="flex items-center space-x-4">
-						<span class="text-sm text-gray-600 dark:text-gray-400">
-							Page {currentPage}
-						</span>
-						{#if errors.length > 0}
-							<span class="text-sm text-gray-500 dark:text-gray-400">
-								Showing {errors.length} error{errors.length === 1 ? '' : 's'}
-							</span>
-						{/if}
-					</div>
+				<div class="flex items-center gap-3 text-xs text-muted-foreground">
+					<span
+						>Page <span class="font-semibold text-foreground">{currentPage}</span></span
+					>
+					{#if errors.length > 0}
+						<span class="text-border">|</span>
+						<span>{errors.length} error{errors.length === 1 ? '' : 's'}</span>
+					{/if}
+				</div>
 
-					<div class="flex items-center space-x-2">
-						<Button
-							onclick={() => changePage(currentPage + 1)}
-							disabled={!hasMore || loading}
-							variant="secondary"
-							size="sm"
-							icon={ChevronRight}
-							iconPosition="right"
-						>
-							Next
-						</Button>
-						<Select
-							bind:value={itemsPerPage}
-							onchange={() => {
-								currentPage = 1;
-								loadErrors();
-							}}
-							size="sm"
-							class="w-20"
-						>
-							<option value={25}>25</option>
-							<option value={50}>50</option>
-							<option value={100}>100</option>
-						</Select>
-					</div>
+				<div class="flex items-center gap-2">
+					<Button
+						onclick={() => changePage(currentPage + 1)}
+						disabled={!hasMore || loading}
+						variant="outline"
+						size="sm"
+						icon={ChevronRight}
+						iconPosition="right"
+					>
+						<span class="hidden sm:inline">Next</span>
+					</Button>
+					<Select
+						bind:value={itemsPerPage}
+						onchange={() => {
+							currentPage = 1;
+							loadErrors();
+						}}
+						size="sm"
+						class="w-16"
+					>
+						<option value={25}>25</option>
+						<option value={50}>50</option>
+						<option value={100}>100</option>
+					</Select>
 				</div>
 			</div>
 		{/if}
@@ -667,251 +743,148 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
-		class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50"
+		class="fixed inset-0 bg-black/60 flex items-center justify-center p-3 z-50"
 		onclick={() => (selectedError = null)}
-		onkeydown={(e) => e.key === 'Escape' && (selectedError = null)}
 	>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
-			class="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+			class="bg-card border border-border rounded-lg shadow-ink-strong max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col tx tx-frame tx-weak"
 			onclick={(e) => e.stopPropagation()}
 		>
 			<!-- Modal Header -->
 			<div
-				class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center"
+				class="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30"
 			>
-				<h2 class="text-xl font-bold text-gray-900 dark:text-white">Error Details</h2>
+				<div class="flex items-center gap-2">
+					<AlertTriangle class="w-5 h-5 text-accent" />
+					<h2 class="text-base font-semibold text-foreground">Error Details</h2>
+				</div>
 				<button
 					onclick={() => (selectedError = null)}
-					class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 transition-colors"
+					class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable"
 					aria-label="Close modal"
 				>
-					<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						/>
-					</svg>
+					<X class="w-4 h-4" />
 				</button>
 			</div>
 
 			<!-- Modal Content -->
-			<div class="flex-1 overflow-y-auto px-6 py-4">
-				<div class="space-y-4">
-					<!-- Basic Info -->
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+			<div class="flex-1 overflow-y-auto px-4 py-3">
+				<div class="space-y-3">
+					<!-- Basic Info Row -->
+					<div class="grid grid-cols-2 gap-3">
+						<div class="space-y-0.5">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground"
 							>
-								Error ID:
-							</div>
-							<p class="text-gray-900 dark:text-white font-mono text-sm">
+								Error ID
+							</p>
+							<p class="text-xs text-foreground font-mono truncate">
 								{selectedError.id}
 							</p>
 						</div>
-						<div>
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+						<div class="space-y-0.5">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground"
 							>
-								Occurred At:
-							</div>
-							<p class="text-gray-900 dark:text-white text-sm">
-								{formatDate(selectedError.created_at || selectedError.createdAt)}
+								Occurred
+							</p>
+							<p class="text-xs text-foreground">
+								{formatFullDate(
+									selectedError.created_at || selectedError.createdAt
+								)}
 							</p>
 						</div>
 					</div>
 
-					<!-- Severity, Type, and Error Code -->
-					<div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-						<div>
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-							>
-								Severity:
-							</div>
-							<span
-								class="{getSeverityColor(
-									selectedError.severity
-								)} px-2 py-1 rounded text-xs font-medium inline-block"
-							>
-								{selectedError.severity}
-							</span>
-						</div>
-						<div>
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-							>
-								Type:
-							</div>
-							<span
-								class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded text-xs font-medium inline-block"
-							>
-								{selectedError.error_type || selectedError.errorType}
-							</span>
-						</div>
+					<!-- Severity, Type, Code Row -->
+					{@const modalStyles = getSeverityStyles(selectedError.severity)}
+					<div class="flex flex-wrap items-center gap-2">
+						<span
+							class="{modalStyles.badge} inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"
+						>
+							<span class="w-1.5 h-1.5 rounded-full {modalStyles.dot}"></span>
+							{selectedError.severity}
+						</span>
+						<span
+							class="bg-muted text-muted-foreground px-2 py-1 rounded text-xs font-medium border border-border"
+						>
+							{(selectedError.error_type || selectedError.errorType)?.replace(
+								/_/g,
+								' '
+							)}
+						</span>
 						{#if selectedError.error_code || selectedError.errorCode}
-							<div>
-								<div
-									class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-								>
-									Error Code:
-								</div>
-								<span
-									class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-2 py-1 rounded text-xs font-mono inline-block"
-								>
-									{selectedError.error_code || selectedError.errorCode}
-								</span>
-							</div>
+							<span
+								class="bg-red-500/10 text-red-600 dark:text-red-400 px-2 py-1 rounded text-xs font-mono border border-red-500/20"
+							>
+								{selectedError.error_code || selectedError.errorCode}
+							</span>
 						{/if}
 					</div>
 
-					<!-- User Information Section -->
+					<!-- User Information -->
 					{#if selectedError.user || selectedError.user_id || selectedError.userId}
-						<div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+						<div class="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-2"
 							>
-								User Information:
-							</div>
+								User Information
+							</p>
 							{#if selectedError.user}
-								<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								<div class="grid grid-cols-2 gap-2 text-xs">
 									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Email:</span
-										>
-										<p
-											class="text-sm text-gray-900 dark:text-white font-medium"
-										>
+										<span class="text-muted-foreground">Email:</span>
+										<p class="text-foreground font-medium">
 											{selectedError.user.email}
 										</p>
 									</div>
 									{#if selectedError.user.name}
 										<div>
-											<span class="text-xs text-gray-600 dark:text-gray-400"
-												>Name:</span
-											>
-											<p class="text-sm text-gray-900 dark:text-white">
-												{selectedError.user.name}
-											</p>
+											<span class="text-muted-foreground">Name:</span>
+											<p class="text-foreground">{selectedError.user.name}</p>
 										</div>
 									{/if}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>User ID:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
-											{selectedError.user.id ||
-												selectedError.user_id ||
-												selectedError.userId}
-										</p>
-									</div>
 								</div>
 							{:else}
-								<p class="text-sm text-gray-900 dark:text-white font-mono">
-									User ID: {selectedError.user_id || selectedError.userId}
+								<p class="text-xs text-foreground font-mono">
+									{selectedError.user_id || selectedError.userId}
 								</p>
 							{/if}
 						</div>
 					{/if}
 
-					<!-- Request Context Section -->
-					{#if selectedError.endpoint || selectedError.http_method || selectedError.httpMethod || selectedError.request_id || selectedError.requestId || selectedError.ip_address || selectedError.ipAddress}
-						<div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+					<!-- Request Context -->
+					{#if selectedError.endpoint || selectedError.http_method || selectedError.httpMethod}
+						<div class="bg-muted/50 border border-border rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
 							>
-								Request Context:
-							</div>
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								Request Context
+							</p>
+							<div class="grid grid-cols-2 gap-2 text-xs">
 								{#if selectedError.endpoint}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Endpoint:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
+									<div class="col-span-2">
+										<span class="text-muted-foreground">Endpoint:</span>
+										<p class="text-foreground font-mono text-[0.65rem]">
 											{selectedError.endpoint}
 										</p>
 									</div>
 								{/if}
 								{#if selectedError.http_method || selectedError.httpMethod}
 									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Method:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white">
+										<span class="text-muted-foreground">Method:</span>
+										<p class="text-foreground font-medium">
 											{selectedError.http_method || selectedError.httpMethod}
-										</p>
-									</div>
-								{/if}
-								{#if selectedError.request_id || selectedError.requestId}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Request ID:</span
-										>
-										<p
-											class="text-sm text-gray-900 dark:text-white font-mono text-xs"
-										>
-											{selectedError.request_id || selectedError.requestId}
 										</p>
 									</div>
 								{/if}
 								{#if selectedError.ip_address || selectedError.ipAddress}
 									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>IP Address:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
+										<span class="text-muted-foreground">IP:</span>
+										<p class="text-foreground font-mono">
 											{selectedError.ip_address || selectedError.ipAddress}
-										</p>
-									</div>
-								{/if}
-							</div>
-							{#if selectedError.user_agent || selectedError.userAgent}
-								<div class="mt-3">
-									<span class="text-xs text-gray-600 dark:text-gray-400"
-										>User Agent:</span
-									>
-									<p
-										class="text-sm text-gray-900 dark:text-white text-xs font-mono break-all"
-									>
-										{selectedError.user_agent || selectedError.userAgent}
-									</p>
-								</div>
-							{/if}
-						</div>
-					{/if}
-
-					<!-- Project and Brain Dump Context -->
-					{#if selectedError.project_id || selectedError.projectId || selectedError.brain_dump_id || selectedError.brainDumpId}
-						<div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-							>
-								Related Resources:
-							</div>
-							<div class="space-y-2">
-								{#if selectedError.project_id || selectedError.projectId}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Project ID:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
-											{selectedError.project_id || selectedError.projectId}
-										</p>
-									</div>
-								{/if}
-								{#if selectedError.brain_dump_id || selectedError.brainDumpId}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Brain Dump ID:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
-											{selectedError.brain_dump_id ||
-												selectedError.brainDumpId}
 										</p>
 									</div>
 								{/if}
@@ -920,50 +893,48 @@
 					{/if}
 
 					<!-- Error Message -->
-					<div>
-						<div
-							class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-						>
-							Error Message:
-						</div>
-						<p
-							class="text-gray-900 dark:text-white whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-900 p-3 rounded font-mono"
-						>
-							{selectedError.error_message || selectedError.errorMessage}
+					<div class="space-y-1">
+						<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground">
+							Error Message
 						</p>
+						<div
+							class="bg-background border border-border rounded-lg p-3 shadow-ink-inner"
+						>
+							<p
+								class="text-xs text-foreground whitespace-pre-wrap font-mono leading-relaxed"
+							>
+								{selectedError.error_message || selectedError.errorMessage}
+							</p>
+						</div>
 					</div>
 
 					<!-- Stack Trace -->
 					{#if selectedError.error_stack || selectedError.errorStack}
-						<div>
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
+						<div class="space-y-1">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground"
 							>
-								Stack Trace:
-							</div>
+								Stack Trace
+							</p>
 							<pre
-								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200 max-h-64">{selectedError.error_stack ||
+								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{selectedError.error_stack ||
 									selectedError.errorStack}</pre>
 						</div>
 					{/if}
 
-					<!-- Database Operation Details -->
-					{#if selectedError.operation_type || selectedError.operationType || selectedError.table_name || selectedError.tableName || selectedError.record_id || selectedError.recordId}
-						<div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4">
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+					<!-- Database Operation -->
+					{#if selectedError.operation_type || selectedError.operationType || selectedError.table_name || selectedError.tableName}
+						<div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2"
 							>
-								Database Operation:
-							</div>
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								Database Operation
+							</p>
+							<div class="grid grid-cols-2 gap-2 text-xs">
 								{#if selectedError.operation_type || selectedError.operationType}
 									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Operation:</span
-										>
-										<p
-											class="text-sm text-gray-900 dark:text-white uppercase font-medium"
-										>
+										<span class="text-muted-foreground">Operation:</span>
+										<p class="text-foreground font-medium uppercase">
 											{selectedError.operation_type ||
 												selectedError.operationType}
 										</p>
@@ -971,114 +942,41 @@
 								{/if}
 								{#if selectedError.table_name || selectedError.tableName}
 									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Table:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
+										<span class="text-muted-foreground">Table:</span>
+										<p class="text-foreground font-mono">
 											{selectedError.table_name || selectedError.tableName}
 										</p>
 									</div>
 								{/if}
-								{#if selectedError.record_id || selectedError.recordId}
-									<div class="sm:col-span-2">
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Record ID:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
-											{selectedError.record_id || selectedError.recordId}
-										</p>
-									</div>
-								{/if}
 							</div>
-							{#if selectedError.operation_payload || selectedError.operationPayload}
-								<div class="mt-3">
-									<span class="text-xs text-gray-600 dark:text-gray-400"
-										>Payload:</span
-									>
-									<pre
-										class="bg-white dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200 mt-1 max-h-32">{JSON.stringify(
-											selectedError.operation_payload ||
-												selectedError.operationPayload,
-											null,
-											2
-										)}</pre>
-								</div>
-							{/if}
 						</div>
 					{/if}
 
 					<!-- LLM Details -->
 					{#if selectedError.llm_provider || selectedError.llmProvider}
-						<div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
+						<div class="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2"
 							>
-								LLM Details:
-							</div>
-							<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+								LLM Details
+							</p>
+							<div class="grid grid-cols-3 gap-2 text-xs">
 								<div>
-									<span class="text-xs text-gray-600 dark:text-gray-400"
-										>Provider:</span
-									>
-									<p class="text-sm text-gray-900 dark:text-white font-medium">
+									<span class="text-muted-foreground">Provider:</span>
+									<p class="text-foreground font-medium">
 										{selectedError.llm_provider || selectedError.llmProvider}
 									</p>
 								</div>
 								<div>
-									<span class="text-xs text-gray-600 dark:text-gray-400"
-										>Model:</span
-									>
-									<p class="text-sm text-gray-900 dark:text-white font-medium">
+									<span class="text-muted-foreground">Model:</span>
+									<p class="text-foreground">
 										{selectedError.llm_model || selectedError.llmModel}
 									</p>
 								</div>
-								{#if selectedError.response_time_ms || selectedError.responseTimeMs}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Response Time:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white">
-											{selectedError.response_time_ms ||
-												selectedError.responseTimeMs}ms
-										</p>
-									</div>
-								{/if}
-								{#if selectedError.prompt_tokens || selectedError.promptTokens}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Prompt Tokens:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white">
-											{(
-												(selectedError.prompt_tokens ||
-													selectedError.promptTokens) ??
-												0
-											).toLocaleString()}
-										</p>
-									</div>
-								{/if}
-								{#if selectedError.completion_tokens || selectedError.completionTokens}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Completion Tokens:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white">
-											{(
-												(selectedError.completion_tokens ||
-													selectedError.completionTokens) ??
-												0
-											).toLocaleString()}
-										</p>
-									</div>
-								{/if}
 								{#if selectedError.total_tokens || selectedError.totalTokens}
 									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Total Tokens:</span
-										>
-										<p
-											class="text-sm text-gray-900 dark:text-white font-medium"
-										>
+										<span class="text-muted-foreground">Tokens:</span>
+										<p class="text-foreground tabular-nums">
 											{(
 												(selectedError.total_tokens ||
 													selectedError.totalTokens) ??
@@ -1087,196 +985,60 @@
 										</p>
 									</div>
 								{/if}
-								{#if selectedError.llm_temperature || selectedError.llmTemperature}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Temperature:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white">
-											{selectedError.llm_temperature ||
-												selectedError.llmTemperature}
-										</p>
-									</div>
-								{/if}
-								{#if selectedError.llm_max_tokens || selectedError.llmMaxTokens}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Max Tokens:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white">
-											{(
-												(selectedError.llm_max_tokens ||
-													selectedError.llmMaxTokens) ??
-												0
-											).toLocaleString()}
-										</p>
-									</div>
-								{/if}
 							</div>
-						</div>
-					{/if}
-
-					<!-- Environment and App Info -->
-					{#if selectedError.environment || selectedError.app_version || selectedError.appVersion}
-						<div class="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-							>
-								Environment Info:
-							</div>
-							<div class="grid grid-cols-2 gap-3">
-								{#if selectedError.environment}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Environment:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white">
-											<span class="capitalize"
-												>{selectedError.environment}</span
-											>
-										</p>
-									</div>
-								{/if}
-								{#if selectedError.app_version || selectedError.appVersion}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>App Version:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
-											{selectedError.app_version || selectedError.appVersion}
-										</p>
-									</div>
-								{/if}
-							</div>
-						</div>
-					{/if}
-
-					<!-- Browser Info -->
-					{#if selectedError.browser_info || selectedError.browserInfo}
-						<div class="bg-cyan-50 dark:bg-cyan-900/20 rounded-lg p-4">
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-							>
-								Browser Info:
-							</div>
-							<pre
-								class="bg-white dark:bg-gray-900 p-2 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200">{JSON.stringify(
-									selectedError.browser_info || selectedError.browserInfo,
-									null,
-									2
-								)}</pre>
-						</div>
-					{/if}
-
-					<!-- Additional Metadata -->
-					{#if selectedError.metadata && Object.keys(selectedError.metadata).length > 0}
-						<div>
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1"
-							>
-								Additional Metadata:
-							</div>
-							<pre
-								class="bg-gray-100 dark:bg-gray-900 p-3 rounded text-xs overflow-x-auto text-gray-800 dark:text-gray-200 max-h-64">{JSON.stringify(
-									selectedError.metadata,
-									null,
-									2
-								)}</pre>
 						</div>
 					{/if}
 
 					<!-- Resolution Status -->
 					{#if selectedError.resolved}
-						<div
-							class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800"
-						>
-							<div
-								class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2"
-							>
-								Resolution Details:
+						<div class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
+							<div class="flex items-center gap-2 mb-2">
+								<CheckCircle2 class="w-4 h-4 text-emerald-500" />
+								<p
+									class="text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+								>
+									Resolved
+								</p>
 							</div>
-							<div class="space-y-2">
-								<div>
-									<span class="text-xs text-gray-600 dark:text-gray-400"
-										>Resolved At:</span
-									>
-									<p class="text-sm text-gray-900 dark:text-white">
-										{formatDate(
-											selectedError.resolved_at || selectedError.resolvedAt
-										)}
-									</p>
-								</div>
-								{#if selectedError.resolved_by || selectedError.resolvedBy}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Resolved By:</span
-										>
-										<p class="text-sm text-gray-900 dark:text-white font-mono">
-											{selectedError.resolved_by || selectedError.resolvedBy}
-										</p>
-									</div>
-								{/if}
+							<div class="space-y-1 text-xs">
+								<p class="text-muted-foreground">
+									{formatFullDate(
+										selectedError.resolved_at || selectedError.resolvedAt
+									)}
+								</p>
 								{#if selectedError.resolution_notes || selectedError.resolutionNotes}
-									<div>
-										<span class="text-xs text-gray-600 dark:text-gray-400"
-											>Resolution Notes:</span
-										>
-										<p class="text-sm text-gray-700 dark:text-gray-300 mt-1">
-											{selectedError.resolution_notes ||
-												selectedError.resolutionNotes}
-										</p>
-									</div>
+									<p class="text-foreground italic">
+										"{selectedError.resolution_notes ||
+											selectedError.resolutionNotes}"
+									</p>
 								{/if}
 							</div>
 						</div>
 					{/if}
-
-					<!-- Timestamps -->
-					<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-						<div
-							class="grid grid-cols-2 gap-4 text-xs text-gray-500 dark:text-gray-400"
-						>
-							<div>
-								Created: {formatDate(
-									selectedError.created_at || selectedError.createdAt
-								)}
-							</div>
-							{#if selectedError.updated_at || selectedError.updatedAt}
-								<div>
-									Updated: {formatDate(
-										selectedError.updated_at || selectedError.updatedAt
-									)}
-								</div>
-							{/if}
-						</div>
-					</div>
 				</div>
 			</div>
 
 			<!-- Modal Footer -->
 			<div
-				class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+				class="px-4 py-3 border-t border-border bg-muted/30 flex items-center justify-end gap-2"
 			>
-				<div class="flex justify-end space-x-3">
-					{#if selectedError && !selectedError.resolved && selectedError.id}
-						<Button
-							onclick={() => {
-								if (selectedError?.id) {
-									openResolveModal(selectedError.id);
-								}
-							}}
-							variant="primary"
-							size="sm"
-							icon={Check}
-							class="bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
-						>
-							Mark as Resolved
-						</Button>
-					{/if}
-					<Button onclick={() => (selectedError = null)} variant="secondary" size="sm">
-						Close
+				{#if selectedError && !selectedError.resolved && selectedError.id}
+					<Button
+						onclick={() => {
+							if (selectedError?.id) {
+								openResolveModal(selectedError.id);
+							}
+						}}
+						variant="primary"
+						size="sm"
+						icon={Check}
+					>
+						Resolve
 					</Button>
-				</div>
+				{/if}
+				<Button onclick={() => (selectedError = null)} variant="outline" size="sm">
+					Close
+				</Button>
 			</div>
 		</div>
 	</div>
@@ -1288,7 +1050,7 @@
 	title={infoModal.title}
 	onclose={() => (infoModal.isOpen = false)}
 >
-	<p class="text-gray-600 dark:text-gray-400">{infoModal.message}</p>
+	<p class="text-sm text-muted-foreground">{infoModal.message}</p>
 </InfoModal>
 
 <!-- Resolve Error Modal -->
@@ -1299,15 +1061,15 @@
 	onclose={resolveError}
 	size="md"
 >
-	<div class="space-y-4">
-		<p class="text-gray-600 dark:text-gray-400">
+	<div class="space-y-3">
+		<p class="text-sm text-muted-foreground">
 			Add optional notes about how this error was resolved:
 		</p>
 		<TextInput
 			type="text"
 			bind:value={resolutionNotes}
 			placeholder="Resolution notes (optional)..."
-			size="md"
+			size="sm"
 		/>
 	</div>
 </InfoModal>
@@ -1315,24 +1077,23 @@
 <!-- Bulk Resolve Modal -->
 <InfoModal
 	isOpen={bulkResolveModalOpen}
-	title="Bulk Resolve Errors"
+	title="Bulk Resolve"
 	buttonText={bulkProcessing
 		? 'Resolving...'
 		: `Resolve ${selectedErrorIds.size} Error${selectedErrorIds.size > 1 ? 's' : ''}`}
 	onclose={bulkResolveErrors}
 	size="md"
 >
-	<div class="space-y-4">
-		<p class="text-gray-600 dark:text-gray-400">
-			You are about to resolve {selectedErrorIds.size} error{selectedErrorIds.size > 1
-				? 's'
-				: ''}. Add optional notes about how these errors were resolved:
+	<div class="space-y-3">
+		<p class="text-sm text-muted-foreground">
+			Resolving <span class="font-semibold text-foreground">{selectedErrorIds.size}</span>
+			error{selectedErrorIds.size > 1 ? 's' : ''}. Add optional notes:
 		</p>
 		<TextInput
 			type="text"
 			bind:value={resolutionNotes}
-			placeholder="Resolution notes for all selected errors (optional)..."
-			size="md"
+			placeholder="Resolution notes (optional)..."
+			size="sm"
 		/>
 	</div>
 </InfoModal>

@@ -21,6 +21,7 @@
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import ProjectBriefModal from '$lib/components/briefs/ProjectBriefModal.svelte';
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// ============================================================
 	// TYPES
@@ -103,6 +104,14 @@
 			hasLoaded = true;
 		} catch (err) {
 			console.error('[BriefsPanel] Failed to load:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/briefs`,
+				method: 'GET',
+				projectId,
+				entityType: 'project',
+				operation: 'project_briefs_load',
+				metadata: { offset, limit: INITIAL_LIMIT }
+			});
 			error = err instanceof Error ? err.message : 'Failed to load daily briefs';
 		} finally {
 			isLoading = false;

@@ -67,7 +67,8 @@ describe('PlanOrchestrator', () => {
 			mockLLMService as any,
 			mockToolExecutor,
 			mockExecutorCoordinator as any,
-			mockPersistence as any
+			mockPersistence as any,
+			undefined
 		);
 
 		// Setup contexts

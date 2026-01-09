@@ -21,6 +21,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import { PLAN_STATES } from '$lib/types/onto';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Hardcoded plan types (templates removed)
 	interface PlanType {
@@ -257,6 +258,13 @@
 			onClose();
 		} catch (err) {
 			console.error('Error creating plan:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/plans/create',
+				method: 'POST',
+				projectId,
+				entityType: 'plan',
+				operation: 'plan_create'
+			});
 			error = err instanceof Error ? err.message : 'Failed to create plan';
 			isSaving = false;
 		}

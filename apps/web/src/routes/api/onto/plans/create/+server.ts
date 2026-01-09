@@ -47,6 +47,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -93,6 +94,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('Error resolving actor for plan creation:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/plans/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'plan',
+				operation: 'plan_actor_resolve'
+			});
 			return ApiResponse.internalError(new Error('Failed to get user actor'));
 		}
 
@@ -178,6 +189,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (createError) {
 			console.error('Error creating plan:', createError);
+			await logOntologyApiError({
+				supabase,
+				error: createError,
+				endpoint: '/api/onto/plans/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'plan',
+				entityId: createdPlan?.id,
+				operation: 'plan_create',
+				tableName: 'onto_plans'
+			});
 			return ApiResponse.databaseError(createError);
 		}
 
@@ -222,6 +245,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('Error in plan create endpoint:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: '/api/onto/plans/create',
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'plan',
+			operation: 'plan_create'
+		});
 		return ApiResponse.internalError(error);
 	}
 };

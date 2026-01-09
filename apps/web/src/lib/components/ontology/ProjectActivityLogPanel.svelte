@@ -20,6 +20,7 @@
 		ExternalLink,
 		Clock
 	} from 'lucide-svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import type { ProjectLogEntry, ProjectLogEntityType } from '@buildos/shared-types';
 
 	// ============================================================
@@ -92,6 +93,14 @@
 			hasLoaded = true;
 		} catch (err) {
 			console.error('[ActivityLog] Failed to load:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/logs`,
+				method: 'GET',
+				projectId,
+				entityType: 'project',
+				operation: 'project_logs_load',
+				metadata: { offset, limit: INITIAL_LIMIT }
+			});
 			error = err instanceof Error ? err.message : 'Failed to load activity log';
 		} finally {
 			isLoading = false;

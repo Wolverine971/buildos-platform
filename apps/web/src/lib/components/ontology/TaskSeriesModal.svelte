@@ -5,6 +5,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import { X, RefreshCw } from 'lucide-svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	let {
 		task,
@@ -130,6 +131,14 @@
 			isOpen = false;
 		} catch (err) {
 			console.error('Failed to create series', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/tasks/${task?.id}/series`,
+				method: 'POST',
+				projectId: task?.project_id,
+				entityType: 'task_series',
+				entityId: task?.id,
+				operation: 'task_series_create'
+			});
 			error = err instanceof Error ? err.message : 'Failed to make task recurring';
 		} finally {
 			isSubmitting = false;

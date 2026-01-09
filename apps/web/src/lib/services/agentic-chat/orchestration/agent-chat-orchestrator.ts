@@ -55,6 +55,9 @@ import { buildDebugContextInfo, isDebugModeEnabled } from '../observability';
 import { ErrorLoggerService } from '../../errorLogger.service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
 import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('AgentChatOrchestrator');
 
 const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 	type: 'function',
@@ -121,8 +124,11 @@ export class AgentChatOrchestrator {
 		// Create enhanced wrapper for intelligent model selection
 		this.enhancedLLM = createEnhancedLLMWrapper(deps.llmService);
 		// Create analyzer for project creation clarifying questions
-		this.projectCreationAnalyzer = new ProjectCreationAnalyzer(deps.llmService);
-		this.strategyAnalyzer = new StrategyAnalyzer(deps.llmService);
+		this.projectCreationAnalyzer = new ProjectCreationAnalyzer(
+			deps.llmService,
+			deps.errorLogger
+		);
+		this.strategyAnalyzer = new StrategyAnalyzer(deps.llmService, deps.errorLogger);
 		this.toolSelectionService = new ToolSelectionService(this.strategyAnalyzer);
 	}
 
@@ -323,13 +329,18 @@ export class AgentChatOrchestrator {
 				return;
 			}
 
-			console.error('[AgentChatOrchestrator] Error during orchestration', error);
+			logger.error(error as Error, {
+				operation: 'stream_conversation',
+				sessionId: request.sessionId,
+				contextType: request.contextType
+			});
 			await this.deps.errorLogger.logError(error, {
 				userId: request.userId,
 				operationType: 'agent_chat_orchestration',
 				metadata: {
 					sessionId: request.sessionId,
-					contextType: request.contextType
+					contextType: request.contextType,
+					messageLength: request.userMessage.length
 				}
 			});
 
@@ -404,9 +415,24 @@ export class AgentChatOrchestrator {
 				}
 			};
 		} catch (error) {
-			console.warn('[AgentChatOrchestrator] Tool selection failed, using default tools', {
-				error
+			logger.warn('Tool selection failed, using default tools', {
+				error: error instanceof Error ? error.message : String(error),
+				sessionId: serviceContext.sessionId,
+				contextType: serviceContext.contextType
 			});
+			void this.deps.errorLogger.logError(
+				error,
+				{
+					userId: serviceContext.userId,
+					operationType: 'tool_selection',
+					metadata: {
+						sessionId: serviceContext.sessionId,
+						contextType: serviceContext.contextType,
+						messageLength: request.userMessage.length
+					}
+				},
+				'warning'
+			);
 			return plannerContext;
 		}
 	}
@@ -562,9 +588,24 @@ export class AgentChatOrchestrator {
 				virtualHandlers: refreshedVirtualHandlers
 			};
 		} catch (error) {
-			console.warn('[AgentChatOrchestrator] Failed to refresh planner context', {
-				error
+			logger.warn('Failed to refresh planner context', {
+				error: error instanceof Error ? error.message : String(error),
+				sessionId: serviceContext.sessionId,
+				contextType: serviceContext.contextType
 			});
+			void this.deps.errorLogger.logError(
+				error,
+				{
+					userId: serviceContext.userId,
+					operationType: 'context_refresh',
+					metadata: {
+						sessionId: serviceContext.sessionId,
+						contextType: serviceContext.contextType,
+						entityId: serviceContext.entityId
+					}
+				},
+				'warning'
+			);
 			return null;
 		}
 	}
@@ -711,7 +752,7 @@ export class AgentChatOrchestrator {
 
 				// Track tool_not_loaded errors for telemetry - indicates tool selection miss
 				if (result.errorType === 'tool_not_loaded') {
-					console.warn('[AgentChatOrchestrator] Tool not loaded - selection miss', {
+					logger.warn('Tool not loaded - selection miss', {
 						toolName: result.toolName,
 						sessionId: serviceContext.sessionId,
 						contextType: serviceContext.contextType
@@ -907,7 +948,19 @@ export class AgentChatOrchestrator {
 					});
 			}
 		} catch (error) {
-			console.error('[AgentChatOrchestrator] Plan tool execution failed', error);
+			logger.error(error as Error, {
+				operation: 'plan_tool_execution',
+				sessionId: serviceContext.sessionId
+			});
+			void this.deps.errorLogger.logError(error, {
+				userId: serviceContext.userId,
+				projectId: serviceContext.contextScope?.projectId ?? serviceContext.entityId,
+				operationType: 'plan_tool_execution',
+				metadata: {
+					sessionId: serviceContext.sessionId,
+					contextType: serviceContext.contextType
+				}
+			});
 			streamEvents.push(
 				this.buildAgentStateEvent(
 					'waiting_on_user',
@@ -1200,9 +1253,9 @@ export class AgentChatOrchestrator {
 					metadata: plan.metadata
 				});
 			} catch (error) {
-				console.warn('[AgentChatOrchestrator] Failed to persist synthesis usage', {
+				logger.warn('Failed to persist synthesis usage', {
 					planId: plan.id,
-					error
+					error: error instanceof Error ? error.message : String(error)
 				});
 			}
 		}
@@ -1333,10 +1386,11 @@ export class AgentChatOrchestrator {
 		const existingMetadata = request.projectClarificationMetadata;
 		const roundNumber = existingMetadata?.roundNumber ?? 0;
 
-		console.log('[AgentChatOrchestrator] Checking project creation clarification', {
+		logger.info('Checking project creation clarification', {
 			roundNumber,
 			messageLength: request.userMessage.length,
-			hasExistingMetadata: !!existingMetadata
+			hasExistingMetadata: !!existingMetadata,
+			sessionId: request.sessionId
 		});
 
 		// Convert to analyzer format
@@ -1357,11 +1411,12 @@ export class AgentChatOrchestrator {
 				request.sessionId
 			);
 
-			console.log('[AgentChatOrchestrator] Project creation analysis result', {
+			logger.debug('Project creation analysis result', {
 				hasSufficientContext: analysis.hasSufficientContext,
 				confidence: analysis.confidence,
 				hasQuestions: !!analysis.clarifyingQuestions?.length,
-				inferredType: analysis.inferredProjectType
+				inferredType: analysis.inferredProjectType,
+				sessionId: request.sessionId
 			});
 
 			// If sufficient context, proceed with project creation
@@ -1424,10 +1479,19 @@ export class AgentChatOrchestrator {
 				updatedMetadata
 			};
 		} catch (error) {
-			console.error(
-				'[AgentChatOrchestrator] Project creation clarification check failed:',
-				error
-			);
+			logger.error(error as Error, {
+				operation: 'project_creation_clarification',
+				sessionId: request.sessionId
+			});
+			void this.deps.errorLogger.logError(error, {
+				userId: request.userId,
+				operationType: 'project_create_clarification',
+				metadata: {
+					sessionId: request.sessionId,
+					contextType: request.contextType,
+					messageLength: request.userMessage.length
+				}
+			});
 
 			// On error, proceed with project creation (don't block the user)
 			return { needsClarification: false, events: [] };
@@ -1505,9 +1569,9 @@ export class AgentChatOrchestrator {
 		try {
 			await this.deps.persistenceService.updateAgent(plannerAgentId, { status: 'completed' });
 		} catch (error) {
-			console.warn('[AgentChatOrchestrator] Failed to update planner agent status', {
+			logger.warn('Failed to update planner agent status', {
 				plannerAgentId,
-				error
+				error: error instanceof Error ? error.message : String(error)
 			});
 		}
 	}

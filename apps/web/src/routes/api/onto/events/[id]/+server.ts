@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 type EventAccessResult =
 	| {
@@ -14,7 +15,11 @@ type EventAccessResult =
 			response: Response;
 	  };
 
-async function requireEventAccess(locals: App.Locals, eventId: string): Promise<EventAccessResult> {
+async function requireEventAccess(
+	locals: App.Locals,
+	eventId: string,
+	method: string
+): Promise<EventAccessResult> {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
 		return { ok: false, response: ApiResponse.unauthorized('Authentication required') };
@@ -26,6 +31,16 @@ async function requireEventAccess(locals: App.Locals, eventId: string): Promise<
 	});
 
 	if (actorError || !actorId) {
+		await logOntologyApiError({
+			supabase,
+			error: actorError || new Error('Failed to resolve user actor'),
+			endpoint: `/api/onto/events/${eventId}`,
+			method,
+			userId: user.id,
+			entityType: 'event',
+			entityId: eventId,
+			operation: 'event_actor_resolve'
+		});
 		return {
 			ok: false,
 			response: ApiResponse.internalError(
@@ -42,6 +57,17 @@ async function requireEventAccess(locals: App.Locals, eventId: string): Promise<
 		.maybeSingle();
 
 	if (eventError) {
+		await logOntologyApiError({
+			supabase,
+			error: eventError,
+			endpoint: `/api/onto/events/${eventId}`,
+			method,
+			userId: user.id,
+			entityType: 'event',
+			entityId: eventId,
+			operation: 'event_fetch',
+			tableName: 'onto_events'
+		});
 		return { ok: false, response: ApiResponse.databaseError(eventError) };
 	}
 
@@ -57,6 +83,17 @@ async function requireEventAccess(locals: App.Locals, eventId: string): Promise<
 			.maybeSingle();
 
 		if (projectError) {
+			await logOntologyApiError({
+				supabase,
+				error: projectError,
+				endpoint: `/api/onto/events/${eventId}`,
+				method,
+				userId: user.id,
+				projectId: event.project_id,
+				entityType: 'project',
+				operation: 'event_project_fetch',
+				tableName: 'onto_projects'
+			});
 			return { ok: false, response: ApiResponse.databaseError(projectError) };
 		}
 
@@ -82,17 +119,32 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.badRequest('Event ID required');
 	}
 
-	const access = await requireEventAccess(locals, eventId);
+	const access = await requireEventAccess(locals, eventId, 'GET');
 	if (!access.ok) return access.response;
 
-	const eventService = new OntoEventSyncService(locals.supabase);
-	const event = await eventService.getEvent(eventId);
+	try {
+		const eventService = new OntoEventSyncService(locals.supabase);
+		const event = await eventService.getEvent(eventId);
 
-	if (!event) {
-		return ApiResponse.notFound('Event');
+		if (!event) {
+			return ApiResponse.notFound('Event');
+		}
+
+		return ApiResponse.success({ event });
+	} catch (error) {
+		console.error('[Event API] Failed to load event:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/events/${eventId}`,
+			method: 'GET',
+			userId: access.userId,
+			entityType: 'event',
+			entityId: eventId,
+			operation: 'event_get'
+		});
+		return ApiResponse.internalError(error, 'Failed to load event');
 	}
-
-	return ApiResponse.success({ event });
 };
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
@@ -101,7 +153,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Event ID required');
 	}
 
-	const access = await requireEventAccess(locals, eventId);
+	const access = await requireEventAccess(locals, eventId, 'PATCH');
 	if (!access.ok) return access.response;
 
 	const body = await request.json().catch(() => null);
@@ -109,25 +161,40 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Invalid request body');
 	}
 
-	const eventService = new OntoEventSyncService(locals.supabase);
-	const updated = await eventService.updateEvent(access.userId, {
-		eventId,
-		title: body.title,
-		description: body.description,
-		location: body.location,
-		startAt: body.start_at,
-		endAt: body.end_at,
-		allDay: body.all_day,
-		timezone: body.timezone,
-		stateKey: body.state_key,
-		typeKey: body.type_key,
-		recurrence: body.recurrence,
-		externalLink: body.external_link,
-		props: body.props,
-		syncToCalendar: body.sync_to_calendar
-	});
+	try {
+		const eventService = new OntoEventSyncService(locals.supabase);
+		const updated = await eventService.updateEvent(access.userId, {
+			eventId,
+			title: body.title,
+			description: body.description,
+			location: body.location,
+			startAt: body.start_at,
+			endAt: body.end_at,
+			allDay: body.all_day,
+			timezone: body.timezone,
+			stateKey: body.state_key,
+			typeKey: body.type_key,
+			recurrence: body.recurrence,
+			externalLink: body.external_link,
+			props: body.props,
+			syncToCalendar: body.sync_to_calendar
+		});
 
-	return ApiResponse.success({ event: updated });
+		return ApiResponse.success({ event: updated });
+	} catch (error) {
+		console.error('[Event API] Failed to update event:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/events/${eventId}`,
+			method: 'PATCH',
+			userId: access.userId,
+			entityType: 'event',
+			entityId: eventId,
+			operation: 'event_update'
+		});
+		return ApiResponse.internalError(error, 'Failed to update event');
+	}
 };
 
 export const DELETE: RequestHandler = async ({ params, request, locals }) => {
@@ -136,7 +203,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Event ID required');
 	}
 
-	const access = await requireEventAccess(locals, eventId);
+	const access = await requireEventAccess(locals, eventId, 'DELETE');
 	if (!access.ok) return access.response;
 
 	const body = await request.json().catch(() => null);
@@ -145,11 +212,26 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			? (body.sync_to_calendar as boolean | undefined)
 			: undefined;
 
-	const eventService = new OntoEventSyncService(locals.supabase);
-	const event = await eventService.deleteEvent(access.userId, {
-		eventId,
-		syncToCalendar
-	});
+	try {
+		const eventService = new OntoEventSyncService(locals.supabase);
+		const event = await eventService.deleteEvent(access.userId, {
+			eventId,
+			syncToCalendar
+		});
 
-	return ApiResponse.success({ event });
+		return ApiResponse.success({ event });
+	} catch (error) {
+		console.error('[Event API] Failed to delete event:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/events/${eventId}`,
+			method: 'DELETE',
+			userId: access.userId,
+			entityType: 'event',
+			entityId: eventId,
+			operation: 'event_delete'
+		});
+		return ApiResponse.internalError(error, 'Failed to delete event');
+	}
 };

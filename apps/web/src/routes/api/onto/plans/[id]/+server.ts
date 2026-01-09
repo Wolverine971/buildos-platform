@@ -50,6 +50,7 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { EntityKind } from '$lib/services/ontology/edge-direction';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 // GET /api/onto/plans/[id] - Get a single plan
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -68,6 +69,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Plan GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/plans/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'plan',
+				entityId: params.id,
+				operation: 'plan_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -102,6 +113,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.success({ plan: planData });
 	} catch (error) {
 		console.error('Error fetching plan:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/plans/${params.id}`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'plan',
+			entityId: params.id,
+			operation: 'plan_get'
+		});
 		return ApiResponse.error('Internal server error', 500);
 	}
 };
@@ -144,6 +165,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Plan PATCH] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/plans/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				entityType: 'plan',
+				entityId: params.id,
+				operation: 'plan_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -164,6 +195,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !existingPlan) {
+			if (fetchError) {
+				await logOntologyApiError({
+					supabase,
+					error: fetchError,
+					endpoint: `/api/onto/plans/${params.id}`,
+					method: 'PATCH',
+					userId: session.user.id,
+					entityType: 'plan',
+					entityId: params.id,
+					operation: 'plan_fetch',
+					tableName: 'onto_plans'
+				});
+			}
 			return ApiResponse.error('Plan not found', 404);
 		}
 
@@ -291,6 +335,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('Error updating plan:', updateError);
+			await logOntologyApiError({
+				supabase,
+				error: updateError,
+				endpoint: `/api/onto/plans/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingPlan.project_id,
+				entityType: 'plan',
+				entityId: params.id,
+				operation: 'plan_update',
+				tableName: 'onto_plans'
+			});
 			return ApiResponse.error('Failed to update plan', 500);
 		}
 
@@ -345,6 +401,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('Error updating plan:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/plans/${params.id}`,
+			method: 'PATCH',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'plan',
+			entityId: params.id,
+			operation: 'plan_update'
+		});
 		return ApiResponse.error('Internal server error', 500);
 	}
 };
@@ -367,6 +433,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Plan DELETE] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/plans/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				entityType: 'plan',
+				entityId: params.id,
+				operation: 'plan_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -387,6 +463,19 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !plan) {
+			if (fetchError) {
+				await logOntologyApiError({
+					supabase,
+					error: fetchError,
+					endpoint: `/api/onto/plans/${params.id}`,
+					method: 'DELETE',
+					userId: session.user.id,
+					entityType: 'plan',
+					entityId: params.id,
+					operation: 'plan_fetch',
+					tableName: 'onto_plans'
+				});
+			}
 			return ApiResponse.error('Plan not found', 404);
 		}
 
@@ -410,6 +499,18 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (deleteError) {
 			console.error('Error deleting plan:', deleteError);
+			await logOntologyApiError({
+				supabase,
+				error: deleteError,
+				endpoint: `/api/onto/plans/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId,
+				entityType: 'plan',
+				entityId: params.id,
+				operation: 'plan_delete',
+				tableName: 'onto_plans'
+			});
 			return ApiResponse.error('Failed to delete plan', 500);
 		}
 
@@ -428,6 +529,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ message: 'Plan deleted successfully' });
 	} catch (error) {
 		console.error('Error deleting plan:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/plans/${params.id}`,
+			method: 'DELETE',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'plan',
+			entityId: params.id,
+			operation: 'plan_delete'
+		});
 		return ApiResponse.error('Internal server error', 500);
 	}
 };

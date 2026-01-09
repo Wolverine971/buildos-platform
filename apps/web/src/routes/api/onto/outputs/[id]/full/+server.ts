@@ -20,6 +20,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const session = await locals.safeGetSession();
@@ -53,9 +54,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const { data: actorId, error: actorError } = actorResult;
 		const { data: output, error: outputError } = outputResult;
+		const projectId = output?.project?.id;
 
 		if (actorError || !actorId) {
 			console.error('[Output Full GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/outputs/${outputId}/full`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'output',
+				entityId: outputId,
+				operation: 'output_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to get user actor'),
 				'Failed to get user actor'
@@ -63,6 +75,22 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (outputError || !output) {
+			if (outputError) {
+				console.error('[Output Full GET] Failed to fetch output:', outputError);
+				await logOntologyApiError({
+					supabase,
+					error: outputError,
+					endpoint: `/api/onto/outputs/${outputId}/full`,
+					method: 'GET',
+					userId: session.user.id,
+					projectId,
+					entityType: 'output',
+					entityId: outputId,
+					operation: 'output_full_fetch',
+					tableName: 'onto_outputs'
+				});
+				return ApiResponse.databaseError(outputError);
+			}
 			return ApiResponse.notFound('Output');
 		}
 
@@ -83,6 +111,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Output Full GET] Error fetching output data:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/outputs/${params.id ?? ''}/full`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'output',
+			entityId: params.id,
+			operation: 'output_full_get'
+		});
 		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

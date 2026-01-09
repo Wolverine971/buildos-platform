@@ -27,6 +27,9 @@ import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { normalizeToolError } from '$lib/services/agentic-chat/shared/error-utils';
+import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
 
 import {
 	OntologyReadExecutor,
@@ -39,6 +42,8 @@ import {
 
 import type { WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
 import type { WebVisitArgs } from '$lib/services/agentic-chat/tools/webvisit';
+
+const logger = createLogger('ChatToolExecutor');
 
 /**
  * Chat Tool Executor - Orchestration Layer
@@ -53,6 +58,7 @@ export class ChatToolExecutor {
 	private sessionId?: string;
 	private fetchFn: typeof fetch;
 	private llmService?: SmartLLMService;
+	private errorLogger: ErrorLoggerService;
 
 	// Cached values
 	private _actorId?: string;
@@ -75,6 +81,7 @@ export class ChatToolExecutor {
 		this.sessionId = sessionId;
 		this.fetchFn = fetchFn || fetch;
 		this.llmService = llmService;
+		this.errorLogger = ErrorLoggerService.getInstance(supabase as any);
 	}
 
 	setSessionId(sessionId: string): void {
@@ -222,7 +229,7 @@ export class ChatToolExecutor {
 
 			await this.logToolExecution(toolCall, null, duration, false, errorMessage, args);
 
-			console.error('[ChatToolExecutor] Tool execution failed:', {
+			logger.error('[ChatToolExecutor] Tool execution failed', {
 				tool: toolName,
 				error: errorMessage,
 				duration_ms: duration
@@ -528,14 +535,15 @@ export class ChatToolExecutor {
 		tokensConsumed?: number
 	): Promise<void> {
 		if (!this.sessionId) {
-			console.warn(
-				`Cannot log tool execution for ${toolCall.function.name}: session_id not set. Call setSessionId() first.`
-			);
+			logger.warn('Tool execution log skipped: session_id not set', {
+				toolName: toolCall.function.name
+			});
 			return;
 		}
 
 		const category = getToolCategory(toolCall.function.name);
 		const argumentsPayload = parsedArgs ?? this.safeParseArguments(toolCall.function.arguments);
+		const sanitizedArgs = sanitizeLogData(argumentsPayload);
 
 		try {
 			const { error: insertError } = await this.supabase.from('chat_tool_executions').insert({
@@ -551,20 +559,44 @@ export class ChatToolExecutor {
 			});
 
 			if (insertError) {
-				console.error('[ChatToolExecutor] Failed to log tool execution (DB error):', {
+				logger.error('[ChatToolExecutor] Failed to log tool execution (DB error)', {
 					toolName: toolCall.function.name,
 					sessionId: this.sessionId,
 					error: insertError.message,
 					code: insertError.code,
 					hint: insertError.hint
 				});
+				void this.errorLogger.logError(insertError, {
+					userId: this.userId,
+					operationType: 'tool_execution_log',
+					tableName: 'chat_tool_executions',
+					recordId: this.sessionId,
+					metadata: {
+						toolName: toolCall.function.name,
+						sessionId: this.sessionId,
+						success,
+						args: sanitizedArgs
+					}
+				});
 			}
 		} catch (error) {
-			console.error('[ChatToolExecutor] Failed to log tool execution (exception):', {
+			logger.error('[ChatToolExecutor] Failed to log tool execution (exception)', {
 				toolName: toolCall.function.name,
 				sessionId: this.sessionId,
 				error: error instanceof Error ? error.message : String(error),
 				stack: error instanceof Error ? error.stack : undefined
+			});
+			void this.errorLogger.logError(error, {
+				userId: this.userId,
+				operationType: 'tool_execution_log',
+				tableName: 'chat_tool_executions',
+				recordId: this.sessionId,
+				metadata: {
+					toolName: toolCall.function.name,
+					sessionId: this.sessionId,
+					success,
+					args: sanitizedArgs
+				}
 			});
 		}
 	}
@@ -577,7 +609,7 @@ export class ChatToolExecutor {
 		try {
 			return JSON.parse(rawArguments);
 		} catch (error) {
-			console.warn('[ChatToolExecutor] Failed to parse tool arguments for logging', {
+			logger.warn('[ChatToolExecutor] Failed to parse tool arguments for logging', {
 				error: error instanceof Error ? error.message : String(error)
 			});
 			return {};

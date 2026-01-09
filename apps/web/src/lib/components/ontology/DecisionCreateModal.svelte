@@ -22,6 +22,7 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface Props {
 		projectId: string;
@@ -105,6 +106,13 @@
 			onClose();
 		} catch (err) {
 			console.error('Error creating decision:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/decisions',
+				method: 'POST',
+				projectId,
+				entityType: 'decision',
+				operation: 'decision_create'
+			});
 			error = err instanceof Error ? err.message : 'Failed to create decision';
 			isSaving = false;
 		}

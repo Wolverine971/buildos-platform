@@ -47,6 +47,7 @@ import {
 	assertEntityRefsInProject
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -90,6 +91,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorError || !actorData) {
 			console.error('Error resolving actor for goal creation:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/goals/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'goal',
+				operation: 'goal_actor_resolve'
+			});
 			return ApiResponse.internalError(new Error('Failed to get user actor'));
 		}
 
@@ -137,6 +148,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (createError) {
 			console.error('Error creating goal:', createError);
+			await logOntologyApiError({
+				supabase,
+				error: createError,
+				endpoint: '/api/onto/goals/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'goal',
+				entityId: createdGoal?.id,
+				operation: 'goal_create',
+				tableName: 'onto_goals'
+			});
 			return ApiResponse.databaseError(createError);
 		}
 
@@ -189,6 +212,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('Error in goal create endpoint:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: '/api/onto/goals/create',
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'goal',
+			operation: 'goal_create'
+		});
 		return ApiResponse.internalError(error);
 	}
 };

@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 type ProjectAccessResult =
 	| {
@@ -16,7 +17,8 @@ type ProjectAccessResult =
 
 async function requireProjectAccess(
 	locals: App.Locals,
-	projectId: string
+	projectId: string,
+	method: string
 ): Promise<ProjectAccessResult> {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
@@ -36,6 +38,16 @@ async function requireProjectAccess(
 
 	if (actorResult.error || !actorResult.data) {
 		console.error('[Project Events API] Failed to resolve actor:', actorResult.error);
+		await logOntologyApiError({
+			supabase,
+			error: actorResult.error || new Error('Failed to resolve user actor'),
+			endpoint: `/api/onto/projects/${projectId}/events`,
+			method,
+			userId: user.id,
+			projectId,
+			entityType: 'event',
+			operation: 'project_events_access'
+		});
 		return {
 			ok: false,
 			response: ApiResponse.internalError(
@@ -47,6 +59,17 @@ async function requireProjectAccess(
 
 	if (projectResult.error) {
 		console.error('[Project Events API] Failed to fetch project:', projectResult.error);
+		await logOntologyApiError({
+			supabase,
+			error: projectResult.error,
+			endpoint: `/api/onto/projects/${projectId}/events`,
+			method,
+			userId: user.id,
+			projectId,
+			entityType: 'project',
+			operation: 'project_events_access',
+			tableName: 'onto_projects'
+		});
 		return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
 	}
 
@@ -68,7 +91,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		return ApiResponse.badRequest('Project ID required');
 	}
 
-	const access = await requireProjectAccess(locals, projectId);
+	const access = await requireProjectAccess(locals, projectId, 'GET');
 	if (!access.ok) return access.response;
 
 	const timeMin = url.searchParams.get('timeMin');
@@ -79,17 +102,32 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 	const limitParam = url.searchParams.get('limit');
 	const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 0, 1000) : null;
 
-	const eventService = new OntoEventSyncService(locals.supabase);
-	const events = await eventService.listProjectEvents(projectId, {
-		timeMin,
-		timeMax,
-		ownerType,
-		ownerId,
-		includeDeleted,
-		limit
-	});
+	try {
+		const eventService = new OntoEventSyncService(locals.supabase);
+		const events = await eventService.listProjectEvents(projectId, {
+			timeMin,
+			timeMax,
+			ownerType,
+			ownerId,
+			includeDeleted,
+			limit
+		});
 
-	return ApiResponse.success({ events });
+		return ApiResponse.success({ events });
+	} catch (error) {
+		console.error('[Project Events API] Failed to list events:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/projects/${projectId}/events`,
+			method: 'GET',
+			userId: access.userId,
+			projectId,
+			entityType: 'event',
+			operation: 'project_events_list'
+		});
+		return ApiResponse.internalError(error, 'Failed to load events');
+	}
 };
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
@@ -98,7 +136,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Project ID required');
 	}
 
-	const access = await requireProjectAccess(locals, projectId);
+	const access = await requireProjectAccess(locals, projectId, 'POST');
 	if (!access.ok) return access.response;
 
 	const body = await request.json().catch(() => null);
@@ -144,77 +182,105 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	let taskMetadata: { id: string; title: string; projectId: string } | null = null;
 
-	if (taskId) {
-		const { data: task, error: taskError } = await locals.supabase
-			.from('onto_tasks')
-			.select('id, project_id, title')
-			.eq('id', taskId)
-			.eq('project_id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle();
+	try {
+		if (taskId) {
+			const { data: task, error: taskError } = await locals.supabase
+				.from('onto_tasks')
+				.select('id, project_id, title')
+				.eq('id', taskId)
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.maybeSingle();
 
-		if (taskError) {
-			return ApiResponse.databaseError(taskError);
-		}
-
-		if (!task) {
-			return ApiResponse.notFound('Task');
-		}
-
-		taskMetadata = {
-			id: task.id,
-			title: task.title ?? 'Task',
-			projectId: task.project_id
-		};
-	}
-
-	const mergedProps = taskMetadata
-		? {
-				...(props ?? {}),
-				task_id: taskMetadata.id,
-				task_title: taskMetadata.title,
-				task_link: `/projects/${taskMetadata.projectId}/tasks/${taskMetadata.id}`,
-				project_id: taskMetadata.projectId
+			if (taskError) {
+				await logOntologyApiError({
+					supabase: locals.supabase,
+					error: taskError,
+					endpoint: `/api/onto/projects/${projectId}/events`,
+					method: 'POST',
+					userId: access.userId,
+					projectId,
+					entityType: 'task',
+					entityId: taskId,
+					operation: 'event_task_lookup',
+					tableName: 'onto_tasks'
+				});
+				return ApiResponse.databaseError(taskError);
 			}
-		: props;
 
-	const eventService = new OntoEventSyncService(locals.supabase);
-	const result = await eventService.createEvent(access.userId, {
-		orgId: null,
-		projectId,
-		owner: {
-			type: resolvedOwnerType as any,
-			id: resolvedOwnerType === 'standalone' ? null : (resolvedOwnerId ?? null)
-		},
-		typeKey: typeKey ?? (resolvedOwnerType === 'task' ? 'event.task_work' : 'event.general'),
-		stateKey,
-		title,
-		description,
-		location,
-		startAt,
-		endAt,
-		allDay,
-		timezone,
-		props: mergedProps,
-		createdBy: access.actorId,
-		calendarScope,
-		calendarId,
-		syncToCalendar
-	});
+			if (!task) {
+				return ApiResponse.notFound('Task');
+			}
 
-	if (resolvedOwnerType === 'task' && resolvedOwnerId) {
-		await locals.supabase.from('onto_edges').insert({
-			project_id: projectId,
-			src_id: resolvedOwnerId,
-			src_kind: 'task',
-			dst_id: result.event.id,
-			dst_kind: 'event',
-			rel: 'has_event'
+			taskMetadata = {
+				id: task.id,
+				title: task.title ?? 'Task',
+				projectId: task.project_id
+			};
+		}
+
+		const mergedProps = taskMetadata
+			? {
+					...(props ?? {}),
+					task_id: taskMetadata.id,
+					task_title: taskMetadata.title,
+					task_link: `/projects/${taskMetadata.projectId}/tasks/${taskMetadata.id}`,
+					project_id: taskMetadata.projectId
+				}
+			: props;
+
+		const eventService = new OntoEventSyncService(locals.supabase);
+		const result = await eventService.createEvent(access.userId, {
+			orgId: null,
+			projectId,
+			owner: {
+				type: resolvedOwnerType as any,
+				id: resolvedOwnerType === 'standalone' ? null : (resolvedOwnerId ?? null)
+			},
+			typeKey:
+				typeKey ?? (resolvedOwnerType === 'task' ? 'event.task_work' : 'event.general'),
+			stateKey,
+			title,
+			description,
+			location,
+			startAt,
+			endAt,
+			allDay,
+			timezone,
+			props: mergedProps,
+			createdBy: access.actorId,
+			calendarScope,
+			calendarId,
+			syncToCalendar
 		});
-	}
 
-	return ApiResponse.created({
-		event: result.event,
-		sync: result.sync ?? null
-	});
+		if (resolvedOwnerType === 'task' && resolvedOwnerId) {
+			await locals.supabase.from('onto_edges').insert({
+				project_id: projectId,
+				src_id: resolvedOwnerId,
+				src_kind: 'task',
+				dst_id: result.event.id,
+				dst_kind: 'event',
+				rel: 'has_event'
+			});
+		}
+
+		return ApiResponse.created({
+			event: result.event,
+			sync: result.sync ?? null
+		});
+	} catch (error) {
+		console.error('[Project Events API] Failed to create event:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/projects/${projectId}/events`,
+			method: 'POST',
+			userId: access.userId,
+			projectId,
+			entityType: 'event',
+			operation: 'event_create'
+		});
+		return ApiResponse.internalError(error, 'Failed to create event');
+	}
 };

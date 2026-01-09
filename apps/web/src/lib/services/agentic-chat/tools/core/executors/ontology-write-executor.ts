@@ -38,6 +38,9 @@ import type {
 	DeleteOntoPlanArgs,
 	DeleteOntoDocumentArgs
 } from './types';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('OntologyWriteExecutor');
 
 /**
  * Helper to extract a string from meta object
@@ -1066,10 +1069,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			existingText = existing?.text ?? '';
 			projectId = existing?.projectId;
 		} catch (error) {
-			console.warn(
-				`[OntologyWriteExecutor] Failed to load existing content for ${entityLabel || 'entity'}, using provided content`,
-				error
-			);
+			logger.warn('Failed to load existing content, using provided content', {
+				entityLabel: entityLabel || 'entity',
+				error: error instanceof Error ? error.message : String(error)
+			});
 			return sanitizedNew;
 		}
 
@@ -1092,15 +1095,15 @@ export class OntologyWriteExecutor extends BaseExecutor {
 					projectId
 				});
 			} catch (error) {
-				console.warn(
-					`[OntologyWriteExecutor] LLM merge failed for ${entityLabel || 'entity'}, falling back to append`,
-					error
-				);
+				logger.warn('LLM merge failed, falling back to append', {
+					entityLabel: entityLabel || 'entity',
+					error: error instanceof Error ? error.message : String(error)
+				});
 			}
 		} else {
-			console.warn(
-				`[OntologyWriteExecutor] LLM service not available for ${entityLabel || 'entity'}, falling back to append`
-			);
+			logger.warn('LLM service not available, falling back to append', {
+				entityLabel: entityLabel || 'entity'
+			});
 		}
 
 		return existingText ? `${existingText}\n\n${sanitizedNew}` : sanitizedNew;

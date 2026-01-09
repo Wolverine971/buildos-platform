@@ -9,6 +9,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface Props {
 		projectId: string;
@@ -79,6 +80,13 @@
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to create output';
 			console.error('Failed to create output:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/outputs/create',
+				method: 'POST',
+				projectId,
+				entityType: 'output',
+				operation: 'output_create'
+			});
 		} finally {
 			isCreating = false;
 		}

@@ -41,6 +41,7 @@
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { hasEntityReferences } from '$lib/utils/entity-reference-parser';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
@@ -309,6 +310,14 @@
 			onClose?.();
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to delete project';
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${project.id}`,
+				method: 'DELETE',
+				projectId: project.id,
+				entityType: 'project',
+				entityId: project.id,
+				operation: 'project_delete'
+			});
 			error = message;
 			toastService.error(message);
 			showDeleteConfirm = false;
@@ -414,6 +423,9 @@
 			return;
 		}
 
+		let lastEndpoint = '';
+		let lastMethod = '';
+
 		try {
 			isSaving = true;
 			console.log('[OntologyProjectEditModal] Starting save...', {
@@ -426,6 +438,8 @@
 			// Update project if there are changes
 			if (hasProjectChanges) {
 				console.log('[OntologyProjectEditModal] Updating project with payload:', payload);
+				lastEndpoint = `/api/onto/projects/${project.id}`;
+				lastMethod = 'PATCH';
 				const response = await fetch(`/api/onto/projects/${project.id}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
@@ -454,6 +468,8 @@
 					'[OntologyProjectEditModal] Updating context document:',
 					contextDocument.id
 				);
+				lastEndpoint = `/api/onto/documents/${contextDocument.id}`;
+				lastMethod = 'PATCH';
 				const docResponse = await fetch(`/api/onto/documents/${contextDocument.id}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
@@ -481,6 +497,15 @@
 			onClose?.();
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update project';
+			void logOntologyClientError(err, {
+				endpoint: lastEndpoint || `/api/onto/projects/${project?.id ?? ''}`,
+				method: lastMethod || 'PATCH',
+				projectId: project?.id,
+				entityType: 'project',
+				entityId: project?.id,
+				operation: 'project_update',
+				metadata: { hasProjectChanges, hasContextDocChanges }
+			});
 			error = message;
 			toastService.error(message);
 		} finally {
@@ -521,6 +546,14 @@
 			toastService.success('Next step generated!');
 		} catch (err) {
 			console.error('Failed to generate next step:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${project.id}/next-step/generate`,
+				method: 'POST',
+				projectId: project.id,
+				entityType: 'project',
+				entityId: project.id,
+				operation: 'project_next_step_generate'
+			});
 			toastService.error(err instanceof Error ? err.message : 'Failed to generate next step');
 		} finally {
 			isGeneratingNextStep = false;

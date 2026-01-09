@@ -23,6 +23,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -81,6 +82,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (projectError) {
 			console.error('[Document API] Failed to fetch project:', projectError);
+			await logOntologyApiError({
+				supabase,
+				error: projectError,
+				endpoint: '/api/onto/documents/create',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id as string,
+				entityType: 'project',
+				operation: 'document_project_fetch',
+				tableName: 'onto_projects'
+			});
 			return ApiResponse.databaseError(projectError);
 		}
 
@@ -94,6 +106,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Document API] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/documents/create',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id as string,
+				entityType: 'document',
+				operation: 'document_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to resolve user actor'),
 				'Failed to resolve user identity'
@@ -152,6 +174,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (insertError) {
 			console.error('[Document API] Failed to create document:', insertError);
+			await logOntologyApiError({
+				supabase,
+				error: insertError,
+				endpoint: '/api/onto/documents/create',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id as string,
+				entityType: 'document',
+				entityId: document?.id,
+				operation: 'document_create',
+				tableName: 'onto_documents'
+			});
 			return ApiResponse.databaseError(insertError);
 		}
 
@@ -199,6 +233,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('[Document API] Unexpected create error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: '/api/onto/documents/create',
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'document',
+			operation: 'document_create'
+		});
 		return ApiResponse.internalError(error, 'Failed to create document');
 	}
 };

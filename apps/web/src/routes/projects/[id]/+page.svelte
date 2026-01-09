@@ -52,6 +52,7 @@
 	import { slide } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { getNavigationData } from '$lib/stores/project-navigation.store';
 	import InsightPanelSkeleton from '$lib/components/ontology/InsightPanelSkeleton.svelte';
 	import ProjectContentSkeleton from '$lib/components/ontology/ProjectContentSkeleton.svelte';
@@ -333,6 +334,13 @@
 			void loadProjectEvents();
 		} catch (err) {
 			console.error('[Project Page] Hydration failed:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${data.projectId}/full`,
+				method: 'GET',
+				projectId: data.projectId,
+				entityType: 'project',
+				operation: 'project_hydrate'
+			});
 			hydrationError = err instanceof Error ? err.message : 'Failed to load project data';
 			isHydrating = false;
 		}
@@ -906,6 +914,13 @@
 			events = (payload?.data?.events || []) as OntoEventWithSync[];
 		} catch (error) {
 			console.error('[Project] Failed to load events', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${project.id}/events`,
+				method: 'GET',
+				projectId: project.id,
+				entityType: 'event',
+				operation: 'project_events_load'
+			});
 			if (showToast) {
 				toastService.error(
 					error instanceof Error ? error.message : 'Failed to load events'
@@ -941,6 +956,13 @@
 			toastService.success('Data refreshed');
 		} catch (error) {
 			console.error('[Project] Failed to refresh', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${project.id}`,
+				method: 'GET',
+				projectId: project.id,
+				entityType: 'project',
+				operation: 'project_refresh'
+			});
 			toastService.error(error instanceof Error ? error.message : 'Failed to refresh data');
 		} finally {
 			dataRefreshing = false;
@@ -1099,6 +1121,14 @@
 			goto('/projects');
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to delete project';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${project.id}`,
+				method: 'DELETE',
+				projectId: project.id,
+				entityType: 'project',
+				entityId: project.id,
+				operation: 'project_delete'
+			});
 			deleteProjectError = message;
 			toastService.error(message);
 		} finally {

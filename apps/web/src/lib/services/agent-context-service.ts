@@ -34,6 +34,7 @@ import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { ChatCompressionService } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
 import { PromptGenerationService } from './agentic-chat/prompts/prompt-generation-service';
+import { ErrorLoggerService } from './errorLogger.service';
 import type {
 	LastTurnContext,
 	OntologyContext,
@@ -60,11 +61,33 @@ import {
 	buildExecutorContext as buildExecutorContextImpl,
 	extractRelevantDataForExecutor
 } from './context';
+import { createLogger } from '$lib/utils/logger';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
+
+const logger = createLogger('AgentContextService');
 
 const debugLog = (...args: unknown[]) => {
-	if (dev) {
-		console.log(...args);
+	if (!dev) return;
+	if (args.length === 0) return;
+	const [first, ...rest] = args;
+	if (typeof first === 'string') {
+		if (rest.length === 0) {
+			logger.debug(first);
+			return;
+		}
+		if (
+			rest.length === 1 &&
+			rest[0] &&
+			typeof rest[0] === 'object' &&
+			!Array.isArray(rest[0])
+		) {
+			logger.debug(first, rest[0] as Record<string, any>);
+			return;
+		}
+		logger.debug(first, { args: sanitizeLogData(rest) });
+		return;
 	}
+	logger.debug('AgentContext debug', { args: sanitizeLogData(args) });
 };
 
 // ============================================
@@ -112,6 +135,7 @@ export class AgentContextService {
 	private ontologyLoader: OntologyContextLoader | null = null;
 	private promptService: PromptGenerationService;
 	private loaderUserId?: string;
+	private errorLogger: ErrorLoggerService;
 
 	constructor(
 		private supabase: SupabaseClient<Database>,
@@ -120,6 +144,7 @@ export class AgentContextService {
 		this.compressionService = compressionService;
 		this.chatContextService = new ChatContextService(supabase);
 		this.promptService = new PromptGenerationService();
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
 	private async getOntologyLoader(userId: string): Promise<OntologyContextLoader> {
@@ -206,7 +231,25 @@ export class AgentContextService {
 					});
 					return linkedEntities;
 				} catch (error) {
-					console.error('[AgentContext] Failed to load linked entities:', error);
+					logger.warn('Failed to load linked entities', {
+						focusType: focus.type,
+						focusId: focus.id,
+						error: error instanceof Error ? error.message : String(error)
+					});
+					void this.errorLogger.logError(
+						error,
+						{
+							userId,
+							operationType: 'context_linked_entities',
+							metadata: {
+								sessionId,
+								contextType: normalizedContext,
+								focusType: focus.type,
+								focusId: focus.id
+							}
+						},
+						'warning'
+					);
 				}
 			}
 
@@ -427,10 +470,10 @@ export class AgentContextService {
 							conversationBudget
 						);
 					} catch (error) {
-						console.error(
-							'Failed to compute usage snapshot for deferred compression',
-							error
-						);
+						logger.warn('Failed to compute usage snapshot for deferred compression', {
+							error: error instanceof Error ? error.message : String(error),
+							sessionId
+						});
 					}
 				}
 
@@ -442,9 +485,21 @@ export class AgentContextService {
 					void this.compressionService
 						.smartCompress(sessionId, history, contextType ?? 'global', userId)
 						.catch((error) => {
-							console.error(
-								'[AgentContext] Deferred compression failed (will retry next turn):',
-								error
+							logger.warn('Deferred compression failed (will retry next turn)', {
+								error: error instanceof Error ? error.message : String(error),
+								sessionId
+							});
+							void this.errorLogger.logError(
+								error,
+								{
+									userId,
+									operationType: 'context_compression_deferred',
+									metadata: {
+										sessionId,
+										contextType
+									}
+								},
+								'warning'
 							);
 						});
 				}
@@ -495,12 +550,24 @@ export class AgentContextService {
 					return { messages, usageSnapshot };
 				}
 			} catch (error) {
-				console.error('[AgentContext] Failed to compress history, falling back:', error);
+				logger.error(error as Error, {
+					operation: 'context_compression',
+					sessionId,
+					contextType
+				});
+				void this.errorLogger.logError(error, {
+					userId,
+					operationType: 'context_compression',
+					metadata: {
+						sessionId,
+						contextType
+					}
+				});
 			}
 		}
 
 		if (needsCompression) {
-			console.warn('[AgentContext] Falling back to recent conversation slice', {
+			logger.warn('Falling back to recent conversation slice', {
 				originalTokens: estimatedTokens,
 				targetTokens: conversationBudget,
 				messageCount: history.length
@@ -523,7 +590,10 @@ export class AgentContextService {
 						conversationBudget
 					);
 				} catch (error) {
-					console.error('Failed to compute usage snapshot for fallback slice', error);
+					logger.warn('Failed to compute usage snapshot for fallback slice', {
+						error: error instanceof Error ? error.message : String(error),
+						sessionId
+					});
 				}
 			}
 			return { messages, usageSnapshot };
@@ -547,7 +617,10 @@ export class AgentContextService {
 					conversationBudget
 				);
 			} catch (error) {
-				console.error('Failed to compute usage snapshot for full history', error);
+				logger.warn('Failed to compute usage snapshot for full history', {
+					error: error instanceof Error ? error.message : String(error),
+					sessionId
+				});
 			}
 		}
 

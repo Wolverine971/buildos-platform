@@ -19,6 +19,8 @@ import { ApiResponse } from '$lib/utils/api-response';
 import type { EnhancedAgentStreamRequest } from '$lib/types/agent-chat-enhancement';
 import { createLogger } from '$lib/utils/logger';
 import { SSEResponse } from '$lib/utils/sse-response';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
 
 // Local imports
 import type { StreamRequest, AuthResult } from './types';
@@ -50,7 +52,12 @@ const logger = createLogger('API:AgentStream');
  */
 async function authenticateRequest(
 	safeGetSession: () => Promise<{ user: { id: string } | null }>,
-	supabase: any
+	supabase: any,
+	options?: {
+		errorLogger?: ErrorLoggerService;
+		httpMethod?: string;
+		endpoint?: string;
+	}
 ): Promise<AuthResult> {
 	const { user } = await safeGetSession();
 
@@ -69,6 +76,18 @@ async function authenticateRequest(
 
 	if (actorError || !actorId) {
 		logger.error('Failed to resolve actor for user', { error: actorError, userId });
+		if (options?.errorLogger) {
+			await options.errorLogger.logError(actorError ?? 'Actor resolution failed', {
+				userId,
+				endpoint: options.endpoint,
+				httpMethod: options.httpMethod,
+				operationType: 'actor_resolution',
+				metadata: {
+					actorError: sanitizeLogData(actorError),
+					actorIdMissing: !actorId
+				}
+			});
+		}
 		return {
 			success: false,
 			response: ApiResponse.error(
@@ -93,7 +112,9 @@ async function authenticateRequest(
  * @returns Parsed StreamRequest or error response
  */
 async function parseRequest(
-	request: Request
+	request: Request,
+	errorLogger?: ErrorLoggerService,
+	userId?: string
 ): Promise<{ success: true; data: StreamRequest } | { success: false; response: Response }> {
 	try {
 		const body = (await request.json()) as EnhancedAgentStreamRequest;
@@ -140,6 +161,17 @@ async function parseRequest(
 		};
 	} catch (err) {
 		logger.error('Failed to parse request body', { error: err });
+		if (errorLogger) {
+			await errorLogger.logError(err, {
+				userId,
+				endpoint: '/api/agent/stream',
+				httpMethod: 'POST',
+				operationType: 'agent_stream_parse',
+				metadata: {
+					parseError: sanitizeLogData(err)
+				}
+			});
+		}
 		return {
 			success: false,
 			response: ApiResponse.badRequest('Invalid request body')
@@ -160,8 +192,14 @@ export const POST: RequestHandler = async ({
 	fetch,
 	locals: { supabase, safeGetSession }
 }) => {
+	const errorLogger = ErrorLoggerService.getInstance(supabase);
+
 	// 1. Authenticate
-	const authResult = await authenticateRequest(safeGetSession, supabase);
+	const authResult = await authenticateRequest(safeGetSession, supabase, {
+		errorLogger,
+		httpMethod: 'POST',
+		endpoint: '/api/agent/stream'
+	});
 	if (!authResult.success) {
 		return authResult.response;
 	}
@@ -174,7 +212,7 @@ export const POST: RequestHandler = async ({
 	}
 
 	// 3. Parse and validate request
-	const parseResult = await parseRequest(request);
+	const parseResult = await parseRequest(request, errorLogger, userId);
 	if (!parseResult.success) {
 		return parseResult.response;
 	}
@@ -250,6 +288,22 @@ export const POST: RequestHandler = async ({
 					ontologyError instanceof Error &&
 					ontologyError.message.includes('access denied')
 				) {
+					await errorLogger.logError(
+						ontologyError,
+						{
+							userId,
+							projectId: streamRequest.entity_id,
+							endpoint: '/api/agent/stream',
+							httpMethod: 'POST',
+							operationType: 'ontology_access_denied',
+							metadata: {
+								contextType: streamRequest.context_type,
+								sessionId: session.id,
+								streamRunId: streamRequest.stream_run_id ?? null
+							}
+						},
+						'warning'
+					);
 					await agentStream.sendMessage({
 						type: 'error',
 						error: ERROR_MESSAGES.CONTEXT_ACCESS_DENIED
@@ -267,6 +321,18 @@ export const POST: RequestHandler = async ({
 					error: ontologyError,
 					contextType: streamRequest.context_type,
 					entityId: streamRequest.entity_id
+				});
+				await errorLogger.logError(ontologyError, {
+					userId,
+					projectId: streamRequest.entity_id,
+					endpoint: '/api/agent/stream',
+					httpMethod: 'POST',
+					operationType: 'ontology_load',
+					metadata: {
+						contextType: streamRequest.context_type,
+						sessionId: session.id,
+						streamRunId: streamRequest.stream_run_id ?? null
+					}
 				});
 				await agentStream.sendMessage({
 					type: 'error',
@@ -307,6 +373,17 @@ export const POST: RequestHandler = async ({
 			);
 		} catch (err) {
 			logger.error('Agent API error', { error: err });
+			await errorLogger.logError(err, {
+				userId,
+				endpoint: '/api/agent/stream',
+				httpMethod: 'POST',
+				operationType: 'agent_stream_preflight',
+				metadata: {
+					sessionId: streamRequest.session_id,
+					contextType: streamRequest.context_type,
+					streamRunId: streamRequest.stream_run_id ?? null
+				}
+			});
 			await agentStream.sendMessage({
 				type: 'error',
 				error: ERROR_MESSAGES.STREAM_ERROR
@@ -332,8 +409,14 @@ export const POST: RequestHandler = async ({
  * Get agent chat sessions
  */
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+	const errorLogger = ErrorLoggerService.getInstance(supabase);
+
 	// 1. Authenticate
-	const authResult = await authenticateRequest(safeGetSession, supabase);
+	const authResult = await authenticateRequest(safeGetSession, supabase, {
+		errorLogger,
+		httpMethod: 'GET',
+		endpoint: '/api/agent/stream'
+	});
 	if (!authResult.success) {
 		return authResult.response;
 	}

@@ -3,11 +3,13 @@
 # Twitter Profile Database
 
 > BuildOS Strategic Engagement Targets
-> Last Updated: 2026-01-08
+> Last Updated: 2026-01-09
 > Total Profiles: 40
 
 **Related Docs:**
 
+- **[Accounts Tracker](../twitter-accounts-tracker.md)** - Live tracking with last visited dates
+- **[Strategy Recommendations](../twitter-strategy-recommendations-log.md)** - Living strategy log
 - **[Following Audit](../2026-01-08_twitter-following-audit.md)** - Accounts to unfollow, bot detection, peer accounts
 - [Engagement Targets](../twitter-engagement-targets.md) - Daily engagement strategy
 - [Follow Recommendations](../twitter-follow-recommendations.md) - Who to follow
@@ -42,13 +44,13 @@ High-priority accounts with direct relevance to BuildOS's mission.
 | [@lennysan](tier-1/lennysan.md)     | Lenny Rachitsky | 249K      | Product       | 🔥 EVERY POST |
 | [@danshipper](tier-1/danshipper.md) | Dan Shipper     | 140K      | AI Writing    | 🔥 EVERY POST |
 | [@swyx](tier-1/swyx.md)             | swyx            | 112K      | AI Dev        | 🔥 EVERY POST |
-| [@simonw](tier-1/simonw.md)         | Simon Willison  | 100K      | AI Tools      | 🔥 EVERY POST |
+| [@simonw](tier-1/simonw.md)         | Simon Willison  | 130.8K    | AI Tools      | 🔥 EVERY POST |
 | [@arvidkahl](tier-1/arvidkahl.md)   | Arvid Kahl      | 96K       | Bootstrapping | 🔥 EVERY POST |
-| [@dexhorthy](tier-1/dexhorthy.md)   | Dexter Horthy   | 3.2K      | Context Eng   | 🚨 CRITICAL   |
+| [@dexhorthy](tier-1/dexhorthy.md)   | Dexter Horthy   | 10.5K     | Context Eng   | 🚨 CRITICAL   |
 
 ### 🚨 Critical Note
 
-**@dexhorthy** coined "Context Engineering" - THE term BuildOS should own. Despite lower followers, this is the #1 strategic account.
+**@dexhorthy** coined "Context Engineering" - THE term BuildOS should own. Growing fast (3.2K → 10.5K in weeks) - context engineering is gaining traction. #1 strategic account.
 
 ---
 
@@ -93,7 +95,7 @@ Bootstrappers, SaaS builders, and indie product makers.
 
 ### 🚨 Critical Note
 
-**@dannypostma** is building "PostmaOS" - an automation suite similar to BuildOS philosophy!
+**@dannypostma** is building "PostmaOS" - an automation suite similar to BuildOS philosophy! Jan 2026: Showed "PRD Task Planner" feature - task generation from PRDs. Status: "Laying low" but quietly shipping.
 
 ---
 
@@ -113,7 +115,7 @@ ADHD advocates, educators, and content creators - BuildOS's core audience.
 
 ### 🚨 Critical Notes
 
-- **@danidonovan** created "The Anti-Planner" - DIRECTLY competes with BuildOS philosophy
+- **@danidonovan** created "The Anti-Planner" - DIRECTLY competes with BuildOS philosophy (Note: Quiet since Dec 2025)
 - **@HowtoADHD** has 1M+ YouTube subscribers - her "toolbox" philosophy = BuildOS
 - **@StructuredSucc** - the name itself is the BuildOS philosophy!
 

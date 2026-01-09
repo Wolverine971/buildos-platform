@@ -6,6 +6,10 @@
  * and model fallback strategies for improved reliability
  */
 
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('ErrorHandler');
+
 export interface RetryConfig {
 	maxRetries: number;
 	initialDelayMs: number;
@@ -81,9 +85,12 @@ export class ErrorHandler {
 					cfg.maxDelayMs
 				);
 
-				console.log(
-					`[ErrorHandler] Retry ${attempt}/${cfg.maxRetries} after ${delay}ms for ${metadata.operationType}`
-				);
+				logger.info('Retry with backoff', {
+					attempt,
+					maxRetries: cfg.maxRetries,
+					delayMs: delay,
+					operationType: metadata.operationType
+				});
 
 				// Add jitter to prevent thundering herd
 				const jitter = Math.random() * 0.3 * delay;
@@ -165,7 +172,10 @@ export class ErrorHandler {
 	 * Operation-specific error recovery
 	 */
 	static async recoverFromError(error: any, operationType: string, context: any): Promise<any> {
-		console.log(`[ErrorHandler] Attempting recovery for ${operationType}`, error);
+		logger.info('Attempting recovery', {
+			operationType,
+			error: error instanceof Error ? error.message : String(error)
+		});
 
 		switch (operationType) {
 			case 'planner_stream':
@@ -234,7 +244,7 @@ export class ErrorHandler {
 	 */
 	private static async logError(metadata: ErrorMetadata): Promise<void> {
 		// In production, this would send to your monitoring service
-		console.error('[ErrorHandler] Error logged:', {
+		logger.error('[ErrorHandler] Error logged', {
 			...metadata,
 			errorMessage: metadata.error?.message,
 			errorCode: metadata.error?.code,
@@ -266,7 +276,7 @@ export class ErrorHandler {
 				if (isOpen && Date.now() - lastFailureTime > resetTimeMs) {
 					isOpen = false;
 					failures = 0;
-					console.log('[CircuitBreaker] Reset after timeout');
+					logger.info('Circuit breaker reset after timeout');
 				}
 
 				// If circuit is open, fail fast
@@ -285,7 +295,7 @@ export class ErrorHandler {
 
 					if (failures >= threshold) {
 						isOpen = true;
-						console.log(`[CircuitBreaker] Opened after ${failures} failures`);
+						logger.warn('Circuit breaker opened', { failures });
 					}
 
 					throw error;

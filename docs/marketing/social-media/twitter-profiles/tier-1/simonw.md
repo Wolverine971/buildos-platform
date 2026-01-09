@@ -10,7 +10,7 @@ posts: 59600
 location: 'San Francisco, CA'
 website: 'simonwillison.net'
 joined: 'November 2006'
-scraped_date: '2026-01-08'
+scraped_date: '2026-01-09'
 relevance_score: 9
 engagement_priority: 'every-post'
 notifications: true
@@ -64,6 +64,14 @@ path: docs/marketing/social-media/twitter-profiles/tier-1/simonw.md
 - AI/LLM predictions (1, 3, 6 year horizons)
 - Context preservation problems (bookmarks discourse)
 - Geoffrey Litt's "AI did the work, I vouch for it"
+
+### January 2026 Update
+
+- **Jan 9:** Oxide and Friends podcast predictions - Key predictions:
+    - 1 year: "Challenger disaster" for coding agent security
+    - 3 years: Jevons paradox for software engineering resolves
+    - 6 years: Typing code by hand goes the way of punch cards
+- High engagement: 139 likes, 29K views on predictions thread
 
 ## Engagement Strategy
 

@@ -18,6 +18,7 @@ import type {
 	AvailableEntity
 } from './linked-entities.types';
 import { getRelationship } from './linked-entities.types';
+import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 type ParentRef = {
 	kind: EntityKind;
@@ -91,6 +92,14 @@ export async function fetchLinkedEntities(
 		const error = await response
 			.json()
 			.catch(() => ({ error: 'Failed to fetch linked entities' }));
+		void logOntologyClientError(error, {
+			endpoint: '/api/onto/edges/linked',
+			method: 'GET',
+			projectId,
+			entityType: 'edge',
+			operation: 'edges_fetch_linked',
+			metadata: { sourceId, sourceKind, includeAvailable }
+		});
 		throw new Error(error.error || 'Failed to fetch linked entities');
 	}
 
@@ -129,6 +138,14 @@ export async function fetchAvailableEntities(
 		const error = await response
 			.json()
 			.catch(() => ({ error: 'Failed to fetch available entities' }));
+		void logOntologyClientError(error, {
+			endpoint: '/api/onto/edges/available',
+			method: 'GET',
+			projectId,
+			entityType: 'edge',
+			operation: 'edges_fetch_available',
+			metadata: { sourceId, sourceKind, targetKind }
+		});
 		throw new Error(error.error || 'Failed to fetch available entities');
 	}
 
@@ -202,7 +219,8 @@ function mergeParents(existing: ParentRef[], additions: ParentRef[]): ParentRef[
 async function updateEntityParents(
 	childKind: EntityKind,
 	childId: string,
-	parents: ParentRef[]
+	parents: ParentRef[],
+	projectId?: string
 ): Promise<void> {
 	const endpoint = PARENT_ENDPOINTS[childKind];
 	if (!endpoint) {
@@ -217,6 +235,14 @@ async function updateEntityParents(
 
 	if (!response.ok) {
 		const error = await response.json().catch(() => ({ error: 'Failed to update links' }));
+		void logOntologyClientError(error, {
+			endpoint: `${endpoint}/${childId}`,
+			method: 'PATCH',
+			projectId,
+			entityType: childKind,
+			entityId: childId,
+			operation: 'edges_update_parents'
+		});
 		throw new Error(error.error || 'Failed to update links');
 	}
 }
@@ -232,7 +258,7 @@ async function addParentsToChild(params: {
 	const existingParents = await fetchExistingParents(childKind, childId, projectId);
 	const newParents = parentIds.map((id) => ({ kind: parentKind, id }));
 	const mergedParents = mergeParents(existingParents, newParents);
-	await updateEntityParents(childKind, childId, mergedParents);
+	await updateEntityParents(childKind, childId, mergedParents, projectId);
 }
 
 /**
@@ -262,6 +288,13 @@ export async function createEdges(
 
 	if (!response.ok) {
 		const error = await response.json().catch(() => ({ error: 'Failed to create links' }));
+		void logOntologyClientError(error, {
+			endpoint: '/api/onto/edges',
+			method: 'POST',
+			entityType: 'edge',
+			operation: 'edges_create',
+			metadata: { sourceId, sourceKind, targetKind }
+		});
 		throw new Error(error.error || 'Failed to create links');
 	}
 
@@ -318,6 +351,13 @@ export async function deleteEdge(edgeId: string): Promise<void> {
 
 	if (!response.ok) {
 		const error = await response.json().catch(() => ({ error: 'Failed to remove link' }));
+		void logOntologyClientError(error, {
+			endpoint: `/api/onto/edges/${edgeId}`,
+			method: 'DELETE',
+			entityType: 'edge',
+			entityId: edgeId,
+			operation: 'edges_delete'
+		});
 		throw new Error(error.error || 'Failed to remove link');
 	}
 }
@@ -351,7 +391,7 @@ export async function unlinkEntity(params: {
 		(parent) => !(parent.kind === parentKind && parent.id === parentId)
 	);
 
-	await updateEntityParents(childKind, childId, remainingParents);
+	await updateEntityParents(childKind, childId, remainingParents, projectId);
 }
 
 /**

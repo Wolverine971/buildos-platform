@@ -14,6 +14,9 @@ import { CacheManager } from '$lib/services/base/cache-manager';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { TextProfile } from '$lib/services/smart-llm-service';
 import crypto from 'crypto';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('LLMCacheWrapper');
 
 export interface CachedLLMConfig {
 	enableCache?: boolean;
@@ -80,7 +83,7 @@ export class LLMCacheWrapper {
 			// Check cache
 			const cached = this.cache.get(cacheKey);
 			if (cached) {
-				console.log(`[LLMCache] Cache hit for ${params.operationType}`);
+				logger.debug('Cache hit', { operationType: params.operationType });
 				// Track cache hit in metrics
 				await this.trackCacheHit(params.operationType!, params.userId);
 				return cached;
@@ -94,7 +97,7 @@ export class LLMCacheWrapper {
 		if (shouldCache && response) {
 			const cacheKey = this.generateCacheKey(params);
 			this.cache.set(cacheKey, response);
-			console.log(`[LLMCache] Cached response for ${params.operationType}`);
+			logger.debug('Cached response', { operationType: params.operationType });
 		}
 
 		return response;
@@ -124,7 +127,7 @@ export class LLMCacheWrapper {
 	private async trackCacheHit(operationType: string, userId?: string): Promise<void> {
 		// In production, this would log to your metrics system
 		// For now, we'll just log it
-		console.log(`[LLMCache] Cache hit tracked:`, {
+		logger.debug('Cache hit tracked', {
 			operationType,
 			userId,
 			timestamp: new Date().toISOString(),

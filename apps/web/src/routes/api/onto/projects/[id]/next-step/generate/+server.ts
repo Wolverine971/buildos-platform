@@ -17,6 +17,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { generateProjectNextStep } from '$lib/services/next-step-generation.service';
+import { logOntologyApiError } from '../../../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -39,6 +40,16 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[NextStep Generate] Failed to get actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/projects/${projectId}/next-step/generate`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_actor_resolve'
+			});
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
@@ -51,6 +62,19 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			.single();
 
 		if (projectError || !project) {
+			if (projectError) {
+				await logOntologyApiError({
+					supabase,
+					error: projectError,
+					endpoint: `/api/onto/projects/${projectId}/next-step/generate`,
+					method: 'POST',
+					userId: user.id,
+					projectId,
+					entityType: 'project',
+					operation: 'project_next_step_access',
+					tableName: 'onto_projects'
+				});
+			}
 			return ApiResponse.notFound('Project not found');
 		}
 
@@ -65,6 +89,16 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 		if (!result.success) {
 			console.error('[NextStep Generate] Generation failed:', result.error);
+			await logOntologyApiError({
+				supabase,
+				error: new Error(result.error || 'Next step generation failed'),
+				endpoint: `/api/onto/projects/${projectId}/next-step/generate`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_next_step_generate'
+			});
 			return ApiResponse.error(result.error || 'Failed to generate next step', 500);
 		}
 
@@ -78,6 +112,16 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (err) {
 		console.error('[NextStep Generate] Unexpected error:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/projects/${params.id ?? ''}/next-step/generate`,
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: params.id,
+			entityType: 'project',
+			operation: 'project_next_step_generate'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };

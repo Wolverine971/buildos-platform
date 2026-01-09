@@ -30,7 +30,7 @@ describe('StrategyAnalyzer', () => {
 			generateStream: vi.fn()
 		};
 
-		analyzer = new StrategyAnalyzer(mockLLMService as any);
+		analyzer = new StrategyAnalyzer(mockLLMService as any, undefined);
 
 		// Setup mock contexts
 		mockContext = {

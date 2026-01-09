@@ -21,6 +21,11 @@ import type {
 	ChatMessageInsert,
 	ChatContextType
 } from '@buildos/shared-types';
+import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
+
+const logger = createLogger('ChatSessionService');
 
 export interface SessionParams {
 	userId: string;
@@ -38,7 +43,11 @@ export interface SessionUpdateParams {
  * Service for managing chat sessions and messages
  */
 export class ChatSessionService {
-	constructor(private supabase: SupabaseClient<Database>) {}
+	private errorLogger: ErrorLoggerService;
+
+	constructor(private supabase: SupabaseClient<Database>) {
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
+	}
 
 	/**
 	 * Fetch an existing chat session
@@ -62,7 +71,15 @@ export class ChatSessionService {
 
 			return data;
 		} catch (error) {
-			console.error('[ChatSessionService] Failed to fetch session:', error);
+			logger.error(error as Error, {
+				operation: 'fetch_session',
+				sessionId
+			});
+			void this.errorLogger.logError(error, {
+				userId,
+				operationType: 'chat_session_fetch',
+				metadata: { sessionId }
+			});
 			throw error;
 		}
 	}
@@ -97,7 +114,18 @@ export class ChatSessionService {
 
 			return data;
 		} catch (error) {
-			console.error('[ChatSessionService] Failed to create session:', error);
+			logger.error(error as Error, {
+				operation: 'create_session',
+				contextType: params.contextType
+			});
+			void this.errorLogger.logError(error, {
+				userId: params.userId,
+				operationType: 'chat_session_create',
+				metadata: {
+					contextType: params.contextType,
+					entityId: params.entityId
+				}
+			});
 			throw error;
 		}
 	}
@@ -121,7 +149,17 @@ export class ChatSessionService {
 				throw new Error(`Failed to update session: ${error.message}`);
 			}
 		} catch (error) {
-			console.error('[ChatSessionService] Failed to update session:', error);
+			logger.error(error as Error, {
+				operation: 'update_session',
+				sessionId
+			});
+			void this.errorLogger.logError(error, {
+				operationType: 'chat_session_update',
+				metadata: {
+					sessionId,
+					updates: sanitizeLogData(updates)
+				}
+			});
 			throw error;
 		}
 	}
@@ -145,7 +183,14 @@ export class ChatSessionService {
 			// Return in chronological order
 			return (data ?? []).reverse();
 		} catch (error) {
-			console.error('[ChatSessionService] Failed to load messages:', error);
+			logger.error(error as Error, {
+				operation: 'load_messages',
+				sessionId
+			});
+			void this.errorLogger.logError(error, {
+				operationType: 'chat_messages_load',
+				metadata: { sessionId, limit }
+			});
 			// Return empty array rather than throwing to prevent stream interruption
 			return [];
 		}
@@ -160,11 +205,41 @@ export class ChatSessionService {
 
 			if (error) {
 				// Log but don't throw to avoid breaking the stream
-				console.error('[ChatSessionService] Failed to persist message:', error, message);
+				logger.error(error as Error, {
+					operation: 'persist_message',
+					sessionId: message.session_id,
+					role: message.role
+				});
+				void this.errorLogger.logError(error, {
+					userId: (message as any).user_id,
+					operationType: 'chat_message_persist',
+					tableName: 'chat_messages',
+					recordId: message.session_id,
+					metadata: {
+						sessionId: message.session_id,
+						role: message.role,
+						messageType: (message as any).message_type ?? null
+					}
+				});
 			}
 		} catch (error) {
 			// Log but don't throw to avoid breaking the stream
-			console.error('[ChatSessionService] Unexpected error persisting message:', error);
+			logger.error(error as Error, {
+				operation: 'persist_message_unexpected',
+				sessionId: message.session_id,
+				role: message.role
+			});
+			void this.errorLogger.logError(error, {
+				userId: (message as any).user_id,
+				operationType: 'chat_message_persist',
+				tableName: 'chat_messages',
+				recordId: message.session_id,
+				metadata: {
+					sessionId: message.session_id,
+					role: message.role,
+					messageType: (message as any).message_type ?? null
+				}
+			});
 		}
 	}
 
@@ -178,17 +253,30 @@ export class ChatSessionService {
 			const { error } = await this.supabase.from('chat_messages').insert(messages);
 
 			if (error) {
-				console.error(
-					'[ChatSessionService] Failed to persist messages batch:',
-					error,
-					`Count: ${messages.length}`
-				);
+				logger.error(error as Error, {
+					operation: 'persist_messages_batch',
+					messageCount: messages.length
+				});
+				void this.errorLogger.logError(error, {
+					operationType: 'chat_messages_persist_batch',
+					tableName: 'chat_messages',
+					metadata: {
+						messageCount: messages.length
+					}
+				});
 			}
 		} catch (error) {
-			console.error(
-				'[ChatSessionService] Unexpected error persisting messages batch:',
-				error
-			);
+			logger.error(error as Error, {
+				operation: 'persist_messages_batch_unexpected',
+				messageCount: messages.length
+			});
+			void this.errorLogger.logError(error, {
+				operationType: 'chat_messages_persist_batch',
+				tableName: 'chat_messages',
+				metadata: {
+					messageCount: messages.length
+				}
+			});
 		}
 	}
 
@@ -205,9 +293,7 @@ export class ChatSessionService {
 				return existing;
 			}
 			// Session ID provided but not found - create new one
-			console.warn(
-				`[ChatSessionService] Session ${sessionId} not found, creating new session`
-			);
+			logger.warn('Session not found, creating new session', { sessionId });
 		}
 
 		return this.createSession(params);
@@ -232,7 +318,15 @@ export class ChatSessionService {
 
 			return data ?? [];
 		} catch (error) {
-			console.error('[ChatSessionService] Failed to get active sessions:', error);
+			logger.error(error as Error, {
+				operation: 'get_active_sessions',
+				userId
+			});
+			void this.errorLogger.logError(error, {
+				userId,
+				operationType: 'chat_sessions_list',
+				metadata: { limit }
+			});
 			throw error;
 		}
 	}
@@ -271,7 +365,15 @@ export class ChatSessionService {
 				messages: (data as any).messages ?? []
 			};
 		} catch (error) {
-			console.error('[ChatSessionService] Failed to get session with messages:', error);
+			logger.error(error as Error, {
+				operation: 'get_session_with_messages',
+				sessionId
+			});
+			void this.errorLogger.logError(error, {
+				userId,
+				operationType: 'chat_session_with_messages',
+				metadata: { sessionId }
+			});
 			throw error;
 		}
 	}
@@ -324,10 +426,34 @@ export class ChatSessionService {
 			});
 
 			if (error) {
-				console.error('[ChatSessionService] Failed to increment metrics:', error);
+				logger.error(error as Error, {
+					operation: 'increment_metrics',
+					sessionId
+				});
+				void this.errorLogger.logError(error, {
+					operationType: 'chat_session_metrics',
+					metadata: {
+						sessionId,
+						messageIncrement,
+						tokenIncrement,
+						toolIncrement
+					}
+				});
 			}
 		} catch (error) {
-			console.error('[ChatSessionService] Unexpected error updating metrics:', error);
+			logger.error(error as Error, {
+				operation: 'increment_metrics_unexpected',
+				sessionId
+			});
+			void this.errorLogger.logError(error, {
+				operationType: 'chat_session_metrics',
+				metadata: {
+					sessionId,
+					messageIncrement,
+					tokenIncrement,
+					toolIncrement
+				}
+			});
 		}
 	}
 }

@@ -18,6 +18,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { format } from 'date-fns';
 	import { TASK_STATES } from '$lib/types/onto';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Hardcoded task types (templates removed)
 	interface TaskType {
@@ -179,6 +180,13 @@
 			onClose();
 		} catch (err) {
 			console.error('Error creating task:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/tasks/create',
+				method: 'POST',
+				projectId,
+				entityType: 'task',
+				operation: 'task_create'
+			});
 			error = err instanceof Error ? err.message : 'Failed to create task';
 			isSaving = false;
 		}

@@ -46,6 +46,7 @@
 	import DocumentModal from './DocumentModal.svelte';
 	import { RISK_STATES } from '$lib/types/onto';
 	import { RISK_TYPE_KEYS } from '$lib/types/onto-taxonomy';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
@@ -176,6 +177,14 @@
 			}
 		} catch (err) {
 			console.error('Error loading risk:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/risks/${riskId}`,
+				method: 'GET',
+				projectId,
+				entityType: 'risk',
+				entityId: riskId,
+				operation: 'risk_load'
+			});
 			error = 'Failed to load risk';
 		} finally {
 			isLoading = false;
@@ -225,6 +234,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error updating risk:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/risks/${riskId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'risk',
+				entityId: riskId,
+				operation: 'risk_update'
+			});
 			error = err instanceof Error ? err.message : 'Failed to update risk';
 			isSaving = false;
 		}
@@ -252,6 +269,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error deleting risk:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/risks/${riskId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'risk',
+				entityId: riskId,
+				operation: 'risk_delete'
+			});
 			error = err instanceof Error ? err.message : 'Failed to delete risk';
 			isDeleting = false;
 			showDeleteConfirm = false;

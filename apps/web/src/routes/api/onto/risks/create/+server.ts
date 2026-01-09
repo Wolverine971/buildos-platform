@@ -49,6 +49,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 const VALID_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
 type Impact = (typeof VALID_IMPACTS)[number];
@@ -115,6 +116,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorError || !actorData) {
 			console.error('[Risk Create] Error resolving actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/risks/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'risk',
+				operation: 'risk_actor_resolve'
+			});
 			return ApiResponse.internalError(new Error('Failed to get user actor'));
 		}
 
@@ -177,6 +188,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (createError) {
 			console.error('[Risk Create] Error creating risk:', createError);
+			await logOntologyApiError({
+				supabase,
+				error: createError,
+				endpoint: '/api/onto/risks/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'risk',
+				entityId: risk?.id,
+				operation: 'risk_create',
+				tableName: 'onto_risks'
+			});
 			return ApiResponse.databaseError(createError);
 		}
 
@@ -222,6 +245,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('[Risk Create] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: '/api/onto/risks/create',
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'risk',
+			operation: 'risk_create'
+		});
 		return ApiResponse.internalError(error);
 	}
 };

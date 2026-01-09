@@ -38,6 +38,7 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import RiskEditModal from './RiskEditModal.svelte';
 	import { DECISION_STATES } from '$lib/types/onto';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface Props {
 		decisionId: string;
@@ -147,6 +148,14 @@
 			}
 		} catch (err) {
 			console.error('Error loading decision:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/decisions/${decisionId}`,
+				method: 'GET',
+				projectId,
+				entityType: 'decision',
+				entityId: decisionId,
+				operation: 'decision_load'
+			});
 			error = 'Failed to load decision';
 		} finally {
 			isLoading = false;
@@ -202,6 +211,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error updating decision:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/decisions/${decisionId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'decision',
+				entityId: decisionId,
+				operation: 'decision_update'
+			});
 			error = err instanceof Error ? err.message : 'Failed to update decision';
 			isSaving = false;
 		}
@@ -228,6 +245,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error deleting decision:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/decisions/${decisionId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'decision',
+				entityId: decisionId,
+				operation: 'decision_delete'
+			});
 			error = err instanceof Error ? err.message : 'Failed to delete decision';
 			isDeleting = false;
 			showDeleteConfirm = false;

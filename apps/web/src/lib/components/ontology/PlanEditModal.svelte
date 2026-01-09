@@ -36,6 +36,7 @@
 	import TaskEditModal from './TaskEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
 	import { getPlanStateBadgeClass } from '$lib/utils/ontology-badge-styles';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
@@ -158,6 +159,14 @@
 			}
 		} catch (err) {
 			console.error('Error loading plan:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/plans/${planId}/full`,
+				method: 'GET',
+				projectId,
+				entityType: 'plan',
+				entityId: planId,
+				operation: 'plan_load'
+			});
 			error = 'Failed to load plan';
 		} finally {
 			isLoading = false;
@@ -209,6 +218,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error updating plan:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/plans/${planId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'plan',
+				entityId: planId,
+				operation: 'plan_update'
+			});
 			error = err instanceof Error ? err.message : 'Failed to update plan';
 			isSaving = false;
 		}
@@ -235,6 +252,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error deleting plan:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/plans/${planId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'plan',
+				entityId: planId,
+				operation: 'plan_delete'
+			});
 			error = err instanceof Error ? err.message : 'Failed to delete plan';
 			isDeleting = false;
 			showDeleteConfirm = false;

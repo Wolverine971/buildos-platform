@@ -14,6 +14,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -41,6 +42,17 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (projectResult.error) {
 			console.error('[Project API] Failed to fetch project:', projectResult.error);
+			await logOntologyApiError({
+				supabase,
+				error: projectResult.error,
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'GET',
+				userId: user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_get',
+				tableName: 'onto_projects'
+			});
 			return ApiResponse.databaseError(projectResult.error);
 		}
 
@@ -56,6 +68,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorResult.error || !actorResult.data) {
 			console.error('[Project API] Failed to get actor:', actorResult.error);
+			await logOntologyApiError({
+				supabase,
+				error: actorResult.error || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'GET',
+				userId: user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorResult.error || new Error('Failed to resolve user actor'),
 				'Failed to resolve user actor'
@@ -193,6 +215,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (err) {
 		console.error('[Project API] Unexpected error:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/projects/${params.id ?? ''}`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: params.id,
+			entityType: 'project',
+			operation: 'project_get'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
@@ -303,6 +335,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Project PATCH] Failed to get actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_actor_resolve'
+			});
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
@@ -408,6 +450,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError || !updatedProject) {
 			console.error('[Project PATCH] Failed to update project:', updateError);
+			await logOntologyApiError({
+				supabase,
+				error: updateError || new Error('Project update failed'),
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: id,
+				entityType: 'project',
+				entityId: id,
+				operation: 'project_update',
+				tableName: 'onto_projects'
+			});
 			return ApiResponse.error('Failed to update project', 500);
 		}
 
@@ -435,6 +489,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ project: updatedProject });
 	} catch (err) {
 		console.error('[Project PATCH] Unexpected error:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/projects/${params.id ?? ''}`,
+			method: 'PATCH',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: params.id,
+			entityType: 'project',
+			entityId: params.id,
+			operation: 'project_update'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
@@ -484,6 +549,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Project DELETE] Failed to get actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_actor_resolve'
+			});
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
@@ -519,6 +594,19 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				`[Project DELETE] Failed to ${isProduction ? 'soft' : 'hard'} delete project:`,
 				deleteError
 			);
+			await logOntologyApiError({
+				supabase,
+				error: deleteError,
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: id,
+				entityType: 'project',
+				entityId: id,
+				operation: 'project_delete',
+				tableName: 'onto_projects',
+				metadata: { deleteRpcName }
+			});
 			return ApiResponse.error('Failed to delete project', 500);
 		}
 
@@ -543,6 +631,17 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		});
 	} catch (err) {
 		console.error('[Project DELETE] Unexpected error:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/projects/${params.id ?? ''}`,
+			method: 'DELETE',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: params.id,
+			entityType: 'project',
+			entityId: params.id,
+			operation: 'project_delete'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };

@@ -23,6 +23,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntities } from '../../task-linked-helpers';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const session = await locals.safeGetSession();
@@ -56,9 +57,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const { data: actorId, error: actorError } = actorResult;
 		const { data: task, error: taskError } = taskResult;
+		const projectId = task?.project?.id;
 
 		if (actorError || !actorId) {
 			console.error('[Task Full GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/tasks/${taskId}/full`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'task',
+				entityId: taskId,
+				operation: 'task_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to get user actor'),
 				'Failed to get user actor'
@@ -66,6 +78,22 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (taskError || !task) {
+			if (taskError) {
+				console.error('[Task Full GET] Failed to fetch task:', taskError);
+				await logOntologyApiError({
+					supabase,
+					error: taskError,
+					endpoint: `/api/onto/tasks/${taskId}/full`,
+					method: 'GET',
+					userId: session.user.id,
+					projectId,
+					entityType: 'task',
+					entityId: taskId,
+					operation: 'task_full_fetch',
+					tableName: 'onto_tasks'
+				});
+				return ApiResponse.databaseError(taskError);
+			}
 			return ApiResponse.notFound('Task');
 		}
 
@@ -85,6 +113,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Task Full GET] Error fetching task data:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/tasks/${params.id ?? ''}/full`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'task',
+			entityId: params.id,
+			operation: 'task_full_get'
+		});
 		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

@@ -31,6 +31,11 @@ import type {
 } from '../shared/types';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogText } from '$lib/utils/logging-helpers';
+
+const logger = createLogger('ResponseSynthesizer');
 
 export interface SynthesisUsage {
 	promptTokens?: number;
@@ -102,7 +107,10 @@ interface LLMRequestConfig {
  * Service for synthesizing responses from execution results
  */
 export class ResponseSynthesizer implements BaseService {
-	constructor(private llmService: LLMService) {}
+	constructor(
+		private llmService: LLMService,
+		private errorLogger?: ErrorLoggerService
+	) {}
 
 	async initialize(): Promise<void> {}
 
@@ -116,8 +124,9 @@ export class ResponseSynthesizer implements BaseService {
 		toolResults: ToolExecutionResult[],
 		context: ServiceContext
 	): Promise<SynthesisResult> {
-		console.log('[ResponseSynthesizer] Synthesizing simple response', {
-			userMessage: userMessage.substring(0, 100),
+		logger.info('Synthesizing simple response', {
+			userMessagePreview: sanitizeLogText(userMessage, 80),
+			userMessageLength: userMessage.length,
 			toolCount: toolResults.length,
 			successCount: toolResults.filter((r) => r.success).length
 		});
@@ -141,7 +150,23 @@ export class ResponseSynthesizer implements BaseService {
 				text: this.applyFocusPrefix(result.text, context.projectFocus)
 			};
 		} catch (error) {
-			console.error('[ResponseSynthesizer] Failed to generate simple response:', error);
+			logger.error(error as Error, {
+				operation: 'simple_response_synthesis',
+				sessionId: context.sessionId
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId: context.userId,
+					projectId: this.resolveProjectId(context),
+					operationType: 'simple_response_synthesis',
+					metadata: {
+						sessionId: context.sessionId,
+						contextType: context.contextType,
+						userMessageLength: userMessage.length,
+						toolCount: toolResults.length
+					}
+				});
+			}
 			return {
 				text: this.applyFocusPrefix(
 					this.generateFallbackResponse(userMessage, toolResults),
@@ -166,7 +191,7 @@ export class ResponseSynthesizer implements BaseService {
 			this.isExecutorResult(result)
 		).length;
 
-		console.log('[ResponseSynthesizer] Synthesizing complex response', {
+		logger.info('Synthesizing complex response', {
 			planId: plan.id,
 			strategy: plan.strategy,
 			stepCount: plan.steps.length,
@@ -196,7 +221,23 @@ export class ResponseSynthesizer implements BaseService {
 				text: this.applyFocusPrefix(result.text, context.projectFocus)
 			};
 		} catch (error) {
-			console.error('[ResponseSynthesizer] Failed to generate complex response:', error);
+			logger.error(error as Error, {
+				operation: 'complex_response_synthesis',
+				sessionId: context.sessionId,
+				planId: plan.id
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId: context.userId,
+					projectId: this.resolveProjectId(context),
+					operationType: 'complex_response_synthesis',
+					metadata: {
+						sessionId: context.sessionId,
+						contextType: context.contextType,
+						planId: plan.id
+					}
+				});
+			}
 			return {
 				text: this.applyFocusPrefix(
 					this.generateComplexFallbackResponse(plan, executionResults),
@@ -213,7 +254,7 @@ export class ResponseSynthesizer implements BaseService {
 		questions: string[],
 		context: ServiceContext
 	): Promise<SynthesisResult> {
-		console.log('[ResponseSynthesizer] Formatting clarifying questions', {
+		logger.info('Formatting clarifying questions', {
 			questionCount: questions.length
 		});
 
@@ -238,7 +279,22 @@ export class ResponseSynthesizer implements BaseService {
 				context
 			);
 		} catch (error) {
-			console.error('[ResponseSynthesizer] Failed to format clarifying questions:', error);
+			logger.error(error as Error, {
+				operation: 'clarifying_questions',
+				sessionId: context.sessionId
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId: context.userId,
+					projectId: this.resolveProjectId(context),
+					operationType: 'clarifying_questions',
+					metadata: {
+						sessionId: context.sessionId,
+						contextType: context.contextType,
+						questionCount: questions.length
+					}
+				});
+			}
 			let response = 'I need to clarify a few things to provide the best assistance:\n\n';
 
 			questions.forEach((question, index) => {
@@ -260,7 +316,10 @@ export class ResponseSynthesizer implements BaseService {
 		context: ServiceContext,
 		callback: StreamCallback
 	): AsyncGenerator<StreamEvent, void, unknown> {
-		console.log('[ResponseSynthesizer] Starting streaming response synthesis');
+		logger.info('Starting streaming response synthesis', {
+			userMessageLength: userMessage.length,
+			toolCount: toolResults.length
+		});
 
 		// Check if streaming is supported
 		if (!this.llmService.generateStream) {
@@ -307,7 +366,21 @@ export class ResponseSynthesizer implements BaseService {
 				usage: { total_tokens: totalContent.length }
 			};
 		} catch (error) {
-			console.error('[ResponseSynthesizer] Streaming error:', error);
+			logger.error(error as Error, {
+				operation: 'streaming_response_synthesis',
+				sessionId: context.sessionId
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId: context.userId,
+					projectId: this.resolveProjectId(context),
+					operationType: 'streaming_response_synthesis',
+					metadata: {
+						sessionId: context.sessionId,
+						contextType: context.contextType
+					}
+				});
+			}
 			const errorEvent: StreamEvent = {
 				type: 'error',
 				error: error instanceof Error ? error.message : 'Streaming failed'
@@ -426,7 +499,7 @@ export class ResponseSynthesizer implements BaseService {
 		operation: string,
 		context: ServiceContext
 	): Promise<string> {
-		console.log('[ResponseSynthesizer] Generating error response', {
+		logger.info('Generating error response', {
 			operation,
 			error: error instanceof Error ? error.message : error
 		});

@@ -33,6 +33,10 @@ import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import { TOOL_METADATA } from '../tools/core/definitions';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
+import { createLogger } from '$lib/utils/logger';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
+
+const logger = createLogger('ToolExecutionService');
 
 /**
  * Tool execution options
@@ -122,13 +126,13 @@ export class ToolExecutionService implements BaseService {
 						...overrideTelemetry
 					});
 					Promise.resolve(maybePromise).catch((error) => {
-						console.warn('[ToolExecutionService] Telemetry hook failed', {
+						logger.warn('Telemetry hook failed', {
 							toolName,
 							error: error instanceof Error ? error.message : String(error)
 						});
 					});
 				} catch (error) {
-					console.warn('[ToolExecutionService] Telemetry hook failed', {
+					logger.warn('Telemetry hook failed', {
 						toolName,
 						error: error instanceof Error ? error.message : String(error)
 					});
@@ -141,7 +145,7 @@ export class ToolExecutionService implements BaseService {
 		};
 
 		if (dev) {
-			console.log('[ToolExecutionService] Executing tool', {
+			logger.debug('Executing tool', {
 				toolName,
 				callId: toolCall.id,
 				hasArgs: rawArguments !== undefined && rawArguments !== null
@@ -196,7 +200,7 @@ export class ToolExecutionService implements BaseService {
 					toolCallId: toolCall.id
 				});
 			} catch (error) {
-				console.error('[ToolExecutionService] Virtual tool execution failed', {
+				logger.error('[ToolExecutionService] Virtual tool execution failed', {
 					toolName,
 					error
 				});
@@ -289,7 +293,7 @@ export class ToolExecutionService implements BaseService {
 					toolCallId: toolCall.id
 				});
 			}
-			console.error('[ToolExecutionService] Tool execution failed', {
+			logger.error('[ToolExecutionService] Tool execution failed', {
 				toolName,
 				error: error instanceof Error ? error.message : error
 			});
@@ -325,6 +329,7 @@ export class ToolExecutionService implements BaseService {
 		if (!this.errorLogger) {
 			return;
 		}
+		const sanitizedArgs = args ? sanitizeLogData(args) : undefined;
 		void this.errorLogger.logError(result.error ?? 'Tool execution failed', {
 			userId: context.userId,
 			projectId: context.contextScope?.projectId ?? context.entityId,
@@ -335,7 +340,7 @@ export class ToolExecutionService implements BaseService {
 				sessionId: context.sessionId,
 				contextType: context.contextType,
 				entityId: context.entityId,
-				args: args ?? undefined,
+				args: sanitizedArgs,
 				errorType: result.errorType,
 				virtual: Boolean(virtualHandler)
 			}
@@ -352,7 +357,7 @@ export class ToolExecutionService implements BaseService {
 		options: ToolExecutionOptions = {}
 	): Promise<ToolExecutionResult[]> {
 		if (dev) {
-			console.log('[ToolExecutionService] Executing multiple tools', {
+			logger.debug('Executing multiple tools', {
 				count: toolCalls.length,
 				tools: toolCalls.map((call) => this.resolveToolCall(call).name || 'unknown')
 			});
@@ -760,7 +765,9 @@ export class ToolExecutionService implements BaseService {
 			const result = resultsMap.get(call.id);
 			if (!result) {
 				// This should never happen, but handle gracefully
-				console.error('[ToolExecutionService] Missing result for tool call:', call.id);
+				logger.error('[ToolExecutionService] Missing result for tool call', {
+					toolCallId: call.id
+				});
 				return {
 					success: false,
 					error: `No result found for tool call ${call.id}`,

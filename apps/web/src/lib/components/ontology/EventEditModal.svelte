@@ -34,6 +34,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded modal components for linked entity navigation
 
@@ -179,6 +180,14 @@
 				Boolean(props.external_event_id || props.external_calendar_id);
 		} catch (err) {
 			console.error('Error loading event:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/events/${eventId}`,
+				method: 'GET',
+				projectId,
+				entityType: 'event',
+				entityId: eventId ?? undefined,
+				operation: 'event_load'
+			});
 			error = err instanceof Error ? err.message : 'Failed to load event';
 		} finally {
 			isLoading = false;
@@ -228,6 +237,14 @@
 			handleClose();
 		} catch (err) {
 			console.error('Error updating event:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/events/${eventId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'event',
+				entityId: eventId ?? undefined,
+				operation: 'event_update'
+			});
 			error = err instanceof Error ? err.message : 'Failed to update event';
 		} finally {
 			isSaving = false;
@@ -256,6 +273,14 @@
 			handleClose();
 		} catch (err) {
 			console.error('Error deleting event:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/events/${eventId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'event',
+				entityId: eventId ?? undefined,
+				operation: 'event_delete'
+			});
 			error = err instanceof Error ? err.message : 'Failed to delete event';
 		} finally {
 			isDeleting = false;

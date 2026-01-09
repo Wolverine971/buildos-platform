@@ -35,7 +35,7 @@ describe('ResponseSynthesizer', () => {
 			generateStream: vi.fn()
 		};
 
-		synthesizer = new ResponseSynthesizer(mockLLMService as any);
+		synthesizer = new ResponseSynthesizer(mockLLMService as any, undefined);
 
 		// Setup mock context
 		mockContext = {

@@ -28,6 +28,9 @@ import {
 	type WebVisitResultPayload
 } from '$lib/services/agentic-chat/tools/webvisit';
 import type { ExecutorContext } from './types';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('ExternalExecutor');
 
 /**
  * Executor for external service tool operations.
@@ -263,7 +266,7 @@ export class ExternalExecutor extends BaseExecutor {
 			.maybeSingle();
 
 		if (error) {
-			console.warn('[ExternalExecutor] Failed to load cached visit:', {
+			logger.warn('Failed to load cached visit', {
 				url,
 				error: error.message
 			});
@@ -417,7 +420,7 @@ export class ExternalExecutor extends BaseExecutor {
 			if (error) throw error;
 			return { id: data?.id, stored: true };
 		} catch (error) {
-			console.error('[ExternalExecutor] Failed to persist web visit:', {
+			logger.error('[ExternalExecutor] Failed to persist web visit', {
 				url: fetched.url,
 				error: error instanceof Error ? error.message : String(error)
 			});

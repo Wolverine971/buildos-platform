@@ -20,6 +20,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntitiesGeneric } from '../../../shared/entity-linked-helpers';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const session = await locals.safeGetSession();
@@ -53,9 +54,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const { data: actorId, error: actorError } = actorResult;
 		const { data: goal, error: goalError } = goalResult;
+		const projectId = goal?.project?.id;
 
 		if (actorError || !actorId) {
 			console.error('[Goal Full GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/goals/${goalId}/full`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'goal',
+				entityId: goalId,
+				operation: 'goal_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to get user actor'),
 				'Failed to get user actor'
@@ -63,6 +75,22 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (goalError || !goal) {
+			if (goalError) {
+				console.error('[Goal Full GET] Failed to fetch goal:', goalError);
+				await logOntologyApiError({
+					supabase,
+					error: goalError,
+					endpoint: `/api/onto/goals/${goalId}/full`,
+					method: 'GET',
+					userId: session.user.id,
+					projectId,
+					entityType: 'goal',
+					entityId: goalId,
+					operation: 'goal_full_fetch',
+					tableName: 'onto_goals'
+				});
+				return ApiResponse.databaseError(goalError);
+			}
 			return ApiResponse.notFound('Goal');
 		}
 
@@ -83,6 +111,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Goal Full GET] Error fetching goal data:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/goals/${params.id ?? ''}/full`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'goal',
+			entityId: params.id,
+			operation: 'goal_full_get'
+		});
 		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };

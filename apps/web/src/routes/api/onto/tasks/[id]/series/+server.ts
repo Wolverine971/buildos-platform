@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { enableTaskSeries } from '$lib/services/task-series.service';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const session = await locals.safeGetSession();
@@ -32,6 +33,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success(result);
 	} catch (error) {
 		console.error('[task-series] Failed to enable recurrence', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/tasks/${params.id}/series`,
+			method: 'POST',
+			userId: session.user.id,
+			entityType: 'task_series',
+			entityId: params.id,
+			operation: 'task_series_create'
+		});
 		const message = error instanceof Error ? error.message : 'Failed to enable recurrence';
 		return ApiResponse.error(message, 400);
 	}

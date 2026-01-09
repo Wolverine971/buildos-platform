@@ -44,6 +44,7 @@
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
@@ -144,6 +145,14 @@
 			}
 		} catch (err) {
 			console.error('Error loading goal:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/goals/${goalId}/full`,
+				method: 'GET',
+				projectId,
+				entityType: 'goal',
+				entityId: goalId,
+				operation: 'goal_load'
+			});
 			error = 'Failed to load goal';
 		} finally {
 			isLoading = false;
@@ -192,6 +201,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error updating goal:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/goals/${goalId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'goal',
+				entityId: goalId,
+				operation: 'goal_update'
+			});
 			error = err instanceof Error ? err.message : 'Failed to update goal';
 			isSaving = false;
 		}
@@ -219,6 +236,14 @@
 			onClose();
 		} catch (err) {
 			console.error('Error deleting goal:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/goals/${goalId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'goal',
+				entityId: goalId,
+				operation: 'goal_delete'
+			});
 			error = err instanceof Error ? err.message : 'Failed to delete goal';
 			isDeleting = false;
 			showDeleteConfirm = false;

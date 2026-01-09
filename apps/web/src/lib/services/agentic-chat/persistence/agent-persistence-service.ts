@@ -33,6 +33,9 @@ import type {
 } from '@buildos/shared-types';
 import { PersistenceError, type PersistenceOperations } from '../shared/types';
 import { v4 as uuidv4 } from 'uuid';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('AgentPersistenceService');
 
 /**
  * Service for handling all database operations related to agents, plans, sessions, and messages
@@ -78,7 +81,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			console.log('[AgentPersistence] Created agent:', agent.id, agent.type);
+			logger.info('Created agent', { agentId: agent.id, agentType: agent.type });
 			return agent.id;
 		} catch (error) {
 			if (error instanceof PersistenceError) {
@@ -124,7 +127,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			console.log('[AgentPersistence] Updated agent:', id, data.status);
+			logger.info('Updated agent', { agentId: id, status: data.status });
 		} catch (error) {
 			if (error instanceof PersistenceError) {
 				throw error;
@@ -210,7 +213,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			console.log('[AgentPersistence] Created plan:', plan.id, plan.strategy);
+			logger.info('Created plan', { planId: plan.id, strategy: plan.strategy });
 			return plan.id;
 		} catch (error) {
 			if (error instanceof PersistenceError) {
@@ -254,7 +257,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			console.log('[AgentPersistence] Updated plan:', id, data.status);
+			logger.info('Updated plan', { planId: id, status: data.status });
 		} catch (error) {
 			if (error instanceof PersistenceError) {
 				throw error;
@@ -351,12 +354,11 @@ export class AgentPersistenceService implements PersistenceOperations {
 					);
 				}
 
-				console.log(
-					'[AgentPersistence] Updated plan step:',
+				logger.info('Updated plan step', {
 					planId,
 					stepNumber,
-					stepUpdate.status
-				);
+					status: (stepUpdate as any).status
+				});
 				return; // Success - exit the retry loop
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
@@ -368,10 +370,12 @@ export class AgentPersistenceService implements PersistenceOperations {
 
 				// Log retry attempt
 				if (attempt < maxRetries) {
-					console.warn(
-						`[AgentPersistence] updatePlanStep attempt ${attempt} failed, retrying...`,
-						{ planId, stepNumber, error: lastError.message }
-					);
+					logger.warn('updatePlanStep attempt failed, retrying', {
+						attempt,
+						planId,
+						stepNumber,
+						error: lastError.message
+					});
 					// Exponential backoff: 100ms, 200ms, 400ms...
 					await new Promise((resolve) =>
 						setTimeout(resolve, 100 * Math.pow(2, attempt - 1))
@@ -468,7 +472,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			console.log('[AgentPersistence] Created chat session:', session.id);
+			logger.info('Created chat session', { sessionId: session.id });
 			return session.id;
 		} catch (error) {
 			if (error instanceof PersistenceError) {
@@ -514,7 +518,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			console.log('[AgentPersistence] Updated chat session:', id, data.status);
+			logger.info('Updated chat session', { sessionId: id, status: data.status });
 		} catch (error) {
 			if (error instanceof PersistenceError) {
 				throw error;
@@ -600,7 +604,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			console.log('[AgentPersistence] Saved message:', message.id, message.role);
+			logger.info('Saved message', { messageId: message.id, role: message.role });
 			return message.id;
 		} catch (error) {
 			if (error instanceof PersistenceError) {
@@ -696,7 +700,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			console.log('[AgentPersistence] Cleaned up old sessions older than', daysOld, 'days');
+			logger.info('Cleaned up old sessions', { daysOld });
 		} catch (error) {
 			if (error instanceof PersistenceError) {
 				throw error;

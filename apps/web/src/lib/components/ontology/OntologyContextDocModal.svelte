@@ -8,6 +8,7 @@
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { format } from 'date-fns/format';
 	import { Copy, FileText, Clock, Edit, Save, X } from 'lucide-svelte';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface Props {
 		isOpen?: boolean;
@@ -107,6 +108,15 @@
 			isEditMode = false;
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update document';
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/documents/${document.id}`,
+				method: 'PATCH',
+				projectId: document.project_id,
+				entityType: 'document',
+				entityId: document.id,
+				operation: 'document_update',
+				metadata: { context: 'project_context' }
+			});
 			toastService.error(message);
 		} finally {
 			isSaving = false;

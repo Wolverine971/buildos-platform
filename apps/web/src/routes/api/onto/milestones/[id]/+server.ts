@@ -49,6 +49,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 // GET /api/onto/milestones/[id] - Get a single milestone
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -67,6 +68,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Milestone GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -104,6 +115,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Milestone GET] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/milestones/${params.id}`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'milestone',
+			entityId: params.id,
+			operation: 'milestone_get'
+		});
 		return ApiResponse.internalError(error);
 	}
 };
@@ -155,6 +176,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Milestone PATCH] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -175,6 +206,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !existingMilestone) {
+			if (fetchError) {
+				await logOntologyApiError({
+					supabase,
+					error: fetchError,
+					endpoint: `/api/onto/milestones/${params.id}`,
+					method: 'PATCH',
+					userId: session.user.id,
+					entityType: 'milestone',
+					entityId: params.id,
+					operation: 'milestone_fetch',
+					tableName: 'onto_milestones'
+				});
+			}
 			return ApiResponse.notFound('Milestone');
 		}
 
@@ -289,6 +333,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('[Milestone PATCH] Error updating milestone:', updateError);
+			await logOntologyApiError({
+				supabase,
+				error: updateError,
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingMilestone.project_id,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_update',
+				tableName: 'onto_milestones'
+			});
 			return ApiResponse.error('Failed to update milestone', 500);
 		}
 
@@ -349,6 +405,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('[Milestone PATCH] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/milestones/${params.id}`,
+			method: 'PATCH',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'milestone',
+			entityId: params.id,
+			operation: 'milestone_update'
+		});
 		return ApiResponse.internalError(error);
 	}
 };
@@ -371,6 +437,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Milestone DELETE] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -391,6 +467,19 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !milestone) {
+			if (fetchError) {
+				await logOntologyApiError({
+					supabase,
+					error: fetchError,
+					endpoint: `/api/onto/milestones/${params.id}`,
+					method: 'DELETE',
+					userId: session.user.id,
+					entityType: 'milestone',
+					entityId: params.id,
+					operation: 'milestone_fetch',
+					tableName: 'onto_milestones'
+				});
+			}
 			return ApiResponse.notFound('Milestone');
 		}
 
@@ -414,6 +503,18 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (deleteError) {
 			console.error('[Milestone DELETE] Error deleting milestone:', deleteError);
+			await logOntologyApiError({
+				supabase,
+				error: deleteError,
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_delete',
+				tableName: 'onto_milestones'
+			});
 			return ApiResponse.error('Failed to delete milestone', 500);
 		}
 
@@ -432,6 +533,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ message: 'Milestone deleted successfully' });
 	} catch (error) {
 		console.error('[Milestone DELETE] Unexpected error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/milestones/${params.id}`,
+			method: 'DELETE',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'milestone',
+			entityId: params.id,
+			operation: 'milestone_delete'
+		});
 		return ApiResponse.internalError(error);
 	}
 };

@@ -47,6 +47,7 @@ import {
 	AutoOrganizeError
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 // GET /api/onto/goals/[id] - Get a single goal
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -65,6 +66,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Goal GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/goals/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				entityType: 'goal',
+				entityId: params.id,
+				operation: 'goal_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -99,6 +110,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.success({ goal: goalData });
 	} catch (error) {
 		console.error('Error fetching goal:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/goals/${params.id}`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'goal',
+			entityId: params.id,
+			operation: 'goal_get'
+		});
 		return ApiResponse.error('Internal server error', 500);
 	}
 };
@@ -138,6 +159,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Goal PATCH] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/goals/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				entityType: 'goal',
+				entityId: params.id,
+				operation: 'goal_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -158,6 +189,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !existingGoal) {
+			if (fetchError) {
+				await logOntologyApiError({
+					supabase,
+					error: fetchError,
+					endpoint: `/api/onto/goals/${params.id}`,
+					method: 'PATCH',
+					userId: session.user.id,
+					entityType: 'goal',
+					entityId: params.id,
+					operation: 'goal_fetch',
+					tableName: 'onto_goals'
+				});
+			}
 			return ApiResponse.error('Goal not found', 404);
 		}
 
@@ -241,6 +285,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('Error updating goal:', updateError);
+			await logOntologyApiError({
+				supabase,
+				error: updateError,
+				endpoint: `/api/onto/goals/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingGoal.project_id,
+				entityType: 'goal',
+				entityId: params.id,
+				operation: 'goal_update',
+				tableName: 'onto_goals'
+			});
 			return ApiResponse.error('Failed to update goal', 500);
 		}
 
@@ -286,6 +342,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('Error updating goal:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/goals/${params.id}`,
+			method: 'PATCH',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'goal',
+			entityId: params.id,
+			operation: 'goal_update'
+		});
 		return ApiResponse.error('Internal server error', 500);
 	}
 };
@@ -308,6 +374,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Goal DELETE] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/goals/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				entityType: 'goal',
+				entityId: params.id,
+				operation: 'goal_actor_resolve'
+			});
 			return ApiResponse.error('Failed to get user actor', 500);
 		}
 
@@ -328,6 +404,19 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			.single();
 
 		if (fetchError || !goal) {
+			if (fetchError) {
+				await logOntologyApiError({
+					supabase,
+					error: fetchError,
+					endpoint: `/api/onto/goals/${params.id}`,
+					method: 'DELETE',
+					userId: session.user.id,
+					entityType: 'goal',
+					entityId: params.id,
+					operation: 'goal_fetch',
+					tableName: 'onto_goals'
+				});
+			}
 			return ApiResponse.error('Goal not found', 404);
 		}
 
@@ -347,6 +436,18 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (deleteError) {
 			console.error('Error deleting goal:', deleteError);
+			await logOntologyApiError({
+				supabase,
+				error: deleteError,
+				endpoint: `/api/onto/goals/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId,
+				entityType: 'goal',
+				entityId: params.id,
+				operation: 'goal_delete',
+				tableName: 'onto_goals'
+			});
 			return ApiResponse.error('Failed to delete goal', 500);
 		}
 
@@ -365,6 +466,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ message: 'Goal deleted successfully' });
 	} catch (error) {
 		console.error('Error deleting goal:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/goals/${params.id}`,
+			method: 'DELETE',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'goal',
+			entityId: params.id,
+			operation: 'goal_delete'
+		});
 		return ApiResponse.error('Internal server error', 500);
 	}
 };

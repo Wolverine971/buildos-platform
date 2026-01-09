@@ -14,6 +14,7 @@ import type {
 	ChatToolCall
 } from '@buildos/shared-types';
 import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { ToolResultData } from '../types';
 
 const logger = createLogger('MessagePersister');
@@ -26,7 +27,11 @@ const logger = createLogger('MessagePersister');
  * Handles chat message persistence.
  */
 export class MessagePersister {
-	constructor(private supabase: SupabaseClient<Database>) {}
+	private errorLogger: ErrorLoggerService;
+
+	constructor(private supabase: SupabaseClient<Database>) {
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
+	}
 
 	/**
 	 * Persist a user message.
@@ -215,6 +220,21 @@ export class MessagePersister {
 				sessionId: message.session_id,
 				role: message.role,
 				hasToolCalls: !!(message as any).tool_calls
+			});
+			void this.errorLogger.logError(error, {
+				userId: (message as any).user_id,
+				operationType: 'chat_message_persist',
+				tableName: 'chat_messages',
+				recordId: message.session_id,
+				metadata: {
+					sessionId: message.session_id,
+					role: message.role,
+					messageType: (message as any).message_type ?? null,
+					contentLength:
+						typeof (message as any).content === 'string'
+							? (message as any).content.length
+							: undefined
+				}
 			});
 		}
 	}

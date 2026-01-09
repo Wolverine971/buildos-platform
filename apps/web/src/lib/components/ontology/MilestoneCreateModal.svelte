@@ -39,6 +39,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { MILESTONE_STATES } from '$lib/types/onto';
 	import { parseDateFromInput } from '$lib/utils/date-utils';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface Props {
 		projectId: string;
@@ -229,6 +230,13 @@
 			onClose();
 		} catch (err) {
 			console.error('Error creating milestone:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/milestones/create',
+				method: 'POST',
+				projectId,
+				entityType: 'milestone',
+				operation: 'milestone_create'
+			});
 			error = err instanceof Error ? err.message : 'Failed to create milestone';
 			isSaving = false;
 		}

@@ -53,6 +53,7 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { EntityKind } from '$lib/services/ontology/edge-direction';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 // GET /api/onto/tasks/[id] - Get a single task
 export const GET: RequestHandler = async ({ params, request, locals }) => {
@@ -63,6 +64,7 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 
 	const supabase = locals.supabase;
 	const _chatSessionId = getChatSessionIdFromRequest(request);
+	let projectId: string | undefined;
 
 	try {
 		// Parallelize initial queries: actor resolution and task fetch
@@ -86,9 +88,21 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 
 		const { data: actorId, error: actorError } = actorResult;
 		const { data: task, error } = taskResult;
+		projectId = task?.project?.id;
 
 		if (actorError || !actorId) {
 			console.error('[Task GET] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to get user actor'),
 				'Failed to get user actor'
@@ -96,6 +110,22 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (error || !task) {
+			if (error) {
+				console.error('[Task GET] Failed to fetch task:', error);
+				await logOntologyApiError({
+					supabase,
+					error,
+					endpoint: `/api/onto/tasks/${params.id}`,
+					method: 'GET',
+					userId: session.user.id,
+					projectId,
+					entityType: 'task',
+					entityId: params.id,
+					operation: 'task_fetch',
+					tableName: 'onto_tasks'
+				});
+				return ApiResponse.databaseError(error);
+			}
 			return ApiResponse.notFound('Task');
 		}
 
@@ -112,6 +142,17 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ task: taskData, linkedEntities });
 	} catch (error) {
 		console.error('Error fetching task:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/tasks/${params.id}`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId,
+			entityType: 'task',
+			entityId: params.id,
+			operation: 'task_get'
+		});
 		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };
@@ -152,6 +193,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Task PATCH] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to get user actor'),
 				'Failed to get user actor'
@@ -343,6 +394,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('Error updating task:', updateError);
+			await logOntologyApiError({
+				supabase,
+				error: updateError,
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingTask.project_id,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_update',
+				tableName: 'onto_tasks'
+			});
 			return ApiResponse.databaseError(updateError);
 		}
 
@@ -418,6 +481,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('Error updating task:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/tasks/${params.id}`,
+			method: 'PATCH',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'task',
+			entityId: params.id,
+			operation: 'task_update'
+		});
 		return ApiResponse.internalError(error, 'Internal server error');
 	}
 };
@@ -440,6 +513,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Task DELETE] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to get user actor'),
 				'Failed to get user actor'
@@ -489,6 +572,18 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (deleteError) {
 			console.error('Error soft-deleting task:', deleteError);
+			await logOntologyApiError({
+				supabase,
+				error: deleteError,
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_delete',
+				tableName: 'onto_tasks'
+			});
 			return ApiResponse.error('Failed to delete task', 500);
 		}
 
@@ -510,6 +605,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ message: 'Task deleted successfully' });
 	} catch (error) {
 		console.error('Error deleting task:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/tasks/${params.id}`,
+			method: 'DELETE',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'task',
+			entityId: params.id,
+			operation: 'task_delete'
+		});
 		return ApiResponse.error('Internal server error', 500);
 	}
 };

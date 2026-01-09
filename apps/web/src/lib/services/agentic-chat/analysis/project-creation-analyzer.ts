@@ -16,6 +16,11 @@
  */
 
 import type { TextProfile } from '$lib/services/smart-llm-service';
+import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogText } from '$lib/utils/logging-helpers';
+
+const logger = createLogger('ProjectCreationAnalyzer');
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -202,7 +207,10 @@ export class ProjectCreationAnalyzer {
 		'side'
 	];
 
-	constructor(private llmService: LLMService) {}
+	constructor(
+		private llmService: LLMService,
+		private errorLogger?: ErrorLoggerService
+	) {}
 
 	/**
 	 * Analyze user message to determine if there's sufficient context for project creation
@@ -218,7 +226,8 @@ export class ProjectCreationAnalyzer {
 			? `${clarificationMetadata.accumulatedContext}\n\nUser's latest response: ${message}`
 			: message;
 
-		console.log('[ProjectCreationAnalyzer] Analyzing intent', {
+		logger.info('Analyzing intent', {
+			messagePreview: sanitizeLogText(message, 80),
 			messageLength: message.length,
 			roundNumber,
 			hasAccumulatedContext: !!clarificationMetadata?.accumulatedContext
@@ -229,9 +238,7 @@ export class ProjectCreationAnalyzer {
 
 		// If round 2 or quick analysis says sufficient, proceed
 		if (roundNumber >= 2) {
-			console.log(
-				'[ProjectCreationAnalyzer] Max rounds reached, proceeding with available info'
-			);
+			logger.info('Max rounds reached, proceeding with available info', { roundNumber });
 			return {
 				hasSufficientContext: true,
 				confidence: 0.7,
@@ -245,7 +252,9 @@ export class ProjectCreationAnalyzer {
 
 		// If heuristics say we have enough, trust it
 		if (quickAnalysis.hasSufficientContext && quickAnalysis.confidence >= 0.8) {
-			console.log('[ProjectCreationAnalyzer] Quick analysis: sufficient context detected');
+			logger.info('Quick analysis: sufficient context detected', {
+				confidence: quickAnalysis.confidence
+			});
 			return {
 				hasSufficientContext: true,
 				confidence: quickAnalysis.confidence,
@@ -266,10 +275,20 @@ export class ProjectCreationAnalyzer {
 			);
 			return llmAnalysis;
 		} catch (error) {
-			console.error(
-				'[ProjectCreationAnalyzer] LLM analysis failed, using heuristics:',
-				error
-			);
+			logger.error(error as Error, {
+				operation: 'llm_analysis',
+				chatSessionId
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId,
+					operationType: 'project_creation_llm_analysis',
+					metadata: {
+						chatSessionId,
+						roundNumber
+					}
+				});
+			}
 			// Fallback: if heuristics found some indicators, proceed; otherwise ask generic question
 			if (quickAnalysis.confidence >= 0.5) {
 				return {

@@ -16,6 +16,7 @@ import type {
 	ViewMode
 } from '$lib/components/ontology/graph/lib/graph.types';
 import { loadProjectGraphData } from '$lib/services/ontology/project-graph-loader';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 const DEFAULT_NODE_LIMIT = 600;
 const VIEW_MODES: ViewMode[] = ['full', 'projects'];
@@ -66,6 +67,16 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Project Graph API] Failed to resolve actor', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/projects/${id}/graph`,
+				method: 'GET',
+				userId: user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_actor_resolve'
+			});
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
@@ -78,6 +89,19 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			.single();
 
 		if (projectError || !project) {
+			if (projectError) {
+				await logOntologyApiError({
+					supabase,
+					error: projectError,
+					endpoint: `/api/onto/projects/${id}/graph`,
+					method: 'GET',
+					userId: user.id,
+					projectId: id,
+					entityType: 'project',
+					operation: 'project_graph_access',
+					tableName: 'onto_projects'
+				});
+			}
 			return ApiResponse.notFound('Project not found');
 		}
 
@@ -148,6 +172,16 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		});
 	} catch (err) {
 		console.error('[Project Graph API] Unexpected error', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/projects/${params.id ?? ''}/graph`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: params.id,
+			entityType: 'project',
+			operation: 'project_graph_load'
+		});
 		return ApiResponse.internalError(err, 'Failed to load project graph');
 	}
 };

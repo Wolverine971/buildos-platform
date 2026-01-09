@@ -14,6 +14,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -54,6 +55,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Project Full API] Failed to get actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/projects/${id}/full`,
+				method: 'GET',
+				userId: user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to resolve user actor'),
 				'Failed to resolve user actor'
@@ -68,6 +79,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (error) {
 			console.error('[Project Full API] RPC error:', error);
+			await logOntologyApiError({
+				supabase,
+				error,
+				endpoint: `/api/onto/projects/${id}/full`,
+				method: 'GET',
+				userId: user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_full_get'
+			});
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			return ApiResponse.error(`Failed to fetch project: ${errorMessage}`, 500);
 		}
@@ -93,6 +114,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (err) {
 		console.error('[Project Full API] Unexpected error:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/projects/${params.id ?? ''}/full`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: params.id,
+			entityType: 'project',
+			operation: 'project_full_get'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };

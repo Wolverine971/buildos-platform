@@ -17,6 +17,7 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { GOAL_STATES } from '$lib/types/onto';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Hardcoded goal types (templates removed)
 	interface GoalType {
@@ -160,6 +161,13 @@
 			onClose();
 		} catch (err) {
 			console.error('Error creating goal:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/goals/create',
+				method: 'POST',
+				projectId,
+				entityType: 'goal',
+				operation: 'goal_create'
+			});
 			error = err instanceof Error ? err.message : 'Failed to create goal';
 			isSaving = false;
 		}

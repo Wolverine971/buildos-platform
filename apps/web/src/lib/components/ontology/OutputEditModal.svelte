@@ -28,6 +28,7 @@
 	import { OUTPUT_STATES } from '$lib/types/onto';
 	import { OUTPUT_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import { toastService } from '$lib/stores/toast.store';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
@@ -172,6 +173,14 @@
 			typeKey = normalized.type_key || 'output.default';
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load output';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/outputs/${outputId}/full`,
+				method: 'GET',
+				projectId,
+				entityType: 'output',
+				entityId: outputId,
+				operation: 'output_load'
+			});
 			loadError = message;
 			toastService.error(message);
 		} finally {
@@ -203,6 +212,14 @@
 			onUpdated?.();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update state';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/outputs/${outputId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'output',
+				entityId: outputId,
+				operation: 'output_state_update'
+			});
 			toastService.error(message);
 		} finally {
 			savingState = false;
@@ -228,6 +245,14 @@
 			onUpdated?.();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update type';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/outputs/${outputId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'output',
+				entityId: outputId,
+				operation: 'output_type_update'
+			});
 			toastService.error(message);
 		} finally {
 			savingTypeKey = false;
@@ -266,6 +291,14 @@
 
 			onUpdated?.();
 		} catch (error) {
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/outputs/${outputId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'output',
+				entityId: outputId,
+				operation: 'output_update'
+			});
 			throw error instanceof Error ? error : new Error('Failed to save output');
 		}
 	}
@@ -287,6 +320,14 @@
 			onClose();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to delete output';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/outputs/${outputId}`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'output',
+				entityId: outputId,
+				operation: 'output_delete'
+			});
 			toastService.error(message);
 		} finally {
 			deleting = false;

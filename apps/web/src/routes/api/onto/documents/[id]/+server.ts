@@ -24,6 +24,7 @@ import {
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 type Locals = App.Locals;
 
@@ -37,7 +38,8 @@ type AccessResult =
 async function ensureDocumentAccess(
 	locals: Locals,
 	documentId: string,
-	userId: string
+	userId: string,
+	method: string
 ): Promise<AccessResult> {
 	const supabase = locals.supabase;
 
@@ -50,6 +52,17 @@ async function ensureDocumentAccess(
 
 	if (documentError) {
 		console.error('[Document API] Failed to fetch document:', documentError);
+		await logOntologyApiError({
+			supabase,
+			error: documentError,
+			endpoint: `/api/onto/documents/${documentId}`,
+			method,
+			userId,
+			entityType: 'document',
+			entityId: documentId,
+			operation: 'document_fetch',
+			tableName: 'onto_documents'
+		});
 		return { error: ApiResponse.databaseError(documentError) };
 	}
 
@@ -66,6 +79,17 @@ async function ensureDocumentAccess(
 
 	if (projectError) {
 		console.error('[Document API] Failed to fetch project:', projectError);
+		await logOntologyApiError({
+			supabase,
+			error: projectError,
+			endpoint: `/api/onto/documents/${documentId}`,
+			method,
+			userId,
+			projectId: document.project_id,
+			entityType: 'project',
+			operation: 'document_project_fetch',
+			tableName: 'onto_projects'
+		});
 		return { error: ApiResponse.databaseError(projectError) };
 	}
 
@@ -79,6 +103,17 @@ async function ensureDocumentAccess(
 
 	if (actorError || !actorId) {
 		console.error('[Document API] Failed to resolve actor:', actorError);
+		await logOntologyApiError({
+			supabase,
+			error: actorError || new Error('Failed to resolve user actor'),
+			endpoint: `/api/onto/documents/${documentId}`,
+			method,
+			userId,
+			projectId: document.project_id,
+			entityType: 'document',
+			entityId: documentId,
+			operation: 'document_actor_resolve'
+		});
 		return {
 			error: ApiResponse.internalError(
 				actorError || new Error('Failed to resolve user actor'),
@@ -108,7 +143,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Document ID required');
 		}
 
-		const accessResult = await ensureDocumentAccess(locals, documentId, session.user.id);
+		const accessResult = await ensureDocumentAccess(locals, documentId, session.user.id, 'GET');
 
 		if ('error' in accessResult) {
 			return accessResult.error;
@@ -117,6 +152,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.success({ document: accessResult.document });
 	} catch (error) {
 		console.error('[Document API] Unexpected GET error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/documents/${params.id ?? ''}`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'document',
+			entityId: params.id,
+			operation: 'document_get'
+		});
 		return ApiResponse.internalError(error, 'Failed to load document');
 	}
 };
@@ -139,7 +184,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('Invalid request body');
 		}
 
-		const accessResult = await ensureDocumentAccess(locals, documentId, session.user.id);
+		const accessResult = await ensureDocumentAccess(
+			locals,
+			documentId,
+			session.user.id,
+			'PATCH'
+		);
 
 		if ('error' in accessResult) {
 			return accessResult.error;
@@ -237,6 +287,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('[Document API] Failed to update document:', updateError);
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: updateError,
+				endpoint: `/api/onto/documents/${documentId}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: document.project_id,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_update',
+				tableName: 'onto_documents'
+			});
 			return ApiResponse.databaseError(updateError);
 		}
 
@@ -303,6 +365,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('[Document API] Unexpected PATCH error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/documents/${params.id ?? ''}`,
+			method: 'PATCH',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'document',
+			entityId: params.id,
+			operation: 'document_update'
+		});
 		return ApiResponse.internalError(error, 'Failed to update document');
 	}
 };
@@ -321,7 +393,12 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('Document ID required');
 		}
 
-		const accessResult = await ensureDocumentAccess(locals, documentId, session.user.id);
+		const accessResult = await ensureDocumentAccess(
+			locals,
+			documentId,
+			session.user.id,
+			'DELETE'
+		);
 
 		if ('error' in accessResult) {
 			return accessResult.error;
@@ -344,6 +421,18 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (deleteError) {
 			console.error('[Document API] Failed to soft-delete document:', deleteError);
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: deleteError,
+				endpoint: `/api/onto/documents/${documentId}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_delete',
+				tableName: 'onto_documents'
+			});
 			return ApiResponse.databaseError(deleteError);
 		}
 
@@ -362,6 +451,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ deleted: true });
 	} catch (error) {
 		console.error('[Document API] Unexpected DELETE error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/documents/${params.id ?? ''}`,
+			method: 'DELETE',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'document',
+			entityId: params.id,
+			operation: 'document_delete'
+		});
 		return ApiResponse.internalError(error, 'Failed to delete document');
 	}
 };

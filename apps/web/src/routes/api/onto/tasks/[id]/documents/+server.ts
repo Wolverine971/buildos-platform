@@ -14,6 +14,7 @@ import type { Json, Database } from '@buildos/shared-types';
 import { ensureTaskAccess, TASK_DOCUMENT_REL } from '../../task-document-helpers';
 import { normalizeDocumentStateInput } from '../../../shared/document-state';
 import { normalizeMarkdownInput } from '../../../shared/markdown-normalization';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 
@@ -52,6 +53,17 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (edgeError) {
 			console.error('[TaskDoc API] Failed to fetch edges:', edgeError);
+			await logOntologyApiError({
+				supabase,
+				error: edgeError,
+				endpoint: `/api/onto/tasks/${taskId}/documents`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId: access.project.id,
+				entityType: 'edge',
+				operation: 'task_documents_edges_fetch',
+				tableName: 'onto_edges'
+			});
 			return ApiResponse.databaseError(edgeError);
 		}
 
@@ -69,6 +81,17 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (docError) {
 			console.error('[TaskDoc API] Failed to fetch documents:', docError);
+			await logOntologyApiError({
+				supabase,
+				error: docError,
+				endpoint: `/api/onto/tasks/${taskId}/documents`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId: access.project.id,
+				entityType: 'document',
+				operation: 'task_documents_fetch',
+				tableName: 'onto_documents'
+			});
 			return ApiResponse.databaseError(docError);
 		}
 
@@ -98,6 +121,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[TaskDoc API] Unexpected GET error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/tasks/${params.id ?? ''}/documents`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'document',
+			entityId: params.id,
+			operation: 'task_documents_fetch'
+		});
 		return ApiResponse.internalError(error, 'Failed to load task documents');
 	}
 };
@@ -216,6 +249,17 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 			if (insertError || !insertedDoc) {
 				console.error('[TaskDoc API] Failed to create document:', insertError);
+				await logOntologyApiError({
+					supabase,
+					error: insertError || new Error('Document insert failed'),
+					endpoint: `/api/onto/tasks/${taskId}/documents`,
+					method: 'POST',
+					userId: session.user.id,
+					projectId: project.id,
+					entityType: 'document',
+					operation: 'task_document_create',
+					tableName: 'onto_documents'
+				});
 				return ApiResponse.databaseError(insertError);
 			}
 
@@ -237,6 +281,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					'[TaskDoc API] Failed to insert project has_document edge:',
 					projectEdgeError
 				);
+				await logOntologyApiError({
+					supabase,
+					error: projectEdgeError,
+					endpoint: `/api/onto/tasks/${taskId}/documents`,
+					method: 'POST',
+					userId: session.user.id,
+					projectId: project.id,
+					entityType: 'edge',
+					operation: 'task_document_project_edge',
+					tableName: 'onto_edges',
+					metadata: { nonFatal: true }
+				});
 			}
 		}
 
@@ -267,6 +323,17 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		if (edgeError) {
 			console.error('[TaskDoc API] Failed to insert task_has_document edge:', edgeError);
+			await logOntologyApiError({
+				supabase,
+				error: edgeError,
+				endpoint: `/api/onto/tasks/${taskId}/documents`,
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project.id,
+				entityType: 'edge',
+				operation: 'task_document_edge',
+				tableName: 'onto_edges'
+			});
 			return ApiResponse.databaseError(edgeError);
 		}
 
@@ -283,6 +350,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		});
 	} catch (error) {
 		console.error('[TaskDoc API] Unexpected POST error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/tasks/${params.id ?? ''}/documents`,
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'document',
+			entityId: params.id,
+			operation: 'task_document_create'
+		});
 		return ApiResponse.internalError(error, 'Failed to create task document');
 	}
 };

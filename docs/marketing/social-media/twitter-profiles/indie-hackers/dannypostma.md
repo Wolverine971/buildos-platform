@@ -10,7 +10,7 @@ posts: 33600
 location: 'Ho Chi Minh'
 website: ''
 joined: 'October 2010'
-scraped_date: '2026-01-08'
+scraped_date: '2026-01-09'
 relevance_score: 9
 engagement_priority: 'every-post'
 notifications: true
@@ -56,6 +56,12 @@ This is DIRECTLY aligned with BuildOS philosophy! Worth close monitoring.
 ## Recent Focus
 
 > "2026 is going to be the year I build PostmaOS and slowly add all the tools to automate my work/life"
+
+### January 2026 Update
+
+- **Jan 8:** Showed screenshot of "PRD Task Planner" feature - generates tasks from PRD documents
+- Status remains "Laying low" - focused building mode
+- PostmaOS feature overlap with BuildOS: task generation, AI-powered planning
 
 ## Content Themes
 

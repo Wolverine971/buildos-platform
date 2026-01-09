@@ -8,6 +8,7 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import type { Task } from '$lib/types/onto';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface Props {
 		projectId: string;
@@ -87,6 +88,13 @@
 			onClose();
 		} catch (err) {
 			console.error('Error creating event:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/events`,
+				method: 'POST',
+				projectId,
+				entityType: 'event',
+				operation: 'event_create'
+			});
 			error = err instanceof Error ? err.message : 'Failed to create event';
 			isSaving = false;
 		}

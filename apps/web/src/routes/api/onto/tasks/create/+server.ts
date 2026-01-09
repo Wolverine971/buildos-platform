@@ -52,6 +52,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -102,6 +103,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorError || !actorData) {
 			console.error('Error resolving actor for task creation:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/tasks/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'task',
+				operation: 'task_actor_resolve'
+			});
 			return ApiResponse.internalError(new Error('Failed to get user actor'));
 		}
 
@@ -214,6 +225,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (createError) {
 			console.error('Error creating task:', createError);
+			await logOntologyApiError({
+				supabase,
+				error: createError,
+				endpoint: '/api/onto/tasks/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'task',
+				entityId: task?.id,
+				operation: 'task_create',
+				tableName: 'onto_tasks'
+			});
 			return ApiResponse.databaseError(createError);
 		}
 
@@ -262,6 +285,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('Error in task create endpoint:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: '/api/onto/tasks/create',
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: (error as any)?.project_id,
+			entityType: 'task',
+			operation: 'task_create'
+		});
 		return ApiResponse.internalError(error);
 	}
 };

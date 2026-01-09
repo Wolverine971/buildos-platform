@@ -4,13 +4,13 @@ name: 'Dex Horthy'
 verified: true
 category: 'tier-1'
 niche: 'context-engineering'
-followers: 10400
+followers: 10500
 following: 1526
 posts: 3459
 location: 'San Francisco, CA'
 website: 'hlyr.dev/code'
 joined: 'January 2017'
-scraped_date: '2026-01-08'
+scraped_date: '2026-01-09'
 relevance_score: 10
 engagement_priority: 'every-post'
 notifications: true
@@ -72,6 +72,12 @@ This IS the BuildOS thesis.
 ## Pinned Content
 
 - **Dec 8, 2025:** Superthread on coding agents, context engineering, research/plan/implement patterns
+
+## January 2026 Update
+
+- **Growth:** 3.2K → 10.5K followers (3x growth in weeks) - context engineering term is gaining traction
+- **Jan 9:** Posted "So much 'I spent $$ tokens' so little 'I shipped $$ value'" - builder vs experimenter angle
+- Continued evolution of "harness engineering" concept
 
 ## Engagement Strategy
 

@@ -23,6 +23,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -57,6 +58,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (fetchError) {
 			console.error('[Output API] Failed to fetch output:', fetchError);
+			await logOntologyApiError({
+				supabase,
+				error: fetchError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'PATCH',
+				userId: user.id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_fetch',
+				tableName: 'onto_outputs'
+			});
 			return ApiResponse.databaseError(fetchError);
 		}
 
@@ -74,6 +86,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (projectError || !project) {
 			console.error('[Output API] Failed to fetch project:', projectError);
+			if (projectError) {
+				await logOntologyApiError({
+					supabase,
+					error: projectError,
+					endpoint: `/api/onto/outputs/${id}`,
+					method: 'PATCH',
+					userId: user.id,
+					projectId: existingOutput.project_id,
+					entityType: 'project',
+					operation: 'output_project_fetch',
+					tableName: 'onto_projects'
+				});
+			}
 			return ApiResponse.notFound('Project not found');
 		}
 
@@ -87,6 +112,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output API] Failed to get actor:', actorCheckError);
+			await logOntologyApiError({
+				supabase,
+				error: actorCheckError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'PATCH',
+				userId: user.id,
+				projectId: existingOutput.project_id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorCheckError || new Error('Failed to resolve user actor')
 			);
@@ -119,6 +155,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (updateError) {
 			console.error('[Output API] Failed to update output:', updateError);
+			await logOntologyApiError({
+				supabase,
+				error: updateError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'PATCH',
+				userId: user.id,
+				projectId: existingOutput.project_id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_update',
+				tableName: 'onto_outputs'
+			});
 			return ApiResponse.databaseError(updateError);
 		}
 
@@ -174,6 +222,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error(err.message, err.status);
 		}
 		console.error('[Output API] Unexpected error in PATCH:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/outputs/${params.id ?? ''}`,
+			method: 'PATCH',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'output',
+			entityId: params.id,
+			operation: 'output_update'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
@@ -203,6 +261,17 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (fetchError) {
 			console.error('[Output API] Failed to fetch output:', fetchError);
+			await logOntologyApiError({
+				supabase,
+				error: fetchError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'GET',
+				userId: user.id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_fetch',
+				tableName: 'onto_outputs'
+			});
 			return ApiResponse.databaseError(fetchError);
 		}
 
@@ -223,6 +292,17 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output API] Failed to get actor:', actorCheckError);
+			await logOntologyApiError({
+				supabase,
+				error: actorCheckError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'GET',
+				userId: user.id,
+				projectId: output.project_id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorCheckError || new Error('Failed to resolve user actor')
 			);
@@ -235,6 +315,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.success({ output });
 	} catch (err) {
 		console.error('[Output API] Unexpected error in GET:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/outputs/${params.id ?? ''}`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'output',
+			entityId: params.id,
+			operation: 'output_get'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
@@ -264,6 +354,17 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (fetchError) {
 			console.error('[Output API] Failed to fetch output for delete:', fetchError);
+			await logOntologyApiError({
+				supabase,
+				error: fetchError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_fetch',
+				tableName: 'onto_outputs'
+			});
 			return ApiResponse.databaseError(fetchError);
 		}
 
@@ -280,6 +381,17 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (projectError) {
 			console.error('[Output API] Failed to fetch project for delete:', projectError);
+			await logOntologyApiError({
+				supabase,
+				error: projectError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: output.project_id,
+				entityType: 'project',
+				operation: 'output_project_fetch',
+				tableName: 'onto_projects'
+			});
 			return ApiResponse.databaseError(projectError);
 		}
 
@@ -293,6 +405,17 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (actorError || !actorId) {
 			console.error('[Output API] Failed to resolve actor for delete:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: output.project_id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorError || new Error('Failed to resolve user actor'),
 				'Failed to resolve user identity'
@@ -317,6 +440,18 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		if (deleteError) {
 			console.error('[Output API] Failed to delete output:', deleteError);
+			await logOntologyApiError({
+				supabase,
+				error: deleteError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_delete',
+				tableName: 'onto_outputs'
+			});
 			return ApiResponse.databaseError(deleteError);
 		}
 
@@ -335,6 +470,16 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.success({ deleted: true });
 	} catch (error) {
 		console.error('[Output API] Unexpected DELETE error:', error);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error,
+			endpoint: `/api/onto/outputs/${params.id ?? ''}`,
+			method: 'DELETE',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'output',
+			entityId: params.id,
+			operation: 'output_delete'
+		});
 		return ApiResponse.internalError(error, 'Failed to delete output');
 	}
 };

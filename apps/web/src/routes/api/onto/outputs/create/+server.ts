@@ -21,6 +21,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -58,6 +59,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (projectError) {
 			console.error('[Output API] Failed to fetch project:', projectError);
+			await logOntologyApiError({
+				supabase,
+				error: projectError,
+				endpoint: '/api/onto/outputs/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'project',
+				operation: 'output_project_fetch',
+				tableName: 'onto_projects'
+			});
 			return ApiResponse.databaseError(projectError);
 		}
 
@@ -75,6 +87,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (actorCheckError || !actorId) {
 			console.error('[Output API] Failed to get actor:', actorCheckError);
+			await logOntologyApiError({
+				supabase,
+				error: actorCheckError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/outputs/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'output',
+				operation: 'output_actor_resolve'
+			});
 			return ApiResponse.internalError(
 				actorCheckError || new Error('Failed to resolve user actor')
 			);
@@ -123,6 +145,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (createError) {
 			console.error('[Output API] Failed to create output:', createError);
+			await logOntologyApiError({
+				supabase,
+				error: createError,
+				endpoint: '/api/onto/outputs/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'output',
+				entityId: output?.id,
+				operation: 'output_create',
+				tableName: 'onto_outputs'
+			});
 			return ApiResponse.databaseError(createError);
 		}
 
@@ -166,6 +200,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.error(err.message, err.status);
 		}
 		console.error('[Output API] Unexpected error in POST:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: '/api/onto/outputs/create',
+			method: 'POST',
+			userId: (await locals.safeGetSession()).user?.id,
+			entityType: 'output',
+			operation: 'output_create'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };

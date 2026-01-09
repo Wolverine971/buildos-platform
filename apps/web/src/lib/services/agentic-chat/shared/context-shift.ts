@@ -1,6 +1,9 @@
 // apps/web/src/lib/services/agentic-chat/shared/context-shift.ts
 import { validate as uuidValidate } from 'uuid';
 import type { ChatContextType } from '@buildos/shared-types';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('ContextShift');
 import type { ServiceContext, ToolExecutionResult } from './types';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
 
@@ -51,7 +54,7 @@ export function normalizeContextShiftEntityId(entityId?: string): string | undef
 	}
 
 	if (!uuidValidate(trimmed)) {
-		console.warn('[ContextShift] Invalid context_shift entity_id', { entityId: trimmed });
+		logger.warn('Invalid context_shift entity_id', { entityId: trimmed });
 		return undefined;
 	}
 

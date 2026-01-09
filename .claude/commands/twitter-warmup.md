@@ -11,8 +11,12 @@ Create a daily engagement doc at:
 
 ## Related Documentation
 
-**Cross-Links (Read for Full Context):**
+**Living Documents (Update During Scan):**
+- `/docs/marketing/social-media/twitter-accounts-tracker.md` - **Account tracking with last visited dates**
+- `/docs/marketing/social-media/twitter-strategy-recommendations-log.md` - **Strategy recommendations log**
 - `/docs/marketing/social-media/twitter-profiles/INDEX.md` - Master list of all tracked accounts
+
+**Cross-Links (Read for Full Context):**
 - `/docs/marketing/strategy/adhd-productivity-os-strategy.md` - ADHD market positioning
 - `/docs/marketing/social-media/twitter-context-engineering-strategy.md` - Context Engineering positioning
 - `/docs/marketing/content/blog-skeletons/context-engineering-for-productivity.md` - Blog strategy
@@ -33,17 +37,17 @@ Create a daily engagement doc at:
 
 | Account | Product | Why Monitor | Strategy |
 |---------|---------|-------------|----------|
-| @dannypostma (103K) | PostmaOS - AI Life OS | Direct competitor, building similar vision | Learn from features, differentiate on ADHD focus |
-| @danidonovan (126.3K) | Anti-Planner | Competing ADHD philosophy (no structure) | Respect, don't attack. Potential partnership. |
-| @tdinh_me (61.5K) | TypingMind | AI chat UI, Claude power user | Watch for productivity features |
+| @dannypostma (166K) | PostmaOS - AI Life OS | Direct competitor, building similar vision | Learn from features, differentiate on ADHD focus |
+| @danidonovan (126K) | Anti-Planner | Competing ADHD philosophy (no structure) | Respect, don't attack. Potential partnership. |
+| @tdinh_me (175K) | TypingMind | AI chat UI, Claude power user | Watch for productivity features |
 
 ### Context Engineering Space (Own This Term)
 
 | Account | Relevance | Why Monitor | Strategy |
 |---------|-----------|-------------|----------|
-| @dexhorthy (3.2K) | Coined "Context Engineering" | LAND GRAB - he owns the term | Engage, credit, build relationship |
-| @datachaz (16.7K) | 16-page Claude guide | Deep context engineering practitioner | Learn from, cite, engage |
-| @NinaLopatina | Works at ContextualAI | Industry insider | Monitor for trends |
+| @dexhorthy (10.5K) | Coined "Context Engineering" | LAND GRAB - he owns the term | Engage, credit, build relationship |
+| @datachaz (149K) | Claude Code patterns guide | Deep context engineering practitioner | Learn from, cite, engage |
+| @NinaLopatina (231) | Works at ContextualAI | Industry insider | Monitor for trends |
 
 ### What to Look For
 
@@ -63,23 +67,51 @@ Create a daily engagement doc at:
 
 ---
 
+## Phase 0: Check Notifications & Timeline FIRST
+
+**ALWAYS START HERE - This shows real-time activity from accounts that matter.**
+
+### Step 1: Check Notifications
+Navigate to: **https://x.com/notifications**
+
+Look for:
+- Replies to your posts (respond to keep conversations going)
+- Quote tweets mentioning you
+- Likes from strategic accounts (note for relationship tracking)
+- Mentions in conversations you should join
+
+### Step 2: Check Home Timeline
+Navigate to: **https://x.com/i/timeline** (or https://x.com/home)
+
+Scan the "For You" and "Following" tabs for:
+- Fresh posts from accounts you follow (especially Tier 1)
+- Conversations happening in real-time
+- Trending topics in your space
+
+**Capture any engagement opportunities from notifications/timeline FIRST.**
+
+---
+
 ## Phase 1: Load Context
 
 ### Read These Files (Required)
 
-1. **Founder Context** (shared across platforms):
+1. **Accounts Tracker** (who to scan + last visited):
+   - `docs/marketing/social-media/twitter-accounts-tracker.md`
+
+2. **Strategy Recommendations** (current strategic priorities):
+   - `docs/marketing/social-media/twitter-strategy-recommendations-log.md`
+
+3. **Founder Context** (shared across platforms):
    - `docs/marketing/social-media/FOUNDER_CONTEXT.md`
 
-2. **Voice Reference** (platform-specific):
+4. **Voice Reference** (platform-specific):
    - `docs/marketing/social-media/twitter-voice-quick-ref.md`
 
-3. **Engagement Targets** (accounts to scan):
-   - `docs/marketing/social-media/twitter-engagement-targets.md`
-
-4. **Search Queries** (for topic searches):
+5. **Search Queries** (for topic searches):
    - `docs/marketing/social-media/twitter-advanced-search-queries.md`
 
-5. **Twitter Profile Database** (detailed account info):
+6. **Twitter Profile Database** (detailed account info):
    - `docs/marketing/social-media/twitter-profiles/INDEX.md`
 
 ### Check for Duplicates
@@ -93,132 +125,37 @@ Extract tweet links from previous docs and maintain a "seen" list.
 
 ## Phase 2: Browser Scanning
 
-### Scan Order (Comprehensive)
+### Scan Order (Use Accounts Tracker for Full List)
+
+**Reference:** `docs/marketing/social-media/twitter-accounts-tracker.md`
 
 **Round 1: Tier 1 Accounts (High Priority)**
-Scan these profiles for posts from last 24 hours:
-- @ShaanVP (https://x.com/ShaanVP) - Startup wisdom, My First Million
-- @thesamparr (https://x.com/thesamparr) - My First Million co-host, The Hustle
-- @lennysan (https://x.com/lennysan) - Product leadership
-- @danshipper (https://x.com/danshipper) - AI productivity, Every
-- @levelsio (https://x.com/levelsio) - Indie hacker GOAT
-- @swyx (https://x.com/swyx) - AI Engineer, context engineering
+Scan all accounts in the "Tier 1 - Core Strategic Targets" section.
+Update `Last Visited` column after scanning each account.
 
-**Round 2: Tier 2 Accounts (AI/LLM)**
-- @simonw (https://x.com/simonw) - Datasette, LLM writing
-- @emollick (https://x.com/emollick) - Wharton, AI applications (300.8K)
-- @hwchase17 (https://x.com/hwchase17) - LangChain, AI agents ($1.25B valuation)
-- @karpathy (https://x.com/karpathy) - AI legend, "English is programming" (1.5M - monitor, too big)
-- @minchoi (https://x.com/minchoi) - AI Educator, practical AI (342.5K)
+**Round 2: Context Engineering Accounts (PRIORITY - Own This Space)**
+Scan all accounts in the "Context Engineering" section.
+@dexhorthy engagement is CRITICAL - he coined the term.
 
-**Round 2.5: Context Engineering Accounts (PRIORITY - Own This Space)**
-- @dexhorthy (https://x.com/dexhorthy) - Coined "Context Engineering" (3.2K - ENGAGE HEAVILY)
-- @datachaz (https://x.com/datachaz) - 16-page Claude guide author (16.7K)
-- @NinaLopatina (https://x.com/NinaLopatina) - Works at ContextualAI
-- @mckaywrigley (https://x.com/mckaywrigley) - AI product builder (125K)
-- @skirano (https://x.com/skirano) - Cursor/AI dev (30.7K)
+**Round 3: Competitors**
+Check competitor accounts for new activity.
+Note any changes in their profiles, products, or strategy.
 
-**Round 3: Tier 2 Accounts (Indie Hackers)**
-- @arvidkahl (https://x.com/arvidkahl) - Zero to Sold
-- @tdinh_me (https://x.com/tdinh_me) - TypingMind
-- @robwalling (https://x.com/robwalling) - MicroConf
-- @csallen (https://x.com/csallen) - Indie Hackers founder
-- @thepatwalls (https://x.com/thepatwalls) - Starter Story
-- @marclou (https://x.com/marclou) - ShipFast, indie maker
-- @dannypostma (https://x.com/dannypostma) - HeadshotPro, AI tools
+**Round 4: ADHD/Neurodivergent (Core Audience)**
+Scan ADHD accounts - this is BuildOS's primary user segment.
 
-**Round 4: Tier 2 Accounts (ADHD/Productivity/PKM)**
-*ADHD Accounts (CRITICAL for BuildOS positioning):*
-- @danidonovan (https://x.com/danidonovan) - ADHD comics, Anti-Planner creator (126.3K - COMPETITOR)
-- @ADHD_Alien (https://x.com/ADHD_Alien) - ADHD Alien Comics (184.8K)
-- @HowtoADHD (https://x.com/HowtoADHD) - ADHD education, 1M+ YouTube (134.9K)
-- @womenwithadhd (https://x.com/womenwithadhd) - Women with ADHD community (20K)
-- @StructuredSucc (https://x.com/StructuredSucc) - ADHD coaching (55.3K)
-- @ChaleneJohnson (https://x.com/ChaleneJohnson) - Lifestyle/ADHD (83.8K)
+**Round 5: Indie Hackers / Building in Public**
+Scan indie hacker accounts for building-related posts.
 
-*PKM/Second Brain Accounts:*
-- @fortelabs (https://x.com/fortelabs) - Building a Second Brain (134K)
-- @TfTHacker (https://x.com/TfTHacker) - PKM, Obsidian workflows (25K)
-- @NicoleVDH (https://x.com/nicolevanderhoeven) - Obsidian tutorials
-- @saboristudio (https://x.com/saboristudio) - Notion templates
-
-**Round 5: Tier 2 Accounts (Creator Economy / Media)**
-Your people - creators building audiences and businesses around content.
-- @businessbarista (https://x.com/businessbarista) - Alex Lieberman, Morning Brew
-- @gregisenberg (https://x.com/gregisenberg) - Startup Ideas pod, community
-- @thejustinwelsh (https://x.com/thejustinwelsh) - Solopreneur, LinkedIn growth
-- @david_perell (https://x.com/david_perell) - Write of Passage, writing online
-- @jeremygiffon (https://x.com/jeremygiffon) - Business philosophy, investor
-- @stephsmithio (https://x.com/stephsmithio) - a16z, content strategy (want to work with)
-- @lulumeservey (https://x.com/lulumeservey) - PR/comms expert (learning from)
-- @NicoleBehnam (https://x.com/NicoleBehnam) - Creator, authentic voice
-- @SahilBloom (https://x.com/SahilBloom) - NYT bestseller, 5 Types of Wealth (1.1M)
-- @dickiebush (https://x.com/dickiebush) - Ship30for30, writing cohorts (431.8K)
-
-**Round 6: Outreach Targets (Relationship Building)**
-These are high-profile accounts you're actively building relationships with. Engage authentically to warm up before direct outreach. See full outreach plans: `docs/marketing/social-media/buildos-outreach.md`
-
-*Productivity/Creator Influencers:*
-- @aliabdaal (https://x.com/aliabdaal) - Productivity YouTuber, Deep Dive podcast
-- @noahkagan (https://x.com/noahkagan) - AppSumo, Million Dollar Weekend
-- @shl (https://x.com/shl) - Gumroad founder, Minimalist Entrepreneur
-- @FoundersPodcast (https://x.com/FoundersPodcast) - David Senra, founder execution
-
-*High-Profile Targets (Monitor for Strategic Engagement):*
-- @tferriss (https://x.com/tferriss) - Tim Ferriss, 4HW
-- @lexfridman (https://x.com/lexfridman) - AI/tech podcast
-- @stevenbartlett (https://x.com/stevenbartlett) - Diary of a CEO
-- @GrahamDuncanNYC (https://x.com/GrahamDuncanNYC) - Talent Whisperer, hiring
-- @johncoogan (https://x.com/johncoogan) - TBPN podcast
-- @joseph_tsar_ (https://x.com/joseph_tsar_) - YouTube growth, opinion articulation
-- @TheMafiaAI (https://x.com/TheMafiaAI) - AI app builders
+**Round 6: AI/LLM Thought Leaders**
+Scan AI accounts (except @karpathy - monitor only, too big).
 
 **Round 7: Topic Searches**
-Use Twitter's search (Latest tab) with these queries:
-
-*AI Context & Memory:*
-- `ChatGPT "forgot" context -is:retweet lang:en`
-- `AI memory "frustrating" -is:retweet lang:en`
-- `"context engineering" -is:retweet lang:en`
-- `AI agents memory -is:retweet lang:en`
-
-*ADHD & Productivity:*
-- `ADHD productivity -is:retweet lang:en`
-- `"ADHD brain" productivity -is:retweet lang:en`
-- `"executive dysfunction" -is:retweet lang:en`
-
-*Tool Frustration:*
-- `Notion abandoned -is:retweet lang:en`
-- `"tried every" productivity app -is:retweet lang:en`
-- `"looking for" productivity app -is:retweet lang:en`
-
-*Building in Public:*
-- `"building in public" AI -is:retweet lang:en`
-- `indie hacker AI tool -is:retweet lang:en`
+Use Twitter's search (Latest tab) with queries from:
+`docs/marketing/social-media/twitter-advanced-search-queries.md`
 
 **Round 8: Following Feed Discovery (New Accounts)**
-Navigate to https://x.com/home (Following tab) and scroll through recent posts to discover:
-- Accounts posting relevant content that aren't in Tier 1/2/3 lists
-- People you follow who are actively discussing AI, productivity, ADHD, or building
-- Fresh voices with good engagement who align with BuildOS themes
-
-### New Account Discovery Criteria
-
-**Flag accounts for potential Tier addition if they:**
-- Post about AI tools, context, productivity, or ADHD
-- Have 1K-100K followers (sweet spot for engagement)
-- Post consistently (multiple times per week)
-- Have good engagement ratios (replies/likes relative to followers)
-- Write in a voice that resonates with your audience
-- Are builders, founders, or practitioners (not just commentators)
-
-**Capture for each discovered account:**
-- Handle and name
-- Follower count
-- Bio summary
-- Why they're relevant (content themes)
-- Recent post that caught your attention
-- Suggested tier placement (1, 2, or 3)
+Navigate to https://x.com/home (Following tab) to discover new accounts.
 
 ### For Each Potential Tweet, Capture:
 
@@ -384,6 +321,13 @@ hell yes. [specific thing about the win that's impressive].
 
 ---
 
+## Notifications & Timeline Activity
+
+**Notifications Checked:** [Yes/No - any notable activity?]
+**Timeline Highlights:** [Any hot topics or trending conversations?]
+
+---
+
 ## Priority Summary
 
 | Priority | Account | Post Topic | Age | Why |
@@ -503,6 +447,50 @@ Accounts from your Following feed worth adding to engagement tiers:
 
 ---
 
+## Accounts Scanned & Last Visited Updates
+
+| Account | Scanned | Notes |
+|---------|---------|-------|
+| @handle | Yes/No | [any notable observations] |
+
+**Update the accounts tracker:** `docs/marketing/social-media/twitter-accounts-tracker.md`
+
+---
+
+## Profile Updates Made
+
+| Account | Change | Old → New |
+|---------|--------|-----------|
+| @handle | Followers | 10K → 12K |
+| @handle | Bio | [brief note] |
+
+No significant changes observed for other profiles.
+
+---
+
+## Strategy Recommendations
+
+[Based on today's scan, note any strategic observations or recommendations]
+
+### Today's Observations
+- [What patterns did you notice?]
+- [Any shifts in the landscape?]
+- [New opportunities or threats?]
+
+### Recommendations
+- [Any strategy adjustments needed?]
+- [New accounts to prioritize?]
+- [Content angles to explore?]
+
+### Strategy Update Needed?
+[ ] No changes - current strategy is working
+[ ] Minor tweak - [describe]
+[ ] Significant shift - [describe]
+
+**Update the strategy log:** `docs/marketing/social-media/twitter-strategy-recommendations-log.md`
+
+---
+
 **Created:** [timestamp]
 **Next Scan:** [tomorrow's date]
 ```
@@ -511,11 +499,12 @@ Accounts from your Following feed worth adding to engagement tiers:
 
 ## Execution Notes
 
-1. **Take screenshots** of relevant tweets for reference
-2. **Wait 2 seconds** after page loads before capturing
-3. **Use Latest tab** for searches to get fresh content
-4. **Check for previous engagement** - don't suggest same posts twice
-5. **Quality over quantity** - better to find 5 great opportunities than 10 mediocre ones
+1. **Start with notifications and timeline** - This is the freshest activity
+2. **Take screenshots** of relevant tweets for reference
+3. **Wait 2 seconds** after page loads before capturing
+4. **Use Latest tab** for searches to get fresh content
+5. **Check for previous engagement** - don't suggest same posts twice
+6. **Quality over quantity** - better to find 5 great opportunities than 10 mediocre ones
 
 ---
 
@@ -528,10 +517,10 @@ Twitter warmup complete for [date].
 
 ## Engagement Opportunities Found: X
 
+- [count] from notifications/timeline
 - [count] from Tier 1 accounts
 - [count] from Tier 2/3 accounts
 - [count] from topic searches
-- [count] from Following feed
 
 Top opportunities:
 1. @[handle] - [topic] (Xh ago, Y replies)
@@ -544,17 +533,31 @@ Worth adding to your engagement tiers:
 - @[handle] ([followers]) - [theme] → Suggested: Tier [X]
 - @[handle] ([followers]) - [theme] → Suggested: Tier [X]
 
+## Strategy Notes
+[Any observations or recommendations from today's scan]
+
 Full doc: docs/marketing/social-media/daily-engagement/[filename]
 
 Ready to post? Start with [recommendation] - it's the freshest with lowest competition.
 ```
 
-### After Each Scan
+### After Each Scan - Update Living Documents
 
-If new accounts are discovered, ask the user:
-```
-I found X new accounts worth engaging with regularly. Should I update your engagement targets doc (twitter-engagement-targets.md) to add them to the appropriate tiers?
-```
+**IMPORTANT:** After completing a warmup scan, update these living documents:
+
+1. **Accounts Tracker** (`docs/marketing/social-media/twitter-accounts-tracker.md`)
+   - Update `Last Visited` column for each account scanned
+   - Add any newly discovered accounts to "Discovered Accounts" section
+   - Update follower counts if changed significantly
+
+2. **Strategy Recommendations** (`docs/marketing/social-media/twitter-strategy-recommendations-log.md`)
+   - Add a log entry if there are strategic observations
+   - Note any landscape shifts or new opportunities
+   - Mark if strategy adjustments are needed
+
+3. **Twitter Profiles** (`docs/marketing/social-media/twitter-profiles/[category]/[handle].md`)
+   - Update frontmatter if profile info changed
+   - Add notes for significant observations
 
 ---
 
@@ -590,21 +593,6 @@ scraped_date: [today's date YYYY-MM-DD]
 2. **Context Engineering:** @dexhorthy, @datachaz
 3. **ADHD Leaders:** @ADHD_Alien, @HowtoADHD, @StructuredSucc
 
-### Profile Update Summary (Add to Daily Doc)
-
-At the end of each warmup doc, include:
-
-```markdown
-## Profile Updates Made
-
-| Account | Change | Old → New |
-|---------|--------|-----------|
-| @handle | Followers | 10K → 12K |
-| @handle | Bio | [brief note] |
-
-No significant changes observed for other profiles.
-```
-
 ---
 
 ## Strategic Alerts
@@ -631,12 +619,17 @@ After completing a warmup scan, ensure these files stay in sync:
 
 | File | Update If... |
 |------|--------------|
+| `twitter-accounts-tracker.md` | Update Last Visited dates for all scanned accounts |
+| `twitter-strategy-recommendations-log.md` | Add observations and recommendations |
 | `twitter-profiles/INDEX.md` | New accounts added or follower counts significantly changed |
+| `twitter-profiles/[category]/[handle].md` | Profile info changed, notable observations |
 | `twitter-engagement-targets.md` | New accounts should be added to engagement tiers |
 | `adhd-productivity-os-strategy.md` | Competitor landscape changes |
 | `twitter-context-engineering-strategy.md` | Context engineering space evolves |
 
 ---
 
-*Last Updated: 2026-01-08*
+*Last Updated: 2026-01-09*
+*Accounts Tracker: `/docs/marketing/social-media/twitter-accounts-tracker.md`*
+*Strategy Log: `/docs/marketing/social-media/twitter-strategy-recommendations-log.md`*
 *Profile Database: `/docs/marketing/social-media/twitter-profiles/INDEX.md`*

@@ -46,6 +46,11 @@ import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { ToolExecutionService } from '../execution/tool-execution-service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
+import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogText } from '$lib/utils/logging-helpers';
+
+const logger = createLogger('PlanOrchestrator');
 
 /**
  * Interface for LLM service (subset of SmartLLMService)
@@ -141,9 +146,10 @@ export class PlanOrchestrator implements BaseService {
 		private llmService: LLMService,
 		toolExecutor: ToolExecutorFunction,
 		private executorCoordinator: ExecutorCoordinator,
-		private persistenceService: PersistenceService
+		private persistenceService: PersistenceService,
+		private errorLogger?: ErrorLoggerService
 	) {
-		this.toolExecutionService = new ToolExecutionService(toolExecutor);
+		this.toolExecutionService = new ToolExecutionService(toolExecutor, undefined, errorLogger);
 	}
 
 	async initialize(): Promise<void> {}
@@ -181,7 +187,7 @@ export class PlanOrchestrator implements BaseService {
 		const strategy = strategyOverride ?? this.determineStrategyFromIntent(intent);
 		const executionMode = this.resolveExecutionMode(intent);
 
-		console.log('[PlanOrchestrator] Creating plan', {
+		logger.info('Creating plan', {
 			strategy,
 			contextType: intent.contextType,
 			executionMode,
@@ -255,7 +261,24 @@ export class PlanOrchestrator implements BaseService {
 
 			return plan;
 		} catch (error) {
-			console.error('[PlanOrchestrator] Failed to create plan:', error);
+			logger.error(error as Error, {
+				operation: 'create_plan',
+				sessionId: intent.sessionId,
+				contextType: intent.contextType,
+				strategy
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId: intent.userId,
+					projectId: context.contextScope?.projectId ?? context.entityId,
+					operationType: 'plan_create',
+					metadata: {
+						sessionId: intent.sessionId,
+						contextType: intent.contextType,
+						strategy
+					}
+				});
+			}
 			throw new PlanExecutionError(
 				`Failed to create plan: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				{ objective: intent.objective, strategy, error }
@@ -301,7 +324,22 @@ export class PlanOrchestrator implements BaseService {
 
 			return this.parsePlanReviewResponse(response);
 		} catch (error) {
-			console.error('[PlanOrchestrator] Plan review failed', error);
+			logger.error(error as Error, {
+				operation: 'plan_review',
+				sessionId: plan.sessionId,
+				planId: plan.id
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId: context.userId,
+					projectId: context.contextScope?.projectId ?? context.entityId,
+					operationType: 'plan_review',
+					metadata: {
+						sessionId: plan.sessionId,
+						planId: plan.id
+					}
+				});
+			}
 			return {
 				verdict: 'approved',
 				notes: 'Reviewer unavailable; defaulting to approval.',
@@ -321,7 +359,7 @@ export class PlanOrchestrator implements BaseService {
 		context: ServiceContext,
 		callback: StreamCallback
 	): AsyncGenerator<StreamEvent, void, unknown> {
-		console.log('[PlanOrchestrator] Executing plan', {
+		logger.info('Executing plan', {
 			planId: plan.id,
 			stepCount: plan.steps.length,
 			strategy: plan.strategy
@@ -356,7 +394,7 @@ export class PlanOrchestrator implements BaseService {
 			return;
 		}
 
-		console.log('[PlanOrchestrator] Execution groups:', executionGroups);
+		logger.debug('Execution groups', { executionGroups });
 
 		try {
 			// Execute each group in order
@@ -366,7 +404,7 @@ export class PlanOrchestrator implements BaseService {
 				for (const stepNumber of group) {
 					const step = plan.steps.find((s) => s.stepNumber === stepNumber);
 					if (!step) {
-						console.warn('[PlanOrchestrator] Step not found:', stepNumber);
+						logger.warn('Step not found', { stepNumber, planId: plan.id });
 						continue;
 					}
 
@@ -375,7 +413,7 @@ export class PlanOrchestrator implements BaseService {
 						failedSteps.has(dep)
 					);
 					if (hasDependencyFailure) {
-						console.log('[PlanOrchestrator] Skipping step due to failed dependency', {
+						logger.info('Skipping step due to failed dependency', {
 							step: step.stepNumber,
 							dependencies: step.dependsOn,
 							failedSteps: Array.from(failedSteps)
@@ -498,6 +536,23 @@ export class PlanOrchestrator implements BaseService {
 			yield doneEvent;
 			await callback(doneEvent);
 		} catch (error) {
+			logger.error(error as Error, {
+				operation: 'execute_plan',
+				planId: plan.id,
+				sessionId: plan.sessionId
+			});
+			if (this.errorLogger) {
+				void this.errorLogger.logError(error, {
+					userId: plan.userId,
+					projectId: context.contextScope?.projectId ?? context.entityId,
+					operationType: 'plan_execute',
+					metadata: {
+						sessionId: plan.sessionId,
+						planId: plan.id,
+						contextType: context.contextType
+					}
+				});
+			}
 			// Mark plan as failed
 			plan.status = 'failed';
 			await this.updatePlanStatus(plan.id, 'failed', undefined, plan.metadata);
@@ -563,7 +618,7 @@ export class PlanOrchestrator implements BaseService {
 	 * Optimize a plan for better execution
 	 */
 	async optimizePlan(plan: AgentPlan): Promise<AgentPlan> {
-		console.log('[PlanOrchestrator] Optimizing plan', {
+		logger.info('Optimizing plan', {
 			planId: plan.id,
 			originalStepCount: plan.steps.length
 		});
@@ -673,9 +728,10 @@ export class PlanOrchestrator implements BaseService {
 			}
 
 			lastError = new Error('Invalid plan format from LLM');
-			console.warn('[PlanOrchestrator] Plan response parsing failed', {
+			logger.warn('Plan response parsing failed', {
 				attempt,
-				responsePreview: response.slice(0, 200)
+				responsePreview: sanitizeLogText(response, 200),
+				responseLength: response.length
 			});
 		}
 
@@ -920,8 +976,9 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 				reviewer: 'plan_reviewer'
 			};
 		} catch (error) {
-			console.warn('[PlanOrchestrator] Failed to parse plan review response', {
-				response
+			logger.warn('Failed to parse plan review response', {
+				responsePreview: sanitizeLogText(response, 200),
+				responseLength: response.length
 			});
 			return {
 				verdict: 'approved',
@@ -969,7 +1026,7 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		context: ServiceContext,
 		stepResults: Map<number, any>
 	): Promise<{ result: any; events: StreamEvent[] }> {
-		console.log('[PlanOrchestrator] Executing step', {
+		logger.info('Executing step', {
 			stepNumber: step.stepNumber,
 			type: step.type,
 			executorRequired: step.executorRequired,

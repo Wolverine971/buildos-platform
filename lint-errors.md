@@ -1,3 +1,5 @@
+<!-- lint-errors.md -->
+
 /Users/annawayne/buildos-platform/apps/web/src/routes/api/dashboard/bottom-sections/+server.ts
 8:43 error Unexpected any. Specify a different type @typescript-eslint/no-explicit-any
 8:76 error Unexpected any. Specify a different type @typescript-eslint/no-explicit-any

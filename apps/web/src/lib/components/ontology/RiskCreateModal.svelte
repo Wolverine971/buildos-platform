@@ -39,6 +39,7 @@
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { RISK_STATES } from '$lib/types/onto';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface Props {
 		projectId: string;
@@ -221,6 +222,13 @@
 			onClose();
 		} catch (err) {
 			console.error('Error creating risk:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/risks/create',
+				method: 'POST',
+				projectId,
+				entityType: 'risk',
+				operation: 'risk_create'
+			});
 			error = err instanceof Error ? err.message : 'Failed to create risk';
 			isSaving = false;
 		}

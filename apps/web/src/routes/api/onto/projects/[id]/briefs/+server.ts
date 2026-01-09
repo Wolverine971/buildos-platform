@@ -7,6 +7,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { validatePaginationCustom, verifyProjectAccess } from '$lib/utils/api-helpers';
+import { logOntologyApiError } from '../../../shared/error-logging';
 
 export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
@@ -65,6 +66,17 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 		if (briefsError) {
 			console.error('[Project Briefs API] Failed to fetch briefs:', briefsError);
+			await logOntologyApiError({
+				supabase,
+				error: briefsError,
+				endpoint: `/api/onto/projects/${projectId}/briefs`,
+				method: 'GET',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_briefs_fetch',
+				tableName: 'ontology_project_briefs'
+			});
 			return ApiResponse.error('Failed to fetch daily briefs', 500);
 		}
 
@@ -90,6 +102,16 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		});
 	} catch (err) {
 		console.error('[Project Briefs API] Unexpected error:', err);
+		await logOntologyApiError({
+			supabase: locals.supabase,
+			error: err,
+			endpoint: `/api/onto/projects/${params.id ?? ''}/briefs`,
+			method: 'GET',
+			userId: (await locals.safeGetSession()).user?.id,
+			projectId: params.id,
+			entityType: 'project',
+			operation: 'project_briefs_fetch'
+		});
 		return ApiResponse.internalError(err, 'An unexpected error occurred');
 	}
 };
