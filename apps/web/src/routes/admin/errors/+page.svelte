@@ -740,6 +740,7 @@
 
 <!-- Error Detail Modal -->
 {#if selectedError}
+	{@const modalStyles = getSeverityStyles(selectedError.severity)}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
@@ -799,7 +800,7 @@
 					</div>
 
 					<!-- Severity, Type, Code Row -->
-					{@const modalStyles = getSeverityStyles(selectedError.severity)}
+					
 					<div class="flex flex-wrap items-center gap-2">
 						<span
 							class="{modalStyles.badge} inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"

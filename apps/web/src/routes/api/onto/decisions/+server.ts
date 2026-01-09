@@ -34,7 +34,7 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
-import { logOntologyApiError } from '../../shared/error-logging';
+import { logOntologyApiError } from '../shared/error-logging';
 
 // GET /api/onto/decisions?project_id=X - List decisions for a project
 export const GET: RequestHandler = async ({ url, locals }) => {
