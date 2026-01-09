@@ -714,7 +714,7 @@ export interface AgentPlanStep {
   executorRequired: boolean;
   tools: string[]; // Tool names
   dependsOn?: number[]; // Step dependencies
-  status: 'pending' | 'executing' | 'completed' | 'failed';
+  status: 'pending' | 'executing' | 'completed' | 'failed' | 'skipped';
   result?: any;
   error?: string;
 }

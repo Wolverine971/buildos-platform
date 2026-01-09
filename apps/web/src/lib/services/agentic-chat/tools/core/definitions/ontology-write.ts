@@ -749,24 +749,14 @@ DO NOT leave props empty when information is available in the conversation!`,
 									type: 'array',
 									minItems: 2,
 									maxItems: 2,
-									items: [
-										{
-											type: 'object',
-											properties: {
-												temp_id: { type: 'string' },
-												kind: { type: 'string' }
-											},
-											required: ['temp_id', 'kind']
+									items: {
+										type: 'object',
+										properties: {
+											temp_id: { type: 'string' },
+											kind: { type: 'string' }
 										},
-										{
-											type: 'object',
-											properties: {
-												temp_id: { type: 'string' },
-												kind: { type: 'string' }
-											},
-											required: ['temp_id', 'kind']
-										}
-									]
+										required: ['temp_id', 'kind']
+									}
 								},
 								{
 									type: 'object',
