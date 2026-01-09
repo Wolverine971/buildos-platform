@@ -124,7 +124,7 @@ export class StreamHandler {
 			metadata,
 			conversationHistory,
 			userId,
-			actorId: _actorId,
+			actorId,
 			httpReferer
 		} = params;
 

@@ -140,6 +140,54 @@ export function generateOntologyCacheKey(
  * @param entities - The entities object to mutate
  * @param entityId - The entity ID to assign
  */
+type EntityType = 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output';
+
+function assignEntityByType(
+	entities: LastTurnContext['entities'],
+	entityType: EntityType,
+	entityId: string
+): void {
+	if (!entityId) return;
+
+	const pushUnique = (slot: 'task_ids' | 'goal_ids', id: string) => {
+		if (!entities[slot]) entities[slot] = [];
+		if (!entities[slot]!.includes(id)) {
+			entities[slot]!.push(id);
+		}
+	};
+
+	switch (entityType) {
+		case 'project':
+			if (!entities.project_id) {
+				entities.project_id = entityId;
+			}
+			break;
+		case 'task':
+			pushUnique('task_ids', entityId);
+			break;
+		case 'plan':
+			if (!entities.plan_id) {
+				entities.plan_id = entityId;
+			}
+			break;
+		case 'goal':
+			pushUnique('goal_ids', entityId);
+			break;
+		case 'document':
+			if (!entities.document_id) {
+				entities.document_id = entityId;
+			}
+			break;
+		case 'output':
+			if (!entities.output_id) {
+				entities.output_id = entityId;
+			}
+			break;
+		default:
+			break;
+	}
+}
+
 export function assignEntityByPrefix(
 	entities: LastTurnContext['entities'],
 	entityId: string
@@ -148,23 +196,156 @@ export function assignEntityByPrefix(
 
 	// Assign to correct slot based on ID prefix
 	if (entityId.startsWith('proj_')) {
-		entities.project_id = entityId;
+		assignEntityByType(entities, 'project', entityId);
 	} else if (entityId.startsWith('task_')) {
-		entities.task_ids = entities.task_ids || [];
-		if (!entities.task_ids.includes(entityId)) {
-			entities.task_ids.push(entityId);
-		}
+		assignEntityByType(entities, 'task', entityId);
 	} else if (entityId.startsWith('plan_')) {
-		entities.plan_id = entityId;
+		assignEntityByType(entities, 'plan', entityId);
 	} else if (entityId.startsWith('goal_')) {
-		entities.goal_ids = entities.goal_ids || [];
-		if (!entities.goal_ids.includes(entityId)) {
-			entities.goal_ids.push(entityId);
-		}
+		assignEntityByType(entities, 'goal', entityId);
 	} else if (entityId.startsWith('doc_')) {
-		entities.document_id = entityId;
+		assignEntityByType(entities, 'document', entityId);
 	} else if (entityId.startsWith('out_')) {
-		entities.output_id = entityId;
+		assignEntityByType(entities, 'output', entityId);
+	}
+}
+
+const ENTITY_CONTAINER_KEYS: Record<string, EntityType> = {
+	project: 'project',
+	projects: 'project',
+	task: 'task',
+	tasks: 'task',
+	plan: 'plan',
+	plans: 'plan',
+	goal: 'goal',
+	goals: 'goal',
+	document: 'document',
+	documents: 'document',
+	output: 'output',
+	outputs: 'output'
+};
+
+const ENTITY_ID_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
+	{ suffix: 'project_id', entityType: 'project' },
+	{ suffix: 'task_id', entityType: 'task' },
+	{ suffix: 'plan_id', entityType: 'plan' },
+	{ suffix: 'goal_id', entityType: 'goal' },
+	{ suffix: 'document_id', entityType: 'document' },
+	{ suffix: 'output_id', entityType: 'output' }
+];
+
+const ENTITY_ID_LIST_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
+	{ suffix: 'task_ids', entityType: 'task' },
+	{ suffix: 'goal_ids', entityType: 'goal' }
+];
+
+function normalizeKey(key: string): string {
+	return key.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+function getEntityTypeFromKey(normalizedKey: string): EntityType | undefined {
+	for (const { suffix, entityType } of ENTITY_ID_SUFFIXES) {
+		if (normalizedKey.endsWith(suffix)) {
+			return entityType;
+		}
+	}
+	return undefined;
+}
+
+function getEntityTypeFromListKey(normalizedKey: string): EntityType | undefined {
+	for (const { suffix, entityType } of ENTITY_ID_LIST_SUFFIXES) {
+		if (normalizedKey.endsWith(suffix)) {
+			return entityType;
+		}
+	}
+	return undefined;
+}
+
+function coerceEntityType(value: unknown): EntityType | undefined {
+	if (typeof value !== 'string') return undefined;
+	const normalized = value.trim().toLowerCase();
+	if (
+		normalized === 'project' ||
+		normalized === 'task' ||
+		normalized === 'plan' ||
+		normalized === 'goal' ||
+		normalized === 'document' ||
+		normalized === 'output'
+	) {
+		return normalized as EntityType;
+	}
+	return undefined;
+}
+
+function extractEntitiesFromPayload(
+	payload: unknown,
+	entities: LastTurnContext['entities'],
+	entityHint?: EntityType,
+	depth = 0,
+	allowHintId = false
+): void {
+	if (!payload || depth > 6) return;
+
+	if (Array.isArray(payload)) {
+		for (const item of payload) {
+			extractEntitiesFromPayload(item, entities, entityHint, depth + 1, allowHintId);
+		}
+		return;
+	}
+
+	if (typeof payload !== 'object') {
+		return;
+	}
+
+	const obj = payload as Record<string, any>;
+	const entityType = coerceEntityType(obj.entity_type ?? obj.entityType);
+	const entityId = obj.entity_id ?? obj.entityId;
+	if (entityType && typeof entityId === 'string') {
+		assignEntityByType(entities, entityType, entityId);
+	}
+
+	if (allowHintId && entityHint && typeof obj.id === 'string') {
+		assignEntityByType(entities, entityHint, obj.id);
+	}
+
+	for (const [key, value] of Object.entries(obj)) {
+		const normalizedKey = normalizeKey(key);
+
+		const containerType = ENTITY_CONTAINER_KEYS[normalizedKey];
+		if (containerType) {
+			extractEntitiesFromPayload(value, entities, containerType, depth + 1, true);
+			continue;
+		}
+
+		const keyEntityType = getEntityTypeFromKey(normalizedKey);
+		if (keyEntityType) {
+			if (typeof value === 'string') {
+				assignEntityByType(entities, keyEntityType, value);
+				continue;
+			}
+			if (Array.isArray(value)) {
+				for (const entry of value) {
+					if (typeof entry === 'string') {
+						assignEntityByType(entities, keyEntityType, entry);
+					}
+				}
+				continue;
+			}
+		}
+
+		const listEntityType = getEntityTypeFromListKey(normalizedKey);
+		if (listEntityType && Array.isArray(value)) {
+			for (const entry of value) {
+				if (typeof entry === 'string') {
+					assignEntityByType(entities, listEntityType, entry);
+				}
+			}
+			continue;
+		}
+
+		if (value && typeof value === 'object') {
+			extractEntitiesFromPayload(value, entities, entityHint, depth + 1, false);
+		}
 	}
 }
 
@@ -188,7 +369,11 @@ export function generateLastTurnContext(
 	recentMessages: ChatMessage[],
 	contextType: ChatContextType,
 	options: {
-		toolResults?: Array<{ entities_accessed?: string[]; entitiesAccessed?: string[] }>;
+		toolResults?: Array<{
+			entities_accessed?: string[];
+			entitiesAccessed?: string[];
+			result?: unknown;
+		}>;
 	} = {}
 ): LastTurnContext | null {
 	if (!recentMessages || recentMessages.length < 2) {
@@ -237,6 +422,10 @@ export function generateLastTurnContext(
 			accessed.forEach((entityId: string) => {
 				assignEntityByPrefix(entities, entityId);
 			});
+		}
+
+		if ('result' in result) {
+			extractEntitiesFromPayload(result.result, entities);
 		}
 	}
 

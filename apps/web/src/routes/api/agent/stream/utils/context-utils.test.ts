@@ -449,6 +449,51 @@ describe('generateLastTurnContext', () => {
 		expect(context!.entities.task_ids).toContain('task_123');
 		expect(context!.entities.project_id).toBe('proj_abc');
 	});
+
+	it('should extract entities from tool result payload keys', () => {
+		const messages = [
+			{
+				id: '1',
+				role: 'user',
+				content: 'Show me project details',
+				created_at: new Date().toISOString()
+			},
+			{
+				id: '2',
+				role: 'assistant',
+				content: 'Here are the details',
+				created_at: new Date().toISOString()
+			}
+		] as unknown as ChatMessage[];
+
+		const projectId = '22222222-2222-2222-2222-222222222222';
+		const taskId = '11111111-1111-1111-1111-111111111111';
+		const goalId = '33333333-3333-3333-3333-333333333333';
+		const planId = '44444444-4444-4444-4444-444444444444';
+		const documentId = '55555555-5555-5555-5555-555555555555';
+		const outputId = '66666666-6666-6666-6666-666666666666';
+
+		const toolResults = [
+			{
+				result: {
+					tasks: [{ id: taskId, project_id: projectId }],
+					goal: { id: goalId },
+					plan: { id: planId },
+					document: { id: documentId },
+					output: { id: outputId }
+				}
+			}
+		];
+
+		const context = generateLastTurnContext(messages, 'project', { toolResults });
+
+		expect(context!.entities.project_id).toBe(projectId);
+		expect(context!.entities.task_ids).toContain(taskId);
+		expect(context!.entities.goal_ids).toContain(goalId);
+		expect(context!.entities.plan_id).toBe(planId);
+		expect(context!.entities.document_id).toBe(documentId);
+		expect(context!.entities.output_id).toBe(outputId);
+	});
 });
 
 // ============================================
