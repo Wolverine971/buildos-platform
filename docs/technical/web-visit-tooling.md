@@ -25,24 +25,30 @@
     - `url` (string, required): Absolute http/https URL.
     - `mode` (`auto` | `reader` | `raw`, default `auto`): Content extraction mode.
     - `max_chars` (number, default 6000, cap 12000): Max characters returned.
+    - `max_html_chars` (number, default 40000, cap 120000): Max HTML characters sent to the markdown converter.
+    - `output_format` (`markdown` | `text`, default `markdown`): Preferred output format.
+    - `persist` (boolean, default true): Store markdown snapshot for reuse.
+    - `force_refresh` (boolean, default false): Reserved for cache bypass.
     - `include_links` (boolean, default false): Include a trimmed list of outbound links.
     - `allow_redirects` (boolean, default true): Follow redirects up to a fixed cap.
     - `prefer_language` (string, optional): Hint for `Accept-Language`.
 - Result payload:
     - `url`, `final_url`, `status_code`, `content_type`, `title`
-    - `content` (clean text), `excerpt`, `truncated` (boolean)
+    - `content` (markdown by default), `content_format`, `excerpt`, `truncated` (boolean)
+    - `meta`, `canonical_url`, `visit_id`, `stored`
     - `links` (optional, `{ url, text }[]`)
-    - `info`: `fetched_at`, `mode`, `bytes`, `fetch_ms`, `parser`
+    - `info`: `fetched_at`, `mode`, `bytes`, `fetch_ms`, `parser`, `html_chars`, `markdown_chars`, `llm_*`
 
 ## Implementation layout
 
 - New web tools folder: `apps/web/src/lib/services/agentic-chat/tools/webvisit/`
     - `types.ts`: request/response contracts and normalized payload.
     - `url-client.ts`: fetch with timeout, size limits, redirect handling, and SSRF checks.
-    - `parser.ts`: HTML -> text extraction and link harvesting.
-    - `index.ts`: `performWebVisit` orchestrator with normalization + truncation.
+    - `parser.ts`: HTML -> text extraction, metadata parsing, and HTML trimming.
+    - `index.ts`: fetch + parse orchestration (no markdown conversion).
 - Tool wiring:
     - `ExternalExecutor` handles `web_visit` and reuses injected `fetchFn`.
+    - `ExternalExecutor` converts HTML to markdown via `SmartLLMService` and persists to `web_page_visits`.
     - `tool-executor-refactored.ts` switch routes `web_visit` to the external executor.
     - `tools.config.ts` registers `web_visit` in `web_research` and `base`.
 
@@ -55,8 +61,17 @@
     - `text/html`: use heuristic HTML extraction when `mode=reader` or `auto`.
     - `text/plain` or `text/markdown`: pass through with whitespace normalization.
     - Unsupported types: return a clear error with `content_type`.
-5. Truncate to `max_chars`, set `truncated=true` if clipped.
-6. Optional: extract top N links (dedupe by host, cap 20).
+5. Trim HTML and normalize relative links to absolute.
+6. Convert trimmed HTML to markdown via LLM.
+7. Truncate output to `max_chars`, set `truncated=true` if clipped.
+8. Optional: extract top N links (dedupe by host, cap 20).
+9. Persist markdown + metadata to `web_page_visits` (global dedupe).
+
+## Caching
+
+- If `persist=true`, `output_format=markdown`, and `force_refresh=false`, reuse the latest
+  stored markdown for the normalized URL.
+- Cache hits still bump `visit_count` and update `last_visited_at`.
 
 ## Security and safety
 
@@ -71,6 +86,7 @@
 - `WEB_VISIT_TIMEOUT_MS` (default 12000)
 - `WEB_VISIT_MAX_BYTES` (default 2_000_000)
 - `WEB_VISIT_MAX_CHARS` (default 6000)
+- `WEB_VISIT_MAX_HTML_CHARS` (default 40000)
 - Optional allow/deny domain lists to constrain fetch scope.
 
 ## LLM usage guidance (prompt-facing)

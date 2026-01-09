@@ -578,6 +578,7 @@
 				idleHint="Type or use voice to describe your projects"
 				containerClass="bg-card border border-border rounded-xl shadow-ink-inner"
 				textareaClass="min-h-[120px] resize-none"
+				vocabularyTerms="project, goal, task, milestone, deadline"
 			/>
 		</div>
 

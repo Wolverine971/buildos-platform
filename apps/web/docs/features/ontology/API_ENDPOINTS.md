@@ -719,9 +719,7 @@ Reorganizes a subset of entities using a node-centric payload. Use `options.dry_
 		{
 			"id": "uuid",
 			"kind": "task",
-			"connections": [
-				{ "kind": "plan", "id": "uuid" }
-			],
+			"connections": [{ "kind": "plan", "id": "uuid" }],
 			"mode": "replace",
 			"semantic_mode": "replace_auto"
 		}

@@ -327,25 +327,30 @@ Priority engagement with accounts in `/docs/marketing/social-media/twitter-profi
 ### Tier 1: Strategic Partnerships
 
 #### @danidonovan (Anti-Planner)
+
 **Relationship Status:** Not yet contacted
 **Opportunity:** Complementary positioning - "Capture with Anti-Planner, Execute with BuildOS"
 
 **Approach:**
+
 1. Engage genuinely with ADHD content for 2-3 weeks
 2. Look for natural conversation about digital tools
 3. Position as complement, not competitor
 4. Potential: Affiliate partnership, guest content exchange
 
 **Talking Points:**
+
 - "I love the Anti-Planner philosophy"
 - "We're both anti-YOU-maintaining-structure"
 - "What if AI could maintain the structure for you?"
 
 #### @HowtoADHD (Jessica McCabe)
+
 **Relationship Status:** Not yet contacted
 **Opportunity:** Podcast guest, potential tool feature
 
 **Approach:**
+
 1. Follow her "toolbox" content closely
 2. Engage with helpful comments
 3. Reference specific videos in outreach
@@ -354,10 +359,12 @@ Priority engagement with accounts in `/docs/marketing/social-media/twitter-profi
 **Goal:** Podcast appearance or tool mention
 
 #### ADHD Coaches Network
+
 **Targets:** @StructuredSucc, @neurodiverging, independent coaches
 **Opportunity:** BuildOS for coaches + clients
 
 **Approach:**
+
 1. Offer free accounts to coaches
 2. Create "coach mode" features
 3. Build referral program
@@ -366,27 +373,32 @@ Priority engagement with accounts in `/docs/marketing/social-media/twitter-profi
 ### Tier 2: Distribution Partnerships
 
 #### @noahkagan (AppSumo)
+
 **Opportunity:** AppSumo deal for launch distribution
 **Timing:** When product is more mature
 **Approach:** Build relationship, then pitch deal
 
 #### @shl (Sahil Lavingia / Gumroad)
+
 **Opportunity:** Creator audience, potential investor
 **Approach:** Engage on creator tools, minimalist building
 
 ### Tier 3: Content Collaborations
 
 #### Podcast Appearances
+
 **Target:** 3-5 ADHD podcasts in Q1 2026
 **Full List:** [ADHD Podcast Outreach](/docs/marketing/outreach/adhd-podcast-outreach.md)
 
 **Priority Podcasts:**
+
 1. How to ADHD (Jessica McCabe)
 2. ADHD reWired (Eric Tivers)
 3. Hacking Your ADHD (William Curb)
 4. Translating ADHD (Brendan Mahan)
 
 #### Content Exchanges
+
 - Guest posts on ADHD blogs
 - Twitter thread collaborations
 - "ADHD productivity toolkit" roundups

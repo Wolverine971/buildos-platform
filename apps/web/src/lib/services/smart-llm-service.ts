@@ -87,6 +87,7 @@ export interface TextGenerationUsage {
 export interface TextGenerationResult {
 	text: string;
 	usage?: TextGenerationUsage;
+	model?: string;
 }
 
 interface OpenRouterResponse {
@@ -1293,7 +1294,8 @@ export class SmartLLMService {
 
 			return {
 				text: content,
-				usage
+				usage,
+				model: actualModel
 			};
 		} catch (error) {
 			const duration = performance.now() - startTime;

@@ -149,7 +149,7 @@
 	bind:this={toastElement}
 	class="
 		relative overflow-hidden
-		flex items-start gap-3 p-3
+		flex items-center gap-3 p-3
 		rounded-xl border
 		shadow-ink-strong backdrop-blur-sm
 		w-full max-w-[calc(100vw-2rem)] sm:max-w-md
@@ -183,7 +183,7 @@
 	</div>
 
 	<!-- Content -->
-	<div class="flex-1 min-w-0 pt-0.5">
+	<div class="flex-1 min-w-0">
 		<!-- Message -->
 		<p class="text-sm font-medium leading-snug {config.textClass}">
 			{toast.message}

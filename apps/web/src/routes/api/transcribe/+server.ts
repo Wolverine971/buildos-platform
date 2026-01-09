@@ -157,6 +157,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		// Parse the form data to get audio file and metadata
 		const formData = await request.formData();
 		const audioFile = formData.get('audio') as File;
+		const customVocabulary = formData.get('vocabularyTerms') as string | null;
 
 		if (!audioFile || audioFile.size === 0) {
 			return ApiResponse.badRequest('No audio data received');
@@ -207,8 +208,12 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 
 				// Execute transcription with timeout
 				// Custom vocabulary prompt helps the model recognize domain-specific terms
-				const vocabularyPrompt =
+				// Base terms are always included, custom terms (like project names) are appended
+				const baseVocabulary =
 					'BuildOS, brain dump, ontology, daily brief, phase, project context';
+				const vocabularyPrompt = customVocabulary
+					? `${baseVocabulary}, ${customVocabulary}`
+					: baseVocabulary;
 
 				transcription = await withTimeout(
 					openai.audio.transcriptions.create({

@@ -451,9 +451,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'search'
 	},
 	web_visit: {
-		summary: 'Fetch and summarize a specific URL with lightweight extraction.',
+		summary: 'Fetch a specific URL, convert HTML to markdown, and persist metadata.',
 		capabilities: [
 			'Best for reading known pages',
+			'Converts HTML to markdown via LLM',
+			'Stores a reusable snapshot with metadata',
 			'Optional link list for related sources',
 			'Pairs with web_search for discovery'
 		],

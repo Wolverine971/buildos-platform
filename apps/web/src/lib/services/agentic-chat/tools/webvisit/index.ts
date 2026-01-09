@@ -1,11 +1,18 @@
 // apps/web/src/lib/services/agentic-chat/tools/webvisit/index.ts
 import { env } from '$env/dynamic/private';
 import { fetchUrl } from './url-client';
-import { normalizePlainText, parseHtmlToText } from './parser';
-import type { WebVisitArgs, WebVisitMode, WebVisitParser, WebVisitResultPayload } from './types';
+import {
+	extractPageMetadata,
+	normalizePlainText,
+	parseHtmlToText,
+	prepareHtmlForMarkdown
+} from './parser';
+import type { WebVisitArgs, WebVisitFetchPayload, WebVisitMode, WebVisitParser } from './types';
 
 const DEFAULT_MAX_CHARS = parseNumber(env.WEB_VISIT_MAX_CHARS, 6000);
+const DEFAULT_MAX_HTML_CHARS = parseNumber(env.WEB_VISIT_MAX_HTML_CHARS, 40000);
 const MAX_CHARS_CAP = 12000;
+const MAX_HTML_CHARS_CAP = 120000;
 const EXCERPT_LIMIT = 280;
 
 function parseNumber(value: string | undefined, fallback: number): number {
@@ -29,9 +36,14 @@ function normalizeMode(mode?: WebVisitMode): WebVisitMode {
 	return 'auto';
 }
 
-function clampMaxChars(value?: number): number {
+export function clampMaxChars(value?: number): number {
 	const raw = value && !Number.isNaN(value) ? Math.floor(value) : DEFAULT_MAX_CHARS;
 	return Math.min(Math.max(raw, 1), MAX_CHARS_CAP);
+}
+
+export function clampMaxHtmlChars(value?: number): number {
+	const raw = value && !Number.isNaN(value) ? Math.floor(value) : DEFAULT_MAX_HTML_CHARS;
+	return Math.min(Math.max(raw, 1), MAX_HTML_CHARS_CAP);
 }
 
 function normalizeContentType(contentType?: string | null): string | undefined {
@@ -53,7 +65,7 @@ function isTextContentType(contentType: string | undefined): boolean {
 	return contentType.includes('json') || contentType.includes('xml');
 }
 
-function buildExcerpt(content: string): string | undefined {
+export function buildExcerpt(content: string): string | undefined {
 	if (!content) return undefined;
 	if (content.length <= EXCERPT_LIMIT) return content;
 	return `${content.slice(0, EXCERPT_LIMIT)}...`;
@@ -62,10 +74,10 @@ function buildExcerpt(content: string): string | undefined {
 export async function performWebVisit(
 	args: WebVisitArgs,
 	fetchFn?: typeof fetch
-): Promise<WebVisitResultPayload> {
+): Promise<WebVisitFetchPayload> {
 	const url = normalizeUrlInput(args.url);
 	const mode = normalizeMode(args.mode);
-	const maxChars = clampMaxChars(args.max_chars);
+	const maxHtmlChars = clampMaxHtmlChars(args.max_html_chars);
 	const includeLinks = args.include_links ?? false;
 	const allowRedirects = args.allow_redirects ?? true;
 	const preferLanguage = args.prefer_language?.trim() || undefined;
@@ -79,34 +91,47 @@ export async function performWebVisit(
 	const contentType = normalizeContentType(response.headers.get('content-type'));
 	const isHtml = isHtmlContent(contentType, response.body);
 
-	let content = '';
+	let text = '';
 	let title: string | undefined;
-	let links: WebVisitResultPayload['links'];
+	let links: WebVisitFetchPayload['links'];
 	let parser: WebVisitParser = 'text';
 	let resolvedMode = mode;
+	let trimmedHtml: string | undefined;
+	let meta: Record<string, string> | undefined;
+	let canonicalUrl: string | undefined;
+	let htmlChars: number | undefined;
 
 	if (isHtml) {
 		resolvedMode = mode === 'auto' ? 'reader' : mode;
+		const metadata = extractPageMetadata(response.body, response.finalUrl);
+		meta = metadata.meta;
+		canonicalUrl = metadata.canonical_url;
 		const parsed = parseHtmlToText(response.body, {
 			mode: resolvedMode === 'raw' ? 'raw' : 'reader',
 			includeLinks,
 			baseUrl: response.finalUrl
 		});
-		content = parsed.content;
-		title = parsed.title;
+		text = parsed.content;
+		title = metadata.title ?? parsed.title;
 		links = parsed.links;
 		parser = parsed.parser;
+		const prepared = prepareHtmlForMarkdown(response.body, {
+			mode: resolvedMode === 'raw' ? 'raw' : 'reader',
+			baseUrl: response.finalUrl
+		});
+		const html = prepared.html.trim();
+		trimmedHtml = html.length > maxHtmlChars ? html.slice(0, maxHtmlChars) : html;
+		htmlChars = trimmedHtml.length;
+		if (!title && prepared.title) {
+			title = prepared.title;
+		}
 	} else if (isTextContentType(contentType)) {
 		resolvedMode = 'raw';
-		content = normalizePlainText(response.body);
+		text = normalizePlainText(response.body);
 		parser = 'text';
 	} else {
 		throw new Error(`Unsupported content type: ${contentType ?? 'unknown'}.`);
 	}
-
-	const trimmed = content.trim();
-	const truncated = trimmed.length > maxChars;
-	const finalContent = truncated ? trimmed.slice(0, maxChars) : trimmed;
 
 	return {
 		url,
@@ -114,9 +139,10 @@ export async function performWebVisit(
 		status_code: response.status,
 		content_type: contentType ?? null,
 		title,
-		content: finalContent,
-		excerpt: buildExcerpt(finalContent),
-		truncated,
+		text,
+		trimmed_html: trimmedHtml,
+		meta,
+		canonical_url: canonicalUrl,
 		links: includeLinks ? links : undefined,
 		message: `Web visit content fetched from "${response.finalUrl}".`,
 		info: {
@@ -124,9 +150,17 @@ export async function performWebVisit(
 			mode: resolvedMode,
 			bytes: response.bytes,
 			fetch_ms: response.fetchMs,
-			parser
+			parser,
+			html_chars: htmlChars
 		}
 	};
 }
 
-export type { WebVisitArgs, WebVisitMode, WebVisitResultPayload, WebVisitParser } from './types';
+export type {
+	WebVisitArgs,
+	WebVisitContentFormat,
+	WebVisitFetchPayload,
+	WebVisitMode,
+	WebVisitParser,
+	WebVisitResultPayload
+} from './types';

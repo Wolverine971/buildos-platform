@@ -4,7 +4,7 @@
 
 **Date:** 2026-01-08
 **Account:** @djwayne3
-**Scan Time:** ~Morning PT
+**Scan Time:** Afternoon PT (Updated)
 
 **Related:** [Following Audit](../2026-01-08_twitter-following-audit.md) - Accounts to unfollow, bot detection, peer accounts
 
@@ -12,199 +12,291 @@
 
 ## Priority Summary
 
-| Priority | Account     | Post Topic                                  | Age  | Score | Why                                                    |
-| -------- | ----------- | ------------------------------------------- | ---- | ----- | ------------------------------------------------------ |
-| 1        | @emollick   | Bookmarks/context preservation in AI age    | 3h   | 88    | PERFECT brand fit, LOW competition (14 replies)        |
-| 2        | @lennysan   | AI survey: quality improved, not just speed | 1h   | 86    | Fresh, AI + quality angle, product audience            |
-| 3        | @thesamparr | Cross-country coach "be a better man"       | ~30m | 82    | VERY fresh, low competition (11 replies)               |
-| 4        | @danshipper | AI content edge, authentic voice            | 1h   | 81    | Fresh, writing-first practitioners have edge           |
-| 5        | @levelsio   | Shotgun to Sniper strategy                  | 1h   | 78    | Fresh, indie hacker philosophy, great for solo founder |
+| Priority | Account                  | Post Topic                                        | Age       | Score | Why                                                        |
+| -------- | ------------------------ | ------------------------------------------------- | --------- | ----- | ---------------------------------------------------------- |
+| 1        | @simonw                  | GPT-5.2 & Opus 4.5 inflection point               | Jan 4     | 92    | MASSIVE engagement (2.5K likes), context engineering angle |
+| 2        | @emollick                | Microsoft's AI-per-app bet failing vs Claude Code | Jan 4     | 88    | Fresh, YOUR thesis - agents across apps, delegation        |
+| 3        | @dexhorthy               | Harness Engineering - new context concept         | Recent    | 86    | HE COINED CONTEXT ENGINEERING - engage heavily             |
+| 4        | @levelsio                | 2026 = year of AI world models prediction         | Recent    | 78    | Classic levelsio future prediction                         |
+| 5        | Claude Code viral thread | Boris Cherny workflow reveal                      | This week | 85    | YOUR tool, viral moment, practitioner angle                |
+| 6        | AI Memory Problem        | Nvidia CES - context management bottleneck        | Jan 2026  | 82    | Nvidia validating your thesis                              |
 
 ---
 
-## 1. Ethan Mollick - Bookmarks/Context Preservation (HIGHEST PRIORITY)
+## 1. Simon Willison - GPT-5.2 & Opus 4.5 Inflection Point (HIGHEST ENGAGEMENT)
 
-**Post Link:** https://x.com/emollick/status/[find-link]
+**Post Link:** https://x.com/simonw/status/2007904766756880848
 
 **The Tweet:**
 
-> One X feature that would be extremely useful in the age of AI (and would actually make the X articles feature make more sense) is to let me download my bookmarked posts
->
-> The fact that there is no way to do so officially is a huge gap, especially as older bookmarks can't be viewed
+> It genuinely feels to me like GPT-5.2 and Opus 4.5 in November represent an inflection point - one of those moments where the models get incrementally better in a way that tips across an invisible capability line where suddenly a whole bunch of much harder coding problems open up
 
-**Stats:** 14 replies, 5 RTs, 145 likes, 8.4K views (3h ago)
+**Stats:** 108 replies, 200 RTs, 2.5K likes, 298.9K views (Jan 4)
 
 **Why This Tweet:**
-This is EXACTLY the BuildOS thesis. Ethan is talking about the pain of losing context/history - bookmarks disappearing, no way to preserve knowledge. LOW reply count means you can stand out. This is the #1 priority.
+Simon is a highly respected voice (Django co-creator, Datasette). This is a nuanced take on model capability - you can add the "but intelligence isn't the bottleneck, context is" angle. Massive engagement means your reply can get visibility if it's sharp.
 
-**Suggested Reply Option 1 (Experience - Recommended):**
+**Suggested Reply Option 1 (Context angle - Recommended):**
 
-> been feeling this. my Claude chats are full of breakthroughs I can't find again.
->
-> started dumping everything into markdown files just to have a searchable history. not elegant but it works.
+> the capability is real. but i keep coming back to: smarter models don't fix the context problem.
 
-**Suggested Reply Option 2 (Shorter + Question):**
+> opus 4.5 is brilliant but still starts every session with amnesia. intelligence that compounds session over session > intelligence that resets.
 
-> yes. losing context is the actual problem.
->
-> do you have a workaround right now or just accept the loss?
+**Suggested Reply Option 2 (Practitioner insight):**
 
-**Suggested Reply Option 3 (Direct):**
+> seeing this daily with claude code. the difference isn't just capability - it's when you feed it project context first.
 
-> the AI memory problem in a nutshell. we keep making smarter tools that forget everything.
+> same model cold = impressive autocomplete. same model + my markdown files = genuinely useful partner.
+
+**Suggested Reply Option 3 (Shorter + question):**
+
+> the inflection point is real. curious if you're noticing the same thing: the smarter the model, the more the bottleneck shifts to context quality?
 
 ---
 
-## 2. Lenny Rachitsky - AI Survey: Quality Improved
+## 2. Ethan Mollick - Microsoft AI-Per-App Bet Failing
 
-**Post Link:** https://x.com/lennysan/status/[find-link]
-
-**The Tweet:**
-
-> [Survey results showing 70% of PMs and founders report AI improved QUALITY of their work, not just productivity]
-
-**Stats:** ~70 replies (1h ago)
-
-**Why This Tweet:**
-Fresh take on AI improving quality, not just speed. Perfect for the "context engineering" angle - quality comes from AI having the right context.
-
-**Suggested Reply Option 1 (Experience - Recommended):**
-
-> seeing this with claude code daily.
->
-> first prompt: generic output. same prompt + my project files: actually knows what I'm building.
->
-> the AI didn't get smarter. I just gave it what it needed.
-
-**Suggested Reply Option 2 (Shorter):**
-
-> makes sense. quality scales with context.
->
-> the people seeing gains probably figured out how to actually feed the AI useful information.
-
-**Suggested Reply Option 3 (Curious):**
-
-> interesting that quality beats speed. that's not the narrative.
->
-> curious what they meant by "quality" - better decisions? better writing? catching mistakes?
-
----
-
-## 3. Sam Parr - Cross-Country Coach
-
-**Post Link:** https://x.com/thesamparr/status/[find-link]
+**Post Link:** https://x.com/emollick/status/2007979815627001896
 
 **The Tweet:**
 
-> [About cross-country coach saying "I'm here to teach you how to be a better man" - unexpected wisdom]
+> Microsoft's (and many other traditional software vendors') bet that people will want each app infused with its own focused AI is looking like a bad one in the face of Codex, Antigravity, and Claude Code. People like to delegate to an agent that works across apps to do tasks.
 
-**Stats:** ~11 replies (VERY FRESH ~30m ago)
+**Stats:** (Jan 4)
 
 **Why This Tweet:**
-Classic Sam life wisdom post. Can tie to solo founder journey, discipline, the unexpected teachers in life.
+This is EXACTLY the BuildOS thesis. Ethan is a respected Wharton professor - having him validate "agents that work across apps" is perfect. Low-medium reply count likely means you can stand out.
 
-**Suggested Reply Option 1 (Marines - use sparingly):**
+**Suggested Reply Option 1 (Direct agreement + extend - Recommended):**
 
-> same in the marines. the best leaders never talked about leadership - they'd just make you do something hard and ask "what did you just learn?"
->
-> the lesson was never the activity.
+> the "AI in every app" bet missed something: context doesn't live in one app.
 
-**Suggested Reply Option 2 (Cheerleader + Question - Recommended):**
+> my projects span slack, email, docs, code. an agent that only sees one silo is useless. the unlock is persistent context across everything.
 
-> love this. the lessons that stick are never the ones being explicitly taught.
->
-> what was the moment you realized what he was actually doing?
+**Suggested Reply Option 2 (Experience-based):**
+
+> seeing this firsthand building buildos. the value isn't "smart AI in your notes app." it's AI that knows your project context regardless of where you're working.
+
+> delegation requires memory. memory requires context that persists.
 
 **Suggested Reply Option 3 (Shorter):**
 
-> the lessons absorbed > lessons taught. always.
+> the problem with siloed AI: each one starts with amnesia.
+
+> delegation at scale requires context that travels across apps. microsoft bet on features. users want a thought partner.
 
 ---
 
-## 4. Dan Shipper - AI Content Edge, Authentic Voice
+## 3. Dex Horthy - Harness Engineering (ENGAGE HEAVILY - He Coined Context Engineering)
 
-**Post Link:** https://x.com/danshipper/status/[find-link]
+**Post Link:** https://x.com/dexhorthy/status/1985699548153467120
 
 **The Tweet:**
 
-> [Repost of Every article: "AI makes content trivially easy to generate. Writing-first practitioners like @FredWilson and @joulee have an edge that only sharpens."]
+> there's a new concept I'm seeing emerging in AI Agents (especially coding agents), which I'll call "harness engineering" - applying context engineering principles to how you use an existing agent
 
-**Stats:** (1h ago)
+> Context engineering -> how context (long or short, agentic or not) is passed to an LLM
+
+**Stats:** Recent post
 
 **Why This Tweet:**
-Dan's core thesis - authentic voice + AI is the edge. Perfect for context engineering angle: AI needs YOUR context to produce YOUR voice.
+@dexhorthy COINED "context engineering" - swyx credits him for it. This is a LAND GRAB opportunity. Engage heavily, credit him, build the relationship. He's evolving the concept to "harness engineering" which is the integration layer.
 
-**Suggested Reply Option 1 (Builder angle - Recommended):**
+**Suggested Reply Option 1 (Credit + extend - Recommended):**
 
-> the edge isn't just having a voice - it's having a body of work the AI can learn from.
->
-> fred and julie have years of writing. that's context. starting from scratch = generic output forever.
+> harness engineering = the missing layer nobody talks about.
 
-**Suggested Reply Option 2 (Curious):**
+> everyone optimizes the prompt. few optimize the integration points where context actually flows in. been obsessing over this with buildos - the magic is in what the agent sees BEFORE the conversation starts.
 
-> curious how this plays out for builders who don't have a writing practice yet.
->
-> feels like the answer is: start documenting now. build the context library before you need it.
+**Suggested Reply Option 2 (Ask smart question):**
 
-**Suggested Reply Option 3 (Shorter):**
+> love this distinction. context engineering = what you feed the model. harness engineering = how you set up the feeding mechanism.
 
-> years of writing = years of context for AI to learn from. that's the moat.
+> curious how you think about the trade-off: flexibility vs. consistency in harness design?
+
+**Suggested Reply Option 3 (Validate + personal experience):**
+
+> "applying context engineering principles to how you use an existing agent" - this clicked for me.
+
+> been using claude code daily. the 10x moments aren't about prompting. they're about the markdown files, the project structure, the integration setup. the harness.
 
 ---
 
-## 5. Levelsio - Shotgun to Sniper Strategy
+## 4. Levelsio - 2026 = Year of AI World Models
 
-**Post Link:** https://x.com/levelsio/status/[find-link]
+**Post Link:** https://x.com/levelsio/status/1968747296604004362
 
 **The Tweet:**
 
-> We actually do shotgun to sniper in life all the time
->
-> In dating you go on dates with different people to find a match, then when you find them you double down
->
-> In getting a job you apply to lots of companies, then when you get the job you focus on that
->
-> Digital nomading...
+> 2023 was the year of AI avatars
+> 2024 was the year of AI photos
+> 2025 was the year of AI videos
+> And I think it's becoming clear now that 2026 will be the year of AI world models
+> Fully interactive explorable 3d worlds generated from one or multiple 2d images or a prompt
 
-**Stats:** (1h ago)
+**Stats:** Recent (late 2025/early 2026)
 
 **Why This Tweet:**
-Classic indie hacker philosophy from levelsio. Can tie to solo founder journey, the importance of exploration before focus.
+Classic levelsio prediction format. Can add the productivity/context angle - or just be a cheerleader here since it's outside your direct expertise.
 
-**Suggested Reply Option 1 (Experience - Recommended):**
+**Suggested Reply Option 1 (Cheerleader + curious):**
 
-> seeing this in building too. you can't plan your way to product-market fit.
->
-> talk to enough people, build enough versions, throw enough at the wall. then when something hits, go all in.
+> hell yes. been watching the world labs demos - insane what's possible from a single image.
 
-**Suggested Reply Option 2 (Agree + Add):**
+> curious what this means for solo builders. feels like another "10x leverage" moment incoming.
 
-> the hard part is knowing when to switch. most people stay in shotgun mode too long. or sniper too early.
+**Suggested Reply Option 2 (Add pattern):**
 
-**Suggested Reply Option 3 (Shorter):**
+> the pattern: each year AI gets better at generating richer output from less input.
 
-> shotgun phase isn't wasted effort. it's reconnaissance. can't aim precisely at something you haven't found yet.
+> avatars → photos → videos → worlds. the input keeps shrinking. the output keeps expanding.
+
+**Suggested Reply Option 3 (Short + hype):**
+
+> watching world labs and runway demos... 2026 is gonna be wild.
 
 ---
 
-## Bonus: Older But High-Value Opportunities
+## 5. Claude Code Viral Moment - Boris Cherny Workflow Reveal
 
-### @emollick - Claude Code for Non-Coders (19h ago)
+**Trending Topic:** Claude Code creator's workflow went viral this week
 
-**The Tweet:**
+**Context:**
+Boris Cherny (head of Claude Code at Anthropic) shared his terminal setup and workflow, sparking massive discussion. Andrej Karpathy commented: "I've never felt this much behind as a programmer... Clearly some powerful alien tool was handed around except it comes with no manual."
 
-> I wrote about Claude Code and why non-coders should be paying attention (and playing with the system) - it shows what today's LLMs can do
->
-> Along the way I had Claude launch a business for me & build a game that simulates the rise and fall of civilizations.
+**Search for:** `"claude code" workflow cherny -is:retweet lang:en`
 
-**Why Consider:**
-Directly about Claude Code, which DJ uses daily. Could add value about the context engineering aspect of making Claude Code actually work well.
+**Why This Matters:**
+You use Claude Code daily. This is YOUR tool. The viral moment is about workflow/setup - exactly where context engineering shines. Can share practitioner insights.
 
-**Quick Reply Option:**
+**Suggested Reply Option 1 (Practitioner validation):**
 
-> been building with claude code daily. the unlock is context - same tool + my project files = actually understands what I'm trying to build.
->
-> without that it's just smart autocomplete.
+> been using claude code daily since early access. the workflow reveal confirms what i kept discovering:
+
+> the magic isn't the model. it's the setup. the markdown files. the project structure. the context you prepare before asking anything.
+
+**Suggested Reply Option 2 (Add what's missing):**
+
+> everyone's talking about boris's terminal setup. the part nobody's asking about: what context does he feed claude code before each session?
+
+> the visible workflow is 20%. the invisible context layer is 80%.
+
+**Suggested Reply Option 3 (Short + insight):**
+
+> the "alien tool" karpathy mentions? it's not the model. it's the context layer built around it.
+
+> same claude code + different project context = completely different results.
+
+---
+
+## 6. AI Memory Problem - Nvidia CES 2026 Validation
+
+**Trending Topic:** Nvidia announced Inference Context Memory Storage Platform at CES 2026
+
+**Key Quote:**
+
+> "The bottleneck is shifting from compute to context management." - Nvidia's Dion Harris
+
+**Why This Matters:**
+NVIDIA - the biggest name in AI infrastructure - just validated the thesis you've been building around. "Context management is the new bottleneck" is exactly what BuildOS solves. This is massive social proof.
+
+**Search for:** `nvidia "context" memory AI 2026 -is:retweet lang:en`
+
+**Suggested Reply Option 1 (Validation + insight):**
+
+> "the bottleneck is shifting from compute to context management"
+
+> nvidia just said the quiet part loud. intelligence is solved (or close enough). context is the new race.
+
+> been building around this exact idea for 8 months. nice to see the big players catch up.
+
+**Suggested Reply Option 2 (Direct + punchy):**
+
+> nvidia confirming what solo builders figured out: smarter models don't help if they forget everything.
+
+> context infrastructure > compute infrastructure. the decade's biggest shift is happening.
+
+**Suggested Reply Option 3 (Question to extend):**
+
+> nvidia's CES move shows where the industry is headed. compute is commoditized. context is the moat.
+
+> curious who's building the best context layer right now - feels like it's still early.
+
+---
+
+## Topic Searches to Run
+
+### Context Engineering (Your Territory)
+
+```
+"context engineering" -is:retweet lang:en since:2026-01-01
+```
+
+```
+"harness engineering" dexhorthy -is:retweet lang:en
+```
+
+### AI Memory Problem (Direct Pain Point)
+
+```
+AI "keeps forgetting" context -is:retweet lang:en since:2026-01-01
+```
+
+```
+ChatGPT "forgot" OR "amnesia" -is:retweet lang:en since:2026-01-01
+```
+
+### ADHD Productivity (Audience)
+
+```
+ADHD productivity overwhelmed -is:retweet lang:en since:2026-01-01
+```
+
+```
+"tried every" productivity app ADHD -is:retweet lang:en
+```
+
+### Building in Public (Community)
+
+```
+indie hacker AI tool shipping -is:retweet lang:en since:2026-01-01
+```
+
+```
+solo founder claude code -is:retweet lang:en
+```
+
+---
+
+## Competitor Intelligence
+
+### @dannypostma (PostmaOS)
+
+**Status:** "Laying low" per profile bio
+**Activity:** No major January 2026 posts found. Last notable: Comfyflows marketplace launch (AI workflow marketplace).
+**Implications:** He's in quiet building mode. Watch for product announcements.
+
+### @dexhorthy (Context Engineering)
+
+**Status:** HIGHLY ACTIVE - evolving "context engineering" to "harness engineering"
+**Activity:** Publishing advanced Claude Code guides, context engineering resources
+**Action:** ENGAGE HEAVILY. He coined your term. Build relationship.
+
+### @danidonovan (Anti-Planner)
+
+**Status:** No fresh January content found in search
+**Implications:** Monitor for ADHD productivity content
+
+---
+
+## New Accounts Discovered
+
+Based on search results, consider adding:
+
+| Account    | Followers | Theme                         | Suggested Tier | Why                                           |
+| ---------- | --------- | ----------------------------- | -------------- | --------------------------------------------- |
+| @bcherny   | Unknown   | Claude Code creator           | Tier 2         | He BUILT your daily tool, workflow went viral |
+| @lenadroid | Unknown   | Context engineering education | Tier 3         | Creating context engineering resources        |
 
 ---
 
@@ -212,63 +304,76 @@ Directly about Claude Code, which DJ uses daily. Could add value about the conte
 
 **Recommended Order:**
 
-1. **@emollick bookmarks post** - POST FIRST (3h, only 14 replies - own this thread!)
-2. **@thesamparr coach post** - VERY FRESH, within 30 min of first post
-3. **@lennysan AI quality** - within 30 min (high relevance)
-4. **@danshipper AI content edge** - space 30+ min apart
-5. **@levelsio shotgun/sniper** - can do later
+1. **@dexhorthy harness engineering** - POST FIRST (he coined your term, build relationship)
+2. **@simonw inflection point** - HIGH engagement, your angle is differentiated
+3. **@emollick Microsoft bet** - Within 30 min (directly validates BuildOS thesis)
+4. **Claude Code viral thread** - Search and engage with practitioner angle
+5. **Nvidia context quote** - Search for discussions, add your take
 
 **Timing Notes:**
 
 - Space replies 30+ min apart
-- Fresh posts (<2h) = lower competition, higher visibility
-- 5-7 quality engagements per day max
-- Don't reply to all targets at once (looks spammy)
+- @dexhorthy is PRIORITY - he's the context engineering thought leader
+- Don't mention BuildOS in every reply - 1-2 natural mentions max
 
 ---
 
 ## Voice Reminder
 
+### The Philosophy
+
+**Interesting guy + cheerleader. NOT a thought leader.**
+
 ### Two Modes
 
-**Mode 1: Add Value** - When you have something specific to contribute
+1. **Value Mode:** When you have experience to share
+    - Specific details from using Claude Code daily
+    - Curri integrations experience (pre-AI tool use)
+    - Solo founder journey
 
-- Share specific experience or insight
-- Lead with curiosity, not authority
-- Teammate energy, not teaching
-
-**Mode 2: Cheerleader** - When you don't have a unique angle
-
-- Genuine hype and encouragement
-- Curious questions about their journey
-- "hell yes" energy is valid
+2. **Cheerleader Mode:** When you don't
+    - Genuine curiosity and questions
+    - "hell yes" energy for wins
+    - Celebrate their insights specifically
 
 ### The 3 Rules (for Value Mode)
 
 1. **Can I visualize it?** - Specific details, not abstractions
 2. **Can I falsify it?** - Real experience you could defend
-3. **Can nobody else say this?** - Marines (sparingly), solo founder, Claude Code daily user
+3. **Can nobody else say this?** - Use Marines (sparingly), solo founder, Claude Code daily user
 
 ### Quick Don'ts
 
 - No "love this" or "great post" (hollow)
 - No "this resonated" (generic)
-- No preachy teaching when you're just supporting
-- Don't make it about you when cheering someone on
+- No preachy teaching when supporting
+- Don't make it about you when cheering
 
 ---
 
-## Topics to Watch
+## Sources
 
-Based on today's scan, these topics are hot:
+- [Simon Willison on GPT-5.2 & Opus 4.5](https://x.com/simonw/status/2007904766756880848)
+- [Ethan Mollick on Microsoft AI bet](https://x.com/emollick/status/2007979815627001896)
+- [Dex Horthy on Harness Engineering](https://x.com/dexhorthy/status/1985699548153467120)
+- [Levelsio 2026 predictions](https://x.com/levelsio/status/1968747296604004362)
+- [AI Memory Explained](https://www.arsturn.com/blog/the-ai-memory-problem-why-your-assistant-forgets-and-whats-next)
+- [Context Engineering Guide](https://codeconductor.ai/blog/context-engineering/)
+- [Claude Code Viral Moment - VentureBeat](https://venturebeat.com/technology/the-creator-of-claude-code-just-revealed-his-workflow-and-developers-are)
+- [Nvidia CES 2026 - Context Memory](https://gizmodo.com/nvidia-new-rubin-platform-shows-memory-is-no-longer-afterthought-in-ai-2000705639)
 
-- AI improving quality (not just productivity)
-- Context preservation / memory problems
-- Authentic voice in AI age
-- Shotgun-to-sniper strategy for indie hackers
-- Claude Code for non-coders
+---
+
+## Profile Updates Made
+
+| Account          | Change | Old → New |
+| ---------------- | ------ | --------- |
+| None significant | -      | -         |
+
+Profiles checked: @dannypostma (status: "Laying low"), @dexhorthy (active, 3.2K followers), @levelsio (active)
 
 ---
 
 **Created:** 2026-01-08 Morning PT
+**Updated:** 2026-01-08 Afternoon PT
 **Next Scan:** 2026-01-09

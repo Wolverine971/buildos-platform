@@ -114,6 +114,24 @@ For discovery or multiple sources, use web_search first.`,
 						maximum: 12000,
 						description: 'Maximum number of characters to return.'
 					},
+					max_html_chars: {
+						type: 'number',
+						description:
+							'Maximum number of HTML characters to send to the markdown converter.'
+					},
+					output_format: {
+						type: 'string',
+						enum: ['markdown', 'text'],
+						description: 'Preferred output format for content.'
+					},
+					persist: {
+						type: 'boolean',
+						description: 'Store the markdown snapshot for reuse (default true).'
+					},
+					force_refresh: {
+						type: 'boolean',
+						description: 'Force a fresh fetch even if cached (default false).'
+					},
 					include_links: {
 						type: 'boolean',
 						description: 'Include a short list of outbound links when available.'

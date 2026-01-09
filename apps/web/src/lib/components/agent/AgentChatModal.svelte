@@ -3330,6 +3330,7 @@
 									isVoiceInitializing ||
 									isVoiceTranscribing}
 								displayContextLabel="your braindump"
+								vocabularyTerms="braindump"
 								onKeyDownHandler={(e) => {
 									if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
 										e.preventDefault();
@@ -3549,6 +3550,7 @@
 							{isSendDisabled}
 							allowSendWhileStreaming={isTouchDevice}
 							{displayContextLabel}
+							vocabularyTerms={resolvedProjectFocus?.projectName ?? displayContextLabel}
 							onKeyDownHandler={handleKeyDown}
 							onSend={handleSendMessage}
 							onStop={() => handleStopGeneration('user_cancelled')}

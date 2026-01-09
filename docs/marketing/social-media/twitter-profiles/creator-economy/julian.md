@@ -15,13 +15,13 @@ relevance_score: 8
 engagement_priority: 'high-value'
 notifications: false
 tags:
-  - growth-marketing
-  - writing
-  - handbooks
-  - bell-curve
-  - verified
-  - thought-leader
-  - frameworks
+    - growth-marketing
+    - writing
+    - handbooks
+    - bell-curve
+    - verified
+    - thought-leader
+    - frameworks
 path: docs/marketing/social-media/twitter-profiles/creator-economy/julian.md
 ---
 
@@ -53,9 +53,9 @@ path: docs/marketing/social-media/twitter-profiles/creator-economy/julian.md
 ## Known Products
 
 - **Julian.com Handbooks** - Free comprehensive guides
-  - Growth Marketing Handbook
-  - Writing Handbook
-  - Exercise Handbook
+    - Growth Marketing Handbook
+    - Writing Handbook
+    - Exercise Handbook
 - **Bell Curve** - Growth marketing agency
 
 ## Content Themes
@@ -76,11 +76,13 @@ path: docs/marketing/social-media/twitter-profiles/creator-economy/julian.md
 ## Why This Account Matters
 
 **Framework Thinking:**
+
 - Julian's handbooks are legendary for breaking down complexity
 - His approach = "Context Engineering for marketing"
 - Could position BuildOS as "Julian's handbook approach for your brain"
 
 **Growth Marketing Credibility:**
+
 - If Julian endorses a tool, his audience listens
 - Bell Curve agency could be partnership opportunity
 - His frameworks = BuildOS positioning inspiration
@@ -101,4 +103,4 @@ path: docs/marketing/social-media/twitter-profiles/creator-economy/julian.md
 
 ---
 
-*Added: 2026-01-08*
+_Added: 2026-01-08_

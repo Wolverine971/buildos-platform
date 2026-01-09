@@ -314,10 +314,18 @@ class BrainDumpService extends ApiClient {
 	/**
 	 * Transcribe audio to text
 	 * Note: Using fetch directly as ApiClient doesn't support FormData
+	 * @param audioFile The audio file to transcribe
+	 * @param vocabularyTerms Optional comma-separated terms to help with transcription accuracy
 	 */
-	async transcribeAudio(audioFile: File): Promise<{ transcript: string }> {
+	async transcribeAudio(
+		audioFile: File,
+		vocabularyTerms?: string
+	): Promise<{ transcript: string }> {
 		const formData = new FormData();
 		formData.append('audio', audioFile);
+		if (vocabularyTerms) {
+			formData.append('vocabularyTerms', vocabularyTerms);
+		}
 
 		const response = await fetch('/api/transcribe', {
 			method: 'POST',

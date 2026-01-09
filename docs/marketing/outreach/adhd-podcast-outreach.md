@@ -1,13 +1,13 @@
 ---
-title: "ADHD Podcast Outreach List"
+title: 'ADHD Podcast Outreach List'
 status: active
 created: 2026-01-08
 owner: DJ Wayne
 purpose: Guest appearances to reach ADHD audience
 related_docs:
-  - /docs/marketing/strategy/adhd-productivity-os-strategy.md
-  - /docs/marketing/content/drafts/why-i-built-buildos.md
-  - /docs/marketing/social-media/twitter-profiles/adhd-neurodivergent/
+    - /docs/marketing/strategy/adhd-productivity-os-strategy.md
+    - /docs/marketing/content/drafts/why-i-built-buildos.md
+    - /docs/marketing/social-media/twitter-profiles/adhd-neurodivergent/
 path: docs/marketing/outreach/adhd-podcast-outreach.md
 ---
 
@@ -28,17 +28,20 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Massive - largest ADHD creator
 
 **Why Target:**
+
 - Largest ADHD audience online
 - "ADHD Toolbox" philosophy = BuildOS positioning
 - Has featured tools before
 - Mainstream credibility
 
 **Pitch Angle:**
+
 - "The AI-powered ADHD toolbox"
 - DJ's story: Marine discipline + ADHD struggles
 - Context Engineering for ADHD minds
 
 **Contact Strategy:**
+
 1. Engage with her Twitter content for 2-3 weeks
 2. DM or email with personalized pitch
 3. Reference specific videos that align with BuildOS
@@ -55,17 +58,20 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Established, long-running
 
 **Why Target:**
+
 - Specifically focused on ADHD professionals
 - Has interviewed many ADHD tool creators
 - Open to new approaches
 - Serious, professional tone
 
 **Pitch Angle:**
+
 - ADHD entrepreneur building for ADHD entrepreneurs
 - Systems thinking meets scattered minds
 - "Context Engineering" concept
 
 **Contact Strategy:**
+
 1. Listen to 3-4 recent episodes
 2. Apply through website guest form
 3. Reference specific episodes in pitch
@@ -82,17 +88,20 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Growing, engaged community
 
 **Why Target:**
+
 - "Hacking" framing = BuildOS approach
 - Practical, tool-focused content
 - Active community
 - Open to new solutions
 
 **Pitch Angle:**
+
 - "Hacking ADHD with AI context"
 - Specific productivity techniques in BuildOS
 - Brain dump → execution workflow
 
 **Contact Strategy:**
+
 1. Engage on social media
 2. Email through website
 3. Offer specific episode topics
@@ -108,16 +117,19 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Established
 
 **Why Target:**
+
 - Created "Wall of Awful" concept (famous in ADHD community)
 - Deeper psychological approach
 - Coach-focused audience
 
 **Pitch Angle:**
+
 - How BuildOS addresses the "Wall of Awful"
 - Reducing ADHD shame through AI support
 - Tools that understand ADHD psychology
 
 **Contact Strategy:**
+
 1. Reference "Wall of Awful" in engagement
 2. Email with psychology-focused pitch
 3. Offer coaching angle
@@ -135,11 +147,13 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Growing, passionate community
 
 **Why Target:**
+
 - Women with ADHD = underserved market
 - Professional focus
 - Lifestyle integration
 
 **Pitch Angle:**
+
 - Tools that work with (not against) ADHD
 - Professional productivity without burnout
 - AI as executive function support
@@ -155,11 +169,13 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Established
 
 **Why Target:**
+
 - Personal development angle
 - Coaching community connection
 - Practical advice focus
 
 **Pitch Angle:**
+
 - Building systems that actually stick
 - Self-compassion through AI support
 - Founder story of ADHD struggles
@@ -176,11 +192,13 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Established, consistent
 
 **Why Target:**
+
 - Long-running credibility
 - Broad ADHD audience
 - "Take Control" theme = BuildOS
 
 **Pitch Angle:**
+
 - Taking control with AI assistance
 - Systems that maintain themselves
 - Practical daily use cases
@@ -198,11 +216,13 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Growing
 
 **Why Target:**
+
 - Tech-savvy audience
 - Builder/maker community overlap
 - Indie hacker adjacent
 
 **Pitch Angle:**
+
 - Technical founder story
 - AI/tech approach to ADHD
 - Building in public
@@ -218,11 +238,13 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Size:** Established
 
 **Why Target:**
+
 - Entrepreneur focus
 - "ADHD as superpower" framing
 - Business community
 
 **Pitch Angle:**
+
 - Entrepreneur building for entrepreneurs
 - Channeling ADHD energy productively
 - Marine discipline + ADHD creativity
@@ -237,6 +259,7 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 **Audience:** Varies
 
 **Why Target:**
+
 - Easier to get on
 - Build podcast experience
 - Niche audiences
@@ -248,6 +271,7 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 ## Pitch Template
 
 ### Subject Line Options
+
 1. "ADHD founder builds AI productivity tool - guest pitch"
 2. "From Marine to ADHD productivity founder - guest story"
 3. "Context Engineering: A new approach to ADHD productivity"
@@ -265,6 +289,7 @@ path: docs/marketing/outreach/adhd-podcast-outreach.md
 > I call this approach "Context Engineering" - giving AI enough context about your life that it can actually help, instead of generic advice.
 >
 > I'd love to share this story with your audience:
+>
 > - The paradox of Marine discipline + ADHD chaos
 > - Why traditional productivity tools fail ADHD minds
 > - How AI can be the external executive function we need
@@ -299,17 +324,17 @@ Before contacting any podcast:
 
 ## Tracking
 
-| Podcast | Tier | Contacted | Response | Scheduled | Aired | Notes |
-|---------|------|-----------|----------|-----------|-------|-------|
-| How to ADHD | 1 | [ ] | | | | |
-| ADHD reWired | 1 | [ ] | | | | |
-| Hacking Your ADHD | 1 | [ ] | | | | |
-| Translating ADHD | 1 | [ ] | | | | |
-| Smart Ass Women | 2 | [ ] | | | | |
-| I Have ADHD | 2 | [ ] | | | | |
-| The ADHD Podcast | 2 | [ ] | | | | |
-| ADHD Nerds | 3 | [ ] | | | | |
-| Faster Than Normal | 3 | [ ] | | | | |
+| Podcast            | Tier | Contacted | Response | Scheduled | Aired | Notes |
+| ------------------ | ---- | --------- | -------- | --------- | ----- | ----- |
+| How to ADHD        | 1    | [ ]       |          |           |       |       |
+| ADHD reWired       | 1    | [ ]       |          |           |       |       |
+| Hacking Your ADHD  | 1    | [ ]       |          |           |       |       |
+| Translating ADHD   | 1    | [ ]       |          |           |       |       |
+| Smart Ass Women    | 2    | [ ]       |          |           |       |       |
+| I Have ADHD        | 2    | [ ]       |          |           |       |       |
+| The ADHD Podcast   | 2    | [ ]       |          |           |       |       |
+| ADHD Nerds         | 3    | [ ]       |          |           |       |       |
+| Faster Than Normal | 3    | [ ]       |          |           |       |       |
 
 ---
 
@@ -329,11 +354,13 @@ After each podcast:
 ## Related Outreach
 
 ### YouTube ADHD Creators (Video Appearances)
+
 - @HowtoADHD - Main target
 - @ADHD_Alien - Potential collab
 - @danidonovan - Interview about tools
 
 ### ADHD Coaches (Partnership)
+
 - @StructuredSucc - Structured Success
 - @neurodiverging - Danielle Sullivan
 - Potential: BuildOS for coaches/clients
@@ -348,5 +375,5 @@ After each podcast:
 
 ---
 
-*Created: 2026-01-08*
-*Goal: 3-5 appearances in Q1 2026*
+_Created: 2026-01-08_
+_Goal: 3-5 appearances in Q1 2026_

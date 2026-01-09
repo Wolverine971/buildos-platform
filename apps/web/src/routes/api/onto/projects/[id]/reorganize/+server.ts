@@ -53,11 +53,11 @@ function parseConnections(value: unknown): ConnectionRef[] {
 		id: typeof (entry as ConnectionRef).id === 'string' ? (entry as any).id.trim() : '',
 		intent:
 			typeof (entry as ConnectionRef).intent === 'string'
-				? (((entry as any).intent.trim() as ConnectionRef['intent']) || undefined)
+				? ((entry as any).intent.trim() as ConnectionRef['intent']) || undefined
 				: undefined,
 		rel:
 			typeof (entry as ConnectionRef).rel === 'string'
-				? (((entry as any).rel.trim() as ConnectionRef['rel']) || undefined)
+				? ((entry as any).rel.trim() as ConnectionRef['rel']) || undefined
 				: undefined
 	}));
 }
@@ -155,9 +155,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					);
 				}
 				if (connection.intent && !VALID_INTENTS.has(connection.intent)) {
-					return ApiResponse.badRequest(
-						`Invalid connection intent for node ${nodeKey}`
-					);
+					return ApiResponse.badRequest(`Invalid connection intent for node ${nodeKey}`);
 				}
 				if (connection.rel && !VALID_RELATIONSHIPS.has(connection.rel)) {
 					return ApiResponse.badRequest(

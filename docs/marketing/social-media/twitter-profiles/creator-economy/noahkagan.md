@@ -15,13 +15,13 @@ relevance_score: 8
 engagement_priority: 'high-value'
 notifications: false
 tags:
-  - entrepreneur
-  - appsumo
-  - marketing
-  - million-dollar-weekend
-  - youtube
-  - verified
-  - distribution-channel
+    - entrepreneur
+    - appsumo
+    - marketing
+    - million-dollar-weekend
+    - youtube
+    - verified
+    - distribution-channel
 path: docs/marketing/social-media/twitter-profiles/creator-economy/noahkagan.md
 ---
 
@@ -77,6 +77,7 @@ path: docs/marketing/social-media/twitter-profiles/creator-economy/noahkagan.md
 ## Distribution Opportunity
 
 **AppSumo Partnership:**
+
 - AppSumo features productivity/AI tools regularly
 - BuildOS could do AppSumo deal for launch
 - Noah's audience = overwhelmed entrepreneurs (our users)
@@ -99,4 +100,4 @@ path: docs/marketing/social-media/twitter-profiles/creator-economy/noahkagan.md
 
 ---
 
-*Added: 2026-01-08*
+_Added: 2026-01-08_

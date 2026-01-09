@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2026-01-08T21:23:58.707Z
+// Generated on: 2026-01-09T05:21:11.042Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2045,6 +2045,33 @@ export type DatabaseSchema = {
 		user_agent: string | null;
 		visitor_id: string;
 	};
+	web_page_visits: {
+		bytes: number | null;
+		canonical_url: string | null;
+		content_hash: string | null;
+		content_type: string | null;
+		created_at: string;
+		error_message: string | null;
+		excerpt: string | null;
+		final_url: string;
+		first_visited_at: string;
+		id: string;
+		last_fetch_ms: number | null;
+		last_llm_model: string | null;
+		last_llm_ms: number | null;
+		last_visited_at: string;
+		llm_completion_tokens: number | null;
+		llm_prompt_tokens: number | null;
+		llm_total_tokens: number | null;
+		markdown: string | null;
+		meta: Json | null;
+		normalized_url: string;
+		status_code: number;
+		title: string | null;
+		updated_at: string;
+		url: string;
+		visit_count: number;
+	};
 	webhook_events: {
 		attempts: number | null;
 		created_at: string | null;
@@ -2192,5 +2219,6 @@ export const tableNames = [
 	'user_sms_preferences',
 	'users',
 	'visitors',
+	'web_page_visits',
 	'webhook_events'
 ] as const;

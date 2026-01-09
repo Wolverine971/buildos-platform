@@ -63,25 +63,25 @@ The tool system contains **54 tools** organized into 4 categories:
 
 Tools for discovery and listing across the ontology:
 
-| Tool Name                | Purpose                               | Parameters                                                 |
-| ------------------------ | ------------------------------------- | ---------------------------------------------------------- |
-| `list_onto_projects`     | List projects with filtering          | `state_key`, `type_key`, `limit`                           |
-| `search_onto_projects`   | Keyword search for projects           | `search` (required), `state_key`, `type_key`, `limit`      |
-| `list_onto_tasks`        | List tasks with optional filtering    | `project_id`, `state_key`, `limit`                         |
-| `search_onto_tasks`      | Keyword search for tasks              | `search` (required), `project_id`, `state_key`, `limit`    |
-| `list_onto_plans`        | List plans for a project              | `project_id`, `limit`                                      |
-| `list_onto_goals`        | List goals for a project              | `project_id`, `limit`                                      |
-| `list_onto_documents`    | List documents with filters           | `project_id`, `type_key`, `state_key`, `limit`             |
-| `search_onto_documents`  | Keyword search for documents          | `search` (required), `project_id`, `type_key`, `state_key` |
-| `list_onto_outputs`      | List outputs with status              | `project_id`, `state_key`, `limit`                         |
-| `list_onto_milestones`   | List milestones with dates            | `project_id`, `state_key`, `limit`                         |
-| `list_onto_risks`        | List risks with impact                | `project_id`, `state_key`, `impact`, `limit`               |
-| `list_onto_decisions`    | List decisions                        | `project_id`, `limit`                                      |
-| `list_onto_requirements` | List requirements                     | `project_id`, `type_key`, `limit`                          |
-| `list_task_documents`    | List documents linked to a task       | `task_id` (required)                                       |
-| `search_ontology`        | Fuzzy search across ontology entities | `query` (required), `project_id`, `types`, `limit`         |
-| `web_search`             | Web research                          | `query` (required), `max_results`, `search_depth`          |
-| `web_visit`              | Read a specific URL                   | `url` (required), `mode`, `max_chars`                      |
+| Tool Name                | Purpose                               | Parameters                                                                          |
+| ------------------------ | ------------------------------------- | ----------------------------------------------------------------------------------- |
+| `list_onto_projects`     | List projects with filtering          | `state_key`, `type_key`, `limit`                                                    |
+| `search_onto_projects`   | Keyword search for projects           | `search` (required), `state_key`, `type_key`, `limit`                               |
+| `list_onto_tasks`        | List tasks with optional filtering    | `project_id`, `state_key`, `limit`                                                  |
+| `search_onto_tasks`      | Keyword search for tasks              | `search` (required), `project_id`, `state_key`, `limit`                             |
+| `list_onto_plans`        | List plans for a project              | `project_id`, `limit`                                                               |
+| `list_onto_goals`        | List goals for a project              | `project_id`, `limit`                                                               |
+| `list_onto_documents`    | List documents with filters           | `project_id`, `type_key`, `state_key`, `limit`                                      |
+| `search_onto_documents`  | Keyword search for documents          | `search` (required), `project_id`, `type_key`, `state_key`                          |
+| `list_onto_outputs`      | List outputs with status              | `project_id`, `state_key`, `limit`                                                  |
+| `list_onto_milestones`   | List milestones with dates            | `project_id`, `state_key`, `limit`                                                  |
+| `list_onto_risks`        | List risks with impact                | `project_id`, `state_key`, `impact`, `limit`                                        |
+| `list_onto_decisions`    | List decisions                        | `project_id`, `limit`                                                               |
+| `list_onto_requirements` | List requirements                     | `project_id`, `type_key`, `limit`                                                   |
+| `list_task_documents`    | List documents linked to a task       | `task_id` (required)                                                                |
+| `search_ontology`        | Fuzzy search across ontology entities | `query` (required), `project_id`, `types`, `limit`                                  |
+| `web_search`             | Web research                          | `query` (required), `max_results`, `search_depth`                                   |
+| `web_visit`              | Read a specific URL                   | `url` (required), `mode`, `max_chars`, `max_html_chars`, `output_format`, `persist` |
 
 **Token Cost:** Low (350 tokens average per category)
 

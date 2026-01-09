@@ -26,13 +26,14 @@ export interface VoiceRecordingCallbacks {
 }
 
 export interface TranscriptionService {
-	transcribeAudio(audioFile: File): Promise<{ transcript: string }>;
+	transcribeAudio(audioFile: File, vocabularyTerms?: string): Promise<{ transcript: string }>;
 }
 
 export class VoiceRecordingService {
 	private static instance: VoiceRecordingService;
 	private callbacks: VoiceRecordingCallbacks | null = null;
 	private transcriptionService: TranscriptionService | null = null;
+	private vocabularyTerms: string = '';
 
 	// Recording state - use writable store for reactivity
 	private recordingStartTime: number = 0;
@@ -85,6 +86,22 @@ export class VoiceRecordingService {
 
 	public isLiveTranscriptSupported(): boolean {
 		return liveTranscriptSupported();
+	}
+
+	/**
+	 * Set custom vocabulary terms to help transcription recognize specific words.
+	 * This is useful for project names, technical terms, or other domain-specific vocabulary.
+	 * @param terms Comma-separated string of terms (e.g., "Project Alpha, task list, sprint")
+	 */
+	public setVocabularyTerms(terms: string): void {
+		this.vocabularyTerms = terms;
+	}
+
+	/**
+	 * Get the current vocabulary terms
+	 */
+	public getVocabularyTerms(): string {
+		return this.vocabularyTerms;
 	}
 
 	/**
@@ -242,7 +259,10 @@ export class VoiceRecordingService {
 			const extension = this.getFileExtension(mimeType);
 			const audioFile = new File([audioBlob], `recording.${extension}`, { type: mimeType });
 
-			const response = await this.transcriptionService.transcribeAudio(audioFile);
+			const response = await this.transcriptionService.transcribeAudio(
+				audioFile,
+				this.vocabularyTerms || undefined
+			);
 
 			if (response?.transcript) {
 				const newTranscript = response.transcript.trim();

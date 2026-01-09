@@ -8299,6 +8299,90 @@ export type Database = {
         }
         Relationships: []
       }
+      web_page_visits: {
+        Row: {
+          bytes: number | null
+          canonical_url: string | null
+          content_hash: string | null
+          content_type: string | null
+          created_at: string
+          error_message: string | null
+          excerpt: string | null
+          final_url: string
+          first_visited_at: string
+          id: string
+          last_fetch_ms: number | null
+          last_llm_model: string | null
+          last_llm_ms: number | null
+          last_visited_at: string
+          llm_completion_tokens: number | null
+          llm_prompt_tokens: number | null
+          llm_total_tokens: number | null
+          markdown: string | null
+          meta: Json | null
+          normalized_url: string
+          status_code: number
+          title: string | null
+          updated_at: string
+          url: string
+          visit_count: number
+        }
+        Insert: {
+          bytes?: number | null
+          canonical_url?: string | null
+          content_hash?: string | null
+          content_type?: string | null
+          created_at?: string
+          error_message?: string | null
+          excerpt?: string | null
+          final_url: string
+          first_visited_at?: string
+          id?: string
+          last_fetch_ms?: number | null
+          last_llm_model?: string | null
+          last_llm_ms?: number | null
+          last_visited_at?: string
+          llm_completion_tokens?: number | null
+          llm_prompt_tokens?: number | null
+          llm_total_tokens?: number | null
+          markdown?: string | null
+          meta?: Json | null
+          normalized_url: string
+          status_code: number
+          title?: string | null
+          updated_at?: string
+          url: string
+          visit_count?: number
+        }
+        Update: {
+          bytes?: number | null
+          canonical_url?: string | null
+          content_hash?: string | null
+          content_type?: string | null
+          created_at?: string
+          error_message?: string | null
+          excerpt?: string | null
+          final_url?: string
+          first_visited_at?: string
+          id?: string
+          last_fetch_ms?: number | null
+          last_llm_model?: string | null
+          last_llm_ms?: number | null
+          last_visited_at?: string
+          llm_completion_tokens?: number | null
+          llm_prompt_tokens?: number | null
+          llm_total_tokens?: number | null
+          markdown?: string | null
+          meta?: Json | null
+          normalized_url?: string
+          status_code?: number
+          title?: string | null
+          updated_at?: string
+          url?: string
+          visit_count?: number
+        }
+        Relationships: []
+      }
       webhook_events: {
         Row: {
           attempts: number | null

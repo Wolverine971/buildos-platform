@@ -46,6 +46,8 @@
 		transcribingLabel?: string;
 		preparingLabel?: string;
 		class?: string;
+		// Custom vocabulary terms for transcription (e.g., project name)
+		vocabularyTerms?: string;
 		// Bindable voice state props for parent components
 		isRecording?: boolean;
 		isInitializing?: boolean;
@@ -100,6 +102,8 @@
 		transcribingLabel = 'Transcribing…',
 		preparingLabel = 'Preparing microphone…',
 		class: className = '',
+		// Custom vocabulary terms for transcription
+		vocabularyTerms = '',
 		// Bindable voice state props
 		isRecording = $bindable(false),
 		isInitializing = $bindable(false),
@@ -156,10 +160,20 @@
 		canUseLiveTranscript = _canUseLiveTranscript;
 	});
 
+	// Update vocabulary terms on the voice recording service when prop changes
+	$effect(() => {
+		if (voiceInitialized) {
+			voiceRecordingService.setVocabularyTerms(vocabularyTerms);
+		}
+	});
+
 	const transcriptionService: TranscriptionService = {
-		async transcribeAudio(audioFile: File) {
+		async transcribeAudio(audioFile: File, vocabTerms?: string) {
 			const formData = new FormData();
 			formData.append('audio', audioFile);
+			if (vocabTerms) {
+				formData.append('vocabularyTerms', vocabTerms);
+			}
 
 			const response = await fetch(transcriptionEndpoint, {
 				method: 'POST',

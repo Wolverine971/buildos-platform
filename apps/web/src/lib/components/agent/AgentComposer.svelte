@@ -12,6 +12,7 @@
 		isSendDisabled: boolean;
 		allowSendWhileStreaming?: boolean;
 		displayContextLabel: string;
+		vocabularyTerms?: string;
 		voiceInputRef: TextareaWithVoiceComponent | null;
 		isVoiceRecording: boolean;
 		isVoiceInitializing: boolean;
@@ -30,6 +31,7 @@
 		isSendDisabled,
 		allowSendWhileStreaming = false,
 		displayContextLabel,
+		vocabularyTerms = '',
 		voiceInputRef = $bindable(),
 		isVoiceRecording = $bindable(),
 		isVoiceInitializing = $bindable(),
@@ -76,6 +78,7 @@
 		liveTranscriptLabel="Live"
 		showStatusRow={true}
 		showLiveTranscriptPreview={true}
+		{vocabularyTerms}
 		onkeydown={onKeyDownHandler}
 	>
 		{#snippet actions()}

@@ -15,13 +15,13 @@ relevance_score: 9
 engagement_priority: 'high-value'
 notifications: false
 tags:
-  - gumroad
-  - minimalist-entrepreneur
-  - creator-economy
-  - indie
-  - verified
-  - thought-leader
-  - author
+    - gumroad
+    - minimalist-entrepreneur
+    - creator-economy
+    - indie
+    - verified
+    - thought-leader
+    - author
 path: docs/marketing/social-media/twitter-profiles/creator-economy/shl.md
 ---
 
@@ -74,11 +74,13 @@ path: docs/marketing/social-media/twitter-profiles/creator-economy/shl.md
 ## Why This Account Matters
 
 **Creator Tool Credibility:**
+
 - Gumroad serves millions of creators
 - His endorsement = massive signal to creator audience
 - "Minimalist Entrepreneur" philosophy aligns with BuildOS simplicity
 
 **Potential Relationship:**
+
 - He invests in creator tools
 - Could be advisor or supporter
 - His audience = creators who need productivity help
@@ -99,4 +101,4 @@ path: docs/marketing/social-media/twitter-profiles/creator-economy/shl.md
 
 ---
 
-*Added: 2026-01-08*
+_Added: 2026-01-08_
