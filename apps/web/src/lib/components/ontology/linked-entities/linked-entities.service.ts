@@ -156,16 +156,17 @@ export async function fetchAvailableEntities(
 function flattenLinkedEntities(
 	linked: LinkedEntitiesResult
 ): Array<{ kind: EntityKind; entity: LinkedEntity }> {
+	// Defensive: handle undefined properties gracefully
 	const entries: Array<[EntityKind, LinkedEntity[]]> = [
-		['task', linked.tasks],
-		['plan', linked.plans],
-		['goal', linked.goals],
-		['milestone', linked.milestones],
-		['document', linked.documents],
-		['output', linked.outputs],
-		['risk', linked.risks],
-		['decision', linked.decisions],
-		['event', linked.events]
+		['task', linked.tasks ?? []],
+		['plan', linked.plans ?? []],
+		['goal', linked.goals ?? []],
+		['milestone', linked.milestones ?? []],
+		['document', linked.documents ?? []],
+		['output', linked.outputs ?? []],
+		['risk', linked.risks ?? []],
+		['decision', linked.decisions ?? []],
+		['event', linked.events ?? []]
 	];
 
 	const flattened: Array<{ kind: EntityKind; entity: LinkedEntity }> = [];

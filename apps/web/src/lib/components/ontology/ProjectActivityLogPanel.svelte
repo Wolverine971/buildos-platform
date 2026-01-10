@@ -79,15 +79,18 @@
 				throw new Error(payload?.error || 'Failed to fetch logs');
 			}
 
-			const data = payload.data as LogsResponse;
+			const data = payload.data as LogsResponse | undefined;
+			if (!data) {
+				throw new Error('Invalid response: missing data');
+			}
 
 			if (append) {
-				logs = [...logs, ...data.logs];
+				logs = [...logs, ...(data.logs ?? [])];
 			} else {
-				logs = data.logs;
+				logs = data.logs ?? [];
 			}
-			total = data.total;
-			hasMore = data.hasMore;
+			total = data.total ?? 0;
+			hasMore = data.hasMore ?? false;
 			hasLoaded = true;
 		} catch (err) {
 			console.error('[ActivityLog] Failed to load:', err);
@@ -153,6 +156,9 @@
 
 	function formatTimestamp(dateString: string): string {
 		const date = new Date(dateString);
+		if (isNaN(date.getTime())) {
+			return 'Unknown';
+		}
 		const now = new Date();
 		const diffMs = now.getTime() - date.getTime();
 		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));

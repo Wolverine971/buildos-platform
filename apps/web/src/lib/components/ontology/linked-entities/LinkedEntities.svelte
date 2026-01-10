@@ -177,7 +177,18 @@
 
 			// Use initial data if provided, otherwise fetch
 			if (initialLinkedEntities) {
-				linkedEntities = initialLinkedEntities;
+				// Merge with defaults to ensure all properties are arrays (not undefined)
+				linkedEntities = {
+					tasks: initialLinkedEntities.tasks ?? [],
+					plans: initialLinkedEntities.plans ?? [],
+					goals: initialLinkedEntities.goals ?? [],
+					milestones: initialLinkedEntities.milestones ?? [],
+					documents: initialLinkedEntities.documents ?? [],
+					outputs: initialLinkedEntities.outputs ?? [],
+					risks: initialLinkedEntities.risks ?? [],
+					decisions: initialLinkedEntities.decisions ?? [],
+					events: initialLinkedEntities.events ?? []
+				};
 				isLoading = false;
 				error = null;
 			} else {

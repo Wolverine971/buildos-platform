@@ -25,7 +25,7 @@
 	let { entity, kind, readOnly = false, onRemove, onClick }: Props = $props();
 
 	const displayName = $derived(getEntityDisplayName(entity));
-	const relationshipLabel = $derived(() => {
+	const relationshipLabel = $derived.by(() => {
 		const rel = entity.edge_rel || '';
 		if (rel in RELATIONSHIP_DIRECTIONS) {
 			const label = getRelationshipLabel(

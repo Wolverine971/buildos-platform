@@ -31,7 +31,8 @@
       "Bash(pkill:*)",
       "Bash(pnpm lint:*)",
       "Bash(node -e:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(pnpm exec tsc:*)"
     ],
     "deny": [],
     "ask": []

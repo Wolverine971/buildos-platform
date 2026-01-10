@@ -48,7 +48,9 @@
 
 	let expanded = $state(false);
 
-	const linkedCount = $derived(entities.length);
+	// Defensive: handle undefined entities prop gracefully
+	const safeEntities = $derived(entities ?? []);
+	const linkedCount = $derived(safeEntities.length);
 	const hasLinkedEntities = $derived(linkedCount > 0);
 
 	// -1 means unknown (not loaded yet), treat as potentially having items
@@ -138,7 +140,7 @@
 			class="border-t border-border/50"
 			transition:slide={{ duration: 150, easing: cubicOut }}
 		>
-			{#each entities as entity (entity.id)}
+			{#each safeEntities as entity (entity.id)}
 				<LinkedEntitiesItem
 					{entity}
 					kind={config.kind}

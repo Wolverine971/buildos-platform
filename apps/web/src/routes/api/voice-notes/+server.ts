@@ -47,6 +47,28 @@ function parseOptionalString(value: FormDataEntryValue | null): string | null {
 	return trimmed.length > 0 ? trimmed : null;
 }
 
+function parseOptionalJson(value: FormDataEntryValue | null): Record<string, unknown> | null {
+	if (typeof value !== 'string' || !value.trim()) return null;
+	try {
+		const parsed = JSON.parse(value);
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			return parsed as Record<string, unknown>;
+		}
+		return null;
+	} catch {
+		return null;
+	}
+}
+
+function parseOptionalDate(value: FormDataEntryValue | null): string | null {
+	if (typeof value !== 'string' || !value.trim()) return null;
+	const parsed = new Date(value);
+	if (Number.isNaN(parsed.getTime())) return null;
+	return parsed.toISOString();
+}
+
+const TRANSCRIPTION_STATUSES = new Set(['pending', 'complete', 'failed', 'skipped']);
+
 function parseLimit(value: string | null, fallback: number): number {
 	const parsed = Number(value);
 	if (!Number.isFinite(parsed)) return fallback;
@@ -106,6 +128,8 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 
 	const linkedEntityType = url.searchParams.get('linkedEntityType');
 	const linkedEntityId = url.searchParams.get('linkedEntityId');
+	const groupId = url.searchParams.get('groupId');
+	const groupIdsParam = url.searchParams.get('groupIds');
 	const limit = parseLimit(url.searchParams.get('limit'), 50);
 	const offset = parseOffset(url.searchParams.get('offset'));
 
@@ -122,6 +146,18 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	}
 	if (linkedEntityId) {
 		query = query.eq('linked_entity_id', linkedEntityId);
+	}
+	if (groupId) {
+		query = query.eq('group_id', groupId);
+	}
+	if (groupIdsParam) {
+		const groupIds = groupIdsParam
+			.split(',')
+			.map((value) => value.trim())
+			.filter(Boolean);
+		if (groupIds.length > 0) {
+			query = query.in('group_id', groupIds);
+		}
 	}
 
 	const { data: voiceNotes, error } = await query;
@@ -168,6 +204,14 @@ export const POST: RequestHandler = async ({
 	const linkedEntityType = parseOptionalString(formData.get('linkedEntityType'));
 	const linkedEntityId = parseOptionalString(formData.get('linkedEntityId'));
 	const transcribe = formData.get('transcribe') === 'true';
+	const groupId = parseOptionalString(formData.get('groupId'));
+	const segmentIndex = parseOptionalNumber(formData.get('segmentIndex'));
+	const recordedAt = parseOptionalDate(formData.get('recordedAt'));
+	const transcript = parseOptionalString(formData.get('transcript'));
+	const transcriptionStatusInput = parseOptionalString(formData.get('transcriptionStatus'));
+	const transcriptionSource = parseOptionalString(formData.get('transcriptionSource'));
+	const transcriptionModelInput = parseOptionalString(formData.get('transcriptionModel'));
+	const metadataInput = parseOptionalJson(formData.get('metadata')) || {};
 
 	const noteId = crypto.randomUUID();
 	const extension = getExtensionForMimeType(mimeType);
@@ -186,7 +230,18 @@ export const POST: RequestHandler = async ({
 		return ApiResponse.internalError(uploadError, 'Failed to upload audio');
 	}
 
-	const initialStatus = transcribe ? 'pending' : 'skipped';
+	let initialStatus = transcribe ? 'pending' : 'skipped';
+	if (transcriptionStatusInput && TRANSCRIPTION_STATUSES.has(transcriptionStatusInput)) {
+		initialStatus = transcriptionStatusInput;
+	}
+	if (transcript) {
+		initialStatus = 'complete';
+	}
+
+	const metadata = { ...metadataInput };
+	if (transcriptionSource) {
+		metadata.transcription_source = transcriptionSource;
+	}
 
 	const { data: inserted, error: insertError } = await supabase
 		.from('voice_notes')
@@ -199,8 +254,14 @@ export const POST: RequestHandler = async ({
 			duration_seconds: durationSeconds,
 			mime_type: mimeType,
 			transcription_status: initialStatus,
+			transcription_model: transcriptionModelInput,
+			transcript,
 			linked_entity_type: linkedEntityType,
-			linked_entity_id: linkedEntityId
+			linked_entity_id: linkedEntityId,
+			group_id: groupId,
+			segment_index: segmentIndex,
+			recorded_at: recordedAt,
+			metadata
 		})
 		.select()
 		.single();
@@ -214,7 +275,7 @@ export const POST: RequestHandler = async ({
 	const shouldSyncTranscribe =
 		transcribe && (durationSeconds === null || durationSeconds <= MAX_SYNC_TRANSCRIBE_SECONDS);
 
-	if (transcribe && shouldSyncTranscribe) {
+	if (transcribe && shouldSyncTranscribe && !transcript) {
 		try {
 			const transcript = await transcribeViaApi(
 				audioFile,
@@ -228,7 +289,8 @@ export const POST: RequestHandler = async ({
 					transcript,
 					transcription_status: 'complete',
 					transcription_model: TRANSCRIPTION_MODEL,
-					transcription_error: null
+					transcription_error: null,
+					metadata: { ...metadata, transcription_source: metadata.transcription_source || 'audio' }
 				})
 				.eq('id', noteId)
 				.select()
