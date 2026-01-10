@@ -67,6 +67,8 @@ export interface ProjectLogEntry {
 	before_data: Json | null;
 	after_data: Json | null;
 	changed_by: string;
+	changed_by_actor_id?: string | null;
+	changed_by_name?: string | null;
 	change_source: ProjectLogChangeSource | null;
 	chat_session_id: string | null;
 	created_at: string;
@@ -83,6 +85,7 @@ export interface ProjectLogInsert {
 	before_data?: Json | null;
 	after_data?: Json | null;
 	changed_by: string;
+	changed_by_actor_id?: string | null;
 	change_source?: ProjectLogChangeSource | null;
 	chat_session_id?: string | null;
 }

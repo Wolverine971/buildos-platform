@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Get project context
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, name, description, type_key, props, created_by')
+			.select('id, name, description, type_key, props')
 			.eq('id', project_id)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -82,8 +82,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		// ✅ SECURITY: Verify user owns the project (via actor)
-		if (project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: project_id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Output Generate API] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: '/api/onto/outputs/generate',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'output',
+				operation: 'output_generate_access_check'
+			});
+			return ApiResponse.internalError(accessError, 'Failed to check project access');
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden(
 				'You do not have permission to generate content for this project'
 			);

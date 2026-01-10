@@ -93,8 +93,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				*,
 				project:onto_projects!inner(
 					id,
-					name,
-					created_by
+					name
 				)
 			`
 			)
@@ -106,8 +105,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Risk');
 		}
 
-		// Check if user owns the project
-		if (risk.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: risk.project.id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Risk GET] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/risks/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId: risk.project_id,
+				entityType: 'risk',
+				entityId: params.id,
+				operation: 'risk_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have access to this risk');
 		}
 
@@ -203,8 +225,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -229,8 +250,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Risk');
 		}
 
-		// Check if user owns the project
-		if (existingRisk.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: existingRisk.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Risk PATCH] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/risks/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingRisk.project_id,
+				entityType: 'risk',
+				entityId: params.id,
+				operation: 'risk_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to modify this risk');
 		}
 
@@ -446,8 +490,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -472,8 +515,31 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Risk');
 		}
 
-		// Check if user owns the project
-		if (risk.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: risk.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Risk DELETE] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/risks/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: risk.project_id,
+				entityType: 'risk',
+				entityId: params.id,
+				operation: 'risk_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to delete this risk');
 		}
 

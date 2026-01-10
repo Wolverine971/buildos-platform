@@ -8,7 +8,6 @@ type ProjectAccessResult =
 	| {
 			ok: true;
 			userId: string;
-			actorId: string;
 	  }
 	| {
 			ok: false;
@@ -17,7 +16,8 @@ type ProjectAccessResult =
 
 async function requireProjectAccess(
 	locals: App.Locals,
-	projectId: string
+	projectId: string,
+	requiredAccess: 'read' | 'write' | 'admin'
 ): Promise<ProjectAccessResult> {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
@@ -26,11 +26,15 @@ async function requireProjectAccess(
 
 	const supabase = locals.supabase;
 
-	const [actorResult, projectResult] = await Promise.all([
+	const [actorResult, accessResult, projectResult] = await Promise.all([
 		supabase.rpc('ensure_actor_for_user', { p_user_id: user.id }),
+		supabase.rpc('current_actor_has_project_access', {
+			p_project_id: projectId,
+			p_required_access: requiredAccess
+		}),
 		supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.maybeSingle()
@@ -47,6 +51,21 @@ async function requireProjectAccess(
 		};
 	}
 
+	if (accessResult.error) {
+		console.error('[Project Calendar API] Failed to check access:', accessResult.error);
+		return {
+			ok: false,
+			response: ApiResponse.internalError(
+				accessResult.error,
+				'Failed to check project access'
+			)
+		};
+	}
+
+	if (!accessResult.data) {
+		return { ok: false, response: ApiResponse.forbidden('Access denied') };
+	}
+
 	if (projectResult.error) {
 		console.error('[Project Calendar API] Failed to fetch project:', projectResult.error);
 		return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
@@ -56,12 +75,7 @@ async function requireProjectAccess(
 		return { ok: false, response: ApiResponse.notFound('Project') };
 	}
 
-	const actorId = actorResult.data as string;
-	if (projectResult.data.created_by !== actorId) {
-		return { ok: false, response: ApiResponse.forbidden('Access denied') };
-	}
-
-	return { ok: true, userId: user.id, actorId };
+	return { ok: true, userId: user.id };
 }
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -70,7 +84,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.badRequest('Project ID required');
 	}
 
-	const access = await requireProjectAccess(locals, projectId);
+	const access = await requireProjectAccess(locals, projectId, 'read');
 	if (!access.ok) return access.response;
 
 	const service = new ProjectCalendarService(locals.supabase);
@@ -83,7 +97,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Project ID required');
 	}
 
-	const access = await requireProjectAccess(locals, projectId);
+	const access = await requireProjectAccess(locals, projectId, 'write');
 	if (!access.ok) return access.response;
 
 	const body = await request.json().catch(() => null);
@@ -115,7 +129,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Project ID required');
 	}
 
-	const access = await requireProjectAccess(locals, projectId);
+	const access = await requireProjectAccess(locals, projectId, 'write');
 	if (!access.ok) return access.response;
 
 	const body = await request.json().catch(() => null);
@@ -138,7 +152,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.badRequest('Project ID required');
 	}
 
-	const access = await requireProjectAccess(locals, projectId);
+	const access = await requireProjectAccess(locals, projectId, 'write');
 	if (!access.ok) return access.response;
 
 	const service = new ProjectCalendarService(locals.supabase);

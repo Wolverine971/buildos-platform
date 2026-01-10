@@ -30,7 +30,8 @@
       "Bash(pnpm add:*)",
       "Bash(pkill:*)",
       "Bash(pnpm lint:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

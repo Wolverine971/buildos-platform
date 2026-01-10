@@ -52,6 +52,10 @@
 		goal_count: number;
 		plan_count: number;
 		document_count: number;
+		owner_actor_id: string;
+		access_role: 'owner' | 'editor' | 'viewer' | null;
+		access_level: 'read' | 'write' | 'admin' | null;
+		is_shared: boolean;
 		// Next step fields
 		next_step_short: string | null;
 		next_step_long: string | null;
@@ -105,6 +109,8 @@
 	// Computed
 	const displayName = $derived(user?.name ?? user?.email?.split('@')[0] ?? 'there');
 	const hasProjects = $derived(projects.length > 0 || projectCount > 0);
+	const ownedProjects = $derived(projects.filter((project) => !project.is_shared));
+	const sharedProjects = $derived(projects.filter((project) => project.is_shared));
 
 	// SKELETON LOADING: Calculate how many skeletons to show while loading
 	// Use projectCount for initial render, then actual projects once loaded
@@ -280,10 +286,9 @@
 				{/if}
 			</div>
 
-			<!-- Projects Grid - 2 columns on mobile -->
-			<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
-				<!-- Loading State with Skeletons -->
-				{#if showSkeletons}
+			<!-- Loading State with Skeletons -->
+			{#if showSkeletons}
+				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
 					<!-- Create New Project Card (skeleton placeholder on desktop) -->
 					<div
 						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink sm:min-h-[200px] opacity-50"
@@ -302,190 +307,409 @@
 					{#each Array(skeletonCount) as _, i (i)}
 						<ProjectCardSkeleton />
 					{/each}
-				{:else if !hasProjects && !isLoading}
-					<!-- Empty State - Compact on mobile -->
+				</div>
+			{:else if !hasProjects && !isLoading}
+				<!-- Empty State - Compact on mobile -->
+				<div
+					class="rounded-lg border-2 border-dashed border-border bg-card p-6 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
+				>
 					<div
-						class="col-span-full rounded-lg border-2 border-dashed border-border bg-card p-6 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
+						class="mx-auto mb-4 sm:mb-6 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent"
 					>
-						<div
-							class="mx-auto mb-4 sm:mb-6 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent"
-						>
-							<Sparkles class="h-6 w-6 sm:h-8 sm:w-8" />
-						</div>
-						<h3 class="text-base sm:text-xl font-bold text-foreground mb-1.5 sm:mb-2">
-							Create Your First Project
-						</h3>
-						<p
-							class="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 max-w-md mx-auto"
-						>
-							Tell our AI about your project - we'll help organize everything.
-						</p>
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={handleCreateProject}
-							class="pressable sm:!py-2.5 sm:!px-5"
-						>
-							<Plus class="h-4 w-4 mr-1.5" />
-							Create Project
-						</Button>
+						<Sparkles class="h-6 w-6 sm:h-8 sm:w-8" />
 					</div>
-				{:else}
-					<!-- Create New Project Card (hidden on mobile, shown on desktop) -->
-					<button
-						onclick={handleCreateProject}
-						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable sm:min-h-[200px]"
+					<h3 class="text-base sm:text-xl font-bold text-foreground mb-1.5 sm:mb-2">
+						Create Your First Project
+					</h3>
+					<p
+						class="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 max-w-md mx-auto"
 					>
-						<div
-							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
-						>
-							<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
-						</div>
-						<span
-							class="text-xs sm:text-sm font-bold text-muted-foreground group-hover:text-foreground"
-						>
-							Create New Project
-						</span>
-					</button>
-
-					<!-- Project Cards -->
-					{#each projects as project (project.id)}
-						<a
-							href="/projects/{project.id}"
-							onclick={() => handleProjectClick(project)}
-							class="group relative flex flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
-						>
-							<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
-							<div
-								class="mb-1 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
+						Tell our AI about your project - we'll help organize everything.
+					</p>
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={handleCreateProject}
+						class="pressable sm:!py-2.5 sm:!px-5"
+					>
+						<Plus class="h-4 w-4 mr-1.5" />
+						Create Project
+					</Button>
+				</div>
+			{:else}
+				<div class="space-y-5 sm:space-y-6">
+					<div class="space-y-2 sm:space-y-3">
+						<h3 class="text-sm sm:text-base font-semibold text-foreground">
+							My Projects
+						</h3>
+						<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
+							<!-- Create New Project Card (hidden on mobile, shown on desktop) -->
+							<button
+								onclick={handleCreateProject}
+								class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable sm:min-h-[200px]"
 							>
-								<div class="flex-1 min-w-0">
-									<h3
-										class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
-										style="view-transition-name: project-title-{project.id}"
-									>
-										{project.name}
-									</h3>
-									<!-- Mobile: Inline status under title -->
-									<span
-										class="sm:hidden inline-flex mt-1 items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
-											project.state_key
-										)}"
-									>
-										{project.state_key}
-									</span>
-								</div>
-								<!-- Desktop: Status badge -->
-								<span
-									class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
-										project.state_key
-									)}"
-								>
-									{project.state_key}
-								</span>
-							</div>
-
-							<!-- Description - Hidden on mobile -->
-							{#if project.description}
-								<p
-									class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
-								>
-									{project.description.length > 120
-										? project.description.slice(0, 120) + '…'
-										: project.description}
-								</p>
-							{:else}
-								<p
-									class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1"
-								>
-									No description
-								</p>
-							{/if}
-
-							<!-- Next Step - Hidden on mobile for density, shown on desktop -->
-							{#if project.next_step_short}
-								<div class="hidden sm:block">
-									<ProjectCardNextStep
-										nextStepShort={project.next_step_short}
-										nextStepLong={project.next_step_long}
-										class="mb-3"
-									/>
-								</div>
-							{/if}
-
-							<!-- Footer Stats - Show non-zero counts, limit on mobile -->
-							{#if true}
-								{@const stats = [
-									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
-									{ key: 'outputs', count: project.output_count, Icon: Layers },
-									{ key: 'goals', count: project.goal_count, Icon: Target },
-									{ key: 'plans', count: project.plan_count, Icon: Calendar },
-									{ key: 'docs', count: project.document_count, Icon: FileText }
-								].filter((s) => s.count > 0)}
-								{@const mobileStats = stats.slice(0, 3)}
 								<div
-									class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
+									class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
 								>
-									<!-- Mobile: Show up to 3 non-zero stats -->
-									<div class="flex sm:hidden items-center gap-2 overflow-hidden">
-										{#each mobileStats as stat (stat.key)}
-											{@const StatIcon = stat.Icon}
-											<span
-												class="flex items-center gap-0.5 shrink-0"
-												title={stat.key}
-											>
-												<StatIcon class="h-2.5 w-2.5" />
-												<span class="font-semibold text-[9px]"
-													>{stat.count}</span
-												>
-											</span>
-										{/each}
-										{#if stats.length > 3}
-											<span class="text-[8px] text-muted-foreground/50"
-												>+{stats.length - 3}</span
-											>
-										{/if}
-									</div>
-									<ChevronRight
-										class="sm:hidden h-3 w-3 text-muted-foreground/40 shrink-0"
-									/>
+									<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
+								</div>
+								<span
+									class="text-xs sm:text-sm font-bold text-muted-foreground group-hover:text-foreground"
+								>
+									Create New Project
+								</span>
+							</button>
 
-									<!-- Desktop: Full stats (non-zero only) -->
-									<div class="hidden sm:flex flex-col gap-2 w-full">
-										<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-											{#each stats as stat (stat.key)}
-												{@const StatIcon = stat.Icon}
-												<span
-													class="flex items-center gap-1"
-													aria-label="{stat.key} count"
-													title={stat.key}
-												>
-													<StatIcon class="h-3.5 w-3.5" />
-													<span class="font-bold text-xs"
-														>{stat.count}</span
-													>
-												</span>
-											{/each}
-										</div>
-										<div
-											class="flex items-center justify-between text-xs text-muted-foreground/70"
-										>
-											<span
-												>Updated {new Date(
-													project.updated_at
-												).toLocaleDateString()}</span
+							<!-- Owned Project Cards -->
+							{#each ownedProjects as project (project.id)}
+								<a
+									href="/projects/{project.id}"
+									onclick={() => handleProjectClick(project)}
+									class="group relative flex flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
+								>
+									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
+									<div
+										class="mb-1 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
+									>
+										<div class="flex-1 min-w-0">
+											<h3
+												class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
+												style="view-transition-name: project-title-{project.id}"
 											>
-											<ChevronRight
-												class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
+												{project.name}
+											</h3>
+											<!-- Mobile: Inline status under title -->
+											<span
+												class="sm:hidden inline-flex mt-1 items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
+													project.state_key
+												)}"
+											>
+												{project.state_key}
+											</span>
+										</div>
+										<!-- Desktop: Status badge -->
+										<span
+											class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+												project.state_key
+											)}"
+										>
+											{project.state_key}
+										</span>
+									</div>
+
+									<!-- Description - Hidden on mobile -->
+									{#if project.description}
+										<p
+											class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
+										>
+											{project.description.length > 120
+												? project.description.slice(0, 120) + '...'
+												: project.description}
+										</p>
+									{:else}
+										<p
+											class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1"
+										>
+											No description
+										</p>
+									{/if}
+
+									<!-- Next Step - Hidden on mobile for density, shown on desktop -->
+									{#if project.next_step_short}
+										<div class="hidden sm:block">
+											<ProjectCardNextStep
+												nextStepShort={project.next_step_short}
+												nextStepLong={project.next_step_long}
+												class="mb-3"
 											/>
 										</div>
-									</div>
-								</div>
-							{/if}
-						</a>
-					{/each}
-				{/if}
-			</div>
+									{/if}
+
+									<!-- Footer Stats - Show non-zero counts, limit on mobile -->
+									{#if true}
+										{@const stats = [
+											{
+												key: 'tasks',
+												count: project.task_count,
+												Icon: ListChecks
+											},
+											{
+												key: 'outputs',
+												count: project.output_count,
+												Icon: Layers
+											},
+											{
+												key: 'goals',
+												count: project.goal_count,
+												Icon: Target
+											},
+											{
+												key: 'plans',
+												count: project.plan_count,
+												Icon: Calendar
+											},
+											{
+												key: 'docs',
+												count: project.document_count,
+												Icon: FileText
+											}
+										].filter((s) => s.count > 0)}
+										{@const mobileStats = stats.slice(0, 3)}
+										<div
+											class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
+										>
+											<!-- Mobile: Show up to 3 non-zero stats -->
+											<div
+												class="flex sm:hidden items-center gap-2 overflow-hidden"
+											>
+												{#each mobileStats as stat (stat.key)}
+													{@const StatIcon = stat.Icon}
+													<span
+														class="flex items-center gap-0.5 shrink-0"
+														title={stat.key}
+													>
+														<StatIcon class="h-2.5 w-2.5" />
+														<span class="font-semibold text-[9px]"
+															>{stat.count}</span
+														>
+													</span>
+												{/each}
+												{#if stats.length > 3}
+													<span
+														class="text-[8px] text-muted-foreground/50"
+														>+{stats.length - 3}</span
+													>
+												{/if}
+											</div>
+											<ChevronRight
+												class="sm:hidden h-3 w-3 text-muted-foreground/40 shrink-0"
+											/>
+
+											<!-- Desktop: Full stats (non-zero only) -->
+											<div class="hidden sm:flex flex-col gap-2 w-full">
+												<div
+													class="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+												>
+													{#each stats as stat (stat.key)}
+														{@const StatIcon = stat.Icon}
+														<span
+															class="flex items-center gap-1"
+															aria-label="{stat.key} count"
+															title={stat.key}
+														>
+															<StatIcon class="h-3.5 w-3.5" />
+															<span class="font-bold text-xs"
+																>{stat.count}</span
+															>
+														</span>
+													{/each}
+												</div>
+												<div
+													class="flex items-center justify-between text-xs text-muted-foreground/70"
+												>
+													<span
+														>Updated {new Date(
+															project.updated_at
+														).toLocaleDateString()}</span
+													>
+													<ChevronRight
+														class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
+													/>
+												</div>
+											</div>
+										</div>
+									{/if}
+								</a>
+							{/each}
+						</div>
+					</div>
+
+					{#if sharedProjects.length > 0}
+						<div class="space-y-2 sm:space-y-3">
+							<div class="flex items-center gap-2">
+								<h3 class="text-sm sm:text-base font-semibold text-foreground">
+									Shared with me
+								</h3>
+								<span class="text-xs text-muted-foreground">
+									{sharedProjects.length}
+								</span>
+							</div>
+							<div
+								class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4"
+							>
+								{#each sharedProjects as project (project.id)}
+									<a
+										href="/projects/{project.id}"
+										onclick={() => handleProjectClick(project)}
+										class="group relative flex flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
+									>
+										<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
+										<div
+											class="mb-1 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
+										>
+											<div class="flex-1 min-w-0">
+												<h3
+													class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
+													style="view-transition-name: project-title-{project.id}"
+												>
+													{project.name}
+												</h3>
+												<div class="flex flex-wrap items-center gap-1 mt-1">
+													<span
+														class="sm:hidden inline-flex items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
+															project.state_key
+														)}"
+													>
+														{project.state_key}
+													</span>
+													<span
+														class="inline-flex items-center rounded px-1 py-0.5 text-[9px] font-semibold text-accent-foreground bg-accent/80"
+													>
+														Shared{project.access_role
+															? ` - ${project.access_role}`
+															: ''}
+													</span>
+												</div>
+											</div>
+											<!-- Desktop: Status badge -->
+											<span
+												class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+													project.state_key
+												)}"
+											>
+												{project.state_key}
+											</span>
+										</div>
+
+										<!-- Description - Hidden on mobile -->
+										{#if project.description}
+											<p
+												class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
+											>
+												{project.description.length > 120
+													? project.description.slice(0, 120) + '...'
+													: project.description}
+											</p>
+										{:else}
+											<p
+												class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1"
+											>
+												No description
+											</p>
+										{/if}
+
+										<!-- Next Step - Hidden on mobile for density, shown on desktop -->
+										{#if project.next_step_short}
+											<div class="hidden sm:block">
+												<ProjectCardNextStep
+													nextStepShort={project.next_step_short}
+													nextStepLong={project.next_step_long}
+													class="mb-3"
+												/>
+											</div>
+										{/if}
+
+										<!-- Footer Stats - Show non-zero counts, limit on mobile -->
+										{#if true}
+											{@const stats = [
+												{
+													key: 'tasks',
+													count: project.task_count,
+													Icon: ListChecks
+												},
+												{
+													key: 'outputs',
+													count: project.output_count,
+													Icon: Layers
+												},
+												{
+													key: 'goals',
+													count: project.goal_count,
+													Icon: Target
+												},
+												{
+													key: 'plans',
+													count: project.plan_count,
+													Icon: Calendar
+												},
+												{
+													key: 'docs',
+													count: project.document_count,
+													Icon: FileText
+												}
+											].filter((s) => s.count > 0)}
+											{@const mobileStats = stats.slice(0, 3)}
+											<div
+												class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
+											>
+												<!-- Mobile: Show up to 3 non-zero stats -->
+												<div
+													class="flex sm:hidden items-center gap-2 overflow-hidden"
+												>
+													{#each mobileStats as stat (stat.key)}
+														{@const StatIcon = stat.Icon}
+														<span
+															class="flex items-center gap-0.5 shrink-0"
+															title={stat.key}
+														>
+															<StatIcon class="h-2.5 w-2.5" />
+															<span class="font-semibold text-[9px]"
+																>{stat.count}</span
+															>
+														</span>
+													{/each}
+													{#if stats.length > 3}
+														<span
+															class="text-[8px] text-muted-foreground/50"
+															>+{stats.length - 3}</span
+														>
+													{/if}
+												</div>
+												<ChevronRight
+													class="sm:hidden h-3 w-3 text-muted-foreground/40 shrink-0"
+												/>
+
+												<!-- Desktop: Full stats (non-zero only) -->
+												<div class="hidden sm:flex flex-col gap-2 w-full">
+													<div
+														class="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+													>
+														{#each stats as stat (stat.key)}
+															{@const StatIcon = stat.Icon}
+															<span
+																class="flex items-center gap-1"
+																aria-label="{stat.key} count"
+																title={stat.key}
+															>
+																<StatIcon class="h-3.5 w-3.5" />
+																<span class="font-bold text-xs"
+																	>{stat.count}</span
+																>
+															</span>
+														{/each}
+													</div>
+													<div
+														class="flex items-center justify-between text-xs text-muted-foreground/70"
+													>
+														<span
+															>Updated {new Date(
+																project.updated_at
+															).toLocaleDateString()}</span
+														>
+														<ChevronRight
+															class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
+														/>
+													</div>
+												</div>
+											</div>
+										{/if}
+									</a>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</section>
 	</div>
 </main>

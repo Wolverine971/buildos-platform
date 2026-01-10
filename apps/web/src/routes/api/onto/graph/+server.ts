@@ -50,25 +50,36 @@ function parseLimit(raw: string | null): number | null {
 async function handleSingleProjectGraph(
 	supabase: Parameters<typeof loadProjectGraphData>[0],
 	projectId: string,
-	actorId: string,
 	viewMode: ViewMode,
 	limit: number
 ): Promise<Response> {
 	try {
-		// Verify user owns the project
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: projectId,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Ontology Graph API] Failed to check access', accessError);
+			return ApiResponse.internalError(accessError, 'Failed to check project access');
+		}
+
+		if (!hasAccess) {
+			return ApiResponse.forbidden('You do not have permission to view this project');
+		}
+
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.single();
 
 		if (projectError || !project) {
 			return ApiResponse.notFound('Project');
-		}
-
-		if (project.created_by !== actorId) {
-			return ApiResponse.forbidden('You do not have permission to view this project');
 		}
 
 		// Load all project data in parallel using efficient pattern
@@ -154,26 +165,23 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 		const supabase = locals.supabase;
 
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
+		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 
-		if (actorError || !actorId) {
-			console.error('[Ontology Graph API] Failed to resolve actor', actorError);
+		if (actorResult.error || !actorResult.data) {
+			console.error('[Ontology Graph API] Failed to resolve actor', actorResult.error);
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
 		// Check for projectId parameter - use efficient single-project loading
 		const projectId = url.searchParams.get('projectId');
 		if (projectId) {
-			return await handleSingleProjectGraph(supabase, projectId, actorId, viewMode, limit);
+			return await handleSingleProjectGraph(supabase, projectId, viewMode, limit);
 		}
 
 		// Multi-project loading (legacy path)
 		const { data: projects, error: projectsError } = await supabase
 			.from('onto_projects')
 			.select('*')
-			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false });
 

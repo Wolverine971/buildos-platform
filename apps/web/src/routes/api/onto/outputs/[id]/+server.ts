@@ -79,7 +79,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		// ✅ SECURITY: Verify user owns the project
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', existingOutput.project_id)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -128,8 +128,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		// Check if user owns the project (via actor)
-		if (project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: existingOutput.project_id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Output API] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'PATCH',
+				userId: user.id,
+				projectId: existingOutput.project_id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_access_check'
+			});
+			return ApiResponse.internalError(accessError, 'Failed to check project access');
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to update this output');
 		}
 
@@ -254,7 +277,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Exclude soft-deleted outputs
 		const { data: output, error: fetchError } = await supabase
 			.from('onto_outputs')
-			.select('*, project:onto_projects!inner(id, created_by)')
+			.select('*, project:onto_projects!inner(id)')
 			.eq('id', id)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -278,9 +301,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (!output) {
 			return ApiResponse.notFound('Output not found');
 		}
-
-		// ✅ SECURITY: Verify user owns the project
-		const project = output.project as any;
 
 		// Get user's actor ID for ownership check
 		const { data: actorId, error: actorCheckError } = await supabase.rpc(
@@ -308,7 +328,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			);
 		}
 
-		if (project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: output.project_id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Output API] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'GET',
+				userId: user.id,
+				projectId: output.project_id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_access_check'
+			});
+			return ApiResponse.internalError(accessError, 'Failed to check project access');
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to view this output');
 		}
 
@@ -374,7 +418,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', output.project_id)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -422,7 +466,31 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		if (project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: output.project_id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Output API] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/outputs/${id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: output.project_id,
+				entityType: 'output',
+				entityId: id,
+				operation: 'output_access_check'
+			});
+			return ApiResponse.internalError(accessError, 'Failed to check project access');
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to delete this output');
 		}
 

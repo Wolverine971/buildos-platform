@@ -234,11 +234,16 @@ export function generateMinimalEmailHTML(data: EmailTemplateData): string {
 	<div class="email-container">
 		<!-- Header -->
 		<div class="email-header">
-			<h1 style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-			<img src="https://build-os.com/s-brain-bolt.png" alt="BuildOS Logo" width="32" height="32" style="vertical-align: middle; margin-right: 8px;">
-			BuildOS</h1>
-
-
+			<table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
+				<tr>
+					<td style="vertical-align: middle; padding-right: 10px;">
+						<img src="https://build-os.com/s-brain-bolt.png" alt="BuildOS" width="32" height="32" style="display: block;" />
+					</td>
+					<td style="vertical-align: middle;">
+						<span style="color: #FAF9F7; font-size: 20px; font-weight: 600;">BuildOS</span>
+					</td>
+				</tr>
+			</table>
 		</div>
 
 		<!-- Content -->

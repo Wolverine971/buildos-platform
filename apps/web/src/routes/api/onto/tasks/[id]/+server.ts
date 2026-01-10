@@ -129,8 +129,31 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Task');
 		}
 
-		// Check if user owns the project
-		if (task.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: task.project.id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Task GET] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('Access denied');
 		}
 
@@ -243,8 +266,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Task');
 		}
 
-		// Check if user owns the project
-		if (existingTask.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: existingTask.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Task PATCH] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingTask.project_id,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('Access denied');
 		}
 
@@ -549,8 +595,31 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Task');
 		}
 
-		// Check if user owns the project
-		if (task.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: task.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Task DELETE] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/tasks/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: task.project_id,
+				entityType: 'task',
+				entityId: params.id,
+				operation: 'task_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('Access denied');
 		}
 

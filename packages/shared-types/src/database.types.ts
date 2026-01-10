@@ -4921,6 +4921,73 @@ export type Database = {
           },
         ]
       }
+      onto_project_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_actor_id: string | null
+          access: string
+          created_at: string
+          expires_at: string
+          id: string
+          invited_by_actor_id: string | null
+          invitee_email: string
+          project_id: string
+          role_key: string
+          status: string
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_actor_id?: string | null
+          access: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          invited_by_actor_id?: string | null
+          invitee_email: string
+          project_id: string
+          role_key: string
+          status?: string
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_actor_id?: string | null
+          access?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invited_by_actor_id?: string | null
+          invitee_email?: string
+          project_id?: string
+          role_key?: string
+          status?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_project_invites_accepted_by_actor_id_fkey"
+            columns: ["accepted_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_invites_invited_by_actor_id_fkey"
+            columns: ["invited_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_invites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_project_logs: {
         Row: {
           action: string
@@ -4928,6 +4995,7 @@ export type Database = {
           before_data: Json | null
           change_source: string | null
           changed_by: string
+          changed_by_actor_id: string | null
           chat_session_id: string | null
           created_at: string
           entity_id: string
@@ -4941,6 +5009,7 @@ export type Database = {
           before_data?: Json | null
           change_source?: string | null
           changed_by: string
+          changed_by_actor_id?: string | null
           chat_session_id?: string | null
           created_at?: string
           entity_id: string
@@ -4954,6 +5023,7 @@ export type Database = {
           before_data?: Json | null
           change_source?: string | null
           changed_by?: string
+          changed_by_actor_id?: string | null
           chat_session_id?: string | null
           created_at?: string
           entity_id?: string
@@ -4962,6 +5032,13 @@ export type Database = {
           project_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "onto_project_logs_changed_by_actor_id_fkey"
+            columns: ["changed_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "onto_project_logs_changed_by_fkey"
             columns: ["changed_by"]
@@ -4981,6 +5058,71 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_project_members: {
+        Row: {
+          access: string
+          actor_id: string
+          added_by_actor_id: string | null
+          created_at: string
+          id: string
+          project_id: string
+          removed_at: string | null
+          removed_by_actor_id: string | null
+          role_key: string
+        }
+        Insert: {
+          access: string
+          actor_id: string
+          added_by_actor_id?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          removed_at?: string | null
+          removed_by_actor_id?: string | null
+          role_key: string
+        }
+        Update: {
+          access?: string
+          actor_id?: string
+          added_by_actor_id?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          removed_at?: string | null
+          removed_by_actor_id?: string | null
+          role_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_project_members_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_members_added_by_actor_id_fkey"
+            columns: ["added_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_members_removed_by_actor_id_fkey"
+            columns: ["removed_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
             referencedColumns: ["id"]
           },
         ]
@@ -8633,6 +8775,14 @@ export type Database = {
       }
     }
     Functions: {
+      accept_project_invite: {
+        Args: { p_actor_id: string; p_token_hash: string; p_user_email: string }
+        Returns: {
+          access: string
+          project_id: string
+          role_key: string
+        }[]
+      }
       acquire_migration_platform_lock: {
         Args: {
           p_duration_minutes?: number
@@ -8840,6 +8990,10 @@ export type Database = {
       create_tracking_link: {
         Args: { p_delivery_id: string; p_destination_url: string }
         Returns: string
+      }
+      current_actor_has_project_access: {
+        Args: { p_project_id: string; p_required_access?: string }
+        Returns: boolean
       }
       current_actor_id: { Args: never; Returns: string }
       decrement_phase_order: {

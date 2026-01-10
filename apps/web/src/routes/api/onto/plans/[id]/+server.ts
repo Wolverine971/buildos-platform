@@ -89,8 +89,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -102,8 +101,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Plan not found', 404);
 		}
 
-		// Check if user owns the project
-		if (plan.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: plan.project.id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Plan GET] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/plans/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId: plan.project_id,
+				entityType: 'plan',
+				entityId: params.id,
+				operation: 'plan_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.error('Access denied', 403);
 		}
 
@@ -185,8 +207,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -211,8 +232,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Plan not found', 404);
 		}
 
-		// Check if user owns the project
-		if (existingPlan.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: existingPlan.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Plan PATCH] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/plans/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingPlan.project_id,
+				entityType: 'plan',
+				entityId: params.id,
+				operation: 'plan_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.error('Access denied', 403);
 		}
 
@@ -453,8 +497,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -479,8 +522,31 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Plan not found', 404);
 		}
 
-		// Check if user owns the project
-		if (plan.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: plan.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Plan DELETE] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/plans/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: plan.project_id,
+				entityType: 'plan',
+				entityId: params.id,
+				operation: 'plan_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.error('Access denied', 403);
 		}
 

@@ -92,12 +92,28 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: projectId,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Available Entities API] Failed to check access:', accessError);
+			return ApiResponse.internalError(accessError, 'Failed to check project access');
+		}
+
+		if (!hasAccess) {
+			return ApiResponse.forbidden('You do not have access to this project');
+		}
+
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
 			.select('id')
 			.eq('id', projectId)
 			.is('deleted_at', null)
-			.eq('created_by', actorId)
 			.single();
 
 		if (projectError || !project) {

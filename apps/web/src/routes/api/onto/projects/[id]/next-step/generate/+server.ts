@@ -33,16 +33,14 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 		const supabase = locals.supabase;
 
-		// Resolve actor for ownership verification
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
+		// Resolve actor for access verification
+		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 
-		if (actorError || !actorId) {
-			console.error('[NextStep Generate] Failed to get actor:', actorError);
+		if (actorResult.error || !actorResult.data) {
+			console.error('[NextStep Generate] Failed to get actor:', actorResult.error);
 			await logOntologyApiError({
 				supabase,
-				error: actorError || new Error('Failed to resolve user actor'),
+				error: actorResult.error || new Error('Failed to resolve user actor'),
 				endpoint: `/api/onto/projects/${projectId}/next-step/generate`,
 				method: 'POST',
 				userId: user.id,
@@ -53,10 +51,37 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: projectId,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[NextStep Generate] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/projects/${projectId}/next-step/generate`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_next_step_access'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
+			return ApiResponse.forbidden('You do not have permission to access this project');
+		}
+
 		// Verify project exists and user has access
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, name, description, state_key, created_by, type_key')
+			.select('id, name, description, state_key, type_key')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.single();
@@ -76,10 +101,6 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				});
 			}
 			return ApiResponse.notFound('Project not found');
-		}
-
-		if (project.created_by !== actorId) {
-			return ApiResponse.forbidden('You do not have permission to access this project');
 		}
 
 		// Generate the next step

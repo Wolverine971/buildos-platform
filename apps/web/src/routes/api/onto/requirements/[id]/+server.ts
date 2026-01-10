@@ -53,8 +53,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				*,
 				project:onto_projects!inner(
 					id,
-					name,
-					created_by
+					name
 				)
 			`
 			)
@@ -66,7 +65,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Requirement');
 		}
 
-		if (requirement.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: requirement.project.id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Requirement GET] Failed to check access:', accessError);
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have access to this requirement');
 		}
 
@@ -118,8 +130,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -131,7 +142,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Requirement');
 		}
 
-		if (existingRequirement.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: existingRequirement.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Requirement PATCH] Failed to check access:', accessError);
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to modify this requirement');
 		}
 
@@ -232,8 +256,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -245,7 +268,20 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Requirement');
 		}
 
-		if (requirement.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: requirement.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Requirement DELETE] Failed to check access:', accessError);
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to delete this requirement');
 		}
 

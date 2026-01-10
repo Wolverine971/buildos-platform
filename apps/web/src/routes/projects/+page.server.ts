@@ -27,16 +27,25 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	const actorId = await ensureActorId(locals.supabase, user.id);
 
 	// FAST: Get project count immediately (~20-50ms)
-	// This enables instant skeleton card rendering
-	// Filter out soft-deleted projects (deleted_at IS NULL)
-	const { count: projectCount, error: countError } = await locals.supabase
-		.from('onto_projects')
-		.select('*', { count: 'exact', head: true })
-		.eq('created_by', actorId)
-		.is('deleted_at', null);
+	// Prefer membership count so shared projects are included.
+	const { count: memberCount, error: memberCountError } = await locals.supabase
+		.from('onto_project_members')
+		.select('id', { count: 'exact', head: true })
+		.eq('actor_id', actorId)
+		.is('removed_at', null);
 
-	if (countError) {
-		console.error('[Projects] Failed to get project count:', countError);
+	let projectCount = memberCount ?? 0;
+	if (memberCountError) {
+		console.error('[Projects] Failed to get membership count:', memberCountError);
+		const { count: fallbackCount, error: countError } = await locals.supabase
+			.from('onto_projects')
+			.select('*', { count: 'exact', head: true })
+			.eq('created_by', actorId)
+			.is('deleted_at', null);
+		if (countError) {
+			console.error('[Projects] Failed to get project count:', countError);
+		}
+		projectCount = fallbackCount ?? 0;
 	}
 
 	// STREAMED: Full project data loaded in background
@@ -49,6 +58,6 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	return {
 		actorId,
 		projects,
-		projectCount: projectCount ?? 0
+		projectCount
 	};
 };

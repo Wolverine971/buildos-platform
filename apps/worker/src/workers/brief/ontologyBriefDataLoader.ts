@@ -50,7 +50,8 @@ import type {
 	PlanProgress,
 	OntologyBriefData,
 	ProjectBriefData,
-	OntologyBriefMetadata
+	OntologyBriefMetadata,
+	ProjectActivityEntry
 } from './ontologyBriefTypes.js';
 
 // ============================================================================
@@ -543,6 +544,55 @@ export function getRecentUpdates(
 }
 
 // ============================================================================
+// ACTIVITY LOG UTILITIES
+// ============================================================================
+
+const ACTIVITY_WINDOW_HOURS = 24;
+const ACTIVITY_LOG_LIMIT = 200;
+const ACTIVITY_PER_PROJECT_LIMIT = 8;
+
+function resolveActivityEntityLabel(log: {
+	before_data: unknown;
+	after_data: unknown;
+}): string | null {
+	const data = (
+		typeof log.after_data === 'object' && log.after_data !== null
+			? log.after_data
+			: typeof log.before_data === 'object' && log.before_data !== null
+				? log.before_data
+				: null
+	) as Record<string, unknown> | null;
+
+	if (!data) return null;
+
+	const label =
+		(typeof data.title === 'string' && data.title.trim()) ||
+		(typeof data.name === 'string' && data.name.trim()) ||
+		(typeof data.text === 'string' && data.text.trim()) ||
+		(typeof data.description === 'string' && data.description.trim())
+			? data.title || data.name || data.text || data.description
+			: null;
+
+	if (typeof label !== 'string') return null;
+
+	const trimmed = label.trim();
+	if (!trimmed) return null;
+	if (trimmed.length > 120) {
+		return `${trimmed.slice(0, 117)}...`;
+	}
+	return trimmed;
+}
+
+function resolveActorDisplayName(
+	actor: { name: string | null; email: string | null } | null,
+	fallback: string
+): string {
+	if (actor?.name && actor.name.trim()) return actor.name.trim();
+	if (actor?.email && actor.email.trim()) return actor.email.trim();
+	return fallback;
+}
+
+// ============================================================================
 // MAIN DATA LOADER CLASS
 // ============================================================================
 
@@ -560,13 +610,36 @@ export class OntologyBriefDataLoader {
 	): Promise<OntoProjectWithRelations[]> {
 		console.log('[OntologyBriefDataLoader] Loading data for user:', userId, 'actor:', actorId);
 
-		// Fetch all active projects for the actor
+		// Fetch all active projects the actor can access (owned + shared)
+		const { data: memberRows, error: memberError } = await this.supabase
+			.from('onto_project_members')
+			.select('project_id')
+			.eq('actor_id', actorId)
+			.is('removed_at', null);
+
+		if (memberError) {
+			console.error(
+				'[OntologyBriefDataLoader] Error loading project memberships:',
+				memberError
+			);
+			throw new Error(`Failed to load project memberships: ${memberError.message}`);
+		}
+
+		const memberProjectIds = (memberRows || [])
+			.map((row) => row.project_id)
+			.filter((id): id is string => Boolean(id));
+
+		if (memberProjectIds.length === 0) {
+			console.log('[OntologyBriefDataLoader] No active projects found');
+			return [];
+		}
+
 		const { data: projectsData, error: projectsError } = await this.supabase
 			.from('onto_projects')
 			.select(
-				'id, name, state_key, type_key, description, next_step_short, next_step_long, updated_at'
+				'id, name, state_key, type_key, description, next_step_short, next_step_long, updated_at, created_by'
 			)
-			.eq('created_by', actorId)
+			.in('id', memberProjectIds)
 			.in('state_key', ['planning', 'active'])
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false });
@@ -584,6 +657,144 @@ export class OntologyBriefDataLoader {
 		}
 
 		const projectIds = projects.map((p) => p.id);
+		const projectsById = new Map(projects.map((project) => [project.id, project]));
+
+		// Load recent project activity logs (last 24h)
+		const activityCutoff = subHours(new Date(), ACTIVITY_WINDOW_HOURS).toISOString();
+		const { data: activityLogs, error: activityError } = await this.supabase
+			.from('onto_project_logs')
+			.select(
+				'id, project_id, entity_type, entity_id, action, before_data, after_data, created_at, changed_by_actor_id, changed_by'
+			)
+			.in('project_id', projectIds)
+			.gte('created_at', activityCutoff)
+			.order('created_at', { ascending: false })
+			.limit(ACTIVITY_LOG_LIMIT);
+
+		if (activityError) {
+			console.warn(
+				'[OntologyBriefDataLoader] Error loading project activity logs:',
+				activityError
+			);
+		}
+
+		const activityLogRows = (activityLogs || []) as Array<{
+			project_id: string;
+			entity_type: string;
+			entity_id: string;
+			action: string;
+			before_data: unknown;
+			after_data: unknown;
+			created_at: string;
+			changed_by_actor_id: string | null;
+			changed_by: string;
+		}>;
+
+		const actorIds = Array.from(
+			new Set(
+				activityLogRows
+					.map((log) => log.changed_by_actor_id)
+					.filter((id): id is string => Boolean(id))
+			)
+		);
+
+		const actorsById = new Map<
+			string,
+			{ name: string | null; email: string | null; user_id: string | null }
+		>();
+
+		if (actorIds.length > 0) {
+			const { data: actors, error: actorError } = await this.supabase
+				.from('onto_actors')
+				.select('id, name, email, user_id')
+				.in('id', actorIds);
+
+			if (actorError) {
+				console.warn(
+					'[OntologyBriefDataLoader] Error loading activity actors:',
+					actorError
+				);
+			} else {
+				for (const actor of actors || []) {
+					actorsById.set(actor.id, {
+						name: actor.name,
+						email: actor.email,
+						user_id: actor.user_id
+					});
+				}
+			}
+		}
+
+		const userIdsForActors = Array.from(
+			new Set(
+				activityLogRows
+					.filter((log) => !log.changed_by_actor_id && log.changed_by)
+					.map((log) => log.changed_by)
+			)
+		);
+
+		if (userIdsForActors.length > 0) {
+			const { data: actorByUser, error: actorByUserError } = await this.supabase
+				.from('onto_actors')
+				.select('id, name, email, user_id')
+				.in('user_id', userIdsForActors);
+
+			if (actorByUserError) {
+				console.warn(
+					'[OntologyBriefDataLoader] Error loading activity actors by user:',
+					actorByUserError
+				);
+			} else {
+				for (const actor of actorByUser || []) {
+					if (actor.user_id && !actorsById.has(actor.id)) {
+						actorsById.set(actor.id, {
+							name: actor.name,
+							email: actor.email,
+							user_id: actor.user_id
+						});
+					}
+				}
+			}
+		}
+
+		const actorByUserId = new Map<string, { name: string | null; email: string | null }>();
+		for (const actor of actorsById.values()) {
+			if (actor.user_id) {
+				actorByUserId.set(actor.user_id, {
+					name: actor.name,
+					email: actor.email
+				});
+			}
+		}
+
+		const activityByProject = new Map<string, ProjectActivityEntry[]>();
+		for (const log of activityLogRows) {
+			const project = projectsById.get(log.project_id);
+			if (!project) continue;
+
+			const actor =
+				(log.changed_by_actor_id && actorsById.get(log.changed_by_actor_id)) ||
+				actorByUserId.get(log.changed_by) ||
+				null;
+
+			const entry: ProjectActivityEntry = {
+				projectId: log.project_id,
+				projectName: project.name || 'Untitled Project',
+				isShared: project.created_by ? project.created_by !== actorId : false,
+				actorId: log.changed_by_actor_id,
+				actorName: resolveActorDisplayName(actor, 'Someone'),
+				action: log.action,
+				entityType: log.entity_type,
+				entityId: log.entity_id,
+				entityLabel: resolveActivityEntityLabel(log),
+				createdAt: log.created_at
+			};
+
+			const list = activityByProject.get(log.project_id) ?? [];
+			if (list.length >= ACTIVITY_PER_PROJECT_LIMIT) continue;
+			list.push(entry);
+			activityByProject.set(log.project_id, list);
+		}
 
 		// Load all entities in parallel with timing
 		const queryStartTime = Date.now();
@@ -724,8 +935,12 @@ export class OntologyBriefDataLoader {
 				briefDateStr,
 				timezone
 			);
+			const isShared = project.created_by ? project.created_by !== actorId : false;
+			const projectActivityLogs = activityByProject.get(project.id) ?? [];
 			const recentUpdates = getRecentUpdates({
 				project,
+				isShared,
+				activityLogs: projectActivityLogs,
 				tasks: projectTasks,
 				goals: projectGoals,
 				plans: projectPlans,
@@ -744,6 +959,8 @@ export class OntologyBriefDataLoader {
 
 			return {
 				project,
+				isShared,
+				activityLogs: projectActivityLogs,
 				tasks: projectTasks,
 				goals: projectGoals,
 				plans: projectPlans,
@@ -1027,6 +1244,8 @@ export class OntologyBriefDataLoader {
 
 			return {
 				project: data.project,
+				isShared: data.isShared,
+				activityLogs: data.activityLogs,
 				goals: projectGoals.slice(0, ENTITY_CAPS.GOALS),
 				outputs: projectOutputs.slice(0, ENTITY_CAPS.OUTPUTS),
 				requirements: projectRequirements.slice(0, ENTITY_CAPS.REQUIREMENTS),

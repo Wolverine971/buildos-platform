@@ -18,7 +18,8 @@ type EventAccessResult =
 async function requireEventAccess(
 	locals: App.Locals,
 	eventId: string,
-	method: string
+	method: string,
+	requiredAccess: 'read' | 'write' | 'admin'
 ): Promise<EventAccessResult> {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
@@ -76,10 +77,40 @@ async function requireEventAccess(
 	}
 
 	if (event.project_id) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: event.project_id,
+				p_required_access: requiredAccess
+			}
+		);
+
+		if (accessError) {
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/events/${eventId}`,
+				method,
+				userId: user.id,
+				projectId: event.project_id,
+				entityType: 'project',
+				operation: 'event_access_check'
+			});
+			return {
+				ok: false,
+				response: ApiResponse.internalError(accessError, 'Failed to check project access')
+			};
+		}
+
+		if (!hasAccess) {
+			return { ok: false, response: ApiResponse.forbidden('Access denied') };
+		}
+
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', event.project_id)
+			.is('deleted_at', null)
 			.maybeSingle();
 
 		if (projectError) {
@@ -97,8 +128,8 @@ async function requireEventAccess(
 			return { ok: false, response: ApiResponse.databaseError(projectError) };
 		}
 
-		if (!project || project.created_by !== actorId) {
-			return { ok: false, response: ApiResponse.forbidden('Access denied') };
+		if (!project) {
+			return { ok: false, response: ApiResponse.notFound('Project') };
 		}
 	} else {
 		const ownsEvent =
@@ -119,7 +150,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.badRequest('Event ID required');
 	}
 
-	const access = await requireEventAccess(locals, eventId, 'GET');
+	const access = await requireEventAccess(locals, eventId, 'GET', 'read');
 	if (!access.ok) return access.response;
 
 	try {
@@ -153,7 +184,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Event ID required');
 	}
 
-	const access = await requireEventAccess(locals, eventId, 'PATCH');
+	const access = await requireEventAccess(locals, eventId, 'PATCH', 'write');
 	if (!access.ok) return access.response;
 
 	const body = await request.json().catch(() => null);
@@ -203,7 +234,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		return ApiResponse.badRequest('Event ID required');
 	}
 
-	const access = await requireEventAccess(locals, eventId, 'DELETE');
+	const access = await requireEventAccess(locals, eventId, 'DELETE', 'write');
 	if (!access.ok) return access.response;
 
 	const body = await request.json().catch(() => null);

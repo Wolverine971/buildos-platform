@@ -33,7 +33,8 @@ import type {
 	OntologyProjectBriefRow,
 	GoalProgress,
 	OntoTask,
-	ProjectBriefData
+	ProjectBriefData,
+	ProjectActivityEntry
 } from './ontologyBriefTypes.js';
 
 // ============================================================================
@@ -120,6 +121,35 @@ function getTaskStatusIcon(task: OntoTask): string {
 	if (state === 'blocked') return '🚫';
 	if (task.due_at) return '📅';
 	return '📌';
+}
+
+function formatActivityEntityType(entityType: string): string {
+	const mapping: Record<string, string> = {
+		task: 'task',
+		goal: 'goal',
+		plan: 'plan',
+		milestone: 'milestone',
+		output: 'output',
+		document: 'document',
+		risk: 'risk',
+		decision: 'decision',
+		requirement: 'requirement',
+		source: 'source',
+		edge: 'relationship',
+		project: 'project',
+		member: 'member',
+		invite: 'invite'
+	};
+
+	return mapping[entityType] || entityType.replace(/_/g, ' ');
+}
+
+function formatActivityEntry(entry: ProjectActivityEntry): string {
+	const actor = entry.actorName || 'Someone';
+	const action = entry.action || 'updated';
+	const entityType = formatActivityEntityType(entry.entityType || 'item');
+	const label = entry.entityLabel ? ` "${entry.entityLabel}"` : '';
+	return `${actor} ${action} ${entityType}${label}`;
 }
 
 // ============================================================================
@@ -222,6 +252,15 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 		});
 		for (const decision of recentDecisions.slice(0, 3)) {
 			brief += `- **${decision.title}**\n`;
+		}
+		brief += '\n';
+	}
+
+	// Recent Activity - only show if there are logs
+	if (project.activityLogs.length > 0) {
+		brief += `### Recent Activity (Last 24h)\n`;
+		for (const entry of project.activityLogs.slice(0, 3)) {
+			brief += `- ${formatActivityEntry(entry)}\n`;
 		}
 		brief += '\n';
 	}
@@ -507,12 +546,68 @@ function generateMainBriefMarkdown(
 		briefData.recentUpdates.outputs.length +
 		briefData.recentUpdates.documents.length;
 
-	if (totalUpdates > 0) {
+	const activityEntries = briefData.projects.flatMap((project) => project.activityLogs);
+	const hasSharedProjects = briefData.projects.some((project) => project.isShared);
+
+	if (totalUpdates > 0 || activityEntries.length > 0) {
 		mainBrief += `## Recent Activity (Last 24h)\n\n`;
-		mainBrief += `- **${briefData.recentUpdates.tasks.length}** tasks updated\n`;
-		mainBrief += `- **${briefData.recentUpdates.goals.length}** goals with activity\n`;
-		mainBrief += `- **${briefData.recentUpdates.outputs.length}** outputs updated\n`;
-		mainBrief += `- **${briefData.recentUpdates.documents.length}** documents updated\n\n`;
+
+		if (totalUpdates > 0) {
+			mainBrief += `- **${briefData.recentUpdates.tasks.length}** tasks updated\n`;
+			mainBrief += `- **${briefData.recentUpdates.goals.length}** goals with activity\n`;
+			mainBrief += `- **${briefData.recentUpdates.outputs.length}** outputs updated\n`;
+			mainBrief += `- **${briefData.recentUpdates.documents.length}** documents updated\n\n`;
+		}
+
+		const appendActivityEntries = (entries: ProjectActivityEntry[], headingPrefix: string) => {
+			if (entries.length === 0) return;
+
+			const sorted = [...entries].sort(
+				(a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()
+			);
+			const grouped = new Map<string, ProjectActivityEntry[]>();
+			for (const entry of sorted) {
+				const list = grouped.get(entry.projectId) ?? [];
+				if (list.length >= 3) continue;
+				list.push(entry);
+				grouped.set(entry.projectId, list);
+			}
+
+			const groupedEntries = Array.from(grouped.values())
+				.sort(
+					(a, b) =>
+						parseISO(b[0].createdAt).getTime() - parseISO(a[0].createdAt).getTime()
+				)
+				.slice(0, 5);
+
+			for (const entriesForProject of groupedEntries) {
+				const { projectId, projectName } = entriesForProject[0];
+				mainBrief += `${headingPrefix} [${projectName}](/projects/${projectId})\n`;
+				for (const entry of entriesForProject) {
+					mainBrief += `- ${formatActivityEntry(entry)}\n`;
+				}
+				mainBrief += '\n';
+			}
+		};
+
+		if (activityEntries.length > 0) {
+			const sharedEntries = activityEntries.filter((entry) => entry.isShared);
+			const ownedEntries = activityEntries.filter((entry) => !entry.isShared);
+
+			if (hasSharedProjects && sharedEntries.length > 0) {
+				if (ownedEntries.length > 0) {
+					mainBrief += `### Your Projects\n\n`;
+					appendActivityEntries(ownedEntries, '####');
+				}
+				mainBrief += `### Shared Project Activity\n\n`;
+				appendActivityEntries(sharedEntries, '####');
+			} else {
+				appendActivityEntries(
+					ownedEntries.length > 0 ? ownedEntries : activityEntries,
+					'###'
+				);
+			}
+		}
 	}
 
 	// Detailed Project Briefs

@@ -30,11 +30,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		const supabase = locals.supabase;
 
 		// Verify user actor exists
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
+		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 
-		if (actorError || !actorId) {
+		if (actorResult.error || !actorResult.data) {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
@@ -51,7 +49,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 		// Verify user has access to at least one of the connected entities
 		// by checking if they own a project that contains the source entity
-		const hasAccess = await verifyEdgeAccess(supabase, edge, actorId);
+		const hasAccess = await verifyEdgeAccess(supabase, edge);
 		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to delete this edge');
 		}
@@ -92,21 +90,17 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 async function verifyEdgeAccess(
 	supabase: any,
-	edge: { src_kind: string; src_id: string; dst_kind: string; dst_id: string },
-	actorId: string
+	edge: { src_kind: string; src_id: string; dst_kind: string; dst_id: string }
 ): Promise<boolean> {
 	// Check access based on source entity type
 	const entityTable = getEntityTable(edge.src_kind);
 	if (!entityTable) {
 		// For project edges, check project ownership directly
 		if (edge.src_kind === 'project') {
-			const { data } = await supabase
-				.from('onto_projects')
-				.select('id')
-				.eq('id', edge.src_id)
-				.is('deleted_at', null)
-				.eq('created_by', actorId)
-				.single();
+			const { data } = await supabase.rpc('current_actor_has_project_access', {
+				p_project_id: edge.src_id,
+				p_required_access: 'write'
+			});
 			return !!data;
 		}
 		return false;
@@ -122,15 +116,12 @@ async function verifyEdgeAccess(
 
 	if (!entity?.project_id) return false;
 
-	const { data: project } = await supabase
-		.from('onto_projects')
-		.select('id')
-		.eq('id', entity.project_id)
-		.is('deleted_at', null)
-		.eq('created_by', actorId)
-		.single();
+	const { data: hasAccess } = await supabase.rpc('current_actor_has_project_access', {
+		p_project_id: entity.project_id,
+		p_required_access: 'write'
+	});
 
-	return !!project;
+	return !!hasAccess;
 }
 
 function getEntityTable(kind: string): string | null {

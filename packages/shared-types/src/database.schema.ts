@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-01-09T14:52:04.144Z
+// Generated on: 2026-01-10T06:28:40.768Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1194,18 +1194,44 @@ export type DatabaseSchema = {
 		type_key: string;
 		updated_at: string;
 	};
+	onto_project_invites: {
+		accepted_at: string | null;
+		accepted_by_actor_id: string | null;
+		access: string;
+		created_at: string;
+		expires_at: string;
+		id: string;
+		invited_by_actor_id: string | null;
+		invitee_email: string;
+		project_id: string;
+		role_key: string;
+		status: string;
+		token_hash: string;
+	};
 	onto_project_logs: {
 		action: string;
 		after_data: Json | null;
 		before_data: Json | null;
 		change_source: string | null;
 		changed_by: string;
+		changed_by_actor_id: string | null;
 		chat_session_id: string | null;
 		created_at: string;
 		entity_id: string;
 		entity_type: string;
 		id: string;
 		project_id: string;
+	};
+	onto_project_members: {
+		access: string;
+		actor_id: string;
+		added_by_actor_id: string | null;
+		created_at: string;
+		id: string;
+		project_id: string;
+		removed_at: string | null;
+		removed_by_actor_id: string | null;
+		role_key: string;
 	};
 	onto_projects: {
 		created_at: string;
@@ -2165,7 +2191,9 @@ export const tableNames = [
 	'onto_outputs',
 	'onto_permissions',
 	'onto_plans',
+	'onto_project_invites',
 	'onto_project_logs',
+	'onto_project_members',
 	'onto_projects',
 	'onto_requirements',
 	'onto_risks',

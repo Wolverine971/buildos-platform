@@ -21,14 +21,12 @@
 		Clock
 	} from 'lucide-svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
-	import type { ProjectLogEntry, ProjectLogEntityType } from '@buildos/shared-types';
+	import type { ProjectLogEntryWithMeta, ProjectLogEntityType } from '@buildos/shared-types';
 
 	// ============================================================
 	// TYPES
 	// ============================================================
-	interface EnrichedLogEntry extends ProjectLogEntry {
-		entity_name?: string;
-	}
+	type EnrichedLogEntry = ProjectLogEntryWithMeta;
 
 	interface LogsResponse {
 		logs: EnrichedLogEntry[];
@@ -192,6 +190,32 @@
 		return type.charAt(0).toUpperCase() + type.slice(1);
 	}
 
+	function formatEventLabel(event: string): string {
+		const labels: Record<string, string> = {
+			invite_created: 'invite created',
+			invite_resent: 'invite resent',
+			invite_revoked: 'invite revoked',
+			member_role_updated: 'member role updated',
+			member_removed: 'member removed'
+		};
+
+		return labels[event] || event.replace(/_/g, ' ');
+	}
+
+	function getEventLabel(log: EnrichedLogEntry): string | null {
+		const data = log.after_data ?? log.before_data;
+		if (!data || typeof data !== 'object') {
+			return null;
+		}
+
+		const event = (data as Record<string, unknown>).event;
+		if (!event || typeof event !== 'string') {
+			return null;
+		}
+
+		return formatEventLabel(event);
+	}
+
 	function getSourceBadge(source: string | null): string {
 		switch (source) {
 			case 'chat':
@@ -263,6 +287,7 @@
 					{#each logs as log}
 						{@const ActionIcon = getActionIcon(log.action)}
 						{@const isClickable = log.entity_type !== 'edge' && onEntityClick}
+						{@const eventLabel = getEventLabel(log)}
 						{#if isClickable}
 							<button
 								type="button"
@@ -288,6 +313,16 @@
 									<span class="text-foreground truncate">
 										{log.entity_name || log.entity_id.slice(0, 8)}
 									</span>
+									{#if log.changed_by_name}
+										<span class="text-muted-foreground/70 ml-1">
+											by {log.changed_by_name}
+										</span>
+									{/if}
+									{#if eventLabel}
+										<span class="text-muted-foreground/70 ml-1">
+											- {eventLabel}
+										</span>
+									{/if}
 									{#if log.change_source}
 										<span class="text-muted-foreground/60 ml-1">
 											({getSourceBadge(log.change_source)})
@@ -321,6 +356,16 @@
 									<span class="text-foreground truncate">
 										{log.entity_name || log.entity_id.slice(0, 8)}
 									</span>
+									{#if log.changed_by_name}
+										<span class="text-muted-foreground/70 ml-1">
+											by {log.changed_by_name}
+										</span>
+									{/if}
+									{#if eventLabel}
+										<span class="text-muted-foreground/70 ml-1">
+											- {eventLabel}
+										</span>
+									{/if}
 									{#if log.change_source}
 										<span class="text-muted-foreground/60 ml-1">
 											({getSourceBadge(log.change_source)})

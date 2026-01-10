@@ -139,15 +139,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const supabase = locals.supabase;
 
 		// Verify user actor exists
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
+		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 
-		if (actorError || !actorId) {
+		if (actorResult.error || !actorResult.data) {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
-		// Verify user owns all referenced entities before creating edges
+		// Verify user has access to all referenced entities before creating edges
 		const idsByKind = new Map<string, Set<string>>();
 		for (const edge of edges) {
 			if (!idsByKind.has(edge.src_kind)) idsByKind.set(edge.src_kind, new Set());
@@ -156,6 +154,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			idsByKind.get(edge.dst_kind)!.add(edge.dst_id);
 		}
 
+		const projectIds = new Set<string>();
+
 		for (const [kind, idSet] of idsByKind.entries()) {
 			const ids = Array.from(idSet);
 			const table = TABLE_MAP[kind];
@@ -163,33 +163,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return ApiResponse.badRequest(`Unsupported entity kind: ${kind}`);
 			}
 
-			let query;
-			if (kind === 'project') {
-				query = supabase.from(table).select('id, created_by').in('id', ids);
-			} else {
-				query = supabase
-					.from(table)
-					.select('id, project:onto_projects!inner(id, created_by)')
-					.in('id', ids);
-			}
-
-			const { data, error } = await query;
+			const { data, error } =
+				kind === 'project'
+					? await supabase.from(table).select('id').in('id', ids)
+					: await supabase.from(table).select('id, project_id').in('id', ids);
 			if (error) {
-				console.error(`[Edges API] Ownership check failed for ${kind}:`, error);
+				console.error(`[Edges API] Access check failed for ${kind}:`, error);
 				return ApiResponse.databaseError(error);
 			}
 
 			const foundIds = new Set<string>();
 			for (const row of data ?? []) {
 				foundIds.add(row.id);
-				const createdBy =
-					kind === 'project'
-						? (row as any).created_by
-						: (row as any)?.project?.created_by;
-				if (createdBy !== actorId) {
-					return ApiResponse.forbidden(
-						`You do not have permission to link ${kind} ${row.id}`
-					);
+				if (kind === 'project') {
+					projectIds.add(row.id as string);
+				} else if ((row as any).project_id) {
+					projectIds.add((row as any).project_id as string);
 				}
 			}
 
@@ -197,6 +186,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				if (!foundIds.has(id)) {
 					return ApiResponse.notFound(`${kind} not found: ${id}`);
 				}
+			}
+		}
+
+		for (const projectId of projectIds) {
+			const { data: hasAccess, error: accessError } = await supabase.rpc(
+				'current_actor_has_project_access',
+				{
+					p_project_id: projectId,
+					p_required_access: 'write'
+				}
+			);
+
+			if (accessError) {
+				console.error('[Edges API] Project access check failed:', accessError);
+				return ApiResponse.internalError(accessError, 'Failed to check project access');
+			}
+
+			if (!hasAccess) {
+				return ApiResponse.forbidden('You do not have permission to link entities');
 			}
 		}
 

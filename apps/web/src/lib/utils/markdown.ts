@@ -93,6 +93,7 @@ export function getProseClasses(
 	const maxWidth = removeMaxWidth ? 'max-w-none' : '';
 
 	// INKPRINT semantic prose styling with proper header hierarchy
+	// Note: prose-pre and prose-table have overflow-x-auto to allow horizontal scroll for wide content
 	return `${sizeClass} dark:prose-invert ${maxWidth}
 		prose-headings:text-foreground prose-headings:font-semibold
 		prose-h1:text-lg prose-h1:font-bold prose-h1:mb-3 prose-h1:mt-4
@@ -107,7 +108,8 @@ export function getProseClasses(
 		prose-a:text-accent prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-accent/80
 		prose-blockquote:text-muted-foreground prose-blockquote:border-l-accent prose-blockquote:not-italic
 		prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[0.85em] prose-code:before:content-none prose-code:after:content-none
-		prose-pre:bg-muted prose-pre:text-foreground
+		prose-pre:bg-muted prose-pre:text-foreground prose-pre:overflow-x-auto
+		prose-table:overflow-x-auto prose-table:block
 		prose-hr:border-border`.trim();
 }
 

@@ -31,13 +31,35 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const supabase = locals.supabase;
 
-		// OPTIMIZATION: Fetch project AND actor ID in parallel
-		// These are independent and can run concurrently
+		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
+
+		if (actorResult.error || !actorResult.data) {
+			console.error('[Project API] Failed to get actor:', actorResult.error);
+			await logOntologyApiError({
+				supabase,
+				error: actorResult.error || new Error('Failed to resolve user actor'),
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'GET',
+				userId: user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_actor_resolve'
+			});
+			return ApiResponse.internalError(
+				actorResult.error || new Error('Failed to resolve user actor'),
+				'Failed to resolve user actor'
+			);
+		}
+
+		// OPTIMIZATION: Fetch project data + access check in parallel
 		// Note: We don't filter deleted_at here to allow viewing deleted projects
 		// (but we return deleted_at status so frontend can handle it)
-		const [projectResult, actorResult] = await Promise.all([
+		const [projectResult, accessResult] = await Promise.all([
 			supabase.from('onto_projects').select('*').eq('id', id).maybeSingle(),
-			supabase.rpc('ensure_actor_for_user', { p_user_id: user.id })
+			supabase.rpc('current_actor_has_project_access', {
+				p_project_id: id,
+				p_required_access: 'read'
+			})
 		]);
 
 		if (projectResult.error) {
@@ -66,26 +88,22 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		if (actorResult.error || !actorResult.data) {
-			console.error('[Project API] Failed to get actor:', actorResult.error);
+		if (accessResult.error) {
+			console.error('[Project API] Failed to check access:', accessResult.error);
 			await logOntologyApiError({
 				supabase,
-				error: actorResult.error || new Error('Failed to resolve user actor'),
+				error: accessResult.error,
 				endpoint: `/api/onto/projects/${id}`,
 				method: 'GET',
 				userId: user.id,
 				projectId: id,
 				entityType: 'project',
-				operation: 'project_actor_resolve'
+				operation: 'project_access_check'
 			});
-			return ApiResponse.internalError(
-				actorResult.error || new Error('Failed to resolve user actor'),
-				'Failed to resolve user actor'
-			);
+			return ApiResponse.internalError(accessResult.error, 'Failed to check project access');
 		}
 
-		const actorId = actorResult.data;
-		if (project.created_by !== actorId) {
+		if (!accessResult.data) {
 			return ApiResponse.forbidden('You do not have permission to access this project');
 		}
 
@@ -329,15 +347,15 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		// Resolve actor for ownership verification
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+		const actorResult = await supabase.rpc('ensure_actor_for_user', {
 			p_user_id: session.user.id
 		});
 
-		if (actorError || !actorId) {
-			console.error('[Project PATCH] Failed to get actor:', actorError);
+		if (actorResult.error || !actorResult.data) {
+			console.error('[Project PATCH] Failed to get actor:', actorResult.error);
 			await logOntologyApiError({
 				supabase,
-				error: actorError || new Error('Failed to resolve user actor'),
+				error: actorResult.error || new Error('Failed to resolve user actor'),
 				endpoint: `/api/onto/projects/${id}`,
 				method: 'PATCH',
 				userId: session.user.id,
@@ -348,7 +366,34 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
-		// Fetch project to verify ownership and existing props
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Project PATCH] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
+			return ApiResponse.forbidden('You do not have permission to modify this project');
+		}
+
+		// Fetch project to verify existing props
 		const { data: existingProject, error: fetchError } = await supabase
 			.from('onto_projects')
 			.select('*')
@@ -358,10 +403,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (fetchError || !existingProject) {
 			return ApiResponse.notFound('Project not found');
-		}
-
-		if (existingProject.created_by !== actorId) {
-			return ApiResponse.forbidden('You do not have permission to modify this project');
 		}
 
 		const updateData: Record<string, unknown> = {
@@ -543,15 +584,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		const supabase = locals.supabase;
 		const chatSessionId = getChatSessionIdFromRequest(request);
 
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+		const actorResult = await supabase.rpc('ensure_actor_for_user', {
 			p_user_id: session.user.id
 		});
 
-		if (actorError || !actorId) {
-			console.error('[Project DELETE] Failed to get actor:', actorError);
+		if (actorResult.error || !actorResult.data) {
+			console.error('[Project DELETE] Failed to get actor:', actorResult.error);
 			await logOntologyApiError({
 				supabase,
-				error: actorError || new Error('Failed to resolve user actor'),
+				error: actorResult.error || new Error('Failed to resolve user actor'),
 				endpoint: `/api/onto/projects/${id}`,
 				method: 'DELETE',
 				userId: session.user.id,
@@ -562,19 +603,42 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: id,
+				p_required_access: 'admin'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Project DELETE] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/projects/${id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: id,
+				entityType: 'project',
+				operation: 'project_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
+			return ApiResponse.forbidden('You do not have permission to delete this project');
+		}
+
 		const { data: project, error: fetchError } = await supabase
 			.from('onto_projects')
-			.select('id, name, type_key, created_by')
+			.select('id, name, type_key')
 			.eq('id', id)
 			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !project) {
 			return ApiResponse.notFound('Project not found');
-		}
-
-		if (project.created_by !== actorId) {
-			return ApiResponse.forbidden('You do not have permission to delete this project');
 		}
 
 		const projectDataForLog = { name: project.name, type_key: project.type_key };

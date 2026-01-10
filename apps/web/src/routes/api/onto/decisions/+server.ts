@@ -73,7 +73,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Verify project access
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -95,7 +95,30 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		if (project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: projectId,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Decisions GET] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: '/api/onto/decisions',
+				method: 'GET',
+				userId: session.user.id,
+				projectId,
+				entityType: 'decision',
+				operation: 'decisions_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have access to this project');
 		}
 
@@ -235,7 +258,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Verify project access
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', project_id)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -257,7 +280,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		if (project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: project_id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Decisions POST] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: '/api/onto/decisions',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id,
+				entityType: 'decision',
+				operation: 'decision_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden(
 				'You do not have permission to add decisions to this project'
 			);

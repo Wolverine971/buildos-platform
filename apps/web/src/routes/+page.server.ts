@@ -15,6 +15,7 @@
  */
 import type { PageServerLoad } from './$types';
 import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
+import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase }, depends }) => {
 	depends('app:auth');
@@ -46,90 +47,41 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		}
 
 		// FAST: Get project count immediately (estimated count to reduce DB load)
-		// This enables instant skeleton card rendering
-		const { count: projectCount, error: countError } = await supabase
-			.from('onto_projects')
-			.select('*', { count: 'estimated', head: true })
-			.eq('created_by', actorId)
-			.is('deleted_at', null);
+		// Prefer membership count so shared projects are included.
+		const { count: memberCount, error: memberCountError } = await supabase
+			.from('onto_project_members')
+			.select('id', { count: 'estimated', head: true })
+			.eq('actor_id', actorId)
+			.is('removed_at', null);
 
-		if (countError) {
-			console.error('[Dashboard] Failed to get project count:', countError);
+		let projectCount = memberCount ?? 0;
+		if (memberCountError) {
+			console.error('[Dashboard] Failed to get membership count:', memberCountError);
+			const { count: fallbackCount, error: countError } = await supabase
+				.from('onto_projects')
+				.select('*', { count: 'estimated', head: true })
+				.eq('created_by', actorId)
+				.is('deleted_at', null);
+			if (countError) {
+				console.error('[Dashboard] Failed to get project count:', countError);
+			}
+			projectCount = fallbackCount ?? 0;
 		}
 
 		// STREAMED: Load full project details in background
 		// Skeletons will be hydrated when this resolves
-		const projectsPromise: Promise<OntologyProjectSummary[]> = (async () => {
-			try {
-				// Fetch project summaries with counts
-				const { data, error } = await supabase
-					.from('onto_projects')
-					.select(
-						`
-						id,
-						name,
-						description,
-						type_key,
-						state_key,
-						props,
-						facet_context,
-						facet_scale,
-						facet_stage,
-						created_at,
-						updated_at,
-						next_step_short,
-						next_step_long,
-						next_step_source,
-						next_step_updated_at,
-						onto_tasks(count),
-						onto_outputs(count),
-						onto_goals(count),
-						onto_plans(count),
-						onto_documents(count)
-					`
-					)
-					.eq('created_by', actorId)
-					.is('deleted_at', null)
-					.order('updated_at', { ascending: false });
-
-				if (error) {
-					console.error('[Dashboard] Failed to fetch projects:', error);
-					return [];
-				}
-
-				// Transform to summary format
-				return (data ?? []).map((project: any) => ({
-					id: project.id,
-					name: project.name,
-					description: project.description ?? null,
-					type_key: project.type_key,
-					state_key: project.state_key,
-					props: project.props,
-					facet_context: project.facet_context ?? null,
-					facet_scale: project.facet_scale ?? null,
-					facet_stage: project.facet_stage ?? null,
-					created_at: project.created_at,
-					updated_at: project.updated_at,
-					task_count: project.onto_tasks?.[0]?.count ?? 0,
-					output_count: project.onto_outputs?.[0]?.count ?? 0,
-					goal_count: project.onto_goals?.[0]?.count ?? 0,
-					plan_count: project.onto_plans?.[0]?.count ?? 0,
-					document_count: project.onto_documents?.[0]?.count ?? 0,
-					next_step_short: project.next_step_short ?? null,
-					next_step_long: project.next_step_long ?? null,
-					next_step_source: project.next_step_source ?? null,
-					next_step_updated_at: project.next_step_updated_at ?? null
-				}));
-			} catch (err) {
-				console.error('[Dashboard] Error loading projects:', err);
-				return [];
-			}
-		})();
+		const projectsPromise: Promise<OntologyProjectSummary[]> = fetchProjectSummaries(
+			supabase,
+			actorId
+		).catch((err) => {
+			console.error('[Dashboard] Error loading projects:', err);
+			return [];
+		});
 
 		return {
 			user,
 			projects: projectsPromise,
-			projectCount: projectCount ?? 0
+			projectCount
 		};
 	} catch (err) {
 		console.error('Error loading dashboard page data:', err);

@@ -39,7 +39,8 @@ async function ensureDocumentAccess(
 	locals: Locals,
 	documentId: string,
 	userId: string,
-	method: string
+	method: string,
+	requiredAccess: 'read' | 'write' | 'admin'
 ): Promise<AccessResult> {
 	const supabase = locals.supabase;
 
@@ -70,33 +71,6 @@ async function ensureDocumentAccess(
 		return { error: ApiResponse.notFound('Document') };
 	}
 
-	const { data: project, error: projectError } = await supabase
-		.from('onto_projects')
-		.select('id, created_by')
-		.eq('id', document.project_id)
-		.is('deleted_at', null)
-		.maybeSingle();
-
-	if (projectError) {
-		console.error('[Document API] Failed to fetch project:', projectError);
-		await logOntologyApiError({
-			supabase,
-			error: projectError,
-			endpoint: `/api/onto/documents/${documentId}`,
-			method,
-			userId,
-			projectId: document.project_id,
-			entityType: 'project',
-			operation: 'document_project_fetch',
-			tableName: 'onto_projects'
-		});
-		return { error: ApiResponse.databaseError(projectError) };
-	}
-
-	if (!project) {
-		return { error: ApiResponse.notFound('Project') };
-	}
-
 	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
 		p_user_id: userId
 	});
@@ -122,10 +96,61 @@ async function ensureDocumentAccess(
 		};
 	}
 
-	if (project.created_by !== actorId) {
+	const { data: hasAccess, error: accessError } = await supabase.rpc(
+		'current_actor_has_project_access',
+		{
+			p_project_id: document.project_id,
+			p_required_access: requiredAccess
+		}
+	);
+
+	if (accessError) {
+		console.error('[Document API] Failed to check access:', accessError);
+		await logOntologyApiError({
+			supabase,
+			error: accessError,
+			endpoint: `/api/onto/documents/${documentId}`,
+			method,
+			userId,
+			projectId: document.project_id,
+			entityType: 'document',
+			entityId: documentId,
+			operation: 'document_access_check'
+		});
+		return { error: ApiResponse.internalError(accessError, 'Failed to check project access') };
+	}
+
+	if (!hasAccess) {
 		return {
 			error: ApiResponse.forbidden('You do not have permission to access this document')
 		};
+	}
+
+	const { data: project, error: projectError } = await supabase
+		.from('onto_projects')
+		.select('id')
+		.eq('id', document.project_id)
+		.is('deleted_at', null)
+		.maybeSingle();
+
+	if (projectError) {
+		console.error('[Document API] Failed to fetch project:', projectError);
+		await logOntologyApiError({
+			supabase,
+			error: projectError,
+			endpoint: `/api/onto/documents/${documentId}`,
+			method,
+			userId,
+			projectId: document.project_id,
+			entityType: 'project',
+			operation: 'document_project_fetch',
+			tableName: 'onto_projects'
+		});
+		return { error: ApiResponse.databaseError(projectError) };
+	}
+
+	if (!project) {
+		return { error: ApiResponse.notFound('Project') };
 	}
 
 	return { document, actorId };
@@ -143,7 +168,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Document ID required');
 		}
 
-		const accessResult = await ensureDocumentAccess(locals, documentId, session.user.id, 'GET');
+		const accessResult = await ensureDocumentAccess(
+			locals,
+			documentId,
+			session.user.id,
+			'GET',
+			'read'
+		);
 
 		if ('error' in accessResult) {
 			return accessResult.error;
@@ -188,7 +219,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			locals,
 			documentId,
 			session.user.id,
-			'PATCH'
+			'PATCH',
+			'write'
 		);
 
 		if ('error' in accessResult) {
@@ -397,7 +429,8 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			locals,
 			documentId,
 			session.user.id,
-			'DELETE'
+			'DELETE',
+			'write'
 		);
 
 		if ('error' in accessResult) {

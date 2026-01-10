@@ -89,8 +89,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				*,
 				project:onto_projects!inner(
 					id,
-					name,
-					created_by
+					name
 				)
 			`
 			)
@@ -102,8 +101,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Milestone');
 		}
 
-		// Check if user owns the project
-		if (milestone.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: milestone.project.id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Milestone GET] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId: milestone.project_id,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have access to this milestone');
 		}
 
@@ -196,8 +218,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -222,8 +243,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Milestone');
 		}
 
-		// Check if user owns the project
-		if (existingMilestone.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: existingMilestone.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Milestone PATCH] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: existingMilestone.project_id,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to modify this milestone');
 		}
 
@@ -457,8 +501,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id,
-					created_by
+					id
 				)
 			`
 			)
@@ -483,8 +526,31 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Milestone');
 		}
 
-		// Check if user owns the project
-		if (milestone.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: milestone.project.id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Milestone DELETE] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/milestones/${params.id}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId: milestone.project_id,
+				entityType: 'milestone',
+				entityId: params.id,
+				operation: 'milestone_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('You do not have permission to delete this milestone');
 		}
 

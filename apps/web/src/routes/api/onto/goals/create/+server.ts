@@ -109,14 +109,42 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Verify user owns the project
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', project_id)
 			.is('deleted_at', null)
-			.eq('created_by', actorId)
 			.single();
 
 		if (projectError || !project) {
 			return ApiResponse.notFound('Project');
+		}
+
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: project_id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Goal Create] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: '/api/onto/goals/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: project_id,
+				entityType: 'goal',
+				operation: 'goal_access_check'
+			});
+			return ApiResponse.internalError(accessError, 'Failed to check project access');
+		}
+
+		if (!hasAccess) {
+			return ApiResponse.forbidden(
+				'You do not have permission to create goals in this project'
+			);
 		}
 
 		// Create the goal

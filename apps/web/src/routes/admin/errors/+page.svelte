@@ -353,13 +353,8 @@
 <div class="min-h-screen bg-background">
 	<div class="max-w-[1600px] mx-auto px-3 py-3 sm:px-4 sm:py-4">
 		<!-- Header -->
-		<AdminPageHeader
-			title="Error Logs"
-			description="Monitor and resolve system errors"
-			icon={AlertTriangle}
-			showBack={true}
-		>
-			<div slot="actions" class="flex items-center gap-2">
+		{#snippet headerActions()}
+			<div class="flex items-center gap-2">
 				{#if selectedErrorIds.size > 0}
 					<Button
 						onclick={openBulkResolveModal}
@@ -394,7 +389,15 @@
 					<span class="hidden sm:inline">Refresh</span>
 				</Button>
 			</div>
-		</AdminPageHeader>
+		{/snippet}
+
+		<AdminPageHeader
+			title="Error Logs"
+			description="Monitor and resolve system errors"
+			icon={AlertTriangle}
+			showBack={true}
+			actions={headerActions}
+		/>
 
 		<!-- Summary Cards -->
 		<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
@@ -438,8 +441,12 @@
 			</div>
 			<div class="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Severity</label>
+					<label
+						class="text-xs font-medium text-muted-foreground"
+						for="errors-filter-severity">Severity</label
+					>
 					<Select
+						id="errors-filter-severity"
 						bind:value={filterSeverity}
 						onchange={loadErrors}
 						size="sm"
@@ -454,8 +461,12 @@
 				</div>
 
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Type</label>
+					<label
+						class="text-xs font-medium text-muted-foreground"
+						for="errors-filter-type">Type</label
+					>
 					<Select
+						id="errors-filter-type"
 						bind:value={filterType}
 						onchange={loadErrors}
 						size="sm"
@@ -471,8 +482,16 @@
 				</div>
 
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Status</label>
-					<Select bind:value={filterResolvedRaw} onchange={loadErrors} size="sm">
+					<label
+						class="text-xs font-medium text-muted-foreground"
+						for="errors-filter-status">Status</label
+					>
+					<Select
+						id="errors-filter-status"
+						bind:value={filterResolvedRaw}
+						onchange={loadErrors}
+						size="sm"
+					>
 						<option value="false">Unresolved</option>
 						<option value="true">Resolved</option>
 						<option value="null">All</option>
@@ -480,8 +499,12 @@
 				</div>
 
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">User</label>
+					<label
+						class="text-xs font-medium text-muted-foreground"
+						for="errors-filter-user">User</label
+					>
 					<TextInput
+						id="errors-filter-user"
 						type="text"
 						bind:value={filterUserId}
 						onblur={loadErrors}
@@ -491,8 +514,12 @@
 				</div>
 
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Project</label>
+					<label
+						class="text-xs font-medium text-muted-foreground"
+						for="errors-filter-project">Project</label
+					>
 					<TextInput
+						id="errors-filter-project"
 						type="text"
 						bind:value={filterProjectId}
 						onblur={loadErrors}
@@ -569,7 +596,7 @@
 								<td class="px-3 py-2">
 									<input
 										type="checkbox"
-										checked={isSelected}
+										checked={!!isSelected}
 										onchange={() => error.id && toggleErrorSelection(error.id)}
 										class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background"
 										aria-label="Select error {error.id}"
@@ -649,9 +676,9 @@
 										>
 											<Eye class="w-3.5 h-3.5" />
 										</button>
-										{#if !error.resolved}
+										{#if !error.resolved && error.id}
 											<button
-												onclick={() => openResolveModal(error.id)}
+												onclick={() => openResolveModal(error.id!)}
 												class="p-1.5 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors pressable"
 												title="Resolve"
 											>
@@ -800,7 +827,7 @@
 					</div>
 
 					<!-- Severity, Type, Code Row -->
-					
+
 					<div class="flex flex-wrap items-center gap-2">
 						<span
 							class="{modalStyles.badge} inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium"

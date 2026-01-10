@@ -22,28 +22,39 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const supabase = locals.supabase;
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
+		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 
-		if (actorError || !actorId) {
-			console.error('[Project Graph Full API] Failed to resolve actor', actorError);
+		if (actorResult.error || !actorResult.data) {
+			console.error('[Project Graph Full API] Failed to resolve actor', actorResult.error);
 			return ApiResponse.error('Failed to resolve user actor', 500);
+		}
+
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Project Graph Full API] Failed to check access', accessError);
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
+			return ApiResponse.forbidden('You do not have permission to access this project');
 		}
 
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', id)
 			.is('deleted_at', null)
 			.single();
 
 		if (projectError || !project) {
 			return ApiResponse.notFound('Project not found');
-		}
-
-		if (project.created_by !== actorId) {
-			return ApiResponse.forbidden('You do not have permission to access this project');
 		}
 
 		const data = await loadProjectGraphData(supabase, id);

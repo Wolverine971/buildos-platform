@@ -41,8 +41,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					`
 					*,
 					project:onto_projects!inner(
-						id,
-						created_by
+						id
 					)
 				`
 				)
@@ -93,8 +92,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Document');
 		}
 
-		// Authorization check
-		if (document.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: document.project.id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Document Full GET] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/documents/${documentId}/full`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('Access denied');
 		}
 

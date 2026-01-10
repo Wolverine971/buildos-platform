@@ -23,6 +23,10 @@ export interface OntologyProjectSummary {
 	goal_count: number;
 	plan_count: number;
 	document_count: number;
+	owner_actor_id: string;
+	access_role: 'owner' | 'editor' | 'viewer' | null;
+	access_level: 'read' | 'write' | 'admin' | null;
+	is_shared: boolean;
 	// Next step fields for "BuildOS surfaces next moves" feature
 	next_step_short: string | null;
 	next_step_long: string | null;
@@ -53,6 +57,30 @@ export async function fetchProjectSummaries(
 	client: TypedSupabaseClient,
 	actorId: string
 ): Promise<OntologyProjectSummary[]> {
+	const { data: memberRows, error: memberError } = await client
+		.from('onto_project_members')
+		.select('project_id, role_key, access')
+		.eq('actor_id', actorId)
+		.is('removed_at', null);
+
+	if (memberError) {
+		throw new Error(memberError.message);
+	}
+
+	const memberByProject = new Map<string, { role_key: string; access: string }>();
+	const memberProjectIds = new Set<string>();
+
+	(memberRows ?? []).forEach((row) => {
+		if (!row?.project_id) return;
+		memberProjectIds.add(row.project_id);
+		if (row.role_key || row.access) {
+			memberByProject.set(row.project_id, {
+				role_key: row.role_key ?? null,
+				access: row.access ?? null
+			});
+		}
+	});
+
 	const { data, error } = await client
 		.from('onto_projects')
 		.select(
@@ -68,6 +96,7 @@ export async function fetchProjectSummaries(
 			facet_stage,
 			created_at,
 			updated_at,
+			created_by,
 			next_step_short,
 			next_step_long,
 			next_step_source,
@@ -79,7 +108,11 @@ export async function fetchProjectSummaries(
 			onto_documents(count)
 		`
 		)
-		.eq('created_by', actorId)
+		.or(
+			memberProjectIds.size > 0
+				? `created_by.eq.${actorId},id.in.(${Array.from(memberProjectIds).join(',')})`
+				: `created_by.eq.${actorId}`
+		)
 		.is('deleted_at', null) // Exclude soft-deleted projects
 		.is('onto_tasks.deleted_at', null)
 		.is('onto_outputs.deleted_at', null)
@@ -109,6 +142,14 @@ export async function fetchProjectSummaries(
 		goal_count: project.onto_goals?.[0]?.count ?? 0,
 		plan_count: project.onto_plans?.[0]?.count ?? 0,
 		document_count: project.onto_documents?.[0]?.count ?? 0,
+		owner_actor_id: project.created_by,
+		access_role:
+			memberByProject.get(project.id)?.role_key ??
+			(project.created_by === actorId ? 'owner' : null),
+		access_level:
+			memberByProject.get(project.id)?.access ??
+			(project.created_by === actorId ? 'admin' : null),
+		is_shared: project.created_by !== actorId,
 		next_step_short: project.next_step_short ?? null,
 		next_step_long: project.next_step_long ?? null,
 		next_step_source: project.next_step_source ?? null,

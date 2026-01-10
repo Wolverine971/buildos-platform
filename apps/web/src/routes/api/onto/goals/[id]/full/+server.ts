@@ -42,8 +42,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					*,
 					project:onto_projects!inner(
 						id,
-						name,
-						created_by
+						name
 					)
 				`
 				)
@@ -94,8 +93,31 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Goal');
 		}
 
-		// Authorization check
-		if (goal.project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: goal.project.id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Goal Full GET] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: `/api/onto/goals/${goalId}/full`,
+				method: 'GET',
+				userId: session.user.id,
+				projectId,
+				entityType: 'goal',
+				entityId: goalId,
+				operation: 'goal_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden('Access denied');
 		}
 

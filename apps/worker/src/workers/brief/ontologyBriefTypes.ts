@@ -21,6 +21,23 @@ export type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 export type OntoActor = Database['public']['Tables']['onto_actors']['Row'];
 
 // ============================================================================
+// PROJECT ACTIVITY
+// ============================================================================
+
+export interface ProjectActivityEntry {
+	projectId: string;
+	projectName: string;
+	isShared: boolean;
+	actorId: string | null;
+	actorName: string;
+	action: string;
+	entityType: string;
+	entityId: string;
+	entityLabel: string | null;
+	createdAt: string;
+}
+
+// ============================================================================
 // GOAL PROGRESS
 // ============================================================================
 
@@ -125,6 +142,8 @@ export interface CategorizedTasks {
 
 export interface OntoProjectWithRelations {
 	project: OntoProject;
+	isShared: boolean;
+	activityLogs: ProjectActivityEntry[];
 	tasks: OntoTask[];
 	goals: OntoGoal[];
 	plans: OntoPlan[];
@@ -297,6 +316,8 @@ export interface OntologyBriefData {
 
 export interface ProjectBriefData {
 	project: OntoProject;
+	isShared: boolean;
+	activityLogs: ProjectActivityEntry[];
 	goals: GoalProgress[];
 	outputs: OutputStatus[];
 	requirements: OntoRequirement[];

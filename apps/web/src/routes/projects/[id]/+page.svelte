@@ -75,7 +75,8 @@
 		Flag,
 		ListChecks,
 		MoreVertical,
-		GitBranch
+		GitBranch,
+		UserPlus
 	} from 'lucide-svelte';
 	import type {
 		Project,
@@ -99,6 +100,7 @@
 	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
 	import ProjectActivityLogPanel from '$lib/components/ontology/ProjectActivityLogPanel.svelte';
 	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
+	import ProjectShareModal from '$lib/components/project/ProjectShareModal.svelte';
 	import type { Database, EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 	import {
@@ -253,6 +255,7 @@
 	let showPlanCreateModal = $state(false);
 	let showGoalCreateModal = $state(false);
 	let showProjectEditModal = $state(false);
+	let showShareModal = $state(false);
 	let showDeleteProjectModal = $state(false);
 	let showProjectCalendarSettingsModal = $state(false);
 	let isDeletingProject = $state(false);
@@ -1294,6 +1297,14 @@
 						</button>
 					{/if}
 					<button
+						onclick={() => (showShareModal = true)}
+						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+						aria-label="Share project"
+						title="Share project"
+					>
+						<UserPlus class="w-5 h-5 text-muted-foreground" />
+					</button>
+					<button
 						onclick={() => (showProjectCalendarSettingsModal = true)}
 						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
 						aria-label="Project calendar settings"
@@ -1355,6 +1366,16 @@
 										Show graph
 									</button>
 								{/if}
+								<button
+									onclick={() => {
+										showMobileMenu = false;
+										showShareModal = true;
+									}}
+									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+								>
+									<UserPlus class="w-4 h-4 text-muted-foreground" />
+									Share project
+								</button>
 								<button
 									onclick={() => {
 										showMobileMenu = false;
@@ -2647,6 +2668,16 @@
 			}}
 		/>
 	{/await}
+{/if}
+
+<!-- Project Share Modal -->
+{#if showShareModal}
+	<ProjectShareModal
+		bind:isOpen={showShareModal}
+		projectId={project.id}
+		projectName={project.name || 'Project'}
+		onClose={() => (showShareModal = false)}
+	/>
 {/if}
 
 <!-- Project Delete Confirmation -->

@@ -72,9 +72,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (projectId) {
+			const { data: hasAccess, error: accessError } = await supabase.rpc(
+				'current_actor_has_project_access',
+				{
+					p_project_id: projectId,
+					p_required_access: 'read'
+				}
+			);
+
+			if (accessError) {
+				console.error('[Ontology Search API] Access check failed:', accessError);
+				return ApiResponse.internalError(accessError, 'Failed to check project access');
+			}
+
+			if (!hasAccess) {
+				return ApiResponse.forbidden('You do not have access to this project');
+			}
+
 			const { data: project, error: projectError } = await supabase
 				.from('onto_projects')
-				.select('id, created_by')
+				.select('id')
 				.eq('id', projectId)
 				.is('deleted_at', null)
 				.maybeSingle();
@@ -84,8 +101,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return ApiResponse.databaseError(projectError);
 			}
 
-			if (!project || project.created_by !== actorId) {
-				return ApiResponse.forbidden('You do not have access to this project');
+			if (!project) {
+				return ApiResponse.notFound('Project');
 			}
 		}
 

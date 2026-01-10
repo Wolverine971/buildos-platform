@@ -108,7 +108,7 @@
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div
-								class="{proseClasses} overflow-hidden break-words [&>*:nth-child(2)]:mt-0"
+								class="{proseClasses} overflow-x-auto break-words [&>*:nth-child(2)]:mt-0"
 							>
 								<!-- INKPRINT avatar badge - MOBILE ONLY (floated inside BFC for text wrap) -->
 								<div
@@ -158,7 +158,7 @@
 						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-amber-600/20 bg-amber-50/50 px-3 py-2.5 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak dark:bg-amber-950/10 sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
-							<div class="{proseClasses} overflow-hidden break-words">
+							<div class="{proseClasses} overflow-x-auto break-words">
 								{@html renderMarkdown(message.content)}
 							</div>
 						{:else}

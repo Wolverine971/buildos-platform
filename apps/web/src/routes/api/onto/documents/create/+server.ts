@@ -75,7 +75,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Ensure project exists and belongs to current actor
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, created_by')
+			.select('id')
 			.eq('id', project_id)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -122,7 +122,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		if (project.created_by !== actorId) {
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: project_id,
+				p_required_access: 'write'
+			}
+		);
+
+		if (accessError) {
+			console.error('[Document API] Failed to check access:', accessError);
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: '/api/onto/documents/create',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id as string,
+				entityType: 'document',
+				operation: 'document_access_check'
+			});
+			return ApiResponse.internalError(accessError, 'Failed to check project access');
+		}
+
+		if (!hasAccess) {
 			return ApiResponse.forbidden(
 				'You do not have permission to add documents to this project'
 			);
