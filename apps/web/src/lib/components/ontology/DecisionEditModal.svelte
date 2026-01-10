@@ -32,6 +32,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
+	import EntityActivityLog from './EntityActivityLog.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -566,6 +567,13 @@
 								</div>
 							</CardBody>
 						</Card>
+
+						<!-- Activity Log -->
+						<EntityActivityLog
+							entityType="decision"
+							entityId={decisionId}
+							autoLoad={!isLoading}
+						/>
 					</div>
 				</div>
 			{/if}

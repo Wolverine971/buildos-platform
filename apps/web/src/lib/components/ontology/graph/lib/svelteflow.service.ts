@@ -91,7 +91,6 @@ export class SvelteFlowGraphService {
 					state: task.state_key,
 					priority: task.priority,
 					dueAt: task.due_at,
-					scale: task.facet_scale,
 					props: task.props
 				},
 				color: stateColors[task.state_key ?? 'todo'] ?? '#6b7280',
@@ -123,7 +122,6 @@ export class SvelteFlowGraphService {
 						projectId: output.project_id,
 						typeKey: output.type_key,
 						state: output.state_key,
-						stage: output.facet_stage,
 						primitive,
 						props: output.props
 					},

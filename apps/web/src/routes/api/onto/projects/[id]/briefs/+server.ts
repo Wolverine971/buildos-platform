@@ -38,6 +38,32 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			return authResult.error!;
 		}
 
+		const { data: isMember, error: memberError } = await supabase.rpc(
+			'current_actor_is_project_member',
+			{
+				p_project_id: projectId
+			}
+		);
+
+		if (memberError) {
+			console.error('[Project Briefs API] Failed to verify membership:', memberError);
+			await logOntologyApiError({
+				supabase,
+				error: memberError,
+				endpoint: `/api/onto/projects/${projectId}/briefs`,
+				method: 'GET',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_briefs_access'
+			});
+			return ApiResponse.internalError(memberError, 'Failed to verify project access');
+		}
+
+		if (!isMember) {
+			return ApiResponse.forbidden('Access denied');
+		}
+
 		// Fetch briefs from ontology_project_briefs with join to daily brief for date
 		const {
 			data: briefs,

@@ -36,9 +36,6 @@ interface ProjectFullData {
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
 		const { user } = await locals.safeGetSession();
-		if (!user) {
-			return ApiResponse.unauthorized('Authentication required');
-		}
 
 		const { id } = params;
 
@@ -47,28 +44,33 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		let actorId: string | null = null;
 
 		// Get actor ID for authorization check
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
-
-		if (actorError || !actorId) {
-			console.error('[Project Full API] Failed to get actor:', actorError);
-			await logOntologyApiError({
-				supabase,
-				error: actorError || new Error('Failed to resolve user actor'),
-				endpoint: `/api/onto/projects/${id}/full`,
-				method: 'GET',
-				userId: user.id,
-				projectId: id,
-				entityType: 'project',
-				operation: 'project_actor_resolve'
+		if (user) {
+			const { data, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+				p_user_id: user.id
 			});
-			return ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user actor'
-			);
+
+			if (actorError || !data) {
+				console.error('[Project Full API] Failed to get actor:', actorError);
+				await logOntologyApiError({
+					supabase,
+					error: actorError || new Error('Failed to resolve user actor'),
+					endpoint: `/api/onto/projects/${id}/full`,
+					method: 'GET',
+					userId: user.id,
+					projectId: id,
+					entityType: 'project',
+					operation: 'project_actor_resolve'
+				});
+				return ApiResponse.internalError(
+					actorError || new Error('Failed to resolve user actor'),
+					'Failed to resolve user actor'
+				);
+			}
+
+			actorId = data as string;
 		}
 
 		// OPTIMIZED: Single RPC call for all project data
@@ -84,7 +86,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				error,
 				endpoint: `/api/onto/projects/${id}/full`,
 				method: 'GET',
-				userId: user.id,
+				userId: user?.id,
 				projectId: id,
 				entityType: 'project',
 				operation: 'project_full_get'

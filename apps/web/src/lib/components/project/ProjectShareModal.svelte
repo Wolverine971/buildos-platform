@@ -372,7 +372,12 @@
 					<p class="text-xs text-destructive">{error}</p>
 				{/if}
 
-				<Button type="submit" variant="primary" size="sm" disabled={isSending || !canInvite}>
+				<Button
+					type="submit"
+					variant="primary"
+					size="sm"
+					disabled={isSending || !canInvite}
+				>
 					{isSending ? 'Sending...' : 'Send Invite'}
 				</Button>
 			</form>
@@ -414,7 +419,9 @@
 							</div>
 							<div class="flex items-center gap-1.5 shrink-0">
 								{#if member.role_key === 'owner' || !canInvite}
-									<span class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded">
+									<span
+										class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
+									>
 										{formatRole(member.role_key)}
 									</span>
 								{:else}
@@ -460,7 +467,9 @@
 								hover:bg-muted/50 transition-colors"
 						>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm text-foreground truncate">{invite.invitee_email}</p>
+								<p class="text-sm text-foreground truncate">
+									{invite.invitee_email}
+								</p>
 								<p class="text-xs text-muted-foreground">
 									Expires {invite.expires_at
 										? new Date(invite.expires_at).toLocaleDateString()
@@ -468,7 +477,9 @@
 								</p>
 							</div>
 							<div class="flex items-center gap-1.5 shrink-0">
-								<span class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded">
+								<span
+									class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
+								>
 									{formatRole(invite.role_key)}
 								</span>
 								{#if canInvite}

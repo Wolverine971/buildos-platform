@@ -1,0 +1,176 @@
+// apps/web/src/lib/services/voice-notes.service.ts
+import type {
+	VoiceNote,
+	VoiceNoteListResponse,
+	VoiceNotePlaybackResponse
+} from '$lib/types/voice-notes';
+import { ApiError } from '$lib/utils/api-client';
+
+export interface UploadVoiceNoteOptions {
+	audioBlob: Blob;
+	durationSeconds?: number | null;
+	linkedEntityType?: string | null;
+	linkedEntityId?: string | null;
+	transcribe?: boolean;
+	onProgress?: (progress: number) => void;
+}
+
+const MIME_EXTENSION_MAP: Record<string, string> = {
+	'audio/webm': 'webm',
+	'audio/ogg': 'ogg',
+	'audio/mp4': 'm4a',
+	'audio/wav': 'wav',
+	'audio/mpeg': 'mp3',
+	'audio/mp3': 'mp3',
+	'audio/aac': 'm4a'
+};
+
+function getExtensionForMimeType(mimeType: string): string {
+	return MIME_EXTENSION_MAP[mimeType] || 'webm';
+}
+
+function extractErrorMessage(payload: any, fallback: string): string {
+	if (!payload) return fallback;
+	return payload.error || payload.message || fallback;
+}
+
+export async function uploadVoiceNote(options: UploadVoiceNoteOptions): Promise<VoiceNote> {
+	const {
+		audioBlob,
+		durationSeconds,
+		linkedEntityType,
+		linkedEntityId,
+		transcribe = false,
+		onProgress
+	} = options;
+
+	const rawMimeType = audioBlob.type || 'audio/webm';
+	const mimeType = rawMimeType.split(';')[0]?.trim().toLowerCase() || 'audio/webm';
+	const extension = getExtensionForMimeType(mimeType);
+	const audioFile = new File([audioBlob], `voice-note.${extension}`, { type: rawMimeType });
+
+	const formData = new FormData();
+	formData.append('audio', audioFile);
+
+	if (typeof durationSeconds === 'number' && Number.isFinite(durationSeconds)) {
+		formData.append('durationSeconds', durationSeconds.toString());
+	}
+	if (linkedEntityType) {
+		formData.append('linkedEntityType', linkedEntityType);
+	}
+	if (linkedEntityId) {
+		formData.append('linkedEntityId', linkedEntityId);
+	}
+	if (transcribe) {
+		formData.append('transcribe', 'true');
+	}
+
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+		xhr.open('POST', '/api/voice-notes');
+		xhr.responseType = 'json';
+
+		xhr.upload.onprogress = (event) => {
+			if (event.lengthComputable && onProgress) {
+				onProgress(event.loaded / event.total);
+			}
+		};
+
+		xhr.onload = () => {
+			const payload = xhr.response ?? null;
+			if (xhr.status >= 200 && xhr.status < 300) {
+				if (payload?.data) {
+					resolve(payload.data as VoiceNote);
+					return;
+				}
+				reject(new ApiError('Unexpected response from server', xhr.status, payload));
+				return;
+			}
+
+			reject(
+				new ApiError(
+					extractErrorMessage(payload, 'Failed to upload voice note'),
+					xhr.status,
+					payload
+				)
+			);
+		};
+
+		xhr.onerror = () => {
+			reject(new ApiError('Network error while uploading voice note', 0));
+		};
+
+		xhr.send(formData);
+	});
+}
+
+export async function listVoiceNotes(params?: {
+	linkedEntityType?: string;
+	linkedEntityId?: string;
+	limit?: number;
+	offset?: number;
+}): Promise<VoiceNote[]> {
+	const searchParams = new URLSearchParams();
+	if (params?.linkedEntityType) {
+		searchParams.set('linkedEntityType', params.linkedEntityType);
+	}
+	if (params?.linkedEntityId) {
+		searchParams.set('linkedEntityId', params.linkedEntityId);
+	}
+	if (params?.limit) {
+		searchParams.set('limit', params.limit.toString());
+	}
+	if (params?.offset) {
+		searchParams.set('offset', params.offset.toString());
+	}
+
+	const response = await fetch(`/api/voice-notes?${searchParams.toString()}`);
+	const payload = (await response.json()) as {
+		success?: boolean;
+		data?: VoiceNoteListResponse;
+		error?: string;
+	};
+
+	if (!response.ok || !payload?.success) {
+		throw new ApiError(
+			payload?.error || 'Failed to load voice notes',
+			response.status,
+			payload
+		);
+	}
+
+	return payload?.data?.voiceNotes || [];
+}
+
+export async function getVoiceNotePlaybackUrl(id: string): Promise<VoiceNotePlaybackResponse> {
+	const response = await fetch(`/api/voice-notes/${id}/play`);
+	const payload = (await response.json()) as {
+		success?: boolean;
+		data?: VoiceNotePlaybackResponse;
+		error?: string;
+	};
+
+	if (!response.ok || !payload?.success || !payload?.data) {
+		throw new ApiError(
+			payload?.error || 'Failed to load playback URL',
+			response.status,
+			payload
+		);
+	}
+
+	return payload.data;
+}
+
+export async function deleteVoiceNote(id: string, options?: { purge?: boolean }): Promise<void> {
+	const suffix = options?.purge ? '?purge=true' : '';
+	const response = await fetch(`/api/voice-notes/${id}${suffix}`, { method: 'DELETE' });
+	const payload = (await response.json()) as { success?: boolean; error?: string };
+
+	if (!response.ok || !payload?.success) {
+		throw new ApiError(
+			payload?.error || 'Failed to delete voice note',
+			response.status,
+			payload
+		);
+	}
+}

@@ -21,6 +21,7 @@
 	import DocumentEditor from '$lib/components/ontology/DocumentEditor.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
+	import EntityActivityLog from './EntityActivityLog.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -568,6 +569,15 @@
 								<TagsDisplay props={output.props} />
 							</div>
 						{/if}
+
+						<!-- Activity Log -->
+						<div class="pt-2 border-t border-border">
+							<EntityActivityLog
+								entityType="output"
+								entityId={outputId}
+								autoLoad={!isLoading}
+							/>
+						</div>
 
 						<!-- Metadata -->
 						<div

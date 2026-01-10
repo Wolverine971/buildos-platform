@@ -270,8 +270,10 @@ export class MigrationErrorService {
 				.select('id, title, project_id')
 				.in('id', Array.from(taskIds));
 			for (const task of tasks ?? []) {
-				taskMap.set(task.id, { title: task.title, project_id: task.project_id });
-				projectIds.add(task.project_id);
+				if (task.project_id) {
+					taskMap.set(task.id, { title: task.title, project_id: task.project_id });
+					projectIds.add(task.project_id);
+				}
 			}
 		}
 
@@ -283,8 +285,10 @@ export class MigrationErrorService {
 				.select('id, name, project_id')
 				.in('id', Array.from(phaseIds));
 			for (const phase of phases ?? []) {
-				phaseMap.set(phase.id, { name: phase.name, project_id: phase.project_id });
-				projectIds.add(phase.project_id);
+				if (phase.project_id) {
+					phaseMap.set(phase.id, { name: phase.name, project_id: phase.project_id });
+					projectIds.add(phase.project_id);
+				}
 			}
 		}
 

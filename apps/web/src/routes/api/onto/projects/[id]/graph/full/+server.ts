@@ -12,21 +12,22 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
 		const { user } = await locals.safeGetSession();
 
-		if (!user) {
-			return ApiResponse.unauthorized('Authentication required');
-		}
-
 		const { id } = params;
 		if (!id) {
 			return ApiResponse.badRequest('Project ID required');
 		}
 
 		const supabase = locals.supabase;
-		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
+		if (user) {
+			const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 
-		if (actorResult.error || !actorResult.data) {
-			console.error('[Project Graph Full API] Failed to resolve actor', actorResult.error);
-			return ApiResponse.error('Failed to resolve user actor', 500);
+			if (actorResult.error || !actorResult.data) {
+				console.error(
+					'[Project Graph Full API] Failed to resolve actor',
+					actorResult.error
+				);
+				return ApiResponse.error('Failed to resolve user actor', 500);
+			}
 		}
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
@@ -43,7 +44,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (!hasAccess) {
-			return ApiResponse.forbidden('You do not have permission to access this project');
+			return user
+				? ApiResponse.forbidden('You do not have permission to access this project')
+				: ApiResponse.notFound('Project not found');
 		}
 
 		const { data: project, error: projectError } = await supabase

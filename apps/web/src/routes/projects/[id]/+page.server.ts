@@ -35,6 +35,13 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 export interface ProjectSkeletonData {
 	skeleton: true;
 	projectId: string;
+	access: {
+		canEdit: boolean;
+		canAdmin: boolean;
+		canInvite: boolean;
+		canViewLogs: boolean;
+		isAuthenticated: boolean;
+	};
 	project: {
 		id: string;
 		name: string;
@@ -67,20 +74,64 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
 	const supabase = locals.supabase;
 
-	// Get user session
+	// Get user session (optional for public projects)
 	const { user } = await locals.safeGetSession();
-	if (!user) {
-		throw error(401, 'Authentication required');
-	}
 
 	// Get actor ID for the user
-	let actorId: string;
-	try {
-		actorId = await ensureActorId(supabase, user.id);
-	} catch (err) {
-		console.error('[Project Page] Failed to get actor ID:', err);
-		throw error(500, 'Failed to resolve user');
+	let actorId: string | null = null;
+	if (user) {
+		try {
+			actorId = await ensureActorId(supabase, user.id);
+		} catch (err) {
+			console.error('[Project Page] Failed to get actor ID:', err);
+			throw error(500, 'Failed to resolve user');
+		}
 	}
+
+	let canEdit = false;
+	let canAdmin = false;
+	let canViewLogs = false;
+
+	if (user && actorId) {
+		const [writeResult, adminResult, memberResult] = await Promise.all([
+			supabase.rpc('current_actor_has_project_access', {
+				p_project_id: id,
+				p_required_access: 'write'
+			}),
+			supabase.rpc('current_actor_has_project_access', {
+				p_project_id: id,
+				p_required_access: 'admin'
+			}),
+			supabase
+				.from('onto_project_members')
+				.select('id', { head: true })
+				.eq('project_id', id)
+				.eq('actor_id', actorId)
+				.is('removed_at', null)
+		]);
+
+		if (writeResult.error) {
+			console.warn('[Project Page] Failed to check write access:', writeResult.error);
+		}
+		if (adminResult.error) {
+			console.warn('[Project Page] Failed to check admin access:', adminResult.error);
+		}
+		if (memberResult.error) {
+			console.warn('[Project Page] Failed to check membership:', memberResult.error);
+		}
+
+		canEdit = Boolean(writeResult.data);
+		canAdmin = Boolean(adminResult.data);
+		canViewLogs = canAdmin || Boolean(memberResult.data);
+	}
+
+	const access = {
+		canEdit,
+		canAdmin,
+		canInvite: canAdmin,
+		canViewLogs,
+		isAuthenticated: Boolean(user)
+	};
 
 	// Check if we have warm navigation data from the URL state
 	// This is passed via sessionStorage by the source page
@@ -100,7 +151,8 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	if (skeletonError) {
 		console.error('[Project Page] Skeleton RPC error:', skeletonError);
 		// Fall back to full fetch if skeleton fails
-		return loadFullData(id, supabase, actorId);
+		const fallbackData = await loadFullData(id, supabase, actorId);
+		return { ...fallbackData, access };
 	}
 
 	if (!skeletonData) {
@@ -132,7 +184,8 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 			milestone_count: skeletonData.milestone_count ?? 0,
 			risk_count: skeletonData.risk_count ?? 0,
 			decision_count: skeletonData.decision_count ?? 0
-		}
+		},
+		access
 	} satisfies ProjectSkeletonData;
 };
 
@@ -143,7 +196,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 async function loadFullData(
 	id: string,
 	supabase: App.Locals['supabase'],
-	actorId: string
+	actorId: string | null
 ): Promise<any> {
 	const { data, error: rpcError } = await supabase.rpc('get_project_full', {
 		p_project_id: id,

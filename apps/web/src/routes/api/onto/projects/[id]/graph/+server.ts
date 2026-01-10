@@ -39,10 +39,6 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 	try {
 		const { user } = await locals.safeGetSession();
 
-		if (!user) {
-			return ApiResponse.unauthorized('Authentication required');
-		}
-
 		const { id } = params;
 
 		if (!id) {
@@ -61,21 +57,23 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 
 		const supabase = locals.supabase;
 
-		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
+		if (user) {
+			const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 
-		if (actorResult.error || !actorResult.data) {
-			console.error('[Project Graph API] Failed to resolve actor', actorResult.error);
-			await logOntologyApiError({
-				supabase,
-				error: actorResult.error || new Error('Failed to resolve user actor'),
-				endpoint: `/api/onto/projects/${id}/graph`,
-				method: 'GET',
-				userId: user.id,
-				projectId: id,
-				entityType: 'project',
-				operation: 'project_actor_resolve'
-			});
-			return ApiResponse.error('Failed to resolve user actor', 500);
+			if (actorResult.error || !actorResult.data) {
+				console.error('[Project Graph API] Failed to resolve actor', actorResult.error);
+				await logOntologyApiError({
+					supabase,
+					error: actorResult.error || new Error('Failed to resolve user actor'),
+					endpoint: `/api/onto/projects/${id}/graph`,
+					method: 'GET',
+					userId: user.id,
+					projectId: id,
+					entityType: 'project',
+					operation: 'project_actor_resolve'
+				});
+				return ApiResponse.error('Failed to resolve user actor', 500);
+			}
 		}
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
@@ -93,7 +91,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 				error: accessError,
 				endpoint: `/api/onto/projects/${id}/graph`,
 				method: 'GET',
-				userId: user.id,
+				userId: user?.id,
 				projectId: id,
 				entityType: 'project',
 				operation: 'project_graph_access'
@@ -102,7 +100,9 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		}
 
 		if (!hasAccess) {
-			return ApiResponse.forbidden('You do not have permission to access this project');
+			return user
+				? ApiResponse.forbidden('You do not have permission to access this project')
+				: ApiResponse.notFound('Project not found');
 		}
 
 		// Verify project exists and user has permission
@@ -120,7 +120,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 					error: projectError,
 					endpoint: `/api/onto/projects/${id}/graph`,
 					method: 'GET',
-					userId: user.id,
+					userId: user?.id,
 					projectId: id,
 					entityType: 'project',
 					operation: 'project_graph_access',

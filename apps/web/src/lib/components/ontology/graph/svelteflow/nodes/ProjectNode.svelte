@@ -7,12 +7,14 @@
 
 	let { data, selected }: { data: SvelteFlowNodeData; selected?: boolean } = $props();
 
+	const defaultStyle = {
+		bg: 'bg-gray-50 dark:bg-gray-800',
+		border: 'border-gray-400',
+		text: 'text-gray-700 dark:text-gray-300'
+	};
+
 	const stateStyles: Record<string, { bg: string; border: string; text: string }> = {
-		draft: {
-			bg: 'bg-gray-50 dark:bg-gray-800',
-			border: 'border-gray-400',
-			text: 'text-gray-700 dark:text-gray-300'
-		},
+		draft: defaultStyle,
 		active: {
 			bg: 'bg-emerald-50 dark:bg-emerald-900/30',
 			border: 'border-emerald-500',
@@ -30,7 +32,7 @@
 		}
 	};
 
-	const style = stateStyles[data.state ?? 'draft'] ?? stateStyles.draft;
+	const style = stateStyles[data.state ?? 'draft'] ?? defaultStyle;
 </script>
 
 <div

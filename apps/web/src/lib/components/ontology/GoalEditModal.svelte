@@ -36,6 +36,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
+	import EntityActivityLog from './EntityActivityLog.svelte';
 	import { GOAL_STATES } from '$lib/types/onto';
 	import { GOAL_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
@@ -638,6 +639,13 @@
 								</div>
 							</CardBody>
 						</Card>
+
+						<!-- Activity Log -->
+						<EntityActivityLog
+							entityType="goal"
+							entityId={goalId}
+							autoLoad={!isLoading}
+						/>
 					</div>
 				</div>
 			{/if}

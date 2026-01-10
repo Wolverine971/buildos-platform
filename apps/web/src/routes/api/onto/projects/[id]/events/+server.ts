@@ -7,8 +7,8 @@ import { logOntologyApiError } from '../../../shared/error-logging';
 type ProjectAccessResult =
 	| {
 			ok: true;
-			userId: string;
-			actorId: string;
+			userId: string | null;
+			actorId: string | null;
 	  }
 	| {
 			ok: false;
@@ -22,11 +22,75 @@ async function requireProjectAccess(
 	requiredAccess: 'read' | 'write' | 'admin'
 ): Promise<ProjectAccessResult> {
 	const { user } = await locals.safeGetSession();
+	const supabase = locals.supabase;
+
 	if (!user) {
-		return { ok: false, response: ApiResponse.unauthorized('Authentication required') };
+		if (requiredAccess !== 'read') {
+			return { ok: false, response: ApiResponse.unauthorized('Authentication required') };
+		}
+
+		const [accessResult, projectResult] = await Promise.all([
+			supabase.rpc('current_actor_has_project_access', {
+				p_project_id: projectId,
+				p_required_access: 'read'
+			}),
+			supabase
+				.from('onto_projects')
+				.select('id')
+				.eq('id', projectId)
+				.is('deleted_at', null)
+				.maybeSingle()
+		]);
+
+		if (accessResult.error) {
+			console.error(
+				'[Project Events API] Failed to check public access:',
+				accessResult.error
+			);
+			await logOntologyApiError({
+				supabase,
+				error: accessResult.error,
+				endpoint: `/api/onto/projects/${projectId}/events`,
+				method,
+				projectId,
+				entityType: 'event',
+				operation: 'project_events_access'
+			});
+			return {
+				ok: false,
+				response: ApiResponse.internalError(
+					accessResult.error,
+					'Failed to check project access'
+				)
+			};
+		}
+
+		if (!accessResult.data) {
+			return { ok: false, response: ApiResponse.notFound('Project') };
+		}
+
+		if (projectResult.error) {
+			console.error('[Project Events API] Failed to fetch project:', projectResult.error);
+			await logOntologyApiError({
+				supabase,
+				error: projectResult.error,
+				endpoint: `/api/onto/projects/${projectId}/events`,
+				method,
+				projectId,
+				entityType: 'project',
+				operation: 'project_events_access',
+				tableName: 'onto_projects'
+			});
+			return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
+		}
+
+		if (!projectResult.data) {
+			return { ok: false, response: ApiResponse.notFound('Project') };
+		}
+
+		return { ok: true, userId: null, actorId: null };
 	}
 
-	const supabase = locals.supabase;
 	const [actorResult, accessResult, projectResult] = await Promise.all([
 		supabase.rpc('ensure_actor_for_user', { p_user_id: user.id }),
 		supabase.rpc('current_actor_has_project_access', {
@@ -146,7 +210,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			error,
 			endpoint: `/api/onto/projects/${projectId}/events`,
 			method: 'GET',
-			userId: access.userId,
+			userId: access.userId ?? undefined,
 			projectId,
 			entityType: 'event',
 			operation: 'project_events_list'
@@ -163,6 +227,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 	const access = await requireProjectAccess(locals, projectId, 'POST', 'write');
 	if (!access.ok) return access.response;
+	if (!access.userId || !access.actorId) {
+		return ApiResponse.unauthorized('Authentication required');
+	}
+
+	const userId = access.userId;
+	const actorId = access.actorId;
 
 	const body = await request.json().catch(() => null);
 	if (!body || typeof body !== 'object') {
@@ -223,7 +293,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					error: taskError,
 					endpoint: `/api/onto/projects/${projectId}/events`,
 					method: 'POST',
-					userId: access.userId,
+					userId: access.userId ?? undefined,
 					projectId,
 					entityType: 'task',
 					entityId: taskId,
@@ -255,7 +325,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			: props;
 
 		const eventService = new OntoEventSyncService(locals.supabase);
-		const result = await eventService.createEvent(access.userId, {
+		const result = await eventService.createEvent(userId, {
 			orgId: null,
 			projectId,
 			owner: {
@@ -273,7 +343,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			allDay,
 			timezone,
 			props: mergedProps,
-			createdBy: access.actorId,
+			createdBy: actorId,
 			calendarScope,
 			calendarId,
 			syncToCalendar
@@ -301,7 +371,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			error,
 			endpoint: `/api/onto/projects/${projectId}/events`,
 			method: 'POST',
-			userId: access.userId,
+			userId: access.userId ?? undefined,
 			projectId,
 			entityType: 'event',
 			operation: 'event_create'

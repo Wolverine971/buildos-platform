@@ -46,6 +46,7 @@
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
+	import EntityActivityLog from './EntityActivityLog.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import { TASK_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
@@ -1399,6 +1400,13 @@
 												{/if}
 											</CardBody>
 										</Card>
+
+										<!-- Activity Log -->
+										<EntityActivityLog
+											entityType="task"
+											entityId={taskId}
+											autoLoad={!isLoading}
+										/>
 									</div>
 								</form>
 							{:else}

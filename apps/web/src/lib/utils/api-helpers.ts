@@ -232,25 +232,41 @@ export async function verifyProjectAccess(
 		};
 	}
 
-	// Check if the project exists and belongs to this actor
+	const { data: hasAccess, error: accessError } = await supabase.rpc(
+		'current_actor_has_project_access',
+		{
+			p_project_id: projectId,
+			p_required_access: 'read'
+		}
+	);
+
+	if (accessError) {
+		console.error('Failed to check project access:', accessError);
+		return {
+			authorized: false,
+			error: ApiResponse.error('Failed to check project access', 500)
+		};
+	}
+
+	if (!hasAccess) {
+		return {
+			authorized: false,
+			error: ApiResponse.forbidden('You do not have access to this project')
+		};
+	}
+
+	// Check if the project exists (and is not soft-deleted)
 	const { data: project, error: projectError } = await supabase
 		.from('onto_projects')
-		.select('id, created_by')
+		.select('id')
 		.eq('id', projectId)
 		.is('deleted_at', null)
-		.single();
+		.maybeSingle();
 
 	if (projectError || !project) {
 		return {
 			authorized: false,
 			error: ApiResponse.notFound('Project')
-		};
-	}
-
-	if (project.created_by !== actorId) {
-		return {
-			authorized: false,
-			error: ApiResponse.forbidden('You do not have access to this project')
 		};
 	}
 

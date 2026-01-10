@@ -30,6 +30,7 @@
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
+	import EntityActivityLog from './EntityActivityLog.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
@@ -612,6 +613,13 @@
 							{projectId}
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={loadEvent}
+						/>
+
+						<!-- Activity Log -->
+						<EntityActivityLog
+							entityType="event"
+							entityId={eventId}
+							autoLoad={!isLoading}
 						/>
 					</div>
 				</form>

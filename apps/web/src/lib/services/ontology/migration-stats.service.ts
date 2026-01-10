@@ -169,9 +169,11 @@ export class MigrationStatsService {
 		// Get aggregates
 		const aggregates = await this.getUserAggregates();
 
-		// Map to response format
-		const users: UserMigrationStats[] = (data ?? []).map((row) => ({
-			userId: row.user_id,
+		// Map to response format (filter out rows without user_id)
+		const users: UserMigrationStats[] = (data ?? [])
+			.filter((row) => row.user_id != null)
+			.map((row) => ({
+			userId: row.user_id!,
 			email: row.email ?? '',
 			name: row.name,
 			avatarUrl: row.avatar_url,
@@ -363,7 +365,7 @@ export class MigrationStatsService {
 			status: runData.status ?? 'in_progress',
 			startedAt: runData.created_at ?? lock.locked_at,
 			projectsProcessed: count ?? 0,
-			lockedBy: lock.locked_by_email ?? lock.locked_by
+			lockedBy: lock.locked_by_email ?? lock.locked_by ?? 'unknown'
 		};
 	}
 
@@ -561,6 +563,10 @@ export class MigrationStatsService {
 		}
 
 		const result = data[0];
+		if (!result) {
+			return { acquired: false };
+		}
+
 		if (result.acquired) {
 			return { acquired: true };
 		}
@@ -616,6 +622,15 @@ export class MigrationStatsService {
 		}
 
 		const result = data[0];
+		if (!result) {
+			return {
+				refreshed: false,
+				duration: 0,
+				rowCount: 0,
+				previousRefresh
+			};
+		}
+
 		return {
 			refreshed: result.refreshed ?? false,
 			duration: result.duration_ms ?? 0,

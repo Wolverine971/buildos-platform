@@ -164,11 +164,6 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -191,6 +186,11 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -671,6 +671,17 @@
 			"type": "service",
 			"components": [],
 			"exports": ["VisitorService", "visitorService"]
+		},
+		{
+			"file": "src/lib/services/voice-notes.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"uploadVoiceNote",
+				"listVoiceNotes",
+				"getVoiceNotePlaybackUrl",
+				"deleteVoiceNote"
+			]
 		},
 		{
 			"file": "src/lib/services/voiceRecording.service.ts",

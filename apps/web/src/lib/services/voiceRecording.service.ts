@@ -23,6 +23,7 @@ export interface VoiceRecordingCallbacks {
 	onPhaseChange: (phase: 'idle' | 'transcribing') => void;
 	onPermissionGranted?: () => void;
 	onCapabilityUpdate?: (update: { canUseLiveTranscript: boolean }) => void;
+	onAudioCaptured?: (audio: Blob | null, meta: { durationSeconds: number }) => void;
 }
 
 export interface TranscriptionService {
@@ -56,10 +57,10 @@ export class VoiceRecordingService {
 
 	public initialize(
 		callbacks: VoiceRecordingCallbacks,
-		transcriptionService: TranscriptionService
+		transcriptionService?: TranscriptionService | null
 	): void {
 		this.callbacks = callbacks;
-		this.transcriptionService = transcriptionService;
+		this.transcriptionService = transcriptionService ?? null;
 
 		// Unsubscribe from any existing subscription to prevent leaks
 		if (this.liveTranscriptUnsubscribe) {
@@ -190,10 +191,18 @@ export class VoiceRecordingService {
 		}
 	}
 
-	public async stopRecording(currentInputText: string): Promise<void> {
+	public async stopRecording(
+		currentInputText: string,
+		options?: { skipTranscription?: boolean }
+	): Promise<Blob | null> {
 		if (!this.callbacks) {
 			throw new Error('VoiceRecordingService not initialized');
 		}
+
+		const durationSeconds = Math.max(
+			get(this.recordingDurationStore),
+			this.recordingStartTime ? Math.floor((Date.now() - this.recordingStartTime) / 1000) : 0
+		);
 
 		this.stopRecordingTimer();
 
@@ -204,27 +213,35 @@ export class VoiceRecordingService {
 			// Stop recording and get audio blob
 			const audioBlob = await voiceStopRecording();
 
-			// Determine if we should transcribe audio
-			const shouldTranscribeAudio =
-				audioBlob &&
-				audioBlob.size > 1000 && // Minimum size to avoid empty recordings
-				(!this.isLiveTranscriptSupported() || // iOS doesn't support live transcription
-					!capturedLiveTranscript || // No live transcription captured
-					capturedLiveTranscript.length < 10); // Very short live transcription
+			this.callbacks.onAudioCaptured?.(audioBlob, { durationSeconds });
 
-			if (shouldTranscribeAudio && this.transcriptionService) {
-				console.log('Transcribing audio file...', {
-					blobSize: audioBlob!.size,
-					hasLiveTranscript: !!capturedLiveTranscript,
-					liveTranscriptLength: capturedLiveTranscript.length
-				});
-				await this.transcribeAudio(audioBlob!, capturedLiveTranscript, currentInputText);
-			} else if (capturedLiveTranscript) {
-				// Use live transcript if available
-				if (!currentInputText.endsWith(capturedLiveTranscript)) {
-					const separator = currentInputText.trim() ? ' ' : '';
-					const newText = currentInputText + separator + capturedLiveTranscript;
-					this.callbacks.onTextUpdate(newText);
+			if (!options?.skipTranscription) {
+				// Determine if we should transcribe audio
+				const shouldTranscribeAudio =
+					audioBlob &&
+					audioBlob.size > 1000 && // Minimum size to avoid empty recordings
+					(!this.isLiveTranscriptSupported() || // iOS doesn't support live transcription
+						!capturedLiveTranscript || // No live transcription captured
+						capturedLiveTranscript.length < 10); // Very short live transcription
+
+				if (shouldTranscribeAudio && this.transcriptionService) {
+					console.log('Transcribing audio file...', {
+						blobSize: audioBlob!.size,
+						hasLiveTranscript: !!capturedLiveTranscript,
+						liveTranscriptLength: capturedLiveTranscript.length
+					});
+					await this.transcribeAudio(
+						audioBlob!,
+						capturedLiveTranscript,
+						currentInputText
+					);
+				} else if (capturedLiveTranscript) {
+					// Use live transcript if available
+					if (!currentInputText.endsWith(capturedLiveTranscript)) {
+						const separator = currentInputText.trim() ? ' ' : '';
+						const newText = currentInputText + separator + capturedLiveTranscript;
+						this.callbacks.onTextUpdate(newText);
+					}
 				}
 			}
 
@@ -233,6 +250,7 @@ export class VoiceRecordingService {
 
 			// CRITICAL: Always reset phase to idle after stopping, regardless of path taken
 			this.callbacks.onPhaseChange('idle');
+			return audioBlob;
 		} catch (error) {
 			console.error('Stop recording error:', error);
 			const errorMessage =
@@ -241,6 +259,7 @@ export class VoiceRecordingService {
 
 			// CRITICAL: Reset phase to idle even on error to prevent stuck state
 			this.callbacks.onPhaseChange('idle');
+			return null;
 		}
 	}
 

@@ -8441,6 +8441,71 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_notes: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          duration_seconds: number | null
+          file_size_bytes: number
+          id: string
+          linked_entity_id: string | null
+          linked_entity_type: string | null
+          mime_type: string
+          storage_bucket: string
+          storage_path: string
+          transcript: string | null
+          transcription_error: string | null
+          transcription_model: string | null
+          transcription_status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          duration_seconds?: number | null
+          file_size_bytes: number
+          id?: string
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          mime_type: string
+          storage_bucket?: string
+          storage_path: string
+          transcript?: string | null
+          transcription_error?: string | null
+          transcription_model?: string | null
+          transcription_status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          duration_seconds?: number | null
+          file_size_bytes?: number
+          id?: string
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          mime_type?: string
+          storage_bucket?: string
+          storage_path?: string
+          transcript?: string | null
+          transcription_error?: string | null
+          transcription_model?: string | null
+          transcription_status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       web_page_visits: {
         Row: {
           bytes: number | null
@@ -8996,6 +9061,10 @@ export type Database = {
         Returns: boolean
       }
       current_actor_id: { Args: never; Returns: string }
+      current_actor_is_project_member: {
+        Args: { p_project_id: string }
+        Returns: boolean
+      }
       decrement_phase_order: {
         Args: { p_order_threshold: number; p_project_id: string }
         Returns: undefined

@@ -186,6 +186,19 @@
 	// PROPS & DATA
 	// ============================================================
 	let { data }: { data: PageData } = $props();
+	const access = $derived(
+		data?.access ?? {
+			canEdit: false,
+			canAdmin: false,
+			canInvite: false,
+			canViewLogs: false,
+			isAuthenticated: false
+		}
+	);
+	const canEdit = $derived(access.canEdit);
+	const canAdmin = $derived(access.canAdmin);
+	const canInvite = $derived(access.canInvite);
+	const canViewLogs = $derived(access.canViewLogs);
 
 	// Skeleton loading state
 	// When data.skeleton is true, we're in skeleton mode and need to hydrate
@@ -823,6 +836,7 @@
 	}
 
 	function openCreateModalForPanel(key: InsightPanelKey) {
+		if (!canEdit) return;
 		switch (key) {
 			case 'tasks':
 				showTaskCreateModal = true;
@@ -1296,36 +1310,42 @@
 							<GitBranch class="w-5 h-5 text-muted-foreground" />
 						</button>
 					{/if}
-					<button
-						onclick={() => (showShareModal = true)}
-						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-						aria-label="Share project"
-						title="Share project"
-					>
-						<UserPlus class="w-5 h-5 text-muted-foreground" />
-					</button>
-					<button
-						onclick={() => (showProjectCalendarSettingsModal = true)}
-						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-						aria-label="Project calendar settings"
-						title="Project calendar settings"
-					>
-						<Calendar class="w-5 h-5 text-muted-foreground" />
-					</button>
-					<button
-						onclick={() => (showProjectEditModal = true)}
-						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-						aria-label="Edit project"
-					>
-						<Pencil class="w-5 h-5 text-muted-foreground" />
-					</button>
-					<button
-						onclick={() => (showDeleteProjectModal = true)}
-						class="p-2 rounded-lg hover:bg-destructive/10 transition-colors pressable"
-						aria-label="Delete project"
-					>
-						<Trash2 class="w-5 h-5 text-destructive" />
-					</button>
+					{#if canInvite}
+						<button
+							onclick={() => (showShareModal = true)}
+							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+							aria-label="Share project"
+							title="Share project"
+						>
+							<UserPlus class="w-5 h-5 text-muted-foreground" />
+						</button>
+					{/if}
+					{#if canEdit}
+						<button
+							onclick={() => (showProjectCalendarSettingsModal = true)}
+							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+							aria-label="Project calendar settings"
+							title="Project calendar settings"
+						>
+							<Calendar class="w-5 h-5 text-muted-foreground" />
+						</button>
+						<button
+							onclick={() => (showProjectEditModal = true)}
+							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+							aria-label="Edit project"
+						>
+							<Pencil class="w-5 h-5 text-muted-foreground" />
+						</button>
+					{/if}
+					{#if canAdmin}
+						<button
+							onclick={() => (showDeleteProjectModal = true)}
+							class="p-2 rounded-lg hover:bg-destructive/10 transition-colors pressable"
+							aria-label="Delete project"
+						>
+							<Trash2 class="w-5 h-5 text-destructive" />
+						</button>
+					{/if}
 				</div>
 
 				<!-- Mobile: State + 3-dot menu -->
@@ -1366,47 +1386,53 @@
 										Show graph
 									</button>
 								{/if}
-								<button
-									onclick={() => {
-										showMobileMenu = false;
-										showShareModal = true;
-									}}
-									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-								>
-									<UserPlus class="w-4 h-4 text-muted-foreground" />
-									Share project
-								</button>
-								<button
-									onclick={() => {
-										showMobileMenu = false;
-										showProjectEditModal = true;
-									}}
-									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-								>
-									<Pencil class="w-4 h-4 text-muted-foreground" />
-									Edit project
-								</button>
-								<button
-									onclick={() => {
-										showMobileMenu = false;
-										showProjectCalendarSettingsModal = true;
-									}}
-									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-								>
-									<Calendar class="w-4 h-4 text-muted-foreground" />
-									Calendar settings
-								</button>
-								<hr class="my-1 border-border" />
-								<button
-									onclick={() => {
-										showMobileMenu = false;
-										showDeleteProjectModal = true;
-									}}
-									class="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-								>
-									<Trash2 class="w-4 h-4" />
-									Delete project
-								</button>
+								{#if canInvite}
+									<button
+										onclick={() => {
+											showMobileMenu = false;
+											showShareModal = true;
+										}}
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+									>
+										<UserPlus class="w-4 h-4 text-muted-foreground" />
+										Share project
+									</button>
+								{/if}
+								{#if canEdit}
+									<button
+										onclick={() => {
+											showMobileMenu = false;
+											showProjectEditModal = true;
+										}}
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+									>
+										<Pencil class="w-4 h-4 text-muted-foreground" />
+										Edit project
+									</button>
+									<button
+										onclick={() => {
+											showMobileMenu = false;
+											showProjectCalendarSettingsModal = true;
+										}}
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+									>
+										<Calendar class="w-4 h-4 text-muted-foreground" />
+										Calendar settings
+									</button>
+								{/if}
+								{#if canAdmin}
+									<hr class="my-1 border-border" />
+									<button
+										onclick={() => {
+											showMobileMenu = false;
+											showDeleteProjectModal = true;
+										}}
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+									>
+										<Trash2 class="w-4 h-4" />
+										Delete project
+									</button>
+								{/if}
 							</div>
 						{/if}
 					</div>
@@ -1512,18 +1538,19 @@
 					{documents}
 					{outputs}
 					{events}
-					onAddGoal={() => (showGoalCreateModal = true)}
-					onAddMilestone={() => (showMilestoneCreateModal = true)}
-					onAddTask={() => (showTaskCreateModal = true)}
-					onAddPlan={() => (showPlanCreateModal = true)}
-					onAddRisk={() => (showRiskCreateModal = true)}
-					onAddDecision={() => (showDecisionCreateModal = true)}
+					onAddGoal={() => canEdit && (showGoalCreateModal = true)}
+					onAddMilestone={() => canEdit && (showMilestoneCreateModal = true)}
+					onAddTask={() => canEdit && (showTaskCreateModal = true)}
+					onAddPlan={() => canEdit && (showPlanCreateModal = true)}
+					onAddRisk={() => canEdit && (showRiskCreateModal = true)}
+					onAddDecision={() => canEdit && (showDecisionCreateModal = true)}
 					onAddDocument={() => {
+						if (!canEdit) return;
 						activeDocumentId = null;
 						showDocumentModal = true;
 					}}
-					onAddOutput={() => (showOutputCreateModal = true)}
-					onAddEvent={() => (showEventCreateModal = true)}
+					onAddOutput={() => canEdit && (showOutputCreateModal = true)}
+					onAddEvent={() => canEdit && (showEventCreateModal = true)}
 					onEditGoal={(id) => (editingGoalId = id)}
 					onEditMilestone={(id) => (editingMilestoneId = id)}
 					onEditTask={(id) => (editingTaskId = id)}
@@ -1581,13 +1608,17 @@
 								</div>
 							</button>
 							<div class="flex items-center gap-1 sm:gap-2">
-								<button
-									onclick={() => (showOutputCreateModal = true)}
-									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
-									aria-label="Add output"
-								>
-									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-								</button>
+								{#if canEdit}
+									<button
+										onclick={() => (showOutputCreateModal = true)}
+										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+										aria-label="Add output"
+									>
+										<Plus
+											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
+										/>
+									</button>
+								{/if}
 								<button
 									onclick={() => (outputsExpanded = !outputsExpanded)}
 									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
@@ -1703,16 +1734,20 @@
 								</div>
 							</button>
 							<div class="flex items-center gap-1 sm:gap-2">
-								<button
-									onclick={() => {
-										activeDocumentId = null;
-										showDocumentModal = true;
-									}}
-									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
-									aria-label="Add document"
-								>
-									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
-								</button>
+								{#if canEdit}
+									<button
+										onclick={() => {
+											activeDocumentId = null;
+											showDocumentModal = true;
+										}}
+										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+										aria-label="Add document"
+									>
+										<Plus
+											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
+										/>
+									</button>
+								{/if}
 								<button
 									onclick={() => (documentsExpanded = !documentsExpanded)}
 									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
@@ -1875,22 +1910,26 @@
 						</div>
 					</div>
 
-					<!-- Activity Log Panel - loads lazily, show placeholder -->
-					<div
-						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
-					>
-						<div class="flex items-center gap-3 px-4 py-3">
-							<div
-								class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
-							>
-								<Clock class="w-4 h-4 text-foreground" />
-							</div>
-							<div>
-								<p class="text-sm font-semibold text-foreground">Activity Log</p>
-								<p class="text-xs text-muted-foreground">Recent changes</p>
+					{#if canViewLogs}
+						<!-- Activity Log Panel - loads lazily, show placeholder -->
+						<div
+							class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+						>
+							<div class="flex items-center gap-3 px-4 py-3">
+								<div
+									class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+								>
+									<Clock class="w-4 h-4 text-foreground" />
+								</div>
+								<div>
+									<p class="text-sm font-semibold text-foreground">
+										Activity Log
+									</p>
+									<p class="text-xs text-muted-foreground">Recent changes</p>
+								</div>
 							</div>
 						</div>
-					</div>
+					{/if}
 				</aside>
 			{:else}
 				<!-- Hydrated insight panels -->
@@ -1932,15 +1971,17 @@
 									</div>
 								</button>
 								<div class="flex items-center gap-1 sm:gap-2">
-									<button
-										onclick={() => openCreateModalForPanel(section.key)}
-										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
-										aria-label="Add {section.label.toLowerCase()}"
-									>
-										<Plus
-											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
-										/>
-									</button>
+									{#if canEdit}
+										<button
+											onclick={() => openCreateModalForPanel(section.key)}
+											class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+											aria-label="Add {section.label.toLowerCase()}"
+										>
+											<Plus
+												class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
+											/>
+										</button>
+									{/if}
 									<button
 										onclick={() => togglePanel(section.key)}
 										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
@@ -2409,28 +2450,30 @@
 						</div>
 					{/each}
 
-					<!-- History Section Divider -->
-					<div class="relative py-2 sm:py-4">
-						<div class="absolute inset-0 flex items-center px-3 sm:px-4">
-							<div class="w-full border-t border-border/40"></div>
+					{#if canViewLogs}
+						<!-- History Section Divider -->
+						<div class="relative py-2 sm:py-4">
+							<div class="absolute inset-0 flex items-center px-3 sm:px-4">
+								<div class="w-full border-t border-border/40"></div>
+							</div>
+							<div class="relative flex justify-center">
+								<span
+									class="bg-background px-2 sm:px-3 text-[9px] sm:text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
+								>
+									History
+								</span>
+							</div>
 						</div>
-						<div class="relative flex justify-center">
-							<span
-								class="bg-background px-2 sm:px-3 text-[9px] sm:text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
-							>
-								History
-							</span>
-						</div>
-					</div>
 
-					<!-- Daily Briefs Panel -->
-					<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
+						<!-- Daily Briefs Panel -->
+						<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
 
-					<!-- Activity Log Panel -->
-					<ProjectActivityLogPanel
-						projectId={project.id}
-						onEntityClick={handleActivityLogEntityClick}
-					/>
+						<!-- Activity Log Panel -->
+						<ProjectActivityLogPanel
+							projectId={project.id}
+							onEntityClick={handleActivityLogEntityClick}
+						/>
+					{/if}
 				</aside>
 			{/if}
 		</div>
@@ -2671,7 +2714,7 @@
 {/if}
 
 <!-- Project Share Modal -->
-{#if showShareModal}
+{#if showShareModal && canInvite}
 	<ProjectShareModal
 		bind:isOpen={showShareModal}
 		projectId={project.id}

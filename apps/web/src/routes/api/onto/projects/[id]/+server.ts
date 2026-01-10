@@ -19,9 +19,6 @@ import { logOntologyApiError } from '../../shared/error-logging';
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
 		const { user } = await locals.safeGetSession();
-		if (!user) {
-			return ApiResponse.unauthorized('Authentication required');
-		}
 
 		const { id } = params;
 
@@ -31,24 +28,26 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const supabase = locals.supabase;
 
-		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
+		if (user) {
+			const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 
-		if (actorResult.error || !actorResult.data) {
-			console.error('[Project API] Failed to get actor:', actorResult.error);
-			await logOntologyApiError({
-				supabase,
-				error: actorResult.error || new Error('Failed to resolve user actor'),
-				endpoint: `/api/onto/projects/${id}`,
-				method: 'GET',
-				userId: user.id,
-				projectId: id,
-				entityType: 'project',
-				operation: 'project_actor_resolve'
-			});
-			return ApiResponse.internalError(
-				actorResult.error || new Error('Failed to resolve user actor'),
-				'Failed to resolve user actor'
-			);
+			if (actorResult.error || !actorResult.data) {
+				console.error('[Project API] Failed to get actor:', actorResult.error);
+				await logOntologyApiError({
+					supabase,
+					error: actorResult.error || new Error('Failed to resolve user actor'),
+					endpoint: `/api/onto/projects/${id}`,
+					method: 'GET',
+					userId: user.id,
+					projectId: id,
+					entityType: 'project',
+					operation: 'project_actor_resolve'
+				});
+				return ApiResponse.internalError(
+					actorResult.error || new Error('Failed to resolve user actor'),
+					'Failed to resolve user actor'
+				);
+			}
 		}
 
 		// OPTIMIZATION: Fetch project data + access check in parallel
@@ -69,7 +68,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				error: projectResult.error,
 				endpoint: `/api/onto/projects/${id}`,
 				method: 'GET',
-				userId: user.id,
+				userId: user?.id,
 				projectId: id,
 				entityType: 'project',
 				operation: 'project_get',
@@ -95,7 +94,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				error: accessResult.error,
 				endpoint: `/api/onto/projects/${id}`,
 				method: 'GET',
-				userId: user.id,
+				userId: user?.id,
 				projectId: id,
 				entityType: 'project',
 				operation: 'project_access_check'
@@ -104,7 +103,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (!accessResult.data) {
-			return ApiResponse.forbidden('You do not have permission to access this project');
+			return user
+				? ApiResponse.forbidden('You do not have permission to access this project')
+				: ApiResponse.notFound('Project');
 		}
 
 		// OPTIMIZATION: Fetch ALL related entities in a single parallel batch

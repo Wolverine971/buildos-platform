@@ -27,6 +27,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
+	import EntityActivityLog from './EntityActivityLog.svelte';
 	import { PLAN_STATES, type Plan } from '$lib/types/onto';
 	import { PLAN_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
@@ -650,6 +651,13 @@
 								</CardBody>
 							</Card>
 						{/if}
+
+						<!-- Activity Log -->
+						<EntityActivityLog
+							entityType="plan"
+							entityId={planId}
+							autoLoad={!isLoading}
+						/>
 					</div>
 				</div>
 			{/if}

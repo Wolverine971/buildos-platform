@@ -37,6 +37,7 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
+	import EntityActivityLog from './EntityActivityLog.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -742,6 +743,13 @@
 								</div>
 							</CardBody>
 						</Card>
+
+						<!-- Activity Log -->
+						<EntityActivityLog
+							entityType="milestone"
+							entityId={milestoneId}
+							autoLoad={!isLoading}
+						/>
 					</div>
 				</div>
 			{/if}

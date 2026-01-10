@@ -1,5 +1,5 @@
-// packages/shared-types/src/database.schema.ts
-// Generated on: 2026-01-10T06:28:40.768Z
+// Lightweight database schema - auto-generated from database.types.ts
+// Generated on: 2026-01-10T19:02:14.029Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2071,6 +2071,24 @@ export type DatabaseSchema = {
 		user_agent: string | null;
 		visitor_id: string;
 	};
+	voice_notes: {
+		created_at: string;
+		deleted_at: string | null;
+		duration_seconds: number | null;
+		file_size_bytes: number;
+		id: string;
+		linked_entity_id: string | null;
+		linked_entity_type: string | null;
+		mime_type: string;
+		storage_bucket: string;
+		storage_path: string;
+		transcript: string | null;
+		transcription_error: string | null;
+		transcription_model: string | null;
+		transcription_status: string;
+		updated_at: string;
+		user_id: string;
+	};
 	web_page_visits: {
 		bytes: number | null;
 		canonical_url: string | null;
@@ -2247,6 +2265,7 @@ export const tableNames = [
 	'user_sms_preferences',
 	'users',
 	'visitors',
+	'voice_notes',
 	'web_page_visits',
 	'webhook_events'
 ] as const;

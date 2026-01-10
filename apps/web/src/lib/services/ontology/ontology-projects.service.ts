@@ -144,10 +144,10 @@ export async function fetchProjectSummaries(
 		document_count: project.onto_documents?.[0]?.count ?? 0,
 		owner_actor_id: project.created_by,
 		access_role:
-			memberByProject.get(project.id)?.role_key ??
+			(memberByProject.get(project.id)?.role_key as 'owner' | 'editor' | 'viewer' | undefined) ??
 			(project.created_by === actorId ? 'owner' : null),
 		access_level:
-			memberByProject.get(project.id)?.access ??
+			(memberByProject.get(project.id)?.access as 'read' | 'write' | 'admin' | undefined) ??
 			(project.created_by === actorId ? 'admin' : null),
 		is_shared: project.created_by !== actorId,
 		next_step_short: project.next_step_short ?? null,

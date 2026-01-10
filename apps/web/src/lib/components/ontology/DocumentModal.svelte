@@ -24,6 +24,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
+	import EntityActivityLog from './EntityActivityLog.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -682,6 +683,17 @@
 									</div>
 								{/if}
 
+								<!-- Activity Log -->
+								{#if isEditing && documentId}
+									<div class="pt-2 border-t border-border">
+										<EntityActivityLog
+											entityType="document"
+											entityId={documentId}
+											autoLoad={!loading}
+										/>
+									</div>
+								{/if}
+
 								<!-- Metadata -->
 								{#if isEditing}
 									<div
@@ -888,6 +900,17 @@
 										{#if isEditing && hasTags}
 											<div class="pt-2 border-t border-border">
 												<TagsDisplay props={documentProps} />
+											</div>
+										{/if}
+
+										<!-- Activity Log -->
+										{#if isEditing && documentId}
+											<div class="pt-2 border-t border-border">
+												<EntityActivityLog
+													entityType="document"
+													entityId={documentId}
+													autoLoad={!loading}
+												/>
 											</div>
 										{/if}
 
