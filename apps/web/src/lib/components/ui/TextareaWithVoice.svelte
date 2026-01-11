@@ -7,6 +7,12 @@
 		voiceRecordingService,
 		type TranscriptionService
 	} from '$lib/services/voiceRecording.service';
+	import {
+		createVoiceNoteGroup,
+		cleanupVoiceNoteGroups
+	} from '$lib/services/voice-note-groups.service';
+	import { uploadVoiceNote, updateVoiceNote } from '$lib/services/voice-notes.service';
+	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { liveTranscript } from '$lib/utils/voice';
 	import { browser } from '$app/environment';
 	import { haptic } from '$lib/utils/haptic';
@@ -55,6 +61,12 @@
 		voiceError?: string;
 		recordingDuration?: number;
 		canUseLiveTranscript?: boolean;
+		// Voice note capture metadata
+		voiceNoteSource?: string;
+		voiceNoteGroupId?: string | null;
+		onVoiceNoteGroupReady?: (groupId: string) => void;
+		onVoiceNoteSegmentSaved?: (voiceNote: VoiceNote) => void;
+		onVoiceNoteSegmentError?: (error: string) => void;
 		// Snippet for action buttons
 		actions?: import('svelte').Snippet;
 		// Snippet for status row
@@ -111,6 +123,12 @@
 		voiceError = $bindable(''),
 		recordingDuration = $bindable(0),
 		canUseLiveTranscript = $bindable(false),
+		// Voice note capture metadata
+		voiceNoteSource = '',
+		voiceNoteGroupId = $bindable(null),
+		onVoiceNoteGroupReady,
+		onVoiceNoteSegmentSaved,
+		onVoiceNoteSegmentError,
 		// Snippet for action buttons
 		actions,
 		// Snippet for status row (legacy support)
@@ -134,6 +152,33 @@
 	let transcriptUnsubscribe: (() => void) | null = null;
 	let voiceInitialized = $state(false);
 	let textareaRef = $state<Textarea | null>(null);
+
+	type PendingTranscriptUpdate = {
+		transcript?: string;
+		transcriptionSource: 'audio' | 'live';
+		transcriptionStatus: 'complete' | 'failed';
+		transcriptionModel?: string | null;
+		transcriptionError?: string | null;
+		latencyMs?: number;
+	};
+
+	type SegmentState = {
+		voiceNoteId?: string;
+		pendingTranscript?: PendingTranscriptUpdate;
+	};
+
+	type GroupState = {
+		segmentIndex: number;
+		segments: Map<number, SegmentState>;
+	};
+
+	let groupStates = new Map<string, GroupState>();
+	let groupCreatePromises = new Map<string, Promise<string>>();
+	let lastTranscriptionTarget: { groupId: string; segmentIndex: number } | null = null;
+	let hasScheduledDraftCleanup = $state(false);
+	let activeUploads = 0;
+	const uploadQueue: Array<() => Promise<void>> = [];
+	const MAX_CONCURRENT_UPLOADS = 2;
 
 	// Sync internal state with bindable props for parent component access
 	$effect(() => {
@@ -167,44 +212,296 @@
 		}
 	});
 
+	async function requestTranscription(audioFile: File, vocabTerms?: string): Promise<string> {
+		const formData = new FormData();
+		formData.append('audio', audioFile);
+		if (vocabTerms) {
+			formData.append('vocabularyTerms', vocabTerms);
+		}
+
+		const response = await fetch(transcriptionEndpoint, {
+			method: 'POST',
+			body: formData
+		});
+
+		if (!response.ok) {
+			let errorMessage = `Transcription failed: ${response.status}`;
+			try {
+				const errorPayload = await response.json();
+				if (errorPayload?.error) {
+					errorMessage = errorPayload.error;
+				}
+			} catch {
+				// Ignore JSON parse errors
+			}
+			throw new Error(errorMessage);
+		}
+
+		const result = await response.json();
+		if (result?.success && result?.data?.transcript) {
+			return result.data.transcript;
+		}
+
+		if (result?.transcript) {
+			return result.transcript;
+		}
+
+		throw new Error('No transcript returned from transcription service');
+	}
+
 	const transcriptionService: TranscriptionService = {
 		async transcribeAudio(audioFile: File, vocabTerms?: string) {
-			const formData = new FormData();
-			formData.append('audio', audioFile);
-			if (vocabTerms) {
-				formData.append('vocabularyTerms', vocabTerms);
+			const startTime = performance.now();
+			try {
+				const transcript = await requestTranscription(audioFile, vocabTerms);
+				queueTranscriptUpdate({
+					transcript,
+					transcriptionSource: 'audio',
+					transcriptionStatus: 'complete',
+					latencyMs: Math.round(performance.now() - startTime)
+				});
+				return { transcript };
+			} catch (error) {
+				const message =
+					error instanceof Error ? error.message : 'Failed to transcribe audio';
+				queueTranscriptUpdate({
+					transcriptionSource: 'audio',
+					transcriptionStatus: 'failed',
+					transcriptionError: message
+				});
+				throw error;
 			}
-
-			const response = await fetch(transcriptionEndpoint, {
-				method: 'POST',
-				body: formData
-			});
-
-			if (!response.ok) {
-				let errorMessage = `Transcription failed: ${response.status}`;
-				try {
-					const errorPayload = await response.json();
-					if (errorPayload?.error) {
-						errorMessage = errorPayload.error;
-					}
-				} catch {
-					// Ignore JSON parse errors
-				}
-				throw new Error(errorMessage);
-			}
-
-			const result = await response.json();
-			if (result?.success && result?.data?.transcript) {
-				return { transcript: result.data.transcript };
-			}
-
-			if (result?.transcript) {
-				return { transcript: result.transcript };
-			}
-
-			throw new Error('No transcript returned from transcription service');
 		}
 	};
+
+	function scheduleDraftCleanup() {
+		if (!browser || hasScheduledDraftCleanup) return;
+		hasScheduledDraftCleanup = true;
+
+		const runCleanup = () => {
+			cleanupVoiceNoteGroups({ maxAgeHours: 24 }).catch((error) => {
+				if (error instanceof Error) {
+					console.warn('[VoiceNotes] Draft cleanup failed:', error.message);
+				}
+			});
+		};
+
+		if ('requestIdleCallback' in window) {
+			(
+				window as Window & { requestIdleCallback?: (cb: () => void) => void }
+			).requestIdleCallback?.(runCleanup);
+		} else {
+			setTimeout(runCleanup, 1500);
+		}
+	}
+
+	function buildGroupMetadata(): Record<string, unknown> {
+		const metadata: Record<string, unknown> = {};
+		if (voiceNoteSource) {
+			metadata.source_component = voiceNoteSource;
+		}
+		return metadata;
+	}
+
+	function getOrCreateGroupState(groupId: string): GroupState {
+		const existing = groupStates.get(groupId);
+		if (existing) return existing;
+
+		const nextState: GroupState = {
+			segmentIndex: 0,
+			segments: new Map()
+		};
+		groupStates.set(groupId, nextState);
+		return nextState;
+	}
+
+	function startGroupCreation(groupId: string): Promise<string> {
+		const existing = groupCreatePromises.get(groupId);
+		if (existing) return existing;
+
+		const promise = createVoiceNoteGroup({ id: groupId, metadata: buildGroupMetadata() })
+			.then(() => groupId)
+			.catch((error) => {
+				groupCreatePromises.delete(groupId);
+				throw error;
+			});
+
+		groupCreatePromises.set(groupId, promise);
+		return promise;
+	}
+
+	function getOrCreateGroupId(): string {
+		if (voiceNoteGroupId) return voiceNoteGroupId;
+		const newGroupId = crypto.randomUUID();
+		voiceNoteGroupId = newGroupId;
+		onVoiceNoteGroupReady?.(newGroupId);
+		startGroupCreation(newGroupId).catch((error) => {
+			const message =
+				error instanceof Error ? error.message : 'Failed to create voice note group';
+			onVoiceNoteSegmentError?.(message);
+		});
+		return newGroupId;
+	}
+
+	function enqueueUpload(task: () => Promise<void>) {
+		uploadQueue.push(task);
+		void processUploadQueue();
+	}
+
+	async function processUploadQueue() {
+		while (activeUploads < MAX_CONCURRENT_UPLOADS && uploadQueue.length > 0) {
+			const task = uploadQueue.shift();
+			if (!task) return;
+			activeUploads += 1;
+			task()
+				.catch((error) => {
+					if (error instanceof Error) {
+						console.warn('[VoiceNotes] Upload failed:', error.message);
+					}
+				})
+				.finally(() => {
+					activeUploads -= 1;
+					void processUploadQueue();
+				});
+		}
+	}
+
+	function queueTranscriptUpdate(update: PendingTranscriptUpdate) {
+		if (!lastTranscriptionTarget) return;
+		const { groupId, segmentIndex } = lastTranscriptionTarget;
+		const groupState = getOrCreateGroupState(groupId);
+		const segmentState = groupState.segments.get(segmentIndex) ?? {};
+
+		if (!segmentState.voiceNoteId) {
+			segmentState.pendingTranscript = update;
+			groupState.segments.set(segmentIndex, segmentState);
+			return;
+		}
+
+		void applyTranscriptUpdate(groupId, segmentIndex, update);
+	}
+
+	async function applyTranscriptUpdate(
+		groupId: string,
+		segmentIndex: number,
+		update: PendingTranscriptUpdate
+	) {
+		const groupState = getOrCreateGroupState(groupId);
+		const segmentState = groupState.segments.get(segmentIndex);
+
+		if (!segmentState?.voiceNoteId) {
+			const nextSegmentState = segmentState ?? {};
+			nextSegmentState.pendingTranscript = update;
+			groupState.segments.set(segmentIndex, nextSegmentState);
+			return;
+		}
+
+		const metadata: Record<string, unknown> = {};
+		if (typeof update.latencyMs === 'number') {
+			metadata.transcription_latency_ms = update.latencyMs;
+		}
+
+		try {
+			const updated = await updateVoiceNote(segmentState.voiceNoteId, {
+				transcript: update.transcript ?? null,
+				transcriptionStatus: update.transcriptionStatus,
+				transcriptionSource: update.transcriptionSource,
+				transcriptionModel: update.transcriptionModel ?? null,
+				transcriptionError: update.transcriptionError ?? null,
+				metadata: Object.keys(metadata).length > 0 ? metadata : null
+			});
+			onVoiceNoteSegmentSaved?.(updated);
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to update voice note transcript';
+			onVoiceNoteSegmentError?.(message);
+		}
+	}
+
+	async function uploadVoiceSegment(params: {
+		groupId: string;
+		segmentIndex: number;
+		audioBlob: Blob;
+		durationSeconds: number;
+		recordedAt: string;
+		transcript?: string;
+		transcriptionStatus?: string;
+		transcriptionSource?: string;
+	}) {
+		const {
+			groupId,
+			segmentIndex,
+			audioBlob,
+			durationSeconds,
+			recordedAt,
+			transcript,
+			transcriptionStatus,
+			transcriptionSource
+		} = params;
+
+		try {
+			await startGroupCreation(groupId);
+			const voiceNote = await uploadVoiceNote({
+				audioBlob,
+				durationSeconds,
+				groupId,
+				segmentIndex,
+				recordedAt,
+				transcript: transcript ?? null,
+				transcriptionStatus: transcriptionStatus ?? null,
+				transcriptionSource: transcriptionSource ?? null,
+				transcribe: false,
+				metadata: voiceNoteSource ? { source_component: voiceNoteSource } : null
+			});
+
+			const groupState = getOrCreateGroupState(groupId);
+			const segmentState = groupState.segments.get(segmentIndex) ?? {};
+			segmentState.voiceNoteId = voiceNote.id;
+			groupState.segments.set(segmentIndex, segmentState);
+			onVoiceNoteSegmentSaved?.(voiceNote);
+
+			if (segmentState.pendingTranscript) {
+				await applyTranscriptUpdate(groupId, segmentIndex, segmentState.pendingTranscript);
+				segmentState.pendingTranscript = undefined;
+			}
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to save voice note segment';
+			onVoiceNoteSegmentError?.(message);
+		}
+	}
+
+	function handleAudioCaptured(audio: Blob | null, meta: { durationSeconds: number }) {
+		if (!audio || audio.size === 0) {
+			onVoiceNoteSegmentError?.('No audio captured. Please try again.');
+			return;
+		}
+
+		const groupId = getOrCreateGroupId();
+		const groupState = getOrCreateGroupState(groupId);
+		groupState.segmentIndex += 1;
+		const segmentIndex = groupState.segmentIndex;
+		groupState.segments.set(segmentIndex, {});
+
+		lastTranscriptionTarget = { groupId, segmentIndex };
+
+		const transcriptSnapshot = liveTranscriptPreview.trim();
+		const hasTranscript = transcriptSnapshot.length > 0;
+		const recordedAt = new Date().toISOString();
+
+		enqueueUpload(() =>
+			uploadVoiceSegment({
+				groupId,
+				segmentIndex,
+				audioBlob: audio,
+				durationSeconds: meta.durationSeconds,
+				recordedAt,
+				transcript: hasTranscript ? transcriptSnapshot : undefined,
+				transcriptionStatus: hasTranscript ? 'complete' : 'pending',
+				transcriptionSource: hasTranscript ? 'live' : undefined
+			})
+		);
+	}
 
 	const isLiveTranscribing = $derived(
 		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
@@ -240,6 +537,7 @@
 		if (enableVoice) {
 			initializeVoice();
 		}
+		scheduleDraftCleanup();
 	});
 
 	$effect(() => {
@@ -447,7 +745,8 @@
 				},
 				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
 					_canUseLiveTranscript = update.canUseLiveTranscript;
-				}
+				},
+				onAudioCaptured: handleAudioCaptured
 			},
 			transcriptionService
 		);

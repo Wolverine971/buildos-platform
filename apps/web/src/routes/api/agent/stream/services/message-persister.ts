@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
 	Database,
+	ChatMessage,
 	ChatMessageInsert,
 	ChatContextType,
 	ChatToolCall
@@ -43,16 +44,19 @@ export class MessagePersister {
 		userId: string;
 		content: string;
 		timestamp?: string;
-	}): Promise<void> {
+		metadata?: Record<string, unknown>;
+	}): Promise<ChatMessage | null> {
 		const messageData: ChatMessageInsert = {
 			session_id: params.sessionId,
 			user_id: params.userId,
 			role: 'user',
 			content: params.content,
-			created_at: params.timestamp ?? new Date().toISOString()
+			created_at: params.timestamp ?? new Date().toISOString(),
+			metadata: (params.metadata ??
+				null) as Database['public']['Tables']['chat_messages']['Insert']['metadata']
 		};
 
-		await this.persistMessage(messageData);
+		return await this.persistMessage(messageData);
 	}
 
 	/**
@@ -211,8 +215,12 @@ export class MessagePersister {
 	 *
 	 * @param message - The message to persist
 	 */
-	private async persistMessage(message: ChatMessageInsert): Promise<void> {
-		const { error } = await this.supabase.from('chat_messages').insert(message);
+	private async persistMessage(message: ChatMessageInsert): Promise<ChatMessage | null> {
+		const { data, error } = await this.supabase
+			.from('chat_messages')
+			.insert(message)
+			.select()
+			.single();
 
 		if (error) {
 			logger.error('Failed to save chat message', {
@@ -236,7 +244,10 @@ export class MessagePersister {
 							: undefined
 				}
 			});
+			return null;
 		}
+
+		return data ?? null;
 	}
 }
 

@@ -34,6 +34,13 @@
 
 ---
 
+## 2026-01-10 Update: Voice Note Attachments
+
+- Chat session fetch supports `includeVoiceNotes=1` to return voice note groups and segments.
+- Agent chat resume now renders message-level voice note playback panels.
+
+---
+
 ## Executive Summary
 
 This spec outlines the changes needed to display chat sessions on the `/history` page alongside existing braindumps. Users will be able to view their chat history, see AI-generated summaries and topics, and resume conversations by clicking on a session.

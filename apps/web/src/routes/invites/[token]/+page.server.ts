@@ -2,6 +2,7 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createHash } from 'crypto';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
@@ -30,11 +31,35 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	});
 
 	if (error) {
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
+		await errorLogger.logError(error, {
+			userId: user.id,
+			endpoint: '/invites/:token',
+			httpMethod: 'GET',
+			operationType: 'project_invite_accept',
+			metadata: {
+				source: 'invite_accept_page',
+				actorId,
+				tokenHashPrefix: tokenHash.slice(0, 8)
+			}
+		});
 		return { status: 'error', message: error.message };
 	}
 
 	const result = Array.isArray(data) ? data[0] : data;
 	if (!result?.project_id) {
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
+		await errorLogger.logError(new Error('Invite accepted without project_id'), {
+			userId: user.id,
+			endpoint: '/invites/:token',
+			httpMethod: 'GET',
+			operationType: 'project_invite_accept',
+			metadata: {
+				source: 'invite_accept_page',
+				actorId,
+				tokenHashPrefix: tokenHash.slice(0, 8)
+			}
+		});
 		return { status: 'error', message: 'Invite accepted, but project could not be resolved' };
 	}
 

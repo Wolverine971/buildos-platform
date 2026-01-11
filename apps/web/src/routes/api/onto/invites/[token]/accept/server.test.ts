@@ -7,6 +7,10 @@ vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: vi.fn().mockResolvedValue('actor-1')
 }));
 
+vi.mock('../../../shared/error-logging', () => ({
+	logOntologyApiError: vi.fn()
+}));
+
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { POST } from './+server';
 

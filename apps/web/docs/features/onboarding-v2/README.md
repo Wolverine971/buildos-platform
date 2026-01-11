@@ -31,6 +31,7 @@ Onboarding V2 is a 6-step guided flow that helps new users:
 - **Brain Dump Textarea** - Freeform project input with examples
 - **Calendar Analysis** - Optional Google Calendar integration
 - **Auto-Accept Mode** - Projects created automatically without review
+- **Voice Notes** - Audio segments are saved and attached to the braindump draft
 - Skip option available
 
 **Integration:**

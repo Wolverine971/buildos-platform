@@ -173,22 +173,22 @@ export class MigrationStatsService {
 		const users: UserMigrationStats[] = (data ?? [])
 			.filter((row) => row.user_id != null)
 			.map((row) => ({
-			userId: row.user_id!,
-			email: row.email ?? '',
-			name: row.name,
-			avatarUrl: row.avatar_url,
-			stats: {
-				totalProjects: row.total_projects ?? 0,
-				migratedProjects: row.migrated_projects ?? 0,
-				pendingProjects: row.pending_projects ?? 0,
-				failedProjects: row.failed_projects ?? 0,
-				totalTasks: row.total_tasks ?? 0,
-				migratedTasks: row.migrated_tasks ?? 0,
-				percentComplete: Number(row.percent_complete) ?? 0,
-				lastMigrationAt: row.last_migration_at
-			},
-			migrationStatus: row.migration_status as MigrationUserStatus
-		}));
+				userId: row.user_id!,
+				email: row.email ?? '',
+				name: row.name,
+				avatarUrl: row.avatar_url,
+				stats: {
+					totalProjects: row.total_projects ?? 0,
+					migratedProjects: row.migrated_projects ?? 0,
+					pendingProjects: row.pending_projects ?? 0,
+					failedProjects: row.failed_projects ?? 0,
+					totalTasks: row.total_tasks ?? 0,
+					migratedTasks: row.migrated_tasks ?? 0,
+					percentComplete: Number(row.percent_complete) ?? 0,
+					lastMigrationAt: row.last_migration_at
+				},
+				migrationStatus: row.migration_status as MigrationUserStatus
+			}));
 
 		const total = count ?? 0;
 

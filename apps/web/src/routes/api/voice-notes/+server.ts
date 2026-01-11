@@ -290,7 +290,10 @@ export const POST: RequestHandler = async ({
 					transcription_status: 'complete',
 					transcription_model: TRANSCRIPTION_MODEL,
 					transcription_error: null,
-					metadata: { ...metadata, transcription_source: metadata.transcription_source || 'audio' }
+					metadata: {
+						...metadata,
+						transcription_source: metadata.transcription_source || 'audio'
+					}
 				})
 				.eq('id', noteId)
 				.select()

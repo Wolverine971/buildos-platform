@@ -57,6 +57,7 @@
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { createProjectInvalidation } from '$lib/utils/invalidation';
+	import type { VoiceNote } from '$lib/types/voice-notes';
 
 	type ProjectAction = 'workspace' | 'audit' | 'forecast';
 
@@ -345,6 +346,8 @@
 	let voiceErrorMessage = $state('');
 	let voiceSupportsLiveTranscript = $state(false);
 	let voiceRecordingDuration = $state(0);
+	let voiceNoteGroupId = $state<string | null>(null);
+	let voiceNotesByGroupId = $state<Record<string, VoiceNote[]>>({});
 	// When user clicks send while recording, we stop recording and auto-send after transcription
 	let pendingSendAfterTranscription = $state(false);
 
@@ -464,6 +467,40 @@
 		}
 	}
 
+	function upsertVoiceNoteInGroup(note: VoiceNote) {
+		if (!note.group_id) return;
+		const groupId = note.group_id;
+		const existing = voiceNotesByGroupId[groupId] ?? [];
+		const next = [...existing.filter((entry) => entry.id !== note.id), note].sort((a, b) => {
+			const aIndex = a.segment_index ?? 0;
+			const bIndex = b.segment_index ?? 0;
+			if (aIndex !== bIndex) return aIndex - bIndex;
+			return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+		});
+		voiceNotesByGroupId = { ...voiceNotesByGroupId, [groupId]: next };
+	}
+
+	function removeVoiceNoteFromGroup(groupId: string, noteId: string) {
+		const existing = voiceNotesByGroupId[groupId];
+		if (!existing) return;
+		const next = existing.filter((entry) => entry.id !== noteId);
+		if (next.length === 0) {
+			const { [groupId]: _removed, ...rest } = voiceNotesByGroupId;
+			voiceNotesByGroupId = rest;
+			return;
+		}
+		voiceNotesByGroupId = { ...voiceNotesByGroupId, [groupId]: next };
+	}
+
+	function handleVoiceNoteSegmentSaved(note: VoiceNote) {
+		upsertVoiceNoteInGroup(note);
+	}
+
+	function handleVoiceNoteSegmentError(message: string) {
+		if (!message) return;
+		toastService.error(message);
+	}
+
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
 		const { preserveContext = true } = options;
 
@@ -489,6 +526,8 @@
 		pendingToolResults.clear();
 		resetMutationTracking();
 		voiceErrorMessage = '';
+		voiceNoteGroupId = null;
+		voiceNotesByGroupId = {};
 		pendingSendAfterTranscription = false;
 		showFocusSelector = false;
 		showProjectActionSelector = false;
@@ -1160,7 +1199,7 @@
 		resetConversation({ preserveContext: false });
 
 		try {
-			const response = await fetch(`/api/chat/sessions/${sessionId}`, {
+			const response = await fetch(`/api/chat/sessions/${sessionId}?includeVoiceNotes=1`, {
 				signal: controller.signal
 			});
 			const result = await response.json().catch(() => null);
@@ -1173,7 +1212,7 @@
 				throw new Error(result?.error || 'Failed to load chat session');
 			}
 
-			const { session, messages: loadedMessages, truncated } = result.data;
+			const { session, messages: loadedMessages, truncated, voiceNotes = [] } = result.data;
 
 			// Set session and context
 			currentSession = session;
@@ -1228,6 +1267,23 @@
 			}));
 
 			messages = restoredMessages;
+
+			const notesByGroup: Record<string, VoiceNote[]> = {};
+			for (const note of voiceNotes as VoiceNote[]) {
+				if (!note.group_id) continue;
+				const existing = notesByGroup[note.group_id] ?? [];
+				existing.push(note);
+				notesByGroup[note.group_id] = existing;
+			}
+			for (const groupId of Object.keys(notesByGroup)) {
+				notesByGroup[groupId] = notesByGroup[groupId].sort((a, b) => {
+					const aIndex = a.segment_index ?? 0;
+					const bIndex = b.segment_index ?? 0;
+					if (aIndex !== bIndex) return aIndex - bIndex;
+					return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+				});
+			}
+			voiceNotesByGroupId = notesByGroup;
 
 			// Add a system message if conversation was truncated
 			if (truncated) {
@@ -2219,6 +2275,7 @@
 	) {
 		const { senderType = 'user', suppressInputClear = false } = options;
 		const trimmed = (contentOverride ?? inputValue).trim();
+		const activeVoiceNoteGroupId = voiceNoteGroupId;
 		if (!trimmed || isVoiceInitializing || isVoiceTranscribing) return;
 		if (!selectedContextType) {
 			error = 'Select a focus before starting the conversation.';
@@ -2240,7 +2297,10 @@
 			role: 'user' as ChatRole,
 			content: trimmed,
 			timestamp: now,
-			created_at: now.toISOString()
+			created_at: now.toISOString(),
+			metadata: activeVoiceNoteGroupId
+				? { voice_note_group_id: activeVoiceNoteGroupId }
+				: undefined
 		};
 
 		// Convert existing messages to conversation history format (only user/assistant messages)
@@ -2263,6 +2323,9 @@
 		hasSentMessage = true;
 		if (!suppressInputClear) {
 			inputValue = '';
+		}
+		if (activeVoiceNoteGroupId) {
+			voiceNoteGroupId = null;
 		}
 		error = null;
 
@@ -2324,7 +2387,8 @@
 					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
 					projectFocus: resolvedProjectFocus,
 					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
-					stream_run_id: runId
+					stream_run_id: runId,
+					voiceNoteGroupId: activeVoiceNoteGroupId
 				})
 			});
 
@@ -3419,6 +3483,8 @@
 						onToggleThinkingBlock={toggleThinkingBlockCollapse}
 						bind:container={messagesContainer}
 						onScroll={handleScroll}
+						{voiceNotesByGroupId}
+						onDeleteVoiceNote={removeVoiceNoteFromGroup}
 					/>
 				{/if}
 
@@ -3546,12 +3612,15 @@
 							bind:voiceErrorMessage
 							bind:voiceRecordingDuration
 							bind:voiceSupportsLiveTranscript
+							bind:voiceNoteGroupId
 							{isStreaming}
 							{isSendDisabled}
 							allowSendWhileStreaming={isTouchDevice}
 							{displayContextLabel}
 							vocabularyTerms={resolvedProjectFocus?.projectName ??
 								displayContextLabel}
+							onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+							onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
 							onKeyDownHandler={handleKeyDown}
 							onSend={handleSendMessage}
 							onStop={() => handleStopGeneration('user_cancelled')}

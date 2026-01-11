@@ -100,22 +100,39 @@ export interface HighlightSection<T> {
 export interface ProjectHighlightGoal {
 	id: string;
 	name: string;
+	state_key?: string | null;
+	type_key?: string | null;
+	description?: string | null;
 	created_at: string;
 	updated_at?: string | null;
 	target_date?: string | null;
+	completed_at?: string | null;
+	progress_percent?: number | null;
+	completed_tasks?: number | null;
+	total_tasks?: number | null;
+	direct_edge?: boolean;
 }
 
 export interface ProjectHighlightRisk {
 	id: string;
 	title: string;
+	state_key?: string | null;
+	type_key?: string | null;
+	impact?: string | null;
+	probability?: number | null;
+	content?: string | null;
 	created_at: string;
 	updated_at?: string | null;
+	mitigated_at?: string | null;
 }
 
 export interface ProjectHighlightDecision {
 	id: string;
 	title: string;
+	state_key?: string | null;
 	rationale?: string | null;
+	outcome?: string | null;
+	description?: string | null;
 	decision_at?: string | null;
 	created_at: string;
 	updated_at?: string | null;
@@ -124,6 +141,8 @@ export interface ProjectHighlightDecision {
 export interface ProjectHighlightRequirement {
 	id: string;
 	text: string;
+	priority?: number | null;
+	type_key?: string | null;
 	created_at: string;
 	updated_at?: string | null;
 }
@@ -131,23 +150,34 @@ export interface ProjectHighlightRequirement {
 export interface ProjectHighlightDocument {
 	id: string;
 	title: string;
+	state_key?: string | null;
+	type_key?: string | null;
 	description?: string | null;
 	created_at: string;
 	updated_at?: string | null;
+	direct_edge?: boolean;
 }
 
 export interface ProjectHighlightMilestone {
 	id: string;
 	title: string;
 	due_at?: string | null;
+	state_key?: string | null;
+	type_key?: string | null;
+	description?: string | null;
 	created_at: string;
 	updated_at?: string | null;
+	completed_at?: string | null;
 }
 
 export interface ProjectHighlightPlan {
 	id: string;
 	name: string;
 	state_key?: string | null;
+	type_key?: string | null;
+	description?: string | null;
+	task_count?: number | null;
+	completed_task_count?: number | null;
 	created_at: string;
 	updated_at?: string | null;
 }
@@ -156,8 +186,13 @@ export interface ProjectHighlightOutput {
 	id: string;
 	name: string;
 	state_key?: string | null;
+	type_key?: string | null;
+	description?: string | null;
+	linked_goal_ids?: string[];
+	linked_task_ids?: string[];
 	created_at: string;
 	updated_at?: string | null;
+	direct_edge?: boolean;
 }
 
 export interface ProjectHighlightSignal {
@@ -173,14 +208,26 @@ export interface ProjectHighlightInsight {
 	title: string;
 	created_at: string;
 	derived_from_signal_id?: string | null;
+	summary?: string | null;
 }
 
 export interface ProjectHighlightTask {
 	id: string;
 	title: string;
+	state_key?: string | null;
+	type_key?: string | null;
+	priority?: number | null;
+	description?: string | null;
 	updated_at?: string | null;
 	start_at?: string | null;
 	due_at?: string | null;
+	created_at?: string | null;
+	completed_at?: string | null;
+	plan_ids?: string[];
+	goal_ids?: string[];
+	output_ids?: string[];
+	dependency_count?: number | null;
+	dependent_count?: number | null;
 }
 
 export interface ProjectHighlights {
@@ -198,6 +245,40 @@ export interface ProjectHighlights {
 		recent: HighlightSection<ProjectHighlightTask>;
 		upcoming: HighlightSection<ProjectHighlightTask>;
 	};
+}
+
+export interface GraphSnapshotNode {
+	id: string;
+	kind: string;
+	name: string;
+	state_key?: string | null;
+	type_key?: string | null;
+	direct_edge?: boolean;
+	last_updated?: string | null;
+}
+
+export interface GraphSnapshotEdge {
+	id: string;
+	src_id: string;
+	src_kind: string;
+	dst_id: string;
+	dst_kind: string;
+	rel: string;
+}
+
+export interface GraphSnapshotCoverageEntry {
+	total: number;
+	direct: number;
+	unlinked: number;
+}
+
+export interface GraphSnapshot {
+	root_id: string;
+	root_kind: string;
+	max_depth: number;
+	nodes: GraphSnapshotNode[];
+	edges: GraphSnapshotEdge[];
+	coverage: Record<string, GraphSnapshotCoverageEntry>;
 }
 
 export interface OntologyContextScope {
@@ -228,12 +309,14 @@ export interface OntologyContext {
 		entity_count?: Record<string, number>; // Counts by entity type
 		last_updated?: string;
 		context_document_id?: string; // From has_context_document edge relationship
+		context_document_title?: string;
 		facets?: Record<string, any>; // From props->facets
 		hierarchy_level?: number;
 		available_entity_types?: string[];
 		total_projects?: number;
 		recent_project_ids?: string[];
 		project_highlights?: ProjectHighlights;
+		graph_snapshot?: GraphSnapshot;
 	};
 
 	// Current scope/focus for this context (project + optional focused entity)
@@ -346,6 +429,7 @@ export interface EnhancedAgentStreamRequest {
 	lastTurnContext?: LastTurnContext;
 	projectFocus?: ProjectFocus | null;
 	conversation_history?: ChatMessage[];
+	voiceNoteGroupId?: string;
 	stream_run_id?: number;
 }
 

@@ -26,6 +26,7 @@ Welcome to the BuildOS API documentation.
 - **Tasks**: Task creation, updates, and scheduling
 - **Calendar**: Google Calendar integration
 - **Daily Briefs**: Automated daily summaries
+- **Voice Notes**: Audio uploads, transcripts, and group attachments
 - **Admin**: Administrative functions and analytics
 
 ## Development

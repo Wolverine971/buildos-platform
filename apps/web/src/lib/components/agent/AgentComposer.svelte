@@ -4,6 +4,7 @@
 	import { Send, Square } from 'lucide-svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
+	import type { VoiceNote } from '$lib/types/voice-notes';
 
 	// ✅ Svelte 5: Use callback props and $bindable() for two-way binding
 	interface Props {
@@ -20,6 +21,9 @@
 		voiceErrorMessage: string;
 		voiceRecordingDuration: number;
 		voiceSupportsLiveTranscript: boolean;
+		voiceNoteGroupId?: string | null;
+		onVoiceNoteSegmentSaved?: (voiceNote: VoiceNote) => void;
+		onVoiceNoteSegmentError?: (error: string) => void;
 		onKeyDownHandler?: (event: KeyboardEvent) => void;
 		onSend?: () => void; // ✅ Svelte 5: Callback instead of event
 		onStop?: () => void;
@@ -39,6 +43,9 @@
 		voiceErrorMessage = $bindable(),
 		voiceRecordingDuration = $bindable(),
 		voiceSupportsLiveTranscript = $bindable(),
+		voiceNoteGroupId = $bindable(null),
+		onVoiceNoteSegmentSaved,
+		onVoiceNoteSegmentError,
 		onKeyDownHandler,
 		onSend,
 		onStop
@@ -61,6 +68,10 @@
 		bind:voiceError={voiceErrorMessage}
 		bind:recordingDuration={voiceRecordingDuration}
 		bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
+		bind:voiceNoteGroupId
+		voiceNoteSource="agent_chat"
+		{onVoiceNoteSegmentSaved}
+		{onVoiceNoteSegmentError}
 		class="w-full"
 		containerClass="rounded-lg border border-border bg-background shadow-ink-inner"
 		textareaClass="border-none bg-transparent px-2.5 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-3 sm:py-2.5"

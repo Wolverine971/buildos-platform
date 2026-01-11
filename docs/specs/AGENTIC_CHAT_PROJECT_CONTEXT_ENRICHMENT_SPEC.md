@@ -4,17 +4,17 @@
 
 ## Status
 
-| Attribute | Value |
-| --- | --- |
-| Status | Draft |
-| Created | 2026-01-XX |
-| Owner | BuildOS |
-| Scope | Agentic chat ontology context |
+| Attribute        | Value                                           |
+| ---------------- | ----------------------------------------------- |
+| Status           | Draft                                           |
+| Created          | 2026-01-XX                                      |
+| Owner            | BuildOS                                         |
+| Scope            | Agentic chat ontology context                   |
 | Complementary To | `docs/specs/PROJECT_CONTEXT_ENRICHMENT_SPEC.md` |
 
 ## Summary
 
-This spec expands agentic chat context to surface richer, entity-specific summaries and a lightweight project graph snapshot. It aligns agentic chat context with daily brief enrichment patterns and ontology data models, while preserving progressive disclosure and token discipline. Each entity now has a "data light" and "data full" representation.
+This spec expands agentic chat context to surface richer, entity-specific summaries and a lightweight project graph snapshot built via breadth-first traversal (depth 2) over explicit edges. It aligns agentic chat context with daily brief enrichment patterns and ontology data models, while preserving progressive disclosure and token discipline. Each entity now has a "data light" and "data full" representation.
 
 ## References
 
@@ -42,7 +42,7 @@ The current agentic chat project context uses a flat, minimal snapshot that omit
 
 ## Non-Goals
 
-- Replace existing detail tools (get_onto_*_details).
+- Replace existing detail tools (get*onto*\*\_details).
 - Send raw full JSON rows to the LLM by default.
 - Remove progressive disclosure; this spec preserves it.
 
@@ -83,6 +83,21 @@ Daily brief loads a minimal column set per entity and then formats only a subset
 5. Provide a lightweight graph JSON snapshot for agentic chat context.
 6. Define "data light" and "data full" for every ontology entity.
 
+## Graph Construction & Query Pattern
+
+To avoid heavy joins and keep request latency predictable, graph construction should be done in-memory:
+
+1. Query each ontology table by `project_id` in parallel (filter `deleted_at` where applicable).
+2. Query `onto_edges` by `project_id` in parallel.
+3. Build an entity index keyed by ID with a `kind` label.
+4. Build an adjacency list from edges where both endpoints exist in the index.
+5. Build a direct-edge map where the project is the source or destination.
+6. Build a **graph snapshot** by breadth-first traversal (BFS) from the project root:
+    - Depth 0: project, Depth 1: direct neighbors, Depth 2: neighbors of neighbors.
+    - Prioritize neighbors by heuristic score (e.g., blocked tasks, high risks, active goals).
+    - Enforce caps (max nodes, max edges, max nodes per kind).
+7. Unlinked `project_id` entities are **not** inserted into the graph snapshot but are surfaced in highlights and coverage.
+
 ## Context Payloads by Chat Context Type
 
 ### Global Context (Light)
@@ -101,18 +116,18 @@ Project list entries should include:
 
 ### Project Workspace Context (Light)
 
-1) Project header (light)  
-2) Project graph (light JSON)  
-3) Entity slices (light)  
-4) Edge coverage diagnostics  
+1. Project header (light)
+2. Project graph (light JSON)
+3. Entity slices (light)
+4. Edge coverage diagnostics
 
 ### Project Workspace with Focused Entity (Light)
 
-1) Project header (light)  
-2) Focused entity (light)  
-3) Focused entity relationships (light)  
-4) Linked entities (light)  
-5) Optional graph snapshot (light JSON)
+1. Project header (light)
+2. Focused entity (light)
+3. Focused entity relationships (light)
+4. Linked entities (light)
+5. Optional graph snapshot (light JSON)
 
 ### Full Context (On Demand)
 
@@ -138,7 +153,7 @@ Project header should include the following fields in agentic chat:
 - `updated_at`, `created_at`
 - `context_document_id` (if present)
 - `context_document_title` (if available from document lookup)
-- `entity_counts` (tasks, goals, outputs, risks, decisions, requirements)
+- `entity_counts` (totals by `project_id` for tasks, goals, outputs, risks, decisions, requirements)
 
 ## Project Graph Snapshot (Light JSON)
 
@@ -148,42 +163,45 @@ The LLM should receive a lightweight graph representation to convey structure. U
 
 ```json
 {
-  "project_id": "uuid",
-  "nodes": [
-    {
-      "id": "uuid",
-      "kind": "goal",
-      "name": "Increase retention",
-      "state_key": "active",
-      "type_key": "goal.metric.target",
-      "direct_edge": true,
-      "last_updated": "2026-01-01"
-    }
-  ],
-  "edges": [
-    {
-      "id": "uuid",
-      "src_id": "uuid",
-      "src_kind": "project",
-      "dst_id": "uuid",
-      "dst_kind": "goal",
-      "rel": "has_goal"
-    }
-  ],
-  "coverage": {
-    "goals": { "total": 8, "direct": 6 },
-    "documents": { "total": 12, "direct": 4 },
-    "outputs": { "total": 5, "direct": 5 }
-  }
+	"root_id": "uuid",
+	"root_kind": "project",
+	"max_depth": 2,
+	"nodes": [
+		{
+			"id": "uuid",
+			"kind": "goal",
+			"name": "Increase retention",
+			"state_key": "active",
+			"type_key": "goal.metric.target",
+			"direct_edge": true,
+			"last_updated": "2026-01-01"
+		}
+	],
+	"edges": [
+		{
+			"id": "uuid",
+			"src_id": "uuid",
+			"src_kind": "project",
+			"dst_id": "uuid",
+			"dst_kind": "goal",
+			"rel": "has_goal"
+		}
+	],
+	"coverage": {
+		"goals": { "total": 8, "direct": 6, "unlinked": 2 },
+		"documents": { "total": 12, "direct": 4, "unlinked": 8 },
+		"outputs": { "total": 5, "direct": 5, "unlinked": 0 }
+	}
 }
 ```
 
 ### Graph Light Rules
 
-- Include all nodes that appear in slices (see selection rules below).
+- Traverse edges with BFS from the project root (depth 2).
 - Mark `direct_edge: true` when an edge connects the project to the node.
-- Cap edges at 50 and nodes at 80 by default.
-- Include coverage counts for goals/documents/outputs (and optionally tasks).
+- Cap nodes at 60, edges at 80, and nodes per kind at 10.
+- Include coverage counts for totals vs direct vs unlinked.
+- Unlinked `project_id` entities are surfaced in highlights and coverage, not in the graph snapshot.
 
 ## Entity Selection Rules
 
@@ -208,6 +226,11 @@ These must be marked with a `direct_edge` flag so missing edges are visible.
 
 If there are project_id entities with no direct edge, include an "unlinked count" metric in coverage.
 
+### Graph Snapshot Inclusion
+
+- Graph snapshot includes only entities reachable by edges (depth 1-2 BFS from the project).
+- Entities present only via `project_id` (no edges) are excluded from the graph snapshot but still appear in highlights and coverage.
+
 ## Entity Field Specifications
 
 Each entity has a light and full representation. Light is used in context snapshots and graph nodes; full is used in detail tool responses.
@@ -215,6 +238,7 @@ Each entity has a light and full representation. Light is used in context snapsh
 ### Projects
 
 Light:
+
 - `id`, `name`, `state_key`, `type_key`
 - `description` (150 chars)
 - `next_step_short`
@@ -223,6 +247,7 @@ Light:
 - `updated_at`, `created_at`
 
 Full:
+
 - All `onto_projects` columns
 - Full `props`
 - Full `next_step_*` set
@@ -230,6 +255,7 @@ Full:
 ### Tasks
 
 Light:
+
 - `id`, `title`
 - `state_key`, `priority`, `type_key`
 - `start_at`, `due_at`, `updated_at`, `created_at`, `completed_at`
@@ -238,6 +264,7 @@ Light:
 - `dependency_count`, `dependent_count`
 
 Full:
+
 - All `onto_tasks` columns
 - Full `description`, `props`, `facet_scale`
 - Full dependency and relationship lists
@@ -245,6 +272,7 @@ Full:
 ### Goals
 
 Light:
+
 - `id`, `name`, `state_key`, `type_key`
 - `target_date`, `completed_at`
 - `created_at`, `updated_at`
@@ -253,6 +281,7 @@ Light:
 - `direct_edge` flag
 
 Full:
+
 - All `onto_goals` columns
 - Full `goal` and `description`
 - Full `props`
@@ -260,12 +289,14 @@ Full:
 ### Plans
 
 Light:
+
 - `id`, `name`, `state_key`, `type_key`
 - `created_at`, `updated_at`
 - `description` (120 chars)
 - `task_count`, `completed_task_count` (derived)
 
 Full:
+
 - All `onto_plans` columns
 - Full `plan` and `description`
 - Full `props`
@@ -273,12 +304,14 @@ Full:
 ### Milestones
 
 Light:
+
 - `id`, `title`, `state_key`, `type_key`
 - `due_at`, `completed_at`
 - `created_at`, `updated_at`
 - `description` (120 chars)
 
 Full:
+
 - All `onto_milestones` columns
 - Full `milestone` and `description`
 - Full `props`
@@ -286,12 +319,14 @@ Full:
 ### Risks
 
 Light:
+
 - `id`, `title`, `state_key`, `type_key`
 - `impact`, `probability`
 - `created_at`, `updated_at`, `mitigated_at`
 - `content` (120 chars)
 
 Full:
+
 - All `onto_risks` columns
 - Full `content`
 - Full `props`
@@ -299,6 +334,7 @@ Full:
 ### Decisions
 
 Light:
+
 - `id`, `title`, `state_key`
 - `decision_at`, `created_at`, `updated_at`
 - `outcome` (120 chars)
@@ -306,6 +342,7 @@ Light:
 - `description` (120 chars)
 
 Full:
+
 - All `onto_decisions` columns
 - Full `outcome`, `rationale`, `description`
 - Full `props`
@@ -313,17 +350,20 @@ Full:
 ### Requirements
 
 Light:
+
 - `id`, `text`, `priority`
 - `created_at`, `updated_at`
 - `type_key` (if present)
 
 Full:
+
 - All `onto_requirements` columns
 - Full `props`
 
 ### Documents
 
 Light:
+
 - `id`, `title`, `state_key`, `type_key`
 - `created_at`, `updated_at`
 - `description` (180 chars)
@@ -331,12 +371,14 @@ Light:
 - `direct_edge` flag
 
 Full:
+
 - All `onto_documents` columns
 - Full `content`, `description`, `props`
 
 ### Outputs
 
 Light:
+
 - `id`, `name`, `state_key`, `type_key`
 - `created_at`, `updated_at`
 - `description` (160 chars)
@@ -344,6 +386,7 @@ Light:
 - `direct_edge` flag
 
 Full:
+
 - All `onto_outputs` columns
 - Full `description`, `props`
 - Full relationship lists
@@ -351,21 +394,25 @@ Full:
 ### Signals
 
 Light:
+
 - `id`, `channel`, `ts`, `created_at`
 - `payload_summary` (160 chars)
 
 Full:
+
 - All `onto_signals` columns
 - Full payload
 
 ### Insights
 
 Light:
+
 - `id`, `title`, `created_at`
 - `derived_from_signal_id`
 - `props.summary` (160 chars, if present)
 
 Full:
+
 - All `onto_insights` columns
 - Full `props`
 
@@ -380,16 +427,16 @@ Full:
 ## Implementation Plan (High Level)
 
 1. Update `OntologyContextLoader.loadProjectContext` to fetch additional columns and compute light fields.
-2. Add graph snapshot generation using `ProjectGraphData` or edge-derived nodes.
+2. Add graph snapshot generation using BFS over `onto_edges` with depth and node caps.
 3. Update `formatProjectContext` and `formatCombinedContext` to render:
-   - Project header light fields
-   - Graph JSON block (capped)
-   - Expanded per-entity slices with new columns
+    - Project header light fields
+    - Graph JSON block (capped)
+    - Expanded per-entity slices with new columns
 4. Add optional "full context" tool or reuse `get_onto_*_details` for per-entity expansion.
 5. Add tests for:
-   - Graph coverage metrics
-   - Direct edge flags
-   - Field presence per entity
+    - Graph coverage metrics
+    - Direct edge flags
+    - Field presence per entity
 
 ## Recommendations
 
@@ -398,4 +445,3 @@ Full:
 3. Add coverage metrics for edge completeness to surface missing relationships.
 4. Keep graph JSON in a single block so it can be parsed easily by the LLM.
 5. Align selection caps with daily brief defaults for consistency.
-

@@ -1,3 +1,5 @@
+<!-- docs/reports/agentic-chat-ontology-context-report.md -->
+
 # Agentic Chat Ontology Context Loading Report
 
 This report summarizes what ontology context is loaded and presented to the AI agent across the main chat context types: global, project workspace, and project workspace with an entity focus. It maps the server-side ontology loading to the LLM-visible prompt content.
@@ -13,6 +15,8 @@ This report summarizes what ontology context is loaded and presented to the AI a
 - `apps/web/src/lib/services/linked-entity-context-formatter.ts`
 - `apps/web/src/lib/types/agent-chat-enhancement.ts`
 - `apps/web/src/lib/types/linked-entity-context.types.ts`
+- `docs/specs/PROJECT_CONTEXT_ENRICHMENT_SPEC.md`
+- `docs/specs/AGENTIC_CHAT_PROJECT_CONTEXT_ENRICHMENT_SPEC.md`
 
 ## Context Selection Inputs (What the Server Receives)
 
@@ -31,7 +35,7 @@ All ontology context is loaded in the API layer via `OntologyCacheService`:
 
 - Session cache: 5 minute TTL stored in `chat_sessions.agent_metadata.ontologyCache`.
 - Loader cache: 60 second in-memory TTL inside `OntologyContextLoader`.
-- For project creation (`context_type === project_create`), **no ontology context** is loaded.
+- For project creation (`context_type === project_create`), no ontology context is loaded.
 
 Once loaded, the ontology context is formatted into a text snapshot and included in the planner prompt stack as `## Context Snapshot`.
 
@@ -42,13 +46,15 @@ Once loaded, the ontology context is formatted into a text snapshot and included
 Loader: `OntologyContextLoader.loadGlobalContext()`
 
 - Entities:
-  - `entities.projects`: up to 50 recent `onto_projects` rows (full rows).
+    - `entities.projects`: up to 50 recent `onto_projects` rows (light columns only).
+- Project columns selected:
+    - `id, name, state_key, type_key, description, next_step_short, next_step_long, start_at, end_at, facet_context, facet_scale, facet_stage, updated_at`
 - Metadata:
-  - `entity_count`: counts per ontology table (`onto_projects`, `onto_tasks`, etc.).
-  - `total_projects`: total `onto_projects` count for the actor.
-  - `available_entity_types`: list of ontology entity types.
-  - `recent_project_ids`: IDs of the loaded projects.
-  - `last_updated`: timestamp.
+    - `entity_count`: counts per ontology table (`onto_projects`, `onto_tasks`, etc.).
+    - `total_projects`: total `onto_projects` count for the actor.
+    - `available_entity_types`: list of ontology entity types.
+    - `recent_project_ids`: IDs of the loaded projects.
+    - `last_updated`: timestamp.
 - Relationships: none for global context.
 
 ### What the AI agent sees (formatted context)
@@ -57,14 +63,14 @@ Formatter: `formatGlobalContext()` -> `## Context Snapshot`
 
 - Total projects count.
 - Available entity types list.
-- Up to 5 recent projects, shown as name + `state_key` + `type_key`.
+- Up to 5 recent projects with:
+    - name + `state_key` + `type_key`
+    - description snippet (150 chars)
+    - `next_step_short`
+    - date range (`start_at` → `end_at`)
+    - `updated_at` date
 - Entity distribution counts.
 - Hints to use `list_onto_projects` or create new projects.
-
-<!-- My comments: 
-We need to focus the data for each project that we load into it. Lets trim this. Make sure we are loading the project descriptions for each project. Cap the project descriptions at a resasonable length like 150 characters, and load next_step_short part. Then load the date info. And look at the data model and make sure we are only loading in important details.
-
--->
 
 ## Project Workspace Context (Ontology)
 
@@ -72,53 +78,80 @@ We need to focus the data for each project that we load into it. Lets trim this.
 
 Loader: `OntologyContextLoader.loadProjectContext(projectId)`
 
-- Entities:
-  - `entities.project`: full `onto_projects` row (includes `props` and any additional fields).
-- Relationships:
-  - Outgoing edges from `onto_edges` where `src_id = projectId` (limit 50).
-  - `entity_count` is derived from the edge target kinds.
-- Metadata:
-  - `context_document_id`: from `has_context_document` edge.
-  - `facets`: extracted from `project.props.facets`.
-  - `project_highlights`: summarized slices of connected ontology entities:
-    - Goals (limit 5)
-    - Risks (limit 5, excludes mitigated/closed)
-    - Decisions (limit 5, truncates rationale)
-    - Requirements (limit 5, truncates text)
-    - Documents (limit 5, truncates description)
-    - Milestones (limit 5)
-    - Plans (limit 5)
-    - Outputs (limit 5)
-    - Signals (limit 5, truncates payload)
-    - Insights (limit 5)
-    - Tasks (recent: limit 10; upcoming: limit 5)
-  - `last_updated`
-- Scope:
-  - `scope.projectId`, `scope.projectName`
+1. Project graph data is loaded by `project_id` (no joins; edges are fetched separately):
+
+- Project columns:
+    - `id, name, description, type_key, state_key, facet_context, facet_scale, facet_stage, start_at, end_at, next_step_short, next_step_long, created_at, updated_at`
+- Tasks:
+    - `id, title, description, state_key, type_key, priority, start_at, due_at, completed_at, created_at, updated_at`
+- Goals:
+    - `id, name, goal, description, state_key, type_key, target_date, completed_at, created_at, updated_at`
+- Plans:
+    - `id, name, description, state_key, type_key, created_at, updated_at`
+- Milestones:
+    - `id, title, description, state_key, type_key, due_at, completed_at, created_at, updated_at`
+- Risks:
+    - `id, title, content, state_key, type_key, impact, probability, mitigated_at, created_at, updated_at`
+- Documents:
+    - `id, title, description, state_key, type_key, created_at, updated_at`
+- Outputs:
+    - `id, name, description, state_key, type_key, created_at, updated_at`
+- Requirements:
+    - `id, text, priority, type_key, created_at, updated_at`
+- Decisions:
+    - `id, title, description, outcome, rationale, state_key, decision_at, created_at, updated_at`
+- Signals:
+    - `id, channel, ts, payload, created_at`
+- Insights:
+    - `id, title, derived_from_signal_id, props, created_at`
+- Edges:
+    - `id, src_kind, src_id, rel, dst_kind, dst_id, project_id`
+
+Most tables are filtered with `deleted_at IS NULL` to exclude soft-deletes.
+
+2. Derived structures and metadata:
+
+- Direct edge map computed from edges where the project is the source or destination.
+- Context document resolved from `has_context_document` edge (document title resolved from loaded docs).
+- `project_highlights` built from graph data:
+    - Goals/documents/outputs include all rows by `project_id`, with `direct_edge` flags.
+    - Other entities (risks, decisions, requirements, milestones, plans, signals, insights) are limited to direct edges.
+    - Tasks include recent updates and upcoming windows, plus derived linkage counts (plans/goals/outputs) and dependency counts.
+- `graph_snapshot` built via breadth-first traversal (depth 2) over explicit edges, capped to keep tokens small:
+    - Max nodes: 60, max edges: 80, max nodes per kind: 10.
+    - Includes node metadata (name, state, type, last updated, direct_edge flag).
+    - Coverage counts for totals vs direct vs unlinked per entity type.
+- `entity_count` totals per entity type (by `project_id`).
+- Relationships list includes only direct project edges (max 50).
 
 ### What the AI agent sees (formatted context)
 
 Formatter: `formatProjectContext()` -> `## Context Snapshot`
 
-- Project info: ID, name, description, state, type, created timestamp.
-- Project context highlights (limited lists per type with truncation).
-- Entity summary counts (from edges).
-- Relationship preview: first 5 edges with relation + target kind + target id.
-- Hints to use list/detail tools and relationship tools.
-
-<!-- My comments: 
-
-OK we need to make sure that we arent thinking of this in a flat structure but in a graph structure. The connected entities tell a semantic story. This is important.
-I would like to construct a light weight version of the complete ontology graph for the ai agent. We should do this in json. 
-
-For the actual data I need to see all the entity data that we show for each ontology entity. I need to see the summarized slices for each piece.
-
-So we should show all goals and note the ones that have direct edges to the project.
-We should show all documents and outputs.
-Then we should show all other entities that have a direct edge to the project.
-What I am trying to do is surface the most important entities that are connected to the project.
- 
--->
+- Project header with:
+    - ID, name, state, type
+    - created/updated dates
+    - timeline (`start_at` → `end_at`)
+    - facets (`facet_context`, `facet_scale`, `facet_stage`)
+    - description snippet (150 chars)
+    - `next_step_short`, `next_step_long` (truncated)
+    - context document title + ID (if present)
+- Project context highlights with richer per-entity fields:
+    - Goals: state/type, target/completed dates, progress percent + task counts, description, direct_edge.
+    - Risks: state/type, impact/probability, mitigated date, content snippet.
+    - Decisions: state, decision date, outcome/rationale/description snippets.
+    - Requirements: priority/type, text snippet.
+    - Documents: state/type, description snippet, direct_edge.
+    - Milestones: state/type, due/completed dates, description.
+    - Plans: state/type, task counts, description.
+    - Outputs: state/type, linked goals/tasks counts, description, direct_edge.
+    - Signals: channel + ts + payload summary.
+    - Insights: derived signal + summary.
+    - Tasks: state/type/priority, start/due/completed/updated, plan/goal/output counts, dependencies.
+- Graph snapshot JSON block (light graph structure).
+- Entity summary uses graph coverage (total/direct/unlinked per type).
+- Relationship preview (direct project edges).
+- Hints to use list/detail tools for full data.
 
 ## Project Workspace with Focused Entity (Ontology)
 
@@ -130,12 +163,12 @@ Loader: `OntologyContextLoader.loadCombinedProjectElementContext(projectId, elem
 
 Combined context merges:
 
-1) **Project context** (same as above)  
-2) **Element context** via `loadElementContext()`:
-   - Entities: focused element row (`onto_tasks`, `onto_goals`, etc.) plus its parent project if found.
-   - Relationships: edges where the element is either source or destination (limit 20).
-   - Relationship direction is annotated with `inverse_` when the element is the destination.
-   - Metadata includes `hierarchy_level` and `last_updated`.
+1. **Project context** (same as above)
+2. **Element context** via `loadElementContext()`:
+    - Entities: focused element row (full `onto_*` row) plus its parent project if found.
+    - Relationships: edges where the element is either source or destination (limit 20).
+    - Relationship direction is annotated with `inverse_` when the element is the destination.
+    - Metadata includes `hierarchy_level` and `last_updated`.
 
 Combined output:
 
@@ -148,15 +181,19 @@ Combined output:
 
 Formatter: `formatCombinedContext()` -> `## Context Snapshot`
 
-- Project header: ID, state, type.
-- Focus section: name, ID, state, due (if present), and a ~400-char description snippet.
-- Focus metadata: up to 5 `props` keys from the focused entity.
-- Relationship summary: first 8 edges with relation and target identity.
+- Project header (same fields as project workspace context).
+- Focus section with:
+    - name, ID, state, due/target (if present)
+    - type-specific details (type, priority, dates, impact/probability, decision outcomes, progress counts, source refs)
+    - description snippet (up to 400 chars)
+    - up to 5 `props` keys if present
+- Relationship summary: direct edges from project + element (first 8).
+- Graph snapshot JSON block (light graph structure).
 - Focus directive: reminder to prioritize the focused entity while retaining project awareness.
 
 ### Linked entity context (extra focus-level context)
 
-If `OntologyContext.scope.focus` is present, the system also loads **linked entities** and appends them to the system prompt:
+If `OntologyContext.scope.focus` is present, the system also loads linked entities and appends them to the system prompt:
 
 Loader: `OntologyContextLoader.loadLinkedEntitiesContext()`
 
@@ -165,31 +202,24 @@ Loader: `OntologyContextLoader.loadLinkedEntitiesContext()`
 - Overflow counts when more links exist.
 - Hint to use `get_linked_entities` for full details.
 
-<!-- My comments: 
-We need surface for project info if we arent. You said "**Project context** (same as above)" and also said "Project header: ID, state, type." so i am a bit confused. What exact data do we surface about the main project?
-
-For the focus section we need to surface all imporant data for that entity. We need to show more than "name, ID, state, due (if present), and a ~400-char description snippet."
-
--->
-
 ## What the LLM Receives (Prompt Stack)
 
 When ontology context is available, the planner prompt stack includes:
 
-1) System prompt with session guidance and progressive disclosure rules.
-2) Optional user preferences prompt.
-3) `## Context Snapshot` (formatted ontology context above).
-4) Conversation history (compressed if needed).
-5) Current user message.
+1. System prompt with session guidance and progressive disclosure rules.
+2. Optional user preferences prompt.
+3. `## Context Snapshot` (formatted ontology context above).
+4. Conversation history (compressed if needed).
+5. Current user message.
 
-Ontology context is **not passed as raw JSON** to the LLM; it is summarized via the formatter into the snapshot text. Linked entity context is appended to the system prompt for focus mode.
+Ontology context is summarized via the formatter into the snapshot text. When available, a lightweight graph snapshot is provided as a JSON block inside the snapshot.
 
 ## Progressive Disclosure Expectations
 
-- The ontology snapshot is intentionally abbreviated.
-- The prompt instructs the agent to start with list/search tools, then use detail tools as needed.
-- Focused entity context surfaces the minimal props/relationships needed to decide what to expand.
-- The agent is expected to call ontology tools to retrieve full details.
+- The ontology snapshot is intentionally abbreviated and capped.
+- The agent is expected to call ontology tools to retrieve full entity rows and full graph data.
+- Graph coverage highlights where direct edges are missing so the agent can target fixes or expansion.
+- Focus mode surfaces the most relevant fields for the selected entity to reduce immediate tool calls.
 
 ## Caching and Limits (Impact on Context Freshness)
 
@@ -197,5 +227,6 @@ Ontology context is **not passed as raw JSON** to the LLM; it is summarized via 
 - Loader-level cache: 60 seconds in-memory.
 - Relationships are capped (project edges: 50; element edges: 20).
 - Highlights and linked-entity lists are capped per type to keep context small.
+- Graph snapshot caps: depth 2, max 60 nodes, max 80 edges, max 10 nodes per kind.
 
-These limits define both the breadth of ontology data loaded and the size of the context provided to the LLM. 
+These limits define both the breadth of ontology data loaded and the size of the context provided to the LLM.

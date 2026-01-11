@@ -401,6 +401,42 @@ Examples:
 
 ---
 
+## Voice Note Persistence (2026-01-10)
+
+TextareaWithVoice now persists every recording as a voice note segment and groups segments into a
+voice note group that can be attached to the owning entity.
+
+### Behavior Summary
+
+- On stop, audio is uploaded asynchronously; UI remains responsive.
+- Live or audio transcription updates patch the saved segment record.
+- A `voiceNoteGroupId` is created on the first segment and reused across stop/start recordings
+  until the parent clears it.
+- `voiceNoteSource` tags origin metadata for analytics and debugging.
+
+### New Integration Props
+
+```typescript
+voiceNoteSource?: string;
+voiceNoteGroupId?: string | null; // bindable
+onVoiceNoteGroupReady?: (groupId: string) => void;
+onVoiceNoteSegmentSaved?: (voiceNote: VoiceNote) => void;
+onVoiceNoteSegmentError?: (error: string) => void;
+```
+
+### Example Usage
+
+```svelte
+<TextareaWithVoice
+	bind:voiceNoteGroupId
+	voiceNoteSource="agent_chat"
+	onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+	onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
+/>
+```
+
+---
+
 ## Future Enhancements
 
 ### Potential Optimizations

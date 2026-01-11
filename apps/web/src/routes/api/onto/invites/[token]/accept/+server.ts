@@ -6,6 +6,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { logOntologyApiError } from '../../../shared/error-logging';
 import { createHash } from 'crypto';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
@@ -35,6 +36,19 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		});
 
 		if (error) {
+			await logOntologyApiError({
+				supabase,
+				error,
+				endpoint: '/api/onto/invites/:token/accept',
+				method: 'POST',
+				userId: user.id,
+				entityType: 'project_invite',
+				operation: 'project_invite_accept',
+				metadata: {
+					actorId,
+					tokenHashPrefix: tokenHash.slice(0, 8)
+				}
+			});
 			return ApiResponse.error(error.message, 400);
 		}
 

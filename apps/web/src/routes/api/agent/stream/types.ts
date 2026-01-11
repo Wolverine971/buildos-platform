@@ -96,6 +96,8 @@ export interface StreamRequest {
 	project_focus?: ProjectFocus | null;
 	/** Optional conversation history (if not loading from session) */
 	history?: ChatMessage[];
+	/** Optional voice note group id for attachments */
+	voice_note_group_id?: string;
 	/** Optional ontology entity type for element-level context */
 	ontology_entity_type?:
 		| 'task'

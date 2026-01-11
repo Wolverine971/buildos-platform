@@ -6,6 +6,8 @@
 	import type { UIMessage, ThinkingBlockMessage } from './agent-chat.types';
 	import { shouldRenderAsMarkdown, formatTime } from './agent-chat-formatters';
 	import { dev } from '$app/environment';
+	import VoiceNoteGroupPanel from '$lib/components/voice-notes/VoiceNoteGroupPanel.svelte';
+	import type { VoiceNote } from '$lib/types/voice-notes';
 
 	// ✅ Svelte 5: Use $bindable() for two-way binding
 	interface Props {
@@ -14,6 +16,8 @@
 		onScroll: () => void;
 		displayContextLabel: string;
 		container?: HTMLElement;
+		voiceNotesByGroupId?: Record<string, VoiceNote[]>;
+		onDeleteVoiceNote?: (groupId: string, noteId: string) => void;
 	}
 
 	let {
@@ -21,7 +25,9 @@
 		onToggleThinkingBlock,
 		onScroll,
 		displayContextLabel,
-		container = $bindable()
+		container = $bindable(),
+		voiceNotesByGroupId = {},
+		onDeleteVoiceNote
 	}: Props = $props();
 
 	const proseClasses = getProseClasses('sm');
@@ -77,7 +83,9 @@
 		{#each messages as message (message.id)}
 			{#if message.type === 'user'}
 				<!-- INKPRINT user message with accent border -->
-				<div class="flex justify-end">
+				<!-- Flex column: message bubble + voice panel (when expanded, takes full width) -->
+				<div class="flex flex-col items-end gap-1.5">
+					<!-- Message bubble -->
 					<div
 						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:px-4 sm:py-3"
 					>
@@ -86,13 +94,23 @@
 						>
 							{message.content}
 						</div>
-						<!-- INKPRINT micro-label timestamp -->
+						<!-- INKPRINT: Timestamp -->
 						<div
 							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent"
 						>
 							{formatTime(message.timestamp)}
 						</div>
 					</div>
+					<!-- Voice notes panel (outside bubble, can take full width when expanded) -->
+					{#if message.metadata?.voice_note_group_id}
+						{@const groupId = message.metadata.voice_note_group_id as string}
+						<VoiceNoteGroupPanel
+							{groupId}
+							voiceNotes={voiceNotesByGroupId[groupId] ?? []}
+							onDeleteNote={onDeleteVoiceNote}
+							inline
+						/>
+					{/if}
 				</div>
 			{:else if message.type === 'assistant'}
 				<!-- INKPRINT assistant message with Frame texture -->

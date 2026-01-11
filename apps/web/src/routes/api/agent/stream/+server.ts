@@ -128,7 +128,9 @@ async function parseRequest(
 			ontologyEntityType,
 			lastTurnContext: providedLastTurnContext,
 			projectFocus,
-			stream_run_id
+			stream_run_id,
+			voiceNoteGroupId,
+			voice_note_group_id
 		} = body;
 
 		if (!message?.trim()) {
@@ -150,6 +152,17 @@ async function parseRequest(
 			last_turn_context: providedLastTurnContext,
 			stream_run_id
 		};
+
+		const resolvedVoiceGroupId =
+			typeof voiceNoteGroupId === 'string'
+				? voiceNoteGroupId
+				: typeof voice_note_group_id === 'string'
+					? voice_note_group_id
+					: undefined;
+
+		if (resolvedVoiceGroupId) {
+			streamRequest.voice_note_group_id = resolvedVoiceGroupId;
+		}
 
 		if (projectFocus !== undefined) {
 			streamRequest.project_focus = projectFocus;
@@ -348,11 +361,47 @@ export const POST: RequestHandler = async ({
 			}
 
 			// 8. Persist user message (only after ontology access is validated)
-			await messagePersister.persistUserMessage({
+			const userMessageMetadata = streamRequest.voice_note_group_id
+				? { voice_note_group_id: streamRequest.voice_note_group_id }
+				: undefined;
+
+			const persistedUserMessage = await messagePersister.persistUserMessage({
 				sessionId: session.id,
 				userId,
-				content: streamRequest.message
+				content: streamRequest.message,
+				metadata: userMessageMetadata
 			});
+
+			if (streamRequest.voice_note_group_id && persistedUserMessage?.id) {
+				const { error: attachError } = await supabase
+					.from('voice_note_groups')
+					.update({
+						linked_entity_type: 'chat_message',
+						linked_entity_id: persistedUserMessage.id,
+						chat_session_id: session.id,
+						status: 'attached'
+					})
+					.eq('id', streamRequest.voice_note_group_id)
+					.eq('user_id', userId);
+
+				if (attachError?.code === 'PGRST116') {
+					await supabase.from('voice_note_groups').insert({
+						id: streamRequest.voice_note_group_id,
+						user_id: userId,
+						linked_entity_type: 'chat_message',
+						linked_entity_id: persistedUserMessage.id,
+						chat_session_id: session.id,
+						status: 'attached',
+						metadata: { source_component: 'agent_chat' }
+					});
+				} else if (attachError) {
+					logger.warn('Failed to attach voice note group to chat message', {
+						error: attachError,
+						groupId: streamRequest.voice_note_group_id,
+						messageId: persistedUserMessage.id
+					});
+				}
+			}
 
 			// 9. Start stream orchestration on the already-open SSE stream
 			streamHandler.startAgentStream(

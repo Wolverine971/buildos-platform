@@ -8,7 +8,11 @@ import { ApiResponse } from '$lib/utils/api-response';
  * Fetches a chat session with its messages for resumption.
  * Used by the history page when resuming a previous chat session.
  */
-export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({
+	params,
+	url,
+	locals: { supabase, safeGetSession }
+}) => {
 	const { user } = await safeGetSession();
 
 	if (!user?.id) {
@@ -32,11 +36,17 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		return ApiResponse.notFound('Chat session not found');
 	}
 
+	const includeVoiceNotes =
+		url.searchParams.get('includeVoiceNotes') === '1' ||
+		url.searchParams.get('includeVoiceNotes') === 'true';
+
 	// Fetch messages for the session (limit to avoid loading too much data)
 	const MESSAGE_LIMIT = 400;
 	const { data: messages, error: messagesError } = await supabase
 		.from('chat_messages')
-		.select('id, session_id, user_id, role, content, tool_calls, tool_call_id, created_at')
+		.select(
+			'id, session_id, user_id, role, content, tool_calls, tool_call_id, created_at, metadata'
+		)
 		.eq('session_id', sessionId)
 		.in('role', ['user', 'assistant']) // Only return user-facing messages to avoid tool/system noise
 		.order('created_at', { ascending: true })
@@ -46,12 +56,57 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		return ApiResponse.databaseError(messagesError);
 	}
 
+	let voiceNotes: any[] = [];
+	let voiceNoteGroups: any[] = [];
+
+	if (includeVoiceNotes && messages && messages.length > 0) {
+		const groupIds = Array.from(
+			new Set(
+				messages
+					.map((message: any) => message.metadata?.voice_note_group_id)
+					.filter(Boolean)
+			)
+		);
+
+		if (groupIds.length > 0) {
+			const { data: groups, error: groupsError } = await supabase
+				.from('voice_note_groups')
+				.select('*')
+				.in('id', groupIds)
+				.eq('user_id', user.id)
+				.is('deleted_at', null);
+
+			if (groupsError) {
+				return ApiResponse.databaseError(groupsError);
+			}
+
+			voiceNoteGroups = groups || [];
+
+			const { data: notes, error: notesError } = await supabase
+				.from('voice_notes')
+				.select('*')
+				.in('group_id', groupIds)
+				.eq('user_id', user.id)
+				.is('deleted_at', null)
+				.order('segment_index', { ascending: true })
+				.order('created_at', { ascending: true });
+
+			if (notesError) {
+				return ApiResponse.databaseError(notesError);
+			}
+
+			voiceNotes = notes || [];
+		}
+	}
+
 	// Check if there are more messages than we fetched (truncation indicator)
 	const truncated = (messages?.length || 0) >= MESSAGE_LIMIT;
 
 	return ApiResponse.success({
 		session,
 		messages: messages || [],
+		voiceNoteGroups,
+		voiceNotes,
 		truncated
 	});
 };

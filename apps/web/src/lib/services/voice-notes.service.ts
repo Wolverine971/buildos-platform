@@ -11,6 +11,14 @@ export interface UploadVoiceNoteOptions {
 	durationSeconds?: number | null;
 	linkedEntityType?: string | null;
 	linkedEntityId?: string | null;
+	groupId?: string | null;
+	segmentIndex?: number | null;
+	recordedAt?: string | null;
+	transcript?: string | null;
+	transcriptionStatus?: string | null;
+	transcriptionSource?: string | null;
+	transcriptionModel?: string | null;
+	metadata?: Record<string, unknown> | null;
 	transcribe?: boolean;
 	onProgress?: (progress: number) => void;
 }
@@ -40,6 +48,14 @@ export async function uploadVoiceNote(options: UploadVoiceNoteOptions): Promise<
 		durationSeconds,
 		linkedEntityType,
 		linkedEntityId,
+		groupId,
+		segmentIndex,
+		recordedAt,
+		transcript,
+		transcriptionStatus,
+		transcriptionSource,
+		transcriptionModel,
+		metadata,
 		transcribe = false,
 		onProgress
 	} = options;
@@ -63,6 +79,30 @@ export async function uploadVoiceNote(options: UploadVoiceNoteOptions): Promise<
 	}
 	if (transcribe) {
 		formData.append('transcribe', 'true');
+	}
+	if (groupId) {
+		formData.append('groupId', groupId);
+	}
+	if (typeof segmentIndex === 'number' && Number.isFinite(segmentIndex)) {
+		formData.append('segmentIndex', segmentIndex.toString());
+	}
+	if (recordedAt) {
+		formData.append('recordedAt', recordedAt);
+	}
+	if (transcript) {
+		formData.append('transcript', transcript);
+	}
+	if (transcriptionStatus) {
+		formData.append('transcriptionStatus', transcriptionStatus);
+	}
+	if (transcriptionSource) {
+		formData.append('transcriptionSource', transcriptionSource);
+	}
+	if (transcriptionModel) {
+		formData.append('transcriptionModel', transcriptionModel);
+	}
+	if (metadata && typeof metadata === 'object') {
+		formData.append('metadata', JSON.stringify(metadata));
 	}
 
 	return new Promise((resolve, reject) => {
@@ -107,6 +147,8 @@ export async function uploadVoiceNote(options: UploadVoiceNoteOptions): Promise<
 export async function listVoiceNotes(params?: {
 	linkedEntityType?: string;
 	linkedEntityId?: string;
+	groupId?: string;
+	groupIds?: string[];
 	limit?: number;
 	offset?: number;
 }): Promise<VoiceNote[]> {
@@ -116,6 +158,12 @@ export async function listVoiceNotes(params?: {
 	}
 	if (params?.linkedEntityId) {
 		searchParams.set('linkedEntityId', params.linkedEntityId);
+	}
+	if (params?.groupId) {
+		searchParams.set('groupId', params.groupId);
+	}
+	if (params?.groupIds && params.groupIds.length > 0) {
+		searchParams.set('groupIds', params.groupIds.join(','));
 	}
 	if (params?.limit) {
 		searchParams.set('limit', params.limit.toString());
@@ -161,9 +209,37 @@ export async function getVoiceNotePlaybackUrl(id: string): Promise<VoiceNotePlay
 	return payload.data;
 }
 
-export async function deleteVoiceNote(id: string, options?: { purge?: boolean }): Promise<void> {
-	const suffix = options?.purge ? '?purge=true' : '';
-	const response = await fetch(`/api/voice-notes/${id}${suffix}`, { method: 'DELETE' });
+export async function updateVoiceNote(
+	id: string,
+	payload: {
+		transcript?: string | null;
+		transcriptionStatus?: string | null;
+		transcriptionSource?: string | null;
+		transcriptionModel?: string | null;
+		transcriptionError?: string | null;
+		metadata?: Record<string, unknown> | null;
+	}
+): Promise<VoiceNote> {
+	const response = await fetch(`/api/voice-notes/${id}`, {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload)
+	});
+	const result = (await response.json()) as {
+		success?: boolean;
+		data?: VoiceNote;
+		error?: string;
+	};
+
+	if (!response.ok || !result?.success || !result?.data) {
+		throw new ApiError(result?.error || 'Failed to update voice note', response.status, result);
+	}
+
+	return result.data;
+}
+
+export async function deleteVoiceNote(id: string): Promise<void> {
+	const response = await fetch(`/api/voice-notes/${id}`, { method: 'DELETE' });
 	const payload = (await response.json()) as { success?: boolean; error?: string };
 
 	if (!response.ok || !payload?.success) {

@@ -12,6 +12,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
 	import { brainDumpService } from '$lib/services/braindump-api.service';
+	import { attachVoiceNoteGroup } from '$lib/services/voice-note-groups.service';
 	import { toastService } from '$lib/stores/toast.store';
 	import { ONBOARDING_V2_CONFIG } from '$lib/config/onboarding.config';
 	import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
@@ -49,6 +50,7 @@
 	// Voice state from TextareaWithVoice (bindable)
 	let isRecording = $state(false);
 	let voiceError = $state('');
+	let voiceNoteGroupId = $state<string | null>(null);
 
 	// Calendar connection state
 	let hasCalendarConnected = $state(false);
@@ -64,6 +66,11 @@
 
 	// Reference to TextareaWithVoice for cleanup
 	let textareaWithVoiceRef = $state<TextareaWithVoice | null>(null);
+
+	function handleVoiceNoteError(message: string) {
+		if (!message) return;
+		toastService.error(message);
+	}
 
 	/**
 	 * Check if user has Google Calendar connected
@@ -234,6 +241,7 @@
 		}
 
 		isProcessing = true;
+		let brainDumpId: string | null = null;
 
 		// Build context from user_context if available
 		const context: DisplayedBrainDumpQuestion[] = [];
@@ -253,10 +261,24 @@
 		}
 
 		try {
+			try {
+				const draftResponse = await brainDumpService.saveDraft(
+					projectInput,
+					undefined,
+					null,
+					{
+						forceNew: true
+					}
+				);
+				brainDumpId = draftResponse?.data?.brainDumpId ?? null;
+			} catch (error) {
+				console.warn('Failed to create braindump draft for voice attachments:', error);
+			}
+
 			await brainDumpService.parseBrainDumpWithStream(
 				projectInput,
 				null, // New project
-				undefined,
+				brainDumpId ?? undefined,
 				context,
 				{
 					autoAccept: true, // Auto-create without review
@@ -267,6 +289,17 @@
 						const createdProjectId =
 							result.ontology?.project_id || result.projectInfo?.id;
 						const projectName = result.projectInfo?.name || 'Project';
+
+						if (voiceNoteGroupId && brainDumpId) {
+							void attachVoiceNoteGroup(voiceNoteGroupId, {
+								linkedEntityType: 'brain_dump',
+								linkedEntityId: brainDumpId,
+								status: 'attached'
+							}).catch((error) => {
+								console.warn('Failed to attach voice notes to braindump:', error);
+							});
+						}
+						voiceNoteGroupId = null;
 
 						if (createdProjectId) {
 							createdProjects.push(createdProjectId);
@@ -567,6 +600,9 @@
 				bind:value={projectInput}
 				bind:isRecording
 				bind:voiceError
+				bind:voiceNoteGroupId
+				voiceNoteSource="onboarding_projects"
+				onVoiceNoteSegmentError={handleVoiceNoteError}
 				placeholder="Tell me about your projects, goals, and what you're working on. For example: 'I'm launching a new product next month, need to coordinate marketing, finish the website, and hire a designer...'"
 				rows={5}
 				maxRows={8}

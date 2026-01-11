@@ -62,6 +62,8 @@ isVoiceTranscribing: boolean; // Transcribing audio
 voiceErrorMessage: string; // Voice errors
 voiceRecordingDuration: number; // Seconds recorded
 voiceSupportsLiveTranscript: boolean; // Live transcription available
+voiceNoteGroupId: string | null; // Active voice note group for this draft message
+voiceNotesByGroupId: Record<string, VoiceNote[]>; // Segment cache for playback panels
 ```
 
 ## Event Handling Map

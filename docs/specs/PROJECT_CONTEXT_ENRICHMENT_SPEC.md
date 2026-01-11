@@ -17,6 +17,8 @@
 
 Enrich the agentic chat project context with compact, high-signal summaries from the project ontology (goals, risks, decisions, requirements, documents, milestones, plans, outputs, signals, insights, tasks). The output must stay token-efficient, include entity IDs for drill-down, and avoid noisy or redundant data.
 
+> Update: See `docs/specs/AGENTIC_CHAT_PROJECT_CONTEXT_ENRICHMENT_SPEC.md` for the current selection rules (goals/documents/outputs by `project_id`) and the graph snapshot design.
+
 ---
 
 ## Goals

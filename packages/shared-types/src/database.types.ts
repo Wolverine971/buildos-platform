@@ -8441,16 +8441,74 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_note_groups: {
+        Row: {
+          chat_session_id: string | null
+          created_at: string
+          deleted_at: string | null
+          id: string
+          linked_entity_id: string | null
+          linked_entity_type: string | null
+          metadata: Json
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_session_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          metadata?: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_session_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          linked_entity_id?: string | null
+          linked_entity_type?: string | null
+          metadata?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_note_groups_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_note_groups_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voice_notes: {
         Row: {
           created_at: string
           deleted_at: string | null
           duration_seconds: number | null
           file_size_bytes: number
+          group_id: string | null
           id: string
           linked_entity_id: string | null
           linked_entity_type: string | null
+          metadata: Json
           mime_type: string
+          recorded_at: string | null
+          segment_index: number | null
           storage_bucket: string
           storage_path: string
           transcript: string | null
@@ -8465,10 +8523,14 @@ export type Database = {
           deleted_at?: string | null
           duration_seconds?: number | null
           file_size_bytes: number
+          group_id?: string | null
           id?: string
           linked_entity_id?: string | null
           linked_entity_type?: string | null
+          metadata?: Json
           mime_type: string
+          recorded_at?: string | null
+          segment_index?: number | null
           storage_bucket?: string
           storage_path: string
           transcript?: string | null
@@ -8483,10 +8545,14 @@ export type Database = {
           deleted_at?: string | null
           duration_seconds?: number | null
           file_size_bytes?: number
+          group_id?: string | null
           id?: string
           linked_entity_id?: string | null
           linked_entity_type?: string | null
+          metadata?: Json
           mime_type?: string
+          recorded_at?: string | null
+          segment_index?: number | null
           storage_bucket?: string
           storage_path?: string
           transcript?: string | null
@@ -8497,6 +8563,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "voice_notes_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "voice_note_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "voice_notes_user_id_fkey"
             columns: ["user_id"]

@@ -25,14 +25,14 @@ need to give louis a better pic with better background contrast
 use canva
 need to also research the google voice issue
 
-
 <!-- /// today jan 10 -->
 
 death to agile post- anti positioning
+
 - reach out to PMs see if they like what i am using
-5 emails for phil and solo
-get phil referal- schedule intro meeting
-create blog drafts for phil
+  5 emails for phil and solo
+  get phil referal- schedule intro meeting
+  create blog drafts for phil
 
 create tacemus project in buildos
 get the racoon mascot for tacemus

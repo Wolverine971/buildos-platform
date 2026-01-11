@@ -2,7 +2,7 @@
 
 # Agentic Chat System - Architecture Documentation
 
-> **Last Updated:** 2026-01-07
+> **Last Updated:** 2026-01-10
 > **Status:** Comprehensive Technical Reference (Post-Refactor)
 > **Maintainer:** BuildOS Platform Team
 
@@ -560,9 +560,26 @@ type ActivityType =
 type AgentLoopState = 'thinking' | 'executing_plan' | 'waiting_on_user';
 ```
 
+### Voice Note Attachments
+
+Agentic chat supports per-message voice note groups. Each stop/start recording creates a segment
+stored in `voice_notes` with a shared `group_id`. When the message is sent, the group is attached
+to the persisted chat message and the message metadata includes `voice_note_group_id`.
+
+```typescript
+voiceNoteGroupId: string | null; // Active group for the pending user message
+voiceNotesByGroupId: Record<string, VoiceNote[]>; // Cached segments for playback panels
+```
+
 ---
 
 ## Known Issues & Improvements
+
+### Recent Updates (2026-01-10)
+
+- Added voice note groups for agentic chat messages (grouped segments + async attachment).
+- Message metadata now includes `voice_note_group_id` to drive playback panels.
+- History/resume loads voice notes via `includeVoiceNotes=1` on chat session fetch.
 
 ### Recent Updates (2026-01-07)
 
@@ -704,6 +721,7 @@ interface AgentStreamRequest {
 	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output';
 	projectFocus?: ProjectFocus;
 	lastTurnContext?: LastTurnContext;
+	voiceNoteGroupId?: string; // Optional voice note group id for attachments
 }
 ```
 
@@ -728,14 +746,15 @@ Connection: keep-alive
 
 ### Frontend Files
 
-| File                                               | Purpose                    |
-| -------------------------------------------------- | -------------------------- |
-| `src/lib/components/agent/AgentChatModal.svelte`   | Main chat container        |
-| `src/lib/components/agent/AgentMessageList.svelte` | Message list renderer      |
-| `src/lib/components/agent/AgentComposer.svelte`    | Input with voice support   |
-| `src/lib/components/agent/agent-chat.types.ts`     | UI type definitions        |
-| `src/lib/components/agent/agent-chat.constants.ts` | Context descriptors        |
-| `src/lib/utils/sse-processor.ts`                   | SSE utilities (~305 lines) |
+| File                                                        | Purpose                     |
+| ----------------------------------------------------------- | --------------------------- |
+| `src/lib/components/agent/AgentChatModal.svelte`            | Main chat container         |
+| `src/lib/components/agent/AgentMessageList.svelte`          | Message list renderer       |
+| `src/lib/components/agent/AgentComposer.svelte`             | Input with voice support    |
+| `src/lib/components/voice-notes/VoiceNoteGroupPanel.svelte` | Message voice note playback |
+| `src/lib/components/agent/agent-chat.types.ts`              | UI type definitions         |
+| `src/lib/components/agent/agent-chat.constants.ts`          | Context descriptors         |
+| `src/lib/utils/sse-processor.ts`                            | SSE utilities (~305 lines)  |
 
 ### Backend Files
 
