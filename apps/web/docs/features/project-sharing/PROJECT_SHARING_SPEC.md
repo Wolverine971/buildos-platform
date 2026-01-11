@@ -184,7 +184,7 @@ Add or update RLS on:
     - Create invite, send email, log activity.
 - `GET /api/onto/projects/:id/invites`
     - List pending invites (owner/admin only).
-- `POST /api/onto/invites/:token/accept`
+- `POST /api/onto/invites/token/:token/accept`
     - Accept invite, create membership, log activity.
 - `GET /api/onto/invites/pending`
     - List pending invites for the current user (email match).
@@ -292,7 +292,7 @@ All below currently enforce `project.created_by === actorId` and must pivot to m
 
 ## Notifications & Email
 
-- Invite email: send via `EmailService`.
+- Invite email: send via `EmailService`, include project name + description and auth CTAs.
     - `apps/web/src/lib/services/email-service.ts:1-127`
 - In-app notifications for:
     - Invite received

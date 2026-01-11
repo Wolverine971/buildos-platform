@@ -526,11 +526,8 @@
 
 	const voiceButtonClasses = $derived(getVoiceButtonClasses(voiceButtonState.variant));
 
-	// Minimal padding - buttons have backdrop so text can flow underneath
-	// The backdrop blur + bg-card/90 ensures buttons remain visible over text
-	const textareaPaddingRight = $derived('pr-3');
-
-	// Border radius for textarea (full rounded - status row is now separate helper text)
+	// Buttons are now in status row below textarea, no special padding needed
+	const textareaPaddingRight = '';
 	const textareaBorderRadius = '';
 
 	onMount(() => {
@@ -679,26 +676,26 @@
 	}
 
 	function getVoiceButtonClasses(variant: VoiceButtonVariant): string {
-		// Base classes for all states - Inkprint compliant
+		// Base classes for all interactive states - Inkprint compliant
 		const base =
 			'shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background';
 
 		switch (variant) {
 			case 'recording':
-				// Active recording - uses destructive semantic (urgency/stop)
-				return `${base} border-2 border-destructive bg-destructive/10 text-destructive hover:bg-destructive/15 dark:bg-destructive/20 dark:hover:bg-destructive/25`;
+				// Active recording (stop action) - solid destructive for urgency/stop
+				return `${base} border-2 border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90`;
 			case 'loading':
-				// Processing state - muted, non-interactive feel
-				return `${base} border border-border bg-muted text-muted-foreground`;
+				// Processing state - subtle muted, non-interactive feel
+				return `${base} border border-border bg-muted/80 text-muted-foreground`;
 			case 'prompt':
-				// Needs attention - accent color draws eye
-				return `${base} border-2 border-accent bg-accent/10 text-accent hover:bg-accent/15 dark:bg-accent/20 dark:hover:bg-accent/25`;
+				// Needs attention (enable mic) - accent outline to draw eye
+				return `${base} border-2 border-accent bg-accent/10 text-accent hover:bg-accent/20 dark:bg-accent/15 dark:hover:bg-accent/25`;
 			case 'muted':
-				// Disabled/unavailable - clearly inactive
-				return `border border-border bg-muted text-muted-foreground/60 cursor-not-allowed opacity-60`;
+				// Disabled/unavailable - clearly inactive, no pressable
+				return `border border-border bg-muted/60 text-muted-foreground/40 cursor-not-allowed`;
 			default:
-				// Ready state - primary action, inverted for prominence
-				return `${base} border border-foreground bg-foreground text-background hover:bg-foreground/90`;
+				// Ready state - outline style to complement accent send button
+				return `${base} border border-foreground/20 bg-card text-foreground hover:border-foreground/40 hover:bg-muted/50 dark:border-foreground/15 dark:hover:border-foreground/30`;
 		}
 	}
 
@@ -933,46 +930,10 @@
 			}}
 		/>
 
-		<!-- ✅ Action buttons: Bottom-right corner with backdrop for visual separation -->
-		<!-- z-10 ensures buttons are ALWAYS above live transcript preview (z-0) -->
-		<div class="pointer-events-none absolute bottom-0 right-0 z-10 hidden p-1.5 xs:block">
-			<div
-				class="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-border/50 bg-card/90 p-1 shadow-ink backdrop-blur-sm"
-			>
-				<!-- Snippet for custom action buttons (e.g., send button) -->
-				{#if actions}
-					{@render actions()}
-				{/if}
-
-				<!-- Voice recording button: 36px, touch-optimized, hidden on mobile (shown in bottom bar) -->
-				{#if enableVoice}
-					<button
-						type="button"
-						class={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
-						style="-webkit-tap-highlight-color: transparent;"
-						onclick={toggleVoiceRecording}
-						aria-label={voiceButtonState.label}
-						title={voiceButtonState.label}
-						aria-pressed={isCurrentlyRecording}
-						disabled={voiceButtonState.disabled}
-					>
-						{#if voiceButtonState.isLoading}
-							<LoaderCircle class="h-4 w-4 animate-spin" />
-						{:else}
-							{@const VoiceIcon = voiceButtonState.icon}
-							<VoiceIcon class="h-4 w-4" />
-						{/if}
-					</button>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Live transcript preview: Positioned to avoid overlap with action buttons -->
-		<!-- IMPORTANT: pointer-events-none on ALL elements to ensure buttons are always clickable -->
+		<!-- Live transcript preview: Full width now that buttons are in status row -->
 		{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
-			{@const rightOffset = actions ? 'xs:right-24' : 'xs:right-14'}
 			<div
-				class={`pointer-events-none absolute bottom-14 left-2 right-2 z-0 max-h-24 overflow-hidden xs:bottom-2 ${rightOffset}`}
+				class="pointer-events-none absolute bottom-2 left-2 right-2 z-0 max-h-24 overflow-hidden"
 			>
 				<div
 					class="pointer-events-none select-none rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-1.5 text-sm text-accent shadow-ink backdrop-blur-sm dark:bg-accent/10"
@@ -1098,8 +1059,8 @@
 					{/if}
 				</div>
 
-				<!-- Right side: Errors and custom status snippet -->
-				<div class="flex flex-wrap items-center gap-1.5">
+				<!-- Right side: Errors, status snippet, and action buttons -->
+				<div class="flex items-center gap-2">
 					{#if _voiceError}
 						<!-- Error badge: destructive with Inkprint static texture -->
 						<span
@@ -1118,6 +1079,35 @@
 							voiceError: _voiceError
 						})}
 					{/if}
+
+					<!-- Action buttons: inline with status row (desktop) -->
+					<div class="hidden items-center gap-1.5 xs:flex">
+						<!-- Custom action buttons (e.g., send button) -->
+						{#if actions}
+							{@render actions()}
+						{/if}
+
+						<!-- Voice recording button -->
+						{#if enableVoice}
+							<button
+								type="button"
+								class={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
+								style="-webkit-tap-highlight-color: transparent;"
+								onclick={toggleVoiceRecording}
+								aria-label={voiceButtonState.label}
+								title={voiceButtonState.label}
+								aria-pressed={isCurrentlyRecording}
+								disabled={voiceButtonState.disabled}
+							>
+								{#if voiceButtonState.isLoading}
+									<LoaderCircle class="h-4 w-4 animate-spin" />
+								{:else}
+									{@const VoiceIcon = voiceButtonState.icon}
+									<VoiceIcon class="h-4 w-4" />
+								{/if}
+							</button>
+						{/if}
+					</div>
 				</div>
 			</div>
 		</div>

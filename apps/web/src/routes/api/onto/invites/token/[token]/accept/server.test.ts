@@ -1,4 +1,4 @@
-// apps/web/src/routes/api/onto/invites/[token]/accept/server.test.ts
+// apps/web/src/routes/api/onto/invites/token/[token]/accept/server.test.ts
 import { describe, it, expect, vi } from 'vitest';
 import type { RequestEvent } from '@sveltejs/kit';
 import { createHash } from 'crypto';
@@ -7,7 +7,7 @@ vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: vi.fn().mockResolvedValue('actor-1')
 }));
 
-vi.mock('../../../shared/error-logging', () => ({
+vi.mock('../../../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()
 }));
 
@@ -31,7 +31,7 @@ const createEvent = (overrides?: Partial<RequestEvent>): RequestEvent => {
 	} as unknown as RequestEvent;
 };
 
-describe('POST /api/onto/invites/[token]/accept', () => {
+describe('POST /api/onto/invites/token/[token]/accept', () => {
 	it('returns unauthorized when no user session', async () => {
 		const event = createEvent({
 			locals: {

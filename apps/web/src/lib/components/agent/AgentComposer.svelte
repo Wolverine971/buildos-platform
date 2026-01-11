@@ -93,38 +93,41 @@
 		onkeydown={onKeyDownHandler}
 	>
 		{#snippet actions()}
-			<!-- INKPRINT primary send button -->
+			<!-- INKPRINT action buttons: inline with status row hints -->
 			{#if isStreaming}
+				<!-- Stop button: destructive semantic for urgency -->
 				<button
 					type="button"
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:h-10 sm:w-10"
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-destructive/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Stop response"
 					onclick={onStop}
 				>
-					<Square class="h-4 w-4" />
+					<Square class="h-3.5 w-3.5" />
 				</button>
 				{#if allowSendWhileStreaming}
+					<!-- Send while streaming: accent for primary action -->
 					<button
 						type="submit"
-						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-foreground/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:w-10"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
 						style="-webkit-tap-highlight-color: transparent;"
 						aria-label="Send & stop"
 						title="Send & stop"
 						disabled={isSendDisabled}
 					>
-						<Send class="h-4 w-4" />
+						<Send class="h-3.5 w-3.5" />
 					</button>
 				{/if}
 			{:else}
+				<!-- Send button: accent color for primary action, clear disabled state -->
 				<button
 					type="submit"
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-foreground/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 sm:w-10"
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Send message"
 					disabled={isSendDisabled}
 				>
-					<Send class="h-4 w-4" />
+					<Send class="h-3.5 w-3.5" />
 				</button>
 			{/if}
 		{/snippet}
@@ -137,10 +140,10 @@
 		>
 			<div class="flex flex-wrap items-center gap-1">
 				{#if voiceErrorMessage}
-					<!-- INKPRINT error badge with Static texture -->
+					<!-- INKPRINT error badge with Static texture - semantic destructive -->
 					<span
 						role="alert"
-						class="flex items-center gap-1 rounded-lg border border-red-600/30 bg-red-50 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-red-700 tx tx-static tx-weak dark:bg-red-950/30 dark:text-red-400"
+						class="flex items-center gap-1 rounded-lg border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-destructive tx tx-static tx-weak"
 					>
 						{voiceErrorMessage}
 					</span>

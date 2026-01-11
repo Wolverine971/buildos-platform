@@ -164,21 +164,6 @@
 				{headerLabel}
 			</span>
 		</div>
-		<div class="flex shrink-0 items-center gap-1.5 text-[0.65rem] sm:gap-2 sm:text-xs">
-			<span
-				class="hidden font-mono font-medium sm:inline {statusClass}"
-				role="status"
-				aria-live="polite"
-			>
-				{statusLabel}
-			</span>
-			<span
-				class="font-mono text-muted-foreground"
-				aria-label={`${activityCount} ${activityCount === 1 ? 'activity' : 'activities'}`}
-			>
-				{activityCount}
-			</span>
-		</div>
 	</button>
 
 	<!-- INKPRINT activity log panel -->

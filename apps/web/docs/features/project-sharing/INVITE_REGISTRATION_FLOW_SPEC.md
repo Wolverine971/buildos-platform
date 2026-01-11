@@ -32,7 +32,7 @@ Invites currently assume the recipient already has a BuildOS account. For new us
 
 - Invite acceptance auto-ran on page load: `apps/web/src/routes/invites/[token]/+page.server.ts`.
 - Unauthenticated users were redirected to `/auth/login?redirectTo=...`, but login/register did not honor redirects: `apps/web/src/routes/auth/login/+page.svelte`, `apps/web/src/routes/auth/register/+page.svelte`.
-- Token-based acceptance uses RPC: `apps/web/src/routes/api/onto/invites/[token]/accept/+server.ts`.
+- Token-based acceptance uses RPC: `apps/web/src/routes/api/onto/invites/token/[token]/accept/+server.ts`.
 - Invite records are admin-only via RLS; invitees cannot query `onto_project_invites` directly: `supabase/migrations/20260320000000_project_sharing_membership.sql`.
 
 ## Implemented UX flow
@@ -83,7 +83,7 @@ Invites currently assume the recipient already has a BuildOS account. For new us
 - `GET /api/onto/invites/pending` -> `list_pending_project_invites()`
 - `POST /api/onto/invites/:inviteId/accept` -> `accept_project_invite_by_id()`
 - `POST /api/onto/invites/:inviteId/decline` -> `decline_project_invite()` (optional)
-- `POST /api/onto/invites/:token/accept` remains for token-based acceptance (used by preview page).
+- `POST /api/onto/invites/token/:token/accept` remains for token-based acceptance (legacy support).
 
 ### Data model
 
@@ -122,7 +122,7 @@ Invites currently assume the recipient already has a BuildOS account. For new us
 
 ## Implementation status
 
-- [x] Invite email includes register/login links with redirect.
+- [x] Invite email includes project name/description plus register/login links with redirect.
 - [x] Invite preview page shows details + accept/decline actions.
 - [x] Pending invites page + API endpoints.
 - [x] RPCs added: preview, list, accept by id, decline.

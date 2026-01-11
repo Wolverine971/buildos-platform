@@ -156,7 +156,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, name')
+			.select('id, name, description')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -246,6 +246,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const inviteUrl = `${baseUrl}${invitePath}`;
 		const registerUrl = `${baseUrl}/auth/register?redirect=${encodeURIComponent(invitePath)}`;
 		const loginUrl = `${baseUrl}/auth/login?redirect=${encodeURIComponent(invitePath)}`;
+		const projectDescription = project.description?.trim() || '';
+		const descriptionHtml = projectDescription
+			? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #6F6E75;">${projectDescription}</p>`
+			: '';
+		const descriptionText = projectDescription
+			? `\nDescription: ${projectDescription}\n\n`
+			: '\n\n';
 		const subject = `${inviterName} invited you to "${project.name}" on BuildOS`;
 		const roleLabel = roleKey === 'editor' ? 'Editor' : 'Viewer';
 		const roleDescription =
@@ -267,6 +274,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	<p style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; color: #1A1A1D;">
 		${project.name}
 	</p>
+	${descriptionHtml}
 	<div style="display: inline-block; background-color: #EDEBE6; border-radius: 4px; padding: 6px 12px;">
 		<span style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #6F6E75;">Role:</span>
 		<span style="font-size: 14px; font-weight: 600; color: #1A1A1D; margin-left: 4px;">${roleLabel}</span>
@@ -293,7 +301,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		`.trim();
 
 		const html = generateMinimalEmailHTML({ subject, content });
-		const textBody = `${inviterName} invited you to collaborate on \"${project.name}\".\n\nAccept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
+		const textBody = `${inviterName} invited you to collaborate on \"${project.name}\".${descriptionText}Accept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
 
 		const emailService = new EmailService(supabase);
 		const emailResult = await emailService.sendEmail({

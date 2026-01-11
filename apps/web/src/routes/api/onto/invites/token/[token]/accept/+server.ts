@@ -1,4 +1,4 @@
-// apps/web/src/routes/api/onto/invites/[token]/accept/+server.ts
+// apps/web/src/routes/api/onto/invites/token/[token]/accept/+server.ts
 /**
  * Accept a project invite by token.
  */
@@ -6,7 +6,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
-import { logOntologyApiError } from '../../../shared/error-logging';
+import { logOntologyApiError } from '../../../../shared/error-logging';
 import { createHash } from 'crypto';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
@@ -39,7 +39,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			await logOntologyApiError({
 				supabase,
 				error,
-				endpoint: '/api/onto/invites/:token/accept',
+				endpoint: '/api/onto/invites/token/:token/accept',
 				method: 'POST',
 				userId: user.id,
 				entityType: 'project_invite',

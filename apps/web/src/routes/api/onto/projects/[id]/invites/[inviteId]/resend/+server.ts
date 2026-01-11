@@ -123,7 +123,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id, name')
+			.select('id, name, description')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -138,10 +138,18 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		const inviteUrl = `${baseUrl}${invitePath}`;
 		const registerUrl = `${baseUrl}/auth/register?redirect=${encodeURIComponent(invitePath)}`;
 		const loginUrl = `${baseUrl}/auth/login?redirect=${encodeURIComponent(invitePath)}`;
+		const projectDescription = project.description?.trim() || '';
+		const descriptionHtml = projectDescription
+			? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #6F6E75;">${projectDescription}</p>`
+			: '';
+		const descriptionText = projectDescription
+			? `\nDescription: ${projectDescription}\n\n`
+			: '\n\n';
 		const subject = `${inviterName} invited you to "${project.name}" on BuildOS`;
 		const content = `
 <h1>You've been invited to a project</h1>
 <p>${inviterName} invited you to collaborate on <strong>${project.name}</strong>.</p>
+${descriptionHtml}
 <p><a href="${inviteUrl}">Accept the invite</a></p>
 <p style="font-size: 13px; color: #6F6E75; margin: 16px 0;">
 	New to BuildOS? <a href="${registerUrl}" style="color: #D96C1E; font-weight: 600; text-decoration: none;">Create an account</a> to accept.<br />
@@ -151,7 +159,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		`.trim();
 
 		const html = generateMinimalEmailHTML({ subject, content });
-		const textBody = `${inviterName} invited you to collaborate on \"${project.name}\".\n\nAccept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
+		const textBody = `${inviterName} invited you to collaborate on \"${project.name}\".${descriptionText}Accept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
 
 		const emailService = new EmailService(supabase);
 		const emailResult = await emailService.sendEmail({
