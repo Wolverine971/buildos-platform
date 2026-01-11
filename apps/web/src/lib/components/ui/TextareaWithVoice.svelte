@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/ui/TextareaWithVoice.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { Mic, MicOff, LoaderCircle } from 'lucide-svelte';
 	import Textarea from './Textarea.svelte';
 	import {
@@ -42,7 +42,6 @@
 		enableVoice?: boolean;
 		showStatusRow?: boolean;
 		showLiveTranscriptPreview?: boolean;
-		idleHint?: string;
 		voiceBlocked?: boolean;
 		voiceBlockedLabel?: string;
 		transcriptionEndpoint?: string;
@@ -83,10 +82,6 @@
 		[key: string]: any; // Allow rest props
 	}
 
-	const dispatch = createEventDispatcher<{
-		input: { value: string };
-	}>();
-
 	// Svelte 5 runes mode: use $props() with rest capture for proper prop forwarding
 	// Keep value in props to support two-way binding with bind:value
 	let {
@@ -104,7 +99,6 @@
 		enableVoice = true,
 		showStatusRow = true,
 		showLiveTranscriptPreview = true,
-		idleHint = 'Use the mic to dictate your update.',
 		voiceBlocked = false,
 		voiceBlockedLabel = 'Recording unavailable right now',
 		transcriptionEndpoint = '/api/transcribe',
@@ -144,6 +138,7 @@
 	let _voiceError = $state('');
 	let _canUseLiveTranscript = $state(false);
 	let liveTranscriptPreview = $state('');
+	let hadLiveTranscript = $state(false);
 	let _recordingDuration = $state(0);
 
 	let microphonePermissionGranted = $state(false);
@@ -158,8 +153,15 @@
 		transcriptionSource: 'audio' | 'live';
 		transcriptionStatus: 'complete' | 'failed';
 		transcriptionModel?: string | null;
+		transcriptionService?: string | null;
 		transcriptionError?: string | null;
 		latencyMs?: number;
+	};
+
+	type TranscriptionResult = {
+		transcript: string;
+		transcriptionModel?: string | null;
+		transcriptionService?: string | null;
 	};
 
 	type SegmentState = {
@@ -212,7 +214,10 @@
 		}
 	});
 
-	async function requestTranscription(audioFile: File, vocabTerms?: string): Promise<string> {
+	async function requestTranscription(
+		audioFile: File,
+		vocabTerms?: string
+	): Promise<TranscriptionResult> {
 		const formData = new FormData();
 		formData.append('audio', audioFile);
 		if (vocabTerms) {
@@ -238,12 +243,13 @@
 		}
 
 		const result = await response.json();
-		if (result?.success && result?.data?.transcript) {
-			return result.data.transcript;
-		}
-
-		if (result?.transcript) {
-			return result.transcript;
+		const payload = result?.success && result?.data ? result.data : result;
+		if (payload?.transcript) {
+			return {
+				transcript: payload.transcript,
+				transcriptionModel: payload.transcription_model ?? null,
+				transcriptionService: payload.transcription_service ?? null
+			};
 		}
 
 		throw new Error('No transcript returned from transcription service');
@@ -253,14 +259,24 @@
 		async transcribeAudio(audioFile: File, vocabTerms?: string) {
 			const startTime = performance.now();
 			try {
-				const transcript = await requestTranscription(audioFile, vocabTerms);
+				const {
+					transcript,
+					transcriptionModel,
+					transcriptionService: transcriptionServiceName
+				} = await requestTranscription(audioFile, vocabTerms);
 				queueTranscriptUpdate({
 					transcript,
 					transcriptionSource: 'audio',
 					transcriptionStatus: 'complete',
+					transcriptionModel,
+					transcriptionService: transcriptionServiceName,
 					latencyMs: Math.round(performance.now() - startTime)
 				});
-				return { transcript };
+				return {
+					transcript,
+					transcriptionModel,
+					transcriptionService: transcriptionServiceName
+				};
 			} catch (error) {
 				const message =
 					error instanceof Error ? error.message : 'Failed to transcribe audio';
@@ -400,6 +416,9 @@
 		if (typeof update.latencyMs === 'number') {
 			metadata.transcription_latency_ms = update.latencyMs;
 		}
+		if (update.transcriptionService) {
+			metadata.transcription_service = update.transcriptionService;
+		}
 
 		try {
 			const updated = await updateVoiceNote(segmentState.voiceNoteId, {
@@ -440,6 +459,14 @@
 		} = params;
 
 		try {
+			const metadata: Record<string, unknown> = {};
+			if (voiceNoteSource) {
+				metadata.source_component = voiceNoteSource;
+			}
+			if (transcriptionSource === 'live') {
+				metadata.transcription_service = 'web-speech-api';
+			}
+
 			await startGroupCreation(groupId);
 			const voiceNote = await uploadVoiceNote({
 				audioBlob,
@@ -451,7 +478,7 @@
 				transcriptionStatus: transcriptionStatus ?? null,
 				transcriptionSource: transcriptionSource ?? null,
 				transcribe: false,
-				metadata: voiceNoteSource ? { source_component: voiceNoteSource } : null
+				metadata: Object.keys(metadata).length > 0 ? metadata : null
 			});
 
 			const groupState = getOrCreateGroupState(groupId);
@@ -487,6 +514,7 @@
 
 		const transcriptSnapshot = liveTranscriptPreview.trim();
 		const hasTranscript = transcriptSnapshot.length > 0;
+		hadLiveTranscript = hasTranscript;
 		const recordedAt = new Date().toISOString();
 
 		enqueueUpload(() =>
@@ -507,6 +535,10 @@
 		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
 	);
 
+	const transcribingStatusLabel = $derived(
+		hadLiveTranscript ? 'Refining transcript…' : transcribingLabel
+	);
+
 	const voiceButtonState = $derived.by(() =>
 		buildVoiceButtonState({
 			enableVoice,
@@ -525,10 +557,6 @@
 	);
 
 	const voiceButtonClasses = $derived(getVoiceButtonClasses(voiceButtonState.variant));
-
-	// Buttons are now in status row below textarea, no special padding needed
-	const textareaPaddingRight = '';
-	const textareaBorderRadius = '';
 
 	onMount(() => {
 		if (enableVoice) {
@@ -646,17 +674,17 @@
 			};
 		}
 
-		if (_isTranscribing) {
+		if (isTranscribing) {
 			return {
 				icon: LoaderCircle,
-				label: transcribingLabel,
+				label: transcribingStatusLabel,
 				disabled: true,
 				isLoading: true,
 				variant: 'loading'
 			};
 		}
 
-		if (!microphonePermissionGranted && (hasAttemptedVoice || _voiceError)) {
+		if (!microphonePermissionGranted && (hasAttemptedVoice || voiceError)) {
 			return {
 				icon: Mic,
 				label: 'Enable microphone',
@@ -726,7 +754,6 @@
 				onTextUpdate: (text: string) => {
 					value = text;
 					_voiceError = '';
-					dispatch('input', { value });
 				},
 				onError: (errorMessage: string) => {
 					_voiceError = errorMessage;
@@ -735,6 +762,9 @@
 				},
 				onPhaseChange: (phase: 'idle' | 'transcribing') => {
 					_isTranscribing = phase === 'transcribing';
+					if (phase === 'idle') {
+						hadLiveTranscript = false;
+					}
 				},
 				onPermissionGranted: () => {
 					microphonePermissionGranted = true;
@@ -776,6 +806,7 @@
 		hasAttemptedVoice = true;
 		_voiceError = '';
 		isInitializingRecording = true;
+		hadLiveTranscript = false;
 
 		try {
 			await voiceRecordingService.startRecording(value);
@@ -850,6 +881,7 @@
 		_isTranscribing = false;
 		_recordingDuration = 0;
 		liveTranscriptPreview = '';
+		hadLiveTranscript = false;
 		hasAttemptedVoice = false;
 		microphonePermissionGranted = false;
 		voiceInitialized = false;
@@ -858,7 +890,6 @@
 	function handleTextareaInput(event: Event) {
 		let target = event?.target as HTMLTextAreaElement;
 		value = target.value;
-		dispatch('input', { value });
 	}
 
 	function handleTextareaKeyDown(event: KeyboardEvent) {
@@ -908,7 +939,7 @@
 
 <div class={`${containerClass} ${className}`.trim()}>
 	<div class="relative">
-		<!-- Textarea: rounded-t only when status row is shown (seamless connection) -->
+		<!-- Textarea with optional live transcript preview overlay -->
 		<Textarea
 			bind:this={textareaRef}
 			bind:value
@@ -920,7 +951,7 @@
 			{helperText}
 			{error}
 			{errorMessage}
-			class={`${textareaPaddingRight} ${textareaBorderRadius} ${textareaClass}`.trim()}
+			class={textareaClass}
 			oninput={handleTextareaInput}
 			{...restProps}
 			onkeydown={(e) => {
@@ -934,6 +965,8 @@
 		{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
 			<div
 				class="pointer-events-none absolute bottom-2 left-2 right-2 z-0 max-h-24 overflow-hidden"
+				aria-live="polite"
+				aria-atomic="true"
 			>
 				<div
 					class="pointer-events-none select-none rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-1.5 text-sm text-accent shadow-ink backdrop-blur-sm dark:bg-accent/10"
@@ -958,7 +991,7 @@
 				onclick={toggleVoiceRecording}
 				aria-label={voiceButtonState.label}
 				title={voiceButtonState.label}
-				aria-pressed={isCurrentlyRecording}
+				aria-pressed={voiceButtonState.variant === 'recording' ? true : undefined}
 				disabled={voiceButtonState.disabled}
 			>
 				{#if voiceButtonState.isLoading}
@@ -976,13 +1009,13 @@
 		{/if}
 	</div>
 
-	{#if enableVoice && showStatusRow}
-		<!-- Status row: clean helper text below input -->
+	{#if showStatusRow}
+		<!-- Status row: hints, status indicators, and action buttons -->
 		<div class="mt-1.5 px-1">
 			<div class="flex flex-wrap items-center justify-between gap-2">
-				<!-- Left side: Primary status indicator -->
+				<!-- Left side: Status indicators and keyboard hints -->
 				<div class="flex flex-wrap items-center gap-1.5">
-					{#if isCurrentlyRecording}
+					{#if enableVoice && isCurrentlyRecording}
 						<!-- Recording indicator: destructive semantic with pulse animation -->
 						<span class="flex items-center gap-1.5 text-destructive">
 							<span class="relative flex h-2 w-2 items-center justify-center">
@@ -1001,27 +1034,27 @@
 							<kbd
 								class="hidden rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-destructive md:inline-flex"
 							>
-								Space
+								Enter
 							</kbd>
 						</span>
-					{:else if isInitializingRecording}
+					{:else if enableVoice && isInitializingRecording}
 						<!-- Initializing state: muted, processing feel -->
 						<span class="flex items-center gap-1.5 text-muted-foreground">
 							<LoaderCircle class="h-3 w-3 animate-spin" />
 							<span class="text-xs font-medium">{preparingLabel}</span>
 						</span>
-					{:else if _isTranscribing}
+					{:else if enableVoice && _isTranscribing}
 						<!-- Transcribing state: accent color for active processing -->
 						<span class="flex items-center gap-1.5 text-accent">
 							<LoaderCircle class="h-3 w-3 animate-spin" />
-							<span class="text-xs font-semibold">{transcribingLabel}</span>
+							<span class="text-xs font-semibold">{transcribingStatusLabel}</span>
 						</span>
-					{:else if !isVoiceSupported}
+					{:else if enableVoice && !isVoiceSupported}
 						<!-- Unsupported: muted text -->
 						<span class="text-xs font-medium text-muted-foreground"
 							>Voice unavailable</span
 						>
-					{:else if voiceBlocked}
+					{:else if enableVoice && voiceBlocked}
 						<!-- Blocked: warning state -->
 						<span class="text-xs font-medium text-amber-600 dark:text-amber-500"
 							>{voiceBlockedLabel}</span
@@ -1036,21 +1069,25 @@
 								>Enter</kbd
 							>
 							<span class="mx-1">send</span>
-							<span class="text-border">·</span>
+							<span class="text-muted-foreground/50">·</span>
 							<kbd
 								class="ml-1 rounded border border-border bg-background px-1 py-0.5 font-mono text-[0.65rem] font-medium text-foreground"
 								>Shift+Enter</kbd
 							>
 							<span class="ml-1">new line</span>
 						</span>
-						<!-- Mobile hint: simpler message -->
+						<!-- Mobile hint: conditional on voice availability -->
 						<span class="text-xs text-muted-foreground md:hidden">
-							Tap send or use voice
+							{#if enableVoice && !voiceBlocked}
+								Tap send or use voice
+							{:else}
+								Tap send
+							{/if}
 						</span>
 					{/if}
 
 					<!-- Live transcript badge: accent styling, micro-label -->
-					{#if _canUseLiveTranscript && isCurrentlyRecording}
+					{#if enableVoice && _canUseLiveTranscript && isCurrentlyRecording}
 						<span
 							class="hidden rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-accent xs:inline-flex"
 						>
@@ -1061,11 +1098,11 @@
 
 				<!-- Right side: Errors, status snippet, and action buttons -->
 				<div class="flex items-center gap-2">
-					{#if _voiceError}
+					{#if enableVoice && _voiceError}
 						<!-- Error badge: destructive with Inkprint static texture -->
 						<span
 							role="alert"
-							class="flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive tx tx-static tx-weak"
+							class="flex max-w-[200px] items-center gap-1 truncate rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive tx tx-static tx-weak"
 						>
 							{_voiceError}
 						</span>
@@ -1096,7 +1133,7 @@
 								onclick={toggleVoiceRecording}
 								aria-label={voiceButtonState.label}
 								title={voiceButtonState.label}
-								aria-pressed={isCurrentlyRecording}
+								aria-pressed={voiceButtonState.variant === 'recording' ? true : undefined}
 								disabled={voiceButtonState.disabled}
 							>
 								{#if voiceButtonState.isLoading}

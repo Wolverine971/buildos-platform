@@ -17,6 +17,9 @@ import {
 import { get, writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
+const MIN_TRANSCRIBE_BYTES = 1000;
+const MAX_SYNC_TRANSCRIBE_SECONDS = 180;
+
 export interface VoiceRecordingCallbacks {
 	onTextUpdate: (text: string) => void;
 	onError: (error: string) => void;
@@ -27,7 +30,14 @@ export interface VoiceRecordingCallbacks {
 }
 
 export interface TranscriptionService {
-	transcribeAudio(audioFile: File, vocabularyTerms?: string): Promise<{ transcript: string }>;
+	transcribeAudio(
+		audioFile: File,
+		vocabularyTerms?: string
+	): Promise<{
+		transcript: string;
+		transcriptionModel?: string | null;
+		transcriptionService?: string | null;
+	}>;
 }
 
 export class VoiceRecordingService {
@@ -216,19 +226,19 @@ export class VoiceRecordingService {
 			this.callbacks.onAudioCaptured?.(audioBlob, { durationSeconds });
 
 			if (!options?.skipTranscription) {
-				// Determine if we should transcribe audio
+				const canSyncTranscribe =
+					durationSeconds === 0 || durationSeconds <= MAX_SYNC_TRANSCRIBE_SECONDS;
+
+				// Prefer server transcription for accuracy; live transcript is only a preview.
 				const shouldTranscribeAudio =
-					audioBlob &&
-					audioBlob.size > 1000 && // Minimum size to avoid empty recordings
-					(!this.isLiveTranscriptSupported() || // iOS doesn't support live transcription
-						!capturedLiveTranscript || // No live transcription captured
-						capturedLiveTranscript.length < 10); // Very short live transcription
+					audioBlob && audioBlob.size > MIN_TRANSCRIBE_BYTES && canSyncTranscribe;
 
 				if (shouldTranscribeAudio && this.transcriptionService) {
 					console.log('Transcribing audio file...', {
 						blobSize: audioBlob!.size,
 						hasLiveTranscript: !!capturedLiveTranscript,
-						liveTranscriptLength: capturedLiveTranscript.length
+						liveTranscriptLength: capturedLiveTranscript.length,
+						durationSeconds
 					});
 					await this.transcribeAudio(
 						audioBlob!,
@@ -294,9 +304,13 @@ export class VoiceRecordingService {
 					);
 
 					if (similarity > 0.8) {
-						console.log(
-							'Skipping audio transcription - already captured via live transcription'
-						);
+						if (!currentInputText.endsWith(capturedLiveTranscript)) {
+							const separator = currentInputText.trim() ? ' ' : '';
+							this.callbacks.onTextUpdate(
+								currentInputText + separator + capturedLiveTranscript
+							);
+						}
+						console.log('Using live transcription - audio transcription is similar');
 					} else {
 						// Replace live transcript with more accurate audio transcription
 						let baseText = currentInputText;
@@ -340,6 +354,11 @@ export class VoiceRecordingService {
 			const errorMessage =
 				error instanceof Error ? error.message : 'Failed to transcribe audio';
 			this.callbacks.onError(errorMessage);
+			if (capturedLiveTranscript && !currentInputText.endsWith(capturedLiveTranscript)) {
+				const separator = currentInputText.trim() ? ' ' : '';
+				const fallbackText = currentInputText + separator + capturedLiveTranscript;
+				this.callbacks.onTextUpdate(fallbackText);
+			}
 			this.callbacks.onPhaseChange('idle');
 		}
 	}

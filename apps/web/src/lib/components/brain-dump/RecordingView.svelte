@@ -37,6 +37,7 @@
 		isVoiceSupported = false,
 		isCurrentlyRecording = false,
 		isLiveTranscribing = false,
+		isRefiningTranscript = false,
 		accumulatedTranscript = '',
 		recordingDuration = 0,
 		showOverlay = false,
@@ -61,6 +62,7 @@
 		isVoiceSupported?: boolean;
 		isCurrentlyRecording?: boolean;
 		isLiveTranscribing?: boolean;
+		isRefiningTranscript?: boolean;
 		accumulatedTranscript?: string;
 		recordingDuration?: number;
 		showOverlay?: boolean;
@@ -245,7 +247,7 @@
 		// Priority 3: Transcribing
 		if (currentPhase === 'transcribing') {
 			return {
-				text: 'Transcribing...',
+				text: isRefiningTranscript ? 'Refining transcript...' : 'Transcribing...',
 				icon: LoaderCircle,
 				variant: 'ghost',
 				disabled: true,

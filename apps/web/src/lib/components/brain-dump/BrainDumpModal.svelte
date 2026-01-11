@@ -189,6 +189,7 @@
 	});
 	let accumulatedTranscript = $derived(voiceRecordingService.getCurrentLiveTranscript());
 	let isLiveTranscribing = $derived(voiceRecordingService.isLiveTranscribing());
+	let hadLiveTranscript = $state(false);
 
 	// Auto-save - use regular variable for timers (not reactive)
 	let autoSaveTimeout: NodeJS.Timeout | null = null; // Timer handles should NOT be reactive
@@ -427,6 +428,9 @@
 				},
 				onPhaseChange: (phase: 'idle' | 'transcribing') => {
 					brainDumpActions.setProcessingPhase(phase);
+					if (phase === 'idle') {
+						hadLiveTranscript = false;
+					}
 				},
 				onPermissionGranted: () => {
 					brainDumpActions.setMicrophonePermission(true);
@@ -1284,6 +1288,7 @@
 
 		// Clear any previous errors
 		brainDumpActions.setVoiceError('');
+		hadLiveTranscript = false;
 
 		// Set initializing state BEFORE starting (for UI feedback only - doesn't delay recording)
 		brainDumpActions.setVoiceCapabilities({ isInitializingRecording: true });
@@ -1314,6 +1319,8 @@
 		if (!isCurrentlyRecording) return;
 
 		try {
+			const liveTranscriptSnapshot = voiceRecordingService.getCurrentLiveTranscript().trim();
+			hadLiveTranscript = liveTranscriptSnapshot.length > 0;
 			await voiceRecordingService.stopRecording(inputText);
 			isCurrentlyRecording = false;
 		} catch (error) {
@@ -1552,6 +1559,7 @@
 							{recordingDuration}
 							{accumulatedTranscript}
 							{isLiveTranscribing}
+							isRefiningTranscript={hadLiveTranscript}
 							{displayedQuestions}
 							showOverlay={!!showProcessingOverlay}
 							allowProjectChange={!project}

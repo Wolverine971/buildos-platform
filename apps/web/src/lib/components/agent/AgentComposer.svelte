@@ -133,35 +133,16 @@
 		{/snippet}
 	</TextareaWithVoice>
 
-	{#if voiceErrorMessage || isStreaming}
-		<!-- INKPRINT micro-label status indicators -->
-		<div
-			class="flex flex-wrap items-center justify-between gap-1 px-0.5 text-[0.65rem] font-medium uppercase tracking-[0.15em]"
-		>
-			<div class="flex flex-wrap items-center gap-1">
-				{#if voiceErrorMessage}
-					<!-- INKPRINT error badge with Static texture - semantic destructive -->
-					<span
-						role="alert"
-						class="flex items-center gap-1 rounded-lg border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-destructive tx tx-static tx-weak"
-					>
-						{voiceErrorMessage}
-					</span>
-				{/if}
-
-				{#if isStreaming}
-					<!-- INKPRINT working badge with Grain texture -->
-					<div
-						class="flex items-center gap-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2 py-0.5 text-emerald-700 tx tx-grain tx-weak dark:bg-emerald-950/30 dark:text-emerald-400"
-					>
-						<div
-							class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"
-						></div>
-						<span class="text-[0.65rem] font-semibold uppercase tracking-[0.1em]"
-							>Working</span
-						>
-					</div>
-				{/if}
+	{#if isStreaming}
+		<!-- INKPRINT streaming status indicator -->
+		<div class="flex items-center gap-1 px-0.5">
+			<div
+				class="flex items-center gap-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2 py-0.5 text-emerald-700 tx tx-grain tx-weak dark:bg-emerald-950/30 dark:text-emerald-400"
+			>
+				<div
+					class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"
+				></div>
+				<span class="text-[0.65rem] font-semibold uppercase tracking-[0.1em]">Working</span>
 			</div>
 		</div>
 	{/if}

@@ -9,6 +9,7 @@ import { processNotification } from './workers/notification/notificationWorker';
 import { processDailySMS } from './workers/dailySmsWorker';
 import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
 import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
+import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -246,6 +247,25 @@ async function processBraindumpProcessing(job: ProcessingJob) {
 }
 
 /**
+ * Voice note transcription processor (background for long recordings)
+ */
+async function processVoiceNoteTranscription(job: ProcessingJob) {
+	const { voiceNoteId } = job.data;
+
+	await job.log(`🎙️ Voice note transcription started for ${voiceNoteId}`);
+
+	try {
+		const legacyJob = createLegacyJob(job);
+		const result = await processVoiceNoteTranscriptionJob(legacyJob);
+		await job.log('✅ Voice note transcription completed');
+		return result;
+	} catch (error: any) {
+		await job.log(`❌ Voice note transcription failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -269,6 +289,9 @@ export async function startWorker() {
 
 	// Register braindump processing processor
 	queue.process('process_onto_braindump', processBraindumpProcessing);
+
+	// Register voice note transcription processor
+	queue.process('transcribe_voice_note', processVoiceNoteTranscription);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(

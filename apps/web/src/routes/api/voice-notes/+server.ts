@@ -2,6 +2,8 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { queueVoiceNoteTranscription } from '$lib/server/voice-note-transcription.service';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const MAX_SYNC_TRANSCRIBE_SECONDS = 180; // 3 minutes
@@ -178,6 +180,8 @@ export const POST: RequestHandler = async ({
 		return ApiResponse.unauthorized();
 	}
 
+	const errorLogger = ErrorLoggerService.getInstance(supabase);
+
 	const formData = await request.formData();
 	const audioFile = formData.get('audio');
 
@@ -216,6 +220,13 @@ export const POST: RequestHandler = async ({
 	const noteId = crypto.randomUUID();
 	const extension = getExtensionForMimeType(mimeType);
 	const storagePath = `${user.id}/${noteId}.${extension}`;
+	const logContext = {
+		userId: user.id,
+		endpoint: '/api/voice-notes',
+		httpMethod: 'POST',
+		tableName: 'voice_notes',
+		recordId: noteId
+	};
 
 	const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
 
@@ -227,6 +238,15 @@ export const POST: RequestHandler = async ({
 		});
 
 	if (uploadError) {
+		await errorLogger.logError(uploadError, {
+			...logContext,
+			operationType: 'upload',
+			metadata: {
+				storagePath,
+				mimeType,
+				fileSizeBytes: audioFile.size
+			}
+		});
 		return ApiResponse.internalError(uploadError, 'Failed to upload audio');
 	}
 
@@ -267,6 +287,14 @@ export const POST: RequestHandler = async ({
 		.single();
 
 	if (insertError) {
+		await errorLogger.logDatabaseError(insertError, 'insert', 'voice_notes', noteId, {
+			storagePath,
+			mimeType,
+			durationSeconds,
+			linkedEntityType,
+			linkedEntityId,
+			groupId
+		});
 		await supabase.storage.from('voice_notes').remove([storagePath]);
 		return ApiResponse.databaseError(insertError);
 	}
@@ -292,28 +320,64 @@ export const POST: RequestHandler = async ({
 					transcription_error: null,
 					metadata: {
 						...metadata,
-						transcription_source: metadata.transcription_source || 'audio'
+						transcription_source: metadata.transcription_source || 'audio',
+						transcription_service: metadata.transcription_service || 'openai'
 					}
 				})
 				.eq('id', noteId)
 				.select()
 				.single();
 
-			if (!updateError && updated) {
+			if (updateError) {
+				await errorLogger.logDatabaseError(updateError, 'update', 'voice_notes', noteId, {
+					transcription_status: 'complete'
+				});
+			} else if (updated) {
 				voiceNote = updated;
 			}
 		} catch (error) {
+			await errorLogger.logError(error, {
+				...logContext,
+				operationType: 'transcribe',
+				llmMetadata: {
+					provider: 'openai',
+					model: TRANSCRIPTION_MODEL
+				},
+				metadata: {
+					durationSeconds,
+					transcription_source: metadata.transcription_source || 'audio',
+					transcription_service: metadata.transcription_service || 'openai'
+				}
+			});
 			const message = error instanceof Error ? error.message : 'Transcription failed';
-			const { data: failedUpdate } = await supabase
+			const { data: failedUpdate, error: failedUpdateError } = await supabase
 				.from('voice_notes')
 				.update({
 					transcription_status: 'failed',
 					transcription_model: TRANSCRIPTION_MODEL,
-					transcription_error: message
+					transcription_error: message,
+					metadata: {
+						...metadata,
+						transcription_source: metadata.transcription_source || 'audio',
+						transcription_service: metadata.transcription_service || 'openai'
+					}
 				})
 				.eq('id', noteId)
 				.select()
 				.single();
+
+			if (failedUpdateError) {
+				await errorLogger.logDatabaseError(
+					failedUpdateError,
+					'update',
+					'voice_notes',
+					noteId,
+					{
+						transcription_status: 'failed'
+					}
+				);
+			}
+
 			if (failedUpdate) {
 				voiceNote = failedUpdate;
 			} else {
@@ -322,6 +386,88 @@ export const POST: RequestHandler = async ({
 					transcription_status: 'failed',
 					transcription_model: TRANSCRIPTION_MODEL,
 					transcription_error: message
+				};
+			}
+		}
+	}
+
+	if (transcribe && !shouldSyncTranscribe && !transcript) {
+		const queued = await queueVoiceNoteTranscription({
+			voiceNoteId: noteId,
+			userId: user.id
+		});
+
+		const queuedMetadata: Record<string, unknown> = {
+			...metadata,
+			transcription_source: metadata.transcription_source || 'audio',
+			transcription_service: metadata.transcription_service || 'openai'
+		};
+		if (queued.jobId) {
+			queuedMetadata.transcription_job_id = queued.jobId;
+		}
+
+		if (queued.queued) {
+			const { data: updated, error: updateError } = await supabase
+				.from('voice_notes')
+				.update({
+					transcription_model: TRANSCRIPTION_MODEL,
+					transcription_error: null,
+					metadata: queuedMetadata
+				})
+				.eq('id', noteId)
+				.select()
+				.single();
+
+			if (updateError) {
+				await errorLogger.logDatabaseError(updateError, 'update', 'voice_notes', noteId, {
+					transcription_status: 'pending'
+				});
+			} else if (updated) {
+				voiceNote = updated;
+			}
+		} else {
+			const message = queued.reason || 'Failed to queue transcription';
+			await errorLogger.logError(new Error(message), {
+				...logContext,
+				operationType: 'queue_transcription',
+				metadata: {
+					durationSeconds,
+					transcription_job_id: queued.jobId
+				}
+			});
+			const { data: failedUpdate, error: failedUpdateError } = await supabase
+				.from('voice_notes')
+				.update({
+					transcription_status: 'failed',
+					transcription_model: TRANSCRIPTION_MODEL,
+					transcription_error: message,
+					metadata: queuedMetadata
+				})
+				.eq('id', noteId)
+				.select()
+				.single();
+
+			if (failedUpdateError) {
+				await errorLogger.logDatabaseError(
+					failedUpdateError,
+					'update',
+					'voice_notes',
+					noteId,
+					{
+						transcription_status: 'failed'
+					}
+				);
+			}
+
+			if (failedUpdate) {
+				voiceNote = failedUpdate;
+			} else {
+				voiceNote = {
+					...voiceNote,
+					transcription_status: 'failed',
+					transcription_model: TRANSCRIPTION_MODEL,
+					transcription_error: message,
+					metadata: queuedMetadata
 				};
 			}
 		}

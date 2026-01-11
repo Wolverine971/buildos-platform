@@ -10213,6 +10213,7 @@ export type Database = {
         | "schedule_daily_sms"
         | "classify_chat_session"
         | "process_onto_braindump"
+        | "transcribe_voice_note"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -10452,6 +10453,7 @@ export const Constants = {
         "schedule_daily_sms",
         "classify_chat_session",
         "process_onto_braindump",
+        "transcribe_voice_note",
       ],
       recurrence_end_reason: [
         "indefinite",

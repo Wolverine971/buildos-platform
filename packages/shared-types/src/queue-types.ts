@@ -148,6 +148,11 @@ export interface OntoBraindumpProcessingJobMetadata {
 	userId: string;
 }
 
+export interface VoiceNoteTranscriptionJobMetadata {
+	voiceNoteId: string;
+	userId: string;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	generate_daily_brief: DailyBriefJobMetadata;
@@ -164,6 +169,7 @@ export interface JobMetadataMap {
 	schedule_daily_sms: ScheduleDailySMSJobMetadata;
 	classify_chat_session: ClassifyChatSessionJobMetadata;
 	process_onto_braindump: OntoBraindumpProcessingJobMetadata;
+	transcribe_voice_note: VoiceNoteTranscriptionJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -195,6 +201,15 @@ export interface OntoBraindumpProcessingResult {
 	error?: string;
 }
 
+export interface VoiceNoteTranscriptionResult {
+	success: boolean;
+	voiceNoteId: string;
+	transcriptLength?: number;
+	skipped?: boolean;
+	reason?: string;
+	error?: string;
+}
+
 // Job result types
 export interface JobResultMap {
 	generate_daily_brief: DailyBriefResult;
@@ -211,6 +226,7 @@ export interface JobResultMap {
 	schedule_daily_sms: ScheduleDailySMSResult;
 	classify_chat_session: ClassifyChatSessionResult;
 	process_onto_braindump: OntoBraindumpProcessingResult;
+	transcribe_voice_note: VoiceNoteTranscriptionResult;
 	other: unknown;
 }
 

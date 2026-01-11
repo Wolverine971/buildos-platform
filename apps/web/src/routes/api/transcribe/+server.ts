@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 import OpenAI from 'openai';
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 const openai = new OpenAI({
 	apiKey: PRIVATE_OPENAI_API_KEY
@@ -140,8 +141,12 @@ function isSupportedFormat(extension: string): boolean {
 	return supportedFormats.includes(extension.toLowerCase());
 }
 
-export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals: { safeGetSession, supabase } }) => {
 	const startTime = Date.now();
+	const errorLogger = ErrorLoggerService.getInstance(supabase);
+	let audioFile: File | null = null;
+	let customVocabulary: string | null = null;
+	let userId: string | null = null;
 
 	try {
 		// Authentication check
@@ -149,15 +154,26 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		if (!user) {
 			return ApiResponse.unauthorized();
 		}
+		userId = user.id;
 
 		if (!PRIVATE_OPENAI_API_KEY) {
+			await errorLogger.logError(new Error('OpenAI API key not configured'), {
+				userId,
+				endpoint: '/api/transcribe',
+				httpMethod: 'POST',
+				operationType: 'transcribe_audio',
+				llmMetadata: {
+					provider: 'openai',
+					model: TRANSCRIPTION_MODEL
+				}
+			});
 			return ApiResponse.internalError('OpenAI API key not configured');
 		}
 
 		// Parse the form data to get audio file and metadata
 		const formData = await request.formData();
-		const audioFile = formData.get('audio') as File;
-		const customVocabulary = formData.get('vocabularyTerms') as string | null;
+		audioFile = formData.get('audio') as File;
+		customVocabulary = formData.get('vocabularyTerms') as string | null;
 
 		if (!audioFile || audioFile.size === 0) {
 			return ApiResponse.badRequest('No audio data received');
@@ -254,7 +270,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 				transcript: transcription.text,
 				duration_ms: duration,
 				// Duration may not be available in all transcription models
-				audio_duration: (transcription as any).duration ?? null
+				audio_duration: (transcription as any).duration ?? null,
+				transcription_model: TRANSCRIPTION_MODEL,
+				transcription_service: 'openai'
 			});
 		} else {
 			return ApiResponse.internalError('Failed to transcribe audio. No text returned.');
@@ -262,6 +280,22 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	} catch (error: any) {
 		const duration = Date.now() - startTime;
 		console.error(`[Transcribe] Error after ${duration}ms:`, error);
+		await errorLogger.logError(error, {
+			userId: userId || undefined,
+			endpoint: '/api/transcribe',
+			httpMethod: 'POST',
+			operationType: 'transcribe_audio',
+			llmMetadata: {
+				provider: 'openai',
+				model: TRANSCRIPTION_MODEL,
+				responseTimeMs: duration
+			},
+			metadata: {
+				audioSizeBytes: audioFile?.size,
+				mimeType: audioFile?.type,
+				hasCustomVocabulary: Boolean(customVocabulary)
+			}
+		});
 
 		// Handle timeout errors
 		if (error instanceof TranscriptionTimeoutError) {
