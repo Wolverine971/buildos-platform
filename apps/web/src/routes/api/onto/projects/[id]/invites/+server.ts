@@ -242,7 +242,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 		const inviterName = user.name || user.email || 'A teammate';
-		const inviteUrl = `${baseUrl}/invites/${token}`;
+		const invitePath = `/invites/${token}`;
+		const inviteUrl = `${baseUrl}${invitePath}`;
+		const registerUrl = `${baseUrl}/auth/register?redirect=${encodeURIComponent(invitePath)}`;
+		const loginUrl = `${baseUrl}/auth/login?redirect=${encodeURIComponent(invitePath)}`;
 		const subject = `${inviterName} invited you to "${project.name}" on BuildOS`;
 		const roleLabel = roleKey === 'editor' ? 'Editor' : 'Viewer';
 		const roleDescription =
@@ -279,13 +282,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	</a>
 </div>
 
+<p style="text-align: center; font-size: 13px; color: #6F6E75; margin: 0 0 16px 0;">
+	New to BuildOS? <a href="${registerUrl}" style="color: #D96C1E; font-weight: 600; text-decoration: none;">Create an account</a> to accept.<br />
+	Already have an account? <a href="${loginUrl}" style="color: #D96C1E; font-weight: 600; text-decoration: none;">Sign in</a>.
+</p>
+
 <p style="text-align: center; font-size: 13px; color: #9A9A9A; margin: 0;">
 	This invitation expires in ${INVITE_EXPIRY_DAYS} days. If you didn't expect this email, you can safely ignore it.
 </p>
 		`.trim();
 
 		const html = generateMinimalEmailHTML({ subject, content });
-		const textBody = `${inviterName} invited you to collaborate on "${project.name}".\n\nAccept the invite: ${inviteUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
+		const textBody = `${inviterName} invited you to collaborate on \"${project.name}\".\n\nAccept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
 
 		const emailService = new EmailService(supabase);
 		const emailResult = await emailService.sendEmail({

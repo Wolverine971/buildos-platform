@@ -19,6 +19,7 @@ Project sharing enables multiple people to collaborate on the same ontology proj
 ## Key documents
 
 - `apps/web/docs/features/project-sharing/PROJECT_SHARING_SPEC.md` - End-to-end feature spec and implementation plan.
+- `apps/web/docs/features/project-sharing/INVITE_REGISTRATION_FLOW_SPEC.md` - Invite signup + pending invite acceptance flow.
 - `docs/architecture/decisions/ADR-004-project-sharing-membership-actors.md` - Architecture decision record.
 
 ## Scope

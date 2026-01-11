@@ -138,7 +138,9 @@
 		{#if voiceNotes.length > 0}
 			<span class="tabular-nums">{voiceNotes.length}</span>
 			<span class={inline ? 'hidden xs:inline' : ''}>·</span>
-			<span class={inline ? 'hidden xs:inline tabular-nums' : 'tabular-nums'}>{formatDuration(totalDuration)}</span>
+			<span class={inline ? 'hidden xs:inline tabular-nums' : 'tabular-nums'}
+				>{formatDuration(totalDuration)}</span
+			>
 		{:else}
 			<span>...</span>
 		{/if}
@@ -177,21 +179,24 @@
 
 	<!-- Voice notes list -->
 	{#if voiceNotes.length === 0}
-		<p class="mt-1.5 text-[0.65rem] italic text-muted-foreground">
-			Voice notes uploading...
-		</p>
+		<p class="mt-1.5 text-[0.65rem] italic text-muted-foreground">Voice notes uploading...</p>
 	{:else}
 		<div class="mt-1.5 space-y-1">
 			{#each voiceNotes as voiceNote, index (voiceNote.id)}
 				<div
-					class="group rounded-md border border-border/40 bg-muted/30 px-2 py-1.5 {playAllIndex === index ? 'ring-1 ring-accent/50' : ''}"
+					class="group rounded-md border border-border/40 bg-muted/30 px-2 py-1.5 {playAllIndex ===
+					index
+						? 'ring-1 ring-accent/50'
+						: ''}"
 				>
 					<!-- Segment header: number + duration + delete -->
 					<div class="flex items-center justify-between gap-2">
 						<span
 							class="text-[0.6rem] font-medium uppercase tracking-wide text-muted-foreground"
 						>
-							{index + 1}/{voiceNotes.length} · {formatDuration(voiceNote.duration_seconds)}
+							{index + 1}/{voiceNotes.length} · {formatDuration(
+								voiceNote.duration_seconds
+							)}
 						</span>
 						<button
 							type="button"
@@ -221,7 +226,9 @@
 {#if inline}
 	{@render chipButton()}
 	{#if isExpanded}
-		<div class="w-full self-stretch rounded-lg border border-border/50 bg-card p-2 shadow-ink tx tx-frame tx-weak">
+		<div
+			class="w-full self-stretch rounded-lg border border-border/50 bg-card p-2 shadow-ink tx tx-frame tx-weak"
+		>
 			{@render expandedPanel()}
 		</div>
 	{/if}
@@ -230,7 +237,9 @@
 	<div class="contents">
 		{@render chipButton()}
 		{#if isExpanded}
-			<div class="mt-1.5 w-full rounded-lg border border-border/50 bg-card p-2 shadow-ink tx tx-frame tx-weak">
+			<div
+				class="mt-1.5 w-full rounded-lg border border-border/50 bg-card p-2 shadow-ink tx tx-frame tx-weak"
+			>
 				{@render expandedPanel()}
 			</div>
 		{/if}

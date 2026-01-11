@@ -10,6 +10,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
+	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 
 	let loading = $state(false);
 	let googleLoading = $state(false);
@@ -21,6 +22,39 @@
 	let success = $state(false);
 	let successMessage = $state('');
 	let emailError = $state('');
+	let redirectParam = $derived(normalizeRedirectPath($page.url.searchParams.get('redirect')));
+	let redirectQuery = $derived(
+		redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''
+	);
+
+	function resolveRedirectTarget() {
+		return normalizeRedirectPath($page.url.searchParams.get('redirect'));
+	}
+
+	function encodeOAuthState(redirectPath: string | null) {
+		const payload = {
+			nonce: crypto.randomUUID(),
+			redirect: redirectPath
+		};
+		const json = JSON.stringify(payload);
+		const base64 = btoa(json);
+		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+	}
+
+	async function resolvePendingInviteRedirect() {
+		try {
+			const response = await fetch('/api/onto/invites/pending');
+			if (!response.ok) return null;
+			const payload = await response.json();
+			const invites = payload?.data?.invites ?? [];
+			if (invites.length > 0) {
+				return `/invites?message=${encodeURIComponent('You have pending invites')}`;
+			}
+		} catch (err) {
+			console.warn('[Auth] Failed to check pending invites:', err);
+		}
+		return null;
+	}
 
 	// Show any URL messages as toasts
 	onMount(() => {
@@ -52,7 +86,7 @@
 		error = '';
 
 		const redirectUri = `${$page.url.origin}/auth/google/register-callback`;
-		const state = crypto.randomUUID();
+		const state = encodeOAuthState(resolveRedirectTarget());
 
 		const params = new URLSearchParams({
 			client_id: PUBLIC_GOOGLE_CLIENT_ID,
@@ -152,7 +186,7 @@
 					error = errorMessage;
 					setTimeout(() => {
 						if (confirm('Would you like to sign in instead?')) {
-							goto('/auth/login');
+							goto(`/auth/login${redirectQuery}`);
 						}
 					}, 100);
 				} else {
@@ -180,8 +214,14 @@
 				confirmPassword = '';
 				name = '';
 			} else {
-				// Auto-login successful - navigate to home with onboarding
-				await goto('/?onboarding=true', {
+				const redirectTarget = resolveRedirectTarget();
+				const pendingRedirect = redirectTarget
+					? null
+					: await resolvePendingInviteRedirect();
+				const destination = redirectTarget ?? pendingRedirect ?? '/?onboarding=true';
+
+				// Auto-login successful - navigate to destination
+				await goto(destination, {
 					invalidateAll: true
 				});
 
@@ -486,7 +526,7 @@
 				</div>
 
 				<div class="mt-4 text-center">
-					<a href="/auth/login">
+					<a href={`/auth/login${redirectQuery}`}>
 						<Button variant="secondary" fullWidth={true} size="lg">
 							Go to Sign In
 						</Button>
@@ -500,7 +540,7 @@
 					<p class="text-sm text-muted-foreground">
 						Already have an account?
 						<a
-							href="/auth/login"
+							href={`/auth/login${redirectQuery}`}
 							class="font-medium text-accent hover:opacity-80 transition-opacity"
 						>
 							Sign in here

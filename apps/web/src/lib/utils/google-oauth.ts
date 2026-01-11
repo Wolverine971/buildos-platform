@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/static/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -46,6 +47,22 @@ const ERROR_DESCRIPTIONS: Record<string, string> = {
 	server_error: 'Google OAuth server error',
 	temporarily_unavailable: 'Google OAuth temporarily unavailable'
 };
+
+function decodeOAuthRedirect(state: string | null): string | null {
+	if (!state) return null;
+
+	try {
+		const decoded = Buffer.from(state, 'base64url').toString('utf-8');
+		const parsed = JSON.parse(decoded);
+		if (parsed && typeof parsed.redirect === 'string') {
+			return normalizeRedirectPath(parsed.redirect);
+		}
+	} catch (error) {
+		return null;
+	}
+
+	return null;
+}
 
 export class GoogleOAuthHandler {
 	constructor(
@@ -250,6 +267,7 @@ export class GoogleOAuthHandler {
 		const code = url.searchParams.get('code');
 		const error = url.searchParams.get('error');
 		const state = url.searchParams.get('state');
+		const stateRedirect = decodeOAuthRedirect(state);
 
 		console.log(
 			`Google ${config.isRegistration ? 'registration' : 'login'} callback received:`,
@@ -319,8 +337,28 @@ export class GoogleOAuthHandler {
 		// Step 4: Add delay to ensure everything propagates
 		await new Promise((resolve) => setTimeout(resolve, 200));
 
+		// Optional: route to pending invites when no explicit redirect is provided
+		let pendingInviteRedirect: string | null = null;
+		if (!stateRedirect) {
+			try {
+				const { data: pendingInvites, error: pendingError } = await this.supabase.rpc(
+					'list_pending_project_invites'
+				);
+				if (!pendingError && Array.isArray(pendingInvites) && pendingInvites.length > 0) {
+					pendingInviteRedirect = `/invites?message=${encodeURIComponent(
+						'You have pending invites'
+					)}`;
+				}
+			} catch (err) {
+				console.warn('[Auth] Failed to check pending invites after OAuth:', err);
+			}
+		}
+
 		// Step 5: Build and execute redirect
-		const redirectUrl = new URL(config.successPath, url.origin);
+		const redirectUrl = new URL(
+			stateRedirect ?? pendingInviteRedirect ?? config.successPath,
+			url.origin
+		);
 
 		// Add parameters to trigger client-side refresh
 		redirectUrl.searchParams.set('auth_success', 'true');

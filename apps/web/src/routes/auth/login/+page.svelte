@@ -10,6 +10,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
+	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 
 	let loading = $state(false);
 	let googleLoading = $state(false);
@@ -17,6 +18,39 @@
 	let password = $state('');
 	let error = $state('');
 	let emailError = $state('');
+	let redirectParam = $derived(normalizeRedirectPath($page.url.searchParams.get('redirect')));
+	let redirectQuery = $derived(
+		redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''
+	);
+
+	function resolveRedirectTarget() {
+		return normalizeRedirectPath($page.url.searchParams.get('redirect'));
+	}
+
+	function encodeOAuthState(redirectPath: string | null) {
+		const payload = {
+			nonce: crypto.randomUUID(),
+			redirect: redirectPath
+		};
+		const json = JSON.stringify(payload);
+		const base64 = btoa(json);
+		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+	}
+
+	async function resolvePendingInviteRedirect() {
+		try {
+			const response = await fetch('/api/onto/invites/pending');
+			if (!response.ok) return null;
+			const payload = await response.json();
+			const invites = payload?.data?.invites ?? [];
+			if (invites.length > 0) {
+				return `/invites?message=${encodeURIComponent('You have pending invites')}`;
+			}
+		} catch (err) {
+			console.warn('[Auth] Failed to check pending invites:', err);
+		}
+		return null;
+	}
 
 	// Validate email on blur for instant feedback
 	function validateEmail() {
@@ -73,7 +107,11 @@
 
 			// Server has set the cookies, now just navigate using SvelteKit
 			// This will trigger the layout to reload with the new session
-			await goto('/', {
+			const redirectTarget = resolveRedirectTarget();
+			const pendingRedirect = redirectTarget ? null : await resolvePendingInviteRedirect();
+			const destination = redirectTarget ?? pendingRedirect ?? '/';
+
+			await goto(destination, {
 				invalidateAll: true // This ensures all load functions re-run
 			});
 		} catch (err: any) {
@@ -92,7 +130,7 @@
 		error = '';
 
 		const redirectUri = `${$page.url.origin}/auth/google/login-callback`;
-		const state = crypto.randomUUID();
+		const state = encodeOAuthState(resolveRedirectTarget());
 
 		const params = new URLSearchParams({
 			client_id: PUBLIC_GOOGLE_CLIENT_ID,
@@ -309,7 +347,7 @@
 				<p class="text-sm text-muted-foreground">
 					Don't have an account?
 					<a
-						href="/auth/register"
+						href={`/auth/register${redirectQuery}`}
 						class="font-medium text-accent hover:opacity-80 transition-opacity"
 					>
 						Create one now

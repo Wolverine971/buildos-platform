@@ -296,7 +296,9 @@
 				class="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted"
 				aria-label="Playback progress"
 			/>
-			<div class="mt-0.5 flex items-center justify-between text-[0.65rem] text-muted-foreground">
+			<div
+				class="mt-0.5 flex items-center justify-between text-[0.65rem] text-muted-foreground"
+			>
 				<span class="tabular-nums">{formattedCurrentTime}</span>
 				<span class="tabular-nums">{formattedDuration}</span>
 			</div>

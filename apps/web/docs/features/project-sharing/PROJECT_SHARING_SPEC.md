@@ -12,6 +12,10 @@ Project sharing lets multiple people collaborate on the same ontology project. I
 
 This spec is scoped to ontology projects (`onto_*` tables). Legacy `projects` support is noted only where it intersects with shared-project UX.
 
+## Related docs
+
+- `apps/web/docs/features/project-sharing/INVITE_REGISTRATION_FLOW_SPEC.md`
+
 ## Goals
 
 - Allow owners to invite collaborators by email with role-based access.
@@ -29,6 +33,7 @@ Completed:
 - [x] Daily briefs include shared projects with actor-attributed activity (and omit shared section when none).
 - [x] Activity log API/UI attribution (`changed_by_actor_id` + actor name).
 - [x] Invite flow baseline (create invite + email + accept RPC + accept page).
+- [x] Invite registration flow (pending invites + explicit accept/decline + redirect handling).
 - [x] Share UI on project detail (invite form + members + pending invites).
 - [x] Invite revoke/resend flows (API + UI actions).
 - [x] Member management endpoints + UI (role changes, removals).
@@ -84,7 +89,7 @@ Columns:
 - `token_hash` (text) - store only hashed token
 - `role_key` (text)
 - `access` (text)
-- `status` (text) - `pending` | `accepted` | `revoked` | `expired`
+- `status` (text) - `pending` | `accepted` | `revoked` | `expired` | `declined`
 - `expires_at` (timestamptz)
 - `invited_by_actor_id` (uuid, fk → `onto_actors.id`)
 - `accepted_by_actor_id` (uuid, fk → `onto_actors.id`, nullable)
@@ -181,6 +186,12 @@ Add or update RLS on:
     - List pending invites (owner/admin only).
 - `POST /api/onto/invites/:token/accept`
     - Accept invite, create membership, log activity.
+- `GET /api/onto/invites/pending`
+    - List pending invites for the current user (email match).
+- `POST /api/onto/invites/:inviteId/accept`
+    - Accept invite by id (used for pending list + invite page).
+- `POST /api/onto/invites/:inviteId/decline`
+    - Decline invite by id.
 - `POST /api/onto/projects/:id/invites/:inviteId/revoke`
     - Revoke invite (owner/admin only).
 - `GET /api/onto/projects/:id/members`

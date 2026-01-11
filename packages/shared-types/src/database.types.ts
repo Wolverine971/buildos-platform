@@ -8921,6 +8921,14 @@ export type Database = {
           role_key: string
         }[]
       }
+      accept_project_invite_by_id: {
+        Args: { p_invite_id: string }
+        Returns: {
+          access: string
+          project_id: string
+          role_key: string
+        }[]
+      }
       acquire_migration_platform_lock: {
         Args: {
           p_duration_minutes?: number
@@ -9137,6 +9145,13 @@ export type Database = {
       current_actor_is_project_member: {
         Args: { p_project_id: string }
         Returns: boolean
+      }
+      decline_project_invite: {
+        Args: { p_invite_id: string }
+        Returns: {
+          invite_id: string
+          status: string
+        }[]
       }
       decrement_phase_order: {
         Args: { p_order_threshold: number; p_project_id: string }
@@ -9488,6 +9503,23 @@ export type Database = {
           version_type: string
         }[]
       }
+      get_project_invite_preview: {
+        Args: { p_token_hash: string }
+        Returns: {
+          access: string
+          created_at: string
+          expires_at: string
+          invite_id: string
+          invited_by_actor_id: string
+          invited_by_email: string
+          invited_by_name: string
+          invitee_email: string
+          project_id: string
+          project_name: string
+          role_key: string
+          status: string
+        }[]
+      }
       get_project_phases_hierarchy: {
         Args: { p_project_id: string; p_user_id?: string }
         Returns: Json
@@ -9756,6 +9788,22 @@ export type Database = {
           p_task_id: string
         }
         Returns: string
+      }
+      list_pending_project_invites: {
+        Args: never
+        Returns: {
+          access: string
+          created_at: string
+          expires_at: string
+          invite_id: string
+          invited_by_actor_id: string
+          invited_by_email: string
+          invited_by_name: string
+          project_id: string
+          project_name: string
+          role_key: string
+          status: string
+        }[]
       }
       log_notification_event: {
         Args: {

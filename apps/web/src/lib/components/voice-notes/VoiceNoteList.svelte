@@ -87,7 +87,9 @@
 							{formatDate(voiceNote.created_at)}
 						</span>
 						<span class="text-border">·</span>
-						<span class="tabular-nums">{formatDuration(voiceNote.duration_seconds)}</span>
+						<span class="tabular-nums"
+							>{formatDuration(voiceNote.duration_seconds)}</span
+						>
 						{#if voiceNote.transcription_status === 'pending'}
 							<span
 								class="rounded-full bg-accent/10 px-1.5 py-0.5 text-[0.55rem] font-medium text-accent"
