@@ -373,33 +373,55 @@ export const POST: RequestHandler = async ({
 			});
 
 			if (streamRequest.voice_note_group_id && persistedUserMessage?.id) {
-				const { error: attachError } = await supabase
-					.from('voice_note_groups')
-					.update({
-						linked_entity_type: 'chat_message',
-						linked_entity_id: persistedUserMessage.id,
-						chat_session_id: session.id,
-						status: 'attached'
-					})
-					.eq('id', streamRequest.voice_note_group_id)
-					.eq('user_id', userId);
+				const groupLinkUpdate = {
+					linked_entity_type: 'chat_message',
+					linked_entity_id: persistedUserMessage.id,
+					chat_session_id: session.id,
+					status: 'attached'
+				};
 
-				if (attachError?.code === 'PGRST116') {
-					await supabase.from('voice_note_groups').insert({
-						id: streamRequest.voice_note_group_id,
-						user_id: userId,
-						linked_entity_type: 'chat_message',
-						linked_entity_id: persistedUserMessage.id,
-						chat_session_id: session.id,
-						status: 'attached',
-						metadata: { source_component: 'agent_chat' }
-					});
-				} else if (attachError) {
+				const { data: attachResult, error: attachError } = await supabase
+					.from('voice_note_groups')
+					.update(groupLinkUpdate)
+					.eq('id', streamRequest.voice_note_group_id)
+					.eq('user_id', userId)
+					.select('id');
+
+				if (attachError) {
 					logger.warn('Failed to attach voice note group to chat message', {
 						error: attachError,
 						groupId: streamRequest.voice_note_group_id,
 						messageId: persistedUserMessage.id
 					});
+				} else if (!attachResult || attachResult.length === 0) {
+					const { error: insertError } = await supabase.from('voice_note_groups').insert({
+						id: streamRequest.voice_note_group_id,
+						user_id: userId,
+						...groupLinkUpdate,
+						metadata: { source_component: 'agent_chat' }
+					});
+
+					if (insertError?.code === '23505') {
+						const { error: retryError } = await supabase
+							.from('voice_note_groups')
+							.update(groupLinkUpdate)
+							.eq('id', streamRequest.voice_note_group_id)
+							.eq('user_id', userId);
+
+						if (retryError) {
+							logger.warn('Failed to attach voice note group after insert conflict', {
+								error: retryError,
+								groupId: streamRequest.voice_note_group_id,
+								messageId: persistedUserMessage.id
+							});
+						}
+					} else if (insertError) {
+						logger.warn('Failed to create voice note group for chat message', {
+							error: insertError,
+							groupId: streamRequest.voice_note_group_id,
+							messageId: persistedUserMessage.id
+						});
+					}
 				}
 			}
 

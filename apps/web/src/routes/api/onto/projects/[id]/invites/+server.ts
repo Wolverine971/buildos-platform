@@ -15,6 +15,15 @@ import { PUBLIC_APP_URL } from '$env/static/public';
 import { dev } from '$app/environment';
 import { createHash, randomBytes } from 'crypto';
 
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
 const INVITE_EXPIRY_DAYS = 7;
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const ROLE_ACCESS_MAP = {
@@ -242,18 +251,22 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 		const inviterName = user.name || user.email || 'A teammate';
+		const safeInviterName = escapeHtml(inviterName);
 		const invitePath = `/invites/${token}`;
 		const inviteUrl = `${baseUrl}${invitePath}`;
 		const registerUrl = `${baseUrl}/auth/register?redirect=${encodeURIComponent(invitePath)}`;
 		const loginUrl = `${baseUrl}/auth/login?redirect=${encodeURIComponent(invitePath)}`;
 		const projectDescription = project.description?.trim() || '';
+		const safeProjectName = escapeHtml(project.name);
+		const safeProjectDescription = escapeHtml(projectDescription);
 		const descriptionHtml = projectDescription
-			? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #6F6E75;">${projectDescription}</p>`
+			? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #6F6E75;">${safeProjectDescription}</p>`
 			: '';
 		const descriptionText = projectDescription
 			? `\nDescription: ${projectDescription}\n\n`
 			: '\n\n';
 		const subject = `${inviterName} invited you to "${project.name}" on BuildOS`;
+		const htmlSubject = escapeHtml(subject);
 		const roleLabel = roleKey === 'editor' ? 'Editor' : 'Viewer';
 		const roleDescription =
 			roleKey === 'editor'
@@ -269,10 +282,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 <div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
 	<p style="margin: 0 0 12px 0; font-size: 16px; color: #6F6E75;">
-		<strong style="color: #1A1A1D;">${inviterName}</strong> has invited you to collaborate on:
+		<strong style="color: #1A1A1D;">${safeInviterName}</strong> has invited you to collaborate on:
 	</p>
 	<p style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; color: #1A1A1D;">
-		${project.name}
+		${safeProjectName}
 	</p>
 	${descriptionHtml}
 	<div style="display: inline-block; background-color: #EDEBE6; border-radius: 4px; padding: 6px 12px;">
@@ -300,7 +313,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 </p>
 		`.trim();
 
-		const html = generateMinimalEmailHTML({ subject, content });
+		const html = generateMinimalEmailHTML({ subject: htmlSubject, content });
 		const textBody = `${inviterName} invited you to collaborate on \"${project.name}\".${descriptionText}Accept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
 
 		const emailService = new EmailService(supabase);

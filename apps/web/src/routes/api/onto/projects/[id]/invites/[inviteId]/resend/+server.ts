@@ -13,6 +13,15 @@ import { PUBLIC_APP_URL } from '$env/static/public';
 import { dev } from '$app/environment';
 import { createHash, randomBytes } from 'crypto';
 
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
 const INVITE_EXPIRY_DAYS = 7;
 
 export const POST: RequestHandler = async ({ params, locals }) => {
@@ -134,21 +143,25 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 		const inviterName = user.name || user.email || 'A teammate';
+		const safeInviterName = escapeHtml(inviterName);
 		const invitePath = `/invites/${token}`;
 		const inviteUrl = `${baseUrl}${invitePath}`;
 		const registerUrl = `${baseUrl}/auth/register?redirect=${encodeURIComponent(invitePath)}`;
 		const loginUrl = `${baseUrl}/auth/login?redirect=${encodeURIComponent(invitePath)}`;
 		const projectDescription = project.description?.trim() || '';
+		const safeProjectName = escapeHtml(project.name);
+		const safeProjectDescription = escapeHtml(projectDescription);
 		const descriptionHtml = projectDescription
-			? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #6F6E75;">${projectDescription}</p>`
+			? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #6F6E75;">${safeProjectDescription}</p>`
 			: '';
 		const descriptionText = projectDescription
 			? `\nDescription: ${projectDescription}\n\n`
 			: '\n\n';
 		const subject = `${inviterName} invited you to "${project.name}" on BuildOS`;
+		const htmlSubject = escapeHtml(subject);
 		const content = `
 <h1>You've been invited to a project</h1>
-<p>${inviterName} invited you to collaborate on <strong>${project.name}</strong>.</p>
+<p>${safeInviterName} invited you to collaborate on <strong>${safeProjectName}</strong>.</p>
 ${descriptionHtml}
 <p><a href="${inviteUrl}">Accept the invite</a></p>
 <p style="font-size: 13px; color: #6F6E75; margin: 16px 0;">
@@ -156,9 +169,9 @@ ${descriptionHtml}
 	Already have an account? <a href="${loginUrl}" style="color: #D96C1E; font-weight: 600; text-decoration: none;">Sign in</a>.
 </p>
 <p>This invite expires in ${INVITE_EXPIRY_DAYS} days.</p>
-		`.trim();
+			`.trim();
 
-		const html = generateMinimalEmailHTML({ subject, content });
+		const html = generateMinimalEmailHTML({ subject: htmlSubject, content });
 		const textBody = `${inviterName} invited you to collaborate on \"${project.name}\".${descriptionText}Accept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
 
 		const emailService = new EmailService(supabase);
