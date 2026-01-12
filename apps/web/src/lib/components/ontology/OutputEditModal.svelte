@@ -381,14 +381,14 @@
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header with inline metadata -->
-		<div class="flex-shrink-0 bg-muted/50 border-b border-border">
+		<div class="flex-shrink-0 bg-muted/50 border-b border-border tx tx-strip tx-weak">
 			<!-- Top row: Icon, Title, Actions -->
-			<div class="flex items-center justify-between gap-2 px-3 py-2">
-				<div class="flex items-center gap-2 min-w-0 flex-1">
+			<div class="flex items-center justify-between gap-2 px-2 py-1.5 sm:px-4 sm:py-2.5">
+				<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 					<div
-						class="flex h-8 w-8 items-center justify-center rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
+						class="flex h-9 w-9 items-center justify-center rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0"
 					>
-						<Layers class="w-4 h-4" />
+						<Layers class="w-5 h-5" />
 					</div>
 					<div class="min-w-0 flex-1">
 						<h2 class="text-sm font-semibold leading-tight truncate text-foreground">
@@ -419,7 +419,7 @@
 						type="button"
 						onclick={openChatAbout}
 						disabled={isLoading || savingState || !output}
-						class="flex h-8 w-8 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 						title="Chat about this output"
 					>
 						<img
@@ -433,17 +433,17 @@
 						type="button"
 						onclick={closeModal}
 						disabled={savingState}
-						class="flex h-8 w-8 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 						aria-label="Close modal"
 					>
-						<X class="w-4 h-4" />
+						<X class="w-5 h-5" />
 					</button>
 				</div>
 			</div>
 
 			<!-- Metadata row: State + Type (compact inline) -->
 			{#if output}
-				<div class="flex items-center gap-2 px-3 pb-2">
+				<div class="flex items-center gap-2 px-2 pb-1.5 sm:px-4 sm:pb-2">
 					<div class="flex items-center gap-1.5 flex-1 min-w-0">
 						<label
 							for="output-state-select"
@@ -618,7 +618,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30"
+			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
 			<!-- Delete -->
 			<Button

@@ -66,6 +66,37 @@ _Last reviewed: 2026-01-09_
 
 ---
 
+### 2026-01-12 - Context Engineering Goes Mainstream
+
+**Observation:** Major shifts in the context engineering landscape detected.
+
+**Current State:**
+
+- @dexhorthy follower explosion: 3.2K → 10.7K in weeks. Context engineering is now mainstream.
+- Dan Shipper (@danshipper) launched "Proof" - an "agent-native" markdown editor (340K+ views on architecture guide)
+- New competitor discovered: Acontext.io - building "context data platform" infrastructure
+- Mitchell Hashimoto (HashiCorp founder) viral post on AI output quality, amplified by Dex
+- ADHD accounts (@HowtoADHD, @StructuredSucc, @danidonovan) largely quiet - opportunity gap
+
+**Implications for BuildOS:**
+
+- The term "context engineering" is gaining legitimacy fast - good validation for thesis
+- Dan Shipper's "agent-native architecture" is competing terminology to watch
+- Acontext.io is building infrastructure-level context management - potential competitor or partner
+- ADHD space is underserved on Twitter right now - could differentiate
+
+**Recommendations:**
+
+1. **Accelerate @dexhorthy engagement** - His rapid growth means his posts get more visibility. Be in every conversation.
+2. **Study Dan Shipper's "Proof" deeply** - Understand his "agent-native" angle vs our "context engineering" angle.
+3. **Monitor Acontext.io** - They're positioning as infrastructure layer. Could be competitor or integration partner.
+4. **Consider creating ADHD content** - Major accounts are quiet. Opportunity to own that intersection.
+5. **Add @mitchellh to engagement targets** - HashiCorp founder, quality-focused, aligned with our thesis.
+
+**Strategy Change:** Minor adjustment - increase urgency on context engineering ownership. The window is closing as more players enter.
+
+---
+
 ## Log Entry Template
 
 When adding new entries, use this format:
@@ -96,6 +127,9 @@ When adding new entries, use this format:
 
 | Date       | Signal                                | Strength    | Action Taken           |
 | ---------- | ------------------------------------- | ----------- | ---------------------- |
+| 2026-01-12 | @dexhorthy 3.2K→10.7K follower growth | Very Strong | Noted - context eng is mainstream |
+| 2026-01-12 | Acontext.io "context data platform"   | Strong      | Added to competitor watch |
+| 2026-01-12 | @DropzoneAI context eng reliability   | Medium      | Fresh engagement opportunity |
 | 2026-01-08 | @dexhorthy "harness engineering" post | Strong      | Engaged with value add |
 | 2026-01-08 | Nvidia CES context management quote   | Very Strong | Noted for content      |
 
@@ -103,12 +137,16 @@ When adding new entries, use this format:
 
 | Date | Signal | Strength | Action Taken |
 | ---- | ------ | -------- | ------------ |
-| ---  | ---    | ---      | ---          |
+| 2026-01-12 | Major ADHD accounts quiet (HowtoADHD, StructuredSucc) | Opportunity | Consider creating content in this space |
 
 ### Theme: Competitor Activity
 
 | Date       | Account      | Activity          | Response   |
 | ---------- | ------------ | ----------------- | ---------- |
+| 2026-01-12 | @danshipper  | Launched "Proof" agent-native editor | Study positioning |
+| 2026-01-12 | @acontext_io | New - "context data platform" | Monitor closely |
+| 2026-01-12 | @dannypostma | Still "laying low" | Monitoring |
+| 2026-01-12 | @danidonovan | Quiet since Dec 2025 | Monitoring |
 | 2026-01-08 | @dannypostma | "Laying low"      | Monitoring |
 | 2026-01-08 | @danidonovan | No major activity | Monitoring |
 

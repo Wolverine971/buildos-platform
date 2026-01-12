@@ -126,6 +126,7 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	'document-task': 'references',
 	'document-plan': 'references',
 	'document-goal': 'references',
+	'document-document': 'references',
 	'document-decision': 'references',
 	'document-risk': 'references',
 

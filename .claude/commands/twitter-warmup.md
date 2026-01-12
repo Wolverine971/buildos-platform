@@ -7,6 +7,8 @@ You are conducting a daily Twitter/X engagement scan for @djwayne3 to find high-
 Create a daily engagement doc at:
 `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_twitter-warmup.md`
 
+Do this in the beginning before researching
+
 ---
 
 ## Related Documentation

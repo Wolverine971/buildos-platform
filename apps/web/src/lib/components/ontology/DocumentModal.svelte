@@ -144,6 +144,8 @@
 	let selectedPlanIdForModal = $state<string | null>(null);
 	let showGoalModal = $state(false);
 	let selectedGoalIdForModal = $state<string | null>(null);
+	let showDocumentModal = $state(false);
+	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let showMobileMetadata = $state(false);
 
@@ -430,6 +432,10 @@
 				selectedGoalIdForModal = id;
 				showGoalModal = true;
 				break;
+			case 'document':
+				selectedDocumentIdForModal = id;
+				showDocumentModal = true;
+				break;
 			default:
 				console.warn(`Unhandled entity kind: ${kind}`);
 		}
@@ -439,9 +445,11 @@
 		showTaskModal = false;
 		showPlanModal = false;
 		showGoalModal = false;
+		showDocumentModal = false;
 		selectedTaskIdForModal = null;
 		selectedPlanIdForModal = null;
 		selectedGoalIdForModal = null;
+		selectedDocumentIdForModal = null;
 		// Smart refresh: only reload if links were changed
 		if (hasChanges && documentId) {
 			loadDocument(documentId);
@@ -477,13 +485,13 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 flex items-center justify-between gap-2"
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
-			<div class="flex items-center gap-2 min-w-0 flex-1">
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-8 w-8 items-center justify-center rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0"
 				>
-					<FileText class="w-4 h-4" />
+					<FileText class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<div class="flex items-center gap-2">
@@ -519,7 +527,7 @@
 						type="button"
 						onclick={openChatAbout}
 						disabled={loading || saving}
-						class="flex h-8 w-8 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 						title="Chat about this document"
 					>
 						<img
@@ -534,10 +542,10 @@
 					type="button"
 					onclick={closeModal}
 					disabled={saving}
-					class="flex h-8 w-8 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+					class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 					aria-label="Close modal"
 				>
-					<X class="w-4 h-4" />
+					<X class="w-5 h-5" />
 				</button>
 			</div>
 		</div>
@@ -966,7 +974,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted/30"
+			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
 			{#if documentId}
 				<Button
@@ -1056,6 +1064,17 @@
 		{projectId}
 		onClose={closeLinkedEntityModals}
 		onUpdated={closeLinkedEntityModals}
+		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+{#if showDocumentModal && selectedDocumentIdForModal}
+	<svelte:self
+		{projectId}
+		documentId={selectedDocumentIdForModal}
+		bind:isOpen={showDocumentModal}
+		onClose={closeLinkedEntityModals}
+		onSaved={closeLinkedEntityModals}
 		onDeleted={closeLinkedEntityModals}
 	/>
 {/if}

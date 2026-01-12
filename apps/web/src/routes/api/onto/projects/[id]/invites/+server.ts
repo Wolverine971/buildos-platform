@@ -260,12 +260,16 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const safeProjectName = escapeHtml(project.name);
 		const safeProjectDescription = escapeHtml(projectDescription);
 		const descriptionHtml = projectDescription
-			? `<p style="margin: 0 0 16px 0; font-size: 14px; color: #6F6E75;">${safeProjectDescription}</p>`
+			? `
+	<div style="background-color: #FFFFFF; border-left: 3px solid #D96C1E; padding: 12px 16px; margin: 16px 0; border-radius: 0 4px 4px 0;">
+		<p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #9A9A9A; font-weight: 600;">About this project</p>
+		<p style="margin: 0; font-size: 14px; color: #4A4A4A; line-height: 1.5;">${safeProjectDescription}</p>
+	</div>`
 			: '';
 		const descriptionText = projectDescription
-			? `\nDescription: ${projectDescription}\n\n`
-			: '\n\n';
-		const subject = `${inviterName} invited you to "${project.name}" on BuildOS`;
+			? `\n\nAbout this project:\n${projectDescription}\n`
+			: '';
+		const subject = `${inviterName} invited you to collaborate on "${project.name}"`;
 		const htmlSubject = escapeHtml(subject);
 		const roleLabel = roleKey === 'editor' ? 'Editor' : 'Viewer';
 		const roleDescription =
@@ -274,47 +278,54 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				: 'You can view project content and progress.';
 
 		const content = `
-<div style="text-align: center; margin-bottom: 24px;">
-	<img src="https://build-os.com/s-brain-bolt.png" alt="BuildOS" width="64" height="64" style="display: inline-block; margin-bottom: 16px;" />
-	<h1 style="margin: 0 0 8px 0; font-size: 28px; color: #1A1A1D;">You're invited!</h1>
-	<p style="margin: 0; font-size: 16px; color: #6F6E75;">Join a project on BuildOS</p>
+<div style="text-align: center; margin-bottom: 28px;">
+	<img src="https://build-os.com/s-brain-bolt.png" alt="BuildOS" width="56" height="56" style="display: inline-block; margin-bottom: 20px;" />
+	<h1 style="margin: 0 0 8px 0; font-size: 26px; color: #1A1A1D; font-weight: 700;">You've been invited!</h1>
+	<p style="margin: 0; font-size: 15px; color: #6F6E75;">Join a project on BuildOS</p>
 </div>
 
-<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-	<p style="margin: 0 0 12px 0; font-size: 16px; color: #6F6E75;">
-		<strong style="color: #1A1A1D;">${safeInviterName}</strong> has invited you to collaborate on:
-	</p>
-	<p style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; color: #1A1A1D;">
-		${safeProjectName}
-	</p>
-	${descriptionHtml}
-	<div style="display: inline-block; background-color: #EDEBE6; border-radius: 4px; padding: 6px 12px;">
-		<span style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #6F6E75;">Role:</span>
-		<span style="font-size: 14px; font-weight: 600; color: #1A1A1D; margin-left: 4px;">${roleLabel}</span>
+<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+	<div style="margin-bottom: 20px;">
+		<p style="margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #9A9A9A; font-weight: 600;">Invited by</p>
+		<p style="margin: 0; font-size: 18px; font-weight: 600; color: #1A1A1D;">${safeInviterName}</p>
 	</div>
-	<p style="margin: 12px 0 0 0; font-size: 14px; color: #6F6E75;">
-		${roleDescription}
-	</p>
+
+	<div style="border-top: 1px solid #DCD9D1; padding-top: 20px;">
+		<p style="margin: 0 0 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #9A9A9A; font-weight: 600;">Project</p>
+		<p style="margin: 0; font-size: 22px; font-weight: 700; color: #1A1A1D; line-height: 1.3;">
+			${safeProjectName}
+		</p>
+	</div>
+	${descriptionHtml}
+	<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #DCD9D1;">
+		<div style="display: inline-block; background-color: #EDEBE6; border-radius: 6px; padding: 8px 14px;">
+			<span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #6F6E75; font-weight: 600;">Your role:</span>
+			<span style="font-size: 14px; font-weight: 700; color: #1A1A1D; margin-left: 6px;">${roleLabel}</span>
+		</div>
+		<p style="margin: 10px 0 0 0; font-size: 13px; color: #6F6E75; line-height: 1.4;">
+			${roleDescription}
+		</p>
+	</div>
 </div>
 
-<div style="text-align: center; margin-bottom: 24px;">
-	<a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #D96C1E 0%, #E8943A 100%); color: #FAF9F7; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; box-shadow: 0 2px 8px rgba(217, 108, 30, 0.3);">
+<div style="text-align: center; margin-bottom: 28px;">
+	<a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #D96C1E 0%, #E8943A 100%); color: #FAF9F7; font-size: 16px; font-weight: 600; text-decoration: none; padding: 14px 36px; border-radius: 8px; box-shadow: 0 4px 12px rgba(217, 108, 30, 0.35);">
 		Accept Invitation
 	</a>
 </div>
 
-<p style="text-align: center; font-size: 13px; color: #6F6E75; margin: 0 0 16px 0;">
+<p style="text-align: center; font-size: 13px; color: #6F6E75; margin: 0 0 16px 0; line-height: 1.6;">
 	New to BuildOS? <a href="${registerUrl}" style="color: #D96C1E; font-weight: 600; text-decoration: none;">Create an account</a> to accept.<br />
 	Already have an account? <a href="${loginUrl}" style="color: #D96C1E; font-weight: 600; text-decoration: none;">Sign in</a>.
 </p>
 
-<p style="text-align: center; font-size: 13px; color: #9A9A9A; margin: 0;">
+<p style="text-align: center; font-size: 12px; color: #9A9A9A; margin: 0;">
 	This invitation expires in ${INVITE_EXPIRY_DAYS} days. If you didn't expect this email, you can safely ignore it.
 </p>
 		`.trim();
 
 		const html = generateMinimalEmailHTML({ subject: htmlSubject, content });
-		const textBody = `${inviterName} invited you to collaborate on \"${project.name}\".${descriptionText}Accept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
+		const textBody = `${inviterName} invited you to collaborate on "${project.name}".${descriptionText}\nYour role: ${roleLabel} - ${roleDescription}\n\nAccept the invite: ${inviteUrl}\n\nNew to BuildOS? Create an account: ${registerUrl}\nAlready have an account? Sign in: ${loginUrl}\n\nThis invite expires in ${INVITE_EXPIRY_DAYS} days.`;
 
 		const emailService = new EmailService(supabase);
 		const emailResult = await emailService.sendEmail({

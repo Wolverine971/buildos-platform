@@ -4,7 +4,7 @@
 
 > Living document tracking all engagement accounts with last visited dates.
 > Updated automatically during each Twitter warmup scan.
-> Last Updated: 2026-01-09
+> Last Updated: 2026-01-12
 
 **Related Docs:**
 
@@ -29,15 +29,15 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                  | Name            | Followers | Last Visited | Notes                                   |
 | --------------------------------------- | --------------- | --------- | ------------ | --------------------------------------- |
-| [@levelsio](https://x.com/levelsio)     | Pieter Levels   | 591K      | ---          | Indie hacker GOAT, building in public   |
-| [@shaanvp](https://x.com/ShaanVP)       | Shaan Puri      | 515K      | ---          | My First Million, startup wisdom        |
+| [@levelsio](https://x.com/levelsio)     | Pieter Levels   | 791.8K    | 2026-01-12   | Indie hacker GOAT, building in public   |
+| [@shaanvp](https://x.com/ShaanVP)       | Shaan Puri      | 515K      | 2026-01-12   | My First Million, startup wisdom        |
 | [@thesamparr](https://x.com/thesamparr) | Sam Parr        | 319K      | ---          | MFM co-host, The Hustle                 |
 | [@lennysan](https://x.com/lennysan)     | Lenny Rachitsky | 249K      | ---          | Product leadership, scaling             |
-| [@danshipper](https://x.com/danshipper) | Dan Shipper     | 140K      | ---          | AI productivity, Every                  |
+| [@danshipper](https://x.com/danshipper) | Dan Shipper     | 140K      | 2026-01-12   | AI productivity, Every - LAUNCHED PROOF |
 | [@swyx](https://x.com/swyx)             | swyx            | 112K      | ---          | AI Engineer, Latent Space               |
-| [@simonw](https://x.com/simonw)         | Simon Willison  | 100K      | ---          | Datasette, LLM writing                  |
+| [@simonw](https://x.com/simonw)         | Simon Willison  | 130.8K    | 2026-01-12   | Datasette, LLM writing                  |
 | [@arvidkahl](https://x.com/arvidkahl)   | Arvid Kahl      | 96K       | ---          | Zero to Sold, bootstrapping             |
-| [@dexhorthy](https://x.com/dexhorthy)   | Dexter Horthy   | 3.2K      | ---          | COINED "Context Engineering" - CRITICAL |
+| [@dexhorthy](https://x.com/dexhorthy)   | Dexter Horthy   | 10.7K     | 2026-01-12   | COINED "Context Engineering" - CRITICAL |
 
 ---
 
@@ -45,7 +45,7 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                        | Name             | Followers | Last Visited | Notes                                        |
 | --------------------------------------------- | ---------------- | --------- | ------------ | -------------------------------------------- |
-| [@dexhorthy](https://x.com/dexhorthy)         | Dexter Horthy    | 3.2K      | ---          | Coined term - ENGAGE HEAVILY                 |
+| [@dexhorthy](https://x.com/dexhorthy)         | Dexter Horthy    | 10.7K     | 2026-01-12   | Coined term - ENGAGE HEAVILY                 |
 | [@datachaz](https://x.com/datachaz)           | Chaz Acheronti   | 149K      | ---          | 16-page Claude guide author                  |
 | [@NinaLopatina](https://x.com/NinaLopatina)   | Nina Lopatina    | 231       | ---          | ContextualAI, "State of Context Engineering" |
 | [@fchollet](https://x.com/fchollet)           | Francois Chollet | 596K      | ---          | Keras creator, ARC-AGI                       |
@@ -61,8 +61,8 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                    | Name         | Followers | Last Visited | Product               | Threat Level  |
 | ----------------------------------------- | ------------ | --------- | ------------ | --------------------- | ------------- |
-| [@dannypostma](https://x.com/dannypostma) | Danny Postma | 166K      | ---          | PostmaOS - AI Life OS | DIRECT        |
-| [@danidonovan](https://x.com/danidonovan) | Dani Donovan | 126K      | ---          | Anti-Planner (ADHD)   | PHILOSOPHICAL |
+| [@dannypostma](https://x.com/dannypostma) | Danny Postma | 166K      | 2026-01-12   | PostmaOS - AI Life OS (laying low) | DIRECT        |
+| [@danidonovan](https://x.com/danidonovan) | Dani Donovan | 126K      | 2026-01-12   | Anti-Planner (ADHD) - quiet since Dec | PHILOSOPHICAL |
 | [@tdinh_me](https://x.com/tdinh_me)       | Tony Dinh    | 175K      | ---          | TypingMind            | ADJACENT      |
 
 ---
@@ -82,11 +82,11 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                          | Name               | Followers | Last Visited | Notes                                      |
 | ----------------------------------------------- | ------------------ | --------- | ------------ | ------------------------------------------ |
-| [@ADHD_Alien](https://x.com/ADHD_Alien)         | Pina               | 185K      | ---          | ADHD Alien Comics                          |
-| [@HowtoADHD](https://x.com/HowtoADHD)           | Jessica McCabe     | 135K      | ---          | 1M+ YouTube, ADHD education                |
-| [@danidonovan](https://x.com/danidonovan)       | Dani Donovan       | 126K      | ---          | Anti-Planner (COMPETITOR)                  |
+| [@ADHD_Alien](https://x.com/ADHD_Alien)         | Pina               | 184.6K    | 2026-01-12   | ADHD Alien Comics - mostly reposts         |
+| [@HowtoADHD](https://x.com/HowtoADHD)           | Jessica McCabe     | 134.8K    | 2026-01-12   | 1M+ YouTube - not actively posting         |
+| [@danidonovan](https://x.com/danidonovan)       | Dani Donovan       | 126K      | 2026-01-12   | Anti-Planner (COMPETITOR) - quiet          |
 | [@ChaleneJohnson](https://x.com/ChaleneJohnson) | Chalene Johnson    | 84K       | ---          | Lifestyle/ADHD                             |
-| [@StructuredSucc](https://x.com/StructuredSucc) | Structured Success | 55K       | ---          | ADHD Coaching - name IS BuildOS philosophy |
+| [@StructuredSucc](https://x.com/StructuredSucc) | Structured Success | 55.2K     | 2026-01-12   | ADHD Coaching - not actively posting       |
 | [@womenwithadhd](https://x.com/womenwithadhd)   | Women with ADHD    | 20K       | ---          | Community                                  |
 
 ---
@@ -156,6 +156,9 @@ New accounts discovered during scans. Review and assign tier.
 | ------------------------------------- | ------------ | --------- | ---------- | --------------------- | -------------- |
 | [@bcherny](https://x.com/bcherny)     | Boris Cherny | TBD       | 2026-01-08 | Claude Code creator   | Tier 2         |
 | [@lenadroid](https://x.com/lenadroid) | TBD          | TBD       | 2026-01-08 | Context eng education | Tier 3         |
+| [@acontext_io](https://x.com/acontext_io) | Acontext | TBD       | 2026-01-12 | Context data platform - COMPETITOR | Monitor |
+| [@DropzoneAI](https://x.com/DropzoneAI) | DropzoneAI | TBD       | 2026-01-12 | Context engineering reliability | Tier 3 |
+| [@mitchellh](https://x.com/mitchellh) | Mitchell Hashimoto | TBD  | 2026-01-12 | HashiCorp founder, AI quality | Tier 2 |
 
 ---
 
@@ -163,6 +166,7 @@ New accounts discovered during scans. Review and assign tier.
 
 | Date       | Accounts Scanned | Engagements Made | Notes                   |
 | ---------- | ---------------- | ---------------- | ----------------------- |
+| 2026-01-12 | ~12              | TBD              | Dex's follower explosion, Dan Shipper launched Proof, Acontext discovered |
 | 2026-01-08 | ~15              | TBD              | First structured warmup |
 
 ---

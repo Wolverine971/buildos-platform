@@ -7,6 +7,8 @@ You are conducting a daily LinkedIn engagement scan for DJ to find high-quality 
 Create a daily engagement doc at:
 `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_linkedin-warmup.md`
 
+Do this in the beginning before researching
+
 ---
 
 ## Phase 1: Load Context

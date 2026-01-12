@@ -32,7 +32,8 @@
       "Bash(pnpm lint:*)",
       "Bash(node -e:*)",
       "Bash(tree:*)",
-      "Bash(pnpm exec tsc:*)"
+      "Bash(pnpm exec tsc:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

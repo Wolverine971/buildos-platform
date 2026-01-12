@@ -1,6 +1,14 @@
 <!-- apps/web/src/lib/components/ontology/EventCreateModal.svelte -->
+<!--
+	Event Creation Modal Component
+	Creates calendar events tied to a project.
+
+	Related Files:
+	- API Endpoint: /apps/web/src/routes/api/onto/projects/[id]/events/+server.ts
+	- Edit Modal: /apps/web/src/lib/components/ontology/EventEditModal.svelte
+-->
 <script lang="ts">
-	import { Calendar, Loader, Save } from 'lucide-svelte';
+	import { Calendar, Save, X } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -101,84 +109,205 @@
 	}
 </script>
 
-<Modal isOpen={true} {onClose} title="New Event" size="md">
-	<form onsubmit={handleSubmit} class="space-y-4">
-		<div class="flex items-center gap-2 text-sm text-muted-foreground">
-			<Calendar class="w-4 h-4 text-accent" />
-			<span>Schedule time tied to this project.</span>
-		</div>
-
-		<FormField label="Title" labelFor="eventTitle" required={true}>
-			<TextInput id="eventTitle" bind:value={title} placeholder="Event title" size="md" />
-		</FormField>
-
-		<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-			<FormField label="Start" labelFor="eventStart" required={true}>
-				<TextInput id="eventStart" type="datetime-local" bind:value={startAt} size="md" />
-			</FormField>
-			<FormField label="End" labelFor="eventEnd">
-				<TextInput id="eventEnd" type="datetime-local" bind:value={endAt} size="md" />
-			</FormField>
-		</div>
-
-		<FormField label="Location" labelFor="eventLocation">
-			<TextInput
-				id="eventLocation"
-				bind:value={location}
-				placeholder="Optional location"
-				size="md"
-			/>
-		</FormField>
-
-		<FormField label="Description" labelFor="eventDescription">
-			<Textarea
-				id="eventDescription"
-				bind:value={description}
-				placeholder="Optional notes"
-				rows={3}
-			/>
-		</FormField>
-
-		{#if tasks.length > 0}
-			<FormField label="Link to Task" labelFor="linkedTask">
-				<Select id="linkedTask" bind:value={linkedTaskId} size="md">
-					<option value="">No linked task</option>
-					{#each tasks as task}
-						<option value={task.id}>{task.title}</option>
-					{/each}
-				</Select>
-			</FormField>
-		{/if}
-
-		<label class="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer group">
-			<input
-				type="checkbox"
-				bind:checked={syncToCalendar}
-				class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
-			/>
-			<span class="group-hover:text-foreground transition-colors"
-				>Sync to project calendar</span
-			>
-		</label>
-
-		{#if error}
-			<div class="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2">
-				<p class="text-xs text-destructive">{error}</p>
+<Modal isOpen={true} onClose={onClose} size="xl" closeOnEscape={!isSaving} showCloseButton={false}>
+	{#snippet header()}
+		<!-- Compact Inkprint header -->
+		<div
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+		>
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+				<div
+					class="flex h-9 w-9 items-center justify-center rounded bg-orange-500/10 text-orange-600 dark:text-orange-400 shrink-0"
+				>
+					<Calendar class="w-5 h-5" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<h2
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+					>
+						{title || 'New Event'}
+					</h2>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+						Schedule time tied to this project
+					</p>
+				</div>
 			</div>
-		{/if}
+			<button
+				type="button"
+				onclick={onClose}
+				disabled={isSaving}
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
+				aria-label="Close modal"
+			>
+				<X class="w-5 h-5" />
+			</button>
+		</div>
+	{/snippet}
 
-		<div class="flex justify-end gap-2">
-			<Button type="button" variant="ghost" on:click={onClose} disabled={isSaving}>
+	{#snippet children()}
+		<div class="px-2 py-2 sm:px-6 sm:py-4">
+			<form onsubmit={handleSubmit} class="space-y-4">
+				<!-- Event Title -->
+				<FormField
+					label="Event Title"
+					labelFor="eventTitle"
+					required={true}
+					error={!title.trim() && error ? 'Event title is required' : ''}
+				>
+					<TextInput
+						id="eventTitle"
+						bind:value={title}
+						placeholder="Enter event title..."
+						inputmode="text"
+						enterkeyhint="next"
+						required={true}
+						disabled={isSaving}
+						error={!title.trim() && error ? true : false}
+						size="md"
+					/>
+				</FormField>
+
+				<!-- Date/Time Grid -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<FormField label="Start" labelFor="eventStart" required={true}>
+						<TextInput
+							id="eventStart"
+							type="datetime-local"
+							inputmode="numeric"
+							enterkeyhint="next"
+							bind:value={startAt}
+							disabled={isSaving}
+							size="md"
+						/>
+						{#if startAt}
+							<p class="mt-1.5 text-xs text-muted-foreground">
+								{new Date(startAt).toLocaleString('en-US', {
+									weekday: 'short',
+									month: 'short',
+									day: 'numeric',
+									hour: 'numeric',
+									minute: '2-digit'
+								})}
+							</p>
+						{/if}
+					</FormField>
+					<FormField label="End" labelFor="eventEnd">
+						<TextInput
+							id="eventEnd"
+							type="datetime-local"
+							inputmode="numeric"
+							enterkeyhint="next"
+							bind:value={endAt}
+							disabled={isSaving}
+							size="md"
+						/>
+						{#if endAt}
+							<p class="mt-1.5 text-xs text-muted-foreground">
+								{new Date(endAt).toLocaleString('en-US', {
+									weekday: 'short',
+									month: 'short',
+									day: 'numeric',
+									hour: 'numeric',
+									minute: '2-digit'
+								})}
+							</p>
+						{/if}
+					</FormField>
+				</div>
+
+				<!-- Location -->
+				<FormField label="Location" labelFor="eventLocation">
+					<TextInput
+						id="eventLocation"
+						bind:value={location}
+						placeholder="Enter location or meeting link..."
+						inputmode="text"
+						enterkeyhint="next"
+						disabled={isSaving}
+						size="md"
+					/>
+				</FormField>
+
+				<!-- Description -->
+				<FormField
+					label="Description"
+					labelFor="eventDescription"
+					hint="Provide additional context about this event"
+				>
+					<Textarea
+						id="eventDescription"
+						bind:value={description}
+						placeholder="Describe the event..."
+						enterkeyhint="next"
+						rows={3}
+						disabled={isSaving}
+						size="md"
+					/>
+				</FormField>
+
+				{#if tasks.length > 0}
+					<FormField label="Link to Task" labelFor="linkedTask">
+						<Select id="linkedTask" bind:value={linkedTaskId} disabled={isSaving} size="md">
+							<option value="">No linked task</option>
+							{#each tasks as task}
+								<option value={task.id}>{task.title}</option>
+							{/each}
+						</Select>
+					</FormField>
+				{/if}
+
+				<!-- Calendar Sync Toggle -->
+				<label
+					class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
+				>
+					<input
+						type="checkbox"
+						bind:checked={syncToCalendar}
+						class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
+					/>
+					<span class="group-hover:text-foreground transition-colors">
+						Sync to project calendar
+					</span>
+				</label>
+
+				{#if error}
+					<div
+						class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+					>
+						<p class="text-sm text-destructive">{error}</p>
+					</div>
+				{/if}
+			</form>
+		</div>
+	{/snippet}
+
+	{#snippet footer()}
+		<div
+			class="flex flex-row items-center justify-end gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+		>
+			<Button
+				type="button"
+				variant="ghost"
+				size="sm"
+				onclick={onClose}
+				disabled={isSaving}
+				class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+			>
 				Cancel
 			</Button>
-			<Button type="submit" variant="primary" disabled={isSaving}>
-				{#if isSaving}
-					<Loader class="w-4 h-4 animate-spin" />
-				{:else}
-					<Save class="w-4 h-4" />
-				{/if}
-				<span>Create</span>
+			<Button
+				type="submit"
+				variant="primary"
+				size="sm"
+				disabled={isSaving || !title.trim()}
+				onclick={handleSubmit}
+				loading={isSaving}
+				class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+			>
+				<Save class="w-3 h-3 sm:w-4 sm:h-4" />
+				<span class="hidden sm:inline">Create Event</span>
+				<span class="sm:hidden">Create</span>
 			</Button>
 		</div>
-	</form>
+	{/snippet}
 </Modal>

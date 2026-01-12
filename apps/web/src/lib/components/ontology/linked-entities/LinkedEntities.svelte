@@ -94,7 +94,7 @@
 	let showLinkPicker = $state(false);
 	let linkPickerKind = $state<EntityKind>('task');
 
-	// Filter sections based on allowedEntityTypes and exclude self-type for non-tasks
+	// Filter sections based on allowedEntityTypes and exclude self-type unless explicitly allowed
 	const visibleSections = $derived.by(() => {
 		let sections = ENTITY_SECTIONS;
 
@@ -103,8 +103,9 @@
 			sections = sections.filter((s) => allowedEntityTypes.includes(s.kind));
 		}
 
-		// Don't show the same kind as the source (except tasks can link to tasks)
-		if (sourceKind !== 'task') {
+		// Don't show the same kind as the source (except tasks/documents can self-link)
+		const allowsSelfLink = sourceKind === 'task' || sourceKind === 'document';
+		if (!allowsSelfLink) {
 			sections = sections.filter((s) => s.kind !== sourceKind);
 		}
 
