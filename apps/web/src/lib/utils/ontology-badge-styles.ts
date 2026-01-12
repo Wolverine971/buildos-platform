@@ -70,26 +70,6 @@ export function getTaskStateBadgeClass(stateKey: string): string {
 }
 
 /**
- * Get Tailwind CSS classes for output/document state badges
- */
-export function getOutputStateBadgeClass(stateKey: string): string {
-	const normalized = stateKey?.toLowerCase();
-
-	switch (normalized) {
-		case 'draft':
-			return BADGE_MUTED;
-		case 'review':
-			return BADGE_WARNING;
-		case 'approved':
-			return BADGE_PROGRESS;
-		case 'published':
-			return BADGE_SUCCESS;
-		default:
-			return BADGE_MUTED;
-	}
-}
-
-/**
  * Get Tailwind CSS classes for plan state badges
  */
 export function getPlanStateBadgeClass(stateKey: string): string {

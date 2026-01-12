@@ -25,6 +25,7 @@
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
+	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -105,10 +106,9 @@
 	const isEditing = $derived(Boolean(documentId));
 	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);
 	const titleFieldError = $derived(formError === 'Title is required' ? formError : '');
-	const typeFieldError = $derived(formError === 'Type key is required' ? formError : '');
 	const globalFormError = $derived.by(() => {
 		if (!formError) return null;
-		if (formError === 'Title is required' || formError === 'Type key is required') {
+		if (formError === 'Title is required') {
 			return null;
 		}
 		return formError;
@@ -135,7 +135,6 @@
 	});
 
 	let lastLoadedId = $state<string | null>(null);
-	const datalistId = `document-type-${Math.random().toString(36).slice(2, 9)}`;
 
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
@@ -159,19 +158,6 @@
 			projectId: projectId,
 			projectName: 'Project' // We don't have project name in this modal
 		};
-	});
-
-	const docTypeOptions = $derived.by(() => {
-		const set = new Set<string>();
-		for (const item of typeOptions) {
-			if (item) {
-				set.add(item);
-			}
-		}
-		if (typeKey) {
-			set.add(typeKey);
-		}
-		return Array.from(set);
 	});
 
 	function resetForm() {
@@ -275,10 +261,6 @@
 	function validateForm(): boolean {
 		if (!title.trim()) {
 			formError = 'Title is required';
-			return false;
-		}
-		if (isEditing && !typeKey.trim()) {
-			formError = 'Type key is required';
 			return false;
 		}
 		return true;
@@ -601,74 +583,23 @@
 									/>
 								</FormField>
 
-								<!-- State & Type -->
-								<div class="grid grid-cols-2 gap-2">
-									<FormField
-										label="State"
-										labelFor="document-state"
-										uppercase={false}
+								<!-- State -->
+								<FormField
+									label="State"
+									labelFor="document-state"
+									uppercase={false}
+								>
+									<Select
+										id="document-state"
+										bind:value={stateKey}
+										size="sm"
+										class="w-full text-xs"
 									>
-										<Select
-											id="document-state"
-											bind:value={stateKey}
-											size="sm"
-											class="w-full text-xs"
-										>
-											{#each stateOptions as option}
-												<option value={option.value}>{option.label}</option>
-											{/each}
-										</Select>
-									</FormField>
-									{#if isEditing}
-										<FormField
-											label="Type"
-											labelFor="document-type-input"
-											uppercase={false}
-											error={typeFieldError}
-										>
-											<input
-												id="document-type-input"
-												list={datalistId}
-												class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-all"
-												bind:value={typeKey}
-												placeholder="document.type"
-											/>
-											<datalist id={datalistId}>
-												{#each docTypeOptions as option}
-													<option value={option}></option>
-												{/each}
-											</datalist>
-										</FormField>
-									{/if}
-								</div>
-
-								<!-- Type suggestions -->
-								{#if isEditing}
-									<div class="flex flex-wrap gap-1 text-[10px] font-mono">
-										<button
-											type="button"
-											class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-											onclick={() => (typeKey = 'document.context.project')}
-										>
-											.context
-										</button>
-										<button
-											type="button"
-											class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-											onclick={() => (typeKey = 'document.spec.product')}
-										>
-											.spec
-										</button>
-										<button
-											type="button"
-											class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-											onclick={() =>
-												(typeKey = 'document.knowledge.research')}
-										>
-											.note
-										</button>
-									</div>
-								{/if}
+										{#each stateOptions as option}
+											<option value={option.value}>{option.label}</option>
+										{/each}
+									</Select>
+								</FormField>
 
 								<!-- Linked Entities -->
 								{#if isEditing && documentId}
@@ -817,78 +748,25 @@
 											/>
 										</FormField>
 
-										<!-- State & Type -->
-										<div class="grid grid-cols-2 gap-2">
-											<FormField
-												label="State"
-												labelFor="document-state-mobile"
-												uppercase={false}
+										<!-- State -->
+										<FormField
+											label="State"
+											labelFor="document-state-mobile"
+											uppercase={false}
+										>
+											<Select
+												id="document-state-mobile"
+												bind:value={stateKey}
+												size="sm"
+												class="w-full text-xs"
 											>
-												<Select
-													id="document-state-mobile"
-													bind:value={stateKey}
-													size="sm"
-													class="w-full text-xs"
-												>
-													{#each stateOptions as option}
-														<option value={option.value}
-															>{option.label}</option
-														>
-													{/each}
-												</Select>
-											</FormField>
-											{#if isEditing}
-												<FormField
-													label="Type"
-													labelFor="document-type-input-mobile"
-													uppercase={false}
-													error={typeFieldError}
-												>
-													<input
-														id="document-type-input-mobile"
-														list="{datalistId}-mobile"
-														class="w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-all"
-														bind:value={typeKey}
-														placeholder="document.type"
-													/>
-													<datalist id="{datalistId}-mobile">
-														{#each docTypeOptions as option}
-															<option value={option}></option>
-														{/each}
-													</datalist>
-												</FormField>
-											{/if}
-										</div>
-
-										<!-- Type suggestions -->
-										{#if isEditing}
-											<div class="flex flex-wrap gap-1 text-[10px] font-mono">
-												<button
-													type="button"
-													class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-													onclick={() =>
-														(typeKey = 'document.context.project')}
-												>
-													.context
-												</button>
-												<button
-													type="button"
-													class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-													onclick={() =>
-														(typeKey = 'document.spec.product')}
-												>
-													.spec
-												</button>
-												<button
-													type="button"
-													class="px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-													onclick={() =>
-														(typeKey = 'document.knowledge.research')}
-												>
-													.note
-												</button>
-											</div>
-										{/if}
+												{#each stateOptions as option}
+													<option value={option.value}
+														>{option.label}</option
+													>
+												{/each}
+											</Select>
+										</FormField>
 
 										<!-- Linked Entities -->
 										{#if isEditing && documentId}
@@ -969,6 +847,14 @@
 						</div>
 					{/if}
 				</form>
+
+				{#if documentId}
+					<EntityCommentsSection
+						{projectId}
+						entityType="document"
+						entityId={documentId}
+					/>
+				{/if}
 			{/if}
 		</div>
 	{/snippet}
@@ -1007,7 +893,7 @@
 					variant="primary"
 					size="sm"
 					loading={saving}
-					disabled={saving || !title.trim() || (isEditing && !typeKey.trim())}
+					disabled={saving || !title.trim()}
 					class="text-xs h-8 pressable"
 				>
 					<Save class="w-3.5 h-3.5" />

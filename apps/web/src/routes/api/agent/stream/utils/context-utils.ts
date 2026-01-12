@@ -140,7 +140,7 @@ export function generateOntologyCacheKey(
  * @param entities - The entities object to mutate
  * @param entityId - The entity ID to assign
  */
-type EntityType = 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output';
+type EntityType = 'project' | 'task' | 'plan' | 'goal' | 'document';
 
 function assignEntityByType(
 	entities: LastTurnContext['entities'],
@@ -178,11 +178,6 @@ function assignEntityByType(
 				entities.document_id = entityId;
 			}
 			break;
-		case 'output':
-			if (!entities.output_id) {
-				entities.output_id = entityId;
-			}
-			break;
 		default:
 			break;
 	}
@@ -205,8 +200,6 @@ export function assignEntityByPrefix(
 		assignEntityByType(entities, 'goal', entityId);
 	} else if (entityId.startsWith('doc_')) {
 		assignEntityByType(entities, 'document', entityId);
-	} else if (entityId.startsWith('out_')) {
-		assignEntityByType(entities, 'output', entityId);
 	}
 }
 
@@ -220,9 +213,7 @@ const ENTITY_CONTAINER_KEYS: Record<string, EntityType> = {
 	goal: 'goal',
 	goals: 'goal',
 	document: 'document',
-	documents: 'document',
-	output: 'output',
-	outputs: 'output'
+	documents: 'document'
 };
 
 const ENTITY_ID_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
@@ -230,8 +221,7 @@ const ENTITY_ID_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
 	{ suffix: 'task_id', entityType: 'task' },
 	{ suffix: 'plan_id', entityType: 'plan' },
 	{ suffix: 'goal_id', entityType: 'goal' },
-	{ suffix: 'document_id', entityType: 'document' },
-	{ suffix: 'output_id', entityType: 'output' }
+	{ suffix: 'document_id', entityType: 'document' }
 ];
 
 const ENTITY_ID_LIST_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
@@ -269,8 +259,7 @@ function coerceEntityType(value: unknown): EntityType | undefined {
 		normalized === 'task' ||
 		normalized === 'plan' ||
 		normalized === 'goal' ||
-		normalized === 'document' ||
-		normalized === 'output'
+		normalized === 'document'
 	) {
 		return normalized as EntityType;
 	}
@@ -484,9 +473,6 @@ export function buildContextShiftLastTurnContext(
 			break;
 		case 'document':
 			if (contextShift.entity_id) entities.document_id = contextShift.entity_id;
-			break;
-		case 'output':
-			if (contextShift.entity_id) entities.output_id = contextShift.entity_id;
 			break;
 		default:
 			break;

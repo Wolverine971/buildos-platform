@@ -6,10 +6,8 @@
 		ListChecks,
 		Calendar,
 		FileText,
-		Layers,
 		Flag,
 		TriangleAlert,
-		Scale,
 		Pin,
 		FolderKanban,
 		Search
@@ -31,10 +29,8 @@
 		goal: Target,
 		plan: Calendar,
 		document: FileText,
-		output: Layers,
 		milestone: Flag,
 		risk: TriangleAlert,
-		decision: Scale,
 		requirement: Pin
 	};
 
@@ -47,10 +43,8 @@
 		goal: 'Goal focus',
 		plan: 'Plan focus',
 		document: 'Document focus',
-		output: 'Output focus',
 		milestone: 'Milestone focus',
 		risk: 'Risk focus',
-		decision: 'Decision focus',
 		requirement: 'Requirement focus'
 	};
 

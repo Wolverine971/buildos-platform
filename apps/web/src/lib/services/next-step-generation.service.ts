@@ -62,20 +62,12 @@ interface MilestoneData {
 	props: Record<string, unknown> | null;
 }
 
-interface OutputData {
-	id: string;
-	name: string;
-	state_key: string;
-	type_key: string;
-}
-
 interface GenerationContext {
 	project: ProjectData;
 	tasks: TaskData[];
 	goals: GoalData[];
 	plans: PlanData[];
 	milestones: MilestoneData[];
-	outputs: OutputData[];
 }
 
 interface GenerationResult {
@@ -103,7 +95,6 @@ You will receive:
 - Goals and their progress
 - Plans and their status
 - Milestones and deadlines
-- Outputs/deliverables and their status
 
 Your recommendations should be:
 1. **Specific and actionable** - Tell the user exactly what to do next
@@ -123,7 +114,7 @@ Response format (JSON only):
 
 Rules:
 - The "short" field should be a clear, action-oriented statement
-- The "long" field should reference specific tasks, goals, or outputs using the [[type:id|text]] format
+- The "long" field should reference specific tasks or goals using the [[type:id|text]] format
 - Consider blockers, dependencies, and momentum
 - If there are overdue tasks, prioritize them
 - If all tasks are done, suggest reviewing goals or celebrating progress
@@ -215,45 +206,38 @@ async function fetchProjectContext(
 	}
 
 	// Fetch related entities in parallel
-	const [tasksResult, goalsResult, plansResult, milestonesResult, outputsResult] =
-		await Promise.all([
-			supabase
-				.from('onto_tasks')
-				.select('id, title, state_key, priority, due_at, props')
-				.eq('project_id', projectId)
-				.order('priority', { ascending: false, nullsFirst: false })
-				.order('due_at', { ascending: true, nullsFirst: false })
-				.limit(20),
-			supabase
-				.from('onto_goals')
-				.select('id, name, type_key, props')
-				.eq('project_id', projectId)
-				.limit(10),
-			supabase
-				.from('onto_plans')
-				.select('id, name, state_key')
-				.eq('project_id', projectId)
-				.limit(10),
-			supabase
-				.from('onto_milestones')
-				.select('id, title, due_at, props')
-				.eq('project_id', projectId)
-				.order('due_at', { ascending: true })
-				.limit(10),
-			supabase
-				.from('onto_outputs')
-				.select('id, name, state_key, type_key')
-				.eq('project_id', projectId)
-				.limit(10)
-		]);
+	const [tasksResult, goalsResult, plansResult, milestonesResult] = await Promise.all([
+		supabase
+			.from('onto_tasks')
+			.select('id, title, state_key, priority, due_at, props')
+			.eq('project_id', projectId)
+			.order('priority', { ascending: false, nullsFirst: false })
+			.order('due_at', { ascending: true, nullsFirst: false })
+			.limit(20),
+		supabase
+			.from('onto_goals')
+			.select('id, name, type_key, props')
+			.eq('project_id', projectId)
+			.limit(10),
+		supabase
+			.from('onto_plans')
+			.select('id, name, state_key')
+			.eq('project_id', projectId)
+			.limit(10),
+		supabase
+			.from('onto_milestones')
+			.select('id, title, due_at, props')
+			.eq('project_id', projectId)
+			.order('due_at', { ascending: true })
+			.limit(10)
+	]);
 
 	return {
 		project: project as ProjectData,
 		tasks: (tasksResult.data || []) as TaskData[],
 		goals: (goalsResult.data || []) as GoalData[],
 		plans: (plansResult.data || []) as PlanData[],
-		milestones: (milestonesResult.data || []) as MilestoneData[],
-		outputs: (outputsResult.data || []) as OutputData[]
+		milestones: (milestonesResult.data || []) as MilestoneData[]
 	};
 }
 
@@ -262,7 +246,7 @@ async function fetchProjectContext(
 // =============================================================================
 
 function buildAnalysisPrompt(context: GenerationContext): string {
-	const { project, tasks, goals, plans, milestones, outputs } = context;
+	const { project, tasks, goals, plans, milestones } = context;
 	const now = new Date();
 
 	// Build project section
@@ -374,18 +358,6 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 		for (const milestone of upcomingMilestones.slice(0, 3)) {
 			const ref = createEntityReference('milestone', milestone.id, milestone.title);
 			prompt += `- ${ref} (due: ${formatDueDate(milestone.due_at!)})\n`;
-		}
-	}
-
-	// Outputs/Deliverables section
-	if (outputs.length > 0) {
-		const pendingOutputs = outputs.filter((o) => !isCompletedState(o.state_key));
-		if (pendingOutputs.length > 0) {
-			prompt += `\n## Pending Deliverables (${pendingOutputs.length})\n`;
-			for (const output of pendingOutputs.slice(0, 3)) {
-				const ref = createEntityReference('output', output.id, output.name);
-				prompt += `- ${ref} (${formatState(output.state_key)})\n`;
-			}
 		}
 	}
 

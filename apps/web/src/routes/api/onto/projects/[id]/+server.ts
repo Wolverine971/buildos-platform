@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/onto/projects/[id]/+server.ts
 /**
  * GET /api/onto/projects/[id]
- * Fetch project with all related entities (goals, plans, tasks, outputs, etc.)
+ * Fetch project with all related entities (goals, plans, tasks, etc.)
  */
 
 import type { RequestHandler } from './$types';
@@ -116,12 +116,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			requirementsResult,
 			plansResult,
 			tasksResult,
-			outputsResult,
 			documentsResult,
 			sourcesResult,
 			milestonesResult,
 			risksResult,
-			decisionsResult,
 			metricsResult,
 			contextDocResult
 		] = await Promise.all([
@@ -150,12 +148,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.is('deleted_at', null)
 				.order('created_at'),
 			supabase
-				.from('onto_outputs')
-				.select('*')
-				.eq('project_id', id)
-				.is('deleted_at', null)
-				.order('created_at'),
-			supabase
 				.from('onto_documents')
 				.select('*')
 				.eq('project_id', id)
@@ -174,12 +166,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at'),
-			supabase
-				.from('onto_decisions')
-				.select('*')
-				.eq('project_id', id)
-				.is('deleted_at', null)
-				.order('decision_at'),
 			supabase.from('onto_metrics').select('*').eq('project_id', id).order('created_at'),
 			// OPTIMIZATION: Fetch context document via edge in single query with JOIN
 			supabase
@@ -206,9 +192,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (tasksResult.error) {
 			console.error('[Project API] Failed to fetch tasks:', tasksResult.error);
 		}
-		if (outputsResult.error) {
-			console.error('[Project API] Failed to fetch outputs:', outputsResult.error);
-		}
 		if (documentsResult.error) {
 			console.error('[Project API] Failed to fetch documents:', documentsResult.error);
 		}
@@ -223,12 +206,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			requirements: requirementsResult.data || [],
 			plans: plansResult.data || [],
 			tasks: tasksResult.data || [],
-			outputs: outputsResult.data || [],
 			documents: documentsResult.data || [],
 			sources: sourcesResult.data || [],
 			milestones: milestonesResult.data || [],
 			risks: risksResult.data || [],
-			decisions: decisionsResult.data || [],
 			metrics: metricsResult.data || [],
 			context_document: contextDocument
 		});

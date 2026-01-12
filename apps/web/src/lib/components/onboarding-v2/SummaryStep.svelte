@@ -20,13 +20,11 @@
 		requirements: number;
 		plans: number;
 		tasks: number;
-		outputs: number;
 		documents: number;
 		sources: number;
 		metrics: number;
 		milestones: number;
 		risks: number;
-		decisions: number;
 		edges: number;
 	};
 
@@ -70,12 +68,10 @@
 		{ key: 'plans', label: 'Plans' },
 		{ key: 'tasks', label: 'Tasks' },
 		{ key: 'milestones', label: 'Milestones' },
-		{ key: 'outputs', label: 'Outputs' },
 		{ key: 'documents', label: 'Documents' },
 		{ key: 'sources', label: 'Sources' },
 		{ key: 'metrics', label: 'Metrics' },
 		{ key: 'risks', label: 'Risks' },
-		{ key: 'decisions', label: 'Decisions' },
 		{ key: 'edges', label: 'Edges' }
 	];
 

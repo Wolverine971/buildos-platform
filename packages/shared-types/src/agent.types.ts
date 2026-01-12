@@ -311,10 +311,8 @@ export interface ProjectFocus {
     | 'goal'
     | 'plan'
     | 'document'
-    | 'output'
     | 'milestone'
     | 'risk'
-    | 'decision'
     | 'requirement';
   focusEntityId: string | null;
   focusEntityName: string | null;
@@ -330,10 +328,8 @@ export interface FocusEntitySummary {
     | 'goal'
     | 'plan'
     | 'document'
-    | 'output'
     | 'milestone'
     | 'risk'
-    | 'decision'
     | 'requirement';
   metadata?: {
     state_key?: string | null;
@@ -353,10 +349,8 @@ export interface ContextShiftPayload {
     | 'plan'
     | 'goal'
     | 'document'
-    | 'output'
     | 'milestone'
     | 'risk'
-    | 'decision'
     | 'requirement';
   message: string;
 }

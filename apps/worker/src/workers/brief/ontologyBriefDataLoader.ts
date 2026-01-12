@@ -18,12 +18,10 @@ import { addDays, subDays, subHours, parseISO, differenceInDays } from 'date-fns
 export const ENTITY_CAPS = {
 	GOALS: 5,
 	RISKS: 5,
-	DECISIONS: 5,
 	REQUIREMENTS: 5,
 	DOCUMENTS: 5,
 	MILESTONES: 5,
 	PLANS: 5,
-	OUTPUTS: 5,
 	TASKS_RECENT: 10,
 	TASKS_UPCOMING: 5
 } as const;
@@ -35,15 +33,12 @@ import type {
 	OntoMilestone,
 	OntoRisk,
 	OntoDocument,
-	OntoOutput,
 	OntoRequirement,
-	OntoDecision,
 	OntoEdge,
 	OntoActor,
 	OntoProjectWithRelations,
 	CategorizedTasks,
 	GoalProgress,
-	OutputStatus,
 	MilestoneStatus,
 	UnblockingTask,
 	RecentUpdates,
@@ -372,35 +367,6 @@ export function calculateGoalProgress(
 }
 
 /**
- * Calculate output status from relationships
- */
-export function getOutputStatus(output: OntoOutput, edges: OntoEdge[]): OutputStatus {
-	// Find linked goals
-	const linkedGoalEdges = edges.filter(
-		(e) =>
-			(e.src_id === output.id || e.dst_id === output.id) &&
-			(e.src_kind === 'goal' || e.dst_kind === 'goal')
-	);
-	const linkedGoals = linkedGoalEdges.map((e) => (e.src_kind === 'goal' ? e.src_id : e.dst_id));
-
-	// Find linked tasks
-	const linkedTaskEdges = edges.filter(
-		(e) =>
-			(e.src_id === output.id || e.dst_id === output.id) &&
-			(e.src_kind === 'task' || e.dst_kind === 'task')
-	);
-	const linkedTasks = linkedTaskEdges.map((e) => (e.src_kind === 'task' ? e.src_id : e.dst_id));
-
-	return {
-		output,
-		state: output.state_key,
-		linkedGoals,
-		linkedTasks,
-		updated_at: output.updated_at
-	};
-}
-
-/**
  * Get milestone status with risk assessment.
  *
  * Note: This function calculates days away using calendar dates in the user's timezone,
@@ -538,7 +504,6 @@ export function getRecentUpdates(
 					recentTaskIds.has(e.src_id)
 			);
 		}),
-		outputs: data.outputs.filter((o) => parseISO(o.updated_at) >= cutoff),
 		documents: data.documents.filter((d) => parseISO(d.updated_at) >= cutoff)
 	};
 }
@@ -805,9 +770,7 @@ export class OntologyBriefDataLoader {
 			milestonesResult,
 			risksResult,
 			documentsResult,
-			outputsResult,
 			requirementsResult,
-			decisionsResult,
 			edgesResult
 		] = await Promise.all([
 			this.supabase
@@ -843,18 +806,8 @@ export class OntologyBriefDataLoader {
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
-				.from('onto_outputs')
-				.select('id, project_id, name, state_key, updated_at, created_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			this.supabase
 				.from('onto_requirements')
 				.select('id, project_id, text, created_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_decisions')
-				.select('id, project_id, title, decision_at, created_at')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
@@ -875,9 +828,7 @@ export class OntologyBriefDataLoader {
 			{ name: 'milestones', error: milestonesResult.error },
 			{ name: 'risks', error: risksResult.error },
 			{ name: 'documents', error: documentsResult.error },
-			{ name: 'outputs', error: outputsResult.error },
 			{ name: 'requirements', error: requirementsResult.error },
-			{ name: 'decisions', error: decisionsResult.error },
 			{ name: 'edges', error: edgesResult.error }
 		].filter((e) => e.error);
 
@@ -891,9 +842,7 @@ export class OntologyBriefDataLoader {
 		const milestones = (milestonesResult.data || []) as OntoMilestone[];
 		const risks = (risksResult.data || []) as OntoRisk[];
 		const documents = (documentsResult.data || []) as OntoDocument[];
-		const outputs = (outputsResult.data || []) as OntoOutput[];
 		const requirements = (requirementsResult.data || []) as OntoRequirement[];
-		const decisions = (decisionsResult.data || []) as OntoDecision[];
 		const edges = (edgesResult.data || []) as OntoEdge[];
 
 		console.log('[OntologyBriefDataLoader] Loaded entities:', {
@@ -904,9 +853,7 @@ export class OntologyBriefDataLoader {
 			milestones: milestones.length,
 			risks: risks.length,
 			documents: documents.length,
-			outputs: outputs.length,
 			requirements: requirements.length,
-			decisions: decisions.length,
 			edges: edges.length
 		});
 
@@ -920,9 +867,7 @@ export class OntologyBriefDataLoader {
 			const projectMilestones = milestones.filter((m) => m.project_id === project.id);
 			const projectRisks = risks.filter((r) => r.project_id === project.id);
 			const projectDocuments = documents.filter((d) => d.project_id === project.id);
-			const projectOutputs = outputs.filter((o) => o.project_id === project.id);
 			const projectRequirements = requirements.filter((r) => r.project_id === project.id);
-			const projectDecisions = decisions.filter((d) => d.project_id === project.id);
 			const projectEdges = edges.filter((e) => e.project_id === project.id);
 
 			// Build computed relationships
@@ -947,14 +892,12 @@ export class OntologyBriefDataLoader {
 				milestones: projectMilestones,
 				risks: projectRisks,
 				documents: projectDocuments,
-				outputs: projectOutputs,
 				requirements: projectRequirements,
-				decisions: projectDecisions,
 				edges: projectEdges,
 				tasksByPlan,
 				taskDependencies,
 				goalProgress,
-				recentUpdates: { tasks: [], goals: [], outputs: [], documents: [] }
+				recentUpdates: { tasks: [], goals: [], documents: [] }
 			});
 
 			return {
@@ -967,9 +910,7 @@ export class OntologyBriefDataLoader {
 				milestones: projectMilestones,
 				risks: projectRisks,
 				documents: projectDocuments,
-				outputs: projectOutputs,
 				requirements: projectRequirements,
-				decisions: projectDecisions,
 				edges: projectEdges,
 				tasksByPlan,
 				taskDependencies,
@@ -1073,7 +1014,6 @@ export class OntologyBriefDataLoader {
 		const allTasks = projectsData.flatMap((p) => p.tasks);
 		const allRisks = projectsData.flatMap((p) => p.risks);
 		const allRequirements = projectsData.flatMap((p) => p.requirements);
-		const allDecisions = projectsData.flatMap((p) => p.decisions);
 		const allEdges = projectsData.flatMap((p) => p.edges);
 
 		// Categorize all tasks
@@ -1108,10 +1048,6 @@ export class OntologyBriefDataLoader {
 			}
 		}
 
-		// Get output statuses
-		const allOutputs = projectsData.flatMap((p) => p.outputs);
-		const outputs = allOutputs.map((output) => getOutputStatus(output, allEdges));
-
 		// Get active risks (not mitigated or closed), apply cap per spec
 		const activeRisks = allRisks
 			.filter((r) => r.state_key !== 'mitigated' && r.state_key !== 'closed')
@@ -1128,7 +1064,6 @@ export class OntologyBriefDataLoader {
 		const allRecentUpdates: RecentUpdates = {
 			tasks: projectsData.flatMap((p) => p.recentUpdates.tasks),
 			goals: projectsData.flatMap((p) => p.recentUpdates.goals),
-			outputs: projectsData.flatMap((p) => p.recentUpdates.outputs),
 			documents: projectsData.flatMap((p) => p.recentUpdates.documents)
 		};
 
@@ -1157,16 +1092,7 @@ export class OntologyBriefDataLoader {
 			.filter((t) => !recentlyUpdatedIds.has(t.id))
 			.slice(0, ENTITY_CAPS.TASKS_UPCOMING);
 
-		// Apply entity caps to decisions and requirements per spec
-		const cappedDecisions = allDecisions
-			.sort((a, b) => {
-				// Sort by decision_at desc, fallback created_at desc
-				const aDate = a.decision_at || a.created_at;
-				const bDate = b.decision_at || b.created_at;
-				return parseISO(bDate).getTime() - parseISO(aDate).getTime();
-			})
-			.slice(0, ENTITY_CAPS.DECISIONS);
-
+		// Apply entity caps to requirements per spec
 		const cappedRequirements = allRequirements
 			.sort((a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime())
 			.slice(0, ENTITY_CAPS.REQUIREMENTS);
@@ -1185,27 +1111,12 @@ export class OntologyBriefDataLoader {
 			})
 			.slice(0, ENTITY_CAPS.GOALS);
 
-		// Cap outputs
-		const cappedOutputs = outputs
-			.sort((a, b) => {
-				const aUpdated = a.updated_at || a.output.created_at;
-				const bUpdated = b.updated_at || b.output.created_at;
-				return parseISO(bUpdated).getTime() - parseISO(aUpdated).getTime();
-			})
-			.slice(0, ENTITY_CAPS.OUTPUTS);
-
 		// Build project brief data
 		const projects: ProjectBriefData[] = projectsData.map((data) => {
 			const projectGoals = data.goals
 				.map((g) => data.goalProgress.get(g.id))
 				.filter((g): g is GoalProgress => g !== undefined);
-			const projectOutputs = data.outputs.map((o) => getOutputStatus(o, data.edges));
 			const unblockingTasks = findUnblockingTasks(data.tasks, data.edges);
-			const projectDecisions = [...data.decisions].sort((a, b) => {
-				const aDate = a.decision_at || a.created_at;
-				const bDate = b.decision_at || b.created_at;
-				return parseISO(bDate).getTime() - parseISO(aDate).getTime();
-			});
 			const projectRequirements = [...data.requirements].sort(
 				(a, b) => parseISO(b.created_at).getTime() - parseISO(a.created_at).getTime()
 			);
@@ -1247,9 +1158,7 @@ export class OntologyBriefDataLoader {
 				isShared: data.isShared,
 				activityLogs: data.activityLogs,
 				goals: projectGoals.slice(0, ENTITY_CAPS.GOALS),
-				outputs: projectOutputs.slice(0, ENTITY_CAPS.OUTPUTS),
 				requirements: projectRequirements.slice(0, ENTITY_CAPS.REQUIREMENTS),
-				decisions: projectDecisions.slice(0, ENTITY_CAPS.DECISIONS),
 				nextSteps,
 				nextMilestone: nextMilestone?.title || null,
 				activePlan,
@@ -1266,10 +1175,8 @@ export class OntologyBriefDataLoader {
 			briefDate,
 			timezone,
 			goals: cappedGoals,
-			outputs: cappedOutputs,
 			risks: activeRisks,
 			requirements: cappedRequirements,
-			decisions: cappedDecisions,
 			todaysTasks: categorizedTasks.todaysTasks,
 			blockedTasks: categorizedTasks.blockedTasks,
 			overdueTasks: categorizedTasks.overdueTasks,
@@ -1299,7 +1206,6 @@ export class OntologyBriefDataLoader {
 		const allGoals = projectsData.flatMap((p) => p.goals);
 		const allMilestones = projectsData.flatMap((p) => p.milestones);
 		const allRisks = projectsData.flatMap((p) => p.risks);
-		const allOutputs = projectsData.flatMap((p) => p.outputs);
 		const allEdges = projectsData.flatMap((p) => p.edges);
 		const allGoalProgress = projectsData.flatMap((p) => Array.from(p.goalProgress.values()));
 
@@ -1309,9 +1215,6 @@ export class OntologyBriefDataLoader {
 			const dueDateStr = formatInTimeZone(parseISO(m.due_at), timezone, 'yyyy-MM-dd');
 			return dueDateStr >= briefDate && dueDateStr <= weekEndStr;
 		}).length;
-
-		// Count outputs in review
-		const outputsInReview = allOutputs.filter((o) => o.state_key === 'review').length;
 
 		// Count active risks and goals at risk (use full sets, not capped brief data)
 		const activeRisksCount = allRisks.filter(
@@ -1331,7 +1234,6 @@ export class OntologyBriefDataLoader {
 		const recentUpdatesCount =
 			briefData.recentUpdates.tasks.length +
 			briefData.recentUpdates.goals.length +
-			briefData.recentUpdates.outputs.length +
 			briefData.recentUpdates.documents.length;
 
 		return {
@@ -1340,13 +1242,11 @@ export class OntologyBriefDataLoader {
 			totalGoals: allGoals.length,
 			totalMilestones: allMilestones.length,
 			activeRisksCount,
-			totalOutputs: allOutputs.length,
 			recentUpdatesCount,
 			blockedCount: briefData.blockedTasks.length,
 			overdueCount: briefData.overdueTasks.length,
 			goalsAtRisk,
 			milestonesThisWeek,
-			outputsInReview,
 			totalEdges: allEdges.length,
 			dependencyChains,
 			generatedVia: 'ontology_v1',

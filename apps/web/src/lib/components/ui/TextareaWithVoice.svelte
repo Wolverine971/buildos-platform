@@ -1133,7 +1133,9 @@
 								onclick={toggleVoiceRecording}
 								aria-label={voiceButtonState.label}
 								title={voiceButtonState.label}
-								aria-pressed={voiceButtonState.variant === 'recording' ? true : undefined}
+								aria-pressed={voiceButtonState.variant === 'recording'
+									? true
+									: undefined}
 								disabled={voiceButtonState.disabled}
 							>
 								{#if voiceButtonState.isLoading}

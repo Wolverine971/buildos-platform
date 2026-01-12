@@ -27,43 +27,28 @@ type OntologyEntityRow = Record<string, unknown> & {
 
 const DEFAULT_TYPE_KEYS: Record<OntologyEntityType, string> = {
 	task: 'task.default',
-	output: 'output.default',
 	plan: 'plan.default',
 	goal: 'goal.default',
 	risk: 'risk.default',
 	milestone: 'milestone.default',
-	decision: 'decision.default',
 	document: 'document.default'
 };
 
 const ENTITY_TABLES: Record<OntologyEntityType, string> = {
 	task: 'onto_tasks',
-	output: 'onto_outputs',
 	plan: 'onto_plans',
 	goal: 'onto_goals',
 	risk: 'onto_risks',
 	milestone: 'onto_milestones',
-	decision: 'onto_decisions',
 	document: 'onto_documents'
 };
 
 const ENTITY_SELECT_FIELDS: Record<OntologyEntityType, string[]> = {
 	task: ['id', 'title', 'description', 'props', 'type_key', 'state_key', 'priority'],
-	output: ['id', 'name', 'description', 'props', 'type_key', 'state_key'],
 	plan: ['id', 'name', 'description', 'plan', 'props', 'type_key', 'state_key'],
 	goal: ['id', 'name', 'description', 'goal', 'props', 'type_key', 'state_key'],
 	risk: ['id', 'title', 'content', 'impact', 'probability', 'props', 'type_key', 'state_key'],
 	milestone: ['id', 'title', 'description', 'milestone', 'props', 'type_key', 'state_key'],
-	decision: [
-		'id',
-		'title',
-		'description',
-		'outcome',
-		'rationale',
-		'props',
-		'type_key',
-		'state_key'
-	],
 	document: ['id', 'title', 'description', 'content', 'props', 'type_key', 'state_key']
 };
 
@@ -109,11 +94,6 @@ Type keys follow the pattern: task.{work_mode}[.{specialization}]
 - Work modes: execute, create, refine, research, review, coordinate, admin, plan
 - Specializations: meeting, standup, deploy, checklist
 - Examples: task.execute, task.coordinate.meeting, task.research`,
-		output: `## Type Key Taxonomy
-
-Type keys follow the pattern: output.{family}[.{variant}]
-- Families: written, media, software, operational
-- Examples: output.written.report, output.software.feature, output.media.presentation`,
 		plan: `## Type Key Taxonomy
 
 Type keys follow the pattern: plan.{family}[.{variant}]
@@ -138,12 +118,7 @@ Type keys follow the pattern: risk.{family}[.{variant}]
 
 Type keys follow the pattern: milestone.{variant}
 - Variants: delivery, phase_complete, review, deadline, release, launch
-- Examples: milestone.delivery, milestone.launch`,
-		decision: `## Type Key Taxonomy
-
-Type keys follow the pattern: decision.{category}
-- Categories: technical, process, resource, strategic, operational
-- Examples: decision.technical, decision.strategic`
+ - Examples: milestone.delivery, milestone.launch`
 	};
 
 	return [header, taxonomyByType[entityType], tagGuidelines, responseFormat].join('\n\n');
@@ -176,18 +151,16 @@ function isValidTypeKey(entityType: OntologyEntityType, typeKey: string): boolea
 
 	const validFamilies: Record<OntologyEntityType, string[]> = {
 		task: ['execute', 'create', 'refine', 'research', 'review', 'coordinate', 'admin', 'plan'],
-		output: ['written', 'media', 'software', 'operational'],
 		plan: ['timebox', 'pipeline', 'campaign', 'roadmap', 'process', 'phase'],
 		goal: ['outcome', 'metric', 'behavior', 'learning'],
 		risk: ['technical', 'schedule', 'resource', 'budget', 'scope', 'external', 'quality'],
 		milestone: ['delivery', 'phase_complete', 'review', 'deadline', 'release', 'launch'],
-		decision: ['technical', 'process', 'resource', 'strategic', 'operational'],
 		document: ['context', 'knowledge', 'decision', 'spec', 'reference', 'intake']
 	};
 
 	if (!validFamilies[entityType]?.includes(family)) return false;
 
-	if (entityType === 'milestone' || entityType === 'decision') {
+	if (entityType === 'milestone') {
 		return parts.length === 2;
 	}
 

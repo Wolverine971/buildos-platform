@@ -136,34 +136,6 @@ export const MILESTONE_TYPE_KEYS: TypeKeyOption[] = [
 ];
 
 /**
- * Output type_key options
- * Pattern: output.{family}[.{variant}]
- * Families: written, media, software, operational
- */
-export const OUTPUT_TYPE_KEYS: TypeKeyOption[] = [
-	{ value: 'output.default', label: 'Default', description: 'General output' },
-	{ value: 'output.written', label: 'Written', description: 'Written content' },
-	{ value: 'output.written.report', label: 'Report', description: 'Written report' },
-	{ value: 'output.written.article', label: 'Article', description: 'Article or blog post' },
-	{
-		value: 'output.written.documentation',
-		label: 'Documentation',
-		description: 'Technical documentation'
-	},
-	{ value: 'output.media', label: 'Media', description: 'Media content' },
-	{
-		value: 'output.media.presentation',
-		label: 'Presentation',
-		description: 'Presentation or deck'
-	},
-	{ value: 'output.media.video', label: 'Video', description: 'Video content' },
-	{ value: 'output.software', label: 'Software', description: 'Software artifact' },
-	{ value: 'output.software.feature', label: 'Feature', description: 'Software feature' },
-	{ value: 'output.software.api', label: 'API', description: 'API or integration' },
-	{ value: 'output.operational', label: 'Operational', description: 'Operational output' }
-];
-
-/**
  * Document type_key options
  * Pattern: document.{family}[.{variant}]
  * Families: context, knowledge, decision, spec, reference, intake
@@ -191,20 +163,6 @@ export const DOCUMENT_TYPE_KEYS: TypeKeyOption[] = [
 ];
 
 /**
- * Decision type_key options
- * Pattern: decision.{category}
- * Categories: technical, process, resource, strategic, operational
- */
-export const DECISION_TYPE_KEYS: TypeKeyOption[] = [
-	{ value: 'decision.default', label: 'Default', description: 'General decision' },
-	{ value: 'decision.technical', label: 'Technical', description: 'Technical decision' },
-	{ value: 'decision.process', label: 'Process', description: 'Process decision' },
-	{ value: 'decision.resource', label: 'Resource', description: 'Resource allocation decision' },
-	{ value: 'decision.strategic', label: 'Strategic', description: 'Strategic decision' },
-	{ value: 'decision.operational', label: 'Operational', description: 'Operational decision' }
-];
-
-/**
  * Get type_key options for an entity kind
  */
 export function getTypeKeysForKind(kind: string): TypeKeyOption[] {
@@ -219,12 +177,8 @@ export function getTypeKeysForKind(kind: string): TypeKeyOption[] {
 			return RISK_TYPE_KEYS;
 		case 'milestone':
 			return MILESTONE_TYPE_KEYS;
-		case 'output':
-			return OUTPUT_TYPE_KEYS;
 		case 'document':
 			return DOCUMENT_TYPE_KEYS;
-		case 'decision':
-			return DECISION_TYPE_KEYS;
 		default:
 			return [];
 	}

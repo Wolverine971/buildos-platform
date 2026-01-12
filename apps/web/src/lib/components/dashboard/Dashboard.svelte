@@ -20,7 +20,6 @@
 		ChevronRight,
 		Sparkles,
 		ListChecks,
-		Layers,
 		Target,
 		Calendar,
 		FileText,
@@ -48,7 +47,6 @@
 		created_at: string;
 		updated_at: string;
 		task_count: number;
-		output_count: number;
 		goal_count: number;
 		plan_count: number;
 		document_count: number;
@@ -132,7 +130,6 @@
 			next_step_source: project.next_step_source,
 			next_step_updated_at: project.next_step_updated_at,
 			task_count: project.task_count,
-			output_count: project.output_count,
 			document_count: project.document_count,
 			goal_count: project.goal_count,
 			plan_count: project.plan_count,
@@ -434,11 +431,6 @@
 												Icon: ListChecks
 											},
 											{
-												key: 'outputs',
-												count: project.output_count,
-												Icon: Layers
-											},
-											{
 												key: 'goals',
 												count: project.goal_count,
 												Icon: Target
@@ -616,11 +608,6 @@
 													key: 'tasks',
 													count: project.task_count,
 													Icon: ListChecks
-												},
-												{
-													key: 'outputs',
-													count: project.output_count,
-													Icon: Layers
 												},
 												{
 													key: 'goals',

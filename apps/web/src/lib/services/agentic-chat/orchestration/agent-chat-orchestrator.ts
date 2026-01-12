@@ -1309,7 +1309,7 @@ export class AgentChatOrchestrator {
 			new_context?: ChatContextType | string;
 			entity_id?: string;
 			entity_name?: string;
-			entity_type?: 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output';
+			entity_type?: 'project' | 'task' | 'plan' | 'goal' | 'document';
 			message?: string;
 		},
 		defaultContext: ChatContextType
@@ -1345,9 +1345,6 @@ export class AgentChatOrchestrator {
 				break;
 			case 'document':
 				assignEntity('document_id', contextShift.entity_id);
-				break;
-			case 'output':
-				assignEntity('output_id', contextShift.entity_id);
 				break;
 		}
 

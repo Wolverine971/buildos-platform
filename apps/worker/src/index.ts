@@ -151,16 +151,7 @@ app.post('/classify/ontology', async (req, res) => {
 			});
 		}
 
-		const validTypes = new Set([
-			'task',
-			'output',
-			'plan',
-			'goal',
-			'risk',
-			'milestone',
-			'decision',
-			'document'
-		]);
+		const validTypes = new Set(['task', 'plan', 'goal', 'risk', 'milestone', 'document']);
 
 		if (!validTypes.has(entityType)) {
 			return res.status(400).json({ error: 'Invalid entityType' });

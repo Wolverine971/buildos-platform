@@ -7,10 +7,8 @@
 		Target,
 		ListTree,
 		FileText,
-		Package,
 		Flag,
 		AlertTriangle,
-		Scale,
 		ClipboardList,
 		Search,
 		Loader,
@@ -46,10 +44,8 @@
 		{ value: 'goal', label: 'Goals', icon: Target, color: 'purple' },
 		{ value: 'plan', label: 'Plans', icon: ListTree, color: 'emerald' },
 		{ value: 'document', label: 'Documents', icon: FileText, color: 'amber' },
-		{ value: 'output', label: 'Outputs', icon: Package, color: 'rose' },
 		{ value: 'milestone', label: 'Milestones', icon: Flag, color: 'indigo' },
 		{ value: 'risk', label: 'Risks', icon: AlertTriangle, color: 'red' },
-		{ value: 'decision', label: 'Decisions', icon: Scale, color: 'violet' },
 		{ value: 'requirement', label: 'Requirements', icon: ClipboardList, color: 'slate' }
 	];
 

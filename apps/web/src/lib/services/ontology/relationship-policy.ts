@@ -8,7 +8,6 @@
 import type { EntityKind, RelationshipType } from './edge-direction';
 import { ALLOWED_PARENTS, CONTAINMENT_RELS, resolveContainmentRel } from './containment-organizer';
 
-export const PRODUCER_KINDS = new Set<EntityKind>(['task', 'goal', 'milestone']);
 export const SUPPORTS_GOAL_KINDS = new Set<EntityKind>(['task', 'plan']);
 export const TARGETS_MILESTONE_KINDS = new Set<EntityKind>(['task', 'plan']);
 export const TASK_DISALLOWS_PROJECT_FALLBACK_KINDS = new Set<EntityKind>([
@@ -18,7 +17,7 @@ export const TASK_DISALLOWS_PROJECT_FALLBACK_KINDS = new Set<EntityKind>([
 	'task'
 ]);
 
-export const REFERENCE_TARGET_KINDS = new Set<EntityKind>(['document', 'source', 'output']);
+export const REFERENCE_TARGET_KINDS = new Set<EntityKind>(['document', 'source']);
 
 export function isContainmentRel(rel: RelationshipType): boolean {
 	return CONTAINMENT_RELS.includes(rel);

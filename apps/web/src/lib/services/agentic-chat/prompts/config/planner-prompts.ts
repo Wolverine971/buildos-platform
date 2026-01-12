@@ -46,7 +46,7 @@ const PLATFORM_CONTEXT: PromptSection = {
 
 **Core Philosophy:**
 - Users often arrive feeling scattered or overwhelmed
-- BuildOS helps organize unstructured thoughts into goals, milestones, plans, tasks, risks, decisions, and documents when explicitly mentioned or clearly implied
+- BuildOS helps organize unstructured thoughts into goals, milestones, plans, tasks, risks, and documents when explicitly mentioned or clearly implied
 - The goal is to reduce cognitive load, not add to it
 
 **User Expectations:**
@@ -74,15 +74,13 @@ const DATA_MODEL_OVERVIEW: PromptSection = {
 
 | Entity | Purpose | Type Key Format |
 |--------|---------|-----------------|
-| **Project** | Root container for related work | \`project.{realm}.{deliverable}\` |
+| **Project** | Root container for related work | \`project.{realm}.{initiative}\` |
 | **Task** | Actionable work items | \`task.{work_mode}\` |
 | **Plan** | Logical groupings/phases | \`plan.{family}\` |
 | **Goal** | Strategic objectives | \`goal.{family}\` |
 | **Milestone** | Time-bound checkpoints or intermediate steps before a goal | (date-based) |
 | **Document** | Reference materials, notes | \`document.{family}\` |
-| **Output** | Deliverables produced | \`output.{family}\` |
 | **Risk** | Potential problems/blockers | \`risk.{family}\` |
-| **Decision** | Tracked choices & rationale | \`decision.{family}\` |
 | **Requirement** | Needs, constraints, criteria | \`requirement.{type}\` |
 | **Metric** | Measurable success indicators | \`metric.{family}\` |
 | **Source** | External references/links | \`source.{family}\` |
@@ -113,7 +111,7 @@ project
   - Ask "What does success look like?" → published=creative, deployed=technical, revenue=business, client goal=service, learned=education, consistent habit=personal
 - **Plans** (6 families): timebox, pipeline, campaign, roadmap, process, phase
 - **Goals** (4 families): outcome (binary), metric (numeric), behavior (frequency), learning (skill)
-- **Documents** (6 families): context, knowledge, decision, spec, reference, intake
+- **Documents** (5 families): context, knowledge, spec, reference, intake
 
 **Key Concepts:**
 - **type_key**: Classification string (e.g., \`project.creative.book\`, \`task.execute\`)
@@ -123,7 +121,7 @@ project
 ### Relationship Sense Rules
 - Entities already belong to a project via \`project_id\`; only add project edges for root-level grouping.
 - Prefer specific relationships (supports_goal, targets_milestone, produces, references) over relates_to.
-- Plans can link directly to goals and milestones; tasks can reference decisions.
+- Plans can link directly to goals and milestones.
 - Link risks to work they threaten, and link work that addresses or mitigates them.
 - If the intended relationship is unclear, ask a short clarification before linking.
 
@@ -136,12 +134,9 @@ project
 - **Risk**: When user mentions concerns, blockers, "what could go wrong", uncertainties
   - States: identified → mitigated → closed (or → occurred)
   - Links: threatens work items; mitigated by tasks/plans
-- **Decision**: When user faces choices, needs to track rationale, records past decisions
-  - States: pending → made (or deferred); can reverse
-  - Links: attached to project/goal/plan/task
 - **Requirement**: When user specifies must-haves, constraints, acceptance criteria
   - Types: functional, non_functional, constraint
-  - Links: attached to project/milestone/plan/task/decision
+  - Links: attached to project/milestone/plan/task
 - **Metric**: When user wants to track KPIs, progress numbers, success measures
   - Fields: name, unit, target_value, current_value
   - Links: attached to project/goal/milestone/plan/task
@@ -396,7 +391,7 @@ const UPDATE_RULES: PromptSection = {
   - \`merge_llm\`: integrate new content intelligently; include \`merge_instructions\` (e.g., "keep headers, weave in research notes")
   - \`replace\`: only when intentionally rewriting the full text
 - Always include \`merge_instructions\` when using \`merge_llm\` or when append needs structure cues (e.g., "keep bullets, preserve KPIs").
-- Outputs, milestones, risks, decisions, and requirements are updateable too: only send fields that change, and avoid overwriting props unless the user explicitly wants to replace them.`,
+- Milestones, risks, and requirements are updateable too: only send fields that change, and avoid overwriting props unless the user explicitly wants to replace them.`,
 	includeHeader: true
 };
 

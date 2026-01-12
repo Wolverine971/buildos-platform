@@ -28,7 +28,6 @@
 			plan: 'rect',
 			goal: 'star',
 			milestone: 'triangle',
-			output: 'diamond',
 			document: 'rect'
 		};
 		return shapes[nodeType] ?? 'circle';
@@ -46,7 +45,6 @@
 			plan: [100, 36],
 			goal: 40,
 			milestone: 32,
-			output: 32,
 			document: [90, 32]
 		};
 		return sizes[nodeType] ?? 30;

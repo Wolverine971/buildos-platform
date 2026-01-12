@@ -14,9 +14,7 @@ export type OntoPlan = Database['public']['Tables']['onto_plans']['Row'];
 export type OntoMilestone = Database['public']['Tables']['onto_milestones']['Row'];
 export type OntoRisk = Database['public']['Tables']['onto_risks']['Row'];
 export type OntoDocument = Database['public']['Tables']['onto_documents']['Row'];
-export type OntoOutput = Database['public']['Tables']['onto_outputs']['Row'];
 export type OntoRequirement = Database['public']['Tables']['onto_requirements']['Row'];
-export type OntoDecision = Database['public']['Tables']['onto_decisions']['Row'];
 export type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 export type OntoActor = Database['public']['Tables']['onto_actors']['Row'];
 
@@ -49,18 +47,6 @@ export interface GoalProgress {
 	targetDaysAway: number | null;
 	status: 'on_track' | 'at_risk' | 'behind';
 	contributingTasks: OntoTask[];
-}
-
-// ============================================================================
-// OUTPUT STATUS
-// ============================================================================
-
-export interface OutputStatus {
-	output: OntoOutput;
-	state: string;
-	linkedGoals: string[];
-	linkedTasks: string[];
-	updated_at: string | null;
 }
 
 // ============================================================================
@@ -101,7 +87,6 @@ export interface UnblockingTask {
 export interface RecentUpdates {
 	tasks: OntoTask[];
 	goals: OntoGoal[];
-	outputs: OntoOutput[];
 	documents: OntoDocument[];
 }
 
@@ -150,9 +135,7 @@ export interface OntoProjectWithRelations {
 	milestones: OntoMilestone[];
 	risks: OntoRisk[];
 	documents: OntoDocument[];
-	outputs: OntoOutput[];
 	requirements: OntoRequirement[];
-	decisions: OntoDecision[];
 	edges: OntoEdge[];
 
 	// Computed relationships
@@ -168,7 +151,6 @@ export interface OntoProjectWithRelations {
 
 export interface StrategicAlignmentSection {
 	activeGoals: GoalProgress[];
-	outputsInFlight: OutputStatus[];
 	upcomingMilestones: MilestoneStatus[];
 }
 
@@ -177,13 +159,11 @@ export interface AttentionRequiredSection {
 	activeRisks: OntoRisk[];
 	overdueItems: OntoTask[];
 	requirements: OntoRequirement[];
-	decisions: OntoDecision[];
 }
 
 export interface RecentlyUpdatedSummary {
 	updatedTasks: number;
 	updatedGoals: number;
-	updatedOutputs: number;
 	updatedDocuments: number;
 	items: Array<{
 		kind: string;
@@ -217,8 +197,6 @@ export interface ProjectStatusSection {
 	nextSteps: string[];
 	activePlan: PlanProgress | null;
 	goals: GoalProgress[];
-	outputs: OutputStatus[];
-	decisions: OntoDecision[];
 	requirements: OntoRequirement[];
 	todaysTasks: OntoTask[];
 	thisWeekSummary: string;
@@ -240,7 +218,6 @@ export interface OntologyBriefMetadata {
 	totalGoals: number;
 	totalMilestones: number;
 	activeRisksCount: number;
-	totalOutputs: number;
 	recentUpdatesCount: number;
 
 	// Analysis
@@ -248,7 +225,6 @@ export interface OntologyBriefMetadata {
 	overdueCount: number;
 	goalsAtRisk: number;
 	milestonesThisWeek: number;
-	outputsInReview: number;
 
 	// Graph stats
 	totalEdges: number;
@@ -298,10 +274,8 @@ export interface OntologyBriefData {
 	briefDate: string;
 	timezone: string;
 	goals: GoalProgress[];
-	outputs: OutputStatus[];
 	risks: OntoRisk[];
 	requirements: OntoRequirement[];
-	decisions: OntoDecision[];
 	todaysTasks: OntoTask[];
 	blockedTasks: OntoTask[];
 	overdueTasks: OntoTask[];
@@ -319,9 +293,7 @@ export interface ProjectBriefData {
 	isShared: boolean;
 	activityLogs: ProjectActivityEntry[];
 	goals: GoalProgress[];
-	outputs: OutputStatus[];
 	requirements: OntoRequirement[];
-	decisions: OntoDecision[];
 	nextSteps: string[];
 	nextMilestone: string | null;
 	activePlan: OntoPlan | null;

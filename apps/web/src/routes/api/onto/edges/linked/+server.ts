@@ -19,16 +19,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CONTAINMENT_RELS } from '$lib/services/ontology/containment-organizer';
 
-type EntityKind =
-	| 'task'
-	| 'plan'
-	| 'goal'
-	| 'milestone'
-	| 'document'
-	| 'output'
-	| 'risk'
-	| 'decision'
-	| 'event';
+type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk' | 'event';
 
 interface LinkedEntity {
 	id: string;
@@ -58,9 +49,7 @@ interface LinkedEntitiesResult {
 	goals: LinkedEntity[];
 	milestones: LinkedEntity[];
 	documents: LinkedEntity[];
-	outputs: LinkedEntity[];
 	risks: LinkedEntity[];
-	decisions: LinkedEntity[];
 	events: LinkedEntity[];
 }
 
@@ -70,9 +59,7 @@ interface AvailableEntitiesResult {
 	goals: AvailableEntity[];
 	milestones: AvailableEntity[];
 	documents: AvailableEntity[];
-	outputs: AvailableEntity[];
 	risks: AvailableEntity[];
-	decisions: AvailableEntity[];
 	events: AvailableEntity[];
 }
 
@@ -82,9 +69,7 @@ const VALID_KINDS: EntityKind[] = [
 	'goal',
 	'milestone',
 	'document',
-	'output',
 	'risk',
-	'decision',
 	'event'
 ];
 
@@ -164,9 +149,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			goals: [],
 			milestones: [],
 			documents: [],
-			outputs: [],
 			risks: [],
-			decisions: [],
 			events: []
 		};
 
@@ -201,9 +184,7 @@ async function fetchLinkedEntities(
 		goals: [],
 		milestones: [],
 		documents: [],
-		outputs: [],
 		risks: [],
-		decisions: [],
 		events: []
 	};
 
@@ -258,9 +239,7 @@ async function fetchLinkedEntities(
 		goal: [],
 		milestone: [],
 		document: [],
-		output: [],
 		risk: [],
-		decision: [],
 		event: []
 	};
 
@@ -269,66 +248,52 @@ async function fetchLinkedEntities(
 	}
 
 	// Fetch entity details in parallel
-	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions, events] =
-		await Promise.all([
-			fetchEntityDetails(supabase, 'onto_tasks', idsByKind.task, [
-				'id',
-				'title',
-				'state_key',
-				'type_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_plans', idsByKind.plan, [
-				'id',
-				'name',
-				'state_key',
-				'type_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_goals', idsByKind.goal, [
-				'id',
-				'name',
-				'state_key',
-				'type_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_milestones', idsByKind.milestone, [
-				'id',
-				'title',
-				'due_at',
-				'type_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_documents', idsByKind.document, [
-				'id',
-				'title',
-				'type_key',
-				'state_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_outputs', idsByKind.output, [
-				'id',
-				'name',
-				'type_key',
-				'state_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_risks', idsByKind.risk, [
-				'id',
-				'title',
-				'state_key',
-				'type_key',
-				'impact'
-			]),
-			fetchEntityDetails(supabase, 'onto_decisions', idsByKind.decision, [
-				'id',
-				'title',
-				'state_key',
-				'type_key',
-				'decision_at'
-			]),
-			fetchEntityDetails(supabase, 'onto_events', idsByKind.event, [
-				'id',
-				'title',
-				'state_key',
-				'type_key',
-				'start_at'
-			])
-		]);
+	const [tasks, plans, goals, milestones, documents, risks, events] = await Promise.all([
+		fetchEntityDetails(supabase, 'onto_tasks', idsByKind.task, [
+			'id',
+			'title',
+			'state_key',
+			'type_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_plans', idsByKind.plan, [
+			'id',
+			'name',
+			'state_key',
+			'type_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_goals', idsByKind.goal, [
+			'id',
+			'name',
+			'state_key',
+			'type_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_milestones', idsByKind.milestone, [
+			'id',
+			'title',
+			'due_at',
+			'type_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_documents', idsByKind.document, [
+			'id',
+			'title',
+			'type_key',
+			'state_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_risks', idsByKind.risk, [
+			'id',
+			'title',
+			'state_key',
+			'type_key',
+			'impact'
+		]),
+		fetchEntityDetails(supabase, 'onto_events', idsByKind.event, [
+			'id',
+			'title',
+			'state_key',
+			'type_key',
+			'start_at'
+		])
+	]);
 
 	// Map results with edge info
 	result.tasks = mapEntitiesToLinked(tasks, entityMap, 'task');
@@ -338,9 +303,7 @@ async function fetchLinkedEntities(
 	result.documents = filterScratchDocuments(
 		mapEntitiesToLinked(documents, entityMap, 'document')
 	);
-	result.outputs = mapEntitiesToLinked(outputs, entityMap, 'output');
 	result.risks = mapEntitiesToLinked(risks, entityMap, 'risk');
-	result.decisions = mapEntitiesToLinked(decisions, entityMap, 'decision');
 	result.events = mapEntitiesToLinked(events, entityMap, 'event');
 
 	return result;
@@ -413,9 +376,7 @@ async function fetchAvailableEntities(
 		goals: new Set(linked.goals.map((e) => e.id)),
 		milestones: new Set(linked.milestones.map((e) => e.id)),
 		documents: new Set(linked.documents.map((e) => e.id)),
-		outputs: new Set(linked.outputs.map((e) => e.id)),
 		risks: new Set(linked.risks.map((e) => e.id)),
-		decisions: new Set(linked.decisions.map((e) => e.id)),
 		events: new Set(linked.events.map((e) => e.id))
 	};
 
@@ -466,15 +427,6 @@ async function fetchAvailableEntities(
 		.limit(100);
 	if (sourceKind === 'document') documentsQuery.neq('id', sourceId);
 
-	const outputsQuery = supabase
-		.from('onto_outputs')
-		.select('id, name, type_key, state_key')
-		.eq('project_id', projectId)
-		.is('deleted_at', null)
-		.order('created_at', { ascending: false })
-		.limit(100);
-	if (sourceKind === 'output') outputsQuery.neq('id', sourceId);
-
 	const risksQuery = supabase
 		.from('onto_risks')
 		.select('id, title, state_key, type_key, impact')
@@ -483,15 +435,6 @@ async function fetchAvailableEntities(
 		.order('created_at', { ascending: false })
 		.limit(100);
 	if (sourceKind === 'risk') risksQuery.neq('id', sourceId);
-
-	const decisionsQuery = supabase
-		.from('onto_decisions')
-		.select('id, title, state_key, type_key, decision_at')
-		.eq('project_id', projectId)
-		.is('deleted_at', null)
-		.order('created_at', { ascending: false })
-		.limit(100);
-	if (sourceKind === 'decision') decisionsQuery.neq('id', sourceId);
 
 	const eventsQuery = supabase
 		.from('onto_events')
@@ -503,18 +446,15 @@ async function fetchAvailableEntities(
 	if (sourceKind === 'event') eventsQuery.neq('id', sourceId);
 
 	// Fetch all entities from the project in parallel
-	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions, events] =
-		await Promise.all([
-			tasksQuery,
-			plansQuery,
-			goalsQuery,
-			milestonesQuery,
-			documentsQuery,
-			outputsQuery,
-			risksQuery,
-			decisionsQuery,
-			eventsQuery
-		]);
+	const [tasks, plans, goals, milestones, documents, risks, events] = await Promise.all([
+		tasksQuery,
+		plansQuery,
+		goalsQuery,
+		milestonesQuery,
+		documentsQuery,
+		risksQuery,
+		eventsQuery
+	]);
 
 	return {
 		tasks: mapToAvailable(tasks.data || [], linkedIds.tasks),
@@ -524,9 +464,7 @@ async function fetchAvailableEntities(
 		documents: filterScratchAvailable(
 			mapToAvailable(documents.data || [], linkedIds.documents)
 		),
-		outputs: mapToAvailable(outputs.data || [], linkedIds.outputs),
 		risks: mapToAvailable(risks.data || [], linkedIds.risks),
-		decisions: mapToAvailable(decisions.data || [], linkedIds.decisions),
 		events: mapToAvailable(events.data || [], linkedIds.events)
 	};
 }

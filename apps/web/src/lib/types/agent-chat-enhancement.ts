@@ -56,10 +56,8 @@ export type OntologyEntityType =
 	| 'goal'
 	| 'plan'
 	| 'document'
-	| 'output'
 	| 'milestone'
 	| 'risk'
-	| 'decision'
 	| 'requirement';
 
 type OntologyEntityRecordMap = {
@@ -68,10 +66,8 @@ type OntologyEntityRecordMap = {
 	goal: Database['public']['Tables']['onto_goals']['Row'];
 	plan: Database['public']['Tables']['onto_plans']['Row'];
 	document: Database['public']['Tables']['onto_documents']['Row'];
-	output: Database['public']['Tables']['onto_outputs']['Row'];
 	milestone: Database['public']['Tables']['onto_milestones']['Row'];
 	risk: Database['public']['Tables']['onto_risks']['Row'];
-	decision: Database['public']['Tables']['onto_decisions']['Row'];
 	requirement: Database['public']['Tables']['onto_requirements']['Row'];
 };
 
@@ -81,10 +77,8 @@ type OntologyEntityCollectionMap = {
 	goals: OntologyEntityRecordMap['goal'][];
 	plans: OntologyEntityRecordMap['plan'][];
 	documents: OntologyEntityRecordMap['document'][];
-	outputs: OntologyEntityRecordMap['output'][];
 	milestones: OntologyEntityRecordMap['milestone'][];
 	risks: OntologyEntityRecordMap['risk'][];
-	decisions: OntologyEntityRecordMap['decision'][];
 	requirements: OntologyEntityRecordMap['requirement'][];
 };
 
@@ -124,18 +118,6 @@ export interface ProjectHighlightRisk {
 	created_at: string;
 	updated_at?: string | null;
 	mitigated_at?: string | null;
-}
-
-export interface ProjectHighlightDecision {
-	id: string;
-	title: string;
-	state_key?: string | null;
-	rationale?: string | null;
-	outcome?: string | null;
-	description?: string | null;
-	decision_at?: string | null;
-	created_at: string;
-	updated_at?: string | null;
 }
 
 export interface ProjectHighlightRequirement {
@@ -182,19 +164,6 @@ export interface ProjectHighlightPlan {
 	updated_at?: string | null;
 }
 
-export interface ProjectHighlightOutput {
-	id: string;
-	name: string;
-	state_key?: string | null;
-	type_key?: string | null;
-	description?: string | null;
-	linked_goal_ids?: string[];
-	linked_task_ids?: string[];
-	created_at: string;
-	updated_at?: string | null;
-	direct_edge?: boolean;
-}
-
 export interface ProjectHighlightSignal {
 	id: string;
 	channel: string;
@@ -225,7 +194,6 @@ export interface ProjectHighlightTask {
 	completed_at?: string | null;
 	plan_ids?: string[];
 	goal_ids?: string[];
-	output_ids?: string[];
 	dependency_count?: number | null;
 	dependent_count?: number | null;
 }
@@ -233,12 +201,10 @@ export interface ProjectHighlightTask {
 export interface ProjectHighlights {
 	goals: HighlightSection<ProjectHighlightGoal>;
 	risks: HighlightSection<ProjectHighlightRisk>;
-	decisions: HighlightSection<ProjectHighlightDecision>;
 	requirements: HighlightSection<ProjectHighlightRequirement>;
 	documents: HighlightSection<ProjectHighlightDocument>;
 	milestones: HighlightSection<ProjectHighlightMilestone>;
 	plans: HighlightSection<ProjectHighlightPlan>;
-	outputs: HighlightSection<ProjectHighlightOutput>;
 	signals: HighlightSection<ProjectHighlightSignal>;
 	insights: HighlightSection<ProjectHighlightInsight>;
 	tasks: {
@@ -421,10 +387,8 @@ export interface EnhancedAgentStreamRequest {
 		| 'plan'
 		| 'goal'
 		| 'document'
-		| 'output'
 		| 'milestone'
 		| 'risk'
-		| 'decision'
 		| 'requirement';
 	lastTurnContext?: LastTurnContext;
 	projectFocus?: ProjectFocus | null;
@@ -477,10 +441,8 @@ export type AgentSSEEvent =
 					| 'plan'
 					| 'goal'
 					| 'document'
-					| 'output'
 					| 'milestone'
 					| 'risk'
-					| 'decision'
 					| 'requirement';
 				message: string;
 			};

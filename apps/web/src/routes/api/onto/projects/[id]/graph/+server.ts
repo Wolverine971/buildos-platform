@@ -138,13 +138,11 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			projects: [data.project],
 			edges: data.edges,
 			tasks: data.tasks,
-			outputs: data.outputs,
 			documents: data.documents,
 			plans: data.plans,
 			goals: data.goals,
 			milestones: data.milestones,
-			risks: data.risks,
-			decisions: data.decisions
+			risks: data.risks
 		};
 
 		// Filter out template edges
@@ -171,13 +169,11 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			activeProjects: data.project.state_key === 'active' ? 1 : 0,
 			totalEdges: sourceData.edges.length,
 			totalTasks: data.tasks.length,
-			totalOutputs: data.outputs.length,
 			totalDocuments: data.documents.length,
 			totalPlans: data.plans.length,
 			totalGoals: data.goals.length,
 			totalMilestones: data.milestones.length,
-			totalRisks: data.risks.length,
-			totalDecisions: data.decisions.length
+			totalRisks: data.risks.length
 		};
 
 		return ApiResponse.success({

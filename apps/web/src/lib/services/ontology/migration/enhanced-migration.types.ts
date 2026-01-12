@@ -8,7 +8,6 @@ export type EntityScope =
 	| 'project'
 	| 'task'
 	| 'plan'
-	| 'output'
 	| 'document'
 	| 'goal'
 	| 'requirement';

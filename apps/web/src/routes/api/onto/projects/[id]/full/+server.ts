@@ -23,12 +23,10 @@ interface ProjectFullData {
 	requirements: unknown[];
 	plans: unknown[];
 	tasks: unknown[];
-	outputs: unknown[];
 	documents: unknown[];
 	sources: unknown[];
 	milestones: unknown[];
 	risks: unknown[];
-	decisions: unknown[];
 	metrics: unknown[];
 	context_document: unknown | null;
 }
@@ -105,12 +103,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			requirements: data.requirements || [],
 			plans: data.plans || [],
 			tasks: data.tasks || [],
-			outputs: data.outputs || [],
 			documents: data.documents || [],
 			sources: data.sources || [],
 			milestones: data.milestones || [],
 			risks: data.risks || [],
-			decisions: data.decisions || [],
 			metrics: data.metrics || [],
 			context_document: data.context_document
 		});

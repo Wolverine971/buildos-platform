@@ -11,15 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type EntityKind =
-	| 'task'
-	| 'plan'
-	| 'goal'
-	| 'milestone'
-	| 'document'
-	| 'output'
-	| 'risk'
-	| 'decision';
+export type EntityKind = 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk';
 
 export interface LinkedEntity {
 	id: string;
@@ -39,21 +31,10 @@ export interface LinkedEntitiesResult {
 	goals: LinkedEntity[];
 	milestones: LinkedEntity[];
 	documents: LinkedEntity[];
-	outputs: LinkedEntity[];
 	risks: LinkedEntity[];
-	decisions: LinkedEntity[];
 }
 
-const VALID_KINDS: EntityKind[] = [
-	'task',
-	'plan',
-	'goal',
-	'milestone',
-	'document',
-	'output',
-	'risk',
-	'decision'
-];
+const VALID_KINDS: EntityKind[] = ['task', 'plan', 'goal', 'milestone', 'document', 'risk'];
 
 function isValidKind(kind: string): kind is EntityKind {
 	return VALID_KINDS.includes(kind as EntityKind);
@@ -78,9 +59,7 @@ export async function resolveLinkedEntitiesGeneric(
 		goals: [],
 		milestones: [],
 		documents: [],
-		outputs: [],
-		risks: [],
-		decisions: []
+		risks: []
 	};
 
 	// Fetch all edges where entity is source or destination
@@ -125,9 +104,7 @@ export async function resolveLinkedEntitiesGeneric(
 		goal: [],
 		milestone: [],
 		document: [],
-		output: [],
-		risk: [],
-		decision: []
+		risk: []
 	};
 
 	for (const [id, info] of entityMap) {
@@ -135,59 +112,45 @@ export async function resolveLinkedEntitiesGeneric(
 	}
 
 	// Fetch entity details in parallel
-	const [tasks, plans, goals, milestones, documents, outputs, risks, decisions] =
-		await Promise.all([
-			fetchEntityDetails(supabase, 'onto_tasks', idsByKind.task, [
-				'id',
-				'title',
-				'state_key',
-				'type_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_plans', idsByKind.plan, [
-				'id',
-				'name',
-				'state_key',
-				'type_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_goals', idsByKind.goal, [
-				'id',
-				'name',
-				'state_key',
-				'type_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_milestones', idsByKind.milestone, [
-				'id',
-				'title',
-				'due_at',
-				'type_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_documents', idsByKind.document, [
-				'id',
-				'title',
-				'type_key',
-				'state_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_outputs', idsByKind.output, [
-				'id',
-				'name',
-				'type_key',
-				'state_key'
-			]),
-			fetchEntityDetails(supabase, 'onto_risks', idsByKind.risk, [
-				'id',
-				'title',
-				'state_key',
-				'type_key',
-				'impact'
-			]),
-			fetchEntityDetails(supabase, 'onto_decisions', idsByKind.decision, [
-				'id',
-				'title',
-				'state_key',
-				'type_key',
-				'decision_at'
-			])
-		]);
+	const [tasks, plans, goals, milestones, documents, risks] = await Promise.all([
+		fetchEntityDetails(supabase, 'onto_tasks', idsByKind.task, [
+			'id',
+			'title',
+			'state_key',
+			'type_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_plans', idsByKind.plan, [
+			'id',
+			'name',
+			'state_key',
+			'type_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_goals', idsByKind.goal, [
+			'id',
+			'name',
+			'state_key',
+			'type_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_milestones', idsByKind.milestone, [
+			'id',
+			'title',
+			'due_at',
+			'type_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_documents', idsByKind.document, [
+			'id',
+			'title',
+			'type_key',
+			'state_key'
+		]),
+		fetchEntityDetails(supabase, 'onto_risks', idsByKind.risk, [
+			'id',
+			'title',
+			'state_key',
+			'type_key',
+			'impact'
+		])
+	]);
 
 	// Map results with edge info
 	result.tasks = mapEntitiesToLinked(tasks, entityMap, 'task');
@@ -197,9 +160,7 @@ export async function resolveLinkedEntitiesGeneric(
 	result.documents = filterScratchDocuments(
 		mapEntitiesToLinked(documents, entityMap, 'document')
 	);
-	result.outputs = mapEntitiesToLinked(outputs, entityMap, 'output');
 	result.risks = mapEntitiesToLinked(risks, entityMap, 'risk');
-	result.decisions = mapEntitiesToLinked(decisions, entityMap, 'decision');
 
 	return result;
 }
@@ -268,8 +229,6 @@ export function hasLinkedEntities(linked: LinkedEntitiesResult): boolean {
 		linked.goals.length > 0 ||
 		linked.milestones.length > 0 ||
 		linked.documents.length > 0 ||
-		linked.outputs.length > 0 ||
-		linked.risks.length > 0 ||
-		linked.decisions.length > 0
+		linked.risks.length > 0
 	);
 }

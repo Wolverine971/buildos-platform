@@ -6,15 +6,7 @@ import type { NotificationJobMetadata } from './notification.types';
 export type QueueJobType = Database['public']['Enums']['queue_type'];
 export type QueueJobStatus = Database['public']['Enums']['queue_status'];
 
-export type OntologyEntityType =
-	| 'task'
-	| 'output'
-	| 'plan'
-	| 'goal'
-	| 'risk'
-	| 'milestone'
-	| 'decision'
-	| 'document';
+export type OntologyEntityType = 'task' | 'plan' | 'goal' | 'risk' | 'milestone' | 'document';
 
 export type OntologyClassificationSource = 'create_modal';
 

@@ -56,13 +56,11 @@
 		requirements: number;
 		plans: number;
 		tasks: number;
-		outputs: number;
 		documents: number;
 		sources: number;
 		metrics: number;
 		milestones: number;
 		risks: number;
-		decisions: number;
 		edges: number;
 	};
 

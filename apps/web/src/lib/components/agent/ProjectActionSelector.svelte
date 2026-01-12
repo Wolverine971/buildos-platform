@@ -110,7 +110,7 @@
 					<p
 						class="text-[0.6rem] uppercase tracking-wider text-muted-foreground sm:text-[0.65rem] sm:tracking-[0.1em]"
 					>
-						Pick a task, goal, plan, document, or output.
+						Pick a task, goal, plan, or document.
 					</p>
 				</div>
 			</div>

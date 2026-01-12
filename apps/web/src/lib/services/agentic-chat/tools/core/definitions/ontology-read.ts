@@ -100,34 +100,6 @@ Use for queries about project documentation, briefs, specs, or research artifact
 	{
 		type: 'function',
 		function: {
-			name: 'list_onto_outputs',
-			description: `List outputs from the ontology system (onto_outputs table). Returns output summaries with state and type.
-Use for deliverables, artifacts, or outputs tied to a project.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					project_id: {
-						type: 'string',
-						description: 'Filter outputs by project ID'
-					},
-					state_key: {
-						type: 'string',
-						description:
-							'Filter by output state (draft, in_progress, review, published)'
-					},
-					limit: {
-						type: 'number',
-						default: 20,
-						maximum: 50,
-						description: 'Maximum number of outputs to return'
-					}
-				}
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
 			name: 'list_onto_milestones',
 			description: `List milestones from the ontology system (onto_milestones table). Returns milestone summaries with dates and state.
 Use for project timelines, checkpoints, or delivery milestones.`,
@@ -180,29 +152,6 @@ Use for risk reviews, mitigation planning, or status updates.`,
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of risks to return'
-					}
-				}
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'list_onto_decisions',
-			description: `List decisions from the ontology system (onto_decisions table). Returns decision summaries with decision dates.
-Use for decision logs, rationale audits, or historical context.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					project_id: {
-						type: 'string',
-						description: 'Filter decisions by project ID'
-					},
-					limit: {
-						type: 'number',
-						default: 20,
-						maximum: 50,
-						description: 'Maximum number of decisions to return'
 					}
 				}
 			}
@@ -418,7 +367,7 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 		type: 'function',
 		function: {
 			name: 'search_ontology',
-			description: `Fuzzy search across ontology entities (tasks, plans, goals, milestones, documents, outputs, requirements). Returns typed matches with snippets so you can load details with get_onto_* tools.`,
+			description: `Fuzzy search across ontology entities (tasks, plans, goals, milestones, documents, requirements). Returns typed matches with snippets so you can load details with get_onto_* tools.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -441,10 +390,8 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 								'goal',
 								'milestone',
 								'document',
-								'output',
 								'requirement',
 								'risk',
-								'decision',
 								'metric',
 								'source'
 							]
@@ -581,24 +528,6 @@ Use when you need the full document before editing or linking it.`,
 	{
 		type: 'function',
 		function: {
-			name: 'get_onto_output_details',
-			description: `Get complete details for a specific ontology output including description and metadata.
-Use when you need the full output record before updating it.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					output_id: {
-						type: 'string',
-						description: 'Output ID to retrieve'
-					}
-				},
-				required: ['output_id']
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
 			name: 'get_onto_milestone_details',
 			description: `Get complete details for a specific ontology milestone including dates, state, and metadata.
 Use when you need the full milestone before updating it.`,
@@ -629,24 +558,6 @@ Use when you need the full risk before updating it.`,
 					}
 				},
 				required: ['risk_id']
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'get_onto_decision_details',
-			description: `Get complete details for a specific ontology decision including decision date and rationale.
-Use when you need the full decision record before updating it.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					decision_id: {
-						type: 'string',
-						description: 'Decision ID to retrieve'
-					}
-				},
-				required: ['decision_id']
 			}
 		}
 	},
@@ -727,9 +638,7 @@ The initial context shows abbreviated linked entities. Use this tool to get full
 							'goal',
 							'milestone',
 							'document',
-							'output',
 							'risk',
-							'decision',
 							'requirement',
 							'metric',
 							'source'
@@ -744,9 +653,7 @@ The initial context shows abbreviated linked entities. Use this tool to get full
 							'goal',
 							'milestone',
 							'document',
-							'output',
 							'risk',
-							'decision',
 							'requirement',
 							'metric',
 							'source',

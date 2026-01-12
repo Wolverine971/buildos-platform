@@ -31,6 +31,7 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
+	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
@@ -623,6 +624,8 @@
 						/>
 					</div>
 				</form>
+
+				<EntityCommentsSection {projectId} entityType="event" entityId={eventId} />
 			</div>
 		{/if}
 	{/snippet}

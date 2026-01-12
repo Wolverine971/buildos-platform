@@ -1538,20 +1538,12 @@
 			action: 'Listing documents',
 			target: args?.project_id
 		}),
-		list_onto_outputs: (args) => ({
-			action: 'Listing outputs',
-			target: args?.project_id
-		}),
 		list_onto_milestones: (args) => ({
 			action: 'Listing milestones',
 			target: args?.project_id
 		}),
 		list_onto_risks: (args) => ({
 			action: 'Listing risks',
-			target: args?.project_id
-		}),
-		list_onto_decisions: (args) => ({
-			action: 'Listing decisions',
 			target: args?.project_id
 		}),
 		list_onto_requirements: (args) => ({
@@ -1566,10 +1558,6 @@
 			action: 'Loading document',
 			target: args?.document_id
 		}),
-		get_onto_output_details: (args) => ({
-			action: 'Loading output',
-			target: args?.output_id
-		}),
 		get_onto_milestone_details: (args) => ({
 			action: 'Loading milestone',
 			target: args?.milestone_id
@@ -1577,10 +1565,6 @@
 		get_onto_risk_details: (args) => ({
 			action: 'Loading risk',
 			target: args?.risk_id
-		}),
-		get_onto_decision_details: (args) => ({
-			action: 'Loading decision',
-			target: args?.decision_id
 		}),
 		get_onto_requirement_details: (args) => ({
 			action: 'Loading requirement',
@@ -1594,10 +1578,6 @@
 			action: 'Updating document',
 			target: args?.document_id || args?.title
 		}),
-		update_onto_output: (args) => ({
-			action: 'Updating output',
-			target: args?.output_id || args?.name
-		}),
 		update_onto_milestone: (args) => ({
 			action: 'Updating milestone',
 			target: args?.milestone_id || args?.title
@@ -1605,10 +1585,6 @@
 		update_onto_risk: (args) => ({
 			action: 'Updating risk',
 			target: args?.risk_id || args?.title
-		}),
-		update_onto_decision: (args) => ({
-			action: 'Updating decision',
-			target: args?.decision_id || args?.title
 		}),
 		update_onto_requirement: (args) => ({
 			action: 'Updating requirement',
@@ -1955,10 +1931,8 @@
 		'create_onto_document',
 		'update_onto_document',
 		'delete_onto_document',
-		'update_onto_output',
 		'update_onto_milestone',
 		'update_onto_risk',
-		'update_onto_decision',
 		'update_onto_requirement',
 		'create_calendar_event',
 		'update_calendar_event',
@@ -2013,10 +1987,8 @@
 			data?.goal?.project_id ??
 			data?.plan?.project_id ??
 			data?.document?.project_id ??
-			data?.output?.project_id ??
 			data?.milestone?.project_id ??
 			data?.risk?.project_id ??
-			data?.decision?.project_id ??
 			data?.requirement?.project_id ??
 			data?.event?.project_id;
 		if (typeof dataProjectId === 'string' && dataProjectId.length > 0) {
@@ -2362,10 +2334,8 @@
 				| 'plan'
 				| 'goal'
 				| 'document'
-				| 'output'
 				| 'milestone'
 				| 'risk'
-				| 'decision'
 				| 'requirement'
 				| undefined;
 			if (resolvedProjectFocus && resolvedProjectFocus.focusType !== 'project-wide') {

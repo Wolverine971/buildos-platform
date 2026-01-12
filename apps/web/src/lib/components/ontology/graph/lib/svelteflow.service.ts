@@ -5,7 +5,6 @@ import type {
 	OntoDocument,
 	OntoGoal,
 	OntoMilestone,
-	OntoOutput,
 	OntoPlan,
 	OntoProject,
 	OntoTask,
@@ -97,39 +96,6 @@ export class SvelteFlowGraphService {
 				state: task.state_key ?? 'todo'
 			}
 		}));
-	}
-
-	static outputsToNodes(outputs: OntoOutput[]): SvelteFlowNode[] {
-		const primitiveColors: Record<string, string> = {
-			document: '#3b82f6',
-			event: '#8b5cf6',
-			collection: '#f59e0b',
-			external: '#10b981'
-		};
-
-		return outputs.map((output, index) => {
-			const parts = (output.type_key ?? '').split('.');
-			const primitive = parts[1] ?? 'document';
-
-			return {
-				id: output.id,
-				type: 'output',
-				position: { x: 250 + (index % 5) * 200, y: 600 + Math.floor(index / 5) * 140 },
-				data: {
-					label: output.name,
-					type: 'output',
-					metadata: {
-						projectId: output.project_id,
-						typeKey: output.type_key,
-						state: output.state_key,
-						primitive,
-						props: output.props
-					},
-					color: primitiveColors[primitive] ?? '#8b5cf6',
-					state: output.state_key
-				}
-			};
-		});
 	}
 
 	static documentsToNodes(documents: OntoDocument[]): SvelteFlowNode[] {
@@ -239,11 +205,7 @@ export class SvelteFlowGraphService {
 			references: { color: '#3b82f6', animated: false, strokeWidth: 1 },
 			referenced_by: { color: '#3b82f6', animated: false, strokeWidth: 1 },
 			has_document: { color: '#3b82f6', animated: false, strokeWidth: 1 },
-			has_context_document: { color: '#3b82f6', animated: false, strokeWidth: 2 },
-			// Production/output relationships
-			produces: { color: '#8b5cf6', animated: false, strokeWidth: 2 },
-			produced_by: { color: '#8b5cf6', animated: false, strokeWidth: 2 },
-			has_output: { color: '#8b5cf6', animated: false, strokeWidth: 2 }
+			has_context_document: { color: '#3b82f6', animated: false, strokeWidth: 2 }
 		};
 		return styles[rel] ?? { color: '#9ca3af', animated: false, strokeWidth: 1 };
 	}
@@ -278,20 +240,11 @@ export class SvelteFlowGraphService {
 		let nodes: SvelteFlowNode[] = [];
 		let edges: SvelteFlowEdge[] = [];
 
-		const allowedKinds = new Set([
-			'project',
-			'task',
-			'output',
-			'document',
-			'plan',
-			'goal',
-			'milestone'
-		]);
+		const allowedKinds = new Set(['project', 'task', 'document', 'plan', 'goal', 'milestone']);
 
 		nodes = [
 			...this.projectsToNodes(data.projects),
 			...this.tasksToNodes(data.tasks),
-			...this.outputsToNodes(data.outputs),
 			...this.documentsToNodes(data.documents),
 			...this.plansToNodes(data.plans),
 			...this.goalsToNodes(data.goals),

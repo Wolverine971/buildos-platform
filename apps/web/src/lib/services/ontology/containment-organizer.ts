@@ -34,7 +34,6 @@ export const CONTAINMENT_RELS: RelationshipType[] = [
 	'has_plan',
 	'has_task',
 	'has_risk',
-	'has_decision',
 	'has_requirement',
 	'has_metric',
 	'has_part',
@@ -48,11 +47,9 @@ export const ALLOWED_PARENTS: Record<EntityKind, EntityKind[]> = {
 	plan: ['milestone', 'goal', 'project'],
 	task: ['plan', 'milestone', 'goal', 'project'],
 	document: ['document', 'project'],
-	output: ['project'],
 	risk: ['task', 'plan', 'milestone', 'goal', 'project'],
-	decision: ['task', 'plan', 'milestone', 'goal', 'project'],
-	requirement: ['task', 'milestone', 'plan', 'decision', 'project'],
-	metric: ['task', 'plan', 'milestone', 'decision', 'goal', 'risk', 'project'],
+	requirement: ['task', 'milestone', 'plan', 'project'],
+	metric: ['task', 'plan', 'milestone', 'goal', 'risk', 'project'],
 	source: ['project']
 };
 
@@ -94,18 +91,13 @@ export function resolveContainmentRel(
 	)
 		return 'has_risk';
 	if (
-		childKind === 'decision' &&
-		['project', 'goal', 'milestone', 'plan', 'task'].includes(parentKind)
-	)
-		return 'has_decision';
-	if (
 		childKind === 'requirement' &&
-		['project', 'milestone', 'plan', 'task', 'decision'].includes(parentKind)
+		['project', 'milestone', 'plan', 'task'].includes(parentKind)
 	)
 		return 'has_requirement';
 	if (
 		childKind === 'metric' &&
-		['project', 'goal', 'milestone', 'plan', 'task', 'risk', 'decision'].includes(parentKind)
+		['project', 'goal', 'milestone', 'plan', 'task', 'risk'].includes(parentKind)
 	)
 		return 'has_metric';
 	if (childKind === 'document' && parentKind === 'document') return 'has_part';

@@ -332,11 +332,13 @@ All refinements have been successfully implemented on 2026-01-11.
 ### Key Changes Made
 
 **Bug Fixes:**
+
 - Fixed `buildVoiceButtonState` to properly use destructured parameters (`isTranscribing`, `voiceError`) instead of closure variables (`_isTranscribing`, `_voiceError`)
 - Changed status row condition to `{#if showStatusRow}` so action buttons appear even when voice is disabled
 - Added `{#if enableVoice}` guards around voice-specific UI elements
 
 **UX Improvements:**
+
 - Removed duplicate error display from `AgentComposer.svelte` (kept "Working" badge only)
 - Removed unused `idleHint` prop from interface and $props() destructuring
 - Updated keyboard hint from "Space" to "Enter"
@@ -345,6 +347,7 @@ All refinements have been successfully implemented on 2026-01-11.
 - Added `max-w-[200px] truncate` to error badge to prevent layout overflow
 
 **Code Quality:**
+
 - Removed dead derived values (`textareaPaddingRight`, `textareaBorderRadius`)
 - Updated outdated comment to "Textarea with optional live transcript preview overlay"
 - Removed legacy `createEventDispatcher` pattern (now uses Svelte 5 `$bindable()` only)

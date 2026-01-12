@@ -8,14 +8,13 @@
 
 export const TEMPLATE_TAXONOMY_SUMMARY = `
 AUTONOMY MATRIX
-- Autonomous entities: project, plan, output, document, goal, task (hybrid). They need independent type keys because they can be templated, filtered, and instantiated outside a single project.
+- Autonomous entities: project, plan, document, goal, task (hybrid). They need independent type keys because they can be templated, filtered, and instantiated outside a single project.
 - Project-derived entities: requirement, metric, milestone, risk. They typically inherit meaning from the project; only request a new taxonomy when the schema truly diverges.
 - Reference/system entities: facet definitions, edges, assignments, permissions. They are structural and never receive templates.
 
 TYPE KEY PATTERNS
-- project → {domain}.{deliverable}[.{variant}]
+- project → {domain}.{initiative}[.{variant}]
 - plan → plan.{type}[.{variant}]
-- output → deliverable.{type}[.{variant}]
 - document → document.{type}
 - goal → goal.{type}
 - task → task.{type} (optional, only when the task is reusable outside one project)
@@ -34,10 +33,10 @@ QUALITY GATES
 export const TEMPLATE_BRAINDUMP_OUTPUT_CONTRACT = `
 STRUCTURED PLAN CONTRACT
 {
-  "scope": "plan | project | output | document | goal | task | requirement | metric | milestone | risk",
+  "scope": "plan | project | document | goal | task | requirement | metric | milestone | risk",
   "entity_category": "autonomous" | "project_derived",
   "realm": "string or null",
-  "type_key": "domain.deliverable[.variant]",
+  "type_key": "domain.initiative[.variant]",
   "type_key_rationale": "string",
   "type_key_override_reason": "string or null",
   "metadata": {

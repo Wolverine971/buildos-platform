@@ -102,11 +102,6 @@
 			"components": ["AgentChatModal"]
 		},
 		{
-			"file": "src/lib/components/ontology/OutputEditModal.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/lib/components/ontology/PlanEditModal.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
@@ -167,8 +162,6 @@
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
-				"OutputCreateModal",
-				"OutputEditModal",
 				"DocumentModal",
 				"TaskCreateModal",
 				"PlanCreateModal",
@@ -179,8 +172,6 @@
 				"RiskEditModal",
 				"MilestoneCreateModal",
 				"MilestoneEditModal",
-				"DecisionCreateModal",
-				"DecisionEditModal",
 				"EventCreateModal",
 				"EventEditModal",
 				"ProjectCalendarSettingsModal",
@@ -214,7 +205,6 @@
 				"DocumentModal",
 				"GoalEditModal",
 				"PlanEditModal",
-				"OutputEditModal",
 				"MilestoneEditModal",
 				"AgentChatModal"
 			]
@@ -964,7 +954,6 @@
 			"src/lib/components/ontology/PlanEditModal.svelte"
 		],
 		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/ontology/OutputEditModal.svelte",
 			"src/lib/components/ontology/DocumentModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
@@ -977,7 +966,6 @@
 			"src/lib/components/ontology/DocumentModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/OutputEditModal.svelte",
 			"src/lib/components/ontology/MilestoneEditModal.svelte"
 		]
 	},

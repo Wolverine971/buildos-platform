@@ -24,7 +24,6 @@
 	import PlanNode from './nodes/PlanNode.svelte';
 	import GoalNode from './nodes/GoalNode.svelte';
 	import MilestoneNode from './nodes/MilestoneNode.svelte';
-	import OutputNode from './nodes/OutputNode.svelte';
 	import DocumentNode from './nodes/DocumentNode.svelte';
 
 	let {
@@ -47,7 +46,6 @@
 		plan: PlanNode,
 		goal: GoalNode,
 		milestone: MilestoneNode,
-		output: OutputNode,
 		document: DocumentNode
 	} as unknown as NodeTypes;
 
@@ -61,7 +59,6 @@
 		plan: { width: 160, height: 70 },
 		goal: { width: 150, height: 70 },
 		milestone: { width: 150, height: 60 },
-		output: { width: 140, height: 60 },
 		document: { width: 140, height: 60 }
 	};
 

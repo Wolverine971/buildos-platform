@@ -4,14 +4,7 @@ import type { Database, Json } from '@buildos/shared-types';
 
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
 
-export type OntoEventOwnerType =
-	| 'project'
-	| 'plan'
-	| 'task'
-	| 'goal'
-	| 'output'
-	| 'actor'
-	| 'standalone';
+export type OntoEventOwnerType = 'project' | 'plan' | 'task' | 'goal' | 'actor' | 'standalone';
 
 export interface OntoEventOwner {
 	type: OntoEventOwnerType;

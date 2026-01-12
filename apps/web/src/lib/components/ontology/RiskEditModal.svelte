@@ -38,6 +38,7 @@
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
+	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -730,6 +731,8 @@
 						/>
 					</div>
 				</div>
+
+				<EntityCommentsSection {projectId} entityType="risk" entityId={riskId} />
 			{/if}
 		</div>
 	{/snippet}

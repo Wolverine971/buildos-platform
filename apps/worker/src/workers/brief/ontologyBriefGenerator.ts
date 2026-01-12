@@ -1,7 +1,7 @@
 // apps/worker/src/workers/brief/ontologyBriefGenerator.ts
 /**
  * Ontology-based Daily Brief Generator
- * Replaces legacy brief generation with goal/output-centric ontology data.
+ * Replaces legacy brief generation with goal-centric ontology data.
  *
  * Spec Reference: /docs/specs/DAILY_BRIEF_ONTOLOGY_MIGRATION_SPEC.md
  */
@@ -129,10 +129,8 @@ function formatActivityEntityType(entityType: string): string {
 		goal: 'goal',
 		plan: 'plan',
 		milestone: 'milestone',
-		output: 'output',
 		document: 'document',
 		risk: 'risk',
-		decision: 'decision',
 		requirement: 'requirement',
 		source: 'source',
 		edge: 'relationship',
@@ -223,35 +221,11 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 		brief += '\n';
 	}
 
-	// Active Outputs Section - only show if there are active outputs
-	const activeOutputs = project.outputs.filter((o) => o.state !== 'published');
-	if (activeOutputs.length > 0) {
-		brief += `### Outputs in Progress\n`;
-		for (const output of activeOutputs.slice(0, 3)) {
-			brief += `- **${output.output.name}** (${output.state})\n`;
-		}
-		brief += '\n';
-	}
-
 	// Requirements - only show if there are requirements
 	if (project.requirements.length > 0) {
 		brief += `### Requirements\n`;
 		for (const requirement of project.requirements.slice(0, 3)) {
 			brief += `- ${requirement.text}\n`;
-		}
-		brief += '\n';
-	}
-
-	// Decisions - only show if there are decisions
-	if (project.decisions.length > 0) {
-		brief += `### Recent Decisions\n`;
-		const recentDecisions = [...project.decisions].sort((a, b) => {
-			const aDate = a.decision_at || a.created_at;
-			const bDate = b.decision_at || b.created_at;
-			return parseISO(bDate).getTime() - parseISO(aDate).getTime();
-		});
-		for (const decision of recentDecisions.slice(0, 3)) {
-			brief += `- **${decision.title}**\n`;
 		}
 		brief += '\n';
 	}
@@ -329,9 +303,7 @@ async function generateOntologyProjectBrief(
 		activeGoalsCount: project.goals.filter(
 			(g) => g.goal.state_key !== 'achieved' && g.goal.state_key !== 'abandoned'
 		).length,
-		activeOutputsCount: project.outputs.filter((o) => o.state !== 'published').length,
 		requirementsCount: project.requirements.length,
-		decisionsCount: project.decisions.length,
 		hasNextMilestone: !!project.nextMilestone,
 		activePlanId: project.activePlan?.id || null
 	};
@@ -416,27 +388,12 @@ function generateMainBriefMarkdown(
 		mainBrief += '\n';
 	}
 
-	// Active Outputs
-	const activeOutputs = briefData.outputs.filter((o) => o.state !== 'published');
-	if (activeOutputs.length > 0) {
-		mainBrief += `### Outputs in Flight\n`;
-		for (const output of activeOutputs.slice(0, 5)) {
-			const projectName = projectNameMap.get(output.output.project_id) || '';
-			const projectSuffix = projectName
-				? ` — [${projectName}](/projects/${output.output.project_id})`
-				: '';
-			mainBrief += `- **${output.output.name}** (${output.state})${projectSuffix}\n`;
-		}
-		mainBrief += '\n';
-	}
-
 	// Attention Required Section
 	if (
 		briefData.blockedTasks.length > 0 ||
 		briefData.overdueTasks.length > 0 ||
 		briefData.risks.length > 0 ||
-		briefData.requirements.length > 0 ||
-		briefData.decisions.length > 0
+		briefData.requirements.length > 0
 	) {
 		mainBrief += `## Attention Required\n\n`;
 
@@ -479,23 +436,6 @@ function generateMainBriefMarkdown(
 					? ` — [${projectName}](/projects/${requirement.project_id})`
 					: '';
 				mainBrief += `- ${requirement.text}${projectSuffix}\n`;
-			}
-			mainBrief += '\n';
-		}
-
-		if (briefData.decisions.length > 0) {
-			mainBrief += `### Recent Decisions (${briefData.decisions.length})\n`;
-			const sortedDecisions = [...briefData.decisions].sort((a, b) => {
-				const aDate = a.decision_at || a.created_at;
-				const bDate = b.decision_at || b.created_at;
-				return parseISO(bDate).getTime() - parseISO(aDate).getTime();
-			});
-			for (const decision of sortedDecisions.slice(0, 5)) {
-				const projectName = projectNameMap.get(decision.project_id) || '';
-				const projectSuffix = projectName
-					? ` — [${projectName}](/projects/${decision.project_id})`
-					: '';
-				mainBrief += `- **${decision.title}**${projectSuffix}\n`;
 			}
 			mainBrief += '\n';
 		}
@@ -543,7 +483,6 @@ function generateMainBriefMarkdown(
 	const totalUpdates =
 		briefData.recentUpdates.tasks.length +
 		briefData.recentUpdates.goals.length +
-		briefData.recentUpdates.outputs.length +
 		briefData.recentUpdates.documents.length;
 
 	const activityEntries = briefData.projects.flatMap((project) => project.activityLogs);
@@ -555,7 +494,6 @@ function generateMainBriefMarkdown(
 		if (totalUpdates > 0) {
 			mainBrief += `- **${briefData.recentUpdates.tasks.length}** tasks updated\n`;
 			mainBrief += `- **${briefData.recentUpdates.goals.length}** goals with activity\n`;
-			mainBrief += `- **${briefData.recentUpdates.outputs.length}** outputs updated\n`;
 			mainBrief += `- **${briefData.recentUpdates.documents.length}** documents updated\n\n`;
 		}
 
@@ -1131,17 +1069,6 @@ async function recordBriefEntities(
 		});
 	}
 
-	// Record decisions
-	for (const decision of briefData.decisions.slice(0, 10)) {
-		entities.push({
-			daily_brief_id: dailyBriefId,
-			project_id: decision.project_id,
-			entity_kind: 'decision',
-			entity_id: decision.id,
-			role: 'included'
-		});
-	}
-
 	// Record recently updated entities
 	for (const task of briefData.recentUpdates.tasks.slice(0, 5)) {
 		entities.push({
@@ -1149,16 +1076,6 @@ async function recordBriefEntities(
 			project_id: task.project_id,
 			entity_kind: 'task',
 			entity_id: task.id,
-			role: 'recently_updated'
-		});
-	}
-
-	for (const output of briefData.recentUpdates.outputs.slice(0, 5)) {
-		entities.push({
-			daily_brief_id: dailyBriefId,
-			project_id: output.project_id,
-			entity_kind: 'output',
-			entity_id: output.id,
 			role: 'recently_updated'
 		});
 	}

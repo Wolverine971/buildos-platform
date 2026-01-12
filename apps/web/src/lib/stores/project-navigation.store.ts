@@ -28,7 +28,6 @@ export interface ProjectNavigationData {
 	next_step_updated_at: string | null;
 	// Entity counts for skeleton display
 	task_count: number;
-	output_count: number;
 	document_count: number;
 	goal_count: number;
 	plan_count: number;

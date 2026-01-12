@@ -47,6 +47,7 @@
 	import TaskEditModal from './TaskEditModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
+	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import { TASK_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
@@ -688,7 +689,6 @@
 			case 'task':
 				openLinkedTaskModal(id);
 				break;
-			// milestone and output don't have edit modals yet, could add later
 			default:
 				console.log(`No modal handler for entity kind: ${kind}`);
 		}
@@ -1510,6 +1510,7 @@
 						</div>
 					{/key}
 				</div>
+				<EntityCommentsSection {projectId} entityType="task" entityId={taskId} />
 			</div>
 		{/if}
 	{/snippet}

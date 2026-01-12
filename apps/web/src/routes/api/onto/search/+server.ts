@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/onto/search/+server.ts
 /**
  * POST /api/onto/search
- * Cross-entity ontology search (tasks, plans, goals, milestones, documents, outputs, requirements)
+ * Cross-entity ontology search (tasks, plans, goals, milestones, documents, requirements)
  * Returns typed results with snippets for agentic chat discovery.
  */
 
@@ -9,15 +9,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
-const ALLOWED_TYPES = new Set([
-	'task',
-	'plan',
-	'goal',
-	'milestone',
-	'document',
-	'output',
-	'requirement'
-]);
+const ALLOWED_TYPES = new Set(['task', 'plan', 'goal', 'milestone', 'document', 'requirement']);
 
 type SearchRequest = {
 	query?: string;

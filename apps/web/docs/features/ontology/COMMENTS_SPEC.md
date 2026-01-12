@@ -2,9 +2,73 @@
 
 # Ontology Comments Spec
 
-**Last Updated**: 2026-01-09  
-**Status**: Draft  
+**Last Updated**: 2026-03-28  
+**Status**: Implemented  
 **Location**: `/apps/web/docs/features/ontology/`
+
+## Progress
+
+- [x] Create database tables, triggers, indexes, and RLS policies
+- [x] Implement API routes for comments + read states
+- [x] Build comments UI component
+- [x] Embed comments sections in ontology entity modals
+- [x] Update shared database types and notification payload support
+
+## Implementation Notes
+
+### What Was Added
+
+- Database migration for comment tables + RLS + triggers in
+  `supabase/migrations/20260328000000_add_onto_comments.sql`.
+- API routes:
+    - `POST/GET /api/onto/comments`
+    - `PATCH/DELETE /api/onto/comments/:id`
+    - `POST /api/onto/comments/read`
+- Mention handling (parses `[[user:id|Name]]`, notifies valid project members).
+- Comment UI component + recursive thread rendering.
+- Comment sections added to ontology entity modals used in `/projects/[id]`.
+- Shared types updated for new tables and `user_notifications.data`.
+
+### Files Touched
+
+- `supabase/migrations/20260328000000_add_onto_comments.sql`
+- `apps/web/src/routes/api/onto/comments/+server.ts`
+- `apps/web/src/routes/api/onto/comments/[id]/+server.ts`
+- `apps/web/src/routes/api/onto/comments/read/+server.ts`
+- `apps/web/src/routes/api/onto/comments/comment-mentions.ts`
+- `apps/web/src/lib/components/ontology/EntityCommentsSection.svelte`
+- `apps/web/src/lib/components/ontology/EntityCommentThread.svelte`
+- `apps/web/src/lib/components/ontology/TaskEditModal.svelte`
+- `apps/web/src/lib/components/ontology/PlanEditModal.svelte`
+- `apps/web/src/lib/components/ontology/GoalEditModal.svelte`
+- `apps/web/src/lib/components/ontology/RiskEditModal.svelte`
+- `apps/web/src/lib/components/ontology/MilestoneEditModal.svelte`
+- `apps/web/src/lib/components/ontology/DecisionEditModal.svelte`
+- `apps/web/src/lib/components/ontology/EventEditModal.svelte`
+- `apps/web/src/lib/components/ontology/OutputEditModal.svelte`
+- `apps/web/src/lib/components/ontology/DocumentModal.svelte`
+- `apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte`
+- `packages/shared-types/src/database.types.ts`
+- `apps/web/docs/features/ontology/COMMENTS_SPEC.md`
+
+### Implementation Details
+
+- **Root/parent handling**: `onto_comments_before_insert` sets `root_id` and enforces
+  consistent target context across a thread. Updates are restricted by
+  `onto_comments_before_update`.
+- **Target validation**: `onto_comment_validate_target` ensures `entity_id` belongs
+  to `project_id` for supported entity types (including `metric_point` via
+  `onto_metrics` join and `event`).
+- **RLS**: read allowed for members/admin or public projects; writes restricted to
+  authenticated actors and `created_by = current_actor_id()`.
+- **Mentions**: `comment-mentions.ts` parses `[[user:id|Name]]`, filters to project
+  members (or all for public projects), creates `user_notifications` with `data`
+  payload and inserts rows into `onto_comment_mentions`.
+- **UI behavior**:
+    - Threads render root + replies; deleted comments show placeholders.
+    - Mentions render as `@Display Name` for readability.
+    - Read state updates fire after list load (one request per thread).
+    - Composer is disabled for unauthenticated viewers.
 
 ## Overview
 

@@ -62,7 +62,6 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		goals: projectData.data?.goals || [],
 		documents: projectData.data?.documents || [],
 		milestones: projectData.data?.milestones || [],
-		outputs: projectData.data?.outputs || [],
 		tasks: projectData.data?.tasks || [],
 		risks: projectData.data?.risks || []
 	};

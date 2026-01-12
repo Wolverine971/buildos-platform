@@ -4008,6 +4008,197 @@ export type Database = {
           },
         ]
       }
+      onto_comment_mentions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          mentioned_user_id: string
+          notification_id: string | null
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          mentioned_user_id: string
+          notification_id?: string | null
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          mentioned_user_id?: string
+          notification_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_comment_mentions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "onto_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_comment_mentions_mentioned_user_id_fkey"
+            columns: ["mentioned_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_comment_mentions_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "user_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_comment_read_states: {
+        Row: {
+          actor_id: string
+          entity_id: string
+          entity_type: string
+          id: string
+          last_read_at: string
+          last_read_comment_id: string | null
+          project_id: string
+          root_id: string
+          updated_at: string
+        }
+        Insert: {
+          actor_id: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          last_read_at?: string
+          last_read_comment_id?: string | null
+          project_id: string
+          root_id: string
+          updated_at?: string
+        }
+        Update: {
+          actor_id?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          last_read_at?: string
+          last_read_comment_id?: string | null
+          project_id?: string
+          root_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_comment_read_states_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_comment_read_states_last_read_comment_id_fkey"
+            columns: ["last_read_comment_id"]
+            isOneToOne: false
+            referencedRelation: "onto_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_comment_read_states_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_comment_read_states_root_id_fkey"
+            columns: ["root_id"]
+            isOneToOne: false
+            referencedRelation: "onto_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_comments: {
+        Row: {
+          body: string
+          body_format: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          edited_at: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+          parent_id: string | null
+          project_id: string
+          root_id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          body_format?: string
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          metadata?: Json
+          parent_id?: string | null
+          project_id: string
+          root_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          body_format?: string
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          edited_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json
+          parent_id?: string | null
+          project_id?: string
+          root_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_comments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "onto_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_comments_root_id_fkey"
+            columns: ["root_id"]
+            isOneToOne: false
+            referencedRelation: "onto_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_decisions: {
         Row: {
           created_at: string
@@ -8165,6 +8356,7 @@ export type Database = {
         Row: {
           action_url: string | null
           created_at: string | null
+          data: Json | null
           delivery_id: string | null
           dismissed_at: string | null
           event_id: string | null
@@ -8181,6 +8373,7 @@ export type Database = {
         Insert: {
           action_url?: string | null
           created_at?: string | null
+          data?: Json | null
           delivery_id?: string | null
           dismissed_at?: string | null
           event_id?: string | null
@@ -8197,6 +8390,7 @@ export type Database = {
         Update: {
           action_url?: string | null
           created_at?: string | null
+          data?: Json | null
           delivery_id?: string | null
           dismissed_at?: string | null
           event_id?: string | null
@@ -9844,6 +10038,14 @@ export type Database = {
       }
       onto_check_guard: {
         Args: { p_entity: Json; p_guard: Json }
+        Returns: boolean
+      }
+      onto_comment_validate_target: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_project_id: string
+        }
         Returns: boolean
       }
       onto_jsonb_extract: {

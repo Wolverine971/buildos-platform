@@ -46,12 +46,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
-	list_onto_outputs: {
-		summary: 'List project outputs and deliverables with status.',
-		capabilities: ['Filter by project/state', 'Highlights deliverable state'],
-		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
-		category: 'search'
-	},
 	list_onto_milestones: {
 		summary: 'List project milestones with due dates and status.',
 		capabilities: ['Filter by project/state', 'Highlights upcoming checkpoints'],
@@ -61,12 +55,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	list_onto_risks: {
 		summary: 'List project risks with impact and state.',
 		capabilities: ['Filter by project/state/impact', 'Highlights risk posture'],
-		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
-		category: 'search'
-	},
-	list_onto_decisions: {
-		summary: 'List project decisions with decision dates.',
-		capabilities: ['Filter by project', 'Good for decision audits'],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
@@ -97,7 +85,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	search_ontology: {
 		summary: 'Fuzzy search across all ontology entities with snippets.',
 		capabilities: [
-			'Scans tasks/plans/goals/milestones/documents/outputs/requirements',
+			'Scans tasks/plans/goals/milestones/documents/requirements',
 			'Accepts project scope and type filters'
 		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
@@ -142,12 +130,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'read'
 	},
-	get_onto_output_details: {
-		summary: 'Load full output details including description and metadata.',
-		capabilities: ['Validates ownership', 'Use before edits'],
-		contexts: ['project', 'project_audit', 'project_forecast'],
-		category: 'read'
-	},
 	get_onto_milestone_details: {
 		summary: 'Load full milestone details including due dates and state.',
 		capabilities: ['Validates ownership', 'Use before edits'],
@@ -156,12 +138,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	get_onto_risk_details: {
 		summary: 'Load full risk details including impact and mitigation info.',
-		capabilities: ['Validates ownership', 'Use before edits'],
-		contexts: ['project', 'project_audit', 'project_forecast'],
-		category: 'read'
-	},
-	get_onto_decision_details: {
-		summary: 'Load full decision details including rationale and decision date.',
 		capabilities: ['Validates ownership', 'Use before edits'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'read'
@@ -191,7 +167,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	list_task_documents: {
 		summary: 'List documents linked to a task via task_has_document edges.',
-		capabilities: ['Returns documents plus edge metadata', 'Highlights scratch vs deliverable'],
+		capabilities: ['Returns documents plus edge metadata', 'Highlights scratch vs primary'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
@@ -293,7 +269,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: [
 			'Normalizes edge direction',
 			'Validates ownership and project scope',
-			'Use for plans/goals/milestones/tasks/docs/risks/decisions'
+			'Use for plans/goals/milestones/tasks/docs/risks/requirements'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
@@ -360,12 +336,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
-	update_onto_output: {
-		summary: 'Modify output name, state, or metadata.',
-		capabilities: ['Supports partial updates', 'Validates ownership'],
-		contexts: ['project', 'project_audit', 'project_forecast'],
-		category: 'write'
-	},
 	update_onto_milestone: {
 		summary: 'Modify milestone title, due date, state, or metadata.',
 		capabilities: ['Supports partial updates', 'Validates ownership'],
@@ -374,12 +344,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	update_onto_risk: {
 		summary: 'Modify risk status, impact, probability, or mitigation info.',
-		capabilities: ['Supports partial updates', 'Validates ownership'],
-		contexts: ['project', 'project_audit', 'project_forecast'],
-		category: 'write'
-	},
-	update_onto_decision: {
-		summary: 'Modify decision title, date, rationale, or metadata.',
 		capabilities: ['Supports partial updates', 'Validates ownership'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'

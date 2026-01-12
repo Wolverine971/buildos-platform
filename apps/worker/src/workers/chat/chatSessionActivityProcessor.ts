@@ -69,7 +69,6 @@ interface SessionChangeSummary {
 const TABLE_TO_ENTITY_TYPE: Record<string, ProjectLogEntityType> = {
 	onto_projects: 'project',
 	onto_tasks: 'task',
-	onto_outputs: 'output',
 	onto_documents: 'document',
 	onto_notes: 'note',
 	onto_goals: 'goal',
@@ -77,7 +76,6 @@ const TABLE_TO_ENTITY_TYPE: Record<string, ProjectLogEntityType> = {
 	onto_risks: 'risk',
 	onto_plans: 'plan',
 	onto_requirements: 'requirement',
-	onto_decisions: 'decision',
 	onto_sources: 'source',
 	onto_edges: 'edge',
 	// Legacy table mappings
@@ -115,7 +113,7 @@ Guidelines:
 5. Consider what was just completed or discussed
 
 Entity reference format: [[type:id|display_name]]
-Valid types: task, output, document, goal, milestone, risk, plan
+Valid types: task, document, goal, milestone, risk, plan
 
 Example short: "Review the draft presentation and share feedback with the team."
 Example long: "The [[task:abc-123|draft presentation]] is ready for review. Focus on the key messaging in slides 3-5, then share your feedback with [[user:def-456|Sarah]] before the Friday deadline. Consider the [[document:ghi-789|brand guidelines]] for consistency."

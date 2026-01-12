@@ -80,7 +80,6 @@
 	let goals = $state(data.goals || []);
 	let documents = $state(data.documents || []);
 	let milestones = $state(data.milestones || []);
-	let outputs = $state(data.outputs || []);
 	let projectTasks = $state(data.tasks || []);
 	let risks = $state(data.risks || []);
 
@@ -134,7 +133,6 @@
 		documents: false,
 		milestones: false,
 		tasks: false,
-		outputs: false,
 		connectedDocs: false,
 		linkedEntities: false
 	});
@@ -151,8 +149,6 @@
 	let selectedPlanId = $state<string | null>(null);
 	let showTaskModal = $state(false);
 	let selectedTaskId = $state<string | null>(null);
-	let showOutputModal = $state(false);
-	let selectedOutputId = $state<string | null>(null);
 	let showMilestoneModal = $state(false);
 	let selectedMilestoneId = $state<string | null>(null);
 	let showChatModal = $state(false);
@@ -165,8 +161,6 @@
 
 	let PlanEditModalComponent = $state<Component<any, any> | null>(null);
 
-	let OutputEditModalComponent = $state<Component<any, any> | null>(null);
-
 	let MilestoneEditModalComponent = $state<Component<any, any> | null>(null);
 
 	let AgentChatModalComponent = $state<Component<any, any> | null>(null);
@@ -175,7 +169,7 @@
 	// DERIVED STATE
 	// ============================================================
 
-	const deliverableDocuments = $derived.by(() =>
+	const connectedDocuments = $derived.by(() =>
 		workspaceDocuments.filter((item) => item.edge?.props?.role !== 'scratch')
 	);
 
@@ -372,7 +366,7 @@
 			const result = await fetchTaskDocuments(task.id);
 			workspaceDocuments = result.documents ?? [];
 
-			const firstDoc = deliverableDocuments[0];
+			const firstDoc = connectedDocuments[0];
 			if (!selectedWorkspaceDocId && firstDoc) {
 				selectWorkspaceDocument(firstDoc.document.id);
 			}
@@ -533,7 +527,6 @@
 				goals = projectData.data?.goals || [];
 				documents = projectData.data?.documents || [];
 				milestones = projectData.data?.milestones || [];
-				outputs = projectData.data?.outputs || [];
 				projectTasks = projectData.data?.tasks || [];
 				risks = projectData.data?.risks || [];
 			}
@@ -567,13 +560,6 @@
 		if (!PlanEditModalComponent) {
 			const mod = await import('$lib/components/ontology/PlanEditModal.svelte');
 			PlanEditModalComponent = mod.default;
-		}
-	}
-
-	async function loadOutputEditModal() {
-		if (!OutputEditModalComponent) {
-			const mod = await import('$lib/components/ontology/OutputEditModal.svelte');
-			OutputEditModalComponent = mod.default;
 		}
 	}
 
@@ -614,12 +600,6 @@
 		showTaskModal = true;
 	}
 
-	async function openOutputModal(id: string) {
-		await loadOutputEditModal();
-		selectedOutputId = id;
-		showOutputModal = true;
-	}
-
 	async function openMilestoneModal(id: string) {
 		await loadMilestoneEditModal();
 		selectedMilestoneId = id;
@@ -637,13 +617,11 @@
 		showGoalModal = false;
 		showPlanModal = false;
 		showTaskModal = false;
-		showOutputModal = false;
 		showMilestoneModal = false;
 		activeDocumentId = null;
 		selectedGoalId = null;
 		selectedPlanId = null;
 		selectedTaskId = null;
-		selectedOutputId = null;
 		selectedMilestoneId = null;
 		refreshData();
 	}
@@ -661,9 +639,6 @@
 				break;
 			case 'task':
 				openTaskModal(id);
-				break;
-			case 'output':
-				openOutputModal(id);
 				break;
 			case 'milestone':
 				openMilestoneModal(id);
@@ -831,7 +806,6 @@
 					{ key: 'goals', count: goals.length, Icon: Target },
 					{ key: 'plans', count: plans.length, Icon: Calendar },
 					{ key: 'docs', count: documents.length, Icon: FileText },
-					{ key: 'outputs', count: outputs.length, Icon: Layers },
 					{ key: 'tasks', count: otherTasks.length, Icon: ListChecks }
 				].filter((s) => s.count > 0)}
 				{#if mobileStats.length > 0}
@@ -889,10 +863,10 @@
 						onclick={() => setActiveView('workspace')}
 					>
 						Workspace
-						{#if deliverableDocuments.length > 0}
+						{#if connectedDocuments.length > 0}
 							<span
 								class="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-accent/20 text-accent"
-								>{deliverableDocuments.length}</span
+								>{connectedDocuments.length}</span
 							>
 						{/if}
 					</button>
@@ -1037,10 +1011,10 @@
 									<span class="text-xs sm:text-sm font-semibold text-foreground"
 										>Docs</span
 									>
-									{#if deliverableDocuments.length > 0}
+									{#if connectedDocuments.length > 0}
 										<span
 											class="text-[10px] font-semibold text-muted-foreground"
-											>({deliverableDocuments.length})</span
+											>({connectedDocuments.length})</span
 										>
 									{/if}
 								</div>
@@ -1073,9 +1047,9 @@
 							</button>
 							{#if expandedPanels.connectedDocs}
 								<div class="border-t border-border max-h-32 overflow-y-auto">
-									{#if deliverableDocuments.length > 0}
+									{#if connectedDocuments.length > 0}
 										<ul class="divide-y divide-border/80">
-											{#each deliverableDocuments as doc}
+											{#each connectedDocuments as doc}
 												<li>
 													<button
 														type="button"
@@ -1179,10 +1153,10 @@
 											onchange={(val) => selectWorkspaceDocument(String(val))}
 											size="sm"
 										>
-											{#if deliverableDocuments.length === 0}
+											{#if connectedDocuments.length === 0}
 												<option value="">No documents yet</option>
 											{:else}
-												{#each deliverableDocuments as doc}
+												{#each connectedDocuments as doc}
 													<option value={doc.document.id}>
 														{doc.document.title || 'Untitled'} ({doc
 															.document.state_key})
@@ -1642,62 +1616,6 @@
 						{/if}
 					</section>
 				{/if}
-
-				<!-- Outputs Panel -->
-				{#if outputs.length > 0}
-					<section
-						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-					>
-						<button
-							onclick={() => togglePanel('outputs')}
-							class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors pressable"
-						>
-							<div class="flex items-center gap-2">
-								<div
-									class="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center"
-								>
-									<Layers class="w-3 h-3 text-purple-500" />
-								</div>
-								<span class="text-xs font-semibold text-foreground">Outputs</span>
-								<span class="text-[10px] text-muted-foreground"
-									>({outputs.length})</span
-								>
-							</div>
-							<ChevronDown
-								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.outputs
-									? 'rotate-180'
-									: ''}"
-							/>
-						</button>
-						{#if expandedPanels.outputs}
-							<div class="border-t border-border max-h-32 overflow-y-auto">
-								<ul class="divide-y divide-border/80">
-									{#each outputs.slice(0, 8) as output}
-										<li>
-											<button
-												type="button"
-												onclick={() => openOutputModal(output.id)}
-												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
-											>
-												<Layers class="w-3 h-3 text-purple-500 shrink-0" />
-												<span class="text-xs text-foreground truncate"
-													>{output.name}</span
-												>
-											</button>
-										</li>
-									{/each}
-								</ul>
-								{#if outputs.length > 8}
-									<div
-										class="px-2.5 py-1.5 text-[10px] text-muted-foreground border-t border-border"
-									>
-										+{outputs.length - 8} more
-									</div>
-								{/if}
-							</div>
-						{/if}
-					</section>
-				{/if}
 			</aside>
 		</div>
 	</main>
@@ -1772,17 +1690,6 @@
 	/>
 {/if}
 
-<!-- Output Edit Modal (Lazy Loaded) -->
-{#if showOutputModal && selectedOutputId && OutputEditModalComponent}
-	<OutputEditModalComponent
-		outputId={selectedOutputId}
-		projectId={project?.id}
-		onClose={handleModalClose}
-		onUpdated={handleModalClose}
-		onDeleted={handleModalClose}
-	/>
-{/if}
-
 <!-- Milestone Edit Modal (Lazy Loaded) -->
 {#if showMilestoneModal && selectedMilestoneId && MilestoneEditModalComponent}
 	<MilestoneEditModalComponent
@@ -1804,7 +1711,7 @@
 {/if}
 
 <!-- Mobile Project Context Floating Button -->
-{#if goals.length > 0 || plans.length > 0 || documents.length > 0 || outputs.length > 0 || otherTasks.length > 0}
+{#if goals.length > 0 || plans.length > 0 || documents.length > 0 || otherTasks.length > 0}
 	<button
 		type="button"
 		onclick={() => (showMobileContextSheet = true)}
@@ -1961,49 +1868,6 @@
 							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
 						>
 							+{documents.length - 10} more
-						</div>
-					{/if}
-				</div>
-			{/if}
-
-			<!-- Outputs -->
-			{#if outputs.length > 0}
-				<div
-					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
-				>
-					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
-						<div
-							class="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center"
-						>
-							<Layers class="w-3 h-3 text-purple-500" />
-						</div>
-						<span class="text-xs font-semibold text-foreground">Outputs</span>
-						<span class="text-[10px] text-muted-foreground">({outputs.length})</span>
-					</div>
-					<ul class="divide-y divide-border/50 max-h-32 overflow-y-auto">
-						{#each outputs.slice(0, 10) as output}
-							<li>
-								<button
-									type="button"
-									onclick={() => {
-										showMobileContextSheet = false;
-										openOutputModal(output.id);
-									}}
-									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
-								>
-									<Layers class="w-3 h-3 text-purple-500 shrink-0" />
-									<span class="text-xs text-foreground truncate"
-										>{output.name}</span
-									>
-								</button>
-							</li>
-						{/each}
-					</ul>
-					{#if outputs.length > 10}
-						<div
-							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
-						>
-							+{outputs.length - 10} more
 						</div>
 					{/if}
 				</div>

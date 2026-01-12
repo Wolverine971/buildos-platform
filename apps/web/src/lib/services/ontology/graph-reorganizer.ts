@@ -22,7 +22,6 @@ import {
 	type ResolvedSemanticEdge
 } from './relationship-resolver';
 import {
-	PRODUCER_KINDS,
 	SUPPORTS_GOAL_KINDS,
 	TARGETS_MILESTONE_KINDS,
 	REFERENCE_TARGET_KINDS
@@ -113,7 +112,6 @@ const AUTO_MANAGED_SEMANTIC_RELS = new Set<RelationshipType>([
 	'supports_goal',
 	'targets_milestone',
 	'references',
-	'produces',
 	'depends_on'
 ]);
 
@@ -184,7 +182,7 @@ function mergeParents(existing: ParentRef[], additions: ParentRef[]): ParentRef[
 }
 
 function shouldSkipContainment(kind: EntityKind, connections: ConnectionRef[]): boolean {
-	if (kind === 'output' || kind === 'source') return true;
+	if (kind === 'source') return true;
 	if (kind === 'document') {
 		return !connections.some((connection) => {
 			if (connection.kind !== 'document') return false;
@@ -281,9 +279,6 @@ function getManagedSemanticScopes(
 	}
 	if (TARGETS_MILESTONE_KINDS.has(kind)) {
 		scopes.push({ rel: 'targets_milestone', direction: 'outgoing' });
-	}
-	if (PRODUCER_KINDS.has(kind)) {
-		scopes.push({ rel: 'produces', direction: 'outgoing' });
 	}
 	if (kind === 'task') {
 		scopes.push({ rel: 'depends_on', direction: 'outgoing' });

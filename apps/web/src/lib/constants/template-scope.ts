@@ -78,19 +78,6 @@ export const TEMPLATE_SCOPE_DEFINITIONS: Record<string, TemplateScopeDefinition>
 		exampleBrainDump:
 			'Example: A meeting task → task.coordinate.meeting. A code review → task.review. Writing new content → task.create.'
 	}),
-	output: scope('output', {
-		label: 'Output / Deliverable',
-		description:
-			'Artifacts and deliverables that exit the system, classified by content modality (written, media, software, operational).',
-		category: 'autonomous',
-		typeKeyPattern: 'output.{family}[.{variant}]',
-		typeKeyRegex: /^output\.[a-z_]+(\.[a-z_]+)?$/,
-		families: ['written', 'media', 'software', 'operational'],
-		facetUsage: 'context / stage',
-		llmCue: 'Identify the content modality family (written, media, software, operational) and the specific deliverable type. Written = text/documents, Media = visual/audio/video, Software = code/features/APIs, Operational = reports/dashboards/contracts.',
-		exampleBrainDump:
-			'Example: A book chapter → output.written.chapter. A design mockup → output.media.design_mockup. A shipped feature → output.software.feature.'
-	}),
 	document: scope('document', {
 		label: 'Document',
 		description:

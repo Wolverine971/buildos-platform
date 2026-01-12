@@ -27,9 +27,7 @@ export const ENTITY_TABLES = {
 	goal: 'onto_goals',
 	milestone: 'onto_milestones',
 	document: 'onto_documents',
-	output: 'onto_outputs',
 	risk: 'onto_risks',
-	decision: 'onto_decisions',
 	requirement: 'onto_requirements',
 	metric: 'onto_metrics',
 	source: 'onto_sources'

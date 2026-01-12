@@ -109,7 +109,7 @@
 	}
 </script>
 
-<Modal isOpen={true} onClose={onClose} size="xl" closeOnEscape={!isSaving} showCloseButton={false}>
+<Modal isOpen={true} {onClose} size="xl" closeOnEscape={!isSaving} showCloseButton={false}>
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
@@ -247,7 +247,12 @@
 
 				{#if tasks.length > 0}
 					<FormField label="Link to Task" labelFor="linkedTask">
-						<Select id="linkedTask" bind:value={linkedTaskId} disabled={isSaving} size="md">
+						<Select
+							id="linkedTask"
+							bind:value={linkedTaskId}
+							disabled={isSaving}
+							size="md"
+						>
 							<option value="">No linked task</option>
 							{#each tasks as task}
 								<option value={task.id}>{task.title}</option>

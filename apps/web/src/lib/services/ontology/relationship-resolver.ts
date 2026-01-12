@@ -7,7 +7,6 @@ import type { EntityKind, RelationshipType } from './edge-direction';
 import { createCanonicalEdge } from './edge-direction';
 import type { ParentRef } from './containment-organizer';
 import {
-	PRODUCER_KINDS,
 	REFERENCE_TARGET_KINDS,
 	SUPPORTS_GOAL_KINDS,
 	TARGETS_MILESTONE_KINDS,
@@ -284,31 +283,6 @@ export function resolveConnections(params: {
 			addSemanticEdge(semantic, 'references', direction, target);
 			continue;
 		}
-
-		if (connection.kind === 'output' || entity.kind === 'output') {
-			const producerKind = entity.kind === 'output' ? connection.kind : entity.kind;
-			const isProducer =
-				PRODUCER_KINDS.has(producerKind) &&
-				(connection.kind === 'output' || entity.kind === 'output');
-
-			if (isProducer) {
-				if (entity.kind === 'output') {
-					addSemanticEdge(semantic, 'produces', 'incoming', {
-						kind: connection.kind,
-						id: connection.id
-					});
-				} else {
-					addSemanticEdge(semantic, 'produces', 'outgoing', {
-						kind: connection.kind,
-						id: connection.id
-					});
-				}
-			} else {
-				const { direction, target } = inferReferenceDirection(entity, connection);
-				addSemanticEdge(semantic, 'references', direction, target);
-			}
-			continue;
-		}
 	}
 
 	if (explicitKinds.has('goal') && SUPPORTS_GOAL_KINDS.has(entity.kind)) {
@@ -330,8 +304,6 @@ export function resolveConnections(params: {
 		entityProjectEdge = { rel: 'has_document', mode: 'ensure' };
 	} else if (entity.kind === 'source') {
 		entityProjectEdge = { rel: 'has_source', mode: 'ensure' };
-	} else if (entity.kind === 'output') {
-		entityProjectEdge = { rel: 'has_output', mode: 'ensure' };
 	}
 
 	return {

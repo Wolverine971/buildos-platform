@@ -125,30 +125,30 @@ When adding new entries, use this format:
 
 ### Theme: Context Engineering Ownership
 
-| Date       | Signal                                | Strength    | Action Taken           |
-| ---------- | ------------------------------------- | ----------- | ---------------------- |
+| Date       | Signal                                | Strength    | Action Taken                      |
+| ---------- | ------------------------------------- | ----------- | --------------------------------- |
 | 2026-01-12 | @dexhorthy 3.2K→10.7K follower growth | Very Strong | Noted - context eng is mainstream |
-| 2026-01-12 | Acontext.io "context data platform"   | Strong      | Added to competitor watch |
-| 2026-01-12 | @DropzoneAI context eng reliability   | Medium      | Fresh engagement opportunity |
-| 2026-01-08 | @dexhorthy "harness engineering" post | Strong      | Engaged with value add |
-| 2026-01-08 | Nvidia CES context management quote   | Very Strong | Noted for content      |
+| 2026-01-12 | Acontext.io "context data platform"   | Strong      | Added to competitor watch         |
+| 2026-01-12 | @DropzoneAI context eng reliability   | Medium      | Fresh engagement opportunity      |
+| 2026-01-08 | @dexhorthy "harness engineering" post | Strong      | Engaged with value add            |
+| 2026-01-08 | Nvidia CES context management quote   | Very Strong | Noted for content                 |
 
 ### Theme: ADHD Audience Resonance
 
-| Date | Signal | Strength | Action Taken |
-| ---- | ------ | -------- | ------------ |
+| Date       | Signal                                                | Strength    | Action Taken                            |
+| ---------- | ----------------------------------------------------- | ----------- | --------------------------------------- |
 | 2026-01-12 | Major ADHD accounts quiet (HowtoADHD, StructuredSucc) | Opportunity | Consider creating content in this space |
 
 ### Theme: Competitor Activity
 
-| Date       | Account      | Activity          | Response   |
-| ---------- | ------------ | ----------------- | ---------- |
+| Date       | Account      | Activity                             | Response          |
+| ---------- | ------------ | ------------------------------------ | ----------------- |
 | 2026-01-12 | @danshipper  | Launched "Proof" agent-native editor | Study positioning |
-| 2026-01-12 | @acontext_io | New - "context data platform" | Monitor closely |
-| 2026-01-12 | @dannypostma | Still "laying low" | Monitoring |
-| 2026-01-12 | @danidonovan | Quiet since Dec 2025 | Monitoring |
-| 2026-01-08 | @dannypostma | "Laying low"      | Monitoring |
-| 2026-01-08 | @danidonovan | No major activity | Monitoring |
+| 2026-01-12 | @acontext_io | New - "context data platform"        | Monitor closely   |
+| 2026-01-12 | @dannypostma | Still "laying low"                   | Monitoring        |
+| 2026-01-12 | @danidonovan | Quiet since Dec 2025                 | Monitoring        |
+| 2026-01-08 | @dannypostma | "Laying low"                         | Monitoring        |
+| 2026-01-08 | @danidonovan | No major activity                    | Monitoring        |
 
 ---
 

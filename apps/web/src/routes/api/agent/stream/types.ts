@@ -104,10 +104,8 @@ export interface StreamRequest {
 		| 'plan'
 		| 'goal'
 		| 'document'
-		| 'output'
 		| 'milestone'
 		| 'risk'
-		| 'decision'
 		| 'requirement';
 	/** Optional last turn context provided by client */
 	last_turn_context?: LastTurnContext;
@@ -207,7 +205,7 @@ export interface ContextShiftData {
 	new_context: ChatContextType | string;
 	entity_id?: string;
 	entity_name?: string;
-	entity_type?: 'project' | 'task' | 'plan' | 'goal' | 'document' | 'output';
+	entity_type?: 'project' | 'task' | 'plan' | 'goal' | 'document';
 	message?: string;
 }
 

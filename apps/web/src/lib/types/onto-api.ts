@@ -135,21 +135,6 @@ export interface OntoPlan {
 }
 
 /**
- * Output entity from onto_outputs table
- */
-export interface OntoOutput {
-	id: string;
-	project_id: string;
-	type_key: string;
-	name: string;
-	state_key: string;
-	props: Record<string, unknown> | null;
-	created_by: string;
-	created_at: string;
-	updated_at: string;
-}
-
-/**
  * Edge entity from onto_edges table.
  * Edges include a denormalized project_id for efficient project-scoped queries.
  * See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
@@ -238,20 +223,6 @@ export interface OntoMilestone {
 }
 
 /**
- * Decision entity from onto_decisions table
- */
-export interface OntoDecision {
-	id: string;
-	project_id: string;
-	title: string;
-	rationale?: string | null;
-	decision_at: string;
-	props: Record<string, unknown> | null;
-	created_by: string;
-	created_at: string;
-}
-
-/**
  * Metric entity from onto_metrics table
  */
 export interface OntoMetric {
@@ -291,12 +262,10 @@ export interface ProjectDetailResponse {
 	requirements: OntoRequirement[];
 	plans: OntoPlan[];
 	tasks: OntoTask[];
-	outputs: OntoOutput[];
 	documents: OntoDocument[];
 	sources: OntoSource[];
 	milestones: OntoMilestone[];
 	risks: OntoRisk[];
-	decisions: OntoDecision[];
 	metrics: OntoMetric[];
 	template: Template | null;
 	/**
@@ -316,7 +285,6 @@ export interface ProjectDetailResponse {
  */
 export interface ProjectSummary extends OntoProject {
 	task_count: number;
-	output_count: number;
 }
 
 /**

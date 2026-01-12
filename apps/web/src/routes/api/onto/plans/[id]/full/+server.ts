@@ -7,7 +7,7 @@
  *
  * Performance optimization endpoint that consolidates:
  * - Plan data with project verification
- * - Linked entities (goals, tasks, documents, milestones, outputs)
+ * - Linked entities (goals, tasks, documents, milestones)
  *
  * Documentation:
  * - Ontology System: /apps/web/docs/features/ontology/README.md

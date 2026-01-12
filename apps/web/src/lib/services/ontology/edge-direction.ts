@@ -13,7 +13,7 @@
  * Canonical Direction Rules:
  * - Container → Contained (project contains plan, plan contains task)
  * - Parent → Child (milestone has task)
- * - Producer → Product (task produces output)
+ * - Producer → Product
  * - Threat → Target (risk threatens task)
  * - Reference → Referenced (document relates to task)
  */
@@ -28,9 +28,7 @@ export type EntityKind =
 	| 'goal'
 	| 'milestone'
 	| 'document'
-	| 'output'
 	| 'risk'
-	| 'decision'
 	| 'requirement'
 	| 'metric'
 	| 'source';
@@ -52,7 +50,6 @@ export const RELATIONSHIP_DIRECTIONS = {
 	},
 	has_goal: { description: 'Project contains goal', srcKinds: ['project'] },
 	has_document: { description: 'Project contains document', srcKinds: ['project'] },
-	has_output: { description: 'Project contains output', srcKinds: ['project'] },
 	has_risk: {
 		description: 'Project, goal, milestone, plan, or task contains risk',
 		srcKinds: ['project', 'goal', 'milestone', 'plan', 'task']
@@ -62,18 +59,14 @@ export const RELATIONSHIP_DIRECTIONS = {
 		srcKinds: ['goal']
 	},
 	has_metric: {
-		description: 'Project, goal, milestone, plan, task, risk, or decision contains metric',
-		srcKinds: ['project', 'goal', 'milestone', 'plan', 'task', 'risk', 'decision']
+		description: 'Project, goal, milestone, plan, task, or risk contains metric',
+		srcKinds: ['project', 'goal', 'milestone', 'plan', 'task', 'risk']
 	},
 	has_requirement: {
-		description: 'Project, milestone, plan, task, or decision contains requirement',
-		srcKinds: ['project', 'milestone', 'plan', 'task', 'decision']
+		description: 'Project, milestone, plan, or task contains requirement',
+		srcKinds: ['project', 'milestone', 'plan', 'task']
 	},
 	has_source: { description: 'Project contains source', srcKinds: ['project'] },
-	has_decision: {
-		description: 'Project, goal, milestone, plan, or task contains decision',
-		srcKinds: ['project', 'goal', 'milestone', 'plan', 'task']
-	},
 	has_context_document: {
 		description: 'Project contains context document',
 		srcKinds: ['project']
@@ -105,9 +98,7 @@ export const RELATIONSHIP_DIRECTIONS = {
 			'plan',
 			'task',
 			'document',
-			'decision',
 			'risk',
-			'output',
 			'requirement',
 			'metric',
 			'source'
@@ -115,13 +106,6 @@ export const RELATIONSHIP_DIRECTIONS = {
 	},
 	referenced_by: { description: 'Reverse reference (deprecated)', srcKinds: [] }, // Deprecated - use references
 	relates_to: { description: 'Document relates to entity', srcKinds: ['document'] },
-
-	// Production relationships (producer → product)
-	produces: {
-		description: 'Task, goal, or milestone produces output',
-		srcKinds: ['task', 'goal', 'milestone']
-	},
-	produced_by: { description: 'Reverse production (deprecated)', srcKinds: [] }, // Deprecated - use produces
 
 	// Risk relationships (risk → target OR mitigator → risk)
 	threatens: { description: 'Risk threatens entity', srcKinds: ['risk'] },
@@ -145,7 +129,6 @@ export const DEPRECATED_RELATIONSHIPS: Record<
 	belongs_to_plan: { canonical: 'has_task', swapDirection: true },
 	part_of: { canonical: 'contains', swapDirection: true },
 	referenced_by: { canonical: 'references', swapDirection: true },
-	produced_by: { canonical: 'produces', swapDirection: true },
 	mitigated_by: { canonical: 'mitigates', swapDirection: true },
 	achieved_by: { canonical: 'supports_goal', swapDirection: true }
 };
@@ -355,13 +338,11 @@ export function getRelationshipLabel(rel: RelationshipType, isSource: boolean): 
 		has_task: { asSource: 'Has task', asTarget: 'Task of' },
 		has_goal: { asSource: 'Has goal', asTarget: 'Goal of' },
 		has_document: { asSource: 'Has document', asTarget: 'Document of' },
-		has_output: { asSource: 'Has output', asTarget: 'Output of' },
 		has_risk: { asSource: 'Has risk', asTarget: 'Risk of' },
 		has_milestone: { asSource: 'Has milestone', asTarget: 'Milestone of' },
 		has_metric: { asSource: 'Has metric', asTarget: 'Metric of' },
 		has_requirement: { asSource: 'Has requirement', asTarget: 'Requirement of' },
 		has_source: { asSource: 'Has source', asTarget: 'Source of' },
-		has_decision: { asSource: 'Has decision', asTarget: 'Decision of' },
 		has_context_document: { asSource: 'Has context document', asTarget: 'Context document of' },
 		has_part: { asSource: 'Has part', asTarget: 'Part of' },
 		supports_goal: { asSource: 'Supports goal', asTarget: 'Supported by' },
@@ -373,8 +354,6 @@ export function getRelationshipLabel(rel: RelationshipType, isSource: boolean): 
 		references: { asSource: 'References', asTarget: 'Referenced by' },
 		referenced_by: { asSource: 'Referenced by', asTarget: 'References' },
 		relates_to: { asSource: 'Relates to', asTarget: 'Related from' },
-		produces: { asSource: 'Produces', asTarget: 'Produced by' },
-		produced_by: { asSource: 'Produced by', asTarget: 'Produces' },
 		threatens: { asSource: 'Threatens', asTarget: 'Threatened by' },
 		mitigates: { asSource: 'Mitigates', asTarget: 'Mitigated by' },
 		mitigated_by: { asSource: 'Mitigated by', asTarget: 'Mitigates' },

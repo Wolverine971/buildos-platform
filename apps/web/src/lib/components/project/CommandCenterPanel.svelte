@@ -14,16 +14,7 @@
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Plus } from 'lucide-svelte';
 
-	type PanelKey =
-		| 'goals'
-		| 'milestones'
-		| 'tasks'
-		| 'plans'
-		| 'risks'
-		| 'decisions'
-		| 'documents'
-		| 'outputs'
-		| 'events';
+	type PanelKey = 'goals' | 'milestones' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
 
 	interface Props {
 		panelKey: PanelKey;

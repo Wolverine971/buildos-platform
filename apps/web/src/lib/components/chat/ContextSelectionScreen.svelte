@@ -34,7 +34,6 @@
 		createdAt: string;
 		updatedAt: string;
 		taskCount: number;
-		outputCount: number;
 	}
 
 	export interface ContextSelection {
@@ -105,8 +104,7 @@
 					facetStage: project.facet_stage ?? project.facetStage ?? null,
 					createdAt: project.created_at ?? project.createdAt ?? '',
 					updatedAt: project.updated_at ?? project.updatedAt ?? '',
-					taskCount: project.task_count ?? project.taskCount ?? 0,
-					outputCount: project.output_count ?? project.outputCount ?? 0
+					taskCount: project.task_count ?? project.taskCount ?? 0
 				})
 			);
 			projects = processedProjects;
@@ -554,28 +552,15 @@
 										{project.description}
 									</p>
 								{/if}
-								{#if project.taskCount > 0 || project.outputCount > 0}
+								{#if project.taskCount > 0}
 									<div
 										class="mt-2 border-t border-border pt-1.5 text-[11px] text-muted-foreground sm:text-xs"
 									>
-										{#if project.taskCount > 0}
-											<span>
-												{project.taskCount} task{project.taskCount !== 1
-													? 's'
-													: ''}
-											</span>
-										{/if}
-										{#if project.taskCount > 0 && project.outputCount > 0}
-											<span class="mx-1.5 opacity-50">•</span>
-										{/if}
-										{#if project.outputCount > 0}
-											<span>
-												{project.outputCount} output{project.outputCount !==
-												1
-													? 's'
-													: ''}
-											</span>
-										{/if}
+										<span>
+											{project.taskCount} task{project.taskCount !== 1
+												? 's'
+												: ''}
+										</span>
 									</div>
 								{/if}
 							</button>

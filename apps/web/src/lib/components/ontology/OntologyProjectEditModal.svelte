@@ -37,6 +37,7 @@
 	} from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
+	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -592,7 +593,6 @@
 			const typeColors: Record<string, string> = {
 				task: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
 				document: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-				output: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
 				goal: 'bg-green-500/15 text-green-600 dark:text-green-400',
 				plan: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
 				milestone: 'bg-pink-500/15 text-pink-600 dark:text-pink-400',
@@ -870,7 +870,7 @@
 											value={contextDocumentBody}
 											onUpdate={(newValue) =>
 												(contextDocumentBody = newValue)}
-											placeholder="## Background\nWhy this project exists and its importance\n\n## Key Decisions\nImportant technical and business decisions\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
+											placeholder="## Background\nWhy this project exists and its importance\n\n## Key Notes\nImportant technical and business context\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
 											rows={10}
 										/>
 									</div>
@@ -1184,6 +1184,12 @@
 						<p class="text-sm text-destructive">{error}</p>
 					</div>
 				{/if}
+
+				<EntityCommentsSection
+					projectId={project.id}
+					entityType="project"
+					entityId={project.id}
+				/>
 			</div>
 		{/if}
 	{/snippet}

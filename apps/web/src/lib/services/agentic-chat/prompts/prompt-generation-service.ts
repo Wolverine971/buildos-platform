@@ -470,7 +470,7 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 			return ontology.scope.focus.type;
 		}
 
-		const candidates = ['task', 'goal', 'plan', 'document', 'output', 'milestone'];
+		const candidates = ['task', 'goal', 'plan', 'document', 'milestone'];
 		return candidates.find((type) => !!this.getScopedEntity(ontology, type));
 	}
 

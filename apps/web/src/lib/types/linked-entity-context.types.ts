@@ -18,16 +18,14 @@ export type LinkedEntityKind =
 	| 'goal'
 	| 'milestone'
 	| 'document'
-	| 'output'
 	| 'risk'
-	| 'decision'
 	| 'requirement';
 
 /**
  * A single linked entity with context for chat.
  */
 export interface LinkedEntityContext {
-	/** Entity type (task, plan, goal, milestone, document, output) */
+	/** Entity type (task, plan, goal, milestone, document) */
 	kind: LinkedEntityKind;
 
 	/** Entity ID (UUID) */
@@ -76,9 +74,7 @@ export interface EntityLinkedContext {
 		tasks: LinkedEntityContext[];
 		milestones: LinkedEntityContext[];
 		documents: LinkedEntityContext[];
-		outputs: LinkedEntityContext[];
 		risks: LinkedEntityContext[];
-		decisions: LinkedEntityContext[];
 		requirements: LinkedEntityContext[];
 	};
 
@@ -89,9 +85,7 @@ export interface EntityLinkedContext {
 		tasks: number;
 		milestones: number;
 		documents: number;
-		outputs: number;
 		risks: number;
-		decisions: number;
 		requirements: number;
 		total: number;
 	};
@@ -127,7 +121,6 @@ export const RELATIONSHIP_LABELS: Record<string, string> = {
 	depends_on: 'depends on',
 	targets_milestone: 'targets milestone',
 	references: 'references',
-	produces: 'produces',
 
 	// Plan relationships
 	has_task: 'has task',
@@ -142,9 +135,6 @@ export const RELATIONSHIP_LABELS: Record<string, string> = {
 
 	// Milestone relationships
 	contains: 'contains',
-
-	// Output relationships
-	produced_by: 'produced by',
 
 	// Generic
 	relates_to: 'relates to'

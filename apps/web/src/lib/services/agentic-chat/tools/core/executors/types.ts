@@ -83,12 +83,6 @@ export interface ListOntoDocumentsArgs {
 	limit?: number;
 }
 
-export interface ListOntoOutputsArgs {
-	project_id?: string;
-	state_key?: string;
-	limit?: number;
-}
-
 export interface ListOntoMilestonesArgs {
 	project_id?: string;
 	state_key?: string;
@@ -99,11 +93,6 @@ export interface ListOntoRisksArgs {
 	project_id?: string;
 	state_key?: string;
 	impact?: string;
-	limit?: number;
-}
-
-export interface ListOntoDecisionsArgs {
-	project_id?: string;
 	limit?: number;
 }
 
@@ -152,20 +141,12 @@ export interface GetOntoDocumentDetailsArgs {
 	document_id: string;
 }
 
-export interface GetOntoOutputDetailsArgs {
-	output_id: string;
-}
-
 export interface GetOntoMilestoneDetailsArgs {
 	milestone_id: string;
 }
 
 export interface GetOntoRiskDetailsArgs {
 	risk_id: string;
-}
-
-export interface GetOntoDecisionDetailsArgs {
-	decision_id: string;
 }
 
 export interface GetOntoRequirementDetailsArgs {
@@ -385,14 +366,6 @@ export interface UpdateOntoDocumentArgs {
 	props?: Record<string, unknown>;
 }
 
-export interface UpdateOntoOutputArgs {
-	output_id: string;
-	name?: string;
-	state_key?: string;
-	description?: string;
-	props?: Record<string, unknown>;
-}
-
 export interface UpdateOntoMilestoneArgs {
 	milestone_id: string;
 	title?: string;
@@ -412,14 +385,6 @@ export interface UpdateOntoRiskArgs {
 	description?: string;
 	mitigation_strategy?: string;
 	owner?: string;
-	props?: Record<string, unknown>;
-}
-
-export interface UpdateOntoDecisionArgs {
-	decision_id: string;
-	title?: string;
-	decision_at?: string;
-	rationale?: string;
 	props?: Record<string, unknown>;
 }
 
@@ -463,25 +428,14 @@ export interface GetEntityRelationshipsArgs {
 
 export interface GetLinkedEntitiesArgs {
 	entity_id: string;
-	entity_kind:
-		| 'task'
-		| 'plan'
-		| 'goal'
-		| 'milestone'
-		| 'document'
-		| 'output'
-		| 'risk'
-		| 'decision'
-		| 'requirement';
+	entity_kind: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk' | 'requirement';
 	filter_kind?:
 		| 'task'
 		| 'plan'
 		| 'goal'
 		| 'milestone'
 		| 'document'
-		| 'output'
 		| 'risk'
-		| 'decision'
 		| 'requirement'
 		| 'all';
 }

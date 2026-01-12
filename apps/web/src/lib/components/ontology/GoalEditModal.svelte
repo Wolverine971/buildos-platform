@@ -37,6 +37,7 @@
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
+	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import { GOAL_STATES } from '$lib/types/onto';
 	import { GOAL_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
@@ -648,6 +649,8 @@
 						/>
 					</div>
 				</div>
+
+				<EntityCommentsSection {projectId} entityType="goal" entityId={goalId} />
 			{/if}
 		</div>
 	{/snippet}

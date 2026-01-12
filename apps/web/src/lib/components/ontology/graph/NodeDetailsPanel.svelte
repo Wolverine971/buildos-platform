@@ -3,7 +3,7 @@
 	Node Details Panel - Displays comprehensive information about a selected graph node.
 
 	Features:
-	- Type-specific content sections (project, goal, milestone, plan, task, document, risk, decision)
+	- Type-specific content sections (project, goal, milestone, plan, task, document, risk)
 	- Inkprint Design System styling with semantic textures
 	- Rich metadata display with proper hierarchy
 	- Responsive layout for panel integration
@@ -18,12 +18,10 @@
 		Calendar,
 		Target,
 		Flag,
-		Layers,
 		FileText,
 		Link2,
 		Users,
 		AlertTriangle,
-		Scale,
 		Clock,
 		CheckCircle2,
 		Circle,
@@ -98,14 +96,6 @@
 			texture: 'tx tx-grain tx-weak',
 			label: 'Task'
 		},
-		output: {
-			icon: Layers,
-			color: 'text-purple-600 dark:text-purple-400',
-			bgColor: 'bg-purple-50 dark:bg-purple-950/50',
-			borderColor: 'border-purple-200 dark:border-purple-800',
-			texture: 'tx tx-bloom tx-weak',
-			label: 'Output'
-		},
 		document: {
 			icon: FileText,
 			color: 'text-sky-600 dark:text-sky-400',
@@ -121,14 +111,6 @@
 			borderColor: 'border-red-200 dark:border-red-800',
 			texture: 'tx tx-static tx-weak',
 			label: 'Risk'
-		},
-		decision: {
-			icon: Scale,
-			color: 'text-violet-600 dark:text-violet-400',
-			bgColor: 'bg-violet-50 dark:bg-violet-950/50',
-			borderColor: 'border-violet-200 dark:border-violet-800',
-			texture: 'tx tx-frame tx-weak',
-			label: 'Decision'
 		},
 		unknown: {
 			icon: Circle,
@@ -319,14 +301,9 @@
 			case 'goal':
 			case 'milestone':
 			case 'document':
-			case 'risk':
-			case 'decision': {
+			case 'risk': {
 				const projectId = readString(meta, 'projectId', 'project_id');
 				return projectId ? `/projects/${projectId}` : null;
-			}
-			case 'output': {
-				const projectId = readString(meta, 'projectId', 'project_id');
-				return projectId ? `/projects/${projectId}/outputs/${current.id}/edit` : null;
 			}
 			default:
 				return null;
@@ -382,10 +359,6 @@
 	const impact = $derived(readString(meta, 'impact'));
 	const riskContent = $derived(readString(meta, 'content'));
 	const mitigatedAt = $derived(readString(meta, 'mitigatedAt', 'mitigated_at'));
-
-	// Decision
-	const rationale = $derived(readString(meta, 'rationale'));
-	const decisionAt = $derived(readString(meta, 'decisionAt', 'decision_at'));
 
 	// Helper to extract props from metadata safely
 	function getExtraProps(m: Record<string, unknown>): Record<string, unknown> | undefined {
@@ -779,39 +752,6 @@
 							</p>
 							<p class="text-sm text-foreground leading-relaxed">
 								{truncateText(riskContent, 250)}
-							</p>
-						</div>
-					{/if}
-				</div>
-			{/if}
-		{:else if node?.type === 'decision'}
-			<!-- Decision Details -->
-			{#if decisionAt || rationale}
-				<div class="px-4 py-3 space-y-3 border-b border-border/50">
-					{#if decisionAt}
-						<div class="flex items-center gap-2">
-							<CalendarDays class="w-3.5 h-3.5 text-violet-500" />
-							<div>
-								<p
-									class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
-								>
-									Decision Date
-								</p>
-								<p class="text-xs font-medium text-foreground">
-									{formatDateTime(decisionAt)}
-								</p>
-							</div>
-						</div>
-					{/if}
-					{#if rationale}
-						<div>
-							<p
-								class="text-[0.65rem] uppercase tracking-[0.1em] font-semibold text-muted-foreground mb-1.5"
-							>
-								Rationale
-							</p>
-							<p class="text-sm text-foreground leading-relaxed italic">
-								"{truncateText(rationale, 300)}"
 							</p>
 						</div>
 					{/if}

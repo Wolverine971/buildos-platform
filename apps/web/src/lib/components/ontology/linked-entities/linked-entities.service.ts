@@ -36,30 +36,25 @@ const PARENTING_RULES: Record<string, { childKind: EntityKind; parentKind: Entit
 	'milestone-plan': { childKind: 'plan', parentKind: 'milestone' },
 	'plan-milestone': { childKind: 'plan', parentKind: 'milestone' },
 	'goal-milestone': { childKind: 'milestone', parentKind: 'goal' },
-	'milestone-goal': { childKind: 'milestone', parentKind: 'goal' },
-	'output-task': { childKind: 'output', parentKind: 'task' },
-	'task-output': { childKind: 'output', parentKind: 'task' }
+	'milestone-goal': { childKind: 'milestone', parentKind: 'goal' }
 };
 
 const ALLOWED_PARENTS_BY_CHILD: Partial<Record<EntityKind, EntityKind[]>> = {
 	task: ['plan', 'goal'],
 	plan: ['milestone', 'goal'],
-	milestone: ['goal'],
-	output: ['task']
+	milestone: ['goal']
 };
 
 const CHILD_KIND_BY_REL: Record<string, EntityKind> = {
 	has_task: 'task',
 	has_plan: 'plan',
-	has_milestone: 'milestone',
-	produces: 'output'
+	has_milestone: 'milestone'
 };
 
 const PARENT_ENDPOINTS: Partial<Record<EntityKind, string>> = {
 	task: '/api/onto/tasks',
 	plan: '/api/onto/plans',
-	milestone: '/api/onto/milestones',
-	output: '/api/onto/outputs'
+	milestone: '/api/onto/milestones'
 };
 
 /**
@@ -163,9 +158,7 @@ function flattenLinkedEntities(
 		['goal', linked.goals ?? []],
 		['milestone', linked.milestones ?? []],
 		['document', linked.documents ?? []],
-		['output', linked.outputs ?? []],
 		['risk', linked.risks ?? []],
-		['decision', linked.decisions ?? []],
 		['event', linked.events ?? []]
 	];
 

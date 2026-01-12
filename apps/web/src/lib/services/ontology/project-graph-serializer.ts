@@ -32,10 +32,8 @@ export interface SerializedEntitiesByKind {
 	task: EntityTypeMap['task'][];
 	goal: EntityTypeMap['goal'][];
 	milestone: EntityTypeMap['milestone'][];
-	output: EntityTypeMap['output'][];
 	document: EntityTypeMap['document'][];
 	risk: EntityTypeMap['risk'][];
-	decision: EntityTypeMap['decision'][];
 	requirement: EntityTypeMap['requirement'][];
 	metric: EntityTypeMap['metric'][];
 	source: EntityTypeMap['source'][];
@@ -134,10 +132,8 @@ export function serializeProjectGraph(graph: ProjectGraph): SerializedProjectGra
 		task: Array.from(graph.entitiesByKind.task.values()),
 		goal: Array.from(graph.entitiesByKind.goal.values()),
 		milestone: Array.from(graph.entitiesByKind.milestone.values()),
-		output: Array.from(graph.entitiesByKind.output.values()),
 		document: Array.from(graph.entitiesByKind.document.values()),
 		risk: Array.from(graph.entitiesByKind.risk.values()),
-		decision: Array.from(graph.entitiesByKind.decision.values()),
 		requirement: Array.from(graph.entitiesByKind.requirement.values()),
 		metric: Array.from(graph.entitiesByKind.metric.values()),
 		source: Array.from(graph.entitiesByKind.source.values())
@@ -196,13 +192,11 @@ export function deserializeProjectGraph(serialized: SerializedProjectGraph): Pro
 		tasks: serialized.entitiesByKind.task,
 		goals: serialized.entitiesByKind.goal,
 		milestones: serialized.entitiesByKind.milestone,
-		outputs: serialized.entitiesByKind.output,
 		documents: serialized.entitiesByKind.document,
 		requirements: serialized.entitiesByKind.requirement,
 		metrics: serialized.entitiesByKind.metric,
 		sources: serialized.entitiesByKind.source,
 		risks: serialized.entitiesByKind.risk,
-		decisions: serialized.entitiesByKind.decision,
 		edges: serialized.edges
 	};
 
@@ -286,10 +280,8 @@ export function serializeProjectGraphData(data: ProjectGraphData): SerializedPro
 			task: data.tasks,
 			goal: data.goals,
 			milestone: data.milestones,
-			output: data.outputs,
 			document: data.documents,
 			risk: data.risks,
-			decision: data.decisions,
 			requirement: data.requirements,
 			metric: data.metrics,
 			source: data.sources

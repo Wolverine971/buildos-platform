@@ -3,10 +3,10 @@
  * Ontology Read Executor
  *
  * Handles all read-only ontology operations:
- * - list_onto_* (projects, tasks, goals, plans, documents, outputs, milestones, risks, decisions, requirements)
+ * - list_onto_* (projects, tasks, goals, plans, documents, milestones, risks, requirements)
  * - search_onto_* (projects, tasks, documents)
  * - search_ontology (cross-entity search)
- * - get_onto_*_details (project, task, goal, plan, document, output, milestone, risk, decision, requirement)
+ * - get_onto_*_details (project, task, goal, plan, document, milestone, risk, requirement)
  * - list_task_documents
  */
 
@@ -20,10 +20,8 @@ import type {
 	ListOntoGoalsArgs,
 	ListOntoPlansArgs,
 	ListOntoDocumentsArgs,
-	ListOntoOutputsArgs,
 	ListOntoMilestonesArgs,
 	ListOntoRisksArgs,
-	ListOntoDecisionsArgs,
 	ListOntoRequirementsArgs,
 	SearchOntoDocumentsArgs,
 	SearchOntologyArgs,
@@ -33,10 +31,8 @@ import type {
 	GetOntoGoalDetailsArgs,
 	GetOntoPlanDetailsArgs,
 	GetOntoDocumentDetailsArgs,
-	GetOntoOutputDetailsArgs,
 	GetOntoMilestoneDetailsArgs,
 	GetOntoRiskDetailsArgs,
-	GetOntoDecisionDetailsArgs,
 	GetOntoRequirementDetailsArgs,
 	ListTaskDocumentsArgs
 } from './types';
@@ -281,44 +277,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		};
 	}
 
-	async listOntoOutputs(args: ListOntoOutputsArgs): Promise<{
-		outputs: any[];
-		total: number;
-		message: string;
-	}> {
-		const actorId = await this.getActorId();
-		let query = this.supabase
-			.from('onto_outputs')
-			.select(
-				'id, project_id, name, type_key, state_key, description, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.eq('created_by', actorId)
-			.is('deleted_at', null)
-			.order('updated_at', { ascending: false });
-
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
-
-		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			outputs: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology outputs.`
-		};
-	}
-
 	async listOntoMilestones(args: ListOntoMilestonesArgs): Promise<{
 		milestones: any[];
 		total: number;
@@ -396,40 +354,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			risks: data ?? [],
 			total: count ?? data?.length ?? 0,
 			message: `Found ${data?.length ?? 0} ontology risks.`
-		};
-	}
-
-	async listOntoDecisions(args: ListOntoDecisionsArgs): Promise<{
-		decisions: any[];
-		total: number;
-		message: string;
-	}> {
-		const actorId = await this.getActorId();
-		let query = this.supabase
-			.from('onto_decisions')
-			.select(
-				'id, project_id, title, decision_at, rationale, props, created_at, updated_at',
-				{ count: 'exact' }
-			)
-			.eq('created_by', actorId)
-			.is('deleted_at', null)
-			.order('decision_at', { ascending: false });
-
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			decisions: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology decisions.`
 		};
 	}
 
@@ -785,18 +709,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		};
 	}
 
-	async getOntoOutputDetails(args: GetOntoOutputDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/outputs/${args.output_id}`);
-		if (!details?.output) {
-			throw new Error('Ontology output not found');
-		}
-
-		return {
-			...details,
-			message: 'Complete ontology output details loaded.'
-		};
-	}
-
 	async getOntoMilestoneDetails(args: GetOntoMilestoneDetailsArgs): Promise<any> {
 		const details = await this.apiRequest(`/api/onto/milestones/${args.milestone_id}`);
 		if (!details?.milestone) {
@@ -818,18 +730,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			...details,
 			message: 'Complete ontology risk details loaded.'
-		};
-	}
-
-	async getOntoDecisionDetails(args: GetOntoDecisionDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/decisions/${args.decision_id}`);
-		if (!details?.decision) {
-			throw new Error('Ontology decision not found');
-		}
-
-		return {
-			...details,
-			message: 'Complete ontology decision details loaded.'
 		};
 	}
 

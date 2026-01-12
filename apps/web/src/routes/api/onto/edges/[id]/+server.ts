@@ -130,8 +130,7 @@ function getEntityTable(kind: string): string | null {
 		plan: 'onto_plans',
 		goal: 'onto_goals',
 		milestone: 'onto_milestones',
-		document: 'onto_documents',
-		output: 'onto_outputs'
+		document: 'onto_documents'
 	};
 	return tableMap[kind] || null;
 }

@@ -59,11 +59,11 @@ High-priority accounts. Scan in every warmup session.
 
 ## Competitors - Monitor Closely
 
-| Handle                                    | Name         | Followers | Last Visited | Product               | Threat Level  |
-| ----------------------------------------- | ------------ | --------- | ------------ | --------------------- | ------------- |
-| [@dannypostma](https://x.com/dannypostma) | Danny Postma | 166K      | 2026-01-12   | PostmaOS - AI Life OS (laying low) | DIRECT        |
+| Handle                                    | Name         | Followers | Last Visited | Product                               | Threat Level  |
+| ----------------------------------------- | ------------ | --------- | ------------ | ------------------------------------- | ------------- |
+| [@dannypostma](https://x.com/dannypostma) | Danny Postma | 166K      | 2026-01-12   | PostmaOS - AI Life OS (laying low)    | DIRECT        |
 | [@danidonovan](https://x.com/danidonovan) | Dani Donovan | 126K      | 2026-01-12   | Anti-Planner (ADHD) - quiet since Dec | PHILOSOPHICAL |
-| [@tdinh_me](https://x.com/tdinh_me)       | Tony Dinh    | 175K      | ---          | TypingMind            | ADJACENT      |
+| [@tdinh_me](https://x.com/tdinh_me)       | Tony Dinh    | 175K      | ---          | TypingMind                            | ADJACENT      |
 
 ---
 
@@ -80,14 +80,14 @@ High-priority accounts. Scan in every warmup session.
 
 ## ADHD/Neurodivergent - Core Audience
 
-| Handle                                          | Name               | Followers | Last Visited | Notes                                      |
-| ----------------------------------------------- | ------------------ | --------- | ------------ | ------------------------------------------ |
-| [@ADHD_Alien](https://x.com/ADHD_Alien)         | Pina               | 184.6K    | 2026-01-12   | ADHD Alien Comics - mostly reposts         |
-| [@HowtoADHD](https://x.com/HowtoADHD)           | Jessica McCabe     | 134.8K    | 2026-01-12   | 1M+ YouTube - not actively posting         |
-| [@danidonovan](https://x.com/danidonovan)       | Dani Donovan       | 126K      | 2026-01-12   | Anti-Planner (COMPETITOR) - quiet          |
-| [@ChaleneJohnson](https://x.com/ChaleneJohnson) | Chalene Johnson    | 84K       | ---          | Lifestyle/ADHD                             |
-| [@StructuredSucc](https://x.com/StructuredSucc) | Structured Success | 55.2K     | 2026-01-12   | ADHD Coaching - not actively posting       |
-| [@womenwithadhd](https://x.com/womenwithadhd)   | Women with ADHD    | 20K       | ---          | Community                                  |
+| Handle                                          | Name               | Followers | Last Visited | Notes                                |
+| ----------------------------------------------- | ------------------ | --------- | ------------ | ------------------------------------ |
+| [@ADHD_Alien](https://x.com/ADHD_Alien)         | Pina               | 184.6K    | 2026-01-12   | ADHD Alien Comics - mostly reposts   |
+| [@HowtoADHD](https://x.com/HowtoADHD)           | Jessica McCabe     | 134.8K    | 2026-01-12   | 1M+ YouTube - not actively posting   |
+| [@danidonovan](https://x.com/danidonovan)       | Dani Donovan       | 126K      | 2026-01-12   | Anti-Planner (COMPETITOR) - quiet    |
+| [@ChaleneJohnson](https://x.com/ChaleneJohnson) | Chalene Johnson    | 84K       | ---          | Lifestyle/ADHD                       |
+| [@StructuredSucc](https://x.com/StructuredSucc) | Structured Success | 55.2K     | 2026-01-12   | ADHD Coaching - not actively posting |
+| [@womenwithadhd](https://x.com/womenwithadhd)   | Women with ADHD    | 20K       | ---          | Community                            |
 
 ---
 
@@ -152,22 +152,22 @@ High-profile accounts for strategic engagement before outreach.
 
 New accounts discovered during scans. Review and assign tier.
 
-| Handle                                | Name         | Followers | Discovered | Theme                 | Suggested Tier |
-| ------------------------------------- | ------------ | --------- | ---------- | --------------------- | -------------- |
-| [@bcherny](https://x.com/bcherny)     | Boris Cherny | TBD       | 2026-01-08 | Claude Code creator   | Tier 2         |
-| [@lenadroid](https://x.com/lenadroid) | TBD          | TBD       | 2026-01-08 | Context eng education | Tier 3         |
-| [@acontext_io](https://x.com/acontext_io) | Acontext | TBD       | 2026-01-12 | Context data platform - COMPETITOR | Monitor |
-| [@DropzoneAI](https://x.com/DropzoneAI) | DropzoneAI | TBD       | 2026-01-12 | Context engineering reliability | Tier 3 |
-| [@mitchellh](https://x.com/mitchellh) | Mitchell Hashimoto | TBD  | 2026-01-12 | HashiCorp founder, AI quality | Tier 2 |
+| Handle                                    | Name               | Followers | Discovered | Theme                              | Suggested Tier |
+| ----------------------------------------- | ------------------ | --------- | ---------- | ---------------------------------- | -------------- |
+| [@bcherny](https://x.com/bcherny)         | Boris Cherny       | TBD       | 2026-01-08 | Claude Code creator                | Tier 2         |
+| [@lenadroid](https://x.com/lenadroid)     | TBD                | TBD       | 2026-01-08 | Context eng education              | Tier 3         |
+| [@acontext_io](https://x.com/acontext_io) | Acontext           | TBD       | 2026-01-12 | Context data platform - COMPETITOR | Monitor        |
+| [@DropzoneAI](https://x.com/DropzoneAI)   | DropzoneAI         | TBD       | 2026-01-12 | Context engineering reliability    | Tier 3         |
+| [@mitchellh](https://x.com/mitchellh)     | Mitchell Hashimoto | TBD       | 2026-01-12 | HashiCorp founder, AI quality      | Tier 2         |
 
 ---
 
 ## Scan History
 
-| Date       | Accounts Scanned | Engagements Made | Notes                   |
-| ---------- | ---------------- | ---------------- | ----------------------- |
+| Date       | Accounts Scanned | Engagements Made | Notes                                                                     |
+| ---------- | ---------------- | ---------------- | ------------------------------------------------------------------------- |
 | 2026-01-12 | ~12              | TBD              | Dex's follower explosion, Dan Shipper launched Proof, Acontext discovered |
-| 2026-01-08 | ~15              | TBD              | First structured warmup |
+| 2026-01-08 | ~15              | TBD              | First structured warmup                                                   |
 
 ---
 

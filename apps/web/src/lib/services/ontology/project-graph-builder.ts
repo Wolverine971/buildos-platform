@@ -27,8 +27,6 @@ import type {
 	OntoMilestone,
 	OntoDocument,
 	OntoRisk,
-	OntoDecision,
-	OntoOutput,
 	OntoRequirement,
 	OntoMetric,
 	OntoSource
@@ -46,14 +44,10 @@ const CONTAINMENT_RELATIONSHIPS = new Set([
 	'has_document',
 	'has_risk',
 	'has_milestone',
-	'has_decision',
-	'has_output',
 	'has_requirement',
 	'has_metric',
 	'has_source',
-	'has_part',
-	// Canonical output relationship
-	'produces'
+	'has_part'
 ]);
 
 /**
@@ -72,10 +66,8 @@ const PROJECT_CONTAINMENT_RELS: Record<EntityKind, string | null> = {
 	task: 'has_task',
 	goal: 'has_goal',
 	milestone: 'has_milestone',
-	output: 'has_output',
 	document: 'has_document',
 	risk: 'has_risk',
-	decision: 'has_decision',
 	requirement: 'has_requirement',
 	metric: 'has_metric',
 	source: 'has_source'
@@ -118,10 +110,8 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 		task: new Map(),
 		goal: new Map(),
 		milestone: new Map(),
-		output: new Map(),
 		document: new Map(),
 		risk: new Map(),
-		decision: new Map(),
 		requirement: new Map(),
 		metric: new Map(),
 		source: new Map()
@@ -144,10 +134,8 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 	indexEntities(data.tasks, 'task');
 	indexEntities(data.goals, 'goal');
 	indexEntities(data.milestones, 'milestone');
-	indexEntities(data.outputs, 'output');
 	indexEntities(data.documents, 'document');
 	indexEntities(data.risks, 'risk');
-	indexEntities(data.decisions, 'decision');
 	indexEntities(data.requirements, 'requirement');
 	indexEntities(data.metrics, 'metric');
 	indexEntities(data.sources, 'source');
@@ -359,26 +347,6 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 			return risks;
 		},
 
-		getDecisionsForProject(): OntoDecision[] {
-			// Decisions may not have a specific edge type from project
-			// Return all decisions since they're already scoped via project_id
-			return Array.from(entitiesByKind.decision.values());
-		},
-
-		getOutputsForProject(): OntoOutput[] {
-			const edges = outgoing.get(data.project.id) ?? [];
-			const outputs: OntoOutput[] = [];
-
-			for (const edge of edges) {
-				if (edge.rel === 'has_output') {
-					const output = entitiesByKind.output.get(edge.dst_id);
-					if (output) outputs.push(output);
-				}
-			}
-
-			return outputs;
-		},
-
 		getRequirementsForProject(): OntoRequirement[] {
 			const edges = outgoing.get(data.project.id) ?? [];
 			const requirements: OntoRequirement[] = [];
@@ -422,11 +390,6 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 		},
 
 		getEntitiesForProject<K extends EntityKind>(kind: K): EntityTypeMap[K][] {
-			// Special case: decisions are always project-scoped even when nested
-			if (kind === 'decision') {
-				return Array.from(entitiesByKind.decision.values()) as EntityTypeMap[K][];
-			}
-
 			const rel = PROJECT_CONTAINMENT_RELS[kind];
 			if (!rel) {
 				return [];
@@ -597,10 +560,8 @@ export function getGraphStats(graph: ProjectGraph): {
 		task: graph.entitiesByKind.task.size,
 		goal: graph.entitiesByKind.goal.size,
 		milestone: graph.entitiesByKind.milestone.size,
-		output: graph.entitiesByKind.output.size,
 		document: graph.entitiesByKind.document.size,
 		risk: graph.entitiesByKind.risk.size,
-		decision: graph.entitiesByKind.decision.size,
 		requirement: graph.entitiesByKind.requirement.size,
 		metric: graph.entitiesByKind.metric.size,
 		source: graph.entitiesByKind.source.size

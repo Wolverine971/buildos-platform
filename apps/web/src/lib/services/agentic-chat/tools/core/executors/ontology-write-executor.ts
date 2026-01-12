@@ -25,10 +25,8 @@ import type {
 	UpdateOntoGoalArgs,
 	UpdateOntoPlanArgs,
 	UpdateOntoDocumentArgs,
-	UpdateOntoOutputArgs,
 	UpdateOntoMilestoneArgs,
 	UpdateOntoRiskArgs,
-	UpdateOntoDecisionArgs,
 	UpdateOntoRequirementArgs,
 	LinkOntoEntitiesArgs,
 	UnlinkOntoEdgeArgs,
@@ -250,9 +248,6 @@ function normalizeEntityDates(
 		case 'task':
 			normalizeField('start_at', 'start');
 			normalizeField('due_at', 'end');
-			break;
-		case 'decision':
-			normalizeField('decision_at', 'end');
 			break;
 		default:
 			break;
@@ -844,32 +839,6 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		};
 	}
 
-	async updateOntoOutput(args: UpdateOntoOutputArgs): Promise<{
-		output: any;
-		message: string;
-	}> {
-		const updateData: Record<string, unknown> = {};
-
-		if (args.name !== undefined) updateData.name = args.name;
-		if (args.state_key !== undefined) updateData.state_key = args.state_key;
-		if (args.description !== undefined) updateData.description = args.description;
-		if (args.props !== undefined) updateData.props = args.props;
-
-		if (Object.keys(updateData).length === 0) {
-			throw new Error('No updates provided for ontology output');
-		}
-
-		const data = await this.apiRequest(`/api/onto/outputs/${args.output_id}`, {
-			method: 'PATCH',
-			body: JSON.stringify(updateData)
-		});
-
-		return {
-			output: data.output,
-			message: `Updated ontology output "${data.output?.name ?? args.output_id}"`
-		};
-	}
-
 	async updateOntoMilestone(args: UpdateOntoMilestoneArgs): Promise<{
 		milestone: any;
 		message: string;
@@ -926,32 +895,6 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			risk: data.risk,
 			message: `Updated ontology risk "${data.risk?.title ?? args.risk_id}"`
-		};
-	}
-
-	async updateOntoDecision(args: UpdateOntoDecisionArgs): Promise<{
-		decision: any;
-		message: string;
-	}> {
-		const updateData: Record<string, unknown> = {};
-
-		if (args.title !== undefined) updateData.title = args.title;
-		if (args.decision_at !== undefined) updateData.decision_at = args.decision_at;
-		if (args.rationale !== undefined) updateData.rationale = args.rationale;
-		if (args.props !== undefined) updateData.props = args.props;
-
-		if (Object.keys(updateData).length === 0) {
-			throw new Error('No updates provided for ontology decision');
-		}
-
-		const data = await this.apiRequest(`/api/onto/decisions/${args.decision_id}`, {
-			method: 'PATCH',
-			body: JSON.stringify(updateData)
-		});
-
-		return {
-			decision: data.decision,
-			message: `Updated ontology decision "${data.decision?.title ?? args.decision_id}"`
 		};
 	}
 

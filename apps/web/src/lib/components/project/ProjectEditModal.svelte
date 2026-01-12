@@ -399,7 +399,7 @@
 							<MarkdownToggleField
 								value={executiveSummaryValue}
 								onUpdate={(newValue) => (executiveSummaryValue = newValue)}
-								placeholder="Key highlights, decisions, and current status"
+								placeholder="Key highlights, updates, and current status"
 								rows={3}
 								class="bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 							/>
@@ -446,7 +446,7 @@
 								<MarkdownToggleField
 									value={contextValue}
 									onUpdate={(newValue) => (contextValue = newValue)}
-									placeholder="## Background\nWhy this project exists and its importance\n\n## Key Decisions\nImportant technical and business decisions\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
+									placeholder="## Background\nWhy this project exists and its importance\n\n## Key Notes\nImportant technical and business context\n\n## Resources\nTools, documentation, and dependencies\n\n## Challenges\nCurrent blockers or areas needing attention"
 									rows={10}
 									maxRows={20}
 									class="flex-1 leading-relaxed bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border-green-200 dark:border-green-800 focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"

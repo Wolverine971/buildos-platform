@@ -15,9 +15,7 @@
 		Target,
 		Flag,
 		FileText,
-		FileOutput,
 		AlertTriangle,
-		Scale,
 		Calendar,
 		Loader
 	} from 'lucide-svelte';
@@ -72,9 +70,7 @@
 		goal: Target,
 		milestone: Flag,
 		document: FileText,
-		output: FileOutput,
 		risk: AlertTriangle,
-		decision: Scale,
 		event: Calendar
 	};
 

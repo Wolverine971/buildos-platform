@@ -93,10 +93,8 @@ export const VALID_ONTOLOGY_ENTITY_TYPES = [
 	'plan',
 	'goal',
 	'document',
-	'output',
 	'milestone',
 	'risk',
-	'decision',
 	'requirement'
 ] as const;
 

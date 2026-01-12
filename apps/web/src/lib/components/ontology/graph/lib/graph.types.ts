@@ -9,13 +9,11 @@ import type {
 	OntoProject,
 	OntoEdge,
 	OntoTask,
-	OntoOutput,
 	OntoDocument,
 	OntoPlan,
 	OntoGoal,
 	OntoMilestone,
-	OntoRisk,
-	OntoDecision
+	OntoRisk
 } from '$lib/types/onto-api';
 
 // Re-export for convenience
@@ -23,13 +21,11 @@ export type {
 	OntoProject,
 	OntoEdge,
 	OntoTask,
-	OntoOutput,
 	OntoDocument,
 	OntoPlan,
 	OntoGoal,
 	OntoMilestone,
-	OntoRisk,
-	OntoDecision
+	OntoRisk
 };
 
 // Cytoscape is runtime-loaded; keep loose typing until dedicated types are added.
@@ -41,13 +37,11 @@ export type ViewMode = 'projects' | 'full';
 export type NodeType =
 	| 'project'
 	| 'task'
-	| 'output'
 	| 'document'
 	| 'plan'
 	| 'goal'
 	| 'milestone'
-	| 'risk'
-	| 'decision';
+	| 'risk';
 
 export interface GraphNode {
 	id: string;
@@ -64,7 +58,6 @@ export interface CytoscapeNode {
 		label: string;
 		type: NodeType;
 		state?: string;
-		primitive?: string; // For outputs
 		parent?: string;
 		metadata: Record<string, unknown>;
 		// Visual properties
@@ -108,13 +101,11 @@ export interface GraphSourceData {
 	projects: OntoProject[];
 	edges: OntoEdge[];
 	tasks: OntoTask[];
-	outputs: OntoOutput[];
 	documents: OntoDocument[];
 	plans: OntoPlan[];
 	goals: OntoGoal[];
 	milestones: OntoMilestone[];
 	risks?: OntoRisk[];
-	decisions?: OntoDecision[];
 }
 
 export interface GraphStats {
@@ -122,13 +113,11 @@ export interface GraphStats {
 	activeProjects: number;
 	totalEdges: number;
 	totalTasks: number;
-	totalOutputs: number;
 	totalDocuments: number;
 	totalPlans: number;
 	totalGoals: number;
 	totalMilestones: number;
 	totalRisks: number;
-	totalDecisions: number;
 }
 
 export interface OntologyGraphInstance {

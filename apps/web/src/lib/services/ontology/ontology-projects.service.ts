@@ -19,7 +19,6 @@ export interface OntologyProjectSummary {
 	created_at: string;
 	updated_at: string;
 	task_count: number;
-	output_count: number;
 	goal_count: number;
 	plan_count: number;
 	document_count: number;
@@ -50,7 +49,7 @@ export async function ensureActorId(client: TypedSupabaseClient, userId: string)
 }
 
 /**
- * Fetch ontology project summaries with aggregated task/output counts.
+ * Fetch ontology project summaries with aggregated task counts.
  * Uses relationship count aggregation to avoid N+1 queries.
  */
 export async function fetchProjectSummaries(
@@ -102,7 +101,6 @@ export async function fetchProjectSummaries(
 			next_step_source,
 			next_step_updated_at,
 			onto_tasks(count),
-			onto_outputs(count),
 			onto_goals(count),
 			onto_plans(count),
 			onto_documents(count)
@@ -115,7 +113,6 @@ export async function fetchProjectSummaries(
 		)
 		.is('deleted_at', null) // Exclude soft-deleted projects
 		.is('onto_tasks.deleted_at', null)
-		.is('onto_outputs.deleted_at', null)
 		.is('onto_goals.deleted_at', null)
 		.is('onto_plans.deleted_at', null)
 		.is('onto_documents.deleted_at', null)
@@ -138,7 +135,6 @@ export async function fetchProjectSummaries(
 		created_at: project.created_at,
 		updated_at: project.updated_at,
 		task_count: project.onto_tasks?.[0]?.count ?? 0,
-		output_count: project.onto_outputs?.[0]?.count ?? 0,
 		goal_count: project.onto_goals?.[0]?.count ?? 0,
 		plan_count: project.onto_plans?.[0]?.count ?? 0,
 		document_count: project.onto_documents?.[0]?.count ?? 0,

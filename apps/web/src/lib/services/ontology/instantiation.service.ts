@@ -9,17 +9,14 @@ import {
 	type MilestoneState,
 	type TaskState,
 	type RiskState,
-	type DecisionState,
 	type ProjectState,
 	type DocumentState,
 	type PlanState,
-	type OutputState,
 	type ProjectSpec,
 	GOAL_STATES,
 	MILESTONE_STATES,
 	TASK_STATES,
-	RISK_STATES,
-	DECISION_STATES
+	RISK_STATES
 } from '$lib/types/onto';
 import type { Json, ProjectLogEntityType } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
@@ -43,13 +40,11 @@ type InstantiationCounts = {
 	requirements: number;
 	plans: number;
 	tasks: number;
-	outputs: number;
 	documents: number;
 	sources: number;
 	metrics: number;
 	milestones: number;
 	risks: number;
-	decisions: number;
 	edges: number;
 };
 
@@ -69,13 +64,11 @@ type InsertedEntities = {
 	requirements: string[];
 	plans: string[];
 	tasks: string[];
-	outputs: string[];
 	documents: string[];
 	sources: string[];
 	metrics: string[];
 	milestones: string[];
 	risks: string[];
-	decisions: string[];
 	edges: string[];
 };
 
@@ -113,35 +106,21 @@ const PLAN_STATE_MAP: Record<string, PlanState> = {
 	done: 'completed'
 };
 
-const OUTPUT_STATE_MAP: Record<string, OutputState> = {
-	draft: 'draft',
-	in_progress: 'in_progress',
-	active: 'in_progress',
-	review: 'review',
-	published: 'published',
-	complete: 'published',
-	completed: 'published',
-	approved: 'published'
-};
-
 const DEFAULT_GOAL_STATE: GoalState = 'draft';
 const DEFAULT_MILESTONE_STATE: MilestoneState = 'pending';
 const DEFAULT_TASK_STATE: TaskState = 'todo';
 const DEFAULT_RISK_STATE: RiskState = 'identified';
-const DEFAULT_DECISION_STATE: DecisionState = 'pending';
 
 const INITIAL_COUNTS: InstantiationCounts = {
 	goals: 0,
 	requirements: 0,
 	plans: 0,
 	tasks: 0,
-	outputs: 0,
 	documents: 0,
 	sources: 0,
 	metrics: 0,
 	milestones: 0,
 	risks: 0,
-	decisions: 0,
 	edges: 0
 };
 
@@ -171,9 +150,6 @@ function getEntityKey(entity: { kind: EntityKind; id: string }): string {
 function shouldSkipContainmentForEntity(kind: EntityKind, connections: ConnectionRef[]): boolean {
 	if (kind === 'document') {
 		return !connections.some((connection) => connection.kind === 'document');
-	}
-	if (kind === 'output') {
-		return true;
 	}
 	return false;
 }
@@ -260,13 +236,11 @@ export async function instantiateProject(
 		requirements: [],
 		plans: [],
 		tasks: [],
-		outputs: [],
 		documents: [],
 		sources: [],
 		metrics: [],
 		milestones: [],
 		risks: [],
-		decisions: [],
 		edges: []
 	};
 
@@ -568,54 +542,6 @@ export async function instantiateProject(
 					counts.documents += 1;
 					break;
 				}
-				case 'output': {
-					const normalizedOutputState: OutputState =
-						OUTPUT_STATE_MAP[entity.state_key?.trim().toLowerCase() ?? 'draft'] ??
-						'draft';
-
-					const resolvedOutputFacets = resolveFacets(
-						undefined,
-						(entity.props?.facets as Facets | undefined) ?? undefined
-					);
-					await assertValidFacets(
-						client,
-						resolvedOutputFacets,
-						'output',
-						`output "${entity.name}"`
-					);
-
-					const mergedOutputProps = mergeProps(entity.props ?? {});
-					if (hasFacetValues(resolvedOutputFacets)) {
-						mergedOutputProps.facets = resolvedOutputFacets;
-					} else {
-						delete mergedOutputProps.facets;
-					}
-
-					const { data, error } = await client
-						.from('onto_outputs')
-						.insert({
-							project_id: typedProjectId,
-							name: entity.name,
-							type_key: entity.type_key ?? 'output.default',
-							state_key: normalizedOutputState,
-							description: entity.description ?? null,
-							props: mergedOutputProps as Json,
-							created_by: actorId
-						})
-						.select('id')
-						.single();
-
-					if (error || !data) {
-						throw new OntologyInstantiationError(
-							`Failed to insert output "${entity.name}": ${error?.message ?? 'Unknown error'}`
-						);
-					}
-
-					entityIdByTempId.set(entity.temp_id, { kind: 'output', id: data.id });
-					inserted.outputs.push(data.id);
-					counts.outputs += 1;
-					break;
-				}
 				case 'risk': {
 					const normalizedState = normalizeStateKey(
 						entity.state_key,
@@ -650,42 +576,6 @@ export async function instantiateProject(
 					entityIdByTempId.set(entity.temp_id, { kind: 'risk', id: data.id });
 					inserted.risks.push(data.id);
 					counts.risks += 1;
-					break;
-				}
-				case 'decision': {
-					const normalizedState = normalizeStateKey(
-						entity.state_key,
-						DECISION_STATES,
-						DEFAULT_DECISION_STATE
-					);
-
-					const decisionProps = mergeProps(entity.props ?? {});
-
-					const { data, error } = await client
-						.from('onto_decisions')
-						.insert({
-							project_id: typedProjectId,
-							title: entity.title,
-							type_key: entity.type_key ?? 'decision.default',
-							state_key: normalizedState,
-							decision_at: entity.decision_at ?? null,
-							rationale: entity.rationale ?? null,
-							outcome: entity.outcome ?? null,
-							props: decisionProps as Json,
-							created_by: actorId
-						})
-						.select('id')
-						.single();
-
-					if (error || !data) {
-						throw new OntologyInstantiationError(
-							`Failed to insert decision "${entity.title}": ${error?.message ?? 'Unknown error'}`
-						);
-					}
-
-					entityIdByTempId.set(entity.temp_id, { kind: 'decision', id: data.id });
-					inserted.decisions.push(data.id);
-					counts.decisions += 1;
 					break;
 				}
 				case 'requirement': {
@@ -922,13 +812,11 @@ export async function instantiateProject(
 			{ entityType: 'requirement', ids: inserted.requirements },
 			{ entityType: 'plan', ids: inserted.plans },
 			{ entityType: 'task', ids: inserted.tasks },
-			{ entityType: 'output', ids: inserted.outputs },
 			{ entityType: 'document', ids: inserted.documents },
 			{ entityType: 'source', ids: inserted.sources },
 			{ entityType: 'metric', ids: inserted.metrics },
 			{ entityType: 'milestone', ids: inserted.milestones },
-			{ entityType: 'risk', ids: inserted.risks },
-			{ entityType: 'decision', ids: inserted.decisions }
+			{ entityType: 'risk', ids: inserted.risks }
 		]
 			.flatMap(({ entityType, ids }) =>
 				ids.map((entityId) => ({
@@ -1076,13 +964,11 @@ async function cleanupPartialInstantiation(
 			inserted.requirements,
 			inserted.plans,
 			inserted.tasks,
-			inserted.outputs,
 			inserted.documents,
 			inserted.sources,
 			inserted.metrics,
 			inserted.milestones,
-			inserted.risks,
-			inserted.decisions
+			inserted.risks
 		]) {
 			for (const id of list) {
 				allEntityIds.add(id);

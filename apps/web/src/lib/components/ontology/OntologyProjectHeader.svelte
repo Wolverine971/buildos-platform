@@ -9,7 +9,6 @@
 		tasks: number;
 		goals: number;
 		plans: number;
-		outputs: number;
 		documents: number;
 	};
 
@@ -43,7 +42,6 @@
 		{ label: 'Goals', value: stats.goals },
 		{ label: 'Plans', value: stats.plans },
 		{ label: 'Tasks', value: stats.tasks },
-		{ label: 'Outputs', value: stats.outputs },
 		{ label: 'Docs', value: stats.documents }
 	]);
 

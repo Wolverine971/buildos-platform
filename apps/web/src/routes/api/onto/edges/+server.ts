@@ -44,10 +44,8 @@ const VALID_KINDS = [
 	'goal',
 	'milestone',
 	'document',
-	'output',
 	'project',
 	'risk',
-	'decision',
 	'metric',
 	'source',
 	'requirement'
@@ -59,10 +57,8 @@ const TABLE_MAP: Record<string, string> = {
 	goal: 'onto_goals',
 	milestone: 'onto_milestones',
 	document: 'onto_documents',
-	output: 'onto_outputs',
 	project: 'onto_projects',
 	risk: 'onto_risks',
-	decision: 'onto_decisions',
 	metric: 'onto_metrics',
 	source: 'onto_sources',
 	requirement: 'onto_requirements'

@@ -203,7 +203,7 @@
 					<h3 class="text-xl font-bold mb-2 text-foreground">See How Projects Evolve</h3>
 					<p class="text-sm text-muted-foreground mb-4 leading-relaxed">
 						Every project change is tracked. See version-by-version comparisons, review
-						past decisions, and understand what braindumps triggered each update.
+						past updates, and understand what braindumps triggered each change.
 					</p>
 
 					<!-- Features list -->
@@ -218,7 +218,7 @@
 						</div>
 						<div class="flex items-center gap-2 text-sm text-muted-foreground">
 							<div class="w-2 h-2 rounded-full bg-emerald-600"></div>
-							<span>Review decision history and past project states</span>
+							<span>Review project history and past states</span>
 						</div>
 					</div>
 				</div>

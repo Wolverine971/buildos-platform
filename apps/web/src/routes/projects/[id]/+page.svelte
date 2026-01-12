@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/projects/[id]/+page.svelte -->
 <!--
-	Ontology Project Detail - Deliverables-Centric View
+	Ontology Project Detail - Project Overview
 
 	PERFORMANCE: Uses skeleton-first loading for instant perceived performance.
 	- Skeleton renders immediately with project name and entity counts
@@ -8,10 +8,9 @@
 	- No layout shifts during hydration (skeleton matches final dimensions)
 	- View Transitions API animates title from source page
 
-	Deliverable-first layout focusing on outputs as the primary cards:
-	- Outputs as the primary cards with primitive filter (document, event, collection, external)
-	- Documents live directly below as lighter cards ready for promotion
-	- Right rail shows collapsible stacks for goals, plans, tasks, risks, milestones
+	Overview layout focusing on documents and project insights:
+	- Documents as the primary cards
+	- Right rail shows collapsible stacks for goals, plans, tasks, risks, milestones, events
 	- Sticky header keeps project identity and actions visible
 
 	Documentation:
@@ -29,8 +28,6 @@
 	- Plan Editing: /apps/web/src/lib/components/ontology/PlanEditModal.svelte
 	- Goal Management: /apps/web/src/lib/components/ontology/GoalCreateModal.svelte
 	- Goal Editing: /apps/web/src/lib/components/ontology/GoalEditModal.svelte
-	- Output Create: /apps/web/src/lib/components/ontology/OutputCreateModal.svelte
-	- Output Editing: /apps/web/src/lib/components/ontology/OutputEditModal.svelte
 	- Document Management: /apps/web/src/lib/components/ontology/DocumentModal.svelte
 	- Project Editing: /apps/web/src/lib/components/ontology/OntologyProjectEditModal.svelte
 	- State Display: /apps/web/src/lib/components/ontology/StateDisplay.svelte
@@ -41,11 +38,10 @@
 	- Task API: /apps/web/src/routes/api/onto/tasks/
 	- Plan API: /apps/web/src/routes/api/onto/plans/
 	- Goal API: /apps/web/src/routes/api/onto/goals/
-	- Output API: /apps/web/src/routes/api/onto/outputs/
 	- Document API: /apps/web/src/routes/api/onto/documents/
 
 	Type Definitions:
-	- Deliverable Primitives: /apps/web/src/lib/types/onto.ts (getDeliverablePrimitive, isCollectionDeliverable, etc.)
+	- Ontology Types: /apps/web/src/lib/types/onto.ts (type_key labels, helpers)
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
@@ -60,7 +56,6 @@
 		Plus,
 		FileText,
 		Calendar,
-		Layers,
 		ExternalLink,
 		Pencil,
 		Trash2,
@@ -68,7 +63,6 @@
 		CheckCircle2,
 		Circle,
 		Clock,
-		Sparkles,
 		Target,
 		ChevronDown,
 		AlertTriangle,
@@ -78,20 +72,7 @@
 		GitBranch,
 		UserPlus
 	} from 'lucide-svelte';
-	import type {
-		Project,
-		Task,
-		Output,
-		Document,
-		Plan,
-		Decision,
-		OntoEvent
-	} from '$lib/types/onto';
-	import {
-		getDeliverablePrimitive,
-		isCollectionDeliverable,
-		type DeliverablePrimitive
-	} from '$lib/types/onto';
+	import type { Project, Task, Document, Plan, OntoEvent } from '$lib/types/onto';
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
@@ -163,25 +144,6 @@
 		description?: string;
 	};
 
-	// State colors for output badges
-	const STATE_COLUMNS = [
-		{ key: 'draft', label: 'Draft', color: 'bg-muted' },
-		{ key: 'in_progress', label: 'In Progress', color: 'bg-accent/10' },
-		{ key: 'review', label: 'In Review', color: 'bg-amber-500/10' },
-		{ key: 'published', label: 'Published', color: 'bg-emerald-500/10' }
-	];
-
-	// Primitive icons and labels - semantic colors for each type
-	const PRIMITIVE_CONFIG: Record<
-		DeliverablePrimitive,
-		{ icon: typeof FileText; label: string; color: string }
-	> = {
-		document: { icon: FileText, label: 'Document', color: 'text-accent' },
-		event: { icon: Calendar, label: 'Event', color: 'text-purple-500' },
-		collection: { icon: Layers, label: 'Collection', color: 'text-amber-500' },
-		external: { icon: ExternalLink, label: 'External', color: 'text-emerald-500' }
-	};
-
 	// ============================================================
 	// PROPS & DATA
 	// ============================================================
@@ -211,13 +173,11 @@
 		data.skeleton
 			? (data.counts as {
 					task_count: number;
-					output_count: number;
 					document_count: number;
 					goal_count: number;
 					plan_count: number;
 					milestone_count: number;
 					risk_count: number;
-					decision_count: number;
 				})
 			: null
 	);
@@ -240,7 +200,6 @@
 			: (data.project as Project)
 	);
 	let tasks = $state(data.skeleton ? ([] as Task[]) : ((data.tasks || []) as Task[]));
-	let outputs = $state(data.skeleton ? ([] as Output[]) : ((data.outputs || []) as Output[]));
 	let documents = $state(
 		data.skeleton ? ([] as Document[]) : ((data.documents || []) as Document[])
 	);
@@ -250,9 +209,6 @@
 		data.skeleton ? ([] as Milestone[]) : ((data.milestones || []) as Milestone[])
 	);
 	let risks = $state(data.skeleton ? ([] as Risk[]) : ((data.risks || []) as Risk[]));
-	let decisions = $state(
-		data.skeleton ? ([] as Decision[]) : ((data.decisions || []) as Decision[])
-	);
 	let events = $state(
 		data.skeleton ? ([] as OntoEventWithSync[]) : ((data.events || []) as OntoEventWithSync[])
 	);
@@ -261,7 +217,6 @@
 	);
 
 	// Modal states
-	let showOutputCreateModal = $state(false);
 	let showDocumentModal = $state(false);
 	let activeDocumentId = $state<string | null>(null);
 	let showTaskCreateModal = $state(false);
@@ -276,19 +231,15 @@
 	let editingTaskId = $state<string | null>(null);
 	let editingPlanId = $state<string | null>(null);
 	let editingGoalId = $state<string | null>(null);
-	let editingOutputId = $state<string | null>(null);
 	let showRiskCreateModal = $state(false);
 	let editingRiskId = $state<string | null>(null);
 	let showMilestoneCreateModal = $state(false);
 	let editingMilestoneId = $state<string | null>(null);
-	let showDecisionCreateModal = $state(false);
-	let editingDecisionId = $state<string | null>(null);
 	let showEventCreateModal = $state(false);
 	let editingEventId = $state<string | null>(null);
 
 	// UI State
 	let dataRefreshing = $state(false);
-	let outputsExpanded = $state(true);
 	let documentsExpanded = $state(true);
 	let expandedPanels = $state<Record<InsightPanelKey, boolean>>({
 		tasks: false,
@@ -337,13 +288,11 @@
 			// Hydrate all state at once
 			project = fullData.project || project;
 			tasks = fullData.tasks || [];
-			outputs = fullData.outputs || [];
 			documents = fullData.documents || [];
 			plans = fullData.plans || [];
 			goals = fullData.goals || [];
 			milestones = fullData.milestones || [];
 			risks = fullData.risks || [];
-			decisions = fullData.decisions || [];
 			contextDocument = fullData.context_document || null;
 
 			isHydrating = false;
@@ -392,14 +341,6 @@
 	// DERIVED STATE
 	// ============================================================
 
-	const projectStats = $derived.by(() => ({
-		outputs: outputs.length,
-		documents: documents.length,
-		tasks: tasks.length,
-		plans: plans.length,
-		goals: goals.length
-	}));
-
 	const documentTypeOptions = $derived.by(() => {
 		const set = new Set<string>();
 		for (const doc of documents) {
@@ -407,17 +348,6 @@
 		}
 		return Array.from(set);
 	});
-
-	// Enrich outputs with primitive info
-	const enrichedOutputs = $derived(
-		outputs.map((output) => ({
-			...output,
-			primitive: getDeliverablePrimitive(output.type_key) || 'document',
-			typeLabel: getTypeLabel(output.type_key),
-			taskCount: getRelatedTaskCount(output.id),
-			childCount: isCollectionDeliverable(output.type_key) ? getChildCount(output) : undefined
-		}))
-	);
 
 	// ============================================================
 	// INSIGHT PANEL FILTERING & SORTING
@@ -761,33 +691,6 @@
 	// UTILITY FUNCTIONS
 	// ============================================================
 
-	/**
-	 * Extracts the canonical state key for matching against STATE_COLUMNS.
-	 * Maps various state string variants to their canonical lowercase keys.
-	 */
-	function getStateKey(state: string): string {
-		const s = state?.toLowerCase() || 'draft';
-		if (s === 'complete' || s === 'completed' || s === 'shipped' || s === 'published')
-			return 'published';
-		if (s === 'in_review' || s === 'reviewing' || s === 'review') return 'review';
-		if (s === 'approved') return 'published';
-		if (s === 'in_progress' || s === 'active') return 'in_progress';
-		if (s === 'drafting' || s === 'draft') return 'draft';
-		// Check if it's already a valid key
-		if (STATE_COLUMNS.some((c) => c.key === s)) return s;
-		return 'draft';
-	}
-
-	/**
-	 * Returns a human-readable label for the state (Title Case).
-	 * Uses STATE_COLUMNS.label for consistent display.
-	 */
-	function normalizeState(state: string): string {
-		const key = getStateKey(state);
-		const col = STATE_COLUMNS.find((c) => c.key === key);
-		return col?.label || 'Draft';
-	}
-
 	function getTypeLabel(typeKey: string): string {
 		// Extract the last part of the type_key
 		const parts = typeKey.split('.');
@@ -797,38 +700,6 @@
 			.split('_')
 			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
 			.join(' ');
-	}
-
-	function getRelatedTaskCount(outputId: string): number {
-		return tasks.filter((t) => {
-			const props = t.props as Record<string, unknown>;
-			return props?.output_id === outputId;
-		}).length;
-	}
-
-	function getChildCount(output: Output): number {
-		const props = output.props as Record<string, unknown>;
-		if (Array.isArray(props?.children)) {
-			return props.children.length;
-		}
-		if (Array.isArray(props?.chapters)) {
-			return props.chapters.length;
-		}
-		return 0;
-	}
-
-	function getPrimitiveIcon(primitive: DeliverablePrimitive) {
-		return PRIMITIVE_CONFIG[primitive]?.icon || FileText;
-	}
-
-	function getPrimitiveColor(primitive: DeliverablePrimitive) {
-		return PRIMITIVE_CONFIG[primitive]?.color || 'text-muted-foreground';
-	}
-
-	function getStateColor(state: string): string {
-		const key = getStateKey(state);
-		const col = STATE_COLUMNS.find((c) => c.key === key);
-		return col?.color || 'bg-muted';
 	}
 
 	function togglePanel(key: InsightPanelKey) {
@@ -961,7 +832,6 @@
 			const newData = payload?.data || {};
 			project = newData.project || project;
 			tasks = newData.tasks || [];
-			outputs = newData.outputs || [];
 			documents = newData.documents || [];
 			plans = newData.plans || [];
 			goals = newData.goals || [];
@@ -989,21 +859,6 @@
 	// ============================================================
 	// EVENT HANDLERS
 	// ============================================================
-
-	async function handleOutputCreated() {
-		await refreshData();
-		showOutputCreateModal = false;
-	}
-
-	async function handleOutputUpdated() {
-		await refreshData();
-		editingOutputId = null;
-	}
-
-	async function handleOutputDeleted() {
-		await refreshData();
-		editingOutputId = null;
-	}
 
 	async function handleDocumentSaved() {
 		await refreshData();
@@ -1092,21 +947,6 @@
 		editingMilestoneId = null;
 	}
 
-	async function handleDecisionCreated() {
-		await refreshData();
-		showDecisionCreateModal = false;
-	}
-
-	async function handleDecisionUpdated() {
-		await refreshData();
-		editingDecisionId = null;
-	}
-
-	async function handleDecisionDeleted() {
-		await refreshData();
-		editingDecisionId = null;
-	}
-
 	async function handleEventCreated() {
 		await loadProjectEvents(true);
 		showEventCreateModal = false;
@@ -1165,9 +1005,6 @@
 			case 'goal':
 				editingGoalId = ref.id;
 				break;
-			case 'output':
-				editingOutputId = ref.id;
-				break;
 			case 'document':
 				activeDocumentId = ref.id;
 				showDocumentModal = true;
@@ -1188,9 +1025,6 @@
 				break;
 			case 'goal':
 				editingGoalId = node.id;
-				break;
-			case 'output':
-				editingOutputId = node.id;
 				break;
 			case 'document':
 				activeDocumentId = node.id;
@@ -1232,9 +1066,6 @@
 				break;
 			case 'goal':
 				editingGoalId = entityId;
-				break;
-			case 'output':
-				editingOutputId = entityId;
 				break;
 			case 'note':
 				// Notes are documents
@@ -1443,7 +1274,6 @@
 			{#if true}
 				{@const mobileStats = [
 					{ key: 'tasks', count: tasks.length, Icon: ListChecks },
-					{ key: 'outputs', count: outputs.length, Icon: Layers },
 					{ key: 'docs', count: documents.length, Icon: FileText },
 					{ key: 'goals', count: goals.length, Icon: Target },
 					{ key: 'plans', count: plans.length, Icon: Calendar }
@@ -1534,34 +1364,28 @@
 					{tasks}
 					{plans}
 					{risks}
-					{decisions}
 					{documents}
-					{outputs}
 					{events}
 					onAddGoal={() => canEdit && (showGoalCreateModal = true)}
 					onAddMilestone={() => canEdit && (showMilestoneCreateModal = true)}
 					onAddTask={() => canEdit && (showTaskCreateModal = true)}
 					onAddPlan={() => canEdit && (showPlanCreateModal = true)}
 					onAddRisk={() => canEdit && (showRiskCreateModal = true)}
-					onAddDecision={() => canEdit && (showDecisionCreateModal = true)}
 					onAddDocument={() => {
 						if (!canEdit) return;
 						activeDocumentId = null;
 						showDocumentModal = true;
 					}}
-					onAddOutput={() => canEdit && (showOutputCreateModal = true)}
 					onAddEvent={() => canEdit && (showEventCreateModal = true)}
 					onEditGoal={(id) => (editingGoalId = id)}
 					onEditMilestone={(id) => (editingMilestoneId = id)}
 					onEditTask={(id) => (editingTaskId = id)}
 					onEditPlan={(id) => (editingPlanId = id)}
 					onEditRisk={(id) => (editingRiskId = id)}
-					onEditDecision={(id) => (editingDecisionId = id)}
 					onEditDocument={(id) => {
 						activeDocumentId = id;
 						showDocumentModal = true;
 					}}
-					onEditOutput={(id) => (editingOutputId = id)}
 					onEditEvent={(id) => (editingEventId = id)}
 				/>
 			{/if}
@@ -1571,142 +1395,13 @@
 		<div
 			class="hidden sm:grid sm:grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-2 sm:gap-4 lg:gap-6"
 		>
-			<!-- Left Column: Outputs & Documents -->
+			<!-- Left Column: Documents -->
 			{#if isHydrating && skeletonCounts}
 				<!-- Skeleton state - show loading placeholders with counts -->
-				<ProjectContentSkeleton
-					outputCount={skeletonCounts.output_count}
-					documentCount={skeletonCounts.document_count}
-				/>
+				<ProjectContentSkeleton documentCount={skeletonCounts.document_count} />
 			{:else}
 				<!-- Hydrated state - show real content -->
 				<div class="min-w-0 space-y-2 sm:space-y-4">
-					<!-- Outputs Section - Collapsible -->
-					<section
-						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
-					>
-						<div
-							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
-						>
-							<button
-								onclick={() => (outputsExpanded = !outputsExpanded)}
-								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors"
-							>
-								<div
-									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
-								>
-									<Layers class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
-								</div>
-								<div>
-									<p class="text-xs sm:text-sm font-semibold text-foreground">
-										Outputs
-									</p>
-									<p class="text-[10px] sm:text-xs text-muted-foreground">
-										{outputs.length}
-										{outputs.length === 1 ? 'deliverable' : 'deliverables'}
-									</p>
-								</div>
-							</button>
-							<div class="flex items-center gap-1 sm:gap-2">
-								{#if canEdit}
-									<button
-										onclick={() => (showOutputCreateModal = true)}
-										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
-										aria-label="Add output"
-									>
-										<Plus
-											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
-										/>
-									</button>
-								{/if}
-								<button
-									onclick={() => (outputsExpanded = !outputsExpanded)}
-									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
-									aria-label={outputsExpanded
-										? 'Collapse outputs'
-										: 'Expand outputs'}
-								>
-									<ChevronDown
-										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {outputsExpanded
-											? 'rotate-180'
-											: ''}"
-									/>
-								</button>
-							</div>
-						</div>
-
-						{#if outputsExpanded}
-							<div
-								class="border-t border-border"
-								transition:slide={{ duration: 120 }}
-							>
-								{#if outputs.length === 0}
-									<div
-										class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 bg-muted/30 tx tx-bloom tx-weak"
-									>
-										<div
-											class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
-										>
-											<Sparkles class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
-										</div>
-										<div>
-											<p class="text-xs sm:text-sm text-foreground">
-												No outputs yet
-											</p>
-											<p class="text-[10px] sm:text-xs text-muted-foreground">
-												Create one to start delivering
-											</p>
-										</div>
-									</div>
-								{:else}
-									<ul class="divide-y divide-border/80">
-										{#each enrichedOutputs as output}
-											{@const PrimitiveIcon = getPrimitiveIcon(
-												output.primitive
-											)}
-											<li>
-												<button
-													type="button"
-													onclick={() => (editingOutputId = output.id)}
-													class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
-												>
-													<div
-														class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-muted flex items-center justify-center flex-shrink-0"
-													>
-														<PrimitiveIcon
-															class="w-3 h-3 sm:w-4 sm:h-4 {getPrimitiveColor(
-																output.primitive
-															)}"
-														/>
-													</div>
-													<div class="min-w-0 flex-1">
-														<p
-															class="text-xs sm:text-sm text-foreground truncate"
-														>
-															{output.name}
-														</p>
-														<p
-															class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
-														>
-															{output.typeLabel}
-														</p>
-													</div>
-													<span
-														class="flex-shrink-0 text-[9px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full border border-border {getStateColor(
-															output.state_key
-														)}"
-													>
-														{normalizeState(output.state_key)}
-													</span>
-												</button>
-											</li>
-										{/each}
-									</ul>
-								{/if}
-							</div>
-						{/if}
-					</section>
-
 					<!-- Documents Section - Collapsible -->
 					<section
 						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
@@ -2480,31 +2175,6 @@
 	</main>
 </div>
 
-<!-- Output Create Modal -->
-{#if showOutputCreateModal}
-	{#await import('$lib/components/ontology/OutputCreateModal.svelte') then { default: OutputCreateModal }}
-		<OutputCreateModal
-			projectId={project.id}
-			onClose={() => (showOutputCreateModal = false)}
-			onCreated={handleOutputCreated}
-		/>
-	{/await}
-{/if}
-
-<!-- Output Edit Modal -->
-{#if editingOutputId}
-	{#await import('$lib/components/ontology/OutputEditModal.svelte') then { default: OutputEditModal }}
-		<OutputEditModal
-			outputId={editingOutputId}
-			projectId={project.id}
-			isOpen={true}
-			onClose={() => (editingOutputId = null)}
-			onUpdated={handleOutputUpdated}
-			onDeleted={handleOutputDeleted}
-		/>
-	{/await}
-{/if}
-
 <!-- Document Create/Edit Modal -->
 {#if showDocumentModal}
 	{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
@@ -2637,30 +2307,6 @@
 			onClose={() => (editingMilestoneId = null)}
 			onUpdated={handleMilestoneUpdated}
 			onDeleted={handleMilestoneDeleted}
-		/>
-	{/await}
-{/if}
-
-<!-- Decision Create Modal -->
-{#if showDecisionCreateModal}
-	{#await import('$lib/components/ontology/DecisionCreateModal.svelte') then { default: DecisionCreateModal }}
-		<DecisionCreateModal
-			projectId={project.id}
-			onClose={() => (showDecisionCreateModal = false)}
-			onCreated={handleDecisionCreated}
-		/>
-	{/await}
-{/if}
-
-<!-- Decision Edit Modal -->
-{#if editingDecisionId}
-	{#await import('$lib/components/ontology/DecisionEditModal.svelte') then { default: DecisionEditModal }}
-		<DecisionEditModal
-			decisionId={editingDecisionId}
-			projectId={project.id}
-			onClose={() => (editingDecisionId = null)}
-			onUpdated={handleDecisionUpdated}
-			onDeleted={handleDecisionDeleted}
 		/>
 	{/await}
 {/if}

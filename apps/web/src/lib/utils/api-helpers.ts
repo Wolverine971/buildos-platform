@@ -320,7 +320,7 @@ export async function verifyLegacyProjectAccess(
  * First checks project access, then entity existence.
  *
  * @param supabase - The Supabase client
- * @param table - The entity table name (e.g., 'onto_tasks', 'onto_outputs')
+ * @param table - The entity table name (e.g., 'onto_tasks', 'onto_documents')
  * @param entityId - The entity ID to verify
  * @param projectId - The project ID the entity should belong to
  * @param userId - The authenticated user's ID

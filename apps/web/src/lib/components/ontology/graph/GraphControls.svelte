@@ -9,14 +9,12 @@
 		Calendar,
 		Target,
 		Flag,
-		Layers,
 		FileText,
 		ChevronDown,
 		ChevronRight,
 		Maximize2,
 		SlidersHorizontal,
-		AlertTriangle,
-		Scale
+		AlertTriangle
 	} from 'lucide-svelte';
 	import type { GraphStats, OntologyGraphInstance, ViewMode } from './lib/graph.types';
 
@@ -74,10 +72,8 @@
 		{ value: 'plan', label: 'Plans' },
 		{ value: 'goal', label: 'Goals' },
 		{ value: 'milestone', label: 'Milestones' },
-		{ value: 'output', label: 'Outputs' },
 		{ value: 'document', label: 'Documents' },
-		{ value: 'risk', label: 'Risks' },
-		{ value: 'decision', label: 'Decisions' }
+		{ value: 'risk', label: 'Risks' }
 	];
 
 	// Node legend items with colors matching the graph
@@ -87,10 +83,8 @@
 		{ icon: Calendar, label: 'Plan', color: 'text-indigo-500' },
 		{ icon: Target, label: 'Goal', color: 'text-amber-500' },
 		{ icon: Flag, label: 'Milestone', color: 'text-emerald-500' },
-		{ icon: Layers, label: 'Output', color: 'text-purple-500' },
 		{ icon: FileText, label: 'Document', color: 'text-blue-500' },
-		{ icon: AlertTriangle, label: 'Risk', color: 'text-red-500' },
-		{ icon: Scale, label: 'Decision', color: 'text-violet-500' }
+		{ icon: AlertTriangle, label: 'Risk', color: 'text-red-500' }
 	];
 
 	// Edge legend items
@@ -99,8 +93,7 @@
 		{ color: 'bg-amber-500', label: 'Goals' },
 		{ color: 'bg-orange-500', label: 'Depends' },
 		{ color: 'bg-emerald-500', label: 'Milestone' },
-		{ color: 'bg-blue-500', label: 'Document' },
-		{ color: 'bg-purple-500', label: 'Output' }
+		{ color: 'bg-blue-500', label: 'Document' }
 	];
 
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;

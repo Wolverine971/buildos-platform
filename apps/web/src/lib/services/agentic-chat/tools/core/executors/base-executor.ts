@@ -229,11 +229,9 @@ export class BaseExecutor {
 			'onto_tasks',
 			'onto_plans',
 			'onto_goals',
-			'onto_outputs',
 			'onto_documents',
 			'onto_milestones',
 			'onto_risks',
-			'onto_decisions',
 			'onto_requirements'
 		];
 

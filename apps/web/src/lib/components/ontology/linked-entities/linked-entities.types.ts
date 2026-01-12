@@ -14,9 +14,7 @@ export type EntityKind =
 	| 'goal'
 	| 'milestone'
 	| 'document'
-	| 'output'
 	| 'risk'
-	| 'decision'
 	| 'event';
 
 /**
@@ -56,9 +54,7 @@ export interface LinkedEntitiesResult {
 	goals: LinkedEntity[];
 	milestones: LinkedEntity[];
 	documents: LinkedEntity[];
-	outputs: LinkedEntity[];
 	risks: LinkedEntity[];
-	decisions: LinkedEntity[];
 	events: LinkedEntity[];
 }
 
@@ -71,9 +67,7 @@ export interface AvailableEntitiesResult {
 	goals: AvailableEntity[];
 	milestones: AvailableEntity[];
 	documents: AvailableEntity[];
-	outputs: AvailableEntity[];
 	risks: AvailableEntity[];
-	decisions: AvailableEntity[];
 	events: AvailableEntity[];
 }
 
@@ -106,15 +100,12 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	'task-task': 'depends_on',
 	'task-milestone': 'targets_milestone',
 	'task-document': 'references',
-	'task-output': 'produces',
-	'task-decision': 'references',
 
 	// Plan relationships
 	'plan-goal': 'has_plan',
 	'plan-task': 'has_task',
 	'plan-milestone': 'has_plan',
 	'plan-document': 'references',
-	'plan-decision': 'references',
 
 	// Goal relationships
 	'goal-task': 'has_task',
@@ -127,21 +118,12 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	'document-plan': 'references',
 	'document-goal': 'references',
 	'document-document': 'references',
-	'document-decision': 'references',
 	'document-risk': 'references',
 
 	// Milestone relationships
 	'milestone-task': 'targets_milestone',
 	'milestone-plan': 'has_plan',
 	'milestone-goal': 'has_milestone',
-
-	// Output relationships
-	'output-task': 'produces',
-
-	// Decision relationships
-	'decision-task': 'references',
-	'decision-plan': 'references',
-	'decision-document': 'references',
 
 	// Risk relationships
 	'risk-task': 'threatens',
@@ -160,17 +142,13 @@ export const RELATIONSHIP_MAP: Record<string, string> = {
 	'event-goal': 'supports_goal',
 	'event-milestone': 'targets_milestone',
 	'event-document': 'references',
-	'event-output': 'relates_to',
-	'event-decision': 'references',
 
 	// Reverse event relationships (from other entities to events)
 	'task-event': 'has_event',
 	'plan-event': 'has_event',
 	'goal-event': 'has_event',
 	'milestone-event': 'has_event',
-	'document-event': 'referenced_by',
-	'output-event': 'has_event',
-	'decision-event': 'discussed_in'
+	'document-event': 'referenced_by'
 };
 
 /**
@@ -190,9 +168,7 @@ export const ENTITY_SECTIONS: EntitySectionConfig[] = [
 	{ kind: 'goal', label: 'Goal', labelPlural: 'Goals', iconColor: 'text-purple-500' },
 	{ kind: 'milestone', label: 'Milestone', labelPlural: 'Milestones', iconColor: 'text-amber-500' },
 	{ kind: 'document', label: 'Document', labelPlural: 'Documents', iconColor: 'text-cyan-500' },
-	{ kind: 'output', label: 'Output', labelPlural: 'Outputs', iconColor: 'text-violet-500' },
 	{ kind: 'risk', label: 'Risk', labelPlural: 'Risks', iconColor: 'text-red-500' },
-	{ kind: 'decision', label: 'Decision', labelPlural: 'Decisions', iconColor: 'text-indigo-500' },
 	{ kind: 'event', label: 'Event', labelPlural: 'Events', iconColor: 'text-orange-500' }
 ];
 

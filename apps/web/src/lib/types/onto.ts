@@ -28,11 +28,6 @@ export const PLAN_STATES = ['draft', 'active', 'completed'] as const;
 export type PlanState = (typeof PLAN_STATES)[number];
 export const PlanStateSchema = z.enum(PLAN_STATES);
 
-/** Output states: draft → in_progress → review → published */
-export const OUTPUT_STATES = ['draft', 'in_progress', 'review', 'published'] as const;
-export type OutputState = (typeof OUTPUT_STATES)[number];
-export const OutputStateSchema = z.enum(OUTPUT_STATES);
-
 /** Document states: draft → in_review → ready → published → archived */
 export const DOCUMENT_STATES = ['draft', 'in_review', 'ready', 'published', 'archived'] as const;
 export type DocumentState = (typeof DOCUMENT_STATES)[number];
@@ -53,11 +48,6 @@ export const RISK_STATES = ['identified', 'mitigated', 'occurred', 'closed'] as 
 export type RiskState = (typeof RISK_STATES)[number];
 export const RiskStateSchema = z.enum(RISK_STATES);
 
-/** Decision states: pending → made/deferred, made → reversed */
-export const DECISION_STATES = ['pending', 'made', 'deferred', 'reversed'] as const;
-export type DecisionState = (typeof DECISION_STATES)[number];
-export const DecisionStateSchema = z.enum(DECISION_STATES);
-
 /**
  * Get valid states for an entity kind
  */
@@ -69,8 +59,6 @@ export function getStatesForKind(kind: string): readonly string[] {
 			return PROJECT_STATES;
 		case 'plan':
 			return PLAN_STATES;
-		case 'output':
-			return OUTPUT_STATES;
 		case 'document':
 			return DOCUMENT_STATES;
 		case 'goal':
@@ -79,8 +67,6 @@ export function getStatesForKind(kind: string): readonly string[] {
 			return MILESTONE_STATES;
 		case 'risk':
 			return RISK_STATES;
-		case 'decision':
-			return DECISION_STATES;
 		default:
 			return [];
 	}
@@ -105,8 +91,6 @@ export function getDefaultState(kind: string): string {
 			return 'planning';
 		case 'plan':
 			return 'draft';
-		case 'output':
-			return 'draft';
 		case 'document':
 			return 'draft';
 		case 'goal':
@@ -115,8 +99,6 @@ export function getDefaultState(kind: string): string {
 			return 'pending';
 		case 'risk':
 			return 'identified';
-		case 'decision':
-			return 'pending';
 		default:
 			return 'draft';
 	}
@@ -159,7 +141,6 @@ export type FacetDefaults = z.infer<typeof FacetDefaultsSchema>;
 
 export const TemplateMetadataSchema = z.object({
 	realm: z.string().optional(),
-	output_type: z.string().optional(),
 	typical_scale: z.string().optional(),
 	keywords: z.array(z.string()).optional(),
 	description: z.string().optional()
@@ -197,7 +178,6 @@ export const FSMActionSchema = z.object({
 	type: z.enum([
 		'update_facets',
 		'spawn_tasks',
-		'create_output',
 		'schedule_rrule',
 		'notify',
 		'email_user',
@@ -223,7 +203,6 @@ export const FSMActionSchema = z.object({
 	subject: z.string().optional(),
 	body_template: z.string().optional(),
 	body: z.string().optional(),
-	output_id: z.string().uuid().optional(),
 	rubric_key: z.string().optional(),
 	type_key: z.string().optional()
 });
@@ -268,7 +247,6 @@ export const TemplateSchema = z.object({
 		'project',
 		'plan',
 		'task',
-		'output',
 		'document',
 		'goal',
 		'requirement',
@@ -306,7 +284,7 @@ const ProjectSpecProjectSchema = z.object({
 		.string()
 		.regex(
 			/^project\.[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/,
-			'type_key must be project.{realm}.{deliverable} format (3-4 segments starting with "project."). Realm must be: creative, technical, business, service, education, or personal. Example: "project.business.product_launch". Use only lowercase letters and underscores.'
+			'type_key must be project.{realm}.{domain} format (3-4 segments starting with "project."). Realm must be: creative, technical, business, service, education, or personal. Example: "project.business.product_launch". Use only lowercase letters and underscores.'
 		),
 	state_key: z.string().optional(),
 	props: z
@@ -325,9 +303,7 @@ const ProjectSpecEntityKindSchema = z.enum([
 	'plan',
 	'task',
 	'document',
-	'output',
 	'risk',
-	'decision',
 	'requirement',
 	'metric',
 	'source'
@@ -379,23 +355,11 @@ const ProjectSpecEntitySchema = z.discriminatedUnion('kind', [
 		description: z.string().optional()
 	}),
 	ProjectSpecEntityBaseSchema.extend({
-		kind: z.literal('output'),
-		name: z.string().min(1),
-		description: z.string().optional()
-	}),
-	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('risk'),
 		title: z.string().min(1),
 		impact: z.enum(['low', 'medium', 'high', 'critical']).optional(),
 		probability: z.number().min(0).max(1).optional(),
 		content: z.string().optional()
-	}),
-	ProjectSpecEntityBaseSchema.extend({
-		kind: z.literal('decision'),
-		title: z.string().min(1),
-		decision_at: z.string().datetime().optional(),
-		rationale: z.string().optional(),
-		outcome: z.string().optional()
 	}),
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('requirement'),
@@ -491,7 +455,7 @@ export type ProjectSpec = z.infer<typeof ProjectSpecSchema>;
  * @deprecated FSM transitions are no longer used. Update state_key directly via PATCH.
  */
 export const FSMTransitionRequestSchema = z.object({
-	object_kind: z.enum(['task', 'output', 'plan', 'project', 'document']),
+	object_kind: z.enum(['task', 'plan', 'project', 'document']),
 	object_id: z.string().uuid(),
 	event: z.string()
 });
@@ -568,44 +532,6 @@ export const TaskSchema = z.object({
 });
 
 export type Task = z.infer<typeof TaskSchema>;
-
-export const OutputSchema = z.object({
-	id: z.string().uuid(),
-	project_id: z.string().uuid(),
-	name: z.string(),
-	type_key: z.string(),
-	state_key: OutputStateSchema,
-	description: z.string().nullable().optional(),
-	deleted_at: z.string().datetime().nullable().optional(),
-	props: z.record(z.unknown()),
-	facet_stage: z.string().nullable().optional(),
-	// Promotion source references
-	source_document_id: z.string().uuid().nullable().optional(),
-	source_event_id: z.string().uuid().nullable().optional(),
-	created_by: z.string().uuid(),
-	created_at: z.string().datetime(),
-	updated_at: z.string().datetime()
-});
-
-export type Output = z.infer<typeof OutputSchema>;
-
-/**
- * Deliverable/Output with enriched data for UI display
- */
-export interface EnrichedOutput extends Output {
-	/** The primitive type derived from type_key */
-	primitive: DeliverablePrimitive;
-	/** Display label for the deliverable type */
-	type_label: string;
-	/** Related tasks count */
-	task_count?: number;
-	/** Related documents count (for collections) */
-	child_count?: number;
-	/** Source document if promoted from document */
-	source_document?: Document;
-	/** Source event if promoted from event */
-	source_event?: OntoEvent;
-}
 
 export const DocumentSchema = z.object({
 	id: z.string().uuid(),
@@ -694,28 +620,6 @@ export const RiskSchema = z.object({
 export type Risk = z.infer<typeof RiskSchema>;
 
 // ============================================
-// DECISION SCHEMA
-// ============================================
-
-export const DecisionSchema = z.object({
-	id: z.string().uuid(),
-	project_id: z.string().uuid(),
-	title: z.string(),
-	description: z.string().nullable().optional(),
-	outcome: z.string().nullable().optional(),
-	rationale: z.string().nullable().optional(),
-	state_key: DecisionStateSchema,
-	decision_at: z.string().datetime().nullable().optional(),
-	deleted_at: z.string().datetime().nullable().optional(),
-	props: z.record(z.unknown()),
-	created_by: z.string().uuid(),
-	created_at: z.string().datetime(),
-	updated_at: z.string().datetime()
-});
-
-export type Decision = z.infer<typeof DecisionSchema>;
-
-// ============================================
 // ONTO_EVENTS (Calendar Events)
 // ============================================
 
@@ -723,7 +627,7 @@ export const OntoEventSchema = z.object({
 	id: z.string().uuid(),
 	org_id: z.string().uuid().nullable().optional(),
 	project_id: z.string().uuid().nullable().optional(),
-	owner_entity_type: z.enum(['project', 'plan', 'task', 'goal', 'output', 'actor', 'standalone']),
+	owner_entity_type: z.enum(['project', 'plan', 'task', 'goal', 'actor', 'standalone']),
 	owner_entity_id: z.string().uuid().nullable().optional(),
 	type_key: z.string(),
 	state_key: z.string(),
@@ -769,79 +673,11 @@ export const TYPE_KEY_PATTERNS: Record<string, RegExp> = {
 	plan: /^plan\.[a-z_]+(\.[a-z_]+)?$/,
 	goal: /^goal\.[a-z_]+(\.[a-z_]+)?$/,
 	milestone: /^milestone\.[a-z_]+(\.[a-z_]+)?$/,
-	// Output supports both legacy output.* and new deliverable.* patterns
-	output: /^(output|deliverable)\.[a-z_]+(\.[a-z_]+)?$/,
-	// Deliverable-specific pattern: deliverable.{primitive}.{variant}
-	deliverable: /^deliverable\.(document|event|collection|external)\.[a-z_]+$/,
 	document: /^document\.[a-z_]+(\.[a-z_]+)?$/,
 	risk: /^risk\.[a-z_]+(\.[a-z_]+)?$/,
-	decision: /^decision\.[a-z_]+(\.[a-z_]+)?$/,
 	event: /^event\.[a-z_]+(\.[a-z_]+)?$/,
 	requirement: /^requirement\.[a-z_]+(\.[a-z_]+)?$/
 };
-
-// ============================================
-// DELIVERABLE PRIMITIVES
-// ============================================
-
-/**
- * Deliverable primitives - the fundamental types of outputs
- * - document: Text-based content editable in BuildOS (chapters, articles, etc.)
- * - event: Time-bound experiences (workshops, webinars, keynotes)
- * - collection: Multi-document containers (books, courses, email sequences)
- * - external: External artifacts tracked but not edited in BuildOS (Figma, GitHub, etc.)
- */
-export const DELIVERABLE_PRIMITIVES = ['document', 'event', 'collection', 'external'] as const;
-export type DeliverablePrimitive = (typeof DELIVERABLE_PRIMITIVES)[number];
-
-/**
- * Extract the primitive from a deliverable type_key
- * @param typeKey - e.g., 'deliverable.document.chapter' → 'document'
- */
-export function getDeliverablePrimitive(typeKey: string): DeliverablePrimitive | null {
-	if (!typeKey.startsWith('deliverable.')) {
-		// Handle legacy output.* patterns
-		if (typeKey.startsWith('output.written.') || typeKey.startsWith('output.chapter')) {
-			return 'document';
-		}
-		if (typeKey.startsWith('output.media.') || typeKey.startsWith('output.software.')) {
-			return 'external';
-		}
-		return 'document'; // Default for legacy
-	}
-
-	const parts = typeKey.split('.');
-	const primitive = parts[1] as DeliverablePrimitive;
-	return DELIVERABLE_PRIMITIVES.includes(primitive) ? primitive : null;
-}
-
-/**
- * Check if a type_key represents a collection deliverable
- */
-export function isCollectionDeliverable(typeKey: string): boolean {
-	return getDeliverablePrimitive(typeKey) === 'collection';
-}
-
-/**
- * Check if a type_key represents an external deliverable
- */
-export function isExternalDeliverable(typeKey: string): boolean {
-	return getDeliverablePrimitive(typeKey) === 'external';
-}
-
-/**
- * Check if a type_key represents an event deliverable
- */
-export function isEventDeliverable(typeKey: string): boolean {
-	return getDeliverablePrimitive(typeKey) === 'event';
-}
-
-/**
- * Check if a type_key represents a document deliverable
- */
-export function isDocumentDeliverable(typeKey: string): boolean {
-	return getDeliverablePrimitive(typeKey) === 'document';
-}
 
 /** General type_key pattern (2-3 dot-separated lowercase segments) */
 export const GENERAL_TYPE_KEY_PATTERN = /^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$/;
@@ -922,13 +758,11 @@ export function validateProjectSpec(spec: unknown): { valid: boolean; errors: st
 		'requirements',
 		'plans',
 		'tasks',
-		'outputs',
 		'documents',
 		'sources',
 		'metrics',
 		'milestones',
 		'risks',
-		'decisions',
 		'edges'
 	];
 	const errors: string[] = [];

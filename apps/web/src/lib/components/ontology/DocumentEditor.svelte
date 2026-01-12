@@ -6,7 +6,6 @@
 	- TipTap-based WYSIWYG editing
 	- Mobile-optimized touch toolbar (44px targets)
 	- Collapsible toolbar groups on mobile
-	- AI content generation
 	- Inkprint design language
 	- High information density
 
@@ -29,7 +28,6 @@
 		AlignCenter,
 		AlignRight,
 		Save,
-		Sparkles,
 		FileText,
 		ChevronDown,
 		ChevronUp,
@@ -38,11 +36,21 @@
 		Quote,
 		Code,
 		MoreHorizontal,
-		X,
 		Undo,
 		Redo,
-		Strikethrough
+		Strikethrough,
+		Mic,
+		MicOff,
+		LoaderCircle,
+		X
 	} from 'lucide-svelte';
+	import {
+		voiceRecordingService,
+		type TranscriptionService
+	} from '$lib/services/voiceRecording.service';
+	import { liveTranscript } from '$lib/utils/voice';
+	import { browser } from '$app/environment';
+	import { haptic } from '$lib/utils/haptic';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Image from '@tiptap/extension-image';
@@ -52,10 +60,8 @@
 	import { TextStyle } from '@tiptap/extension-text-style';
 	import Placeholder from '@tiptap/extension-placeholder';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	interface DocumentEditorProps {
-		outputId?: string | null;
 		typeKey?: string;
 		initialContent?: string;
 		initialTitle?: string;
@@ -82,17 +88,55 @@
 	let saveSuccess = $state(false);
 	let isDirty = $state(false);
 
-	// AI generation state
-	let showAIPanel = $state(false);
-	let aiInstructions = $state('');
-	let isGenerating = $state(false);
-
 	// Mobile toolbar state
 	let showMoreTools = $state(false);
 	let isMobile = $state(false);
 
+	// Voice recording state
+	let isVoiceSupported = $state(false);
+	let isRecording = $state(false);
+	let isInitializingRecording = $state(false);
+	let isTranscribing = $state(false);
+	let voiceError = $state('');
+	let recordingDuration = $state(0);
+	let canUseLiveTranscript = $state(false);
+	let liveTranscriptPreview = $state('');
+	let voiceInitialized = $state(false);
+	let microphonePermissionGranted = $state(false);
+	let durationUnsubscribe: (() => void) | null = null;
+	let transcriptUnsubscribe: (() => void) | null = null;
+
 	// Timeout ID for cleanup
 	let successTimeoutId: number | null = null;
+	let voiceErrorTimeoutId: number | null = null;
+
+	// Auto-dismiss voice error after 5 seconds
+	$effect(() => {
+		if (voiceError) {
+			if (voiceErrorTimeoutId !== null) {
+				clearTimeout(voiceErrorTimeoutId);
+			}
+			voiceErrorTimeoutId = window.setTimeout(() => {
+				voiceError = '';
+				voiceErrorTimeoutId = null;
+			}, 5000);
+		}
+		return () => {
+			if (voiceErrorTimeoutId !== null) {
+				clearTimeout(voiceErrorTimeoutId);
+				voiceErrorTimeoutId = null;
+			}
+		};
+	});
+
+	// Dismiss voice error manually
+	function dismissVoiceError() {
+		voiceError = '';
+		if (voiceErrorTimeoutId !== null) {
+			clearTimeout(voiceErrorTimeoutId);
+			voiceErrorTimeoutId = null;
+		}
+	}
 
 	// Derived state for props
 	const currentProps = $derived({
@@ -100,6 +144,314 @@
 		content,
 		word_count: wordCount,
 		content_type: 'html'
+	});
+
+	// Voice button state types
+	type VoiceButtonVariant = 'muted' | 'loading' | 'recording' | 'ready';
+	type VoiceButtonState = {
+		icon: typeof Mic;
+		label: string;
+		disabled: boolean;
+		isLoading: boolean;
+		variant: VoiceButtonVariant;
+	};
+
+	// Voice button state machine
+	const voiceButtonState = $derived.by((): VoiceButtonState => {
+		if (!isVoiceSupported) {
+			return {
+				icon: MicOff,
+				label: 'Voice unavailable',
+				disabled: true,
+				isLoading: false,
+				variant: 'muted'
+			};
+		}
+
+		if (isRecording) {
+			return {
+				icon: MicOff,
+				label: 'Stop recording',
+				disabled: false,
+				isLoading: false,
+				variant: 'recording'
+			};
+		}
+
+		if (isInitializingRecording) {
+			return {
+				icon: LoaderCircle,
+				label: 'Preparing microphone...',
+				disabled: true,
+				isLoading: true,
+				variant: 'loading'
+			};
+		}
+
+		if (isTranscribing) {
+			return {
+				icon: LoaderCircle,
+				label: 'Transcribing...',
+				disabled: true,
+				isLoading: true,
+				variant: 'loading'
+			};
+		}
+
+		return {
+			icon: Mic,
+			label: 'Record voice note',
+			disabled: false,
+			isLoading: false,
+			variant: 'ready'
+		};
+	});
+
+	// Voice button CSS classes based on state
+	const voiceButtonClasses = $derived.by(() => {
+		const base =
+			'flex items-center justify-center h-12 w-12 rounded-full transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background';
+
+		switch (voiceButtonState.variant) {
+			case 'recording':
+				return `${base} border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink-strong pressable hover:bg-destructive/90`;
+			case 'loading':
+				return `${base} border border-border bg-muted/80 text-muted-foreground shadow-ink cursor-wait`;
+			case 'muted':
+				return `${base} border border-border bg-muted/60 text-muted-foreground/40 cursor-not-allowed`;
+			default:
+				return `${base} border border-foreground/20 bg-card text-foreground shadow-ink pressable hover:border-foreground/40 hover:bg-muted/50 dark:border-foreground/15 dark:hover:border-foreground/30`;
+		}
+	});
+
+	// Custom transcription service that inserts at cursor position
+	const transcriptionService: TranscriptionService = {
+		async transcribeAudio(audioFile: File, vocabTerms?: string) {
+			const formData = new FormData();
+			formData.append('audio', audioFile);
+			if (vocabTerms) {
+				formData.append('vocabularyTerms', vocabTerms);
+			}
+
+			const response = await fetch('/api/transcribe', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!response.ok) {
+				let errorMessage = `Transcription failed: ${response.status}`;
+				try {
+					const errorPayload = await response.json();
+					if (errorPayload?.error) {
+						errorMessage = errorPayload.error;
+					}
+				} catch {
+					// Ignore JSON parse errors
+				}
+				throw new Error(errorMessage);
+			}
+
+			const result = await response.json();
+			const payload = result?.success && result?.data ? result.data : result;
+
+			if (payload?.transcript) {
+				const transcript = payload.transcript.trim();
+				// Insert at cursor position in TipTap editor
+				insertTranscriptionAtCursor(transcript);
+
+				return {
+					transcript,
+					transcriptionModel: payload.transcription_model ?? null,
+					transcriptionService: payload.transcription_service ?? null
+				};
+			}
+
+			throw new Error('No transcript returned from transcription service');
+		}
+	};
+
+	// Insert transcribed text at current cursor position
+	function insertTranscriptionAtCursor(text: string) {
+		if (!editor || !text.trim()) return;
+
+		// Focus and insert at cursor position
+		// If there's existing content, add a space before the transcription
+		const { from } = editor.state.selection;
+		const textBefore = editor.state.doc.textBetween(Math.max(0, from - 1), from);
+		const needsSpace = textBefore && !/\s/.test(textBefore);
+
+		editor
+			.chain()
+			.focus()
+			.insertContent(needsSpace ? ' ' + text : text)
+			.run();
+
+		isDirty = true;
+	}
+
+	// Initialize voice recording service
+	function initializeVoice() {
+		if (voiceInitialized || !browser) return;
+
+		isVoiceSupported = voiceRecordingService.isVoiceSupported();
+		canUseLiveTranscript = voiceRecordingService.isLiveTranscriptSupported();
+
+		if (!isVoiceSupported) {
+			voiceInitialized = true;
+			return;
+		}
+
+		// Pre-warm microphone for faster recording start
+		voiceRecordingService.prewarmMicrophone().then((success: boolean) => {
+			if (success) {
+				microphonePermissionGranted = true;
+			}
+		});
+
+		voiceRecordingService.initialize(
+			{
+				onTextUpdate: (_text: string) => {
+					// We don't use this callback - we handle insertion ourselves via transcriptionService
+					// This is designed for textarea replacement, not cursor insertion
+				},
+				onError: (errorMessage: string) => {
+					voiceError = errorMessage;
+					isRecording = false;
+					isInitializingRecording = false;
+				},
+				onPhaseChange: (phase: 'idle' | 'transcribing') => {
+					isTranscribing = phase === 'transcribing';
+				},
+				onPermissionGranted: () => {
+					microphonePermissionGranted = true;
+					voiceError = '';
+				},
+				onCapabilityUpdate: (update: { canUseLiveTranscript: boolean }) => {
+					canUseLiveTranscript = update.canUseLiveTranscript;
+				}
+			},
+			transcriptionService
+		);
+
+		// Subscribe to recording duration
+		const durationStore = voiceRecordingService.getRecordingDuration();
+		durationUnsubscribe = durationStore.subscribe((newDuration) => {
+			recordingDuration = newDuration;
+		});
+
+		// Subscribe to live transcript
+		transcriptUnsubscribe = liveTranscript.subscribe((text) => {
+			liveTranscriptPreview = text;
+		});
+
+		voiceInitialized = true;
+	}
+
+	// Start voice recording
+	async function startVoiceRecording() {
+		if (!isVoiceSupported || isInitializingRecording || isRecording || isTranscribing) {
+			return;
+		}
+
+		voiceError = '';
+		isInitializingRecording = true;
+
+		try {
+			// Pass empty string since we're inserting at cursor, not appending to existing text
+			await voiceRecordingService.startRecording('');
+			isInitializingRecording = false;
+			isRecording = true;
+			microphonePermissionGranted = true;
+		} catch (error) {
+			console.error('Failed to start voice recording:', error);
+			const message =
+				error instanceof Error
+					? error.message
+					: 'Unable to access microphone. Please check permissions.';
+			voiceError = message;
+			microphonePermissionGranted = false;
+			isInitializingRecording = false;
+			isRecording = false;
+		}
+	}
+
+	// Stop voice recording
+	async function stopVoiceRecording() {
+		if (!isRecording && !isInitializingRecording) {
+			return;
+		}
+
+		try {
+			// Pass empty string since we handle insertion via transcriptionService
+			await voiceRecordingService.stopRecording('');
+		} catch (error) {
+			console.error('Failed to stop voice recording:', error);
+			const message =
+				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
+			voiceError = message;
+		} finally {
+			liveTranscriptPreview = '';
+			isRecording = false;
+			isInitializingRecording = false;
+		}
+	}
+
+	// Toggle voice recording
+	async function toggleVoiceRecording() {
+		if (!isVoiceSupported) return;
+
+		// Haptic feedback for mobile
+		haptic('light');
+
+		if (isRecording || isInitializingRecording) {
+			await stopVoiceRecording();
+		} else {
+			await startVoiceRecording();
+		}
+	}
+
+	// Cleanup voice resources
+	function cleanupVoice() {
+		if (!voiceInitialized) return;
+
+		durationUnsubscribe?.();
+		transcriptUnsubscribe?.();
+		durationUnsubscribe = null;
+		transcriptUnsubscribe = null;
+
+		voiceRecordingService.cleanup();
+
+		isRecording = false;
+		isInitializingRecording = false;
+		isTranscribing = false;
+		recordingDuration = 0;
+		liveTranscriptPreview = '';
+		voiceInitialized = false;
+	}
+
+	// Format duration for display
+	function formatDuration(seconds: number): string {
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	}
+
+	// Keyboard handler for stopping recording with Escape
+	function handleGlobalKeyDown(event: KeyboardEvent) {
+		if (isRecording && event.key === 'Escape') {
+			event.preventDefault();
+			stopVoiceRecording();
+		}
+	}
+
+	// Set up global keydown listener when recording starts
+	$effect(() => {
+		if (browser && isRecording) {
+			document.addEventListener('keydown', handleGlobalKeyDown);
+			return () => {
+				document.removeEventListener('keydown', handleGlobalKeyDown);
+			};
+		}
 	});
 
 	// Check for mobile viewport
@@ -112,6 +464,9 @@
 	onMount(() => {
 		checkMobile();
 		window.addEventListener('resize', checkMobile);
+
+		// Initialize voice recording
+		initializeVoice();
 
 		if (!editorElement) {
 			console.error('Editor element not found');
@@ -173,9 +528,20 @@
 	onDestroy(() => {
 		window.removeEventListener('resize', checkMobile);
 
+		// Stop any active recording and cleanup voice resources
+		if (isRecording || isInitializingRecording) {
+			stopVoiceRecording();
+		}
+		cleanupVoice();
+
 		if (successTimeoutId !== null) {
 			clearTimeout(successTimeoutId);
 			successTimeoutId = null;
+		}
+
+		if (voiceErrorTimeoutId !== null) {
+			clearTimeout(voiceErrorTimeoutId);
+			voiceErrorTimeoutId = null;
 		}
 
 		if (editor) {
@@ -214,66 +580,6 @@
 			saveError = err instanceof Error ? err.message : 'Failed to save document';
 		} finally {
 			isSaving = false;
-		}
-	}
-
-	async function generateWithAI() {
-		if (!editor || !aiInstructions.trim()) return;
-
-		isGenerating = true;
-		saveError = null;
-
-		try {
-			const response = await fetch('/api/onto/outputs/generate', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					type_key: propsData.typeKey,
-					instructions: aiInstructions,
-					project_id: propsData.projectId,
-					current_props: currentProps
-				})
-			});
-
-			if (!response.ok) {
-				let errorMessage = 'AI generation failed';
-				try {
-					const errorData = await response.json();
-					errorMessage = errorData.error || errorData.message || errorMessage;
-				} catch {
-					errorMessage = `${errorMessage} (${response.status}: ${response.statusText})`;
-				}
-				throw new Error(errorMessage);
-			}
-
-			let data;
-			try {
-				data = await response.json();
-			} catch (parseErr) {
-				throw new Error('Invalid response from server');
-			}
-
-			const generatedContent = data.data?.content;
-			if (!generatedContent || typeof generatedContent !== 'string') {
-				throw new Error('No content generated by AI');
-			}
-
-			editor.commands.setContent(generatedContent);
-			showAIPanel = false;
-			aiInstructions = '';
-			isDirty = true;
-		} catch (err) {
-			saveError = err instanceof Error ? err.message : 'AI generation failed';
-			console.error('AI generation error:', err);
-			void logOntologyClientError(err, {
-				endpoint: '/api/onto/outputs/generate',
-				method: 'POST',
-				projectId: propsData.projectId,
-				entityType: 'output',
-				operation: 'output_generate'
-			});
-		} finally {
-			isGenerating = false;
 		}
 	}
 
@@ -398,13 +704,6 @@
 				</Button>
 			</div>
 		</div>
-
-		<!-- Type key info (compact) -->
-		{#if propsData.typeKey}
-			<div class="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-				{propsData.typeKey}
-			</div>
-		{/if}
 
 		<!-- Errors -->
 		{#if saveError}
@@ -660,19 +959,6 @@
 					<MoreHorizontal class="w-4 h-4" />
 				{/if}
 			</button>
-
-			<!-- AI Generate button -->
-			<button
-				onclick={() => (showAIPanel = !showAIPanel)}
-				class="toolbar-btn-ai pressable"
-				class:active={showAIPanel}
-				title="AI Generate"
-				aria-label="AI generate content"
-				aria-expanded={showAIPanel}
-			>
-				<Sparkles class="w-4 h-4" />
-				<span class="hidden sm:inline text-xs ml-1">AI</span>
-			</button>
 		</div>
 
 		<!-- Expanded tools row (mobile/tablet) -->
@@ -792,74 +1078,107 @@
 		{/if}
 	</div>
 
-	<!-- AI Generation Panel -->
-	{#if showAIPanel}
-		<div
-			class="ai-panel border-b border-accent/30 px-3 py-3 bg-gradient-to-r from-accent/5 via-accent/10 to-accent/5 tx tx-bloom tx-weak"
-			role="region"
-			aria-label="AI content generation"
-		>
-			<div class="flex items-start gap-3">
-				<div
-					class="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent shrink-0"
-				>
-					<Sparkles class="w-4 h-4" />
-				</div>
-				<div class="flex-1 min-w-0">
-					<label
-						for="ai-instructions"
-						class="block text-sm font-semibold text-foreground mb-1.5"
-					>
-						AI Writing Assistant
-					</label>
-					<p class="text-xs text-muted-foreground mb-2">
-						Describe what you want to write. Be specific about tone, length, and key
-						points.
-					</p>
-					<textarea
-						id="ai-instructions"
-						enterkeyhint="done"
-						bind:value={aiInstructions}
-						placeholder="E.g., 'Write a compelling introduction about our product launch strategy, focusing on market opportunity and unique value proposition. Keep it professional but engaging, around 200 words.'"
-						class="w-full border border-border rounded-lg px-3 py-2.5 text-sm resize-none bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 shadow-ink-inner transition-all"
-						rows="3"
-					></textarea>
-					<div class="flex items-center justify-end gap-2 mt-3">
-						<Button
-							onclick={() => (showAIPanel = false)}
-							variant="ghost"
-							size="sm"
-							class="h-8 px-3 text-xs"
-						>
-							Cancel
-						</Button>
-						<Button
-							onclick={generateWithAI}
-							disabled={!aiInstructions.trim() || isGenerating}
-							size="sm"
-							variant="primary"
-							loading={isGenerating}
-							class="h-8 px-4 text-xs pressable shadow-ink"
-						>
-							<Sparkles class="w-3.5 h-3.5 mr-1.5" />
-							{isGenerating ? 'Generating...' : 'Generate Content'}
-						</Button>
-					</div>
-				</div>
-				<button
-					onclick={() => (showAIPanel = false)}
-					class="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
-					aria-label="Close AI panel"
-				>
-					<X class="w-4 h-4" />
-				</button>
-			</div>
-		</div>
-	{/if}
-
 	<!-- Editor Content -->
-	<div class="editor-content flex-1 overflow-y-auto bg-background">
-		<div bind:this={editorElement} class="editor px-4 py-4 sm:px-5 sm:py-5 lg:px-6"></div>
+	<div class="editor-content relative flex-1 overflow-y-auto bg-background">
+		<div bind:this={editorElement} class="editor p-4 sm:p-5"></div>
+
+		<!-- Live Transcript Overlay (floating above FAB) -->
+		{#if isRecording && liveTranscriptPreview.trim() && canUseLiveTranscript}
+			<div
+				class="absolute bottom-20 right-4 z-20 max-w-[280px] sm:max-w-[320px]"
+				aria-live="polite"
+				aria-atomic="true"
+			>
+				<div
+					class="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm shadow-ink backdrop-blur-sm dark:bg-accent/10 tx tx-bloom tx-weak"
+				>
+					<div class="flex items-center gap-2 mb-1.5">
+						<span class="relative flex h-2 w-2">
+							<span
+								class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent/60"
+							></span>
+							<span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent"
+							></span>
+						</span>
+						<span class="text-xs font-semibold text-accent">Live Preview</span>
+					</div>
+					<p
+						class="m-0 line-clamp-4 whitespace-pre-wrap leading-snug text-foreground text-sm"
+					>
+						{liveTranscriptPreview}
+					</p>
+				</div>
+			</div>
+		{/if}
+
+		<!-- Voice Recording FAB -->
+		{#if isVoiceSupported}
+			<div class="absolute bottom-4 right-4 z-20 flex flex-col-reverse items-end gap-1.5">
+				<button
+					type="button"
+					onclick={toggleVoiceRecording}
+					class={voiceButtonClasses}
+					disabled={voiceButtonState.disabled}
+					aria-label={voiceButtonState.label}
+					title={voiceButtonState.label}
+					aria-pressed={isRecording}
+					style="-webkit-tap-highlight-color: transparent;"
+				>
+					{#if voiceButtonState.isLoading}
+						<LoaderCircle class="h-5 w-5 animate-spin" />
+					{:else if isRecording}
+						<!-- Recording indicator with pulse animation -->
+						<span class="relative flex items-center justify-center">
+							<span
+								class="absolute inline-flex h-8 w-8 animate-ping rounded-full bg-destructive-foreground/30"
+							></span>
+							<MicOff class="relative h-5 w-5" />
+						</span>
+					{:else}
+						<svelte:component this={voiceButtonState.icon} class="h-5 w-5" />
+					{/if}
+				</button>
+				<!-- Keyboard hint when recording -->
+				{#if isRecording}
+					<span
+						class="text-[10px] text-muted-foreground/70 bg-muted/80 px-1.5 py-0.5 rounded backdrop-blur-sm hidden sm:block"
+					>
+						Press <kbd class="font-mono font-medium text-foreground/70">Esc</kbd> to stop
+					</span>
+				{/if}
+			</div>
+		{/if}
+
+		<!-- Voice Error Toast -->
+		{#if voiceError}
+			<div
+				class="absolute right-4 z-30 max-w-[280px] sm:max-w-[320px] transition-all duration-200"
+				class:bottom-36={isRecording &&
+					liveTranscriptPreview.trim() &&
+					canUseLiveTranscript}
+				class:bottom-20={!(
+					isRecording &&
+					liveTranscriptPreview.trim() &&
+					canUseLiveTranscript
+				)}
+				role="alert"
+				aria-live="assertive"
+			>
+				<div
+					class="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 shadow-ink backdrop-blur-sm tx tx-static tx-weak"
+				>
+					<p class="flex-1 text-sm font-medium text-destructive">{voiceError}</p>
+					<button
+						type="button"
+						onclick={dismissVoiceError}
+						class="shrink-0 rounded p-0.5 text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
+						aria-label="Dismiss error"
+					>
+						<X class="h-4 w-4" />
+					</button>
+				</div>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Footer Stats Bar -->
@@ -867,6 +1186,29 @@
 		class="editor-footer border-t border-border px-3 py-2 bg-muted/30 flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground"
 	>
 		<div class="flex items-center gap-2 sm:gap-3">
+			<!-- Recording status indicator -->
+			{#if isRecording}
+				<span class="flex items-center gap-1.5 text-destructive">
+					<span class="relative flex h-2 w-2 items-center justify-center">
+						<span
+							class="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60"
+						></span>
+						<span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"
+						></span>
+					</span>
+					<span class="text-xs font-semibold tabular-nums"
+						>{formatDuration(recordingDuration)}</span
+					>
+				</span>
+				<span class="text-muted-foreground/60">|</span>
+			{:else if isTranscribing}
+				<span class="flex items-center gap-1.5 text-accent">
+					<LoaderCircle class="h-3 w-3 animate-spin" />
+					<span class="text-xs font-semibold">Transcribing...</span>
+				</span>
+				<span class="text-muted-foreground/60">|</span>
+			{/if}
+
 			<span class="font-medium tabular-nums">
 				{wordCount.toLocaleString()}
 				{wordCount === 1 ? 'word' : 'words'}

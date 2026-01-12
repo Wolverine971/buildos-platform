@@ -28,6 +28,7 @@
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
+	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import { PLAN_STATES, type Plan } from '$lib/types/onto';
 	import { PLAN_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
@@ -660,6 +661,8 @@
 						/>
 					</div>
 				</div>
+
+				<EntityCommentsSection {projectId} entityType="plan" entityId={planId} />
 			{/if}
 		</div>
 	{/snippet}

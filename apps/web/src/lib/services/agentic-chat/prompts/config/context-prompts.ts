@@ -66,7 +66,7 @@ export function getContextTypeGuidance(contextType: ChatContextType): string {
 export const PROJECT_WORKSPACE_PROMPT: PromptSection = {
 	id: 'project-workspace',
 	title: 'Project Workspace Operating Guide',
-	content: `- Treat this chat as the user's dedicated project workspace: expect summaries, risks, decisions, or concrete changes within this project.
+	content: `- Treat this chat as the user's dedicated project workspace: expect summaries, risks, or concrete changes within this project.
 - Stay scoped to this project by default; do not ask which project they mean.
 - When the user names an item vaguely, use search tools with the project_id to disambiguate before fetching details.
 - Keep responses grounded in this project's tasks, plans, goals, and documents unless the user asks for cross-project context.`,
@@ -99,7 +99,7 @@ const PROJECT_CREATION_USER_RULES: PromptSection = {
 const PROJECT_CREATION_CAPABILITIES: PromptSection = {
 	id: 'project-creation-capabilities',
 	title: 'INTERNAL CAPABILITIES (do not explain to user)',
-	content: `1. **Type Classification**: Map intent to project.{realm}.{deliverable}[.{variant}]
+	content: `1. **Type Classification**: Map intent to project.{realm}.{initiative}[.{variant}]
 2. **Prop Inference**: Extract properties using proper naming (snake_case, is_/has_, *_count, target_*)
 3. **Contextual Facets**: Infer facets (context/scale/stage) from intent
 4. **Intelligent Inference**: Extract implicit requirements from user descriptions`,
@@ -125,10 +125,10 @@ const PROJECT_CREATION_WORKFLOW: PromptSection = {
 	content: `**Step 1: Deep Intent Analysis**
 - Analyze the user's request for explicit requirements and implied constraints (use implications for props/description, not extra entities)
 - Identify the domain (e.g., software, business, creative, research)
-- Determine deliverable, constraints, audience, timelines, and success criteria
+- Determine primary focus, constraints, audience, timelines, and success criteria
 
 **Step 2: Type Classification**
-- Use the type_key guidance above to select the correct realm and deliverable
+- Use the type_key guidance above to select the correct realm and focus
 - Ask yourself: "What does success look like?" to disambiguate
 
 **Step 3: Prop Extraction (CRITICAL)**
@@ -141,7 +141,7 @@ const PROJECT_CREATION_WORKFLOW: PromptSection = {
 From the user's message, infer:
 - **name**: Clear project name
 - **description**: Expand on intent (1-2 sentences)
-- **type_key**: From classification (MUST follow project.{realm}.{deliverable} format)
+- **type_key**: From classification (MUST follow project.{realm}.{initiative} format)
 - **facets**: Intelligent defaults based on context (context, scale, stage)
 - **props**: Extract property values from user's message. Populate with specific values mentioned; use intelligent defaults for inferable items; include facets when present.
 
@@ -150,7 +150,7 @@ From the user's message, infer:
 - **Goal**: Include if user states a clear outcome ("I want to...", "The goal is...")
 - **Tasks**: ONLY if user mentions SPECIFIC FUTURE ACTIONS ("call vendor", "schedule meeting")
 - **Plans/Milestones**: ONLY if user describes these entities or phases, deadlines, or workstreams
-- **Don't add** peripheral entities (risks, decisions, documents, requirements, metrics, sources, outputs) unless explicitly mentioned
+- **Don't add** peripheral entities (risks, documents, requirements, metrics, sources) unless explicitly mentioned
 
 **Anti-Inference Rules:**
 - "I want to write a book" -> project + 1 goal ("Finish the book"), NO tasks
@@ -167,7 +167,7 @@ From the user's message, infer:
 - If the user explicitly asked to create a project (typical in this context), treat that as confirmation and proceed.
 - If they are still exploring or unclear about creating, ask a brief confirmation before calling create_onto_project.
 Call create_onto_project with:
-- The chosen type_key (MUST be project.{realm}.{deliverable} format)
+- The chosen type_key (MUST be project.{realm}.{initiative} format)
 - Populated props object with ALL extracted information
 - entities + relationships (relationships is required even if empty)
 - If using clarifications, still include entities: [] and relationships: []`,

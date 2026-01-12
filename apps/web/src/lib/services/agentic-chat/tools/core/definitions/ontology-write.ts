@@ -25,8 +25,8 @@ Automatically creates containment edges based on parent inputs (plan/goal/projec
 
 CREATE a task when:
 - The USER explicitly asks to "add a task", "create a task", "track this", or "remind me to"
-- The work requires HUMAN action (decisions, phone calls, meetings, reviews, approvals)
-- The work must happen OUTSIDE this conversation (external deliverables, future actions)
+- The work requires HUMAN action (phone calls, meetings, reviews, approvals)
+- The work must happen OUTSIDE this conversation (external results, future actions)
 - The user is building a project plan and wants persistent task tracking
 
 DO NOT create a task when:
@@ -259,7 +259,7 @@ Use for briefs, specs, context docs, or research artifacts linked to a project.`
 					type_key: {
 						type: 'string',
 						description: `Document type taxonomy (required): document.{family}[.{variant}]
-Families: context (project/brief), knowledge (research/brain_dump), decision (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project).
+Families: context (project/brief), knowledge (research/brain_dump), notes (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project).
 Examples: document.context.project, document.knowledge.research, document.spec.technical`
 					},
 					state_key: {
@@ -336,7 +336,7 @@ Also ensures the project has_document edge exists for discovery.`,
 					},
 					role: {
 						type: 'string',
-						description: 'Edge role (e.g., deliverable, scratch)'
+						description: 'Edge role (e.g., primary, scratch)'
 					},
 					content: {
 						type: 'string',
@@ -357,7 +357,7 @@ Also ensures the project has_document edge exists for discovery.`,
 		function: {
 			name: 'link_onto_entities',
 			description: `Create a relationship edge between two ontology entities.
-Use this to connect plans, goals, milestones, tasks, documents, outputs, risks, or decisions.
+Use this to connect plans, goals, milestones, tasks, documents, risks, or requirements.
 Avoid creating project edges unless the entity is truly a root-level item.`,
 			parameters: {
 				type: 'object',
@@ -365,7 +365,7 @@ Avoid creating project edges unless the entity is truly a root-level item.`,
 					src_kind: {
 						type: 'string',
 						description:
-							'Source entity kind (project, plan, goal, milestone, task, document, output, risk, decision, requirement, metric, source)'
+							'Source entity kind (project, plan, goal, milestone, task, document, risk, requirement, metric, source)'
 					},
 					src_id: {
 						type: 'string',
@@ -374,7 +374,7 @@ Avoid creating project edges unless the entity is truly a root-level item.`,
 					dst_kind: {
 						type: 'string',
 						description:
-							'Destination entity kind (project, plan, goal, milestone, task, document, output, risk, decision, requirement, metric, source)'
+							'Destination entity kind (project, plan, goal, milestone, task, document, risk, requirement, metric, source)'
 					},
 					dst_id: {
 						type: 'string',
@@ -383,7 +383,7 @@ Avoid creating project edges unless the entity is truly a root-level item.`,
 					rel: {
 						type: 'string',
 						description:
-							'Relationship type (e.g., supports_goal, targets_milestone, produces, references, has_milestone, addresses, mitigates)'
+							'Relationship type (e.g., supports_goal, targets_milestone, references, has_milestone, addresses, mitigates)'
 					},
 					props: {
 						type: 'object',
@@ -488,13 +488,13 @@ Use dry_run to preview edge changes before applying.`,
 
 This is the PRIMARY tool for creating projects. It uses **entities + relationships only**
 to build the project graph:
-- Entities represent goals, plans, tasks, documents, outputs, risks, decisions, etc.
+- Entities represent goals, plans, tasks, documents, risks, requirements, etc.
 - Relationships are directional pairs that drive containment + semantic edges.
 - Context document linkage (document.context.project) is supported.
 
 **IMPORTANT**: Extract what the user explicitly mentioned. Don't add structure they didn't ask for:
 - Project name from context
-- Appropriate type_key classification using project.{realm}.{deliverable}[.{variant}]
+- Appropriate type_key classification using project.{realm}.{domain}[.{variant}]
 - Start date (default to today if not specified)
 - Facets (context, scale, stage) from user intent
 - Props extracted from user's message - CRITICAL!
@@ -502,7 +502,7 @@ to build the project graph:
 **Start Simple (CRITICAL):**
 - Most new projects just need: project + 1 goal (if an outcome is stated) + maybe a few tasks (if explicit actions are mentioned)
 - Don't add plans/milestones unless user mentions phases, dates, or workstreams
-- Don't add peripheral entities (risks, decisions, documents, requirements, metrics, sources, outputs) unless explicitly mentioned
+- Don't add peripheral entities (risks, documents, requirements, metrics, sources) unless explicitly mentioned
 - Simple projects are GOOD - structure grows over time
 
 **Props Extraction (CRITICAL)**:
@@ -568,7 +568,7 @@ PROJECT WITH PHASES (user mentioned workstreams):
 {
   project: {
     name: string (REQUIRED - infer from user message),
-    type_key: string (REQUIRED - classify via project.{realm}.{deliverable}[.{variant}]),
+    type_key: string (REQUIRED - classify via project.{realm}.{domain}[.{variant}]),
     description?: string (infer from user message),
     state_key?: string (default: "planning", valid: planning|active|completed|cancelled),
     props?: { facets?: { context?, scale?, stage? } },
@@ -576,7 +576,7 @@ PROJECT WITH PHASES (user mentioned workstreams):
     end_at?: ISO datetime
   },
   entities: [
-    { temp_id: string, kind: "goal|milestone|plan|task|document|output|risk|decision|requirement|metric|source", ... }
+    { temp_id: string, kind: "goal|milestone|plan|task|document|risk|requirement|metric|source", ... }
   ],
   relationships: [
     [ { temp_id, kind }, { temp_id, kind } ],
@@ -603,7 +603,7 @@ entities + relationships are required even if empty (use [] for no links or clar
 							type_key: {
 								type: 'string',
 								description:
-									'Type classification (REQUIRED). Must use project.{realm}.{deliverable}[.{variant}] format with 3-4 segments. Realm MUST be one of: creative, technical, business, service, education, personal. Examples: "project.business.product_launch", "project.creative.book", "project.technical.app.mobile". Use the "What does success look like?" test to pick the right realm.'
+									'Type classification (REQUIRED). Must use project.{realm}.{domain}[.{variant}] format with 3-4 segments. Realm MUST be one of: creative, technical, business, service, education, personal. Examples: "project.business.product_launch", "project.creative.book", "project.technical.app.mobile". Use the "What does success look like?" test to pick the right realm.'
 							},
 							description: {
 								type: 'string',
@@ -701,9 +701,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 										'plan',
 										'task',
 										'document',
-										'output',
 										'risk',
-										'decision',
 										'requirement',
 										'metric',
 										'source'
@@ -721,9 +719,6 @@ DO NOT leave props empty when information is available in the conversation!`,
 								start_date: { type: 'string' },
 								end_date: { type: 'string' },
 								body_markdown: { type: 'string' },
-								decision_at: { type: 'string' },
-								rationale: { type: 'string' },
-								outcome: { type: 'string' },
 								impact: { type: 'string' },
 								probability: { type: 'number' },
 								content: { type: 'string' },
@@ -1147,40 +1142,6 @@ Use for edits to titles, states, body markdown, or metadata.`,
 	{
 		type: 'function',
 		function: {
-			name: 'update_onto_output',
-			description: `Update an existing ontology output.
-Use for edits to output name, state, description, or metadata.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					output_id: {
-						type: 'string',
-						description: 'Output UUID (required)'
-					},
-					name: {
-						type: 'string',
-						description: 'New output name'
-					},
-					state_key: {
-						type: 'string',
-						description: 'Output state (draft, in_progress, review, published)'
-					},
-					description: {
-						type: 'string',
-						description: 'Output description'
-					},
-					props: {
-						type: 'object',
-						description: 'Metadata fields to set on the output props'
-					}
-				},
-				required: ['output_id']
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
 			name: 'update_onto_milestone',
 			description: `Update an existing ontology milestone.
 Use for edits to title, due date, state, or metadata.`,
@@ -1267,40 +1228,6 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 					}
 				},
 				required: ['risk_id']
-			}
-		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'update_onto_decision',
-			description: `Update an existing ontology decision.
-Use for edits to title, decision date, rationale, or metadata.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					decision_id: {
-						type: 'string',
-						description: 'Decision UUID (required)'
-					},
-					title: {
-						type: 'string',
-						description: 'Decision title'
-					},
-					decision_at: {
-						type: 'string',
-						description: 'Decision date (ISO timestamp)'
-					},
-					rationale: {
-						type: 'string',
-						description: 'Decision rationale'
-					},
-					props: {
-						type: 'object',
-						description: 'Metadata fields to merge into decision props'
-					}
-				},
-				required: ['decision_id']
 			}
 		}
 	},

@@ -15,10 +15,8 @@ import type {
 	OntoTask,
 	OntoGoal,
 	OntoMilestone,
-	OntoOutput,
 	OntoDocument,
 	OntoRisk,
-	OntoDecision,
 	OntoRequirement,
 	OntoMetric,
 	OntoSource,
@@ -43,13 +41,11 @@ export interface ProjectGraphData {
 	tasks: OntoTask[];
 	goals: OntoGoal[];
 	milestones: OntoMilestone[];
-	outputs: OntoOutput[];
 	documents: OntoDocument[];
 	requirements: OntoRequirement[];
 	metrics: OntoMetric[];
 	sources: OntoSource[];
 	risks: OntoRisk[];
-	decisions: OntoDecision[];
 	edges: OntoEdge[];
 }
 
@@ -62,10 +58,8 @@ export type AnyEntity =
 	| OntoTask
 	| OntoGoal
 	| OntoMilestone
-	| OntoOutput
 	| OntoDocument
 	| OntoRisk
-	| OntoDecision
 	| OntoRequirement
 	| OntoMetric
 	| OntoSource;
@@ -79,10 +73,8 @@ export interface EntityTypeMap {
 	task: OntoTask;
 	goal: OntoGoal;
 	milestone: OntoMilestone;
-	output: OntoOutput;
 	document: OntoDocument;
 	risk: OntoRisk;
-	decision: OntoDecision;
 	requirement: OntoRequirement;
 	metric: OntoMetric;
 	source: OntoSource;
@@ -204,12 +196,6 @@ export interface ProjectGraph {
 
 	/** Get risks for the project (via has_risk edge) */
 	getRisksForProject(): OntoRisk[];
-
-	/** Get decisions for the project */
-	getDecisionsForProject(): OntoDecision[];
-
-	/** Get outputs directly under the project (via has_output edge) */
-	getOutputsForProject(): OntoOutput[];
 
 	/** Get requirements for the project (via has_requirement edge) */
 	getRequirementsForProject(): OntoRequirement[];

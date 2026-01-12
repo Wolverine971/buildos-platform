@@ -14,15 +14,7 @@
 
 	interface Props {
 		state: string;
-		entityKind:
-			| 'project'
-			| 'plan'
-			| 'task'
-			| 'output'
-			| 'document'
-			| 'goal'
-			| 'milestone'
-			| 'risk';
+		entityKind: 'project' | 'plan' | 'task' | 'document' | 'goal' | 'milestone' | 'risk';
 		class?: string;
 	}
 

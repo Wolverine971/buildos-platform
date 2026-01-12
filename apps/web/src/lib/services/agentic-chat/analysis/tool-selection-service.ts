@@ -89,10 +89,8 @@ export class ToolSelectionService {
 			'goal',
 			'plan',
 			'document',
-			'output',
 			'milestone',
 			'risk',
-			'decision',
 			'requirement'
 		].filter((type) => type !== focusType);
 

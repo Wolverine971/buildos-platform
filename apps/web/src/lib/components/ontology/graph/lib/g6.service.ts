@@ -4,7 +4,6 @@ import type {
 	OntoDocument,
 	OntoGoal,
 	OntoMilestone,
-	OntoOutput,
 	OntoPlan,
 	OntoProject,
 	OntoTask,
@@ -134,48 +133,6 @@ export class G6GraphService {
 				},
 				type: 'circle',
 				size: 25,
-				style: {
-					fill: colors.fill,
-					stroke: colors.stroke,
-					lineWidth: 2
-				},
-				labelCfg: {
-					style: {
-						fill: '#374151',
-						fontSize: 10
-					}
-				}
-			};
-		});
-	}
-
-	static outputsToNodes(outputs: OntoOutput[]): G6NodeData[] {
-		const defaultColors = { fill: '#dbeafe', stroke: '#3b82f6' };
-		const primitiveColors: Record<string, { fill: string; stroke: string }> = {
-			document: defaultColors,
-			event: { fill: '#ede9fe', stroke: '#8b5cf6' },
-			collection: { fill: '#fef3c7', stroke: '#f59e0b' },
-			external: { fill: '#d1fae5', stroke: '#10b981' }
-		};
-
-		return outputs.map((output) => {
-			const parts = (output.type_key ?? '').split('.');
-			const primitive = parts[1] ?? 'document';
-			const colors = primitiveColors[primitive] ?? defaultColors;
-
-			return {
-				id: output.id,
-				label: output.name,
-				nodeType: 'output',
-				metadata: {
-					projectId: output.project_id,
-					typeKey: output.type_key,
-					state: output.state_key,
-					primitive,
-					props: output.props
-				},
-				type: 'diamond',
-				size: 30,
 				style: {
 					fill: colors.fill,
 					stroke: colors.stroke,
@@ -342,11 +299,7 @@ export class G6GraphService {
 			references: { stroke: '#3b82f6', lineWidth: 1 },
 			referenced_by: { stroke: '#3b82f6', lineWidth: 1 },
 			has_document: { stroke: '#3b82f6', lineWidth: 1 },
-			has_context_document: { stroke: '#3b82f6', lineWidth: 2 },
-			// Production/output relationships
-			produces: { stroke: '#8b5cf6', lineWidth: 2 },
-			produced_by: { stroke: '#8b5cf6', lineWidth: 2 },
-			has_output: { stroke: '#8b5cf6', lineWidth: 2 }
+			has_context_document: { stroke: '#3b82f6', lineWidth: 2 }
 		};
 		return styles[rel] ?? { stroke: '#9ca3af', lineWidth: 1 };
 	}
@@ -381,20 +334,11 @@ export class G6GraphService {
 		let nodes: G6NodeData[] = [];
 		let edges: G6EdgeData[] = [];
 
-		const allowedKinds = new Set([
-			'project',
-			'task',
-			'output',
-			'document',
-			'plan',
-			'goal',
-			'milestone'
-		]);
+		const allowedKinds = new Set(['project', 'task', 'document', 'plan', 'goal', 'milestone']);
 
 		nodes = [
 			...this.projectsToNodes(data.projects),
 			...this.tasksToNodes(data.tasks),
-			...this.outputsToNodes(data.outputs),
 			...this.documentsToNodes(data.documents),
 			...this.plansToNodes(data.plans),
 			...this.goalsToNodes(data.goals),

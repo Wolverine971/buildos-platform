@@ -26,8 +26,6 @@ export interface LinkedEntitiesResult {
 	milestones: LinkedEntity[];
 	documents: LinkedEntity[];
 	dependentTasks: LinkedEntity[];
-	outputs: LinkedEntity[];
-	decisions: LinkedEntity[];
 }
 
 /**
@@ -46,9 +44,7 @@ export async function resolveLinkedEntities(
 		goals: [],
 		milestones: [],
 		documents: [],
-		dependentTasks: [],
-		outputs: [],
-		decisions: []
+		dependentTasks: []
 	};
 
 	// Fetch all edges where task is source or destination
@@ -67,8 +63,6 @@ export async function resolveLinkedEntities(
 	const milestoneIds: string[] = [];
 	const documentIds: string[] = [];
 	const taskIds: string[] = [];
-	const outputIds: string[] = [];
-	const decisionIds: string[] = [];
 
 	// Track edge info for each entity
 	interface EdgeInfo {
@@ -108,25 +102,11 @@ export async function resolveLinkedEntities(
 					taskIds.push(linkedId);
 				}
 				break;
-			case 'output':
-				outputIds.push(linkedId);
-				break;
-			case 'decision':
-				decisionIds.push(linkedId);
-				break;
 		}
 	}
 
 	// Fetch entity details in parallel
-	const [
-		plansData,
-		goalsData,
-		milestonesData,
-		documentsData,
-		tasksData,
-		outputsData,
-		decisionsData
-	] = await Promise.all([
+	const [plansData, goalsData, milestonesData, documentsData, tasksData] = await Promise.all([
 		planIds.length > 0
 			? supabase
 					.from('onto_plans')
@@ -161,20 +141,6 @@ export async function resolveLinkedEntities(
 					.select('id, title, state_key, type_key, priority')
 					.is('deleted_at', null)
 					.in('id', taskIds)
-			: Promise.resolve({ data: [] }),
-		outputIds.length > 0
-			? supabase
-					.from('onto_outputs')
-					.select('id, name, type_key, state_key')
-					.is('deleted_at', null)
-					.in('id', outputIds)
-			: Promise.resolve({ data: [] }),
-		decisionIds.length > 0
-			? supabase
-					.from('onto_decisions')
-					.select('id, title, state_key, type_key, decision_at')
-					.is('deleted_at', null)
-					.in('id', decisionIds)
 			: Promise.resolve({ data: [] })
 	]);
 
@@ -259,34 +225,6 @@ export async function resolveLinkedEntities(
 		});
 	}
 
-	if (outputsData.data) {
-		result.outputs = outputsData.data.map((o) => {
-			const edgeInfo = edgeMap.get(o.id);
-			return {
-				id: o.id,
-				name: o.name,
-				type_key: o.type_key,
-				state_key: o.state_key,
-				edge_rel: edgeInfo?.rel || 'produces',
-				edge_direction: edgeInfo?.direction || 'outgoing'
-			};
-		});
-	}
-
-	if (decisionsData.data) {
-		result.decisions = decisionsData.data.map((d) => {
-			const edgeInfo = edgeMap.get(d.id);
-			return {
-				id: d.id,
-				title: d.title,
-				type_key: d.type_key,
-				state_key: d.state_key,
-				edge_rel: edgeInfo?.rel || 'references',
-				edge_direction: edgeInfo?.direction || 'outgoing'
-			};
-		});
-	}
-
 	return result;
 }
 
@@ -299,8 +237,6 @@ export function hasLinkedEntities(linked: LinkedEntitiesResult): boolean {
 		linked.goals.length > 0 ||
 		linked.milestones.length > 0 ||
 		linked.documents.length > 0 ||
-		linked.dependentTasks.length > 0 ||
-		linked.outputs.length > 0 ||
-		linked.decisions.length > 0
+		linked.dependentTasks.length > 0
 	);
 }

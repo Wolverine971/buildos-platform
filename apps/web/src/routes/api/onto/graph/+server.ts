@@ -90,7 +90,6 @@ async function handleSingleProjectGraph(
 			projects: [data.project],
 			edges: data.edges,
 			tasks: data.tasks,
-			outputs: data.outputs,
 			documents: data.documents,
 			plans: data.plans,
 			goals: data.goals,
@@ -121,7 +120,6 @@ async function handleSingleProjectGraph(
 			activeProjects: data.project.state_key === 'active' ? 1 : 0,
 			totalEdges: sourceData.edges.length,
 			totalTasks: data.tasks.length,
-			totalOutputs: data.outputs.length,
 			totalDocuments: data.documents.length,
 			totalPlans: data.plans.length,
 			totalGoals: data.goals.length,
@@ -197,7 +195,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				projects: [],
 				edges: [],
 				tasks: [],
-				outputs: [],
 				documents: [],
 				plans: [],
 				goals: [],
@@ -212,7 +209,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 					activeProjects: 0,
 					totalEdges: 0,
 					totalTasks: 0,
-					totalOutputs: 0,
 					totalDocuments: 0,
 					totalPlans: 0,
 					totalGoals: 0,
@@ -235,7 +231,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			projects: [],
 			edges: [],
 			tasks: [],
-			outputs: [],
 			documents: [],
 			plans: [],
 			goals: [],
@@ -248,7 +243,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 			sourceData.projects.push(project);
 			sourceData.tasks.push(...graph.tasks);
-			sourceData.outputs.push(...graph.outputs);
 			sourceData.documents.push(...graph.documents);
 			sourceData.plans.push(...graph.plans);
 			sourceData.goals.push(...graph.goals);
@@ -281,7 +275,6 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 				.length,
 			totalEdges: sourceData.edges.length,
 			totalTasks: sourceData.tasks.length,
-			totalOutputs: sourceData.outputs.length,
 			totalDocuments: sourceData.documents.length,
 			totalPlans: sourceData.plans.length,
 			totalGoals: sourceData.goals.length,

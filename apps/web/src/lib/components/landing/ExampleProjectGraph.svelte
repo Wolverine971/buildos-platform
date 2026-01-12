@@ -4,7 +4,7 @@
 
 	Displays a public example ontology project graph on the landing page.
 	Demonstrates how BuildOS organizes complex projects with deeply nested
-	goals, milestones, plans, tasks, risks, and decisions.
+	goals, milestones, plans, tasks, and risks.
 
 	Features:
 	- Randomly selects from available public example projects
@@ -26,7 +26,6 @@
 		AlertTriangle,
 		Maximize2,
 		ChevronDown,
-		Scale,
 		Shuffle
 	} from 'lucide-svelte';
 	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
@@ -485,8 +484,6 @@
 									<FileText class="w-4 h-4 text-sky-500" />
 								{:else if selectedNode.type === 'risk'}
 									<AlertTriangle class="w-4 h-4 text-red-500" />
-								{:else if selectedNode.type === 'decision'}
-									<Scale class="w-4 h-4 text-violet-500" />
 								{:else}
 									<GitBranch class="w-4 h-4 text-accent" />
 								{/if}

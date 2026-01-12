@@ -69,9 +69,7 @@
 		goals: [],
 		milestones: [],
 		documents: [],
-		outputs: [],
 		risks: [],
-		decisions: [],
 		events: []
 	});
 
@@ -83,9 +81,7 @@
 		goal: [],
 		milestone: [],
 		document: [],
-		output: [],
 		risk: [],
-		decision: [],
 		event: []
 	});
 	let loadingAvailableKind = $state<EntityKind | null>(null);
@@ -119,9 +115,7 @@
 		goal: linkedEntities.goals,
 		milestone: linkedEntities.milestones,
 		document: linkedEntities.documents,
-		output: linkedEntities.outputs,
 		risk: linkedEntities.risks,
-		decision: linkedEntities.decisions,
 		event: linkedEntities.events
 	}));
 
@@ -133,9 +127,7 @@
 			goal: -1,
 			milestone: -1,
 			document: -1,
-			output: -1,
 			risk: -1,
-			decision: -1,
 			event: -1
 		};
 		for (const kind of [
@@ -144,9 +136,7 @@
 			'goal',
 			'milestone',
 			'document',
-			'output',
 			'risk',
-			'decision',
 			'event'
 		] as EntityKind[]) {
 			if (!loadedAvailableKinds.has(kind)) {
@@ -170,9 +160,7 @@
 				goal: [],
 				milestone: [],
 				document: [],
-				output: [],
 				risk: [],
-				decision: [],
 				event: []
 			};
 
@@ -185,9 +173,7 @@
 					goals: initialLinkedEntities.goals ?? [],
 					milestones: initialLinkedEntities.milestones ?? [],
 					documents: initialLinkedEntities.documents ?? [],
-					outputs: initialLinkedEntities.outputs ?? [],
 					risks: initialLinkedEntities.risks ?? [],
-					decisions: initialLinkedEntities.decisions ?? [],
 					events: initialLinkedEntities.events ?? []
 				};
 				isLoading = false;

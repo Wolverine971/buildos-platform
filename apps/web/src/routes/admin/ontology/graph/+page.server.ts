@@ -4,12 +4,10 @@ import type { PageServerLoad } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type {
 	GraphStats,
-	OntoDecision,
 	OntoDocument,
 	OntoEdge,
 	OntoGoal,
 	OntoMilestone,
-	OntoOutput,
 	OntoPlan,
 	OntoProject,
 	OntoRisk,
@@ -45,75 +43,63 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 			projectsRes,
 			edgesRes,
 			tasksRes,
-			outputsRes,
 			documentsRes,
 			plansRes,
 			goalsRes,
 			milestonesRes,
-			risksRes,
-			decisionsRes
+			risksRes
 		] = await Promise.all([
 			adminClient.from('onto_projects').select('*'),
 			adminClient.from('onto_edges').select('*'),
 			adminClient.from('onto_tasks').select('*'),
-			adminClient.from('onto_outputs').select('*'),
 			adminClient.from('onto_documents').select('*'),
 			adminClient.from('onto_plans').select('*'),
 			adminClient.from('onto_goals').select('*'),
 			adminClient.from('onto_milestones').select('*'),
-			adminClient.from('onto_risks').select('*'),
-			adminClient.from('onto_decisions').select('*')
+			adminClient.from('onto_risks').select('*')
 		]);
 
 		if (projectsRes.error) throw projectsRes.error;
 		if (edgesRes.error) throw edgesRes.error;
 		if (tasksRes.error) throw tasksRes.error;
-		if (outputsRes.error) throw outputsRes.error;
 		if (documentsRes.error) throw documentsRes.error;
 		if (plansRes.error) throw plansRes.error;
 		if (goalsRes.error) throw goalsRes.error;
 		if (milestonesRes.error) throw milestonesRes.error;
 		if (risksRes.error) throw risksRes.error;
-		if (decisionsRes.error) throw decisionsRes.error;
 
 		const projects = (projectsRes.data ?? []) as OntoProject[];
 		const edges = ((edgesRes.data ?? []) as OntoEdge[]).filter(
 			(edge) => edge.src_kind !== 'template' && edge.dst_kind !== 'template'
 		);
 		const tasks = (tasksRes.data ?? []) as OntoTask[];
-		const outputs = (outputsRes.data ?? []) as OntoOutput[];
 		const documents = (documentsRes.data ?? []) as OntoDocument[];
 		const plans = (plansRes.data ?? []) as OntoPlan[];
 		const goals = (goalsRes.data ?? []) as OntoGoal[];
 		const milestones = (milestonesRes.data ?? []) as OntoMilestone[];
 		const risks = (risksRes.data ?? []) as OntoRisk[];
-		const decisions = (decisionsRes.data ?? []) as OntoDecision[];
 
 		const stats: GraphStats = {
 			totalProjects: projects.length,
 			activeProjects: projects.filter((project) => project.state_key === 'active').length,
 			totalEdges: edges.length,
 			totalTasks: tasks.length,
-			totalOutputs: outputs.length,
 			totalDocuments: documents.length,
 			totalPlans: plans.length,
 			totalGoals: goals.length,
 			totalMilestones: milestones.length,
-			totalRisks: risks.length,
-			totalDecisions: decisions.length
+			totalRisks: risks.length
 		};
 
 		return {
 			projects,
 			edges,
 			tasks,
-			outputs,
 			documents,
 			plans,
 			goals,
 			milestones,
 			risks,
-			decisions,
 			stats,
 			user: {
 				id: user.id,

@@ -40,7 +40,7 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 		highlights: [
 			'For exploring ideas across multiple projects or planning the week ahead, suggest global mode. This gives access to all projects, calendar, and cross-project tools.',
 			'When working within a single project—asking "what is next?", creating tasks, or updating plans—recommend project mode. The agent loads that project context document and can reason about its specific needs.',
-			'Within project mode, users can narrow focus further: users can say "Let me talk about the deployment task" or "Show me the API documentation document." The ProjectFocusSelector lets them choose tasks, goals, plans, documents, or outputs.',
+			'Within project mode, users can narrow focus further: users can say "Let me talk about the deployment task" or "Show me the API documentation document." The ProjectFocusSelector lets them choose tasks, goals, plans, or documents.',
 			'For turning a spark of an idea into a structured project, use project_create mode. This guides through type_key classification, prop inference, facet selection, and initial planning.',
 			'Focused entity conversations are perfect for detailed work on one task, goal, plan, or document: breaking it down, clarifying requirements, checking dependencies, or updating status.',
 			'Explain that each mode loads different context: project mode loads the project narrative story from context documents; focus mode loads entity details, blockers, and linked work.',
@@ -67,7 +67,7 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 			'Move accepted ideas into the ontology so plans, tasks, goals, and documents stay linked and queryable in the knowledge graph.',
 		highlights: [
 			'When creating a project, always set the type_key (e.g., project.creative.book or project.technical.app) and infer the three facets (context, scale, stage) to keep the graph queryable.',
-			'Context documents capture the narrative story of a project—why it matters, what success looks like, and the history of decisions. These come from brain dumps and persist as the project evolves.',
+			'Context documents capture the narrative story of a project—why it matters, what success looks like, and the history of key updates. These come from brain dumps and persist as the project evolves.',
 			'The ontology creates relationships: tasks belong to plans, plans support goals, everything connects to project context. This web of connections helps agents understand dependencies and the bigger picture.',
 			'Props live in JSONB—populate them with concrete facts from the conversation (tech_stack, audience, budget, timelines).',
 			'When the agent references context documents during planning, it has access to the full narrative story, not just task lists. This produces better, more aligned suggestions.'

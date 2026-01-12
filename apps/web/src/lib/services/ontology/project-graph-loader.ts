@@ -25,10 +25,8 @@ import type {
 	OntoTask,
 	OntoGoal,
 	OntoMilestone,
-	OntoOutput,
 	OntoDocument,
 	OntoRisk,
-	OntoDecision,
 	OntoRequirement,
 	OntoMetric,
 	OntoSource,
@@ -69,13 +67,11 @@ export async function loadProjectGraphData(
 		tasksResult,
 		goalsResult,
 		milestonesResult,
-		outputsResult,
 		documentsResult,
 		requirementsResult,
 		metricsResult,
 		sourcesResult,
 		risksResult,
-		decisionsResult,
 		edgesResult
 	] = await Promise.all([
 		supabase
@@ -112,13 +108,6 @@ export async function loadProjectGraphData(
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
-		shouldFetch('output')
-			? supabase
-					.from('onto_outputs')
-					.select('*')
-					.eq('project_id', projectId)
-					.is('deleted_at', null)
-			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('document')
 			? supabase
 					.from('onto_documents')
@@ -142,13 +131,6 @@ export async function loadProjectGraphData(
 		shouldFetch('risk')
 			? supabase
 					.from('onto_risks')
-					.select('*')
-					.eq('project_id', projectId)
-					.is('deleted_at', null)
-			: Promise.resolve({ data: [], error: null }),
-		shouldFetch('decision')
-			? supabase
-					.from('onto_decisions')
 					.select('*')
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
@@ -177,13 +159,11 @@ export async function loadProjectGraphData(
 	logError('tasks', tasksResult.error);
 	logError('goals', goalsResult.error);
 	logError('milestones', milestonesResult.error);
-	logError('outputs', outputsResult.error);
 	logError('documents', documentsResult.error);
 	logError('requirements', requirementsResult.error);
 	logError('metrics', metricsResult.error);
 	logError('sources', sourcesResult.error);
 	logError('risks', risksResult.error);
-	logError('decisions', decisionsResult.error);
 	logError('edges', edgesResult.error);
 
 	return {
@@ -192,13 +172,11 @@ export async function loadProjectGraphData(
 		tasks: (tasksResult.data ?? []) as OntoTask[],
 		goals: (goalsResult.data ?? []) as OntoGoal[],
 		milestones: (milestonesResult.data ?? []) as OntoMilestone[],
-		outputs: (outputsResult.data ?? []) as OntoOutput[],
 		documents: (documentsResult.data ?? []) as OntoDocument[],
 		requirements: (requirementsResult.data ?? []) as OntoRequirement[],
 		metrics: (metricsResult.data ?? []) as OntoMetric[],
 		sources: (sourcesResult.data ?? []) as OntoSource[],
 		risks: (risksResult.data ?? []) as OntoRisk[],
-		decisions: (decisionsResult.data ?? []) as OntoDecision[],
 		edges: (edgesResult.data ?? []) as OntoEdge[]
 	};
 }
@@ -240,13 +218,11 @@ export async function loadMultipleProjectGraphs(
 		tasksResult,
 		goalsResult,
 		milestonesResult,
-		outputsResult,
 		documentsResult,
 		requirementsResult,
 		metricsResult,
 		sourcesResult,
 		risksResult,
-		decisionsResult,
 		edgesResult
 	] = await Promise.all([
 		supabase.from('onto_projects').select('*').in('id', projectIds).is('deleted_at', null),
@@ -278,13 +254,6 @@ export async function loadMultipleProjectGraphs(
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
-		shouldFetch('output')
-			? supabase
-					.from('onto_outputs')
-					.select('*')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
-			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('document')
 			? supabase
 					.from('onto_documents')
@@ -308,13 +277,6 @@ export async function loadMultipleProjectGraphs(
 		shouldFetch('risk')
 			? supabase
 					.from('onto_risks')
-					.select('*')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
-			: Promise.resolve({ data: [], error: null }),
-		shouldFetch('decision')
-			? supabase
-					.from('onto_decisions')
 					.select('*')
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
@@ -346,7 +308,6 @@ export async function loadMultipleProjectGraphs(
 	const tasksByProject = groupByProjectId((tasksResult.data ?? []) as OntoTask[]);
 	const goalsByProject = groupByProjectId((goalsResult.data ?? []) as OntoGoal[]);
 	const milestonesByProject = groupByProjectId((milestonesResult.data ?? []) as OntoMilestone[]);
-	const outputsByProject = groupByProjectId((outputsResult.data ?? []) as OntoOutput[]);
 	const documentsByProject = groupByProjectId((documentsResult.data ?? []) as OntoDocument[]);
 	const requirementsByProject = groupByProjectId(
 		(requirementsResult.data ?? []) as OntoRequirement[]
@@ -354,7 +315,6 @@ export async function loadMultipleProjectGraphs(
 	const metricsByProject = groupByProjectId((metricsResult.data ?? []) as OntoMetric[]);
 	const sourcesByProject = groupByProjectId((sourcesResult.data ?? []) as OntoSource[]);
 	const risksByProject = groupByProjectId((risksResult.data ?? []) as OntoRisk[]);
-	const decisionsByProject = groupByProjectId((decisionsResult.data ?? []) as OntoDecision[]);
 	const edgesByProject = groupByProjectId((edgesResult.data ?? []) as OntoEdge[]);
 
 	// Build result map
@@ -373,13 +333,11 @@ export async function loadMultipleProjectGraphs(
 			tasks: tasksByProject.get(projectId) ?? [],
 			goals: goalsByProject.get(projectId) ?? [],
 			milestones: milestonesByProject.get(projectId) ?? [],
-			outputs: outputsByProject.get(projectId) ?? [],
 			documents: documentsByProject.get(projectId) ?? [],
 			requirements: requirementsByProject.get(projectId) ?? [],
 			metrics: metricsByProject.get(projectId) ?? [],
 			sources: sourcesByProject.get(projectId) ?? [],
 			risks: risksByProject.get(projectId) ?? [],
-			decisions: decisionsByProject.get(projectId) ?? [],
 			edges: edgesByProject.get(projectId) ?? []
 		});
 	}

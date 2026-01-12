@@ -3,14 +3,13 @@
 	Mobile Command Center Component
 
 	Ultra-compact mobile layout for project data models.
-	Organizes 9 entity types into 5 rows with single-expansion behavior.
+	Organizes 7 entity types into 4 rows with single-expansion behavior.
 
 	Row Layout:
 	1. Goals + Milestones (Strategic)
 	2. Tasks + Plans (Execution)
-	3. Risks + Decisions (Governance)
-	4. Documents + Outputs (Artifacts)
-	5. Events (Scheduling) - Standalone
+	3. Risks + Documents (Context)
+	4. Events (Scheduling) - Standalone
 
 	Documentation:
 	- Mobile Command Center: /apps/web/docs/features/mobile-command-center/MOBILE_COMMAND_CENTER_SPEC.md
@@ -24,34 +23,13 @@
 		Calendar,
 		Clock,
 		AlertTriangle,
-		Scale,
-		FileText,
-		Layers
+		FileText
 	} from 'lucide-svelte';
 	import CommandCenterRow from './CommandCenterRow.svelte';
 	import CommandCenterPanel from './CommandCenterPanel.svelte';
-	import type {
-		Goal,
-		Milestone,
-		Task,
-		Plan,
-		Risk,
-		Decision,
-		Document,
-		Output,
-		OntoEvent
-	} from '$lib/types/onto';
+	import type { Goal, Milestone, Task, Plan, Risk, Document, OntoEvent } from '$lib/types/onto';
 
-	type PanelKey =
-		| 'goals'
-		| 'milestones'
-		| 'tasks'
-		| 'plans'
-		| 'risks'
-		| 'decisions'
-		| 'documents'
-		| 'outputs'
-		| 'events';
+	type PanelKey = 'goals' | 'milestones' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
 
 	interface Props {
 		// Data
@@ -60,9 +38,7 @@
 		tasks: Task[];
 		plans: Plan[];
 		risks: Risk[];
-		decisions: Decision[];
 		documents: Document[];
-		outputs: Output[];
 		events: OntoEvent[];
 
 		// Add callbacks
@@ -71,9 +47,7 @@
 		onAddTask: () => void;
 		onAddPlan: () => void;
 		onAddRisk: () => void;
-		onAddDecision: () => void;
 		onAddDocument: () => void;
-		onAddOutput: () => void;
 		onAddEvent: () => void;
 
 		// Edit callbacks
@@ -82,9 +56,7 @@
 		onEditTask: (id: string) => void;
 		onEditPlan: (id: string) => void;
 		onEditRisk: (id: string) => void;
-		onEditDecision: (id: string) => void;
 		onEditDocument: (id: string) => void;
-		onEditOutput: (id: string) => void;
 		onEditEvent: (id: string) => void;
 	}
 
@@ -94,27 +66,21 @@
 		tasks,
 		plans,
 		risks,
-		decisions,
 		documents,
-		outputs,
 		events,
 		onAddGoal,
 		onAddMilestone,
 		onAddTask,
 		onAddPlan,
 		onAddRisk,
-		onAddDecision,
 		onAddDocument,
-		onAddOutput,
 		onAddEvent,
 		onEditGoal,
 		onEditMilestone,
 		onEditTask,
 		onEditPlan,
 		onEditRisk,
-		onEditDecision,
 		onEditDocument,
-		onEditOutput,
 		onEditEvent
 	}: Props = $props();
 
@@ -135,10 +101,8 @@
 			milestones: 'goals',
 			tasks: 'plans',
 			plans: 'tasks',
-			risks: 'decisions',
-			decisions: 'risks',
-			documents: 'outputs',
-			outputs: 'documents'
+			risks: 'documents',
+			documents: 'risks'
 		};
 		return expandedPanel === pairs[key];
 	}
@@ -195,38 +159,12 @@
 		}
 	}
 
-	function getDecisionStateColor(state: string): string {
-		switch (state) {
-			case 'made':
-				return 'text-emerald-500';
-			case 'deferred':
-				return 'text-amber-500';
-			case 'reversed':
-				return 'text-red-500';
-			default:
-				return 'text-muted-foreground';
-		}
-	}
-
 	function getPlanStateColor(state: string): string {
 		switch (state) {
 			case 'completed':
 				return 'text-emerald-500';
 			case 'active':
 				return 'text-amber-500';
-			default:
-				return 'text-muted-foreground';
-		}
-	}
-
-	function getOutputStateColor(state: string): string {
-		switch (state) {
-			case 'published':
-				return 'text-emerald-500';
-			case 'review':
-				return 'text-amber-500';
-			case 'in_progress':
-				return 'text-sky-500';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -396,7 +334,7 @@
 		</CommandCenterPanel>
 	</CommandCenterRow>
 
-	<!-- Row 3: Risks + Decisions (Governance) -->
+	<!-- Row 3: Risks + Documents (Context) -->
 	<CommandCenterRow>
 		<!-- Risks Panel -->
 		<CommandCenterPanel
@@ -429,40 +367,6 @@
 			{/each}
 		</CommandCenterPanel>
 
-		<!-- Decisions Panel -->
-		<CommandCenterPanel
-			panelKey="decisions"
-			label="Decisions"
-			icon={Scale}
-			iconColor="text-violet-500"
-			count={decisions.length}
-			expanded={expandedPanel === 'decisions'}
-			partnerExpanded={isPartnerExpanded('decisions')}
-			onToggle={togglePanel}
-			onAdd={onAddDecision}
-			emptyMessage="Record key choices"
-		>
-			{#each decisions as decision (decision.id)}
-				<button
-					type="button"
-					onclick={() => onEditDecision(decision.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
-				>
-					<div class="flex items-center justify-between gap-2">
-						<span class="text-xs text-foreground truncate">{decision.title}</span>
-						<span
-							class="text-[10px] capitalize shrink-0 {getDecisionStateColor(
-								decision.state_key
-							)}">{decision.state_key}</span
-						>
-					</div>
-				</button>
-			{/each}
-		</CommandCenterPanel>
-	</CommandCenterRow>
-
-	<!-- Row 4: Documents + Outputs (Artifacts) -->
-	<CommandCenterRow>
 		<!-- Documents Panel -->
 		<CommandCenterPanel
 			panelKey="documents"
@@ -493,40 +397,9 @@
 				</button>
 			{/each}
 		</CommandCenterPanel>
-
-		<!-- Outputs Panel -->
-		<CommandCenterPanel
-			panelKey="outputs"
-			label="Outputs"
-			icon={Layers}
-			iconColor="text-purple-500"
-			count={outputs.length}
-			expanded={expandedPanel === 'outputs'}
-			partnerExpanded={isPartnerExpanded('outputs')}
-			onToggle={togglePanel}
-			onAdd={onAddOutput}
-			emptyMessage="Create deliverables"
-		>
-			{#each outputs as output (output.id)}
-				<button
-					type="button"
-					onclick={() => onEditOutput(output.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
-				>
-					<div class="flex items-center justify-between gap-2">
-						<span class="text-xs text-foreground truncate">{output.name}</span>
-						<span
-							class="text-[10px] capitalize shrink-0 {getOutputStateColor(
-								output.state_key
-							)}">{output.state_key.replace('_', ' ')}</span
-						>
-					</div>
-				</button>
-			{/each}
-		</CommandCenterPanel>
 	</CommandCenterRow>
 
-	<!-- Row 5: Events (Scheduling) - Standalone -->
+	<!-- Row 4: Events (Scheduling) - Standalone -->
 	<CommandCenterRow>
 		<!-- Events Panel -->
 		<CommandCenterPanel

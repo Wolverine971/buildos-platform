@@ -176,10 +176,8 @@ export function detectElementType(
 		'goal',
 		'plan',
 		'document',
-		'output',
 		'milestone',
 		'risk',
-		'decision',
 		'requirement'
 	];
 
@@ -253,7 +251,6 @@ function buildEntityDetailLines(
 			addDate('Completed', entity.completed_at);
 			addList('Plans', entity.plan_ids);
 			addList('Goals', entity.goal_ids);
-			addList('Outputs', entity.output_ids);
 			addLine('Dependencies', entity.dependency_count);
 			addLine('Dependents', entity.dependent_count);
 			break;
@@ -302,11 +299,6 @@ function buildEntityDetailLines(
 			addDate('Mitigated', entity.mitigated_at);
 			addLine('Summary', truncateText(entity.content, 200));
 			break;
-		case 'decision':
-			addDate('Decision', entity.decision_at);
-			addLine('Outcome', truncateText(entity.outcome, 160));
-			addLine('Rationale', truncateText(entity.rationale, 200));
-			break;
 		case 'requirement':
 			addLine('Type', entity.type_key);
 			addLine('Priority', entity.priority);
@@ -314,18 +306,6 @@ function buildEntityDetailLines(
 			break;
 		case 'document':
 			addLine('Type', entity.type_key);
-			addLine(
-				'Direct Edge',
-				entity.direct_edge ? 'yes' : entity.direct_edge === false ? 'no' : null
-			);
-			break;
-		case 'output':
-			addLine('Type', entity.type_key);
-			addLine('Facet Stage', entity.facet_stage);
-			addLine('Source Document', entity.source_document_id);
-			addLine('Source Event', entity.source_event_id);
-			addList('Linked Goals', entity.linked_goal_ids);
-			addList('Linked Tasks', entity.linked_task_ids);
 			addLine(
 				'Direct Edge',
 				entity.direct_edge ? 'yes' : entity.direct_edge === false ? 'no' : null
@@ -422,7 +402,7 @@ ${
 ${(ontology?.relationships?.edges?.length ?? 0) > 5 ? `... and ${(ontology?.relationships?.edges?.length ?? 0) - 5} more` : ''}
 
 ### Hints
-- Use list_onto_* tools to see entities (tasks, goals, plans, documents, outputs, milestones, risks, decisions, requirements)
+- Use list_onto_* tools to see entities (tasks, goals, plans, documents, milestones, risks, requirements)
 - Use get_entity_relationships for full graph
 - Use get_onto_project_details for complete information`);
 
@@ -600,23 +580,6 @@ function formatProjectHighlights(highlights?: ProjectHighlights): string {
 	);
 
 	addSection(
-		'Decisions',
-		highlights.decisions.items.map((decision) => {
-			const parts = formatCreatedUpdated(decision.created_at, decision.updated_at);
-			if (decision.state_key) parts.unshift(`state: ${decision.state_key}`);
-			const decisionDate = formatDate(decision.decision_at);
-			if (decisionDate) parts.unshift(`decision: ${decisionDate}`);
-			const extras: string[] = [];
-			if (decision.outcome) extras.push(`Outcome: ${decision.outcome}`);
-			if (decision.rationale) extras.push(`Rationale: ${decision.rationale}`);
-			if (decision.description) extras.push(`Desc: ${decision.description}`);
-			const extraText = extras.length ? ` — ${extras.join(' | ')}` : '';
-			return `- ${decision.title} [${decision.id}]${formatParts(parts)}${extraText}`;
-		}),
-		highlights.decisions.more
-	);
-
-	addSection(
 		'Requirements',
 		highlights.requirements.items.map((requirement) => {
 			const parts = formatCreatedUpdated(requirement.created_at, requirement.updated_at);
@@ -681,25 +644,6 @@ function formatProjectHighlights(highlights?: ProjectHighlights): string {
 	);
 
 	addSection(
-		'Outputs',
-		highlights.outputs.items.map((output) => {
-			const parts = formatCreatedUpdated(output.created_at, output.updated_at);
-			if (output.state_key) parts.unshift(`state: ${output.state_key}`);
-			if (output.type_key) parts.unshift(`type: ${output.type_key}`);
-			const linkedGoals = formatListCount('goals', output.linked_goal_ids);
-			const linkedTasks = formatListCount('tasks', output.linked_task_ids);
-			if (linkedGoals || linkedTasks) {
-				parts.push(`links: ${[linkedGoals, linkedTasks].filter(Boolean).join(', ')}`);
-			}
-			const edge = formatEdge(output.direct_edge);
-			if (edge) parts.push(edge);
-			const description = output.description ? ` — ${output.description}` : '';
-			return `- ${output.name} [${output.id}]${formatParts(parts)}${description}`;
-		}),
-		highlights.outputs.more
-	);
-
-	addSection(
 		'Signals',
 		highlights.signals.items.map((signal) => {
 			const tsDate = formatDate(signal.ts);
@@ -752,10 +696,8 @@ function formatProjectHighlights(highlights?: ProjectHighlights): string {
 			if (completed) parts.push(`completed: ${completed}`);
 			const planCount = task.plan_ids?.length ?? 0;
 			const goalCount = task.goal_ids?.length ?? 0;
-			const outputCount = task.output_ids?.length ?? 0;
 			if (planCount > 0) parts.push(`plans: ${planCount}`);
 			if (goalCount > 0) parts.push(`goals: ${goalCount}`);
-			if (outputCount > 0) parts.push(`outputs: ${outputCount}`);
 			if (typeof task.dependency_count === 'number') {
 				parts.push(`dependencies: ${task.dependency_count}`);
 			}
@@ -785,10 +727,8 @@ function formatProjectHighlights(highlights?: ProjectHighlights): string {
 			if (updated) parts.push(`updated: ${updated}`);
 			const planCount = task.plan_ids?.length ?? 0;
 			const goalCount = task.goal_ids?.length ?? 0;
-			const outputCount = task.output_ids?.length ?? 0;
 			if (planCount > 0) parts.push(`plans: ${planCount}`);
 			if (goalCount > 0) parts.push(`goals: ${goalCount}`);
-			if (outputCount > 0) parts.push(`outputs: ${outputCount}`);
 			if (typeof task.dependency_count === 'number') {
 				parts.push(`dependencies: ${task.dependency_count}`);
 			}

@@ -23,10 +23,8 @@ import type {
 	OntoTask,
 	OntoGoal,
 	OntoMilestone,
-	OntoOutput,
 	OntoDocument,
 	OntoRisk,
-	OntoDecision,
 	OntoEdge
 } from '$lib/types/onto-api';
 
@@ -86,20 +84,16 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			tasksResult,
 			goalsResult,
 			milestonesResult,
-			outputsResult,
 			documentsResult,
 			risksResult,
-			decisionsResult,
 			edgesResult
 		] = await Promise.all([
 			supabase.from('onto_plans').select('*').eq('project_id', id),
 			supabase.from('onto_tasks').select('*').eq('project_id', id),
 			supabase.from('onto_goals').select('*').eq('project_id', id),
 			supabase.from('onto_milestones').select('*').eq('project_id', id),
-			supabase.from('onto_outputs').select('*').eq('project_id', id),
 			supabase.from('onto_documents').select('*').eq('project_id', id),
 			supabase.from('onto_risks').select('*').eq('project_id', id),
-			supabase.from('onto_decisions').select('*').eq('project_id', id),
 			supabase.from('onto_edges').select('*').eq('project_id', id)
 		]);
 
@@ -108,13 +102,11 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			projects: [project as OntoProject],
 			edges: (edgesResult.data ?? []) as OntoEdge[],
 			tasks: (tasksResult.data ?? []) as OntoTask[],
-			outputs: (outputsResult.data ?? []) as OntoOutput[],
 			documents: (documentsResult.data ?? []) as OntoDocument[],
 			plans: (plansResult.data ?? []) as OntoPlan[],
 			goals: (goalsResult.data ?? []) as OntoGoal[],
 			milestones: (milestonesResult.data ?? []) as OntoMilestone[],
-			risks: (risksResult.data ?? []) as OntoRisk[],
-			decisions: (decisionsResult.data ?? []) as OntoDecision[]
+			risks: (risksResult.data ?? []) as OntoRisk[]
 		};
 
 		// Filter out template edges
@@ -141,13 +133,11 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			activeProjects: project.state_key === 'active' ? 1 : 0,
 			totalEdges: sourceData.edges.length,
 			totalTasks: (tasksResult.data ?? []).length,
-			totalOutputs: (outputsResult.data ?? []).length,
 			totalDocuments: (documentsResult.data ?? []).length,
 			totalPlans: (plansResult.data ?? []).length,
 			totalGoals: (goalsResult.data ?? []).length,
 			totalMilestones: (milestonesResult.data ?? []).length,
-			totalRisks: (risksResult.data ?? []).length,
-			totalDecisions: (decisionsResult.data ?? []).length
+			totalRisks: (risksResult.data ?? []).length
 		};
 
 		return ApiResponse.success({

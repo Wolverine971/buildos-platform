@@ -47,7 +47,6 @@ const ENTITY_REF_REGEX = /\[\[(\w+):([\w-]+)\|([^\]]+)\]\]/gi;
 const VALID_ENTITY_TYPES: Set<EntityReferenceType> = new Set([
 	'project',
 	'task',
-	'output',
 	'document',
 	'note',
 	'goal',
@@ -311,7 +310,6 @@ export function getEntityIdsByType(parsed: ParsedNextStepLong): Map<EntityRefere
  */
 export const ENTITY_MODAL_MAP: Record<EntityReferenceType, string> = {
 	task: 'TaskEditModal',
-	output: 'OutputEditModal',
 	document: 'DocumentEditModal',
 	note: 'NoteEditModal',
 	goal: 'GoalEditModal',

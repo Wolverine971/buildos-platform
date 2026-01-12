@@ -186,9 +186,7 @@ export class UtilityExecutor extends BaseExecutor {
 					tasks: kindKey === 'tasks' ? filteredEntities : [],
 					milestones: kindKey === 'milestones' ? filteredEntities : [],
 					documents: kindKey === 'documents' ? filteredEntities : [],
-					outputs: kindKey === 'outputs' ? filteredEntities : [],
 					risks: kindKey === 'risks' ? filteredEntities : [],
-					decisions: kindKey === 'decisions' ? filteredEntities : [],
 					requirements: kindKey === 'requirements' ? filteredEntities : []
 				},
 				counts: {
@@ -230,9 +228,7 @@ export class UtilityExecutor extends BaseExecutor {
 			goal: 'onto_goals',
 			milestone: 'onto_milestones',
 			document: 'onto_documents',
-			output: 'onto_outputs',
 			risk: 'onto_risks',
-			decision: 'onto_decisions',
 			requirement: 'onto_requirements'
 		};
 

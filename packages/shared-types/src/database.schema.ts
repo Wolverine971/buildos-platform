@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2026-01-11T20:30:31.698Z
+// Generated on: 2026-01-12T22:36:23.815Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -962,6 +962,40 @@ export type DatabaseSchema = {
 		topics: string[] | null;
 		updated_at: string;
 		user_id: string;
+	};
+	onto_comment_mentions: {
+		comment_id: string;
+		created_at: string;
+		id: string;
+		mentioned_user_id: string;
+		notification_id: string | null;
+	};
+	onto_comment_read_states: {
+		actor_id: string;
+		entity_id: string;
+		entity_type: string;
+		id: string;
+		last_read_at: string;
+		last_read_comment_id: string | null;
+		project_id: string;
+		root_id: string;
+		updated_at: string;
+	};
+	onto_comments: {
+		body: string;
+		body_format: string;
+		created_at: string;
+		created_by: string;
+		deleted_at: string | null;
+		edited_at: string | null;
+		entity_id: string;
+		entity_type: string;
+		id: string;
+		metadata: Json;
+		parent_id: string | null;
+		project_id: string;
+		root_id: string;
+		updated_at: string;
 	};
 	onto_decisions: {
 		created_at: string;
@@ -2002,6 +2036,7 @@ export type DatabaseSchema = {
 	user_notifications: {
 		action_url: string | null;
 		created_at: string | null;
+		data: Json | null;
 		delivery_id: string | null;
 		dismissed_at: string | null;
 		event_id: string | null;
@@ -2208,6 +2243,9 @@ export const tableNames = [
 	'onto_actors',
 	'onto_assignments',
 	'onto_braindumps',
+	'onto_comment_mentions',
+	'onto_comment_read_states',
+	'onto_comments',
 	'onto_decisions',
 	'onto_document_versions',
 	'onto_documents',

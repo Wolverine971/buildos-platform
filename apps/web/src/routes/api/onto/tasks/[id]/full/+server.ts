@@ -7,7 +7,7 @@
  *
  * Performance optimization endpoint that consolidates:
  * - Task data with project verification
- * - Linked entities (plans, goals, milestones, documents, tasks, outputs)
+ * - Linked entities (plans, goals, milestones, documents, tasks)
  *
  * Note: Workspace documents are NOT included here as they are deferred
  * to when the user switches to the workspace tab.

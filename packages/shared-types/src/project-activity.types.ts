@@ -18,12 +18,11 @@ import type { Json } from './database.schema';
 
 /**
  * Types of entities that can be logged in project activity
- * Maps to ontology tables: onto_tasks, onto_outputs, etc.
+ * Maps to ontology tables: onto_tasks, onto_documents, etc.
  */
 export type ProjectLogEntityType =
 	| 'project'
 	| 'task'
-	| 'output'
 	| 'note'
 	| 'document'
 	| 'goal'
@@ -31,7 +30,6 @@ export type ProjectLogEntityType =
 	| 'risk'
 	| 'plan'
 	| 'requirement'
-	| 'decision'
 	| 'source'
 	| 'edge';
 

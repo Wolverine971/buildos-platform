@@ -20,12 +20,10 @@ import type {
 	GraphData,
 	GraphSourceData,
 	NodeType,
-	OntoDecision,
 	OntoDocument,
 	OntoEdge,
 	OntoGoal,
 	OntoMilestone,
-	OntoOutput,
 	OntoPlan,
 	OntoProject,
 	OntoRisk,
@@ -63,13 +61,10 @@ export const GRAPH_COLORS: {
 	goal: ThemeColors;
 	task: ThemeColors;
 	plan: ThemeColors;
-	output: ThemeColors;
 	document: ThemeColors;
 	milestone: ThemeColors;
 	risk: ThemeColors;
-	decision: ThemeColors;
 	states: Record<string, ThemeColors>;
-	primitives: Record<string, ThemeColors>;
 	edges: Record<string, EdgeColors>;
 } = {
 	// Accent (BuildOS signal color - orange)
@@ -92,10 +87,6 @@ export const GRAPH_COLORS: {
 		light: { bg: '#e0e7ff', border: '#6366f1' },
 		dark: { bg: '#312e81', border: '#a5b4fc' }
 	},
-	output: {
-		light: { bg: '#ede9fe', border: '#7c3aed' },
-		dark: { bg: '#4c1d95', border: '#c4b5fd' }
-	},
 	document: {
 		light: { bg: '#e0f2fe', border: '#0284c7' },
 		dark: { bg: '#0c4a6e', border: '#7dd3fc' }
@@ -107,10 +98,6 @@ export const GRAPH_COLORS: {
 	risk: {
 		light: { bg: '#fee2e2', border: '#dc2626' },
 		dark: { bg: '#450a0a', border: '#f87171' }
-	},
-	decision: {
-		light: { bg: '#ede9fe', border: '#7c3aed' },
-		dark: { bg: '#4c1d95', border: '#a78bfa' }
 	},
 
 	// State colors (used across entity types)
@@ -177,26 +164,6 @@ export const GRAPH_COLORS: {
 		}
 	},
 
-	// Output primitive colors
-	primitives: {
-		document: {
-			light: { bg: '#dbeafe', border: '#3b82f6' },
-			dark: { bg: '#1e3a8a', border: '#93c5fd' }
-		},
-		event: {
-			light: { bg: '#ede9fe', border: '#8b5cf6' },
-			dark: { bg: '#4c1d95', border: '#c4b5fd' }
-		},
-		collection: {
-			light: { bg: '#fef3c7', border: '#f59e0b' },
-			dark: { bg: '#451a03', border: '#fcd34d' }
-		},
-		external: {
-			light: { bg: '#d1fae5', border: '#10b981' },
-			dark: { bg: '#064e3b', border: '#6ee7b7' }
-		}
-	},
-
 	// Edge semantic colors
 	edges: {
 		hierarchical: { light: '#94a3b8', dark: '#64748b' },
@@ -204,8 +171,7 @@ export const GRAPH_COLORS: {
 		dependency: { light: '#ea580c', dark: '#fb923c' },
 		blocking: { light: '#dc2626', dark: '#f87171' },
 		temporal: { light: '#059669', dark: '#34d399' },
-		knowledge: { light: '#0284c7', dark: '#38bdf8' },
-		production: { light: '#7c3aed', dark: '#a78bfa' }
+		knowledge: { light: '#0284c7', dark: '#38bdf8' }
 	}
 };
 
@@ -273,16 +239,6 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		borderWidth: 2,
 		borderStyle: 'dashed'
 	},
-	output: {
-		shape: 'diamond',
-		baseWidth: 30,
-		baseHeight: 30,
-		fontSize: 9,
-		labelValign: 'bottom',
-		labelMarginY: 8,
-		borderWidth: 2,
-		borderStyle: 'solid'
-	},
 	document: {
 		shape: 'rectangle',
 		baseWidth: 22,
@@ -307,16 +263,6 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		shape: 'octagon',
 		baseWidth: 28,
 		baseHeight: 28,
-		fontSize: 9,
-		labelValign: 'bottom',
-		labelMarginY: 6,
-		borderWidth: 2,
-		borderStyle: 'solid'
-	},
-	decision: {
-		shape: 'hexagon',
-		baseWidth: 28,
-		baseHeight: 26,
 		fontSize: 9,
 		labelValign: 'bottom',
 		labelMarginY: 6,
@@ -412,14 +358,6 @@ function getStateBorderWidthModifier(state: string): number {
 		default:
 			return 0;
 	}
-}
-
-/**
- * Extract deliverable primitive from output type_key.
- */
-function extractPrimitive(typeKey: string): string {
-	const parts = typeKey.split('.');
-	return parts[1] ?? 'document';
 }
 
 // ============================================================
@@ -592,55 +530,6 @@ export class OntologyGraphService {
 		});
 	}
 
-	static outputsToNodes(outputs: OntoOutput[], isDark = false): CytoscapeNode[] {
-		const config = NODE_STYLE_CONFIG.output;
-
-		return outputs.map((output) => {
-			const state = normalizeState(output.state_key);
-			const primitive = extractPrimitive(output.type_key ?? 'output.document');
-			const primitiveColors =
-				GRAPH_COLORS.primitives[primitive as keyof typeof GRAPH_COLORS.primitives];
-			const colors = primitiveColors
-				? isDark
-					? primitiveColors.dark
-					: primitiveColors.light
-				: isDark
-					? GRAPH_COLORS.output.dark
-					: GRAPH_COLORS.output.light;
-
-			// Border style indicates lifecycle stage
-			const borderStyle = getStateBorderStyle(state);
-
-			return {
-				data: {
-					id: output.id,
-					label: output.name,
-					type: 'output',
-					state,
-					primitive,
-					metadata: {
-						projectId: output.project_id,
-						typeKey: output.type_key,
-						state: output.state_key,
-						primitive,
-						props: output.props
-					},
-					color: colors.bg,
-					borderColor: colors.border,
-					borderWidth: config.borderWidth,
-					borderStyle,
-					width: config.baseWidth,
-					height: config.baseHeight,
-					size: config.baseWidth,
-					shape: config.shape,
-					fontSize: config.fontSize,
-					labelValign: config.labelValign,
-					labelMarginY: config.labelMarginY ?? 0
-				}
-			};
-		});
-	}
-
 	static documentsToNodes(documents: OntoDocument[], isDark = false): CytoscapeNode[] {
 		const config = NODE_STYLE_CONFIG.document;
 		const baseColors = isDark ? GRAPH_COLORS.document.dark : GRAPH_COLORS.document.light;
@@ -759,42 +648,6 @@ export class OntologyGraphService {
 		});
 	}
 
-	static decisionsToNodes(decisions: OntoDecision[], isDark = false): CytoscapeNode[] {
-		const config = NODE_STYLE_CONFIG.decision;
-		const baseColors = isDark ? GRAPH_COLORS.decision.dark : GRAPH_COLORS.decision.light;
-
-		return decisions.map((decision) => {
-			// Decisions don't have a state_key, they are recorded facts
-			const state = 'active';
-
-			return {
-				data: {
-					id: decision.id,
-					label: decision.title,
-					type: 'decision',
-					state,
-					metadata: {
-						projectId: decision.project_id,
-						rationale: decision.rationale,
-						decisionAt: decision.decision_at,
-						props: decision.props
-					},
-					color: baseColors.bg,
-					borderColor: baseColors.border,
-					borderWidth: config.borderWidth,
-					borderStyle: config.borderStyle,
-					width: config.baseWidth,
-					height: config.baseHeight,
-					size: config.baseWidth,
-					shape: config.shape,
-					fontSize: config.fontSize,
-					labelValign: config.labelValign,
-					labelMarginY: config.labelMarginY ?? 0
-				}
-			};
-		});
-	}
-
 	// ============================================================
 	// EDGE STYLING
 	// ============================================================
@@ -834,12 +687,7 @@ export class OntologyGraphService {
 			references: 'knowledge',
 			referenced_by: 'knowledge',
 			has_document: 'knowledge',
-			has_context_document: 'knowledge',
-
-			// Production
-			produces: 'production',
-			produced_by: 'production',
-			has_output: 'production'
+			has_context_document: 'knowledge'
 		};
 
 		return categories[rel] ?? 'hierarchical';
@@ -878,8 +726,7 @@ export class OntologyGraphService {
 			dependency: { width: 2, lineStyle: 'dashed', arrowShape: 'vee' },
 			blocking: { width: 2, lineStyle: 'solid', arrowShape: 'tee' },
 			temporal: { width: 2, lineStyle: 'solid', arrowShape: 'triangle' },
-			knowledge: { width: 1, lineStyle: 'dotted', arrowShape: 'circle' },
-			production: { width: 2, lineStyle: 'solid', arrowShape: 'diamond' }
+			knowledge: { width: 1, lineStyle: 'dotted', arrowShape: 'circle' }
 		};
 
 		const style = categoryStyles[category] ?? defaultStyle;
@@ -932,25 +779,21 @@ export class OntologyGraphService {
 		const allowedKinds = new Set([
 			'project',
 			'task',
-			'output',
 			'document',
 			'plan',
 			'goal',
 			'milestone',
-			'risk',
-			'decision'
+			'risk'
 		]);
 
 		const nodes: CytoscapeNode[] = [
 			...this.projectsToNodes(data.projects, isDark),
 			...this.tasksToNodes(data.tasks, isDark),
-			...this.outputsToNodes(data.outputs, isDark),
 			...this.documentsToNodes(data.documents, isDark),
 			...this.plansToNodes(data.plans, isDark),
 			...this.goalsToNodes(data.goals, isDark),
 			...this.milestonesToNodes(data.milestones, isDark),
-			...this.risksToNodes(data.risks ?? [], isDark),
-			...this.decisionsToNodes(data.decisions ?? [], isDark)
+			...this.risksToNodes(data.risks ?? [], isDark)
 		];
 
 		const filteredSourceEdges =

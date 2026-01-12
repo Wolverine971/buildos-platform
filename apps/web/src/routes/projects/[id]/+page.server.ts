@@ -55,13 +55,11 @@ export interface ProjectSkeletonData {
 	};
 	counts: {
 		task_count: number;
-		output_count: number;
 		document_count: number;
 		goal_count: number;
 		plan_count: number;
 		milestone_count: number;
 		risk_count: number;
-		decision_count: number;
 	};
 }
 
@@ -177,13 +175,11 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		},
 		counts: {
 			task_count: skeletonData.task_count ?? 0,
-			output_count: skeletonData.output_count ?? 0,
 			document_count: skeletonData.document_count ?? 0,
 			goal_count: skeletonData.goal_count ?? 0,
 			plan_count: skeletonData.plan_count ?? 0,
 			milestone_count: skeletonData.milestone_count ?? 0,
-			risk_count: skeletonData.risk_count ?? 0,
-			decision_count: skeletonData.decision_count ?? 0
+			risk_count: skeletonData.risk_count ?? 0
 		},
 		access
 	} satisfies ProjectSkeletonData;

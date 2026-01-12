@@ -159,10 +159,8 @@ export class OntologyCacheService {
 						| 'goal'
 						| 'plan'
 						| 'document'
-						| 'output'
 						| 'milestone'
 						| 'risk'
-						| 'decision'
 						| 'requirement',
 					resolvedFocus.focusEntityId
 				);
@@ -202,10 +200,8 @@ export class OntologyCacheService {
 			| 'plan'
 			| 'goal'
 			| 'document'
-			| 'output'
 			| 'milestone'
 			| 'risk'
-			| 'decision'
 			| 'requirement'
 	): Promise<OntologyContext | null> {
 		logger.debug('Loading ontology context', {

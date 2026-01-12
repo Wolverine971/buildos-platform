@@ -14,12 +14,10 @@ import type {
 	HighlightSection,
 	ProjectHighlightGoal,
 	ProjectHighlightRisk,
-	ProjectHighlightDecision,
 	ProjectHighlightRequirement,
 	ProjectHighlightDocument,
 	ProjectHighlightMilestone,
 	ProjectHighlightPlan,
-	ProjectHighlightOutput,
 	ProjectHighlightSignal,
 	ProjectHighlightInsight,
 	ProjectHighlightTask,
@@ -40,10 +38,8 @@ type ElementRowMap = {
 	plan: Database['public']['Tables']['onto_plans']['Row'];
 	goal: Database['public']['Tables']['onto_goals']['Row'];
 	document: Database['public']['Tables']['onto_documents']['Row'];
-	output: Database['public']['Tables']['onto_outputs']['Row'];
 	milestone: Database['public']['Tables']['onto_milestones']['Row'];
 	risk: Database['public']['Tables']['onto_risks']['Row'];
-	decision: Database['public']['Tables']['onto_decisions']['Row'];
 	requirement: Database['public']['Tables']['onto_requirements']['Row'];
 };
 
@@ -56,15 +52,11 @@ type ElementTableNameMap = {
 				? 'plans'
 				: K extends 'task'
 					? 'tasks'
-					: K extends 'output'
-						? 'outputs'
-						: K extends 'milestone'
-							? 'milestones'
-							: K extends 'risk'
-								? 'risks'
-								: K extends 'decision'
-									? 'decisions'
-									: 'requirements'}`;
+					: K extends 'milestone'
+						? 'milestones'
+						: K extends 'risk'
+							? 'risks'
+							: 'requirements'}`;
 };
 
 type ContextEntityMap = Partial<Record<ElementType, ElementRowMap[ElementType]>> & {
@@ -79,11 +71,9 @@ type ProjectGraphDataLight = {
 	goals: Database['public']['Tables']['onto_goals']['Row'][];
 	plans: Database['public']['Tables']['onto_plans']['Row'][];
 	documents: Database['public']['Tables']['onto_documents']['Row'][];
-	outputs: Database['public']['Tables']['onto_outputs']['Row'][];
 	milestones: Database['public']['Tables']['onto_milestones']['Row'][];
 	risks: Database['public']['Tables']['onto_risks']['Row'][];
 	requirements: Database['public']['Tables']['onto_requirements']['Row'][];
-	decisions: Database['public']['Tables']['onto_decisions']['Row'][];
 	signals: Database['public']['Tables']['onto_signals']['Row'][];
 	insights: Database['public']['Tables']['onto_insights']['Row'][];
 	edges: Database['public']['Tables']['onto_edges']['Row'][];
@@ -92,12 +82,10 @@ type ProjectGraphDataLight = {
 const PROJECT_HIGHLIGHT_LIMITS = {
 	goals: 10,
 	risks: 6,
-	decisions: 6,
 	requirements: 8,
 	documents: 10,
 	milestones: 6,
 	plans: 6,
-	outputs: 10,
 	signals: 6,
 	insights: 6,
 	tasksRecent: 10,
@@ -105,9 +93,6 @@ const PROJECT_HIGHLIGHT_LIMITS = {
 } as const;
 
 const PROJECT_HIGHLIGHT_TRUNCATION = {
-	decisionRationale: 180,
-	decisionOutcome: 140,
-	decisionDescription: 160,
 	documentDescription: 180,
 	requirementText: 160,
 	signalPayload: 160,
@@ -115,8 +100,7 @@ const PROJECT_HIGHLIGHT_TRUNCATION = {
 	goalDescription: 140,
 	planDescription: 140,
 	milestoneDescription: 140,
-	riskContent: 160,
-	outputDescription: 160
+	riskContent: 160
 } as const;
 
 const GRAPH_SNAPSHOT_LIMITS = {
@@ -148,10 +132,8 @@ export class OntologyContextLoader {
 		plan: 'onto_plans',
 		goal: 'onto_goals',
 		document: 'onto_documents',
-		output: 'onto_outputs',
 		milestone: 'onto_milestones',
 		risk: 'onto_risks',
-		decision: 'onto_decisions',
 		requirement: 'onto_requirements'
 	} as const;
 
@@ -195,12 +177,10 @@ export class OntologyContextLoader {
 		return {
 			goals: { items: [] },
 			risks: { items: [] },
-			decisions: { items: [] },
 			requirements: { items: [] },
 			documents: { items: [] },
 			milestones: { items: [] },
 			plans: { items: [] },
-			outputs: { items: [] },
 			signals: { items: [] },
 			insights: { items: [] },
 			tasks: {
@@ -251,9 +231,7 @@ export class OntologyContextLoader {
 			milestonesResult,
 			risksResult,
 			documentsResult,
-			outputsResult,
 			requirementsResult,
-			decisionsResult,
 			signalsResult,
 			insightsResult,
 			edgesResult
@@ -304,20 +282,8 @@ export class OntologyContextLoader {
 				.eq('project_id', projectId)
 				.is('deleted_at', null),
 			this.supabase
-				.from('onto_outputs')
-				.select('id, name, description, state_key, type_key, created_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
 				.from('onto_requirements')
 				.select('id, text, priority, type_key, created_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_decisions')
-				.select(
-					'id, title, description, outcome, rationale, state_key, decision_at, created_at, updated_at'
-				)
 				.eq('project_id', projectId)
 				.is('deleted_at', null),
 			this.supabase
@@ -344,11 +310,9 @@ export class OntologyContextLoader {
 			goals: (goalsResult.data ?? []) as ProjectGraphDataLight['goals'],
 			plans: (plansResult.data ?? []) as ProjectGraphDataLight['plans'],
 			documents: (documentsResult.data ?? []) as ProjectGraphDataLight['documents'],
-			outputs: (outputsResult.data ?? []) as ProjectGraphDataLight['outputs'],
 			milestones: (milestonesResult.data ?? []) as ProjectGraphDataLight['milestones'],
 			risks: (risksResult.data ?? []) as ProjectGraphDataLight['risks'],
 			requirements: (requirementsResult.data ?? []) as ProjectGraphDataLight['requirements'],
-			decisions: (decisionsResult.data ?? []) as ProjectGraphDataLight['decisions'],
 			signals: (signalsResult.data ?? []) as ProjectGraphDataLight['signals'],
 			insights: (insightsResult.data ?? []) as ProjectGraphDataLight['insights'],
 			edges: (edgesResult.data ?? []) as ProjectGraphDataLight['edges']
@@ -362,12 +326,10 @@ export class OntologyContextLoader {
 		const map: Record<string, Set<string>> = {
 			goal: new Set<string>(),
 			risk: new Set<string>(),
-			decision: new Set<string>(),
 			requirement: new Set<string>(),
 			document: new Set<string>(),
 			milestone: new Set<string>(),
 			plan: new Set<string>(),
-			output: new Set<string>(),
 			signal: new Set<string>(),
 			insight: new Set<string>(),
 			task: new Set<string>()
@@ -412,10 +374,8 @@ export class OntologyContextLoader {
 		graph.goals.forEach((row) => index.set(row.id, { kind: 'goal', row }));
 		graph.plans.forEach((row) => index.set(row.id, { kind: 'plan', row }));
 		graph.documents.forEach((row) => index.set(row.id, { kind: 'document', row }));
-		graph.outputs.forEach((row) => index.set(row.id, { kind: 'output', row }));
 		graph.milestones.forEach((row) => index.set(row.id, { kind: 'milestone', row }));
 		graph.risks.forEach((row) => index.set(row.id, { kind: 'risk', row }));
-		graph.decisions.forEach((row) => index.set(row.id, { kind: 'decision', row }));
 		graph.requirements.forEach((row) => index.set(row.id, { kind: 'requirement', row }));
 		graph.signals.forEach((row) => index.set(row.id, { kind: 'signal', row }));
 		graph.insights.forEach((row) => index.set(row.id, { kind: 'insight', row }));
@@ -439,10 +399,6 @@ export class OntologyContextLoader {
 		if (kind === 'goal') {
 			if (entity.state_key === 'active') score += 20;
 			if (entity.target_date) score += 10;
-		}
-		if (kind === 'output') {
-			if (entity.state_key === 'review') score += 25;
-			if (entity.state_key && entity.state_key !== 'published') score += 15;
 		}
 		return score;
 	}
@@ -557,10 +513,8 @@ export class OntologyContextLoader {
 		const totals: Record<string, number> = {
 			goals: graph.goals.length,
 			documents: graph.documents.length,
-			outputs: graph.outputs.length,
 			tasks: graph.tasks.length,
 			risks: graph.risks.length,
-			decisions: graph.decisions.length,
 			requirements: graph.requirements.length,
 			milestones: graph.milestones.length,
 			plans: graph.plans.length,
@@ -590,9 +544,6 @@ export class OntologyContextLoader {
 		const goalIdsByTask = new Map<string, Set<string>>();
 		const taskIdsByPlan = new Map<string, Set<string>>();
 		const planIdsByTask = new Map<string, Set<string>>();
-		const taskIdsByOutput = new Map<string, Set<string>>();
-		const outputIdsByTask = new Map<string, Set<string>>();
-		const goalIdsByOutput = new Map<string, Set<string>>();
 		const dependencyCounts = new Map<string, number>();
 		const dependentCounts = new Map<string, number>();
 
@@ -629,25 +580,6 @@ export class OntologyContextLoader {
 				const taskId = srcKind === 'goal' ? edge.dst_id : edge.src_id;
 				addToMap(taskIdsByGoal, goalId, taskId);
 				addToMap(goalIdsByTask, taskId, goalId);
-			}
-
-			if (
-				(rel === 'produces' && srcKind === 'task' && dstKind === 'output') ||
-				(rel === 'produced_by' && srcKind === 'output' && dstKind === 'task')
-			) {
-				const taskId = srcKind === 'task' ? edge.src_id : edge.dst_id;
-				const outputId = srcKind === 'task' ? edge.dst_id : edge.src_id;
-				addToMap(taskIdsByOutput, outputId, taskId);
-				addToMap(outputIdsByTask, taskId, outputId);
-			}
-
-			if (
-				(rel === 'produces' && srcKind === 'goal' && dstKind === 'output') ||
-				(rel === 'produced_by' && srcKind === 'output' && dstKind === 'goal')
-			) {
-				const goalId = srcKind === 'goal' ? edge.src_id : edge.dst_id;
-				const outputId = srcKind === 'goal' ? edge.dst_id : edge.src_id;
-				addToMap(goalIdsByOutput, outputId, goalId);
 			}
 
 			if (srcKind === 'task' && dstKind === 'task') {
@@ -729,31 +661,6 @@ export class OntologyContextLoader {
 			documentItems.length
 		);
 
-		const outputsSorted = [...graph.outputs].sort((a, b) => {
-			const aDate = a.updated_at || a.created_at;
-			const bDate = b.updated_at || b.created_at;
-			return Date.parse(bDate) - Date.parse(aDate);
-		});
-		const outputItems = outputsSorted.map((output) => ({
-			id: output.id,
-			name: output.name,
-			state_key: output.state_key,
-			type_key: output.type_key,
-			description: this.truncateText(
-				output.description,
-				PROJECT_HIGHLIGHT_TRUNCATION.outputDescription
-			),
-			created_at: output.created_at,
-			updated_at: output.updated_at,
-			linked_goal_ids: [...(goalIdsByOutput.get(output.id) ?? new Set())],
-			linked_task_ids: [...(taskIdsByOutput.get(output.id) ?? new Set())],
-			direct_edge: directEdgeIds.output.has(output.id)
-		}));
-		const outputsSection = this.buildHighlightSection(
-			outputItems.slice(0, PROJECT_HIGHLIGHT_LIMITS.outputs),
-			outputItems.length
-		);
-
 		const risksSorted = graph.risks
 			.filter((risk) => directEdgeIds.risk.has(risk.id))
 			.filter((risk) => !['mitigated', 'closed'].includes(risk.state_key ?? ''))
@@ -773,38 +680,6 @@ export class OntologyContextLoader {
 		const risksSection = this.buildHighlightSection(
 			riskItems.slice(0, PROJECT_HIGHLIGHT_LIMITS.risks),
 			riskItems.length
-		);
-
-		const decisionsSorted = graph.decisions
-			.filter((decision) => directEdgeIds.decision.has(decision.id))
-			.sort((a, b) => {
-				const aDate = a.decision_at || a.created_at;
-				const bDate = b.decision_at || b.created_at;
-				return Date.parse(bDate) - Date.parse(aDate);
-			});
-		const decisionItems = decisionsSorted.map((decision) => ({
-			id: decision.id,
-			title: decision.title,
-			state_key: decision.state_key,
-			rationale: this.truncateText(
-				decision.rationale,
-				PROJECT_HIGHLIGHT_TRUNCATION.decisionRationale
-			),
-			outcome: this.truncateText(
-				decision.outcome,
-				PROJECT_HIGHLIGHT_TRUNCATION.decisionOutcome
-			),
-			description: this.truncateText(
-				decision.description,
-				PROJECT_HIGHLIGHT_TRUNCATION.decisionDescription
-			),
-			decision_at: decision.decision_at,
-			created_at: decision.created_at,
-			updated_at: decision.updated_at
-		}));
-		const decisionsSection = this.buildHighlightSection(
-			decisionItems.slice(0, PROJECT_HIGHLIGHT_LIMITS.decisions),
-			decisionItems.length
 		);
 
 		const requirementsSorted = graph.requirements
@@ -954,7 +829,6 @@ export class OntologyContextLoader {
 			completed_at: task.completed_at,
 			plan_ids: [...(planIdsByTask.get(task.id) ?? new Set())],
 			goal_ids: [...(goalIdsByTask.get(task.id) ?? new Set())],
-			output_ids: [...(outputIdsByTask.get(task.id) ?? new Set())],
 			dependency_count: dependencyCounts.get(task.id) ?? 0,
 			dependent_count: dependentCounts.get(task.id) ?? 0
 		}));
@@ -1007,7 +881,6 @@ export class OntologyContextLoader {
 				completed_at: task.completed_at,
 				plan_ids: [...(planIdsByTask.get(task.id) ?? new Set())],
 				goal_ids: [...(goalIdsByTask.get(task.id) ?? new Set())],
-				output_ids: [...(outputIdsByTask.get(task.id) ?? new Set())],
 				dependency_count: dependencyCounts.get(task.id) ?? 0,
 				dependent_count: dependentCounts.get(task.id) ?? 0
 			}));
@@ -1019,12 +892,10 @@ export class OntologyContextLoader {
 		return {
 			goals: goalsSection,
 			risks: risksSection,
-			decisions: decisionsSection,
 			requirements: requirementsSection,
 			documents: documentsSection,
 			milestones: milestonesSection,
 			plans: plansSection,
-			outputs: outputsSection,
 			signals: signalsSection,
 			insights: insightsSection,
 			tasks: {
@@ -1067,10 +938,8 @@ export class OntologyContextLoader {
 			goals: graph.goals.length,
 			plans: graph.plans.length,
 			documents: graph.documents.length,
-			outputs: graph.outputs.length,
 			milestones: graph.milestones.length,
 			risks: graph.risks.length,
-			decisions: graph.decisions.length,
 			requirements: graph.requirements.length,
 			signals: graph.signals.length,
 			insights: graph.insights.length
@@ -1122,10 +991,8 @@ export class OntologyContextLoader {
 					'plan',
 					'goal',
 					'document',
-					'output',
 					'milestone',
 					'risk',
-					'decision',
 					'requirement'
 				],
 				recent_project_ids: (projects || []).map((project) => project.id)
@@ -1257,16 +1124,7 @@ export class OntologyContextLoader {
 	 */
 	async loadCombinedProjectElementContext(
 		projectId: string,
-		elementType:
-			| 'task'
-			| 'goal'
-			| 'plan'
-			| 'document'
-			| 'output'
-			| 'milestone'
-			| 'risk'
-			| 'decision'
-			| 'requirement',
+		elementType: 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk' | 'requirement',
 		elementId: string
 	): Promise<OntologyContext> {
 		await this.assertProjectOwnership(projectId);
@@ -1387,9 +1245,7 @@ export class OntologyContextLoader {
 			goal: [],
 			milestone: [],
 			document: [],
-			output: [],
 			risk: [],
-			decision: [],
 			requirement: []
 		};
 
@@ -1419,9 +1275,7 @@ export class OntologyContextLoader {
 			tasks: [],
 			milestones: [],
 			documents: [],
-			outputs: [],
 			risks: [],
-			decisions: [],
 			requirements: []
 		};
 
@@ -1431,9 +1285,7 @@ export class OntologyContextLoader {
 			tasks: edgesByKind.task.length,
 			milestones: edgesByKind.milestone.length,
 			documents: edgesByKind.document.length,
-			outputs: edgesByKind.output.length,
 			risks: edgesByKind.risk.length,
-			decisions: edgesByKind.decision.length,
 			requirements: edgesByKind.requirement.length,
 			total: 0
 		};
@@ -1443,9 +1295,7 @@ export class OntologyContextLoader {
 			counts.tasks +
 			counts.milestones +
 			counts.documents +
-			counts.outputs +
 			counts.risks +
-			counts.decisions +
 			counts.requirements;
 
 		let truncated = false;
@@ -1473,22 +1323,10 @@ export class OntologyContextLoader {
 				targetKey: 'documents'
 			},
 			{
-				kind: 'output',
-				table: 'onto_outputs',
-				edges: edgesByKind.output,
-				targetKey: 'outputs'
-			},
-			{
 				kind: 'risk',
 				table: 'onto_risks',
 				edges: edgesByKind.risk,
 				targetKey: 'risks'
-			},
-			{
-				kind: 'decision',
-				table: 'onto_decisions',
-				edges: edgesByKind.decision,
-				targetKey: 'decisions'
 			},
 			{
 				kind: 'requirement',
@@ -1611,9 +1449,7 @@ export class OntologyContextLoader {
 				tasks: [],
 				milestones: [],
 				documents: [],
-				outputs: [],
 				risks: [],
-				decisions: [],
 				requirements: []
 			},
 			counts: {
@@ -1622,9 +1458,7 @@ export class OntologyContextLoader {
 				tasks: 0,
 				milestones: 0,
 				documents: 0,
-				outputs: 0,
 				risks: 0,
-				decisions: 0,
 				requirements: 0,
 				total: 0
 			},
@@ -1735,11 +1569,9 @@ export class OntologyContextLoader {
 			'onto_tasks',
 			'onto_plans',
 			'onto_goals',
-			'onto_outputs',
 			'onto_documents',
 			'onto_milestones',
 			'onto_risks',
-			'onto_decisions',
 			'onto_requirements'
 		];
 
@@ -1889,10 +1721,8 @@ export class OntologyContextLoader {
 			{ table: 'onto_goals', key: 'goal' },
 			{ table: 'onto_plans', key: 'plan' },
 			{ table: 'onto_documents', key: 'document' },
-			{ table: 'onto_outputs', key: 'output' },
 			{ table: 'onto_milestones', key: 'milestone' },
 			{ table: 'onto_risks', key: 'risk' },
-			{ table: 'onto_decisions', key: 'decision' },
 			{ table: 'onto_requirements', key: 'requirement' }
 		];
 

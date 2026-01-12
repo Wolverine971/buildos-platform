@@ -28,7 +28,6 @@
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import {
 		ListChecks,
-		Layers,
 		Target,
 		Calendar,
 		FileText,
@@ -86,7 +85,6 @@
 			next_step_source: project.next_step_source,
 			next_step_updated_at: project.next_step_updated_at,
 			task_count: project.task_count,
-			output_count: project.output_count,
 			document_count: project.document_count,
 			goal_count: project.goal_count,
 			plan_count: project.plan_count,
@@ -114,13 +112,11 @@
 		activeProjects: 0,
 		totalEdges: 0,
 		totalTasks: 0,
-		totalOutputs: 0,
 		totalDocuments: 0,
 		totalPlans: 0,
 		totalGoals: 0,
 		totalMilestones: 0,
-		totalRisks: 0,
-		totalDecisions: 0
+		totalRisks: 0
 	};
 
 	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
@@ -290,7 +286,6 @@
 	const stats = $derived.by(() => {
 		const list = filteredProjects;
 		const taskTotal = list.reduce((acc, project) => acc + (project.task_count ?? 0), 0);
-		const outputTotal = list.reduce((acc, project) => acc + (project.output_count ?? 0), 0);
 		const goalTotal = list.reduce((acc, project) => acc + (project.goal_count ?? 0), 0);
 		const planTotal = list.reduce((acc, project) => acc + (project.plan_count ?? 0), 0);
 		const documentTotal = list.reduce((acc, project) => acc + (project.document_count ?? 0), 0);
@@ -301,7 +296,6 @@
 		return {
 			totalProjects: list.length,
 			totalTasks: taskTotal,
-			totalOutputs: outputTotal,
 			totalGoals: goalTotal,
 			totalPlans: planTotal,
 			totalDocuments: documentTotal,
@@ -800,7 +794,6 @@
 							{#each ownedFilteredProjects as project (project.id)}
 								{@const projectStats = [
 									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
-									{ key: 'outputs', count: project.output_count, Icon: Layers },
 									{ key: 'goals', count: project.goal_count, Icon: Target },
 									{ key: 'plans', count: project.plan_count, Icon: Calendar },
 									{ key: 'docs', count: project.document_count, Icon: FileText }
@@ -936,7 +929,6 @@
 							{#each sharedFilteredProjects as project (project.id)}
 								{@const projectStats = [
 									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
-									{ key: 'outputs', count: project.output_count, Icon: Layers },
 									{ key: 'goals', count: project.goal_count, Icon: Target },
 									{ key: 'plans', count: project.plan_count, Icon: Calendar },
 									{ key: 'docs', count: project.document_count, Icon: FileText }
