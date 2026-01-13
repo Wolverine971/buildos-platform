@@ -1,17 +1,11 @@
 -- packages/shared-types/src/functions/get_migration_platform_lock_status.sql
--- get_migration_platform_lock_status()
--- Get migration lock status
--- Source: supabase/migrations/20251206_migration_dashboard_schema.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_migration_platform_lock_status()
-RETURNS TABLE(
-    is_locked BOOLEAN,
-    run_id UUID,
-    locked_by UUID,
-    locked_by_email TEXT,
-    locked_at TIMESTAMPTZ,
-    expires_at TIMESTAMPTZ
-) AS $$
+CREATE OR REPLACE FUNCTION public.get_migration_platform_lock_status()
+ RETURNS TABLE(is_locked boolean, run_id uuid, locked_by uuid, locked_by_email text, locked_at timestamp with time zone, expires_at timestamp with time zone)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 BEGIN
     RETURN QUERY
     SELECT
@@ -25,4 +19,4 @@ BEGIN
     LEFT JOIN auth.users u ON u.id = mpl.locked_by
     WHERE mpl.id = 1;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$function$

@@ -1,18 +1,11 @@
 -- packages/shared-types/src/functions/get_link_click_stats.sql
--- get_link_click_stats(uuid, integer)
--- Get link click statistics
--- Source: supabase/migrations/20251007_notification_tracking_links.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_link_click_stats(
-  p_delivery_id UUID DEFAULT NULL,
-  p_days_back INTEGER DEFAULT 7
-)
-RETURNS TABLE (
-  total_links BIGINT,
-  total_clicks BIGINT,
-  unique_clicked_links BIGINT,
-  click_through_rate NUMERIC
-) AS $$
+CREATE OR REPLACE FUNCTION public.get_link_click_stats(p_delivery_id uuid DEFAULT NULL::uuid, p_days_back integer DEFAULT 7)
+ RETURNS TABLE(total_links bigint, total_clicks bigint, unique_clicked_links bigint, click_through_rate numeric)
+ LANGUAGE plpgsql
+ STABLE
+AS $function$
 BEGIN
   RETURN QUERY
   SELECT
@@ -29,4 +22,4 @@ BEGIN
     (p_delivery_id IS NULL OR delivery_id = p_delivery_id)
     AND created_at > NOW() - (p_days_back || ' days')::INTERVAL;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$function$

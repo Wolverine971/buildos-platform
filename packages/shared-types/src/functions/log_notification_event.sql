@@ -1,19 +1,11 @@
 -- packages/shared-types/src/functions/log_notification_event.sql
--- log_notification_event(text, text, text, uuid, uuid, uuid, uuid, jsonb, jsonb)
--- Log a notification event
--- Source: apps/web/supabase/migrations/20251011_add_notification_logging_helper.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION log_notification_event(
-  p_level TEXT,
-  p_message TEXT,
-  p_namespace TEXT DEFAULT 'db_function',
-  p_correlation_id UUID DEFAULT NULL,
-  p_event_id UUID DEFAULT NULL,
-  p_delivery_id UUID DEFAULT NULL,
-  p_user_id UUID DEFAULT NULL,
-  p_context JSONB DEFAULT '{}'::jsonb,
-  p_metadata JSONB DEFAULT '{}'::jsonb
-) RETURNS void AS $$
+CREATE OR REPLACE FUNCTION public.log_notification_event(p_level text, p_message text, p_namespace text DEFAULT 'db_function'::text, p_correlation_id uuid DEFAULT NULL::uuid, p_event_id uuid DEFAULT NULL::uuid, p_delivery_id uuid DEFAULT NULL::uuid, p_user_id uuid DEFAULT NULL::uuid, p_context jsonb DEFAULT '{}'::jsonb, p_metadata jsonb DEFAULT '{}'::jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 BEGIN
   -- Insert log entry into notification_logs table
   -- Note: This is non-blocking and won't fail the transaction if logging fails
@@ -35,12 +27,13 @@ BEGIN
     p_event_id,
     p_delivery_id,
     p_user_id,
-    p_context || p_metadata,
+    p_context || p_metadata,  -- Merge context and metadata
     NOW()
   );
 EXCEPTION
   WHEN OTHERS THEN
     -- Don't fail the transaction if logging fails
+    -- Just silently continue (logging is best-effort)
     NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$function$

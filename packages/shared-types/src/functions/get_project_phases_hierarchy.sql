@@ -1,51 +1,115 @@
 -- packages/shared-types/src/functions/get_project_phases_hierarchy.sql
--- get_project_phases_hierarchy(uuid, uuid)
--- Get project phases in hierarchical structure
--- Source: Supabase database (function definition not in migration files)
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_project_phases_hierarchy(
-  p_project_id uuid,
-  p_user_id uuid DEFAULT NULL
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.get_project_phases_hierarchy(p_project_id uuid, p_user_id uuid DEFAULT NULL::uuid)
+ RETURNS json
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+AS $function$
 DECLARE
-  v_result jsonb;
+  v_result JSON;
+  v_project_user_id UUID;
 BEGIN
-  SELECT jsonb_agg(
-    jsonb_build_object(
-      'id', ph.id,
-      'name', ph.name,
-      'description', ph.description,
-      'order_index', ph.order_index,
-      'start_date', ph.start_date,
-      'end_date', ph.end_date,
-      'status', ph.status,
-      'tasks', (
-        SELECT COALESCE(jsonb_agg(
-          jsonb_build_object(
-            'id', t.id,
-            'title', t.title,
-            'description', t.description,
-            'state_key', t.state_key,
-            'priority', t.priority,
-            'due_at', t.due_at,
-            'completed_at', t.completed_at
-          ) ORDER BY t.priority DESC NULLS LAST, t.created_at
-        ), '[]'::jsonb)
-        FROM onto_tasks t
-        WHERE t.project_id = p_project_id
-          AND t.deleted_at IS NULL
-          AND (t.props->>'phase_id')::uuid = ph.id
-      )
-    ) ORDER BY ph.order_index
-  ) INTO v_result
-  FROM project_phases ph
-  WHERE ph.project_id = p_project_id
-    AND ph.deleted_at IS NULL;
+  -- Verify project ownership if user_id provided
+  IF p_user_id IS NOT NULL THEN
+    SELECT user_id INTO v_project_user_id
+    FROM projects
+    WHERE id = p_project_id;
+    
+    IF v_project_user_id IS NULL OR v_project_user_id != p_user_id THEN
+      RETURN json_build_object('error', 'Unauthorized', 'phases', '[]'::json);
+    END IF;
+  END IF;
 
-  RETURN COALESCE(v_result, '[]'::jsonb);
+  -- Build the complete phases hierarchy in a single query
+  SELECT json_build_object(
+    'phases', COALESCE(
+      (SELECT json_agg(phase_data ORDER BY phase_data->>'order')
+       FROM (
+         SELECT json_build_object(
+           'id', p.id,
+           'project_id', p.project_id,
+           'user_id', p.user_id,
+           'name', p.name,
+           'description', p.description,
+           'start_date', p.start_date,
+           'end_date', p.end_date,
+           'order', p.order,
+           'created_at', p.created_at,
+           'updated_at', p.updated_at,
+           'tasks', COALESCE(
+             (SELECT json_agg(
+                json_build_object(
+                  'id', t.id,
+                  'title', t.title,
+                  'description', t.description,
+                  'details', t.details,
+                  'status', t.status,
+                  'priority', t.priority,
+                  'task_type', t.task_type,
+                  'start_date', t.start_date,
+                  'deleted_at', t.deleted_at,
+                  'created_at', t.created_at,
+                  'updated_at', t.updated_at,
+                  'project_id', t.project_id,
+                  'completed_at', t.completed_at,
+                  'suggested_start_date', pt.suggested_start_date,
+                  'assignment_reason', pt.assignment_reason,
+                  'calendar_events', COALESCE(
+                    (SELECT json_agg(
+                       json_build_object(
+                         'id', tce.id,
+                         'calendar_event_id', tce.calendar_event_id,
+                         'calendar_id', tce.calendar_id,
+                         'event_start', tce.event_start,
+                         'event_end', tce.event_end,
+                         'event_link', tce.event_link,
+                         'sync_status', tce.sync_status
+                       )
+                     )
+                     FROM task_calendar_events tce
+                     WHERE tce.task_id = t.id
+                    ), '[]'::json
+                  )
+                )
+              )
+              FROM phase_tasks pt
+              INNER JOIN tasks t ON pt.task_id = t.id
+              WHERE pt.phase_id = p.id
+             ), '[]'::json
+           ),
+           'task_count', (
+             SELECT COUNT(*)
+             FROM phase_tasks pt2
+             INNER JOIN tasks t2 ON pt2.task_id = t2.id
+             WHERE pt2.phase_id = p.id
+           ),
+           'completed_tasks', (
+             SELECT COUNT(*)
+             FROM phase_tasks pt3
+             INNER JOIN tasks t3 ON pt3.task_id = t3.id
+             WHERE pt3.phase_id = p.id
+               AND t3.status IN ('done')
+           )
+         ) AS phase_data
+         FROM phases p
+         WHERE p.project_id = p_project_id
+       ) AS phase_subquery
+      ), '[]'::json
+    ),
+    'metadata', json_build_object(
+      'total_phases', (SELECT COUNT(*) FROM phases WHERE project_id = p_project_id),
+      'total_tasks', (
+        SELECT COUNT(DISTINCT pt.task_id)
+        FROM phase_tasks pt
+        INNER JOIN phases p ON pt.phase_id = p.id
+        WHERE p.project_id = p_project_id
+      ),
+      'project_id', p_project_id,
+      'fetched_at', NOW()
+    )
+  ) INTO v_result;
+
+  RETURN v_result;
 END;
-$$;
+$function$

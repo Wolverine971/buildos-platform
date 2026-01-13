@@ -1,208 +1,233 @@
 -- packages/shared-types/src/functions/onto_search_entities.sql
--- onto_search_entities(uuid, text, uuid, text[], int)
--- Search ontology entities
--- Source: supabase/migrations/20251224000000_ontology_search_vectors.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION onto_search_entities(
-  p_actor_id uuid,
-  p_query text,
-  p_project_id uuid default null,
-  p_types text[] default null,
-  p_limit int default 50
-)
-RETURNS TABLE (
-  type text,
-  id uuid,
-  project_id uuid,
-  project_name text,
-  title text,
-  snippet text,
-  score double precision
-)
-LANGUAGE plpgsql
-AS $$
-DECLARE
+CREATE OR REPLACE FUNCTION public.onto_search_entities(p_actor_id uuid, p_query text, p_project_id uuid DEFAULT NULL::uuid, p_types text[] DEFAULT NULL::text[], p_limit integer DEFAULT 50)
+ RETURNS TABLE(type text, id uuid, project_id uuid, project_name text, title text, snippet text, score double precision)
+ LANGUAGE plpgsql
+AS $function$
+declare
   v_limit int := least(coalesce(p_limit, 50), 50);
   v_query tsquery;
-BEGIN
-  IF coalesce(trim(p_query), '') = '' THEN
-    RETURN;
-  END IF;
+begin
+  if coalesce(trim(p_query), '') = '' then
+    return;
+  end if;
 
   v_query := websearch_to_tsquery('english', p_query);
 
-  RETURN QUERY
-  WITH params AS (SELECT v_query AS tsq)
-  SELECT *
-  FROM (
+  return query
+  with params as (select v_query as tsq)
+  select *
+  from (
     -- Tasks
-    SELECT
-      'task'::text AS type,
+    select
+      'task'::text as type,
       t.id,
       t.project_id,
-      p.name AS project_name,
-      t.title AS title,
+      p.name as project_name,
+      t.title as title,
       ts_headline(
         'english',
         concat_ws(' ', coalesce(t.title, ''), coalesce(t.props::text, '')),
         params.tsq,
         'MaxFragments=2,MinWords=5,MaxWords=18'
-      ) AS snippet,
+      ) as snippet,
       (coalesce(ts_rank(t.search_vector, params.tsq), 0) * 0.6) +
-      (similarity(coalesce(t.title, ''), p_query) * 0.4) AS score
-    FROM onto_tasks t
-    JOIN params ON true
-    LEFT JOIN onto_projects p ON p.id = t.project_id
-    WHERE t.created_by = p_actor_id
-      AND t.deleted_at IS NULL
-      AND (p_project_id IS NULL OR t.project_id = p_project_id)
-      AND (p_types IS NULL OR 'task' = any(p_types))
-      AND (
+      (similarity(coalesce(t.title, ''), p_query) * 0.4) as score
+    from onto_tasks t
+    join params on true
+    left join onto_projects p on p.id = t.project_id
+    where t.created_by = p_actor_id
+      and t.deleted_at is null
+      and p.deleted_at is null
+      and (p_project_id is null or t.project_id = p_project_id)
+      and (p_types is null or 'task' = any(p_types))
+      and (
         params.tsq @@ t.search_vector
-        OR similarity(coalesce(t.title, ''), p_query) >= 0.2
+        or similarity(coalesce(t.title, ''), p_query) >= 0.2
       )
 
-    UNION ALL
+    union all
 
     -- Plans
-    SELECT
-      'plan'::text AS type,
+    select
+      'plan'::text as type,
       pl.id,
       pl.project_id,
-      p.name AS project_name,
-      pl.name AS title,
+      p.name as project_name,
+      pl.name as title,
       ts_headline(
         'english',
         concat_ws(' ', coalesce(pl.name, ''), coalesce(pl.props::text, '')),
         params.tsq,
         'MaxFragments=2,MinWords=5,MaxWords=18'
-      ) AS snippet,
+      ) as snippet,
       (coalesce(ts_rank(pl.search_vector, params.tsq), 0) * 0.6) +
-      (similarity(coalesce(pl.name, ''), p_query) * 0.4) AS score
-    FROM onto_plans pl
-    JOIN params ON true
-    LEFT JOIN onto_projects p ON p.id = pl.project_id
-    WHERE pl.created_by = p_actor_id
-      AND (p_project_id IS NULL OR pl.project_id = p_project_id)
-      AND (p_types IS NULL OR 'plan' = any(p_types))
-      AND (
+      (similarity(coalesce(pl.name, ''), p_query) * 0.4) as score
+    from onto_plans pl
+    join params on true
+    left join onto_projects p on p.id = pl.project_id
+    where pl.created_by = p_actor_id
+      and pl.deleted_at is null
+      and p.deleted_at is null
+      and (p_project_id is null or pl.project_id = p_project_id)
+      and (p_types is null or 'plan' = any(p_types))
+      and (
         params.tsq @@ pl.search_vector
-        OR similarity(coalesce(pl.name, ''), p_query) >= 0.2
+        or similarity(coalesce(pl.name, ''), p_query) >= 0.2
       )
 
-    UNION ALL
+    union all
 
     -- Goals
-    SELECT
-      'goal'::text AS type,
+    select
+      'goal'::text as type,
       g.id,
       g.project_id,
-      p.name AS project_name,
-      g.name AS title,
+      p.name as project_name,
+      g.name as title,
       ts_headline(
         'english',
         concat_ws(' ', coalesce(g.name, ''), coalesce(g.props::text, '')),
         params.tsq,
         'MaxFragments=2,MinWords=5,MaxWords=18'
-      ) AS snippet,
+      ) as snippet,
       (coalesce(ts_rank(g.search_vector, params.tsq), 0) * 0.6) +
-      (similarity(coalesce(g.name, ''), p_query) * 0.4) AS score
-    FROM onto_goals g
-    JOIN params ON true
-    LEFT JOIN onto_projects p ON p.id = g.project_id
-    WHERE g.created_by = p_actor_id
-      AND (p_project_id IS NULL OR g.project_id = p_project_id)
-      AND (p_types IS NULL OR 'goal' = any(p_types))
-      AND (
+      (similarity(coalesce(g.name, ''), p_query) * 0.4) as score
+    from onto_goals g
+    join params on true
+    left join onto_projects p on p.id = g.project_id
+    where g.created_by = p_actor_id
+      and g.deleted_at is null
+      and p.deleted_at is null
+      and (p_project_id is null or g.project_id = p_project_id)
+      and (p_types is null or 'goal' = any(p_types))
+      and (
         params.tsq @@ g.search_vector
-        OR similarity(coalesce(g.name, ''), p_query) >= 0.2
+        or similarity(coalesce(g.name, ''), p_query) >= 0.2
       )
 
-    UNION ALL
+    union all
 
     -- Milestones
-    SELECT
-      'milestone'::text AS type,
+    select
+      'milestone'::text as type,
       m.id,
       m.project_id,
-      p.name AS project_name,
-      m.title AS title,
+      p.name as project_name,
+      m.title as title,
       ts_headline(
         'english',
         concat_ws(' ', coalesce(m.title, ''), coalesce(m.props::text, '')),
         params.tsq,
         'MaxFragments=2,MinWords=5,MaxWords=18'
-      ) AS snippet,
+      ) as snippet,
       (coalesce(ts_rank(m.search_vector, params.tsq), 0) * 0.6) +
-      (similarity(coalesce(m.title, ''), p_query) * 0.4) AS score
-    FROM onto_milestones m
-    JOIN params ON true
-    LEFT JOIN onto_projects p ON p.id = m.project_id
-    WHERE m.created_by = p_actor_id
-      AND (p_project_id IS NULL OR m.project_id = p_project_id)
-      AND (p_types IS NULL OR 'milestone' = any(p_types))
-      AND (
+      (similarity(coalesce(m.title, ''), p_query) * 0.4) as score
+    from onto_milestones m
+    join params on true
+    left join onto_projects p on p.id = m.project_id
+    where m.created_by = p_actor_id
+      and m.deleted_at is null
+      and p.deleted_at is null
+      and (p_project_id is null or m.project_id = p_project_id)
+      and (p_types is null or 'milestone' = any(p_types))
+      and (
         params.tsq @@ m.search_vector
-        OR similarity(coalesce(m.title, ''), p_query) >= 0.2
+        or similarity(coalesce(m.title, ''), p_query) >= 0.2
       )
 
-    UNION ALL
+    union all
 
     -- Documents
-    SELECT
-      'document'::text AS type,
+    select
+      'document'::text as type,
       d.id,
       d.project_id,
-      p.name AS project_name,
-      d.title AS title,
+      p.name as project_name,
+      d.title as title,
       ts_headline(
         'english',
         concat_ws(' ', coalesce(d.title, ''), coalesce(d.props::text, '')),
         params.tsq,
         'MaxFragments=2,MinWords=5,MaxWords=18'
-      ) AS snippet,
+      ) as snippet,
       (coalesce(ts_rank(d.search_vector, params.tsq), 0) * 0.6) +
-      (similarity(coalesce(d.title, ''), p_query) * 0.4) AS score
-    FROM onto_documents d
-    JOIN params ON true
-    LEFT JOIN onto_projects p ON p.id = d.project_id
-    WHERE d.created_by = p_actor_id
-      AND (p_project_id IS NULL OR d.project_id = p_project_id)
-      AND (p_types IS NULL OR 'document' = any(p_types))
-      AND (
+      (similarity(coalesce(d.title, ''), p_query) * 0.4) as score
+    from onto_documents d
+    join params on true
+    left join onto_projects p on p.id = d.project_id
+    where d.created_by = p_actor_id
+      and d.deleted_at is null
+      and p.deleted_at is null
+      and (p_project_id is null or d.project_id = p_project_id)
+      and (p_types is null or 'document' = any(p_types))
+      and (
         params.tsq @@ d.search_vector
-        OR similarity(coalesce(d.title, ''), p_query) >= 0.2
+        or similarity(coalesce(d.title, ''), p_query) >= 0.2
       )
 
-    UNION ALL
+    union all
+
+    -- Outputs
+    select
+      'output'::text as type,
+      o.id,
+      o.project_id,
+      p.name as project_name,
+      o.name as title,
+      ts_headline(
+        'english',
+        concat_ws(' ', coalesce(o.name, ''), coalesce(o.props::text, '')),
+        params.tsq,
+        'MaxFragments=2,MinWords=5,MaxWords=18'
+      ) as snippet,
+      (coalesce(ts_rank(o.search_vector, params.tsq), 0) * 0.6) +
+      (similarity(coalesce(o.name, ''), p_query) * 0.4) as score
+    from onto_outputs o
+    join params on true
+    left join onto_projects p on p.id = o.project_id
+    where o.created_by = p_actor_id
+      and o.deleted_at is null
+      and p.deleted_at is null
+      and (p_project_id is null or o.project_id = p_project_id)
+      and (p_types is null or 'output' = any(p_types))
+      and (
+        params.tsq @@ o.search_vector
+        or similarity(coalesce(o.name, ''), p_query) >= 0.2
+      )
+
+    union all
 
     -- Requirements
-    SELECT
-      'requirement'::text AS type,
+    select
+      'requirement'::text as type,
       r.id,
       r.project_id,
-      p.name AS project_name,
-      r."text" AS title,
+      p.name as project_name,
+      r."text" as title,
       ts_headline(
         'english',
         concat_ws(' ', coalesce(r."text", ''), coalesce(r.props::text, '')),
         params.tsq,
         'MaxFragments=2,MinWords=5,MaxWords=18'
-      ) AS snippet,
+      ) as snippet,
       (coalesce(ts_rank(r.search_vector, params.tsq), 0) * 0.6) +
-      (similarity(coalesce(r."text", ''), p_query) * 0.4) AS score
-    FROM onto_requirements r
-    JOIN params ON true
-    LEFT JOIN onto_projects p ON p.id = r.project_id
-    WHERE r.created_by = p_actor_id
-      AND (p_project_id IS NULL OR r.project_id = p_project_id)
-      AND (p_types IS NULL OR 'requirement' = any(p_types))
-      AND (
+      (similarity(coalesce(r."text", ''), p_query) * 0.4) as score
+    from onto_requirements r
+    join params on true
+    left join onto_projects p on p.id = r.project_id
+    where r.created_by = p_actor_id
+      and r.deleted_at is null
+      and p.deleted_at is null
+      and (p_project_id is null or r.project_id = p_project_id)
+      and (p_types is null or 'requirement' = any(p_types))
+      and (
         params.tsq @@ r.search_vector
-        OR similarity(coalesce(r."text", ''), p_query) >= 0.2
+        or similarity(coalesce(r."text", ''), p_query) >= 0.2
       )
-  ) AS results
-  ORDER BY score DESC
-  LIMIT v_limit;
-END;
-$$;
+  ) as results
+  order by score desc
+  limit v_limit;
+end;
+$function$

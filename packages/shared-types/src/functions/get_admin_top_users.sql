@@ -1,26 +1,11 @@
 -- packages/shared-types/src/functions/get_admin_top_users.sql
--- get_admin_top_users(timestamptz, timestamptz, integer)
--- Get top users by cost for admin dashboard
--- Source: apps/web/supabase/migrations/llm_usage_tracking.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_admin_top_users(
-  p_start_date TIMESTAMPTZ,
-  p_end_date TIMESTAMPTZ,
-  p_limit INTEGER DEFAULT 20
-)
-RETURNS TABLE (
-  user_id UUID,
-  email VARCHAR,
-  name VARCHAR,
-  requests BIGINT,
-  total_cost NUMERIC,
-  total_tokens BIGINT,
-  avg_response_time INTEGER,
-  last_usage TIMESTAMPTZ
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.get_admin_top_users(p_start_date timestamp with time zone, p_end_date timestamp with time zone, p_limit integer DEFAULT 20)
+ RETURNS TABLE(user_id uuid, email character varying, name character varying, requests bigint, total_cost numeric, total_tokens bigint, avg_response_time integer, last_usage timestamp with time zone)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 BEGIN
   RETURN QUERY
   SELECT
@@ -39,4 +24,4 @@ BEGIN
   ORDER BY total_cost DESC
   LIMIT p_limit;
 END;
-$$;
+$function$

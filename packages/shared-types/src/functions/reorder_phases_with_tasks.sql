@@ -1,51 +1,54 @@
 -- packages/shared-types/src/functions/reorder_phases_with_tasks.sql
--- reorder_phases_with_tasks(uuid, jsonb, uuid[], boolean)
--- Reorder phases with associated tasks
--- Source: Supabase database (function definition not in migration files)
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION reorder_phases_with_tasks(
-  p_project_id uuid,
-  p_phase_updates jsonb,
-  p_affected_task_ids uuid[] DEFAULT NULL,
-  p_clear_task_dates boolean DEFAULT false
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.reorder_phases_with_tasks(p_project_id uuid, p_phase_updates jsonb, p_clear_task_dates boolean DEFAULT false, p_affected_task_ids uuid[] DEFAULT NULL::uuid[])
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
-  v_update jsonb;
-  v_result jsonb;
+  v_result JSONB;
+  v_phase_count INTEGER;
+  v_task_count INTEGER := 0;
 BEGIN
+  -- Start transaction implicitly
+  
   -- Update phase orders
-  FOR v_update IN SELECT * FROM jsonb_array_elements(p_phase_updates)
-  LOOP
-    UPDATE phases
-    SET
-      order_position = (v_update->>'order_position')::INTEGER,
-      start_date = (v_update->>'start_date')::DATE,
-      end_date = (v_update->>'end_date')::DATE,
-      updated_at = NOW()
-    WHERE phases.id = (v_update->>'id')::UUID
-      AND phases.project_id = p_project_id;
-  END LOOP;
+  WITH updated_phases AS (
+    SELECT * FROM batch_update_phase_orders(p_project_id, p_phase_updates)
+  )
+  SELECT COUNT(*) INTO v_phase_count FROM updated_phases;
 
-  -- Optionally clear task dates
+  -- Clear task dates if requested
   IF p_clear_task_dates AND p_affected_task_ids IS NOT NULL THEN
+    -- Clear task start dates
     UPDATE tasks
-    SET
-      start_at = NULL,
-      due_at = NULL,
+    SET 
+      start_date = NULL,
       updated_at = NOW()
-    WHERE id = ANY(p_affected_task_ids);
+    WHERE id = ANY(p_affected_task_ids)
+      AND project_id = p_project_id;
+    
+    GET DIAGNOSTICS v_task_count = ROW_COUNT;
+
+    -- Update phase task assignments
+    UPDATE phase_tasks pt
+    SET 
+      suggested_start_date = NULL,
+      assignment_reason = 'Phase reordering'
+    WHERE pt.phase_id IN (
+      SELECT id FROM phases WHERE project_id = p_project_id
+    );
   END IF;
 
+  -- Build result
   v_result := jsonb_build_object(
     'success', true,
-    'phases_updated', jsonb_array_length(p_phase_updates),
-    'tasks_affected', COALESCE(array_length(p_affected_task_ids, 1), 0)
+    'phases_updated', v_phase_count,
+    'tasks_cleared', v_task_count,
+    'timestamp', NOW()
   );
 
   RETURN v_result;
 END;
-$$;
+$function$

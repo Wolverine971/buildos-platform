@@ -1,55 +1,49 @@
 -- packages/shared-types/src/functions/add_queue_job.sql
--- add_queue_job(uuid, text, jsonb, integer, timestamptz, text)
--- Add a job to the queue
--- Source: apps/web/supabase/migrations/20251011_atomic_queue_job_operations.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION add_queue_job(
-  p_user_id UUID,
-  p_job_type TEXT,
-  p_metadata JSONB,
-  p_priority INTEGER DEFAULT 10,
-  p_scheduled_for TIMESTAMPTZ DEFAULT NOW(),
-  p_dedup_key TEXT DEFAULT NULL
-)
-RETURNS UUID AS $$
-DECLARE
-  v_job_id UUID;
-  v_existing_job RECORD;
-BEGIN
-  -- Check for duplicate if dedup_key provided
-  IF p_dedup_key IS NOT NULL THEN
-    SELECT id, status INTO v_existing_job
-    FROM queue_jobs
-    WHERE dedup_key = p_dedup_key
-      AND status IN ('pending', 'processing')
-    LIMIT 1;
+CREATE OR REPLACE FUNCTION public.add_queue_job(p_user_id uuid, p_job_type text, p_metadata jsonb, p_priority integer DEFAULT 10, p_scheduled_for timestamp with time zone DEFAULT now(), p_dedup_key text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+AS $function$
+  DECLARE
+    v_job_id UUID;
+    v_queue_job_id TEXT;
+    v_is_duplicate BOOLEAN := FALSE;
+  BEGIN
+    -- Generate queue_job_id
+    v_queue_job_id := p_job_type || '_' || gen_random_uuid()::text;
 
-    -- If duplicate found and still active, return existing ID
-    IF FOUND THEN
-      RETURN v_existing_job.id;
+    INSERT INTO queue_jobs (
+      user_id, job_type, metadata, priority,
+      scheduled_for, dedup_key, status, queue_job_id
+    ) VALUES (
+      p_user_id,
+      p_job_type::queue_type,
+      p_metadata,
+      p_priority,
+      p_scheduled_for,
+      p_dedup_key,
+      'pending'::queue_status,
+      v_queue_job_id
+    )
+    ON CONFLICT (dedup_key)
+    WHERE dedup_key IS NOT NULL AND status IN ('pending', 'processing')
+    DO NOTHING
+    RETURNING id INTO v_job_id;
+
+    IF v_job_id IS NULL AND p_dedup_key IS NOT NULL THEN
+      SELECT id INTO v_job_id
+      FROM queue_jobs
+      WHERE dedup_key = p_dedup_key
+        AND status IN ('pending', 'processing')
+      ORDER BY created_at ASC
+      LIMIT 1;
     END IF;
-  END IF;
 
-  -- Insert new job
-  INSERT INTO queue_jobs (
-    user_id,
-    job_type,
-    metadata,
-    priority,
-    scheduled_for,
-    dedup_key,
-    status
-  ) VALUES (
-    p_user_id,
-    p_job_type,
-    p_metadata,
-    p_priority,
-    p_scheduled_for,
-    p_dedup_key,
-    'pending'
-  )
-  RETURNING id INTO v_job_id;
+    IF v_job_id IS NULL THEN
+      RAISE EXCEPTION 'Failed to create or find job with dedup_key: %', p_dedup_key;
+    END IF;
 
-  RETURN v_job_id;
-END;
-$$ LANGUAGE plpgsql;
+    RETURN v_job_id;
+  END;
+  $function$

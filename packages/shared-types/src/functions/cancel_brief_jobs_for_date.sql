@@ -1,17 +1,10 @@
 -- packages/shared-types/src/functions/cancel_brief_jobs_for_date.sql
--- cancel_brief_jobs_for_date(uuid, text, uuid)
--- Cancel brief jobs for a date
--- Source: apps/web/supabase/migrations/20251011_atomic_queue_job_operations.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION cancel_brief_jobs_for_date(
-  p_user_id UUID,
-  p_brief_date TEXT,
-  p_exclude_job_id UUID DEFAULT NULL
-)
-RETURNS TABLE (
-  cancelled_count INTEGER,
-  cancelled_job_ids TEXT[]
-) AS $$
+CREATE OR REPLACE FUNCTION public.cancel_brief_jobs_for_date(p_user_id uuid, p_brief_date text, p_exclude_job_id uuid DEFAULT NULL::uuid)
+ RETURNS TABLE(cancelled_count integer, cancelled_job_ids text[])
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   v_cancelled_jobs TEXT[];
   v_count INTEGER;
@@ -38,4 +31,4 @@ BEGIN
 
   RETURN QUERY SELECT v_count, v_cancelled_jobs;
 END;
-$$ LANGUAGE plpgsql;
+$function$

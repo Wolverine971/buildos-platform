@@ -1,16 +1,11 @@
 -- packages/shared-types/src/functions/get_daily_active_users.sql
--- get_daily_active_users(date, date)
--- Get daily active users
--- Source: supabase/migrations/20260127_admin_analytics_ontology_updates.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_daily_active_users(start_date date, end_date date)
-RETURNS TABLE (
-  date date,
-  active_users bigint
-)
-LANGUAGE sql
-STABLE
-AS $$
+CREATE OR REPLACE FUNCTION public.get_daily_active_users(start_date date, end_date date)
+ RETURNS TABLE(date date, active_users bigint)
+ LANGUAGE sql
+ STABLE
+AS $function$
   WITH activity AS (
     SELECT changed_by AS user_id, created_at::date AS activity_date
     FROM onto_project_logs
@@ -36,4 +31,4 @@ AS $$
   WHERE user_id IS NOT NULL
   GROUP BY activity_date
   ORDER BY activity_date;
-$$;
+$function$

@@ -1,64 +1,184 @@
 -- packages/shared-types/src/functions/get_projects_with_stats.sql
--- get_projects_with_stats(uuid, text, text, integer, integer)
--- Get projects with statistics for a user
--- Source: Supabase database (function definition not in migration files)
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_projects_with_stats(
-  p_user_id uuid,
-  p_search text DEFAULT NULL,
-  p_status text DEFAULT NULL,
-  p_limit integer DEFAULT 50,
-  p_offset integer DEFAULT 0
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.get_projects_with_stats(p_user_id uuid, p_status text DEFAULT 'all'::text, p_search text DEFAULT ''::text, p_limit integer DEFAULT 50, p_offset integer DEFAULT 0)
+ RETURNS json
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+AS $function$
 DECLARE
-  v_result jsonb;
-  v_total_count integer;
+  v_result JSON;
+  v_total_count INTEGER;
 BEGIN
-  -- Get total count
-  SELECT COUNT(*) INTO v_total_count
-  FROM onto_projects p
-  JOIN onto_actors a ON a.id = p.created_by
-  WHERE a.user_id = p_user_id
-    AND p.deleted_at IS NULL
-    AND (p_search IS NULL OR p.title ILIKE '%' || p_search || '%')
-    AND (p_status IS NULL OR p.state_key::TEXT = p_status);
+  -- Get total count for pagination
+  SELECT COUNT(*)
+  INTO v_total_count
+  FROM projects p
+  WHERE p.user_id = p_user_id
+    AND (p_status = 'all' OR p.status::text = p_status)
+    AND (
+      p_search = '' OR 
+      p.name ILIKE '%' || p_search || '%' OR 
+      p.description ILIKE '%' || p_search || '%'
+    );
 
-  -- Get projects with stats
-  SELECT jsonb_build_object(
-    'projects', COALESCE(jsonb_agg(
-      jsonb_build_object(
-        'id', p.id,
-        'title', p.title,
-        'description', p.description,
-        'state_key', p.state_key,
-        'created_at', p.created_at,
-        'updated_at', p.updated_at,
-        'stats', jsonb_build_object(
-          'task_count', (SELECT COUNT(*) FROM onto_tasks t WHERE t.project_id = p.id AND t.deleted_at IS NULL),
-          'completed_tasks', (SELECT COUNT(*) FROM onto_tasks t WHERE t.project_id = p.id AND t.deleted_at IS NULL AND t.state_key = 'done'),
-          'goal_count', (SELECT COUNT(*) FROM onto_goals g WHERE g.project_id = p.id AND g.deleted_at IS NULL),
-          'document_count', (SELECT COUNT(*) FROM onto_documents d WHERE d.project_id = p.id AND d.deleted_at IS NULL)
-        )
+  -- Build the complete result with projects and stats
+  SELECT json_build_object(
+    'projects', COALESCE(
+      (SELECT json_agg(project_data)
+       FROM (
+         SELECT json_build_object(
+           'id', p.id,
+           'user_id', p.user_id,
+           'name', p.name,
+           'slug', p.slug,
+           'description', p.description,
+           'status', p.status,
+           'calendar_color_id', p.calendar_color_id,
+           'start_date', p.start_date,
+           'end_date', p.end_date,
+           'created_at', p.created_at,
+           'updated_at', p.updated_at,
+           'taskStats', json_build_object(
+             'total', (
+               SELECT COUNT(*)
+               FROM tasks t
+               WHERE t.project_id = p.id
+                 AND t.deleted_at IS NULL
+             ),
+             'active', (
+               SELECT COUNT(*)
+               FROM tasks t
+               WHERE t.project_id = p.id
+                 AND t.deleted_at IS NULL
+                 AND t.status IN ('backlog', 'in_progress')
+             ),
+             'completed', (
+               SELECT COUNT(*)
+               FROM tasks t
+               WHERE t.project_id = p.id
+                 AND t.deleted_at IS NULL
+                 AND t.status = 'done'
+             ),
+             'blocked', (
+               SELECT COUNT(*)
+               FROM tasks t
+               WHERE t.project_id = p.id
+                 AND t.deleted_at IS NULL
+                 AND t.status = 'blocked'
+             ),
+             'overdue', (
+               SELECT COUNT(*)
+               FROM tasks t
+               WHERE t.project_id = p.id
+                 AND t.deleted_at IS NULL
+                 AND t.status != 'done'
+                 AND t.start_date < CURRENT_DATE
+             ),
+             'completionRate', (
+               SELECT CASE 
+                 WHEN COUNT(*) = 0 THEN 0
+                 ELSE ROUND((COUNT(*) FILTER (WHERE status = 'done') * 100.0) / COUNT(*))
+               END
+               FROM tasks t
+               WHERE t.project_id = p.id
+                 AND t.deleted_at IS NULL
+             ),
+             'highPriorityCount', (
+               SELECT COUNT(*)
+               FROM tasks t
+               WHERE t.project_id = p.id
+                 AND t.deleted_at IS NULL
+                 AND t.status != 'done'
+                 AND t.priority = 'high'
+             ),
+             'recentlyUpdated', (
+               SELECT COUNT(*)
+               FROM tasks t
+               WHERE t.project_id = p.id
+                 AND t.deleted_at IS NULL
+                 AND t.updated_at > NOW() - INTERVAL '7 days'
+             )
+           ),
+           'phaseInfo', json_build_object(
+             'count', (
+               SELECT COUNT(*)
+               FROM phases ph
+               WHERE ph.project_id = p.id
+             ),
+             'activePhase', (
+               SELECT json_build_object(
+                 'id', ph.id,
+                 'name', ph.name,
+                 'start_date', ph.start_date,
+                 'end_date', ph.end_date
+               )
+               FROM phases ph
+               WHERE ph.project_id = p.id
+                 AND ph.start_date <= CURRENT_DATE
+                 AND ph.end_date >= CURRENT_DATE
+               ORDER BY ph.order ASC
+               LIMIT 1
+             )
+           ),
+           'lastActivity', (
+             SELECT MAX(activity_date)
+             FROM (
+               SELECT MAX(t.updated_at) as activity_date
+               FROM tasks t
+               WHERE t.project_id = p.id
+               UNION ALL
+               SELECT MAX(ph.updated_at) as activity_date
+               FROM phases ph
+               WHERE ph.project_id = p.id
+               UNION ALL
+               SELECT p.updated_at as activity_date
+             ) activities
+           ),
+           'sortOrder', CASE p.status::text
+             WHEN 'active' THEN 0
+             WHEN 'paused' THEN 1
+             WHEN 'completed' THEN 2
+             ELSE 3
+           END
+         ) AS project_data
+         FROM projects p
+         WHERE p.user_id = p_user_id
+           AND (p_status = 'all' OR p.status::text = p_status)
+           AND (
+             p_search = '' OR 
+             p.name ILIKE '%' || p_search || '%' OR 
+             p.description ILIKE '%' || p_search || '%'
+           )
+         ORDER BY 
+           CASE p.status::text
+             WHEN 'active' THEN 0
+             WHEN 'paused' THEN 1
+             WHEN 'completed' THEN 2
+             ELSE 3
+           END,
+           p.created_at DESC
+         LIMIT p_limit
+         OFFSET p_offset
+       ) AS projects_subquery
+      ), '[]'::json
+    ),
+    'pagination', json_build_object(
+      'total', v_total_count,
+      'limit', p_limit,
+      'offset', p_offset,
+      'totalPages', CEIL(v_total_count::numeric / p_limit)
+    ),
+    'metadata', json_build_object(
+      'fetched_at', NOW(),
+      'user_id', p_user_id,
+      'filters', json_build_object(
+        'status', p_status,
+        'search', p_search
       )
-    ), '[]'::jsonb),
-    'total_count', v_total_count,
-    'limit', p_limit,
-    'offset', p_offset
-  ) INTO v_result
-  FROM onto_projects p
-  JOIN onto_actors a ON a.id = p.created_by
-  WHERE a.user_id = p_user_id
-    AND p.deleted_at IS NULL
-    AND (p_search IS NULL OR p.title ILIKE '%' || p_search || '%')
-    AND (p_status IS NULL OR p.state_key::TEXT = p_status)
-  ORDER BY p.updated_at DESC
-  LIMIT p_limit
-  OFFSET p_offset;
+    )
+  ) INTO v_result;
 
   RETURN v_result;
 END;
-$$;
+$function$

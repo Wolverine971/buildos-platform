@@ -1,14 +1,10 @@
 -- packages/shared-types/src/functions/fail_queue_job.sql
--- fail_queue_job(uuid, text, boolean)
--- Mark queue job as failed
--- Source: apps/web/supabase/migrations/20251022_fix_fail_queue_job_column.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION fail_queue_job(
-  p_job_id UUID,
-  p_error_message TEXT,
-  p_retry BOOLEAN DEFAULT TRUE
-)
-RETURNS BOOLEAN AS $$
+CREATE OR REPLACE FUNCTION public.fail_queue_job(p_job_id uuid, p_error_message text, p_retry boolean DEFAULT true)
+ RETURNS boolean
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   v_job RECORD;
   v_updated INTEGER;
@@ -45,7 +41,7 @@ BEGIN
       status = 'failed',
       attempts = COALESCE(attempts, 0) + 1,
       error_message = p_error_message,
-      failed_at = NOW(),
+      completed_at = NOW(),
       updated_at = NOW()
     WHERE id = p_job_id;
   END IF;
@@ -53,4 +49,4 @@ BEGIN
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   RETURN v_updated > 0;
 END;
-$$ LANGUAGE plpgsql;
+$function$

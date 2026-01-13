@@ -1,29 +1,12 @@
 -- packages/shared-types/src/functions/get_project_invite_preview.sql
--- get_project_invite_preview(text)
--- Preview invite details before accepting
--- Source: supabase/migrations/20260326000000_invite_pending_flow.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_project_invite_preview(
-  p_token_hash text
-)
-RETURNS TABLE (
-  invite_id uuid,
-  project_id uuid,
-  project_name text,
-  role_key text,
-  access text,
-  status text,
-  expires_at timestamptz,
-  created_at timestamptz,
-  invitee_email text,
-  invited_by_actor_id uuid,
-  invited_by_name text,
-  invited_by_email text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+CREATE OR REPLACE FUNCTION public.get_project_invite_preview(p_token_hash text)
+ RETURNS TABLE(invite_id uuid, project_id uuid, project_name text, role_key text, access text, status text, expires_at timestamp with time zone, created_at timestamp with time zone, invitee_email text, invited_by_actor_id uuid, invited_by_name text, invited_by_email text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   v_invite onto_project_invites%ROWTYPE;
 BEGIN
@@ -65,4 +48,4 @@ BEGIN
   LEFT JOIN public.users u ON u.id = a.user_id
   WHERE i.id = v_invite.id;
 END;
-$$;
+$function$

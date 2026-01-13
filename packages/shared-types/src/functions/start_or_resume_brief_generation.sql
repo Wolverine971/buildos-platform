@@ -1,61 +1,87 @@
 -- packages/shared-types/src/functions/start_or_resume_brief_generation.sql
--- start_or_resume_brief_generation(uuid, date, boolean)
--- Start or resume brief generation
--- Source: Supabase database (function definition not in migration files)
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION start_or_resume_brief_generation(
-  p_user_id uuid,
-  p_brief_date date,
-  p_force_regenerate boolean DEFAULT false
-)
-RETURNS TABLE (
-  brief_id uuid,
-  started boolean,
-  message text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.start_or_resume_brief_generation(p_user_id uuid, p_brief_date date, p_force_regenerate boolean DEFAULT false)
+ RETURNS TABLE(started boolean, brief_id uuid, message text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
-  v_existing RECORD;
-  v_actor_id uuid;
-  v_brief_id uuid;
+  v_existing_brief RECORD;
+  v_brief_id UUID;
+  v_message TEXT;
+  v_started BOOLEAN DEFAULT FALSE;
 BEGIN
-  -- Get actor ID
-  SELECT id INTO v_actor_id FROM onto_actors WHERE user_id = p_user_id LIMIT 1;
+  -- Lock the row for this user and date to prevent concurrent modifications
+  SELECT * INTO v_existing_brief
+  FROM daily_briefs
+  WHERE user_id = p_user_id AND brief_date = p_brief_date
+  FOR UPDATE;
 
-  -- Check for existing brief
-  SELECT * INTO v_existing
-  FROM ontology_daily_briefs
-  WHERE user_id = p_user_id AND brief_date = p_brief_date;
-
-  IF v_existing.id IS NOT NULL THEN
-    IF v_existing.generation_status = 'completed' AND NOT p_force_regenerate THEN
-      RETURN QUERY SELECT v_existing.id, false, 'Brief already completed'::text;
-      RETURN;
-    END IF;
-
-    IF v_existing.generation_status = 'processing' THEN
-      RETURN QUERY SELECT v_existing.id, false, 'Brief generation in progress'::text;
-      RETURN;
-    END IF;
-
-    -- Update existing to restart
-    UPDATE ontology_daily_briefs
-    SET generation_status = 'processing',
+  -- Check if brief exists and its status
+  IF v_existing_brief.id IS NOT NULL THEN
+    -- Check if we should force regenerate
+    IF p_force_regenerate THEN
+      -- Update existing brief to restart generation
+      UPDATE daily_briefs
+      SET
+        generation_status = 'processing',
         generation_started_at = NOW(),
-        generation_error = NULL
-    WHERE id = v_existing.id;
+        generation_error = NULL,
+        generation_completed_at = NULL,
+        generation_progress = jsonb_build_object('step', 'starting', 'progress', 0),
+        updated_at = NOW()
+      WHERE id = v_existing_brief.id;
 
-    RETURN QUERY SELECT v_existing.id, true, 'Resuming generation'::text;
-    RETURN;
+      v_brief_id := v_existing_brief.id;
+      v_started := TRUE;
+      v_message := 'Brief generation restarted';
+    ELSIF v_existing_brief.generation_status = 'processing' THEN
+      -- Brief is already being processed
+      RAISE EXCEPTION 'P0001:Brief generation already in progress' USING HINT = 'already in progress';
+    ELSIF v_existing_brief.generation_status = 'completed' AND NOT p_force_regenerate THEN
+      -- Brief already completed and not forcing
+      RAISE EXCEPTION 'P0002:Brief already completed for this date' USING HINT = 'already completed';
+    ELSE
+      -- Resume a failed generation
+      UPDATE daily_briefs
+      SET
+        generation_status = 'processing',
+        generation_started_at = NOW(),
+        generation_error = NULL,
+        updated_at = NOW()
+      WHERE id = v_existing_brief.id;
+
+      v_brief_id := v_existing_brief.id;
+      v_started := TRUE;
+      v_message := 'Brief generation resumed';
+    END IF;
+  ELSE
+    -- Create new brief
+    INSERT INTO daily_briefs (
+      user_id,
+      brief_date,
+      summary_content,
+      generation_status,
+      generation_started_at,
+      generation_progress
+    )
+    VALUES (
+      p_user_id,
+      p_brief_date,
+      '',
+      'processing',
+      NOW(),
+      jsonb_build_object('step', 'starting', 'progress', 0)
+    )
+    RETURNING id INTO v_brief_id;
+
+    v_started := TRUE;
+    v_message := 'New brief generation started';
   END IF;
 
-  -- Create new brief
-  INSERT INTO ontology_daily_briefs (user_id, actor_id, brief_date, generation_status, generation_started_at)
-  VALUES (p_user_id, v_actor_id, p_brief_date, 'processing', NOW())
-  RETURNING id INTO v_brief_id;
-
-  RETURN QUERY SELECT v_brief_id, true, 'Started new generation'::text;
+  -- Return the result
+  RETURN QUERY
+  SELECT v_started, v_brief_id, v_message;
 END;
-$$;
+$function$

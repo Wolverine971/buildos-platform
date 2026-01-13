@@ -1,23 +1,11 @@
 -- packages/shared-types/src/functions/get_admin_model_breakdown.sql
--- get_admin_model_breakdown(timestamptz, timestamptz)
--- Get model breakdown for admin dashboard
--- Source: apps/web/supabase/migrations/llm_usage_tracking.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_admin_model_breakdown(
-  p_start_date TIMESTAMPTZ,
-  p_end_date TIMESTAMPTZ
-)
-RETURNS TABLE (
-  model VARCHAR,
-  requests BIGINT,
-  total_cost NUMERIC,
-  total_tokens BIGINT,
-  avg_response_time INTEGER,
-  success_rate NUMERIC
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.get_admin_model_breakdown(p_start_date timestamp with time zone, p_end_date timestamp with time zone)
+ RETURNS TABLE(model character varying, requests bigint, total_cost numeric, total_tokens bigint, avg_response_time integer, success_rate numeric)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 BEGIN
   RETURN QUERY
   SELECT
@@ -32,4 +20,4 @@ BEGIN
   GROUP BY l.model_used
   ORDER BY total_cost DESC;
 END;
-$$;
+$function$

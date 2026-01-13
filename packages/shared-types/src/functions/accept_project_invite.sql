@@ -1,5 +1,12 @@
 -- packages/shared-types/src/functions/accept_project_invite.sql
+-- Source: Supabase pg_get_functiondef
 
+CREATE OR REPLACE FUNCTION public.accept_project_invite(p_token_hash text, p_actor_id uuid, p_user_email text)
+ RETURNS TABLE(project_id uuid, role_key text, access text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   v_invite onto_project_invites%ROWTYPE;
   v_auth_user_id uuid;
@@ -84,3 +91,4 @@ BEGIN
 
   RETURN QUERY SELECT v_invite.project_id, v_invite.role_key, v_invite.access;
 END;
+$function$

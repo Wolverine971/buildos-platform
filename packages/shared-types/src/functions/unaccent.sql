@@ -1,27 +1,14 @@
 -- packages/shared-types/src/functions/unaccent.sql
--- unaccent(text)
--- Remove accents from text
--- Source: PostgreSQL unaccent extension function
+-- Source: Supabase pg_get_functiondef
 
--- This is a built-in function from the unaccent extension
--- Removes diacritical marks (accents) from characters
+CREATE OR REPLACE FUNCTION public.unaccent(regdictionary, text)
+ RETURNS text
+ LANGUAGE c
+ STABLE PARALLEL SAFE STRICT
+AS '$libdir/unaccent', $function$unaccent_dict$function$
 
-CREATE OR REPLACE FUNCTION unaccent(text)
-RETURNS text
-LANGUAGE c
-IMMUTABLE STRICT PARALLEL SAFE
-AS 'MODULE_PATHNAME', 'unaccent_lexize';
-
--- Note: The actual unaccent() function is provided by the unaccent extension.
--- This is the function signature reference.
---
--- Example usage:
--- SELECT unaccent('Hôtel') -> 'Hotel'
--- SELECT unaccent('café') -> 'cafe'
--- SELECT unaccent('naïve') -> 'naive'
---
--- This is commonly used for accent-insensitive searching:
--- WHERE unaccent(title) ILIKE unaccent('%search_term%')
---
--- To use this function, ensure the unaccent extension is enabled:
--- CREATE EXTENSION IF NOT EXISTS unaccent;
+CREATE OR REPLACE FUNCTION public.unaccent(text)
+ RETURNS text
+ LANGUAGE c
+ STABLE PARALLEL SAFE STRICT
+AS '$libdir/unaccent', $function$unaccent_dict$function$

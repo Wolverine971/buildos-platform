@@ -1,16 +1,11 @@
 -- packages/shared-types/src/functions/get_project_full.sql
--- get_project_full(uuid, uuid)
--- Get full project data with all related entities
--- Source: supabase/migrations/20260320000002_project_sharing_access_fixes.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_project_full(
-  p_project_id uuid,
-  p_actor_id uuid
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.get_project_full(p_project_id uuid, p_actor_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
   v_project jsonb;
   v_result jsonb;
@@ -61,6 +56,13 @@ BEGIN
         AND t.deleted_at IS NULL
     ), '[]'::jsonb),
 
+    'outputs', COALESCE((
+      SELECT jsonb_agg(to_jsonb(o.*) ORDER BY o.created_at)
+      FROM onto_outputs o
+      WHERE o.project_id = p_project_id
+        AND o.deleted_at IS NULL
+    ), '[]'::jsonb),
+
     'documents', COALESCE((
       SELECT jsonb_agg(to_jsonb(d.*) ORDER BY d.created_at)
       FROM onto_documents d
@@ -88,6 +90,13 @@ BEGIN
         AND rk.deleted_at IS NULL
     ), '[]'::jsonb),
 
+    'decisions', COALESCE((
+      SELECT jsonb_agg(to_jsonb(dc.*) ORDER BY dc.decision_at)
+      FROM onto_decisions dc
+      WHERE dc.project_id = p_project_id
+        AND dc.deleted_at IS NULL
+    ), '[]'::jsonb),
+
     'metrics', COALESCE((
       SELECT jsonb_agg(to_jsonb(mt.*) ORDER BY mt.created_at)
       FROM onto_metrics mt
@@ -110,4 +119,4 @@ BEGIN
 
   RETURN v_result;
 END;
-$$;
+$function$

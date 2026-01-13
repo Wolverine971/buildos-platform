@@ -1,14 +1,10 @@
 -- packages/shared-types/src/functions/cancel_job_with_reason.sql
--- cancel_job_with_reason(uuid, text, boolean)
--- Cancel a job with reason
--- Source: apps/web/supabase/migrations/20251011_atomic_queue_job_operations.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION cancel_job_with_reason(
-  p_job_id UUID,
-  p_reason TEXT,
-  p_allow_processing BOOLEAN DEFAULT FALSE
-)
-RETURNS BOOLEAN AS $$
+CREATE OR REPLACE FUNCTION public.cancel_job_with_reason(p_job_id uuid, p_reason text, p_allow_processing boolean DEFAULT false)
+ RETURNS boolean
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   v_updated INTEGER;
   v_allowed_statuses TEXT[];
@@ -30,4 +26,4 @@ BEGIN
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   RETURN v_updated > 0;
 END;
-$$ LANGUAGE plpgsql;
+$function$

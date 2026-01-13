@@ -1,10 +1,10 @@
 -- packages/shared-types/src/functions/generate_short_code.sql
--- generate_short_code(integer)
--- Generate a short code for URL shortening
--- Source: supabase/migrations/20251007_notification_tracking_links.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION generate_short_code(length INTEGER DEFAULT 6)
-RETURNS TEXT AS $$
+CREATE OR REPLACE FUNCTION public.generate_short_code(length integer DEFAULT 6)
+ RETURNS text
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   chars TEXT := 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   result TEXT := '';
@@ -15,4 +15,4 @@ BEGIN
   END LOOP;
   RETURN result;
 END;
-$$ LANGUAGE plpgsql VOLATILE;
+$function$

@@ -1,20 +1,11 @@
 -- packages/shared-types/src/functions/get_user_engagement_metrics.sql
--- get_user_engagement_metrics()
--- Get user engagement metrics
--- Source: supabase/migrations/20260127_admin_analytics_ontology_updates.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_user_engagement_metrics()
-RETURNS TABLE (
-  total_users bigint,
-  active_users_7d bigint,
-  active_users_30d bigint,
-  total_briefs bigint,
-  avg_brief_length numeric,
-  top_active_users json
-)
-LANGUAGE sql
-STABLE
-AS $$
+CREATE OR REPLACE FUNCTION public.get_user_engagement_metrics()
+ RETURNS TABLE(total_users bigint, active_users_7d bigint, active_users_30d bigint, total_briefs bigint, avg_brief_length numeric, top_active_users json)
+ LANGUAGE sql
+ STABLE
+AS $function$
   WITH activity AS (
     SELECT changed_by AS user_id, created_at
     FROM onto_project_logs
@@ -59,4 +50,4 @@ AS $$
       FROM ontology_daily_briefs
       WHERE generation_status = 'completed') AS avg_brief_length,
     (SELECT json_agg(row_to_json(t)) FROM top_users t) AS top_active_users;
-$$;
+$function$

@@ -1,20 +1,11 @@
 -- packages/shared-types/src/functions/acquire_migration_platform_lock.sql
--- acquire_migration_platform_lock(uuid, uuid, integer)
--- Acquire migration platform lock
--- Source: supabase/migrations/20251206_migration_dashboard_schema.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION acquire_migration_platform_lock(
-    p_run_id UUID,
-    p_locked_by UUID,
-    p_duration_minutes INTEGER DEFAULT 60
-)
-RETURNS TABLE(
-    acquired BOOLEAN,
-    existing_run_id UUID,
-    existing_locked_by UUID,
-    existing_locked_at TIMESTAMPTZ,
-    existing_expires_at TIMESTAMPTZ
-) AS $$
+CREATE OR REPLACE FUNCTION public.acquire_migration_platform_lock(p_run_id uuid, p_locked_by uuid, p_duration_minutes integer DEFAULT 60)
+ RETURNS TABLE(acquired boolean, existing_run_id uuid, existing_locked_by uuid, existing_locked_at timestamp with time zone, existing_expires_at timestamp with time zone)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
     v_expires_at TIMESTAMPTZ;
     v_current_lock RECORD;
@@ -52,4 +43,4 @@ BEGIN
             v_current_lock.expires_at AS existing_expires_at;
     END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$function$

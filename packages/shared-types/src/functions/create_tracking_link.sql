@@ -1,13 +1,10 @@
 -- packages/shared-types/src/functions/create_tracking_link.sql
--- create_tracking_link(uuid, text)
--- Create a tracking link with unique short code
--- Source: supabase/migrations/20251007_notification_tracking_links.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION create_tracking_link(
-  p_delivery_id UUID,
-  p_destination_url TEXT
-)
-RETURNS TEXT AS $$
+CREATE OR REPLACE FUNCTION public.create_tracking_link(p_delivery_id uuid, p_destination_url text)
+ RETURNS text
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   v_short_code TEXT;
   v_max_attempts INTEGER := 10;
@@ -53,4 +50,4 @@ BEGIN
     END;
   END LOOP;
 END;
-$$ LANGUAGE plpgsql;
+$function$

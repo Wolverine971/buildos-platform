@@ -1,16 +1,11 @@
 -- packages/shared-types/src/functions/update_llm_usage_summary.sql
--- update_llm_usage_summary(uuid, date)
--- Updates or creates the daily usage summary for a user and date
--- Source: apps/web/supabase/migrations/llm_usage_tracking.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION update_llm_usage_summary(
-  p_user_id UUID,
-  p_date DATE
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.update_llm_usage_summary(p_user_id uuid, p_date date)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
   v_models_breakdown JSONB;
   v_operations_breakdown JSONB;
@@ -101,4 +96,4 @@ BEGIN
     operations_breakdown = EXCLUDED.operations_breakdown,
     updated_at = NOW();
 END;
-$$;
+$function$

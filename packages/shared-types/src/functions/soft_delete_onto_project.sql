@@ -1,12 +1,10 @@
 -- packages/shared-types/src/functions/soft_delete_onto_project.sql
--- soft_delete_onto_project(uuid)
--- Soft delete an ontology project
--- Source: supabase/migrations/20251221_soft_delete_onto_projects.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION soft_delete_onto_project(p_project_id UUID)
-RETURNS void
-LANGUAGE plpgsql
-AS $$
+CREATE OR REPLACE FUNCTION public.soft_delete_onto_project(p_project_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   v_now TIMESTAMPTZ := now();
 BEGIN
@@ -37,6 +35,11 @@ BEGIN
   SET deleted_at = v_now, updated_at = v_now
   WHERE project_id = p_project_id AND deleted_at IS NULL;
 
+  -- Soft delete outputs
+  UPDATE onto_outputs
+  SET deleted_at = v_now, updated_at = v_now
+  WHERE project_id = p_project_id AND deleted_at IS NULL;
+
   -- Soft delete milestones
   UPDATE onto_milestones
   SET deleted_at = v_now, updated_at = v_now
@@ -44,6 +47,11 @@ BEGIN
 
   -- Soft delete risks
   UPDATE onto_risks
+  SET deleted_at = v_now, updated_at = v_now
+  WHERE project_id = p_project_id AND deleted_at IS NULL;
+
+  -- Soft delete decisions
+  UPDATE onto_decisions
   SET deleted_at = v_now, updated_at = v_now
   WHERE project_id = p_project_id AND deleted_at IS NULL;
 
@@ -62,4 +70,4 @@ BEGIN
   SET deleted_at = v_now, updated_at = v_now
   WHERE id = p_project_id AND deleted_at IS NULL;
 END;
-$$;
+$function$

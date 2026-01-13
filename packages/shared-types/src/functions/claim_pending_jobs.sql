@@ -1,29 +1,10 @@
 -- packages/shared-types/src/functions/claim_pending_jobs.sql
--- claim_pending_jobs(text[], integer)
--- Claim pending jobs for processing
--- Source: apps/web/supabase/migrations/20251011_atomic_queue_job_operations.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION claim_pending_jobs(
-  p_job_types TEXT[],
-  p_batch_size INTEGER DEFAULT 5
-)
-RETURNS TABLE (
-  id UUID,
-  queue_job_id TEXT,
-  user_id UUID,
-  job_type TEXT,
-  metadata JSONB,
-  status TEXT,
-  priority INTEGER,
-  attempts INTEGER,
-  max_attempts INTEGER,
-  scheduled_for TIMESTAMPTZ,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ,
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  error_message TEXT
-) AS $$
+CREATE OR REPLACE FUNCTION public.claim_pending_jobs(p_job_types text[], p_batch_size integer DEFAULT 5)
+ RETURNS TABLE(id uuid, queue_job_id text, user_id uuid, job_type text, metadata jsonb, status text, priority integer, attempts integer, max_attempts integer, scheduled_for timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, started_at timestamp with time zone, completed_at timestamp with time zone, error_message text)
+ LANGUAGE plpgsql
+AS $function$
 BEGIN
   RETURN QUERY
   UPDATE queue_jobs
@@ -45,9 +26,9 @@ BEGIN
     queue_jobs.id,
     queue_jobs.queue_job_id,
     queue_jobs.user_id,
-    queue_jobs.job_type::TEXT,
+    queue_jobs.job_type::TEXT,     -- Cast enum to text
     queue_jobs.metadata,
-    queue_jobs.status::TEXT,
+    queue_jobs.status::TEXT,       -- FIXED: Cast enum to text
     queue_jobs.priority,
     queue_jobs.attempts,
     queue_jobs.max_attempts,
@@ -58,4 +39,4 @@ BEGIN
     queue_jobs.completed_at,
     queue_jobs.error_message;
 END;
-$$ LANGUAGE plpgsql;
+$function$

@@ -1,34 +1,44 @@
 -- packages/shared-types/src/functions/get_subscription_overview.sql
--- get_subscription_overview()
--- Get subscription overview metrics
--- Source: Supabase database (function definition not in migration files)
+-- Source: Supabase pg_get_functiondef
 
--- Note: This function returns subscription metrics for admin analytics.
--- The SQL definition below is reconstructed from database.types.ts signature.
-
-CREATE OR REPLACE FUNCTION get_subscription_overview()
-RETURNS TABLE (
-  total_subscribers integer,
-  active_subscriptions integer,
-  trial_subscriptions integer,
-  paused_subscriptions integer,
-  canceled_subscriptions integer,
-  mrr numeric,
-  arr numeric
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.get_subscription_overview()
+ RETURNS TABLE(total_subscribers bigint, active_subscriptions bigint, trial_subscriptions bigint, canceled_subscriptions bigint, paused_subscriptions bigint, mrr numeric, arr numeric)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 BEGIN
   RETURN QUERY
   SELECT
-    COUNT(DISTINCT s.user_id)::INTEGER as total_subscribers,
-    COUNT(*) FILTER (WHERE s.status = 'active')::INTEGER as active_subscriptions,
-    COUNT(*) FILTER (WHERE s.status = 'trialing')::INTEGER as trial_subscriptions,
-    COUNT(*) FILTER (WHERE s.status = 'paused')::INTEGER as paused_subscriptions,
-    COUNT(*) FILTER (WHERE s.status = 'canceled')::INTEGER as canceled_subscriptions,
-    COALESCE(SUM(CASE WHEN s.status = 'active' THEN s.amount ELSE 0 END), 0) as mrr,
-    COALESCE(SUM(CASE WHEN s.status = 'active' THEN s.amount * 12 ELSE 0 END), 0) as arr
-  FROM subscriptions s;
+    COUNT(DISTINCT user_id) AS total_subscribers,
+    COUNT(*) FILTER (WHERE status = 'active') AS active_subscriptions,
+    COUNT(*) FILTER (WHERE status = 'trialing') AS trial_subscriptions,
+    COUNT(*) FILTER (WHERE status = 'canceled') AS canceled_subscriptions,
+    COUNT(*) FILTER (WHERE status = 'paused') AS paused_subscriptions,
+    COALESCE(SUM(
+      CASE 
+        WHEN status = 'active' THEN 
+          sp.price_cents / 100.0 / 
+          CASE sp.billing_interval
+            WHEN 'month' THEN 1
+            WHEN 'year' THEN 12
+            ELSE 1
+          END
+        ELSE 0
+      END
+    ), 0) AS mrr,
+    COALESCE(SUM(
+      CASE 
+        WHEN status = 'active' THEN 
+          sp.price_cents / 100.0 / 
+          CASE sp.billing_interval
+            WHEN 'month' THEN 1
+            WHEN 'year' THEN 12
+            ELSE 1
+          END
+        ELSE 0
+      END
+    ) * 12, 0) AS arr
+  FROM customer_subscriptions cs
+  LEFT JOIN subscription_plans sp ON cs.plan_id = sp.id;
 END;
-$$;
+$function$

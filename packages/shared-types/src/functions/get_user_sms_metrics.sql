@@ -1,26 +1,12 @@
 -- packages/shared-types/src/functions/get_user_sms_metrics.sql
--- get_user_sms_metrics(uuid, integer)
--- Get user SMS metrics
--- Source: apps/web/supabase/migrations/20251008_sms_metrics_monitoring.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_user_sms_metrics(
-  p_user_id UUID,
-  p_days INTEGER DEFAULT 30
-)
-RETURNS TABLE (
-  metric_date DATE,
-  scheduled_count INTEGER,
-  sent_count INTEGER,
-  delivered_count INTEGER,
-  failed_count INTEGER,
-  llm_cost_usd NUMERIC,
-  delivery_rate NUMERIC
-)
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
+CREATE OR REPLACE FUNCTION public.get_user_sms_metrics(p_user_id uuid, p_days integer DEFAULT 30)
+ RETURNS TABLE(metric_date date, scheduled_count integer, sent_count integer, delivered_count integer, failed_count integer, llm_cost_usd numeric, delivery_rate numeric)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 BEGIN
   RETURN QUERY
   SELECT
@@ -38,9 +24,9 @@ BEGIN
     END::NUMERIC(5, 2) as delivery_rate
   FROM sms_metrics m
   WHERE m.user_id = p_user_id
-    AND m.metric_hour IS NULL
+    AND m.metric_hour IS NULL  -- Only daily metrics
     AND m.metric_date >= CURRENT_DATE - (p_days || ' days')::INTERVAL
   GROUP BY m.metric_date
   ORDER BY m.metric_date DESC;
 END;
-$$;
+$function$

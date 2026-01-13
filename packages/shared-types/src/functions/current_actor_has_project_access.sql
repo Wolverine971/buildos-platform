@@ -1,17 +1,12 @@
 -- packages/shared-types/src/functions/current_actor_has_project_access.sql
--- current_actor_has_project_access(uuid, text)
--- Check if current actor has access to project
--- Source: supabase/migrations/20260320000002_project_sharing_access_fixes.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION current_actor_has_project_access(
-  p_project_id uuid,
-  p_required_access text DEFAULT 'read'
-) RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-SET search_path = public
-AS $$
+CREATE OR REPLACE FUNCTION public.current_actor_has_project_access(p_project_id uuid, p_required_access text DEFAULT 'read'::text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   v_actor_id uuid;
 BEGIN
@@ -63,4 +58,4 @@ BEGIN
       )
   );
 END;
-$$;
+$function$

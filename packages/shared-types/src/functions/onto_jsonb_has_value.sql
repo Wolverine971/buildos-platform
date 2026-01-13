@@ -1,30 +1,28 @@
 -- packages/shared-types/src/functions/onto_jsonb_has_value.sql
--- onto_jsonb_has_value(jsonb, text)
--- Check if JSONB has value at path
--- Source: supabase/migrations/20250601000002_ontology_helpers.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION onto_jsonb_has_value(p_json jsonb, p_path text)
-RETURNS boolean
-LANGUAGE plpgsql
-IMMUTABLE
-AS $$
-DECLARE
+CREATE OR REPLACE FUNCTION public.onto_jsonb_has_value(p_json jsonb, p_path text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ IMMUTABLE
+AS $function$
+declare
 	v_value jsonb;
-BEGIN
-	IF p_json IS NULL OR p_path IS NULL OR length(p_path) = 0 THEN
-		RETURN false;
-	END IF;
+begin
+	if p_json is null or p_path is null or length(p_path) = 0 then
+		return false;
+	end if;
 
 	v_value := onto_jsonb_extract(p_json, p_path);
 
-	IF v_value IS NULL THEN
-		RETURN false;
-	END IF;
+	if v_value is null then
+		return false;
+	end if;
 
-	IF v_value = 'null'::jsonb THEN
-		RETURN false;
-	END IF;
+	if v_value = 'null'::jsonb then
+		return false;
+	end if;
 
-	RETURN true;
-END;
-$$;
+	return true;
+end;
+$function$

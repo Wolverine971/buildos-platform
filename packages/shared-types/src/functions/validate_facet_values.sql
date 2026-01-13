@@ -1,86 +1,80 @@
 -- packages/shared-types/src/functions/validate_facet_values.sql
--- validate_facet_values(jsonb, text)
--- Validate facet values
--- Source: supabase/migrations/20250601000002_ontology_helpers.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION validate_facet_values(p_facets jsonb, p_scope text)
-RETURNS TABLE (
-	facet_key text,
-	provided_value text,
-	error text
-)
-LANGUAGE plpgsql
-AS $$
-DECLARE
+CREATE OR REPLACE FUNCTION public.validate_facet_values(p_facets jsonb, p_scope text)
+ RETURNS TABLE(facet_key text, provided_value text, error text)
+ LANGUAGE plpgsql
+AS $function$
+declare
 	v_entry record;
 	v_text_value text;
-BEGIN
-	IF p_facets IS NULL OR jsonb_typeof(p_facets) <> 'object' THEN
-		RETURN;
-	END IF;
+begin
+	if p_facets is null or jsonb_typeof(p_facets) <> 'object' then
+		return;
+	end if;
 
-	IF p_scope IS NULL OR length(trim(p_scope)) = 0 THEN
-		RAISE EXCEPTION 'validate_facet_values requires a non-null scope';
-		RETURN;
-	END IF;
+	if p_scope is null or length(trim(p_scope)) = 0 then
+		raise exception 'validate_facet_values requires a non-null scope';
+		return;
+	end if;
 
-	FOR v_entry IN
-		SELECT key, value
-		FROM jsonb_each(p_facets)
-	LOOP
+	for v_entry in
+		select key, value
+		from jsonb_each(p_facets)
+	loop
 		-- Skip null values
-		IF v_entry.value IS NULL OR v_entry.value = 'null'::jsonb THEN
-			CONTINUE;
-		END IF;
+		if v_entry.value is null or v_entry.value = 'null'::jsonb then
+			continue;
+		end if;
 
-		IF jsonb_typeof(v_entry.value) <> 'string' THEN
+		if jsonb_typeof(v_entry.value) <> 'string' then
 			facet_key := v_entry.key;
 			provided_value := v_entry.value::text;
 			error := 'Facet value must be a string';
-			RETURN NEXT;
-			CONTINUE;
-		END IF;
+			return next;
+			continue;
+		end if;
 
 		v_text_value := v_entry.value #>> '{}';
 
 		-- Ensure the facet key exists and applies to the given scope
-		IF NOT EXISTS (
-			SELECT 1
-			FROM onto_facet_definitions d
-			WHERE d.key = v_entry.key
-		) THEN
+		if not exists (
+			select 1
+			from onto_facet_definitions d
+			where d.key = v_entry.key
+		) then
 			facet_key := v_entry.key;
 			provided_value := v_text_value;
 			error := format('Unknown facet key: %s', v_entry.key);
-			RETURN NEXT;
-			CONTINUE;
-		END IF;
+			return next;
+			continue;
+		end if;
 
-		IF NOT EXISTS (
-			SELECT 1
-			FROM onto_facet_definitions d
-			WHERE d.key = v_entry.key
-				AND p_scope = any(d.applies_to)
-		) THEN
+		if not exists (
+			select 1
+			from onto_facet_definitions d
+			where d.key = v_entry.key
+				and p_scope = any(d.applies_to)
+		) then
 			facet_key := v_entry.key;
 			provided_value := v_text_value;
 			error := format('Facet "%s" does not apply to scope "%s"', v_entry.key, p_scope);
-			RETURN NEXT;
-			CONTINUE;
-		END IF;
+			return next;
+			continue;
+		end if;
 
 		-- Ensure the value is among the allowed options
-		IF NOT EXISTS (
-			SELECT 1
-			FROM onto_facet_values v
-			WHERE v.facet_key = v_entry.key
-				AND v.value = v_text_value
-		) THEN
+		if not exists (
+			select 1
+			from onto_facet_values v
+			where v.facet_key = v_entry.key
+				and v.value = v_text_value
+		) then
 			facet_key := v_entry.key;
 			provided_value := v_text_value;
 			error := format('Facet value "%s" is not allowed for "%s"', v_text_value, v_entry.key);
-			RETURN NEXT;
-		END IF;
-	END LOOP;
-END;
-$$;
+			return next;
+		end if;
+	end loop;
+end;
+$function$

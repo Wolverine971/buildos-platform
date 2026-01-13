@@ -1,76 +1,88 @@
 -- packages/shared-types/src/functions/get_user_llm_usage.sql
--- get_user_llm_usage(uuid, timestamptz, timestamptz)
--- Returns aggregated LLM usage statistics for a user within a date range
--- Source: apps/web/supabase/migrations/llm_usage_tracking.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_user_llm_usage(
-  p_user_id UUID,
-  p_start_date TIMESTAMPTZ,
-  p_end_date TIMESTAMPTZ
-)
-RETURNS TABLE (
-  total_requests BIGINT,
-  total_cost NUMERIC,
-  total_tokens BIGINT,
-  avg_response_time NUMERIC,
-  by_operation JSONB,
-  by_model JSONB
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.get_user_llm_usage(p_user_id uuid, p_start_date timestamp with time zone, p_end_date timestamp with time zone)
+ RETURNS TABLE(total_requests bigint, total_cost numeric, total_tokens bigint, avg_response_time numeric, by_operation jsonb, by_model jsonb)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  v_total_requests BIGINT;
+  v_total_cost NUMERIC;
+  v_total_tokens BIGINT;
+  v_avg_response_time NUMERIC;
+  v_by_operation JSONB;
+  v_by_model JSONB;
 BEGIN
-  RETURN QUERY
+  -- Get overall stats
   SELECT
-    COUNT(*)::BIGINT as total_requests,
-    SUM(total_cost_usd)::NUMERIC as total_cost,
-    SUM(total_tokens)::BIGINT as total_tokens,
-    AVG(response_time_ms)::NUMERIC as avg_response_time,
+    COUNT(*)::BIGINT,
+    COALESCE(SUM(l.total_cost_usd), 0)::NUMERIC,
+    COALESCE(SUM(l.total_tokens), 0)::BIGINT,
+    COALESCE(AVG(l.response_time_ms), 0)::NUMERIC
+  INTO v_total_requests, v_total_cost, v_total_tokens, v_avg_response_time
+  FROM llm_usage_logs l
+  WHERE l.user_id = p_user_id
+    AND l.created_at BETWEEN p_start_date AND p_end_date;
 
-    -- Breakdown by operation
+  -- Get breakdown by operation
+  SELECT COALESCE(
     jsonb_object_agg(
       operation_type::text,
       jsonb_build_object(
-        'requests', op_stats.requests,
-        'cost', op_stats.cost,
-        'tokens', op_stats.tokens
+        'requests', requests,
+        'cost', cost,
+        'tokens', tokens
       )
-    ) FILTER (WHERE operation_type IS NOT NULL) as by_operation,
+    ),
+    '{}'::jsonb
+  )
+  INTO v_by_operation
+  FROM (
+    SELECT
+      l.operation_type,
+      COUNT(*) as requests,
+      SUM(l.total_cost_usd) as cost,
+      SUM(l.total_tokens) as tokens
+    FROM llm_usage_logs l
+    WHERE l.user_id = p_user_id
+      AND l.created_at BETWEEN p_start_date AND p_end_date
+    GROUP BY l.operation_type
+  ) op_stats;
 
-    -- Breakdown by model
+  -- Get breakdown by model
+  SELECT COALESCE(
     jsonb_object_agg(
       model_used,
       jsonb_build_object(
-        'requests', model_stats.requests,
-        'cost', model_stats.cost,
-        'tokens', model_stats.tokens
+        'requests', requests,
+        'cost', cost,
+        'tokens', tokens
       )
-    ) FILTER (WHERE model_used IS NOT NULL) as by_model
+    ),
+    '{}'::jsonb
+  )
+  INTO v_by_model
+  FROM (
+    SELECT
+      l.model_used,
+      COUNT(*) as requests,
+      SUM(l.total_cost_usd) as cost,
+      SUM(l.total_tokens) as tokens
+    FROM llm_usage_logs l
+    WHERE l.user_id = p_user_id
+      AND l.created_at BETWEEN p_start_date AND p_end_date
+    GROUP BY l.model_used
+  ) model_stats;
 
-  FROM llm_usage_logs l
-  LEFT JOIN LATERAL (
-    SELECT
-      COUNT(*) as requests,
-      SUM(total_cost_usd) as cost,
-      SUM(total_tokens) as tokens
-    FROM llm_usage_logs
-    WHERE user_id = p_user_id
-      AND created_at BETWEEN p_start_date AND p_end_date
-      AND operation_type = l.operation_type
-    GROUP BY operation_type
-  ) op_stats ON true
-  LEFT JOIN LATERAL (
-    SELECT
-      COUNT(*) as requests,
-      SUM(total_cost_usd) as cost,
-      SUM(total_tokens) as tokens
-    FROM llm_usage_logs
-    WHERE user_id = p_user_id
-      AND created_at BETWEEN p_start_date AND p_end_date
-      AND model_used = l.model_used
-    GROUP BY model_used
-  ) model_stats ON true
-  WHERE l.user_id = p_user_id
-    AND l.created_at BETWEEN p_start_date AND p_end_date;
+  -- Return single row with all computed values
+  RETURN QUERY
+  SELECT
+    v_total_requests,
+    v_total_cost,
+    v_total_tokens,
+    v_avg_response_time,
+    v_by_operation,
+    v_by_model;
 END;
-$$;
+$function$

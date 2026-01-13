@@ -1,10 +1,11 @@
 -- packages/shared-types/src/functions/refresh_user_migration_stats.sql
--- refresh_user_migration_stats()
--- Refresh user migration stats
--- Source: supabase/migrations/20251206_migration_dashboard_schema.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION refresh_user_migration_stats()
-RETURNS TABLE(refreshed boolean, duration_ms integer, row_count integer) AS $$
+CREATE OR REPLACE FUNCTION public.refresh_user_migration_stats()
+ RETURNS TABLE(refreshed boolean, duration_ms integer, row_count integer)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
     start_time TIMESTAMPTZ;
     end_time TIMESTAMPTZ;
@@ -23,4 +24,4 @@ BEGIN
         EXTRACT(MILLISECONDS FROM (end_time - start_time))::INTEGER AS duration_ms,
         rows_count AS row_count;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$function$

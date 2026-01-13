@@ -1,39 +1,12 @@
 -- packages/shared-types/src/functions/get_sms_daily_metrics.sql
--- get_sms_daily_metrics(date, date)
--- Get SMS daily metrics
--- Source: apps/web/supabase/migrations/20251008_sms_metrics_monitoring.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_sms_daily_metrics(
-  p_start_date DATE,
-  p_end_date DATE
-)
-RETURNS TABLE (
-  metric_date DATE,
-  scheduled_count INTEGER,
-  sent_count INTEGER,
-  delivered_count INTEGER,
-  failed_count INTEGER,
-  cancelled_count INTEGER,
-  avg_delivery_time_ms NUMERIC,
-  avg_generation_time_ms NUMERIC,
-  llm_success_count INTEGER,
-  template_fallback_count INTEGER,
-  delivery_success_rate NUMERIC,
-  llm_success_rate NUMERIC,
-  llm_cost_usd NUMERIC,
-  sms_cost_usd NUMERIC,
-  opt_out_count INTEGER,
-  quiet_hours_skip_count INTEGER,
-  daily_limit_hit_count INTEGER,
-  delivery_rate_percent NUMERIC,
-  llm_success_rate_percent NUMERIC,
-  active_users INTEGER
-)
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
+CREATE OR REPLACE FUNCTION public.get_sms_daily_metrics(p_start_date date, p_end_date date)
+ RETURNS TABLE(metric_date date, scheduled_count integer, sent_count integer, delivered_count integer, failed_count integer, cancelled_count integer, avg_delivery_time_ms numeric, avg_generation_time_ms numeric, llm_success_count integer, template_fallback_count integer, delivery_success_rate numeric, llm_success_rate numeric, llm_cost_usd numeric, sms_cost_usd numeric, opt_out_count integer, quiet_hours_skip_count integer, daily_limit_hit_count integer, delivery_rate_percent numeric, llm_success_rate_percent numeric, active_users integer)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 BEGIN
   RETURN QUERY
   SELECT
@@ -62,4 +35,4 @@ BEGIN
     AND m.metric_date <= p_end_date
   ORDER BY m.metric_date DESC;
 END;
-$$;
+$function$

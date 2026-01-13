@@ -1,10 +1,11 @@
 -- packages/shared-types/src/functions/increment_migration_retry_count.sql
--- increment_migration_retry_count(bigint)
--- Increment migration retry count
--- Source: supabase/migrations/20251206_migration_dashboard_schema.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION increment_migration_retry_count(row_id BIGINT)
-RETURNS void AS $$
+CREATE OR REPLACE FUNCTION public.increment_migration_retry_count(row_id bigint)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 BEGIN
     UPDATE migration_log
     SET
@@ -12,4 +13,4 @@ BEGIN
         last_retry_at = NOW()
     WHERE id = row_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$function$

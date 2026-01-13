@@ -1,18 +1,10 @@
 -- packages/shared-types/src/functions/emit_notification_event.sql
--- emit_notification_event(text, text, uuid, uuid, jsonb, jsonb, timestamptz)
--- Emit a notification event
--- Source: supabase/migrations/20260205_002_emit_notification_event_opt_in.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION emit_notification_event(
-  p_event_type TEXT,
-  p_event_source TEXT DEFAULT 'api_action',
-  p_actor_user_id UUID DEFAULT NULL,
-  p_target_user_id UUID DEFAULT NULL,
-  p_payload JSONB DEFAULT '{}'::jsonb,
-  p_metadata JSONB DEFAULT '{}'::jsonb,
-  p_scheduled_for TIMESTAMPTZ DEFAULT NULL
-)
-RETURNS UUID AS $$
+CREATE OR REPLACE FUNCTION public.emit_notification_event(p_event_type text, p_event_source text DEFAULT 'api_action'::text, p_actor_user_id uuid DEFAULT NULL::uuid, p_target_user_id uuid DEFAULT NULL::uuid, p_payload jsonb DEFAULT '{}'::jsonb, p_metadata jsonb DEFAULT '{}'::jsonb, p_scheduled_for timestamp with time zone DEFAULT NULL::timestamp with time zone)
+ RETURNS uuid
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   v_event_id UUID;
   v_subscription RECORD;
@@ -283,4 +275,4 @@ BEGIN
 
   RETURN v_event_id;
 END;
-$$ LANGUAGE plpgsql;
+$function$

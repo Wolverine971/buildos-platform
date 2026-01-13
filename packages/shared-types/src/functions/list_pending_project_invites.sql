@@ -1,26 +1,12 @@
 -- packages/shared-types/src/functions/list_pending_project_invites.sql
--- list_pending_project_invites()
--- List pending invites for current user
--- Source: supabase/migrations/20260326000000_invite_pending_flow.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION list_pending_project_invites()
-RETURNS TABLE (
-  invite_id uuid,
-  project_id uuid,
-  project_name text,
-  role_key text,
-  access text,
-  status text,
-  expires_at timestamptz,
-  created_at timestamptz,
-  invited_by_actor_id uuid,
-  invited_by_name text,
-  invited_by_email text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+CREATE OR REPLACE FUNCTION public.list_pending_project_invites()
+ RETURNS TABLE(invite_id uuid, project_id uuid, project_name text, role_key text, access text, status text, expires_at timestamp with time zone, created_at timestamp with time zone, invited_by_actor_id uuid, invited_by_name text, invited_by_email text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   v_auth_user_id uuid;
   v_user_email text;
@@ -45,11 +31,11 @@ BEGIN
     RAISE EXCEPTION 'User email missing';
   END IF;
 
-  UPDATE onto_project_invites
+  UPDATE onto_project_invites AS i
   SET status = 'expired'
-  WHERE status = 'pending'
-    AND expires_at < now()
-    AND lower(invitee_email) = lower(trim(v_user_email));
+  WHERE i.status = 'pending'
+    AND i.expires_at < now()
+    AND lower(i.invitee_email) = lower(trim(v_user_email));
 
   RETURN QUERY
   SELECT
@@ -74,4 +60,4 @@ BEGIN
     AND p.deleted_at IS NULL
   ORDER BY i.created_at DESC;
 END;
-$$;
+$function$

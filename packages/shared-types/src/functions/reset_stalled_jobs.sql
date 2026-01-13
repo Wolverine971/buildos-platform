@@ -1,12 +1,10 @@
 -- packages/shared-types/src/functions/reset_stalled_jobs.sql
--- reset_stalled_jobs(text)
--- Reset stalled jobs
--- Source: apps/web/supabase/migrations/20251011_atomic_queue_job_operations.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION reset_stalled_jobs(
-  p_stall_timeout TEXT DEFAULT '5 minutes'
-)
-RETURNS INTEGER AS $$
+CREATE OR REPLACE FUNCTION public.reset_stalled_jobs(p_stall_timeout text DEFAULT '5 minutes'::text)
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   v_reset_count INTEGER;
 BEGIN
@@ -26,4 +24,4 @@ BEGIN
 
   RETURN v_reset_count;
 END;
-$$ LANGUAGE plpgsql;
+$function$

@@ -1,41 +1,39 @@
 -- packages/shared-types/src/functions/ensure_actor_for_user.sql
--- ensure_actor_for_user(uuid)
--- Ensure actor exists for user
--- Source: supabase/migrations/20250601000001_ontology_system.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION ensure_actor_for_user(p_user_id uuid)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
+CREATE OR REPLACE FUNCTION public.ensure_actor_for_user(p_user_id uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+declare
   v_actor_id uuid;
   v_user_name text;
   v_user_email text;
-BEGIN
+begin
   -- Check if actor already exists
-  SELECT id INTO v_actor_id
-  FROM onto_actors
-  WHERE user_id = p_user_id;
+  select id into v_actor_id
+  from onto_actors
+  where user_id = p_user_id;
 
-  IF v_actor_id IS NOT NULL THEN
-    RETURN v_actor_id;
-  END IF;
+  if v_actor_id is not null then
+    return v_actor_id;
+  end if;
 
   -- Get user info
-  SELECT name, email INTO v_user_name, v_user_email
-  FROM public.users
-  WHERE id = p_user_id;
+  select name, email into v_user_name, v_user_email
+  from public.users
+  where id = p_user_id;
 
-  IF v_user_name IS NULL THEN
-    RAISE EXCEPTION 'User not found: %', p_user_id;
-  END IF;
+  if v_user_name is null then
+    raise exception 'User not found: %', p_user_id;
+  end if;
 
   -- Create new actor
-  INSERT INTO onto_actors (kind, name, email, user_id)
-  VALUES ('human', coalesce(v_user_name, v_user_email, 'Unknown User'), v_user_email, p_user_id)
-  RETURNING id INTO v_actor_id;
+  insert into onto_actors (kind, name, email, user_id)
+  values ('human', coalesce(v_user_name, v_user_email, 'Unknown User'), v_user_email, p_user_id)
+  returning id into v_actor_id;
 
-  RETURN v_actor_id;
-END;
-$$;
+  return v_actor_id;
+end;
+$function$

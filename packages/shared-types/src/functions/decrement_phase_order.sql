@@ -1,20 +1,15 @@
 -- packages/shared-types/src/functions/decrement_phase_order.sql
--- decrement_phase_order(uuid, integer)
--- Decrement phase order position
--- Source: Supabase database (function definition not in migration files)
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION decrement_phase_order(
-  p_project_id uuid,
-  p_order_threshold integer
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+CREATE OR REPLACE FUNCTION public.decrement_phase_order(p_project_id uuid, p_order_threshold integer)
+ RETURNS void
+ LANGUAGE plpgsql
+AS $function$
 BEGIN
   UPDATE phases
-  SET order_position = order_position - 1
+  SET "order" = "order" - 1,
+      updated_at = NOW()
   WHERE project_id = p_project_id
-    AND order_position > p_order_threshold;
+    AND "order" > p_order_threshold;
 END;
-$$;
+$function$

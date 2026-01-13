@@ -1,18 +1,11 @@
 -- packages/shared-types/src/functions/get_brief_generation_stats.sql
--- get_brief_generation_stats(date, date)
--- Get brief generation statistics
--- Source: supabase/migrations/20260127_admin_analytics_ontology_updates.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_brief_generation_stats(start_date date, end_date date)
-RETURNS TABLE (
-  date date,
-  total_briefs bigint,
-  unique_users bigint,
-  avg_briefs_per_user numeric
-)
-LANGUAGE sql
-STABLE
-AS $$
+CREATE OR REPLACE FUNCTION public.get_brief_generation_stats(start_date date, end_date date)
+ RETURNS TABLE(date date, total_briefs bigint, unique_users bigint, avg_briefs_per_user numeric)
+ LANGUAGE sql
+ STABLE
+AS $function$
   WITH date_series AS (
     SELECT generate_series(start_date::date, end_date::date, '1 day'::interval)::date AS date
   ),
@@ -38,4 +31,4 @@ AS $$
   FROM date_series ds
   LEFT JOIN brief_counts bc ON bc.date = ds.date
   ORDER BY ds.date;
-$$;
+$function$

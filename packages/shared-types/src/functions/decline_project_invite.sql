@@ -1,19 +1,12 @@
 -- packages/shared-types/src/functions/decline_project_invite.sql
--- decline_project_invite(uuid)
--- Decline a project invite
--- Source: supabase/migrations/20260326000000_invite_pending_flow.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION decline_project_invite(
-  p_invite_id uuid
-)
-RETURNS TABLE (
-  invite_id uuid,
-  status text
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+CREATE OR REPLACE FUNCTION public.decline_project_invite(p_invite_id uuid)
+ RETURNS TABLE(invite_id uuid, status text)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   v_invite onto_project_invites%ROWTYPE;
   v_auth_user_id uuid;
@@ -75,4 +68,4 @@ BEGIN
 
   RETURN QUERY SELECT v_invite.id, 'declined'::text;
 END;
-$$;
+$function$

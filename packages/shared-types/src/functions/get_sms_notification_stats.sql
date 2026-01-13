@@ -1,28 +1,18 @@
 -- packages/shared-types/src/functions/get_sms_notification_stats.sql
--- get_sms_notification_stats()
--- Get SMS notification statistics
--- Source: apps/web/supabase/migrations/20251011_fix_notification_analytics_bugs.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION get_sms_notification_stats()
-RETURNS TABLE (
-  total_users_with_phone BIGINT,
-  users_phone_verified BIGINT,
-  users_sms_enabled BIGINT,
-  users_opted_out BIGINT,
-  phone_verification_rate NUMERIC,
-  sms_adoption_rate NUMERIC,
-  opt_out_rate NUMERIC,
-  total_sms_sent_24h BIGINT,
-  sms_delivery_rate_24h NUMERIC,
-  avg_sms_delivery_time_seconds NUMERIC
-) AS $$
+CREATE OR REPLACE FUNCTION public.get_sms_notification_stats()
+ RETURNS TABLE(total_users_with_phone bigint, users_phone_verified bigint, users_sms_enabled bigint, users_opted_out bigint, phone_verification_rate numeric, sms_adoption_rate numeric, opt_out_rate numeric, total_sms_sent_24h bigint, sms_delivery_rate_24h numeric, avg_sms_delivery_time_seconds numeric)
+ LANGUAGE plpgsql
+ STABLE
+AS $function$
 BEGIN
   RETURN QUERY
   WITH sms_prefs AS (
     SELECT
       COUNT(*) FILTER (WHERE phone_number IS NOT NULL) AS with_phone,
       COUNT(*) FILTER (WHERE phone_verified = true) AS verified,
-      COUNT(*) FILTER (WHERE phone_verified = true) AS enabled,
+      COUNT(*) FILTER (WHERE phone_verified = true) AS enabled,  -- Assuming verified = enabled
       COUNT(*) FILTER (WHERE opted_out = true) AS opted_out
     FROM user_sms_preferences
   ),
@@ -30,6 +20,7 @@ BEGIN
     SELECT
       COUNT(*) AS sent_count,
       COUNT(*) FILTER (WHERE status = 'delivered') AS delivered_count,
+      -- FIXED: Added explicit NULL filter for delivered_at
       AVG(EXTRACT(EPOCH FROM (delivered_at - created_at))) FILTER (WHERE delivered_at IS NOT NULL AND status = 'delivered') AS avg_delivery_seconds
     FROM notification_deliveries
     WHERE channel = 'sms'
@@ -59,4 +50,4 @@ BEGIN
     ),
     (SELECT avg_delivery_seconds FROM sms_24h)::NUMERIC;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$function$

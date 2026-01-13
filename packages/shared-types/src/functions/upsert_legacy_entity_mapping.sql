@@ -1,21 +1,31 @@
 -- packages/shared-types/src/functions/upsert_legacy_entity_mapping.sql
--- upsert_legacy_entity_mapping(uuid, uuid, text, uuid)
--- Upsert legacy entity mapping
--- Source: supabase/migrations/20251122_legacy_mapping_backfill.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION upsert_legacy_entity_mapping(
-  p_user_id uuid,
-  p_legacy_id uuid,
-  p_legacy_type text,
-  p_onto_id uuid
-)
-RETURNS void
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  INSERT INTO legacy_entity_mappings (user_id, legacy_id, legacy_type, onto_id)
-  VALUES (p_user_id, p_legacy_id, p_legacy_type, p_onto_id)
-  ON CONFLICT (user_id, legacy_id, legacy_type)
-  DO UPDATE SET onto_id = EXCLUDED.onto_id, updated_at = NOW();
-END;
-$$;
+CREATE OR REPLACE FUNCTION public.upsert_legacy_entity_mapping(p_legacy_table text, p_legacy_id uuid, p_onto_table text, p_onto_id uuid, p_metadata jsonb DEFAULT '{}'::jsonb)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+	if p_legacy_id is null or p_onto_id is null then
+		return;
+	end if;
+
+	insert into legacy_entity_mappings (legacy_table, legacy_id, onto_table, onto_id, metadata, migrated_at)
+	values (
+		p_legacy_table,
+		p_legacy_id,
+		p_onto_table,
+		p_onto_id,
+		coalesce(jsonb_strip_nulls(p_metadata), '{}'::jsonb),
+		now()
+	)
+	on conflict (legacy_table, legacy_id) do update
+	set
+		onto_table = excluded.onto_table,
+		onto_id = excluded.onto_id,
+		metadata = jsonb_strip_nulls(coalesce(legacy_entity_mappings.metadata, '{}'::jsonb) || excluded.metadata),
+		migrated_at = excluded.migrated_at;
+end;
+$function$

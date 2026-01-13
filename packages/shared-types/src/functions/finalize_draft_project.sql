@@ -1,12 +1,11 @@
 -- packages/shared-types/src/functions/finalize_draft_project.sql
--- finalize_draft_project(uuid, uuid)
--- Finalize a draft project
--- Source: supabase/migrations/20251028_create_agent_tables.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION finalize_draft_project(
-    p_draft_id UUID,
-    p_user_id UUID
-) RETURNS UUID AS $$
+CREATE OR REPLACE FUNCTION public.finalize_draft_project(p_draft_id uuid, p_user_id uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
     v_project_id UUID;
     v_draft RECORD;
@@ -85,4 +84,4 @@ BEGIN
 
     RETURN v_project_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$function$

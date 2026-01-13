@@ -1,10 +1,11 @@
 -- packages/shared-types/src/functions/release_migration_platform_lock.sql
--- release_migration_platform_lock(uuid)
--- Release migration platform lock
--- Source: supabase/migrations/20251206_migration_dashboard_schema.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION release_migration_platform_lock(p_run_id UUID)
-RETURNS BOOLEAN AS $$
+CREATE OR REPLACE FUNCTION public.release_migration_platform_lock(p_run_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
 DECLARE
     v_released BOOLEAN;
 BEGIN
@@ -18,4 +19,4 @@ BEGIN
 
     RETURN FOUND;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$function$

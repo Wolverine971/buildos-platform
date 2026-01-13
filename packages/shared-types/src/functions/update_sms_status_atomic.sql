@@ -1,27 +1,10 @@
 -- packages/shared-types/src/functions/update_sms_status_atomic.sql
--- update_sms_status_atomic(uuid, text, text, text, integer, text)
--- Atomically updates both sms_messages and notification_deliveries tables for Twilio webhook status updates
--- Source: apps/web/supabase/migrations/20251011_atomic_twilio_webhook_updates.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION update_sms_status_atomic(
-  p_message_id UUID,
-  p_twilio_sid TEXT,
-  p_twilio_status TEXT,
-  p_mapped_status TEXT,
-  p_error_code INTEGER DEFAULT NULL,
-  p_error_message TEXT DEFAULT NULL
-)
-RETURNS TABLE (
-  notification_delivery_id UUID,
-  user_id UUID,
-  sent_at TIMESTAMPTZ,
-  delivered_at TIMESTAMPTZ,
-  attempt_count INTEGER,
-  max_attempts INTEGER,
-  priority TEXT,
-  updated_sms BOOLEAN,
-  updated_delivery BOOLEAN
-) AS $$
+CREATE OR REPLACE FUNCTION public.update_sms_status_atomic(p_message_id uuid, p_twilio_sid text, p_twilio_status text, p_mapped_status text, p_error_code integer DEFAULT NULL::integer, p_error_message text DEFAULT NULL::text)
+ RETURNS TABLE(notification_delivery_id uuid, user_id uuid, sent_at timestamp with time zone, delivered_at timestamp with time zone, attempt_count integer, max_attempts integer, priority text, updated_sms boolean, updated_delivery boolean)
+ LANGUAGE plpgsql
+AS $function$
 DECLARE
   v_sms_record RECORD;
   v_delivery_status TEXT;
@@ -147,4 +130,4 @@ BEGIN
     v_sms_updated,
     v_delivery_updated;
 END;
-$$ LANGUAGE plpgsql;
+$function$

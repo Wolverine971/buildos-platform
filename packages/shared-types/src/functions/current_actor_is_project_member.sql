@@ -1,16 +1,12 @@
 -- packages/shared-types/src/functions/current_actor_is_project_member.sql
--- current_actor_is_project_member(uuid)
--- Check if current actor is project member
--- Source: supabase/migrations/20260320000002_project_sharing_access_fixes.sql
+-- Source: Supabase pg_get_functiondef
 
-CREATE OR REPLACE FUNCTION current_actor_is_project_member(
-  p_project_id uuid
-) RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-SET search_path = public
-AS $$
+CREATE OR REPLACE FUNCTION public.current_actor_is_project_member(p_project_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   v_actor_id uuid;
 BEGIN
@@ -41,4 +37,4 @@ BEGIN
       AND m.removed_at IS NULL
   );
 END;
-$$;
+$function$
