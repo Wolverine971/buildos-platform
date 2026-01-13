@@ -38,7 +38,17 @@
       "Bash(for func in \"search_all_content\" \"search_all_similar\" \"search_by_type\" \"search_similar_items\" \"generate_recurring_instances\" \"complete_recurring_instance\")",
       "Bash(do echo \"=== $func ===\")",
       "Bash(done)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "WebFetch(domain:wielded.com)",
+      "WebFetch(domain:www.indiehackers.com)",
+      "WebFetch(domain:www.synscribe.com)",
+      "WebFetch(domain:buildsolo.io)",
+      "WebFetch(domain:x.feedspot.com)",
+      "WebFetch(domain:www.petecodes.io)",
+      "WebFetch(domain:publicbuilders.org)",
+      "WebFetch(domain:jonathanrintala.com)",
+      "WebFetch(domain:thefounderspress.com)",
+      "WebFetch(domain:9takes.com)"
     ],
     "deny": [],
     "ask": []

@@ -99,12 +99,23 @@
 	let updatedAt = $state<string | null>(null);
 	let documentProps = $state<Record<string, unknown> | null>(null);
 
+	// Internal document ID state - allows transitioning from create to edit mode after saving
+	let internalDocumentId = $state<string | null>(null);
+
+	// Sync internal state from prop when it changes
+	$effect(() => {
+		internalDocumentId = documentId;
+	});
+
+	// Active document ID - prefers internal state (for newly created docs)
+	const activeDocumentId = $derived(internalDocumentId);
+
 	const stateOptions = DOCUMENT_STATES.map((state) => ({
 		value: state,
 		label: state.replace('_', ' ')
 	}));
 
-	const isEditing = $derived(Boolean(documentId));
+	const isEditing = $derived(Boolean(activeDocumentId));
 	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);
 	const titleFieldError = $derived(formError === 'Title is required' ? formError : '');
 	const globalFormError = $derived.by(() => {
@@ -151,10 +162,10 @@
 
 	// Build focus for chat about this document
 	const entityFocus = $derived.by((): ProjectFocus | null => {
-		if (!documentId || !projectId) return null;
+		if (!activeDocumentId || !projectId) return null;
 		return {
 			focusType: 'document',
-			focusEntityId: documentId,
+			focusEntityId: activeDocumentId,
 			focusEntityName: title || 'Untitled Document',
 			projectId: projectId,
 			projectName: 'Project' // We don't have project name in this modal
@@ -292,8 +303,10 @@
 			}
 
 			let request: Response;
-			if (documentId) {
-				request = await fetch(`/api/onto/documents/${documentId}`, {
+			const wasCreating = !activeDocumentId;
+
+			if (activeDocumentId) {
+				request = await fetch(`/api/onto/documents/${activeDocumentId}`, {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload)
@@ -324,24 +337,31 @@
 				throw new Error(result?.error || 'Failed to save document');
 			}
 
-			toastService.success(documentId ? 'Document updated' : 'Document created');
+			toastService.success(activeDocumentId ? 'Document updated' : 'Document created');
 			onSaved?.();
-			closeModal();
+
+			// If we just created a new document, transition to edit mode
+			// by updating internal state and loading the full document
+			if (wasCreating && result?.data?.id) {
+				internalDocumentId = result.data.id;
+				await loadDocument(result.data.id);
+			}
+			// Modal stays open - no closeModal() call
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to save document';
-			const endpoint = documentId
-				? `/api/onto/documents/${documentId}`
+			const endpoint = activeDocumentId
+				? `/api/onto/documents/${activeDocumentId}`
 				: taskId
 					? `/api/onto/tasks/${taskId}/documents`
 					: '/api/onto/documents/create';
-			const method = documentId ? 'PATCH' : 'POST';
+			const method = activeDocumentId ? 'PATCH' : 'POST';
 			void logOntologyClientError(error, {
 				endpoint,
 				method,
 				projectId,
 				entityType: 'document',
-				entityId: documentId ?? undefined,
-				operation: documentId ? 'document_update' : 'document_create',
+				entityId: activeDocumentId ?? undefined,
+				operation: activeDocumentId ? 'document_update' : 'document_create',
 				metadata: taskId ? { taskId } : undefined
 			});
 			formError = message;
@@ -352,10 +372,10 @@
 	}
 
 	async function handleDelete() {
-		if (!documentId) return;
+		if (!activeDocumentId) return;
 		try {
 			deleting = true;
-			const response = await fetch(`/api/onto/documents/${documentId}`, {
+			const response = await fetch(`/api/onto/documents/${activeDocumentId}`, {
 				method: 'DELETE'
 			});
 			const payload = await response.json().catch(() => null);
@@ -370,11 +390,11 @@
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to delete document';
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/documents/${documentId}`,
+				endpoint: `/api/onto/documents/${activeDocumentId}`,
 				method: 'DELETE',
 				projectId,
 				entityType: 'document',
-				entityId: documentId,
+				entityId: activeDocumentId,
 				operation: 'document_delete'
 			});
 			toastService.error(message);
@@ -434,8 +454,8 @@
 		selectedGoalIdForModal = null;
 		selectedDocumentIdForModal = null;
 		// Smart refresh: only reload if links were changed
-		if (hasChanges && documentId) {
-			loadDocument(documentId);
+		if (hasChanges && activeDocumentId) {
+			loadDocument(activeDocumentId);
 			hasChanges = false;
 		}
 	}
@@ -446,7 +466,7 @@
 
 	// Chat about this document handlers
 	async function openChatAbout() {
-		if (!documentId || !projectId) return;
+		if (!activeDocumentId || !projectId) return;
 		await loadAgentChatModal();
 		showChatModal = true;
 	}
@@ -603,10 +623,10 @@
 								</FormField>
 
 								<!-- Linked Entities -->
-								{#if isEditing && documentId}
+								{#if isEditing && activeDocumentId}
 									<div class="pt-2 border-t border-border">
 										<LinkedEntities
-											sourceId={documentId}
+											sourceId={activeDocumentId}
 											sourceKind="document"
 											{projectId}
 											initialLinkedEntities={linkedEntities}
@@ -624,11 +644,11 @@
 								{/if}
 
 								<!-- Activity Log -->
-								{#if isEditing && documentId}
+								{#if isEditing && activeDocumentId}
 									<div class="pt-2 border-t border-border">
 										<EntityActivityLog
 											entityType="document"
-											entityId={documentId}
+											entityId={activeDocumentId}
 											autoLoad={!loading}
 										/>
 									</div>
@@ -658,7 +678,7 @@
 										<div class="flex items-start justify-between gap-2">
 											<span class="shrink-0">ID</span>
 											<span class="font-mono truncate text-right"
-												>{documentId}</span
+												>{activeDocumentId}</span
 											>
 										</div>
 									</div>
@@ -770,10 +790,10 @@
 										</FormField>
 
 										<!-- Linked Entities -->
-										{#if isEditing && documentId}
+										{#if isEditing && activeDocumentId}
 											<div class="pt-2 border-t border-border">
 												<LinkedEntities
-													sourceId={documentId}
+													sourceId={activeDocumentId}
 													sourceKind="document"
 													{projectId}
 													initialLinkedEntities={linkedEntities}
@@ -791,11 +811,11 @@
 										{/if}
 
 										<!-- Activity Log -->
-										{#if isEditing && documentId}
+										{#if isEditing && activeDocumentId}
 											<div class="pt-2 border-t border-border">
 												<EntityActivityLog
 													entityType="document"
-													entityId={documentId}
+													entityId={activeDocumentId}
 													autoLoad={!loading}
 												/>
 											</div>
@@ -829,7 +849,7 @@
 												<div class="flex items-start justify-between gap-2">
 													<span class="shrink-0">ID</span>
 													<span class="font-mono truncate text-right"
-														>{documentId}</span
+														>{activeDocumentId}</span
 													>
 												</div>
 											</div>
@@ -849,11 +869,11 @@
 					{/if}
 				</form>
 
-				{#if documentId}
+				{#if activeDocumentId}
 					<EntityCommentsSection
 						{projectId}
 						entityType="document"
-						entityId={documentId}
+						entityId={activeDocumentId}
 					/>
 				{/if}
 			{/if}
@@ -863,7 +883,7 @@
 		<div
 			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
-			{#if documentId}
+			{#if activeDocumentId}
 				<Button
 					type="button"
 					variant="ghost"

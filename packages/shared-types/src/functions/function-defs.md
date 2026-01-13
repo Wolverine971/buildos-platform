@@ -1,3 +1,4 @@
+<!-- packages/shared-types/src/functions/function-defs.md -->
 [
   {
     "args": "token_hash text, p_actor_id uuid, p_user_email text",
