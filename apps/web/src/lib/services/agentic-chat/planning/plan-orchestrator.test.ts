@@ -545,6 +545,101 @@ describe('PlanOrchestrator', () => {
 			expect(args).not.toHaveProperty('project_id');
 		});
 
+		it('hydrates create_onto_project args from dependency results', async () => {
+			const executorEntities = [{ temp_id: 'g1', kind: 'goal', name: 'Primary goal' }];
+
+			const createProjectPlan: AgentPlan = {
+				id: 'plan_create_project',
+				sessionId: mockContext.sessionId,
+				userId: mockContext.userId,
+				plannerAgentId: 'planner_123',
+				userMessage: 'Start a new project',
+				strategy: ChatStrategy.PLANNER_STREAM,
+				status: 'pending',
+				steps: [
+					{
+						stepNumber: 1,
+						type: 'analysis',
+						description: 'Synthesize project spec',
+						executorRequired: true,
+						tools: [],
+						status: 'pending'
+					},
+					{
+						stepNumber: 2,
+						type: 'action',
+						description: 'Create project',
+						executorRequired: false,
+						tools: ['create_onto_project'],
+						status: 'pending',
+						dependsOn: [1],
+						metadata: {
+							toolArguments: {
+								project: {
+									name: 'Launch Plan',
+									type_key: 'project.business.launch'
+								}
+							}
+						}
+					}
+				],
+				createdAt: new Date()
+			};
+
+			const plannerContext: PlannerContext = {
+				...mockPlannerContext,
+				availableTools: [
+					...mockPlannerContext.availableTools.filter(
+						(tool) => tool.name !== 'create_onto_project'
+					),
+					{
+						name: 'create_onto_project',
+						description: 'Create project',
+						parameters: {
+							type: 'object',
+							properties: {
+								project: { type: 'object' },
+								entities: { type: 'array', default: [] },
+								relationships: { type: 'array', default: [] }
+							},
+							required: ['project', 'entities', 'relationships']
+						}
+					}
+				]
+			};
+
+			mockExecutorCoordinator.spawnExecutor.mockResolvedValueOnce('executor_123');
+			mockExecutorCoordinator.waitForExecutor.mockResolvedValueOnce({
+				success: true,
+				data: { entities: executorEntities },
+				executorId: 'executor_123',
+				taskId: 'task_123'
+			});
+			mockToolExecutor.mockResolvedValueOnce({ data: { project_id: 'proj_123' } });
+			mockPersistence.updatePlan.mockResolvedValue(undefined);
+
+			const generator = orchestrator.executePlan(
+				createProjectPlan,
+				plannerContext,
+				mockContext,
+				async () => {}
+			);
+
+			for await (const event of generator) {
+				// Consume stream
+			}
+
+			expect(mockToolExecutor).toHaveBeenCalled();
+			const [toolName, args] = mockToolExecutor.mock.calls[0];
+			expect(toolName).toBe('create_onto_project');
+			expect(args.project).toEqual({
+				name: 'Launch Plan',
+				type_key: 'project.business.launch'
+			});
+			expect(args.entities).toEqual(executorEntities);
+			expect(args.relationships).toEqual([]);
+		});
+
 		it('should emit tool events for direct tool steps', async () => {
 			const events: StreamEvent[] = [];
 			mockToolExecutor

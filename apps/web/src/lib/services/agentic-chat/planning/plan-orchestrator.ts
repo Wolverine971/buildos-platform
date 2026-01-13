@@ -1325,6 +1325,10 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 			}
 		}
 
+		if (toolName === 'create_onto_project') {
+			this.mergeCreateOntoProjectArgsFromDependencies(args, step, stepResults);
+		}
+
 		if (projectIdSupport.supports && !args.project_id) {
 			const projectId = this.resolveProjectId(step, stepResults, context);
 			if (projectId) {
@@ -1352,6 +1356,158 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		}
 
 		return args;
+	}
+
+	private mergeCreateOntoProjectArgsFromDependencies(
+		args: Record<string, any>,
+		step: PlanStep,
+		stepResults: Map<number, any>
+	): void {
+		if (!step.dependsOn?.length) {
+			return;
+		}
+
+		let hasProject = this.isRecord(args.project);
+		let hasEntities = Array.isArray(args.entities);
+		let hasRelationships = Array.isArray(args.relationships);
+		let hasContextDocument = this.isRecord(args.context_document);
+		let hasClarifications = Array.isArray(args.clarifications);
+		let hasMeta = this.isRecord(args.meta);
+
+		for (const dep of step.dependsOn) {
+			const depResult = stepResults.get(dep);
+			if (!depResult) {
+				continue;
+			}
+
+			const extracted = this.extractCreateOntoProjectArgs(depResult);
+			if (!extracted) {
+				continue;
+			}
+
+			if (!hasProject && this.isRecord(extracted.project)) {
+				args.project = extracted.project;
+				hasProject = true;
+			}
+			if (!hasEntities && Array.isArray(extracted.entities)) {
+				args.entities = extracted.entities;
+				hasEntities = true;
+			}
+			if (!hasRelationships && Array.isArray(extracted.relationships)) {
+				args.relationships = extracted.relationships;
+				hasRelationships = true;
+			}
+			if (!hasContextDocument && this.isRecord(extracted.context_document)) {
+				args.context_document = extracted.context_document;
+				hasContextDocument = true;
+			}
+			if (!hasClarifications && Array.isArray(extracted.clarifications)) {
+				args.clarifications = extracted.clarifications;
+				hasClarifications = true;
+			}
+			if (!hasMeta && this.isRecord(extracted.meta)) {
+				args.meta = extracted.meta;
+				hasMeta = true;
+			}
+
+			if (
+				hasProject &&
+				hasEntities &&
+				hasRelationships &&
+				hasContextDocument &&
+				hasClarifications &&
+				hasMeta
+			) {
+				break;
+			}
+		}
+	}
+
+	private extractCreateOntoProjectArgs(
+		value: unknown,
+		visited: Set<unknown> = new Set()
+	): Record<string, any> | undefined {
+		if (!value || typeof value !== 'object') {
+			return undefined;
+		}
+
+		if (visited.has(value)) {
+			return undefined;
+		}
+		visited.add(value);
+
+		if (Array.isArray(value)) {
+			for (const item of value) {
+				const extracted = this.extractCreateOntoProjectArgs(item, visited);
+				if (extracted) {
+					return extracted;
+				}
+			}
+			return undefined;
+		}
+
+		const candidate = value as Record<string, any>;
+		const direct = this.pickCreateOntoProjectArgs(candidate);
+		if (direct) {
+			return direct;
+		}
+
+		const nestedKeys = [
+			'project_spec',
+			'projectSpec',
+			'projectSpecArgs',
+			'projectSpecPayload',
+			'spec',
+			'payload',
+			'data',
+			'result'
+		];
+
+		for (const key of nestedKeys) {
+			if (!(key in candidate)) {
+				continue;
+			}
+			const extracted = this.extractCreateOntoProjectArgs(candidate[key], visited);
+			if (extracted) {
+				return extracted;
+			}
+		}
+
+		return undefined;
+	}
+
+	private pickCreateOntoProjectArgs(
+		candidate: Record<string, any>
+	): Record<string, any> | undefined {
+		const extracted: Record<string, any> = {};
+
+		if (this.isRecord(candidate.project)) {
+			extracted.project = candidate.project;
+		}
+		if (Array.isArray(candidate.entities)) {
+			extracted.entities = candidate.entities;
+		}
+		if (Array.isArray(candidate.relationships)) {
+			extracted.relationships = candidate.relationships;
+		}
+
+		const contextDocument = this.isRecord(candidate.context_document)
+			? candidate.context_document
+			: this.isRecord(candidate.contextDocument)
+				? candidate.contextDocument
+				: undefined;
+		if (contextDocument) {
+			extracted.context_document = contextDocument;
+		}
+
+		if (Array.isArray(candidate.clarifications)) {
+			extracted.clarifications = candidate.clarifications;
+		}
+		if (this.isRecord(candidate.meta)) {
+			extracted.meta = candidate.meta;
+		}
+
+		return Object.keys(extracted).length > 0 ? extracted : undefined;
 	}
 
 	private getToolDefinition(
@@ -1409,9 +1565,23 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 
 		const resolved = { ...args };
 		const fallbackTitle = this.buildFallbackTitle(step);
+		const properties = paramSchema.properties ?? {};
 
 		for (const requiredParam of required) {
 			if (resolved[requiredParam] !== undefined && resolved[requiredParam] !== null) {
+				continue;
+			}
+
+			const paramDef = properties[requiredParam];
+			if (paramDef && typeof paramDef === 'object' && 'default' in paramDef) {
+				const defaultValue = (paramDef as Record<string, any>).default;
+				if (Array.isArray(defaultValue)) {
+					resolved[requiredParam] = [...defaultValue];
+				} else if (this.isRecord(defaultValue)) {
+					resolved[requiredParam] = { ...defaultValue };
+				} else if (defaultValue !== undefined) {
+					resolved[requiredParam] = defaultValue;
+				}
 				continue;
 			}
 
@@ -1421,6 +1591,15 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 				}
 			} else if (requiredParam === 'description' && step.description) {
 				resolved[requiredParam] = step.description;
+			}
+		}
+
+		if (toolName === 'create_onto_project') {
+			if (!Array.isArray(resolved.entities)) {
+				resolved.entities = [];
+			}
+			if (!Array.isArray(resolved.relationships)) {
+				resolved.relationships = [];
 			}
 		}
 
@@ -1543,6 +1722,10 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 	private looksLikeProject(value: Record<string, any>): boolean {
 		const projectHints = ['phases', 'dimensions', 'status', 'workspace_id'];
 		return projectHints.some((hint) => hint in value);
+	}
+
+	private isRecord(value: unknown): value is Record<string, any> {
+		return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 	}
 
 	/**

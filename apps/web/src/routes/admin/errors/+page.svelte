@@ -19,10 +19,10 @@
 		X,
 		Clock,
 		CircleAlert,
-		CircleCheck
+		CircleCheck,
+		Bug,
+		Zap
 	} from 'lucide-svelte';
-
-	// Note: Bug, Database, Zap icons removed - add back if showing type icons in the future
 
 	let { data }: { data: PageData } = $props();
 

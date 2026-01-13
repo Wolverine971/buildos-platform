@@ -701,6 +701,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 					},
 					entities: {
 						type: 'array',
+						default: [],
 						description:
 							'Required entity list using temp_id + kind. Use entities + relationships only.',
 						items: {
@@ -750,6 +751,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 					},
 					relationships: {
 						type: 'array',
+						default: [],
 						description:
 							'Directional connections between entities using temp_id (required even if empty). Each item can be [from, to] or { from, to, rel?, intent? }.',
 						items: {
