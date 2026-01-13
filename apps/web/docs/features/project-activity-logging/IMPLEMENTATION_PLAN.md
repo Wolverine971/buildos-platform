@@ -106,7 +106,6 @@ Tracks all changes to project-related entities.
 
 - `project` - Project metadata changes (name, description, dates, facets)
 - `task` - onto_tasks
-- `output` - onto_outputs
 - `note` - onto_notes
 - `goal` - onto_goals
 - `milestone` - onto_milestones

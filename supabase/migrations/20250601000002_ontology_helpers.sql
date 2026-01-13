@@ -250,12 +250,6 @@ begin
 			from onto_tasks t
 			where t.id = p_object_id;
 
-		when 'output' then
-			select to_jsonb(o.*), o.state_key, o.type_key
-			into v_entity, v_current_state, v_type_key
-			from onto_outputs o
-			where o.id = p_object_id;
-
 		when 'document' then
 			select to_jsonb(d.*), null::text, d.type_key
 			into v_entity, v_current_state, v_type_key
@@ -284,7 +278,6 @@ begin
 			when 'project' then 'project'
 			when 'plan' then 'plan'
 			when 'task' then 'task'
-			when 'output' then 'output'
 			when 'document' then 'document'
 			else scope
 		end

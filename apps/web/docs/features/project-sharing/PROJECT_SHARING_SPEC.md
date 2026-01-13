@@ -147,13 +147,11 @@ Update these tables to allow membership-based access:
 - `onto_projects`
 - `onto_tasks`
 - `onto_plans`
-- `onto_outputs`
 - `onto_documents`
 - `onto_goals`
 - `onto_milestones`
 - `onto_risks`
 - `onto_requirements`
-- `onto_decisions`
 - `onto_edges`
     - Policies live in `supabase/migrations/20251220_ontology_rls_policies.sql:94-586`
 

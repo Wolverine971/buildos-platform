@@ -101,7 +101,6 @@ type OntoTemplate = Database['public']['Tables']['onto_templates']['Row'];
 type OntoProject = Database['public']['Tables']['onto_projects']['Row'];
 type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 type OntoTask = Database['public']['Tables']['onto_tasks']['Row'];
-type OntoOutput = Database['public']['Tables']['onto_outputs']['Row'];
 type OntoDocument = Database['public']['Tables']['onto_documents']['Row'];
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -127,13 +126,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	try {
 		// 4. Fetch all ontology data in parallel
-		const [templatesRes, projectsRes, edgesRes, tasksRes, outputsRes, documentsRes] =
+		const [templatesRes, projectsRes, edgesRes, tasksRes, documentsRes] =
 			await Promise.all([
 				adminClient.from('onto_templates').select('*').eq('status', 'active'),
 				adminClient.from('onto_projects').select('*'),
 				adminClient.from('onto_edges').select('*'),
 				adminClient.from('onto_tasks').select('*'),
-				adminClient.from('onto_outputs').select('*'),
 				adminClient.from('onto_documents').select('*')
 			]);
 
@@ -196,14 +194,13 @@ type OntoTemplate = Database['public']['Tables']['onto_templates']['Row'];
 type OntoProject = Database['public']['Tables']['onto_projects']['Row'];
 type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 type OntoTask = Database['public']['Tables']['onto_tasks']['Row'];
-type OntoOutput = Database['public']['Tables']['onto_outputs']['Row'];
 type OntoDocument = Database['public']['Tables']['onto_documents']['Row'];
 
 export interface CytoscapeNode {
 	data: {
 		id: string;
 		label: string;
-		type: 'template' | 'project' | 'task' | 'output' | 'document';
+		type: 'template' | 'project' | 'task' | 'document';
 		parent?: string;
 		metadata: Record<string, unknown>;
 		// Visual properties

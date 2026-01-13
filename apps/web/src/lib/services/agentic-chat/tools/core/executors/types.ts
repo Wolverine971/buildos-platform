@@ -176,6 +176,12 @@ export interface CreateOntoTaskArgs {
 	props?: Record<string, unknown>;
 	parent?: { kind: string; id: string; is_primary?: boolean };
 	parents?: Array<{ kind: string; id: string; is_primary?: boolean }>;
+	connections?: Array<{
+		kind: string;
+		id: string;
+		intent?: 'containment' | 'semantic';
+		rel?: string;
+	}>;
 }
 
 export interface CreateOntoGoalArgs {

@@ -75,7 +75,6 @@ SELECT * FROM onto_tasks LIMIT 1;
 SELECT * FROM onto_goals LIMIT 1;
 SELECT * FROM onto_plans LIMIT 1;
 SELECT * FROM onto_documents LIMIT 1;
-SELECT * FROM onto_outputs LIMIT 1;
 SELECT * FROM onto_edges LIMIT 1;
 ```
 
@@ -482,8 +481,7 @@ export class OntologyContextLoader {
 			task: 'onto_tasks',
 			plan: 'onto_plans',
 			goal: 'onto_goals',
-			document: 'onto_documents',
-			output: 'onto_outputs'
+			document: 'onto_documents'
 		};
 
 		const table = tableMap[type];
@@ -642,8 +640,7 @@ export class OntologyContextLoader {
 			'onto_tasks',
 			'onto_goals',
 			'onto_plans',
-			'onto_documents',
-			'onto_outputs'
+			'onto_documents'
 		];
 
 		for (const table of tables) {

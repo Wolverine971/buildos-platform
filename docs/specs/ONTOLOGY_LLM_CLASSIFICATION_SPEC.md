@@ -78,17 +78,15 @@ Create modals must not accept or set `type_key` or `props`. Those fields are onl
 
 ## Entity Types & Default Type Keys
 
-All 8 ontology entity types will receive LLM classification:
+All 6 ontology entity types will receive LLM classification:
 
 | Entity    | Table             | Default Type Key    | Example Classified        |
 | --------- | ----------------- | ------------------- | ------------------------- |
 | Task      | `onto_tasks`      | `task.default`      | `task.execute.deploy`     |
-| Output    | `onto_outputs`    | `output.default`    | `output.written.report`   |
 | Plan      | `onto_plans`      | `plan.default`      | `plan.timebox.sprint`     |
 | Goal      | `onto_goals`      | `goal.default`      | `goal.metric.revenue`     |
 | Risk      | `onto_risks`      | `risk.default`      | `risk.technical.security` |
 | Milestone | `onto_milestones` | `milestone.default` | `milestone.delivery`      |
-| Decision  | `onto_decisions`  | `decision.default`  | `decision.technical`      |
 | Document  | `onto_documents`  | `document.default`  | `document.spec.technical` |
 
 ---
@@ -563,25 +561,20 @@ function shouldSkipClassification(
 ### Phase 2: API Updates
 
 - [x] Update `/api/onto/tasks/create` - use default type_key, fire-and-forget classification with `classificationSource: 'create_modal'`
-- [x] Update `/api/onto/outputs/create` - same pattern
 - [x] Update `/api/onto/plans/create` - same pattern
 - [x] Update `/api/onto/goals/create` - same pattern
 - [x] Update `/api/onto/risks/create` - same pattern
 - [x] Update `/api/onto/milestones/create` - same pattern
-- [x] Update `/api/onto/decisions` - same pattern (if POST exists)
 - [x] Update `/api/onto/documents` - same pattern
 - [x] Ensure create endpoints ignore any `type_key` or `props` provided by clients
-- [x] Add `type_key` column to `onto_decisions` with default `decision.default`
 
 ### Phase 3: Modal Simplification
 
 - [x] Simplify `TaskCreateModal.svelte` - remove template step
-- [x] Simplify `OutputCreateModal.svelte` - remove type grid
 - [x] Simplify `PlanCreateModal.svelte` - remove type selection
 - [x] Simplify `GoalCreateModal.svelte` - remove type selection
 - [x] Simplify `RiskCreateModal.svelte` - remove category selection
 - [x] Simplify `MilestoneCreateModal.svelte` - remove type selection
-- [x] Update `DecisionCreateModal.svelte` - ensure default type_key
 - [x] Update `DocumentModal.svelte` - remove type input
 
 ### Phase 4: Testing & Validation
@@ -670,14 +663,13 @@ Add metrics to track:
 
 ## File Locations Summary
 
-| Component              | Path                                                               |
-| ---------------------- | ------------------------------------------------------------------ |
-| **Shared Types**       | `/packages/shared-types/src/queue-types.ts`                        |
-| **Worker Processor**   | `/apps/worker/src/workers/ontology/ontologyClassifier.ts` (new)    |
-| **Worker API**         | `/apps/worker/src/index.ts`                                        |
-| **Web Service**        | `/apps/web/src/lib/server/ontology-classification.service.ts`      |
-| **Create APIs**        | `/apps/web/src/routes/api/onto/*/create/+server.ts`                |
-| **Create Modals**      | `/apps/web/src/lib/components/ontology/*CreateModal.svelte`        |
-| **Type Key Taxonomy**  | `/apps/web/docs/features/ontology/TYPE_KEY_TAXONOMY.md`            |
-| **This Spec**          | `/docs/specs/ONTOLOGY_LLM_CLASSIFICATION_SPEC.md`                  |
-| **Decision Migration** | `/supabase/migrations/20260125_add_type_key_to_onto_decisions.sql` |
+| Component             | Path                                                            |
+| --------------------- | --------------------------------------------------------------- |
+| **Shared Types**      | `/packages/shared-types/src/queue-types.ts`                     |
+| **Worker Processor**  | `/apps/worker/src/workers/ontology/ontologyClassifier.ts` (new) |
+| **Worker API**        | `/apps/worker/src/index.ts`                                     |
+| **Web Service**       | `/apps/web/src/lib/server/ontology-classification.service.ts`   |
+| **Create APIs**       | `/apps/web/src/routes/api/onto/*/create/+server.ts`             |
+| **Create Modals**     | `/apps/web/src/lib/components/ontology/*CreateModal.svelte`     |
+| **Type Key Taxonomy** | `/apps/web/docs/features/ontology/TYPE_KEY_TAXONOMY.md`         |
+| **This Spec**         | `/docs/specs/ONTOLOGY_LLM_CLASSIFICATION_SPEC.md`               |

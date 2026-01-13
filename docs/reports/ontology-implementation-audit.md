@@ -8,7 +8,7 @@ This document summarizes a code-level review of the ontology implementation agai
 
 ## Summary
 
-- ✅ The schema establishes the required core entities (`onto_templates`, `onto_projects`, `onto_tasks`, `onto_outputs`, etc.) and seeds the three canonical facets (context, scale, stage) as described in the master plan.
+- ✅ The schema establishes the required core entities (`onto_templates`, `onto_projects`, `onto_tasks`, `onto_documents`, etc.) and seeds the three canonical facets (context, scale, stage) as described in the master plan.
 - ⚠️ Several service-layer contracts diverge from the master plan (e.g., FSM shape, template enforcement), which can lead to silent data corruption or bypass critical safeguards.
 - ⚠️ DB helper functions do not fully enforce facet applicability, allowing invalid combinations of scope and facet keys.
 - ⚠️ Template lifecycle safeguards (deletion checks, default data) contain logic errors that can leave the ontology catalog in an inconsistent state.

@@ -982,10 +982,9 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 
 **Format**: \`document.{family}\` or \`document.{family}.{variant}\`
 
-**6 Families**:
+**5 Families**:
 - **context** — Big picture, intent, constraints (project briefs)
 - **knowledge** — Research, findings, raw learning
-- **decision** — Decisions and commitments
 - **spec** — Formalized "what/how" specifications
 - **reference** — Reusable guides/handbooks
 - **intake** — Information gathered at start
@@ -993,7 +992,6 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 **Examples**:
 - context: \`document.context.project\`, \`document.context.brief\`, \`document.context.vision\`
 - knowledge: \`document.knowledge.research\`, \`document.knowledge.notes\`, \`document.knowledge.analysis\`
-- decision: \`document.decision.adr\`, \`document.decision.meeting_notes\`, \`document.decision.proposal\`
 - spec: \`document.spec.product\`, \`document.spec.technical\`, \`document.spec.api\`
 - reference: \`document.reference.handbook\`, \`document.reference.playbook\`, \`document.reference.guide\`
 - intake: \`document.intake.client\`, \`document.intake.project\`, \`document.intake.requirements\`
@@ -1001,7 +999,6 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 **Selection Guide**:
 - "Project context doc" → \`document.context.project\`
 - "Competitor research" → \`document.knowledge.research\`
-- "Architecture decision" → \`document.decision.adr\`
 - "Product spec" → \`document.spec.product\`
 - "Team handbook" → \`document.reference.handbook\`
 - "Client intake form" → \`document.intake.client\``;
@@ -1011,13 +1008,12 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 
 **Format**: \`document.{family}\` or \`document.{family}.{variant}\`
 
-### 6 Document Families
+### 5 Document Families
 
 | Family | Base Type Key | Purpose | Use When |
 |--------|---------------|---------|----------|
 | **context** | \`document.context\` | Big picture, intent, constraints | Project briefs, vision docs, context |
 | **knowledge** | \`document.knowledge\` | Research, findings, raw learning | Research notes, analysis, learnings |
-| **decision** | \`document.decision\` | Decisions and commitments | ADRs, meeting notes, proposals |
 | **spec** | \`document.spec\` | Formalized "what/how" | PRDs, technical specs, API docs |
 | **reference** | \`document.reference\` | Reusable guides/handbooks | Handbooks, playbooks, SOPs |
 | **intake** | \`document.intake\` | Information gathered at start | Client intake, project intake |
@@ -1033,11 +1029,6 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 - \`document.knowledge.research\` — General research notes
 - \`document.knowledge.notes\` — Meeting/session notes
 - \`document.knowledge.analysis\` — Analysis document
-
-**Decision** (choices/commitments):
-- \`document.decision.adr\` — Architecture Decision Record
-- \`document.decision.meeting_notes\` — Meeting notes + decisions
-- \`document.decision.proposal\` — Proposal document
 
 **Spec** (specifications):
 - \`document.spec.product\` — Product spec/PRD
@@ -1057,90 +1048,6 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 ### Special Note: Context Documents
 
 \`document.context.project\` is the canonical project context document that links via \`onto_projects.context_document_id\`. It should contain the project's vision, strategy, and key context.`;
-}
-
-/**
- * Generates output type_key classification guidance
- *
- * Format: output.{family}[.{variant}]
- *
- * @param mode - 'short' for quick reference, 'full' for complete guidance
- */
-export function generateOutputTypeKeyGuidance(mode: 'full' | 'short' = 'short'): string {
-	if (mode === 'short') {
-		return `## Output Type Key (Deliverables)
-
-**Format**: \`output.{family}\` or \`output.{family}.{variant}\`
-
-**4 Families** (by content modality):
-- **written** — Long-form text, structured writing
-- **media** — Visual/audio/video artifacts
-- **software** — Code, releases, APIs
-- **operational** — Business/ops deliverables
-
-**Examples**:
-- written: \`output.written.chapter\`, \`output.written.article\`, \`output.written.blog_post\`
-- media: \`output.media.design_mockup\`, \`output.media.slide_deck\`, \`output.media.video\`
-- software: \`output.software.feature\`, \`output.software.release\`, \`output.software.api\`
-- operational: \`output.operational.report\`, \`output.operational.dashboard\`, \`output.operational.process\`
-
-**Selection Guide**:
-- "Book chapter draft" → \`output.written.chapter\`
-- "Landing page mockup" → \`output.media.design_mockup\`
-- "User auth feature" → \`output.software.feature\`
-- "Monthly sales report" → \`output.operational.report\``;
-	}
-
-	return `## Output Type Key Classification (Deliverables)
-
-**Format**: \`output.{family}\` or \`output.{family}.{variant}\`
-
-### 4 Output Families (by content modality)
-
-| Family | Base Type Key | Description | Use When |
-|--------|---------------|-------------|----------|
-| **written** | \`output.written\` | Long-form text, structured writing | Chapters, articles, blog posts, copy |
-| **media** | \`output.media\` | Visual/audio/video artifacts | Designs, presentations, videos |
-| **software** | \`output.software\` | Code, releases, APIs | Features, releases, integrations |
-| **operational** | \`output.operational\` | Business/ops deliverables | Reports, dashboards, processes |
-
-### Common Variants
-
-**Written**:
-- \`output.written.chapter\` — Book chapter
-- \`output.written.article\` — Article/essay
-- \`output.written.blog_post\` — Blog post
-- \`output.written.copy\` — Marketing copy
-- \`output.written.documentation\` — Technical documentation
-
-**Media**:
-- \`output.media.design_mockup\` — Design mockup
-- \`output.media.slide_deck\` — Presentation deck
-- \`output.media.video\` — Video content
-- \`output.media.graphic\` — Graphic/illustration
-- \`output.media.prototype\` — Interactive prototype
-
-**Software**:
-- \`output.software.feature\` — Shipped feature
-- \`output.software.release\` — Versioned release
-- \`output.software.api\` — API endpoint
-- \`output.software.integration\` — Integration
-- \`output.software.script\` — Script/automation
-
-**Operational**:
-- \`output.operational.report\` — Report
-- \`output.operational.dashboard\` — Live dashboard
-- \`output.operational.process\` — Documented process
-- \`output.operational.template\` — Reusable template
-
-### Selection Examples
-
-| Description | Type Key | Reasoning |
-|-------------|----------|-----------|
-| "Chapter 3 draft" | \`output.written.chapter\` | Written content |
-| "Homepage mockup" | \`output.media.design_mockup\` | Visual artifact |
-| "User auth feature" | \`output.software.feature\` | Code deliverable |
-| "Q3 sales report" | \`output.operational.report\` | Business deliverable |`;
 }
 
 /**

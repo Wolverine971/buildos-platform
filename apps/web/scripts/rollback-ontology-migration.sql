@@ -53,11 +53,6 @@ FROM onto_goals, cutoff
 WHERE created_at >= cutoff.ts
 
 UNION ALL
-SELECT 'onto_outputs', COUNT(*)
-FROM onto_outputs, cutoff
-WHERE created_at >= cutoff.ts
-
-UNION ALL
 SELECT 'onto_documents', COUNT(*)
 FROM onto_documents, cutoff
 WHERE created_at >= cutoff.ts
@@ -80,11 +75,6 @@ WHERE created_at >= cutoff.ts
 UNION ALL
 SELECT 'onto_metrics', COUNT(*)
 FROM onto_metrics, cutoff
-WHERE created_at >= cutoff.ts
-
-UNION ALL
-SELECT 'onto_decisions', COUNT(*)
-FROM onto_decisions, cutoff
 WHERE created_at >= cutoff.ts
 
 UNION ALL
@@ -174,10 +164,6 @@ BEGIN
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RAISE NOTICE 'Deleted % onto_plans', deleted_count;
 
-  DELETE FROM onto_outputs WHERE created_at >= cutoff_time;
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'Deleted % onto_outputs', deleted_count;
-
   DELETE FROM onto_documents WHERE created_at >= cutoff_time;
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RAISE NOTICE 'Deleted % onto_documents', deleted_count;
@@ -201,10 +187,6 @@ BEGIN
   DELETE FROM onto_risks WHERE created_at >= cutoff_time;
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RAISE NOTICE 'Deleted % onto_risks', deleted_count;
-
-  DELETE FROM onto_decisions WHERE created_at >= cutoff_time;
-  GET DIAGNOSTICS deleted_count = ROW_COUNT;
-  RAISE NOTICE 'Deleted % onto_decisions', deleted_count;
 
   DELETE FROM onto_sources WHERE created_at >= cutoff_time;
   GET DIAGNOSTICS deleted_count = ROW_COUNT;

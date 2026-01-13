@@ -20,7 +20,6 @@ Choose projects that have:
 | **Defined milestones**    | Maps to `onto_milestones` | Battles, launches, releases            |
 | **Complex planning**      | Maps to `onto_plans`      | Campaigns, phases, sprints             |
 | **Actionable tasks**      | Maps to `onto_tasks`      | Build X, recruit Y, test Z             |
-| **Critical decisions**    | Maps to `onto_decisions`  | Technology choices, personnel          |
 | **Known risks**           | Maps to `onto_risks`      | Weather, funding, enemies              |
 | **Documentary evidence**  | Maps to `onto_documents`  | Letters, reports, specs                |
 | **Rich interconnections** | Maps to `onto_edges`      | Causal chains, dependencies            |
@@ -67,7 +66,7 @@ Use Perplexity or similar research tools with structured queries:
 ```
 Query Template:
 "[PROJECT NAME] [ASPECT] detailed timeline with specific dates,
-key personnel, decisions made, and outcomes"
+key personnel, key events, and outcomes"
 ```
 
 **Essential Research Topics:**
@@ -75,9 +74,9 @@ key personnel, decisions made, and outcomes"
 1. **Chronological Timeline**
     - "Apollo program complete timeline 1961-1972 with all missions"
 
-2. **Key Personnel & Decisions**
-    - "Apollo program key decisions by NASA leadership"
-    - "Who made critical technology choices for Apollo"
+2. **Key Personnel & Key Events**
+    - "Apollo program key personnel by mission and year"
+    - "Key technology milestones for Apollo"
 
 3. **Risks and Failures**
     - "Apollo program failures and near-disasters"
@@ -154,8 +153,6 @@ Granular work items:
 - Completion status
 
 ## Decisions (Critical Choices)
-
-Document key decisions:
 
 - Decision context
 - Options considered
@@ -355,28 +352,6 @@ INSERT INTO onto_tasks (
  '[USER_UUID]');
 ```
 
-### Decisions (`onto_decisions` table)
-
-```sql
-INSERT INTO onto_decisions (
-  id,
-  project_id,
-  title,            -- NOT 'name'! NO 'type_key' or 'state_key'!
-  decision_at,      -- Date decision was made as timestamptz
-  rationale,        -- Text explaining the decision rationale
-  props,            -- JSONB - include {"type": "decision.xxx"} here
-  created_by
-) VALUES (...);
-
--- Example:
-('66661111-0001-0001-0001-000000000001', '[PROJECT_UUID]',
- 'Lunar Orbit Rendezvous Selection',
- '1962-07-11'::timestamptz,
- 'LOR selected over direct ascent and Earth orbit rendezvous due to weight savings',
- '{"type": "decision.technical", "state": "decided", "decided_by": "NASA Leadership"}',
- '[USER_UUID]');
-```
-
 ### Risks (`onto_risks` table)
 
 ```sql
@@ -420,7 +395,7 @@ INSERT INTO onto_documents (
 
 ```sql
 INSERT INTO onto_edges (
-  src_kind,         -- e.g., 'project', 'goal', 'milestone', 'plan', 'task', 'decision', 'risk', 'document'
+  src_kind,         -- e.g., 'project', 'goal', 'milestone', 'plan', 'task', 'risk', 'document'
   src_id,
   rel,              -- Relationship type: 'has', 'contains', 'enabled', 'led_to', 'caused', 'documents', 'mitigates', 'informs'
   dst_kind,
@@ -437,18 +412,16 @@ INSERT INTO onto_edges (
 
 ### Common Mistakes to Avoid
 
-| Wrong                                       | Correct                              | Entity                              |
-| ------------------------------------------- | ------------------------------------ | ----------------------------------- |
-| `name`                                      | `title`                              | milestones, tasks, decisions, risks |
-| `state_key` (for date)                      | `due_at`                             | milestones                          |
-| `severity`                                  | `impact`                             | risks                               |
-| `type_key` in decisions                     | Put in `props` as `{"type": "..."}`  | decisions                           |
-| `state_key` in decisions                    | Put in `props` as `{"state": "..."}` | decisions                           |
-| Missing `org_id`                            | Always include                       | projects                            |
-| Missing `priority`                          | Required field                       | tasks                               |
-| `id` column in edges                        | Auto-generated, omit it              | edges                               |
-| `created_by` in edges                       | Column doesn't exist                 | edges                               |
-| `'high'`/`'medium'`/`'low'` for probability | Use numeric (0.8, 0.5, 0.2)          | risks                               |
+| Wrong                                       | Correct                     | Entity                   |
+| ------------------------------------------- | --------------------------- | ------------------------ |
+| `name`                                      | `title`                     | milestones, tasks, risks |
+| `state_key` (for date)                      | `due_at`                    | milestones               |
+| `severity`                                  | `impact`                    | risks                    |
+| Missing `org_id`                            | Always include              | projects                 |
+| Missing `priority`                          | Required field              | tasks                    |
+| `id` column in edges                        | Auto-generated, omit it     | edges                    |
+| `created_by` in edges                       | Column doesn't exist        | edges                    |
+| `'high'`/`'medium'`/`'low'` for probability | Use numeric (0.8, 0.5, 0.2) | risks                    |
 
 ### Valid Enum Values (CRITICAL)
 
@@ -457,14 +430,12 @@ INSERT INTO onto_edges (
 | Enum Type         | Valid Values                                            |
 | ----------------- | ------------------------------------------------------- |
 | `task_state`      | `'todo'`, `'in_progress'`, `'blocked'`, `'done'`        |
-| `decision_state`  | `'pending'`, `'decided'`, `'revisited'`                 |
 | `risk_state`      | `'identified'`, `'mitigated'`, `'occurred'`, `'closed'` |
 | `document_state`  | `'draft'`, `'review'`, `'published'`                    |
 | `milestone_state` | `'pending'`, `'in_progress'`, `'completed'`, `'missed'` |
 | `goal_state`      | `'draft'`, `'active'`, `'achieved'`, `'abandoned'`      |
 | `plan_state`      | `'draft'`, `'active'`, `'completed'`                    |
 | `project_state`   | `'planning'`, `'active'`, `'completed'`, `'cancelled'`  |
-| `output_state`    | `'draft'`, `'in_progress'`, `'review'`, `'published'`   |
 
 **Important Column Types:**
 
@@ -477,7 +448,6 @@ INSERT INTO onto_edges (
 - ❌ `'accepted'` → use `'mitigated'` or `'closed'` for risks
 - ❌ `'archived'` → use `'published'` for documents
 - ❌ `'complete'` → use `'done'` for tasks, `'completed'` for plans
-- ❌ `'approved'` → use `'decided'` for decisions
 - ❌ `'high'` for probability → use numeric like `0.8`
 - ❌ `'not_started'` for milestones → use `'pending'`
 - ❌ `'achieved'` for milestones → use `'completed'` (put "achieved" in props if needed)
@@ -517,7 +487,6 @@ supabase/migrations/YYYYMMDD_seed_[project_slug]_example_project.sql
 DELETE FROM onto_edges WHERE project_id = '[PROJECT_UUID]';
 DELETE FROM onto_tasks WHERE project_id = '[PROJECT_UUID]';
 DELETE FROM onto_documents WHERE project_id = '[PROJECT_UUID]';
-DELETE FROM onto_decisions WHERE project_id = '[PROJECT_UUID]';
 DELETE FROM onto_risks WHERE project_id = '[PROJECT_UUID]';
 DELETE FROM onto_plans WHERE project_id = '[PROJECT_UUID]';
 DELETE FROM onto_milestones WHERE project_id = '[PROJECT_UUID]';
@@ -603,14 +572,12 @@ Always check current enum definitions before creating entities:
 
 ```sql
 -- task_state: 'todo', 'in_progress', 'blocked', 'done'
--- decision_state: 'pending', 'decided', 'revisited'
 -- risk_state: 'identified', 'mitigated', 'occurred', 'closed'
 -- document_state: 'draft', 'review', 'published'
 -- milestone_state: 'pending', 'in_progress', 'completed', 'missed'
 -- goal_state: 'draft', 'active', 'achieved', 'abandoned'
 -- plan_state: 'draft', 'active', 'completed'
 -- project_state: 'planning', 'active', 'completed', 'cancelled'
--- output_state: 'draft', 'in_progress', 'review', 'published'
 ```
 
 ---
@@ -638,8 +605,6 @@ UNION ALL
 SELECT 'plans', COUNT(*) FROM onto_plans WHERE project_id = '[UUID]'
 UNION ALL
 SELECT 'tasks', COUNT(*) FROM onto_tasks WHERE project_id = '[UUID]'
-UNION ALL
-SELECT 'decisions', COUNT(*) FROM onto_decisions WHERE project_id = '[UUID]'
 UNION ALL
 SELECT 'risks', COUNT(*) FROM onto_risks WHERE project_id = '[UUID]'
 UNION ALL
@@ -718,7 +683,7 @@ AND NOT EXISTS (
 
 ```
 "[Product] development timeline key milestones"
-"[Company] internal decisions about [product]"
+"[Company] internal strategy about [product]"
 "[Product] technical challenges engineering problems"
 "[Launch] marketing strategy preparation"
 "[Product] what almost went wrong near failures"

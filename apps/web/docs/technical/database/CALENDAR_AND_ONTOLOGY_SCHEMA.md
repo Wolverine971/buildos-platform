@@ -294,31 +294,6 @@ created_at (timestamptz)
 updated_at (timestamptz) -- NEW
 ```
 
-#### `onto_outputs` & `onto_output_versions` (Deliverables)
-
-```
-onto_outputs:
-  id (uuid, pk)
-  project_id (uuid fk)
-  name (text, not null)
-  description (text) -- NEW: Output description
-  type_key (text)
-  state_key (text)
-  props (jsonb)
-  search_vector (tsvector)
-  facet_stage (generated)
-  source_document_id (uuid fk) -- Source document reference
-  source_event_id (uuid fk) -- Source event reference
-  deleted_at (timestamptz) -- NEW: Soft delete
-  created_by (uuid)
-  created_at (timestamptz)
-  updated_at (timestamptz)
-
-onto_output_versions:
-  id, output_id (fk, cascade), number, storage_uri, props, created_by, created_at
-  Unique: (output_id, number)
-```
-
 #### `onto_documents` & `onto_document_versions` (Context Documents)
 
 ```
@@ -359,15 +334,9 @@ created_by (uuid)
 created_at (timestamptz)
 ```
 
-#### Supporting Tables: Decisions, Risks, Milestones, Metrics
+#### Supporting Tables: Risks, Milestones, Metrics
 
 ```
-onto_decisions:
-  id, project_id (fk), title, decision_at, rationale, props
-  deleted_at (timestamptz) -- NEW: Soft delete
-  updated_at (timestamptz) -- NEW
-  created_by, created_at
-
 onto_risks:
   id, project_id (fk), title, type_key
   content (text) -- NEW: Risk content
@@ -550,7 +519,6 @@ trg_onto_templates_updated
 trg_onto_projects_updated
 trg_onto_plans_updated
 trg_onto_tasks_updated
-trg_onto_outputs_updated
 ```
 
 ---
@@ -1262,7 +1230,6 @@ trg_onto_templates_updated (onto_templates)
 trg_onto_projects_updated (onto_projects)
 trg_onto_plans_updated (onto_plans)
 trg_onto_tasks_updated (onto_tasks)
-trg_onto_outputs_updated (onto_outputs)
 ```
 
 ---

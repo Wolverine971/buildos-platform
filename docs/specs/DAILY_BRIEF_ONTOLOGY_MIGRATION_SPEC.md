@@ -135,9 +135,7 @@ The current daily brief includes:
 | **Milestones**   | `onto_milestones`   | Key dates and deadlines                                        |
 | **Risks**        | `onto_risks`        | Active risks requiring attention                               |
 | **Documents**    | `onto_documents`    | Context and reference materials                                |
-| **Outputs**      | `onto_outputs`      | Produced/target artifacts for outcomes                         |
 | **Requirements** | `onto_requirements` | Constraints/acceptance criteria (optional)                     |
-| **Decisions**    | `onto_decisions`    | Recent decisions/ADRs (optional, include if any)               |
 
 ### 2.2 Graph Relationships (onto_edges)
 
@@ -279,13 +277,7 @@ async function getOntoProjectsWithData(
 			.in('project_id', projectIds)
 			.neq('state_key', 'closed'),
 		supabase.from('onto_documents').select('*').in('project_id', projectIds),
-		supabase.from('onto_outputs').select('*').in('project_id', projectIds),
 		supabase.from('onto_requirements').select('*').in('project_id', projectIds),
-		supabase
-			.from('onto_decisions')
-			.select('*')
-			.in('project_id', projectIds)
-			.order('decision_at', { ascending: false }),
 		supabase.from('onto_edges').select('*').in('project_id', projectIds) // use project_id index, canonical directions
 	]);
 
@@ -299,9 +291,7 @@ async function getOntoProjectsWithData(
 			milestonesResult.data ?? [],
 			risksResult.data ?? [],
 			documentsResult.data ?? [],
-			outputsResult.data ?? [],
 			requirementsResult.data ?? [],
-			decisionsResult.data ?? [],
 			edgesResult.data ?? []
 		)
 	);

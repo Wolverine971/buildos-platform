@@ -113,6 +113,20 @@ Default: task.execute`
 							}
 						}
 					},
+					connections: {
+						type: 'array',
+						description:
+							'Optional relationship connections (use for documents, tasks, risks, or explicit rels)',
+						items: {
+							type: 'object',
+							properties: {
+								kind: { type: 'string' },
+								id: { type: 'string' },
+								intent: { type: 'string', enum: ['containment', 'semantic'] },
+								rel: { type: 'string' }
+							}
+						}
+					},
 					start_at: {
 						type: 'string',
 						description: 'Optional start date in ISO format (when work should begin)'

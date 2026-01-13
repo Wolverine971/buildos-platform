@@ -469,9 +469,7 @@ event.marker.hold             # calendar hold / tentative slot
 Because you’ve committed to **`{data_type}.{family}[.{variant}]`**, you get:
 
 ```sql
--- All written outputs
-SELECT * FROM onto_outputs
-WHERE type_key LIKE 'output.written.%';
+
 
 -- All campaign-style plans
 SELECT * FROM onto_plans

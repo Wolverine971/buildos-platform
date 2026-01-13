@@ -552,20 +552,6 @@ Current schema looks complete. Consider adding:
 - `updated_at` if missing
 - `priority` for requirement prioritization
 
-### `onto_outputs`
-
-Current schema includes `facet_stage` and versioning via `onto_output_versions`. Consider:
-
-- `deleted_at` for soft deletes
-- `description` for output summary
-
-### `onto_decisions`
-
-Current schema looks complete with `decision_at` and `rationale`. Consider:
-
-- `deleted_at` for soft deletes
-- `updated_at` if missing
-
 ---
 
 ## Summary: Priority Additions

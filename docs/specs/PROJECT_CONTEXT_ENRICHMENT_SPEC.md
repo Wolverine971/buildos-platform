@@ -236,12 +236,10 @@ Tables:
 
 - `onto_goals`
 - `onto_risks`
-- `onto_decisions`
 - `onto_requirements`
 - `onto_documents`
 - `onto_milestones`
 - `onto_plans`
-- `onto_outputs`
 - `onto_signals`
 - `onto_insights`
 - `onto_tasks`

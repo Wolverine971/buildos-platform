@@ -1105,7 +1105,7 @@
 				<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
 					<button
 						onclick={() => goto('/projects')}
-						class="p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
+						class="flex items-center justify-center p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
 						aria-label="Back to projects"
 					>
 						<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />

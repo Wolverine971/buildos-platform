@@ -2,7 +2,7 @@
 <!-- INKPRINT: Ultra-compact voice note panel with inline collapsed / block expanded pattern -->
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { ChevronDown, ChevronUp, Mic, Play, Square, Trash2 } from 'lucide-svelte';
+	import { ChevronDown, ChevronUp, Mic, Play, Square } from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import VoiceNotePlayer from './VoiceNotePlayer.svelte';
 	import { deleteVoiceNote } from '$lib/services/voice-notes.service';
@@ -154,68 +154,57 @@
 
 <!-- Expanded panel content (shared) -->
 {#snippet expandedPanel()}
-	<!-- Controls row -->
-	<div class="flex items-center gap-2">
-		<button
-			type="button"
-			class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[0.65rem] font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:bg-accent/5 pressable disabled:opacity-50"
-			disabled={voiceNotes.length === 0}
-			onclick={handlePlayAll}
-		>
-			{#if isPlayingAll}
-				<Square class="h-2.5 w-2.5" />
-				<span>Stop</span>
-			{:else}
-				<Play class="h-2.5 w-2.5" />
-				<span>Play all</span>
+	<!-- Controls row: count on left, play all on right -->
+	<div class="flex items-center justify-between gap-2">
+		<span class="text-[0.6rem] font-medium tabular-nums text-muted-foreground">
+			{voiceNotes.length} note{voiceNotes.length !== 1 ? 's' : ''} · {formatDuration(
+				totalDuration
+			)}
+		</span>
+		<div class="flex items-center gap-1.5">
+			{#if isPlayingAll && playAllIndex !== null}
+				<span class="text-[0.55rem] tabular-nums text-accent">
+					{playAllIndex + 1}/{voiceNotes.length}
+				</span>
 			{/if}
-		</button>
-		{#if isPlayingAll && playAllIndex !== null}
-			<span class="text-[0.6rem] tabular-nums text-accent">
-				{playAllIndex + 1}/{voiceNotes.length}
-			</span>
-		{/if}
+			<button
+				type="button"
+				class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 text-[0.6rem] font-semibold text-foreground shadow-ink transition-colors hover:border-accent hover:bg-accent/5 pressable disabled:opacity-50"
+				disabled={voiceNotes.length === 0}
+				onclick={handlePlayAll}
+			>
+				{#if isPlayingAll}
+					<Square class="h-2.5 w-2.5" />
+					<span>Stop</span>
+				{:else}
+					<Play class="h-2.5 w-2.5" />
+					<span>Play all</span>
+				{/if}
+			</button>
+		</div>
 	</div>
 
-	<!-- Voice notes list -->
+	<!-- Voice notes list (ultra-compact, delete integrated in player) -->
 	{#if voiceNotes.length === 0}
 		<p class="mt-1.5 text-[0.65rem] italic text-muted-foreground">Voice notes uploading...</p>
 	{:else}
 		<div class="mt-1.5 space-y-1">
 			{#each voiceNotes as voiceNote, index (voiceNote.id)}
 				<div
-					class="group rounded-md border border-border/40 bg-muted/30 px-2 py-1.5 {playAllIndex ===
+					class="rounded-md border border-border/40 bg-muted/30 px-2 py-1 {playAllIndex ===
 					index
 						? 'ring-1 ring-accent/50'
 						: ''}"
 				>
-					<!-- Segment header: number + duration + delete -->
-					<div class="flex items-center justify-between gap-2">
-						<span
-							class="text-[0.6rem] font-medium uppercase tracking-wide text-muted-foreground"
-						>
-							{index + 1}/{voiceNotes.length} · {formatDuration(
-								voiceNote.duration_seconds
-							)}
-						</span>
-						<button
-							type="button"
-							class="opacity-0 group-hover:opacity-100 focus:opacity-100 text-[0.6rem] text-destructive/70 hover:text-destructive transition-opacity"
-							onclick={(e) => promptDelete(voiceNote, e)}
-							aria-label="Delete segment"
-						>
-							<Trash2 class="h-3 w-3" />
-						</button>
-					</div>
-					<!-- Compact player -->
-					<div class="mt-1">
-						<VoiceNotePlayer
-							bind:this={playerRefs[index]}
-							{voiceNote}
-							{showTranscript}
-							compact
-						/>
-					</div>
+					<VoiceNotePlayer
+						bind:this={playerRefs[index]}
+						{voiceNote}
+						{showTranscript}
+						compact
+						segmentIndex={index}
+						segmentTotal={voiceNotes.length}
+						onDelete={() => promptDelete(voiceNote, new MouseEvent('click'))}
+					/>
 				</div>
 			{/each}
 		</div>

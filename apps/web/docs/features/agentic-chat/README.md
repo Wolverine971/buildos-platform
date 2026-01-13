@@ -92,7 +92,7 @@ src/routes/api/agent/stream/
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │  Supabase Database (onto_* tables)                                               │
 │  ├── onto_projects, onto_tasks, onto_plans, onto_goals                          │
-│  ├── onto_documents, onto_outputs, onto_edges                                    │
+│  ├── onto_documents, onto_edges                                                 │
 │  └── chat_sessions, agent_agents, agent_plans                                    │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```

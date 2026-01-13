@@ -88,7 +88,6 @@ create table onto_deliverables (...);
 - `onto_sources` - Reference materials
 - `onto_milestones` - Key dates
 - `onto_risks` - Risk tracking
-- `onto_decisions` - Decision log
 - `onto_metrics` - KPI tracking
 - `onto_edges` - Graph relationships
 - `onto_facet_values` - Taxonomy values

@@ -195,7 +195,6 @@ BuildOS uses a template-driven ontology system with these core entities:
 - Tasks (onto_tasks): Actionable items linked to projects/plans
 - Plans (onto_plans): Logical groupings of tasks
 - Goals (onto_goals): Project objectives
-- Outputs (onto_outputs): Deliverables
 - Documents (onto_documents): Project documentation
 - Edges (onto_edges): Relationships between entities
 
@@ -318,19 +317,13 @@ The refactoring orients the entire system around these core ontology entities:
 - Properties: name, type_key, description
 - Success criteria
 
-**5. Outputs (onto_outputs)**
-
-- Deliverables and artifacts
-- Properties: name, type_key, state_key
-- Linked to projects
-
-**6. Documents (onto_documents)**
+**5. Documents (onto_documents)**
 
 - Project documentation
 - Properties: title, type_key, content
 - Rich text/markdown
 
-**7. Edges (onto_edges)**
+**6. Edges (onto_edges)**
 
 - Relationships between entities
 - Graph structure: src_id → dst_id
@@ -343,7 +336,6 @@ onto_projects (root)
   ├── onto_edges → onto_tasks (has_task)
   ├── onto_edges → onto_goals (has_goal)
   ├── onto_edges → onto_plans (has_plan)
-  ├── onto_edges → onto_outputs (has_output)
   └── onto_edges → onto_documents (has_document)
 
 onto_tasks

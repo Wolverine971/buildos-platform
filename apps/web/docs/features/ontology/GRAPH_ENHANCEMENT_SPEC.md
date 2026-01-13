@@ -29,7 +29,6 @@ This specification defines enhancements to the admin ontology graph viewer to:
 | Templates | `onto_templates` | Yes    | Yes        |
 | Projects  | `onto_projects`  | Yes    | Yes        |
 | Tasks     | `onto_tasks`     | Yes    | Yes        |
-| Outputs   | `onto_outputs`   | Yes    | Yes        |
 | Documents | `onto_documents` | Yes    | Yes        |
 
 ### What's Missing (10 Entity Types)
@@ -43,7 +42,6 @@ This specification defines enhancements to the admin ontology graph viewer to:
 | Risks          | `onto_risks`         | Possible                          | MEDIUM   |
 | Metrics        | `onto_metrics`       | Possible                          | LOW      |
 | Metric Points  | `onto_metric_points` | No (data points)                  | SKIP     |
-| Decisions      | `onto_decisions`     | Possible                          | LOW      |
 | Sources        | `onto_sources`       | Yes (has_source)                  | LOW      |
 | Signals        | `onto_signals`       | Yes (has_signal)                  | LOW      |
 
@@ -87,7 +85,6 @@ const [
 	adminClient.from('onto_projects').select('*'),
 	adminClient.from('onto_edges').select('*'),
 	adminClient.from('onto_tasks').select('*'),
-	adminClient.from('onto_outputs').select('*'),
 	adminClient.from('onto_documents').select('*'),
 	// NEW:
 	adminClient.from('onto_plans').select('*'),

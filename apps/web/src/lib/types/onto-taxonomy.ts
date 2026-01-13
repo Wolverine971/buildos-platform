@@ -138,7 +138,7 @@ export const MILESTONE_TYPE_KEYS: TypeKeyOption[] = [
 /**
  * Document type_key options
  * Pattern: document.{family}[.{variant}]
- * Families: context, knowledge, decision, spec, reference, intake
+ * Families: context, knowledge, spec, reference, intake
  */
 export const DOCUMENT_TYPE_KEYS: TypeKeyOption[] = [
 	{ value: 'document.default', label: 'Default', description: 'General document' },
@@ -150,8 +150,6 @@ export const DOCUMENT_TYPE_KEYS: TypeKeyOption[] = [
 	},
 	{ value: 'document.knowledge', label: 'Knowledge', description: 'Knowledge base document' },
 	{ value: 'document.knowledge.research', label: 'Research', description: 'Research document' },
-	{ value: 'document.decision', label: 'Decision', description: 'Decision document' },
-	{ value: 'document.decision.rfc', label: 'RFC', description: 'Request for comments' },
 	{ value: 'document.spec', label: 'Spec', description: 'Specification document' },
 	{
 		value: 'document.spec.technical',

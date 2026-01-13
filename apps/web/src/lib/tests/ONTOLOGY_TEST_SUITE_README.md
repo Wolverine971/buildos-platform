@@ -30,17 +30,14 @@ This testing suite validates the **complete ontology system** including:
 - Chapter writing and revision workflows
 - Publishing plans with milestones
 - Risk assessment (writer's block, motivation)
-- Decision tracking (publishing platforms)
 - Document types (character profiles, worldbuilding docs)
 
 **Entity Types Tested**:
 
 - onto_projects, onto_goals, onto_plans, onto_tasks
 - onto_documents (creative types)
-- onto_outputs (manuscript, published content)
 - onto_milestones (draft complete, beta readers, launch)
 - onto_risks (creative/motivational)
-- onto_decisions (publishing strategy)
 
 **Key Scenarios**:
 
@@ -49,7 +46,7 @@ This testing suite validates the **complete ontology system** including:
 3. Update tasks in workspace mode
 4. Progress tracking and chapter completion
 5. Risk and requirements in audit mode
-6. Publishing milestones and decisions
+6. Publishing milestones and reviews
 
 ---
 
@@ -63,7 +60,6 @@ This testing suite validates the **complete ontology system** including:
 - SaaS application development
 - Sprint planning with velocity tracking
 - Bug fixes and feature implementation
-- Technical decision records
 - Release planning (alpha, beta, GA)
 - Performance metrics and monitoring
 - Code quality and technical debt
@@ -74,7 +70,6 @@ This testing suite validates the **complete ontology system** including:
 - onto_requirements (technical, performance, compliance)
 - onto_metrics (velocity, latency, uptime, error rates)
 - onto_metric_points (time-series tracking)
-- onto_decisions (architectural, infrastructure)
 - onto_risks (security, technical)
 - onto_milestones (sprints, releases, code freeze)
 
@@ -83,9 +78,8 @@ This testing suite validates the **complete ontology system** including:
 1. Full-stack SaaS project creation
 2. Bug tracking and feature tasks
 3. Sprint planning with story points
-4. Technical decision documentation
-5. Multi-stage release management
-6. Performance monitoring setup
+4. Multi-stage release management
+5. Performance monitoring setup
 
 ---
 
@@ -100,22 +94,20 @@ This testing suite validates the **complete ontology system** including:
 - Design system creation and component libraries
 - UX/UI design workflows
 - Client feedback and revision cycles
-- Design asset delivery (multiple formats)
+- Design asset preparation (multiple formats)
 - Accessibility compliance (WCAG)
 - Portfolio case studies
 
 **Entity Types Tested**:
 
 - onto_projects (design-focused props)
-- onto_goals (deliverables, client approval, accessibility)
+- onto_goals (client approval, accessibility)
 - onto_plans (discovery, concept, execution, delivery)
 - onto_tasks (design, revision, export types)
 - onto_requirements (accessibility, technical formats, aesthetics)
 - onto_documents (brief, moodboard, guidelines, specifications)
-- onto_outputs (logo packages, design libraries, UI mockups)
-- onto_milestones (presentations, reviews, deliveries)
+- onto_milestones (presentations, reviews, handoffs)
 - onto_metrics (component progress, accessibility compliance)
-- onto_decisions (design direction, tool selection)
 
 **Key Scenarios**:
 
@@ -151,7 +143,6 @@ This testing suite validates the **complete ontology system** including:
 - onto_tasks (vendor booking, logistics, coordination)
 - onto_requirements (venue capacity, dietary options, deadlines)
 - onto_documents (timeline, vendor lists, attendee packets)
-- onto_outputs (event program, floor plans)
 - onto_milestones (contracts, registration, event dates)
 - onto_actors (event staff, vendors, coordinators)
 - onto_events (detailed event day schedule)
@@ -193,7 +184,6 @@ This testing suite validates the **complete ontology system** including:
 - onto_tasks (IRB application, instrument development, analysis, manuscript)
 - onto_requirements (IRB approval, data security, validated instruments, retention)
 - onto_documents (IRB application, protocol, instruments, codebooks, manuscripts)
-- onto_outputs (datasets, journal articles, conference presentations)
 - onto_milestones (approvals, data collection quarters, submissions)
 - onto_metrics (recruitment, response rate, retention, literature reviewed)
 - onto_metric_points (time-series data across study period)
@@ -239,12 +229,10 @@ This testing suite validates the **complete ontology system** including:
 - onto_tasks (sourcing, vendor selection, system setup, sales)
 - onto_requirements (compliance, certifications, security, budget caps)
 - onto_documents (business plans, brand guidelines, pitch decks, financials)
-- onto_outputs (product SKUs, websites, marketing assets)
 - onto_milestones (supplier contracts, launches, funding rounds)
 - onto_metrics (revenue, CAC, retention, budget tracking)
 - onto_metric_points (monthly revenue tracking, growth metrics)
 - onto_risks (regulatory delays, supply chain, budget overruns, market risks)
-- onto_decisions (platform selection, fundraising strategy, vendor choices)
 - onto_insights (growth trends, efficiency improvements, performance analysis)
 
 **Key Scenarios**:
@@ -270,19 +258,17 @@ This testing suite validates the **complete ontology system** including:
 - Signal → Insight pipeline
 - Team assignments and permissions
 - Time-series metric tracking
-- Document and output versioning
+- Document versioning
 - Calendar event scheduling
 
 **Entity Types Tested** (COMPLETE COVERAGE):
 
 - ✅ onto_projects, onto_goals, onto_plans, onto_tasks
-- ✅ onto_outputs, onto_documents, onto_requirements
 - ✅ onto_milestones, onto_risks, onto_metrics
 - ✅ onto_metric_points (time-series)
-- ✅ onto_decisions, onto_sources
 - ✅ onto_signals, onto_insights
 - ✅ onto_actors, onto_assignments, onto_permissions
-- ✅ onto_document_versions, onto_output_versions
+- ✅ onto_document_versions
 - ✅ onto_events (calendar integration)
 - ✅ onto_edges (all relationship types)
 - ✅ onto_tools, onto_facet_definitions, onto_facet_values
@@ -294,7 +280,7 @@ This testing suite validates the **complete ontology system** including:
 3. **Insights generation** - Derived analysis from signals
 4. **Team management** - Actor assignments and role-based permissions
 5. **Metric tracking** - Time-series data collection
-6. **Versioning** - Document and output version history
+6. **Versioning** - Document version history
 7. **Calendar integration** - Recurring events and schedules
 
 ---
@@ -347,12 +333,11 @@ This testing suite validates the **complete ontology system** including:
 | onto_plans    | Task groupings       | ✅ All test files |
 | onto_goals    | Strategic objectives | ✅ All test files |
 
-### Deliverables
+### Documentation
 
-| Table          | Purpose                | Test Coverage               |
-| -------------- | ---------------------- | --------------------------- |
-| onto_outputs   | Versioned deliverables | ✅ Multi-entity + Writer    |
-| onto_documents | Documentation          | ✅ Multi-entity + Developer |
+| Table          | Purpose       | Test Coverage               |
+| -------------- | ------------- | --------------------------- |
+| onto_documents | Documentation | ✅ Multi-entity + Developer |
 
 ### Planning & Tracking
 
@@ -366,12 +351,11 @@ This testing suite validates the **complete ontology system** including:
 
 ### Knowledge Management
 
-| Table          | Purpose             | Test Coverage         |
-| -------------- | ------------------- | --------------------- |
-| onto_decisions | Decision records    | ✅ Writer + Developer |
-| onto_sources   | External references | ✅ Multi-entity       |
-| onto_signals   | External events     | ✅ Multi-entity       |
-| onto_insights  | Derived analysis    | ✅ Multi-entity       |
+| Table         | Purpose             | Test Coverage   |
+| ------------- | ------------------- | --------------- |
+| onto_sources  | External references | ✅ Multi-entity |
+| onto_signals  | External events     | ✅ Multi-entity |
+| onto_insights | Derived analysis    | ✅ Multi-entity |
 
 ### Team & Access
 
@@ -386,7 +370,6 @@ This testing suite validates the **complete ontology system** including:
 | Table                  | Purpose          | Test Coverage   |
 | ---------------------- | ---------------- | --------------- |
 | onto_document_versions | Document history | ✅ Multi-entity |
-| onto_output_versions   | Output versions  | ✅ Multi-entity |
 
 ### Calendar
 
@@ -511,13 +494,11 @@ describe('Ontology Project Creation - Writer', () => {
 | Plans               | ✅     | ✅        | ✅       | ✅    | ✅       | ✅       | ✅           | -            |
 | Tasks               | ✅     | ✅        | ✅       | ✅    | ✅       | ✅       | ✅           | ✅           |
 | Documents           | ✅     | ✅        | ✅       | ✅    | ✅       | ✅       | ✅           | -            |
-| Outputs             | ✅     | ✅        | ✅       | ✅    | ✅       | ✅       | ✅           | -            |
 | Requirements        | ✅     | ✅        | ✅       | ✅    | ✅       | ✅       | ✅           | -            |
 | Milestones          | ✅     | ✅        | ✅       | ✅    | ✅       | ✅       | ✅           | -            |
 | Risks               | ✅     | ✅        | -        | ✅    | ✅       | ✅       | ✅           | -            |
 | Metrics             | -      | ✅        | ✅       | ✅    | ✅       | ✅       | ✅           | -            |
 | Metric Points       | -      | -         | ✅       | ✅    | ✅       | ✅       | ✅           | -            |
-| Decisions           | ✅     | ✅        | ✅       | -     | ✅       | ✅       | ✅           | -            |
 | Sources             | -      | -         | -        | -     | ✅       | -        | ✅           | -            |
 | Signals             | -      | -         | -        | -     | -        | -        | ✅           | -            |
 | Insights            | -      | -         | -        | -     | ✅       | ✅       | ✅           | -            |
@@ -525,7 +506,6 @@ describe('Ontology Project Creation - Writer', () => {
 | Assignments         | -      | -         | -        | ✅    | ✅       | -        | ✅           | -            |
 | Permissions         | -      | -         | -        | -     | ✅       | -        | ✅           | -            |
 | Document Versions   | -      | -         | -        | -     | -        | -        | ✅           | -            |
-| Output Versions     | -      | -         | -        | -     | -        | -        | ✅           | -            |
 | Events              | -      | -         | -        | ✅    | -        | -        | ✅           | -            |
 | Context Transitions | -      | -         | -        | -     | -        | -        | -            | ✅           |
 | Workspace Modes     | ✅     | ✅        | ✅       | ✅    | ✅       | ✅       | ✅           | ✅           |
@@ -554,11 +534,11 @@ describe('Ontology Project Creation - Writer', () => {
 - ✅ **All 25+ onto\_ tables** covered
 - ✅ **Template-driven** creation
 - ✅ **Context flow** and transitions
-- ✅ **15 entity types** (projects, tasks, plans, goals, documents, outputs, requirements, milestones, risks, metrics, decisions, sources, signals, insights, events)
+- ✅ **13 entity types** (projects, tasks, plans, goals, documents, requirements, milestones, risks, metrics, sources, signals, insights, events)
 - ✅ **Graph relationships** via onto_edges
 - ✅ **Multi-dimensional** facets (context, scale, stage)
 - ✅ **FSM states** for lifecycle management
-- ✅ **Versioning** for documents and outputs
+- ✅ **Versioning** for documents
 - ✅ **Time-series** metric tracking
 - ✅ **Team management** (actors, assignments, permissions)
 - ✅ **Signal → Insight** pipeline
@@ -610,13 +590,11 @@ After running all test scenarios, database should contain:
 **Goals**: 10-15 goals
 **Plans**: 10-15 plans
 **Documents**: 10-15 documents (various types)
-**Outputs**: 5-10 outputs
 **Requirements**: 5-10 requirements
 **Milestones**: 15-20 milestones
 **Risks**: 8-12 risks
 **Metrics**: 5-10 metrics
 **Metric Points**: 6+ time-series data points
-**Decisions**: 5-8 decisions
 **Sources**: 2-5 external sources
 **Signals**: 2-5 signals
 **Insights**: 1-3 insights
@@ -624,7 +602,6 @@ After running all test scenarios, database should contain:
 **Assignments**: 2-5 role assignments
 **Permissions**: 3-6 permission records
 **Document Versions**: 1-2 versions
-**Output Versions**: 1-2 versions
 **Events**: 1-2 calendar events
 **Edges**: 100+ relationships between entities
 
@@ -658,7 +635,7 @@ The test suite now covers **7 distinct personas** with diverse project types:
 
 - **Large conferences**: 500 attendees, speakers, sponsors, multi-track schedules
 - **Wedding coordination**: Ceremony, reception, vendors, guest management
-- **Vendor contracts**: Payment schedules, deliverables, booking
+- **Vendor contracts**: Payment schedules, scope items, booking
 - **Event timelines**: Minute-by-minute schedules for event day
 - **Post-event analysis**: Attendance, budget variance, satisfaction metrics
 

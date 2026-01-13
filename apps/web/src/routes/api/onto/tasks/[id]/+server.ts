@@ -47,6 +47,7 @@ import { normalizeTaskStateInput } from '../../shared/task-state';
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 import {
 	AutoOrganizeError,
+	ENTITY_TABLES,
 	autoOrganizeConnections,
 	assertEntityRefsInProject,
 	toParentRefs
@@ -54,6 +55,8 @@ import {
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { EntityKind } from '$lib/services/ontology/edge-direction';
 import { logOntologyApiError } from '../../shared/error-logging';
+
+const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
 
 // GET /api/onto/tasks/[id] - Get a single task
 export const GET: RequestHandler = async ({ params, request, locals }) => {
@@ -295,7 +298,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const invalidParent = explicitParents.find(
-			(parentRef) => !['project', 'plan', 'goal', 'milestone'].includes(parentRef.kind)
+			(parentRef) => !ALLOWED_PARENT_KINDS.has(parentRef.kind)
 		);
 		if (invalidParent) {
 			return ApiResponse.badRequest(`Unsupported parent kind: ${invalidParent.kind}`);

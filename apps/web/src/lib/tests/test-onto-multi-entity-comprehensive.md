@@ -14,7 +14,7 @@
 
 ### User Input:
 
-"I'm launching a new productivity app called 'FocusFlow'. It's a commercial SaaS product targeting remote teams. Budget $50k, 6-month timeline, need to track ROI. Must comply with SOC2. Key deliverables: MVP, marketing site, documentation. Team of 5 people. Main risks: market competition, technical complexity. We'll use React/Node stack. Track user acquisition metrics. Research competitors first. Decision point: pricing model at month 3."
+"I'm launching a new productivity app called 'FocusFlow'. It's a commercial SaaS product targeting remote teams. Budget $50k, 6-month timeline, need to track ROI. Must comply with SOC2. Key assets: MVP plan, marketing plan, documentation. Team of 5 people. Main risks: market competition, technical complexity. We'll use React/Node stack. Track user acquisition metrics. Research competitors first. Pricing review at month 3."
 
 ### Expected Agent Behavior:
 
@@ -133,32 +133,6 @@ create_onto_project({
         type: "development",
         estimated_hours: 400
       }
-    }
-  ],
-
-  // === OUTPUTS (onto_outputs) ===
-  outputs: [
-    {
-      name: "FocusFlow MVP v1.0",
-      type_key: "output.software.release",
-      state_key: "planned",
-      props: {
-        version: "1.0.0",
-        target_date: "[current_date + 5 months]"
-      }
-    },
-    {
-      name: "Marketing Website",
-      type_key: "output.marketing.website",
-      state_key: "draft",
-      props: {
-        url: "focusflow.app"
-      }
-    },
-    {
-      name: "API Documentation",
-      type_key: "output.technical.docs",
-      state_key: "planned"
     }
   ],
 
@@ -304,32 +278,6 @@ create_onto_project({
     }
   ],
 
-  // === DECISIONS (onto_decisions) ===
-  decisions: [
-    {
-      title: "Pricing Model Decision - Deferred to Month 3",
-      rationale: "Need user feedback and market validation before setting pricing",
-      decision_at: "[current_date]",
-      props: {
-        decision_type: "pricing",
-        options_considered: ["freemium", "subscription", "usage-based"],
-        deferred: true,
-        defer_until: "[current_date + 3 months]",
-        decision_maker: "founder"
-      }
-    },
-    {
-      title: "Tech Stack: React + Node.js",
-      rationale: "Team expertise, large ecosystem, proven for SaaS apps",
-      decision_at: "[current_date]",
-      props: {
-        decision_type: "technical",
-        alternatives_considered: ["Vue.js", "Angular"],
-        impact: "high"
-      }
-    }
-  ],
-
   // === SOURCES (onto_sources) ===
   sources: [
     {
@@ -373,63 +321,52 @@ create_onto_project({
     - Each with priority, state, plan linkage
     - Props include type and estimated hours
 
-5. ✅ **onto_outputs**: 3 deliverables
-    - MVP release (software)
-    - Marketing website (marketing)
-    - API docs (technical)
-
-6. ✅ **onto_documents**: 3 documents
+5. ✅ **onto_documents**: 3 documents
     - PRD (product requirements)
     - Architecture spec (technical)
     - Marketing strategy (marketing)
 
-7. ✅ **onto_requirements**: 3 requirements
+6. ✅ **onto_requirements**: 3 requirements
     - Compliance (SOC2)
     - Performance (concurrent users)
     - Budget (financial limit)
 
-8. ✅ **onto_milestones**: 4 milestones
+7. ✅ **onto_milestones**: 4 milestones
     - Research complete (1 month)
     - Feature freeze (4 months)
     - Beta launch (5 months)
     - Public launch (6 months)
 
-9. ✅ **onto_risks**: 3 risks
+8. ✅ **onto_risks**: 3 risks
     - Market competition (high impact, 70% probability)
     - Technical complexity (medium impact, 50% probability)
     - Budget overrun (high impact, 40% probability)
 
-10. ✅ **onto_metrics**: 3 metrics
+9. ✅ **onto_metrics**: 3 metrics
     - User acquisition rate (growth)
     - MRR (financial)
     - CAC (financial)
 
-11. ✅ **onto_decisions**: 2 decisions
-    - Pricing model (deferred)
-    - Tech stack (finalized)
-
-12. ✅ **onto_sources**: 2 external sources
+10. ✅ **onto_sources**: 2 external sources
     - Gartner report
     - Competitor roadmap
 
-13. ✅ **onto_edges**: ~30+ relationships
+11. ✅ **onto_edges**: ~30+ relationships
     - project → goals (has_goal × 3)
     - project → plans (has_plan × 3)
     - project → tasks (has_task × 3)
-    - project → outputs (has_output × 3)
     - project → documents (has_document × 3)
     - project → requirements (has_requirement × 3)
     - project → milestones (has_milestone × 4)
     - project → risks (has_risk × 3)
     - project → metrics (has_metric × 3)
-    - project → decisions (has_decision × 2)
     - project → sources (has_source × 2)
     - tasks → plans (belongs_to_plan × 3)
 
-14. ✅ **onto_actors**: User actor created
+12. ✅ **onto_actors**: User actor created
     - Linked to all created_by fields
 
-15. ✅ **Context Document** (onto_documents):
+13. ✅ **Context Document** (onto_documents):
     - document.project.context type
     - Full project narrative
     - Linked via onto_projects.context_document_id
@@ -441,7 +378,6 @@ create_onto_project({
 - onto_metric_points (time-series data, collected over time)
 - onto_events (calendar integration, added as scheduled)
 - onto_document_versions (versions created on updates)
-- onto_output_versions (versions created on releases)
 - onto_assignments (role assignments, added when assigning team)
 - onto_permissions (access control, set up after creation)
 
@@ -543,17 +479,6 @@ create_onto_project({
     })
     ```
 
-5. **Update Project Decision**:
-    ```
-    update_onto_decision({
-      decision_id: "[pricing_decision_id]",
-      props: {
-        mobile_consideration: "Must include mobile pricing tier",
-        notes: "Mobile demand higher than expected"
-      }
-    })
-    ```
-
 ### Expected Results:
 
 - ✅ **onto_signals**: 2 new signals (customer feedback + competitor)
@@ -562,14 +487,12 @@ create_onto_project({
 - ✅ **onto_assignments**: 2 role assignments (lead dev, PM)
 - ✅ **onto_plans**: 1 new mobile plan
 - ✅ **onto_edges**: New signal→insight relationships
-- ✅ **onto_decisions**: 1 updated decision (pricing considerations)
-
-**All Entity Types Now Populated:**
+  **All Entity Types Now Populated:**
 
 - ✅ onto_projects, onto_goals, onto_plans, onto_tasks ✓
-- ✅ onto_outputs, onto_documents, onto_requirements ✓
+- ✅ onto_documents, onto_requirements ✓
 - ✅ onto_milestones, onto_risks, onto_metrics ✓
-- ✅ onto_decisions, onto_sources ✓
+- ✅ onto_sources ✓
 - ✅ onto_signals ✓ (NEW)
 - ✅ onto_insights ✓ (NEW)
 - ✅ onto_actors ✓ (NEW)
@@ -579,13 +502,13 @@ create_onto_project({
 
 ## Test Prompt 3: Time-Series Metrics and Versioning
 
-**Scenario**: Track metrics over time and create document/output versions
+**Scenario**: Track metrics over time and create document versions
 
 **Context Type**: `project`
 
 ### User Input:
 
-"Week 1 metrics: acquired 47 users, MRR at $200, CAC at $25. Week 2: 52 users, MRR $350, CAC $22. Also, PRD document updated to v2 with mobile requirements. MVP output is now at alpha stage."
+"Week 1 metrics: acquired 47 users, MRR at $200, CAC at $25. Week 2: 52 users, MRR $350, CAC $22. Also, PRD document updated to v2 with mobile requirements."
 
 ### Expected Agent Behavior:
 
@@ -642,48 +565,17 @@ create_onto_project({
     })
     ```
 
-3. **Update Output State**:
-
-    ```
-    update_onto_output({
-      output_id: "[mvp_output_id]",
-      state_key: "alpha",
-      props: {
-        version: "0.1.0",
-        release_notes: "Alpha release for internal testing",
-        updated_at: "[current_date]"
-      }
-    })
-    ```
-
-4. **Create Output Version**:
-    ```
-    create_onto_output_version({
-      output_id: "[mvp_output_id]",
-      number: 1,
-      props: {
-        version: "0.1.0-alpha",
-        release_type: "alpha",
-        build_number: 1
-      },
-      storage_uri: "s3://releases/focusflow-0.1.0-alpha.zip"
-    })
-    ```
-
 ### Expected Results:
 
 - ✅ **onto_metric_points**: 6 data points (3 metrics × 2 weeks)
 - ✅ **onto_document_versions**: 1 new version (PRD v2)
-- ✅ **onto_output_versions**: 1 new version (MVP alpha)
-- ✅ **onto_outputs**: 1 updated (state → alpha)
 - ✅ **Time-series data**: Trackable metric trends over time
-- ✅ **Version history**: Document and output changes tracked
+- ✅ **Version history**: Document changes tracked
 
 **Final Count - ALL Entity Types:**
 
 - ✅ onto_metric_points ✓ (NEW)
 - ✅ onto_document_versions ✓ (NEW)
-- ✅ onto_output_versions ✓ (NEW)
 
 ---
 
@@ -728,11 +620,11 @@ create_onto_project({
 2. **Create Permissions**:
 
     ```
-    // Sarah - full access to code
+    // Sarah - full access to project resources
     create_onto_permission({
       actor_id: "[sarah_actor_id]",
-      object_id: "[code_outputs_id]",
-      object_kind: "output",
+      object_id: "[current_project_id]",
+      object_kind: "project",
       access: "write",
       role_key: "lead_developer"
     })
@@ -766,15 +658,15 @@ create_onto_project({
 
 **Final Achievement: 100% Ontology Coverage**
 
-ALL 25+ onto\_ tables now have test coverage:
+Core onto\_ tables now have test coverage:
 
 - ✅ Core entities: projects, tasks, plans, goals ✓
-- ✅ Deliverables: outputs, documents ✓
+- ✅ Documentation: documents ✓
 - ✅ Planning: requirements, milestones, risks ✓
 - ✅ Tracking: metrics, metric_points ✓
-- ✅ Knowledge: decisions, sources, signals, insights ✓
+- ✅ Knowledge: sources, signals, insights ✓
 - ✅ Team: actors, assignments, permissions ✓
-- ✅ Versioning: document_versions, output_versions ✓
+- ✅ Versioning: document_versions ✓
 - ✅ Calendar: events ✓
 - ✅ Graph: edges (relationships between all entities) ✓
 
@@ -787,10 +679,10 @@ This comprehensive test validates:
 1. ✅ **Complete Entity Coverage**: All onto\_ tables populated
 2. ✅ **Complex Relationships**: 30+ edges between entities
 3. ✅ **Time-Series Data**: Metric tracking over time
-4. ✅ **Versioning**: Document and output version history
+4. ✅ **Versioning**: Document version history
 5. ✅ **Access Control**: Permission management
 6. ✅ **Calendar Integration**: Event scheduling with recurrence
-7. ✅ **Signal → Insight Pipeline**: Data-driven decision making
+7. ✅ **Signal → Insight Pipeline**: Data-driven insights
 8. ✅ **Team Management**: Actor assignments and roles
-9. ✅ **Risk & Compliance**: Requirements, risks, decisions tracked
+9. ✅ **Risk & Compliance**: Requirements and risks tracked
 10. ✅ **Multi-Dimensional**: Facets, states, types, priorities all working

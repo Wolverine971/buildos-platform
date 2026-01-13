@@ -33,7 +33,12 @@
       "Bash(node -e:*)",
       "Bash(tree:*)",
       "Bash(pnpm exec tsc:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(grep:*)",
+      "Bash(for func in \"search_all_content\" \"search_all_similar\" \"search_by_type\" \"search_similar_items\" \"generate_recurring_instances\" \"complete_recurring_instance\")",
+      "Bash(do echo \"=== $func ===\")",
+      "Bash(done)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

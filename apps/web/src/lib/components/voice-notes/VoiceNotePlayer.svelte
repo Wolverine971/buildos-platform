@@ -2,7 +2,7 @@
 <!-- INKPRINT: Ultra-compact audio player with high information density -->
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import { AlertCircle, LoaderCircle, Pause, Play } from 'lucide-svelte';
+	import { AlertCircle, LoaderCircle, Pause, Play, Trash2 } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { getVoiceNotePlaybackUrl } from '$lib/services/voice-notes.service';
@@ -17,9 +17,21 @@
 		voiceNote: VoiceNote;
 		showTranscript?: boolean;
 		compact?: boolean;
+		/** Optional segment info for multi-note groups */
+		segmentIndex?: number;
+		segmentTotal?: number;
+		/** Callback when delete is requested (compact mode only) */
+		onDelete?: () => void;
 	}
 
-	let { voiceNote, showTranscript = true, compact = false }: Props = $props();
+	let {
+		voiceNote,
+		showTranscript = true,
+		compact = false,
+		segmentIndex,
+		segmentTotal,
+		onDelete
+	}: Props = $props();
 
 	let audio: HTMLAudioElement | null = $state(null);
 	let isPlaying = $state(false);
@@ -215,6 +227,13 @@
 {#if compact}
 	<!-- COMPACT MODE: Single-line ultra-dense layout -->
 	<div class="flex items-center gap-1.5">
+		<!-- Segment indicator (if in multi-note group) -->
+		{#if segmentIndex !== undefined && segmentTotal !== undefined}
+			<span class="shrink-0 text-[0.55rem] font-medium tabular-nums text-muted-foreground/70">
+				{segmentIndex + 1}/{segmentTotal}
+			</span>
+		{/if}
+
 		<!-- Play/Pause button -->
 		<button
 			type="button"
@@ -266,6 +285,21 @@
 		>
 			{playbackSpeed}x
 		</button>
+
+		<!-- Delete button (inline with speed, only if onDelete provided) -->
+		{#if onDelete}
+			<button
+				type="button"
+				class="shrink-0 flex items-center justify-center h-5 w-5 rounded border border-border/40 bg-muted/30 text-muted-foreground/60 transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive pressable"
+				onclick={(e) => {
+					e.stopPropagation();
+					onDelete();
+				}}
+				aria-label="Delete segment"
+			>
+				<Trash2 class="h-2.5 w-2.5" />
+			</button>
+		{/if}
 	</div>
 
 	<!-- Compact transcript (optional, single line with ellipsis) -->

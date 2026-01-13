@@ -180,6 +180,9 @@
 	let hasScheduledDraftCleanup = $state(false);
 	let activeUploads = 0;
 	const uploadQueue: Array<() => Promise<void>> = [];
+	// Captured transcript snapshot for handleAudioCaptured callback
+	// Set in stopVoiceRecording before clearing liveTranscriptPreview for UI
+	let capturedTranscriptForCallback = '';
 	const MAX_CONCURRENT_UPLOADS = 2;
 
 	// Sync internal state with bindable props for parent component access
@@ -512,9 +515,10 @@
 
 		lastTranscriptionTarget = { groupId, segmentIndex };
 
-		const transcriptSnapshot = liveTranscriptPreview.trim();
+		// Use captured transcript from stopVoiceRecording (set before UI was cleared)
+		const transcriptSnapshot = capturedTranscriptForCallback;
 		const hasTranscript = transcriptSnapshot.length > 0;
-		hadLiveTranscript = hasTranscript;
+		// Note: hadLiveTranscript is already set in stopVoiceRecording
 		const recordedAt = new Date().toISOString();
 
 		enqueueUpload(() =>
@@ -833,6 +837,16 @@
 			return;
 		}
 
+		// Capture live transcript BEFORE clearing for use in handleAudioCaptured callback
+		capturedTranscriptForCallback = liveTranscriptPreview.trim();
+		hadLiveTranscript = capturedTranscriptForCallback.length > 0;
+
+		// Clear recording states IMMEDIATELY so transcribing state can show
+		// This must happen BEFORE the await so the UI updates promptly
+		liveTranscriptPreview = '';
+		isCurrentlyRecording = false;
+		isInitializingRecording = false;
+
 		try {
 			await voiceRecordingService.stopRecording(value);
 		} catch (error) {
@@ -841,9 +855,8 @@
 				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
 			_voiceError = message;
 		} finally {
-			liveTranscriptPreview = '';
-			isCurrentlyRecording = false;
-			isInitializingRecording = false;
+			// Clear captured transcript after callback has had a chance to use it
+			capturedTranscriptForCallback = '';
 		}
 	}
 

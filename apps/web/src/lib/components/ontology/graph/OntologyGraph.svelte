@@ -15,7 +15,6 @@
 	- Goal: star (north star)
 	- Task: ellipse (atomic work)
 	- Plan: round-rectangle dashed (temporal scaffolding)
-	- Output: diamond (deliverable)
 	- Document: rectangle (knowledge page)
 	- Milestone: triangle (checkpoint)
 -->

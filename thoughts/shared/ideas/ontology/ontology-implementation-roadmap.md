@@ -536,7 +536,7 @@ return json({ templates: sorted, grouped, count: sorted.length });
 
 **Status (2025-02-12)**:
 
-- Create endpoint validates template via resolver, ensures actor via `ensure_actor_for_user`, merges template defaults, and inserts `onto_outputs` + `onto_edges`.
+- Create endpoint validates template via resolver, ensures actor via `ensure_actor_for_user`, merges template defaults, and inserts `onto_edges`.
 - GET/PATCH endpoint retrieves or updates outputs; update currently trusts any authenticated user (TODO: project membership check + RLS alignment).
 - Generate endpoint resolves template + project context, builds tailored prompt, and calls OpenAI `gpt-4-turbo-preview`; feeds DocumentEditor AI panel.
 - Outstanding: add rate limiting + cost telemetry for OpenAI usage, enforce ownership/organization checks on create/update, mock OpenAI for tests.
@@ -606,7 +606,6 @@ return json({ templates: sorted, grouped, count: sorted.length });
 
 **Acceptance Criteria**:
 
-- [x] Creates output in `onto_outputs`
 - [x] Merges template defaults with action props
 - [x] Creates edge linking entity to output
 - [ ] Returns output identifier for follow-up actions (currently only logged string)

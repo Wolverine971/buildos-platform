@@ -1,5 +1,5 @@
 // Lightweight database schema - auto-generated from database.types.ts
-// Generated on: 2026-01-12T22:36:23.815Z
+// Generated on: 2026-01-13T02:54:54.482Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 

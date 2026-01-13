@@ -474,8 +474,6 @@ export async function resolveLinkedEntities(
 	const milestoneIds: string[] = [];
 	const documentIds: string[] = [];
 	const taskIds: string[] = [];
-	const outputIds: string[] = [];
-	const decisionIds: string[] = [];
 
 	const edgeMap = new Map<string, string>(); // entityId -> rel
 
@@ -502,25 +500,11 @@ export async function resolveLinkedEntities(
 			case 'task':
 				if (linkedId !== taskId && !taskIds.includes(linkedId)) taskIds.push(linkedId);
 				break;
-			case 'output':
-				if (!outputIds.includes(linkedId)) outputIds.push(linkedId);
-				break;
-			case 'decision':
-				if (!decisionIds.includes(linkedId)) decisionIds.push(linkedId);
-				break;
 		}
 	}
 
 	// Fetch entity details in parallel
-	const [
-		plansData,
-		goalsData,
-		milestonesData,
-		documentsData,
-		tasksData,
-		outputsData,
-		decisionsData
-	] = await Promise.all([
+	const [plansData, goalsData, milestonesData, documentsData, tasksData] = await Promise.all([
 		planIds.length > 0
 			? supabase.from('onto_plans').select('id, name, state_key').in('id', planIds)
 			: Promise.resolve({ data: [] }),
@@ -538,18 +522,6 @@ export async function resolveLinkedEntities(
 			: Promise.resolve({ data: [] }),
 		taskIds.length > 0
 			? supabase.from('onto_tasks').select('id, title, state_key').in('id', taskIds)
-			: Promise.resolve({ data: [] }),
-		outputIds.length > 0
-			? supabase
-					.from('onto_outputs')
-					.select('id, name, type_key, state_key')
-					.in('id', outputIds)
-			: Promise.resolve({ data: [] }),
-		decisionIds.length > 0
-			? supabase
-					.from('onto_decisions')
-					.select('id, title, state_key, type_key, decision_at')
-					.in('id', decisionIds)
 			: Promise.resolve({ data: [] })
 	]);
 
@@ -589,20 +561,6 @@ export async function resolveLinkedEntities(
 		result.dependentTasks = tasksData.data.map((t: any) => ({
 			...t,
 			edge_rel: edgeMap.get(t.id) || 'depends_on'
-		}));
-	}
-
-	if (outputsData.data) {
-		result.outputs = outputsData.data.map((o: any) => ({
-			...o,
-			edge_rel: edgeMap.get(o.id) || 'produces'
-		}));
-	}
-
-	if (decisionsData.data) {
-		result.decisions = decisionsData.data.map((d: any) => ({
-			...d,
-			edge_rel: edgeMap.get(d.id) || 'references'
 		}));
 	}
 

@@ -315,25 +315,6 @@ All non-project entities use generic types.
 
 ---
 
-## 6. INCONSISTENCY TO FIX
-
-### 6.1 Deliverable vs Output Naming
-
-**Master Plan Says**: `deliverable.chapter`, `deliverable.design`
-**Actual Migration Uses**: `output.chapter`, `output.design`
-**Database Table**: `onto_outputs` (not `onto_deliverables`)
-
-**Recommendation**: Standardize on **"output"** because:
-
-1. ✅ Already implemented in migrations
-2. ✅ Database table is `onto_outputs`
-3. ✅ More accurate (outputs vs deliverables has connotation differences)
-4. ✅ Shorter to type
-
-**Action**: Update master plan to use `output.*` pattern consistently.
-
----
-
 ## 7. RECOMMENDED TASK TEMPLATES (Updated)
 
 ### 7.1 Task Template Hierarchy
@@ -469,8 +450,6 @@ ALTER TABLE onto_plans ADD CONSTRAINT chk_plan_type_key_format
 ALTER TABLE onto_goals ADD CONSTRAINT chk_goal_type_key_format
   CHECK (type_key ~ '^goal\.[a-z_]+$');
 
-ALTER TABLE onto_outputs ADD CONSTRAINT chk_output_type_key_format
-  CHECK (type_key ~ '^output\.[a-z_]+$');
 ```
 
 ---

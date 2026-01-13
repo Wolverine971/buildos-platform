@@ -1,7 +1,7 @@
 // apps/worker/src/workers/brief/ontologyPrompts.ts
 /**
  * LLM Prompts for ontology-based daily brief generation.
- * Goal/Output-centric analysis with strategic alignment focus.
+ * Goal-centric analysis with strategic alignment focus.
  *
  * Spec Reference: /docs/specs/DAILY_BRIEF_ONTOLOGY_MIGRATION_SPEC.md
  */
@@ -9,13 +9,10 @@
 import type {
 	OntologyBriefData,
 	GoalProgress,
-	OutputStatus,
 	OntoTask,
 	OntoRisk,
 	OntoRequirement,
-	OntoDecision,
-	ProjectBriefData,
-	RecentUpdates
+	ProjectBriefData
 } from './ontologyBriefTypes.js';
 import { format, parseISO } from 'date-fns';
 import { getWorkMode } from './ontologyBriefDataLoader.js';
@@ -75,10 +72,6 @@ function formatRisk(risk: OntoRisk): string {
 	return `- **${risk.title}** (Impact: ${impact})`;
 }
 
-function formatOutput(output: OutputStatus): string {
-	return `- **${output.output.name}** - State: ${output.state}`;
-}
-
 // ============================================================================
 // MAIN ANALYSIS PROMPT
 // ============================================================================
@@ -97,14 +90,14 @@ export class OntologyAnalysisPrompt {
 
 Your goals:
 - Frame the day in terms of STRATEGIC ALIGNMENT: Are the user's daily tasks moving them toward their goals?
-- Highlight outputs in progress and their relationship to goals
+- Highlight active requirements and their relationship to goals
 - Surface blocked work, risks, and upcoming milestones that need attention
 - Provide actionable, prioritized recommendations for the day
 - Balance execution tasks with strategic planning tasks
 
 Key Ontology Concepts:
 - **Goals**: High-level objectives the user is working toward
-- **Outputs**: Concrete deliverables being produced
+- **Requirements**: Constraints or needs to satisfy
 - **Plans**: Structured sets of tasks to achieve outcomes
 - **Milestones**: Time-bound checkpoints
 - **Risks**: Identified threats to success
@@ -113,7 +106,7 @@ Key Ontology Concepts:
 Tone & Format:
 - Confident, strategic, and action-oriented
 - Use Markdown with clear hierarchy
-- Reference specific goals, outputs, and tasks by name
+- Reference specific goals, requirements, and tasks by name
 - Keep writing tight and scannable
 
 Structure your response as:
@@ -130,10 +123,10 @@ Structure your response as:
    - Unblocking tasks that enable others
    - Group by work mode when helpful
 
-4. **Attention Required** (blockers, risks, decisions)
+4. **Attention Required** (blockers, risks, requirements)
    - Blocked items and what's needed to unblock
    - Active risks and mitigation suggestions
-   - Pending decisions or requirements
+   - Pending requirements or constraints
 
 5. **This Week's Outlook** (forward-looking context)
    - Upcoming milestones
@@ -162,7 +155,6 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - High Priority Tasks: ${briefData.highPriorityCount}
 - Active Risks: ${briefData.risks.length}
 - Requirements: ${briefData.requirements.length}
-- Decisions: ${briefData.decisions.length}
 
 `;
 
@@ -179,19 +171,6 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 				}
 			} else {
 				prompt += `No active goals defined.\n`;
-			}
-			prompt += '\n';
-		}
-
-		// Outputs in Flight
-		const activeOutputs = briefData.outputs.filter((o) => o.state !== 'published');
-		if (activeOutputs.length > 0) {
-			prompt += `## Outputs in Progress\n`;
-			for (const output of activeOutputs.slice(0, 5)) {
-				prompt += formatOutput(output) + '\n';
-			}
-			if (activeOutputs.length > 5) {
-				prompt += `... and ${activeOutputs.length - 5} more outputs\n`;
 			}
 			prompt += '\n';
 		}
@@ -281,32 +260,16 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += '\n';
 		}
 
-		// Decisions
-		if (briefData.decisions.length > 0) {
-			prompt += `## Recent Decisions\n`;
-			const recentDecisions = [...briefData.decisions].sort((a, b) => {
-				const aDate = a.decision_at || a.created_at;
-				const bDate = b.decision_at || b.created_at;
-				return parseISO(bDate).getTime() - parseISO(aDate).getTime();
-			});
-			for (const decision of recentDecisions.slice(0, 5)) {
-				prompt += `- ${decision.title}\n`;
-			}
-			prompt += '\n';
-		}
-
 		// Recent Updates
 		const totalUpdates =
 			briefData.recentUpdates.tasks.length +
 			briefData.recentUpdates.goals.length +
-			briefData.recentUpdates.outputs.length +
 			briefData.recentUpdates.documents.length;
 
 		if (totalUpdates > 0) {
 			prompt += `## Recent Activity (Last 24h)\n`;
 			prompt += `- ${briefData.recentUpdates.tasks.length} tasks updated\n`;
 			prompt += `- ${briefData.recentUpdates.goals.length} goals with activity\n`;
-			prompt += `- ${briefData.recentUpdates.outputs.length} outputs updated\n`;
 			prompt += `- ${briefData.recentUpdates.documents.length} documents updated\n`;
 			prompt += '\n';
 		}
@@ -375,7 +338,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		prompt += `
 Write the analysis following the system instructions.
 Focus on strategic alignment and actionable recommendations.
-Reference specific projects, goals, outputs, and tasks by name.`;
+Reference specific projects, goals, requirements, and tasks by name.`;
 
 		return prompt;
 	}
@@ -392,7 +355,7 @@ export class OntologyExecutiveSummaryPrompt {
 Your goals:
 - Synthesize the user's day into a clear, strategic overview
 - Lead with goal alignment - are daily activities moving toward objectives?
-- Highlight outputs being produced and their strategic importance
+- Highlight requirements being addressed and their strategic importance
 - Surface critical blockers and risks that need immediate attention
 - Keep summary scannable and action-oriented
 
@@ -408,17 +371,17 @@ Structure (200 words max):
 2. **Key Focus Areas** (3-5 bullets)
    - Most impactful tasks for goal targets
    - Unblocking work that enables others
-   - Outputs needing attention
+   - Requirements needing attention
 
 3. **Watch Points** (1-2 sentences)
    - Active risks or blockers
-   - Decisions needed
+   - Open constraints or missing inputs
 
 4. **Momentum Note** (1 sentence)
    - Progress acknowledgment or forward look
 
 Guidelines:
-- Reference specific goals and outputs by name
+- Reference specific goals and requirements by name
 - Be direct about misalignment or concerns
 - Prioritize strategic impact over task volume
 - Use active, confident language
@@ -437,8 +400,6 @@ Guidelines:
 			(g) => g.status === 'at_risk' || g.status === 'behind'
 		).length;
 
-		const activeOutputs = briefData.outputs.filter((o) => o.state !== 'published');
-
 		let prompt = `Generate an executive summary for this ontology-based daily brief.
 
 Date: ${date}
@@ -454,41 +415,24 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - Blocked: ${briefData.blockedTasks.length}
 - Overdue: ${briefData.overdueTasks.length}
 - Requirements: ${briefData.requirements.length}
-- Decisions: ${briefData.decisions.length}
 
 ## Goal Status
 - Active Goals: ${activeGoals.length}
 - On Track: ${goalsOnTrack}
 - At Risk: ${goalsAtRisk}
 
-## Output Status
-- Active Outputs: ${activeOutputs.length}
-
 ## Risks
 - Active Risks: ${briefData.risks.length}
 
 `;
 
-		// Requirements & decisions (brief)
-		if (briefData.requirements.length > 0 || briefData.decisions.length > 0) {
-			prompt += `## Requirements & Decisions\n`;
-			if (briefData.requirements.length > 0) {
-				prompt += `- Requirements: ${briefData.requirements
-					.slice(0, 3)
-					.map((r) => r.text)
-					.join('; ')}\n`;
-			}
-			if (briefData.decisions.length > 0) {
-				const recentDecisions = [...briefData.decisions].sort((a, b) => {
-					const aDate = a.decision_at || a.created_at;
-					const bDate = b.decision_at || b.created_at;
-					return parseISO(bDate).getTime() - parseISO(aDate).getTime();
-				});
-				prompt += `- Recent decisions: ${recentDecisions
-					.slice(0, 3)
-					.map((d) => d.title)
-					.join('; ')}\n`;
-			}
+		// Requirements (brief)
+		if (briefData.requirements.length > 0) {
+			prompt += `## Requirements\n`;
+			prompt += `- Requirements: ${briefData.requirements
+				.slice(0, 3)
+				.map((r) => r.text)
+				.join('; ')}\n`;
 			prompt += '\n';
 		}
 
@@ -497,15 +441,6 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 			prompt += `## Goal Details\n`;
 			for (const goal of activeGoals) {
 				prompt += formatGoalProgress(goal) + '\n';
-			}
-			prompt += '\n';
-		}
-
-		// Add output details
-		if (activeOutputs.length > 0) {
-			prompt += `## Active Outputs\n`;
-			for (const output of activeOutputs.slice(0, 3)) {
-				prompt += formatOutput(output) + '\n';
 			}
 			prompt += '\n';
 		}
@@ -569,7 +504,7 @@ export class OntologyProjectBriefPrompt {
 
 Focus on:
 - Goal targets within this project
-- Outputs being produced
+- Requirements being addressed
 - Today's tasks and their strategic alignment
 - Blockers and risks specific to this project
 - Next steps and upcoming milestones
@@ -637,17 +572,6 @@ ${project.project.description ? `- Description: ${project.project.description}` 
 			}
 		}
 
-		// Outputs
-		if (project.outputs.length > 0) {
-			const activeOutputs = project.outputs.filter((o) => o.state !== 'published');
-			if (activeOutputs.length > 0) {
-				prompt += `\n## Active Outputs\n`;
-				for (const output of activeOutputs) {
-					prompt += formatOutput(output) + '\n';
-				}
-			}
-		}
-
 		// Blocked
 		if (project.blockedTasks.length > 0) {
 			prompt += `\n## Blocked Tasks (${project.blockedTasks.length})\n`;
@@ -697,14 +621,14 @@ export class OntologyReengagementPrompt {
 Your tone should be ${tone}. Focus on:
 1. Acknowledging their absence without guilt
 2. Leading with goal targets (if set) - show upcoming or overdue dates
-3. Highlighting outputs in progress that may need attention
+3. Highlighting requirements in progress that may need attention
 4. Surfacing any active risks or blockers
 5. Making it easy to jump back in with clear next actions
 
 Structure:
 - Start with a warm, brief greeting
 - Show goal status (what's on track, what needs attention)
-- Mention key outputs in progress
+- Mention key requirements in progress
 - Highlight any urgent items (overdue, blocked, risks)
 - End with an encouraging call-to-action
 
@@ -756,16 +680,6 @@ Last login: ${lastLoginDate}
 			prompt += `## Goal Progress\n`;
 			for (const goal of activeGoals) {
 				prompt += formatGoalProgress(goal) + '\n';
-			}
-			prompt += '\n';
-		}
-
-		// Active outputs
-		const activeOutputs = briefData.outputs.filter((o) => o.state !== 'published');
-		if (activeOutputs.length > 0) {
-			prompt += `## Outputs in Progress\n`;
-			for (const output of activeOutputs.slice(0, 3)) {
-				prompt += formatOutput(output) + '\n';
 			}
 			prompt += '\n';
 		}

@@ -242,19 +242,6 @@ ALTER TABLE onto_plans
     END
   );
 
--- Outputs
-ALTER TABLE onto_outputs
-  ALTER COLUMN state_key TYPE output_state
-  USING (
-    CASE state_key
-      WHEN 'draft' THEN 'draft'::output_state
-      WHEN 'in_progress' THEN 'in_progress'::output_state
-      WHEN 'review' THEN 'review'::output_state
-      WHEN 'published' THEN 'published'::output_state
-      ELSE 'draft'::output_state
-    END
-  );
-
 -- Documents
 ALTER TABLE onto_documents
   ALTER COLUMN state_key TYPE document_state
@@ -314,7 +301,6 @@ ALTER TABLE onto_risks
 ALTER TABLE onto_tasks ALTER COLUMN state_key SET DEFAULT 'todo'::task_state;
 ALTER TABLE onto_projects ALTER COLUMN state_key SET DEFAULT 'planning'::project_state;
 ALTER TABLE onto_plans ALTER COLUMN state_key SET DEFAULT 'draft'::plan_state;
-ALTER TABLE onto_outputs ALTER COLUMN state_key SET DEFAULT 'draft'::output_state;
 ALTER TABLE onto_documents ALTER COLUMN state_key SET DEFAULT 'draft'::document_state;
 ALTER TABLE onto_goals ALTER COLUMN state_key SET DEFAULT 'draft'::goal_state;
 ALTER TABLE onto_milestones ALTER COLUMN state_key SET DEFAULT 'pending'::milestone_state;

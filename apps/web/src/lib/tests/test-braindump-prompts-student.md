@@ -423,7 +423,7 @@ Virtual SAT prep group:
 
 "Debate tournament same day as SAT. Need to choose which one. Also soccer playoffs that weekend but already told coach I can't make it."
 
-**Expected**: Create decision task, note about conflict
+**Expected**: Create selection task, note about conflict
 
 ### Edge Case 2: Grade Crisis
 
@@ -459,4 +459,4 @@ Virtual SAT prep group:
 
 "Just got elected to 3 leadership positions: Student Council VP, Debate Captain, and NHS President. All have weekly meetings and major responsibilities. Might need to drop one."
 
-**Expected**: Create recurring meetings for each, decision task about which to keep
+**Expected**: Create recurring meetings for each, selection task about which to keep

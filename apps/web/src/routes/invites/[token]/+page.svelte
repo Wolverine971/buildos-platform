@@ -11,7 +11,8 @@
 	let actionError = $state('');
 
 	let invite = $derived(data?.invite ?? null);
-	let localStatus = $state(invite?.status ?? null);
+	let localStatusOverride = $state<string | null>(null);
+	let localStatus = $derived(localStatusOverride ?? invite?.status ?? null);
 	let isPending = $derived(localStatus === 'pending');
 	let inviterName = $derived(invite?.invited_by_name || invite?.invited_by_email || 'A teammate');
 	let expiresLabel = $derived(
@@ -67,7 +68,7 @@
 				throw new Error(payload?.error || 'Failed to decline invite');
 			}
 
-			localStatus = 'declined';
+			localStatusOverride = 'declined';
 			toastService.success('Invite declined');
 		} catch (err) {
 			actionError = err instanceof Error ? err.message : 'Failed to decline invite';

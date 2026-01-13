@@ -393,6 +393,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.parents !== undefined) {
 			payload.parents = args.parents;
 		}
+		if (args.connections !== undefined) {
+			payload.connections = args.connections;
+		}
 
 		const data = await this.apiRequest('/api/onto/tasks/create', {
 			method: 'POST',

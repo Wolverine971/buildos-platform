@@ -343,7 +343,6 @@ Light:
 
 Full:
 
-- All `onto_decisions` columns
 - Full `outcome`, `rationale`, `description`
 - Full `props`
 
@@ -387,7 +386,6 @@ Light:
 
 Full:
 
-- All `onto_outputs` columns
 - Full `description`, `props`
 - Full relationship lists
 

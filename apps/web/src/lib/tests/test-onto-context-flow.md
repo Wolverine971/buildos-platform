@@ -640,7 +640,6 @@ create_calendar_block({
 - All read/list tools ✅
 - create_onto_risk ✅
 - create_onto_requirement ✅
-- create_onto_decision ✅
 - create_onto_insight ✅
 - (focus on analysis and risk assessment)
 

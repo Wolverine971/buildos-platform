@@ -20,9 +20,6 @@ WHERE created_at > NOW() - INTERVAL '2 hours';
 DELETE FROM onto_documents
 WHERE created_at > NOW() - INTERVAL '2 hours';
 
-DELETE FROM onto_outputs
-WHERE created_at > NOW() - INTERVAL '2 hours';
-
 -- Delete tasks
 DELETE FROM onto_tasks
 WHERE created_at > NOW() - INTERVAL '2 hours';

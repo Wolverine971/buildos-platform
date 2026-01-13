@@ -339,8 +339,11 @@
 	</CardHeader>
 	<CardBody padding="sm" class="space-y-3">
 		<div class="space-y-1.5">
-			<label class="text-xs font-medium text-muted-foreground">Add a comment</label>
+			<label for="new-comment-input" class="text-xs font-medium text-muted-foreground"
+				>Add a comment</label
+			>
 			<Textarea
+				id="new-comment-input"
 				bind:value={newComment}
 				rows={2}
 				placeholder="Share an update or ask a question..."

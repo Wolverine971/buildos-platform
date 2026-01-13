@@ -9,12 +9,9 @@ drop table if exists onto_metric_points cascade;
 drop table if exists onto_metrics cascade;
 drop table if exists onto_milestones cascade;
 drop table if exists onto_risks cascade;
-drop table if exists onto_decisions cascade;
 drop table if exists onto_sources cascade;
 drop table if exists onto_document_versions cascade;
 drop table if exists onto_documents cascade;
-drop table if exists onto_output_versions cascade;
-drop table if exists onto_outputs cascade;
 drop table if exists onto_tasks cascade;
 drop table if exists onto_plans cascade;
 drop table if exists onto_requirements cascade;
@@ -155,7 +152,7 @@ create table if not exists onto_templates (
 
   unique (scope, type_key),
   constraint chk_type_key_format check (type_key ~ '^[a-z_]+\.[a-z_]+(\.[a-z_]+)?$'),
-  constraint chk_scope_valid check (scope in ('project','plan','task','output','document','goal','requirement','risk','milestone','metric'))
+  constraint chk_scope_valid check (scope in ('project','plan','task','document','goal','requirement','risk','milestone','metric'))
 );
 
 create index if not exists idx_onto_templates_scope on onto_templates(scope);
@@ -280,41 +277,6 @@ create index if not exists idx_onto_tasks_priority on onto_tasks(priority) where
 create index if not exists idx_onto_tasks_props on onto_tasks using gin (props jsonb_path_ops);
 create index if not exists idx_onto_tasks_title on onto_tasks using gin (title gin_trgm_ops);
 
--- outputs
-create table if not exists onto_outputs (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid not null references onto_projects(id) on delete cascade,
-  name text not null,
-  type_key text not null,
-  state_key text not null default 'draft',
-  props jsonb not null default '{}'::jsonb,
-
-  facet_stage text generated always as (props->'facets'->>'stage') stored,
-
-  created_by uuid not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create index if not exists idx_onto_outputs_project on onto_outputs(project_id);
-create index if not exists idx_onto_outputs_type_key on onto_outputs(type_key);
-create index if not exists idx_onto_outputs_state on onto_outputs(state_key);
-create index if not exists idx_onto_outputs_props on onto_outputs using gin (props jsonb_path_ops);
-
--- output versions
-create table if not exists onto_output_versions (
-  id uuid primary key default gen_random_uuid(),
-  output_id uuid not null references onto_outputs(id) on delete cascade,
-  number int not null,
-  storage_uri text not null,
-  props jsonb not null default '{}'::jsonb,
-  created_by uuid not null,
-  created_at timestamptz not null default now(),
-  unique (output_id, number)
-);
-
-create index if not exists idx_onto_output_versions_output on onto_output_versions(output_id);
-
 -- Documents
 create table if not exists onto_documents (
   id uuid primary key default gen_random_uuid(),
@@ -365,21 +327,6 @@ create table if not exists onto_sources (
 );
 
 create index if not exists idx_onto_sources_project on onto_sources(project_id);
-
--- Decisions
-create table if not exists onto_decisions (
-  id uuid primary key default gen_random_uuid(),
-  project_id uuid not null references onto_projects(id) on delete cascade,
-  title text not null,
-  decision_at timestamptz not null,
-  rationale text,
-  props jsonb not null default '{}'::jsonb,
-  created_by uuid not null,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists idx_onto_decisions_project on onto_decisions(project_id);
-create index if not exists idx_onto_decisions_decision_at on onto_decisions(decision_at);
 
 -- Risks
 create table if not exists onto_risks (
@@ -546,9 +493,6 @@ for each row execute function set_updated_at();
 create trigger trg_onto_tasks_updated before update on onto_tasks
 for each row execute function set_updated_at();
 
-create trigger trg_onto_outputs_updated before update on onto_outputs
-for each row execute function set_updated_at();
-
 -- ============================================
 -- HELPER FUNCTIONS
 -- ============================================
@@ -612,7 +556,7 @@ insert into onto_facet_definitions (key, name, description, allowed_values, appl
 
   ('stage', 'Stage', 'Current phase in project lifecycle',
    '["discovery","planning","execution","launch","maintenance","complete"]'::jsonb,
-   '{project,plan,output}', false)
+   '{project,plan}', false)
 on conflict (key) do nothing;
 
 -- Context facet values
@@ -780,11 +724,10 @@ insert into onto_templates (scope, type_key, name, status, metadata, facet_defau
        ],
        "actions":[
          {"type":"spawn_tasks","titles":["Create launch plan","Set up analytics","Prepare marketing materials","Reach out to beta users","Launch on Product Hunt"],"props_template":{"facets":{"scale":"medium"}}},
-         {"type":"create_output","name":"Launch Plan","type_key":"output.launch_plan","props":{"stage":"planning"}},
-         {"type":"update_facets","facets":{"stage":"launch"}},
-         {"type":"notify","message":"Launch phase! Time to get your first customers."}
-       ]
-     },
+        {"type":"update_facets","facets":{"stage":"launch"}},
+        {"type":"notify","message":"Launch phase! Time to get your first customers."}
+      ]
+    },
      {
        "from":"launching",
        "to":"growth",
@@ -1010,34 +953,6 @@ insert into onto_templates (scope, type_key, name, status, metadata, facet_defau
  '[{"view":"kanban","group_by":"state_key"}]'::jsonb,
  '00000000-0000-0000-0000-000000000001'),
 
--- output templates
-('output', 'output.chapter', 'Book Chapter', 'active',
- '{"output_type":"content"}'::jsonb,
- '{"stage":"planning"}'::jsonb,
- '{"type":"object","properties":{"chapter_number":{"type":"integer"},"chapter_title":{"type":"string"},"target_words":{"type":"number"}}}'::jsonb,
- '{"states":["outline","draft","revision","final"],"transitions":[{"from":"outline","to":"draft","event":"start_writing"},{"from":"draft","to":"revision","event":"first_draft_done"},{"from":"revision","to":"final","event":"approve"}]}'::jsonb,
- '{}'::jsonb,
- '[{"view":"pipeline","group_by":"state_key"}]'::jsonb,
- '00000000-0000-0000-0000-000000000001'),
-
-('output', 'output.design', 'Design Asset', 'active',
- '{"output_type":"content"}'::jsonb,
- '{"stage":"planning"}'::jsonb,
- '{"type":"object","properties":{"asset_type":{"type":"string"},"dimensions":{"type":"string"},"format":{"type":"string"}}}'::jsonb,
- '{"states":["concept","draft","review","approved"],"transitions":[{"from":"concept","to":"draft","event":"start_designing"},{"from":"draft","to":"review","event":"submit"},{"from":"review","to":"approved","event":"approve"}]}'::jsonb,
- '{}'::jsonb,
- '[{"view":"pipeline","group_by":"state_key"}]'::jsonb,
- '00000000-0000-0000-0000-000000000001'),
-
-('output', 'output.workout_plan', 'Workout Plan', 'active',
- '{"output_type":"knowledge"}'::jsonb,
- '{"stage":"planning"}'::jsonb,
- '{"type":"object","properties":{"split":{"type":"string"},"weeks":{"type":"integer"},"equipment":{"type":"array"}}}'::jsonb,
- '{"states":["draft","review","active","completed"],"transitions":[{"from":"draft","to":"review","event":"submit"},{"from":"review","to":"active","event":"approve"},{"from":"active","to":"completed","event":"complete"}]}'::jsonb,
- '{}'::jsonb,
- '[{"view":"pipeline","group_by":"state_key"}]'::jsonb,
- '00000000-0000-0000-0000-000000000001'),
-
 -- Document templates
 ('document', 'doc.brief', 'Project Brief', 'active',
  '{"output_type":"knowledge"}'::jsonb,
@@ -1071,7 +986,7 @@ do $$
 begin
   raise notice 'BuildOS ontology system created successfully';
   raise notice 'Facets: context, scale, stage (3 facets)';
-  raise notice 'Templates: 25 templates seeded (13 project + 2 plan + 3 output + 3 document + 4 enhanced FSMs)';
+  raise notice 'Templates: 22 templates seeded (13 project + 2 plan + 3 document + 4 enhanced FSMs)';
   raise notice 'Enhanced FSMs: writer.book, personal.routine, founder.startup, marketer.campaign';
   raise notice 'Tables created with onto_ prefix in public schema';
   raise notice 'All tables dropped and recreated for clean slate';

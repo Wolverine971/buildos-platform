@@ -9157,14 +9157,6 @@ export type Database = {
         }
         Returns: Json
       }
-      approve_generated_phases: {
-        Args: { p_generation_id: string; p_phase_ids?: string[] }
-        Returns: {
-          created_phase_id: string
-          generated_phase_id: string
-          phase_name: string
-        }[]
-      }
       batch_update_phase_dates: {
         Args: { p_project_id: string; p_updates: Json }
         Returns: {
@@ -9172,40 +9164,6 @@ export type Database = {
           id: string
           start_date: string
           updated_at: string
-        }[]
-      }
-      batch_update_phase_orders: {
-        Args: { p_project_id: string; p_updates: Json }
-        Returns: {
-          id: string
-          order_position: number
-          updated_at: string
-        }[]
-      }
-      brain_dump_cleanup_preview: {
-        Args: never
-        Returns: {
-          draft_to_keep_id: string
-          draft_to_keep_size: number
-          drafts_to_delete: number
-          exact_duplicates: number
-          prefix_matches: number
-          project_name: string
-          user_email: string
-        }[]
-      }
-      brain_dump_cleanup_report: {
-        Args: never
-        Returns: {
-          metric: string
-          value: number
-        }[]
-      }
-      brain_dump_cleanup_with_report: {
-        Args: { execute_delete?: boolean }
-        Returns: {
-          details: Json
-          report_type: string
         }[]
       }
       cancel_brief_jobs_for_date: {
@@ -9262,10 +9220,6 @@ export type Database = {
         Args: { client_ip: unknown }
         Returns: boolean
       }
-      check_onboarding_complete: {
-        Args: { user_id_param: string }
-        Returns: boolean
-      }
       claim_pending_jobs: {
         Args: { p_batch_size?: number; p_job_types: string[] }
         Returns: {
@@ -9285,24 +9239,6 @@ export type Database = {
           updated_at: string
           user_id: string
         }[]
-      }
-      clean_expired_context_cache: { Args: never; Returns: undefined }
-      cleanup_duplicate_brain_dump_drafts: {
-        Args: never
-        Returns: {
-          affected_projects: number
-          affected_users: number
-          deleted_count: number
-        }[]
-      }
-      cleanup_old_brief_jobs: { Args: never; Returns: undefined }
-      cleanup_old_tracking_links: {
-        Args: { p_days_old?: number }
-        Returns: number
-      }
-      cleanup_orphaned_drafts: {
-        Args: { p_days_old?: number }
-        Returns: number
       }
       cleanup_project_history: {
         Args: { target_project_id: string }
@@ -9439,17 +9375,6 @@ export type Database = {
           unique_users: number
         }[]
       }
-      get_calendar_analysis_stats: {
-        Args: { p_user_id: string }
-        Returns: {
-          average_confidence: number
-          completed_analyses: number
-          last_analysis_at: string
-          total_analyses: number
-          total_projects_created: number
-          total_tasks_created: number
-        }[]
-      }
       get_daily_active_users: {
         Args: { end_date: string; start_date: string }
         Returns: {
@@ -9473,32 +9398,6 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
-      }
-      get_deliverable_primitive: {
-        Args: { p_type_key: string }
-        Returns: string
-      }
-      get_engagement_analytics: {
-        Args: never
-        Returns: {
-          active_users: number
-          avg_days_inactive: number
-          briefs_sent_today: number
-          briefs_sent_week: number
-          cooling_off_users: number
-          inactive_10_31_days: number
-          inactive_31_plus_days: number
-          inactive_4_10_days: number
-          total_users: number
-        }[]
-      }
-      get_goal_progress: {
-        Args: { goal_uuid: string }
-        Returns: {
-          completed_tasks: number
-          progress_percent: number
-          total_tasks: number
-        }[]
       }
       get_latest_ontology_daily_briefs: {
         Args: { user_ids: string[] }
@@ -9607,95 +9506,9 @@ export type Database = {
           total_sent: number
         }[]
       }
-      get_onboarding_v2_progress: { Args: { p_user_id: string }; Returns: Json }
-      get_pending_brief_emails: {
-        Args: { p_limit?: number }
-        Returns: {
-          brief_date: string
-          brief_id: string
-          created_at: string
-          email_id: string
-          subject: string
-          user_id: string
-        }[]
-      }
-      get_pending_calendar_suggestions: {
-        Args: { p_user_id: string }
-        Returns: {
-          confidence_score: number
-          created_at: string
-          event_count: number
-          suggested_description: string
-          suggested_name: string
-          suggestion_id: string
-        }[]
-      }
-      get_plan_tasks: {
-        Args: { plan_uuid: string }
-        Returns: {
-          completed_at: string | null
-          created_at: string
-          created_by: string
-          deleted_at: string | null
-          description: string | null
-          due_at: string | null
-          facet_scale: string | null
-          id: string
-          priority: number | null
-          project_id: string
-          props: Json
-          search_vector: unknown
-          start_at: string | null
-          state_key: Database["public"]["Enums"]["task_state"]
-          title: string
-          type_key: string
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "onto_tasks"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      get_project_context_document: {
-        Args: { project_uuid: string }
-        Returns: {
-          content: string | null
-          created_at: string
-          created_by: string
-          deleted_at: string | null
-          description: string | null
-          id: string
-          project_id: string
-          props: Json
-          search_vector: unknown
-          state_key: Database["public"]["Enums"]["document_state"]
-          title: string
-          type_key: string
-          updated_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "onto_documents"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       get_project_full: {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
-      }
-      get_project_history: {
-        Args: { target_project_id: string }
-        Returns: {
-          created_at: string
-          created_by: string
-          is_first_version: boolean
-          project_data: Json
-          version_number: number
-          version_type: string
-        }[]
       }
       get_project_invite_preview: {
         Args: { p_token_hash: string }
@@ -9725,18 +9538,6 @@ export type Database = {
       get_project_statistics: {
         Args: { p_project_id: string; p_user_id: string }
         Returns: Json
-      }
-      get_project_version: {
-        Args: { target_project_id: string; target_version: number }
-        Returns: Json
-      }
-      get_project_with_template: {
-        Args: { p_project_id: string }
-        Returns: {
-          context_document: Json
-          project: Json
-          template: Json
-        }[]
       }
       get_projects_with_stats: {
         Args: {
@@ -9820,15 +9621,6 @@ export type Database = {
           users_sms_enabled: number
         }[]
       }
-      get_subscription_changes: {
-        Args: { p_timeframe?: string }
-        Returns: {
-          cancellations: number
-          date: string
-          net_change: number
-          new_subscriptions: number
-        }[]
-      }
       get_subscription_overview: {
         Args: never
         Returns: {
@@ -9839,41 +9631,6 @@ export type Database = {
           paused_subscriptions: number
           total_subscribers: number
           trial_subscriptions: number
-        }[]
-      }
-      get_task_dependencies: {
-        Args: { task_uuid: string }
-        Returns: {
-          depends_on_id: string
-          depends_on_state: string
-          depends_on_title: string
-        }[]
-      }
-      get_task_plan: {
-        Args: { p_task_id: string }
-        Returns: {
-          plan_id: string
-          plan_name: string
-          plan_type_key: string
-        }[]
-      }
-      get_unblocking_tasks: {
-        Args: { project_uuid: string }
-        Returns: {
-          blocks_count: number
-          task_id: string
-          task_state: string
-          task_title: string
-        }[]
-      }
-      get_user_active_generations: {
-        Args: { p_user_id: string }
-        Returns: {
-          brief_date: string
-          brief_id: string
-          generation_progress: Json
-          generation_started_at: string
-          generation_status: string
         }[]
       }
       get_user_engagement_metrics: {
@@ -9887,10 +9644,6 @@ export type Database = {
           total_users: number
         }[]
       }
-      get_user_failed_payments_count: {
-        Args: { p_user_id: string }
-        Returns: number
-      }
       get_user_llm_usage: {
         Args: { p_end_date: string; p_start_date: string; p_user_id: string }
         Returns: {
@@ -9900,16 +9653,6 @@ export type Database = {
           total_cost: number
           total_requests: number
           total_tokens: number
-        }[]
-      }
-      get_user_sms_channel_info: {
-        Args: { p_user_id: string }
-        Returns: {
-          has_sms_available: boolean
-          opted_out: boolean
-          phone_number: string
-          phone_verified: boolean
-          phone_verified_at: string
         }[]
       }
       get_user_sms_metrics: {
@@ -9954,7 +9697,6 @@ export type Database = {
           visitors_7d: number
         }[]
       }
-      has_active_subscription: { Args: { user_uuid: string }; Returns: boolean }
       increment_chat_session_metrics: {
         Args: {
           p_message_increment?: number
@@ -9975,14 +9717,6 @@ export type Database = {
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }
-      link_document_to_task: {
-        Args: {
-          p_document_id: string
-          p_relationship_type?: string
-          p_task_id: string
-        }
-        Returns: string
-      }
       list_pending_project_invites: {
         Args: never
         Returns: {
@@ -10012,29 +9746,6 @@ export type Database = {
           p_user_id?: string
         }
         Returns: undefined
-      }
-      log_project_change: {
-        Args: {
-          p_action: string
-          p_after_data?: Json
-          p_before_data?: Json
-          p_change_source?: string
-          p_changed_by?: string
-          p_chat_session_id?: string
-          p_entity_id: string
-          p_entity_type: string
-          p_project_id: string
-        }
-        Returns: string
-      }
-      normalize_queue_job_metadata: {
-        Args: never
-        Returns: {
-          details: string
-          error_count: number
-          fixed_count: number
-          skipped_count: number
-        }[]
       }
       onto_check_guard: {
         Args: { p_entity: Json; p_guard: Json }
@@ -10101,7 +9812,6 @@ export type Database = {
         Returns: undefined
       }
       refresh_sms_metrics_daily: { Args: never; Returns: undefined }
-      refresh_system_metrics: { Args: never; Returns: undefined }
       refresh_user_migration_stats: {
         Args: never
         Returns: {
@@ -10126,14 +9836,6 @@ export type Database = {
       reset_stalled_jobs: {
         Args: { p_stall_timeout?: string }
         Returns: number
-      }
-      restore_deleted_task: {
-        Args: { task_id_param: string }
-        Returns: boolean
-      }
-      restore_onto_project: {
-        Args: { p_project_id: string }
-        Returns: undefined
       }
       search_all_content: {
         Args: {
@@ -10208,10 +9910,6 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: undefined
       }
-      start_daily_brief_generation: {
-        Args: { p_brief_date?: string; p_user_id: string }
-        Returns: Json
-      }
       start_or_resume_brief_generation: {
         Args: {
           p_brief_date: string
@@ -10241,37 +9939,9 @@ export type Database = {
         Returns: undefined
       }
       unaccent: { Args: { "": string }; Returns: string }
-      update_brief_generation_progress: {
-        Args: {
-          p_brief_id: string
-          p_life_goals_completed: number
-          p_projects_completed: number
-          p_total_life_goals: number
-          p_total_projects: number
-        }
-        Returns: undefined
-      }
       update_llm_usage_summary: {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined
-      }
-      update_project_next_step: {
-        Args: {
-          p_next_step_long: string
-          p_next_step_short: string
-          p_project_id: string
-          p_source?: string
-        }
-        Returns: undefined
-      }
-      update_scheduled_sms_send_time: {
-        Args: {
-          p_message_id: string
-          p_new_event_end?: string
-          p_new_event_start?: string
-          p_new_scheduled_for: string
-        }
-        Returns: boolean
       }
       update_sms_status_atomic: {
         Args: {
@@ -10294,21 +9964,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      update_user_notification_preferences: {
-        Args: {
-          p_email_enabled?: boolean
-          p_event_type: string
-          p_in_app_enabled?: boolean
-          p_push_enabled?: boolean
-          p_quiet_hours_enabled?: boolean
-          p_quiet_hours_end?: string
-          p_quiet_hours_start?: string
-          p_sms_enabled?: boolean
-          p_timezone?: string
-          p_user_id: string
-        }
-        Returns: undefined
-      }
       upsert_legacy_entity_mapping: {
         Args: {
           p_legacy_id: string
@@ -10318,18 +9973,6 @@ export type Database = {
           p_onto_table: string
         }
         Returns: undefined
-      }
-      user_has_payment_issues: { Args: { p_user_id: string }; Returns: boolean }
-      validate_all_queue_jobs: {
-        Args: { p_fix?: boolean }
-        Returns: {
-          fixed: boolean
-          is_valid: boolean
-          issue: string
-          job_id: string
-          job_type: string
-          status: string
-        }[]
       }
       validate_facet_values: {
         Args: { p_facets: Json; p_scope: string }

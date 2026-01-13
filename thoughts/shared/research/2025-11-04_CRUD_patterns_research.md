@@ -205,8 +205,8 @@ GET /api/onto/outputs/[id]
 
 ```javascript
 // Fetch with relationship
-const { data: output } = await supabase
-	.from('onto_outputs')
+const { data: document } = await supabase
+	.from('onto_documents')
 	.select('*, project:onto_projects!inner(id, created_by)')
 	.eq('id', id)
 	.maybeSingle();

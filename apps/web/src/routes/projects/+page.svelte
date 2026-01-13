@@ -380,7 +380,7 @@
 
 <div class="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-2.5 sm:py-6 space-y-2.5 sm:space-y-6">
 	<header
-		class="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0"
+		class="flex flex-col gap-1.5 sm:gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0"
 	>
 		<div class="space-y-0.5 sm:space-y-1 flex-1">
 			<div class="flex items-center gap-2">
@@ -397,12 +397,12 @@
 		<!-- Graph/Overview toggle - Admin Only -->
 		{#if isAdmin}
 			<nav
-				class="inline-flex rounded-lg border border-border bg-card p-1 text-sm font-bold overflow-x-auto scrollbar-hide shadow-ink self-baseline"
+				class="inline-flex rounded-lg border border-border bg-card p-0.5 sm:p-1 text-xs sm:text-sm font-bold overflow-x-auto scrollbar-hide shadow-ink"
 				aria-label="Project view mode"
 			>
 				<button
 					type="button"
-					class={`relative rounded px-4 py-2 transition pressable ${
+					class={`relative rounded px-3 py-1.5 sm:px-4 sm:py-2 transition pressable ${
 						activeTab === 'overview'
 							? 'bg-accent text-accent-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -414,7 +414,7 @@
 				</button>
 				<button
 					type="button"
-					class={`relative rounded px-4 py-2 transition pressable ${
+					class={`relative rounded px-3 py-1.5 sm:px-4 sm:py-2 transition pressable ${
 						activeTab === 'graph'
 							? 'bg-accent text-accent-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'

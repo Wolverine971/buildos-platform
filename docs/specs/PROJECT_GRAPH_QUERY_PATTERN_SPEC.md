@@ -271,10 +271,8 @@ export async function loadProjectGraphData(
 		tasksResult,
 		goalsResult,
 		milestonesResult,
-		outputsResult,
 		documentsResult,
 		risksResult,
-		decisionsResult,
 		edgesResult
 	] = await Promise.all([
 		supabase.from('onto_projects').select('*').eq('id', projectId).single(),
@@ -282,10 +280,8 @@ export async function loadProjectGraphData(
 		supabase.from('onto_tasks').select('*').eq('project_id', projectId),
 		supabase.from('onto_goals').select('*').eq('project_id', projectId),
 		supabase.from('onto_milestones').select('*').eq('project_id', projectId),
-		supabase.from('onto_outputs').select('*').eq('project_id', projectId),
 		supabase.from('onto_documents').select('*').eq('project_id', projectId),
 		supabase.from('onto_risks').select('*').eq('project_id', projectId),
-		supabase.from('onto_decisions').select('*').eq('project_id', projectId),
 		supabase.from('onto_edges').select('*').eq('project_id', projectId)
 	]);
 
@@ -298,10 +294,8 @@ export async function loadProjectGraphData(
 		tasks: tasksResult.data ?? [],
 		goals: goalsResult.data ?? [],
 		milestones: milestonesResult.data ?? [],
-		outputs: outputsResult.data ?? [],
 		documents: documentsResult.data ?? [],
 		risks: risksResult.data ?? [],
-		decisions: decisionsResult.data ?? [],
 		edges: edgesResult.data ?? []
 	};
 }
@@ -840,12 +834,6 @@ SET project_id = m.project_id
 FROM onto_milestones m
 WHERE e.src_kind = 'milestone' AND e.src_id = m.id AND e.project_id IS NULL;
 
--- Outputs
-UPDATE onto_edges e
-SET project_id = o.project_id
-FROM onto_outputs o
-WHERE e.src_kind = 'output' AND e.src_id = o.id AND e.project_id IS NULL;
-
 -- Documents
 UPDATE onto_edges e
 SET project_id = d.project_id
@@ -857,12 +845,6 @@ UPDATE onto_edges e
 SET project_id = r.project_id
 FROM onto_risks r
 WHERE e.src_kind = 'risk' AND e.src_id = r.id AND e.project_id IS NULL;
-
--- Decisions
-UPDATE onto_edges e
-SET project_id = dec.project_id
-FROM onto_decisions dec
-WHERE e.src_kind = 'decision' AND e.src_id = dec.id AND e.project_id IS NULL;
 
 -- Projects as source (edge from project to child)
 UPDATE onto_edges e
@@ -1345,8 +1327,6 @@ supabase
 | Task      | `onto_tasks`      | ✅               | `plan` → `has_task` → `task`              |
 | Goal      | `onto_goals`      | ✅               | `project` → `has_goal` → `goal`           |
 | Milestone | `onto_milestones` | ✅               | `project` → `has_milestone` → `milestone` |
-| Output    | `onto_outputs`    | ✅               | `task` → `produces` → `output`            |
 | Document  | `onto_documents`  | ✅               | `project` → `has_document` → `document`   |
 | Risk      | `onto_risks`      | ✅               | `project` → `has_risk` → `risk`           |
-| Decision  | `onto_decisions`  | ✅               | (varies)                                  |
 | Edge      | `onto_edges`      | ✅ (NEW)         | N/A                                       |

@@ -346,8 +346,11 @@
 
 			<form class="space-y-2.5" onsubmit={handleInvite}>
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Email</label>
+					<label for="invite-email" class="text-xs font-medium text-muted-foreground"
+						>Email</label
+					>
 					<TextInput
+						id="invite-email"
 						bind:value={email}
 						type="email"
 						placeholder="name@example.com"
@@ -357,8 +360,10 @@
 				</div>
 
 				<div class="space-y-1">
-					<label class="text-xs font-medium text-muted-foreground">Role</label>
-					<Select bind:value={role} size="md" disabled={!canInvite}>
+					<label for="invite-role" class="text-xs font-medium text-muted-foreground"
+						>Role</label
+					>
+					<Select id="invite-role" bind:value={role} size="md" disabled={!canInvite}>
 						<option value="editor">Editor (can edit)</option>
 						<option value="viewer">Viewer (read-only)</option>
 					</Select>

@@ -49,7 +49,7 @@ describe('Existing Project Updates - Simplified', () => {
 			expect(projectUpdate.data.context).toContain('sustainable');
 		});
 
-		it('incorporates technical architecture decisions', async () => {
+		it('incorporates technical architecture updates', async () => {
 			const result = await processExistingProject(
 				`
         Technical update: After reviewing performance issues, we're making 

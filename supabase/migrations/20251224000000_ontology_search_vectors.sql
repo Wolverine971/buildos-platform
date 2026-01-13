@@ -61,17 +61,6 @@ create index if not exists idx_onto_documents_search_vector on onto_documents us
 create index if not exists idx_onto_documents_title_trgm on onto_documents using gin (title gin_trgm_ops);
 create index if not exists idx_onto_documents_props_trgm on onto_documents using gin ((props::text) gin_trgm_ops);
 
--- Outputs
-alter table onto_outputs
-  add column if not exists search_vector tsvector generated always as (
-    setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
-    setweight(jsonb_to_tsvector('english', props, '["string"]'), 'B')
-  ) stored;
-
-create index if not exists idx_onto_outputs_search_vector on onto_outputs using gin (search_vector);
-create index if not exists idx_onto_outputs_name_trgm on onto_outputs using gin (name gin_trgm_ops);
-create index if not exists idx_onto_outputs_props_trgm on onto_outputs using gin ((props::text) gin_trgm_ops);
-
 -- Requirements
 alter table onto_requirements
   add column if not exists search_vector tsvector generated always as (
@@ -257,34 +246,6 @@ begin
       and (
         params.tsq @@ d.search_vector
         or similarity(coalesce(d.title, ''), p_query) >= 0.2
-      )
-
-    union all
-
-    -- Outputs
-    select
-      'output'::text as type,
-      o.id,
-      o.project_id,
-      p.name as project_name,
-      o.name as title,
-      ts_headline(
-        'english',
-        concat_ws(' ', coalesce(o.name, ''), coalesce(o.props::text, '')),
-        params.tsq,
-        'MaxFragments=2,MinWords=5,MaxWords=18'
-      ) as snippet,
-      (coalesce(ts_rank(o.search_vector, params.tsq), 0) * 0.6) +
-      (similarity(coalesce(o.name, ''), p_query) * 0.4) as score
-    from onto_outputs o
-    join params on true
-    left join onto_projects p on p.id = o.project_id
-    where o.created_by = p_actor_id
-      and (p_project_id is null or o.project_id = p_project_id)
-      and (p_types is null or 'output' = any(p_types))
-      and (
-        params.tsq @@ o.search_vector
-        or similarity(coalesce(o.name, ''), p_query) >= 0.2
       )
 
     union all

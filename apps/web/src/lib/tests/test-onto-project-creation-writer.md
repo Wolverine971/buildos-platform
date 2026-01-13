@@ -113,13 +113,6 @@
           state_key: "draft"
         }
       ],
-      outputs: [
-        {
-          name: "Final Manuscript",
-          type_key: "output.writing.manuscript",
-          state_key: "draft"
-        }
-      ],
       context_document: {
         title: "The Last Ember - Project Overview",
         body_markdown: "Fantasy novel about a young blacksmith who discovers she can forge magical weapons when the kingdom's last dragon dies..."
@@ -164,15 +157,11 @@
     - "Character Profile - Elena" (creative document)
     - "Magic System Documentation" (worldbuilding document)
 
-- ✅ **onto_outputs**: 1 output
-    - "Final Manuscript" (manuscript output, draft state)
-
 - ✅ **onto_edges**: Multiple relationships created
     - project → goals (has_goal)
     - project → plans (has_plan)
     - project → tasks (has_task)
     - project → documents (has_document)
-    - project → outputs (has_output)
     - tasks → plans (belongs_to_plan)
 
 **Context After Creation**:
@@ -228,12 +217,6 @@
           }
         }
       ],
-      outputs: [
-        {
-          name: "Published Blog Series",
-          type_key: "output.writing.blog",
-          state_key: "draft"
-        }
       ]
     })
     ```
@@ -242,7 +225,6 @@
 
 - ✅ **onto_projects**: 1 project (blog series)
 - ✅ **onto_goals**: 1 goal (publish 10 articles)
-- ✅ **onto_outputs**: 1 output (published series)
 - ✅ **onto_documents**: 1 context document
 - ✅ **Context shift**: `project_create` → `project`
 
@@ -521,23 +503,7 @@
     })
     ```
 
-2. **Create Decision Record**:
-
-    ```
-    create_onto_decision({
-      project_id: "[current_project_id]",
-      title: "Publishing Platform: Kindle Direct Publishing",
-      rationale: "Self-publishing via KDP for maximum control and royalty rates",
-      decision_at: "[current_date]",
-      props: {
-        alternatives_considered: ["Traditional publishing", "IngramSpark"],
-        decision_maker: "author",
-        impact: "high"
-      }
-    })
-    ```
-
-3. **Create Plan for Publishing**:
+2. **Create Plan for Publishing**:
     ```
     create_onto_plan({
       project_id: "[current_project_id]",
@@ -550,10 +516,8 @@
 ### Expected Results:
 
 - ✅ **onto_milestones**: 5 milestones created with dates
-- ✅ **onto_decisions**: 1 decision record (KDP selection)
 - ✅ **onto_plans**: 1 new plan (Publishing & Launch)
 - ✅ **Timeline visibility**: Clear project timeline established
-- ✅ **Decision tracking**: Rationale and alternatives documented
 
 ---
 
@@ -601,8 +565,8 @@ This test suite validates:
 2. ✅ **Template Selection**: Automatic template finding and application
 3. ✅ **Facet Inference**: Intelligent context/scale/stage detection
 4. ✅ **Context Shifting**: `project_create` → `project` → `project_audit`
-5. ✅ **Multi-Entity Creation**: Goals, plans, tasks, documents, outputs in one call
+5. ✅ **Multi-Entity Creation**: Goals, plans, tasks, documents in one call
 6. ✅ **Workspace Operations**: Task updates, document creation in project mode
 7. ✅ **Risk/Requirements**: Audit mode operations
-8. ✅ **Milestones/Decisions**: Timeline and decision tracking
+8. ✅ **Milestones**: Timeline tracking
 9. ✅ **Edge Cases**: Clarifications, series, context switching

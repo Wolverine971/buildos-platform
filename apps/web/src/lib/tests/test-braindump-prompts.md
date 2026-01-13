@@ -91,7 +91,7 @@ We need to scrap the desktop wireframes we've been working on and start fresh wi
 
 The timeline is getting compressed - they want a beta version in 6 weeks instead of the full 3 months we planned. This means we need to identify MVP features immediately. Core features for MVP: user login with biometrics, dashboard view, search functionality, and basic account management. Everything else moves to phase 2.
 
-I'm thinking we should adopt a more agile approach with 2-week sprints. Each sprint should have clear deliverables. We need to set up daily standups at 9am, sprint planning every other Monday, and retrospectives every other Friday.
+I'm thinking we should adopt a more agile approach with 2-week sprints. Each sprint should have clear milestones. We need to set up daily standups at 9am, sprint planning every other Monday, and retrospectives every other Friday.
 
 The tech stack needs updating too. Instead of React, we should use Next.js for better mobile performance and SEO. The backend API remains the same but we need to add WebSocket support for real-time updates. Also need to integrate with Firebase for push notifications.
 

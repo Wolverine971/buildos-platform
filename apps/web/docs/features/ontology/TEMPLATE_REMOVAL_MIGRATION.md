@@ -52,7 +52,6 @@ All entity tables remain with their `type_key` columns:
 - `onto_projects` - `type_key` stays
 - `onto_tasks` - `type_key` stays
 - `onto_plans` - `type_key` stays
-- `onto_outputs` - `type_key` stays
 - `onto_documents` - `type_key` stays
 - `onto_goals` - `type_key` stays
 - `onto_requirements` - `type_key` stays

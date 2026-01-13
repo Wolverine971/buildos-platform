@@ -195,7 +195,7 @@
 					: 'border-border bg-card text-foreground shadow-ink'
 			} ${!isVoiceSupported || isUploading ? 'opacity-50 cursor-not-allowed' : 'pressable'}`}
 			disabled={!isVoiceSupported || isUploading || isInitializing}
-			on:click={isCurrentlyRecording ? stopRecording : startRecording}
+			onclick={isCurrentlyRecording ? stopRecording : startRecording}
 			aria-label={isCurrentlyRecording ? 'Stop recording' : 'Start recording'}
 		>
 			{#if isInitializing}

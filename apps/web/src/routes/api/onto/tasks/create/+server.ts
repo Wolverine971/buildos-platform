@@ -47,12 +47,15 @@ import { classifyOntologyEntity } from '$lib/server/ontology-classification.serv
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 import {
 	AutoOrganizeError,
+	ENTITY_TABLES,
 	autoOrganizeConnections,
 	assertEntityRefsInProject,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+
+const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -188,7 +191,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				: null;
 
 		const invalidParent = explicitParents.find(
-			(parentRef) => !['project', 'plan', 'goal', 'milestone'].includes(parentRef.kind)
+			(parentRef) => !ALLOWED_PARENT_KINDS.has(parentRef.kind)
 		);
 		if (invalidParent) {
 			return ApiResponse.badRequest(`Unsupported parent kind: ${invalidParent.kind}`);

@@ -151,7 +151,7 @@
           props: {
             type: "branding",
             estimated_hours: 20,
-            deliverables: ["logo", "color_palette", "packaging_design"]
+            assets: ["logo", "color_palette", "packaging_design"]
           }
         },
         {
@@ -267,34 +267,6 @@
           props: {
             regulatory_body: "FDA",
             product_count: 5
-          }
-        }
-      ],
-      outputs: [
-        {
-          name: "5 Product SKUs Ready for Sale",
-          type_key: "output.business.product",
-          state_key: "planned",
-          props: {
-            sku_count: 5,
-            product_line: "organic_skincare"
-          }
-        },
-        {
-          name: "Live Shopify E-commerce Store",
-          type_key: "output.business.website",
-          state_key: "planned",
-          props: {
-            platform: "Shopify",
-            products: 5
-          }
-        },
-        {
-          name: "Marketing Campaign Assets",
-          type_key: "output.business.marketing",
-          state_key: "planned",
-          props: {
-            asset_types: ["product_photos", "social_content", "email_templates"]
           }
         }
       ],
@@ -417,19 +389,6 @@
             mitigation: "Build email list pre-launch, invest in influencer marketing, offer launch discount"
           }
         }
-      ],
-      decisions: [
-        {
-          title: "E-commerce Platform: Shopify over WooCommerce",
-          rationale: "Shopify offers better ease of use, built-in payment processing, and lower technical maintenance compared to WooCommerce. Worth the monthly fee for faster launch.",
-          decision_at: "[current_date]",
-          props: {
-            category: "technology",
-            alternatives: ["WooCommerce", "BigCommerce"],
-            monthly_cost: 79,
-            decision_maker: "business_owner"
-          }
-        }
       ]
     })
     ```
@@ -480,7 +439,6 @@
     - Supplier Comparison
     - FDA Compliance Checklist
 
-- ✅ **onto_outputs**: 3 deliverables
     - 5 Product SKUs
     - Live Shopify Store
     - Marketing Campaign Assets
@@ -504,7 +462,6 @@
     - Budget overrun (medium, 0.5)
     - Low sales (medium, 0.6)
 
-- ✅ **onto_decisions**: 1 decision
     - Shopify vs WooCommerce selection
 
 - ✅ **Context shift**: `project_create` → `project`
@@ -1133,7 +1090,7 @@
       due_at: "[current_date + 2 weeks]",
       type_key: "milestone.preparation",
       props: {
-        deliverables: ["pitch_deck", "financials", "demo", "competitive_analysis"]
+        materials: ["pitch_deck", "financials", "demo", "competitive_analysis"]
       }
     })
 
@@ -1160,22 +1117,7 @@
 
 5. **Create Funding Decision**:
     ```
-    create_onto_decision({
-      project_id: "[current_project_id]",
-      title: "Fundraising Strategy: Angel investors at 15% equity",
-      rationale: "Angel investors provide faster access to capital ($100k) without the extensive due diligence of VCs. 15% equity valuation at ~$667k post-money is fair given current traction ($8.9k MRR, 85% retention). Will use funds to scale production and hire critical team members.",
-      decision_at: "[current_date]",
-      props: {
-        category: "fundraising",
-        alternatives: ["bank_loan", "revenue_based_financing", "bootstrapping"],
-        valuation: 666666,
-        use_of_funds: {
-          production_scaling: 50000,
-          hiring: 35000,
-          marketing: 15000
-        }
-      }
-    })
+    // Funding strategy documented in plan, tasks, and documents
     ```
 
 ### Expected Results:
@@ -1185,7 +1127,6 @@
 - ✅ **onto_documents**: 3 investor documents (pitch deck, financials, competitive analysis)
 - ✅ **onto_goals**: 1 funding goal ($100k)
 - ✅ **onto_milestones**: 3 milestones (materials, pitches, funding closed)
-- ✅ **onto_decisions**: 1 fundraising strategy decision
 - ✅ **Funding tracking**: Target, equity, use of funds all documented
 
 ---

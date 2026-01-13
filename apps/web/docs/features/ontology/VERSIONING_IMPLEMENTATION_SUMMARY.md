@@ -33,11 +33,10 @@ Detailed task tracking with:
 
 ### Current State Problems
 
-1. **onto_outputs**: Version table exists but is **completely unused** (0 implementations)
-2. **onto_documents**: Only creates version 1 on template generation, **no subsequent versions**
-3. **Data Loss Risk**: Updates overwrite data without creating versions
-4. **No Audit Trail**: Cannot track who changed what and when
-5. **No Rollback**: Cannot recover from accidental changes
+1. **onto_documents**: Only creates version 1 on template generation, **no subsequent versions**
+2. **Data Loss Risk**: Updates overwrite data without creating versions
+3. **No Audit Trail**: Cannot track who changed what and when
+4. **No Rollback**: Cannot recover from accidental changes
 
 ### Solution Highlights
 

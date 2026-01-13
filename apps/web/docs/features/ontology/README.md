@@ -135,7 +135,6 @@ See `src/lib/server/ontology/state-transitions.ts` for transition rules.
 onto_projects        -- Root work units
 onto_tasks          -- Actionable items
 onto_plans          -- Task groupings
-onto_outputs        -- Deliverables (versioned)
 onto_documents      -- Documentation
 onto_goals          -- Strategic objectives
 onto_requirements   -- Project requirements
@@ -143,7 +142,6 @@ onto_milestones     -- Time markers
 onto_risks          -- Risk tracking
 onto_metrics        -- Measurements
 onto_metric_points  -- Time-series data
-onto_decisions      -- Decision records
 onto_events         -- Calendar events
 ```
 
@@ -157,7 +155,6 @@ onto_permissions        -- Access control
 onto_facet_definitions  -- Facet taxonomy (3 facets)
 onto_facet_values       -- Allowed facet values
 onto_document_versions  -- Document history
-onto_output_versions    -- Output versions
 ```
 
 ---

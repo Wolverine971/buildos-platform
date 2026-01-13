@@ -30,11 +30,9 @@ All ontology tables now have dedicated columns instead of relying on `props`:
 | `onto_plans`        | `plan`, `description`, `deleted_at`                                |
 | `onto_goals`        | `goal`, `description`, `target_date`, `completed_at`, `deleted_at` |
 | `onto_documents`    | `content`, `description`, `deleted_at`                             |
-| `onto_outputs`      | `description`, `deleted_at`                                        |
 | `onto_milestones`   | `milestone`, `description`, `completed_at`, `deleted_at`           |
 | `onto_risks`        | `content`, `mitigated_at`, `deleted_at`                            |
 | `onto_requirements` | `priority`, `deleted_at`                                           |
-| `onto_decisions`    | `deleted_at`, `updated_at`                                         |
 
 **Soft Delete Support**: All entities now support soft deletes via `deleted_at` column. Queries filter `WHERE deleted_at IS NULL` by default.
 
@@ -87,7 +85,6 @@ plan.phase.project; // All migrated phases
 ✅ onto_projects        -- Root work units with type_key & facets
 ✅ onto_tasks          -- Actionable items with priority & FSM
 ✅ onto_plans          -- Task groupings with date ranges
-✅ onto_outputs        -- Versioned deliverables
 ✅ onto_documents      -- Versioned documentation
 ✅ onto_goals          -- Strategic objectives with measurement
 ✅ onto_requirements   -- Project requirements
@@ -95,7 +92,6 @@ plan.phase.project; // All migrated phases
 ✅ onto_risks          -- Risk tracking & mitigation
 ✅ onto_metrics        -- Measurement definitions
 ✅ onto_metric_points  -- Time-series measurements
-✅ onto_decisions      -- Decision records (ADRs)
 ✅ onto_sources        -- External references
 ✅ onto_signals        -- External signals
 ✅ onto_insights       -- Derived insights
@@ -111,7 +107,6 @@ plan.phase.project; // All migrated phases
 ✅ onto_facet_definitions  -- 3 facets (context, scale, stage)
 ✅ onto_facet_values       -- Allowed facet values
 ✅ onto_document_versions  -- Document history
-✅ onto_output_versions    -- Output versions
 ✅ onto_tools              -- Available tools
 ```
 

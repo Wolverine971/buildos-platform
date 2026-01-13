@@ -579,9 +579,7 @@ Beyond type_key, entities support **facets** for cross-cutting classification:
 The family-based taxonomy enables powerful queries:
 
 ```sql
--- All written outputs
-SELECT * FROM onto_outputs
-WHERE type_key LIKE 'output.written.%';
+
 
 -- All campaign-style plans
 SELECT * FROM onto_plans

@@ -30,6 +30,7 @@
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import GoalEditModal from './GoalEditModal.svelte';
+	import DocumentModal from './DocumentModal.svelte';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
@@ -955,7 +956,7 @@
 {/if}
 
 {#if showDocumentModal && selectedDocumentIdForModal}
-	<svelte:self
+	<DocumentModal
 		{projectId}
 		documentId={selectedDocumentIdForModal}
 		bind:isOpen={showDocumentModal}

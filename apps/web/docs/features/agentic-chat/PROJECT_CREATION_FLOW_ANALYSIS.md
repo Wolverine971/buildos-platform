@@ -288,7 +288,6 @@ async function instantiateProject(client, spec, userId) {
 - `onto_requirements` - Project requirements
 - `onto_plans` - Execution plans
 - `onto_tasks` - Tasks (with edge relationships to plans)
-- `onto_outputs` - Deliverables
 - `onto_edges` - All entity relationships
 
 ---
@@ -367,7 +366,6 @@ async function instantiateProject(client, spec, userId) {
 │      ├── Insert onto_requirements                                            │
 │      ├── Insert onto_plans                                                   │
 │      ├── Insert onto_tasks                                                   │
-│      ├── Insert onto_outputs                                                 │
 │      └── Insert onto_edges (relationships)                                   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```

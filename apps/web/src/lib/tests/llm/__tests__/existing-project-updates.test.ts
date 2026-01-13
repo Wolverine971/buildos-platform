@@ -52,7 +52,7 @@ describe('Existing Project Update LLM Tests', () => {
 
 			const result = await processExistingProject(
 				`
-        We've made a significant strategic decision about our e-commerce platform.
+        We've made a significant strategic update about our e-commerce platform.
 
         After extensive user research and market analysis, we're pivoting from 
         a general e-commerce solution to focus specifically on the handmade and 
@@ -95,14 +95,14 @@ describe('Existing Project Update LLM Tests', () => {
 			}
 		});
 
-		it('should update with technical architecture decisions', async () => {
+		it('should update with technical architecture updates', async () => {
 			const existingProject = mockProjects.saas;
 
 			const result = await processExistingProject(
 				`
         Important technical architecture update for our SaaS platform:
 
-        We've decided to migrate from REST API to GraphQL for our backend.
+        We're migrating from REST API to GraphQL for our backend.
 
         Reasons for the change:
         - Better performance with reduced over-fetching

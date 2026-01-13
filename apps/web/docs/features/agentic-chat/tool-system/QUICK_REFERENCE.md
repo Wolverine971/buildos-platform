@@ -32,10 +32,8 @@ list_onto_plans
 list_onto_goals
 list_onto_documents
 search_onto_documents
-list_onto_outputs
 list_onto_milestones
 list_onto_risks
-list_onto_decisions
 list_onto_requirements
 list_task_documents
 search_ontology

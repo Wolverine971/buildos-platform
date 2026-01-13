@@ -286,10 +286,6 @@ ALTER TABLE onto_goals
 ADD CONSTRAINT chk_goal_type_key_format
 CHECK (type_key IS NULL OR type_key ~ '^goal\.[a-z_]+$');
 
--- Outputs must follow pattern: output.{type}
-ALTER TABLE onto_outputs
-ADD CONSTRAINT chk_output_type_key_format
-CHECK (type_key ~ '^output\.[a-z_]+$');
 ```
 
 **Validation Examples**:

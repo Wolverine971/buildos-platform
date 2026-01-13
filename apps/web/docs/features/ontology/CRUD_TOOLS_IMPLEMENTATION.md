@@ -366,14 +366,13 @@ Agent:
 2. **No Bulk Operations**: Must operate on one entity at a time
 3. **Limited Validation**: Relies on API endpoint validation
 4. **Missing Entities**: No tools yet for:
-    - onto_outputs (deliverables)
     - onto_documents (documentation)
 
 ## Next Steps
 
 1. ✅ Complete implementation (DONE)
 2. ⏳ End-to-end testing (PENDING)
-3. 📋 Add tools for onto_outputs and onto_documents
+3. 📋 Add tools for onto_documents
 4. 📋 Add batch operation tools (create multiple tasks at once)
 5. 📋 Add soft delete option (mark as deleted vs permanent)
 6. 📋 Add audit logging for mutations

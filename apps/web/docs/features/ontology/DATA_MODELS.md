@@ -39,7 +39,6 @@ All ontology tables use the `onto_` prefix in the public schema. Key tables are:
 | `onto_projects`      | Root projects/work units     | id, name, type_key, state_key, props, facet_context, facet_scale, facet_stage |
 | `onto_tasks`         | Actionable items             | id, project_id, type_key, title, state_key, priority, due_at, props           |
 | `onto_plans`         | Logical groupings of tasks   | id, project_id, name, type_key, state_key, props                              |
-| `onto_outputs`       | Deliverables/artifacts       | id, project_id, name, type_key, state_key, props, facet_stage                 |
 | `onto_documents`     | Project documents            | id, project_id, title, type_key, props, state_key                             |
 | `onto_goals`         | Project goals                | id, project_id, name, type_key, props                                         |
 | `onto_requirements`  | Project requirements         | id, project_id, text, type_key, props                                         |
@@ -47,7 +46,6 @@ All ontology tables use the `onto_` prefix in the public schema. Key tables are:
 | `onto_risks`         | Risk tracking                | id, project_id, title, impact, probability, state_key, type_key, props        |
 | `onto_metrics`       | Performance metrics          | id, project_id, name, unit, type_key, props                                   |
 | `onto_metric_points` | Metric data points           | id, metric_id, ts, numeric_value, props                                       |
-| `onto_decisions`     | Project decisions            | id, project_id, title, state_key, decision_at, outcome, description, props    |
 | `onto_sources`       | External information sources | id, project_id, uri, snapshot_uri, props                                      |
 | `onto_signals`       | Real-time project signals    | id, project_id, ts, channel, payload                                          |
 | `onto_insights`      | Derived insights             | id, project_id, title, derived_from_signal_id, props                          |
@@ -232,58 +230,6 @@ interface OntoPlan {
 
 ---
 
-### 2.4 ONTO_OUTPUTS
-
-**Deliverables, artifacts, or results of work.**
-
-```typescript
-interface OntoOutput {
-	id: uuid;
-	project_id: uuid;
-	name: text;
-	description: text | null; // Output description
-	type_key: text; // e.g., 'output.document', 'output.written.chapter', 'output.software.feature'
-	state_key: text; // 'draft', 'in_progress', 'review', 'published'
-	props: jsonb;
-	search_vector: tsvector; // Full-text search
-
-	// Generated facet column
-	facet_stage: text | null;
-
-	// Source tracking
-	source_document_id: uuid | null; // FK to onto_documents
-	source_event_id: uuid | null; // FK to onto_events
-
-	// Lifecycle
-	deleted_at: timestamptz | null; // Soft delete timestamp
-
-	created_by: uuid;
-	created_at: timestamptz;
-	updated_at: timestamptz;
-}
-```
-
-**New Columns (2024-12-20 Migration):**
-
-- `description`: Dedicated text column for output description
-- `deleted_at`: Soft delete support
-
-**Version Tracking:**
-
-```typescript
-interface OntoOutputVersion {
-	id: uuid;
-	output_id: uuid; // FK to onto_outputs
-	number: int; // Version sequence
-	storage_uri: text; // Where output is stored
-	props: jsonb;
-	created_by: uuid;
-	created_at: timestamptz;
-}
-```
-
----
-
 ### 2.5 ONTO_DOCUMENTS
 
 **Project documentation and reference materials.**
@@ -440,32 +386,7 @@ interface OntoRequirement {
 }
 ```
 
-### 2.10 ONTO_DECISIONS
-
-**Project decision records.**
-
-```typescript
-interface OntoDecision {
-	id: uuid;
-	project_id: uuid;
-	title: text;
-	description: text | null; // Context and background
-	outcome: text | null; // What was decided
-	state_key: text; // 'pending', 'made', 'deferred', 'reversed'
-	rationale: text | null;
-	decision_at: timestamptz | null;
-	props: jsonb;
-
-	// Lifecycle
-	deleted_at: timestamptz | null; // Soft delete timestamp
-
-	created_by: uuid;
-	created_at: timestamptz;
-	updated_at: timestamptz | null;
-}
-```
-
-### 2.11 - 2.13 Other Entities
+### 2.10 - 2.12 Other Entities
 
 See the database schema for:
 
@@ -646,13 +567,12 @@ Type keys are classification strings following the pattern:
 
 ### Document Types
 
-| Type Key                          | Description              |
-| --------------------------------- | ------------------------ |
-| `document.context.project`        | Project context/brief    |
-| `document.knowledge.research`     | Research notes, findings |
-| `document.spec.product`           | Technical specification  |
-| `document.reference.handbook`     | Handbook, SOP, checklist |
-| `document.decision.meeting_notes` | RFC, proposal, ADR       |
+| Type Key                      | Description              |
+| ----------------------------- | ------------------------ |
+| `document.context.project`    | Project context/brief    |
+| `document.knowledge.research` | Research notes, findings |
+| `document.spec.product`       | Technical specification  |
+| `document.reference.handbook` | Handbook, SOP, checklist |
 
 ---
 
@@ -665,15 +585,12 @@ onto_projects
   ├→ onto_plans
   │   └→ onto_tasks (via edges)
   ├→ onto_tasks
-  ├→ onto_outputs
-  │   └→ onto_output_versions
   ├→ onto_documents
   │   └→ onto_document_versions
   ├→ onto_milestones
   ├→ onto_risks
   ├→ onto_metrics
   │   └→ onto_metric_points
-  ├→ onto_decisions
   ├→ onto_sources
   ├→ onto_signals
   │   └→ onto_insights
@@ -714,7 +631,7 @@ onto_facet_definitions
 
 ### 9.4 Versioning Pattern
 
-- `onto_output_versions` and `onto_document_versions`
+- `onto_document_versions`
 - Sequential version numbers
 - Storage URIs for external persistence
 

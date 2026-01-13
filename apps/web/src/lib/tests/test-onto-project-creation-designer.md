@@ -54,8 +54,8 @@
           name: "Deliver complete brand identity system",
           type_key: "goal.outcome",
           props: {
-            deliverables_count: 6,
-            measurement: "deliverables_approved"
+            assets_count: 6,
+            measurement: "assets_approved"
           }
         },
         {
@@ -193,38 +193,13 @@
           }
         }
       ],
-      outputs: [
-        {
-          name: "Final Logo Package",
-          type_key: "output.design.logo",
-          state_key: "planned",
-          props: {
-            versions: ["full_color", "monochrome", "reversed"],
-            formats: ["AI", "SVG", "PNG"]
-          }
-        },
-        {
-          name: "Packaging Design Files",
-          type_key: "output.design.packaging",
-          state_key: "planned"
-        },
-        {
-          name: "Website UI Mockups",
-          type_key: "output.design.ui",
-          state_key: "planned",
-          props: {
-            pages: ["homepage", "shop", "about"],
-            device_sizes: ["desktop", "tablet", "mobile"]
-          }
-        }
-      ],
       milestones: [
         {
           title: "Week 2 Presentation - Concepts & Moodboards",
           due_at: "[current_date + 2 weeks]",
           type_key: "milestone.presentation",
           props: {
-            deliverables: ["logo_concepts", "moodboard", "color_palette"]
+            assets: ["logo_concepts", "moodboard", "color_palette"]
           }
         },
         {
@@ -232,7 +207,7 @@
           due_at: "[current_date + 4 weeks]",
           type_key: "milestone.presentation",
           props: {
-            deliverables: ["final_logo", "packaging_draft", "web_wireframes"]
+            assets: ["final_logo", "packaging_draft", "web_wireframes"]
           }
         },
         {
@@ -240,7 +215,7 @@
           due_at: "[current_date + 6 weeks]",
           type_key: "milestone.delivery",
           props: {
-            deliverables: ["all_design_files", "brand_guidelines", "presentation"]
+            assets: ["all_design_files", "brand_guidelines", "presentation"]
           }
         }
       ]
@@ -286,7 +261,6 @@
     - Design Moodboard
     - Brand Guidelines
 
-- ✅ **onto_outputs**: 3 deliverables
     - Final Logo Package (multiple versions/formats)
     - Packaging Design Files
     - Website UI Mockups
@@ -479,25 +453,6 @@
           state_key: "planned"
         }
       ],
-      outputs: [
-        {
-          name: "Figma Component Library",
-          type_key: "output.design.library",
-          state_key: "draft",
-          props: {
-            tool: "Figma",
-            component_count: 30
-          }
-        },
-        {
-          name: "Design Tokens JSON Export",
-          type_key: "output.design.tokens",
-          state_key: "planned",
-          props: {
-            format: "JSON"
-          }
-        }
-      ],
       metrics: [
         {
           name: "Component Library Progress",
@@ -529,7 +484,6 @@
 - ✅ **onto_tasks**: 5 tasks with complexity levels
 - ✅ **onto_requirements**: 3 requirements (accessibility, technical, design tool)
 - ✅ **onto_documents**: 3 documents (audit, tokens, guidelines)
-- ✅ **onto_outputs**: 2 deliverables (Figma library, JSON tokens)
 - ✅ **onto_metrics**: 2 metrics (progress, accessibility)
 - ✅ **Context shift**: `project_create` → `project`
 
@@ -662,24 +616,7 @@
     })
     ```
 
-3. **Create Decision Record**:
-
-    ```
-    create_onto_decision({
-      project_id: "[current_project_id]",
-      title: "Logo Direction Selected: Option 2 with Refinements",
-      rationale: "Client selected option 2 for its modern aesthetic and sustainability message. Requesting darker green and circular badge variant.",
-      decision_at: "[current_date]",
-      props: {
-        category: "design_direction",
-        decision_maker: "client",
-        impact: "high",
-        next_steps: ["refine_color", "create_badge_version", "hybrid_concept"]
-      }
-    })
-    ```
-
-4. **Update Milestone**:
+3. **Update Milestone**:
     ```
     create_onto_milestone({
       project_id: "[current_project_id]",
@@ -687,7 +624,7 @@
       due_at: "[current_date + 3 days]",
       type_key: "milestone.presentation",
       props: {
-        deliverables: ["logo_option_2_refined", "circular_badge", "hybrid_concept"]
+        assets: ["logo_option_2_refined", "circular_badge", "hybrid_concept"]
       }
     })
     ```
@@ -695,7 +632,6 @@
 ### Expected Results:
 
 - ✅ **onto_tasks**: 1 updated, 3 new revision tasks
-- ✅ **onto_decisions**: 1 decision record with client feedback
 - ✅ **onto_milestones**: 1 new presentation milestone (3 days)
 - ✅ **Task tracking**: Iteration count, revision notes
 - ✅ **Context maintained**: Still in project workspace
@@ -704,7 +640,7 @@
 
 ## Test Prompt 5: Design Delivery and Assets
 
-**Scenario**: Preparing final deliverables with all file formats
+**Scenario**: Preparing final assets with all file formats
 
 **Context Type**: `project`
 
@@ -745,26 +681,7 @@
     })
     ```
 
-2. **Update Output Status**:
-
-    ```
-    search_onto_outputs({
-      project_id: "[current_project_id]",
-      search: "logo package"
-    })
-
-    update_onto_output({
-      output_id: "[logo_output_id]",
-      state_key: "in_progress",
-      props: {
-        export_status: "preparing_files",
-        formats_included: ["AI", "SVG", "PNG"],
-        file_count: 15
-      }
-    })
-    ```
-
-3. **Create Document for Guidelines**:
+2. **Create Document for Guidelines**:
 
     ```
     create_onto_document({
@@ -789,7 +706,6 @@
 ### Expected Results:
 
 - ✅ **onto_tasks**: 2 delivery tasks (export + documentation)
-- ✅ **onto_outputs**: 1 updated (logo package in progress)
 - ✅ **onto_documents**: 1 new document (guidelines PDF)
 - ✅ **File specifications**: All formats, sizes, variants tracked
 - ✅ **Context maintained**: Still in project workspace
@@ -871,7 +787,7 @@
           presentations: 3,
           approval_rate: 87
         },
-        featured_deliverables: ["logo", "packaging", "web_mockups"]
+        featured_assets: ["logo", "packaging", "web_mockups"]
       }
     })
     ```
@@ -940,7 +856,7 @@
 - Creates onto_risk for scope creep
 - Updates milestone dates
 - Tracks revision count as metric
-- Creates decision record about revision limits
+- Adds revision limit note in project documentation
 - Updates project timeline
 
 ---
@@ -949,7 +865,7 @@
 
 This test suite validates:
 
-1. ✅ **Brand Identity Projects**: Complete branding with deliverables
+1. ✅ **Brand Identity Projects**: Complete branding with assets
 2. ✅ **Design System Creation**: Component libraries and tokens
 3. ✅ **UX/UI Workflows**: Accessibility, design tools, handoff
 4. ✅ **Client Collaboration**: Feedback cycles, revisions, approvals

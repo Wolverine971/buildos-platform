@@ -1,0 +1,187 @@
+<!-- docs/reports/ontology-entity-reference-audit.md -->
+
+# Ontology Entity Reference Audit
+
+Scope: output/deliverable and decision entities. Table names are redacted in findings.
+
+Notes:
+
+- Migrations are listed for visibility but were not edited per request.
+- Findings exclude this audit file.
+- Progress update: non-migration references removed; remaining hits are migrations or applied backups.
+
+Findings (path:line:content, redacted):
+
+- `./supabase/migrations/20251220_seed_hail_mary_example_project.sql:32:DELETE FROM DECISION_TABLE WHERE project_id = '33333333-3333-3333-3333-333333333333';`
+- `./supabase/migrations/20251220_seed_hail_mary_example_project.sql:654:INSERT INTO DECISION_TABLE (id, project_id, title, decision_at, rationale, props, created_by) VALUES`
+- `./supabase/migrations/20260328000000_add_onto_comments.sql:94:        SELECT 1 FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20260328000000_add_onto_comments.sql:124:        SELECT 1 FROM DECISION_TABLE dc`
+- `./supabase/migrations/20251212_simplify_fsm_to_enums.sql:167:ALTER TABLE OUTPUT_TABLE`
+- `./supabase/migrations/20251212_simplify_fsm_to_enums.sql:170:ALTER TABLE OUTPUT_TABLE`
+- `./supabase/migrations/20251212_simplify_fsm_to_enums.sql:183:ALTER TABLE OUTPUT_TABLE`
+- `./supabase/migrations/20251212_simplify_fsm_to_enums.sql:314:COMMENT ON COLUMN OUTPUT_TABLE.state_key IS 'Output state (enum): draft, in_progress, review, published';`
+- `./supabase/migrations/20251212_simplify_fsm_to_enums.sql:328:-- SELECT 'outputs' as entity, state_key, count(*) FROM OUTPUT_TABLE GROUP BY state_key;`
+- `./supabase/migrations/20251213_fix_get_allowed_transitions_for_tasks.sql:53:			from OUTPUT_TABLE o`
+- `./supabase/migrations/20251216_add_project_id_to_edges.sql:62:FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20251216_add_project_id_to_edges.sql:83:FROM DECISION_TABLE dec`
+- `./supabase/migrations/20251216_add_project_id_to_edges.sql:128:FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20251216_add_project_id_to_edges.sql:149:FROM DECISION_TABLE dec`
+- `./supabase/migrations/20260126_update_get_project_full.sql:61:      FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20260126_update_get_project_full.sql:95:      FROM DECISION_TABLE dc`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:10:-- 3. Updates production OUTPUT_TABLE rows with new type_keys`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:12:-- 5. Adds promotion-related columns to OUTPUT_TABLE`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:45:-- PART 2: Add source linking columns to OUTPUT_TABLE for promotion flow`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:54:    WHERE table_name = 'OUTPUT_TABLE' AND column_name = 'source_document_id'`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:56:    ALTER TABLE OUTPUT_TABLE ADD COLUMN source_document_id uuid REFERENCES onto_documents(id) ON DELETE SET NULL;`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:62:    WHERE table_name = 'OUTPUT_TABLE' AND column_name = 'source_event_id'`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:64:    ALTER TABLE OUTPUT_TABLE ADD COLUMN source_event_id uuid REFERENCES onto_events(id) ON DELETE SET NULL;`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:69:CREATE INDEX IF NOT EXISTS idx_OUTPUT_TABLE_source_document ON OUTPUT_TABLE(source_document_id) WHERE source_document_id IS NOT NULL;`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:70:CREATE INDEX IF NOT EXISTS idx_OUTPUT_TABLE_source_event ON OUTPUT_TABLE(source_event_id) WHERE source_event_id IS NOT NULL;`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:72:COMMENT ON COLUMN OUTPUT_TABLE.source_document_id IS 'Reference to source document when output was promoted from a document';`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:73:COMMENT ON COLUMN OUTPUT_TABLE.source_event_id IS 'Reference to source event when output was promoted from an event';`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:391:-- PART 5: Migrate production OUTPUT_TABLE rows`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:397:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:403:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:409:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:415:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:421:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:427:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:433:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:439:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:445:UPDATE OUTPUT_TABLE SET`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:453:UPDATE OUTPUT_TABLE`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:465:  SELECT COUNT(*) INTO v_migrated_count FROM OUTPUT_TABLE WHERE props->>'legacy_type_key' IS NOT NULL;`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:466:  RAISE NOTICE 'Migrated % production OUTPUT_TABLE rows', v_migrated_count;`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:682:  SELECT COUNT(*) INTO v_output_count FROM OUTPUT_TABLE;`
+- `./supabase/migrations/20251208_deliverable_taxonomy_migration.sql:692:  RAISE NOTICE 'Production OUTPUT_TABLE rows: %', v_output_count;`
+- `./supabase/migrations/20251212_get_project_full.sql:87:      FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20251212_get_project_full.sql:117:      FROM DECISION_TABLE dc`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:160:-- PHASE 9: OUTPUT_TABLE - Add new columns`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:163:-- Add new columns to OUTPUT_TABLE`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:164:ALTER TABLE OUTPUT_TABLE ADD COLUMN IF NOT EXISTS deleted_at timestamptz;`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:165:ALTER TABLE OUTPUT_TABLE ADD COLUMN IF NOT EXISTS description text;`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:167:COMMENT ON COLUMN OUTPUT_TABLE.deleted_at IS 'Soft delete timestamp - null means active';`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:168:COMMENT ON COLUMN OUTPUT_TABLE.description IS 'Brief description of the output';`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:170:-- Create indexes for OUTPUT_TABLE`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:171:CREATE INDEX IF NOT EXISTS idx_OUTPUT_TABLE_deleted_at ON OUTPUT_TABLE(deleted_at)`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:175:-- PHASE 10: DECISION_TABLE - Add new columns`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:178:-- Add new columns to DECISION_TABLE`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:179:ALTER TABLE DECISION_TABLE ADD COLUMN IF NOT EXISTS deleted_at timestamptz;`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:180:ALTER TABLE DECISION_TABLE ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:182:COMMENT ON COLUMN DECISION_TABLE.deleted_at IS 'Soft delete timestamp - null means active';`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:183:COMMENT ON COLUMN DECISION_TABLE.updated_at IS 'Last update timestamp';`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:185:-- Create indexes for DECISION_TABLE`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:186:CREATE INDEX IF NOT EXISTS idx_DECISION_TABLE_deleted_at ON DECISION_TABLE(deleted_at)`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:259:-- OUTPUT_TABLE search vector update (add description)`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:264:    WHERE table_name = 'OUTPUT_TABLE'`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:267:    ALTER TABLE OUTPUT_TABLE DROP COLUMN IF EXISTS search_vector;`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:270:  ALTER TABLE OUTPUT_TABLE ADD COLUMN search_vector tsvector`
+- `./supabase/migrations/20251220_onto_plans_goals_milestones_risks_schema.sql:277:  CREATE INDEX IF NOT EXISTS idx_OUTPUT_TABLE_search ON OUTPUT_TABLE USING GIN(search_vector);`
+- `./supabase/migrations/20250615000003_fix_fsm_variant_resolution.sql:59:			from OUTPUT_TABLE o`
+- `./supabase/migrations/20260320000002_project_sharing_access_fixes.sql:142:    'output_count', (SELECT count(*) FROM OUTPUT_TABLE WHERE project_id = p.id AND deleted_at IS NULL),`
+- `./supabase/migrations/20260320000002_project_sharing_access_fixes.sql:148:    'decision_count', (SELECT count(*) FROM DECISION_TABLE WHERE project_id = p.id AND deleted_at IS NULL)`
+- `./supabase/migrations/20260320000002_project_sharing_access_fixes.sql:220:      FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20260320000002_project_sharing_access_fixes.sql:254:      FROM DECISION_TABLE dc`
+- `./supabase/migrations/applied_backup/20251120_create_specific_missing_templates.sql:9:UPDATE OUTPUT_TABLE`
+- `./supabase/migrations/applied_backup/20251120_create_specific_missing_templates.sql:13:UPDATE OUTPUT_TABLE`
+- `./supabase/migrations/applied_backup/20251120_create_specific_missing_templates.sql:17:UPDATE OUTPUT_TABLE`
+- `./supabase/migrations/20250615000004_guard_visibility_and_fsm_fix.sql:58:			from OUTPUT_TABLE o`
+- `./supabase/migrations/20251211_remove_template_dependencies_from_rpc.sql:58:			FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20260129_align_project_calendars_to_onto_projects.sql:52:	v_output_ids uuid[] := coalesce((select array_agg(id) from OUTPUT_TABLE where project_id = p_project_id), '{}'::uuid[]);`
+- `./supabase/migrations/20260129_align_project_calendars_to_onto_projects.sql:55:	v_decision_ids uuid[] := coalesce((select array_agg(id) from DECISION_TABLE where project_id = p_project_id), '{}'::uuid[]);`
+- `./supabase/migrations/20260129_align_project_calendars_to_onto_projects.sql:109:			'OUTPUT_TABLE',`
+- `./supabase/migrations/20260129_align_project_calendars_to_onto_projects.sql:114:			'DECISION_TABLE',`
+- `./supabase/migrations/20260129_align_project_calendars_to_onto_projects.sql:127:	DELETE FROM DECISION_TABLE WHERE project_id = p_project_id;`
+- `./supabase/migrations/20260129_align_project_calendars_to_onto_projects.sql:131:	DELETE FROM OUTPUT_TABLE WHERE project_id = p_project_id;`
+- `./supabase/migrations/20251220_seed_manhattan_project_example_project.sql:39:DELETE FROM DECISION_TABLE WHERE project_id = '66666666-6666-6666-6666-666666666666';`
+- `./supabase/migrations/20251220_seed_manhattan_project_example_project.sql:960:INSERT INTO DECISION_TABLE (id, project_id, title, decision_at, rationale, props, created_by) VALUES`
+- `./supabase/migrations/20251220_seed_acotar_example_project.sql:77:DELETE FROM DECISION_TABLE WHERE project_id = '55555555-5555-5555-5555-555555555555';`
+- `./supabase/migrations/20251220_seed_acotar_example_project.sql:808:INSERT INTO DECISION_TABLE (id, project_id, title, decision_at, rationale, props, created_by) VALUES`
+- `./supabase/migrations/20251201_task_type_key_and_edge_based_plans.sql:161:      from OUTPUT_TABLE o`
+- `./supabase/migrations/20260128_update_onto_search_entities_soft_delete.sql:201:    from OUTPUT_TABLE o`
+- `./supabase/migrations/20251220_cleanup_washington_example_project.sql:31:  DELETE FROM DECISION_TABLE WHERE project_id = project_uuid;`
+- `./supabase/migrations/20251220_cleanup_washington_example_project.sql:32:  RAISE NOTICE 'Deleted DECISION_TABLE';`
+- `./supabase/migrations/20251205_delete_onto_project_function.sql:13:	v_output_ids uuid[] := coalesce((select array_agg(id) from OUTPUT_TABLE where project_id = p_project_id), '{}'::uuid[]);`
+- `./supabase/migrations/20251205_delete_onto_project_function.sql:16:	v_decision_ids uuid[] := coalesce((select array_agg(id) from DECISION_TABLE where project_id = p_project_id), '{}'::uuid[]);`
+- `./supabase/migrations/20251205_delete_onto_project_function.sql:70:			'OUTPUT_TABLE',`
+- `./supabase/migrations/20251205_delete_onto_project_function.sql:75:			'DECISION_TABLE',`
+- `./supabase/migrations/20251205_delete_onto_project_function.sql:92:	delete from DECISION_TABLE where project_id = p_project_id;`
+- `./supabase/migrations/20251205_delete_onto_project_function.sql:96:	delete from OUTPUT_TABLE where project_id = p_project_id;`
+- `./supabase/migrations/20251219_get_project_skeleton.sql:41:    'output_count', (SELECT count(*) FROM OUTPUT_TABLE WHERE project_id = p.id),`
+- `./supabase/migrations/20260125_add_type_key_to_DECISION_TABLE.sql:1:-- supabase/migrations/20260125_add_type_key_to_DECISION_TABLE.sql`
+- `./supabase/migrations/20260125_add_type_key_to_DECISION_TABLE.sql:2:-- Add type_key to DECISION_TABLE for LLM classification`
+- `./supabase/migrations/20260125_add_type_key_to_DECISION_TABLE.sql:4:ALTER TABLE DECISION_TABLE`
+- `./supabase/migrations/20260125_add_type_key_to_DECISION_TABLE.sql:7:UPDATE DECISION_TABLE`
+- `./supabase/migrations/20260125_add_type_key_to_DECISION_TABLE.sql:11:ALTER TABLE DECISION_TABLE`
+- `./supabase/migrations/20260125_add_type_key_to_DECISION_TABLE.sql:14:ALTER TABLE DECISION_TABLE`
+- `./supabase/migrations/20260125_add_type_key_to_DECISION_TABLE.sql:17:COMMENT ON COLUMN DECISION_TABLE.type_key IS 'Decision classification type key';`
+- `./supabase/migrations/20251220_seed_grrm_writing_example_project.sql:55:DELETE FROM DECISION_TABLE WHERE project_id = '44444444-4444-4444-4444-444444444444';`
+- `./supabase/migrations/20251220_seed_grrm_writing_example_project.sql:553:INSERT INTO DECISION_TABLE (id, project_id, title, decision_at, rationale, props, created_by) VALUES`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:8:--   onto_tasks, DECISION_TABLE, onto_risks, onto_documents, onto_edges`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:66:ALTER TABLE DECISION_TABLE ENABLE ROW LEVEL SECURITY;`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:83:    'onto_tasks', 'DECISION_TABLE', 'onto_risks', 'onto_documents', 'onto_edges'`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:374:-- STEP 9: DECISION_TABLE policies`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:378:  ON DECISION_TABLE FOR SELECT`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:381:    WHERE p.id = DECISION_TABLE.project_id AND p.created_by = current_actor_id()`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:385:  ON DECISION_TABLE FOR SELECT`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:389:  ON DECISION_TABLE FOR SELECT`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:392:    WHERE p.id = DECISION_TABLE.project_id AND p.is_public = true`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:396:  ON DECISION_TABLE FOR INSERT`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:399:    WHERE p.id = DECISION_TABLE.project_id AND p.created_by = current_actor_id()`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:403:  ON DECISION_TABLE FOR INSERT`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:407:  ON DECISION_TABLE FOR UPDATE`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:410:    WHERE p.id = DECISION_TABLE.project_id AND p.created_by = current_actor_id()`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:414:  ON DECISION_TABLE FOR UPDATE`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:418:  ON DECISION_TABLE FOR DELETE`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:421:    WHERE p.id = DECISION_TABLE.project_id AND p.created_by = current_actor_id()`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:425:  ON DECISION_TABLE FOR DELETE`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:603:GRANT SELECT, INSERT, UPDATE, DELETE ON DECISION_TABLE TO authenticated;`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:614:GRANT SELECT ON DECISION_TABLE TO anon;`
+- `./supabase/migrations/20251220_ontology_rls_policies.sql:643:  RAISE NOTICE '  - DECISION_TABLE';`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:290:    'onto_tasks', 'DECISION_TABLE', 'onto_risks', 'onto_documents', 'onto_edges',`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:500:-- DECISION_TABLE policies`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:502:  ON DECISION_TABLE FOR SELECT`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:506:  ON DECISION_TABLE FOR SELECT`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:510:  ON DECISION_TABLE FOR SELECT`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:513:    WHERE p.id = DECISION_TABLE.project_id AND p.is_public = true`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:517:  ON DECISION_TABLE FOR INSERT`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:521:  ON DECISION_TABLE FOR INSERT`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:525:  ON DECISION_TABLE FOR UPDATE`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:529:  ON DECISION_TABLE FOR UPDATE`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:533:  ON DECISION_TABLE FOR DELETE`
+- `./supabase/migrations/20260320000000_project_sharing_membership.sql:537:  ON DECISION_TABLE FOR DELETE`
+- `./supabase/migrations/20251221_soft_delete_onto_projects.sql:63:  UPDATE OUTPUT_TABLE`
+- `./supabase/migrations/20251221_soft_delete_onto_projects.sql:78:  UPDATE DECISION_TABLE`
+- `./supabase/migrations/20251221_soft_delete_onto_projects.sql:134:  UPDATE OUTPUT_TABLE`
+- `./supabase/migrations/20251221_soft_delete_onto_projects.sql:146:  UPDATE DECISION_TABLE`
+- `./supabase/migrations/20251221_soft_delete_onto_projects.sql:215:    'output_count', (SELECT count(*) FROM OUTPUT_TABLE WHERE project_id = p.id AND deleted_at IS NULL),`
+- `./supabase/migrations/20251221_soft_delete_onto_projects.sql:315:      FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20251221_soft_delete_onto_projects.sql:345:      FROM DECISION_TABLE dc`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:1:-- supabase/migrations/20251231_enhance_DECISION_TABLE.sql`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:2:-- Migration: Enhance DECISION_TABLE for Mobile Command Center`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:6:-- PHASE 1: Add new columns to DECISION_TABLE`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:10:ALTER TABLE DECISION_TABLE ADD COLUMN IF NOT EXISTS state_key TEXT NOT NULL DEFAULT 'pending';`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:13:ALTER TABLE DECISION_TABLE ADD COLUMN IF NOT EXISTS outcome TEXT;`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:16:ALTER TABLE DECISION_TABLE ADD COLUMN IF NOT EXISTS description TEXT;`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:19:ALTER TABLE DECISION_TABLE ALTER COLUMN decision_at DROP NOT NULL;`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:25:COMMENT ON COLUMN DECISION_TABLE.state_key IS 'Decision state: pending, made, deferred, reversed';`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:26:COMMENT ON COLUMN DECISION_TABLE.outcome IS 'What was decided - the actual decision made';`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:27:COMMENT ON COLUMN DECISION_TABLE.description IS 'Context and background for the decision';`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:28:COMMENT ON COLUMN DECISION_TABLE.decision_at IS 'When the decision was made (nullable for pending decisions)';`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:34:CREATE INDEX IF NOT EXISTS idx_DECISION_TABLE_state_key ON DECISION_TABLE(state_key);`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:44:    WHERE table_name = 'DECISION_TABLE'`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:47:    ALTER TABLE DECISION_TABLE ADD COLUMN search_vector tsvector`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:56:    CREATE INDEX IF NOT EXISTS idx_DECISION_TABLE_search ON DECISION_TABLE USING GIN(search_vector);`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:65:UPDATE DECISION_TABLE`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:100:    'output_count', (SELECT count(*) FROM OUTPUT_TABLE WHERE project_id = p.id AND deleted_at IS NULL),`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:106:    'decision_count', (SELECT count(*) FROM DECISION_TABLE WHERE project_id = p.id AND deleted_at IS NULL)`
+- `./supabase/migrations/20251231_enhance_DECISION_TABLE.sql:120:  RAISE NOTICE 'DECISION_TABLE enhancement complete - added state_key, outcome, description columns';`
+- `./supabase/migrations/20260116_ontology_brief_query_indexes.sql:24:CREATE INDEX IF NOT EXISTS idx_OUTPUT_TABLE_project_active`
+- `./supabase/migrations/20260116_ontology_brief_query_indexes.sql:25:  ON OUTPUT_TABLE(project_id)`
+- `./supabase/migrations/20260116_ontology_brief_query_indexes.sql:32:CREATE INDEX IF NOT EXISTS idx_DECISION_TABLE_project_active`
+- `./supabase/migrations/20260116_ontology_brief_query_indexes.sql:33:  ON DECISION_TABLE(project_id)`
+- `./supabase/migrations/20250615000005_fsm_guard_failures.sql:61:            FROM OUTPUT_TABLE o`
+- `./supabase/migrations/20251220_seed_washington_example_project.sql:54:DELETE FROM DECISION_TABLE WHERE project_id = '11111111-1111-1111-1111-111111111111';`
+- `./supabase/migrations/20251220_seed_washington_example_project.sql:649:INSERT INTO DECISION_TABLE (id, project_id, title, decision_at, rationale, props, created_by) VALUES`
+- `./supabase/migrations/20251220_seed_washington_example_project.sql:1403:INSERT INTO DECISION_TABLE (id, project_id, title, decision_at, rationale, props, created_by) VALUES`
+- `./supabase/migrations/20251220_seed_washington_example_project.sql:1925:INSERT INTO DECISION_TABLE (id, project_id, title, decision_at, rationale, props, created_by) VALUES`

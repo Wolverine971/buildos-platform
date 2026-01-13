@@ -4,7 +4,7 @@
 
 ## Overview
 
-This document captures brainstormed ideas for example projects that demonstrate BuildOS's ontology graph capabilities. These projects are designed to showcase deeply nested structures with goals, milestones, plans, tasks, decisions, risks, and documents.
+This document captures brainstormed ideas for example projects that demonstrate BuildOS's ontology graph capabilities. These projects are designed to showcase deeply nested structures with goals, milestones, plans, tasks, risks, and documents.
 
 ---
 
@@ -59,7 +59,7 @@ This document captures brainstormed ideas for example projects that demonstrate 
 
 - Clear goals: Build atomic bomb before Germany
 - Complex organization: Los Alamos, Oak Ridge, Hanford
-- Famous decisions: Uranium vs plutonium paths, target selection
+- Major inflection points: Uranium vs plutonium paths, target selection
 - Documented risks: Radiation, Nazi competition, chain reaction concerns
 - Rich primary sources: Einstein-Szilard letter, Szilard petition, Trinity test reports
 - Ethical dimensions: Scientists' moral struggles, Oppenheimer's "destroyer of worlds"
@@ -89,7 +89,7 @@ This document captures brainstormed ideas for example projects that demonstrate 
 
 - Massive coordination: 5 beaches, airborne, naval
 - Deception operation: Fortitude (fake army)
-- Weather decision: Eisenhower's gamble
+- Weather window: Eisenhower's gamble
 - Famous documents: "In case of failure" letter
 - Clear success metrics
 
@@ -100,7 +100,7 @@ This document captures brainstormed ideas for example projects that demonstrate 
 - Modern, ongoing documentation
 - Famous failures leading to success
 - Iterative engineering philosophy
-- Cost revolution decisions
+- Cost revolution milestones
 - Elon Musk communications as documents
 
 ---
@@ -115,7 +115,6 @@ From EXAMPLE_PROJECT_CREATION_GUIDE.md:
 | Defined milestones    | `onto_milestones` |
 | Complex planning      | `onto_plans`      |
 | Actionable tasks      | `onto_tasks`      |
-| Critical decisions    | `onto_decisions`  |
 | Known risks           | `onto_risks`      |
 | Documentary evidence  | `onto_documents`  |
 | Rich interconnections | `onto_edges`      |

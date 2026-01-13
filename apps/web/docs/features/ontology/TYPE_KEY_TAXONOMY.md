@@ -16,14 +16,12 @@
 | **onto_tasks**        | Yes           | `task.{work_mode}[.{specialization}]`       | 12        | `task.execute`, `task.coordinate.meeting`                 |
 | **onto_plans**        | Yes           | `plan.{family}[.{variant}]`                 | 20+       | `plan.timebox.sprint`, `plan.campaign.marketing`          |
 | **onto_goals**        | Yes           | `goal.{family}[.{variant}]`                 | 12+       | `goal.outcome.project`, `goal.metric.revenue`             |
-| **onto_outputs**      | Yes           | `output.{family}[.{variant}]`               | 25+       | `output.written.chapter`, `output.media.slide_deck`       |
 | **onto_documents**    | Yes           | `document.{family}[.{variant}]`             | 20+       | `document.context.project`, `document.knowledge.research` |
 | **onto_risks**        | Yes           | `risk.{family}[.{variant}]`                 | 18+       | `risk.technical.security`, `risk.schedule.dependency`     |
 | **onto_events**       | Yes           | `event.{family}[.{variant}]`                | 18+       | `event.work.focus_block`, `event.collab.meeting.standup`  |
 | **onto_requirements** | Yes           | `requirement.{type}[.{category}]`           | 6         | `requirement.functional`, `requirement.constraint`        |
 | **onto_metrics**      | No            | Inherited from project                      | -         | N/A                                                       |
 | **onto_milestones**   | No            | Inherited from project                      | -         | N/A                                                       |
-| **onto_decisions**    | No            | Inherited from project                      | -         | N/A                                                       |
 
 ---
 
@@ -271,7 +269,6 @@ Role belongs to the user and influences which templates are shown, but does not 
   |--------|---------------|---------|
   | context | `document.context.base` | Big picture, intent, constraints |
   | knowledge | `document.knowledge.base` | Research, findings, raw learning |
-  | decision | `document.decision.base` | Decisions and commitments |
   | spec | `document.spec.base` | Formalized "what/how" |
   | reference | `document.reference.base` | Reusable guides / handbooks |
   | intake | `document.intake.base` | Information gathered at start |
@@ -279,37 +276,12 @@ Role belongs to the user and influences which templates are shown, but does not 
 - **Concrete Examples**:
     - `document.context.project` - Canonical project context
     - `document.knowledge.research` - General research notes
-    - `document.decision.meeting_notes` - Meeting notes + decisions
     - `document.spec.product` - Product spec
     - `document.reference.handbook` - Handbook / playbook
     - `document.intake.client` - Client intake form
 
 - **Context Docs**: `document.context.project` links via `onto_projects.context_document_id`
 - **Why**: Documents have different purposes and schemas, can be versioned independently
-
-#### onto_outputs (Deliverables)
-
-- **Format**: `output.{family}[.{variant}]`
-- **Families** (content modality):
-  | Family | Abstract Base | Description |
-  |--------|---------------|-------------|
-  | written | `output.written.base` | Long-form text, structured writing |
-  | media | `output.media.base` | Visual/audio/video artifacts |
-  | software | `output.software.base` | Code, releases, APIs |
-  | operational | `output.operational.base` | Business/ops deliverables |
-
-- **Concrete Examples**:
-    - `output.written.chapter` - Book chapter
-    - `output.written.article` - Article / essay
-    - `output.written.blog_post` - Blog post
-    - `output.media.design_mockup` - Design mockup
-    - `output.media.slide_deck` - Presentation deck
-    - `output.software.feature` - Shipped feature
-    - `output.software.release` - Versioned release
-    - `output.operational.report` - Report
-    - `output.operational.dashboard` - Live dashboard
-
-- **Why**: Different output types have completely different schemas and lifecycles
 
 #### onto_risks
 
@@ -388,11 +360,6 @@ These entities inherit meaning from their parent project and don't need independ
 
 - **Why not**: Temporal markers within a project, no schema variation
 - **Pattern**: Just `{title, due_at, props}` within project context
-
-#### onto_decisions
-
-- **Why not**: Project-specific choices, standard schema
-- **Pattern**: `{title, rationale, decision_at}` within project
 
 ### 3. Relational/Infrastructure Entities (No Type Keys)
 
@@ -579,7 +546,6 @@ SELECT * FROM onto_projects
 WHERE type_key LIKE 'project.service.%';
 
 -- All written outputs
-SELECT * FROM onto_outputs
 WHERE type_key LIKE 'output.written.%';
 
 -- All campaign-style plans

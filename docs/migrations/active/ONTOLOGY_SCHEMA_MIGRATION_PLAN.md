@@ -5,7 +5,7 @@
 > **Created:** 2024-12-20
 > **Status:** Complete
 > **Priority:** High
-> **Progress:** All 10 Phases Complete (onto_tasks, onto_projects, onto_documents, onto_plans, onto_goals, onto_milestones, onto_risks, onto_requirements, onto_outputs, onto_decisions)
+> **Progress:** All 8 Phases Complete (onto_tasks, onto_projects, onto_documents, onto_plans, onto_goals, onto_milestones, onto_risks, onto_requirements)
 
 ## Overview
 
@@ -27,8 +27,6 @@ This document outlines the comprehensive migration plan for updating the ontolog
 | `onto_milestones`   | `milestone`, `description`, `completed_at`, `updated_at`, `deleted_at`           | —               | `props.description` → `description`                                      |
 | `onto_risks`        | `content`, `deleted_at`, `mitigated_at`, `updated_at`                            | —               | —                                                                        |
 | `onto_requirements` | `deleted_at`, `updated_at`, `priority`                                           | —               | —                                                                        |
-| `onto_outputs`      | `deleted_at`, `description`                                                      | —               | —                                                                        |
-| `onto_decisions`    | `deleted_at`, `updated_at`                                                       | —               | —                                                                        |
 
 ---
 
@@ -44,8 +42,6 @@ We will update tables **one at a time** in the following order:
 6. **onto_milestones**
 7. **onto_risks**
 8. **onto_requirements**
-9. **onto_outputs**
-10. **onto_decisions**
 
 ---
 
@@ -413,65 +409,6 @@ CREATE INDEX IF NOT EXISTS idx_onto_requirements_priority ON onto_requirements(p
 
 ---
 
-## Phase 9: onto_outputs Migration ✅ COMPLETE
-
-> **Completed:** 2024-12-20
-
-### 9.1 New Columns
-
-```sql
-ALTER TABLE onto_outputs ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
-ALTER TABLE onto_outputs ADD COLUMN IF NOT EXISTS description text;
-
-CREATE INDEX IF NOT EXISTS idx_onto_outputs_deleted_at ON onto_outputs(deleted_at) WHERE deleted_at IS NULL;
-
--- Search vector with description column
-ALTER TABLE onto_outputs ADD COLUMN search_vector tsvector
-  GENERATED ALWAYS AS (
-    setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
-    setweight(to_tsvector('english', coalesce(props::text, '')), 'D')
-  ) STORED;
-```
-
-**Note:** `onto_outputs` already has `updated_at` column.
-
-### 9.2 Files Updated
-
-| File                                                      | Changes Made                                        | Status |
-| --------------------------------------------------------- | --------------------------------------------------- | ------ |
-| `/apps/web/src/routes/api/onto/outputs/create/+server.ts` | Accept description column                           | ✅     |
-| `/apps/web/src/routes/api/onto/outputs/[id]/+server.ts`   | Soft delete (deleted_at), PATCH description, filter | ✅     |
-| `/packages/shared-types/src/database.schema.ts`           | Added deleted_at, description                       | ✅     |
-
-**Modals:** OutputCreateModal.svelte and OutputEditModal.svelte can be updated to use description field.
-
----
-
-## Phase 10: onto_decisions Migration ✅ COMPLETE
-
-> **Completed:** 2024-12-20
-
-### 10.1 New Columns
-
-```sql
-ALTER TABLE onto_decisions ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
-ALTER TABLE onto_decisions ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
-
-CREATE INDEX IF NOT EXISTS idx_onto_decisions_deleted_at ON onto_decisions(deleted_at) WHERE deleted_at IS NULL;
-```
-
-### 10.2 Files Updated
-
-| File                                            | Changes Made                 | Status |
-| ----------------------------------------------- | ---------------------------- | ------ |
-| `/packages/shared-types/src/database.schema.ts` | Added deleted_at, updated_at | ✅     |
-| SQL migration file                              | Added columns and indexes    | ✅     |
-
-**Note:** No dedicated API endpoints or modals exist for decisions. Consider adding if needed.
-
----
-
 ## Type Definition Updates
 
 After each phase, regenerate TypeScript types:
@@ -529,8 +466,6 @@ ALTER TABLE onto_tasks DROP COLUMN IF EXISTS description;
 | 6     | onto_milestones   | Medium           | None                |
 | 7     | onto_risks        | Low              | None                |
 | 8     | onto_requirements | Low              | None                |
-| 9     | onto_outputs      | Low              | None                |
-| 10    | onto_decisions    | Low              | None                |
 
 ---
 

@@ -134,7 +134,6 @@ RETURNS jsonb AS $$
     'next_step_source', p.next_step_source,
     'next_step_updated_at', p.next_step_updated_at,
     'task_count', (SELECT count(*) FROM onto_tasks WHERE project_id = p.id),
-    'output_count', (SELECT count(*) FROM onto_outputs WHERE project_id = p.id),
     'document_count', (SELECT count(*) FROM onto_documents WHERE project_id = p.id),
     'goal_count', (SELECT count(*) FROM onto_goals WHERE project_id = p.id),
     'plan_count', (SELECT count(*) FROM onto_plans WHERE project_id = p.id),

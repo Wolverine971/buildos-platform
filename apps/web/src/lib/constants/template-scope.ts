@@ -81,15 +81,15 @@ export const TEMPLATE_SCOPE_DEFINITIONS: Record<string, TemplateScopeDefinition>
 	document: scope('document', {
 		label: 'Document',
 		description:
-			'Internal knowledge artifacts: context, knowledge, decisions, specs, references, and intake forms.',
+			'Internal knowledge artifacts: context, knowledge, specs, references, and intake forms.',
 		category: 'autonomous',
 		typeKeyPattern: 'document.{family}[.{variant}]',
 		typeKeyRegex: /^document\.[a-z_]+(\.[a-z_]+)?$/,
-		families: ['context', 'knowledge', 'decision', 'spec', 'reference', 'intake'],
+		families: ['context', 'knowledge', 'spec', 'reference', 'intake'],
 		facetUsage: 'context / stage',
-		llmCue: 'Identify the document family: context (big picture), knowledge (research/findings), decision (meeting notes/RFCs), spec (requirements/technical), reference (handbooks/SOPs), intake (discovery forms). Detail the knowledge captured and reuse scenario.',
+		llmCue: 'Identify the document family: context (big picture), knowledge (research/findings), spec (requirements/technical), reference (handbooks/SOPs), intake (discovery forms). Detail the knowledge captured and reuse scenario.',
 		exampleBrainDump:
-			'Example: Project context doc → document.context.project. Research notes → document.knowledge.research. Meeting notes → document.decision.meeting_notes.'
+			'Example: Project context doc → document.context.project. Research notes → document.knowledge.research. Spec draft → document.spec.technical.'
 	}),
 	goal: scope('goal', {
 		label: 'Goal',

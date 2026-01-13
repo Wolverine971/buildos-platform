@@ -250,25 +250,6 @@
           state_key: "planned"
         }
       ],
-      outputs: [
-        {
-          name: "Conference Program Schedule",
-          type_key: "output.event.program",
-          state_key: "draft",
-          props: {
-            sessions_count: 30,
-            tracks: 3
-          }
-        },
-        {
-          name: "Sponsor Booth Map",
-          type_key: "output.event.floorplan",
-          state_key: "planned",
-          props: {
-            booths: 5
-          }
-        }
-      ],
       milestones: [
         {
           title: "Venue Contract Signed",
@@ -479,7 +460,6 @@
     - Speaker Information Pack
     - Attendee Welcome Packet
 
-- ✅ **onto_outputs**: 2 deliverables
     - Conference Program Schedule (30 sessions, 3 tracks)
     - Sponsor Booth Map (5 booths)
 
@@ -883,26 +863,10 @@
     })
     ```
 
-5. **Create Decision Record**:
-    ```
-    create_onto_decision({
-      project_id: "[current_project_id]",
-      title: "Photographer Selected: Sarah Chen Photography",
-      rationale: "Excellent portfolio of outdoor weddings, within budget at $4,500 for 8-hour coverage",
-      decision_at: "[current_date]",
-      props: {
-        category: "vendor_selection",
-        decision_maker: "event_planner",
-        impact: "medium"
-      }
-    })
-    ```
-
 ### Expected Results:
 
 - ✅ **onto_tasks**: 1 completed (photographer), 2 updated (florist, catering)
 - ✅ **onto_metric_points**: 1 budget data point ($14,250 allocated)
-- ✅ **onto_decisions**: 1 vendor selection decision
 - ✅ **Task tracking**: Costs, vendor names, next actions
 - ✅ **Context maintained**: Still in project workspace
 
@@ -1294,7 +1258,7 @@
         final_guest_count: 142,
         budget_spent: 48200,
         client_rating: 5,
-        deliverables: {
+        assets: {
           photos: 850,
           video: "pending"
         },
@@ -1375,7 +1339,7 @@ This test suite validates:
 
 1. ✅ **Conference Planning**: Large-scale events with speakers, sponsors, attendees
 2. ✅ **Wedding Planning**: Personal events with vendors, timeline, budget
-3. ✅ **Vendor Management**: Contracts, payments, deliverables tracking
+3. ✅ **Vendor Management**: Contracts, payments, asset tracking
 4. ✅ **Timeline Management**: Detailed event day schedules
 5. ✅ **Budget Tracking**: Real-time expense monitoring
 6. ✅ **Guest Management**: RSVPs, attendance, experience

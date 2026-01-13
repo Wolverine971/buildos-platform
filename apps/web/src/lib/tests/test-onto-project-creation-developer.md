@@ -183,16 +183,6 @@
           state_key: "draft"
         }
       ],
-      outputs: [
-        {
-          name: "MVP Release v1.0",
-          type_key: "output.software.release",
-          state_key: "planned",
-          props: {
-            version: "1.0.0",
-            release_type: "mvp"
-          }
-        }
       ]
     })
     ```
@@ -232,7 +222,6 @@
     - Architecture doc
     - API documentation
 
-- ✅ **onto_outputs**: 1 release output
     - MVP v1.0 planned
 
 - ✅ **Context shift**: `project_create` → `project`
@@ -400,43 +389,19 @@
 
 ---
 
-## Test Prompt 4: Technical Decision Record
+## Test Prompt 4: Technical Architecture Update
 
-**Scenario**: Developer documenting architectural decision
+**Scenario**: Developer documenting architecture changes
 
 **Context Type**: `project`
 
 ### User Input:
 
-"We've decided to use Redis for caching instead of Memcached. Main reasons: better data structures, pub/sub support for real-time features, and persistence options. Considered Memcached but Redis fits our needs better for WebSocket state management."
+"We're standardizing on Redis for caching instead of Memcached. Main reasons: better data structures, pub/sub support for real-time features, and persistence options. Considered Memcached but Redis fits our needs better for WebSocket state management."
 
 ### Expected Agent Behavior:
 
-1. **Create Decision Record**:
-
-    ```
-    create_onto_decision({
-      project_id: "[current_project_id]",
-      title: "Caching Technology: Redis over Memcached",
-      rationale: "Redis selected for superior data structures, pub/sub capabilities for real-time features, and persistence options crucial for WebSocket state management",
-      decision_at: "[current_date]",
-      props: {
-        category: "infrastructure",
-        decision_type: "technical_architecture",
-        alternatives_considered: ["Memcached"],
-        redis_benefits: [
-          "Rich data structures (lists, sets, hashes)",
-          "Built-in pub/sub for WebSocket coordination",
-          "Persistence options (RDB, AOF)",
-          "Better suited for real-time state management"
-        ],
-        impact: "high",
-        decision_maker: "engineering_team"
-      }
-    })
-    ```
-
-2. **Update Architecture Document**:
+1. **Update Architecture Document**:
 
     ```
     // Agent searches for architecture doc
@@ -457,11 +422,9 @@
 
 ### Expected Results:
 
-- ✅ **onto_decisions**: 1 decision record with rationale
 - ✅ **Alternatives documented**: Memcached considered
-- ✅ **Impact assessment**: High impact decision
 - ✅ **onto_documents**: Architecture doc updated
-- ✅ **Decision linkage**: Linked to project infrastructure
+- ✅ **Architecture note**: Caching choice recorded
 
 ---
 
@@ -522,24 +485,7 @@
     })
     ```
 
-2. **Create Release Outputs**:
-
-    ```
-    create_onto_output({
-      project_id: "[current_project_id]",
-      name: "Alpha Release v0.1",
-      type_key: "output.software.release",
-      state_key: "planned",
-      props: {
-        version: "0.1.0",
-        release_date: "[current_date + 2 weeks]"
-      }
-    })
-
-    // ... similar for beta and GA
-    ```
-
-3. **Create Release Plan**:
+2. **Create Release Plan**:
     ```
     create_onto_plan({
       project_id: "[current_project_id]",
@@ -559,7 +505,6 @@
 ### Expected Results:
 
 - ✅ **onto_milestones**: 3 release milestones with code freeze dates
-- ✅ **onto_outputs**: 3 release outputs (alpha, beta, GA)
 - ✅ **onto_plans**: 1 release management plan
 - ✅ **Release schedule**: Clear timeline established
 - ✅ **Code freeze tracking**: Freeze dates 3 days before each release
@@ -725,7 +670,7 @@ This test suite validates:
 1. ✅ **Technical Project Creation**: Full software project with architecture
 2. ✅ **Sprint/Agile Management**: Velocity tracking, story points
 3. ✅ **Bug/Feature Workflows**: Different task types and priorities
-4. ✅ **Decision Records**: Architectural decisions with rationale
+4. ✅ **Architecture Documentation**: Technical choices recorded in documents
 5. ✅ **Release Management**: Multi-stage release planning
 6. ✅ **Performance Metrics**: Comprehensive monitoring setup
 7. ✅ **Requirements Tracking**: Technical, performance, compliance requirements

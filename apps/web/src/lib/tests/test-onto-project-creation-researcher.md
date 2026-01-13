@@ -268,35 +268,6 @@
           }
         }
       ],
-      outputs: [
-        {
-          name: "Research Dataset - Anonymized",
-          type_key: "output.research.dataset",
-          state_key: "planned",
-          props: {
-            data_points: 2000,
-            format: "CSV",
-            anonymized: true
-          }
-        },
-        {
-          name: "Peer-Reviewed Journal Article",
-          type_key: "output.research.publication",
-          state_key: "planned",
-          props: {
-            publication_type: "journal_article",
-            target_journal: "Journal of Organizational Psychology"
-          }
-        },
-        {
-          name: "Conference Presentation",
-          type_key: "output.research.presentation",
-          state_key: "planned",
-          props: {
-            conference: "Academy of Management Annual Meeting 2027"
-          }
-        }
-      ],
       milestones: [
         {
           title: "IRB Approval Obtained",
@@ -511,7 +482,6 @@
     - Interview Guide
     - Literature Review
 
-- ✅ **onto_outputs**: 3 deliverables
     - Research Dataset (anonymized CSV)
     - Journal Article
     - Conference Presentation
@@ -766,17 +736,6 @@
           state_key: "planned"
         }
       ],
-      outputs: [
-        {
-          name: "Systematic Review Manuscript",
-          type_key: "output.research.publication",
-          state_key: "planned",
-          props: {
-            publication_type: "systematic_review",
-            target_journal: "Journal of Medical Internet Research"
-          }
-        }
-      ],
       metrics: [
         {
           name: "Papers Screened",
@@ -817,7 +776,6 @@
 - ✅ **onto_tasks**: 6 tasks (PICO, search strings, database search, screening, full-text, extraction)
 - ✅ **onto_requirements**: 3 requirements (PRISMA, dual screening, documentation)
 - ✅ **onto_documents**: 4 documents (protocol, search strategy, extraction form, flow diagram)
-- ✅ **onto_outputs**: 1 deliverable (manuscript)
 - ✅ **onto_metrics**: 3 metrics (screened, included, reliability)
 - ✅ **Context shift**: `project_create` → `project`
 
@@ -1247,27 +1205,7 @@
     })
     ```
 
-3. **Update Output Status**:
-
-    ```
-    search_onto_outputs({
-      project_id: "[current_project_id]",
-      search: "journal article"
-    })
-
-    update_onto_output({
-      output_id: "[journal_article_output_id]",
-      state_key: "in_progress",
-      props: {
-        manuscript_status: "ready_for_submission",
-        word_count: 7500,
-        target_journal: "Journal of Organizational Psychology",
-        submission_date: "[current_date + 2 weeks]"
-      }
-    })
-    ```
-
-4. **Create Publication Document**:
+3. **Create Publication Document**:
 
     ```
     create_onto_document({
@@ -1285,29 +1223,11 @@
     })
     ```
 
-5. **Create Decision Record**:
-    ```
-    create_onto_decision({
-      project_id: "[current_project_id]",
-      title: "Journal Selection: Journal of Organizational Psychology",
-      rationale: "Tier 1 journal in field, high impact factor (4.2), appropriate scope for mixed-methods research, 12-week review time acceptable",
-      decision_at: "[current_date]",
-      props: {
-        category: "publication",
-        alternatives_considered: ["Work & Stress", "Journal of Applied Psychology"],
-        impact_factor: 4.2,
-        acceptance_rate: 0.18
-      }
-    })
-    ```
-
 ### Expected Results:
 
 - ✅ **onto_tasks**: 4 submission/revision tasks
-- ✅ **onto_milestones**: 3 milestones (submission, review decision, revisions)
-- ✅ **onto_outputs**: 1 updated (manuscript in progress)
+- ✅ **onto_milestones**: 3 milestones (submission, review update, revisions)
 - ✅ **onto_documents**: 1 submitted manuscript version
-- ✅ **onto_decisions**: 1 journal selection decision
 - ✅ **Timeline tracking**: 12-week review + 4-week revision periods
 - ✅ **Context maintained**: Still in project workspace
 
@@ -1499,9 +1419,9 @@
 **Expected Behavior**:
 
 - Creates onto_insight documenting null findings
-- Updates onto_output to "negative_results" publication
+- Updates manuscript document to reflect negative results
 - Creates new onto_tasks for exploratory analysis
-- Creates onto_decision record about publication strategy
+- Creates a publication strategy document update
 - Updates project goals to reflect pivot
 - Maintains scientific rigor in documentation
 

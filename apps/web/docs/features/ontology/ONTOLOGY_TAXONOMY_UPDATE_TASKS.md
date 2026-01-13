@@ -170,7 +170,6 @@ const TYPE_KEY_PATTERNS = {
 
 ```sql
 -- All written outputs
-SELECT * FROM onto_outputs
 WHERE type_key LIKE 'output.written.%';
 
 -- All campaign-style plans
