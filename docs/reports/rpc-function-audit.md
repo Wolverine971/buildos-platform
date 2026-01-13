@@ -1,3 +1,5 @@
+<!-- docs/reports/rpc-function-audit.md -->
+
 # RPC Function Cross-Reference Audit
 
 Scope: compare `packages/shared-types/src/functions/index.md` and the SQL files in `packages/shared-types/src/functions/` against function signatures in `packages/shared-types/src/database.types.ts`. Focus: signature discrepancies and RPC functions touched by the outputs/decisions removal.

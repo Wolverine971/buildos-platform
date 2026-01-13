@@ -10,10 +10,8 @@ DECLARE
 	v_requirement_ids uuid[] := coalesce((select array_agg(id) from onto_requirements where project_id = p_project_id), '{}'::uuid[]);
 	v_plan_ids uuid[] := coalesce((select array_agg(id) from onto_plans where project_id = p_project_id), '{}'::uuid[]);
 	v_task_ids uuid[] := coalesce((select array_agg(id) from onto_tasks where project_id = p_project_id), '{}'::uuid[]);
-	v_output_ids uuid[] := coalesce((select array_agg(id) from onto_outputs where project_id = p_project_id), '{}'::uuid[]);
 	v_document_ids uuid[] := coalesce((select array_agg(id) from onto_documents where project_id = p_project_id), '{}'::uuid[]);
 	v_source_ids uuid[] := coalesce((select array_agg(id) from onto_sources where project_id = p_project_id), '{}'::uuid[]);
-	v_decision_ids uuid[] := coalesce((select array_agg(id) from onto_decisions where project_id = p_project_id), '{}'::uuid[]);
 	v_risk_ids uuid[] := coalesce((select array_agg(id) from onto_risks where project_id = p_project_id), '{}'::uuid[]);
 	v_milestone_ids uuid[] := coalesce((select array_agg(id) from onto_milestones where project_id = p_project_id), '{}'::uuid[]);
 	v_metric_ids uuid[] := coalesce((select array_agg(id) from onto_metrics where project_id = p_project_id), '{}'::uuid[]);
@@ -31,10 +29,8 @@ BEGIN
 		|| v_requirement_ids
 		|| v_plan_ids
 		|| v_task_ids
-		|| v_output_ids
 		|| v_document_ids
 		|| v_source_ids
-		|| v_decision_ids
 		|| v_risk_ids
 		|| v_milestone_ids
 		|| v_metric_ids
@@ -45,7 +41,6 @@ BEGIN
 	-- Delete secondary records first
 	DELETE FROM onto_event_sync WHERE event_id = any(v_event_ids);
 	DELETE FROM onto_metric_points WHERE metric_id = any(v_metric_ids);
-	DELETE FROM onto_output_versions WHERE output_id = any(v_output_ids);
 	DELETE FROM onto_document_versions WHERE document_id = any(v_document_ids);
 
 	-- Remove edges/assignments/permissions referencing any of these entities
@@ -54,11 +49,11 @@ BEGIN
 
 	DELETE FROM onto_assignments
 	WHERE object_id = any(v_all_ids)
-		AND object_kind = any (array['project','plan','task','goal','output','document','requirement','milestone','risk','decision','metric','event']);
+		AND object_kind = any (array['project','plan','task','goal','document','requirement','milestone','risk','metric','event']);
 
 	DELETE FROM onto_permissions
 	WHERE object_id = any(v_all_ids)
-		AND object_kind = any (array['project','plan','task','goal','output','document','requirement','milestone','risk','decision','metric','event']);
+		AND object_kind = any (array['project','plan','task','goal','document','requirement','milestone','risk','metric','event']);
 
 	DELETE FROM legacy_entity_mappings
 	WHERE onto_id = any(v_all_ids)
@@ -67,12 +62,10 @@ BEGIN
 			'onto_plans',
 			'onto_tasks',
 			'onto_goals',
-			'onto_outputs',
 			'onto_documents',
 			'onto_requirements',
 			'onto_milestones',
 			'onto_risks',
-			'onto_decisions',
 			'onto_sources',
 			'onto_metrics',
 			'onto_signals',
@@ -85,11 +78,9 @@ BEGIN
 	DELETE FROM onto_signals WHERE project_id = p_project_id;
 	DELETE FROM onto_insights WHERE project_id = p_project_id;
 	DELETE FROM onto_sources WHERE project_id = p_project_id;
-	DELETE FROM onto_decisions WHERE project_id = p_project_id;
 	DELETE FROM onto_risks WHERE project_id = p_project_id;
 	DELETE FROM onto_milestones WHERE project_id = p_project_id;
 	DELETE FROM onto_metrics WHERE project_id = p_project_id;
-	DELETE FROM onto_outputs WHERE project_id = p_project_id;
 	DELETE FROM onto_documents WHERE project_id = p_project_id;
 	DELETE FROM onto_tasks WHERE project_id = p_project_id;
 	DELETE FROM onto_plans WHERE project_id = p_project_id;

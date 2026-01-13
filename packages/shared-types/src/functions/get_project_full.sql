@@ -56,13 +56,6 @@ BEGIN
         AND t.deleted_at IS NULL
     ), '[]'::jsonb),
 
-    'outputs', COALESCE((
-      SELECT jsonb_agg(to_jsonb(o.*) ORDER BY o.created_at)
-      FROM onto_outputs o
-      WHERE o.project_id = p_project_id
-        AND o.deleted_at IS NULL
-    ), '[]'::jsonb),
-
     'documents', COALESCE((
       SELECT jsonb_agg(to_jsonb(d.*) ORDER BY d.created_at)
       FROM onto_documents d
@@ -88,13 +81,6 @@ BEGIN
       FROM onto_risks rk
       WHERE rk.project_id = p_project_id
         AND rk.deleted_at IS NULL
-    ), '[]'::jsonb),
-
-    'decisions', COALESCE((
-      SELECT jsonb_agg(to_jsonb(dc.*) ORDER BY dc.decision_at)
-      FROM onto_decisions dc
-      WHERE dc.project_id = p_project_id
-        AND dc.deleted_at IS NULL
     ), '[]'::jsonb),
 
     'metrics', COALESCE((

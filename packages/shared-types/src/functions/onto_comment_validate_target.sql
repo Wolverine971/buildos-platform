@@ -23,11 +23,6 @@ BEGIN
         SELECT 1 FROM onto_plans pl
         WHERE pl.id = p_entity_id AND pl.project_id = p_project_id
       );
-    WHEN 'output' THEN
-      RETURN EXISTS (
-        SELECT 1 FROM onto_outputs o
-        WHERE o.id = p_entity_id AND o.project_id = p_project_id
-      );
     WHEN 'document' THEN
       RETURN EXISTS (
         SELECT 1 FROM onto_documents d
@@ -52,11 +47,6 @@ BEGIN
       RETURN EXISTS (
         SELECT 1 FROM onto_risks rk
         WHERE rk.id = p_entity_id AND rk.project_id = p_project_id
-      );
-    WHEN 'decision' THEN
-      RETURN EXISTS (
-        SELECT 1 FROM onto_decisions dc
-        WHERE dc.id = p_entity_id AND dc.project_id = p_project_id
       );
     WHEN 'event' THEN
       RETURN EXISTS (

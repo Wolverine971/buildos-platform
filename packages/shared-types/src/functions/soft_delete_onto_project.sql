@@ -35,10 +35,6 @@ BEGIN
   SET deleted_at = v_now, updated_at = v_now
   WHERE project_id = p_project_id AND deleted_at IS NULL;
 
-  -- Soft delete outputs
-  UPDATE onto_outputs
-  SET deleted_at = v_now, updated_at = v_now
-  WHERE project_id = p_project_id AND deleted_at IS NULL;
 
   -- Soft delete milestones
   UPDATE onto_milestones
@@ -50,10 +46,6 @@ BEGIN
   SET deleted_at = v_now, updated_at = v_now
   WHERE project_id = p_project_id AND deleted_at IS NULL;
 
-  -- Soft delete decisions
-  UPDATE onto_decisions
-  SET deleted_at = v_now, updated_at = v_now
-  WHERE project_id = p_project_id AND deleted_at IS NULL;
 
   -- Soft delete events
   UPDATE onto_events
