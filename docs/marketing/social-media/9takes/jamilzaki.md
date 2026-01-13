@@ -21,7 +21,7 @@ tags:
     - researcher
     - author
     - social-connection
-path: docs/marketing/social-media/twitter-profiles/9takes/jamilzaki.md
+path: docs/marketing/social-media/9takes/jamilzaki.md
 ---
 
 # Jamil Zaki (@zakijam)

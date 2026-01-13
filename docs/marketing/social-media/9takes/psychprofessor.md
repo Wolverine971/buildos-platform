@@ -21,7 +21,7 @@ tags:
     - education
     - academic
     - science
-path: docs/marketing/social-media/twitter-profiles/9takes/psychprofessor.md
+path: docs/marketing/social-media/9takes/psychprofessor.md
 ---
 
 # Psychology Professor (@psychprofessor)

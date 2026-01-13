@@ -21,7 +21,7 @@ tags:
     - neurobiology
     - wired-for-love
     - relationships
-path: docs/marketing/social-media/twitter-profiles/9takes/stantatkin.md
+path: docs/marketing/social-media/9takes/stantatkin.md
 ---
 
 # Stan Tatkin (@StanTatkin)

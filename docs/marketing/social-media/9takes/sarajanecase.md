@@ -20,7 +20,7 @@ tags:
     - content-creator
     - instagram
     - type-descriptions
-path: docs/marketing/social-media/twitter-profiles/9takes/sarajanecase.md
+path: docs/marketing/social-media/9takes/sarajanecase.md
 ---
 
 # Sara Jane Case (@sarajanecase)

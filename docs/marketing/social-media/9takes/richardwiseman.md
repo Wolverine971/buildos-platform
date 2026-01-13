@@ -21,7 +21,7 @@ tags:
     - behavior-change
     - author
     - professor
-path: docs/marketing/social-media/twitter-profiles/9takes/richardwiseman.md
+path: docs/marketing/social-media/9takes/richardwiseman.md
 ---
 
 # Richard Wiseman (@RichardWiseman)

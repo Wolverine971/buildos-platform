@@ -21,7 +21,7 @@ tags:
     - growth
     - healing
     - patterns
-path: docs/marketing/social-media/twitter-profiles/9takes/mindsettherapy.md
+path: docs/marketing/social-media/9takes/mindsettherapy.md
 ---
 
 # Mindset Therapy (@mindsettherapy)

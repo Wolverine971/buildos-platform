@@ -21,7 +21,7 @@ tags:
     - duke
     - irrationality
     - decision-making
-path: docs/marketing/social-media/twitter-profiles/9takes/danariely.md
+path: docs/marketing/social-media/9takes/danariely.md
 ---
 
 # Dan Ariely (@DanAriely)

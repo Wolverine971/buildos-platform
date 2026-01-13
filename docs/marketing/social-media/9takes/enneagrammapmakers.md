@@ -20,7 +20,7 @@ tags:
     - chris-heuertz
     - interviews
     - teachers
-path: docs/marketing/social-media/twitter-profiles/9takes/enneagrammapmakers.md
+path: docs/marketing/social-media/9takes/enneagrammapmakers.md
 ---
 
 # Enneagram Mapmakers (@enneagrammapmakers)

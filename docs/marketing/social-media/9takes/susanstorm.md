@@ -21,7 +21,7 @@ tags:
     - author
     - type-intj
     - certified-coach
-path: docs/marketing/social-media/twitter-profiles/9takes/susanstorm.md
+path: docs/marketing/social-media/9takes/susanstorm.md
 ---
 
 # Susan Storm (@SusanStorm984)

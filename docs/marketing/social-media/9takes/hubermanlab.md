@@ -21,7 +21,7 @@ tags:
     - brain
     - protocols
     - science
-path: docs/marketing/social-media/twitter-profiles/9takes/hubermanlab.md
+path: docs/marketing/social-media/9takes/hubermanlab.md
 ---
 
 # Andrew Huberman (@hubaboryklab)

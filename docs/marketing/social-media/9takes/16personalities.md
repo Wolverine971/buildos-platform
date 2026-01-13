@@ -21,7 +21,7 @@ tags:
     - types
     - platform
     - assessment
-path: docs/marketing/social-media/twitter-profiles/9takes/16personalities.md
+path: docs/marketing/social-media/9takes/16personalities.md
 ---
 
 # 16Personalities (@16personalities)

@@ -21,7 +21,7 @@ tags:
     - author
     - podcast
     - wisdom
-path: docs/marketing/social-media/twitter-profiles/9takes/jayshetty.md
+path: docs/marketing/social-media/9takes/jayshetty.md
 ---
 
 # Jay Shetty (@jayshetty)

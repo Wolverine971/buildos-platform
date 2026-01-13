@@ -20,7 +20,7 @@ tags:
     - type-2
     - speaker
     - influencer
-path: docs/marketing/social-media/twitter-profiles/9takes/enneagramashton.md
+path: docs/marketing/social-media/9takes/enneagramashton.md
 ---
 
 # Ashton Whitmoyer-Ober (@enneagramashton)

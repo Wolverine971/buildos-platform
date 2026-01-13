@@ -21,7 +21,7 @@ tags:
     - rheti
     - assessment
     - professional
-path: docs/marketing/social-media/twitter-profiles/9takes/enneagraminstitute.md
+path: docs/marketing/social-media/9takes/enneagraminstitute.md
 ---
 
 # The Enneagram Institute (@enneagraminst)

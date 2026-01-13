@@ -21,7 +21,7 @@ tags:
     - eq
     - leadership
     - focus
-path: docs/marketing/social-media/twitter-profiles/9takes/danielgoleman.md
+path: docs/marketing/social-media/9takes/danielgoleman.md
 ---
 
 # Daniel Goleman (@DanielGolemanEI)

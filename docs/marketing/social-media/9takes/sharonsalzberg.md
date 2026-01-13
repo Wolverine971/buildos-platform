@@ -21,7 +21,7 @@ tags:
     - buddhism
     - insight-meditation
     - compassion
-path: docs/marketing/social-media/twitter-profiles/9takes/sharonsalzberg.md
+path: docs/marketing/social-media/9takes/sharonsalzberg.md
 ---
 
 # Sharon Salzberg (@SharonSalzberg)

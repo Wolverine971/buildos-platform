@@ -9,15 +9,15 @@ import { ApiResponse } from '$lib/utils/api-response';
  * Get today's SMS metrics snapshot (quick overview)
  */
 export const GET: RequestHandler = async ({ locals }) => {
-		try {
-			const session = await locals.safeGetSession();
+	try {
+		const session = await locals.safeGetSession();
 
-			if (!session?.user) {
-				return ApiResponse.unauthorized();
-			}
-			if (!session.user.is_admin) {
-				return ApiResponse.forbidden('Admin access required');
-			}
+		if (!session?.user) {
+			return ApiResponse.unauthorized();
+		}
+		if (!session.user.is_admin) {
+			return ApiResponse.forbidden('Admin access required');
+		}
 
 		// Fetch today's metrics from materialized view
 		const todayMetrics = await smsMetricsService.getTodayMetrics();

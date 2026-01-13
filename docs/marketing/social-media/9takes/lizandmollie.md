@@ -21,7 +21,7 @@ tags:
     - author
     - workplace
     - feelings
-path: docs/marketing/social-media/twitter-profiles/9takes/lizandmollie.md
+path: docs/marketing/social-media/9takes/lizandmollie.md
 ---
 
 # Liz & Mollie (@lizandmollie)

@@ -21,7 +21,7 @@ tags:
     - couples-therapy
     - john-gottman
     - evidence-based
-path: docs/marketing/social-media/twitter-profiles/9takes/gottmaninstitute.md
+path: docs/marketing/social-media/9takes/gottmaninstitute.md
 ---
 
 # The Gottman Institute (@GottmanInst)

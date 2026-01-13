@@ -21,7 +21,7 @@ tags:
     - trauma
     - author
     - instagram
-path: docs/marketing/social-media/twitter-profiles/9takes/nicolelePera.md
+path: docs/marketing/social-media/9takes/nicolelePera.md
 ---
 
 # Nicole LePera (@Theholisticpsyc)

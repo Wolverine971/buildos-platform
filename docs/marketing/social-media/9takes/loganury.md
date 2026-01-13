@@ -21,7 +21,7 @@ tags:
     - author
     - relationships
     - coaching
-path: docs/marketing/social-media/twitter-profiles/9takes/loganury.md
+path: docs/marketing/social-media/9takes/loganury.md
 ---
 
 # Logan Ury (@loganury)

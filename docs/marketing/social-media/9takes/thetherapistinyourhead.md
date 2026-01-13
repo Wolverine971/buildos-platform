@@ -21,7 +21,7 @@ tags:
     - self-care
     - boundaries
     - healing
-path: docs/marketing/social-media/twitter-profiles/9takes/thetherapistinyourhead.md
+path: docs/marketing/social-media/9takes/thetherapistinyourhead.md
 ---
 
 # The Therapist In Your Head (@therapyinhead)

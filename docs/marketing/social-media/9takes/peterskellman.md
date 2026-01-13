@@ -21,7 +21,7 @@ tags:
     - relationships
     - patterns
     - growth
-path: docs/marketing/social-media/twitter-profiles/9takes/peterskellman.md
+path: docs/marketing/social-media/9takes/peterskellman.md
 ---
 
 # Peter Skellman (@PeterSkellman)

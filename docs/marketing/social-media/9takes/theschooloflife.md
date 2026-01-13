@@ -21,7 +21,7 @@ tags:
     - education
     - relationships
     - self-knowledge
-path: docs/marketing/social-media/twitter-profiles/9takes/theschooloflife.md
+path: docs/marketing/social-media/9takes/theschooloflife.md
 ---
 
 # The School of Life (@TheSchoolOfLife)

@@ -20,7 +20,7 @@ tags:
     - spirituality
     - author
     - 40-day-companion
-path: docs/marketing/social-media/twitter-profiles/9takes/nhienvuong.md
+path: docs/marketing/social-media/9takes/nhienvuong.md
 ---
 
 # Nhien Vuong (@evolvingenneagram)

@@ -21,7 +21,7 @@ tags:
     - david-daniels
     - certification
     - professional
-path: docs/marketing/social-media/twitter-profiles/9takes/narrativeenneagram.md
+path: docs/marketing/social-media/9takes/narrativeenneagram.md
 ---
 
 # The Narrative Enneagram (@narrativeenneagram)

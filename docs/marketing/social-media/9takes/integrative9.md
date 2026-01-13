@@ -20,7 +20,7 @@ tags:
     - iea-accredited
     - coaching
     - business
-path: docs/marketing/social-media/twitter-profiles/9takes/integrative9.md
+path: docs/marketing/social-media/9takes/integrative9.md
 ---
 
 # Integrative Enneagram (@integrative9)

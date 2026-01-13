@@ -21,7 +21,7 @@ tags:
     - author
     - radical-acceptance
     - self-compassion
-path: docs/marketing/social-media/twitter-profiles/9takes/tarabrach.md
+path: docs/marketing/social-media/9takes/tarabrach.md
 ---
 
 # Tara Brach (@taaboryk)

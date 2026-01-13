@@ -21,7 +21,7 @@ tags:
     - 4-hour
     - life-optimization
     - interviews
-path: docs/marketing/social-media/twitter-profiles/9takes/timferriss.md
+path: docs/marketing/social-media/9takes/timferriss.md
 ---
 
 # Tim Ferriss (@TimFerriss)

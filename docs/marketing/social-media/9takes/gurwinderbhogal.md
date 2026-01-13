@@ -21,7 +21,7 @@ tags:
     - substack
     - twitter-threads
     - wisdom
-path: docs/marketing/social-media/twitter-profiles/9takes/gurwinderbhogal.md
+path: docs/marketing/social-media/9takes/gurwinderbhogal.md
 ---
 
 # Gurwinder Bhogal (@G_S_Bhogal)

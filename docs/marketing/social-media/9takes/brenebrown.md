@@ -21,7 +21,7 @@ tags:
     - researcher
     - author
     - shame
-path: docs/marketing/social-media/twitter-profiles/9takes/brenebrown.md
+path: docs/marketing/social-media/9takes/brenebrown.md
 ---
 
 # Brene Brown (@BreneBrown)

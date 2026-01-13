@@ -22,7 +22,7 @@ tags:
     - road-back-to-you
     - personality
     - spirituality
-path: docs/marketing/social-media/twitter-profiles/9takes/ianmorgancron.md
+path: docs/marketing/social-media/9takes/ianmorgancron.md
 ---
 
 # Ian Morgan Cron (@ianmorgancron)

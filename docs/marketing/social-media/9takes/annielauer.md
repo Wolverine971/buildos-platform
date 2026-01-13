@@ -21,7 +21,7 @@ tags:
     - relationships
     - attachment
     - healing
-path: docs/marketing/social-media/twitter-profiles/9takes/annielauer.md
+path: docs/marketing/social-media/9takes/annielauer.md
 ---
 
 # Annie Lauer (@AnnieLauer)

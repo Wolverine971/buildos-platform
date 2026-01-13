@@ -419,8 +419,8 @@
 			currentDate = getTodayInTimezone(userTimezone);
 			await fetchBriefData();
 
-				// Check Railway worker availability
-				railwayWorkerAvailable = await RailwayWorkerService.isWorkerAvailable();
+			// Check Railway worker availability
+			railwayWorkerAvailable = await RailwayWorkerService.isWorkerAvailable();
 
 			// Check for existing generation
 			if (isToday) {

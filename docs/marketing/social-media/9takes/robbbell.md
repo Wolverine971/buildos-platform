@@ -21,7 +21,7 @@ tags:
     - podcast
     - growth
     - philosophy
-path: docs/marketing/social-media/twitter-profiles/9takes/robbbell.md
+path: docs/marketing/social-media/9takes/robbbell.md
 ---
 
 # Rob Bell (@realrobbell)

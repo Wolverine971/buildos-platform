@@ -21,7 +21,7 @@ tags:
     - scout-mindset
     - podcast
     - decision-making
-path: docs/marketing/social-media/twitter-profiles/9takes/juliagalef.md
+path: docs/marketing/social-media/9takes/juliagalef.md
 ---
 
 # Julia Galef (@juliagalef)

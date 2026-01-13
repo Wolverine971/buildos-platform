@@ -20,7 +20,7 @@ tags:
     - emotional-intelligence
     - life-lessons
     - quotes
-path: docs/marketing/social-media/twitter-profiles/9takes/briannawiest.md
+path: docs/marketing/social-media/9takes/briannawiest.md
 ---
 
 # Brianna Wiest (@briannawiest)

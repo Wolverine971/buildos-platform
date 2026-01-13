@@ -1928,8 +1928,7 @@ You must respond with valid JSON only. Follow these rules:
 	// ============================================
 
 	private buildTranscriptionVocabulary(customTerms?: string): string {
-		const baseVocabulary =
-			'BuildOS, brain dump, ontology, daily brief, phase, project context';
+		const baseVocabulary = 'BuildOS, brain dump, ontology, daily brief, phase, project context';
 		return customTerms ? `${baseVocabulary}, ${customTerms}` : baseVocabulary;
 	}
 
@@ -1971,7 +1970,11 @@ You must respond with valid JSON only. Follow these rules:
 			return true;
 		}
 
-		if (error?.code === 'ENOTFOUND' || error?.code === 'ETIMEDOUT' || error?.code === 'ECONNRESET') {
+		if (
+			error?.code === 'ENOTFOUND' ||
+			error?.code === 'ETIMEDOUT' ||
+			error?.code === 'ECONNRESET'
+		) {
 			return true;
 		}
 
@@ -2062,10 +2065,7 @@ You must respond with valid JSON only. Follow these rules:
 		}
 
 		const vocabularyPrompt = this.buildTranscriptionVocabulary(options.vocabularyTerms);
-		const audioFormat = this.getAudioFormat(
-			options.audioFile.type,
-			options.audioFile.name
-		);
+		const audioFormat = this.getAudioFormat(options.audioFile.type, options.audioFile.name);
 		const base64Audio = await this.encodeAudioToBase64(options.audioFile);
 
 		const systemPrompt =
@@ -2130,10 +2130,7 @@ You must respond with valid JSON only. Follow these rules:
 				} catch (error) {
 					lastError = error as Error;
 
-					if (
-						!this.isRetryableTranscriptionError(error) ||
-						attempt === maxRetries
-					) {
+					if (!this.isRetryableTranscriptionError(error) || attempt === maxRetries) {
 						break;
 					}
 				}

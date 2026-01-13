@@ -21,7 +21,7 @@ tags:
     - author
     - performance
     - business
-path: docs/marketing/social-media/twitter-profiles/9takes/tonyrobbins.md
+path: docs/marketing/social-media/9takes/tonyrobbins.md
 ---
 
 # Tony Robbins (@TonyRobbins)

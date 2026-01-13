@@ -21,7 +21,7 @@ tags:
     - psychotherapist
     - iea-president
     - author
-path: docs/marketing/social-media/twitter-profiles/9takes/beatricechestnut.md
+path: docs/marketing/social-media/9takes/beatricechestnut.md
 ---
 
 # Beatrice Chestnut (@BeatriceChestnut)

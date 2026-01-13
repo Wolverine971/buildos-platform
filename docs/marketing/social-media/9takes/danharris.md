@@ -21,7 +21,7 @@ tags:
     - 10-percent-happier
     - skeptic
     - accessible
-path: docs/marketing/social-media/twitter-profiles/9takes/danharris.md
+path: docs/marketing/social-media/9takes/danharris.md
 ---
 
 # Dan Harris (@DanHarris)

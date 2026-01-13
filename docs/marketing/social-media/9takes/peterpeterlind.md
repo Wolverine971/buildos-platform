@@ -21,7 +21,7 @@ tags:
     - threads
     - insights
     - human-nature
-path: docs/marketing/social-media/twitter-profiles/9takes/peterpeterlind.md
+path: docs/marketing/social-media/9takes/peterpeterlind.md
 ---
 
 # Peter Lindbergh (@peterlind)

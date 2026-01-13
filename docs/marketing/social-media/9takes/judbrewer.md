@@ -21,7 +21,7 @@ tags:
     - brown-university
     - habits
     - anxiety
-path: docs/marketing/social-media/twitter-profiles/9takes/judbrewer.md
+path: docs/marketing/social-media/9takes/judbrewer.md
 ---
 
 # Judson Brewer (@judbrewer)

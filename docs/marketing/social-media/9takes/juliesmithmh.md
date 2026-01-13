@@ -21,7 +21,7 @@ tags:
     - author
     - therapy
     - accessible
-path: docs/marketing/social-media/twitter-profiles/9takes/juliesmithmh.md
+path: docs/marketing/social-media/9takes/juliesmithmh.md
 ---
 
 # Julie Smith (@DrJulieSmith)

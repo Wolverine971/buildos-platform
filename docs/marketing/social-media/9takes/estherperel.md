@@ -21,7 +21,7 @@ tags:
     - author
     - intimacy
     - desire
-path: docs/marketing/social-media/twitter-profiles/9takes/estherperel.md
+path: docs/marketing/social-media/9takes/estherperel.md
 ---
 
 # Esther Perel (@EstherPerel)

@@ -21,7 +21,7 @@ tags:
     - anxious
     - avoidant
     - secure
-path: docs/marketing/social-media/twitter-profiles/9takes/attachmentproject.md
+path: docs/marketing/social-media/9takes/attachmentproject.md
 ---
 
 # The Attachment Project (@attachmentstyle)

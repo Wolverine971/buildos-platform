@@ -21,7 +21,7 @@ tags:
     - author
     - motivation
     - interviews
-path: docs/marketing/social-media/twitter-profiles/9takes/lewishowes.md
+path: docs/marketing/social-media/9takes/lewishowes.md
 ---
 
 # Lewis Howes (@LewisHowes)

@@ -4,16 +4,16 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { CalendarErrorMonitor } from '$lib/utils/calendar-error-monitor';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
-		try {
-			const { user } = await safeGetSession();
-			if (!user) {
-				return ApiResponse.unauthorized();
-			}
-			if (!user.is_admin) {
-				return ApiResponse.forbidden('Admin access required');
-			}
+	try {
+		const { user } = await safeGetSession();
+		if (!user) {
+			return ApiResponse.unauthorized();
+		}
+		if (!user.is_admin) {
+			return ApiResponse.forbidden('Admin access required');
+		}
 
-			const monitor = new CalendarErrorMonitor(supabase);
+		const monitor = new CalendarErrorMonitor(supabase);
 
 		// Get query parameters
 		const timeRange = (url.searchParams.get('timeRange') as 'day' | 'week' | 'month') || 'week';

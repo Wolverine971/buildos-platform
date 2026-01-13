@@ -21,7 +21,7 @@ tags:
     - richard-rohr
     - meditation
     - wisdom
-path: docs/marketing/social-media/twitter-profiles/9takes/richardrohrmeditations.md
+path: docs/marketing/social-media/9takes/richardrohrmeditations.md
 ---
 
 # Center for Action and Contemplation (@CAC_Richard)

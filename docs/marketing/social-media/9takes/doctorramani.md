@@ -21,7 +21,7 @@ tags:
     - author
     - youtube
     - toxic-relationships
-path: docs/marketing/social-media/twitter-profiles/9takes/doctorramani.md
+path: docs/marketing/social-media/9takes/doctorramani.md
 ---
 
 # Ramani Durvasula (@DoctorRamani)

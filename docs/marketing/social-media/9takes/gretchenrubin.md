@@ -21,7 +21,7 @@ tags:
     - author
     - podcast
     - personality
-path: docs/marketing/social-media/twitter-profiles/9takes/gretchenrubin.md
+path: docs/marketing/social-media/9takes/gretchenrubin.md
 ---
 
 # Gretchen Rubin (@graboryk)

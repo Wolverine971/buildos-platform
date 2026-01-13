@@ -21,7 +21,7 @@ tags:
     - author
     - motorcycles
     - unconventional
-path: docs/marketing/social-media/twitter-profiles/9takes/johnkim.md
+path: docs/marketing/social-media/9takes/johnkim.md
 ---
 
 # John Kim (@TheAngryTherapist)

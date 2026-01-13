@@ -21,7 +21,7 @@ tags:
     - ted
     - heartbreak
     - resilience
-path: docs/marketing/social-media/twitter-profiles/9takes/guywinch.md
+path: docs/marketing/social-media/9takes/guywinch.md
 ---
 
 # Guy Winch (@GuyWinch)

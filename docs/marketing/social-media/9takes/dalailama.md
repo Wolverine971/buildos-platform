@@ -21,7 +21,7 @@ tags:
     - spiritual-leader
     - wisdom
     - peace
-path: docs/marketing/social-media/twitter-profiles/9takes/dalailama.md
+path: docs/marketing/social-media/9takes/dalailama.md
 ---
 
 # Dalai Lama (@DalaiLama)

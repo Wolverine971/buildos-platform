@@ -21,7 +21,7 @@ tags:
     - marie-tv
     - business
     - author
-path: docs/marketing/social-media/twitter-profiles/9takes/marieforleo.md
+path: docs/marketing/social-media/9takes/marieforleo.md
 ---
 
 # Marie Forleo (@marieforleo)

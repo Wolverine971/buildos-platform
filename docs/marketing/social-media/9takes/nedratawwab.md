@@ -21,7 +21,7 @@ tags:
     - self-care
     - relationships
     - mental-health
-path: docs/marketing/social-media/twitter-profiles/9takes/nedratawwab.md
+path: docs/marketing/social-media/9takes/nedratawwab.md
 ---
 
 # Nedra Glover Tawwab (@NedraTawwab)

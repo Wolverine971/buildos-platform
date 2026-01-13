@@ -21,7 +21,7 @@ tags:
     - intelligence
     - maslow
     - transcend
-path: docs/marketing/social-media/twitter-profiles/9takes/sbkaufman.md
+path: docs/marketing/social-media/9takes/sbkaufman.md
 ---
 
 # Scott Barry Kaufman (@sbkaufman)

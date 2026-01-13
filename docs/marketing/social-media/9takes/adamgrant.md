@@ -21,7 +21,7 @@ tags:
     - author
     - wharton
     - give-and-take
-path: docs/marketing/social-media/twitter-profiles/9takes/adamgrant.md
+path: docs/marketing/social-media/9takes/adamgrant.md
 ---
 
 # Adam Grant (@AdamMGrant)

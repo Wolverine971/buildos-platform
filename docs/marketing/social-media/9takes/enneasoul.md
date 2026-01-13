@@ -21,7 +21,7 @@ tags:
     - soul
     - transformation
     - depth
-path: docs/marketing/social-media/twitter-profiles/9takes/enneasoul.md
+path: docs/marketing/social-media/9takes/enneasoul.md
 ---
 
 # EnneaSoul (@enneasoul)

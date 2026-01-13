@@ -22,7 +22,7 @@ tags:
     - path-between-us
     - enneagram-journey
     - personality
-path: docs/marketing/social-media/twitter-profiles/9takes/suzannestabile.md
+path: docs/marketing/social-media/9takes/suzannestabile.md
 ---
 
 # Suzanne Stabile (@SuzanneStabile)

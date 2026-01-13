@@ -21,7 +21,7 @@ tags:
     - type-content
     - education
     - self-discovery
-path: docs/marketing/social-media/twitter-profiles/9takes/enneagramwithabbey.md
+path: docs/marketing/social-media/9takes/enneagramwithabbey.md
 ---
 
 # Abbey Howe (@enneagramabbey)

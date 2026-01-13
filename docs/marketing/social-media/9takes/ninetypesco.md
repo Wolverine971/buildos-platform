@@ -21,7 +21,7 @@ tags:
     - speaker
     - relatable
     - mistypes
-path: docs/marketing/social-media/twitter-profiles/9takes/ninetypesco.md
+path: docs/marketing/social-media/9takes/ninetypesco.md
 ---
 
 # Steph Barron Hall (@ninetypesco)

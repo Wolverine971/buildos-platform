@@ -20,7 +20,7 @@ tags:
     - type-4
     - comparisons
     - pastel-aesthetic
-path: docs/marketing/social-media/twitter-profiles/9takes/enneagramlife.md
+path: docs/marketing/social-media/9takes/enneagramlife.md
 ---
 
 # Elisabeth Bennett (@enneagramlife)

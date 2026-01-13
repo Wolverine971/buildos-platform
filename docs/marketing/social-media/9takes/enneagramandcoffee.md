@@ -21,7 +21,7 @@ tags:
     - relatable
     - community
     - daily-life
-path: docs/marketing/social-media/twitter-profiles/9takes/enneagramandcoffee.md
+path: docs/marketing/social-media/9takes/enneagramandcoffee.md
 ---
 
 # Enneagram & Coffee (@enneagramcoffee)

@@ -21,7 +21,7 @@ tags:
     - physician
     - childhood
     - healing
-path: docs/marketing/social-media/twitter-profiles/9takes/gabormate.md
+path: docs/marketing/social-media/9takes/gabormate.md
 ---
 
 # Gabor Mate (@DrGaborMate)

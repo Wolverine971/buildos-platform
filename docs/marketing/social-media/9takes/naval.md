@@ -21,7 +21,7 @@ tags:
     - wisdom
     - angel-investor
     - navalmanack
-path: docs/marketing/social-media/twitter-profiles/9takes/naval.md
+path: docs/marketing/social-media/9takes/naval.md
 ---
 
 # Naval Ravikant (@naval)

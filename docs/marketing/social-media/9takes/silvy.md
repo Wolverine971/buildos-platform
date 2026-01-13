@@ -21,7 +21,7 @@ tags:
     - coach
     - healing
     - avoidant
-path: docs/marketing/social-media/twitter-profiles/9takes/silvy.md
+path: docs/marketing/social-media/9takes/silvy.md
 ---
 
 # Silvy Khoucasian (@silvykhoucasian)

@@ -21,7 +21,7 @@ tags:
     - podcast
     - coaching
     - development
-path: docs/marketing/social-media/twitter-profiles/9takes/personalityhacker.md
+path: docs/marketing/social-media/9takes/personalityhacker.md
 ---
 
 # Personality Hacker (@PersonalityHack)

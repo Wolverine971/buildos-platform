@@ -21,7 +21,7 @@ tags:
     - wisdom-of-enneagram
     - personality-types
     - don-riso
-path: docs/marketing/social-media/twitter-profiles/9takes/russhudson.md
+path: docs/marketing/social-media/9takes/russhudson.md
 ---
 
 # Russ Hudson (@Russ_Hudson54)

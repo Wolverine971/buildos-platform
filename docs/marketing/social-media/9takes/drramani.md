@@ -21,7 +21,7 @@ tags:
     - clinical
     - author
     - relationships
-path: docs/marketing/social-media/twitter-profiles/9takes/drramani.md
+path: docs/marketing/social-media/9takes/drramani.md
 ---
 
 # Dr. Ramani (@DoctorRamani)

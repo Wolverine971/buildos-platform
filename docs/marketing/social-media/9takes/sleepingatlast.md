@@ -21,7 +21,7 @@ tags:
     - type-9
     - atlas-project
     - podcast
-path: docs/marketing/social-media/twitter-profiles/9takes/sleepingatlast.md
+path: docs/marketing/social-media/9takes/sleepingatlast.md
 ---
 
 # Ryan O'Neal / Sleeping At Last (@sleepingatlast)

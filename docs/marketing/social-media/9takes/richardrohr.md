@@ -21,7 +21,7 @@ tags:
     - cac
     - contemplative
     - author
-path: docs/marketing/social-media/twitter-profiles/9takes/richardrohr.md
+path: docs/marketing/social-media/9takes/richardrohr.md
 ---
 
 # Richard Rohr (@RichardRohr)

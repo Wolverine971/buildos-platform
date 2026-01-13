@@ -21,7 +21,7 @@ tags:
     - character
     - author
     - macarthur
-path: docs/marketing/social-media/twitter-profiles/9takes/angeladuckworth.md
+path: docs/marketing/social-media/9takes/angeladuckworth.md
 ---
 
 # Angela Duckworth (@angeladuckw)

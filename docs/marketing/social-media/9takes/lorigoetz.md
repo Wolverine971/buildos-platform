@@ -21,7 +21,7 @@ tags:
     - business
     - teams
     - development
-path: docs/marketing/social-media/twitter-profiles/9takes/lorigoetz.md
+path: docs/marketing/social-media/9takes/lorigoetz.md
 ---
 
 # Lori Goetz (@LoriGoetz)

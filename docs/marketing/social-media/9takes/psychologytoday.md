@@ -20,7 +20,7 @@ tags:
     - magazine
     - therapist-directory
     - articles
-path: docs/marketing/social-media/twitter-profiles/9takes/psychologytoday.md
+path: docs/marketing/social-media/9takes/psychologytoday.md
 ---
 
 # Psychology Today (@PsychToday)

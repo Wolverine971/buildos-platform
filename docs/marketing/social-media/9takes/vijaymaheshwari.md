@@ -21,7 +21,7 @@ tags:
     - meditation
     - investor
     - philosophy
-path: docs/marketing/social-media/twitter-profiles/9takes/vijaymaheshwari.md
+path: docs/marketing/social-media/9takes/vijaymaheshwari.md
 ---
 
 # Vijay Maheshwari (@vgm22)

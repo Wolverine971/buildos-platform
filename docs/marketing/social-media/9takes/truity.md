@@ -21,7 +21,7 @@ tags:
     - enneagram
     - big-five
     - disc
-path: docs/marketing/social-media/twitter-profiles/9takes/truity.md
+path: docs/marketing/social-media/9takes/truity.md
 ---
 
 # Truity (@trulobo)

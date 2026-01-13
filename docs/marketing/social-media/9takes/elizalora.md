@@ -21,7 +21,7 @@ tags:
     - education
     - clinical
     - research
-path: docs/marketing/social-media/twitter-profiles/9takes/elizalora.md
+path: docs/marketing/social-media/9takes/elizalora.md
 ---
 
 # Dr. Eliza (@ElizaLora)

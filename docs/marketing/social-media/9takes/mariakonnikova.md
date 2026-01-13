@@ -21,7 +21,7 @@ tags:
     - new-yorker
     - author
     - deception
-path: docs/marketing/social-media/twitter-profiles/9takes/mariakonnikova.md
+path: docs/marketing/social-media/9takes/mariakonnikova.md
 ---
 
 # Maria Konnikova (@mkonnikova)

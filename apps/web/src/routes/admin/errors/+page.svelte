@@ -541,12 +541,16 @@
 			>
 				<div class="flex items-center gap-3">
 					<div class="flex items-center gap-2">
-						<div class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+						<div
+							class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center"
+						>
 							<Check class="w-4 h-4 text-accent" />
 						</div>
 						<div>
 							<p class="text-sm font-semibold text-foreground">
-								{selectedErrorIds.length} error{selectedErrorIds.length === 1 ? '' : 's'} selected
+								{selectedErrorIds.length} error{selectedErrorIds.length === 1
+									? ''
+									: 's'} selected
 							</p>
 							<p class="text-xs text-muted-foreground">
 								{#if selectAll}
@@ -561,11 +565,22 @@
 
 				<div class="flex items-center gap-2 w-full sm:w-auto">
 					{#if unresolvedCount > 0 && selectedErrorIds.length !== unresolvedCount}
-						<Button onclick={selectAllUnresolved} variant="outline" size="sm" class="flex-1 sm:flex-none">
+						<Button
+							onclick={selectAllUnresolved}
+							variant="outline"
+							size="sm"
+							class="flex-1 sm:flex-none"
+						>
 							Select all unresolved ({unresolvedCount})
 						</Button>
 					{/if}
-					<Button onclick={clearSelection} variant="ghost" size="sm" icon={X} class="flex-1 sm:flex-none">
+					<Button
+						onclick={clearSelection}
+						variant="ghost"
+						size="sm"
+						icon={X}
+						class="flex-1 sm:flex-none"
+					>
 						Clear
 					</Button>
 					<Button

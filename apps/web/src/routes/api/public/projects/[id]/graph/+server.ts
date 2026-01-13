@@ -109,14 +109,14 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			risks: (risksResult.data ?? []) as OntoRisk[]
 		};
 
-	// Filter out template edges
-	sourceData.edges = sourceData.edges.filter(
-		(edge) =>
-			edge.src_kind !== 'template' &&
-			edge.dst_kind !== 'template' &&
-			edge.src_kind !== 'event' &&
-			edge.dst_kind !== 'event'
-	);
+		// Filter out template edges
+		sourceData.edges = sourceData.edges.filter(
+			(edge) =>
+				edge.src_kind !== 'template' &&
+				edge.dst_kind !== 'template' &&
+				edge.src_kind !== 'event' &&
+				edge.dst_kind !== 'event'
+		);
 
 		const graphData = OntologyGraphService.buildGraphData(sourceData, viewMode);
 

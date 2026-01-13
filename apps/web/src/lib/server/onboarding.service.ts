@@ -154,30 +154,30 @@ export class OnboardingServerService {
 				.eq('user_id', user.id)
 				.single();
 
-				if (context) {
-					// Queue the analysis job
-					const result = await queueOnboardingAnalysis({
-						userId: user.id,
-						userContext: {
-							input_projects: context.input_projects,
-							input_work_style: context.input_work_style,
-							input_challenges: context.input_challenges,
-							input_help_focus: context.input_help_focus
-						},
-						options: {
-							maxQuestions: 5 // Generate up to 5 initial questions
-						}
-					});
-
-					if (!result.queued) {
-						console.warn(
-							`Failed to queue onboarding analysis for user ${user.id}:`,
-							result.reason
-						);
-					} else {
-						console.log(`Queued onboarding analysis for user ${user.id}:`, result.jobId);
+			if (context) {
+				// Queue the analysis job
+				const result = await queueOnboardingAnalysis({
+					userId: user.id,
+					userContext: {
+						input_projects: context.input_projects,
+						input_work_style: context.input_work_style,
+						input_challenges: context.input_challenges,
+						input_help_focus: context.input_help_focus
+					},
+					options: {
+						maxQuestions: 5 // Generate up to 5 initial questions
 					}
+				});
+
+				if (!result.queued) {
+					console.warn(
+						`Failed to queue onboarding analysis for user ${user.id}:`,
+						result.reason
+					);
+				} else {
+					console.log(`Queued onboarding analysis for user ${user.id}:`, result.jobId);
 				}
+			}
 		} catch (queueError) {
 			// Log the error but don't fail the onboarding completion
 			console.error('Failed to queue onboarding analysis:', queueError);

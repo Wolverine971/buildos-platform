@@ -335,8 +335,8 @@
 		// Fetch next scheduled brief time
 		await fetchNextScheduledBrief();
 
-			// Check Railway worker availability
-			railwayWorkerAvailable = await RailwayWorkerService.isWorkerAvailable();
+		// Check Railway worker availability
+		railwayWorkerAvailable = await RailwayWorkerService.isWorkerAvailable();
 
 		// Check for existing generation
 		if (isToday) {

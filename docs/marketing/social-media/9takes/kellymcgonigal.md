@@ -21,7 +21,7 @@ tags:
     - stress
     - movement
     - psychology
-path: docs/marketing/social-media/twitter-profiles/9takes/kellymcgonigal.md
+path: docs/marketing/social-media/9takes/kellymcgonigal.md
 ---
 
 # Kelly McGonigal (@kellymcgonigal)

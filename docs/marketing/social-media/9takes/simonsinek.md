@@ -21,7 +21,7 @@ tags:
     - author
     - speaker
     - motivation
-path: docs/marketing/social-media/twitter-profiles/9takes/simonsinek.md
+path: docs/marketing/social-media/9takes/simonsinek.md
 ---
 
 # Simon Sinek (@simonsinek)

@@ -21,7 +21,7 @@ tags:
     - author
     - emotions
     - feelings
-path: docs/marketing/social-media/twitter-profiles/9takes/susandavid.md
+path: docs/marketing/social-media/9takes/susandavid.md
 ---
 
 # Susan David (@SusanDavid_PhD)

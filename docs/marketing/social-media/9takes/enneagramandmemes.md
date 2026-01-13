@@ -20,7 +20,7 @@ tags:
     - humor
     - type-8
     - viral-content
-path: docs/marketing/social-media/twitter-profiles/9takes/enneagramandmemes.md
+path: docs/marketing/social-media/9takes/enneagramandmemes.md
 ---
 
 # Blake (@enneagramandmemes)

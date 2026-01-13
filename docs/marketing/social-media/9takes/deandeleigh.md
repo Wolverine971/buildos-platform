@@ -21,7 +21,7 @@ tags:
     - healing
     - growth
     - self-love
-path: docs/marketing/social-media/twitter-profiles/9takes/deandeleigh.md
+path: docs/marketing/social-media/9takes/deandeleigh.md
 ---
 
 # Deanna Deleigh (@deannadeleigh)

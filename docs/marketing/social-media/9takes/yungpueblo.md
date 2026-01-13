@@ -21,7 +21,7 @@ tags:
     - author
     - meditation
     - mindfulness
-path: docs/marketing/social-media/twitter-profiles/9takes/yungpueblo.md
+path: docs/marketing/social-media/9takes/yungpueblo.md
 ---
 
 # Diego Perez / yung pueblo (@yaboryk)

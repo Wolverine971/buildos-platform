@@ -15,15 +15,15 @@ import { ApiResponse } from '$lib/utils/api-response';
  * - end_date: End date for history (YYYY-MM-DD, optional)
  */
 export const GET: RequestHandler = async ({ url, locals }) => {
-		try {
-			const session = await locals.safeGetSession();
+	try {
+		const session = await locals.safeGetSession();
 
-			if (!session?.user) {
-				return ApiResponse.unauthorized();
-			}
-			if (!session.user.is_admin) {
-				return ApiResponse.forbidden('Admin access required');
-			}
+		if (!session?.user) {
+			return ApiResponse.unauthorized();
+		}
+		if (!session.user.is_admin) {
+			return ApiResponse.forbidden('Admin access required');
+		}
 
 		// Get query parameters
 		const type = url.searchParams.get('type') || 'unresolved';
@@ -89,15 +89,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
  * - alert_id: Alert ID to resolve
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
-		try {
-			const session = await locals.safeGetSession();
+	try {
+		const session = await locals.safeGetSession();
 
-			if (!session?.user) {
-				return ApiResponse.unauthorized();
-			}
-			if (!session.user.is_admin) {
-				return ApiResponse.forbidden('Admin access required');
-			}
+		if (!session?.user) {
+			return ApiResponse.unauthorized();
+		}
+		if (!session.user.is_admin) {
+			return ApiResponse.forbidden('Admin access required');
+		}
 
 		const { alert_id } = await request.json();
 

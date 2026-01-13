@@ -21,7 +21,7 @@ tags:
     - daily-stoic
     - discipline
     - books
-path: docs/marketing/social-media/twitter-profiles/9takes/ryanholiday.md
+path: docs/marketing/social-media/9takes/ryanholiday.md
 ---
 
 # Ryan Holiday (@RyanHoliday)

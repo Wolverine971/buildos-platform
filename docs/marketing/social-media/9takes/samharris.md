@@ -21,7 +21,7 @@ tags:
     - waking-up
     - neuroscience
     - podcast
-path: docs/marketing/social-media/twitter-profiles/9takes/samharris.md
+path: docs/marketing/social-media/9takes/samharris.md
 ---
 
 # Sam Harris (@SamHarrisOrg)

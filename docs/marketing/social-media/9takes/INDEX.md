@@ -1,4 +1,4 @@
-<!-- docs/marketing/social-media/twitter-profiles/9takes/INDEX.md -->
+<!-- docs/marketing/social-media/9takes/INDEX.md -->
 
 # 9takes Target Audience - Twitter Engagement Database
 

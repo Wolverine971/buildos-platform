@@ -131,6 +131,9 @@
 	let microphonePermissionGranted = $state(false);
 	let hasAttemptedVoice = $state(false);
 	let voiceInitialized = $state(false);
+	// Smooth transition state - keeps recording UI visible during text insertion
+	let isTransitioningFromRecording = $state(false);
+	let transitionTranscript = $state('');
 
 	// Cursor position tracking - CRITICAL for insertion at cursor
 	let cursorPositionBeforeRecording = $state<{ start: number; end: number } | null>(null);
@@ -630,9 +633,12 @@
 				(needsSpaceBefore ? ' ' : '') + trimmedTranscript + (needsSpaceAfter ? ' ' : '');
 		}
 
-		// Save scroll positions before modifying
+		// Save ALL scroll positions before modifying - capture parent containers too
 		const textareaScrollTop = textareaElement?.scrollTop ?? 0;
 		const pageScrollY = window.scrollY;
+		// Also capture the modal/parent scroll container if it exists
+		const scrollContainer = textareaElement?.closest('.overflow-y-auto');
+		const containerScrollTop = (scrollContainer as HTMLElement)?.scrollTop ?? 0;
 
 		// Insert or replace
 		const newValue = value.slice(0, start) + finalTranscript + value.slice(end);
@@ -640,12 +646,19 @@
 
 		// Update cursor position to end of inserted text
 		const newCursorPos = start + finalTranscript.length;
-		queueMicrotask(() => {
-			textareaElement?.focus({ preventScroll: true });
-			textareaElement?.setSelectionRange(newCursorPos, newCursorPos);
-			// Restore scroll positions
-			if (textareaElement) textareaElement.scrollTop = textareaScrollTop;
-			window.scrollTo({ top: pageScrollY, behavior: 'instant' });
+
+		// Use double-RAF to ensure DOM has fully updated before restoring positions
+		// First RAF: DOM update scheduled, Second RAF: after paint
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				textareaElement?.focus({ preventScroll: true });
+				textareaElement?.setSelectionRange(newCursorPos, newCursorPos);
+				// Restore scroll positions
+				if (textareaElement) textareaElement.scrollTop = textareaScrollTop;
+				if (scrollContainer)
+					(scrollContainer as HTMLElement).scrollTop = containerScrollTop;
+				window.scrollTo({ top: pageScrollY, behavior: 'instant' });
+			});
 		});
 
 		// Reset cursor tracking
@@ -1109,10 +1122,22 @@
 		// Store the transcript we'll use for insertion
 		const transcriptToInsert = capturedTranscriptForCallback;
 
-		// Clear recording states IMMEDIATELY so transcribing state can show
+		// SMOOTH TRANSITION: Keep the recording UI visible during text insertion
+		// to prevent layout shift from footer height changes
+		if (transcriptToInsert) {
+			// Enter transition state - this keeps the recording UI visible
+			isTransitioningFromRecording = true;
+			transitionTranscript = transcriptToInsert;
+		}
+
+		// Clear the live preview but DON'T clear isCurrentlyRecording yet if transitioning
 		liveTranscriptPreview = '';
-		isCurrentlyRecording = false;
 		isInitializingRecording = false;
+
+		// Only clear recording state if no transcript to insert (no transition needed)
+		if (!transcriptToInsert) {
+			isCurrentlyRecording = false;
+		}
 
 		try {
 			// Pass empty string - we handle text ourselves
@@ -1121,13 +1146,26 @@
 			// If we had a live transcript, insert it at cursor position now
 			// The audio transcription may update it later with better accuracy
 			if (transcriptToInsert) {
+				// Insert text while transition UI is still visible
 				insertTranscriptionAtCursor(transcriptToInsert);
+
+				// Now clear the recording state after a brief delay to allow smooth transition
+				// The 150ms allows CSS transitions to animate and prevents jarring layout shifts
+				setTimeout(() => {
+					isCurrentlyRecording = false;
+					isTransitioningFromRecording = false;
+					transitionTranscript = '';
+				}, 150);
 			}
 		} catch (error) {
 			console.error('Failed to stop voice recording:', error);
 			const message =
 				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
 			_voiceError = message;
+			// On error, immediately clear transition state
+			isCurrentlyRecording = false;
+			isTransitioningFromRecording = false;
+			transitionTranscript = '';
 		} finally {
 			capturedTranscriptForCallback = '';
 		}
@@ -1171,6 +1209,9 @@
 		microphonePermissionGranted = false;
 		voiceInitialized = false;
 		cursorPositionBeforeRecording = null;
+		// Clear transition state
+		isTransitioningFromRecording = false;
+		transitionTranscript = '';
 	}
 
 	// ============================================
@@ -1260,7 +1301,9 @@
 	{/if}
 
 	<div
-		class="rounded-xl border border-border bg-card shadow-ink overflow-hidden tx tx-frame tx-weak {fillHeight ? 'flex-1 flex flex-col min-h-0' : ''}"
+		class="rounded-xl border border-border bg-card shadow-ink overflow-hidden tx tx-frame tx-weak {fillHeight
+			? 'flex-1 flex flex-col min-h-0'
+			: ''}"
 	>
 		<!-- Toolbar -->
 		<div
@@ -1330,7 +1373,11 @@
 				{...restProps}
 			></textarea>
 		{:else}
-			<div class="px-4 py-4 bg-card overflow-y-auto {fillHeight ? 'flex-1 min-h-0' : 'min-h-[200px]'}">
+			<div
+				class="px-4 py-4 bg-card overflow-y-auto {fillHeight
+					? 'flex-1 min-h-0'
+					: 'min-h-[200px]'}"
+			>
 				{#if value.trim()}
 					<div class={`${proseClasses} text-foreground`}>
 						{@html renderMarkdown(value)}
@@ -1348,8 +1395,8 @@
 			class="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-t border-border bg-muted/50 text-xs text-muted-foreground"
 		>
 			<!-- Left side: Stats OR Recording Status -->
-			<div class="flex items-center gap-4">
-				{#if enableVoice && isCurrentlyRecording}
+			<div class="flex items-center gap-4 transition-opacity duration-150">
+				{#if enableVoice && isCurrentlyRecording && !isTransitioningFromRecording}
 					<!-- Recording indicator -->
 					<span class="flex items-center gap-1.5 text-destructive">
 						<span class="relative flex h-2 w-2 items-center justify-center">
@@ -1370,6 +1417,20 @@
 							Enter
 						</kbd>
 					</span>
+				{:else if enableVoice && isTransitioningFromRecording}
+					<!-- Smooth transition: "Inserted" indicator -->
+					<span
+						class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-in fade-in duration-150"
+					>
+						<svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+							<path
+								fill-rule="evenodd"
+								d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+						<span class="font-semibold">Inserted</span>
+					</span>
 				{:else if enableVoice && isInitializingRecording}
 					<!-- Initializing state -->
 					<span class="flex items-center gap-1.5 text-muted-foreground">
@@ -1384,20 +1445,22 @@
 					</span>
 				{:else}
 					<!-- Normal stats -->
-					<span>{stats.words} words</span>
-					<span>{stats.chars} characters</span>
+					<span class="transition-opacity duration-150">{stats.words} words</span>
+					<span class="transition-opacity duration-150">{stats.chars} characters</span>
 				{/if}
 			</div>
 
-			<!-- Middle: Live transcript preview (during recording) -->
-			{#if enableVoice && isCurrentlyRecording && liveTranscriptPreview}
+			<!-- Middle: Live transcript preview (during recording or transition) -->
+			{#if enableVoice && ((isCurrentlyRecording && liveTranscriptPreview) || (isTransitioningFromRecording && transitionTranscript))}
 				<div
-					class="flex-1 max-w-md truncate text-accent px-2 py-1 rounded bg-accent/10 border border-accent/20"
+					class="flex-1 max-w-md truncate px-2 py-1 rounded border transition-all duration-150 {isTransitioningFromRecording
+						? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20'
+						: 'text-accent bg-accent/10 border-accent/20'}"
 				>
 					<span class="text-[10px] uppercase tracking-wider text-muted-foreground mr-1"
-						>Live:</span
+						>{isTransitioningFromRecording ? 'Added:' : 'Live:'}</span
 					>
-					{liveTranscriptPreview}
+					{isTransitioningFromRecording ? transitionTranscript : liveTranscriptPreview}
 				</div>
 			{/if}
 

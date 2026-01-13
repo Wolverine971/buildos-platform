@@ -21,7 +21,7 @@ tags:
     - certification
     - type-9
     - teacher
-path: docs/marketing/social-media/twitter-profiles/9takes/yourenneagramcoach.md
+path: docs/marketing/social-media/9takes/yourenneagramcoach.md
 ---
 
 # Beth McCord (@yourenneagramcoach)

@@ -96,21 +96,21 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		}
 
 		// Call Railway worker to queue phases generation
-			try {
-				const RAILWAY_WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;
-				const headers: Record<string, string> = {
-					'Content-Type': 'application/json'
-				};
-				if (PRIVATE_RAILWAY_WORKER_TOKEN) {
-					headers.Authorization = `Bearer ${PRIVATE_RAILWAY_WORKER_TOKEN}`;
-				}
+		try {
+			const RAILWAY_WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;
+			const headers: Record<string, string> = {
+				'Content-Type': 'application/json'
+			};
+			if (PRIVATE_RAILWAY_WORKER_TOKEN) {
+				headers.Authorization = `Bearer ${PRIVATE_RAILWAY_WORKER_TOKEN}`;
+			}
 
-				const response = await fetch(`${RAILWAY_WORKER_URL}/queue/phases`, {
-					method: 'POST',
-					headers,
-					body: JSON.stringify({
-						userId: user.id,
-						projectId,
+			const response = await fetch(`${RAILWAY_WORKER_URL}/queue/phases`, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify({
+					userId: user.id,
+					projectId,
 					options
 				})
 			});

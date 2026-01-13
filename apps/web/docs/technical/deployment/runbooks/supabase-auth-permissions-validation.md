@@ -76,6 +76,7 @@ LIMIT 5;
 ```
 
 Expected:
+
 - `current_actor_id()` returns a UUID.
 - `can_read` true for owners/members or public projects.
 - `is_member` true for owners/members (public does not imply member).
@@ -127,6 +128,7 @@ FROM get_project_invite_preview('<token_hash>');
 ```
 
 Notes:
+
 - Direct selects on `onto_project_invites` are admin-only via RLS.
 - Invitee flows should use RPCs (`list_pending_project_invites`, `accept_project_invite`,
   `accept_project_invite_by_id`, `decline_project_invite`).

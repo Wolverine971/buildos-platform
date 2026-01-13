@@ -21,7 +21,7 @@ tags:
     - philosophy
     - life-lessons
     - memoir
-path: docs/marketing/social-media/twitter-profiles/9takes/matthewmcconaughey.md
+path: docs/marketing/social-media/9takes/matthewmcconaughey.md
 ---
 
 # Matthew McConaughey (@McConaughey)

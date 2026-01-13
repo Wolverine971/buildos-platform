@@ -21,7 +21,7 @@ tags:
     - threads
     - thinking
     - growth
-path: docs/marketing/social-media/twitter-profiles/9takes/theraminkarim.md
+path: docs/marketing/social-media/9takes/theraminkarim.md
 ---
 
 # Ramin Karim (@theraminkarim)

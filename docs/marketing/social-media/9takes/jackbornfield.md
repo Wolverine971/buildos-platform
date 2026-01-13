@@ -21,7 +21,7 @@ tags:
     - spirit-rock
     - wisdom
     - compassion
-path: docs/marketing/social-media/twitter-profiles/9takes/jackbornfield.md
+path: docs/marketing/social-media/9takes/jackbornfield.md
 ---
 
 # Jack Kornfield (@JackKornfield)

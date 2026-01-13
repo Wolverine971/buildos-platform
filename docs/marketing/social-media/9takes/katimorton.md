@@ -21,7 +21,7 @@ tags:
     - author
     - education
     - accessible
-path: docs/marketing/social-media/twitter-profiles/9takes/katimorton.md
+path: docs/marketing/social-media/9takes/katimorton.md
 ---
 
 # Kati Morton (@KatiMorton)

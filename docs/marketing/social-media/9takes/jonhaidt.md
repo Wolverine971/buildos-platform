@@ -21,7 +21,7 @@ tags:
     - righteous-mind
     - heterodox
     - perspectives
-path: docs/marketing/social-media/twitter-profiles/9takes/jonhaidt.md
+path: docs/marketing/social-media/9takes/jonhaidt.md
 ---
 
 # Jonathan Haidt (@JonHaidt)

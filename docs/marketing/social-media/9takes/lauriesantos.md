@@ -21,7 +21,7 @@ tags:
     - psychology
     - wellbeing
     - science-of-happiness
-path: docs/marketing/social-media/twitter-profiles/9takes/lauriesantos.md
+path: docs/marketing/social-media/9takes/lauriesantos.md
 ---
 
 # Laurie Santos (@lauriesantos)

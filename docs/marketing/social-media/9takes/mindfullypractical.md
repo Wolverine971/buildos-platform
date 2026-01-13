@@ -21,7 +21,7 @@ tags:
     - self-awareness
     - growth
     - daily-practice
-path: docs/marketing/social-media/twitter-profiles/9takes/mindfullypractical.md
+path: docs/marketing/social-media/9takes/mindfullypractical.md
 ---
 
 # Mindfully Practical (@mindfullyprac)

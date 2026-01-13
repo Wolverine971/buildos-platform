@@ -150,8 +150,8 @@ Refactor to:
 - Validate audio + vocabulary as today.
 - Call `SmartLLMService.transcribeAudio(...)`.
 - Return the same response shape:
-  - `transcription_service: 'openrouter' | 'openai'`
-  - `transcription_model: string`
+    - `transcription_service: 'openrouter' | 'openai'`
+    - `transcription_model: string`
 
 ### 2) Background Transcription (worker)
 

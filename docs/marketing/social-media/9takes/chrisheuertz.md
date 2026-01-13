@@ -21,7 +21,7 @@ tags:
     - contemplative
     - spirituality
     - iea-accredited
-path: docs/marketing/social-media/twitter-profiles/9takes/chrisheuertz.md
+path: docs/marketing/social-media/9takes/chrisheuertz.md
 ---
 
 # Christopher Heuertz (@ChrisHeuertz)

@@ -21,7 +21,7 @@ tags:
     - author
     - speaker
     - action
-path: docs/marketing/social-media/twitter-profiles/9takes/melrobbins.md
+path: docs/marketing/social-media/9takes/melrobbins.md
 ---
 
 # Mel Robbins (@melrobbins)
