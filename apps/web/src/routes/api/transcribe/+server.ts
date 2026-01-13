@@ -5,6 +5,7 @@ import OpenAI from 'openai';
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { SmartLLMService } from '$lib/services/smart-llm-service';
 
 const openai = new OpenAI({
 	apiKey: PRIVATE_OPENAI_API_KEY
@@ -15,6 +16,7 @@ const openai = new OpenAI({
 // gpt-4o-mini-transcribe: Good balance of cost/accuracy (~13.2% WER), half the price
 // whisper-1: Legacy model (deprecated for new projects)
 const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
+const USE_OPENROUTER_TRANSCRIPTION = env.TRANSCRIPTION_USE_OPENROUTER === 'true';
 
 // Timeout and retry configuration
 const TRANSCRIPTION_TIMEOUT_MS = 30000; // 30 seconds timeout
@@ -88,6 +90,14 @@ function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function parseModelList(value?: string | null): string[] {
+	if (!value) return [];
+	return value
+		.split(',')
+		.map((model) => model.trim())
+		.filter(Boolean);
+}
+
 // MIME type to file extension mapping for OpenAI Audio API compatibility
 const MIME_TO_EXTENSION: Record<string, string> = {
 	'audio/webm': 'webm',
@@ -156,20 +166,6 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		}
 		userId = user.id;
 
-		if (!PRIVATE_OPENAI_API_KEY) {
-			await errorLogger.logError(new Error('OpenAI API key not configured'), {
-				userId,
-				endpoint: '/api/transcribe',
-				httpMethod: 'POST',
-				operationType: 'transcribe_audio',
-				llmMetadata: {
-					provider: 'openai',
-					model: TRANSCRIPTION_MODEL
-				}
-			});
-			return ApiResponse.internalError('OpenAI API key not configured');
-		}
-
 		// Parse the form data to get audio file and metadata
 		const formData = await request.formData();
 		audioFile = formData.get('audio') as File;
@@ -201,6 +197,83 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		// Create a properly formatted File object for OpenAI
 		const audioBlob = new Blob([await audioFile.arrayBuffer()], { type: audioFile.type });
 		const transcriptionFile = new File([audioBlob], filename, { type: audioFile.type });
+
+		// Optional OpenRouter transcription path (feature-flagged)
+		if (USE_OPENROUTER_TRANSCRIPTION) {
+			const openrouterPrimaryModel = env.TRANSCRIPTION_OPENROUTER_MODEL?.trim();
+			const openrouterFallbackModels = parseModelList(
+				env.TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS
+			);
+			const openrouterModels = [
+				...(openrouterPrimaryModel ? [openrouterPrimaryModel] : []),
+				...openrouterFallbackModels
+			].filter(Boolean);
+
+			if (openrouterModels.length > 0) {
+				try {
+					const llmService = new SmartLLMService({
+						supabase,
+						appName: 'BuildOS Transcription',
+						httpReferer: 'https://build-os.com'
+					});
+
+					const openrouterResult = await llmService.transcribeAudio({
+						audioFile: transcriptionFile,
+						userId,
+						vocabularyTerms: customVocabulary || undefined,
+						models: openrouterModels,
+						timeoutMs: TRANSCRIPTION_TIMEOUT_MS,
+						maxRetries: MAX_RETRIES,
+						initialRetryDelayMs: INITIAL_RETRY_DELAY_MS
+					});
+
+					return ApiResponse.success({
+						transcript: openrouterResult.text,
+						duration_ms: Date.now() - startTime,
+						audio_duration: openrouterResult.audioDuration ?? null,
+						transcription_model: openrouterResult.model,
+						transcription_service: openrouterResult.service
+					});
+				} catch (error: any) {
+					console.warn(
+						'[Transcribe] OpenRouter transcription failed; falling back to OpenAI.',
+						error?.message || error
+					);
+					await errorLogger.logError(error, {
+						userId,
+						endpoint: '/api/transcribe',
+						httpMethod: 'POST',
+						operationType: 'transcribe_audio_openrouter',
+						llmMetadata: {
+							provider: 'openrouter',
+							model: openrouterModels[0] || 'unknown'
+						},
+						metadata: {
+							modelsTried: openrouterModels,
+							fallbackToOpenAI: true
+						}
+					});
+				}
+			} else {
+				console.warn(
+					'[Transcribe] OpenRouter transcription enabled but no models configured; falling back to OpenAI.'
+				);
+			}
+		}
+
+		if (!PRIVATE_OPENAI_API_KEY) {
+			await errorLogger.logError(new Error('OpenAI API key not configured'), {
+				userId,
+				endpoint: '/api/transcribe',
+				httpMethod: 'POST',
+				operationType: 'transcribe_audio',
+				llmMetadata: {
+					provider: 'openai',
+					model: TRANSCRIPTION_MODEL
+				}
+			});
+			return ApiResponse.internalError('OpenAI API key not configured');
+		}
 
 		// console.log(`[Transcribe] Sending to OpenAI: ${filename} (${audioFile.size} bytes)`);
 

@@ -2,6 +2,7 @@
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
+import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
 
 /**
  * DELETE /api/sms/scheduled/:id
@@ -31,13 +32,18 @@ export const DELETE: RequestHandler = async ({ params, locals: { safeGetSession,
 			return ApiResponse.forbidden('Unauthorized');
 		}
 
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json'
+		};
+		if (PRIVATE_RAILWAY_WORKER_TOKEN) {
+			headers.Authorization = `Bearer ${PRIVATE_RAILWAY_WORKER_TOKEN}`;
+		}
+
 		// Call worker API to cancel
 		const workerUrl = `${PUBLIC_RAILWAY_WORKER_URL}/sms/scheduled/${id}/cancel`;
 		const response = await fetch(workerUrl, {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
+			headers,
 			body: JSON.stringify({
 				reason: 'user_cancelled'
 			})

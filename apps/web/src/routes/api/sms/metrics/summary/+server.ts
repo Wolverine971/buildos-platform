@@ -11,12 +11,15 @@ import { ApiResponse } from '$lib/utils/api-response';
  * Combines today's metrics, 7-day trends, and active alerts
  */
 export const GET: RequestHandler = async ({ locals }) => {
-	try {
-		const session = await locals.safeGetSession();
+		try {
+			const session = await locals.safeGetSession();
 
-		if (!session?.user) {
-			return ApiResponse.unauthorized();
-		}
+			if (!session?.user) {
+				return ApiResponse.unauthorized();
+			}
+			if (!session.user.is_admin) {
+				return ApiResponse.forbidden('Admin access required');
+			}
 
 		const today = format(new Date(), 'yyyy-MM-dd');
 		const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd');

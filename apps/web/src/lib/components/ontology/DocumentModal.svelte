@@ -702,8 +702,8 @@
 							</div>
 
 							<!-- Content editor - the main focus -->
-							<div class="p-3 flex-1 flex flex-col">
-								<div class="flex items-center justify-between gap-2 mb-2">
+							<div class="p-3 flex-1 flex flex-col min-h-0">
+								<div class="flex items-center justify-between gap-2 mb-2 shrink-0">
 									<h4
 										class="text-xs font-semibold text-foreground uppercase tracking-wide"
 									>
@@ -713,13 +713,12 @@
 										>Markdown supported</span
 									>
 								</div>
-								<div class="flex-1 min-h-[250px] sm:min-h-[300px] lg:min-h-[400px]">
+								<div class="flex-1 min-h-0">
 									<RichMarkdownEditor
 										bind:value={body}
-										label="Document content"
-										rows={18}
 										maxLength={50000}
 										helpText=""
+										fillHeight={true}
 									/>
 								</div>
 							</div>

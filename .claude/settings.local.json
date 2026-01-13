@@ -51,7 +51,8 @@
       "WebFetch(domain:9takes.com)",
       "WebFetch(domain:herb.co)",
       "WebFetch(domain:careersinpsychology.org)",
-      "WebFetch(domain:www.theleague.com)"
+      "WebFetch(domain:www.theleague.com)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

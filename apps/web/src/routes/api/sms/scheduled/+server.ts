@@ -2,6 +2,7 @@
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
+import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
 
 /**
  * GET /api/sms/scheduled
@@ -26,9 +27,14 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 		if (status) queryParams.set('status', status);
 		queryParams.set('limit', limit);
 
+		const headers: Record<string, string> = {};
+		if (PRIVATE_RAILWAY_WORKER_TOKEN) {
+			headers.Authorization = `Bearer ${PRIVATE_RAILWAY_WORKER_TOKEN}`;
+		}
+
 		// Call worker API
 		const workerUrl = `${PUBLIC_RAILWAY_WORKER_URL}/sms/scheduled/user/${user.id}?${queryParams.toString()}`;
-		const response = await fetch(workerUrl);
+		const response = await fetch(workerUrl, { headers });
 
 		if (!response.ok) {
 			const errorData = await response.json().catch(() => ({ error: 'Failed to fetch' }));

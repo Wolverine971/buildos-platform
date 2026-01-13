@@ -90,6 +90,27 @@ export interface TextGenerationResult {
 	model?: string;
 }
 
+export type TranscriptionProvider = 'openrouter' | 'openai' | 'auto';
+
+export interface TranscriptionOptions {
+	audioFile: File;
+	userId?: string;
+	vocabularyTerms?: string;
+	models?: string[]; // Ordered OpenRouter model list
+	timeoutMs?: number;
+	maxRetries?: number;
+	initialRetryDelayMs?: number;
+}
+
+export interface TranscriptionResult {
+	text: string;
+	durationMs: number;
+	audioDuration?: number | null;
+	model: string;
+	service: 'openrouter' | 'openai';
+	requestId?: string;
+}
+
 interface OpenRouterResponse {
 	id: string;
 	provider?: string;
@@ -1900,6 +1921,242 @@ You must respond with valid JSON only. Follow these rules:
 			byModel: new Map(this.costTracking),
 			total
 		};
+	}
+
+	// ============================================
+	// TRANSCRIPTION METHODS (OPENROUTER AUDIO INPUT)
+	// ============================================
+
+	private buildTranscriptionVocabulary(customTerms?: string): string {
+		const baseVocabulary =
+			'BuildOS, brain dump, ontology, daily brief, phase, project context';
+		return customTerms ? `${baseVocabulary}, ${customTerms}` : baseVocabulary;
+	}
+
+	private getAudioFormat(mimeType?: string, filename?: string): string {
+		const cleaned = mimeType?.split(';')[0]?.trim().toLowerCase();
+		const mapping: Record<string, string> = {
+			'audio/webm': 'webm',
+			'audio/ogg': 'ogg',
+			'audio/wav': 'wav',
+			'audio/mp4': 'm4a',
+			'audio/mpeg': 'mp3',
+			'audio/mp3': 'mp3',
+			'audio/flac': 'flac',
+			'audio/x-flac': 'flac',
+			'audio/aac': 'm4a'
+		};
+
+		if (cleaned && mapping[cleaned]) {
+			return mapping[cleaned];
+		}
+
+		if (filename && filename.includes('.')) {
+			const ext = filename.split('.').pop()?.toLowerCase();
+			if (ext) {
+				return ext === 'mp4' ? 'm4a' : ext;
+			}
+		}
+
+		return 'webm';
+	}
+
+	private async encodeAudioToBase64(audioFile: File): Promise<string> {
+		const buffer = Buffer.from(await audioFile.arrayBuffer());
+		return buffer.toString('base64');
+	}
+
+	private isRetryableTranscriptionError(error: any): boolean {
+		if (error?.name === 'TranscriptionTimeoutError') {
+			return true;
+		}
+
+		if (error?.code === 'ENOTFOUND' || error?.code === 'ETIMEDOUT' || error?.code === 'ECONNRESET') {
+			return true;
+		}
+
+		const status = error?.status;
+		if (status === 429) return true;
+		if (status && status >= 500 && status < 600) return true;
+
+		return false;
+	}
+
+	private async sleep(ms: number): Promise<void> {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
+
+	private async callOpenRouterAudio(params: {
+		model: string;
+		messages: Array<{
+			role: string;
+			content:
+				| string
+				| Array<
+						| { type: 'text'; text: string }
+						| { type: 'input_audio'; input_audio: { data: string; format: string } }
+				  >;
+		}>;
+		temperature?: number;
+		max_tokens?: number;
+		timeoutMs: number;
+	}): Promise<OpenRouterResponse> {
+		const headers = {
+			Authorization: `Bearer ${this.apiKey}`,
+			'Content-Type': 'application/json',
+			'HTTP-Referer': this.httpReferer,
+			'X-Title': this.appName
+		};
+
+		const body = {
+			model: params.model,
+			messages: params.messages,
+			temperature: params.temperature,
+			max_tokens: params.max_tokens,
+			stream: false
+		};
+
+		try {
+			const response = await fetch(this.apiUrl, {
+				method: 'POST',
+				headers,
+				body: JSON.stringify(body),
+				signal: AbortSignal.timeout(params.timeoutMs)
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				const error = new Error(
+					`OpenRouter API error: ${response.status} - ${errorText}`
+				) as Error & { status?: number };
+				error.status = response.status;
+				throw error;
+			}
+
+			return (await response.json()) as OpenRouterResponse;
+		} catch (error) {
+			if (error instanceof Error && error.name === 'AbortError') {
+				const timeoutError = new Error(
+					`Transcription request timed out after ${params.timeoutMs}ms`
+				) as Error & { name: string };
+				timeoutError.name = 'TranscriptionTimeoutError';
+				throw timeoutError;
+			}
+			throw error;
+		}
+	}
+
+	async transcribeAudio(options: TranscriptionOptions): Promise<TranscriptionResult> {
+		const requestStartedAt = new Date();
+		const startTime = performance.now();
+		const timeoutMs = options.timeoutMs ?? 30000;
+		const maxRetries = options.maxRetries ?? 2;
+		const initialRetryDelayMs = options.initialRetryDelayMs ?? 1000;
+		const models = (options.models || []).map((model) => model.trim()).filter(Boolean);
+
+		if (!this.apiKey) {
+			throw new Error('OpenRouter API key not configured');
+		}
+		if (models.length === 0) {
+			throw new Error('OpenRouter transcription models not configured');
+		}
+
+		const vocabularyPrompt = this.buildTranscriptionVocabulary(options.vocabularyTerms);
+		const audioFormat = this.getAudioFormat(
+			options.audioFile.type,
+			options.audioFile.name
+		);
+		const base64Audio = await this.encodeAudioToBase64(options.audioFile);
+
+		const systemPrompt =
+			'You are a transcription engine. Return only the transcript text. Do not add labels, timestamps, or commentary.';
+		const userPrompt = `Transcribe the following audio. Use these vocabulary terms if they appear: ${vocabularyPrompt}.`;
+
+		let lastError: Error | null = null;
+
+		for (const model of models) {
+			for (let attempt = 0; attempt <= maxRetries; attempt++) {
+				try {
+					if (attempt > 0) {
+						const delay = initialRetryDelayMs * Math.pow(2, attempt - 1);
+						await this.sleep(delay);
+					}
+
+					const response = await this.callOpenRouterAudio({
+						model,
+						messages: [
+							{ role: 'system', content: systemPrompt },
+							{
+								role: 'user',
+								content: [
+									{ type: 'text', text: userPrompt },
+									{
+										type: 'input_audio',
+										input_audio: {
+											data: base64Audio,
+											format: audioFormat
+										}
+									}
+								]
+							}
+						],
+						temperature: 0,
+						max_tokens: 4096,
+						timeoutMs
+					});
+
+					if (!response.choices || response.choices.length === 0) {
+						throw new Error('OpenRouter returned empty choices array');
+					}
+
+					const content = response.choices[0]?.message?.content;
+					if (!content) {
+						throw new Error('OpenRouter returned empty content');
+					}
+
+					const transcript = content.trim();
+					if (!transcript) {
+						throw new Error('OpenRouter returned empty transcript');
+					}
+
+					return {
+						text: transcript,
+						durationMs: Math.round(performance.now() - startTime),
+						audioDuration: null,
+						model: response.model || model,
+						service: 'openrouter',
+						requestId: response.id
+					};
+				} catch (error) {
+					lastError = error as Error;
+
+					if (
+						!this.isRetryableTranscriptionError(error) ||
+						attempt === maxRetries
+					) {
+						break;
+					}
+				}
+			}
+		}
+
+		if (this.errorLogger) {
+			await this.errorLogger.logAPIError(
+				lastError || new Error('OpenRouter transcription failed'),
+				this.apiUrl,
+				'POST',
+				options.userId,
+				{
+					operation: 'transcribeAudio',
+					errorType: 'openrouter_transcription_failure',
+					modelsTried: models.join(', '),
+					timeoutMs,
+					requestStartedAt: requestStartedAt.toISOString()
+				}
+			);
+		}
+
+		throw lastError || new Error('OpenRouter transcription failed');
 	}
 
 	// ============================================

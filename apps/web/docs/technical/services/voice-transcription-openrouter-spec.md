@@ -123,7 +123,7 @@ OpenAI direct (transcription endpoint):
 Add/extend env configuration (defaults shown):
 
 ```
-TRANSCRIPTION_PROVIDER=auto        # openrouter | openai | auto
+TRANSCRIPTION_USE_OPENROUTER=false # Feature flag for OpenRouter transcription
 TRANSCRIPTION_OPENROUTER_MODEL=<audio-capable-model>
 TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS=<comma-separated>
 TRANSCRIPTION_MODEL=gpt-4o-transcribe
@@ -135,8 +135,9 @@ TRANSCRIPTION_INITIAL_RETRY_DELAY_MS=1000
 
 Notes:
 
+- When `TRANSCRIPTION_USE_OPENROUTER=true`, OpenRouter is attempted first and falls back to OpenAI direct.
 - OpenRouter models must support **audio input** via chat completions (not transcription endpoint models).
-- `PRIVATE_OPENROUTER_API_KEY` and `PRIVATE_OPENAI_API_KEY` are both required when using `auto`.
+- `PRIVATE_OPENROUTER_API_KEY` and `PRIVATE_OPENAI_API_KEY` are both required to allow fallback.
 
 ---
 

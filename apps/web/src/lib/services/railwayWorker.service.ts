@@ -66,32 +66,8 @@ export class RailwayWorkerService {
 	 */
 	static async isWorkerAvailable(): Promise<boolean> {
 		if (!browser) return false;
-
-		// Check if worker URL is configured
-		if (!this.WORKER_URL) {
-			// Railway worker URL not configured
-			return false;
-		}
-
-		try {
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 second timeout for health check
-
-			const response = await fetch(`${this.WORKER_URL}/health`, {
-				signal: controller.signal,
-				method: 'GET',
-				mode: 'cors',
-				headers: {
-					'Content-Type': 'application/json'
-				}
-			});
-
-			clearTimeout(timeoutId);
-			return response.ok;
-		} catch (error) {
-			// Railway worker not available
-			return false;
-		}
+		// Worker API is internal-only; avoid browser calls.
+		return false;
 	}
 
 	/**
@@ -237,6 +213,20 @@ export class RailwayWorkerService {
 	 */
 	static async getJobStatus(jobId: string): Promise<QueueJob | null> {
 		try {
+			if (browser) {
+				const response = await fetch(`/api/brief-jobs/${jobId}`, {
+					signal: AbortSignal.timeout(this.TIMEOUT)
+				});
+
+				if (!response.ok) {
+					if (response.status === 404) return null;
+					throw new Error(`Failed to get job status: ${response.status}`);
+				}
+
+				const payload = await response.json();
+				return payload?.data?.job ?? null;
+			}
+
 			const response = await fetch(`${this.WORKER_URL}/jobs/${jobId}`, {
 				signal: AbortSignal.timeout(this.TIMEOUT)
 			});
@@ -258,6 +248,26 @@ export class RailwayWorkerService {
 	 */
 	static async getUserPendingJobs(userId: string, jobType?: QueueJobType): Promise<QueueJob[]> {
 		try {
+			if (browser) {
+				const params = new URLSearchParams();
+				if (jobType) {
+					params.set('job_type', jobType);
+				}
+				params.set('status', 'pending,processing');
+				params.set('limit', '100');
+
+				const response = await fetch(`/api/brief-jobs?${params.toString()}`, {
+					signal: AbortSignal.timeout(this.TIMEOUT)
+				});
+
+				if (!response.ok) {
+					throw new Error(`Failed to get user jobs: ${response.status}`);
+				}
+
+				const payload = await response.json();
+				return payload?.data?.jobs || [];
+			}
+
 			const params = new URLSearchParams();
 			if (jobType) {
 				params.set('type', jobType);

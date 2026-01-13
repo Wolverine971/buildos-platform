@@ -43,7 +43,6 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import BriefsSettingsModal from '$lib/components/briefs/BriefsSettingsModal.svelte';
-	import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 
 	// Props using Svelte 5 runes syntax
 	let {
@@ -420,15 +419,8 @@
 			currentDate = getTodayInTimezone(userTimezone);
 			await fetchBriefData();
 
-			// Check Railway worker availability
-			try {
-				const response = await fetch(`${PUBLIC_RAILWAY_WORKER_URL}/health`, {
-					method: 'GET'
-				});
-				railwayWorkerAvailable = response.ok;
-			} catch (err) {
-				railwayWorkerAvailable = false;
-			}
+				// Check Railway worker availability
+				railwayWorkerAvailable = await RailwayWorkerService.isWorkerAvailable();
 
 			// Check for existing generation
 			if (isToday) {

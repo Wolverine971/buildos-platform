@@ -59,6 +59,20 @@ app.use(express.json());
 
 registerEmailTrackingRoute(app);
 
+const publicWorkerPaths = new Set(['/health']);
+
+app.use((req, res, next) => {
+	if (req.path.startsWith('/api/email-tracking') || publicWorkerPaths.has(req.path)) {
+		return next();
+	}
+
+	if (!isWorkerAuthorized(req.headers.authorization)) {
+		return res.status(401).json({ error: 'Unauthorized' });
+	}
+
+	return next();
+});
+
 // Register SMS management routes
 app.use('/sms/scheduled', smsScheduledRoutes);
 

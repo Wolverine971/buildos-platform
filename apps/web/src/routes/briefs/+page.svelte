@@ -4,7 +4,6 @@
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { replaceState } from '$app/navigation';
-	import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 	import {
 		Calendar,
 		Clock,
@@ -336,15 +335,8 @@
 		// Fetch next scheduled brief time
 		await fetchNextScheduledBrief();
 
-		// Check Railway worker availability
-		try {
-			const response = await fetch(`${PUBLIC_RAILWAY_WORKER_URL}/health`, {
-				method: 'GET'
-			});
-			railwayWorkerAvailable = response.ok;
-		} catch (err) {
-			railwayWorkerAvailable = false;
-		}
+			// Check Railway worker availability
+			railwayWorkerAvailable = await RailwayWorkerService.isWorkerAvailable();
 
 		// Check for existing generation
 		if (isToday) {

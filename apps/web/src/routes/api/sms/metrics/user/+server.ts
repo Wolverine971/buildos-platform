@@ -13,15 +13,18 @@ import { ApiResponse } from '$lib/utils/api-response';
  * - days: Number of days to look back (default: 30)
  */
 export const GET: RequestHandler = async ({ url, locals }) => {
-	try {
-		const session = await locals.safeGetSession();
+		try {
+			const session = await locals.safeGetSession();
 
-		if (!session?.user) {
-			return ApiResponse.unauthorized();
-		}
+			if (!session?.user) {
+				return ApiResponse.unauthorized();
+			}
+			if (!session.user.is_admin) {
+				return ApiResponse.forbidden('Admin access required');
+			}
 
 		// Get query parameters
-		const userId = url.searchParams.get('user_id') || session.user.id;
+			const userId = url.searchParams.get('user_id') || session.user.id;
 		const daysParam = url.searchParams.get('days');
 		const days = daysParam ? parseInt(daysParam) : 30;
 
@@ -30,13 +33,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			return ApiResponse.badRequest('Invalid days parameter. Must be between 1 and 365');
 		}
 
-		// Only allow users to view their own metrics (unless admin)
-		// TODO: Add admin check if needed
-		if (userId !== session.user.id) {
-			return ApiResponse.forbidden('Forbidden - can only view own metrics');
-		}
-
-		// Fetch user metrics
+			// Fetch user metrics
 		const metrics = await smsMetricsService.getUserMetrics(userId, days);
 
 		// Calculate aggregate statistics

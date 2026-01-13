@@ -56,6 +56,8 @@
 		maxLength?: number;
 		rows?: number;
 		size?: EditorSize;
+		/** When true, the editor expands to fill its parent container height */
+		fillHeight?: boolean;
 		// Voice recording props
 		enableVoice?: boolean;
 		voiceBlocked?: boolean;
@@ -86,6 +88,7 @@
 		maxLength = 8000,
 		rows = 12,
 		size = 'base',
+		fillHeight = false,
 		class: className = '',
 		oninput,
 		// Voice props
@@ -275,20 +278,68 @@
 		value = normalized;
 	}
 
+	/**
+	 * Insert text at a specific range in the textarea with proper undo support.
+	 * Uses execCommand which integrates with the browser's native undo stack.
+	 */
+	function insertTextWithUndo(
+		start: number,
+		end: number,
+		text: string,
+		cursorStart: number,
+		cursorEnd: number
+	) {
+		if (!textareaElement) return;
+
+		// Save scroll positions
+		const textareaScrollTop = textareaElement.scrollTop;
+		const pageScrollY = window.scrollY;
+
+		// Focus and select the range to replace
+		textareaElement.focus({ preventScroll: true });
+		textareaElement.setSelectionRange(start, end);
+
+		// Use execCommand for undo support - this is deprecated but still the best
+		// cross-browser way to insert text with undo support
+		const inserted = document.execCommand('insertText', false, text);
+
+		if (!inserted) {
+			// Fallback for browsers where execCommand doesn't work (rare)
+			// Use setRangeText which has partial undo support in some browsers
+			textareaElement.setRangeText(text, start, end, 'end');
+			// Manually sync value since setRangeText doesn't trigger input event
+			value = textareaElement.value;
+		} else {
+			// execCommand triggers input event which syncs value via handleInput
+			// but we need to ensure value is in sync
+			value = textareaElement.value;
+		}
+
+		// Apply maxLength constraint if needed
+		if (maxLength && value.length > maxLength) {
+			value = value.slice(0, maxLength);
+			textareaElement.value = value;
+		}
+
+		// Set cursor position and restore scroll
+		queueMicrotask(() => {
+			textareaElement?.focus({ preventScroll: true });
+			textareaElement?.setSelectionRange(cursorStart, cursorEnd);
+			if (textareaElement) textareaElement.scrollTop = textareaScrollTop;
+			window.scrollTo({ top: pageScrollY, behavior: 'instant' });
+		});
+	}
+
 	function surroundSelection(prefix: string, suffix: string = prefix) {
 		if (!textareaElement) return;
 		const start = textareaElement.selectionStart ?? 0;
 		const end = textareaElement.selectionEnd ?? 0;
 		const selection = value.slice(start, end) || '';
-		const replacement = `${prefix}${selection || 'text'}${suffix}`;
-		const next = value.slice(0, start) + replacement + value.slice(end);
-		setValue(next);
-		queueMicrotask(() => {
-			const cursorStart = start + prefix.length;
-			const cursorEnd = cursorStart + (selection || 'text').length;
-			textareaElement?.focus();
-			textareaElement?.setSelectionRange(cursorStart, cursorEnd);
-		});
+		const innerText = selection || 'text';
+		const replacement = `${prefix}${innerText}${suffix}`;
+		const cursorStart = start + prefix.length;
+		const cursorEnd = cursorStart + innerText.length;
+		insertTextWithUndo(start, end, replacement, cursorStart, cursorEnd);
 	}
 
 	function insertAtLineStart(token: string) {
@@ -296,13 +347,9 @@
 		const start = textareaElement.selectionStart ?? 0;
 		const before = value.slice(0, start);
 		const lineStart = before.lastIndexOf('\n') + 1;
-		const next = value.slice(0, lineStart) + token + value.slice(lineStart);
-		setValue(next);
-		queueMicrotask(() => {
-			const cursor = start + token.length;
-			textareaElement?.focus();
-			textareaElement?.setSelectionRange(cursor, cursor);
-		});
+		const cursor = start + token.length;
+		// Insert the token at the start of the current line
+		insertTextWithUndo(lineStart, lineStart, token, cursor, cursor);
 	}
 
 	function prefixSelectedLines(prefix: string, ordered = false) {
@@ -324,13 +371,8 @@
 			})
 			.join('\n');
 
-		const next = value.slice(0, start) + updated + value.slice(end);
-		setValue(next);
-		queueMicrotask(() => {
-			const cursor = start + updated.length;
-			textareaElement?.focus();
-			textareaElement?.setSelectionRange(cursor, cursor);
-		});
+		const cursor = start + updated.length;
+		insertTextWithUndo(start, end, updated, cursor, cursor);
 	}
 
 	function insertCodeBlock() {
@@ -343,13 +385,8 @@
 			? `\`\`\`\n${selection || 'code'}\n\`\`\``
 			: `\`${selection || 'code'}\``;
 
-		const next = value.slice(0, start) + replacement + value.slice(end);
-		setValue(next);
-		queueMicrotask(() => {
-			const cursor = start + replacement.length;
-			textareaElement?.focus();
-			textareaElement?.setSelectionRange(cursor, cursor);
-		});
+		const cursor = start + replacement.length;
+		insertTextWithUndo(start, end, replacement, cursor, cursor);
 	}
 
 	function insertLink() {
@@ -362,13 +399,8 @@
 		const end = textareaElement.selectionEnd ?? 0;
 		const selection = value.slice(start, end) || 'link text';
 		const replacement = `[${selection}](${url})`;
-		const next = value.slice(0, start) + replacement + value.slice(end);
-		setValue(next);
-		queueMicrotask(() => {
-			const cursor = start + replacement.length;
-			textareaElement?.focus();
-			textareaElement?.setSelectionRange(cursor, cursor);
-		});
+		const cursor = start + replacement.length;
+		insertTextWithUndo(start, end, replacement, cursor, cursor);
 	}
 
 	function handleToolbar(action: ToolbarAction) {
@@ -598,6 +630,10 @@
 				(needsSpaceBefore ? ' ' : '') + trimmedTranscript + (needsSpaceAfter ? ' ' : '');
 		}
 
+		// Save scroll positions before modifying
+		const textareaScrollTop = textareaElement?.scrollTop ?? 0;
+		const pageScrollY = window.scrollY;
+
 		// Insert or replace
 		const newValue = value.slice(0, start) + finalTranscript + value.slice(end);
 		setValue(newValue);
@@ -605,8 +641,11 @@
 		// Update cursor position to end of inserted text
 		const newCursorPos = start + finalTranscript.length;
 		queueMicrotask(() => {
-			textareaElement?.focus();
+			textareaElement?.focus({ preventScroll: true });
 			textareaElement?.setSelectionRange(newCursorPos, newCursorPos);
+			// Restore scroll positions
+			if (textareaElement) textareaElement.scrollTop = textareaScrollTop;
+			window.scrollTo({ top: pageScrollY, behavior: 'instant' });
 		});
 
 		// Reset cursor tracking
@@ -1206,7 +1245,7 @@
 	}
 </script>
 
-<div class={`space-y-2 ${className}`}>
+<div class={`${fillHeight ? 'flex flex-col h-full' : 'space-y-2'} ${className}`}>
 	{#if label}
 		<div class="flex items-center justify-between">
 			<label for={textareaId} class="font-medium text-foreground {sizeConfig[size].label}">
@@ -1221,7 +1260,7 @@
 	{/if}
 
 	<div
-		class="rounded-xl border border-border bg-card shadow-ink overflow-hidden tx tx-frame tx-weak"
+		class="rounded-xl border border-border bg-card shadow-ink overflow-hidden tx tx-frame tx-weak {fillHeight ? 'flex-1 flex flex-col min-h-0' : ''}"
 	>
 		<!-- Toolbar -->
 		<div
@@ -1232,6 +1271,7 @@
 					{@const ActionIcon = action.icon}
 					<button
 						type="button"
+						onmousedown={(e) => e.preventDefault()}
 						onclick={() => handleToolbar(action.id)}
 						class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 transition-colors"
 						title={action.label}
@@ -1277,11 +1317,11 @@
 				bind:this={textareaElement}
 				class="w-full border-0 resize-none focus:ring-0 px-4 py-3 bg-card text-foreground placeholder:text-muted-foreground {sizeConfig[
 					size
-				].textarea}"
+				].textarea} {fillHeight ? 'flex-1 min-h-0' : ''}"
 				{placeholder}
 				{required}
 				{disabled}
-				{rows}
+				rows={fillHeight ? undefined : rows}
 				aria-required={required}
 				aria-disabled={disabled}
 				{value}
@@ -1290,7 +1330,7 @@
 				{...restProps}
 			></textarea>
 		{:else}
-			<div class="px-4 py-4 min-h-[200px] bg-card">
+			<div class="px-4 py-4 bg-card overflow-y-auto {fillHeight ? 'flex-1 min-h-0' : 'min-h-[200px]'}">
 				{#if value.trim()}
 					<div class={`${proseClasses} text-foreground`}>
 						{@html renderMarkdown(value)}

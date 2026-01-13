@@ -13,12 +13,15 @@ import { ApiResponse } from '$lib/utils/api-response';
  * - end_date: End date (YYYY-MM-DD, optional, defaults to start_date)
  */
 export const GET: RequestHandler = async ({ url, locals }) => {
-	try {
-		const session = await locals.safeGetSession();
+		try {
+			const session = await locals.safeGetSession();
 
-		if (!session?.user) {
-			return ApiResponse.unauthorized();
-		}
+			if (!session?.user) {
+				return ApiResponse.unauthorized();
+			}
+			if (!session.user.is_admin) {
+				return ApiResponse.forbidden('Admin access required');
+			}
 
 		// Get query parameters
 		const startDate = url.searchParams.get('start_date');
