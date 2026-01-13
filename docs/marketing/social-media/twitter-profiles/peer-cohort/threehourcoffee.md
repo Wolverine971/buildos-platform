@@ -45,6 +45,7 @@ Marie built Llama Life - a visual daily planner for ADHD that breaks daunting ta
 ## Product
 
 **Llama Life** - A calm productivity tool for ADHD minds
+
 - Visual timeline transforms abstract time into tangible blocks
 - Short, timed task bursts (ride energy waves, don't fight them)
 - Mandatory breaks built into workflow
@@ -84,5 +85,5 @@ Marie taught herself to code by watching YouTube videos, then built and bootstra
 
 ---
 
-*Added: 2026-01-13*
-*Source: Web research, Indie Hackers, We Are Founders interview*
+_Added: 2026-01-13_
+_Source: Web research, Indie Hackers, We Are Founders interview_

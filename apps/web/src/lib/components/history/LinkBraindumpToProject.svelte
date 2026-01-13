@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/history/LinkBraindumpToProject.svelte -->
 <script lang="ts">
-	import { Link2, Loader2, Check, FolderOpen } from 'lucide-svelte';
+	import { Link2, LoaderCircle, Check, FolderOpen } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -123,7 +123,7 @@
 				<div
 					class="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md"
 				>
-					<Loader2 class="w-4 h-4 animate-spin text-gray-500" />
+					<LoaderCircle class="w-4 h-4 animate-spin text-gray-500" />
 					<span class="text-sm text-gray-500">Loading projects...</span>
 				</div>
 			{:else if projects.length === 0}
@@ -149,7 +149,7 @@
 					onclick={linkToProject}
 					variant="primary"
 					size="sm"
-					icon={isLinking ? Loader2 : Check}
+					icon={isLinking ? LoaderCircle : Check}
 					disabled={!selectedProjectId || isLinking}
 					loading={isLinking}
 				>

@@ -33,4 +33,4 @@ Legendary founder now in AI space. His takes on AI tooling are highly valuable.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

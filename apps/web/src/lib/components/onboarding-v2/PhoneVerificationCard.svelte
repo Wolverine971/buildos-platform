@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/onboarding-v2/PhoneVerificationCard.svelte -->
 <script lang="ts">
-	import { Phone, Loader2, CheckCircle, AlertCircle } from 'lucide-svelte';
+	import { Phone, LoaderCircle, CheckCircle, AlertCircle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import { smsService } from '$lib/services/sms.service';
@@ -209,7 +209,9 @@
 			{#if isLoadingExisting}
 				<!-- Loading State -->
 				<div class="flex items-center gap-2 p-3 bg-muted rounded-lg tx tx-pulse tx-weak">
-					<Loader2 class="w-5 h-5 text-muted-foreground animate-spin flex-shrink-0" />
+					<LoaderCircle
+						class="w-5 h-5 text-muted-foreground animate-spin flex-shrink-0"
+					/>
 					<p class="text-sm text-muted-foreground">
 						Checking for existing phone number...
 					</p>

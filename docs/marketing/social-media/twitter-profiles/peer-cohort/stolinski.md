@@ -33,4 +33,4 @@ Major SvelteKit advocate with huge reach. Could feature BuildOS in Syntax.fm if 
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

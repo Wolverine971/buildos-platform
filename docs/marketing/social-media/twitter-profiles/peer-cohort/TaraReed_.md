@@ -16,7 +16,7 @@ engagement_priority: 'regular'
 path: docs/marketing/social-media/twitter-profiles/peer-cohort/TaraReed_.md
 ---
 
-# Tara Reed (@TaraReed_)
+# Tara Reed (@TaraReed\_)
 
 ## Bio
 
@@ -38,4 +38,4 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/TaraReed_.md
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

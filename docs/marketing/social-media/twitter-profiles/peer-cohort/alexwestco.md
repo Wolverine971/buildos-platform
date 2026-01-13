@@ -42,6 +42,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/alexwestco.md
 ## Product
 
 **CyberLeads** - B2B cold lead data business
+
 - Lead generation service
 - $40K MRR achieved in 2 years
 - B2B sales enablement
@@ -83,5 +84,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/alexwestco.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Bootstrapped founders list*
+_Added: 2026-01-13_
+_Source: Bootstrapped founders list_

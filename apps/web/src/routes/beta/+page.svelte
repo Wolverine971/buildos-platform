@@ -9,7 +9,7 @@
 		Gift,
 		Send,
 		AlertTriangle,
-		Loader2,
+		LoaderCircle,
 		X
 	} from 'lucide-svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
@@ -706,7 +706,7 @@
 								aria-describedby="submit-help"
 							>
 								{#if isSubmitting}
-									<Loader2
+									<LoaderCircle
 										class="w-5 h-5 inline mr-2 animate-spin"
 										aria-hidden="true"
 									/>

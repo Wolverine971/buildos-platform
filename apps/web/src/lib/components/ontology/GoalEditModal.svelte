@@ -323,7 +323,7 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
 					<Target class="w-5 h-5" />
 				</div>
@@ -556,7 +556,7 @@
 
 							{#if error}
 								<div
-									class="p-4 bg-destructive/10 border border-destructive/30 rounded"
+									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
 								>
 									<p class="text-sm text-destructive">{error}</p>
 								</div>
@@ -583,7 +583,7 @@
 									<h3
 										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
 									>
-										<span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+										<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
 										Tags
 									</h3>
 								</CardHeader>
@@ -659,7 +659,7 @@
 	{#snippet footer()}
 		{#if !isLoading && goal}
 			<div
-				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/50"
+				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/50 tx tx-grain tx-weak"
 			>
 				<!-- Delete button on left -->
 				<div class="flex items-center gap-1.5 sm:gap-2">

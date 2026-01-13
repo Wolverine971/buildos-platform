@@ -28,7 +28,7 @@ path: docs/marketing/social-media/twitter-profiles/9takes/markmanson.md
 
 ## Bio
 
-> Author of The Subtle Art of Not Giving a F*ck. Writing about life, values, and what actually matters.
+> Author of The Subtle Art of Not Giving a F\*ck. Writing about life, values, and what actually matters.
 
 **Category:** Life Advice Author
 **Location:** New York, NY
@@ -50,11 +50,11 @@ Different types have different core values - his audience would appreciate type-
 
 ## Known Products
 
-- **The Subtle Art of Not Giving a F*ck** (2016)
-- **Everything Is F*cked** (2019)
+- **The Subtle Art of Not Giving a F\*ck** (2016)
+- **Everything Is F\*cked** (2019)
 - **Will** (with Will Smith, 2021)
 - **Blog** - markmanson.net
-- **Newsletter** - Mindf*ck Monday
+- **Newsletter** - Mindf\*ck Monday
 
 ## Content Themes
 

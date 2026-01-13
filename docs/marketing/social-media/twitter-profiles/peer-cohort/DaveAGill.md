@@ -40,4 +40,4 @@ Multi-product indie hacker with design + team tools focus.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

@@ -142,6 +142,20 @@
 	export function blur() {
 		textareaElement?.blur();
 	}
+
+	// Expose setSelectionRange for cursor manipulation (e.g., voice transcription)
+	export function setSelectionRange(start: number, end: number) {
+		textareaElement?.setSelectionRange(start, end);
+	}
+
+	// Get current selection/cursor position
+	export function getSelectionRange(): { start: number; end: number } | null {
+		if (!textareaElement) return null;
+		return {
+			start: textareaElement.selectionStart ?? 0,
+			end: textareaElement.selectionEnd ?? 0
+		};
+	}
 </script>
 
 <!-- Outer wrapper -->

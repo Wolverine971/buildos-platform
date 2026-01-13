@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/phases/EmptyState.svelte -->
 <script lang="ts">
-	import { Calendar, Plus, Sparkles, Loader2 } from 'lucide-svelte';
+	import { Calendar, Plus, Sparkles, LoaderCircle } from 'lucide-svelte';
 	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
@@ -53,7 +53,7 @@
 			disabled={generating || !hasProjectDates}
 			variant="primary"
 			size="lg"
-			icon={generating ? Loader2 : Sparkles}
+			icon={generating ? LoaderCircle : Sparkles}
 			iconPosition="left"
 			loading={generating}
 			title={!hasProjectDates

@@ -34,4 +34,4 @@ Beautiful visual explanations of complex topics. Could inspire BuildOS design/ed
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

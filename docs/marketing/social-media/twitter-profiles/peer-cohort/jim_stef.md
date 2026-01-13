@@ -79,5 +79,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/jim_stef.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Indie Hackers community*
+_Added: 2026-01-13_
+_Source: Indie Hackers community_

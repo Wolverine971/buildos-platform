@@ -33,4 +33,4 @@ Community account for Svelte ecosystem. Good for getting BuildOS featured as a S
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

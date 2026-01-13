@@ -46,4 +46,4 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/tdinh_me.md
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

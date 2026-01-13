@@ -8,7 +8,7 @@
 		ExternalLink,
 		CheckCircle,
 		Mail,
-		Loader2,
+		LoaderCircle,
 		AlertCircle,
 		RefreshCw
 	} from 'lucide-svelte';
@@ -310,7 +310,9 @@
 		{:else if loading}
 			<!-- Loading state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
-				<Loader2 class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+				<LoaderCircle
+					class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4"
+				/>
 				<p class="text-gray-600 dark:text-gray-400">Loading brief...</p>
 			</div>
 		{:else if error}

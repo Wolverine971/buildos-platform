@@ -45,4 +45,4 @@ Published comprehensive guide on Claude Code 2.0 - positions him as thought lead
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

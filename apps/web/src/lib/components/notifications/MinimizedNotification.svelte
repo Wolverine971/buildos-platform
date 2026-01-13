@@ -12,7 +12,7 @@
 	 * - Delegates to type-specific views when available
 	 */
 
-	import { Loader2, CheckCircle, AlertCircle, XCircle, ChevronUp } from 'lucide-svelte';
+	import { LoaderCircle, CheckCircle, AlertCircle, XCircle, ChevronUp } from 'lucide-svelte';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import type { Notification } from '$lib/types/notification.types';
 
@@ -242,7 +242,9 @@
 				<!-- Status Icon -->
 				<div class="flex-shrink-0">
 					{#if notification.status === 'processing'}
-						<Loader2 class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
+						<LoaderCircle
+							class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin"
+						/>
 					{:else if notification.status === 'success'}
 						<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
 					{:else if notification.status === 'error'}

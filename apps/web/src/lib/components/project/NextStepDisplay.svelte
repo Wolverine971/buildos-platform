@@ -16,7 +16,7 @@
 -->
 <script lang="ts">
 	import { slide } from 'svelte/transition';
-	import { ChevronDown, Sparkles, User, Zap, RefreshCw, Loader2 } from 'lucide-svelte';
+	import { ChevronDown, Sparkles, User, Zap, RefreshCw, LoaderCircle } from 'lucide-svelte';
 	import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
 	import type { EntityReference } from '@buildos/shared-types';
 	import { toastService } from '$lib/stores/toast.store';
@@ -235,7 +235,7 @@
 								aria-label="Regenerate next step"
 							>
 								{#if isGenerating}
-									<Loader2
+									<LoaderCircle
 										class="w-3.5 h-3.5 text-muted-foreground animate-spin"
 									/>
 								{:else}
@@ -262,7 +262,7 @@
 						aria-label="Regenerate next step"
 					>
 						{#if isGenerating}
-							<Loader2 class="w-3.5 h-3.5 text-muted-foreground animate-spin" />
+							<LoaderCircle class="w-3.5 h-3.5 text-muted-foreground animate-spin" />
 						{:else}
 							<RefreshCw class="w-3.5 h-3.5 text-muted-foreground" />
 						{/if}
@@ -323,7 +323,7 @@
 				class="flex-shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center"
 			>
 				{#if isGenerating}
-					<Loader2 class="w-4 h-4 text-muted-foreground animate-spin" />
+					<LoaderCircle class="w-4 h-4 text-muted-foreground animate-spin" />
 				{:else}
 					<Sparkles class="w-4 h-4 text-muted-foreground" />
 				{/if}

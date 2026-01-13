@@ -50,7 +50,7 @@ His audience wants real talk about who they are.
 
 ## Known Products
 
-- **I Used to Be a Miserable F*ck** (2017)
+- **I Used to Be a Miserable F\*ck** (2017)
 - **Single On Purpose** (2021)
 - **The Angry Therapist** - Brand
 - **Life coaching** - Sessions

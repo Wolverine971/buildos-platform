@@ -83,5 +83,5 @@ AI-enhanced second brain platform for personal knowledge management.
 
 ---
 
-*Added: 2026-01-13*
-*Source: Second brain research*
+_Added: 2026-01-13_
+_Source: Second brain research_

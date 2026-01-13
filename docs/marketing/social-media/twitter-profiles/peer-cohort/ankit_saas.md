@@ -77,5 +77,5 @@ Building a LinkedIn growth tool powered by AI - similar solo founder energy tack
 
 ---
 
-*Added: 2026-01-13*
-*Source: SaaS influencer research, Twitter*
+_Added: 2026-01-13_
+_Source: SaaS influencer research, Twitter_

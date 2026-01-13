@@ -5,7 +5,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import {
-		Loader2,
+		LoaderCircle,
 		Check,
 		AlertTriangle,
 		Info,
@@ -186,7 +186,7 @@
 	$: voiceButtonState = (() => {
 		if (isInitializingRecording) {
 			return {
-				icon: Loader2,
+				icon: LoaderCircle,
 				variant: 'ghost',
 				disabled: true,
 				tooltip: 'Initializing...'
@@ -204,7 +204,7 @@
 
 		if (isTranscribing) {
 			return {
-				icon: Loader2,
+				icon: LoaderCircle,
 				variant: 'ghost',
 				disabled: true,
 				tooltip: 'Transcribing...'
@@ -274,7 +274,7 @@
 					{:else}
 						{@const Icon = voiceButtonState.icon}
 						<Icon
-							class="w-4 h-4 {voiceButtonState.icon === Loader2
+							class="w-4 h-4 {voiceButtonState.icon === LoaderCircle
 								? 'animate-spin'
 								: ''}"
 						/>
@@ -305,7 +305,7 @@
 			class="mt-2 flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400"
 			transition:fade
 		>
-			<Loader2 class="w-3 h-3 animate-spin" />
+			<LoaderCircle class="w-3 h-3 animate-spin" />
 			<span>Transcribing audio...</span>
 		</div>
 	{/if}

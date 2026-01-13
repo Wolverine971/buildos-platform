@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/projects/ProjectsEmptyState.svelte -->
+<!-- Inkprint Design System: Uses semantic tokens and appropriate textures -->
 <script lang="ts">
 	import { FolderOpen, FileText, Plus } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -40,22 +41,22 @@
 	}
 </script>
 
-<div class="text-center py-16">
+<div class="text-center py-12 sm:py-16">
 	<div
-		class="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md mx-auto shadow-sm
-			border border-gray-200 dark:border-gray-700"
+		class="bg-card rounded-xl p-6 sm:p-8 max-w-md mx-auto shadow-ink border border-dashed border-border tx tx-bloom tx-weak"
 	>
 		{#if icon}
 			{@const EmptyStateIcon = icon}
-			<EmptyStateIcon
-				class="w-{hasFilters ? '12' : '16'} h-{hasFilters ? '12' : '16'}
-					text-gray-400 mx-auto mb-4"
-			/>
+			<div
+				class="mx-auto mb-4 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-lg border border-accent/30 bg-accent/10"
+			>
+				<EmptyStateIcon class="w-6 h-6 text-accent" />
+			</div>
 		{/if}
-		<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+		<h3 class="text-lg font-semibold text-foreground mb-2">
 			{title}
 		</h3>
-		<p class="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+		<p class="text-sm text-muted-foreground mb-6 max-w-md mx-auto leading-relaxed">
 			{subtext}
 		</p>
 

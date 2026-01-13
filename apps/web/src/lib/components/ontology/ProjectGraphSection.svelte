@@ -18,7 +18,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
-	import { ChevronDown, Maximize2, EyeOff, GitBranch, Loader2 } from 'lucide-svelte';
+	import { ChevronDown, Maximize2, EyeOff, GitBranch, LoaderCircle } from 'lucide-svelte';
 	import OntologyGraph from './graph/OntologyGraph.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
@@ -160,22 +160,24 @@
 </script>
 
 <section
-	class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+	class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-thread tx-weak overflow-hidden"
 >
 	<!-- Header - Always visible -->
 	<button
 		type="button"
 		onclick={handleToggle}
-		class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+		class="w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/60 transition-colors pressable"
 		aria-expanded={isExpanded}
 	>
-		<div class="flex items-center gap-3">
-			<div class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-				<GitBranch class="w-4 h-4 text-foreground" />
+		<div class="flex items-center gap-2 sm:gap-3">
+			<div
+				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
+			>
+				<GitBranch class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 			</div>
 			<div>
-				<p class="text-sm font-semibold text-foreground">Relationship Graph</p>
-				<p class="text-xs text-muted-foreground">
+				<p class="text-xs sm:text-sm font-semibold text-foreground">Project Graph</p>
+				<p class="text-[10px] sm:text-xs text-muted-foreground">
 					{#if isLoading}
 						Loading...
 					{:else if nodeCount > 0}
@@ -188,7 +190,7 @@
 		</div>
 
 		<ChevronDown
-			class="w-4 h-4 text-muted-foreground transition-transform duration-[120ms] {isExpanded
+			class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isExpanded
 				? 'rotate-180'
 				: ''}"
 		/>
@@ -199,15 +201,15 @@
 		<div class="border-t border-border" transition:slide={{ duration: 120 }}>
 			<!-- Controls Row -->
 			<div
-				class="flex items-center justify-between gap-2 px-4 py-2 bg-muted/30 border-b border-border"
+				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-muted/30 border-b border-border tx tx-grain tx-weak"
 			>
-				<div class="flex items-center gap-2">
+				<div class="flex items-center gap-1.5 sm:gap-2">
 					<!-- Layout Selector -->
 					<Select
 						bind:value={selectedLayout}
 						size="sm"
 						placeholder="Layout"
-						class="!min-h-[28px] !py-0 !pl-2 !pr-8 !text-xs w-[110px]"
+						class="!min-h-[26px] sm:!min-h-[28px] !py-0 !pl-2 !pr-6 sm:!pr-8 !text-[10px] sm:!text-xs w-[90px] sm:w-[110px]"
 						aria-label="Graph layout"
 					>
 						{#each layouts as layout}
@@ -220,10 +222,10 @@
 						type="button"
 						onclick={handleFitToView}
 						disabled={!graphInstance}
-						class="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition"
+						class="flex items-center gap-1 sm:gap-1.5 h-6 sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
 						aria-label="Fit to view"
 					>
-						<Maximize2 class="w-3.5 h-3.5" />
+						<Maximize2 class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 						<span class="hidden sm:inline">Fit</span>
 					</button>
 				</div>
@@ -232,32 +234,36 @@
 				<button
 					type="button"
 					onclick={handleHide}
-					class="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition"
+					class="flex items-center gap-1 sm:gap-1.5 h-6 sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
 					aria-label="Hide graph"
 				>
-					<EyeOff class="w-3.5 h-3.5" />
+					<EyeOff class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 					<span class="hidden sm:inline">Hide</span>
 				</button>
 			</div>
 
 			<!-- Graph Container -->
-			<div class="h-[250px] sm:h-[280px] lg:h-[300px] relative">
+			<div class="h-[200px] sm:h-[250px] lg:h-[280px] relative">
 				{#if isLoading}
-					<div class="absolute inset-0 flex items-center justify-center bg-muted/20">
-						<div class="flex items-center gap-2 text-sm text-muted-foreground">
-							<Loader2 class="w-4 h-4 animate-spin" />
+					<div
+						class="absolute inset-0 flex items-center justify-center bg-muted/20 tx tx-pulse tx-weak"
+					>
+						<div
+							class="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground"
+						>
+							<LoaderCircle class="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
 							<span>Loading graph...</span>
 						</div>
 					</div>
 				{:else if loadError}
 					<div
-						class="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center"
+						class="absolute inset-0 flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4 text-center tx tx-static tx-weak"
 					>
-						<p class="text-sm text-muted-foreground">{loadError}</p>
+						<p class="text-xs sm:text-sm text-muted-foreground">{loadError}</p>
 						<button
 							type="button"
 							onclick={handleRetry}
-							class="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition"
+							class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition pressable"
 						>
 							Try again
 						</button>
@@ -270,8 +276,12 @@
 						bind:graphInstance
 					/>
 				{:else}
-					<div class="absolute inset-0 flex items-center justify-center">
-						<p class="text-sm text-muted-foreground">No graph data available</p>
+					<div
+						class="absolute inset-0 flex items-center justify-center tx tx-bloom tx-weak"
+					>
+						<p class="text-xs sm:text-sm text-muted-foreground">
+							No graph data available
+						</p>
 					</div>
 				{/if}
 			</div>

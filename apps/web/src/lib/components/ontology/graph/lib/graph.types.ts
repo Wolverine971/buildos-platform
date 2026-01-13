@@ -37,11 +37,13 @@ export type ViewMode = 'projects' | 'full';
 export type NodeType =
 	| 'project'
 	| 'task'
+	| 'note'
 	| 'document'
 	| 'plan'
 	| 'goal'
 	| 'milestone'
-	| 'risk';
+	| 'risk'
+	| 'event';
 
 export interface GraphNode {
 	id: string;

@@ -10,7 +10,7 @@
 	 * Extracted from BrainDumpProcessingNotification.svelte (lines 1678-1870)
 	 */
 
-	import { Loader2, CheckCircle, AlertCircle, XCircle, Settings } from 'lucide-svelte';
+	import { LoaderCircle, CheckCircle, AlertCircle, XCircle, Settings } from 'lucide-svelte';
 	import type { BrainDumpNotification } from '$lib/types/notification.types';
 
 	let { notification }: { notification: BrainDumpNotification } = $props();
@@ -153,7 +153,9 @@
 			<!-- Status Icon -->
 			<div class="flex-shrink-0">
 				{#if statusInfo.icon === 'processing'}
-					<Loader2 class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin" />
+					<LoaderCircle
+						class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
+					/>
 				{:else if statusInfo.icon === 'completed'}
 					<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
 				{:else if statusInfo.icon === 'error'}

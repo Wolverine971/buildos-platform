@@ -15,7 +15,7 @@
 		Edit2,
 		ChevronDown,
 		ChevronUp,
-		Loader2,
+		LoaderCircle,
 		Clock,
 		Edit3,
 		Repeat
@@ -509,7 +509,7 @@
 					<div
 						class="relative bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-5 rounded-full border-2 border-blue-200 dark:border-blue-800/50 shadow-lg"
 					>
-						<Loader2
+						<LoaderCircle
 							class="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin"
 						/>
 					</div>

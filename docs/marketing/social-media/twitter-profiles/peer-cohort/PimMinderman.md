@@ -35,4 +35,4 @@ Humanity-centered design newsletter - values alignment with BuildOS mission.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

@@ -33,7 +33,7 @@
 		Zap,
 		Sparkles,
 		RefreshCw,
-		Loader2
+		LoaderCircle
 	} from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
@@ -767,7 +767,7 @@
 												: 'Generate with AI'}
 										>
 											{#if isGeneratingNextStep}
-												<Loader2 class="w-3 h-3 animate-spin" />
+												<LoaderCircle class="w-3 h-3 animate-spin" />
 												<span class="hidden sm:inline">Generating...</span>
 											{:else if hasNextStep}
 												<RefreshCw class="w-3 h-3" />
@@ -1180,7 +1180,9 @@
 				</div>
 
 				{#if error}
-					<div class="p-3 bg-destructive/10 border border-destructive/30 rounded">
+					<div
+						class="p-3 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
+					>
 						<p class="text-sm text-destructive">{error}</p>
 					</div>
 				{/if}

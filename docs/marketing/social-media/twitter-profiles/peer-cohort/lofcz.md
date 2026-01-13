@@ -41,4 +41,4 @@ Forward-looking piece on context engineering - aligns with BuildOS positioning a
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

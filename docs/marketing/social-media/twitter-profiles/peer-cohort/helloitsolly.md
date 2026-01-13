@@ -43,6 +43,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/helloitsolly.md
 ## Product
 
 **Senja** - Testimonial collection and display software
+
 - Helps businesses collect customer testimonials
 - Social proof widgets for websites
 - Competitor to Testimonial.to
@@ -83,5 +84,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/helloitsolly.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Bootstrapped founders list, Twitter research*
+_Added: 2026-01-13_
+_Source: Bootstrapped founders list, Twitter research_

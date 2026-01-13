@@ -6,7 +6,6 @@
  * 1. Ontology projects loaded server-side (not client-side on mount)
  * 2. Projects passed to Dashboard component to avoid duplicate client-side fetch
  * 3. Streaming: promise returned to enable progressive rendering
- * 4. Removed /api/dashboard call - not needed for current Dashboard component
  *
  * PERFORMANCE OPTIMIZATIONS (Dec 2024 - Skeleton Loading):
  * 5. projectCount returned IMMEDIATELY (no await) for instant skeleton rendering
@@ -17,9 +16,15 @@ import type { PageServerLoad } from './$types';
 import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
 
-export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase }, depends }) => {
+export const load: PageServerLoad = async ({
+	locals: { safeGetSession, supabase, serverTiming },
+	depends
+}) => {
 	depends('app:auth');
 	depends('dashboard:projects');
+
+	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+		serverTiming ? serverTiming.measure(name, fn) : fn();
 
 	try {
 		const { user } = await safeGetSession();
@@ -33,9 +38,11 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		}
 
 		// Get actor ID first (needed for both queries)
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: user.id
-		});
+		const { data: actorId, error: actorError } = await measure('db.ensure_actor', () =>
+			supabase.rpc('ensure_actor_for_user', {
+				p_user_id: user.id
+			})
+		);
 
 		if (actorError || !actorId) {
 			console.error('[Dashboard] Failed to get actor:', actorError);
@@ -48,20 +55,28 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 		// FAST: Get project count immediately (estimated count to reduce DB load)
 		// Prefer membership count so shared projects are included.
-		const { count: memberCount, error: memberCountError } = await supabase
-			.from('onto_project_members')
-			.select('id', { count: 'estimated', head: true })
-			.eq('actor_id', actorId)
-			.is('removed_at', null);
+		const { count: memberCount, error: memberCountError } = await measure(
+			'db.project_members.count',
+			() =>
+				supabase
+					.from('onto_project_members')
+					.select('id', { count: 'estimated', head: true })
+					.eq('actor_id', actorId)
+					.is('removed_at', null)
+		);
 
 		let projectCount = memberCount ?? 0;
 		if (memberCountError) {
 			console.error('[Dashboard] Failed to get membership count:', memberCountError);
-			const { count: fallbackCount, error: countError } = await supabase
-				.from('onto_projects')
-				.select('*', { count: 'estimated', head: true })
-				.eq('created_by', actorId)
-				.is('deleted_at', null);
+			const { count: fallbackCount, error: countError } = await measure(
+				'db.projects.count_fallback',
+				() =>
+					supabase
+						.from('onto_projects')
+						.select('*', { count: 'estimated', head: true })
+						.eq('created_by', actorId)
+						.is('deleted_at', null)
+			);
 			if (countError) {
 				console.error('[Dashboard] Failed to get project count:', countError);
 			}
@@ -72,7 +87,8 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		// Skeletons will be hydrated when this resolves
 		const projectsPromise: Promise<OntologyProjectSummary[]> = fetchProjectSummaries(
 			supabase,
-			actorId
+			actorId,
+			serverTiming
 		).catch((err) => {
 			console.error('[Dashboard] Error loading projects:', err);
 			return [];
@@ -92,44 +108,3 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		};
 	}
 };
-
-/*
- * COMMENTED OUT: Old dashboard data fetch (kept for potential future use)
- * This was fetching task data, calendar status, daily briefs etc.
- * Currently the Dashboard component only needs ontology projects.
- *
- * To re-enable, uncomment and add back to the return object:
- *
- * import type { DashboardData } from '$lib/services/dashboardData.service';
- *
- * const timezone =
- *   ((user as any).user_metadata?.timezone as string | undefined) ||
- *   request.headers.get('x-timezone') ||
- *   request.headers.get('time-zone') ||
- *   'UTC';
- *
- * const dashboardDataPromise: Promise<DashboardData> = fetch(
- *   `/api/dashboard?timezone=${encodeURIComponent(timezone)}`
- * )
- *   .then(async (response) => {
- *     if (!response.ok) {
- *       throw new Error(`Failed to load dashboard data (${response.status})`);
- *     }
- *     const payload = await response.json();
- *     if (!payload.success) {
- *       throw new Error(payload.error || 'Failed to load dashboard data');
- *     }
- *     return payload.data as DashboardData;
- *   })
- *   .catch((err) => {
- *     console.error('[Dashboard] Failed to load initial data', err);
- *     throw err;
- *   });
- *
- * return {
- *   user,
- *   dashboardData: dashboardDataPromise,
- *   dashboardTimezone: timezone,
- *   projects: projectsPromise
- * };
- */

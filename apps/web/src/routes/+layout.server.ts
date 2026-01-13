@@ -22,11 +22,14 @@ const createEmptyBillingContext = (loading: boolean) => ({
 });
 
 export const load: LayoutServerLoad = async ({
-	locals: { safeGetSession, supabase },
+	locals: { safeGetSession, supabase, serverTiming },
 	url,
 	depends
 }) => {
 	depends('app:auth');
+
+	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+		serverTiming ? serverTiming.measure(name, fn) : fn();
 
 	const { user } = await safeGetSession();
 
@@ -54,27 +57,31 @@ export const load: LayoutServerLoad = async ({
 	const completedOnboarding = Boolean(user.completed_onboarding);
 	const onboardingProgressPromise = completedOnboarding
 		? Promise.resolve(100)
-		: new OnboardingProgressService(supabase)
-				.getOnboardingProgress(user.id)
-				.then((data) => clampProgress(data?.progress))
-				.catch((error) => {
-					console.error('Failed to load onboarding progress:', error);
-					return 0;
-				});
+		: measure('db.onboarding_progress', () =>
+				new OnboardingProgressService(supabase)
+					.getOnboardingProgress(user.id)
+					.then((data) => clampProgress(data?.progress))
+					.catch((error) => {
+						console.error('Failed to load onboarding progress:', error);
+						return 0;
+					})
+			);
 
 	const billingContextPromise = stripeEnabled
-		? fetchBillingContext(supabase, user.id, stripeEnabled)
-				.then((context) => ({
-					subscription: context?.subscription ?? null,
-					trialStatus: context?.trialStatus ?? null,
-					paymentWarnings: context?.paymentWarnings ?? [],
-					isReadOnly: Boolean(context?.isReadOnly),
-					loading: false
-				}))
-				.catch((error) => {
-					console.error('Failed to load billing context:', error);
-					return createEmptyBillingContext(false);
-				})
+		? measure('db.billing_context', () =>
+				fetchBillingContext(supabase, user.id, stripeEnabled)
+					.then((context) => ({
+						subscription: context?.subscription ?? null,
+						trialStatus: context?.trialStatus ?? null,
+						paymentWarnings: context?.paymentWarnings ?? [],
+						isReadOnly: Boolean(context?.isReadOnly),
+						loading: false
+					}))
+					.catch((error) => {
+						console.error('Failed to load billing context:', error);
+						return createEmptyBillingContext(false);
+					})
+			)
 		: createEmptyBillingContext(false);
 
 	return {

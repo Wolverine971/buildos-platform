@@ -22,7 +22,7 @@
 		Clock,
 		CheckCircle,
 		AlertCircle,
-		Loader2,
+		LoaderCircle,
 		MessageSquare,
 		ChevronRight,
 		X,
@@ -170,7 +170,7 @@
 			case 'completed':
 				return CheckCircle;
 			case 'processing':
-				return Loader2;
+				return LoaderCircle;
 			case 'pending':
 				return Clock;
 			case 'failed':
@@ -335,7 +335,7 @@
 					<div class="flex items-center gap-2">
 						<h1 class="text-lg sm:text-2xl font-bold text-foreground">History</h1>
 						{#if historyLoading}
-							<Loader2
+							<LoaderCircle
 								class="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-muted-foreground"
 							/>
 						{/if}
@@ -566,7 +566,7 @@
 										aria-label="Classify chat session"
 									>
 										{#if classifyStatus === 'loading'}
-											<Loader2 class="h-2.5 w-2.5 animate-spin" />
+											<LoaderCircle class="h-2.5 w-2.5 animate-spin" />
 											<span class="hidden sm:inline">Queueing</span>
 										{:else if classifyStatus === 'queued'}
 											<Sparkles class="h-2.5 w-2.5 text-emerald-500" />

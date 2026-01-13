@@ -55,7 +55,7 @@ function getComponentType(filePath: string): ComponentInfo['type'] {
 function isRelevantComponent(name: string): boolean {
 	// Skip common icons and framework components
 	const skipPatterns =
-		/^(Loader2?|Check|X|Plus|Edit[0-9]*|Save|Delete|Search|Filter|Calendar|Clock|User|Mail|Settings|Eye|Download|Upload|Arrow|Chevron|Alert|Bar|Chart|Pie|Trending|Award|Zap|Mic|Send|Refresh|Trash|Copy|Sun|Moon|Menu|LogOut|Star|Heart|Home|Info|Lock|Play|Pause|Stop|Volume|Wifi|Battery|Power)$/;
+		/^(Loader2?|LoaderCircle|Check|X|Plus|Edit[0-9]*|Save|Delete|Search|Filter|Calendar|Clock|User|Mail|Settings|Eye|Download|Upload|Arrow|Chevron|Alert|Bar|Chart|Pie|Trending|Award|Zap|Mic|Send|Refresh|Trash|Copy|Sun|Moon|Menu|LogOut|Star|Heart|Home|Info|Lock|Play|Pause|Stop|Volume|Wifi|Battery|Power)$/;
 	return !skipPatterns.test(name);
 }
 

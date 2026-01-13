@@ -266,10 +266,8 @@
 			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0"
-				>
-					<AlertTriangle class="w-5 h-5" />
+				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
+					<AlertTriangle class="w-5 h-5 text-accent" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
@@ -345,23 +343,23 @@
 													<button
 														type="button"
 														onclick={() => selectType(type)}
-														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-amber-500 shadow-ink transition-all duration-200"
+														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
 													>
 														<div
 															class="flex items-start justify-between mb-2"
 														>
 															<div class="flex items-center gap-2">
 																<TypeIcon
-																	class="w-4 h-4 text-amber-500"
+																	class="w-4 h-4 text-accent"
 																/>
 																<h4
-																	class="font-semibold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors"
+																	class="font-semibold text-foreground group-hover:text-accent transition-colors"
 																>
 																	{type.name}
 																</h4>
 															</div>
 															<ChevronRight
-																class="w-5 h-5 text-muted-foreground group-hover:text-amber-500 flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+																class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
 															/>
 														</div>
 														<p
@@ -565,7 +563,7 @@
 
 								{#if error}
 									<div
-										class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg"
+										class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 									>
 										<p class="text-sm text-destructive">
 											{error}

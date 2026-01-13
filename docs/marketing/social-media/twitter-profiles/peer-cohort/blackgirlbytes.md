@@ -77,5 +77,5 @@ Published article on DEV Community: "My Predictions for MCP and AI-Assisted Codi
 
 ---
 
-*Added: 2026-01-13*
-*Source: DEV Community research*
+_Added: 2026-01-13_
+_Source: DEV Community research_

@@ -35,11 +35,11 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/czue.md
 
 ## Products
 
-| Product | Description |
-|---------|-------------|
+| Product      | Description             |
+| ------------ | ----------------------- |
 | SaaS Pegasus | Django SaaS boilerplate |
-| Lifeweeks | Life visualization tool |
-| Scriv | AI writing tool |
+| Lifeweeks    | Life visualization tool |
+| Scriv        | AI writing tool         |
 
 ## Why Follow
 
@@ -64,4 +64,4 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/czue.md
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

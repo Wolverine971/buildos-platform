@@ -37,4 +37,4 @@ Developer tool builder - API focus, technical founder energy.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

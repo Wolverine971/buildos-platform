@@ -16,7 +16,7 @@
 		FileText,
 		Folder,
 		CheckSquare,
-		Loader2
+		LoaderCircle
 	} from 'lucide-svelte';
 	import type { ParsedOperation, BrainDumpParseResult } from '$lib/types/brain-dump';
 	import Button from '$lib/components/ui/Button.svelte';

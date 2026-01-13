@@ -658,13 +658,6 @@
 			description: 'Checkpoints and dates'
 		},
 		{
-			key: 'events',
-			label: 'Events',
-			icon: Clock,
-			items: filteredEvents,
-			description: 'Meetings and time blocks'
-		},
-		{
 			key: 'plans',
 			label: 'Plans',
 			icon: Calendar,
@@ -677,6 +670,13 @@
 			icon: ListChecks,
 			items: filteredTasks,
 			description: 'What needs to move'
+		},
+		{
+			key: 'events',
+			label: 'Events',
+			icon: Clock,
+			items: filteredEvents,
+			description: 'Meetings and time blocks'
 		},
 		{
 			key: 'risks',
@@ -1005,9 +1005,22 @@
 			case 'goal':
 				editingGoalId = ref.id;
 				break;
+			case 'note':
 			case 'document':
 				activeDocumentId = ref.id;
 				showDocumentModal = true;
+				break;
+			case 'milestone':
+				editingMilestoneId = ref.id;
+				break;
+			case 'risk':
+				editingRiskId = ref.id;
+				break;
+			case 'event':
+				editingEventId = ref.id;
+				break;
+			case 'project':
+				showProjectEditModal = true;
 				break;
 			default:
 				console.warn(`Unknown entity type clicked: ${ref.type}`);
@@ -1026,6 +1039,7 @@
 			case 'goal':
 				editingGoalId = node.id;
 				break;
+			case 'note':
 			case 'document':
 				activeDocumentId = node.id;
 				showDocumentModal = true;
@@ -1033,8 +1047,15 @@
 			case 'milestone':
 				editingMilestoneId = node.id;
 				break;
+			case 'risk':
+				editingRiskId = node.id;
+				break;
+			case 'event':
+				editingEventId = node.id;
+				break;
 			case 'project':
-				// Already on this project page, do nothing
+				// Already on this project page, open edit modal
+				showProjectEditModal = true;
 				break;
 			default:
 				console.warn(`Unknown graph node type clicked: ${node.type}`);
@@ -1068,7 +1089,8 @@
 				editingGoalId = entityId;
 				break;
 			case 'note':
-				// Notes are documents
+			case 'document':
+				// Both notes and documents use the DocumentModal
 				activeDocumentId = entityId;
 				showDocumentModal = true;
 				break;
@@ -1078,9 +1100,17 @@
 			case 'risk':
 				editingRiskId = entityId;
 				break;
+			case 'event':
+				editingEventId = entityId;
+				break;
 			case 'project':
 				// Already on this project page, open edit modal
 				showProjectEditModal = true;
+				break;
+			case 'requirement':
+			case 'source':
+				// These entity types don't have edit modals yet
+				console.info(`No edit modal available for entity type: ${entityType}`);
 				break;
 			default:
 				console.warn(`Unknown activity log entity type clicked: ${entityType}`);
@@ -1093,19 +1123,17 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background overflow-x-hidden">
-	<!-- Header -->
-	<header
-		class="sticky top-0 z-0 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
-	>
+	<!-- Header - Project identity card -->
+	<header class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4">
 		<div
-			class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-1.5 sm:py-3 space-y-1 sm:space-y-3"
+			class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak px-3 sm:px-4 py-2 sm:py-3 space-y-1 sm:space-y-3"
 		>
 			<!-- Title Row -->
 			<div class="flex items-center justify-between gap-1.5 sm:gap-2">
 				<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
 					<button
 						onclick={() => goto('/projects')}
-						class="flex items-center justify-center p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0"
+						class="flex items-center justify-center p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0 pressable"
 						aria-label="Back to projects"
 					>
 						<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
@@ -1135,8 +1163,8 @@
 						<button
 							onclick={handleGraphShow}
 							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-							aria-label="Show relationship graph"
-							title="Show relationship graph"
+							aria-label="Show project relationship graph"
+							title="Show project relationship graph"
 						>
 							<GitBranch class="w-5 h-5 text-muted-foreground" />
 						</button>
@@ -1211,7 +1239,7 @@
 											showMobileMenu = false;
 											handleGraphShow();
 										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
 									>
 										<GitBranch class="w-4 h-4 text-muted-foreground" />
 										Show graph
@@ -1223,7 +1251,7 @@
 											showMobileMenu = false;
 											showShareModal = true;
 										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
 									>
 										<UserPlus class="w-4 h-4 text-muted-foreground" />
 										Share project
@@ -1235,7 +1263,7 @@
 											showMobileMenu = false;
 											showProjectEditModal = true;
 										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
 									>
 										<Pencil class="w-4 h-4 text-muted-foreground" />
 										Edit project
@@ -1245,7 +1273,7 @@
 											showMobileMenu = false;
 											showProjectCalendarSettingsModal = true;
 										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
 									>
 										<Calendar class="w-4 h-4 text-muted-foreground" />
 										Calendar settings
@@ -1258,7 +1286,7 @@
 											showMobileMenu = false;
 											showDeleteProjectModal = true;
 										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors pressable"
 									>
 										<Trash2 class="w-4 h-4" />
 										Delete project
@@ -1310,7 +1338,7 @@
 
 	<!-- Relationship Graph Section -->
 	{#if !graphHidden}
-		<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-4">
+		<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4">
 			<ProjectGraphSection
 				projectId={project.id}
 				onNodeClick={handleGraphNodeClick}
@@ -1320,7 +1348,7 @@
 	{/if}
 
 	<!-- Main Content -->
-	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-6 overflow-x-hidden">
+	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
 		<!-- Hydration Error Banner -->
 		{#if hydrationError}
 			<div
@@ -1411,12 +1439,12 @@
 						>
 							<button
 								onclick={() => (documentsExpanded = !documentsExpanded)}
-								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors"
+								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
 							>
 								<div
-									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
+									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
 								>
-									<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
+									<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 								</div>
 								<div>
 									<p class="text-xs sm:text-sm font-semibold text-foreground">
@@ -1435,7 +1463,7 @@
 											activeDocumentId = null;
 											showDocumentModal = true;
 										}}
-										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
 										aria-label="Add document"
 									>
 										<Plus
@@ -1445,7 +1473,7 @@
 								{/if}
 								<button
 									onclick={() => (documentsExpanded = !documentsExpanded)}
-									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
 									aria-label={documentsExpanded
 										? 'Collapse documents'
 										: 'Expand documents'}
@@ -1594,9 +1622,9 @@
 					>
 						<div class="flex items-center gap-3 px-4 py-3">
 							<div
-								class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+								class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
 							>
-								<FileText class="w-4 h-4 text-foreground" />
+								<FileText class="w-4 h-4 text-accent" />
 							</div>
 							<div>
 								<p class="text-sm font-semibold text-foreground">Daily Briefs</p>
@@ -1612,9 +1640,9 @@
 						>
 							<div class="flex items-center gap-3 px-4 py-3">
 								<div
-									class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center"
+									class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
 								>
-									<Clock class="w-4 h-4 text-foreground" />
+									<Clock class="w-4 h-4 text-accent" />
 								</div>
 								<div>
 									<p class="text-sm font-semibold text-foreground">
@@ -1640,13 +1668,13 @@
 							>
 								<button
 									onclick={() => togglePanel(section.key)}
-									class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors"
+									class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
 								>
 									<div
-										class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
+										class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
 									>
 										<SectionIcon
-											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground"
+											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent"
 										/>
 									</div>
 									<div class="min-w-0">
@@ -1669,7 +1697,7 @@
 									{#if canEdit}
 										<button
 											onclick={() => openCreateModalForPanel(section.key)}
-											class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+											class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
 											aria-label="Add {section.label.toLowerCase()}"
 										>
 											<Plus
@@ -1679,7 +1707,7 @@
 									{/if}
 									<button
 										onclick={() => togglePanel(section.key)}
-										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors"
+										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
 										aria-label={isOpen
 											? `Collapse ${section.label.toLowerCase()}`
 											: `Expand ${section.label.toLowerCase()}`}
@@ -1700,7 +1728,7 @@
 								>
 									<!-- Filter/Sort Controls -->
 									<div
-										class="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/20"
+										class="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 tx tx-grain tx-weak"
 									>
 										<InsightFilterDropdown
 											filterGroups={PANEL_CONFIGS[section.key].filters}

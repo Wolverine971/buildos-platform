@@ -80,5 +80,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/petecodes.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Bootstrapped founders list research*
+_Added: 2026-01-13_
+_Source: Bootstrapped founders list research_

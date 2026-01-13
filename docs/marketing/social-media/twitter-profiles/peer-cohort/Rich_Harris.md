@@ -32,4 +32,4 @@ Creator of Svelte - the framework BuildOS uses. Key for technical credibility an
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

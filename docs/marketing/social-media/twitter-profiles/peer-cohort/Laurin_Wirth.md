@@ -38,4 +38,4 @@ Created and maintains list of smaller indie hackers to follow - community connec
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

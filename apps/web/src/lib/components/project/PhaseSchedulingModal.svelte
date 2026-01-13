@@ -10,7 +10,7 @@
 	- Separated concerns for task updates
 -->
 <script lang="ts">
-	import { Calendar, Loader2, X, ChevronDown } from 'lucide-svelte';
+	import { Calendar, LoaderCircle, X, ChevronDown } from 'lucide-svelte';
 	import { createEventDispatcher, onDestroy } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -316,7 +316,7 @@
 		<div class="flex flex-col h-full max-h-[70vh]">
 			{#if status === 'loading'}
 				<div class="flex items-center justify-center py-12">
-					<Loader2 class="w-8 h-8 animate-spin text-gray-400 mr-3" />
+					<LoaderCircle class="w-8 h-8 animate-spin text-gray-400 mr-3" />
 					<span class="text-gray-500 dark:text-gray-400">Loading scheduling data...</span>
 				</div>
 			{:else if status === 'error' && !proposedSchedules.length}
@@ -526,7 +526,7 @@
 					class="flex-1 sm:flex-initial min-w-[140px]"
 				>
 					{#if status === 'saving'}
-						<Loader2 class="w-4 h-4 animate-spin mr-2" />
+						<LoaderCircle class="w-4 h-4 animate-spin mr-2" />
 						Scheduling...
 					{:else}
 						<Calendar class="w-4 h-4 mr-2" />

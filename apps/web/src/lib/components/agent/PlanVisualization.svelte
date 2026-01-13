@@ -12,7 +12,7 @@
 		GitBranch,
 		Zap,
 		ChevronDown,
-		Loader2
+		LoaderCircle
 	} from 'lucide-svelte';
 
 	interface Props {
@@ -48,7 +48,7 @@
 			case 'completed':
 				return CheckCircle2;
 			case 'executing':
-				return Loader2;
+				return LoaderCircle;
 			case 'failed':
 				return AlertCircle;
 			default:
@@ -172,7 +172,7 @@
 
 			{#if executingSteps > 0}
 				<div class="flex items-center gap-1.5">
-					<Loader2 class="h-3 w-3 animate-spin text-accent" aria-label="Executing" />
+					<LoaderCircle class="h-3 w-3 animate-spin text-accent" aria-label="Executing" />
 					<span class="text-xs font-semibold text-accent"> Executing... </span>
 				</div>
 			{/if}

@@ -17,7 +17,7 @@
 		ArrowRight,
 		Plus,
 		Sparkles,
-		Loader2
+		LoaderCircle
 	} from 'lucide-svelte';
 	import type { ParsedOperation, BrainDumpParseResult } from '$lib/types/brain-dump';
 	import type { FieldDiff } from '$lib/utils/diff';
@@ -644,7 +644,9 @@
 												title="Edit operation"
 											>
 												{#if isActionLoading(operation.id, 'edit')}
-													<Loader2 class="w-3.5 h-3.5 animate-spin" />
+													<LoaderCircle
+														class="w-3.5 h-3.5 animate-spin"
+													/>
 												{:else}
 													<Edit3 class="w-3.5 h-3.5" />
 												{/if}
@@ -660,7 +662,9 @@
 												title="Remove operation"
 											>
 												{#if isActionLoading(operation.id, 'remove')}
-													<Loader2 class="w-3.5 h-3.5 animate-spin" />
+													<LoaderCircle
+														class="w-3.5 h-3.5 animate-spin"
+													/>
 												{:else}
 													<Trash2 class="w-3.5 h-3.5" />
 												{/if}
@@ -1012,7 +1016,9 @@
 												title="Edit operation"
 											>
 												{#if isActionLoading(operation.id, 'edit')}
-													<Loader2 class="w-3.5 h-3.5 animate-spin" />
+													<LoaderCircle
+														class="w-3.5 h-3.5 animate-spin"
+													/>
 												{:else}
 													<Edit3 class="w-3.5 h-3.5" />
 												{/if}
@@ -1028,7 +1034,9 @@
 												title="Remove operation"
 											>
 												{#if isActionLoading(operation.id, 'remove')}
-													<Loader2 class="w-3.5 h-3.5 animate-spin" />
+													<LoaderCircle
+														class="w-3.5 h-3.5 animate-spin"
+													/>
 												{:else}
 													<Trash2 class="w-3.5 h-3.5" />
 												{/if}

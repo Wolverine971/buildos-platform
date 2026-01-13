@@ -41,4 +41,4 @@ Job board focused on companies offering 4-day work weeks - niche positioning.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

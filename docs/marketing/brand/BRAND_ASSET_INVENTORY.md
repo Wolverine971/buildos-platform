@@ -1,4 +1,5 @@
 <!-- docs/marketing/brand/BRAND_ASSET_INVENTORY.md -->
+
 # BuildOS Brand Asset Inventory
 
 > **Status:** Current assets collected, gaps identified, actions recommended
@@ -8,16 +9,16 @@
 
 ## Summary: Current State
 
-| Category | Status | Priority |
-|----------|--------|----------|
-| **Logo & Wordmark** | Exists but needs evolution | High |
-| **Color System** | Strong, documented | Low |
-| **Typography** | Implemented | Low |
-| **Textures** | CSS complete, need exports | Medium |
-| **Icons** | Lucide integration working | Low |
-| **Marketing Images** | Gaps identified | High |
-| **Social Templates** | Missing | High |
-| **Print Collateral** | Missing | Medium |
+| Category             | Status                     | Priority |
+| -------------------- | -------------------------- | -------- |
+| **Logo & Wordmark**  | Exists but needs evolution | High     |
+| **Color System**     | Strong, documented         | Low      |
+| **Typography**       | Implemented                | Low      |
+| **Textures**         | CSS complete, need exports | Medium   |
+| **Icons**            | Lucide integration working | Low      |
+| **Marketing Images** | Gaps identified            | High     |
+| **Social Templates** | Missing                    | High     |
+| **Print Collateral** | Missing                    | Medium   |
 
 ---
 
@@ -25,16 +26,17 @@
 
 ### Current Assets
 
-| Asset | Location | Format | Status |
-|-------|----------|--------|--------|
-| Logo Light Mode | `/apps/web/static/buildos-logo-light.svg` | SVG | Active |
-| Logo Dark Mode | `/apps/web/static/buildos-logo-dark.svg` | SVG | Active |
-| Favicon | `/apps/web/static/AppImages/` | PNG (all sizes) | Active |
-| Twitter Card BG | `/apps/web/static/twitter-card-background-*.svg` | SVG | Active |
+| Asset           | Location                                         | Format          | Status |
+| --------------- | ------------------------------------------------ | --------------- | ------ |
+| Logo Light Mode | `/apps/web/static/buildos-logo-light.svg`        | SVG             | Active |
+| Logo Dark Mode  | `/apps/web/static/buildos-logo-dark.svg`         | SVG             | Active |
+| Favicon         | `/apps/web/static/AppImages/`                    | PNG (all sizes) | Active |
+| Twitter Card BG | `/apps/web/static/twitter-card-background-*.svg` | SVG             | Active |
 
 ### Analysis: Current Logo
 
 The current logo is a **purple-to-blue gradient wordmark**:
+
 - Light: `#9333ea` → `#2563eb`
 - Dark: `#c084fc` → `#60a5fa`
 
@@ -43,11 +45,13 @@ The current logo is a **purple-to-blue gradient wordmark**:
 ### Recommendation: Logo Evolution
 
 **Option A: Keep Gradient (Different from Inkprint)**
+
 - Logo is "the brand mark" — allowed to differ from UI
 - Gradient creates recognizable identity
 - Purple → Blue suggests creativity → intelligence
 
 **Option B: Evolve to Inkprint Palette**
+
 - Amber wordmark with no gradient
 - Complete alignment with design system
 - Simpler, more print-friendly
@@ -69,6 +73,7 @@ The current logo is a **purple-to-blue gradient wordmark**:
 ### Current Implementation
 
 **Fully documented in:**
+
 - `/apps/web/src/lib/styles/inkprint.css` — CSS variables
 - `/apps/web/tailwind.config.js` — Tailwind config
 - `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` — Documentation
@@ -103,8 +108,15 @@ Dark Mode:
 **Secondary Font:** IBM Plex Serif (optional, for notes)
 
 **Font Stack:**
+
 ```css
-font-ui: Inter, 'Söhne', 'GT America', system-ui, -apple-system, sans-serif;
+font-ui:
+	Inter,
+	'Söhne',
+	'GT America',
+	system-ui,
+	-apple-system,
+	sans-serif;
 ```
 
 ### Needed Typography Assets
@@ -120,6 +132,7 @@ font-ui: Inter, 'Söhne', 'GT America', system-ui, -apple-system, sans-serif;
 ### Current Implementation
 
 All 7 textures implemented in CSS:
+
 - Bloom (radial halftone)
 - Grain (diagonal lines)
 - Pulse (horizontal stripes)
@@ -145,6 +158,7 @@ All 7 textures implemented in CSS:
 Using **Lucide Icons** throughout the application.
 
 Common icons:
+
 - Target (goals)
 - Flag (milestones)
 - Calendar (plans)
@@ -164,12 +178,12 @@ Common icons:
 
 ### Current Assets
 
-| Asset | Status | Quality |
-|-------|--------|---------|
-| Hero images | Missing | N/A |
-| Feature screenshots | Missing (Inkprint styled) | N/A |
-| Blog header images | Partial | Varies |
-| Comparison graphics | Missing | N/A |
+| Asset               | Status                    | Quality |
+| ------------------- | ------------------------- | ------- |
+| Hero images         | Missing                   | N/A     |
+| Feature screenshots | Missing (Inkprint styled) | N/A     |
+| Blog header images  | Partial                   | Varies  |
+| Comparison graphics | Missing                   | N/A     |
 
 ### Needed Marketing Images (Priority Order)
 
@@ -199,15 +213,15 @@ Common icons:
 
 ### Needed Social Assets
 
-| Platform | Asset Type | Status |
-|----------|------------|--------|
-| Twitter/X | Quote card template | Missing |
+| Platform  | Asset Type           | Status  |
+| --------- | -------------------- | ------- |
+| Twitter/X | Quote card template  | Missing |
 | Twitter/X | Feature announcement | Missing |
 | Twitter/X | Thread header/footer | Missing |
-| LinkedIn | Post image template | Missing |
-| LinkedIn | Article header | Missing |
-| Instagram | Square post | Missing |
-| Instagram | Story template | Missing |
+| LinkedIn  | Post image template  | Missing |
+| LinkedIn  | Article header       | Missing |
+| Instagram | Square post          | Missing |
+| Instagram | Story template       | Missing |
 
 ### Template Style Requirements
 
@@ -229,22 +243,22 @@ Common icons:
 ### Needed Print Assets
 
 1. **Pitch Deck** (High Priority)
-   - 10-15 slides
-   - Inkprint styling
-   - Context compounding narrative
-   - Empire builder aesthetic
+    - 10-15 slides
+    - Inkprint styling
+    - Context compounding narrative
+    - Empire builder aesthetic
 
 2. **One-Pager PDF** (High Priority)
-   - What is BuildOS
-   - Key features (ontology, agentic chat, brain dump)
-   - ADHD-friendly positioning
-   - Contact/signup
+    - What is BuildOS
+    - Key features (ontology, agentic chat, brain dump)
+    - ADHD-friendly positioning
+    - Contact/signup
 
 3. **Press Kit**
-   - Logo files
-   - Founder headshot
-   - Boilerplate text
-   - Key stats
+    - Logo files
+    - Founder headshot
+    - Boilerplate text
+    - Key stats
 
 ---
 
@@ -253,6 +267,7 @@ Common icons:
 ### Current State
 
 Brand documentation exists in Markdown across multiple files:
+
 - `BRAND_STRATEGY_2025.md`
 - `brand-guide-1-pager.md`
 - `buildos-brand-personality-profile.md`
@@ -348,6 +363,7 @@ Organize brand assets in:
 ---
 
 **See also:**
+
 - `BUILDOS_BRAND_AESTHETIC_COMPLETE.md` — Full design rationale
 - `BRAND_AESTHETIC_ONE_PAGER.md` — Quick reference
 - `INKPRINT_DESIGN_SYSTEM.md` — Technical implementation

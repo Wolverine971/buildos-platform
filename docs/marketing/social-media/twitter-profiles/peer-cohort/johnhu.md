@@ -42,6 +42,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/johnhu.md
 ## Product
 
 **Stan** - All-in-one creator platform
+
 - Link-in-bio tool
 - Digital product sales
 - Creator monetization
@@ -84,5 +85,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/johnhu.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Build in public lists*
+_Added: 2026-01-13_
+_Source: Build in public lists_

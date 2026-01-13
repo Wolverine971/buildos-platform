@@ -2,7 +2,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { Loader2, CheckCircle, AlertCircle, Sparkles, Repeat2 } from 'lucide-svelte';
+	import { LoaderCircle, CheckCircle, AlertCircle, Sparkles, Repeat2 } from 'lucide-svelte';
 	import type { PhaseGenerationNotification, StepsProgress } from '$lib/types/notification.types';
 
 	let { notification }: { notification: PhaseGenerationNotification } = $props();
@@ -67,7 +67,7 @@
 			? CheckCircle
 			: notification.status === 'error'
 				? AlertCircle
-				: Loader2
+				: LoaderCircle
 	);
 
 	let statusIconClasses = $derived(

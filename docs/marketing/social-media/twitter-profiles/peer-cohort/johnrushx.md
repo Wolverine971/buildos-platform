@@ -42,6 +42,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/johnrushx.md
 ## Products
 
 **MarsX** - Platform uniting AI, NoCode, and Code for rapid building
+
 - Plus 23 other SaaS projects running simultaneously
 - Known for extreme shipping velocity
 
@@ -82,5 +83,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/johnrushx.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Build in public lists, Twitter*
+_Added: 2026-01-13_
+_Source: Build in public lists, Twitter_

@@ -15,7 +15,7 @@ engagement_priority: 'regular'
 path: docs/marketing/social-media/twitter-profiles/peer-cohort/_developr.md
 ---
 
-# Elwind (@_developr)
+# Elwind (@\_developr)
 
 ## Bio
 
@@ -33,4 +33,4 @@ SaaS builder - peer for mutual growth in building in public community.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

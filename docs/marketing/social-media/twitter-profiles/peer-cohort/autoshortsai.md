@@ -42,6 +42,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/autoshortsai.md
 ## Product
 
 **Autoshorts.ai** - AI tool for creating faceless videos
+
 - Content automation
 - Video generation
 - Scaled to $20K MRR in 90 days
@@ -84,5 +85,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/autoshortsai.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Indie Hacker research*
+_Added: 2026-01-13_
+_Source: Indie Hacker research_

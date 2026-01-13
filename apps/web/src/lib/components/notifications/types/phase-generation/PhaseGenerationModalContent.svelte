@@ -7,7 +7,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
-		Loader2,
+		LoaderCircle,
 		CheckCircle,
 		AlertCircle,
 		ChevronRight,
@@ -139,7 +139,7 @@
 							{:else if notification.status === 'error'}
 								<AlertCircle class={`h-6 w-6 ${statusIconClasses}`} />
 							{:else}
-								<Loader2 class={`h-6 w-6 animate-spin ${statusIconClasses}`} />
+								<LoaderCircle class={`h-6 w-6 animate-spin ${statusIconClasses}`} />
 							{/if}
 						</div>
 						<div class="flex-1 min-w-[200px] space-y-1">
@@ -218,7 +218,7 @@
 										{#if step.status === 'completed'}
 											<CheckCircle class="h-4 w-4" />
 										{:else if step.status === 'processing'}
-											<Loader2 class="h-4 w-4 animate-spin" />
+											<LoaderCircle class="h-4 w-4 animate-spin" />
 										{:else if step.status === 'error'}
 											<AlertCircle class="h-4 w-4" />
 										{:else}

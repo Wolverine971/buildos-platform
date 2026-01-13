@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/layout/BriefStatusIndicator.svelte -->
 <script lang="ts">
-	import { Loader2 } from 'lucide-svelte';
+	import { LoaderCircle } from 'lucide-svelte';
 	import { briefNotificationStatus } from '$lib/services/realtimeBrief.service';
 	import { goto } from '$app/navigation';
 	import { onDestroy } from 'svelte';
@@ -151,7 +151,7 @@
 		title={getTooltip()}
 	>
 		<!-- Icon -->
-		<Loader2 class="w-4 h-4 text-accent animate-spin shrink-0" />
+		<LoaderCircle class="w-4 h-4 text-accent animate-spin shrink-0" />
 
 		<!-- Main content -->
 		<div class="flex flex-col items-start min-w-0">

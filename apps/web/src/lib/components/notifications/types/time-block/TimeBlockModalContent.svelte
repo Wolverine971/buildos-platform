@@ -4,7 +4,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { createEventDispatcher } from 'svelte';
-	import { Loader2, AlertCircle, CheckCircle, Calendar, Clock, X } from 'lucide-svelte';
+	import { LoaderCircle, AlertCircle, CheckCircle, Calendar, Clock, X } from 'lucide-svelte';
 	import type { TimeBlockNotification } from '$lib/types/notification.types';
 	import { format } from 'date-fns';
 	import Button from '$components/ui/Button.svelte';
@@ -51,7 +51,7 @@
 	const statusCopy = $derived.by(() => {
 		if (status === 'processing') {
 			return {
-				icon: Loader2,
+				icon: LoaderCircle,
 				iconClass: 'w-6 h-6 text-purple-600 dark:text-purple-400 animate-spin',
 				message:
 					notification.data.suggestionsState?.progress ?? 'Generating AI suggestions...'
@@ -236,7 +236,7 @@
 
 			{#if status === 'processing'}
 				<div class="flex items-center text-purple-700 dark:text-purple-300">
-					<Loader2 class="w-5 h-5 mr-2 animate-spin" />
+					<LoaderCircle class="w-5 h-5 mr-2 animate-spin" />
 					<span class="text-sm">
 						{notification.data.suggestionsState?.progress ??
 							'Generating AI suggestions...'}

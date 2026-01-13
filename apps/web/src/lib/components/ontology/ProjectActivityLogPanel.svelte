@@ -10,16 +10,7 @@
 -->
 <script lang="ts">
 	import { slide } from 'svelte/transition';
-	import {
-		History,
-		ChevronDown,
-		Plus,
-		Pencil,
-		Trash2,
-		Loader2,
-		ExternalLink,
-		Clock
-	} from 'lucide-svelte';
+	import { History, ChevronDown, Plus, Pencil, Trash2, LoaderCircle, Clock } from 'lucide-svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import type { ProjectLogEntryWithMeta, ProjectLogEntityType } from '@buildos/shared-types';
 
@@ -84,10 +75,16 @@
 				throw new Error('Invalid response: missing data');
 			}
 
+			// Sort logs by most recent first
+			const sortByMostRecent = (entries: EnrichedLogEntry[]) =>
+				entries.sort(
+					(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+				);
+
 			if (append) {
-				logs = [...logs, ...(data.logs ?? [])];
+				logs = sortByMostRecent([...logs, ...(data.logs ?? [])]);
 			} else {
-				logs = data.logs ?? [];
+				logs = sortByMostRecent(data.logs ?? []);
 			}
 			total = data.total ?? 0;
 			hasMore = data.hasMore ?? false;
@@ -159,37 +156,13 @@
 		if (isNaN(date.getTime())) {
 			return 'Unknown';
 		}
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-		if (diffDays === 0) {
-			return date.toLocaleTimeString(undefined, {
-				hour: '2-digit',
-				minute: '2-digit'
-			});
-		} else if (diffDays === 1) {
-			return (
-				'Yesterday ' +
-				date.toLocaleTimeString(undefined, {
-					hour: '2-digit',
-					minute: '2-digit'
-				})
-			);
-		} else if (diffDays < 7) {
-			return date.toLocaleDateString(undefined, {
-				weekday: 'short',
-				hour: '2-digit',
-				minute: '2-digit'
-			});
-		} else {
-			return date.toLocaleDateString(undefined, {
-				month: 'short',
-				day: 'numeric',
-				hour: '2-digit',
-				minute: '2-digit'
-			});
-		}
+		const month = date.getMonth() + 1;
+		const day = date.getDate();
+		const hours = date.getHours();
+		const minutes = date.getMinutes().toString().padStart(2, '0');
+		const ampm = hours >= 12 ? 'p' : 'a';
+		const hour12 = hours % 12 || 12;
+		return `${month}/${day} ${hour12}:${minutes}${ampm}`;
 	}
 
 	function formatEntityType(type: string): string {
@@ -239,19 +212,21 @@
 </script>
 
 <div
-	class="bg-card/60 border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+	class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
 >
 	<button
 		onclick={handleToggle}
-		class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
+		class="w-full flex items-center justify-between gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/60 transition-colors pressable"
 	>
-		<div class="flex items-start gap-3">
-			<div class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-				<History class="w-4 h-4 text-foreground" />
+		<div class="flex items-center gap-2 sm:gap-3">
+			<div
+				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
+			>
+				<History class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 			</div>
 			<div class="min-w-0">
-				<p class="text-sm font-semibold text-foreground">Activity Log</p>
-				<p class="text-xs text-muted-foreground">
+				<p class="text-xs sm:text-sm font-semibold text-foreground">Activity Log</p>
+				<p class="text-[10px] sm:text-xs text-muted-foreground">
 					{#if hasLoaded}
 						{total} {total === 1 ? 'entry' : 'entries'}
 					{:else}
@@ -261,31 +236,39 @@
 			</div>
 		</div>
 		<ChevronDown
-			class="w-4 h-4 text-muted-foreground transition-transform {isExpanded
+			class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isExpanded
 				? 'rotate-180'
 				: ''}"
 		/>
 	</button>
 
 	{#if isExpanded}
-		<div class="border-t border-border" transition:slide={{ duration: 200 }}>
+		<div class="border-t border-border" transition:slide={{ duration: 120 }}>
 			{#if isLoading}
-				<div class="flex items-center justify-center py-8">
-					<Loader2 class="w-5 h-5 text-muted-foreground animate-spin" />
+				<div class="flex items-center justify-center py-4 sm:py-6">
+					<LoaderCircle
+						class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground animate-spin"
+					/>
 				</div>
 			{:else if error}
-				<div class="px-4 py-3 text-sm text-red-600 dark:text-red-400">
+				<div
+					class="px-3 sm:px-4 py-3 text-xs sm:text-sm text-destructive tx tx-static tx-weak"
+				>
 					{error}
 				</div>
 			{:else if logs.length === 0}
-				<div class="px-4 py-4 text-center">
+				<div class="px-3 sm:px-4 py-3 sm:py-4 text-center tx tx-bloom tx-weak">
 					<div
-						class="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center mx-auto mb-2"
+						class="w-8 h-8 sm:w-10 sm:h-10 rounded-md sm:rounded-lg bg-muted/50 flex items-center justify-center mx-auto mb-2"
 					>
-						<Clock class="w-5 h-5 text-muted-foreground" />
+						<Clock class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 					</div>
-					<p class="text-sm text-muted-foreground">No activity yet</p>
-					<p class="text-xs text-muted-foreground/70 mt-0.5">Changes will appear here</p>
+					<p class="text-xs sm:text-sm text-muted-foreground">No activity yet</p>
+					<p
+						class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
+					>
+						Changes will appear here
+					</p>
 				</div>
 			{:else}
 				<!-- Log entries - styled like a terminal/log file -->
@@ -297,86 +280,87 @@
 						{#if isClickable}
 							<button
 								type="button"
-								class="group flex items-start gap-2 px-4 py-2 hover:bg-muted/60 cursor-pointer text-left w-full"
+								class="group flex items-start gap-2 px-4 py-2 hover:bg-muted/60 cursor-pointer text-left w-full pressable"
 								onclick={() => handleEntityClick(log)}
 							>
-								<!-- Timestamp -->
-								<span class="text-muted-foreground shrink-0 w-24 tabular-nums">
-									{formatTimestamp(log.created_at)}
+								<!-- Timestamp + Source -->
+								<span class="shrink-0 w-20 flex flex-col">
+									<span class="text-muted-foreground/70 text-[10px] tabular-nums">
+										{formatTimestamp(log.created_at)}
+									</span>
+									{#if log.change_source}
+										<span class="text-muted-foreground/50 text-[10px]">
+											{getSourceBadge(log.change_source)}
+										</span>
+									{/if}
 								</span>
 
-								<!-- Action icon -->
-								<span class="shrink-0 {getActionColor(log.action)}">
-									<ActionIcon class="w-3.5 h-3.5" />
-								</span>
+								<!-- Divider -->
+								<span class="shrink-0 w-px h-4 bg-border/60"></span>
 
-								<!-- Content -->
+								<!-- Content: {Person} {action} {data} -->
 								<span class="flex-1 min-w-0">
-									<span class="text-muted-foreground">{log.action}</span>
+									<span class="text-foreground font-medium">
+										{log.changed_by_name || 'Someone'}
+									</span>
+									<span class="text-muted-foreground ml-1">{log.action}</span>
 									<span class="mx-1 text-foreground font-medium">
 										{formatEntityType(log.entity_type)}:
 									</span>
 									<span class="text-foreground truncate">
 										{log.entity_name || log.entity_id.slice(0, 8)}
 									</span>
-									{#if log.changed_by_name}
-										<span class="text-muted-foreground/70 ml-1">
-											by {log.changed_by_name}
-										</span>
-									{/if}
 									{#if eventLabel}
 										<span class="text-muted-foreground/70 ml-1">
 											- {eventLabel}
 										</span>
 									{/if}
-									{#if log.change_source}
-										<span class="text-muted-foreground/60 ml-1">
-											({getSourceBadge(log.change_source)})
-										</span>
-									{/if}
 								</span>
 
-								<!-- Link indicator -->
-								<ExternalLink
-									class="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-								/>
+								<!-- Action icon -->
+								<span class="shrink-0 {getActionColor(log.action)}">
+									<ActionIcon class="w-3.5 h-3.5" />
+								</span>
 							</button>
 						{:else}
 							<div class="group flex items-start gap-2 px-4 py-2">
-								<!-- Timestamp -->
-								<span class="text-muted-foreground shrink-0 w-24 tabular-nums">
-									{formatTimestamp(log.created_at)}
+								<!-- Timestamp + Source -->
+								<span class="shrink-0 w-20 flex flex-col">
+									<span class="text-muted-foreground/70 text-[10px] tabular-nums">
+										{formatTimestamp(log.created_at)}
+									</span>
+									{#if log.change_source}
+										<span class="text-muted-foreground/50 text-[10px]">
+											{getSourceBadge(log.change_source)}
+										</span>
+									{/if}
 								</span>
 
-								<!-- Action icon -->
-								<span class="shrink-0 {getActionColor(log.action)}">
-									<ActionIcon class="w-3.5 h-3.5" />
-								</span>
+								<!-- Divider -->
+								<span class="shrink-0 w-px h-4 bg-border/60"></span>
 
-								<!-- Content -->
+								<!-- Content: {Person} {action} {data} -->
 								<span class="flex-1 min-w-0">
-									<span class="text-muted-foreground">{log.action}</span>
+									<span class="text-foreground font-medium">
+										{log.changed_by_name || 'Someone'}
+									</span>
+									<span class="text-muted-foreground ml-1">{log.action}</span>
 									<span class="mx-1 text-foreground font-medium">
 										{formatEntityType(log.entity_type)}:
 									</span>
 									<span class="text-foreground truncate">
 										{log.entity_name || log.entity_id.slice(0, 8)}
 									</span>
-									{#if log.changed_by_name}
-										<span class="text-muted-foreground/70 ml-1">
-											by {log.changed_by_name}
-										</span>
-									{/if}
 									{#if eventLabel}
 										<span class="text-muted-foreground/70 ml-1">
 											- {eventLabel}
 										</span>
 									{/if}
-									{#if log.change_source}
-										<span class="text-muted-foreground/60 ml-1">
-											({getSourceBadge(log.change_source)})
-										</span>
-									{/if}
+								</span>
+
+								<!-- Action icon -->
+								<span class="shrink-0 {getActionColor(log.action)}">
+									<ActionIcon class="w-3.5 h-3.5" />
 								</span>
 							</div>
 						{/if}
@@ -385,14 +369,14 @@
 
 				<!-- Load More -->
 				{#if hasMore}
-					<div class="px-4 py-2 border-t border-border">
+					<div class="px-3 sm:px-4 py-2 border-t border-border">
 						<button
 							onclick={handleLoadMore}
 							disabled={isLoadingMore}
-							class="w-full text-xs text-muted-foreground hover:text-accent py-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 rounded-md hover:bg-accent/5 pressable"
+							class="w-full text-[10px] sm:text-xs text-muted-foreground hover:text-accent py-1.5 sm:py-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 sm:gap-2 rounded-md hover:bg-accent/5 pressable"
 						>
 							{#if isLoadingMore}
-								<Loader2 class="w-3 h-3 animate-spin" />
+								<LoaderCircle class="w-3 h-3 animate-spin" />
 								Loading...
 							{:else}
 								Load more ({total - logs.length} remaining)

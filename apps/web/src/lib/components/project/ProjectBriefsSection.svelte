@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/project/ProjectBriefsSection.svelte -->
 <script lang="ts">
-	import { CheckCircle2, AlertCircle, FileText, Calendar, Loader2 } from 'lucide-svelte';
+	import { CheckCircle2, AlertCircle, FileText, Calendar, LoaderCircle } from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { onMount } from 'svelte';
@@ -30,7 +30,7 @@
 			<div
 				class="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-sm border border-gray-200 dark:border-gray-700"
 			>
-				<Loader2
+				<LoaderCircle
 					class="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-3"
 				/>
 				<span class="text-gray-600 dark:text-gray-400">Loading daily briefs...</span>
@@ -127,7 +127,7 @@
 								<span
 									class="flex items-center px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 rounded-full"
 								>
-									<Loader2 class="w-3 h-3 mr-1 animate-spin" />
+									<LoaderCircle class="w-3 h-3 mr-1 animate-spin" />
 									Processing
 								</span>
 							{:else}

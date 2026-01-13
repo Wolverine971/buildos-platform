@@ -4,6 +4,7 @@
  */
 
 import { Json } from '@buildos/shared-types';
+import type { ServerTiming } from '$lib/server/server-timing';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 
 export interface OntologyProjectSummary {
@@ -54,13 +55,19 @@ export async function ensureActorId(client: TypedSupabaseClient, userId: string)
  */
 export async function fetchProjectSummaries(
 	client: TypedSupabaseClient,
-	actorId: string
+	actorId: string,
+	timing?: ServerTiming
 ): Promise<OntologyProjectSummary[]> {
-	const { data: memberRows, error: memberError } = await client
-		.from('onto_project_members')
-		.select('project_id, role_key, access')
-		.eq('actor_id', actorId)
-		.is('removed_at', null);
+	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+		timing ? timing.measure(name, fn) : fn();
+
+	const { data: memberRows, error: memberError } = await measure('db.project_members.list', () =>
+		client
+			.from('onto_project_members')
+			.select('project_id, role_key, access')
+			.eq('actor_id', actorId)
+			.is('removed_at', null)
+	);
 
 	if (memberError) {
 		throw new Error(memberError.message);
@@ -80,10 +87,11 @@ export async function fetchProjectSummaries(
 		}
 	});
 
-	const { data, error } = await client
-		.from('onto_projects')
-		.select(
-			`
+	const { data, error } = await measure('db.projects.summary', () =>
+		client
+			.from('onto_projects')
+			.select(
+				`
 			id,
 			name,
 			description,
@@ -105,18 +113,19 @@ export async function fetchProjectSummaries(
 			onto_plans(count),
 			onto_documents(count)
 		`
-		)
-		.or(
-			memberProjectIds.size > 0
-				? `created_by.eq.${actorId},id.in.(${Array.from(memberProjectIds).join(',')})`
-				: `created_by.eq.${actorId}`
-		)
-		.is('deleted_at', null) // Exclude soft-deleted projects
-		.is('onto_tasks.deleted_at', null)
-		.is('onto_goals.deleted_at', null)
-		.is('onto_plans.deleted_at', null)
-		.is('onto_documents.deleted_at', null)
-		.order('updated_at', { ascending: false });
+			)
+			.or(
+				memberProjectIds.size > 0
+					? `created_by.eq.${actorId},id.in.(${Array.from(memberProjectIds).join(',')})`
+					: `created_by.eq.${actorId}`
+			)
+			.is('deleted_at', null) // Exclude soft-deleted projects
+			.is('onto_tasks.deleted_at', null)
+			.is('onto_goals.deleted_at', null)
+			.is('onto_plans.deleted_at', null)
+			.is('onto_documents.deleted_at', null)
+			.order('updated_at', { ascending: false })
+	);
 
 	if (error) {
 		throw new Error(error.message);

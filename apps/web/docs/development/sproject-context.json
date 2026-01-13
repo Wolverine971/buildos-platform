@@ -19,7 +19,7 @@
 		{
 			"file": "src/routes/projects/+page.svelte",
 			"type": "page",
-			"components": ["AgentChatModal"]
+			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
@@ -29,19 +29,6 @@
 				"RecordingView",
 				"SuccessView",
 				"OperationEditModal"
-			]
-		},
-		{
-			"file": "src/lib/components/dashboard/Dashboard-old.svelte",
-			"type": "component",
-			"components": [
-				"BraindumpWeekView",
-				"PhaseCalendarView",
-				"TaskModal",
-				"DailyBriefModal",
-				"TimeBlockModal",
-				"MobileTaskTabs",
-				"WeeklyTaskCalendar"
 			]
 		},
 		{
@@ -159,11 +146,6 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -182,6 +164,11 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -971,7 +958,6 @@
 	},
 	"unusedComponents": [
 		"src/lib/components/brain-dump/BrainDumpModal.svelte",
-		"src/lib/components/dashboard/Dashboard-old.svelte",
 		"src/lib/components/dashboard/Dashboard.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",

@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { fly, scale } from 'svelte/transition';
 	import {
-		Loader2,
+		LoaderCircle,
 		CheckCircle,
 		AlertCircle,
 		X,
@@ -128,7 +128,7 @@
 					<div class="flex items-center gap-3">
 						{#if $processingJobs.length > 0}
 							<div class="relative">
-								<Loader2
+								<LoaderCircle
 									class="w-5 h-5 animate-spin text-purple-600 dark:text-purple-400"
 								/>
 								<div
@@ -270,7 +270,7 @@
 						>
 							<div class="flex items-start gap-3">
 								<div class="relative">
-									<Loader2
+									<LoaderCircle
 										class="w-4 h-4 mt-0.5 animate-spin text-purple-600 dark:text-purple-400 flex-shrink-0"
 									/>
 								</div>

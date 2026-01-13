@@ -362,7 +362,7 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-orange-500/10 text-orange-600 dark:text-orange-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
 					<Calendar class="w-5 h-5" />
 				</div>
@@ -633,7 +633,7 @@
 	<!-- Footer Actions -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/50"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/50 tx tx-grain tx-weak"
 		>
 			<!-- Delete button -->
 			<div class="flex items-center gap-1.5 sm:gap-2">

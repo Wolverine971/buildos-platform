@@ -205,7 +205,6 @@
 
 	<!-- PERFORMANCE: Conditional preloads based on auth state -->
 	{#if isAuthenticated}
-		<!-- Note: /api/dashboard/bottom-sections is lazy-loaded via IntersectionObserver -->
 		<!-- No preload needed - saves bandwidth for users who don't scroll -->
 	{:else}
 		<!-- Preload critical landing page resources -->

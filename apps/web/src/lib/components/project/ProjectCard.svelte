@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/project/ProjectCard.svelte -->
+<!-- Inkprint Design System: Uses semantic tokens for consistent styling -->
 <script lang="ts">
 	import {
 		CheckCircle2,
@@ -14,21 +15,25 @@
 	import ProjectEditModal from './ProjectEditModal.svelte';
 	import { page } from '$app/stores';
 	import { invalidate } from '$app/navigation';
-	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let project: any;
-	export let projectBrief: any = null;
+	interface Props {
+		project: any;
+		projectBrief?: any;
+		onviewbrief?: (brief: any) => void;
+	}
 
-	let showEditModal = false;
+	let { project = $bindable(), projectBrief = null, onviewbrief }: Props = $props();
 
-	const dispatch = createEventDispatcher();
+	let showEditModal = $state(false);
 
 	// Get current page for projects list invalidation (different from project detail page)
-	$: currentPage = $page.url.pathname;
-	$: isOnProjectsPage = currentPage === '/projects' || currentPage.startsWith('/projects?');
+	const currentPage = $derived($page.url.pathname);
+	const isOnProjectsPage = $derived(
+		currentPage === '/projects' || currentPage.startsWith('/projects?')
+	);
 
-	// Optimized status configuration using static mapping
+	// Inkprint status colors using semantic tokens
 	const statusMapping = createStatusMapping({
 		icons: {
 			active: Circle,
@@ -38,11 +43,11 @@
 			default: Circle
 		},
 		colors: {
-			active: 'text-green-600 dark:text-green-400',
-			paused: 'text-yellow-600 dark:text-yellow-400',
-			completed: 'text-blue-600 dark:text-blue-400',
-			archived: 'text-gray-500 dark:text-gray-400',
-			default: 'text-gray-600 dark:text-gray-400'
+			active: 'text-accent',
+			paused: 'text-muted-foreground',
+			completed: 'text-foreground',
+			archived: 'text-muted-foreground/60',
+			default: 'text-muted-foreground'
 		},
 		messages: {
 			active: 'Active',
@@ -53,13 +58,25 @@
 		}
 	});
 
-	// Optimized computed values - memoized
-	$: hasTaskStats = project.taskStats?.total > 0;
-	$: completionRate = project.taskStats?.completionRate || 0;
-	$: hasTags = project.tags && project.tags.length > 0;
-	$: visibleTags = hasTags ? project.tags.slice(0, 3) : [];
-	$: extraTagsCount = hasTags ? Math.max(0, project.tags.length - 3) : 0;
-	$: hasBlockedTasks = hasTaskStats && project.taskStats.blocked > 0;
+	// Optimized computed values using $derived
+	const hasTaskStats = $derived(project.taskStats?.total > 0);
+	const completionRate = $derived(project.taskStats?.completionRate || 0);
+	const hasTags = $derived(project.tags && project.tags.length > 0);
+	const visibleTags = $derived(hasTags ? project.tags.slice(0, 3) : []);
+	const extraTagsCount = $derived(hasTags ? Math.max(0, project.tags.length - 3) : 0);
+	const hasBlockedTasks = $derived(hasTaskStats && project.taskStats.blocked > 0);
+
+	// Performance optimization: prevent unnecessary re-renders
+	const projectStatusConfig = $derived(
+		project.status ? statusMapping.getIcon(project.status) : null
+	);
+	const projectStatusColor = $derived(
+		project.status ? statusMapping.getColor(project.status) : ''
+	);
+	const projectStatusText = $derived(
+		project.status ? statusMapping.getMessage(project.status) : ''
+	);
+	const isArchived = $derived(project.status === 'archived');
 
 	function handleEdit(event: Event) {
 		event.preventDefault();
@@ -70,15 +87,15 @@
 	function handleViewBrief(event: Event) {
 		event.preventDefault();
 		event.stopPropagation();
-		if (projectBrief) {
-			dispatch('viewBrief', projectBrief);
+		if (projectBrief && onviewbrief) {
+			onviewbrief(projectBrief);
 		}
 	}
 
-	async function handleProjectUpdated(event: CustomEvent) {
+	async function handleProjectUpdated(updatedProject: any) {
 		// Update the local project data immediately for reactive UI update
-		if (event.detail) {
-			project = { ...project, ...event.detail };
+		if (updatedProject) {
+			project = { ...project, ...updatedProject };
 		}
 
 		// For projects list page, we need a different invalidation strategy
@@ -89,28 +106,20 @@
 		} else {
 			const projectId = `projects:${$page.params.id}`;
 			await invalidate(projectId);
-
-			// depends(`projects:${projectId}:context`);
 		}
 	}
-
-	// Performance optimization: prevent unnecessary re-renders
-	$: projectStatusConfig = project.status ? statusMapping.getIcon(project.status) : null;
-	$: projectStatusColor = project.status ? statusMapping.getColor(project.status) : '';
-	$: projectStatusText = project.status ? statusMapping.getMessage(project.status) : '';
-	$: isArchived = project.status === 'archived';
 </script>
 
 <a
 	href="/projects/{project.id}"
-	class={`block p-3 sm:p-4 ${isArchived ? 'opacity-90' : ''}`}
+	class={`block p-3 sm:p-4 ${isArchived ? 'opacity-80' : ''}`}
 	aria-label={isArchived ? 'View archived project' : undefined}
 >
 	<!-- Header with title and status -->
 	<div class="flex items-start justify-between mb-1.5 sm:mb-2">
 		<div class="flex-1 min-w-0 pr-1">
 			<h3
-				class="text-sm sm:text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-tight"
+				class="text-sm sm:text-base font-semibold text-foreground line-clamp-2 leading-tight"
 				data-project-name
 				style="--project-name: project-name-{project.id};"
 			>
@@ -131,7 +140,7 @@
 
 	{#if isArchived}
 		<div
-			class="mb-2 flex items-center gap-1.5 rounded-md border border-dashed border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/40 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-gray-600 dark:text-gray-300"
+			class="mb-2 flex items-center gap-1.5 rounded-md border border-dashed border-border bg-muted/50 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-muted-foreground"
 		>
 			<Archive class="w-3 h-3" />
 			<span class="hidden sm:inline">Archived — read only</span>
@@ -142,13 +151,13 @@
 	<!-- Description - compact on mobile -->
 	{#if project.description}
 		<p
-			class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2 sm:mb-3 leading-snug min-h-[2rem] sm:min-h-[2.5rem]"
+			class="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-2 sm:mb-3 leading-snug min-h-[2rem] sm:min-h-[2.5rem]"
 		>
 			{project.description}
 		</p>
 	{:else}
 		<p
-			class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 italic mb-2 sm:mb-3 min-h-[2rem] sm:min-h-[2.5rem]"
+			class="text-xs sm:text-sm text-muted-foreground/60 italic mb-2 sm:mb-3 min-h-[2rem] sm:min-h-[2.5rem]"
 		>
 			No description
 		</p>
@@ -161,14 +170,14 @@
 			<div class="flex items-center gap-2">
 				<div class="flex-1">
 					<div class="flex items-center justify-between text-[10px] sm:text-xs mb-0.5">
-						<span class="text-gray-500 dark:text-gray-400">Progress</span>
-						<span class="font-semibold text-gray-700 dark:text-gray-300 tabular-nums">
+						<span class="text-muted-foreground">Progress</span>
+						<span class="font-semibold text-foreground tabular-nums">
 							{completionRate}%
 						</span>
 					</div>
-					<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+					<div class="w-full bg-muted rounded-full h-1">
 						<div
-							class="bg-primary-600 dark:bg-primary-500 h-1 rounded-full"
+							class="bg-accent h-1 rounded-full"
 							style="width: {completionRate}%; transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);"
 						/>
 					</div>
@@ -178,25 +187,21 @@
 			<!-- Task stats in compact row -->
 			<div class="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
 				<div class="flex items-center gap-0.5 sm:gap-1">
-					<CheckCircle2
-						class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-600 dark:text-green-400"
-					/>
-					<span class="text-gray-600 dark:text-gray-400 tabular-nums">
+					<CheckCircle2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent" />
+					<span class="text-muted-foreground tabular-nums">
 						{project.taskStats.completed}
 					</span>
 				</div>
 				<div class="flex items-center gap-0.5 sm:gap-1">
-					<Clock class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 dark:text-blue-400" />
-					<span class="text-gray-600 dark:text-gray-400 tabular-nums">
+					<Clock class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground" />
+					<span class="text-muted-foreground tabular-nums">
 						{project.taskStats.active}
 					</span>
 				</div>
 				{#if hasBlockedTasks}
 					<div class="flex items-center gap-0.5 sm:gap-1">
-						<AlertCircle
-							class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-600 dark:text-red-400"
-						/>
-						<span class="text-gray-600 dark:text-gray-400 tabular-nums">
+						<AlertCircle class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-destructive" />
+						<span class="text-muted-foreground tabular-nums">
 							{project.taskStats.blocked}
 						</span>
 					</div>
@@ -204,9 +209,7 @@
 			</div>
 		</div>
 	{:else}
-		<div class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 italic">
-			No tasks yet
-		</div>
+		<div class="text-[10px] sm:text-xs text-muted-foreground/60 italic">No tasks yet</div>
 	{/if}
 
 	<!-- View Brief Button - compact on mobile -->
@@ -217,7 +220,7 @@
 				onclick={handleViewBrief}
 				variant="outline"
 				size="sm"
-				class="w-full text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-[10px] sm:text-xs py-1 sm:py-1.5"
+				class="w-full text-accent border-accent/30 hover:bg-accent/10 text-[10px] sm:text-xs py-1 sm:py-1.5"
 				data-no-pulse
 			>
 				<FileText class="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
@@ -232,7 +235,7 @@
 		<div class="flex flex-wrap gap-1">
 			{#each visibleTags.slice(0, 2) as tag}
 				<span
-					class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 truncate max-w-[80px] sm:max-w-none"
+					class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-muted text-muted-foreground truncate max-w-[80px] sm:max-w-none"
 					title={tag}
 				>
 					{tag}
@@ -240,7 +243,7 @@
 			{/each}
 			{#if hasTags && project.tags.length > 2}
 				<span
-					class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+					class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-muted text-muted-foreground/60"
 				>
 					+{project.tags.length - 2}
 				</span>
@@ -253,8 +256,8 @@
 <ProjectEditModal
 	bind:isOpen={showEditModal}
 	{project}
-	on:updated={handleProjectUpdated}
-	on:close={() => (showEditModal = false)}
+	onupdated={handleProjectUpdated}
+	onclose={() => (showEditModal = false)}
 />
 
 <style>

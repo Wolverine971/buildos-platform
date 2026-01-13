@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/projects/NewProjectModal.svelte -->
+<!-- Inkprint Design System: Uses semantic tokens for consistent styling -->
 <script lang="ts">
-	import { Brain, PenTool, Loader2, FileText } from 'lucide-svelte';
+	import { Brain, FileText } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { createEventDispatcher } from 'svelte';
@@ -38,13 +39,14 @@
 	{#snippet children()}
 		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-4 sm:space-y-6">
 			<!-- Conditional Explanation based on user experience -->
-			<div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+			<div class="text-xs sm:text-sm text-muted-foreground">
 				{#if isFirstProject}
 					<!-- First-time user messaging -->
 					<p class="mb-3">
-						<strong>Welcome to BuildOS!</strong> We recommend starting with a brain dump
-						- just share your ideas and thoughts about your project, and BuildOS will intelligently
-						organize them into a structured plan with tasks and phases.
+						<strong class="text-foreground">Welcome to BuildOS!</strong> We recommend starting
+						with a brain dump - just share your ideas and thoughts about your project, and
+						BuildOS will intelligently organize them into a structured plan with tasks and
+						phases.
 					</p>
 					<p>
 						This AI-powered approach helps turn scattered ideas into organized project
@@ -54,9 +56,9 @@
 				{:else}
 					<!-- Experienced user messaging -->
 					<p class="mb-3">
-						<strong>Quick start:</strong> Use the brain dump feature to quickly organize
-						your thoughts into a structured project, or create an empty project to build
-						from scratch.
+						<strong class="text-foreground">Quick start:</strong> Use the brain dump feature
+						to quickly organize your thoughts into a structured project, or create an empty
+						project to build from scratch.
 					</p>
 					<p>
 						The brain dump approach uses AI to structure your ideas into tasks and
@@ -67,31 +69,31 @@
 
 			<!-- Options -->
 			<div class="space-y-3">
-				<!-- Brain Dump Option -->
-				<Button
+				<!-- Brain Dump Option - Bloom texture (ideation/newness) -->
+				<button
 					type="button"
 					onclick={handleBrainDump}
-					variant="outline"
-					size="lg"
-					fullWidth={true}
-					btnType="container"
-					class="text-left border-2 border-primary-200 bg-primary-50 dark:bg-primary-900/20 dark:border-primary-800 hover:border-primary-300 dark:hover:border-primary-700"
+					class="w-full text-left rounded-lg border-2 border-accent/40 bg-accent/10 p-3 sm:p-4 shadow-ink tx tx-bloom tx-weak transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
 				>
-					<div class="flex items-start space-x-3 w-full">
-						<div class="flex-shrink-0 mt-1">
-							<Brain class="w-5 h-5 text-primary-600 dark:text-primary-400" />
+					<div class="flex items-start gap-3 w-full">
+						<div
+							class="flex-shrink-0 mt-0.5 p-2 rounded-md bg-accent/20 border border-accent/30"
+						>
+							<Brain class="w-5 h-5 text-accent" />
 						</div>
 						<div class="flex-1 min-w-0">
-							<h4
-								class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1"
-							>
+							<h4 class="text-sm sm:text-base font-semibold text-foreground mb-1">
 								{#if isFirstProject}
-									Share your project ideas (Recommended)
+									Share your project ideas
+									<span
+										class="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-bold uppercase"
+										>Recommended</span
+									>
 								{:else}
 									Brain dump about a project
 								{/if}
 							</h4>
-							<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+							<p class="text-xs sm:text-sm text-muted-foreground leading-relaxed">
 								{#if isFirstProject}
 									Tell us about your project and we'll help organize it into
 									actionable tasks and phases
@@ -102,42 +104,36 @@
 							</p>
 						</div>
 					</div>
-				</Button>
+				</button>
 
-				<!-- Quick Project Option -->
-				<Button
+				<!-- Quick Project Option - Frame texture (structure) -->
+				<button
 					type="button"
 					onclick={handleQuickForm}
-					variant="outline"
-					size="lg"
-					fullWidth={true}
-					btnType="container"
-					class="text-left border-2 border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700"
+					class="w-full text-left rounded-lg border-2 border-border bg-card p-3 sm:p-4 shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent/60 hover:shadow-ink-strong pressable"
 				>
-					<div class="flex items-start space-x-3 w-full">
-						<div class="flex-shrink-0 mt-1">
-							<FileText class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+					<div class="flex items-start gap-3 w-full">
+						<div
+							class="flex-shrink-0 mt-0.5 p-2 rounded-md bg-muted border border-border"
+						>
+							<FileText class="w-5 h-5 text-muted-foreground" />
 						</div>
 						<div class="flex-1 min-w-0">
-							<h4
-								class="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white mb-1"
-							>
+							<h4 class="text-sm sm:text-base font-semibold text-foreground mb-1">
 								Quick project setup
 							</h4>
-							<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+							<p class="text-xs sm:text-sm text-muted-foreground leading-relaxed">
 								Create a project with essential details using a simple form
 							</p>
 						</div>
 					</div>
-				</Button>
+				</button>
 			</div>
 		</div>
 	{/snippet}
 
 	{#snippet footer()}
-		<div
-			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
-		>
+		<div class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border">
 			<Button type="button" onclick={handleClose} variant="secondary" size="md">Cancel</Button
 			>
 		</div>

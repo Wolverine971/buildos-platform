@@ -117,7 +117,7 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-orange-500/10 text-orange-600 dark:text-orange-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
 					<Calendar class="w-5 h-5" />
 				</div>

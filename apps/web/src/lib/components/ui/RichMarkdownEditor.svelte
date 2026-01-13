@@ -629,9 +629,9 @@
 		};
 
 		if ('requestIdleCallback' in window) {
-			(window as Window & { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback?.(
-				runCleanup
-			);
+			(
+				window as Window & { requestIdleCallback?: (cb: () => void) => void }
+			).requestIdleCallback?.(runCleanup);
 		} else {
 			setTimeout(runCleanup, 1500);
 		}
@@ -929,7 +929,8 @@
 					transcriptionService: transcriptionServiceName
 				};
 			} catch (error) {
-				const message = error instanceof Error ? error.message : 'Failed to transcribe audio';
+				const message =
+					error instanceof Error ? error.message : 'Failed to transcribe audio';
 				queueTranscriptUpdate({
 					transcriptionSource: 'audio',
 					transcriptionStatus: 'failed',
@@ -1315,10 +1316,14 @@
 							<span
 								class="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60"
 							></span>
-							<span class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"></span>
+							<span
+								class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"
+							></span>
 						</span>
 						<span class="font-semibold">Listening</span>
-						<span class="font-bold tabular-nums">{formatDuration(_recordingDuration)}</span>
+						<span class="font-bold tabular-nums"
+							>{formatDuration(_recordingDuration)}</span
+						>
 						<kbd
 							class="hidden rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-destructive md:inline-flex"
 						>
@@ -1368,7 +1373,9 @@
 				{/if}
 
 				{#if maxLength && !isCurrentlyRecording && !_isTranscribing}
-					<div class="hidden sm:flex items-center gap-2 text-[11px] uppercase tracking-wide">
+					<div
+						class="hidden sm:flex items-center gap-2 text-[11px] uppercase tracking-wide"
+					>
 						<span>Remaining: {Math.max(0, maxLength - stats.chars)}</span>
 						<div class="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
 							<div

@@ -1,7 +1,15 @@
 <!-- apps/web/src/lib/components/project/AssignBacklogTasksModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { Inbox, Calendar, CalendarDays, Layers, Target, Info, Loader2 } from 'lucide-svelte';
+	import {
+		Inbox,
+		Calendar,
+		CalendarDays,
+		Layers,
+		Target,
+		Info,
+		LoaderCircle
+	} from 'lucide-svelte';
 
 	import type { TaskWithCalendarEvents, PhaseWithTasks } from '$lib/types/project-page.types';
 	import Modal from '$lib/components/ui/Modal.svelte';

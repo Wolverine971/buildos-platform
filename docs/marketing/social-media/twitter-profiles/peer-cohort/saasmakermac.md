@@ -79,5 +79,5 @@ Successfully bootstrapped to 7-figures and achieved an exit. Now shares what the
 
 ---
 
-*Added: 2026-01-13*
-*Source: SaaS influencer lists, Twitter research*
+_Added: 2026-01-13_
+_Source: SaaS influencer lists, Twitter research_

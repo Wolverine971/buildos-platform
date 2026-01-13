@@ -17,7 +17,7 @@
 		Copy,
 		X,
 		AlertCircle,
-		Loader2,
+		LoaderCircle,
 		TrendingUp,
 		FileText,
 		Plus,
@@ -620,7 +620,7 @@
 		>
 			<div class="flex items-center justify-between mb-3">
 				<div class="flex items-center flex-1">
-					<Loader2 class="w-5 h-5 text-blue-600 animate-spin mr-3 flex-shrink-0" />
+					<LoaderCircle class="w-5 h-5 text-blue-600 animate-spin mr-3 flex-shrink-0" />
 					<div class="min-w-0">
 						<h3 class="text-base font-semibold text-gray-900 dark:text-white truncate">
 							{unifiedGenerationState?.isCheckingExisting
@@ -690,7 +690,7 @@
 	<!-- Main Content -->
 	{#if isLoading}
 		<div class="flex justify-center items-center py-12">
-			<Loader2 class="w-8 h-8 text-blue-600 animate-spin" />
+			<LoaderCircle class="w-8 h-8 text-blue-600 animate-spin" />
 		</div>
 	{:else if selectedView === 'analytics'}
 		<BriefAnalyticsDashboard />
@@ -902,7 +902,9 @@
 								size="sm"
 								class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
 								title="Regenerate"
-								icon={currentStreamingStatus?.isGenerating ? Loader2 : RefreshCw}
+								icon={currentStreamingStatus?.isGenerating
+									? LoaderCircle
+									: RefreshCw}
 							></Button>
 						</div>
 					</div>
@@ -953,7 +955,7 @@
 		{:else if isRefreshing}
 			<!-- Show loading state while refreshing -->
 			<div class="flex justify-center items-center py-12">
-				<Loader2 class="w-8 h-8 text-blue-600 animate-spin" />
+				<LoaderCircle class="w-8 h-8 text-blue-600 animate-spin" />
 			</div>
 		{/if}
 	{/if}

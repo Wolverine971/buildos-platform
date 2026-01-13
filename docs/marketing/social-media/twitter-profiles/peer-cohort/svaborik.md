@@ -32,4 +32,4 @@ Active in Svelte ecosystem - peer for SvelteKit discussions.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

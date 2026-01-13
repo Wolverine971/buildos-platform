@@ -32,4 +32,4 @@ Pre-launch stage founder - similar journey, natural peer for mutual support duri
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

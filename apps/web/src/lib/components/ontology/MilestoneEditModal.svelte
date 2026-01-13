@@ -401,7 +401,7 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
 					<Flag class="w-5 h-5" />
 				</div>
@@ -589,7 +589,7 @@
 
 							{#if error}
 								<div
-									class="p-4 bg-destructive/10 border border-destructive/30 rounded"
+									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
 								>
 									<p class="text-sm text-destructive">{error}</p>
 								</div>
@@ -615,7 +615,7 @@
 									<h3
 										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
 									>
-										<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+										<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
 										Tags
 									</h3>
 								</CardHeader>
@@ -631,7 +631,7 @@
 								<h3
 									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
 								>
-									<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
 									Due Date
 								</h3>
 							</CardHeader>

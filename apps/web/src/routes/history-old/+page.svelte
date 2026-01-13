@@ -4,7 +4,7 @@
 		Brain,
 		Search,
 		X,
-		Loader2,
+		LoaderCircle,
 		Calendar,
 		ChevronLeft,
 		ChevronRight,
@@ -664,7 +664,9 @@
 			<!-- Loading state -->
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
-					<Loader2 class="w-8 h-8 animate-spin text-purple-600 dark:text-purple-400" />
+					<LoaderCircle
+						class="w-8 h-8 animate-spin text-purple-600 dark:text-purple-400"
+					/>
 				</div>
 
 				<!-- Braindumps grid -->
@@ -756,7 +758,7 @@
 {#if isFetchingBraindump}
 	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
 		<div class="bg-white dark:bg-gray-800 rounded-lg p-6 flex items-center space-x-3">
-			<Loader2 class="w-5 h-5 animate-spin text-purple-600 dark:text-purple-400" />
+			<LoaderCircle class="w-5 h-5 animate-spin text-purple-600 dark:text-purple-400" />
 			<span class="text-gray-900 dark:text-white">Loading braindump...</span>
 		</div>
 	</div>

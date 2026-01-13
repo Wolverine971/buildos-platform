@@ -9,7 +9,7 @@
 		ChevronRight,
 		Mic,
 		MicOff,
-		Loader2,
+		LoaderCircle,
 		CheckCircle,
 		Rocket,
 		Settings,
@@ -662,7 +662,7 @@
 								: ''}"
 						>
 							{#if isTranscribing}
-								<Loader2 class="w-5 h-5 mr-2 animate-spin" />
+								<LoaderCircle class="w-5 h-5 mr-2 animate-spin" />
 								Transcribing...
 							{:else if $isRecording}
 								<MicOff class="w-5 h-5 mr-2" />
@@ -704,7 +704,7 @@
 							class="text-xs text-muted-foreground mt-2 flex items-center"
 							transition:fade
 						>
-							<Loader2 class="w-3 h-3 mr-1 animate-spin" />
+							<LoaderCircle class="w-3 h-3 mr-1 animate-spin" />
 							Saving...
 						</p>
 					{:else if !hasUnsavedChanges && hasCurrentInput}

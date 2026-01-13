@@ -17,7 +17,7 @@
 	import { onMount } from 'svelte';
 	import {
 		GitBranch,
-		Loader2,
+		LoaderCircle,
 		Target,
 		ListChecks,
 		FileText,
@@ -397,7 +397,7 @@
 								class="absolute inset-0 flex items-center justify-center bg-muted/20"
 							>
 								<div class="flex items-center gap-2 text-sm text-muted-foreground">
-									<Loader2 class="w-5 h-5 animate-spin" />
+									<LoaderCircle class="w-5 h-5 animate-spin" />
 									<span>Loading example project...</span>
 								</div>
 							</div>
@@ -533,7 +533,7 @@
 				class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak overflow-hidden h-[450px] flex items-center justify-center"
 			>
 				<div class="flex items-center gap-2 text-sm text-muted-foreground">
-					<Loader2 class="w-5 h-5 animate-spin" />
+					<LoaderCircle class="w-5 h-5 animate-spin" />
 					<span>Loading example project...</span>
 				</div>
 			</div>

@@ -90,11 +90,11 @@
 
 <div class="border-b border-border last:border-b-0">
 	<!-- Section Header -->
-	<div class="w-full px-3 py-2 flex items-center justify-between">
+	<div class="w-full px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between">
 		<button
 			type="button"
-			class="flex-1 flex items-center gap-2 min-w-0 transition-colors text-left
-				{isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer'}
+			class="flex-1 flex items-center gap-1.5 sm:gap-2 min-w-0 transition-colors text-left rounded
+				{isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer pressable'}
 				focus:outline-none focus-visible:bg-muted/50"
 			onclick={toggleExpand}
 			disabled={isDisabled}
@@ -103,28 +103,28 @@
 		>
 			<!-- Left side: chevron, icon, label, count -->
 			<ChevronRight
-				class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 flex-shrink-0
+				class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground transition-transform duration-[120ms] flex-shrink-0
 					{expanded ? 'rotate-90' : ''} {!canExpand ? 'opacity-30' : ''}"
 			/>
-			<IconComponent class="w-3.5 h-3.5 flex-shrink-0 {config.iconColor}" />
-			<span class="text-sm text-foreground">{config.labelPlural}</span>
-			<span class="text-xs text-muted-foreground">({linkedCount})</span>
+			<IconComponent class="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 {config.iconColor}" />
+			<span class="text-xs sm:text-sm text-foreground">{config.labelPlural}</span>
+			<span class="text-[10px] sm:text-xs text-muted-foreground">({linkedCount})</span>
 		</button>
 
 		<!-- Right side: add button or loading indicator -->
 		{#if isLoadingAvailable}
-			<div class="p-1">
-				<Loader class="w-3.5 h-3.5 text-muted-foreground animate-spin" />
+			<div class="p-0.5 sm:p-1">
+				<Loader class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground animate-spin" />
 			</div>
 		{:else if showAddButton}
 			<button
 				type="button"
-				class="p-1 rounded text-muted-foreground hover:text-accent hover:bg-accent/10
-					transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+				class="p-0.5 sm:p-1 rounded text-muted-foreground hover:text-accent hover:bg-accent/10
+					transition-colors duration-[120ms] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent pressable"
 				onclick={handleAddClick}
 				aria-label="Add {config.label.toLowerCase()}"
 			>
-				<Plus class="w-3.5 h-3.5" />
+				<Plus class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 			</button>
 		{/if}
 	</div>
@@ -134,7 +134,7 @@
 		<div
 			id="section-{config.kind}"
 			class="border-t border-border/50"
-			transition:slide={{ duration: 150, easing: cubicOut }}
+			transition:slide={{ duration: 120, easing: cubicOut }}
 		>
 			{#each safeEntities as entity (entity.id)}
 				<LinkedEntitiesItem

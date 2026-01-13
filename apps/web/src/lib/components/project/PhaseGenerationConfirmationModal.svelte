@@ -9,7 +9,7 @@
 		ChevronUp,
 		Clock,
 		Info,
-		Loader2,
+		LoaderCircle,
 		Target,
 		CalendarDays,
 		Layers,
@@ -789,7 +789,9 @@
 			<!-- Loading State -->
 			{#if loading}
 				<div class="flex items-center justify-center py-8">
-					<Loader2 class="w-6 h-6 animate-spin text-primary-600 dark:text-primary-400" />
+					<LoaderCircle
+						class="w-6 h-6 animate-spin text-primary-600 dark:text-primary-400"
+					/>
 					<span class="ml-2 text-gray-600 dark:text-gray-400">Loading preview...</span>
 				</div>
 			{:else if error}

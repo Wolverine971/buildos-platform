@@ -78,5 +78,5 @@ Built a successful SaaS agency to $2M ARR, now transitioning into building his o
 
 ---
 
-*Added: 2026-01-13*
-*Source: SaaS influencer research*
+_Added: 2026-01-13_
+_Source: SaaS influencer research_

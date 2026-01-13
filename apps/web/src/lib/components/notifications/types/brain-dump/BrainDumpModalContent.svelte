@@ -13,7 +13,7 @@
 	import { createEventDispatcher, tick } from 'svelte';
 	import { goto, invalidate } from '$app/navigation';
 	import { smartNavigateToProject } from '$lib/utils/brain-dump-navigation';
-	import { Loader2, CheckCircle, AlertCircle, X, ChevronDown } from 'lucide-svelte';
+	import { LoaderCircle, CheckCircle, AlertCircle, X, ChevronDown } from 'lucide-svelte';
 	import type { BrainDumpNotification } from '$lib/types/notification.types';
 	import type { ParsedOperation } from '$lib/types/brain-dump';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -615,7 +615,7 @@
 				<div class="flex items-center gap-3">
 					<div>
 						{#if statusInfo.icon === 'processing'}
-							<Loader2
+							<LoaderCircle
 								class="w-6 h-6 text-primary-600 dark:text-primary-400 animate-spin"
 							/>
 						{:else if statusInfo.icon === 'success'}
@@ -672,7 +672,7 @@
 				{:else}
 					<!-- Loading success view -->
 					<div class="flex items-center justify-center py-8">
-						<Loader2
+						<LoaderCircle
 							class="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin"
 						/>
 					</div>
@@ -700,7 +700,7 @@
 				{:else}
 					<!-- Loading parse results view -->
 					<div class="flex items-center justify-center py-8">
-						<Loader2
+						<LoaderCircle
 							class="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin"
 						/>
 					</div>
@@ -726,7 +726,7 @@
 					<!-- Loading processing view or simple spinner -->
 					<div class="text-center space-y-4">
 						<div class="flex justify-center">
-							<Loader2
+							<LoaderCircle
 								class="w-8 h-8 text-primary-600 dark:text-primary-400 animate-spin"
 							/>
 						</div>

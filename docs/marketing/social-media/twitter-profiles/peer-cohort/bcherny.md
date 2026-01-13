@@ -83,5 +83,5 @@ Boris **created Claude Code** - the coding agent you use every day to build Buil
 
 ---
 
-*Added: 2026-01-13*
-*Source: Hacker News, VentureBeat, Twitter research*
+_Added: 2026-01-13_
+_Source: Hacker News, VentureBeat, Twitter research_

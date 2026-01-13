@@ -32,4 +32,4 @@ Focused on context engineering education - directly relevant to BuildOS AI featu
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

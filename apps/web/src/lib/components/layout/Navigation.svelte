@@ -14,7 +14,7 @@
 		Sparkles,
 		AlertCircle,
 		ChevronRight,
-		Loader2,
+		LoaderCircle,
 		Zap,
 		Clock,
 		Sun,
@@ -651,7 +651,7 @@
 										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 min-h-0 transition-colors rounded-none"
 									>
 										{#if loggingOut}
-											<Loader2 class="w-4 h-4 mr-3 animate-spin" />
+											<LoaderCircle class="w-4 h-4 mr-3 animate-spin" />
 											Signing out...
 										{:else}
 											<LogOut class="w-4 h-4 mr-3" />
@@ -883,7 +883,7 @@
 							variant="ghost"
 							size="md"
 							fullWidth
-							icon={loggingOut ? Loader2 : LogOut}
+							icon={loggingOut ? LoaderCircle : LogOut}
 							iconPosition="left"
 							loading={loggingOut}
 							class="justify-start px-3 py-1.5 text-muted-foreground hover:bg-muted/50 min-h-0"

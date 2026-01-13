@@ -1,11 +1,11 @@
 <!-- apps/web/src/lib/components/ontology/EntityCommentsSection.svelte -->
 <script lang="ts">
-	import { MessageSquare, Loader2 } from 'lucide-svelte';
+	import { MessageSquare, LoaderCircle } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import CommentTextareaWithVoice from '$lib/components/ui/CommentTextareaWithVoice.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import EntityCommentThread from '$lib/components/ontology/EntityCommentThread.svelte';
 
@@ -342,53 +342,60 @@
 			<label for="new-comment-input" class="text-xs font-medium text-muted-foreground"
 				>Add a comment</label
 			>
-			<Textarea
+			<CommentTextareaWithVoice
 				id="new-comment-input"
 				bind:value={newComment}
 				rows={2}
 				placeholder="Share an update or ask a question..."
 				disabled={isSubmitting || !canWrite}
+				voiceBlocked={isSubmitting}
+				enableVoice={canWrite}
+				voiceNoteSource="entity-comment-new"
 				size="sm"
-			/>
-			<div class="flex items-center justify-between gap-2 flex-wrap">
-				<div class="text-[0.65rem] text-muted-foreground/80 leading-relaxed">
-					<p>
-						Mentions: <span class="font-mono bg-muted px-1 rounded"
-							>[[user:id|Name]]</span
-						>
-					</p>
-					{#if !canWrite}
-						<p class="text-muted-foreground">Sign in to add a comment.</p>
+			>
+				{#snippet footer({ isRecording, isTranscribing })}
+					{#if !isRecording && !isTranscribing}
+						{#if !canWrite}
+							<span class="text-muted-foreground">Sign in to add a comment.</span>
+						{:else}
+							<span>
+								Mentions: <span class="font-mono bg-muted px-1 rounded"
+									>[[user:id|Name]]</span
+								>
+							</span>
+						{/if}
 					{/if}
-				</div>
-				<Button
-					variant="primary"
-					size="sm"
-					class="pressable"
-					onclick={() => submitComment(null)}
-					disabled={isSubmitting || !newComment.trim() || !canWrite}
-				>
-					{#if isSubmitting}
-						<Loader2 class="w-3 h-3 animate-spin" />
-						Posting...
-					{:else}
-						Post
-					{/if}
-				</Button>
-			</div>
+				{/snippet}
+				{#snippet actions()}
+					<Button
+						variant="primary"
+						size="sm"
+						class="pressable"
+						onclick={() => submitComment(null)}
+						disabled={isSubmitting || !newComment.trim() || !canWrite}
+					>
+						{#if isSubmitting}
+							<LoaderCircle class="w-3 h-3 animate-spin" />
+							Posting...
+						{:else}
+							Post
+						{/if}
+					</Button>
+				{/snippet}
+			</CommentTextareaWithVoice>
 		</div>
 
 		{#if error}
 			<div
-				class="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-red-500/10 border border-red-500/20"
+				class="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-destructive/10 border border-destructive/30 tx tx-static tx-weak"
 			>
-				<p class="text-xs text-red-600 dark:text-red-400">{error}</p>
+				<p class="text-xs text-destructive">{error}</p>
 			</div>
 		{/if}
 
 		{#if isLoading}
 			<div class="flex items-center gap-1.5 text-sm text-muted-foreground">
-				<Loader2 class="w-3.5 h-3.5 animate-spin" />
+				<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
 				Loading comments...
 			</div>
 		{:else if threads.length === 0}

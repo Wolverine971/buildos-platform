@@ -15,7 +15,7 @@
 	import {
 		Plus,
 		FolderOpen,
-		Loader2,
+		LoaderCircle,
 		AlertTriangle,
 		ChevronRight,
 		Sparkles,
@@ -66,6 +66,7 @@
 		email?: string;
 		name?: string | null;
 		is_admin?: boolean;
+		timezone?: string | null;
 	}
 
 	// Props - OPTIMIZATION: Projects now passed from server with count for skeleton rendering
@@ -249,7 +250,7 @@
 						disabled={isRefreshing}
 					>
 						{#if isRefreshing}
-							<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+							<LoaderCircle class="h-4 w-4 mr-2 animate-spin" />
 						{/if}
 						Try Again
 					</Button>
@@ -279,7 +280,9 @@
 				</div>
 				<h2 class="text-sm sm:text-xl font-bold text-foreground">Projects</h2>
 				{#if isLoading}
-					<Loader2 class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground animate-spin" />
+					<LoaderCircle
+						class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground animate-spin"
+					/>
 				{/if}
 			</div>
 

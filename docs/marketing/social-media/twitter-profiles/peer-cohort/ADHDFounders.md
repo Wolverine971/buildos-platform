@@ -79,5 +79,5 @@ NeuroDiversion Conference - A groundbreaking event for neurodivergent entreprene
 
 ---
 
-*Added: 2026-01-13*
-*Source: Apple Podcasts, Twitter research*
+_Added: 2026-01-13_
+_Source: Apple Podcasts, Twitter research_

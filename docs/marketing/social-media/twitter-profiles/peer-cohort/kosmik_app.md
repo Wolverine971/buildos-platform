@@ -41,6 +41,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/kosmik_app.md
 ## Product
 
 **Kosmik** - Visual, spatial knowledge base
+
 - Infinite canvas approach
 - Visual note organization
 - Different from linear tools
@@ -83,5 +84,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/kosmik_app.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Second brain research*
+_Added: 2026-01-13_
+_Source: Second brain research_

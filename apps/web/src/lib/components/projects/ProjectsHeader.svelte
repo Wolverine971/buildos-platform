@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/projects/ProjectsHeader.svelte -->
+<!-- Inkprint Design System: Uses semantic tokens and micro-label pattern -->
 <script lang="ts">
-	import { FolderOpen, Plus, Loader2 } from 'lucide-svelte';
+	import { Plus, LoaderCircle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { createEventDispatcher } from 'svelte';
 
@@ -14,19 +15,19 @@
 	}
 </script>
 
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-	<div>
-		<h1 class="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
-			<FolderOpen class="w-8 h-8 mr-3 text-blue-600 dark:text-blue-400" />
-			Projects
-		</h1>
-		<p class="text-gray-600 dark:text-gray-400 mt-2">
+<div
+	class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6"
+>
+	<div class="space-y-1">
+		<p class="micro-label text-accent">YOUR WORKSPACE</p>
+		<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">Projects</h1>
+		<p class="text-sm text-muted-foreground hidden sm:block">
 			Organize and track your work and personal projects
 		</p>
 	</div>
 	<Button onclick={handleNewProject} disabled={creatingProject} variant="primary" size="md">
 		{#if creatingProject}
-			<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+			<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 			Creating...
 		{:else}
 			<Plus class="w-4 h-4 mr-2" />

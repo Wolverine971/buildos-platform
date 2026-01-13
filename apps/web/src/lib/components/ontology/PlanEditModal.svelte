@@ -369,7 +369,7 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
 					<Clock class="w-5 h-5" />
 				</div>
@@ -581,7 +581,7 @@
 
 									{#if error}
 										<div
-											class="rounded border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+											class="rounded border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive tx tx-static tx-weak"
 										>
 											{error}
 										</div>

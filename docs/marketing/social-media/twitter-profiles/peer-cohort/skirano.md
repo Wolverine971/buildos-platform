@@ -32,4 +32,4 @@ Building Cursor - the AI coding tool. Insights on AI-assisted development direct
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

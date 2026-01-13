@@ -1,6 +1,7 @@
 // apps/web/src/app.d.ts
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import type { ServerTiming } from '$lib/server/server-timing';
 
 type User = Database['public']['Tables']['users']['Row'];
 type Streamable<T> = T | Promise<T>;
@@ -21,6 +22,7 @@ declare global {
 			}>;
 			session: Session | null;
 			user: User | null;
+			serverTiming?: ServerTiming;
 			_explicitlyCleared?: boolean;
 			getCalendarTokens(): Promise<CalendarTokens | null>;
 			csrfToken?: string;

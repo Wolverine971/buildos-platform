@@ -14,9 +14,6 @@
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
 	import ProjectListSkeleton from '$lib/components/projects/ProjectListSkeleton.svelte';
-	import GraphControls from '$lib/components/ontology/graph/GraphControls.svelte';
-	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
-	import NodeDetailsPanel from '$lib/components/ontology/graph/NodeDetailsPanel.svelte';
 	import type {
 		ViewMode,
 		GraphNode,
@@ -31,7 +28,7 @@
 		Target,
 		Calendar,
 		FileText,
-		Loader2,
+		LoaderCircle,
 		SlidersHorizontal,
 		ChevronDown
 	} from 'lucide-svelte';
@@ -100,6 +97,11 @@
 	const projectCount = $derived(data?.projectCount ?? 0);
 
 	const graphStore = ontologyGraphStore;
+	let GraphControlsComponent = $state<any>(null);
+	let OntologyGraphComponent = $state<any>(null);
+	let NodeDetailsPanelComponent = $state<any>(null);
+	let graphComponentLoading = $state(false);
+	let graphComponentError = $state<string | null>(null);
 
 	let activeTab = $state<'overview' | 'graph'>(
 		get(page).url.searchParams.get('view') === 'graph' ? 'graph' : 'overview'
@@ -107,6 +109,9 @@
 	let graphViewMode = $state<ViewMode>('projects'); // Default to Projects & Entities
 	let graphInstance = $state<OntologyGraphInstance | null>(null);
 	let selectedGraphNode = $state<GraphNode | null>(null);
+	const graphComponentsReady = $derived(
+		Boolean(GraphControlsComponent && OntologyGraphComponent && NodeDetailsPanelComponent)
+	);
 	const emptyGraphStats: GraphStats = {
 		totalProjects: 0,
 		activeProjects: 0,
@@ -320,6 +325,29 @@
 		selectedStages = [];
 	}
 
+	async function ensureGraphComponents() {
+		if (graphComponentsReady || graphComponentLoading) return;
+		graphComponentLoading = true;
+		graphComponentError = null;
+
+		try {
+			const [controlsModule, graphModule, detailsModule] = await Promise.all([
+				import('$lib/components/ontology/graph/GraphControls.svelte'),
+				import('$lib/components/ontology/graph/OntologyGraph.svelte'),
+				import('$lib/components/ontology/graph/NodeDetailsPanel.svelte')
+			]);
+
+			GraphControlsComponent = controlsModule.default;
+			OntologyGraphComponent = graphModule.default;
+			NodeDetailsPanelComponent = detailsModule.default;
+		} catch (error) {
+			console.error('[Projects] Failed to load graph components:', error);
+			graphComponentError = 'Failed to load graph view.';
+		} finally {
+			graphComponentLoading = false;
+		}
+	}
+
 	async function setActiveTab(tab: 'overview' | 'graph') {
 		if (activeTab === tab) return;
 		activeTab = tab;
@@ -360,6 +388,12 @@
 	});
 
 	$effect(() => {
+		if (isAdmin && activeTab === 'graph') {
+			ensureGraphComponents();
+		}
+	});
+
+	$effect(() => {
 		const state = $graphStore;
 		if (activeTab === 'graph' && state.status === 'idle') {
 			graphStore.load({ viewMode: graphViewMode });
@@ -378,31 +412,37 @@
 	<title>Projects | BuildOS</title>
 </svelte:head>
 
-<div class="mx-auto max-w-screen-2xl px-3 sm:px-4 lg:px-6 py-2.5 sm:py-6 space-y-2.5 sm:space-y-6">
+<div
+	class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4"
+>
+	<!-- Page Header - Inkprint design with micro-label pattern -->
 	<header
-		class="flex flex-col gap-1.5 sm:gap-3 sm:flex-row sm:items-center sm:justify-between !mt-0"
+		class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between !mt-0"
 	>
-		<div class="space-y-0.5 sm:space-y-1 flex-1">
-			<div class="flex items-center gap-2">
-				<h1 class="text-lg sm:text-2xl font-bold text-foreground lg:text-3xl">Projects</h1>
+		<div class="space-y-1 sm:space-y-1.5 flex-1">
+			<p class="micro-label text-accent">YOUR WORKSPACE</p>
+			<div class="flex items-center gap-2.5">
+				<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
+					Projects
+				</h1>
 				{#if projectsLoading}
-					<Loader2 class="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground animate-spin" />
+					<LoaderCircle class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin" />
 				{/if}
 			</div>
-			<p class="text-xs sm:text-sm text-muted-foreground lg:text-base hidden sm:block">
-				Manage and organize your active projects and workflows.
+			<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+				Your active projects and workflows. Context that compounds.
 			</p>
 		</div>
 
-		<!-- Graph/Overview toggle - Admin Only -->
+		<!-- Graph/Overview toggle - Admin Only - Inkprint tab design -->
 		{#if isAdmin}
 			<nav
-				class="inline-flex rounded-lg border border-border bg-card p-0.5 sm:p-1 text-xs sm:text-sm font-bold overflow-x-auto scrollbar-hide shadow-ink"
+				class="inline-flex rounded-lg border border-border bg-card p-0.5 sm:p-1 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-hide shadow-ink tx tx-frame tx-weak"
 				aria-label="Project view mode"
 			>
 				<button
 					type="button"
-					class={`relative rounded px-3 py-1.5 sm:px-4 sm:py-2 transition pressable ${
+					class={`relative rounded-md px-3 py-1.5 sm:px-4 sm:py-2 transition-all pressable ${
 						activeTab === 'overview'
 							? 'bg-accent text-accent-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -414,7 +454,7 @@
 				</button>
 				<button
 					type="button"
-					class={`relative rounded px-3 py-1.5 sm:px-4 sm:py-2 transition pressable ${
+					class={`relative rounded-md px-3 py-1.5 sm:px-4 sm:py-2 transition-all pressable ${
 						activeTab === 'graph'
 							? 'bg-accent text-accent-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -514,59 +554,70 @@
 					</CardBody>
 				</Card>
 
-				<div class="grid grid-cols-4 gap-1.5 sm:gap-3">
+				<!-- Stats Grid - Semantic textures per brand guidelines -->
+				<div class="grid grid-cols-4 gap-2 sm:gap-3">
+					<!-- Projects count - Frame texture (canonical/structure) -->
 					<div
-						class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-bloom tx-weak ink-frame"
+						class="rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-frame tx-weak"
 					>
-						<p class="micro-label text-[8px] sm:text-[0.65rem]">Projects</p>
+						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
+							PROJECTS
+						</p>
 						{#if showSkeletons}
 							<div
-								class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"
+								class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded mt-1 animate-pulse"
 							></div>
 						{:else}
-							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
+							<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
 								{stats.totalProjects}
 							</p>
 						{/if}
 					</div>
+					<!-- Tasks count - Grain texture (execution/progress) -->
 					<div
-						class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-grain tx-weak ink-frame"
+						class="rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-grain tx-weak"
 					>
-						<p class="micro-label text-[8px] sm:text-[0.65rem]">Tasks</p>
+						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
+							TASKS
+						</p>
 						{#if showSkeletons}
 							<div
-								class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"
+								class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded mt-1 animate-pulse"
 							></div>
 						{:else}
-							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
+							<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
 								{stats.totalTasks}
 							</p>
 						{/if}
 					</div>
+					<!-- Documents count - Thread texture (connections/relationships) -->
 					<div
-						class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-thread tx-weak ink-frame"
+						class="rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-thread tx-weak"
 					>
-						<p class="micro-label text-[8px] sm:text-[0.65rem]">Outputs</p>
+						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
+							DOCS
+						</p>
 						{#if showSkeletons}
 							<div
-								class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"
+								class="h-6 sm:h-8 w-10 sm:w-14 bg-muted/60 rounded mt-1 animate-pulse"
 							></div>
 						{:else}
-							<p class="text-lg sm:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
-								{stats.totalOutputs}
+							<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
+								{stats.totalDocuments}
 							</p>
 						{/if}
 					</div>
+					<!-- Active count - Pulse texture (urgency/momentum) with accent -->
 					<div
-						class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-pulse tx-weak ink-frame"
+						class="rounded-lg border border-accent/30 bg-accent/5 p-2.5 sm:p-4 shadow-ink tx tx-pulse tx-weak"
 					>
-						<p class="micro-label text-[8px] sm:text-[0.65rem]">Active</p>
+						<p class="micro-label text-[9px] sm:text-[0.65rem] text-accent">ACTIVE</p>
 						{#if showSkeletons}
 							<div
-								class="h-5 sm:h-8 w-8 sm:w-12 bg-muted rounded mt-0.5 sm:mt-1 animate-pulse"
+								class="h-6 sm:h-8 w-10 sm:w-14 bg-accent/20 rounded mt-1 animate-pulse"
 							></div>
 						{:else}
-							<p class="text-lg sm:text-2xl font-bold text-accent mt-0.5 sm:mt-1">
+							<p class="text-xl sm:text-2xl font-semibold text-accent mt-1">
 								{stats.activeProjects}
 							</p>
 						{/if}
@@ -779,18 +830,20 @@
 				</div>
 			</div>
 		{:else if filteredProjects.length > 0}
-			<div class="space-y-4">
+			<div class="space-y-5 sm:space-y-6">
 				{#if ownedFilteredProjects.length > 0}
-					<div class="space-y-2">
-						<div class="flex items-center gap-2">
-							<h2 class="text-sm font-semibold text-foreground sm:text-base">
-								My Projects
-							</h2>
-							<span class="text-xs text-muted-foreground">
+					<div class="space-y-3">
+						<!-- Section Header - Inkprint micro-label pattern -->
+						<div class="flex items-baseline gap-2">
+							<p class="micro-label text-accent">MY PROJECTS</p>
+							<span class="text-xs font-semibold text-muted-foreground">
 								{ownedFilteredProjects.length}
 							</span>
 						</div>
-						<div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+						<!-- Project Cards Grid -->
+						<div
+							class="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
+						>
 							{#each ownedFilteredProjects as project (project.id)}
 								{@const projectStats = [
 									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
@@ -799,25 +852,26 @@
 									{ key: 'docs', count: project.document_count, Icon: FileText }
 								].filter((s) => s.count > 0)}
 								{@const mobileProjectStats = projectStats.slice(0, 3)}
+								<!-- Project Card - Inkprint interactive card pattern -->
 								<a
 									href="/projects/{project.id}"
 									onclick={() => handleProjectClick(project)}
-									class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
+									class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent/60 hover:shadow-ink-strong pressable"
 								>
 									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 									<div
-										class="mb-1 sm:mb-4 flex items-start justify-between gap-1 sm:gap-3"
+										class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3"
 									>
 										<div class="min-w-0 flex-1">
 											<h3
-												class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
+												class="text-xs sm:text-base font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-snug"
 												style="view-transition-name: project-title-{project.id}"
 											>
 												{project.name}
 											</h3>
 											<!-- Mobile: Inline status under title -->
 											<span
-												class="sm:hidden inline-flex mt-1 items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
+												class="sm:hidden inline-flex mt-1 items-center rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize {getProjectStateBadgeClass(
 													project.state_key
 												)}"
 											>
@@ -826,7 +880,7 @@
 										</div>
 										<!-- Desktop: Status badge -->
 										<span
-											class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+											class="hidden sm:inline-flex flex-shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold capitalize {getProjectStateBadgeClass(
 												project.state_key
 											)}"
 										>
@@ -837,7 +891,7 @@
 									<!-- Description - Hidden on mobile -->
 									{#if project.description}
 										<p
-											class="hidden sm:block mb-4 line-clamp-2 text-sm text-muted-foreground"
+											class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground leading-relaxed"
 										>
 											{project.description.length > 120
 												? project.description.slice(0, 120) + '...'
@@ -851,42 +905,42 @@
 											<ProjectCardNextStep
 												nextStepShort={project.next_step_short}
 												nextStepLong={project.next_step_long}
-												class="mb-4"
+												class="mb-3"
 											/>
 										</div>
 									{/if}
 
 									<!-- Footer Stats - Show non-zero counts, limit on mobile -->
 									<div
-										class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
+										class="mt-auto flex items-center justify-between border-t border-border/60 pt-2 sm:pt-3 text-muted-foreground"
 									>
 										<!-- Mobile: Show up to 3 non-zero stats -->
 										<div
-											class="flex sm:hidden items-center gap-2 overflow-hidden"
+											class="flex sm:hidden items-center gap-2.5 overflow-hidden"
 										>
 											{#each mobileProjectStats as stat (stat.key)}
 												{@const StatIcon = stat.Icon}
 												<span
-													class="flex items-center gap-0.5 shrink-0"
+													class="flex items-center gap-1 shrink-0"
 													title={stat.key}
 												>
-													<StatIcon class="h-2.5 w-2.5" />
-													<span class="font-semibold text-[9px]"
+													<StatIcon class="h-3 w-3" />
+													<span class="font-semibold text-[10px]"
 														>{stat.count}</span
 													>
 												</span>
 											{/each}
 											{#if projectStats.length > 3}
-												<span class="text-[8px] text-muted-foreground/50"
+												<span class="text-[9px] text-muted-foreground/60"
 													>+{projectStats.length - 3}</span
 												>
 											{/if}
 										</div>
 
 										<!-- Desktop: Full stats (non-zero only) -->
-										<div class="hidden sm:flex flex-col gap-2 w-full">
+										<div class="hidden sm:flex flex-col gap-1.5 w-full">
 											<div
-												class="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+												class="flex flex-wrap items-center gap-x-3 gap-y-1"
 											>
 												{#each projectStats as stat (stat.key)}
 													{@const StatIcon = stat.Icon}
@@ -896,13 +950,13 @@
 														title={stat.key}
 													>
 														<StatIcon class="h-3.5 w-3.5" />
-														<span class="font-bold text-xs"
+														<span class="font-semibold text-xs"
 															>{stat.count}</span
 														>
 													</span>
 												{/each}
 											</div>
-											<span class="text-xs text-muted-foreground/70">
+											<span class="text-xs text-muted-foreground/60">
 												Updated {new Date(
 													project.updated_at
 												).toLocaleDateString()}
@@ -916,16 +970,18 @@
 				{/if}
 
 				{#if sharedFilteredProjects.length > 0}
-					<div class="space-y-2">
-						<div class="flex items-center gap-2">
-							<h2 class="text-sm font-semibold text-foreground sm:text-base">
-								Shared with me
-							</h2>
-							<span class="text-xs text-muted-foreground">
+					<div class="space-y-3">
+						<!-- Section Header - Inkprint micro-label pattern with Thread texture indicator -->
+						<div class="flex items-baseline gap-2">
+							<p class="micro-label text-muted-foreground">SHARED WITH ME</p>
+							<span class="text-xs font-semibold text-muted-foreground">
 								{sharedFilteredProjects.length}
 							</span>
 						</div>
-						<div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+						<!-- Shared Project Cards Grid - Thread texture to indicate collaboration -->
+						<div
+							class="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
+						>
 							{#each sharedFilteredProjects as project (project.id)}
 								{@const projectStats = [
 									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
@@ -934,42 +990,44 @@
 									{ key: 'docs', count: project.document_count, Icon: FileText }
 								].filter((s) => s.count > 0)}
 								{@const mobileProjectStats = projectStats.slice(0, 3)}
+								<!-- Shared Project Card - Thread texture for collaboration context -->
 								<a
 									href="/projects/{project.id}"
 									onclick={() => handleProjectClick(project)}
-									class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable"
+									class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-thread tx-weak transition-all duration-200 hover:border-accent/60 hover:shadow-ink-strong pressable"
 								>
 									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 									<div
-										class="mb-1 sm:mb-4 flex items-start justify-between gap-1 sm:gap-3"
+										class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3"
 									>
 										<div class="min-w-0 flex-1">
 											<h3
-												class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
+												class="text-xs sm:text-base font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-snug"
 												style="view-transition-name: project-title-{project.id}"
 											>
 												{project.name}
 											</h3>
 											<div class="flex flex-wrap items-center gap-1 mt-1">
 												<span
-													class="sm:hidden inline-flex items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
+													class="sm:hidden inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize {getProjectStateBadgeClass(
 														project.state_key
 													)}"
 												>
 													{project.state_key}
 												</span>
+												<!-- Shared badge with accent styling -->
 												<span
-													class="inline-flex items-center rounded px-1 py-0.5 text-[9px] font-semibold text-accent-foreground bg-accent/80"
+													class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-accent/15 text-accent border border-accent/20"
 												>
 													Shared{project.access_role
-														? ` - ${project.access_role}`
+														? ` · ${project.access_role}`
 														: ''}
 												</span>
 											</div>
 										</div>
 										<!-- Desktop: Status badge -->
 										<span
-											class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
+											class="hidden sm:inline-flex flex-shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold capitalize {getProjectStateBadgeClass(
 												project.state_key
 											)}"
 										>
@@ -980,7 +1038,7 @@
 									<!-- Description - Hidden on mobile -->
 									{#if project.description}
 										<p
-											class="hidden sm:block mb-4 line-clamp-2 text-sm text-muted-foreground"
+											class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground leading-relaxed"
 										>
 											{project.description.length > 120
 												? project.description.slice(0, 120) + '...'
@@ -994,42 +1052,42 @@
 											<ProjectCardNextStep
 												nextStepShort={project.next_step_short}
 												nextStepLong={project.next_step_long}
-												class="mb-4"
+												class="mb-3"
 											/>
 										</div>
 									{/if}
 
 									<!-- Footer Stats - Show non-zero counts, limit on mobile -->
 									<div
-										class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
+										class="mt-auto flex items-center justify-between border-t border-border/60 pt-2 sm:pt-3 text-muted-foreground"
 									>
 										<!-- Mobile: Show up to 3 non-zero stats -->
 										<div
-											class="flex sm:hidden items-center gap-2 overflow-hidden"
+											class="flex sm:hidden items-center gap-2.5 overflow-hidden"
 										>
 											{#each mobileProjectStats as stat (stat.key)}
 												{@const StatIcon = stat.Icon}
 												<span
-													class="flex items-center gap-0.5 shrink-0"
+													class="flex items-center gap-1 shrink-0"
 													title={stat.key}
 												>
-													<StatIcon class="h-2.5 w-2.5" />
-													<span class="font-semibold text-[9px]"
+													<StatIcon class="h-3 w-3" />
+													<span class="font-semibold text-[10px]"
 														>{stat.count}</span
 													>
 												</span>
 											{/each}
 											{#if projectStats.length > 3}
-												<span class="text-[8px] text-muted-foreground/50"
+												<span class="text-[9px] text-muted-foreground/60"
 													>+{projectStats.length - 3}</span
 												>
 											{/if}
 										</div>
 
 										<!-- Desktop: Full stats (non-zero only) -->
-										<div class="hidden sm:flex flex-col gap-2 w-full">
+										<div class="hidden sm:flex flex-col gap-1.5 w-full">
 											<div
-												class="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+												class="flex flex-wrap items-center gap-x-3 gap-y-1"
 											>
 												{#each projectStats as stat (stat.key)}
 													{@const StatIcon = stat.Icon}
@@ -1039,13 +1097,13 @@
 														title={stat.key}
 													>
 														<StatIcon class="h-3.5 w-3.5" />
-														<span class="font-bold text-xs"
+														<span class="font-semibold text-xs"
 															>{stat.count}</span
 														>
 													</span>
 												{/each}
 											</div>
-											<span class="text-xs text-muted-foreground/70">
+											<span class="text-xs text-muted-foreground/60">
 												Updated {new Date(
 													project.updated_at
 												).toLocaleDateString()}
@@ -1066,7 +1124,26 @@
 				class="rounded-lg border border-border bg-card shadow-ink overflow-hidden touch-none"
 			>
 				<div class="relative h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-18rem)]">
-					{#if $graphStore.status === 'loading'}
+					{#if graphComponentError}
+						<div
+							class="flex h-full flex-col items-center justify-center gap-3 p-6 text-center tx tx-static tx-weak"
+						>
+							<h3 class="text-base font-semibold text-foreground">
+								Unable to load graph view
+							</h3>
+							<p class="text-sm text-muted-foreground">{graphComponentError}</p>
+							<Button variant="primary" size="sm" onclick={ensureGraphComponents}
+								>Try again</Button
+							>
+						</div>
+					{:else if !graphComponentsReady}
+						<LoadingSkeleton
+							message={graphComponentLoading
+								? 'Loading graph view...'
+								: 'Preparing graph view...'}
+							height="100%"
+						/>
+					{:else if $graphStore.status === 'loading'}
 						<LoadingSkeleton message="Preparing ontology graph..." height="100%" />
 					{:else if $graphStore.status === 'error'}
 						<div
@@ -1084,7 +1161,8 @@
 							>
 						</div>
 					{:else if $graphStore.data}
-						<OntologyGraph
+						<svelte:component
+							this={OntologyGraphComponent}
 							data={$graphStore.data}
 							viewMode={graphViewMode}
 							bind:selectedNode={selectedGraphNode}
@@ -1111,19 +1189,27 @@
 
 			<div class="grid gap-4 lg:grid-cols-2">
 				<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
-					<GraphControls
-						bind:viewMode={graphViewMode}
-						{graphInstance}
-						stats={$graphStore.stats ?? emptyGraphStats}
-					/>
+					{#if GraphControlsComponent}
+						<svelte:component
+							this={GraphControlsComponent}
+							bind:viewMode={graphViewMode}
+							{graphInstance}
+							stats={$graphStore.stats ?? emptyGraphStats}
+						/>
+					{:else}
+						<div class="p-4 text-sm text-muted-foreground">
+							Loading graph controls...
+						</div>
+					{/if}
 				</section>
 
 				<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
-					{#if selectedGraphNode && $graphStore.status === 'ready'}
-						<NodeDetailsPanel
+					{#if selectedGraphNode && $graphStore.status === 'ready' && NodeDetailsPanelComponent}
+						<svelte:component
+							this={NodeDetailsPanelComponent}
 							node={selectedGraphNode}
 							onClose={() => (selectedGraphNode = null)}
-						></NodeDetailsPanel>
+						/>
 					{:else}
 						<div
 							class="flex h-full items-center justify-center p-6 text-sm text-muted-foreground"

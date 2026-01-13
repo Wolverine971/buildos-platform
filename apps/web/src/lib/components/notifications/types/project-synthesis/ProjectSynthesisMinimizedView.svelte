@@ -2,7 +2,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { Sparkles, CheckCircle, AlertCircle, Loader2, Lightbulb } from 'lucide-svelte';
+	import { Sparkles, CheckCircle, AlertCircle, LoaderCircle, Lightbulb } from 'lucide-svelte';
 	import type {
 		ProjectSynthesisNotification,
 		StepsProgress
@@ -72,7 +72,7 @@
 			<div
 				class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30"
 			>
-				<Loader2 class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
+				<LoaderCircle class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
 			</div>
 		{/if}
 	</div>

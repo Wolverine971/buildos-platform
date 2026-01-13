@@ -41,6 +41,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/aka4uh.md
 ## Product
 
 **Precog** - Turn PDFs into interactive AI documents
+
 - Routes queries to 20+ AI models
 - Pick your favorite model or let it auto-select
 - Started as tool for writing better papers
@@ -83,5 +84,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/aka4uh.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Twitter #buildinpublic*
+_Added: 2026-01-13_
+_Source: Twitter #buildinpublic_

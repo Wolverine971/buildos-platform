@@ -1,6 +1,7 @@
 // apps/web/src/hooks.server.ts
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { createSupabaseServer } from '$lib/supabase';
+import { createServerTiming } from '$lib/server/server-timing';
 import { dev } from '$app/environment';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
 
@@ -71,6 +72,21 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	});
 
+	const timingEnabled =
+		dev || (typeof process !== 'undefined' && process.env.PERF_TIMING === 'true');
+	const slowThresholdRaw = typeof process !== 'undefined' ? process.env.PERF_SLOW_MS : undefined;
+	const slowThreshold = slowThresholdRaw ? Number(slowThresholdRaw) : dev ? 200 : 400;
+	const shouldLogSlow =
+		timingEnabled &&
+		(dev || (typeof process !== 'undefined' && process.env.PERF_LOG_SLOW === 'true'));
+
+	event.locals.serverTiming = createServerTiming(timingEnabled);
+	const timing = event.locals.serverTiming;
+	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+		timing ? timing.measure(name, fn) : fn();
+
+	timing?.start('request');
+
 	let sessionCache: {
 		session: typeof event.locals.session;
 		user: typeof event.locals.user;
@@ -129,7 +145,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				const {
 					data: { session },
 					error: sessionError
-				} = await supabase.auth.getSession();
+				} = await measure('auth.session', () => supabase.auth.getSession());
 
 				if (sessionError || !session) {
 					return { session: null, user: null };
@@ -139,7 +155,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				const {
 					data: { user: authUser },
 					error: userError
-				} = await supabase.auth.getUser();
+				} = await measure('auth.user', () => supabase.auth.getUser());
 
 				if (userError || !authUser) {
 					// JWT validation failed
@@ -147,11 +163,9 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				}
 
 				// Get user data from public.users table
-				const { data: userData, error: dbError } = await supabase
-					.from('users')
-					.select('*')
-					.eq('id', authUser.id)
-					.single();
+				const { data: userData, error: dbError } = await measure('db.user', () =>
+					supabase.from('users').select('*').eq('id', authUser.id).single()
+				);
 
 				if (dbError) {
 					// User exists in auth but not in public.users table
@@ -196,11 +210,15 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			// 	setTimeout(() => reject(new Error('Calendar tokens timeout')), 2500)
 			// );
 
-			const tokensPromise = event.locals.supabase
-				.from('user_calendar_tokens')
-				.select('access_token, refresh_token, expiry_date, scope, updated_at, token_type')
-				.eq('user_id', event.locals.user.id)
-				.single();
+			const tokensPromise = measure('db.calendar_tokens', () =>
+				event.locals.supabase
+					.from('user_calendar_tokens')
+					.select(
+						'access_token, refresh_token, expiry_date, scope, updated_at, token_type'
+					)
+					.eq('user_id', event.locals.user.id)
+					.single()
+			);
 
 			// const { data: tokens, error } = await Promise.race([tokensPromise, timeoutPromise]);
 			const { data: tokens, error } = await Promise.race([tokensPromise]);
@@ -264,6 +282,22 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			return name === 'content-range' || name === 'x-supabase-api-version';
 		}
 	});
+
+	timing?.end('request');
+	const timingHeader = timing?.toHeader();
+	if (timingHeader) {
+		response.headers.append('Server-Timing', timingHeader);
+	}
+
+	if (shouldLogSlow && slowThreshold > 0 && timing) {
+		const slowMetrics = timing.getSlowMetrics(slowThreshold);
+		if (slowMetrics.length > 0) {
+			const summary = slowMetrics
+				.map((metric) => `${metric.name}=${metric.dur.toFixed(1)}ms`)
+				.join(' ');
+			console.info(`[Perf] ${event.request.method} ${event.url.pathname} slow: ${summary}`);
+		}
+	}
 
 	// PERFORMANCE: Set cache headers more efficiently
 	if (pathname.startsWith('/auth/') || pathname.startsWith('/api/auth/')) {

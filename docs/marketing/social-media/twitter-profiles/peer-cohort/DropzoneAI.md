@@ -32,4 +32,4 @@ Focus on AI reliability - relevant to BuildOS quality standards.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

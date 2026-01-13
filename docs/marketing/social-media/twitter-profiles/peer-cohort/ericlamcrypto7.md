@@ -41,4 +41,4 @@ Newsletter growth expert - content distribution insights valuable.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

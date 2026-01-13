@@ -79,5 +79,5 @@ Building a second brain/PKM app focused on AI-enhanced knowledge management.
 
 ---
 
-*Added: 2026-01-13*
-*Source: Second brain app research*
+_Added: 2026-01-13_
+_Source: Second brain app research_

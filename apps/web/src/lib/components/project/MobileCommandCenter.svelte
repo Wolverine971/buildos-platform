@@ -223,7 +223,7 @@
 				<button
 					type="button"
 					onclick={() => onEditGoal(goal.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
+					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
 				>
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{goal.name}</span>
@@ -254,7 +254,7 @@
 				<button
 					type="button"
 					onclick={() => onEditMilestone(milestone.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
+					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
 				>
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{milestone.title}</span>
@@ -288,7 +288,7 @@
 				<button
 					type="button"
 					onclick={() => onEditTask(task.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
+					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
 				>
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{task.title}</span>
@@ -319,7 +319,7 @@
 				<button
 					type="button"
 					onclick={() => onEditPlan(plan.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
+					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
 				>
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{plan.name}</span>
@@ -353,7 +353,7 @@
 				<button
 					type="button"
 					onclick={() => onEditRisk(risk.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
+					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
 				>
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{risk.title}</span>
@@ -384,7 +384,7 @@
 				<button
 					type="button"
 					onclick={() => onEditDocument(doc.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
+					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
 				>
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{doc.title}</span>
@@ -418,7 +418,7 @@
 				<button
 					type="button"
 					onclick={() => onEditEvent(event.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/30 last:border-b-0"
+					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
 				>
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{event.title}</span>

@@ -48,27 +48,29 @@
 </script>
 
 <div
-	class="group flex items-center justify-between gap-2 px-4 py-2 hover:bg-muted/30 transition-colors"
+	class="group flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
 >
 	<button
 		type="button"
-		class="flex-1 min-w-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded"
+		class="flex-1 min-w-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded pressable"
 		onclick={handleClick}
 	>
 		<span
-			class="block text-sm text-foreground group-hover:text-accent truncate transition-colors"
+			class="block text-xs sm:text-sm text-foreground group-hover:text-accent truncate transition-colors duration-[120ms]"
 		>
 			{displayName}
 		</span>
-		<div class="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-			<span>{relationshipLabel}</span>
+		<div
+			class="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground mt-0.5"
+		>
+			<span class="truncate max-w-[80px] sm:max-w-none">{relationshipLabel}</span>
 			{#if entity.state_key}
 				<span class="text-muted-foreground/60">·</span>
-				<span>{entity.state_key}</span>
+				<span class="truncate">{entity.state_key}</span>
 			{/if}
 			{#if entity.due_at}
-				<span class="text-muted-foreground/60">·</span>
-				<span>
+				<span class="text-muted-foreground/60 hidden sm:inline">·</span>
+				<span class="hidden sm:inline">
 					{new Date(entity.due_at).toLocaleDateString(undefined, {
 						month: 'short',
 						day: 'numeric'
@@ -81,14 +83,14 @@
 	{#if !readOnly}
 		<button
 			type="button"
-			class="p-1 rounded opacity-0 group-hover:opacity-100
+			class="p-0.5 sm:p-1 rounded opacity-0 group-hover:opacity-100
 				text-muted-foreground hover:text-destructive hover:bg-destructive/10
-				transition-all duration-150 focus:opacity-100 focus:outline-none
-				focus-visible:ring-2 focus-visible:ring-destructive"
+				transition-all duration-[120ms] focus:opacity-100 focus:outline-none
+				focus-visible:ring-2 focus-visible:ring-destructive pressable"
 			onclick={handleRemove}
 			aria-label="Remove link to {displayName}"
 		>
-			<X class="w-3.5 h-3.5" />
+			<X class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 		</button>
 	{/if}
 </div>

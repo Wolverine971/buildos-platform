@@ -5,7 +5,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { Loader2, X, ChevronDown } from 'lucide-svelte';
+	import { LoaderCircle, X, ChevronDown } from 'lucide-svelte';
 	import { notificationStore } from '$lib/stores/notification.store';
 	import CalendarAnalysisResults from '$lib/components/calendar/CalendarAnalysisResults.svelte';
 	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
@@ -79,7 +79,7 @@
 
 		{#snippet children()}
 			<div class="flex flex-col items-center gap-4 px-6 py-8 text-center">
-				<Loader2 class="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
+				<LoaderCircle class="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
 				<p class="text-base text-gray-700 dark:text-gray-300">{progressMessage}</p>
 				<p class="text-sm text-gray-500 dark:text-gray-400">
 					You can minimize this window and continue working. We'll keep the results in the

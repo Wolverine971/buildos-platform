@@ -40,6 +40,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/DmytroKrasun.md
 ## Product
 
 **FollowRoad** - Twitter follower analytics tool
+
 - Understand follower patterns
 - Growth insights
 - Analytics for Twitter growth
@@ -74,5 +75,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/DmytroKrasun.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Indie Hackers list*
+_Added: 2026-01-13_
+_Source: Indie Hackers list_

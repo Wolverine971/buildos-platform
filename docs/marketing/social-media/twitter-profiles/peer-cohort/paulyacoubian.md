@@ -77,5 +77,5 @@ Posted an early version on Twitter with a Loom video and got $3K in pre-sales be
 
 ---
 
-*Added: 2026-01-13*
-*Source: AI startup research*
+_Added: 2026-01-13_
+_Source: AI startup research_

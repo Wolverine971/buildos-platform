@@ -1,10 +1,11 @@
 <!-- packages/shared-types/src/functions/function-defs.md -->
+
 [
-  {
-    "args": "token_hash text, p_actor_id uuid, p_user_email text",
-    "name": "accept_project_invite",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.accept_project_invite(p_token_hash text, p_actor_id uuid, p_user_email text)
+{
+"args": "token_hash text, p_actor_id uuid, p_user_email text",
+"name": "accept_project_invite",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.accept_project_invite(p_token_hash text, p_actor_id uuid, p_user_email text)
 RETURNS TABLE(project_id uuid, role_key text, access text)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -96,12 +97,12 @@ RETURN QUERY SELECT v_invite.project_id, v_invite.role_key, v_invite.access;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_invite_id uuid",
-    "name": "accept_project_invite_by_id",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.accept_project_invite_by_id(p_invite_id uuid)
+},
+{
+"args": "p_invite_id uuid",
+"name": "accept_project_invite_by_id",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.accept_project_invite_by_id(p_invite_id uuid)
 RETURNS TABLE(project_id uuid, role_key text, access text)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -185,12 +186,12 @@ RETURN QUERY SELECT v_invite.project_id, v_invite.role_key, v_invite.access;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_run_id uuid, p_locked_by uuid, p_duration_minutes integer",
-    "name": "acquire_migration_platform_lock",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.acquire_migration_platform_lock(p_run_id uuid, p_locked_by uuid, p_duration_minutes integer DEFAULT 60)
+},
+{
+"args": "p_run_id uuid, p_locked_by uuid, p_duration_minutes integer",
+"name": "acquire_migration_platform_lock",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.acquire_migration_platform_lock(p_run_id uuid, p_locked_by uuid, p_duration_minutes integer DEFAULT 60)
 RETURNS TABLE(acquired boolean, existing_run_id uuid, existing_locked_by uuid, existing_locked_at timestamp with time zone, existing_expires_at timestamp with time zone)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -234,12 +235,12 @@ END IF;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "add_project_owner_membership",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.add_project_owner_membership()
+},
+{
+"args": "",
+"name": "add_project_owner_membership",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.add_project_owner_membership()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -253,12 +254,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_job_type text, p_metadata jsonb, p_priority integer, p_scheduled_for timestamp with time zone, p_dedup_key text",
-    "name": "add_queue_job",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.add_queue_job(p_user_id uuid, p_job_type text, p_metadata jsonb, p_priority integer DEFAULT 10, p_scheduled_for timestamp with time zone DEFAULT now(), p_dedup_key text DEFAULT NULL::text)
+},
+{
+"args": "p_user_id uuid, p_job_type text, p_metadata jsonb, p_priority integer, p_scheduled_for timestamp with time zone, p_dedup_key text",
+"name": "add_queue_job",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.add_queue_job(p_user_id uuid, p_job_type text, p_metadata jsonb, p_priority integer DEFAULT 10, p_scheduled_for timestamp with time zone DEFAULT now(), p_dedup_key text DEFAULT NULL::text)
 RETURNS uuid
 LANGUAGE plpgsql
 AS $function$
@@ -305,12 +306,12 @@ RETURN v_job_id;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_deletes jsonb, p_updates jsonb, p_inserts jsonb",
-    "name": "apply_graph_reorg_changes",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.apply_graph_reorg_changes(p_project_id uuid, p_deletes jsonb, p_updates jsonb, p_inserts jsonb)
+},
+{
+"args": "p_project_id uuid, p_deletes jsonb, p_updates jsonb, p_inserts jsonb",
+"name": "apply_graph_reorg_changes",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.apply_graph_reorg_changes(p_project_id uuid, p_deletes jsonb, p_updates jsonb, p_inserts jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 AS $function$
@@ -326,10 +327,10 @@ v_expected_updates integer := 0;
 begin
 perform pg_advisory_xact_lock(hashtext(p_project_id: :text));
 
-if jsonb_array_length(v_deletes) > 0 then
+if jsonb*array_length(v_deletes) > 0 then
 with del as (
-select _
-from jsonb_to_recordset(v_deletes)
+select *
+from jsonb*to_recordset(v_deletes)
 as d(id uuid, src_kind text, src_id uuid, rel text, dst_kind text, dst_id uuid, props jsonb)
 ), deleted as (
 delete from onto_edges e
@@ -344,7 +345,7 @@ and e.dst_id = d.dst_id
 and e.props = coalesce(d.props, '{}': :jsonb)
 returning e.id
 )
-select count(_) into v_delete_count from deleted;
+select count(*) into v_delete_count from deleted;
 
 select count(\*) into v_expected_deletes from jsonb_array_elements(v_deletes);
 
@@ -354,10 +355,10 @@ using errcode = '40001';
 end if;
 end if;
 
-if jsonb_array_length(v_updates) > 0 then
+if jsonb*array_length(v_updates) > 0 then
 with upd as (
-select _
-from jsonb_to_recordset(v_updates)
+select *
+from jsonb*to_recordset(v_updates)
 as u(
 id uuid,
 src_kind text,
@@ -382,7 +383,7 @@ and e.dst_id = u.dst_id
 and e.props = coalesce(u.expected_props, '{}': :jsonb)
 returning e.id
 )
-select count(_) into v_update_count from updated;
+select count(*) into v_update_count from updated;
 
 select count(\*) into v_expected_updates from jsonb_array_elements(v_updates);
 
@@ -392,13 +393,13 @@ using errcode = '40001';
 end if;
 end if;
 
-if jsonb_array_length(v_inserts) > 0 then
+if jsonb*array_length(v_inserts) > 0 then
 with ins as (
-select _
-from jsonb_to_recordset(v_inserts)
+select *
+from jsonb*to_recordset(v_inserts)
 as i(src_kind text, src_id uuid, rel text, dst_kind text, dst_id uuid, props jsonb)
 ), to_insert as (
-select i._
+select i.*
 from ins i
 left join onto_edges e
 on e.project_id = p_project_id
@@ -425,144 +426,144 @@ return jsonb_build_object(
 end;
 $function$
 "
-  },
-  {
-    "args": "double precision[], integer, boolean",
-    "name": "array_to_halfvec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_halfvec(double precision[], integer, boolean)
+},
+{
+"args": "double precision[], integer, boolean",
+"name": "array_to_halfvec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_halfvec(double precision[], integer, boolean)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_halfvec$function$
 "
-  },
-  {
-    "args": "integer[], integer, boolean",
-    "name": "array_to_halfvec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_halfvec(integer[], integer, boolean)
+},
+{
+"args": "integer[], integer, boolean",
+"name": "array_to_halfvec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_halfvec(integer[], integer, boolean)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_halfvec$function$
 "
-  },
-  {
-    "args": "numeric[], integer, boolean",
-    "name": "array_to_halfvec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_halfvec(numeric[], integer, boolean)
+},
+{
+"args": "numeric[], integer, boolean",
+"name": "array_to_halfvec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_halfvec(numeric[], integer, boolean)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_halfvec$function$
 "
-  },
-  {
-    "args": "real[], integer, boolean",
-    "name": "array_to_halfvec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_halfvec(real[], integer, boolean)
+},
+{
+"args": "real[], integer, boolean",
+"name": "array_to_halfvec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_halfvec(real[], integer, boolean)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_halfvec$function$
 "
-  },
-  {
-    "args": "double precision[], integer, boolean",
-    "name": "array_to_sparsevec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_sparsevec(double precision[], integer, boolean)
+},
+{
+"args": "double precision[], integer, boolean",
+"name": "array_to_sparsevec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_sparsevec(double precision[], integer, boolean)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_sparsevec$function$
 "
-  },
-  {
-    "args": "integer[], integer, boolean",
-    "name": "array_to_sparsevec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_sparsevec(integer[], integer, boolean)
+},
+{
+"args": "integer[], integer, boolean",
+"name": "array_to_sparsevec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_sparsevec(integer[], integer, boolean)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_sparsevec$function$
 "
-  },
-  {
-    "args": "numeric[], integer, boolean",
-    "name": "array_to_sparsevec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_sparsevec(numeric[], integer, boolean)
+},
+{
+"args": "numeric[], integer, boolean",
+"name": "array_to_sparsevec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_sparsevec(numeric[], integer, boolean)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_sparsevec$function$
 "
-  },
-  {
-    "args": "real[], integer, boolean",
-    "name": "array_to_sparsevec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_sparsevec(real[], integer, boolean)
+},
+{
+"args": "real[], integer, boolean",
+"name": "array_to_sparsevec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_sparsevec(real[], integer, boolean)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_sparsevec$function$
 "
-  },
-  {
-    "args": "double precision[], integer, boolean",
-    "name": "array_to_vector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_vector(double precision[], integer, boolean)
+},
+{
+"args": "double precision[], integer, boolean",
+"name": "array_to_vector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_vector(double precision[], integer, boolean)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_vector$function$
 "
-  },
-  {
-    "args": "integer[], integer, boolean",
-    "name": "array_to_vector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_vector(integer[], integer, boolean)
+},
+{
+"args": "integer[], integer, boolean",
+"name": "array_to_vector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_vector(integer[], integer, boolean)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_vector$function$
 "
-  },
-  {
-    "args": "numeric[], integer, boolean",
-    "name": "array_to_vector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_vector(numeric[], integer, boolean)
+},
+{
+"args": "numeric[], integer, boolean",
+"name": "array_to_vector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_vector(numeric[], integer, boolean)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_vector$function$
 "
-  },
-  {
-    "args": "real[], integer, boolean",
-    "name": "array_to_vector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.array_to_vector(real[], integer, boolean)
+},
+{
+"args": "real[], integer, boolean",
+"name": "array_to_vector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.array_to_vector(real[], integer, boolean)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$array_to_vector$function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_updates jsonb",
-    "name": "batch_update_phase_dates",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.batch_update_phase_dates(p_project_id uuid, p_updates jsonb)
+},
+{
+"args": "p_project_id uuid, p_updates jsonb",
+"name": "batch_update_phase_dates",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.batch_update_phase_dates(p_project_id uuid, p_updates jsonb)
 RETURNS TABLE(id uuid, start_date date, end_date date, updated_at timestamp with time zone)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -591,34 +592,34 @@ RETURNING p.id, p.start_date, p.end_date, p.updated_at;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "halfvec",
-    "name": "binary_quantize",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.binary_quantize(halfvec)
+},
+{
+"args": "halfvec",
+"name": "binary_quantize",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.binary_quantize(halfvec)
 RETURNS bit
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_binary_quantize$function$
 "
-  },
-  {
-    "args": "vector",
-    "name": "binary_quantize",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.binary_quantize(vector)
+},
+{
+"args": "vector",
+"name": "binary_quantize",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.binary_quantize(vector)
 RETURNS bit
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$binary_quantize$function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_brief_date text, p_exclude_job_id uuid",
-    "name": "cancel_brief_jobs_for_date",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cancel_brief_jobs_for_date(p_user_id uuid, p_brief_date text, p_exclude_job_id uuid DEFAULT NULL::uuid)
+},
+{
+"args": "p_user_id uuid, p_brief_date text, p_exclude_job_id uuid",
+"name": "cancel_brief_jobs_for_date",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cancel_brief_jobs_for_date(p_user_id uuid, p_brief_date text, p_exclude_job_id uuid DEFAULT NULL::uuid)
 RETURNS TABLE(cancelled_count integer, cancelled_job_ids text[])
 LANGUAGE plpgsql
 AS $function$
@@ -650,12 +651,12 @@ RETURN QUERY SELECT v_count, v_cancelled_jobs;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_job_id uuid, p_reason text, p_allow_processing boolean",
-    "name": "cancel_job_with_reason",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cancel_job_with_reason(p_job_id uuid, p_reason text, p_allow_processing boolean DEFAULT false)
+},
+{
+"args": "p_job_id uuid, p_reason text, p_allow_processing boolean",
+"name": "cancel_job_with_reason",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cancel_job_with_reason(p_job_id uuid, p_reason text, p_allow_processing boolean DEFAULT false)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$
@@ -665,10 +666,10 @@ v_allowed_statuses TEXT[];
 BEGIN
 -- Determine which statuses we can cancel
 v_allowed_statuses := ARRAY['pending'
-    ];
+];
 IF p_allow_processing THEN
 v_allowed_statuses := ARRAY['pending', 'processing'
-    ];
+];
 END IF;
 
 UPDATE queue_jobs
@@ -684,12 +685,12 @@ RETURN v_updated > 0;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_job_type text, p_metadata_filter jsonb, p_allowed_statuses text[]",
-    "name": "cancel_jobs_atomic",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cancel_jobs_atomic(p_user_id uuid, p_job_type text, p_metadata_filter jsonb DEFAULT NULL::jsonb, p_allowed_statuses text[] DEFAULT ARRAY['pending'::text, 'processing'::text])
+},
+{
+"args": "p_user_id uuid, p_job_type text, p_metadata_filter jsonb, p_allowed_statuses text[]",
+"name": "cancel_jobs_atomic",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cancel_jobs_atomic(p_user_id uuid, p_job_type text, p_metadata_filter jsonb DEFAULT NULL::jsonb, p_allowed_statuses text[] DEFAULT ARRAY['pending'::text, 'processing'::text])
 RETURNS TABLE(id uuid, queue_job_id text, job_type text, status text)
 LANGUAGE plpgsql
 AS $function$
@@ -711,12 +712,12 @@ queue_jobs.status: :TEXT; -- FIXED: Cast enum to TEXT for output
 END;
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_job_type text, p_window_start timestamp with time zone, p_window_end timestamp with time zone, p_exclude_job_id uuid",
-    "name": "cancel_jobs_in_time_window",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cancel_jobs_in_time_window(p_user_id uuid, p_job_type text, p_window_start timestamp with time zone, p_window_end timestamp with time zone, p_exclude_job_id uuid DEFAULT NULL::uuid)
+},
+{
+"args": "p_user_id uuid, p_job_type text, p_window_start timestamp with time zone, p_window_end timestamp with time zone, p_exclude_job_id uuid",
+"name": "cancel_jobs_in_time_window",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cancel_jobs_in_time_window(p_user_id uuid, p_job_type text, p_window_start timestamp with time zone, p_window_end timestamp with time zone, p_exclude_job_id uuid DEFAULT NULL::uuid)
 RETURNS integer
 LANGUAGE plpgsql
 AS $function$
@@ -740,12 +741,12 @@ RETURN v_count;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_calendar_event_id text, p_user_id uuid",
-    "name": "cancel_scheduled_sms_for_event",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cancel_scheduled_sms_for_event(p_calendar_event_id text, p_user_id uuid DEFAULT NULL::uuid)
+},
+{
+"args": "p_calendar_event_id text, p_user_id uuid",
+"name": "cancel_scheduled_sms_for_event",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cancel_scheduled_sms_for_event(p_calendar_event_id text, p_user_id uuid DEFAULT NULL::uuid)
 RETURNS TABLE(cancelled_count integer, message_ids uuid[])
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -775,18 +776,18 @@ FROM updated;
 
 -- Return results
 RETURN QUERY SELECT
-COALESCE(v_count,
-    0),
+COALESCE(v*count,
+0),
 COALESCE(v_cancelled_ids, ARRAY[]: :UUID[]);
 END;
 $function$
 "
-  },
-  {
-    "args": "client_ip inet",
-    "name": "check_feedback_rate_limit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.check_feedback_rate_limit(client_ip inet)
+},
+{
+"args": "client_ip inet",
+"name": "check_feedback_rate_limit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.check_feedback_rate_limit(client_ip inet)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$\r
@@ -797,7 +798,7 @@ hour_ago TIMESTAMP WITH TIME ZONE := current_time - INTERVAL '1 hour';\r
 day_ago TIMESTAMP WITH TIME ZONE := current_time - INTERVAL '24 hours';\r
 BEGIN\r
 -- Get or create rate limit record for this IP\r
-SELECT _ INTO rate_record \r
+SELECT * INTO rate*record \r
 FROM feedback_rate_limit \r
 WHERE ip_address = client_ip;\r
 \r
@@ -805,7 +806,7 @@ IF NOT FOUND THEN\r
 -- First submission from this IP\r
 INSERT INTO feedback_rate_limit (ip_address, submission_count, first_submission, last_submission)\r
 VALUES (client_ip,
-    1, current_time, current_time);\r
+1, current_time, current_time);\r
 RETURN TRUE;\r
 END IF;\r
 \r
@@ -848,12 +849,12 @@ RETURN TRUE;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_job_types text[], p_batch_size integer",
-    "name": "claim_pending_jobs",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.claim_pending_jobs(p_job_types text[], p_batch_size integer DEFAULT 5)
+},
+{
+"args": "p_job_types text[], p_batch_size integer",
+"name": "claim_pending_jobs",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.claim_pending_jobs(p_job_types text[], p_batch_size integer DEFAULT 5)
 RETURNS TABLE(id uuid, queue_job_id text, user_id uuid, job_type text, metadata jsonb, status text, priority integer, attempts integer, max_attempts integer, scheduled_for timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, started_at timestamp with time zone, completed_at timestamp with time zone, error_message text)
 LANGUAGE plpgsql
 AS $function$
@@ -893,12 +894,12 @@ queue_jobs.error_message;
 END;
 $function$
 "
-  },
-  {
-    "args": "target_project_id uuid",
-    "name": "cleanup_project_history",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cleanup_project_history(target_project_id uuid)
+},
+{
+"args": "target_project_id uuid",
+"name": "cleanup_project_history",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cleanup_project_history(target_project_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 AS $function$\r
@@ -907,7 +908,7 @@ version_count INTEGER;\r
 versions_to_delete INTEGER[];\r
 BEGIN\r
 -- Count total versions for this project\r
-SELECT COUNT(_) INTO version_count \r
+SELECT COUNT(*) INTO version_count \r
 FROM projects_history \r
 WHERE project_id = target_project_id;\r
 \r
@@ -925,8 +926,7 @@ OFFSET 3 -- Skip the last 3 versions\r
 ) versions_to_remove;\r
 \r
 -- Delete the intermediate versions\r
-IF array_length(versions_to_delete,
-    1) > 0 THEN\r
+IF array_length(versions_to_delete, 1) > 0 THEN\r
 DELETE FROM projects_history \r
 WHERE project_id = target_project_id \r
 AND version_number = ANY(versions_to_delete);\r
@@ -935,12 +935,12 @@ END IF;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_timeout_minutes integer",
-    "name": "cleanup_stale_brief_generations",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cleanup_stale_brief_generations(p_user_id uuid, p_timeout_minutes integer DEFAULT 10)
+},
+{
+"args": "p_user_id uuid, p_timeout_minutes integer",
+"name": "cleanup_stale_brief_generations",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cleanup_stale_brief_generations(p_user_id uuid, p_timeout_minutes integer DEFAULT 10)
 RETURNS TABLE(id uuid, brief_date date)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -977,12 +977,12 @@ AND db.generation_completed_at >= NOW() - INTERVAL '1 minute';
 END;
 $function$
 "
-  },
-  {
-    "args": "p_job_id uuid, p_result jsonb",
-    "name": "complete_queue_job",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.complete_queue_job(p_job_id uuid, p_result jsonb DEFAULT NULL::jsonb)
+},
+{
+"args": "p_job_id uuid, p_result jsonb",
+"name": "complete_queue_job",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.complete_queue_job(p_job_id uuid, p_result jsonb DEFAULT NULL::jsonb)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$
@@ -1003,12 +1003,12 @@ RETURN v_updated > 0;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_task_id uuid, p_instance_date date, p_user_id uuid",
-    "name": "complete_recurring_instance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.complete_recurring_instance(p_task_id uuid, p_instance_date date, p_user_id uuid)
+},
+{
+"args": "p_task_id uuid, p_instance_date date, p_user_id uuid",
+"name": "complete_recurring_instance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.complete_recurring_instance(p_task_id uuid, p_instance_date date, p_user_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$
@@ -1042,45 +1042,45 @@ RETURN FALSE;
 END;
 $function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "cosine_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cosine_distance(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "cosine_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cosine_distance(halfvec, halfvec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_cosine_distance$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "cosine_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cosine_distance(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "cosine_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cosine_distance(sparsevec, sparsevec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_cosine_distance$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "cosine_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.cosine_distance(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "cosine_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.cosine_distance(vector, vector)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$cosine_distance$function$
 "
-  },
-  {
-    "args": "target_project_id uuid, created_by_user uuid",
-    "name": "create_manual_project_version",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.create_manual_project_version(target_project_id uuid, created_by_user uuid DEFAULT NULL::uuid)
+},
+{
+"args": "target_project_id uuid, created_by_user uuid",
+"name": "create_manual_project_version",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.create_manual_project_version(target_project_id uuid, created_by_user uuid DEFAULT NULL::uuid)
 RETURNS integer
 LANGUAGE plpgsql
 AS $function$\r
@@ -1098,8 +1098,7 @@ RAISE EXCEPTION 'Project not found: %', target_project_id;\r
 END IF;\r
 \r
 -- Get next version number\r
-SELECT COALESCE(MAX(version_number),
-    0) + 1 \r
+SELECT COALESCE(MAX(version_number), 0) + 1 \r
 INTO next_version\r
 FROM projects_history \r
 WHERE project_id = target_project_id;\r
@@ -1126,12 +1125,12 @@ RETURN next_version;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_delivery_id uuid, p_destination_url text",
-    "name": "create_tracking_link",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.create_tracking_link(p_delivery_id uuid, p_destination_url text)
+},
+{
+"args": "p_delivery_id uuid, p_destination_url text",
+"name": "create_tracking_link",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.create_tracking_link(p_delivery_id uuid, p_destination_url text)
 RETURNS text
 LANGUAGE plpgsql
 AS $function$
@@ -1182,12 +1181,12 @@ END LOOP;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_required_access text",
-    "name": "current_actor_has_project_access",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.current_actor_has_project_access(p_project_id uuid, p_required_access text DEFAULT 'read'::text)
+},
+{
+"args": "p_project_id uuid, p_required_access text",
+"name": "current_actor_has_project_access",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.current_actor_has_project_access(p_project_id uuid, p_required_access text DEFAULT 'read'::text)
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -1246,12 +1245,12 @@ AND (
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "current_actor_id",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.current_actor_id()
+},
+{
+"args": "",
+"name": "current_actor_id",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.current_actor_id()
 RETURNS uuid
 LANGUAGE sql
 STABLE SECURITY DEFINER
@@ -1262,12 +1261,12 @@ FROM onto_actors
 WHERE user_id = auth.uid();
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid",
-    "name": "current_actor_is_project_member",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.current_actor_is_project_member(p_project_id uuid)
+},
+{
+"args": "p_project_id uuid",
+"name": "current_actor_is_project_member",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.current_actor_is_project_member(p_project_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -1305,12 +1304,12 @@ AND m.removed_at IS NULL
 END;
 $function$
 "
-  },
-  {
-    "args": "p_invite_id uuid",
-    "name": "decline_project_invite",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.decline_project_invite(p_invite_id uuid)
+},
+{
+"args": "p_invite_id uuid",
+"name": "decline_project_invite",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.decline_project_invite(p_invite_id uuid)
 RETURNS TABLE(invite_id uuid, status text)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1379,12 +1378,12 @@ RETURN QUERY SELECT v_invite.id, 'declined': :text;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_order_threshold integer",
-    "name": "decrement_phase_order",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.decrement_phase_order(p_project_id uuid, p_order_threshold integer)
+},
+{
+"args": "p_project_id uuid, p_order_threshold integer",
+"name": "decrement_phase_order",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.decrement_phase_order(p_project_id uuid, p_order_threshold integer)
 RETURNS void
 LANGUAGE plpgsql
 AS $function$\r
@@ -1397,12 +1396,12 @@ AND \"order\" > p_order_threshold;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid",
-    "name": "delete_onto_project",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.delete_onto_project(p_project_id uuid)
+},
+{
+"args": "p_project_id uuid",
+"name": "delete_onto_project",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.delete_onto_project(p_project_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 AS $function$
@@ -1422,7 +1421,7 @@ DECLARE
 \tv_insight_ids uuid[] := coalesce((select array_agg(id) from onto_insights where project_id = p_project_id), '{}': :uuid[]);
 \tv_event_ids uuid[] := coalesce((select array_agg(id) from onto_events where project_id = p_project_id), '{}': :uuid[]);
 \tv_all_ids uuid[] := array[p_project_id
-    ];
+];
 BEGIN
 \tIF p_project_id IS NULL THEN
 \t\tRAISE EXCEPTION 'Project ID required';
@@ -1457,12 +1456,12 @@ BEGIN
 \tDELETE FROM onto_assignments
 \tWHERE object_id = any(v_all_ids)
 \t\tAND object_kind = any (array['project','plan','task','goal','output','document','requirement','milestone','risk','decision','metric','event'
-    ]);
+]);
 
 \tDELETE FROM onto_permissions
 \tWHERE object_id = any(v_all_ids)
 \t\tAND object_kind = any (array['project','plan','task','goal','output','document','requirement','milestone','risk','decision','metric','event'
-    ]);
+]);
 
 \tDELETE FROM legacy_entity_mappings
 \tWHERE onto_id = any(v_all_ids)
@@ -1483,7 +1482,7 @@ BEGIN
 \t\t\t'onto_insights',
 \t\t\t'onto_events'
 \t\t
-    ]);
+]);
 
 \t-- Delete project-scoped tables
 \tDELETE FROM onto_events WHERE project_id = p_project_id;
@@ -1506,12 +1505,12 @@ BEGIN
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "delete_phase_tasks_on_deleted",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.delete_phase_tasks_on_deleted()
+},
+{
+"args": "",
+"name": "delete_phase_tasks_on_deleted",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.delete_phase_tasks_on_deleted()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -1531,12 +1530,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "delete_phase_tasks_on_insert_deleted",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.delete_phase_tasks_on_insert_deleted()
+},
+{
+"args": "",
+"name": "delete_phase_tasks_on_insert_deleted",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.delete_phase_tasks_on_insert_deleted()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -1554,12 +1553,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_event_type text, p_event_source text, p_actor_user_id uuid, p_target_user_id uuid, p_payload jsonb, p_metadata jsonb, p_scheduled_for timestamp with time zone",
-    "name": "emit_notification_event",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.emit_notification_event(p_event_type text, p_event_source text DEFAULT 'api_action'::text, p_actor_user_id uuid DEFAULT NULL::uuid, p_target_user_id uuid DEFAULT NULL::uuid, p_payload jsonb DEFAULT '{}'::jsonb, p_metadata jsonb DEFAULT '{}'::jsonb, p_scheduled_for timestamp with time zone DEFAULT NULL::timestamp with time zone)
+},
+{
+"args": "p_event_type text, p_event_source text, p_actor_user_id uuid, p_target_user_id uuid, p_payload jsonb, p_metadata jsonb, p_scheduled_for timestamp with time zone",
+"name": "emit_notification_event",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.emit_notification_event(p_event_type text, p_event_source text DEFAULT 'api_action'::text, p_actor_user_id uuid DEFAULT NULL::uuid, p_target_user_id uuid DEFAULT NULL::uuid, p_payload jsonb DEFAULT '{}'::jsonb, p_metadata jsonb DEFAULT '{}'::jsonb, p_scheduled_for timestamp with time zone DEFAULT NULL::timestamp with time zone)
 RETURNS uuid
 LANGUAGE plpgsql
 AS $function$
@@ -1606,15 +1605,15 @@ v_correlation_id
 ) RETURNING id INTO v_event_id;
 
 -- Find active subscriptions for this event type (explicit opt-in only)
-FOR v_subscription IN
-SELECT _ FROM notification_subscriptions
+FOR v*subscription IN
+SELECT * FROM notification*subscriptions
 WHERE event_type = p_event_type
 AND is_active = true
 AND (admin_only IS TRUE OR created_by IS NOT NULL)
 AND (p_target_user_id IS NULL OR user_id = p_target_user_id)
 LOOP
 -- Get user notification preferences (no event_type filter)
-SELECT _ INTO v_prefs
+SELECT * INTO v_prefs
 FROM user_notification_preferences
 WHERE user_id = v_subscription.user_id;
 
@@ -1835,12 +1834,12 @@ RETURN v_event_id;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid",
-    "name": "ensure_actor_for_user",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.ensure_actor_for_user(p_user_id uuid)
+},
+{
+"args": "p_user_id uuid",
+"name": "ensure_actor_for_user",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.ensure_actor_for_user(p_user_id uuid)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1877,12 +1876,12 @@ return v_actor_id;
 end;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "ensure_single_active_template",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.ensure_single_active_template()
+},
+{
+"args": "",
+"name": "ensure_single_active_template",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.ensure_single_active_template()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$\r
@@ -1903,12 +1902,12 @@ RETURN NEW;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "ensure_user_notification_preferences",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.ensure_user_notification_preferences()
+},
+{
+"args": "",
+"name": "ensure_user_notification_preferences",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.ensure_user_notification_preferences()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -1933,7 +1932,7 @@ updated_at
 VALUES (
 gen_random_uuid(),
 NEW.id,
-    false, -- email_enabled (explicit opt-in)
+false, -- email_enabled (explicit opt-in)
 false, -- sms_enabled (explicit opt-in)
 false, -- push_enabled (explicit opt-in)
 false, -- in_app_enabled (explicit opt-in)
@@ -1955,12 +1954,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_job_id uuid, p_error_message text, p_retry boolean",
-    "name": "fail_queue_job",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.fail_queue_job(p_job_id uuid, p_error_message text, p_retry boolean DEFAULT true)
+},
+{
+"args": "p_job_id uuid, p_error_message text, p_retry boolean",
+"name": "fail_queue_job",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.fail_queue_job(p_job_id uuid, p_error_message text, p_retry boolean DEFAULT true)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$
@@ -1981,18 +1980,16 @@ END IF;
 
 -- Calculate exponential backoff: 2^attempts minutes
 v_retry_delay := POWER(2, COALESCE(v_job.attempts,
-    0));
+0));
 
 -- Determine if we should retry
-IF p_retry AND (COALESCE(v_job.attempts,
-    0) + 1 < COALESCE(v_job.max_attempts,
-    3)) THEN
+IF p_retry AND (COALESCE(v_job.attempts, 0) + 1 < COALESCE(v_job.max_attempts,
+3)) THEN
 -- Retry: increment attempts and schedule for later
 UPDATE queue_jobs
 SET
 status = 'pending',
-attempts = COALESCE(attempts,
-    0) + 1,
+attempts = COALESCE(attempts, 0) + 1,
 error_message = p_error_message,
 updated_at = NOW(),
 scheduled_for = NOW() + (v_retry_delay || ' minutes'): :INTERVAL
@@ -2002,8 +1999,7 @@ ELSE
 UPDATE queue_jobs
 SET
 status = 'failed',
-attempts = COALESCE(attempts,
-    0) + 1,
+attempts = COALESCE(attempts, 0) + 1,
 error_message = p_error_message,
 completed_at = NOW(),
 updated_at = NOW()
@@ -2015,12 +2011,12 @@ RETURN v_updated > 0;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_draft_id uuid, p_user_id uuid",
-    "name": "finalize_draft_project",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.finalize_draft_project(p_draft_id uuid, p_user_id uuid)
+},
+{
+"args": "p_draft_id uuid, p_user_id uuid",
+"name": "finalize_draft_project",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.finalize_draft_project(p_draft_id uuid, p_user_id uuid)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2105,12 +2101,12 @@ RETURN v_project_id;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_task_id uuid, p_start_date date, p_end_date date",
-    "name": "generate_recurring_instances",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.generate_recurring_instances(p_task_id uuid, p_start_date date, p_end_date date)
+},
+{
+"args": "p_task_id uuid, p_start_date date, p_end_date date",
+"name": "generate_recurring_instances",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.generate_recurring_instances(p_task_id uuid, p_start_date date, p_end_date date)
 RETURNS TABLE(instance_date date)
 LANGUAGE plpgsql
 AS $function$
@@ -2178,12 +2174,12 @@ END LOOP;
 END;
 $function$
 "
-  },
-  {
-    "args": "length integer",
-    "name": "generate_short_code",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.generate_short_code(length integer DEFAULT 6)
+},
+{
+"args": "length integer",
+"name": "generate_short_code",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.generate_short_code(length integer DEFAULT 6)
 RETURNS text
 LANGUAGE plpgsql
 AS $function$
@@ -2194,18 +2190,18 @@ i INTEGER;
 BEGIN
 FOR i IN 1..length LOOP
 result := result || substr(chars, floor(random() * length(chars) + 1): :int,
-    1);
+1);
 END LOOP;
 RETURN result;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "generate*tracking_id",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.generate_tracking_id()
+},
+{
+"args": "",
+"name": "generate*tracking_id",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.generate_tracking_id()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$\r
@@ -2217,12 +2213,12 @@ RETURN NEW;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_start_date timestamp with time zone, p_end_date timestamp with time zone",
-    "name": "get_admin_model_breakdown",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_admin_model_breakdown(p_start_date timestamp with time zone, p_end_date timestamp with time zone)
+},
+{
+"args": "p_start_date timestamp with time zone, p_end_date timestamp with time zone",
+"name": "get_admin_model_breakdown",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_admin_model_breakdown(p_start_date timestamp with time zone, p_end_date timestamp with time zone)
 RETURNS TABLE(model character varying, requests bigint, total_cost numeric, total_tokens bigint, avg_response_time integer, success_rate numeric)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2243,12 +2239,12 @@ ORDER BY total_cost DESC;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_start_date timestamp with time zone, p_end_date timestamp with time zone",
-    "name": "get_admin_operation_breakdown",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_admin_operation_breakdown(p_start_date timestamp with time zone, p_end_date timestamp with time zone)
+},
+{
+"args": "p_start_date timestamp with time zone, p_end_date timestamp with time zone",
+"name": "get_admin_operation_breakdown",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_admin_operation_breakdown(p_start_date timestamp with time zone, p_end_date timestamp with time zone)
 RETURNS TABLE(operation character varying, requests bigint, total_cost numeric, total_tokens bigint, avg_response_time integer, success_rate numeric)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2269,12 +2265,12 @@ ORDER BY total_cost DESC;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_start_date timestamp with time zone, p_end_date timestamp with time zone, p_limit integer",
-    "name": "get_admin_top_users",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_admin_top_users(p_start_date timestamp with time zone, p_end_date timestamp with time zone, p_limit integer DEFAULT 20)
+},
+{
+"args": "p_start_date timestamp with time zone, p_end_date timestamp with time zone, p_limit integer",
+"name": "get_admin_top_users",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_admin_top_users(p_start_date timestamp with time zone, p_end_date timestamp with time zone, p_limit integer DEFAULT 20)
 RETURNS TABLE(user_id uuid, email character varying, name character varying, requests bigint, total_cost numeric, total_tokens bigint, avg_response_time integer, last_usage timestamp with time zone)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2299,12 +2295,12 @@ LIMIT p_limit;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_brief_id text",
-    "name": "get_brief_email_status",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_brief_email_status(p_brief_id text)
+},
+{
+"args": "p_brief_id text",
+"name": "get_brief_email_status",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_brief_email_status(p_brief_id text)
 RETURNS TABLE(email_id uuid, status text, sent_at timestamp with time zone, recipient_email text, recipient_status text, opened_at timestamp with time zone, open_count integer)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2328,12 +2324,12 @@ LIMIT 1;
 END;
 $function$
 "
-  },
-  {
-    "args": "start_date date, end_date date",
-    "name": "get_brief_generation_stats",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_brief_generation_stats(start_date date, end_date date)
+},
+{
+"args": "start_date date, end_date date",
+"name": "get_brief_generation_stats",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_brief_generation_stats(start_date date, end_date date)
 RETURNS TABLE(date date, total_briefs bigint, unique_users bigint, avg_briefs_per_user numeric)
 LANGUAGE sql
 STABLE
@@ -2353,15 +2349,11 @@ GROUP BY brief_date
 )
 SELECT
 ds.date,
-COALESCE(bc.total_briefs,
-    0) AS total_briefs,
-COALESCE(bc.unique_users,
-    0) AS unique_users,
+COALESCE(bc.total_briefs, 0) AS total_briefs,
+COALESCE(bc.unique_users, 0) AS unique_users,
 CASE
-WHEN COALESCE(bc.unique_users,
-    0) > 0
-THEN ROUND((bc.total_briefs: :numeric / bc.unique_users): :numeric,
-    2)
+WHEN COALESCE(bc.unique_users, 0) > 0
+THEN ROUND((bc.total_briefs: :numeric / bc.unique_users): :numeric, 2)
 ELSE 0
 END AS avg_briefs_per_user
 FROM date_series ds
@@ -2369,12 +2361,12 @@ LEFT JOIN brief_counts bc ON bc.date = ds.date
 ORDER BY ds.date;
 $function$
 "
-  },
-  {
-    "args": "start_date date, end_date date",
-    "name": "get_daily_active_users",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_daily_active_users(start_date date, end_date date)
+},
+{
+"args": "start_date date, end_date date",
+"name": "get_daily_active_users",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_daily_active_users(start_date date, end_date date)
 RETURNS TABLE(date date, active_users bigint)
 LANGUAGE sql
 STABLE
@@ -2406,12 +2398,12 @@ GROUP BY activity_date
 ORDER BY activity_date;
 $function$
 "
-  },
-  {
-    "args": "start_date date, end_date date",
-    "name": "get_daily_visitors",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_daily_visitors(start_date date, end_date date)
+},
+{
+"args": "start_date date, end_date date",
+"name": "get_daily_visitors",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_daily_visitors(start_date date, end_date date)
 RETURNS TABLE(date date, visitor_count bigint)
 LANGUAGE plpgsql
 AS $function$\r
@@ -2430,20 +2422,19 @@ GROUP BY DATE(created_at AT TIME ZONE 'UTC')\r
 )\r
 SELECT \r
 ds.date,\r
-COALESCE(dc.visitor_count,
-    0) as visitor_count\r
+COALESCE(dc.visitor_count, 0) as visitor_count\r
 FROM date_series ds\r
 LEFT JOIN daily_counts dc ON ds.date = dc.visit_date\r
 ORDER BY ds.date ASC;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_timezone text, p_date_start date, p_date_end date, p_today date",
-    "name": "get_dashboard_data",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_dashboard_data(p_user_id uuid, p_timezone text DEFAULT 'UTC'::text, p_date_start date DEFAULT NULL::date, p_date_end date DEFAULT NULL::date, p_today date DEFAULT NULL::date)
+},
+{
+"args": "p_user_id uuid, p_timezone text, p_date_start date, p_date_end date, p_today date",
+"name": "get_dashboard_data",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_dashboard_data(p_user_id uuid, p_timezone text DEFAULT 'UTC'::text, p_date_start date DEFAULT NULL::date, p_date_end date DEFAULT NULL::date, p_today date DEFAULT NULL::date)
 RETURNS json
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -2689,12 +2680,12 @@ AND deleted_at IS NULL
 RETURN v*result;
 END;$function$
 "
-  },
-  {
-    "args": "user_ids uuid[]",
-    "name": "get_latest_ontology_daily_briefs",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_latest_ontology_daily_briefs(user_ids uuid[])
+},
+{
+"args": "user_ids uuid[]",
+"name": "get_latest_ontology_daily_briefs",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_latest_ontology_daily_briefs(user_ids uuid[])
 RETURNS TABLE(user_id uuid, brief_date date, generation_completed_at timestamp with time zone)
 LANGUAGE sql
 STABLE
@@ -2708,12 +2699,12 @@ AS $function$
 \tORDER BY user_id, brief_date DESC;
 $function$
 "
-  },
-  {
-    "args": "p_delivery_id uuid, p_days_back integer",
-    "name": "get_link_click_stats",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_link_click_stats(p_delivery_id uuid DEFAULT NULL::uuid, p_days_back integer DEFAULT 7)
+},
+{
+"args": "p_delivery_id uuid, p_days_back integer",
+"name": "get_link_click_stats",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_link_click_stats(p_delivery_id uuid DEFAULT NULL::uuid, p_days_back integer DEFAULT 7)
 RETURNS TABLE(total_links bigint, total_clicks bigint, unique_clicked_links bigint, click_through_rate numeric)
 LANGUAGE plpgsql
 STABLE
@@ -2726,8 +2717,7 @@ SUM(click_count): :BIGINT as total_clicks,
 COUNT(*) FILTER (WHERE click*count > 0): :BIGINT as unique_clicked_links,
 CASE
 WHEN COUNT(\*) > 0 THEN
-ROUND(100.0 * COUNT(_) FILTER (WHERE click*count > 0) / COUNT(*),
-    2)
+ROUND(100.0 * COUNT(_) FILTER (WHERE click*count > 0) / COUNT(*), 2)
 ELSE 0
 END as click*through_rate
 FROM notification_tracking_links
@@ -2737,12 +2727,12 @@ AND created_at > NOW() - (p_days_back || ' days'): :INTERVAL;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "get_migration_platform_lock_status",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_migration_platform_lock_status()
+},
+{
+"args": "",
+"name": "get_migration_platform_lock_status",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_migration_platform_lock_status()
 RETURNS TABLE(is_locked boolean, run_id uuid, locked_by uuid, locked_by_email text, locked_at timestamp with time zone, expires_at timestamp with time zone)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2762,12 +2752,12 @@ WHERE mpl.id = 1;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "get_notification_active_subscriptions",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_notification_active_subscriptions()
+},
+{
+"args": "",
+"name": "get_notification_active_subscriptions",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_notification_active_subscriptions()
 RETURNS TABLE(user_id uuid, email text, name text, subscribed_events text[], push_enabled boolean, email_enabled boolean, sms_enabled boolean, in_app_enabled boolean, last_notification_sent timestamp with time zone)
 LANGUAGE plpgsql
 AS $function$
@@ -2793,12 +2783,12 @@ ORDER BY last_notification_sent DESC NULLS LAST;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_interval text",
-    "name": "get_notification_channel_performance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_notification_channel_performance(p_interval text DEFAULT '7 days'::text)
+},
+{
+"args": "p_interval text",
+"name": "get_notification_channel_performance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_notification_channel_performance(p_interval text DEFAULT '7 days'::text)
 RETURNS TABLE(channel text, total_sent bigint, sent bigint, delivered bigint, opened bigint, clicked bigint, failed bigint, success_rate numeric, delivery_rate numeric, open_rate numeric, click_rate numeric, avg_delivery_time_ms numeric)
 LANGUAGE plpgsql
 AS $function$
@@ -2814,32 +2804,28 @@ COUNT(*) FILTER (WHERE nd.clicked*at IS NOT NULL) AS clicked,
 COUNT(*) FILTER (WHERE nd.status = 'failed') AS failed,
 -- Success rate: % that were sent successfully
 ROUND(
-(COUNT(_) FILTER (WHERE nd.status = 'sent'): :NUMERIC / NULLIF(COUNT(_): :NUMERIC,
-    0) _ 100),
-    2
+(COUNT(_) FILTER (WHERE nd.status = 'sent'): :NUMERIC / NULLIF(COUNT(_): :NUMERIC, 0) _ 100),
+2
 ) AS success*rate,
 -- Delivery rate: % that were confirmed delivered (NEW)
 ROUND(
-(COUNT(*) FILTER (WHERE nd.status = 'delivered'): :NUMERIC / NULLIF(COUNT(_) FILTER (WHERE nd.status = 'sent'): :NUMERIC,
-    0) _ 100),
-    2
+(COUNT(*) FILTER (WHERE nd.status = 'delivered'): :NUMERIC / NULLIF(COUNT(_) FILTER (WHERE nd.status = 'sent'): :NUMERIC, 0) _ 100),
+2
 ) AS delivery*rate,
 -- Open rate: % of sent that were opened
 ROUND(
-(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent'): :NUMERIC,
-    0) _ 100),
-    2
+(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent'): :NUMERIC, 0) _ 100),
+2
 ) AS open_rate,
 -- Click rate: % of opened that were clicked
 ROUND(
-(COUNT(_) FILTER (WHERE nd.clicked*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC,
-    0) * 100),
-    2
+(COUNT(_) FILTER (WHERE nd.clicked*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC, 0) * 100),
+2
 ) AS click*rate,
 -- Average delivery time with explicit NULL filter (FIXED)
 ROUND(
 AVG(EXTRACT(EPOCH FROM (nd.sent_at - nd.created_at)) * 1000) FILTER (WHERE nd.sent\*at IS NOT NULL): :NUMERIC,
-    2
+2
 ) AS avg_delivery_time_ms
 FROM notification_deliveries nd
 WHERE nd.created_at > NOW() - p_interval: :INTERVAL
@@ -2848,12 +2834,12 @@ ORDER BY total_sent DESC;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_interval text, p_granularity text",
-    "name": "get_notification_delivery_timeline",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_notification_delivery_timeline(p_interval text DEFAULT '7 days'::text, p_granularity text DEFAULT 'day'::text)
+},
+{
+"args": "p_interval text, p_granularity text",
+"name": "get_notification_delivery_timeline",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_notification_delivery_timeline(p_interval text DEFAULT '7 days'::text, p_granularity text DEFAULT 'day'::text)
 RETURNS TABLE(time_bucket timestamp with time zone, sent bigint, delivered bigint, opened bigint, clicked bigint, failed bigint)
 LANGUAGE plpgsql
 AS $function$
@@ -2883,12 +2869,12 @@ ORDER BY time_bucket ASC
 END;
 $function$
 "
-  },
-  {
-    "args": "p_interval text",
-    "name": "get_notification_event_performance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_notification_event_performance(p_interval text DEFAULT '30 days'::text)
+},
+{
+"args": "p_interval text",
+"name": "get_notification_event_performance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_notification_event_performance(p_interval text DEFAULT '30 days'::text)
 RETURNS TABLE(event_type text, total_events bigint, total_deliveries bigint, unique_subscribers bigint, avg_delivery_time_seconds numeric, open_rate numeric, click_rate numeric)
 LANGUAGE plpgsql
 AS $function$
@@ -2902,17 +2888,15 @@ COUNT(DISTINCT ns.user_id) AS unique_subscribers,
 -- FIXED: Added explicit NULL filter
 ROUND(
 AVG(EXTRACT(EPOCH FROM (nd.sent_at - nd.created_at))) FILTER (WHERE nd.sent_at IS NOT NULL): :NUMERIC,
-    2
+2
 ) AS avg_delivery_time_seconds,
 ROUND(
-(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent'): :NUMERIC,
-    0) _ 100),
-    2
+(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent'): :NUMERIC, 0) _ 100),
+2
 ) AS open*rate,
 ROUND(
-(COUNT(*) FILTER (WHERE nd.clicked*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC,
-    0) * 100),
-    2
+(COUNT(*) FILTER (WHERE nd.clicked*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC, 0) * 100),
+2
 ) AS click\*rate
 FROM notification_events ne
 LEFT JOIN notification_deliveries nd ON nd.event_id = ne.id
@@ -2923,12 +2907,12 @@ ORDER BY total_events DESC;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_interval text, p_limit integer",
-    "name": "get_notification_failed_deliveries",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_notification_failed_deliveries(p_interval text DEFAULT '24 hours'::text, p_limit integer DEFAULT 50)
+},
+{
+"args": "p_interval text, p_limit integer",
+"name": "get_notification_failed_deliveries",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_notification_failed_deliveries(p_interval text DEFAULT '24 hours'::text, p_limit integer DEFAULT 50)
 RETURNS TABLE(delivery_id uuid, event_id uuid, event_type text, channel text, recipient_user_id uuid, recipient_email text, last_error text, attempts integer, max_attempts integer, created_at timestamp with time zone, failed_at timestamp with time zone)
 LANGUAGE plpgsql
 AS $function$
@@ -2956,12 +2940,12 @@ LIMIT p_limit;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_interval text, p_offset text",
-    "name": "get_notification_overview_metrics",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_notification_overview_metrics(p_interval text DEFAULT '7 days'::text, p_offset text DEFAULT NULL::text)
+},
+{
+"args": "p_interval text, p_offset text",
+"name": "get_notification_overview_metrics",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_notification_overview_metrics(p_interval text DEFAULT '7 days'::text, p_offset text DEFAULT NULL::text)
 RETURNS TABLE(total_sent bigint, delivery_success_rate numeric, avg_open_rate numeric, avg_click_rate numeric)
 LANGUAGE plpgsql
 AS $function$
@@ -2982,19 +2966,16 @@ RETURN QUERY
 SELECT
 COUNT(*) FILTER (WHERE nd.status = 'sent') AS total*sent,
 ROUND(
-(COUNT(*) FILTER (WHERE nd.status = 'sent'): :NUMERIC / NULLIF(COUNT(*): :NUMERIC,
-    0) * 100),
-    2
+(COUNT(_) FILTER (WHERE nd.status = 'sent'): :NUMERIC / NULLIF(COUNT(_): :NUMERIC, 0) * 100),
+2
 ) AS delivery*success*rate,
 ROUND(
-(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(\*) FILTER (WHERE nd.status = 'sent'): :NUMERIC,
-    0) * 100),
-    2
+(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(\*) FILTER (WHERE nd.status = 'sent'): :NUMERIC, 0) * 100),
+2
 ) AS avg*open_rate,
 ROUND(
-(COUNT(*) FILTER (WHERE nd.clicked*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC,
-    0) * 100),
-    2
+(COUNT(*) FILTER (WHERE nd.clicked*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC, 0) * 100),
+2
 ) AS avg\*click_rate
 FROM notification_deliveries nd
 WHERE nd.created_at >= v_start_time
@@ -3002,12 +2983,12 @@ AND nd.created_at < v_end_time;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_actor_id uuid",
-    "name": "get_project_full",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_project_full(p_project_id uuid, p_actor_id uuid)
+},
+{
+"args": "p_project_id uuid, p_actor_id uuid",
+"name": "get_project_full",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_project_full(p_project_id uuid, p_actor_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -3127,12 +3108,12 @@ RETURN v_result;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_token_hash text",
-    "name": "get_project_invite_preview",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_project_invite_preview(p_token_hash text)
+},
+{
+"args": "p_token_hash text",
+"name": "get_project_invite_preview",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_project_invite_preview(p_token_hash text)
 RETURNS TABLE(invite_id uuid, project_id uuid, project_name text, role_key text, access text, status text, expires_at timestamp with time zone, created_at timestamp with time zone, invitee_email text, invited_by_actor_id uuid, invited_by_name text, invited_by_email text)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -3181,12 +3162,12 @@ WHERE i.id = v_invite.id;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_user_id uuid",
-    "name": "get_project_phases_hierarchy",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_project_phases_hierarchy(p_project_id uuid, p_user_id uuid DEFAULT NULL::uuid)
+},
+{
+"args": "p_project_id uuid, p_user_id uuid",
+"name": "get_project_phases_hierarchy",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_project_phases_hierarchy(p_project_id uuid, p_user_id uuid DEFAULT NULL::uuid)
 RETURNS json
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -3299,12 +3280,12 @@ RETURN v_result;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_actor_id uuid",
-    "name": "get_project_skeleton",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_project_skeleton(p_project_id uuid, p_actor_id uuid)
+},
+{
+"args": "p_project_id uuid, p_actor_id uuid",
+"name": "get_project_skeleton",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_project_skeleton(p_project_id uuid, p_actor_id uuid)
 RETURNS jsonb
 LANGUAGE sql
 STABLE SECURITY DEFINER
@@ -3337,12 +3318,12 @@ AND p.deleted_at IS NULL
 AND current_actor_has_project_access(p.id, 'read');
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_user_id uuid",
-    "name": "get_project_statistics",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_project_statistics(p_project_id uuid, p_user_id uuid)
+},
+{
+"args": "p_project_id uuid, p_user_id uuid",
+"name": "get_project_statistics",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_project_statistics(p_project_id uuid, p_user_id uuid)
 RETURNS json
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -3485,8 +3466,7 @@ WHERE project\*id = p_project_id
 'averageTasksPerPhase', (
 SELECT CASE
 WHEN COUNT(DISTINCT p.id) = 0 THEN 0
-ELSE ROUND(COUNT(pt.task_id): :numeric / COUNT(DISTINCT p.id),
-    1)
+ELSE ROUND(COUNT(pt.task_id): :numeric / COUNT(DISTINCT p.id), 1)
 END
 FROM phases p
 LEFT JOIN phase_tasks pt ON p.id = pt.phase_id
@@ -3504,12 +3484,12 @@ RETURN v_result;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_status text, p_search text, p_limit integer, p_offset integer",
-    "name": "get_projects_with_stats",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_projects_with_stats(p_user_id uuid, p_status text DEFAULT 'all'::text, p_search text DEFAULT ''::text, p_limit integer DEFAULT 50, p_offset integer DEFAULT 0)
+},
+{
+"args": "p_user_id uuid, p_status text, p_search text, p_limit integer, p_offset integer",
+"name": "get_projects_with_stats",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_projects_with_stats(p_user_id uuid, p_status text DEFAULT 'all'::text, p_search text DEFAULT ''::text, p_limit integer DEFAULT 50, p_offset integer DEFAULT 0)
 RETURNS json
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -3691,12 +3671,12 @@ RETURN v_result;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "get_revenue_metrics",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_revenue_metrics()
+},
+{
+"args": "",
+"name": "get_revenue_metrics",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_revenue_metrics()
 RETURNS TABLE(current_mrr numeric, previous_mrr numeric, mrr_growth numeric, total_revenue numeric, average_revenue_per_user numeric, churn_rate numeric, lifetime_value numeric)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -3715,8 +3695,7 @@ WHEN 'month' THEN 1\r
 WHEN 'year' THEN 12\r
 ELSE 1\r
 END\r
-),
-    0) INTO v_current_mrr\r
+), 0) INTO v_current_mrr\r
 FROM customer_subscriptions cs\r
 JOIN subscription_plans sp ON cs.plan_id = sp.id\r
 WHERE cs.status = 'active';\r
@@ -3729,8 +3708,7 @@ WHEN 'month' THEN 1\r
 WHEN 'year' THEN 12\r
 ELSE 1\r
 END\r
-),
-    0) INTO v_previous_mrr\r
+), 0) INTO v_previous_mrr\r
 FROM customer_subscriptions cs\r
 JOIN subscription_plans sp ON cs.plan_id = sp.id\r
 WHERE cs.status = 'active' \r
@@ -3738,7 +3716,7 @@ AND cs.created_at < date_trunc('month', CURRENT_DATE);\r
 \r
 -- Calculate total revenue\r
 SELECT COALESCE(SUM(amount_paid / 100.0),
-    0)\r
+0)\r
 FROM invoices\r
 WHERE status = 'paid'\r
 INTO total_revenue;\r
@@ -3780,12 +3758,12 @@ END AS lifetime_value;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_start_date timestamp with time zone, p_end_date timestamp with time zone, p_status text",
-    "name": "get_scheduled_sms_for_user",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_scheduled_sms_for_user(p_user_id uuid, p_start_date timestamp with time zone DEFAULT now(), p_end_date timestamp with time zone DEFAULT NULL::timestamp with time zone, p_status text DEFAULT NULL::text)
+},
+{
+"args": "p_user_id uuid, p_start_date timestamp with time zone, p_end_date timestamp with time zone, p_status text",
+"name": "get_scheduled_sms_for_user",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_scheduled_sms_for_user(p_user_id uuid, p_start_date timestamp with time zone DEFAULT now(), p_end_date timestamp with time zone DEFAULT NULL::timestamp with time zone, p_status text DEFAULT NULL::text)
 RETURNS TABLE(id uuid, message_content text, message_type text, calendar_event_id text, event_title text, event_start timestamp with time zone, scheduled_for timestamp with time zone, status text, generated_via text, created_at timestamp with time zone)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -3813,12 +3791,12 @@ ORDER BY ssm.scheduled_for ASC;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_start_date date, p_end_date date",
-    "name": "get_sms_daily_metrics",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_sms_daily_metrics(p_start_date date, p_end_date date)
+},
+{
+"args": "p_start_date date, p_end_date date",
+"name": "get_sms_daily_metrics",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_sms_daily_metrics(p_start_date date, p_end_date date)
 RETURNS TABLE(metric_date date, scheduled_count integer, sent_count integer, delivered_count integer, failed_count integer, cancelled_count integer, avg_delivery_time_ms numeric, avg_generation_time_ms numeric, llm_success_count integer, template_fallback_count integer, delivery_success_rate numeric, llm_success_rate numeric, llm_cost_usd numeric, sms_cost_usd numeric, opt_out_count integer, quiet_hours_skip_count integer, daily_limit_hit_count integer, delivery_rate_percent numeric, llm_success_rate_percent numeric, active_users integer)
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -3854,12 +3832,12 @@ ORDER BY m.metric_date DESC;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "get_sms_notification_stats",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_sms_notification_stats()
+},
+{
+"args": "",
+"name": "get_sms_notification_stats",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_sms_notification_stats()
 RETURNS TABLE(total_users_with_phone bigint, users_phone_verified bigint, users_sms_enabled bigint, users_opted_out bigint, phone_verification_rate numeric, sms_adoption_rate numeric, opt_out_rate numeric, total_sms_sent_24h bigint, sms_delivery_rate_24h numeric, avg_sms_delivery_time_seconds numeric)
 LANGUAGE plpgsql
 STABLE
@@ -3890,36 +3868,32 @@ SELECT
 (SELECT enabled FROM sms_prefs),
 (SELECT opted_out FROM sms_prefs),
 ROUND(
-(SELECT verified FROM sms_prefs): :NUMERIC / NULLIF((SELECT with_phone FROM sms_prefs): :NUMERIC,
-    0) * 100,
-    2
+(SELECT verified FROM sms_prefs): :NUMERIC / NULLIF((SELECT with_phone FROM sms_prefs): :NUMERIC, 0) * 100,
+2
 ),
 ROUND(
-(SELECT enabled FROM sms*prefs): :NUMERIC / NULLIF((SELECT verified FROM sms_prefs): :NUMERIC,
-    0) * 100,
-    2
+(SELECT enabled FROM sms*prefs): :NUMERIC / NULLIF((SELECT verified FROM sms_prefs): :NUMERIC, 0) * 100,
+2
 ),
 ROUND(
-(SELECT opted*out FROM sms_prefs): :NUMERIC / NULLIF((SELECT verified FROM sms_prefs): :NUMERIC,
-    0) * 100,
-    2
+(SELECT opted*out FROM sms_prefs): :NUMERIC / NULLIF((SELECT verified FROM sms_prefs): :NUMERIC, 0) * 100,
+2
 ),
 (SELECT sent*count FROM sms_24h),
 ROUND(
-(SELECT delivered_count FROM sms_24h): :NUMERIC / NULLIF((SELECT sent_count FROM sms_24h): :NUMERIC,
-    0) * 100,
-    2
+(SELECT delivered_count FROM sms_24h): :NUMERIC / NULLIF((SELECT sent_count FROM sms_24h): :NUMERIC, 0) * 100,
+2
 ),
 (SELECT avg*delivery_seconds FROM sms_24h): :NUMERIC;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "get_subscription_overview",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_subscription_overview()
+},
+{
+"args": "",
+"name": "get_subscription_overview",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_subscription_overview()
 RETURNS TABLE(total_subscribers bigint, active_subscriptions bigint, trial_subscriptions bigint, canceled_subscriptions bigint, paused_subscriptions bigint, mrr numeric, arr numeric)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -3943,8 +3917,7 @@ ELSE 1\r
 END\r
 ELSE 0\r
 END\r
-),
-    0) AS mrr,\r
+), 0) AS mrr,\r
 COALESCE(SUM(\r
 CASE \r
 WHEN status = 'active' THEN \r
@@ -3956,19 +3929,18 @@ ELSE 1\r
 END\r
 ELSE 0\r
 END\r
-) * 12,
-    0) AS arr\r
+) * 12, 0) AS arr\r
 FROM customer*subscriptions cs\r
 LEFT JOIN subscription_plans sp ON cs.plan_id = sp.id;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "get_user_engagement_metrics",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_user_engagement_metrics()
+},
+{
+"args": "",
+"name": "get_user_engagement_metrics",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_user_engagement_metrics()
 RETURNS TABLE(total_users bigint, active_users_7d bigint, active_users_30d bigint, total_briefs bigint, avg_brief_length numeric, top_active_users json)
 LANGUAGE sql
 STABLE
@@ -4019,12 +3991,12 @@ WHERE generation_status = 'completed') AS avg_brief_length,
 (SELECT json_agg(row_to_json(t)) FROM top_users t) AS top_active_users;
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_start_date timestamp with time zone, p_end_date timestamp with time zone",
-    "name": "get_user_llm_usage",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_user_llm_usage(p_user_id uuid, p_start_date timestamp with time zone, p_end_date timestamp with time zone)
+},
+{
+"args": "p_user_id uuid, p_start_date timestamp with time zone, p_end_date timestamp with time zone",
+"name": "get_user_llm_usage",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_user_llm_usage(p_user_id uuid, p_start_date timestamp with time zone, p_end_date timestamp with time zone)
 RETURNS TABLE(total_requests bigint, total_cost numeric, total_tokens bigint, avg_response_time numeric, by_operation jsonb, by_model jsonb)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -4041,11 +4013,11 @@ BEGIN\r
 SELECT\r
 COUNT(*): :BIGINT,\r
 COALESCE(SUM(l.total*cost_usd),
-    0): :NUMERIC,\r
+0): :NUMERIC,\r
 COALESCE(SUM(l.total_tokens),
-    0): :BIGINT,\r
+0): :BIGINT,\r
 COALESCE(AVG(l.response_time_ms),
-    0): :NUMERIC\r
+0): :NUMERIC\r
 INTO v_total_requests, v_total_cost, v_total_tokens, v_avg_response_time\r
 FROM llm_usage_logs l\r
 WHERE l.user_id = p_user_id\r
@@ -4113,12 +4085,12 @@ v_by_model;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_days integer",
-    "name": "get_user_sms_metrics",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_user_sms_metrics(p_user_id uuid, p_days integer DEFAULT 30)
+},
+{
+"args": "p_user_id uuid, p_days integer",
+"name": "get_user_sms_metrics",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_user_sms_metrics(p_user_id uuid, p_days integer DEFAULT 30)
 RETURNS TABLE(metric_date date, scheduled_count integer, sent_count integer, delivered_count integer, failed_count integer, llm_cost_usd numeric, delivery_rate numeric)
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -4129,23 +4101,21 @@ RETURN QUERY
 SELECT
 m.metric_date,
 COALESCE(SUM(CASE WHEN m.metric_type = 'scheduled_count' THEN m.metric_value ELSE 0 END),
-    0): :INTEGER as scheduled_count,
+0): :INTEGER as scheduled_count,
 COALESCE(SUM(CASE WHEN m.metric_type = 'sent_count' THEN m.metric_value ELSE 0 END),
-    0): :INTEGER as sent_count,
+0): :INTEGER as sent_count,
 COALESCE(SUM(CASE WHEN m.metric_type = 'delivered_count' THEN m.metric_value ELSE 0 END),
-    0): :INTEGER as delivered_count,
+0): :INTEGER as delivered_count,
 COALESCE(SUM(CASE WHEN m.metric_type = 'failed_count' THEN m.metric_value ELSE 0 END),
-    0): :INTEGER as failed_count,
+0): :INTEGER as failed_count,
 COALESCE(SUM(CASE WHEN m.metric_type = 'llm_cost_usd' THEN m.metric_value ELSE 0 END),
-    0): :NUMERIC(10,
-    6) as llm_cost_usd,
+0): :NUMERIC(10, 6) as llm_cost_usd,
 CASE
 WHEN SUM(CASE WHEN m.metric_type = 'sent_count' THEN m.metric_value ELSE 0 END) > 0
 THEN (SUM(CASE WHEN m.metric_type = 'delivered_count' THEN m.metric_value ELSE 0 END): :NUMERIC /
 SUM(CASE WHEN m.metric_type = 'sent_count' THEN m.metric_value ELSE 0 END) * 100)
 ELSE 0
-END: :NUMERIC(5,
-    2) as delivery*rate
+END: :NUMERIC(5, 2) as delivery*rate
 FROM sms_metrics m
 WHERE m.user_id = p_user_id
 AND m.metric_hour IS NULL -- Only daily metrics
@@ -4155,12 +4125,12 @@ ORDER BY m.metric_date DESC;
 END;
 $function$
 "
-  },
-  {
-    "args": "user_uuid uuid",
-    "name": "get_user_subscription_status",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_user_subscription_status(user_uuid uuid)
+},
+{
+"args": "user_uuid uuid",
+"name": "get_user_subscription_status",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_user_subscription_status(user_uuid uuid)
 RETURNS TABLE(has_subscription boolean, subscription_status text, current_period_end timestamp with time zone, is_beta_user boolean)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -4186,12 +4156,12 @@ LIMIT 1;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid",
-    "name": "get_user_trial_status",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_user_trial_status(p_user_id uuid)
+},
+{
+"args": "p_user_id uuid",
+"name": "get_user_trial_status",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_user_trial_status(p_user_id uuid)
 RETURNS TABLE(is_in_trial boolean, is_trial_expired boolean, is_in_grace_period boolean, days_until_trial_end integer, trial_end_date timestamp with time zone, has_active_subscription boolean, is_read_only boolean)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -4264,12 +4234,12 @@ END as is_read_only;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "get_visitor_overview",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.get_visitor_overview()
+},
+{
+"args": "",
+"name": "get_visitor_overview",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.get_visitor_overview()
 RETURNS TABLE(total_visitors bigint, visitors_7d bigint, visitors_30d bigint, unique_visitors_today bigint)
 LANGUAGE plpgsql
 AS $function$\r
@@ -4286,1431 +4256,1431 @@ WHERE DATE(created_at AT TIME ZONE 'UTC') = CURRENT_DATE) as unique_visitors_tod
 END;\r
 $function$
 "
-  },
-  {
-    "args": "internal, smallint, anyelement, integer, internal, internal",
-    "name": "gin_btree_consistent",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_btree_consistent(internal, smallint, anyelement, integer, internal, internal)
+},
+{
+"args": "internal, smallint, anyelement, integer, internal, internal",
+"name": "gin_btree_consistent",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_btree_consistent(internal, smallint, anyelement, integer, internal, internal)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_btree_consistent$function$
 "
-  },
-  {
-    "args": "anyenum, anyenum, smallint, internal",
-    "name": "gin_compare_prefix_anyenum",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_anyenum(anyenum, anyenum, smallint, internal)
+},
+{
+"args": "anyenum, anyenum, smallint, internal",
+"name": "gin_compare_prefix_anyenum",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_anyenum(anyenum, anyenum, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_anyenum$function$
 "
-  },
-  {
-    "args": "bit, bit, smallint, internal",
-    "name": "gin_compare_prefix_bit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_bit(bit, bit, smallint, internal)
+},
+{
+"args": "bit, bit, smallint, internal",
+"name": "gin_compare_prefix_bit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_bit(bit, bit, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_bit$function$
 "
-  },
-  {
-    "args": "boolean, boolean, smallint, internal",
-    "name": "gin_compare_prefix_bool",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_bool(boolean, boolean, smallint, internal)
+},
+{
+"args": "boolean, boolean, smallint, internal",
+"name": "gin_compare_prefix_bool",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_bool(boolean, boolean, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_bool$function$
 "
-  },
-  {
-    "args": "character, character, smallint, internal",
-    "name": "gin_compare_prefix_bpchar",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_bpchar(character, character, smallint, internal)
+},
+{
+"args": "character, character, smallint, internal",
+"name": "gin_compare_prefix_bpchar",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_bpchar(character, character, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_bpchar$function$
 "
-  },
-  {
-    "args": "bytea, bytea, smallint, internal",
-    "name": "gin_compare_prefix_bytea",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_bytea(bytea, bytea, smallint, internal)
+},
+{
+"args": "bytea, bytea, smallint, internal",
+"name": "gin_compare_prefix_bytea",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_bytea(bytea, bytea, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_bytea$function$
 "
-  },
-  {
-    "args": "\"char\", \"char\", smallint, internal",
-    "name": "gin_compare_prefix_char",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_char(\"char\", \"char\", smallint, internal)
+},
+{
+"args": "\"char\", \"char\", smallint, internal",
+"name": "gin_compare_prefix_char",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_char(\"char\", \"char\", smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_char$function$
 "
-  },
-  {
-    "args": "cidr, cidr, smallint, internal",
-    "name": "gin_compare_prefix_cidr",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_cidr(cidr, cidr, smallint, internal)
+},
+{
+"args": "cidr, cidr, smallint, internal",
+"name": "gin_compare_prefix_cidr",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_cidr(cidr, cidr, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_cidr$function$
 "
-  },
-  {
-    "args": "date, date, smallint, internal",
-    "name": "gin_compare_prefix_date",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_date(date, date, smallint, internal)
+},
+{
+"args": "date, date, smallint, internal",
+"name": "gin_compare_prefix_date",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_date(date, date, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_date$function$
 "
-  },
-  {
-    "args": "real, real, smallint, internal",
-    "name": "gin_compare_prefix_float4",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_float4(real, real, smallint, internal)
+},
+{
+"args": "real, real, smallint, internal",
+"name": "gin_compare_prefix_float4",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_float4(real, real, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_float4$function$
 "
-  },
-  {
-    "args": "double precision, double precision, smallint, internal",
-    "name": "gin_compare_prefix_float8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_float8(double precision, double precision, smallint, internal)
+},
+{
+"args": "double precision, double precision, smallint, internal",
+"name": "gin_compare_prefix_float8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_float8(double precision, double precision, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_float8$function$
 "
-  },
-  {
-    "args": "inet, inet, smallint, internal",
-    "name": "gin_compare_prefix_inet",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_inet(inet, inet, smallint, internal)
+},
+{
+"args": "inet, inet, smallint, internal",
+"name": "gin_compare_prefix_inet",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_inet(inet, inet, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_inet$function$
 "
-  },
-  {
-    "args": "smallint, smallint, smallint, internal",
-    "name": "gin_compare_prefix_int2",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_int2(smallint, smallint, smallint, internal)
+},
+{
+"args": "smallint, smallint, smallint, internal",
+"name": "gin_compare_prefix_int2",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_int2(smallint, smallint, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_int2$function$
 "
-  },
-  {
-    "args": "integer, integer, smallint, internal",
-    "name": "gin_compare_prefix_int4",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_int4(integer, integer, smallint, internal)
+},
+{
+"args": "integer, integer, smallint, internal",
+"name": "gin_compare_prefix_int4",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_int4(integer, integer, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_int4$function$
 "
-  },
-  {
-    "args": "bigint, bigint, smallint, internal",
-    "name": "gin_compare_prefix_int8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_int8(bigint, bigint, smallint, internal)
+},
+{
+"args": "bigint, bigint, smallint, internal",
+"name": "gin_compare_prefix_int8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_int8(bigint, bigint, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_int8$function$
 "
-  },
-  {
-    "args": "interval, interval, smallint, internal",
-    "name": "gin_compare_prefix_interval",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_interval(interval, interval, smallint, internal)
+},
+{
+"args": "interval, interval, smallint, internal",
+"name": "gin_compare_prefix_interval",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_interval(interval, interval, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_interval$function$
 "
-  },
-  {
-    "args": "macaddr, macaddr, smallint, internal",
-    "name": "gin_compare_prefix_macaddr",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_macaddr(macaddr, macaddr, smallint, internal)
+},
+{
+"args": "macaddr, macaddr, smallint, internal",
+"name": "gin_compare_prefix_macaddr",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_macaddr(macaddr, macaddr, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_macaddr$function$
 "
-  },
-  {
-    "args": "macaddr8, macaddr8, smallint, internal",
-    "name": "gin_compare_prefix_macaddr8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_macaddr8(macaddr8, macaddr8, smallint, internal)
+},
+{
+"args": "macaddr8, macaddr8, smallint, internal",
+"name": "gin_compare_prefix_macaddr8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_macaddr8(macaddr8, macaddr8, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_macaddr8$function$
 "
-  },
-  {
-    "args": "money, money, smallint, internal",
-    "name": "gin_compare_prefix_money",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_money(money, money, smallint, internal)
+},
+{
+"args": "money, money, smallint, internal",
+"name": "gin_compare_prefix_money",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_money(money, money, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_money$function$
 "
-  },
-  {
-    "args": "name, name, smallint, internal",
-    "name": "gin_compare_prefix_name",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_name(name, name, smallint, internal)
+},
+{
+"args": "name, name, smallint, internal",
+"name": "gin_compare_prefix_name",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_name(name, name, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_name$function$
 "
-  },
-  {
-    "args": "numeric, numeric, smallint, internal",
-    "name": "gin_compare_prefix_numeric",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_numeric(numeric, numeric, smallint, internal)
+},
+{
+"args": "numeric, numeric, smallint, internal",
+"name": "gin_compare_prefix_numeric",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_numeric(numeric, numeric, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_numeric$function$
 "
-  },
-  {
-    "args": "oid, oid, smallint, internal",
-    "name": "gin_compare_prefix_oid",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_oid(oid, oid, smallint, internal)
+},
+{
+"args": "oid, oid, smallint, internal",
+"name": "gin_compare_prefix_oid",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_oid(oid, oid, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_oid$function$
 "
-  },
-  {
-    "args": "text, text, smallint, internal",
-    "name": "gin_compare_prefix_text",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_text(text, text, smallint, internal)
+},
+{
+"args": "text, text, smallint, internal",
+"name": "gin_compare_prefix_text",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_text(text, text, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_text$function$
 "
-  },
-  {
-    "args": "time without time zone, time without time zone, smallint, internal",
-    "name": "gin_compare_prefix_time",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_time(time without time zone, time without time zone, smallint, internal)
+},
+{
+"args": "time without time zone, time without time zone, smallint, internal",
+"name": "gin_compare_prefix_time",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_time(time without time zone, time without time zone, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_time$function$
 "
-  },
-  {
-    "args": "timestamp without time zone, timestamp without time zone, smallint, internal",
-    "name": "gin_compare_prefix_timestamp",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_timestamp(timestamp without time zone, timestamp without time zone, smallint, internal)
+},
+{
+"args": "timestamp without time zone, timestamp without time zone, smallint, internal",
+"name": "gin_compare_prefix_timestamp",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_timestamp(timestamp without time zone, timestamp without time zone, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_timestamp$function$
 "
-  },
-  {
-    "args": "timestamp with time zone, timestamp with time zone, smallint, internal",
-    "name": "gin_compare_prefix_timestamptz",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_timestamptz(timestamp with time zone, timestamp with time zone, smallint, internal)
+},
+{
+"args": "timestamp with time zone, timestamp with time zone, smallint, internal",
+"name": "gin_compare_prefix_timestamptz",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_timestamptz(timestamp with time zone, timestamp with time zone, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_timestamptz$function$
 "
-  },
-  {
-    "args": "time with time zone, time with time zone, smallint, internal",
-    "name": "gin_compare_prefix_timetz",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_timetz(time with time zone, time with time zone, smallint, internal)
+},
+{
+"args": "time with time zone, time with time zone, smallint, internal",
+"name": "gin_compare_prefix_timetz",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_timetz(time with time zone, time with time zone, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_timetz$function$
 "
-  },
-  {
-    "args": "uuid, uuid, smallint, internal",
-    "name": "gin_compare_prefix_uuid",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_uuid(uuid, uuid, smallint, internal)
+},
+{
+"args": "uuid, uuid, smallint, internal",
+"name": "gin_compare_prefix_uuid",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_uuid(uuid, uuid, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_uuid$function$
 "
-  },
-  {
-    "args": "bit varying, bit varying, smallint, internal",
-    "name": "gin_compare_prefix_varbit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_varbit(bit varying, bit varying, smallint, internal)
+},
+{
+"args": "bit varying, bit varying, smallint, internal",
+"name": "gin_compare_prefix_varbit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_compare_prefix_varbit(bit varying, bit varying, smallint, internal)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_compare_prefix_varbit$function$
 "
-  },
-  {
-    "args": "anyenum, anyenum",
-    "name": "gin_enum_cmp",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_enum_cmp(anyenum, anyenum)
+},
+{
+"args": "anyenum, anyenum",
+"name": "gin_enum_cmp",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_enum_cmp(anyenum, anyenum)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_enum_cmp$function$
 "
-  },
-  {
-    "args": "anyenum, internal, smallint, internal, internal",
-    "name": "gin_extract_query_anyenum",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_anyenum(anyenum, internal, smallint, internal, internal)
+},
+{
+"args": "anyenum, internal, smallint, internal, internal",
+"name": "gin_extract_query_anyenum",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_anyenum(anyenum, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_anyenum$function$
 "
-  },
-  {
-    "args": "bit, internal, smallint, internal, internal",
-    "name": "gin_extract_query_bit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_bit(bit, internal, smallint, internal, internal)
+},
+{
+"args": "bit, internal, smallint, internal, internal",
+"name": "gin_extract_query_bit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_bit(bit, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_bit$function$
 "
-  },
-  {
-    "args": "boolean, internal, smallint, internal, internal",
-    "name": "gin_extract_query_bool",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_bool(boolean, internal, smallint, internal, internal)
+},
+{
+"args": "boolean, internal, smallint, internal, internal",
+"name": "gin_extract_query_bool",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_bool(boolean, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_bool$function$
 "
-  },
-  {
-    "args": "character, internal, smallint, internal, internal",
-    "name": "gin_extract_query_bpchar",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_bpchar(character, internal, smallint, internal, internal)
+},
+{
+"args": "character, internal, smallint, internal, internal",
+"name": "gin_extract_query_bpchar",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_bpchar(character, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_bpchar$function$
 "
-  },
-  {
-    "args": "bytea, internal, smallint, internal, internal",
-    "name": "gin_extract_query_bytea",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_bytea(bytea, internal, smallint, internal, internal)
+},
+{
+"args": "bytea, internal, smallint, internal, internal",
+"name": "gin_extract_query_bytea",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_bytea(bytea, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_bytea$function$
 "
-  },
-  {
-    "args": "\"char\", internal, smallint, internal, internal",
-    "name": "gin_extract_query_char",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_char(\"char\", internal, smallint, internal, internal)
+},
+{
+"args": "\"char\", internal, smallint, internal, internal",
+"name": "gin_extract_query_char",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_char(\"char\", internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_char$function$
 "
-  },
-  {
-    "args": "cidr, internal, smallint, internal, internal",
-    "name": "gin_extract_query_cidr",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_cidr(cidr, internal, smallint, internal, internal)
+},
+{
+"args": "cidr, internal, smallint, internal, internal",
+"name": "gin_extract_query_cidr",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_cidr(cidr, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_cidr$function$
 "
-  },
-  {
-    "args": "date, internal, smallint, internal, internal",
-    "name": "gin_extract_query_date",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_date(date, internal, smallint, internal, internal)
+},
+{
+"args": "date, internal, smallint, internal, internal",
+"name": "gin_extract_query_date",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_date(date, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_date$function$
 "
-  },
-  {
-    "args": "real, internal, smallint, internal, internal",
-    "name": "gin_extract_query_float4",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_float4(real, internal, smallint, internal, internal)
+},
+{
+"args": "real, internal, smallint, internal, internal",
+"name": "gin_extract_query_float4",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_float4(real, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_float4$function$
 "
-  },
-  {
-    "args": "double precision, internal, smallint, internal, internal",
-    "name": "gin_extract_query_float8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_float8(double precision, internal, smallint, internal, internal)
+},
+{
+"args": "double precision, internal, smallint, internal, internal",
+"name": "gin_extract_query_float8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_float8(double precision, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_float8$function$
 "
-  },
-  {
-    "args": "inet, internal, smallint, internal, internal",
-    "name": "gin_extract_query_inet",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_inet(inet, internal, smallint, internal, internal)
+},
+{
+"args": "inet, internal, smallint, internal, internal",
+"name": "gin_extract_query_inet",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_inet(inet, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_inet$function$
 "
-  },
-  {
-    "args": "smallint, internal, smallint, internal, internal",
-    "name": "gin_extract_query_int2",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_int2(smallint, internal, smallint, internal, internal)
+},
+{
+"args": "smallint, internal, smallint, internal, internal",
+"name": "gin_extract_query_int2",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_int2(smallint, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_int2$function$
 "
-  },
-  {
-    "args": "integer, internal, smallint, internal, internal",
-    "name": "gin_extract_query_int4",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_int4(integer, internal, smallint, internal, internal)
+},
+{
+"args": "integer, internal, smallint, internal, internal",
+"name": "gin_extract_query_int4",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_int4(integer, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_int4$function$
 "
-  },
-  {
-    "args": "bigint, internal, smallint, internal, internal",
-    "name": "gin_extract_query_int8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_int8(bigint, internal, smallint, internal, internal)
+},
+{
+"args": "bigint, internal, smallint, internal, internal",
+"name": "gin_extract_query_int8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_int8(bigint, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_int8$function$
 "
-  },
-  {
-    "args": "interval, internal, smallint, internal, internal",
-    "name": "gin_extract_query_interval",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_interval(interval, internal, smallint, internal, internal)
+},
+{
+"args": "interval, internal, smallint, internal, internal",
+"name": "gin_extract_query_interval",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_interval(interval, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_interval$function$
 "
-  },
-  {
-    "args": "macaddr, internal, smallint, internal, internal",
-    "name": "gin_extract_query_macaddr",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_macaddr(macaddr, internal, smallint, internal, internal)
+},
+{
+"args": "macaddr, internal, smallint, internal, internal",
+"name": "gin_extract_query_macaddr",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_macaddr(macaddr, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_macaddr$function$
 "
-  },
-  {
-    "args": "macaddr8, internal, smallint, internal, internal",
-    "name": "gin_extract_query_macaddr8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_macaddr8(macaddr8, internal, smallint, internal, internal)
+},
+{
+"args": "macaddr8, internal, smallint, internal, internal",
+"name": "gin_extract_query_macaddr8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_macaddr8(macaddr8, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_macaddr8$function$
 "
-  },
-  {
-    "args": "money, internal, smallint, internal, internal",
-    "name": "gin_extract_query_money",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_money(money, internal, smallint, internal, internal)
+},
+{
+"args": "money, internal, smallint, internal, internal",
+"name": "gin_extract_query_money",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_money(money, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_money$function$
 "
-  },
-  {
-    "args": "name, internal, smallint, internal, internal",
-    "name": "gin_extract_query_name",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_name(name, internal, smallint, internal, internal)
+},
+{
+"args": "name, internal, smallint, internal, internal",
+"name": "gin_extract_query_name",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_name(name, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_name$function$
 "
-  },
-  {
-    "args": "numeric, internal, smallint, internal, internal",
-    "name": "gin_extract_query_numeric",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_numeric(numeric, internal, smallint, internal, internal)
+},
+{
+"args": "numeric, internal, smallint, internal, internal",
+"name": "gin_extract_query_numeric",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_numeric(numeric, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_numeric$function$
 "
-  },
-  {
-    "args": "oid, internal, smallint, internal, internal",
-    "name": "gin_extract_query_oid",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_oid(oid, internal, smallint, internal, internal)
+},
+{
+"args": "oid, internal, smallint, internal, internal",
+"name": "gin_extract_query_oid",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_oid(oid, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_oid$function$
 "
-  },
-  {
-    "args": "text, internal, smallint, internal, internal",
-    "name": "gin_extract_query_text",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_text(text, internal, smallint, internal, internal)
+},
+{
+"args": "text, internal, smallint, internal, internal",
+"name": "gin_extract_query_text",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_text(text, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_text$function$
 "
-  },
-  {
-    "args": "time without time zone, internal, smallint, internal, internal",
-    "name": "gin_extract_query_time",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_time(time without time zone, internal, smallint, internal, internal)
+},
+{
+"args": "time without time zone, internal, smallint, internal, internal",
+"name": "gin_extract_query_time",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_time(time without time zone, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_time$function$
 "
-  },
-  {
-    "args": "timestamp without time zone, internal, smallint, internal, internal",
-    "name": "gin_extract_query_timestamp",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_timestamp(timestamp without time zone, internal, smallint, internal, internal)
+},
+{
+"args": "timestamp without time zone, internal, smallint, internal, internal",
+"name": "gin_extract_query_timestamp",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_timestamp(timestamp without time zone, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_timestamp$function$
 "
-  },
-  {
-    "args": "timestamp with time zone, internal, smallint, internal, internal",
-    "name": "gin_extract_query_timestamptz",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_timestamptz(timestamp with time zone, internal, smallint, internal, internal)
+},
+{
+"args": "timestamp with time zone, internal, smallint, internal, internal",
+"name": "gin_extract_query_timestamptz",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_timestamptz(timestamp with time zone, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_timestamptz$function$
 "
-  },
-  {
-    "args": "time with time zone, internal, smallint, internal, internal",
-    "name": "gin_extract_query_timetz",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_timetz(time with time zone, internal, smallint, internal, internal)
+},
+{
+"args": "time with time zone, internal, smallint, internal, internal",
+"name": "gin_extract_query_timetz",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_timetz(time with time zone, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_timetz$function$
 "
-  },
-  {
-    "args": "text, internal, smallint, internal, internal, internal, internal",
-    "name": "gin_extract_query_trgm",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_trgm(text, internal, smallint, internal, internal, internal, internal)
+},
+{
+"args": "text, internal, smallint, internal, internal, internal, internal",
+"name": "gin_extract_query_trgm",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_trgm(text, internal, smallint, internal, internal, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gin_extract_query_trgm$function$
 "
-  },
-  {
-    "args": "uuid, internal, smallint, internal, internal",
-    "name": "gin_extract_query_uuid",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_uuid(uuid, internal, smallint, internal, internal)
+},
+{
+"args": "uuid, internal, smallint, internal, internal",
+"name": "gin_extract_query_uuid",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_uuid(uuid, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_uuid$function$
 "
-  },
-  {
-    "args": "bit varying, internal, smallint, internal, internal",
-    "name": "gin_extract_query_varbit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_varbit(bit varying, internal, smallint, internal, internal)
+},
+{
+"args": "bit varying, internal, smallint, internal, internal",
+"name": "gin_extract_query_varbit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_query_varbit(bit varying, internal, smallint, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_query_varbit$function$
 "
-  },
-  {
-    "args": "anyenum, internal",
-    "name": "gin_extract_value_anyenum",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_anyenum(anyenum, internal)
+},
+{
+"args": "anyenum, internal",
+"name": "gin_extract_value_anyenum",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_anyenum(anyenum, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_anyenum$function$
 "
-  },
-  {
-    "args": "bit, internal",
-    "name": "gin_extract_value_bit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_bit(bit, internal)
+},
+{
+"args": "bit, internal",
+"name": "gin_extract_value_bit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_bit(bit, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_bit$function$
 "
-  },
-  {
-    "args": "boolean, internal",
-    "name": "gin_extract_value_bool",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_bool(boolean, internal)
+},
+{
+"args": "boolean, internal",
+"name": "gin_extract_value_bool",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_bool(boolean, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_bool$function$
 "
-  },
-  {
-    "args": "character, internal",
-    "name": "gin_extract_value_bpchar",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_bpchar(character, internal)
+},
+{
+"args": "character, internal",
+"name": "gin_extract_value_bpchar",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_bpchar(character, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_bpchar$function$
 "
-  },
-  {
-    "args": "bytea, internal",
-    "name": "gin_extract_value_bytea",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_bytea(bytea, internal)
+},
+{
+"args": "bytea, internal",
+"name": "gin_extract_value_bytea",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_bytea(bytea, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_bytea$function$
 "
-  },
-  {
-    "args": "\"char\", internal",
-    "name": "gin_extract_value_char",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_char(\"char\", internal)
+},
+{
+"args": "\"char\", internal",
+"name": "gin_extract_value_char",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_char(\"char\", internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_char$function$
 "
-  },
-  {
-    "args": "cidr, internal",
-    "name": "gin_extract_value_cidr",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_cidr(cidr, internal)
+},
+{
+"args": "cidr, internal",
+"name": "gin_extract_value_cidr",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_cidr(cidr, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_cidr$function$
 "
-  },
-  {
-    "args": "date, internal",
-    "name": "gin_extract_value_date",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_date(date, internal)
+},
+{
+"args": "date, internal",
+"name": "gin_extract_value_date",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_date(date, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_date$function$
 "
-  },
-  {
-    "args": "real, internal",
-    "name": "gin_extract_value_float4",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_float4(real, internal)
+},
+{
+"args": "real, internal",
+"name": "gin_extract_value_float4",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_float4(real, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_float4$function$
 "
-  },
-  {
-    "args": "double precision, internal",
-    "name": "gin_extract_value_float8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_float8(double precision, internal)
+},
+{
+"args": "double precision, internal",
+"name": "gin_extract_value_float8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_float8(double precision, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_float8$function$
 "
-  },
-  {
-    "args": "inet, internal",
-    "name": "gin_extract_value_inet",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_inet(inet, internal)
+},
+{
+"args": "inet, internal",
+"name": "gin_extract_value_inet",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_inet(inet, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_inet$function$
 "
-  },
-  {
-    "args": "smallint, internal",
-    "name": "gin_extract_value_int2",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_int2(smallint, internal)
+},
+{
+"args": "smallint, internal",
+"name": "gin_extract_value_int2",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_int2(smallint, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_int2$function$
 "
-  },
-  {
-    "args": "integer, internal",
-    "name": "gin_extract_value_int4",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_int4(integer, internal)
+},
+{
+"args": "integer, internal",
+"name": "gin_extract_value_int4",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_int4(integer, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_int4$function$
 "
-  },
-  {
-    "args": "bigint, internal",
-    "name": "gin_extract_value_int8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_int8(bigint, internal)
+},
+{
+"args": "bigint, internal",
+"name": "gin_extract_value_int8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_int8(bigint, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_int8$function$
 "
-  },
-  {
-    "args": "interval, internal",
-    "name": "gin_extract_value_interval",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_interval(interval, internal)
+},
+{
+"args": "interval, internal",
+"name": "gin_extract_value_interval",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_interval(interval, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_interval$function$
 "
-  },
-  {
-    "args": "macaddr, internal",
-    "name": "gin_extract_value_macaddr",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_macaddr(macaddr, internal)
+},
+{
+"args": "macaddr, internal",
+"name": "gin_extract_value_macaddr",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_macaddr(macaddr, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_macaddr$function$
 "
-  },
-  {
-    "args": "macaddr8, internal",
-    "name": "gin_extract_value_macaddr8",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_macaddr8(macaddr8, internal)
+},
+{
+"args": "macaddr8, internal",
+"name": "gin_extract_value_macaddr8",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_macaddr8(macaddr8, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_macaddr8$function$
 "
-  },
-  {
-    "args": "money, internal",
-    "name": "gin_extract_value_money",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_money(money, internal)
+},
+{
+"args": "money, internal",
+"name": "gin_extract_value_money",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_money(money, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_money$function$
 "
-  },
-  {
-    "args": "name, internal",
-    "name": "gin_extract_value_name",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_name(name, internal)
+},
+{
+"args": "name, internal",
+"name": "gin_extract_value_name",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_name(name, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_name$function$
 "
-  },
-  {
-    "args": "numeric, internal",
-    "name": "gin_extract_value_numeric",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_numeric(numeric, internal)
+},
+{
+"args": "numeric, internal",
+"name": "gin_extract_value_numeric",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_numeric(numeric, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_numeric$function$
 "
-  },
-  {
-    "args": "oid, internal",
-    "name": "gin_extract_value_oid",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_oid(oid, internal)
+},
+{
+"args": "oid, internal",
+"name": "gin_extract_value_oid",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_oid(oid, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_oid$function$
 "
-  },
-  {
-    "args": "text, internal",
-    "name": "gin_extract_value_text",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_text(text, internal)
+},
+{
+"args": "text, internal",
+"name": "gin_extract_value_text",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_text(text, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_text$function$
 "
-  },
-  {
-    "args": "time without time zone, internal",
-    "name": "gin_extract_value_time",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_time(time without time zone, internal)
+},
+{
+"args": "time without time zone, internal",
+"name": "gin_extract_value_time",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_time(time without time zone, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_time$function$
 "
-  },
-  {
-    "args": "timestamp without time zone, internal",
-    "name": "gin_extract_value_timestamp",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_timestamp(timestamp without time zone, internal)
+},
+{
+"args": "timestamp without time zone, internal",
+"name": "gin_extract_value_timestamp",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_timestamp(timestamp without time zone, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_timestamp$function$
 "
-  },
-  {
-    "args": "timestamp with time zone, internal",
-    "name": "gin_extract_value_timestamptz",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_timestamptz(timestamp with time zone, internal)
+},
+{
+"args": "timestamp with time zone, internal",
+"name": "gin_extract_value_timestamptz",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_timestamptz(timestamp with time zone, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_timestamptz$function$
 "
-  },
-  {
-    "args": "time with time zone, internal",
-    "name": "gin_extract_value_timetz",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_timetz(time with time zone, internal)
+},
+{
+"args": "time with time zone, internal",
+"name": "gin_extract_value_timetz",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_timetz(time with time zone, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_timetz$function$
 "
-  },
-  {
-    "args": "text, internal",
-    "name": "gin_extract_value_trgm",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_trgm(text, internal)
+},
+{
+"args": "text, internal",
+"name": "gin_extract_value_trgm",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_trgm(text, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gin_extract_value_trgm$function$
 "
-  },
-  {
-    "args": "uuid, internal",
-    "name": "gin_extract_value_uuid",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_uuid(uuid, internal)
+},
+{
+"args": "uuid, internal",
+"name": "gin_extract_value_uuid",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_uuid(uuid, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_uuid$function$
 "
-  },
-  {
-    "args": "bit varying, internal",
-    "name": "gin_extract_value_varbit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_varbit(bit varying, internal)
+},
+{
+"args": "bit varying, internal",
+"name": "gin_extract_value_varbit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_extract_value_varbit(bit varying, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_extract_value_varbit$function$
 "
-  },
-  {
-    "args": "numeric, numeric",
-    "name": "gin_numeric_cmp",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_numeric_cmp(numeric, numeric)
+},
+{
+"args": "numeric, numeric",
+"name": "gin_numeric_cmp",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_numeric_cmp(numeric, numeric)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE STRICT
 AS '$libdir/btree_gin', $function$gin_numeric_cmp$function$
 "
-  },
-  {
-    "args": "internal, smallint, text, integer, internal, internal, internal, internal",
-    "name": "gin_trgm_consistent",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_trgm_consistent(internal, smallint, text, integer, internal, internal, internal, internal)
+},
+{
+"args": "internal, smallint, text, integer, internal, internal, internal, internal",
+"name": "gin_trgm_consistent",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_trgm_consistent(internal, smallint, text, integer, internal, internal, internal, internal)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gin_trgm_consistent$function$
 "
-  },
-  {
-    "args": "internal, smallint, text, integer, internal, internal, internal",
-    "name": "gin_trgm_triconsistent",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gin_trgm_triconsistent(internal, smallint, text, integer, internal, internal, internal)
+},
+{
+"args": "internal, smallint, text, integer, internal, internal, internal",
+"name": "gin_trgm_triconsistent",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gin_trgm_triconsistent(internal, smallint, text, integer, internal, internal, internal)
 RETURNS \"char\"
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gin_trgm_triconsistent$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "gtrgm_compress",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_compress(internal)
+},
+{
+"args": "internal",
+"name": "gtrgm_compress",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_compress(internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_compress$function$
 "
-  },
-  {
-    "args": "internal, text, smallint, oid, internal",
-    "name": "gtrgm_consistent",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_consistent(internal, text, smallint, oid, internal)
+},
+{
+"args": "internal, text, smallint, oid, internal",
+"name": "gtrgm_consistent",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_consistent(internal, text, smallint, oid, internal)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_consistent$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "gtrgm_decompress",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_decompress(internal)
+},
+{
+"args": "internal",
+"name": "gtrgm_decompress",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_decompress(internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_decompress$function$
 "
-  },
-  {
-    "args": "internal, text, smallint, oid, internal",
-    "name": "gtrgm_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_distance(internal, text, smallint, oid, internal)
+},
+{
+"args": "internal, text, smallint, oid, internal",
+"name": "gtrgm_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_distance(internal, text, smallint, oid, internal)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_distance$function$
 "
-  },
-  {
-    "args": "cstring",
-    "name": "gtrgm_in",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_in(cstring)
+},
+{
+"args": "cstring",
+"name": "gtrgm_in",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_in(cstring)
 RETURNS gtrgm
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_in$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "gtrgm_options",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_options(internal)
+},
+{
+"args": "internal",
+"name": "gtrgm_options",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_options(internal)
 RETURNS void
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE
 AS '$libdir/pg_trgm', $function$gtrgm_options$function$
 "
-  },
-  {
-    "args": "gtrgm",
-    "name": "gtrgm_out",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_out(gtrgm)
+},
+{
+"args": "gtrgm",
+"name": "gtrgm_out",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_out(gtrgm)
 RETURNS cstring
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_out$function$
 "
-  },
-  {
-    "args": "internal, internal, internal",
-    "name": "gtrgm_penalty",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_penalty(internal, internal, internal)
+},
+{
+"args": "internal, internal, internal",
+"name": "gtrgm_penalty",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_penalty(internal, internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_penalty$function$
 "
-  },
-  {
-    "args": "internal, internal",
-    "name": "gtrgm_picksplit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_picksplit(internal, internal)
+},
+{
+"args": "internal, internal",
+"name": "gtrgm_picksplit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_picksplit(internal, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_picksplit$function$
 "
-  },
-  {
-    "args": "gtrgm, gtrgm, internal",
-    "name": "gtrgm_same",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_same(gtrgm, gtrgm, internal)
+},
+{
+"args": "gtrgm, gtrgm, internal",
+"name": "gtrgm_same",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_same(gtrgm, gtrgm, internal)
 RETURNS internal
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_same$function$
 "
-  },
-  {
-    "args": "internal, internal",
-    "name": "gtrgm_union",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.gtrgm_union(internal, internal)
+},
+{
+"args": "internal, internal",
+"name": "gtrgm_union",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.gtrgm_union(internal, internal)
 RETURNS gtrgm
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$gtrgm_union$function$
 "
-  },
-  {
-    "args": "halfvec, integer, boolean",
-    "name": "halfvec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec(halfvec, integer, boolean)
+},
+{
+"args": "halfvec, integer, boolean",
+"name": "halfvec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec(halfvec, integer, boolean)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec$function$
 "
-  },
-  {
-    "args": "double precision[], halfvec",
-    "name": "halfvec_accum",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_accum(double precision[], halfvec)
+},
+{
+"args": "double precision[], halfvec",
+"name": "halfvec_accum",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_accum(double precision[], halfvec)
 RETURNS double precision[]
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_accum$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_add",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_add(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_add",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_add(halfvec, halfvec)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_add$function$
 "
-  },
-  {
-    "args": "double precision[]",
-    "name": "halfvec_avg",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_avg(double precision[])
+},
+{
+"args": "double precision[]",
+"name": "halfvec_avg",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_avg(double precision[])
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_avg$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_cmp",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_cmp(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_cmp",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_cmp(halfvec, halfvec)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_cmp$function$
 "
-  },
-  {
-    "args": "double precision[], double precision[]",
-    "name": "halfvec_combine",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_combine(double precision[], double precision[])
+},
+{
+"args": "double precision[], double precision[]",
+"name": "halfvec_combine",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_combine(double precision[], double precision[])
 RETURNS double precision[]
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_combine$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_concat",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_concat(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_concat",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_concat(halfvec, halfvec)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_concat$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_eq",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_eq(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_eq",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_eq(halfvec, halfvec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_eq$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_ge",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_ge(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_ge",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_ge(halfvec, halfvec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_ge$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_gt",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_gt(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_gt",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_gt(halfvec, halfvec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_gt$function$
 "
-  },
-  {
-    "args": "cstring, oid, integer",
-    "name": "halfvec_in",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_in(cstring, oid, integer)
+},
+{
+"args": "cstring, oid, integer",
+"name": "halfvec_in",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_in(cstring, oid, integer)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_in$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_l2_squared_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_l2_squared_distance(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_l2_squared_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_l2_squared_distance(halfvec, halfvec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_l2_squared_distance$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_le",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_le(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_le",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_le(halfvec, halfvec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_le$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_lt",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_lt(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_lt",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_lt(halfvec, halfvec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_lt$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_mul",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_mul(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_mul",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_mul(halfvec, halfvec)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_mul$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_ne",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_ne(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_ne",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_ne(halfvec, halfvec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_ne$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_negative_inner_product",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_negative_inner_product(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_negative_inner_product",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_negative_inner_product(halfvec, halfvec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_negative_inner_product$function$
 "
-  },
-  {
-    "args": "halfvec",
-    "name": "halfvec_out",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_out(halfvec)
+},
+{
+"args": "halfvec",
+"name": "halfvec_out",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_out(halfvec)
 RETURNS cstring
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_out$function$
 "
-  },
-  {
-    "args": "internal, oid, integer",
-    "name": "halfvec_recv",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_recv(internal, oid, integer)
+},
+{
+"args": "internal, oid, integer",
+"name": "halfvec_recv",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_recv(internal, oid, integer)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_recv$function$
 "
-  },
-  {
-    "args": "halfvec",
-    "name": "halfvec_send",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_send(halfvec)
+},
+{
+"args": "halfvec",
+"name": "halfvec_send",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_send(halfvec)
 RETURNS bytea
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_send$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_spherical_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_spherical_distance(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_spherical_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_spherical_distance(halfvec, halfvec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_spherical_distance$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "halfvec_sub",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_sub(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "halfvec_sub",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_sub(halfvec, halfvec)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_sub$function$
 "
-  },
-  {
-    "args": "halfvec, integer, boolean",
-    "name": "halfvec_to_float4",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_to_float4(halfvec, integer, boolean)
+},
+{
+"args": "halfvec, integer, boolean",
+"name": "halfvec_to_float4",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_to_float4(halfvec, integer, boolean)
 RETURNS real[]
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_to_float4$function$
 "
-  },
-  {
-    "args": "halfvec, integer, boolean",
-    "name": "halfvec_to_sparsevec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_to_sparsevec(halfvec, integer, boolean)
+},
+{
+"args": "halfvec, integer, boolean",
+"name": "halfvec_to_sparsevec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_to_sparsevec(halfvec, integer, boolean)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_to_sparsevec$function$
 "
-  },
-  {
-    "args": "halfvec, integer, boolean",
-    "name": "halfvec_to_vector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_to_vector(halfvec, integer, boolean)
+},
+{
+"args": "halfvec, integer, boolean",
+"name": "halfvec_to_vector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_to_vector(halfvec, integer, boolean)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_to_vector$function$
 "
-  },
-  {
-    "args": "cstring[]",
-    "name": "halfvec_typmod_in",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.halfvec_typmod_in(cstring[])
+},
+{
+"args": "cstring[]",
+"name": "halfvec_typmod_in",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.halfvec_typmod_in(cstring[])
 RETURNS integer
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_typmod_in$function$
 "
-  },
-  {
-    "args": "bit, bit",
-    "name": "hamming_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.hamming_distance(bit, bit)
+},
+{
+"args": "bit, bit",
+"name": "hamming_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.hamming_distance(bit, bit)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$hamming_distance$function$
 "
-  },
-  {
-    "args": "",
-    "name": "handle_manual_brief_generation",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.handle_manual_brief_generation()
+},
+{
+"args": "",
+"name": "handle_manual_brief_generation",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.handle_manual_brief_generation()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$DECLARE\r
@@ -5744,52 +5714,52 @@ END IF;\r
 RETURN NEW;\r
 END;$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "hnsw_bit_support",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.hnsw_bit_support(internal)
+},
+{
+"args": "internal",
+"name": "hnsw_bit_support",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.hnsw_bit_support(internal)
 RETURNS internal
 LANGUAGE c
 AS '$libdir/vector', $function$hnsw_bit_support$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "hnsw_halfvec_support",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.hnsw_halfvec_support(internal)
+},
+{
+"args": "internal",
+"name": "hnsw_halfvec_support",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.hnsw_halfvec_support(internal)
 RETURNS internal
 LANGUAGE c
 AS '$libdir/vector', $function$hnsw_halfvec_support$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "hnsw_sparsevec_support",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.hnsw_sparsevec_support(internal)
+},
+{
+"args": "internal",
+"name": "hnsw_sparsevec_support",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.hnsw_sparsevec_support(internal)
 RETURNS internal
 LANGUAGE c
 AS '$libdir/vector', $function$hnsw_sparsevec_support$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "hnswhandler",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.hnswhandler(internal)
+},
+{
+"args": "internal",
+"name": "hnswhandler",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.hnswhandler(internal)
 RETURNS index_am_handler
 LANGUAGE c
 AS '$libdir/vector', $function$hnswhandler$function$
 "
-  },
-  {
-    "args": "",
-    "name": "increment_agent_session_message_count",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.increment_agent_session_message_count()
+},
+{
+"args": "",
+"name": "increment_agent_session_message_count",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.increment_agent_session_message_count()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -5801,37 +5771,34 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_session_id uuid, p_message_increment integer, p_token_increment integer, p_tool_increment integer",
-    "name": "increment_chat_session_metrics",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.increment_chat_session_metrics(p_session_id uuid, p_message_increment integer DEFAULT 0, p_token_increment integer DEFAULT 0, p_tool_increment integer DEFAULT 0)
+},
+{
+"args": "p_session_id uuid, p_message_increment integer, p_token_increment integer, p_tool_increment integer",
+"name": "increment_chat_session_metrics",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.increment_chat_session_metrics(p_session_id uuid, p_message_increment integer DEFAULT 0, p_token_increment integer DEFAULT 0, p_tool_increment integer DEFAULT 0)
 RETURNS void
 LANGUAGE plpgsql
 AS $function$
 BEGIN
 \tUPDATE chat_sessions
-\tSET message_count = COALESCE(message_count,
-    0) + COALESCE(p_message_increment,
-    0),
-\t\ttotal_tokens_used = COALESCE(total_tokens_used,
-    0) + COALESCE(p_token_increment,
-    0),
-\t\ttool_call_count = COALESCE(tool_call_count,
-    0) + COALESCE(p_tool_increment,
-    0),
+\tSET message_count = COALESCE(message_count, 0) + COALESCE(p_message_increment,
+0),
+\t\ttotal_tokens_used = COALESCE(total_tokens_used, 0) + COALESCE(p_token_increment,
+0),
+\t\ttool_call_count = COALESCE(tool_call_count, 0) + COALESCE(p_tool_increment,
+0),
 \t\tupdated_at = NOW()
 \tWHERE id = p_session_id;
 END;
 $function$
 "
-  },
-  {
-    "args": "row_id bigint",
-    "name": "increment_migration_retry_count",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.increment_migration_retry_count(row_id bigint)
+},
+{
+"args": "row_id bigint",
+"name": "increment_migration_retry_count",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.increment_migration_retry_count(row_id bigint)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -5839,19 +5806,18 @@ AS $function$
 BEGIN
 UPDATE migration_log
 SET
-retry_count = COALESCE(retry_count,
-    0) + 1,
+retry_count = COALESCE(retry_count, 0) + 1,
 last_retry_at = NOW()
 WHERE id = row_id;
 END;
 $function$
 "
-  },
-  {
-    "args": "question_ids uuid[]",
-    "name": "increment_question_display_count",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.increment_question_display_count(question_ids uuid[])
+},
+{
+"args": "question_ids uuid[]",
+"name": "increment_question_display_count",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.increment_question_display_count(question_ids uuid[])
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -5865,45 +5831,45 @@ WHERE id = ANY(question_ids);
 END;
 $function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "inner_product",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.inner_product(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "inner_product",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.inner_product(halfvec, halfvec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_inner_product$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "inner_product",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.inner_product(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "inner_product",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.inner_product(sparsevec, sparsevec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_inner_product$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "inner_product",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.inner_product(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "inner_product",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.inner_product(vector, vector)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$inner_product$function$
 "
-  },
-  {
-    "args": "",
-    "name": "is_admin",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.is_admin()
+},
+{
+"args": "",
+"name": "is_admin",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
 LANGUAGE sql
 STABLE SECURITY DEFINER
@@ -5911,16 +5877,16 @@ SET search_path TO 'public'
 AS $function$
 SELECT COALESCE(
 (SELECT is_admin FROM users WHERE id = auth.uid()),
-    false
+false
 );
 $function$
 "
-  },
-  {
-    "args": "user_id uuid",
-    "name": "is_admin",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
+},
+{
+"args": "user_id uuid",
+"name": "is_admin",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 STABLE SECURITY DEFINER
@@ -5943,164 +5909,164 @@ $function$
  LANGUAGE c
 AS '$libdir/vector', $function$ivfflat_bit_support$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "ivfflat_halfvec_support",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.ivfflat_halfvec_support(internal)
+},
+{
+"args": "internal",
+"name": "ivfflat_halfvec_support",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.ivfflat_halfvec_support(internal)
 RETURNS internal
 LANGUAGE c
 AS '$libdir/vector', $function$ivfflat_halfvec_support$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "ivfflathandler",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.ivfflathandler(internal)
+},
+{
+"args": "internal",
+"name": "ivfflathandler",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.ivfflathandler(internal)
 RETURNS index_am_handler
 LANGUAGE c
 AS '$libdir/vector', $function$ivfflathandler$function$
 "
-  },
-  {
-    "args": "bit, bit",
-    "name": "jaccard_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.jaccard_distance(bit, bit)
+},
+{
+"args": "bit, bit",
+"name": "jaccard_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.jaccard_distance(bit, bit)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$jaccard_distance$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "l1_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l1_distance(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "l1_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l1_distance(halfvec, halfvec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_l1_distance$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "l1_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l1_distance(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "l1_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l1_distance(sparsevec, sparsevec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_l1_distance$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "l1_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l1_distance(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "l1_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l1_distance(vector, vector)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$l1_distance$function$
 "
-  },
-  {
-    "args": "halfvec, halfvec",
-    "name": "l2_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l2_distance(halfvec, halfvec)
+},
+{
+"args": "halfvec, halfvec",
+"name": "l2_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l2_distance(halfvec, halfvec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_l2_distance$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "l2_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l2_distance(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "l2_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l2_distance(sparsevec, sparsevec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_l2_distance$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "l2_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l2_distance(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "l2_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l2_distance(vector, vector)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$l2_distance$function$
 "
-  },
-  {
-    "args": "halfvec",
-    "name": "l2_norm",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l2_norm(halfvec)
+},
+{
+"args": "halfvec",
+"name": "l2_norm",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l2_norm(halfvec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_l2_norm$function$
 "
-  },
-  {
-    "args": "sparsevec",
-    "name": "l2_norm",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l2_norm(sparsevec)
+},
+{
+"args": "sparsevec",
+"name": "l2_norm",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l2_norm(sparsevec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_l2_norm$function$
 "
-  },
-  {
-    "args": "halfvec",
-    "name": "l2_normalize",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l2_normalize(halfvec)
+},
+{
+"args": "halfvec",
+"name": "l2_normalize",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l2_normalize(halfvec)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_l2_normalize$function$
 "
-  },
-  {
-    "args": "sparsevec",
-    "name": "l2_normalize",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l2_normalize(sparsevec)
+},
+{
+"args": "sparsevec",
+"name": "l2_normalize",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l2_normalize(sparsevec)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_l2_normalize$function$
 "
-  },
-  {
-    "args": "vector",
-    "name": "l2_normalize",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.l2_normalize(vector)
+},
+{
+"args": "vector",
+"name": "l2_normalize",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.l2_normalize(vector)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$l2_normalize$function$
 "
-  },
-  {
-    "args": "",
-    "name": "list_pending_project_invites",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.list_pending_project_invites()
+},
+{
+"args": "",
+"name": "list_pending_project_invites",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.list_pending_project_invites()
 RETURNS TABLE(invite_id uuid, project_id uuid, project_name text, role_key text, access text, status text, expires_at timestamp with time zone, created_at timestamp with time zone, invited_by_actor_id uuid, invited_by_name text, invited_by_email text)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -6161,12 +6127,12 @@ ORDER BY i.created_at DESC;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_level text, p_message text, p_namespace text, p_correlation_id uuid, p_event_id uuid, p_delivery_id uuid, p_user_id uuid, p_context jsonb, p_metadata jsonb",
-    "name": "log_notification_event",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.log_notification_event(p_level text, p_message text, p_namespace text DEFAULT 'db_function'::text, p_correlation_id uuid DEFAULT NULL::uuid, p_event_id uuid DEFAULT NULL::uuid, p_delivery_id uuid DEFAULT NULL::uuid, p_user_id uuid DEFAULT NULL::uuid, p_context jsonb DEFAULT '{}'::jsonb, p_metadata jsonb DEFAULT '{}'::jsonb)
+},
+{
+"args": "p_level text, p_message text, p_namespace text, p_correlation_id uuid, p_event_id uuid, p_delivery_id uuid, p_user_id uuid, p_context jsonb, p_metadata jsonb",
+"name": "log_notification_event",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.log_notification_event(p_level text, p_message text, p_namespace text DEFAULT 'db_function'::text, p_correlation_id uuid DEFAULT NULL::uuid, p_event_id uuid DEFAULT NULL::uuid, p_delivery_id uuid DEFAULT NULL::uuid, p_user_id uuid DEFAULT NULL::uuid, p_context jsonb DEFAULT '{}'::jsonb, p_metadata jsonb DEFAULT '{}'::jsonb)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -6203,12 +6169,12 @@ NULL;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "notify_user_signup",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.notify_user_signup()
+},
+{
+"args": "",
+"name": "notify_user_signup",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.notify_user_signup()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -6284,12 +6250,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_guard jsonb, p_entity jsonb",
-    "name": "onto_check_guard",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.onto_check_guard(p_guard jsonb, p_entity jsonb)
+},
+{
+"args": "p_guard jsonb, p_entity jsonb",
+"name": "onto_check_guard",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.onto_check_guard(p_guard jsonb, p_entity jsonb)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$
@@ -6371,12 +6337,12 @@ begin
 end;
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_entity_type text, p_entity_id uuid",
-    "name": "onto_comment_validate_target",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.onto_comment_validate_target(p_project_id uuid, p_entity_type text, p_entity_id uuid)
+},
+{
+"args": "p_project_id uuid, p_entity_type text, p_entity_id uuid",
+"name": "onto_comment_validate_target",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.onto_comment_validate_target(p_project_id uuid, p_entity_type text, p_entity_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$
@@ -6476,12 +6442,12 @@ END CASE;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "onto_comments_before_insert",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.onto_comments_before_insert()
+},
+{
+"args": "",
+"name": "onto_comments_before_insert",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.onto_comments_before_insert()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -6520,12 +6486,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "onto_comments_before_update",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.onto_comments_before_update()
+},
+{
+"args": "",
+"name": "onto_comments_before_update",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.onto_comments_before_update()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -6550,12 +6516,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_json jsonb, p_path text",
-    "name": "onto_jsonb_extract",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.onto_jsonb_extract(p_json jsonb, p_path text)
+},
+{
+"args": "p_json jsonb, p_path text",
+"name": "onto_jsonb_extract",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.onto_jsonb_extract(p_json jsonb, p_path text)
 RETURNS jsonb
 LANGUAGE sql
 IMMUTABLE
@@ -6567,12 +6533,12 @@ AS $function$
 \t\tend;
 $function$
 "
-  },
-  {
-    "args": "p_json jsonb, p_path text",
-    "name": "onto_jsonb_extract_text",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.onto_jsonb_extract_text(p_json jsonb, p_path text)
+},
+{
+"args": "p_json jsonb, p_path text",
+"name": "onto_jsonb_extract_text",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.onto_jsonb_extract_text(p_json jsonb, p_path text)
 RETURNS text
 LANGUAGE sql
 IMMUTABLE
@@ -6584,12 +6550,12 @@ AS $function$
 \t\tend;
 $function$
 "
-  },
-  {
-    "args": "p_json jsonb, p_path text",
-    "name": "onto_jsonb_has_value",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.onto_jsonb_has_value(p_json jsonb, p_path text)
+},
+{
+"args": "p_json jsonb, p_path text",
+"name": "onto_jsonb_has_value",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.onto_jsonb_has_value(p_json jsonb, p_path text)
 RETURNS boolean
 LANGUAGE plpgsql
 IMMUTABLE
@@ -6615,19 +6581,19 @@ begin
 end;
 $function$
 "
-  },
-  {
-    "args": "p_actor_id uuid, p_query text, p_project_id uuid, p_types text[], p_limit integer",
-    "name": "onto_search_entities",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.onto_search_entities(p_actor_id uuid, p_query text, p_project_id uuid DEFAULT NULL::uuid, p_types text[] DEFAULT NULL::text[], p_limit integer DEFAULT 50)
+},
+{
+"args": "p_actor_id uuid, p_query text, p_project_id uuid, p_types text[], p_limit integer",
+"name": "onto_search_entities",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.onto_search_entities(p_actor_id uuid, p_query text, p_project_id uuid DEFAULT NULL::uuid, p_types text[] DEFAULT NULL::text[], p_limit integer DEFAULT 50)
 RETURNS TABLE(type text, id uuid, project_id uuid, project_name text, title text, snippet text, score double precision)
 LANGUAGE plpgsql
 AS $function$
 declare
 v_limit int := least(coalesce(p_limit,
-    50),
-    50);
+50),
+50);
 v_query tsquery;
 begin
 if coalesce(trim(p_query), '') = '' then
@@ -6653,8 +6619,7 @@ concat_ws(' ', coalesce(t.title, ''), coalesce(t.props: :text, '')),
 params.tsq,
 'MaxFragments=2,MinWords=5,MaxWords=18'
 ) as snippet,
-(coalesce(ts_rank(t.search_vector, params.tsq),
-    0) * 0.6) +
+(coalesce(ts_rank(t.search_vector, params.tsq), 0) * 0.6) +
 (similarity(coalesce(t.title, ''), p*query) * 0.4) as score
 from onto*tasks t
 join params on true
@@ -6684,8 +6649,7 @@ concat_ws(' ', coalesce(pl.name, ''), coalesce(pl.props: :text, '')),
 params.tsq,
 'MaxFragments=2,MinWords=5,MaxWords=18'
 ) as snippet,
-(coalesce(ts_rank(pl.search_vector, params.tsq),
-    0) * 0.6) +
+(coalesce(ts_rank(pl.search_vector, params.tsq), 0) * 0.6) +
 (similarity(coalesce(pl.name, ''), p*query) * 0.4) as score
 from onto*plans pl
 join params on true
@@ -6715,8 +6679,7 @@ concat_ws(' ', coalesce(g.name, ''), coalesce(g.props: :text, '')),
 params.tsq,
 'MaxFragments=2,MinWords=5,MaxWords=18'
 ) as snippet,
-(coalesce(ts_rank(g.search_vector, params.tsq),
-    0) * 0.6) +
+(coalesce(ts_rank(g.search_vector, params.tsq), 0) * 0.6) +
 (similarity(coalesce(g.name, ''), p*query) * 0.4) as score
 from onto*goals g
 join params on true
@@ -6746,8 +6709,7 @@ concat_ws(' ', coalesce(m.title, ''), coalesce(m.props: :text, '')),
 params.tsq,
 'MaxFragments=2,MinWords=5,MaxWords=18'
 ) as snippet,
-(coalesce(ts_rank(m.search_vector, params.tsq),
-    0) * 0.6) +
+(coalesce(ts_rank(m.search_vector, params.tsq), 0) * 0.6) +
 (similarity(coalesce(m.title, ''), p*query) * 0.4) as score
 from onto*milestones m
 join params on true
@@ -6777,8 +6739,7 @@ concat_ws(' ', coalesce(d.title, ''), coalesce(d.props: :text, '')),
 params.tsq,
 'MaxFragments=2,MinWords=5,MaxWords=18'
 ) as snippet,
-(coalesce(ts_rank(d.search_vector, params.tsq),
-    0) * 0.6) +
+(coalesce(ts_rank(d.search_vector, params.tsq), 0) * 0.6) +
 (similarity(coalesce(d.title, ''), p*query) * 0.4) as score
 from onto*documents d
 join params on true
@@ -6808,8 +6769,7 @@ concat_ws(' ', coalesce(o.name, ''), coalesce(o.props: :text, '')),
 params.tsq,
 'MaxFragments=2,MinWords=5,MaxWords=18'
 ) as snippet,
-(coalesce(ts_rank(o.search_vector, params.tsq),
-    0) * 0.6) +
+(coalesce(ts_rank(o.search_vector, params.tsq), 0) * 0.6) +
 (similarity(coalesce(o.name, ''), p*query) * 0.4) as score
 from onto*outputs o
 join params on true
@@ -6839,8 +6799,7 @@ concat_ws(' ', coalesce(r.\"text\", ''), coalesce(r.props::text, '')),
 params.tsq,
 'MaxFragments=2,MinWords=5,MaxWords=18'
 ) as snippet,
-(coalesce(ts_rank(r.search_vector, params.tsq),
-    0) * 0.6) +
+(coalesce(ts_rank(r.search_vector, params.tsq), 0) * 0.6) +
 (similarity(coalesce(r.\"text\", ''), p*query) * 0.4) as score
 from onto*requirements r
 join params on true
@@ -6860,12 +6819,12 @@ limit v_limit;
 end;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "prevent_privilege_escalation",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.prevent_privilege_escalation()
+},
+{
+"args": "",
+"name": "prevent_privilege_escalation",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.prevent_privilege_escalation()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -6883,12 +6842,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_phone_number text, p_message text, p_priority sms_priority, p_scheduled_for timestamp with time zone, p_metadata jsonb",
-    "name": "queue_sms_message",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.queue_sms_message(p_user_id uuid, p_phone_number text, p_message text, p_priority sms_priority DEFAULT 'normal'::sms_priority, p_scheduled_for timestamp with time zone DEFAULT NULL::timestamp with time zone, p_metadata jsonb DEFAULT '{}'::jsonb)
+},
+{
+"args": "p_user_id uuid, p_phone_number text, p_message text, p_priority sms_priority, p_scheduled_for timestamp with time zone, p_metadata jsonb",
+"name": "queue_sms_message",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.queue_sms_message(p_user_id uuid, p_phone_number text, p_message text, p_priority sms_priority DEFAULT 'normal'::sms_priority, p_scheduled_for timestamp with time zone DEFAULT NULL::timestamp with time zone, p_metadata jsonb DEFAULT '{}'::jsonb)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -6955,12 +6914,12 @@ RETURN v_message_id;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_metric_date date, p_metric_hour integer, p_user_id uuid, p_metric_type text, p_metric_value numeric, p_metadata jsonb",
-    "name": "record_sms_metric",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.record_sms_metric(p_metric_date date, p_metric_hour integer, p_user_id uuid, p_metric_type text, p_metric_value numeric, p_metadata jsonb DEFAULT '{}'::jsonb)
+},
+{
+"args": "p_metric_date date, p_metric_hour integer, p_user_id uuid, p_metric_type text, p_metric_value numeric, p_metadata jsonb",
+"name": "record_sms_metric",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.record_sms_metric(p_metric_date date, p_metric_hour integer, p_user_id uuid, p_metric_type text, p_metric_value numeric, p_metadata jsonb DEFAULT '{}'::jsonb)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -7004,12 +6963,12 @@ RAISE WARNING 'Error recording SMS metric: % (type: %, user: %)', SQLERRM, p_met
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "refresh_sms_metrics_daily",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.refresh_sms_metrics_daily()
+},
+{
+"args": "",
+"name": "refresh_sms_metrics_daily",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.refresh_sms_metrics_daily()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -7026,12 +6985,12 @@ RAISE WARNING 'Error refreshing sms_metrics_daily materialized view: %', SQLERRM
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "refresh_user_migration_stats",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.refresh_user_migration_stats()
+},
+{
+"args": "",
+"name": "refresh_user_migration_stats",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.refresh_user_migration_stats()
 RETURNS TABLE(refreshed boolean, duration_ms integer, row_count integer)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -7056,12 +7015,12 @@ rows_count AS row_count;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_run_id uuid",
-    "name": "release_migration_platform_lock",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.release_migration_platform_lock(p_run_id uuid)
+},
+{
+"args": "p_run_id uuid",
+"name": "release_migration_platform_lock",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.release_migration_platform_lock(p_run_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -7081,12 +7040,12 @@ RETURN FOUND;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_project_id uuid, p_phase_updates jsonb, p_clear_task_dates boolean, p_affected_task_ids uuid[]",
-    "name": "reorder_phases_with_tasks",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.reorder_phases_with_tasks(p_project_id uuid, p_phase_updates jsonb, p_clear_task_dates boolean DEFAULT false, p_affected_task_ids uuid[] DEFAULT NULL::uuid[])
+},
+{
+"args": "p_project_id uuid, p_phase_updates jsonb, p_clear_task_dates boolean, p_affected_task_ids uuid[]",
+"name": "reorder_phases_with_tasks",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.reorder_phases_with_tasks(p_project_id uuid, p_phase_updates jsonb, p_clear_task_dates boolean DEFAULT false, p_affected_task_ids uuid[] DEFAULT NULL::uuid[])
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -7129,7 +7088,7 @@ END IF;\r
 -- Build result\r
 v_result := jsonb_build_object(\r
 'success',
-    true,\r
+true,\r
 'phases_updated', v_phase_count,\r
 'tasks_cleared', v_task_count,\r
 'timestamp', NOW()\r
@@ -7139,12 +7098,12 @@ RETURN v_result;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_stall_timeout text",
-    "name": "reset_stalled_jobs",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.reset_stalled_jobs(p_stall_timeout text DEFAULT '5 minutes'::text)
+},
+{
+"args": "p_stall_timeout text",
+"name": "reset_stalled_jobs",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.reset_stalled_jobs(p_stall_timeout text DEFAULT '5 minutes'::text)
 RETURNS integer
 LANGUAGE plpgsql
 AS $function$
@@ -7169,12 +7128,12 @@ RETURN v_reset_count;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "save_project_version",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.save_project_version()
+},
+{
+"args": "",
+"name": "save_project_version",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.save_project_version()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -7194,8 +7153,7 @@ IF TG_OP = 'INSERT' THEN
 PERFORM pg_advisory_xact_lock(hashtext(NEW.id: :text));
 
 -- Use COALESCE with MAX to handle empty table case
-SELECT COALESCE(MAX(version_number),
-    0) + 1
+SELECT COALESCE(MAX(version_number), 0) + 1
 INTO next_version
 FROM projects_history
 WHERE project_id = NEW.id;
@@ -7222,8 +7180,7 @@ IF row_to_json(OLD): :jsonb != row_to_json(NEW): :jsonb THEN
 PERFORM pg_advisory_xact_lock(hashtext(NEW.id: :text));
 
 -- Use atomic increment without FOR UPDATE
-SELECT COALESCE(MAX(version_number),
-    0) + 1
+SELECT COALESCE(MAX(version_number), 0) + 1
 INTO next_version
 FROM projects_history
 WHERE project_id = NEW.id;
@@ -7261,12 +7218,12 @@ RETURN COALESCE(NEW, OLD);
 END;
 $function$
 "
-  },
-  {
-    "args": "search_query text, current_user_id uuid, items_per_category integer",
-    "name": "search_all_content",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.search_all_content(search_query text, current_user_id uuid, items_per_category integer DEFAULT 5)
+},
+{
+"args": "search_query text, current_user_id uuid, items_per_category integer",
+"name": "search_all_content",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.search_all_content(search_query text, current_user_id uuid, items_per_category integer DEFAULT 5)
 RETURNS TABLE(item_type text, item_id uuid, title text, description text, tags text[], status text, project_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone, relevance_score double precision, is_completed boolean, is_deleted boolean, matched_fields text[])
 LANGUAGE plpgsql
 AS $function$
@@ -7286,9 +7243,8 @@ bd.id as item_id,
 bd.title: :text as title,
 COALESCE(
 LEFT(bd.ai_summary,
-    200),
-LEFT(bd.content,
-    200)
+200),
+LEFT(bd.content, 200)
 ): :text as description,
 bd.tags as tags,
 bd.status: :text as status,
@@ -7297,16 +7253,12 @@ bd.created_at,
 bd.updated_at,
 -- Calculate relevance score with weighted fields
 (
-COALESCE(similarity(bd.title, normalized_query) * 3,
-    0) +
-COALESCE(similarity(bd.content, normalized*query) * 2,
-    0) +
-COALESCE(similarity(bd.ai*summary, normalized_query) * 2,
-    0) +
-COALESCE(similarity(bd.ai*insights, normalized_query) * 1.5,
-    0) +
+COALESCE(similarity(bd.title, normalized_query) * 3, 0) +
+COALESCE(similarity(bd.content, normalized*query) * 2, 0) +
+COALESCE(similarity(bd.ai*summary, normalized_query) * 2, 0) +
+COALESCE(similarity(bd.ai*insights, normalized_query) * 1.5, 0) +
 CASE WHEN bd.tags @> ARRAY[normalized_query
-    ] THEN 2 ELSE 0 END +
+] THEN 2 ELSE 0 END +
 -- Status penalties for brain dumps
 CASE bd.status: :text
 WHEN 'pending' THEN 0.3
@@ -7322,7 +7274,7 @@ WHEN bd.created_at > NOW() - INTERVAL '30 days' THEN 0.2
 ELSE 0
 END
 ) as relevance_score,
-    false as is_completed,
+false as is_completed,
 CASE WHEN bd.status = 'parsed_and_deleted' THEN true ELSE false END as is_deleted,
 -- Track which fields matched
 ARRAY_REMOVE(ARRAY[
@@ -7331,8 +7283,8 @@ CASE WHEN bd.content ILIKE '%' || normalized_query || '%' THEN 'content' END,
 CASE WHEN bd.ai_summary ILIKE '%' || normalized_query || '%' THEN 'summary' END,
 CASE WHEN bd.ai_insights ILIKE '%' || normalized_query || '%' THEN 'insights' END,
 CASE WHEN bd.tags @> ARRAY[normalized_query
-      ] THEN 'tags' END
-    ], NULL) as matched_fields
+] THEN 'tags' END
+], NULL) as matched_fields
 FROM brain_dumps bd
 WHERE
 bd.user_id = current_user_id
@@ -7342,7 +7294,7 @@ OR bd.content ILIKE '%' || normalized_query || '%'
 OR bd.ai_summary ILIKE '%' || normalized_query || '%'
 OR bd.ai_insights ILIKE '%' || normalized_query || '%'
 OR bd.tags @> ARRAY[normalized_query
-    ]
+]
 -- Fuzzy matching with similarity threshold
 OR similarity(bd.title, normalized_query) > 0.2
 OR similarity(bd.content, normalized_query) > 0.2
@@ -7360,11 +7312,10 @@ p.id as item_id,
 p.name: :text as title,
 COALESCE(
 LEFT(p.description,
-    200),
+200),
 LEFT(p.executive_summary,
-    200),
-LEFT(p.context,
-    200)
+200),
+LEFT(p.context, 200)
 ): :text as description,
 p.tags as tags,
 p.status: :text as status,
@@ -7373,16 +7324,12 @@ p.created_at,
 p.updated_at,
 -- Calculate relevance score with weighted fields
 (
-COALESCE(similarity(p.name, normalized_query) * 3,
-    0) +
-COALESCE(similarity(p.description, normalized*query) * 2,
-    0) +
-COALESCE(similarity(p.executive*summary, normalized_query) * 1.5,
-    0) +
-COALESCE(similarity(p.context, normalized*query) * 1,
-    0) +
+COALESCE(similarity(p.name, normalized_query) * 3, 0) +
+COALESCE(similarity(p.description, normalized*query) * 2, 0) +
+COALESCE(similarity(p.executive*summary, normalized_query) * 1.5, 0) +
+COALESCE(similarity(p.context, normalized*query) * 1, 0) +
 CASE WHEN p.tags @> ARRAY[normalized_query
-    ] THEN 2 ELSE 0 END +
+] THEN 2 ELSE 0 END +
 -- Status penalties for projects
 CASE p.status: :text
 WHEN 'active' THEN 0.5
@@ -7406,8 +7353,8 @@ CASE WHEN p.description ILIKE '%' || normalized_query || '%' THEN 'description' 
 CASE WHEN p.executive_summary ILIKE '%' || normalized_query || '%' THEN 'summary' END,
 CASE WHEN p.context ILIKE '%' || normalized_query || '%' THEN 'context' END,
 CASE WHEN p.tags @> ARRAY[normalized_query
-      ] THEN 'tags' END
-    ], NULL) as matched_fields
+] THEN 'tags' END
+], NULL) as matched_fields
 FROM projects p
 WHERE
 p.user_id = current_user_id
@@ -7417,7 +7364,7 @@ OR p.description ILIKE '%' || normalized_query || '%'
 OR p.executive_summary ILIKE '%' || normalized_query || '%'
 OR p.context ILIKE '%' || normalized_query || '%'
 OR p.tags @> ARRAY[normalized_query
-    ]
+]
 OR similarity(p.name, normalized_query) > 0.2
 OR similarity(p.description, normalized_query) > 0.2
 OR similarity(p.executive_summary, normalized_query) > 0.2
@@ -7434,11 +7381,10 @@ t.id as item_id,
 t.title: :text as title,
 COALESCE(
 LEFT(t.description,
-    200),
+200),
 LEFT(t.details,
-    200),
-LEFT(t.task_steps,
-    200)
+200),
+LEFT(t.task_steps, 200)
 ): :text as description,
 NULL: :text[] as tags,
 t.status: :text as status,
@@ -7447,14 +7393,10 @@ t.created_at,
 t.updated_at,
 -- Calculate relevance score with weighted fields
 (
-COALESCE(similarity(t.title, normalized_query) * 3,
-    0) +
-COALESCE(similarity(t.description, normalized*query) * 2,
-    0) +
-COALESCE(similarity(t.details, normalized*query) * 1.5,
-    0) +
-COALESCE(similarity(t.task*steps, normalized_query) * 1,
-    0) +
+COALESCE(similarity(t.title, normalized_query) * 3, 0) +
+COALESCE(similarity(t.description, normalized*query) * 2, 0) +
+COALESCE(similarity(t.details, normalized*query) * 1.5, 0) +
+COALESCE(similarity(t.task*steps, normalized_query) * 1, 0) +
 -- Priority boost
 CASE t.priority: :text
 WHEN 'high' THEN 0.5
@@ -7484,7 +7426,7 @@ CASE WHEN t.title ILIKE '%' || normalized_query || '%' THEN 'title' END,
 CASE WHEN t.description ILIKE '%' || normalized_query || '%' THEN 'description' END,
 CASE WHEN t.details ILIKE '%' || normalized_query || '%' THEN 'details' END,
 CASE WHEN t.task_steps ILIKE '%' || normalized_query || '%' THEN 'steps' END
-    ], NULL) as matched_fields
+], NULL) as matched_fields
 FROM tasks t
 WHERE
 t.user_id = current_user_id
@@ -7511,12 +7453,12 @@ ORDER BY item_type, relevance_score DESC;
 END;
 $function$
 "
-  },
-  {
-    "args": "query_embedding vector, similarity_threshold double precision",
-    "name": "search_all_similar",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.search_all_similar(query_embedding vector, similarity_threshold double precision DEFAULT 0.8)
+},
+{
+"args": "query_embedding vector, similarity_threshold double precision",
+"name": "search_all_similar",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.search_all_similar(query_embedding vector, similarity_threshold double precision DEFAULT 0.8)
 RETURNS TABLE(table_name text, id uuid, content text, similarity double precision)
 LANGUAGE plpgsql
 AS $function$\r
@@ -7524,7 +7466,7 @@ BEGIN\r
 RETURN QUERY\r
 -- Search projects\r
 SELECT 'projects': :text, p.id, p.name: :text,
-    1 - (p.embedding <=> query_embedding)\r
+1 - (p.embedding <=> query_embedding)\r
 FROM projects p\r
 WHERE p.embedding IS NOT NULL\r
 AND 1 - (p.embedding <=> query_embedding) > similarity_threshold\r
@@ -7533,7 +7475,7 @@ UNION ALL\r
 \r
 -- Search tasks\r
 SELECT 'tasks': :text, t.id, t.title: :text,
-    1 - (t.embedding <=> query_embedding)\r
+1 - (t.embedding <=> query_embedding)\r
 FROM tasks t\r
 WHERE t.embedding IS NOT NULL\r
 AND 1 - (t.embedding <=> query_embedding) > similarity_threshold\r
@@ -7542,7 +7484,7 @@ UNION ALL\r
 \r
 -- Search goals\r
 SELECT 'goals': :text, g.id, g.title: :text,
-    1 - (g.embedding <=> query_embedding)\r
+1 - (g.embedding <=> query_embedding)\r
 FROM goals g\r
 WHERE g.embedding IS NOT NULL\r
 AND 1 - (g.embedding <=> query_embedding) > similarity_threshold\r
@@ -7551,7 +7493,7 @@ UNION ALL\r
 \r
 -- Search notes\r
 SELECT 'notes': :text, n.id, n.title: :text,
-    1 - (n.embedding <=> query_embedding)\r
+1 - (n.embedding <=> query_embedding)\r
 FROM notes n\r
 WHERE n.embedding IS NOT NULL\r
 AND 1 - (n.embedding <=> query_embedding) > similarity_threshold\r
@@ -7560,12 +7502,12 @@ ORDER BY 4 DESC; -- Order by similarity\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "search_query text, current_user_id uuid, search_type text, page_offset integer, page_limit integer",
-    "name": "search_by_type",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.search_by_type(search_query text, current_user_id uuid, search_type text, page_offset integer DEFAULT 0, page_limit integer DEFAULT 20)
+},
+{
+"args": "search_query text, current_user_id uuid, search_type text, page_offset integer, page_limit integer",
+"name": "search_by_type",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.search_by_type(search_query text, current_user_id uuid, search_type text, page_offset integer DEFAULT 0, page_limit integer DEFAULT 20)
 RETURNS TABLE(item_id uuid, title text, description text, tags text[], status text, project_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone, relevance_score double precision, is_completed boolean, is_deleted boolean, matched_fields text[])
 LANGUAGE plpgsql
 AS $function$
@@ -7580,24 +7522,20 @@ SELECT
 bd.id as item_id,
 bd.title: :text as title,
 COALESCE(LEFT(bd.ai_summary,
-    200), LEFT(bd.content,
-    200)): :text as description,
+200), LEFT(bd.content,
+200)): :text as description,
 bd.tags as tags,
 bd.status: :text as status,
 bd.project_id as project_id,
 bd.created_at,
 bd.updated_at,
 (
-COALESCE(similarity(bd.title, normalized_query) * 3,
-    0) +
-COALESCE(similarity(bd.content, normalized*query) * 2,
-    0) +
-COALESCE(similarity(bd.ai*summary, normalized_query) * 2,
-    0) +
-COALESCE(similarity(bd.ai*insights, normalized_query) * 1.5,
-    0) +
+COALESCE(similarity(bd.title, normalized_query) * 3, 0) +
+COALESCE(similarity(bd.content, normalized*query) * 2, 0) +
+COALESCE(similarity(bd.ai*summary, normalized_query) * 2, 0) +
+COALESCE(similarity(bd.ai*insights, normalized_query) * 1.5, 0) +
 CASE WHEN bd.tags @> ARRAY[normalized_query
-    ] THEN 2 ELSE 0 END +
+] THEN 2 ELSE 0 END +
 CASE bd.status: :text
 WHEN 'pending' THEN 0.3
 WHEN 'parsed' THEN 0.5
@@ -7611,7 +7549,7 @@ WHEN bd.created_at > NOW() - INTERVAL '30 days' THEN 0.2
 ELSE 0
 END
 ) as relevance_score,
-    false as is_completed,
+false as is_completed,
 CASE WHEN bd.status = 'parsed_and_deleted' THEN true ELSE false END as is_deleted,
 ARRAY_REMOVE(ARRAY[
 CASE WHEN bd.title ILIKE '%' || normalized_query || '%' THEN 'title' END,
@@ -7619,8 +7557,8 @@ CASE WHEN bd.content ILIKE '%' || normalized_query || '%' THEN 'content' END,
 CASE WHEN bd.ai_summary ILIKE '%' || normalized_query || '%' THEN 'summary' END,
 CASE WHEN bd.ai_insights ILIKE '%' || normalized_query || '%' THEN 'insights' END,
 CASE WHEN bd.tags @> ARRAY[normalized_query
-      ] THEN 'tags' END
-    ], NULL) as matched_fields
+] THEN 'tags' END
+], NULL) as matched_fields
 FROM brain_dumps bd
 WHERE
 bd.user_id = current_user_id
@@ -7630,7 +7568,7 @@ OR bd.content ILIKE '%' || normalized_query || '%'
 OR bd.ai_summary ILIKE '%' || normalized_query || '%'
 OR bd.ai_insights ILIKE '%' || normalized_query || '%'
 OR bd.tags @> ARRAY[normalized_query
-    ]
+]
 OR similarity(bd.title, normalized_query) > 0.2
 OR similarity(bd.content, normalized_query) > 0.2
 OR similarity(bd.ai_summary, normalized_query) > 0.2
@@ -7645,24 +7583,20 @@ SELECT
 p.id as item_id,
 p.name: :text as title,
 COALESCE(LEFT(p.description,
-    200), LEFT(p.executive_summary,
-    200)): :text as description,
+200), LEFT(p.executive_summary,
+200)): :text as description,
 p.tags as tags,
 p.status: :text as status,
 p.id as project_id,
 p.created_at,
 p.updated_at,
 (
-COALESCE(similarity(p.name, normalized_query) * 3,
-    0) +
-COALESCE(similarity(p.description, normalized*query) * 2,
-    0) +
-COALESCE(similarity(p.executive*summary, normalized_query) * 1.5,
-    0) +
-COALESCE(similarity(p.context, normalized*query) * 1,
-    0) +
+COALESCE(similarity(p.name, normalized_query) * 3, 0) +
+COALESCE(similarity(p.description, normalized*query) * 2, 0) +
+COALESCE(similarity(p.executive*summary, normalized_query) * 1.5, 0) +
+COALESCE(similarity(p.context, normalized*query) * 1, 0) +
 CASE WHEN p.tags @> ARRAY[normalized_query
-    ] THEN 2 ELSE 0 END +
+] THEN 2 ELSE 0 END +
 CASE p.status: :text
 WHEN 'active' THEN 0.5
 WHEN 'paused' THEN 0
@@ -7684,8 +7618,8 @@ CASE WHEN p.description ILIKE '%' || normalized_query || '%' THEN 'description' 
 CASE WHEN p.executive_summary ILIKE '%' || normalized_query || '%' THEN 'summary' END,
 CASE WHEN p.context ILIKE '%' || normalized_query || '%' THEN 'context' END,
 CASE WHEN p.tags @> ARRAY[normalized_query
-      ] THEN 'tags' END
-    ], NULL) as matched_fields
+] THEN 'tags' END
+], NULL) as matched_fields
 FROM projects p
 WHERE
 p.user_id = current_user_id
@@ -7695,7 +7629,7 @@ OR p.description ILIKE '%' || normalized_query || '%'
 OR p.executive_summary ILIKE '%' || normalized_query || '%'
 OR p.context ILIKE '%' || normalized_query || '%'
 OR p.tags @> ARRAY[normalized_query
-    ]
+]
 OR similarity(p.name, normalized_query) > 0.2
 OR similarity(p.description, normalized_query) > 0.2
 OR similarity(p.executive_summary, normalized_query) > 0.2
@@ -7710,22 +7644,18 @@ SELECT
 t.id as item_id,
 t.title: :text as title,
 COALESCE(LEFT(t.description,
-    200), LEFT(t.details,
-    200)): :text as description,
+200), LEFT(t.details,
+200)): :text as description,
 NULL: :text[] as tags,
 t.status: :text as status,
 t.project_id as project_id,
 t.created_at,
 t.updated_at,
 (
-COALESCE(similarity(t.title, normalized_query) * 3,
-    0) +
-COALESCE(similarity(t.description, normalized*query) * 2,
-    0) +
-COALESCE(similarity(t.details, normalized*query) * 1.5,
-    0) +
-COALESCE(similarity(t.task*steps, normalized_query) * 1,
-    0) +
+COALESCE(similarity(t.title, normalized_query) * 3, 0) +
+COALESCE(similarity(t.description, normalized*query) * 2, 0) +
+COALESCE(similarity(t.details, normalized*query) * 1.5, 0) +
+COALESCE(similarity(t.task*steps, normalized_query) * 1, 0) +
 CASE t.priority: :text
 WHEN 'high' THEN 0.5
 WHEN 'medium' THEN 0.2
@@ -7752,7 +7682,7 @@ CASE WHEN t.title ILIKE '%' || normalized_query || '%' THEN 'title' END,
 CASE WHEN t.description ILIKE '%' || normalized_query || '%' THEN 'description' END,
 CASE WHEN t.details ILIKE '%' || normalized_query || '%' THEN 'details' END,
 CASE WHEN t.task_steps ILIKE '%' || normalized_query || '%' THEN 'steps' END
-    ], NULL) as matched_fields
+], NULL) as matched_fields
 FROM tasks t
 WHERE
 t.user_id = current_user_id
@@ -7772,12 +7702,12 @@ END IF;
 END;
 $function$
 "
-  },
-  {
-    "args": "table_name text, query_embedding vector, similarity_threshold double precision, match_count integer",
-    "name": "search_similar_items",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.search_similar_items(table_name text, query_embedding vector, similarity_threshold double precision DEFAULT 0.8, match_count integer DEFAULT 5)
+},
+{
+"args": "table_name text, query_embedding vector, similarity_threshold double precision, match_count integer",
+"name": "search_similar_items",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.search_similar_items(table_name text, query_embedding vector, similarity_threshold double precision DEFAULT 0.8, match_count integer DEFAULT 5)
 RETURNS TABLE(id uuid, content text, similarity double precision)
 LANGUAGE plpgsql
 AS $function$\r
@@ -7785,7 +7715,7 @@ BEGIN\r
 IF table_name = 'projects' THEN\r
 RETURN QUERY\r
 SELECT p.id, p.name: :text,
-    1 - (p.embedding <=> query_embedding) as similarity\r
+1 - (p.embedding <=> query_embedding) as similarity\r
 FROM projects p\r
 WHERE p.embedding IS NOT NULL\r
 AND 1 - (p.embedding <=> query_embedding) > similarity_threshold\r
@@ -7794,7 +7724,7 @@ LIMIT match_count;\r
 ELSIF table_name = 'tasks' THEN\r
 RETURN QUERY\r
 SELECT t.id, t.title: :text,
-    1 - (t.embedding <=> query_embedding) as similarity\r
+1 - (t.embedding <=> query_embedding) as similarity\r
 FROM tasks t\r
 WHERE t.embedding IS NOT NULL\r
 AND 1 - (t.embedding <=> query_embedding) > similarity_threshold\r
@@ -7805,23 +7735,23 @@ END IF;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "real",
-    "name": "set_limit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.set_limit(real)
+},
+{
+"args": "real",
+"name": "set_limit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.set_limit(real)
 RETURNS real
 LANGUAGE c
 STRICT
 AS '$libdir/pg_trgm', $function$set_limit$function$
 "
-  },
-  {
-    "args": "",
-    "name": "set_project_log_actor",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.set_project_log_actor()
+},
+{
+"args": "",
+"name": "set_project_log_actor",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.set_project_log_actor()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -7842,12 +7772,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "set_updated_at",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.set_updated_at()
+},
+{
+"args": "",
+"name": "set_updated_at",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -7856,12 +7786,12 @@ new.updated_at = now();
 return new;
 end$function$
 "
-  },
-  {
-    "args": "",
-    "name": "set_user_trial_period",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.set_user_trial_period()
+},
+{
+"args": "",
+"name": "set_user_trial_period",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.set_user_trial_period()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -7873,7 +7803,7 @@ BEGIN
 -- Get trial days from environment or use default
 v_trial_days := COALESCE(
 current_setting('app.trial_days', true): :INTEGER,
-    14
+14
 );
 
 -- Set trial end date and subscription status for new users
@@ -7886,67 +7816,67 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "show_limit",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.show_limit()
+},
+{
+"args": "",
+"name": "show_limit",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.show_limit()
 RETURNS real
 LANGUAGE c
 STABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$show_limit$function$
 "
-  },
-  {
-    "args": "text",
-    "name": "show_trgm",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.show_trgm(text)
+},
+{
+"args": "text",
+"name": "show_trgm",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.show_trgm(text)
 RETURNS text[]
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$show_trgm$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "similarity",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.similarity(text, text)
+},
+{
+"args": "text, text",
+"name": "similarity",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.similarity(text, text)
 RETURNS real
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$similarity$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "similarity_dist",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.similarity_dist(text, text)
+},
+{
+"args": "text, text",
+"name": "similarity_dist",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.similarity_dist(text, text)
 RETURNS real
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$similarity_dist$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "similarity_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.similarity_op(text, text)
+},
+{
+"args": "text, text",
+"name": "similarity_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.similarity_op(text, text)
 RETURNS boolean
 LANGUAGE c
 STABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$similarity_op$function$
 "
-  },
-  {
-    "args": "p_project_id uuid",
-    "name": "soft_delete_onto_project",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.soft_delete_onto_project(p_project_id uuid)
+},
+{
+"args": "p_project_id uuid",
+"name": "soft_delete_onto_project",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.soft_delete_onto_project(p_project_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 AS $function$
@@ -8017,199 +7947,199 @@ WHERE id = p_project_id AND deleted_at IS NULL;
 END;
 $function$
 "
-  },
-  {
-    "args": "sparsevec, integer, boolean",
-    "name": "sparsevec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec(sparsevec, integer, boolean)
+},
+{
+"args": "sparsevec, integer, boolean",
+"name": "sparsevec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec(sparsevec, integer, boolean)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_cmp",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_cmp(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_cmp",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_cmp(sparsevec, sparsevec)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_cmp$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_eq",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_eq(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_eq",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_eq(sparsevec, sparsevec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_eq$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_ge",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_ge(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_ge",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_ge(sparsevec, sparsevec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_ge$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_gt",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_gt(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_gt",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_gt(sparsevec, sparsevec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_gt$function$
 "
-  },
-  {
-    "args": "cstring, oid, integer",
-    "name": "sparsevec_in",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_in(cstring, oid, integer)
+},
+{
+"args": "cstring, oid, integer",
+"name": "sparsevec_in",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_in(cstring, oid, integer)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_in$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_l2_squared_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_l2_squared_distance(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_l2_squared_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_l2_squared_distance(sparsevec, sparsevec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_l2_squared_distance$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_le",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_le(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_le",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_le(sparsevec, sparsevec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_le$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_lt",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_lt(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_lt",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_lt(sparsevec, sparsevec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_lt$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_ne",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_ne(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_ne",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_ne(sparsevec, sparsevec)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_ne$function$
 "
-  },
-  {
-    "args": "sparsevec, sparsevec",
-    "name": "sparsevec_negative_inner_product",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_negative_inner_product(sparsevec, sparsevec)
+},
+{
+"args": "sparsevec, sparsevec",
+"name": "sparsevec_negative_inner_product",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_negative_inner_product(sparsevec, sparsevec)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_negative_inner_product$function$
 "
-  },
-  {
-    "args": "sparsevec",
-    "name": "sparsevec_out",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_out(sparsevec)
+},
+{
+"args": "sparsevec",
+"name": "sparsevec_out",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_out(sparsevec)
 RETURNS cstring
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_out$function$
 "
-  },
-  {
-    "args": "internal, oid, integer",
-    "name": "sparsevec_recv",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_recv(internal, oid, integer)
+},
+{
+"args": "internal, oid, integer",
+"name": "sparsevec_recv",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_recv(internal, oid, integer)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_recv$function$
 "
-  },
-  {
-    "args": "sparsevec",
-    "name": "sparsevec_send",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_send(sparsevec)
+},
+{
+"args": "sparsevec",
+"name": "sparsevec_send",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_send(sparsevec)
 RETURNS bytea
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_send$function$
 "
-  },
-  {
-    "args": "sparsevec, integer, boolean",
-    "name": "sparsevec_to_halfvec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_to_halfvec(sparsevec, integer, boolean)
+},
+{
+"args": "sparsevec, integer, boolean",
+"name": "sparsevec_to_halfvec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_to_halfvec(sparsevec, integer, boolean)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_to_halfvec$function$
 "
-  },
-  {
-    "args": "sparsevec, integer, boolean",
-    "name": "sparsevec_to_vector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_to_vector(sparsevec, integer, boolean)
+},
+{
+"args": "sparsevec, integer, boolean",
+"name": "sparsevec_to_vector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_to_vector(sparsevec, integer, boolean)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_to_vector$function$
 "
-  },
-  {
-    "args": "cstring[]",
-    "name": "sparsevec_typmod_in",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sparsevec_typmod_in(cstring[])
+},
+{
+"args": "cstring[]",
+"name": "sparsevec_typmod_in",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sparsevec_typmod_in(cstring[])
 RETURNS integer
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$sparsevec_typmod_in$function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_brief_date date, p_force_regenerate boolean",
-    "name": "start_or_resume_brief_generation",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.start_or_resume_brief_generation(p_user_id uuid, p_brief_date date, p_force_regenerate boolean DEFAULT false)
+},
+{
+"args": "p_user_id uuid, p_brief_date date, p_force_regenerate boolean",
+"name": "start_or_resume_brief_generation",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.start_or_resume_brief_generation(p_user_id uuid, p_brief_date date, p_force_regenerate boolean DEFAULT false)
 RETURNS TABLE(started boolean, brief_id uuid, message text)
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -8238,7 +8168,7 @@ generation_started_at = NOW(),
 generation_error = NULL,
 generation_completed_at = NULL,
 generation_progress = jsonb_build_object('step', 'starting', 'progress',
-    0),
+0),
 updated_at = NOW()
 WHERE id = v_existing_brief.id;
 
@@ -8281,8 +8211,7 @@ p_brief_date,
 '',
 'processing',
 NOW(),
-jsonb_build_object('step', 'starting', 'progress',
-    0)
+jsonb_build_object('step', 'starting', 'progress', 0)
 )
 RETURNING id INTO v_brief_id;
 
@@ -8296,89 +8225,89 @@ SELECT v_started, v_brief_id, v_message;
 END;
 $function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "strict_word_similarity",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity(text, text)
+},
+{
+"args": "text, text",
+"name": "strict_word_similarity",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity(text, text)
 RETURNS real
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$strict_word_similarity$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "strict_word_similarity_commutator_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity_commutator_op(text, text)
+},
+{
+"args": "text, text",
+"name": "strict_word_similarity_commutator_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity_commutator_op(text, text)
 RETURNS boolean
 LANGUAGE c
 STABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$strict_word_similarity_commutator_op$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "strict_word_similarity_dist_commutator_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity_dist_commutator_op(text, text)
+},
+{
+"args": "text, text",
+"name": "strict_word_similarity_dist_commutator_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity_dist_commutator_op(text, text)
 RETURNS real
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$strict_word_similarity_dist_commutator_op$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "strict_word_similarity_dist_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity_dist_op(text, text)
+},
+{
+"args": "text, text",
+"name": "strict_word_similarity_dist_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity_dist_op(text, text)
 RETURNS real
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$strict_word_similarity_dist_op$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "strict_word_similarity_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity_op(text, text)
+},
+{
+"args": "text, text",
+"name": "strict_word_similarity_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.strict_word_similarity_op(text, text)
 RETURNS boolean
 LANGUAGE c
 STABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$strict_word_similarity_op$function$
 "
-  },
-  {
-    "args": "halfvec, integer, integer",
-    "name": "subvector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.subvector(halfvec, integer, integer)
+},
+{
+"args": "halfvec, integer, integer",
+"name": "subvector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.subvector(halfvec, integer, integer)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_subvector$function$
 "
-  },
-  {
-    "args": "vector, integer, integer",
-    "name": "subvector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.subvector(vector, integer, integer)
+},
+{
+"args": "vector, integer, integer",
+"name": "subvector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.subvector(vector, integer, integer)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$subvector$function$
 "
-  },
-  {
-    "args": "",
-    "name": "sync_legacy_mapping_from_props",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.sync_legacy_mapping_from_props()
+},
+{
+"args": "",
+"name": "sync_legacy_mapping_from_props",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.sync_legacy_mapping_from_props()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8388,10 +8317,10 @@ declare
 \tmetadata jsonb;
 begin
 \tif TG_ARGV[
-      0
-    ] is null or TG_ARGV[
-      1
-    ] is null then
+0
+] is null or TG_ARGV[
+1
+] is null then
 \t\treturn NEW;
 \tend if;
 
@@ -8419,21 +8348,21 @@ begin
 \t);
 
 \tperform upsert_legacy_entity_mapping(TG_ARGV[
-      0
-    ], legacy_id, TG_ARGV[
-      1
-    ], NEW.id, metadata);
+0
+], legacy_id, TG_ARGV[
+1
+], NEW.id, metadata);
 
 \treturn NEW;
 end;
 $function$
 "
-  },
-  {
-    "args": "p_series_id uuid, p_force boolean",
-    "name": "task_series_delete",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.task_series_delete(p_series_id uuid, p_force boolean DEFAULT false)
+},
+{
+"args": "p_series_id uuid, p_force boolean",
+"name": "task_series_delete",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.task_series_delete(p_series_id uuid, p_force boolean DEFAULT false)
 RETURNS TABLE(deleted_master integer, deleted_instances integer)
 LANGUAGE plpgsql
 AS $function$
@@ -8465,17 +8394,17 @@ where props->>'series_id' = p_series_id;
 end if;
 
 return query select coalesce(v_deleted_master,
-    0), coalesce(v_deleted_instances,
-    0);
+0), coalesce(v_deleted_instances,
+0);
 end;
 $function$
 "
-  },
-  {
-    "args": "p_task_id uuid, p_series_id uuid, p_master_props jsonb, p_instance_rows jsonb",
-    "name": "task_series_enable",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.task_series_enable(p_task_id uuid, p_series_id uuid, p_master_props jsonb, p_instance_rows jsonb)
+},
+{
+"args": "p_task_id uuid, p_series_id uuid, p_master_props jsonb, p_instance_rows jsonb",
+"name": "task_series_enable",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.task_series_enable(p_task_id uuid, p_series_id uuid, p_master_props jsonb, p_instance_rows jsonb)
 RETURNS void
 LANGUAGE plpgsql
 AS $function$
@@ -8509,56 +8438,56 @@ from jsonb_array_elements(p_instance_rows) as instance;
 end;
 $function$
 "
-  },
-  {
-    "args": "regdictionary, text",
-    "name": "unaccent",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.unaccent(regdictionary, text)
+},
+{
+"args": "regdictionary, text",
+"name": "unaccent",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.unaccent(regdictionary, text)
 RETURNS text
 LANGUAGE c
 STABLE PARALLEL SAFE STRICT
 AS '$libdir/unaccent', $function$unaccent_dict$function$
 "
-  },
-  {
-    "args": "text",
-    "name": "unaccent",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.unaccent(text)
+},
+{
+"args": "text",
+"name": "unaccent",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.unaccent(text)
 RETURNS text
 LANGUAGE c
 STABLE PARALLEL SAFE STRICT
 AS '$libdir/unaccent', $function$unaccent_dict$function$
 "
-  },
-  {
-    "args": "internal",
-    "name": "unaccent_init",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.unaccent_init(internal)
+},
+{
+"args": "internal",
+"name": "unaccent_init",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.unaccent_init(internal)
 RETURNS internal
 LANGUAGE c
 PARALLEL SAFE
 AS '$libdir/unaccent', $function$unaccent_init$function$
 "
-  },
-  {
-    "args": "internal, internal, internal, internal",
-    "name": "unaccent_lexize",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.unaccent_lexize(internal, internal, internal, internal)
+},
+{
+"args": "internal, internal, internal, internal",
+"name": "unaccent_lexize",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.unaccent_lexize(internal, internal, internal, internal)
 RETURNS internal
 LANGUAGE c
 PARALLEL SAFE
 AS '$libdir/unaccent', $function$unaccent_lexize$function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_agent_plans_updated_at",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_agent_plans_updated_at()
+},
+{
+"args": "",
+"name": "update_agent_plans_updated_at",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_agent_plans_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8568,12 +8497,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_chat_session_stats",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_chat_session_stats()
+},
+{
+"args": "",
+"name": "update_chat_session_stats",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_chat_session_stats()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8583,7 +8512,7 @@ UPDATE chat_sessions
 SET
 message_count = message_count + 1,
 total_tokens_used = total_tokens_used + COALESCE(NEW.total_tokens,
-    0),
+0),
 last_message_at = NEW.created_at,
 updated_at = NOW()
 WHERE id = NEW.session_id;
@@ -8592,12 +8521,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_draft_tasks_updated_at",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_draft_tasks_updated_at()
+},
+{
+"args": "",
+"name": "update_draft_tasks_updated_at",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_draft_tasks_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8607,12 +8536,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_error_logs_updated_at",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_error_logs_updated_at()
+},
+{
+"args": "",
+"name": "update_error_logs_updated_at",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_error_logs_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8622,12 +8551,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_user_id uuid, p_date date",
-    "name": "update_llm_usage_summary",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_llm_usage_summary(p_user_id uuid, p_date date)
+},
+{
+"args": "p_user_id uuid, p_date date",
+"name": "update_llm_usage_summary",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_llm_usage_summary(p_user_id uuid, p_date date)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -8724,12 +8653,12 @@ updated_at = NOW();\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_notification_updated_at",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_notification_updated_at()
+},
+{
+"args": "",
+"name": "update_notification_updated_at",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_notification_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8739,12 +8668,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_onto_documents_updated_at",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_onto_documents_updated_at()
+},
+{
+"args": "",
+"name": "update_onto_documents_updated_at",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_onto_documents_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8754,12 +8683,12 @@ return new;
 end;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_project_drafts_updated_at",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_project_drafts_updated_at()
+},
+{
+"args": "",
+"name": "update_project_drafts_updated_at",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_project_drafts_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8769,12 +8698,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_recurring_tasks_on_project_change",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_recurring_tasks_on_project_change()
+},
+{
+"args": "",
+"name": "update_recurring_tasks_on_project_change",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_recurring_tasks_on_project_change()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8820,12 +8749,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "p_message_id uuid, p_twilio_sid text, p_twilio_status text, p_mapped_status text, p_error_code integer, p_error_message text",
-    "name": "update_sms_status_atomic",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_sms_status_atomic(p_message_id uuid, p_twilio_sid text, p_twilio_status text, p_mapped_status text, p_error_code integer DEFAULT NULL::integer, p_error_message text DEFAULT NULL::text)
+},
+{
+"args": "p_message_id uuid, p_twilio_sid text, p_twilio_status text, p_mapped_status text, p_error_code integer, p_error_message text",
+"name": "update_sms_status_atomic",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_sms_status_atomic(p_message_id uuid, p_twilio_sid text, p_twilio_status text, p_mapped_status text, p_error_code integer DEFAULT NULL::integer, p_error_message text DEFAULT NULL::text)
 RETURNS TABLE(notification_delivery_id uuid, user_id uuid, sent_at timestamp with time zone, delivered_at timestamp with time zone, attempt_count integer, max_attempts integer, priority text, updated_sms boolean, updated_delivery boolean)
 LANGUAGE plpgsql
 AS $function$
@@ -8956,12 +8885,12 @@ v_delivery_updated;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_task_due_date_on_phase_assignment",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_task_due_date_on_phase_assignment()
+},
+{
+"args": "",
+"name": "update_task_due_date_on_phase_assignment",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_task_due_date_on_phase_assignment()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$\r
@@ -8978,12 +8907,12 @@ RETURN NEW;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_tool_call_count",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_tool_call_count()
+},
+{
+"args": "",
+"name": "update_tool_call_count",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_tool_call_count()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -8999,12 +8928,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_updated_at_column",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+},
+{
+"args": "",
+"name": "update_updated_at_column",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$
@@ -9014,12 +8943,12 @@ RETURN NEW;
 END;
 $function$
 "
-  },
-  {
-    "args": "",
-    "name": "update_user_onboarding_status",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.update_user_onboarding_status()
+},
+{
+"args": "",
+"name": "update_user_onboarding_status",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.update_user_onboarding_status()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $function$\r
@@ -9031,12 +8960,12 @@ RETURN NEW;\r
 END;\r
 $function$
 "
-  },
-  {
-    "args": "p_legacy_table text, p_legacy_id uuid, p_onto_table text, p_onto_id uuid, p_metadata jsonb",
-    "name": "upsert_legacy_entity_mapping",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.upsert_legacy_entity_mapping(p_legacy_table text, p_legacy_id uuid, p_onto_table text, p_onto_id uuid, p_metadata jsonb DEFAULT '{}'::jsonb)
+},
+{
+"args": "p_legacy_table text, p_legacy_id uuid, p_onto_table text, p_onto_id uuid, p_metadata jsonb",
+"name": "upsert_legacy_entity_mapping",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.upsert_legacy_entity_mapping(p_legacy_table text, p_legacy_id uuid, p_onto_table text, p_onto_id uuid, p_metadata jsonb DEFAULT '{}'::jsonb)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -9065,12 +8994,12 @@ begin
 end;
 $function$
 "
-  },
-  {
-    "args": "p_facets jsonb, p_scope text",
-    "name": "validate_facet_values",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.validate_facet_values(p_facets jsonb, p_scope text)
+},
+{
+"args": "p_facets jsonb, p_scope text",
+"name": "validate_facet_values",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.validate_facet_values(p_facets jsonb, p_scope text)
 RETURNS TABLE(facet_key text, provided_value text, error text)
 LANGUAGE plpgsql
 AS $function$
@@ -9148,379 +9077,379 @@ begin
 end;
 $function$
 "
-  },
-  {
-    "args": "vector, integer, boolean",
-    "name": "vector",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector(vector, integer, boolean)
+},
+{
+"args": "vector, integer, boolean",
+"name": "vector",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector(vector, integer, boolean)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector$function$
 "
-  },
-  {
-    "args": "double precision[], vector",
-    "name": "vector_accum",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_accum(double precision[], vector)
+},
+{
+"args": "double precision[], vector",
+"name": "vector_accum",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_accum(double precision[], vector)
 RETURNS double precision[]
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_accum$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_add",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_add(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_add",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_add(vector, vector)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_add$function$
 "
-  },
-  {
-    "args": "double precision[]",
-    "name": "vector_avg",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_avg(double precision[])
+},
+{
+"args": "double precision[]",
+"name": "vector_avg",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_avg(double precision[])
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_avg$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_cmp",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_cmp(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_cmp",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_cmp(vector, vector)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_cmp$function$
 "
-  },
-  {
-    "args": "double precision[], double precision[]",
-    "name": "vector_combine",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_combine(double precision[], double precision[])
+},
+{
+"args": "double precision[], double precision[]",
+"name": "vector_combine",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_combine(double precision[], double precision[])
 RETURNS double precision[]
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_combine$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_concat",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_concat(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_concat",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_concat(vector, vector)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_concat$function$
 "
-  },
-  {
-    "args": "halfvec",
-    "name": "vector_dims",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_dims(halfvec)
+},
+{
+"args": "halfvec",
+"name": "vector_dims",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_dims(halfvec)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$halfvec_vector_dims$function$
 "
-  },
-  {
-    "args": "vector",
-    "name": "vector_dims",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_dims(vector)
+},
+{
+"args": "vector",
+"name": "vector_dims",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_dims(vector)
 RETURNS integer
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_dims$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_eq",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_eq(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_eq",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_eq(vector, vector)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_eq$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_ge",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_ge(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_ge",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_ge(vector, vector)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_ge$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_gt",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_gt(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_gt",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_gt(vector, vector)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_gt$function$
 "
-  },
-  {
-    "args": "cstring, oid, integer",
-    "name": "vector_in",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_in(cstring, oid, integer)
+},
+{
+"args": "cstring, oid, integer",
+"name": "vector_in",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_in(cstring, oid, integer)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_in$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_l2_squared_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_l2_squared_distance(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_l2_squared_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_l2_squared_distance(vector, vector)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_l2_squared_distance$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_le",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_le(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_le",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_le(vector, vector)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_le$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_lt",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_lt(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_lt",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_lt(vector, vector)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_lt$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_mul",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_mul(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_mul",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_mul(vector, vector)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_mul$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_ne",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_ne(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_ne",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_ne(vector, vector)
 RETURNS boolean
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_ne$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_negative_inner_product",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_negative_inner_product(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_negative_inner_product",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_negative_inner_product(vector, vector)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_negative_inner_product$function$
 "
-  },
-  {
-    "args": "vector",
-    "name": "vector_norm",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_norm(vector)
+},
+{
+"args": "vector",
+"name": "vector_norm",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_norm(vector)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_norm$function$
 "
-  },
-  {
-    "args": "vector",
-    "name": "vector_out",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_out(vector)
+},
+{
+"args": "vector",
+"name": "vector_out",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_out(vector)
 RETURNS cstring
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_out$function$
 "
-  },
-  {
-    "args": "internal, oid, integer",
-    "name": "vector_recv",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_recv(internal, oid, integer)
+},
+{
+"args": "internal, oid, integer",
+"name": "vector_recv",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_recv(internal, oid, integer)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_recv$function$
 "
-  },
-  {
-    "args": "vector",
-    "name": "vector_send",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_send(vector)
+},
+{
+"args": "vector",
+"name": "vector_send",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_send(vector)
 RETURNS bytea
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_send$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_spherical_distance",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_spherical_distance(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_spherical_distance",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_spherical_distance(vector, vector)
 RETURNS double precision
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_spherical_distance$function$
 "
-  },
-  {
-    "args": "vector, vector",
-    "name": "vector_sub",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_sub(vector, vector)
+},
+{
+"args": "vector, vector",
+"name": "vector_sub",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_sub(vector, vector)
 RETURNS vector
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_sub$function$
 "
-  },
-  {
-    "args": "vector, integer, boolean",
-    "name": "vector_to_float4",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_to_float4(vector, integer, boolean)
+},
+{
+"args": "vector, integer, boolean",
+"name": "vector_to_float4",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_to_float4(vector, integer, boolean)
 RETURNS real[]
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_to_float4$function$
 "
-  },
-  {
-    "args": "vector, integer, boolean",
-    "name": "vector_to_halfvec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_to_halfvec(vector, integer, boolean)
+},
+{
+"args": "vector, integer, boolean",
+"name": "vector_to_halfvec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_to_halfvec(vector, integer, boolean)
 RETURNS halfvec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_to_halfvec$function$
 "
-  },
-  {
-    "args": "vector, integer, boolean",
-    "name": "vector_to_sparsevec",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_to_sparsevec(vector, integer, boolean)
+},
+{
+"args": "vector, integer, boolean",
+"name": "vector_to_sparsevec",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_to_sparsevec(vector, integer, boolean)
 RETURNS sparsevec
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_to_sparsevec$function$
 "
-  },
-  {
-    "args": "cstring[]",
-    "name": "vector_typmod_in",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.vector_typmod_in(cstring[])
+},
+{
+"args": "cstring[]",
+"name": "vector_typmod_in",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.vector_typmod_in(cstring[])
 RETURNS integer
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/vector', $function$vector_typmod_in$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "word_similarity",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.word_similarity(text, text)
+},
+{
+"args": "text, text",
+"name": "word_similarity",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.word_similarity(text, text)
 RETURNS real
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$word_similarity$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "word_similarity_commutator_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.word_similarity_commutator_op(text, text)
+},
+{
+"args": "text, text",
+"name": "word_similarity_commutator_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.word_similarity_commutator_op(text, text)
 RETURNS boolean
 LANGUAGE c
 STABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$word_similarity_commutator_op$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "word_similarity_dist_commutator_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.word_similarity_dist_commutator_op(text, text)
+},
+{
+"args": "text, text",
+"name": "word_similarity_dist_commutator_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.word_similarity_dist_commutator_op(text, text)
 RETURNS real
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$word_similarity_dist_commutator_op$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "word_similarity_dist_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.word_similarity_dist_op(text, text)
+},
+{
+"args": "text, text",
+"name": "word_similarity_dist_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.word_similarity_dist_op(text, text)
 RETURNS real
 LANGUAGE c
 IMMUTABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$word_similarity_dist_op$function$
 "
-  },
-  {
-    "args": "text, text",
-    "name": "word_similarity_op",
-    "schema": "public",
-    "definition": "CREATE OR REPLACE FUNCTION public.word_similarity_op(text, text)
+},
+{
+"args": "text, text",
+"name": "word_similarity_op",
+"schema": "public",
+"definition": "CREATE OR REPLACE FUNCTION public.word_similarity_op(text, text)
 RETURNS boolean
 LANGUAGE c
 STABLE PARALLEL SAFE STRICT
 AS '$libdir/pg_trgm', $function$word_similarity_op$function$
 "
-  }
+}
 ]

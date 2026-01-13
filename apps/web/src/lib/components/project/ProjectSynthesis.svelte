@@ -6,7 +6,7 @@
 		AlertTriangle,
 		CheckCircle,
 		ArrowRight,
-		Loader2,
+		LoaderCircle,
 		Sparkles,
 		Eye,
 		Edit3,
@@ -602,7 +602,7 @@
 				{#if hasUnsavedChanges}
 					<Button onclick={saveSynthesis} disabled={isSaving} variant="primary" size="sm">
 						{#if isSaving}
-							<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+							<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 							Saving...
 						{:else}
 							<Save class="w-4 h-4 mr-2" />
@@ -632,7 +632,7 @@
 						class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
 					>
 						{#if isDeleting}
-							<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+							<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 							Deleting...
 						{:else}
 							<Trash2 class="w-4 h-4 mr-2" />
@@ -834,7 +834,7 @@
 							class="bg-green-600 dark:bg-green-500 hover:bg-green-700 dark:hover:bg-green-600"
 						>
 							{#if isApplying}
-								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+								<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 								Applying Operations...
 							{:else}
 								<ArrowRight class="w-4 h-4 mr-2" />

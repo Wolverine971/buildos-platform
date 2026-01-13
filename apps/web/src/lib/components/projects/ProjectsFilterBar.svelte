@@ -84,7 +84,7 @@
 			</div>
 		{:else if briefsLoaded}
 			<div class="flex items-center space-x-2">
-				<Calendar class="w-4 h-4 text-gray-500 dark:text-gray-400" />
+				<Calendar class="w-4 h-4 text-muted-foreground" />
 				<Select
 					bind:value={briefDateRange}
 					onchange={handleBriefDateRangeChange}

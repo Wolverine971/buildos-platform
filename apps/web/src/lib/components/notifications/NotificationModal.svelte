@@ -11,7 +11,7 @@
 
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import { notificationStore } from '$lib/stores/notification.store';
-	import { Loader2, CheckCircle, AlertCircle, XCircle } from 'lucide-svelte';
+	import { LoaderCircle, CheckCircle, AlertCircle, XCircle } from 'lucide-svelte';
 	import type { Notification } from '$lib/types/notification.types';
 
 	// Props
@@ -172,7 +172,7 @@
 			<div class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
 				<!-- Status Icon -->
 				{#if notification.status === 'processing'}
-					<Loader2 class="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+					<LoaderCircle class="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
 				{:else if notification.status === 'success'}
 					<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
 				{:else if notification.status === 'error'}
@@ -201,7 +201,7 @@
 			<div class="space-y-4">
 				{#if notification.status === 'processing'}
 					<div class="text-center py-8">
-						<Loader2
+						<LoaderCircle
 							class="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-4"
 						/>
 						<p class="text-gray-600 dark:text-gray-400">
@@ -245,7 +245,7 @@
 													class="w-4 h-4 text-green-600 dark:text-green-400"
 												/>
 											{:else if step.status === 'processing'}
-												<Loader2
+												<LoaderCircle
 													class="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin"
 												/>
 											{:else if step.status === 'error'}

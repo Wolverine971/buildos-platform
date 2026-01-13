@@ -77,5 +77,5 @@ Quit a cushy job, moved in with his parents, and built a $62K MRR company in a m
 
 ---
 
-*Added: 2026-01-13*
-*Source: Indie Hackers research*
+_Added: 2026-01-13_
+_Source: Indie Hackers research_

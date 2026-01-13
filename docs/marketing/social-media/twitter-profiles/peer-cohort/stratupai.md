@@ -40,4 +40,4 @@ Posts about solo founding vs co-founding - highly relevant to indie hacker commu
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

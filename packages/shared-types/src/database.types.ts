@@ -9389,16 +9389,6 @@ export type Database = {
           visitor_count: number
         }[]
       }
-      get_dashboard_data: {
-        Args: {
-          p_date_end?: string
-          p_date_start?: string
-          p_timezone?: string
-          p_today?: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
       get_latest_ontology_daily_briefs: {
         Args: { user_ids: string[] }
         Returns: {
@@ -9537,16 +9527,6 @@ export type Database = {
       }
       get_project_statistics: {
         Args: { p_project_id: string; p_user_id: string }
-        Returns: Json
-      }
-      get_projects_with_stats: {
-        Args: {
-          p_limit?: number
-          p_offset?: number
-          p_search?: string
-          p_status?: string
-          p_user_id: string
-        }
         Returns: Json
       }
       get_revenue_metrics: {

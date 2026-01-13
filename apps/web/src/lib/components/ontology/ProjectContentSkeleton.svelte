@@ -28,9 +28,9 @@
 		<div class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
 			<div class="flex items-center gap-2 sm:gap-3 flex-1">
 				<div
-					class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
+					class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
 				>
-					<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
+					<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 				</div>
 				<div>
 					<p

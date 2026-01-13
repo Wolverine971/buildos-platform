@@ -41,4 +41,4 @@ Scrapes Twitter/X for MRR updates from founders - aggregates building in public 
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

@@ -15,7 +15,7 @@
 		FolderOpen,
 		ChevronRight,
 		Sparkles,
-		Loader2,
+		LoaderCircle,
 		Lightbulb
 	} from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -431,7 +431,7 @@
 								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
 							>
 								{#if isLoadingProjects}
-									<Loader2 class="h-3.5 w-3.5 animate-spin sm:h-5 sm:w-5" />
+									<LoaderCircle class="h-3.5 w-3.5 animate-spin sm:h-5 sm:w-5" />
 								{:else}
 									<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 								{/if}
@@ -488,7 +488,9 @@
 			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-4">
 				{#if isLoadingProjects}
 					<div class="flex items-center justify-center py-12 sm:py-16">
-						<Loader2 class="h-6 w-6 animate-spin text-muted-foreground sm:h-8 sm:w-8" />
+						<LoaderCircle
+							class="h-6 w-6 animate-spin text-muted-foreground sm:h-8 sm:w-8"
+						/>
 					</div>
 				{:else if projectsError}
 					<div

@@ -44,4 +44,4 @@ Comprehensive DeepSeek AI guide targeting indie hackers and solopreneurs - posit
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

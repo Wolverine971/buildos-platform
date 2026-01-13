@@ -15,7 +15,7 @@
 	<EntityActivityLog entityType="task" entityId={taskId} />
 -->
 <script lang="ts">
-	import { Plus, Pencil, Trash2, Loader2, History, Clock } from 'lucide-svelte';
+	import { Plus, Pencil, Trash2, LoaderCircle, History, Clock } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
@@ -287,7 +287,7 @@
 	<CardBody padding="none">
 		{#if isLoading}
 			<div class="flex items-center justify-center py-6">
-				<Loader2 class="w-4 h-4 text-muted-foreground animate-spin" />
+				<LoaderCircle class="w-4 h-4 text-muted-foreground animate-spin" />
 			</div>
 		{:else if error}
 			<div class="px-3 py-2 text-xs text-red-600 dark:text-red-400">
@@ -352,7 +352,7 @@
 						class="w-full text-[10px] text-muted-foreground hover:text-accent py-1.5 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 rounded hover:bg-accent/5 pressable"
 					>
 						{#if isLoadingMore}
-							<Loader2 class="w-3 h-3 animate-spin" />
+							<LoaderCircle class="w-3 h-3 animate-spin" />
 							Loading...
 						{:else}
 							Show more ({total - logs.length})

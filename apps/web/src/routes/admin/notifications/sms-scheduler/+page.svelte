@@ -8,7 +8,7 @@
 		Calendar,
 		Clock,
 		Users,
-		Loader2,
+		LoaderCircle,
 		AlertCircle,
 		CheckCircle,
 		XCircle,
@@ -430,7 +430,7 @@
 						/>
 						<Button onclick={searchUsers} disabled={isSearching} variant="ghost">
 							{#if isSearching}
-								<Loader2 class="h-4 w-4 animate-spin" />
+								<LoaderCircle class="h-4 w-4 animate-spin" />
 							{:else}
 								Search
 							{/if}
@@ -592,7 +592,7 @@
 								class="w-full"
 							>
 								{#if isLoadingCalendarPreview}
-									<Loader2 class="h-4 w-4 mr-2 animate-spin" />
+									<LoaderCircle class="h-4 w-4 mr-2 animate-spin" />
 									Loading Calendar Info...
 								{:else}
 									<Calendar class="h-4 w-4 mr-2" />
@@ -1015,7 +1015,7 @@
 									<span
 										class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 animate-pulse"
 									>
-										<Loader2 class="h-3 w-3 mr-1 animate-spin" />
+										<LoaderCircle class="h-3 w-3 mr-1 animate-spin" />
 										Polling...
 									</span>
 								{/if}

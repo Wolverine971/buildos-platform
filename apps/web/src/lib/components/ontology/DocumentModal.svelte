@@ -492,7 +492,7 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
 					<FileText class="w-5 h-5" />
 				</div>
@@ -862,7 +862,7 @@
 
 					{#if globalFormError}
 						<div
-							class="mx-3 mb-3 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg"
+							class="mx-3 mb-3 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 						>
 							<span class="text-sm text-destructive">{globalFormError}</span>
 						</div>

@@ -5,7 +5,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import type { SearchResult } from '$lib/types/search';
-	import { ChevronLeft, Loader2 } from 'lucide-svelte';
+	import { ChevronLeft, LoaderCircle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	export let userId: string;

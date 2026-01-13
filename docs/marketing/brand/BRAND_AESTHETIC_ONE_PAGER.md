@@ -1,4 +1,5 @@
 <!-- docs/marketing/brand/BRAND_AESTHETIC_ONE_PAGER.md -->
+
 # BuildOS Brand Aesthetic — One-Pager
 
 > **The quick-reference guide for design decisions.**
@@ -18,17 +19,18 @@ Not a task app. Not a planner. A **workshop for your thinking** where context co
 
 **Printed. Tactile. Intentional.**
 
-| Word | Meaning |
-|------|---------|
-| **Printed** | Paper/ink aesthetic, not glass/glow |
-| **Tactile** | Textures you can feel, weight you sense |
-| **Intentional** | Every element has a reason |
+| Word            | Meaning                                 |
+| --------------- | --------------------------------------- |
+| **Printed**     | Paper/ink aesthetic, not glass/glow     |
+| **Tactile**     | Textures you can feel, weight you sense |
+| **Intentional** | Every element has a reason              |
 
 ---
 
 ## Color System (Paper + Ink + Accent)
 
 ### Light Mode (Paper Studio)
+
 ```
 Background:  Warm off-white    #FAF9F6
 Foreground:  Deep ink black    #18181A
@@ -36,6 +38,7 @@ Accent:      Warm amber        #EA6D20
 ```
 
 ### Dark Mode (Ink Room)
+
 ```
 Background:  Near-black        #0F0F11
 Foreground:  Warm off-white    #EBE9E4
@@ -43,6 +46,7 @@ Accent:      Bright amber      #F5833B
 ```
 
 ### Rules
+
 - Never use raw grays (`gray-700`, `slate-200`)
 - Always use semantic tokens (`text-foreground`, `bg-card`)
 - One accent color only (amber-orange)
@@ -51,17 +55,18 @@ Accent:      Bright amber      #F5833B
 
 ## The 7 Semantic Textures
 
-| Texture | Class | Meaning | Use For |
-|---------|-------|---------|---------|
-| **Bloom** | `tx tx-bloom` | Ideation, new | Brain dumps, drafts |
-| **Grain** | `tx tx-grain` | Execution | Active tasks |
-| **Pulse** | `tx tx-pulse` | Urgency | Today focus, deadlines |
-| **Static** | `tx tx-static` | Blocked | Errors, warnings |
-| **Thread** | `tx tx-thread` | Connected | Shared, linked |
-| **Frame** | `tx tx-frame` | Canonical | Primary containers |
-| **Strip** | `tx tx-strip` | Separator | Headers, transitions |
+| Texture    | Class          | Meaning       | Use For                |
+| ---------- | -------------- | ------------- | ---------------------- |
+| **Bloom**  | `tx tx-bloom`  | Ideation, new | Brain dumps, drafts    |
+| **Grain**  | `tx tx-grain`  | Execution     | Active tasks           |
+| **Pulse**  | `tx tx-pulse`  | Urgency       | Today focus, deadlines |
+| **Static** | `tx tx-static` | Blocked       | Errors, warnings       |
+| **Thread** | `tx tx-thread` | Connected     | Shared, linked         |
+| **Frame**  | `tx tx-frame`  | Canonical     | Primary containers     |
+| **Strip**  | `tx tx-strip`  | Separator     | Headers, transitions   |
 
 ### Intensity
+
 - `tx-weak` (3%) — Default for most UI
 - `tx-med` (6%) — Headers, sections
 - `tx-strong` (10%) — Background-only
@@ -70,13 +75,13 @@ Accent:      Bright amber      #F5833B
 
 ## Typography Quick Reference
 
-| Role | Class | Use |
-|------|-------|-----|
-| Hero | `text-3xl sm:text-5xl font-semibold` | Page titles |
-| Section | `text-2xl sm:text-3xl font-semibold` | Major sections |
-| Card Title | `text-lg font-semibold` | Panel headers |
-| Body | `text-sm sm:text-base` | Content |
-| Micro-Label | `text-[0.65rem] uppercase tracking-[0.15em]` | Metadata |
+| Role        | Class                                        | Use            |
+| ----------- | -------------------------------------------- | -------------- |
+| Hero        | `text-3xl sm:text-5xl font-semibold`         | Page titles    |
+| Section     | `text-2xl sm:text-3xl font-semibold`         | Major sections |
+| Card Title  | `text-lg font-semibold`                      | Panel headers  |
+| Body        | `text-sm sm:text-base`                       | Content        |
+| Micro-Label | `text-[0.65rem] uppercase tracking-[0.15em]` | Metadata       |
 
 ---
 
@@ -92,11 +97,11 @@ shadow-ink-inner    /* Inputs, insets */
 
 ## Motion
 
-| Speed | Duration | Use |
-|-------|----------|-----|
-| Fast | 120ms | Hover, press |
-| Default | 180ms | Entry, exit |
-| Slow | 260ms | Complex |
+| Speed   | Duration | Use          |
+| ------- | -------- | ------------ |
+| Fast    | 120ms    | Hover, press |
+| Default | 180ms    | Entry, exit  |
+| Slow    | 260ms    | Complex      |
 
 **Key Animation:** `animate-ink-in` — Elements settle like ink on paper.
 
@@ -107,24 +112,23 @@ shadow-ink-inner    /* Inputs, insets */
 ## Component Patterns
 
 ### Primary Card
+
 ```svelte
-<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-  ...
-</div>
+<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">...</div>
 ```
 
 ### CTA Button
+
 ```svelte
 <button class="bg-accent text-accent-foreground rounded-lg shadow-ink pressable">
-  Build Context
+	Build Context
 </button>
 ```
 
 ### Error State
+
 ```svelte
-<div class="bg-card ... tx tx-static tx-weak">
-  ...
-</div>
+<div class="bg-card ... tx tx-static tx-weak">...</div>
 ```
 
 ---
@@ -166,12 +170,12 @@ shadow-ink-inner    /* Inputs, insets */
 
 ## The Emotional Targets
 
-| Moment | User Should Feel |
-|--------|------------------|
+| Moment       | User Should Feel                            |
+| ------------ | ------------------------------------------- |
 | First glance | "This is different. Professional but warm." |
-| First use | "Everything has weight. Serious tool." |
-| First week | "It knows what I'm doing." |
-| First month | "My empire is building." |
+| First use    | "Everything has weight. Serious tool."      |
+| First week   | "It knows what I'm doing."                  |
+| First month  | "My empire is building."                    |
 
 ---
 

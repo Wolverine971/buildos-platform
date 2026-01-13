@@ -43,4 +43,4 @@ Twitter growth guide for indie hackers - practical distribution advice.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

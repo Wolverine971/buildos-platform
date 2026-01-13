@@ -40,4 +40,4 @@ Building tools for indie hackers - meta product serving our community.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

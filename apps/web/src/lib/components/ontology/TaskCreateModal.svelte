@@ -223,10 +223,8 @@
 			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0"
-				>
-					<ListChecks class="w-5 h-5" />
+				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
+					<ListChecks class="w-5 h-5 text-accent" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
@@ -302,7 +300,7 @@
 													<button
 														type="button"
 														onclick={() => selectTemplate(template)}
-														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200"
+														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
 													>
 														<div
 															class="flex items-start justify-between mb-2"
@@ -540,7 +538,7 @@
 
 								{#if error}
 									<div
-										class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg"
+										class="p-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 									>
 										<p class="text-sm text-destructive">
 											{error}

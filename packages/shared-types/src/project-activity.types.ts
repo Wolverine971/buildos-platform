@@ -29,6 +29,7 @@ export type ProjectLogEntityType =
 	| 'milestone'
 	| 'risk'
 	| 'plan'
+	| 'event'
 	| 'requirement'
 	| 'source'
 	| 'edge';

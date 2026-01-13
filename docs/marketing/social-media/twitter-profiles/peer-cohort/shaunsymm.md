@@ -40,4 +40,4 @@ Multi-product indie hacker with small products - shows diverse building approach
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

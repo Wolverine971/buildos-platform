@@ -6,7 +6,7 @@
 	import { searchStore, totalResultCount } from '$lib/stores/searchStore';
 	import type { SearchResult } from '$lib/types/search';
 	import { page } from '$app/stores';
-	import { Search, X, Loader2 } from 'lucide-svelte';
+	import { Search, X, LoaderCircle } from 'lucide-svelte';
 	import { browser } from '$app/environment';
 
 	export let userId: string;
@@ -206,7 +206,7 @@
 
 		<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
 			{#if isLoading}
-				<Loader2 class="w-5 h-5 text-muted-foreground animate-spin" />
+				<LoaderCircle class="w-5 h-5 text-muted-foreground animate-spin" />
 			{:else}
 				<Search class="w-5 h-5 text-muted-foreground" />
 			{/if}

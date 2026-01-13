@@ -16,7 +16,7 @@
 		Timer,
 		ChevronRight,
 		Sun,
-		Loader2,
+		LoaderCircle,
 		CircleAlert,
 		RefreshCw,
 		Brain,
@@ -454,7 +454,7 @@
 <div class="space-y-6">
 	{#if loadingCalendar}
 		<div class="text-center py-12">
-			<Loader2 class="w-8 h-8 animate-spin text-accent mx-auto mb-4" />
+			<LoaderCircle class="w-8 h-8 animate-spin text-accent mx-auto mb-4" />
 			<p class="text-muted-foreground">Loading calendar settings...</p>
 		</div>
 	{:else if calendarData}

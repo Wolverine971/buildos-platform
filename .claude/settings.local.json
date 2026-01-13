@@ -48,12 +48,13 @@
       "WebFetch(domain:publicbuilders.org)",
       "WebFetch(domain:jonathanrintala.com)",
       "WebFetch(domain:thefounderspress.com)",
-      "WebFetch(domain:9takes.com)"
+      "WebFetch(domain:9takes.com)",
+      "WebFetch(domain:herb.co)",
+      "WebFetch(domain:careersinpsychology.org)",
+      "WebFetch(domain:www.theleague.com)"
     ],
     "deny": [],
     "ask": []
   },
-  "enabledPlugins": {
-    "ralph-loop@claude-plugins-official": true
-  }
+  "enabledPlugins": {}
 }

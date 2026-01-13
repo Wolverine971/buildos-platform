@@ -40,6 +40,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/1dolinski.md
 ## Product
 
 **Vibehut.io** - Video-first platform for virtual offices and community
+
 - Virtual office space
 - Community features
 - Reached 137 countries in 30 days
@@ -78,5 +79,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/1dolinski.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Indie Hackers community*
+_Added: 2026-01-13_
+_Source: Indie Hackers community_

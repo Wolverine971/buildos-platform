@@ -1,6 +1,15 @@
 <!-- apps/web/src/routes/admin/notifications/test-bed/+page.svelte -->
 <script lang="ts">
-	import { Send, Bell, Eye, Search, Loader2, Database, RotateCw, Calendar } from 'lucide-svelte';
+	import {
+		Send,
+		Bell,
+		Eye,
+		Search,
+		LoaderCircle,
+		Database,
+		RotateCw,
+		Calendar
+	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import UserNotificationContext from '$lib/components/admin/UserNotificationContext.svelte';
@@ -263,7 +272,7 @@
 							/>
 							{#if isSearching}
 								<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
-									<Loader2 class="w-5 h-5 animate-spin text-blue-600" />
+									<LoaderCircle class="w-5 h-5 animate-spin text-blue-600" />
 								</div>
 							{/if}
 						</div>
@@ -320,7 +329,7 @@
 			{#if selectedUser}
 				{#if contextLoading}
 					<div class="admin-panel p-8 text-center">
-						<Loader2 class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+						<LoaderCircle class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
 						<p class="text-gray-600 dark:text-gray-400">
 							Loading user notification context...
 						</p>

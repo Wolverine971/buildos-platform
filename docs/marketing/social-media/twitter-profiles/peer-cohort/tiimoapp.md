@@ -36,6 +36,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/tiimoapp.md
 ## Why This Account is CRITICAL
 
 Tiimo is THE benchmark for ADHD productivity apps:
+
 - **iPhone App of the Year 2025**
 - **Apple Design Award Finalist 2024**
 - **3+ million downloads**
@@ -46,6 +47,7 @@ BuildOS competes/complements this space.
 ## Product
 
 **Tiimo** - Visual daily planner for ADHD and autism
+
 - Transforms abstract time into visual timeline
 - Reduces cognitive load for planning
 - Sensory-friendly design
@@ -95,5 +97,5 @@ Founded in 2015 after research on supporting neurodivergent teens.
 
 ---
 
-*Added: 2026-01-13*
-*Source: App Store, Sifted, company website*
+_Added: 2026-01-13_
+_Source: App Store, Sifted, company website_

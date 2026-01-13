@@ -16,7 +16,7 @@ engagement_priority: 'regular'
 path: docs/marketing/social-media/twitter-profiles/peer-cohort/hamzafaouzi_.md
 ---
 
-# Hamza Faouzi (@hamzafaouzi_)
+# Hamza Faouzi (@hamzafaouzi\_)
 
 ## Bio
 
@@ -34,4 +34,4 @@ Small indie hacker building SaaS - perfect peer for mutual growth.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

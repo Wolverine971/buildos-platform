@@ -314,13 +314,15 @@
 	const availableForSelectedKind = $derived(availableEntitiesCache[linkPickerKind] || []);
 </script>
 
-<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden">
+<div
+	class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+>
 	<!-- Header -->
-	<div class="px-3 py-2 border-b border-border bg-muted/30">
+	<div class="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border bg-muted/30">
 		<h3
-			class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
+			class="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 sm:gap-2"
 		>
-			<span class="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+			<span class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-accent rounded-full"></span>
 			Linked Entities
 		</h3>
 	</div>
@@ -329,24 +331,27 @@
 	<div class="divide-y divide-border">
 		{#if isLoading}
 			<!-- Skeleton Loading State -->
-			{#each visibleSections as section (section.kind)}
-				<div class="px-3 py-2 flex items-center justify-between animate-pulse">
+			{#each visibleSections as section, i (section.kind)}
+				<div
+					class="px-3 py-2 flex items-center justify-between tx tx-pulse tx-weak"
+					style="animation-delay: {i * 50}ms"
+				>
 					<div class="flex items-center gap-2">
-						<div class="w-3.5 h-3.5 rounded bg-muted"></div>
-						<div class="w-3.5 h-3.5 rounded bg-muted"></div>
-						<div class="h-4 w-16 rounded bg-muted"></div>
-						<div class="h-3 w-6 rounded bg-muted"></div>
+						<div class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded bg-muted animate-pulse"></div>
+						<div class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded bg-muted animate-pulse"></div>
+						<div class="h-3 sm:h-4 w-14 sm:w-16 rounded bg-muted animate-pulse"></div>
+						<div class="h-2.5 sm:h-3 w-5 sm:w-6 rounded bg-muted animate-pulse"></div>
 					</div>
-					<div class="w-5 h-5 rounded bg-muted"></div>
+					<div class="w-4 h-4 sm:w-5 sm:h-5 rounded bg-muted animate-pulse"></div>
 				</div>
 			{/each}
 		{:else if error}
 			<!-- Error State -->
-			<div class="px-4 py-6 text-center">
-				<p class="text-sm text-destructive">{error}</p>
+			<div class="px-3 sm:px-4 py-4 sm:py-6 text-center tx tx-static tx-weak">
+				<p class="text-xs sm:text-sm text-destructive">{error}</p>
 				<button
 					type="button"
-					class="mt-2 text-xs text-accent hover:underline"
+					class="mt-2 text-[10px] sm:text-xs text-accent hover:underline pressable"
 					onclick={() => loadData()}
 				>
 					Try again

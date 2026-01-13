@@ -22,7 +22,6 @@ This directory contains SQL definitions for all RPC functions available in the B
 - [get_project_phases_hierarchy](./get_project_phases_hierarchy.sql) - Get project phases in hierarchy
 - [get_project_skeleton](./get_project_skeleton.sql) - Get project skeleton structure
 - [get_project_statistics](./get_project_statistics.sql) - Get project statistics
-- [get_projects_with_stats](./get_projects_with_stats.sql) - Get projects with statistics
 - [list_pending_project_invites](./list_pending_project_invites.sql) - List pending invites for current user
 - [soft_delete_onto_project](./soft_delete_onto_project.sql) - Soft delete an ontology project
 
@@ -133,9 +132,7 @@ This directory contains SQL definitions for all RPC functions available in the B
 - [get_user_llm_usage](./get_user_llm_usage.sql) - Get user LLM usage
 - [update_llm_usage_summary](./update_llm_usage_summary.sql) - Update LLM usage summary (used by trigger)
 
-### Dashboard (1 active)
-
-- [get_dashboard_data](./get_dashboard_data.sql) - Get dashboard data
+### Dashboard (0 active)
 
 ### Chat System (1 active)
 

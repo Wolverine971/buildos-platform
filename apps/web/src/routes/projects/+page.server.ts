@@ -24,24 +24,35 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 
 	depends('ontology:projects');
 
-	const actorId = await ensureActorId(locals.supabase, user.id);
+	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
+
+	const actorId = await measure('db.ensure_actor', () => ensureActorId(locals.supabase, user.id));
 
 	// FAST: Get project count immediately (~20-50ms)
 	// Prefer membership count so shared projects are included.
-	const { count: memberCount, error: memberCountError } = await locals.supabase
-		.from('onto_project_members')
-		.select('id', { count: 'exact', head: true })
-		.eq('actor_id', actorId)
-		.is('removed_at', null);
+	const { count: memberCount, error: memberCountError } = await measure(
+		'db.project_members.count',
+		() =>
+			locals.supabase
+				.from('onto_project_members')
+				.select('id', { count: 'estimated', head: true })
+				.eq('actor_id', actorId)
+				.is('removed_at', null)
+	);
 
 	let projectCount = memberCount ?? 0;
 	if (memberCountError) {
 		console.error('[Projects] Failed to get membership count:', memberCountError);
-		const { count: fallbackCount, error: countError } = await locals.supabase
-			.from('onto_projects')
-			.select('*', { count: 'exact', head: true })
-			.eq('created_by', actorId)
-			.is('deleted_at', null);
+		const { count: fallbackCount, error: countError } = await measure(
+			'db.projects.count_fallback',
+			() =>
+				locals.supabase
+					.from('onto_projects')
+					.select('*', { count: 'estimated', head: true })
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+		);
 		if (countError) {
 			console.error('[Projects] Failed to get project count:', countError);
 		}
@@ -50,10 +61,12 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 
 	// STREAMED: Full project data loaded in background
 	// Skeletons will be hydrated when this resolves
-	const projects = fetchProjectSummaries(locals.supabase, actorId).catch((err) => {
-		console.error('[Ontology Dashboard] Failed to load project summaries', err);
-		throw err;
-	});
+	const projects = fetchProjectSummaries(locals.supabase, actorId, locals.serverTiming).catch(
+		(err) => {
+			console.error('[Ontology Dashboard] Failed to load project summaries', err);
+			throw err;
+		}
+	);
 
 	return {
 		actorId,

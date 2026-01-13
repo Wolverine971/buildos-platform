@@ -26,9 +26,9 @@
 </script>
 
 <script lang="ts">
-	import { Reply, Edit3, Trash2, Loader2 } from 'lucide-svelte';
+	import { Reply, Edit3, Trash2, LoaderCircle } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import CommentTextareaWithVoice from '$lib/components/ui/CommentTextareaWithVoice.svelte';
 	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
 	import { formatDistanceToNow } from 'date-fns';
 	import Self from './EntityCommentThread.svelte';
@@ -141,7 +141,7 @@
 						disabled={deletingId === comment.id}
 					>
 						{#if deletingId === comment.id}
-							<Loader2 class="w-3 h-3 animate-spin" />
+							<LoaderCircle class="w-3 h-3 animate-spin" />
 						{:else}
 							<Trash2 class="w-3 h-3" />
 						{/if}
@@ -153,67 +153,73 @@
 		{#if comment.deleted_at}
 			<p class="mt-1.5 text-xs text-muted-foreground italic">Comment deleted.</p>
 		{:else if editingId === comment.id}
-			<div class="mt-1.5 space-y-1.5">
-				<Textarea
+			<div class="mt-1.5">
+				<CommentTextareaWithVoice
 					value={editingBody}
 					rows={3}
 					size="sm"
+					voiceBlocked={isEditing}
+					voiceNoteSource="entity-comment-edit"
 					oninput={(event) =>
 						onEditBodyChange((event.target as HTMLTextAreaElement).value)}
-				/>
-				<div class="flex items-center gap-1.5">
-					<Button
-						variant="primary"
-						size="sm"
-						class="pressable"
-						onclick={() => onEditSubmit(comment.id)}
-						disabled={isEditing || !editingBody.trim()}
-					>
-						{#if isEditing}
-							<Loader2 class="w-3 h-3 animate-spin" />
-							Saving...
-						{:else}
-							Save
-						{/if}
-					</Button>
-					<Button variant="ghost" size="sm" class="pressable" onclick={onEditCancel}
-						>Cancel</Button
-					>
-				</div>
+				>
+					{#snippet actions()}
+						<Button
+							variant="primary"
+							size="sm"
+							class="pressable"
+							onclick={() => onEditSubmit(comment.id)}
+							disabled={isEditing || !editingBody.trim()}
+						>
+							{#if isEditing}
+								<LoaderCircle class="w-3 h-3 animate-spin" />
+								Saving...
+							{:else}
+								Save
+							{/if}
+						</Button>
+						<Button variant="ghost" size="sm" class="pressable" onclick={onEditCancel}
+							>Cancel</Button
+						>
+					{/snippet}
+				</CommentTextareaWithVoice>
 			</div>
 		{:else}
 			<div class="mt-1.5 {getProseClasses('sm')}">{@html renderBody(comment.body)}</div>
 		{/if}
 
 		{#if replyingToId === comment.id}
-			<div class="mt-2 space-y-1.5 border-t border-border pt-2">
-				<Textarea
+			<div class="mt-2 border-t border-border pt-2">
+				<CommentTextareaWithVoice
 					value={replyBody}
 					rows={2}
 					size="sm"
 					placeholder="Write a reply..."
+					voiceBlocked={isReplying}
+					voiceNoteSource="entity-comment-reply"
 					oninput={(event) =>
 						onReplyBodyChange((event.target as HTMLTextAreaElement).value)}
-				/>
-				<div class="flex items-center gap-1.5">
-					<Button
-						variant="secondary"
-						size="sm"
-						class="pressable"
-						onclick={() => onReplySubmit(comment.id)}
-						disabled={isReplying || !replyBody.trim()}
-					>
-						{#if isReplying}
-							<Loader2 class="w-3 h-3 animate-spin" />
-							Replying...
-						{:else}
-							Reply
-						{/if}
-					</Button>
-					<Button variant="ghost" size="sm" class="pressable" onclick={onReplyCancel}
-						>Cancel</Button
-					>
-				</div>
+				>
+					{#snippet actions()}
+						<Button
+							variant="secondary"
+							size="sm"
+							class="pressable"
+							onclick={() => onReplySubmit(comment.id)}
+							disabled={isReplying || !replyBody.trim()}
+						>
+							{#if isReplying}
+								<LoaderCircle class="w-3 h-3 animate-spin" />
+								Replying...
+							{:else}
+								Reply
+							{/if}
+						</Button>
+						<Button variant="ghost" size="sm" class="pressable" onclick={onReplyCancel}
+							>Cancel</Button
+						>
+					{/snippet}
+				</CommentTextareaWithVoice>
 			</div>
 		{/if}
 	</div>

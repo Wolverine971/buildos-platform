@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/project/ScheduleAllPhasesModal.svelte -->
 <script lang="ts">
-	import { Calendar, AlertTriangle, Loader2, CheckCircle2, X, Info } from 'lucide-svelte';
+	import { Calendar, AlertTriangle, LoaderCircle, CheckCircle2, X, Info } from 'lucide-svelte';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -382,7 +382,7 @@
 		<div class="flex-1 overflow-y-auto px-6 py-4 max-h-[60vh]">
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
-					<Loader2 class="w-8 h-8 animate-spin text-gray-400" />
+					<LoaderCircle class="w-8 h-8 animate-spin text-gray-400" />
 					<span class="ml-3 text-gray-500 dark:text-gray-400"
 						>Loading scheduling data...</span
 					>
@@ -462,7 +462,7 @@
 						class="min-w-[120px]"
 					>
 						{#if saving}
-							<Loader2 class="w-4 h-4 animate-spin mr-2" />
+							<LoaderCircle class="w-4 h-4 animate-spin mr-2" />
 							Scheduling...
 						{:else}
 							<Calendar class="w-4 h-4 mr-2" />

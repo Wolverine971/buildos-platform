@@ -2,7 +2,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { Loader2, CheckCircle, AlertCircle, Clock } from 'lucide-svelte';
+	import { LoaderCircle, CheckCircle, AlertCircle, Clock } from 'lucide-svelte';
 	import type { TimeBlockNotification } from '$lib/types/notification.types';
 
 	let { notification }: { notification: TimeBlockNotification } = $props();
@@ -74,7 +74,7 @@
 	<div class="p-4 flex items-center justify-between">
 		<div class="flex-shrink-0 mr-3">
 			{#if statusInfo.icon === 'processing'}
-				<Loader2 class="w-5 h-5 text-purple-600 animate-spin" />
+				<LoaderCircle class="w-5 h-5 text-purple-600 animate-spin" />
 			{:else if statusInfo.icon === 'completed'}
 				<CheckCircle class="w-5 h-5 text-green-600" />
 			{:else if statusInfo.icon === 'warning'}

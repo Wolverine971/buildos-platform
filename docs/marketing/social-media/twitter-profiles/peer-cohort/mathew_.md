@@ -16,7 +16,7 @@ engagement_priority: 'regular'
 path: docs/marketing/social-media/twitter-profiles/peer-cohort/mathew_.md
 ---
 
-# Mathew (@mathew_)
+# Mathew (@mathew\_)
 
 ## Bio
 
@@ -39,4 +39,4 @@ Building productivity tool - visual thinking adjacent to BuildOS.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

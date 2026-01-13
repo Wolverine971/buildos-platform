@@ -3,7 +3,7 @@ active: true
 iteration: 1
 max_iterations: 0
 completion_promise: null
-started_at: "2026-01-13T06:09:50Z"
+started_at: "2026-01-13T14:18:44Z"
 ---
 
-please look at the twitter profliles that i have here docs/marketing/social-media/twitter-profilesAnd I want you to do thurough research and find 100 people who would be interested in 9takes.comPlease put them in a 9takes folderResearch thuroughly and fill out a profile for each of them
+look at my design docs and styles and make everything nice and clean, look at my INKPRINT_DESIGN_SYSTEM and use proper textures and make sure everything has high information density with proper margin and padding and make sure all the borders and border radiuses are clean and work together, ultrathink and work on this

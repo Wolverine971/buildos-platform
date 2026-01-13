@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/project/UnscheduleAllTasksModal.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { CalendarX, Calendar, AlertTriangle, Info, Loader2 } from 'lucide-svelte';
+	import { CalendarX, Calendar, AlertTriangle, Info, LoaderCircle } from 'lucide-svelte';
 
 	import type { PhaseWithTasks } from '$lib/types/project-page.types';
 	import Modal from '$lib/components/ui/Modal.svelte';

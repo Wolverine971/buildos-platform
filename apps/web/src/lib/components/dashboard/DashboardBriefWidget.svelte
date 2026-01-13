@@ -8,7 +8,7 @@
   - Brief data deferred - doesn't block initial page render
 -->
 <script lang="ts">
-	import { Sparkles, Loader2, ChevronRight, AlertCircle, Sun } from 'lucide-svelte';
+	import { Sparkles, LoaderCircle, ChevronRight, AlertCircle, Sun } from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import { getContext, onMount } from 'svelte';
 	import {
@@ -22,7 +22,7 @@
 
 	// Props
 	interface Props {
-		user: { id: string; email?: string; is_admin?: boolean };
+		user: { id: string; email?: string; is_admin?: boolean; timezone?: string | null };
 		onViewBrief?: (brief: DailyBrief) => void;
 	}
 
@@ -35,7 +35,9 @@
 	let brief = $state<DailyBrief | null>(null);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	let userTimezone = $state(browser ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC');
+	let userTimezone = $state(
+		browser ? user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
+	);
 	let hasInitialized = $state(false);
 
 	// Streaming state from stores
@@ -132,6 +134,11 @@
 	}
 
 	async function fetchUserTimezone() {
+		if (user?.timezone) {
+			userTimezone = user.timezone;
+			return;
+		}
+
 		try {
 			const { data } = await supabase
 				.from('users')
@@ -253,7 +260,7 @@
 				<div
 					class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20"
 				>
-					<Loader2 class="h-3 w-3 sm:h-4 sm:w-4 text-accent animate-spin" />
+					<LoaderCircle class="h-3 w-3 sm:h-4 sm:w-4 text-accent animate-spin" />
 				</div>
 				<div class="flex-1 min-w-0">
 					<p class="text-xs sm:text-sm font-medium text-foreground">Generating brief</p>

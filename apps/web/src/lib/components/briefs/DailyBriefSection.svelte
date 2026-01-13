@@ -2,7 +2,15 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
-	import { Plus, Loader2, Clock, Sparkles, ArrowRight, Mail, ChevronRight } from 'lucide-svelte';
+	import {
+		Plus,
+		LoaderCircle,
+		Clock,
+		Sparkles,
+		ArrowRight,
+		Mail,
+		ChevronRight
+	} from 'lucide-svelte';
 	import {
 		BriefClientService,
 		streamingStatus,
@@ -237,7 +245,7 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Loader2 class="w-3 h-3 sm:w-4 sm:h-4 text-accent animate-spin" />
+							<LoaderCircle class="w-3 h-3 sm:w-4 sm:h-4 text-accent animate-spin" />
 						</span>
 						<div>
 							<h3 class="card-heading">Fetching your daily brief</h3>
@@ -259,7 +267,7 @@
 				<div class="card-header">
 					<div class="card-title">
 						<span class="icon-pill">
-							<Loader2 class="w-3 h-3 sm:w-4 sm:h-4 text-accent animate-spin" />
+							<LoaderCircle class="w-3 h-3 sm:w-4 sm:h-4 text-accent animate-spin" />
 						</span>
 						<div class="min-w-0">
 							<h3 class="card-heading">Generating Brief</h3>

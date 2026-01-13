@@ -278,10 +278,8 @@
 			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0"
-				>
-					<Clock class="w-5 h-5" />
+				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
+					<Clock class="w-5 h-5 text-accent" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
@@ -389,11 +387,11 @@
 														<button
 															type="button"
 															onclick={() => selectTemplate(template)}
-															class="group text-left"
+															class="group text-left pressable"
 														>
 															<Card
 																variant="interactive"
-																class="h-full border border-border group-hover:border-accent shadow-ink"
+																class="h-full border border-border group-hover:border-accent shadow-ink tx tx-frame tx-weak"
 															>
 																<CardBody class="space-y-3">
 																	<div
@@ -678,7 +676,7 @@
 
 								{#if error}
 									<div
-										class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+										class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive tx tx-static tx-weak"
 									>
 										{error}
 									</div>

@@ -11,7 +11,7 @@
 		Calendar,
 		Check,
 		AlertCircle,
-		Loader2,
+		LoaderCircle,
 		Trash2,
 		Palette,
 		Settings
@@ -278,7 +278,7 @@
 		<div class="flex-1 overflow-y-auto bg-background tx tx-frame tx-weak">
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
-					<Loader2 class="h-6 w-6 animate-spin text-accent" />
+					<LoaderCircle class="h-6 w-6 animate-spin text-accent" />
 				</div>
 			{:else}
 				<div class="p-4 space-y-3 sm:p-5 sm:space-y-4">
@@ -461,7 +461,7 @@
 						class="text-destructive hover:text-destructive hover:bg-destructive/10"
 					>
 						{#if deleting}
-							<Loader2 class="mr-1.5 h-3.5 w-3.5 animate-spin" />
+							<LoaderCircle class="mr-1.5 h-3.5 w-3.5 animate-spin" />
 						{:else}
 							<Trash2 class="mr-1.5 h-3.5 w-3.5" />
 						{/if}
@@ -490,7 +490,7 @@
 						class="shadow-ink pressable"
 					>
 						{#if saving}
-							<Loader2 class="mr-1.5 h-3.5 w-3.5 animate-spin" />
+							<LoaderCircle class="mr-1.5 h-3.5 w-3.5 animate-spin" />
 							Saving...
 						{:else if calendarExists}
 							Update

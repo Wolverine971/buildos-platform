@@ -80,5 +80,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/adamrobinson.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Build in public lists*
+_Added: 2026-01-13_
+_Source: Build in public lists_

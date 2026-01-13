@@ -2,7 +2,13 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { Loader2, CheckCircle, AlertCircle, CalendarCheck, CalendarClock } from 'lucide-svelte';
+	import {
+		LoaderCircle,
+		CheckCircle,
+		AlertCircle,
+		CalendarCheck,
+		CalendarClock
+	} from 'lucide-svelte';
 	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
 
 	let { notification }: { notification: CalendarAnalysisNotification } = $props();
@@ -99,7 +105,7 @@
 <div class="p-4 flex items-center gap-3">
 	<div class="flex-shrink-0">
 		{#if statusInfo.icon === 'processing'}
-			<Loader2 class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
+			<LoaderCircle class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
 		{:else if statusInfo.icon === 'success'}
 			<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
 		{:else if statusInfo.icon === 'error'}

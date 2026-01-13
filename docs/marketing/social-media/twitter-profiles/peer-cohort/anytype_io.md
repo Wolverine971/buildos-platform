@@ -28,6 +28,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/anytype_io.md
 ## Product
 
 **Anytype** - Privacy-focused PKM app
+
 - Open source
 - Local-first (data on your device)
 - End-to-end encryption
@@ -48,4 +49,4 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/anytype_io.md
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

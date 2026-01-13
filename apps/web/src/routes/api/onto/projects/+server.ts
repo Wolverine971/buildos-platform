@@ -19,10 +19,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+			locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
 
 		let actorId: string;
 		try {
-			actorId = await ensureActorId(supabase, user.id);
+			actorId = await measure('db.ensure_actor', () => ensureActorId(supabase, user.id));
 		} catch (actorError) {
 			console.error('[Ontology API] Failed to get actor:', actorError);
 			return ApiResponse.error('Failed to resolve user actor', 500);
@@ -30,7 +32,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		let summaries;
 		try {
-			summaries = await fetchProjectSummaries(supabase, actorId);
+			summaries = await fetchProjectSummaries(supabase, actorId, locals.serverTiming);
 		} catch (summaryError) {
 			console.error('[Ontology API] Failed to fetch projects:', summaryError);
 			return ApiResponse.error('Failed to fetch ontology projects', 500);

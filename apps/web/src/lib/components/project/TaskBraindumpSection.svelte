@@ -8,7 +8,7 @@
 		Clock,
 		AlertTriangle,
 		ExternalLink,
-		Loader2
+		LoaderCircle
 	} from 'lucide-svelte';
 	import { formatDistanceToNow, format, differenceInHours } from 'date-fns';
 	import { slide } from 'svelte/transition';
@@ -152,7 +152,7 @@
 
 			{#if loading && !loaded}
 				<span class="text-xs text-gray-500 flex items-center">
-					<Loader2 class="w-3 h-3 mr-1 animate-spin" />
+					<LoaderCircle class="w-3 h-3 mr-1 animate-spin" />
 					Loading...
 				</span>
 			{:else if loadError}
@@ -174,7 +174,7 @@
 		<!-- Loading State -->
 		{#if loading && !loaded}
 			<div class="mt-2 px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-				<Loader2 class="w-5 h-5 mx-auto mb-2 animate-spin" />
+				<LoaderCircle class="w-5 h-5 mx-auto mb-2 animate-spin" />
 				Loading braindumps...
 			</div>
 		{/if}

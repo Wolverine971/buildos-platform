@@ -3,7 +3,7 @@
 	import {
 		Rocket,
 		Calendar,
-		Loader2,
+		LoaderCircle,
 		Sparkles,
 		CheckCircle,
 		Info,
@@ -571,7 +571,7 @@
 
 					{#if calendarAnalysisStarted}
 						<span class="text-xs text-muted-foreground flex items-center gap-1">
-							<Loader2 class="w-3 h-3 animate-spin" />
+							<LoaderCircle class="w-3 h-3 animate-spin" />
 							Check notifications
 						</span>
 					{/if}

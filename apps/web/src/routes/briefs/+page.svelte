@@ -20,7 +20,7 @@
 		Copy,
 		X,
 		AlertCircle,
-		Loader2,
+		LoaderCircle,
 		TrendingUp,
 		FileText,
 		Plus,
@@ -622,7 +622,7 @@
 {#if isInitialLoading}
 	<div class="min-h-screen bg-background flex items-center justify-center">
 		<div class="text-center">
-			<Loader2 class="w-8 h-8 text-accent animate-spin mx-auto mb-4" />
+			<LoaderCircle class="w-8 h-8 text-accent animate-spin mx-auto mb-4" />
 			<p class="text-sm text-muted-foreground">Loading briefs...</p>
 		</div>
 	</div>
@@ -646,7 +646,7 @@
 						<!-- Next Scheduled Brief Display -->
 						{#if isLoadingNextBrief}
 							<div class="hidden sm:flex items-center text-sm text-muted-foreground">
-								<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+								<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 								<span>Loading...</span>
 							</div>
 						{:else if nextScheduledBrief}
@@ -772,7 +772,7 @@
 						{#if isLoadingNextBrief}
 							<div class="bg-card rounded-lg p-3 shadow-sm border border-border">
 								<div class="flex items-center text-sm text-muted-foreground">
-									<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+									<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 									<span>Loading next brief...</span>
 								</div>
 							</div>
@@ -870,7 +870,7 @@
 				>
 					<div class="flex items-center justify-between mb-3">
 						<div class="flex items-center flex-1">
-							<Loader2
+							<LoaderCircle
 								class="w-4 h-4 sm:w-5 sm:h-5 text-accent animate-spin mr-2 sm:mr-3 flex-shrink-0"
 							/>
 							<div class="min-w-0">
@@ -1224,7 +1224,7 @@
 										class="p-1.5 text-muted-foreground hover:text-accent hover:bg-accent/10"
 										title="Regenerate"
 										icon={currentStreamingStatus?.isGenerating
-											? Loader2
+											? LoaderCircle
 											: RefreshCw}
 									></Button>
 								</div>
@@ -1277,7 +1277,7 @@
 				{:else if isRefreshing}
 					<!-- Show loading state while refreshing -->
 					<div class="flex justify-center items-center py-12">
-						<Loader2 class="w-8 h-8 text-accent animate-spin" />
+						<LoaderCircle class="w-8 h-8 text-accent animate-spin" />
 					</div>
 				{/if}
 			{/if}

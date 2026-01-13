@@ -40,4 +40,4 @@ Bootstrapped founder building marketplace - different vertical but similar indie
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

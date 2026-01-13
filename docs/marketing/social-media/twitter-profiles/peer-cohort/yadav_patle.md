@@ -33,6 +33,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/yadav_patle.md
 ## Why This Account is HIGH PRIORITY
 
 Yadav is building **LaunchpadOS** - solving the EXACT problems BuildOS addresses:
+
 - Forgetting goals set 2 weeks ago
 - Staring at blank content docs for hours
 - Juggling 5+ apps just to stay organized
@@ -42,6 +43,7 @@ This is a natural peer/competitor to watch and potentially collaborate with.
 ## Product
 
 **LaunchpadOS** - Productivity platform for goals and content organization
+
 - Addresses goal tracking
 - Helps with content creation
 - Consolidates scattered tools
@@ -71,10 +73,11 @@ This is a natural peer/competitor to watch and potentially collaborate with.
 ## Key Tweet That Shows Alignment
 
 > "Raise your hand if you've ever:
+>
 > - Forgot a goal you set 2 weeks ago
 > - Stared at a blank content doc for hours
 > - Juggled 5+ apps just to stay organized
-> What's YOUR biggest struggle? Reply - I'm building the solution"
+>   What's YOUR biggest struggle? Reply - I'm building the solution"
 
 This IS the BuildOS problem statement.
 
@@ -93,5 +96,5 @@ This IS the BuildOS problem statement.
 
 ---
 
-*Added: 2026-01-13*
-*Source: Twitter #buildinpublic search*
+_Added: 2026-01-13_
+_Source: Twitter #buildinpublic search_

@@ -1,6 +1,6 @@
 ---
 handle: '@sleepingatlast'
-name: 'Ryan O''Neal'
+name: "Ryan O'Neal"
 verified: true
 category: '9takes'
 niche: 'enneagram-music'

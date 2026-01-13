@@ -1,4 +1,5 @@
 <!-- docs/marketing/brand/BUILDOS_BRAND_AESTHETIC_COMPLETE.md -->
+
 # BuildOS Brand Aesthetic & Semantic Texture System
 
 > **Purpose:** Complete brand aesthetic guide connecting founder story, product philosophy, visual language, and semantic texture system into a cohesive empire-building identity.
@@ -26,14 +27,14 @@ The Inkprint Design System already established the foundation. This document ele
 
 Every design decision should trace back to who DJ is and what BuildOS represents.
 
-| Founder Trait | Design Translation | Why It Matters |
-|---------------|-------------------|----------------|
-| **Scout Sniper Background** | Precision, clean sight lines, high information density | Snipers process complex terrain quickly; BuildOS users scan project landscapes |
-| **Blue Collar Software Engineering** | Tactile textures, tool-like UI, mechanical reliability | "I tinker, I work, I build" — not polished theory |
-| **Integration Engineer at Curri** | Connected systems, visible relationships, graph thinking | He built systems that connect; BuildOS connects your thinking |
-| **Failed 6x at Notion, 47 planners** | No shame design, validates mess before organizing | UI acknowledges chaos as starting point |
-| **"Mechanic who works on cars for fun"** | Workshop aesthetic, components feel handled | Not clinical SaaS — a workspace with character |
-| **Enneagram 8** | Confident, direct, no apologetic design | Bold statements, not hedging |
+| Founder Trait                            | Design Translation                                       | Why It Matters                                                                 |
+| ---------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Scout Sniper Background**              | Precision, clean sight lines, high information density   | Snipers process complex terrain quickly; BuildOS users scan project landscapes |
+| **Blue Collar Software Engineering**     | Tactile textures, tool-like UI, mechanical reliability   | "I tinker, I work, I build" — not polished theory                              |
+| **Integration Engineer at Curri**        | Connected systems, visible relationships, graph thinking | He built systems that connect; BuildOS connects your thinking                  |
+| **Failed 6x at Notion, 47 planners**     | No shame design, validates mess before organizing        | UI acknowledges chaos as starting point                                        |
+| **"Mechanic who works on cars for fun"** | Workshop aesthetic, components feel handled              | Not clinical SaaS — a workspace with character                                 |
+| **Enneagram 8**                          | Confident, direct, no apologetic design                  | Bold statements, not hedging                                                   |
 
 ### The Core Metaphor: The Workshop
 
@@ -52,13 +53,14 @@ BuildOS isn't a "clean dashboard" or "minimal interface." It's a **well-organize
 ### Why Textures? The Synesthetic Layer
 
 Most SaaS products communicate through:
+
 - Color (status indicators)
 - Typography (hierarchy)
 - Spacing (importance)
 
 BuildOS adds a **fourth channel: Texture** — a synesthetic layer that creates:
 
-1. **Unconscious Recognition** — You *feel* when something is urgent vs. stable
+1. **Unconscious Recognition** — You _feel_ when something is urgent vs. stable
 2. **State Communication** — Textures convey meaning without reading
 3. **Physical Presence** — Digital surfaces that feel substantial
 4. **Memory Anchoring** — Different textures create memory hooks
@@ -74,13 +76,14 @@ Each texture has a **psychological reason** for its existence.
 **Psychological Basis:** Dots suggest possibility, incompleteness, the generative moment before form
 
 **Use For:**
+
 - Brain dump entry states
 - "New project" surfaces
 - Draft states
 - Onboarding moments
 - Empty states with creative potential
 
-**Why It Works:** The dot pattern is pre-structure. It suggests *something could emerge here*. Users unconsciously feel permission to be messy.
+**Why It Works:** The dot pattern is pre-structure. It suggests _something could emerge here_. Users unconsciously feel permission to be messy.
 
 ---
 
@@ -91,6 +94,7 @@ Each texture has a **psychological reason** for its existence.
 **Psychological Basis:** Wood grain = natural growth + human shaping. Something being worked.
 
 **Use For:**
+
 - Active task lists
 - "In progress" states
 - Work-mode interfaces
@@ -108,6 +112,7 @@ Each texture has a **psychological reason** for its existence.
 **Psychological Basis:** Horizontal lines suggest forward motion, time passing, heartbeat rhythm
 
 **Use For:**
+
 - "Today's Focus" sections
 - Deadline indicators
 - Priority zones
@@ -125,6 +130,7 @@ Each texture has a **psychological reason** for its existence.
 **Psychological Basis:** Static = signal being blocked. Something preventing clarity.
 
 **Use For:**
+
 - Error states
 - Warning notifications
 - "Needs triage" areas
@@ -142,6 +148,7 @@ Each texture has a **psychological reason** for its existence.
 **Psychological Basis:** Weaving = multiple strands connected into strength
 
 **Use For:**
+
 - Shared projects
 - Dependency indicators
 - Linked entity displays
@@ -159,6 +166,7 @@ Each texture has a **psychological reason** for its existence.
 **Psychological Basis:** The grid = human order imposed on chaos. Official. Structural.
 
 **Use For:**
+
 - Primary containers
 - Modal overlays
 - Canonical/official views
@@ -176,6 +184,7 @@ Each texture has a **psychological reason** for its existence.
 **Psychological Basis:** The filing label, the printed header—signals organization point
 
 **Use For:**
+
 - Section headers
 - Card header strips
 - Navigation transitions
@@ -190,11 +199,11 @@ Each texture has a **psychological reason** for its existence.
 
 Three levels control texture visibility without changing meaning:
 
-| Level | CSS Class | Opacity | Use Case |
-|-------|-----------|---------|----------|
-| **Weak** | `tx-weak` | ~3% | Body text areas, most UI surfaces |
-| **Medium** | `tx-med` | ~6% | Section headers, hero areas |
-| **Strong** | `tx-strong` | ~10% | Background-only areas, marketing |
+| Level      | CSS Class   | Opacity | Use Case                          |
+| ---------- | ----------- | ------- | --------------------------------- |
+| **Weak**   | `tx-weak`   | ~3%     | Body text areas, most UI surfaces |
+| **Medium** | `tx-med`    | ~6%     | Section headers, hero areas       |
+| **Strong** | `tx-strong` | ~10%    | Background-only areas, marketing  |
 
 **Rule:** Weak is the default. Only escalate intensity when hierarchy demands it.
 
@@ -216,11 +225,11 @@ BuildOS uses **Inkprint** — the aesthetic of printed matter:
 
 ### The Three Roles of Color
 
-| Role | Light Mode | Dark Mode | Purpose |
-|------|------------|-----------|---------|
-| **Paper** | `--background: 40 20% 98%` | `--background: 240 10% 6%` | The substrate everything sits on |
-| **Ink** | `--foreground: 240 10% 10%` | `--foreground: 40 10% 92%` | The marks made on paper |
-| **Accent** | `--accent: 24 80% 55%` | `--accent: 24 85% 58%` | The single highlight color |
+| Role       | Light Mode                  | Dark Mode                  | Purpose                          |
+| ---------- | --------------------------- | -------------------------- | -------------------------------- |
+| **Paper**  | `--background: 40 20% 98%`  | `--background: 240 10% 6%` | The substrate everything sits on |
+| **Ink**    | `--foreground: 240 10% 10%` | `--foreground: 40 10% 92%` | The marks made on paper          |
+| **Accent** | `--accent: 24 80% 55%`      | `--accent: 24 85% 58%`     | The single highlight color       |
 
 ### Why Warm Amber-Orange?
 
@@ -247,7 +256,13 @@ Both should feel like **the same printed artifact under different lighting** —
 
 ```css
 /* Primary: UI/Commands */
-font-family: Inter, 'Söhne', 'GT America', system-ui, -apple-system, sans-serif;
+font-family:
+	Inter,
+	'Söhne',
+	'GT America',
+	system-ui,
+	-apple-system,
+	sans-serif;
 
 /* Secondary: Notes/Scratch (optional) */
 font-family: 'IBM Plex Serif', Literata, serif;
@@ -257,21 +272,19 @@ font-family: 'IBM Plex Serif', Literata, serif;
 
 ### Type Hierarchy
 
-| Role | Size | Weight | Use |
-|------|------|--------|-----|
-| **H1/Hero** | `text-3xl sm:text-5xl` | `semibold` | Page titles, landing headlines |
-| **H2/Section** | `text-2xl sm:text-3xl` | `semibold` | Section headers |
-| **H3/Card** | `text-lg` | `semibold` | Card titles, panel headers |
-| **Body** | `text-sm sm:text-base` | `normal` | Regular content |
-| **Small** | `text-xs` | `normal` | Helper text, metadata |
-| **Micro-Label** | `text-[0.65rem]` | `uppercase tracking-[0.15em]` | Category markers, metadata anchors |
+| Role            | Size                   | Weight                        | Use                                |
+| --------------- | ---------------------- | ----------------------------- | ---------------------------------- |
+| **H1/Hero**     | `text-3xl sm:text-5xl` | `semibold`                    | Page titles, landing headlines     |
+| **H2/Section**  | `text-2xl sm:text-3xl` | `semibold`                    | Section headers                    |
+| **H3/Card**     | `text-lg`              | `semibold`                    | Card titles, panel headers         |
+| **Body**        | `text-sm sm:text-base` | `normal`                      | Regular content                    |
+| **Small**       | `text-xs`              | `normal`                      | Helper text, metadata              |
+| **Micro-Label** | `text-[0.65rem]`       | `uppercase tracking-[0.15em]` | Category markers, metadata anchors |
 
 ### The Micro-Label Pattern
 
 ```html
-<p class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground">
-  ONTOLOGY
-</p>
+<p class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground">ONTOLOGY</p>
 ```
 
 Micro-labels are **navigation anchors** — they tell users instantly where they are in the system. Like printed labels on folder tabs.
@@ -291,18 +304,24 @@ BuildOS motion should feel:
 
 ### Motion Tokens
 
-| Token | Duration | Easing | Use |
-|-------|----------|--------|-----|
-| **Fast** | 120ms | `cubic-bezier(0.4, 0, 0.2, 1)` | Hover states, button presses |
-| **Default** | 180ms | `cubic-bezier(0.4, 0, 0.2, 1)` | Modal open/close, element entry |
-| **Slow** | 260ms | `cubic-bezier(0.4, 0, 0.2, 1)` | Complex animations |
+| Token       | Duration | Easing                         | Use                             |
+| ----------- | -------- | ------------------------------ | ------------------------------- |
+| **Fast**    | 120ms    | `cubic-bezier(0.4, 0, 0.2, 1)` | Hover states, button presses    |
+| **Default** | 180ms    | `cubic-bezier(0.4, 0, 0.2, 1)` | Modal open/close, element entry |
+| **Slow**    | 260ms    | `cubic-bezier(0.4, 0, 0.2, 1)` | Complex animations              |
 
 ### The "Ink Set" Animation
 
 ```css
 @keyframes ink-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 ```
 
@@ -312,7 +331,7 @@ Elements "set" into place like ink settling on paper. Quick drop, clean landing.
 
 ```css
 .pressable:active {
-  transform: translateY(1px);
+	transform: translateY(1px);
 }
 ```
 
@@ -332,17 +351,18 @@ The goal is **familiar strangeness** — users should feel they've seen this bef
 
 ### Sources of Familiar Strangeness
 
-| Source | How We Evoke It | User Feeling |
-|--------|-----------------|--------------|
-| **Printed matter** | Paper-like backgrounds, ink-like text | "Feels real, substantial" |
-| **Workshop tools** | Textured surfaces, visible structure | "This is built for work" |
-| **Field notes** | Dense information, micro-labels | "Professional, serious" |
-| **Architectural drawings** | Grid textures, precise spacing | "This is planned, intentional" |
-| **Woodblock prints** | Bold surfaces, carved-feel shadows | "Crafted, not generated" |
+| Source                     | How We Evoke It                       | User Feeling                   |
+| -------------------------- | ------------------------------------- | ------------------------------ |
+| **Printed matter**         | Paper-like backgrounds, ink-like text | "Feels real, substantial"      |
+| **Workshop tools**         | Textured surfaces, visible structure  | "This is built for work"       |
+| **Field notes**            | Dense information, micro-labels       | "Professional, serious"        |
+| **Architectural drawings** | Grid textures, precise spacing        | "This is planned, intentional" |
+| **Woodblock prints**       | Bold surfaces, carved-feel shadows    | "Crafted, not generated"       |
 
 ### The Rule: One Unusual + Three Familiar
 
 Every UI surface should have:
+
 - **One element that breaks expectation** (texture, animation, density)
 - **Three elements that meet expectation** (navigation, hierarchy, affordances)
 
@@ -357,6 +377,7 @@ This creates intrigue without confusion.
 Not "users" — **Empire Builders**.
 
 People who:
+
 - Have too many ideas and not enough structure
 - Want to build something significant
 - Need AI that actually knows their work
@@ -365,13 +386,13 @@ People who:
 
 ### Visual Language for Empire Builders
 
-| Principle | Manifestation |
-|-----------|---------------|
-| **Ambition** | High information density, complex projects handled gracefully |
-| **Capability** | Professional, not playful. Serious tool energy |
-| **Progress** | Visible momentum, completion states, accumulated context |
-| **Control** | User is in command. AI serves, doesn't lead |
-| **Craft** | Every pixel intentional. Texture, not decoration |
+| Principle      | Manifestation                                                 |
+| -------------- | ------------------------------------------------------------- |
+| **Ambition**   | High information density, complex projects handled gracefully |
+| **Capability** | Professional, not playful. Serious tool energy                |
+| **Progress**   | Visible momentum, completion states, accumulated context      |
+| **Control**    | User is in command. AI serves, doesn't lead                   |
+| **Craft**      | Every pixel intentional. Texture, not decoration              |
 
 ### What Empire Builders Notice
 
@@ -388,20 +409,21 @@ People who:
 
 ```svelte
 <div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-  <div class="px-4 py-3 border-b border-border">
-    <p class="micro-label text-accent">ONTOLOGY</p>
-    <h3 class="text-lg font-semibold text-foreground">Project Goals</h3>
-  </div>
-  <div class="p-4">
-    <!-- Content -->
-  </div>
+	<div class="px-4 py-3 border-b border-border">
+		<p class="micro-label text-accent">ONTOLOGY</p>
+		<h3 class="text-lg font-semibold text-foreground">Project Goals</h3>
+	</div>
+	<div class="p-4">
+		<!-- Content -->
+	</div>
 </div>
 ```
 
 ### Interactive Button Pattern
 
 ```svelte
-<button class="
+<button
+	class="
   px-4 py-2
   bg-accent text-accent-foreground
   rounded-lg font-semibold
@@ -409,8 +431,9 @@ People who:
   pressable
   hover:opacity-95
   transition
-">
-  Build Context
+"
+>
+	Build Context
 </button>
 ```
 
@@ -418,7 +441,7 @@ People who:
 
 ```svelte
 <div class="bg-card border border-border rounded-lg shadow-ink tx tx-static tx-weak p-4">
-  <p class="text-sm text-destructive">Something needs attention</p>
+	<p class="text-sm text-destructive">Something needs attention</p>
 </div>
 ```
 
@@ -426,7 +449,7 @@ People who:
 
 ```svelte
 <div class="bg-card border border-border rounded-lg shadow-ink tx tx-grain tx-weak">
-  <!-- Active task list -->
+	<!-- Active task list -->
 </div>
 ```
 
@@ -436,13 +459,13 @@ People who:
 
 ### Design Should Sound Like DJ
 
-| DJ Says | Design Shows |
-|---------|--------------|
-| "I tinker, I work, I build" | Textured surfaces, visible craft |
-| "Blue collar software engineering" | Workshop aesthetic, tool-like UI |
-| "AI should know your work" | Context prominently displayed |
-| "Your brain isn't broken" | No shame in messy states, validates chaos |
-| "Context compounds" | Visual accumulation, history visible |
+| DJ Says                            | Design Shows                              |
+| ---------------------------------- | ----------------------------------------- |
+| "I tinker, I work, I build"        | Textured surfaces, visible craft          |
+| "Blue collar software engineering" | Workshop aesthetic, tool-like UI          |
+| "AI should know your work"         | Context prominently displayed             |
+| "Your brain isn't broken"          | No shame in messy states, validates chaos |
+| "Context compounds"                | Visual accumulation, history visible      |
 
 ### Micro-Copy Voice
 
@@ -486,20 +509,20 @@ People who:
 
 ### Required Assets
 
-- [ ] Primary logo (light/dark SVG) — *Exists, needs review*
-- [ ] Favicon set (all sizes) — *Exists*
-- [ ] Social cards (Twitter/LinkedIn) — *Partial*
-- [ ] Marketing hero images — *Needed*
-- [ ] Feature screenshots with Inkprint styling — *Needed*
-- [ ] Texture pattern SVG set (7 textures) — *In CSS, could export*
-- [ ] Icon set (Lucide integration) — *Exists*
+- [ ] Primary logo (light/dark SVG) — _Exists, needs review_
+- [ ] Favicon set (all sizes) — _Exists_
+- [ ] Social cards (Twitter/LinkedIn) — _Partial_
+- [ ] Marketing hero images — _Needed_
+- [ ] Feature screenshots with Inkprint styling — _Needed_
+- [ ] Texture pattern SVG set (7 textures) — _In CSS, could export_
+- [ ] Icon set (Lucide integration) — _Exists_
 
 ### Brand Collateral
 
-- [ ] One-pager PDF — *See companion document*
-- [ ] Pitch deck with Inkprint styling — *Needed*
-- [ ] Email templates with texture — *Needed*
-- [ ] Social media templates — *Needed*
+- [ ] One-pager PDF — _See companion document_
+- [ ] Pitch deck with Inkprint styling — _Needed_
+- [ ] Email templates with texture — _Needed_
+- [ ] Social media templates — _Needed_
 
 ---
 
@@ -547,6 +570,7 @@ shadow-ink-inner    /* Inset shadows */
 **This document is the source of truth for BuildOS brand aesthetic.**
 
 Every design decision should trace back to:
+
 1. Founder DNA (who DJ is)
 2. Product philosophy (context that compounds)
 3. User identity (empire builders)

@@ -77,5 +77,5 @@ Building a portfolio of SaaS products using no-code tools enhanced with AI, all 
 
 ---
 
-*Added: 2026-01-13*
-*Source: Build in public lists*
+_Added: 2026-01-13_
+_Source: Build in public lists_

@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/project/synthesis/SynthesisLoadingState.svelte -->
 <script lang="ts">
-	import { Sparkles, Loader2 } from 'lucide-svelte';
+	import { Sparkles, LoaderCircle } from 'lucide-svelte';
 </script>
 
 <div class="space-y-6">
@@ -56,7 +56,7 @@
 				/>
 			</div>
 			<div class="flex items-center justify-center mt-2">
-				<Loader2 class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin mr-2" />
+				<LoaderCircle class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin mr-2" />
 				<span class="text-sm text-gray-500 dark:text-gray-400">
 					Finding optimizations...
 				</span>

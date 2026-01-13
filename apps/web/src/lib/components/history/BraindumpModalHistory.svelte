@@ -11,7 +11,7 @@
 		FileText,
 		ExternalLink,
 		Copy,
-		Loader2,
+		LoaderCircle,
 		Sparkles,
 		Zap,
 		Trash2
@@ -262,7 +262,7 @@
 		{#if isLoading}
 			<!-- Loading state -->
 			<div class="flex items-center justify-center py-8">
-				<Loader2 class="w-6 h-6 animate-spin text-violet-600 dark:text-violet-400" />
+				<LoaderCircle class="w-6 h-6 animate-spin text-violet-600 dark:text-violet-400" />
 				<span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading...</span>
 			</div>
 		{:else if error}

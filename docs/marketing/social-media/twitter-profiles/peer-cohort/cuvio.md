@@ -78,5 +78,5 @@ Published "The ADHD Founder's Tech Stack: How I Finally Stayed Focused Building 
 
 ---
 
-*Added: 2026-01-13*
-*Source: Medium article research*
+_Added: 2026-01-13_
+_Source: Medium article research_

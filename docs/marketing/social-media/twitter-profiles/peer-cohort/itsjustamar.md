@@ -42,6 +42,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/itsjustamar.md
 ## Product
 
 **ZenMaid** - SaaS for maid service business owners
+
 - Scheduling and management
 - Vertical-specific features
 - $3M+ annual revenue
@@ -83,5 +84,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/itsjustamar.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: Bootstrapped founders list*
+_Added: 2026-01-13_
+_Source: Bootstrapped founders list_

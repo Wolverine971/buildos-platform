@@ -33,4 +33,4 @@ Major influence in DX tooling. Learnings apply to BuildOS developer experience.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

@@ -60,9 +60,9 @@
 	>
 		<div class="flex items-center gap-2 sm:gap-3 flex-1">
 			<div
-				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-muted flex items-center justify-center"
+				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
 			>
-				<Icon class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
+				<Icon class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 			</div>
 			<div class="min-w-0">
 				<p class="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1">

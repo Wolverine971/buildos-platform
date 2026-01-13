@@ -12,11 +12,12 @@ BEGIN
     ),
     daily_counts AS (
         SELECT 
-            DATE(created_at AT TIME ZONE 'UTC') as visit_date,
+            (created_at AT TIME ZONE 'UTC')::date as visit_date,
             COUNT(DISTINCT visitor_id) as visitor_count
         FROM visitors 
-        WHERE DATE(created_at AT TIME ZONE 'UTC') BETWEEN start_date AND end_date
-        GROUP BY DATE(created_at AT TIME ZONE 'UTC')
+        WHERE created_at >= (start_date::timestamp at time zone 'UTC')
+          AND created_at < ((end_date + 1)::timestamp at time zone 'UTC')
+        GROUP BY (created_at AT TIME ZONE 'UTC')::date
     )
     SELECT 
         ds.date,

@@ -32,4 +32,4 @@ Building context infrastructure - learnings directly applicable to BuildOS.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

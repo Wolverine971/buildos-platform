@@ -81,5 +81,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/guillaumemoubeche
 
 ---
 
-*Added: 2026-01-13*
-*Source: Build in public lists*
+_Added: 2026-01-13_
+_Source: Build in public lists_

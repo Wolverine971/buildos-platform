@@ -39,4 +39,4 @@ iOS journaling app - productivity/reflection space, similar user base potential.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

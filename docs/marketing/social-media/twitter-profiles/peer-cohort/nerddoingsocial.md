@@ -32,4 +32,4 @@ Focus on helping smaller makers get visibility - could feature BuildOS.
 
 ---
 
-*Added: 2026-01-13*
+_Added: 2026-01-13_

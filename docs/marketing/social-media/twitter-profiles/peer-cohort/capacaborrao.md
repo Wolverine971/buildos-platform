@@ -41,6 +41,7 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/capacaborrao.md
 ## Product
 
 **Capacities** - Object-based note-taking app
+
 - Objects help structure notes from the core
 - Repeatable note templates
 - More approachable than Obsidian
@@ -87,5 +88,5 @@ path: docs/marketing/social-media/twitter-profiles/peer-cohort/capacaborrao.md
 
 ---
 
-*Added: 2026-01-13*
-*Source: PKM tool research*
+_Added: 2026-01-13_
+_Source: PKM tool research_
