@@ -75,7 +75,7 @@ This directory contains detailed research gathered during the design phase of th
 
 - Use existing `sms_messages.scheduled_for` for scheduling
 - Leverage `queue_jobs` for processing scheduled messages
-- Phone verification required via `get_user_sms_channel_info()` helper
+- Phone verification required via `user_sms_preferences.phone_verified` (helper RPC removed)
 - Quiet hours schema exists but NOT currently enforced (enhancement opportunity)
 
 ---

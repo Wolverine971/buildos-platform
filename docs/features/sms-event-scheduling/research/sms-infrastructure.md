@@ -297,26 +297,20 @@ CREATE OR REPLACE FUNCTION queue_sms_message(
 - `normal` → priority 10
 - `low` → priority 20
 
-#### `get_user_sms_channel_info`
+#### SMS channel availability (no RPC)
 
-Helper function for notification system integration.
+Helper RPC removed; query `user_sms_preferences` directly.
 
 ```sql
-CREATE OR REPLACE FUNCTION get_user_sms_channel_info(p_user_id UUID)
-RETURNS TABLE (
-  has_sms_available BOOLEAN,
-  phone_number TEXT,
-  phone_verified BOOLEAN,
-  phone_verified_at TIMESTAMPTZ,
-  opted_out BOOLEAN
-)
+SELECT
+  COALESCE(phone_verified = true AND opted_out = false, false) as has_sms_available,
+  phone_number,
+  COALESCE(phone_verified, false) as phone_verified,
+  phone_verified_at,
+  COALESCE(opted_out, false) as opted_out
+FROM user_sms_preferences
+WHERE user_id = p_user_id;
 ```
-
-**Returns:**
-
-- `has_sms_available`: true if phone verified AND not opted out
-- Phone number and verification details
-- Opt-out status
 
 ---
 

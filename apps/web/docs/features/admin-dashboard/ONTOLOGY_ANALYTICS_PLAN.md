@@ -26,7 +26,7 @@
     - Linkage: `chat_sessions_daily_briefs` table connects briefs to chat sessions (useful for context/attribution).
     - No current admin view that lists “who is getting briefs”; daily brief counts come only from generation RPC/`daily_briefs`.
 - **System health signals**
-    - `system_metrics` table is written only via `ActivityLogger.logSystemMetric` and currently used in `LLMPool.makeRequest` to record LLM call duration; `refresh_system_metrics` RPC exists but is not called.
+    - `system_metrics` table is written only via `ActivityLogger.logSystemMetric` and currently used in `LLMPool.makeRequest` to record LLM call duration; `refresh_system_metrics` was removed, so no refresher exists today.
     - Admin dashboard and export read `system_metrics` without validating staleness.
     - Error surface exists via `ErrorLoggerService`, but `getSystemOverview`/`getSystemMetrics` don’t combine error rates or queue health (no queue depth/cron lag metrics captured).
 
@@ -34,7 +34,7 @@
 
 - Brain dump metrics no longer represent agentic chat usage; UI/queries still hard-coded to `brain_dumps`.
 - Daily brief analytics lack recipient visibility and do not account for ontology `ontology_daily_briefs`; admin export omits per-user delivery and channel breakdown.
-- System health panel may show stale or incomplete data; no scheduled writer for `system_metrics` and no use of `refresh_system_metrics`.
+- System health panel may show stale or incomplete data; no scheduled writer for `system_metrics` and no refresher RPC.
 - Admin chat export still points at legacy `chat_sessions/messages` instead of ontology agent chat tables.
 
 ## Plan
@@ -42,7 +42,7 @@
 1. **Data model & SQL surface**
     - Add SQL views/RPCs for ontology chat analytics (e.g., `get_agent_chat_overview(start_date, end_date)`) that return: sessions count, avg turns, tokens per session/message, planner vs executor session mix, failures (status = failed), and per-user leaderboards (top chat users by sessions/messages/tokens).
     - Add daily brief recipient view: join `user_notification_preferences` + `user_sms_preferences` + `emails/email_recipients` filtered by `category='daily_brief'` + (eventual) `ontology_daily_briefs` for generation status; expose per-user channel flags, last_sent timestamps, and last_delivery status.
-    - Add system health refresher RPC or scheduled job that writes to `system_metrics`: LLM latency (per provider), worker queue depth/oldest job, failed job count, Supabase error rate, recent agent execution failure rate. Use `refresh_system_metrics` or a new worker cron to populate on an interval (e.g., every 5–10 minutes).
+    - Add a system health refresher (new RPC or scheduled job) that writes to `system_metrics`: LLM latency (per provider), worker queue depth/oldest job, failed job count, Supabase error rate, recent agent execution failure rate. Use a new worker cron to populate on an interval (e.g., every 5–10 minutes).
 
 2. **Backend service updates**
     - Replace `brainDumpMetrics` in `getComprehensiveAnalytics` with ontology chat aggregates (sessions/messages/tokens/tool calls/strategy split) and update leaderboards to use agent chat users instead of brain dump authors.
@@ -74,4 +74,4 @@
 
 - `get_brief_generation_stats(start_date, end_date)`: legacy daily_briefs aggregation; delete after the new ontology brief/recipient view or RPC ships and consumers are switched.
 - Any helper views/functions that aggregate `brain_dumps` for admin dashboards (none referenced directly in code; confirm migrations for `get_brain_dump_*` if they exist) should be dropped after the agent chat aggregates land.
-- If `refresh_system_metrics` remains unused once a new scheduled metrics writer is in place, delete or repoint it to the new health writer to avoid confusion.
+- `refresh_system_metrics` was removed; avoid referencing it in future plans.

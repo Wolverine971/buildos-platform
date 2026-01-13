@@ -485,9 +485,11 @@ onto_guards_pass(guards: jsonb[], entity: jsonb) → boolean
 #### 3. Project & Transition Queries
 
 ```sql
--- Get project with template
-get_project_with_template(project_id: uuid)
-  → (project jsonb, template jsonb)
+-- Get project skeleton
+get_project_skeleton(project_id: uuid, actor_id: uuid) → jsonb
+
+-- Get full project data
+get_project_full(project_id: uuid, actor_id: uuid) → jsonb
 
 -- Get allowed state transitions
 get_allowed_transitions(object_kind: text, object_id: uuid)

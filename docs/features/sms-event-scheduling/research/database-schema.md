@@ -537,25 +537,15 @@ CREATE TABLE user_sms_preferences (
 **SMS Availability Logic:**
 
 ```sql
--- Helper function to check if SMS is available for a user
-CREATE FUNCTION get_user_sms_channel_info(p_user_id UUID)
-RETURNS TABLE (
-  has_sms_available BOOLEAN,
-  phone_number TEXT,
-  phone_verified BOOLEAN,
-  phone_verified_at TIMESTAMPTZ,
-  opted_out BOOLEAN
-)
-AS $$
-  SELECT
-    COALESCE(phone_verified = true AND opted_out = false, false) as has_sms_available,
-    phone_number,
-    COALESCE(phone_verified, false) as phone_verified,
-    phone_verified_at,
-    COALESCE(opted_out, false) as opted_out
-  FROM user_sms_preferences
-  WHERE user_id = p_user_id;
-$$;
+-- Check if SMS is available for a user (helper RPC removed)
+SELECT
+  COALESCE(phone_verified = true AND opted_out = false, false) as has_sms_available,
+  phone_number,
+  COALESCE(phone_verified, false) as phone_verified,
+  phone_verified_at,
+  COALESCE(opted_out, false) as opted_out
+FROM user_sms_preferences
+WHERE user_id = p_user_id;
 ```
 
 ## 4. Link Tracking System
@@ -694,7 +684,7 @@ interface RetryConfig {
 
 3. **20251006_sms_notification_channel_phase1.sql**
     - Adds notification_delivery_id FK to sms_messages
-    - Creates get_user_sms_channel_info() helper
+    - (Removed) get_user_sms_channel_info() helper
     - Updates emit_notification_event() to support SMS
 
 4. **20250928_add_sms_messaging_tables.sql**
@@ -878,7 +868,7 @@ WHERE status = 'scheduled'
 
 ### 9.4 Phone Verification
 
-1. **Always Check**: Use get_user_sms_channel_info()
+1. **Always Check**: Query user_sms_preferences (helper RPC removed)
 2. **Fail Gracefully**: Handle unverified phones
 3. **Opt-out Respect**: Check opted_out flag
 

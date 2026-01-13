@@ -42,7 +42,7 @@ path: docs/features/sms-event-scheduling/README.md
 - ✅ Migration: `apps/web/supabase/migrations/20251008_sms_event_scheduling_system.sql`
 - ✅ Table `scheduled_sms_messages` with full schema, indexes, triggers
 - ✅ Updated `user_sms_preferences` with event reminder columns
-- ✅ RPC functions: `cancel_scheduled_sms_for_event`, `get_scheduled_sms_for_user`, `update_scheduled_sms_send_time`
+- ✅ Legacy RPCs removed: `cancel_scheduled_sms_for_event`, `get_scheduled_sms_for_user`, `update_scheduled_sms_send_time` (use worker endpoints and direct table updates)
 - ✅ Row-level security policies configured
 - ✅ Added `schedule_daily_sms` to queue_type enum
 
@@ -509,9 +509,10 @@ ADD COLUMN reminder_lead_time_minutes INTEGER DEFAULT 15;  -- How many minutes b
 
 - [x] Create migration for `scheduled_sms_messages` table
 - [x] Update `user_sms_preferences` with new columns
-- [x] Add database RPC: `cancel_scheduled_sms_for_event(calendar_event_id)`
-- [x] Add database RPC: `get_scheduled_sms_for_user(user_id, date_range, status)`
-- [x] Add database RPC: `update_scheduled_sms_send_time(message_id, new_time)`
+- [x] Legacy scheduled-SMS RPCs removed (use worker endpoints and `scheduled_sms_messages` updates):
+    - `cancel_scheduled_sms_for_event(calendar_event_id)`
+    - `get_scheduled_sms_for_user(user_id, date_range, status)`
+    - `update_scheduled_sms_send_time(message_id, new_time)`
 - [x] Configure RLS policies for security
 - [x] Add `schedule_daily_sms` to queue_type enum
 

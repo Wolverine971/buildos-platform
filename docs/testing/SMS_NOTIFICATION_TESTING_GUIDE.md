@@ -1100,15 +1100,12 @@ WHERE table_name = 'sms_messages'
 -- Expected: One row showing UUID, nullable column
 
 
--- ✅ Check helper function exists
-SELECT
-  routine_name,
-  routine_type
-FROM information_schema.routines
-WHERE routine_schema = 'public'
-  AND routine_name = 'get_user_sms_channel_info';
+-- ✅ Check SMS preferences row exists
+SELECT user_id, phone_number, phone_verified, opted_out
+FROM user_sms_preferences
+WHERE user_id = auth.uid();
 
--- Expected: One row showing FUNCTION
+-- Expected: One row for the current user
 
 
 -- ✅ Check SMS templates were added
@@ -1122,12 +1119,12 @@ WHERE template_key LIKE 'notif_%';
 -- Expected: 6 rows (notif_user_signup, notif_brief_completed, etc.)
 
 
--- ✅ Test helper function
-SELECT *
-FROM get_user_sms_channel_info(auth.uid());
+-- ✅ Verify current user's SMS status
+SELECT user_id, phone_number, phone_verified, opted_out
+FROM user_sms_preferences
+WHERE user_id = auth.uid();
 
--- Expected: Row showing your phone status
--- has_sms_available = true if you have verified phone
+-- Expected: phone_verified = true and opted_out = false for SMS eligibility
 ```
 
 ---
@@ -1486,17 +1483,17 @@ SELECT emit_notification_event(
 **Expected Result:**
 
 - No SMS delivery created
-- `get_user_sms_channel_info()` returns `has_sms_available = false`
+- `user_sms_preferences` shows opted_out = true (and/or phone_verified = false)
 
 **Verify:**
 
 ```sql
--- Check helper function
-SELECT * FROM get_user_sms_channel_info(
-  (SELECT id FROM users WHERE email = 'your@email.com')
-);
+-- Check SMS preferences
+SELECT user_id, phone_verified, opted_out
+FROM user_sms_preferences
+WHERE user_id = (SELECT id FROM users WHERE email = 'your@email.com');
 
--- Expected: has_sms_available = false, opted_out = true
+-- Expected: opted_out = true
 ```
 
 **Cleanup:**

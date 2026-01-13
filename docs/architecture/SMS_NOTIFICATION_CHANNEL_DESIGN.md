@@ -195,33 +195,17 @@ IF v_sms_enabled THEN
 END IF;
 ```
 
-#### Task 1.2: Create Helper Function
+#### Task 1.2: SMS channel lookup (no RPC)
 
-**Function**: `get_user_sms_channel_info`
+`get_user_sms_channel_info` was removed; read `user_sms_preferences` directly in code.
 
 ```sql
-CREATE OR REPLACE FUNCTION get_user_sms_channel_info(p_user_id UUID)
-RETURNS TABLE (
-  has_sms_enabled BOOLEAN,
-  phone_number TEXT,
-  phone_verified BOOLEAN
-)
-LANGUAGE plpgsql
-STABLE
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT
-    COALESCE(sp.phone_number IS NOT NULL AND sp.phone_verified = true, false) as has_sms_enabled,
-    sp.phone_number,
-    COALESCE(sp.phone_verified, false) as phone_verified
-  FROM user_sms_preferences sp
-  WHERE sp.user_id = p_user_id;
-END;
-$$;
-
-COMMENT ON FUNCTION get_user_sms_channel_info IS
-'Gets SMS channel availability for a user (phone number and verification status)';
+SELECT
+  COALESCE(sp.phone_number IS NOT NULL AND sp.phone_verified = true, false) as has_sms_enabled,
+  sp.phone_number,
+  COALESCE(sp.phone_verified, false) as phone_verified
+FROM user_sms_preferences sp
+WHERE sp.user_id = p_user_id;
 ```
 
 ---
@@ -1258,7 +1242,7 @@ SMS click tracking was implemented as part of the unified notification tracking 
     - `generate_short_code()` - generates random 6-char codes
     - `create_tracking_link()` - creates tracking link with collision handling
     - `get_link_click_stats()` - analytics queries
-    - `cleanup_old_tracking_links()` - data retention
+    - `cleanup_old_tracking_links()` - removed (no retention RPC currently)
 
 **Redirect Endpoint**: `apps/web/src/routes/l/[short_code]/+server.ts`
 

@@ -51,7 +51,7 @@
 
 ### Project APIs
 
-- [x] `/api/onto/projects/[id]/+server.ts` - replaced get_project_with_template RPC
+- [x] `/api/onto/projects/[id]/+server.ts` - removed get_project_with_template RPC
 - [x] `/api/onto/projects/instantiate/+server.ts` - updated
 
 ### Task APIs
@@ -158,7 +158,7 @@
 
 - [x] Created `20251211_remove_template_dependencies_from_rpc.sql`
 - [x] Rewrote `get_allowed_transitions` with hardcoded FSM (no template query)
-- [x] Updated `get_project_with_template` to return NULL for template
+- [x] Dropped `get_project_with_template` RPC (function removed)
 - [x] Dropped `get_template_catalog` function
 
 #### Step 2: Drop Tables/Columns (COMPLETED)

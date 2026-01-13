@@ -909,7 +909,9 @@ Migration steps:
 3. Populate `ontology_brief_entities` opportunistically from legacy metadata (if present) and during regeneration.
 4. Update worker code to write to new tables only; keep legacy tables read-only until cutover verification, then deprecate.
 
-### 6.2 Helper Functions (canonical relationships)
+### 6.2 Helper Functions (canonical relationships, deprecated)
+
+Note: These helper RPCs were removed in the 2026-01-12 cleanup. Use direct edge queries instead of creating them.
 
 ```sql
 -- Function to get tasks for a plan via edges

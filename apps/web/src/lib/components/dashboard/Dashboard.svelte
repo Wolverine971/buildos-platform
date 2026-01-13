@@ -212,9 +212,9 @@
 </script>
 
 <main class="min-h-screen bg-background transition-colors">
-	<div class="container mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-8 lg:py-10 max-w-7xl">
+	<div class="container mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 max-w-7xl">
 		<!-- Header Section - Compact on mobile -->
-		<header class="mb-2.5 sm:mb-6">
+		<header class="mb-2 sm:mb-4">
 			<!-- Mobile: Compact single line with name and date -->
 			<div class="flex items-baseline justify-between gap-2 sm:block">
 				<h1
@@ -231,8 +231,8 @@
 		</header>
 
 		<!-- Daily Brief Widget -->
-		<section class="mb-2.5 sm:mb-6">
-			<DashboardBriefWidget {user} onViewBrief={handleViewBrief} />
+		<section class="mb-2 sm:mb-4">
+			<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
 		</section>
 
 		<!-- Error State -->
@@ -274,7 +274,7 @@
 			<!-- Section Header - More compact on mobile -->
 			<div class="flex items-center gap-1.5 sm:gap-3">
 				<div
-					class="p-1 sm:p-2 bg-accent/10 rounded-md sm:rounded-lg border border-accent/30"
+					class="p-1 sm:p-2 bg-accent/10 rounded-md sm:rounded-lg border border-accent/20"
 				>
 					<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-accent" />
 				</div>
@@ -294,7 +294,7 @@
 						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink sm:min-h-[200px] opacity-50"
 					>
 						<div
-							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent"
+							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/20 bg-accent/10 text-accent"
 						>
 							<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
 						</div>
@@ -314,7 +314,7 @@
 					class="rounded-lg border-2 border-dashed border-border bg-card p-6 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
 				>
 					<div
-						class="mx-auto mb-4 sm:mb-6 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent"
+						class="mx-auto mb-4 sm:mb-6 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent"
 					>
 						<Sparkles class="h-6 w-6 sm:h-8 sm:w-8" />
 					</div>
@@ -337,7 +337,7 @@
 					</Button>
 				</div>
 			{:else}
-				<div class="space-y-5 sm:space-y-6">
+				<div class="space-y-3 sm:space-y-4">
 					<div class="space-y-2 sm:space-y-3">
 						<h3 class="text-sm sm:text-base font-semibold text-foreground">
 							My Projects
@@ -349,7 +349,7 @@
 								class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable sm:min-h-[200px]"
 							>
 								<div
-									class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
+									class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/20 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
 								>
 									<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
 								</div>
@@ -380,7 +380,7 @@
 											</h3>
 											<!-- Mobile: Inline status under title -->
 											<span
-												class="sm:hidden inline-flex mt-1 items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
+												class="sm:hidden inline-flex mt-1 items-center rounded-md px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
 													project.state_key
 												)}"
 											>
@@ -551,7 +551,7 @@
 												</h3>
 												<div class="flex flex-wrap items-center gap-1 mt-1">
 													<span
-														class="sm:hidden inline-flex items-center rounded px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
+														class="sm:hidden inline-flex items-center rounded-md px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
 															project.state_key
 														)}"
 													>

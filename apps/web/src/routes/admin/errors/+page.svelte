@@ -1,8 +1,6 @@
 <!-- apps/web/src/routes/admin/errors/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { invalidate } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { ErrorLogEntry, ErrorSeverity, ErrorType } from '$lib/types/error-logging';
 	import Button from '$components/ui/Button.svelte';
@@ -12,21 +10,19 @@
 	import InfoModal from '$components/ui/InfoModal.svelte';
 	import {
 		Check,
-		AlertTriangle,
+		TriangleAlert,
 		RefreshCw,
-		Search,
-		Filter,
+		ListFilter,
 		ChevronLeft,
 		ChevronRight,
 		Eye,
 		X,
 		Clock,
-		Bug,
-		Database,
-		Zap,
-		AlertCircle,
-		CheckCircle2
+		CircleAlert,
+		CircleCheck
 	} from 'lucide-svelte';
+
+	// Note: Bug, Database, Zap icons removed - add back if showing type icons in the future
 
 	let { data }: { data: PageData } = $props();
 
@@ -34,9 +30,16 @@
 	let summary = $state(data.summary || []);
 	let loading = $state(false);
 	let selectedError = $state<ErrorLogEntry | null>(null);
-	let selectedErrorIds = $state<Set<string>>(new Set());
-	let selectAll = $state(false);
+	let selectedErrorIds = $state<string[]>([]);
 	let bulkProcessing = $state(false);
+
+	// Derived state for selection
+	let selectAll = $derived(
+		errors.length > 0 && errors.every((e) => e.id && selectedErrorIds.includes(e.id))
+	);
+	let selectSome = $derived(selectedErrorIds.length > 0 && !selectAll);
+	let unresolvedErrors = $derived(errors.filter((e) => !e.resolved));
+	let unresolvedCount = $derived(unresolvedErrors.length);
 
 	// Modal state
 	let infoModal = $state({
@@ -65,7 +68,6 @@
 	let currentPage = $state(1);
 	let itemsPerPage = $state(50);
 	let hasMore = $state(false);
-	let totalErrors = $state(0);
 
 	async function loadErrors() {
 		loading = true;
@@ -87,8 +89,7 @@
 				summary = result.data.summary;
 				hasMore = result.data.pagination?.hasMore || false;
 				// Reset selection when loading new data
-				selectedErrorIds.clear();
-				selectAll = false;
+				selectedErrorIds = [];
 			}
 		} catch (error) {
 			console.error('Failed to load errors:', error);
@@ -133,7 +134,7 @@
 	}
 
 	function openBulkResolveModal() {
-		if (selectedErrorIds.size === 0) {
+		if (selectedErrorIds.length === 0) {
 			infoModal = {
 				isOpen: true,
 				title: 'No Errors Selected',
@@ -148,9 +149,10 @@
 	async function bulkResolveErrors() {
 		bulkResolveModalOpen = false;
 		const notes = resolutionNotes;
+		const idsToResolve = [...selectedErrorIds];
 		bulkProcessing = true;
 		try {
-			const promises = Array.from(selectedErrorIds).map((errorId) =>
+			const promises = idsToResolve.map((errorId) =>
 				fetch(`/api/admin/errors/${errorId}/resolve`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -192,27 +194,29 @@
 	}
 
 	function toggleSelectAll() {
-		selectAll = !selectAll;
 		if (selectAll) {
-			errors.forEach((error) => {
-				if (error.id) selectedErrorIds.add(error.id);
-			});
+			// Deselect all
+			selectedErrorIds = [];
 		} else {
-			selectedErrorIds.clear();
+			// Select all visible errors
+			selectedErrorIds = errors.filter((e) => e.id).map((e) => e.id!);
 		}
-		selectedErrorIds = selectedErrorIds;
+	}
+
+	function selectAllUnresolved() {
+		selectedErrorIds = unresolvedErrors.filter((e) => e.id).map((e) => e.id!);
 	}
 
 	function toggleErrorSelection(errorId: string) {
-		if (selectedErrorIds.has(errorId)) {
-			selectedErrorIds.delete(errorId);
+		if (selectedErrorIds.includes(errorId)) {
+			selectedErrorIds = selectedErrorIds.filter((id) => id !== errorId);
 		} else {
-			selectedErrorIds.add(errorId);
+			selectedErrorIds = [...selectedErrorIds, errorId];
 		}
-		selectedErrorIds = selectedErrorIds;
+	}
 
-		const allSelected = errors.every((error) => error.id && selectedErrorIds.has(error.id));
-		selectAll = allSelected;
+	function clearSelection() {
+		selectedErrorIds = [];
 	}
 
 	function changePage(newPage: number) {
@@ -225,7 +229,7 @@
 			case 'critical':
 				return {
 					badge: 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30',
-					icon: AlertCircle,
+					icon: CircleAlert,
 					dot: 'bg-red-500'
 				};
 			case 'error':
@@ -237,7 +241,7 @@
 			case 'warning':
 				return {
 					badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30',
-					icon: AlertTriangle,
+					icon: TriangleAlert,
 					dot: 'bg-amber-500'
 				};
 			case 'info':
@@ -249,22 +253,9 @@
 			default:
 				return {
 					badge: 'bg-muted text-muted-foreground border border-border',
-					icon: AlertCircle,
+					icon: CircleAlert,
 					dot: 'bg-muted-foreground'
 				};
-		}
-	}
-
-	function getTypeIcon(type: string | undefined) {
-		switch (type) {
-			case 'brain_dump_processing':
-				return Zap;
-			case 'llm_error':
-				return Bug;
-			case 'database_error':
-				return Database;
-			default:
-				return AlertCircle;
 		}
 	}
 
@@ -335,10 +326,36 @@
 		}
 	});
 
-	// Handle escape key for modal
+	// Handle keyboard shortcuts
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && selectedError) {
-			selectedError = null;
+		// Don't handle shortcuts when typing in inputs
+		const target = event.target as HTMLElement;
+		if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+			return;
+		}
+
+		if (event.key === 'Escape') {
+			if (selectedError) {
+				selectedError = null;
+			} else if (resolveModalOpen || bulkResolveModalOpen) {
+				resolveModalOpen = false;
+				bulkResolveModalOpen = false;
+			} else if (selectedErrorIds.length > 0) {
+				clearSelection();
+			}
+		}
+
+		// Ctrl/Cmd + A to select all (when not in input)
+		if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+			event.preventDefault();
+			if (!selectAll) {
+				toggleSelectAll();
+			}
+		}
+
+		// 'r' key to refresh
+		if (event.key === 'r' && !event.ctrlKey && !event.metaKey && !loading) {
+			loadErrors();
 		}
 	}
 </script>
@@ -355,19 +372,6 @@
 		<!-- Header -->
 		{#snippet headerActions()}
 			<div class="flex items-center gap-2">
-				{#if selectedErrorIds.size > 0}
-					<Button
-						onclick={openBulkResolveModal}
-						disabled={bulkProcessing}
-						variant="primary"
-						size="sm"
-						icon={Check}
-						loading={bulkProcessing}
-					>
-						<span class="hidden sm:inline">Resolve</span>
-						{selectedErrorIds.size}
-					</Button>
-				{/if}
 				<Button
 					onclick={() => {
 						filterResolvedRaw = filterResolved === false ? 'null' : 'false';
@@ -394,7 +398,7 @@
 		<AdminPageHeader
 			title="Error Logs"
 			description="Monitor and resolve system errors"
-			icon={AlertTriangle}
+			icon={TriangleAlert}
 			showBack={true}
 			actions={headerActions}
 		/>
@@ -424,7 +428,7 @@
 						</span>
 					</div>
 					<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-						<CheckCircle2 class="w-3 h-3 text-emerald-500" />
+						<CircleCheck class="w-3 h-3 text-emerald-500" />
 						<span>{item.resolved_count} resolved</span>
 					</div>
 				</div>
@@ -436,7 +440,7 @@
 			class="bg-card border border-border rounded-lg shadow-ink mb-3 sm:mb-4 tx tx-grain tx-weak"
 		>
 			<div class="px-3 py-2 border-b border-border flex items-center gap-2">
-				<Filter class="w-4 h-4 text-muted-foreground" />
+				<ListFilter class="w-4 h-4 text-muted-foreground" />
 				<span class="text-sm font-medium text-foreground">Filters</span>
 			</div>
 			<div class="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
@@ -530,22 +534,74 @@
 			</div>
 		</div>
 
+		<!-- Selection Action Bar -->
+		{#if selectedErrorIds.length > 0}
+			<div
+				class="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3 sm:mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+			>
+				<div class="flex items-center gap-3">
+					<div class="flex items-center gap-2">
+						<div class="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+							<Check class="w-4 h-4 text-accent" />
+						</div>
+						<div>
+							<p class="text-sm font-semibold text-foreground">
+								{selectedErrorIds.length} error{selectedErrorIds.length === 1 ? '' : 's'} selected
+							</p>
+							<p class="text-xs text-muted-foreground">
+								{#if selectAll}
+									All on this page
+								{:else}
+									of {errors.length} visible
+								{/if}
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-2 w-full sm:w-auto">
+					{#if unresolvedCount > 0 && selectedErrorIds.length !== unresolvedCount}
+						<Button onclick={selectAllUnresolved} variant="outline" size="sm" class="flex-1 sm:flex-none">
+							Select all unresolved ({unresolvedCount})
+						</Button>
+					{/if}
+					<Button onclick={clearSelection} variant="ghost" size="sm" icon={X} class="flex-1 sm:flex-none">
+						Clear
+					</Button>
+					<Button
+						onclick={openBulkResolveModal}
+						disabled={bulkProcessing}
+						variant="primary"
+						size="sm"
+						icon={Check}
+						loading={bulkProcessing}
+						class="flex-1 sm:flex-none"
+					>
+						Resolve {selectedErrorIds.length}
+					</Button>
+				</div>
+			</div>
+		{/if}
+
 		<!-- Error Table -->
 		<div
-			class="bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-static tx-weak"
+			class="bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-frame tx-weak"
 		>
 			<div class="overflow-x-auto">
 				<table class="w-full text-sm">
 					<thead>
 						<tr class="border-b border-border bg-muted/50">
 							<th class="px-3 py-2 text-left w-10">
-								<input
-									type="checkbox"
-									checked={selectAll}
-									onchange={toggleSelectAll}
-									class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background"
-									aria-label="Select all errors"
-								/>
+								<div class="relative">
+									<input
+										type="checkbox"
+										checked={selectAll}
+										indeterminate={selectSome}
+										onchange={toggleSelectAll}
+										class="h-4 w-4 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background cursor-pointer"
+										aria-label="Select all errors"
+									/>
+								</div>
 							</th>
 							<th
 								class="px-3 py-2 text-left text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider"
@@ -587,7 +643,7 @@
 					<tbody class="divide-y divide-border">
 						{#each errors as error}
 							{@const styles = getSeverityStyles(error.severity)}
-							{@const isSelected = error.id && selectedErrorIds.has(error.id)}
+							{@const isSelected = error.id && selectedErrorIds.includes(error.id)}
 							<tr
 								class="transition-colors hover:bg-muted/30 {isSelected
 									? 'bg-accent/10'
@@ -598,7 +654,7 @@
 										type="checkbox"
 										checked={!!isSelected}
 										onchange={() => error.id && toggleErrorSelection(error.id)}
-										class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background"
+										class="h-4 w-4 rounded border-border text-accent focus:ring-ring focus:ring-offset-0 bg-background cursor-pointer"
 										aria-label="Select error {error.id}"
 									/>
 								</td>
@@ -655,14 +711,14 @@
 										<span
 											class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-medium"
 										>
-											<CheckCircle2 class="w-3 h-3" />
+											<CircleCheck class="w-3 h-3" />
 											<span class="hidden lg:inline">Done</span>
 										</span>
 									{:else}
 										<span
 											class="inline-flex items-center gap-1 text-red-600 dark:text-red-400 text-xs font-medium"
 										>
-											<AlertCircle class="w-3 h-3" />
+											<CircleAlert class="w-3 h-3" />
 											<span class="hidden lg:inline">Open</span>
 										</span>
 									{/if}
@@ -695,7 +751,7 @@
 
 			{#if errors.length === 0}
 				<div class="text-center py-8 px-4">
-					<CheckCircle2 class="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+					<CircleCheck class="w-8 h-8 text-emerald-500 mx-auto mb-2" />
 					<p class="text-sm text-muted-foreground">No errors found</p>
 					<p class="text-xs text-muted-foreground mt-1">All clear!</p>
 				</div>
@@ -785,7 +841,7 @@
 				class="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30"
 			>
 				<div class="flex items-center gap-2">
-					<AlertTriangle class="w-5 h-5 text-accent" />
+					<TriangleAlert class="w-5 h-5 text-accent" />
 					<h2 class="text-base font-semibold text-foreground">Error Details</h2>
 				</div>
 				<button
@@ -1021,7 +1077,7 @@
 					{#if selectedError.resolved}
 						<div class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
 							<div class="flex items-center gap-2 mb-2">
-								<CheckCircle2 class="w-4 h-4 text-emerald-500" />
+								<CircleCheck class="w-4 h-4 text-emerald-500" />
 								<p
 									class="text-xs font-semibold text-emerald-600 dark:text-emerald-400"
 								>
@@ -1108,14 +1164,14 @@
 	title="Bulk Resolve"
 	buttonText={bulkProcessing
 		? 'Resolving...'
-		: `Resolve ${selectedErrorIds.size} Error${selectedErrorIds.size > 1 ? 's' : ''}`}
+		: `Resolve ${selectedErrorIds.length} Error${selectedErrorIds.length > 1 ? 's' : ''}`}
 	onclose={bulkResolveErrors}
 	size="md"
 >
 	<div class="space-y-3">
 		<p class="text-sm text-muted-foreground">
-			Resolving <span class="font-semibold text-foreground">{selectedErrorIds.size}</span>
-			error{selectedErrorIds.size > 1 ? 's' : ''}. Add optional notes:
+			Resolving <span class="font-semibold text-foreground">{selectedErrorIds.length}</span>
+			error{selectedErrorIds.length > 1 ? 's' : ''}. Add optional notes:
 		</p>
 		<TextInput
 			type="text"

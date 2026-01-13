@@ -528,47 +528,7 @@ Add engagement visibility to the admin dashboard:
 
 #### B. Admin Analytics Dashboard
 
-Add engagement metrics RPC function (optional, for analytics):
-
-```sql
-CREATE OR REPLACE FUNCTION get_engagement_analytics()
-RETURNS TABLE (
-  total_users INTEGER,
-  active_users INTEGER,
-  cooling_off_users INTEGER,
-  inactive_4_10_days INTEGER,
-  inactive_10_31_days INTEGER,
-  inactive_31_plus_days INTEGER,
-  briefs_sent_today INTEGER,
-  briefs_sent_week INTEGER,
-  avg_days_inactive DECIMAL
-) AS $$
-BEGIN
-  RETURN QUERY
-  WITH user_status AS (
-    SELECT
-      u.id,
-      u.last_visit,
-      CASE
-        WHEN u.last_visit IS NULL THEN NULL
-        ELSE EXTRACT(EPOCH FROM (NOW() - u.last_visit::timestamptz)) / 86400
-      END as days_inactive
-    FROM users u
-  )
-  SELECT
-    COUNT(*)::INTEGER as total_users,
-    COUNT(CASE WHEN days_inactive <= 2 THEN 1 END)::INTEGER as active_users,
-    COUNT(CASE WHEN days_inactive > 2 AND days_inactive <= 4 THEN 1 END)::INTEGER as cooling_off_users,
-    COUNT(CASE WHEN days_inactive > 4 AND days_inactive <= 10 THEN 1 END)::INTEGER as inactive_4_10_days,
-    COUNT(CASE WHEN days_inactive > 10 AND days_inactive <= 31 THEN 1 END)::INTEGER as inactive_10_31_days,
-    COUNT(CASE WHEN days_inactive > 31 THEN 1 END)::INTEGER as inactive_31_plus_days,
-    (SELECT COUNT(*)::INTEGER FROM daily_briefs WHERE brief_date = CURRENT_DATE),
-    (SELECT COUNT(*)::INTEGER FROM daily_briefs WHERE brief_date >= CURRENT_DATE - INTERVAL '7 days'),
-    AVG(days_inactive)::DECIMAL(10,2)
-  FROM user_status;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+Optional: use `get_user_engagement_metrics` for admin analytics; `get_engagement_analytics` was removed.
 
 ### 5. Monitoring and Analytics
 
@@ -648,13 +608,7 @@ describe('EngagementTrackingService', () => {
 - `users.last_visit` (already exists)
 - `daily_briefs` table (already exists)
 
-Optionally, add the analytics RPC function for the admin dashboard:
-
-```sql
--- Optional: Add analytics function for admin dashboard
-CREATE OR REPLACE FUNCTION get_engagement_analytics()
-... (as defined above)
-```
+Optionally, use `get_user_engagement_metrics` (existing RPC) or add a new view; do not create `get_engagement_analytics` (removed).
 
 ### Feature Flag
 

@@ -28,7 +28,9 @@
 - Membership and access are stored in `onto_project_members`.
     - `role_key` is semantic (owner/editor/viewer).
     - `access` is enforcement (read/write/admin) and is what RLS checks.
-- Invites are stored in `onto_project_invites` and accepted via RPCs.
+- Invites are stored in `onto_project_invites` and managed via security-definer RPCs
+  (`get_project_invite_preview`, `list_pending_project_invites`, `accept_project_invite`,
+  `accept_project_invite_by_id`, `decline_project_invite`).
 - `onto_assignments` and `onto_permissions` exist but are not part of RLS or the sharing flow.
 
 ## Access helpers
@@ -69,7 +71,7 @@
 ## Activity logging and attribution
 
 - `onto_project_logs` stores both `changed_by` (auth user id) and `changed_by_actor_id`.
-- `log_project_change` resolves actor attribution and inserts log entries.
+- Log writes are performed by application services via direct inserts.
 - `set_project_log_actor` runs before insert to populate `changed_by_actor_id`.
 - Backfills add owner memberships and map existing `changed_by` values to actors.
 
@@ -83,7 +85,8 @@
     - `add_project_owner_membership` trigger inserts owner membership.
 3. Project sharing invite
     - Admin creates invite in `onto_project_invites`.
-    - Invite acceptance validates token and email, ensures actor, and upserts membership.
+    - Invitees preview or list pending invites via RPCs and accept/decline via RPCs.
+    - Acceptance validates token/email, ensures actor, and upserts membership.
 4. Activity log reads
     - Logs are visible to members (including owners) via `current_actor_is_project_member`.
     - Public project visibility does not automatically grant log visibility.
@@ -95,6 +98,7 @@
 - Public projects: `is_public` grants read access to project data, but logs still require membership.
 - `onto_assignments`/`onto_permissions` are not enforced by RLS; assuming they grant access will cause confusion.
 - Service-role usage in user-facing flows can mask real RLS failures and create auth drift.
+- RPC drift: `log_project_change` is not present in the database; avoid referencing it in code or docs.
 
 ## Troubleshooting: activity logs not loading
 
@@ -114,12 +118,15 @@
 - `packages/shared-types/src/functions/current_actor_is_project_member.sql:4` - Membership-only helper.
 - `packages/shared-types/src/functions/is_admin.sql:4` - Admin checks.
 - `supabase/migrations/20260320000000_project_sharing_membership.sql:11` - `onto_project_members` and `onto_project_invites` tables.
-- `supabase/migrations/20260320000000_project_sharing_membership.sql:150` - `log_project_change` helper with actor attribution.
 - `supabase/migrations/20260320000000_project_sharing_membership.sql:225` - `set_project_log_actor` trigger.
 - `supabase/migrations/20260320000000_project_sharing_membership.sql:255` - Owner membership trigger.
 - `supabase/migrations/20260320000000_project_sharing_membership.sql:660` - RLS policies for logs/members/invites.
 - `supabase/migrations/20260320000002_project_sharing_access_fixes.sql:392` - RLS adjustments for logs and members.
 - `packages/shared-types/src/functions/accept_project_invite.sql:4` - Invite acceptance flow.
+- `packages/shared-types/src/functions/accept_project_invite_by_id.sql:4` - Invite acceptance by ID.
+- `packages/shared-types/src/functions/decline_project_invite.sql:4` - Invite decline flow.
+- `packages/shared-types/src/functions/get_project_invite_preview.sql:4` - Invite preview flow.
+- `packages/shared-types/src/functions/list_pending_project_invites.sql:4` - Pending invite listing.
 - `packages/shared-types/src/database.schema.ts:1245` - `onto_project_logs` schema snapshot.
 - `packages/supabase-client/src/index.ts:22` - RLS vs service-role client types.
 - `apps/web/src/lib/supabase/admin.ts:6` - Admin client guidance (service role).

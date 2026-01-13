@@ -23,10 +23,10 @@
 	// Props
 	interface Props {
 		user: { id: string; email?: string; is_admin?: boolean; timezone?: string | null };
-		onViewBrief?: (brief: DailyBrief) => void;
+		onviewbrief?: (brief: DailyBrief) => void;
 	}
 
-	let { user, onViewBrief }: Props = $props();
+	let { user, onviewbrief }: Props = $props();
 
 	// Get supabase client from context
 	const supabase = getContext<any>('supabase');
@@ -231,8 +231,8 @@
 	}
 
 	function handleClick() {
-		if (brief && onViewBrief) {
-			onViewBrief(brief);
+		if (brief && onviewbrief) {
+			onviewbrief(brief);
 		}
 	}
 </script>
@@ -358,7 +358,7 @@
 		<button
 			onclick={generateBrief}
 			disabled={isGenerating}
-			class="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-dashed border-accent/40 bg-accent/5 hover:border-accent hover:bg-accent/10 transition-all duration-200 pressable group"
+			class="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-dashed border-accent/50 bg-accent/5 hover:border-accent hover:bg-accent/10 transition-all duration-200 pressable group"
 		>
 			<div
 				class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20 group-hover:bg-accent group-hover:border-accent transition-colors flex-shrink-0"

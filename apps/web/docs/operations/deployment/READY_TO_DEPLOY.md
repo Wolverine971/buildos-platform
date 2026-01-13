@@ -102,8 +102,8 @@ pnpm start
 
 - Updates queue job metadata constraint
 - Creates indexes on `emails` table
-- Creates RPC functions: `get_pending_brief_emails()`, `get_brief_email_status()`
 - Creates monitoring view: `brief_email_stats`
+- Note: `get_pending_brief_emails()` and `get_brief_email_status()` were removed in the 2026-01-12 RPC cleanup.
 
 ---
 
@@ -124,10 +124,9 @@ WHERE tablename = 'emails'
 AND indexname LIKE 'idx_emails_%';
 -- Should include idx_emails_category_template_data and idx_emails_status_category
 
--- Verify functions exist
-SELECT proname FROM pg_proc
-WHERE proname LIKE '%brief_email%';
--- Should include get_pending_brief_emails and get_brief_email_status
+-- Verify view exists
+SELECT * FROM brief_email_stats
+LIMIT 1;
 ```
 
 ### After Deployment
@@ -152,11 +151,19 @@ SELECT * FROM brief_email_stats
 ORDER BY date DESC
 LIMIT 7;
 
--- Check pending emails
-SELECT * FROM get_pending_brief_emails(10);
+-- Check recent daily brief emails
+SELECT id, status, created_at
+FROM emails
+WHERE category = 'daily_brief'
+ORDER BY created_at DESC
+LIMIT 10;
 
--- Check email status for a specific brief
-SELECT * FROM get_brief_email_status('your-brief-id');
+-- Check brief email jobs
+SELECT id, status, created_at, metadata
+FROM queue_jobs
+WHERE job_type = 'generate_brief_email'
+ORDER BY created_at DESC
+LIMIT 10;
 ```
 
 ---
@@ -208,8 +215,6 @@ ALTER TABLE queue_jobs ADD CONSTRAINT valid_job_metadata CHECK (
 
 -- Drop email-specific objects
 DROP VIEW IF EXISTS brief_email_stats;
-DROP FUNCTION IF EXISTS get_pending_brief_emails;
-DROP FUNCTION IF EXISTS get_brief_email_status;
 DROP INDEX IF EXISTS idx_emails_category_template_data;
 DROP INDEX IF EXISTS idx_emails_status_category;
 
@@ -247,7 +252,7 @@ DROP INDEX IF EXISTS idx_emails_status_category;
 ### During Deployment
 
 - [ ] Run migration part 1 (adds enum to database)
-- [ ] Run migration part 2 (adds constraints/indexes/functions)
+- [ ] Run migration part 2 (adds constraints/indexes/view; RPCs removed in cleanup)
 - [ ] Regenerate TypeScript types from database schema
 - [ ] Rebuild packages (`pnpm build`)
 - [ ] Deploy worker service to Railway/hosting

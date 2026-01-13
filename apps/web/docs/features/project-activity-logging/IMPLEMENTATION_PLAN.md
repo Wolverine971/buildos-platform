@@ -32,7 +32,7 @@ This feature adds a project activity logging system and "next moves" capability 
 - **Migration**: `supabase/migrations/20251208_project_activity_logging.sql`
     - Creates `onto_project_logs` table with RLS policies
     - Adds `next_step_*` columns to `onto_projects`
-    - Includes helper functions: `log_project_change()`, `update_project_next_step()`
+    - Helper functions `log_project_change()` and `update_project_next_step()` were removed; logging and next-step updates are handled in app services.
 
 ### Shared Types (packages/shared-types)
 
