@@ -101,9 +101,9 @@ OpenRouter (audio-input chat models, ordered by quality):
 
 OpenAI direct (transcription endpoint):
 
-1. `gpt-4o-transcribe`
-2. `gpt-4o-mini-transcribe`
-3. `whisper-1`
+1. `gpt-4o-mini-transcribe` (default, cheaper)
+2. `gpt-4o-transcribe` (higher accuracy)
+3. `whisper-1` (legacy)
 
 ### Provider Order
 
@@ -126,7 +126,9 @@ Add/extend env configuration (defaults shown):
 TRANSCRIPTION_USE_OPENROUTER=false # Feature flag for OpenRouter transcription
 TRANSCRIPTION_OPENROUTER_MODEL=<audio-capable-model>
 TRANSCRIPTION_OPENROUTER_FALLBACK_MODELS=<comma-separated>
-TRANSCRIPTION_MODEL=gpt-4o-transcribe
+# TRANSCRIPTION_MODEL=gpt-4o-transcribe
+# NOTE: Testing the cheaper model to reduce transcription costs.
+TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
 TRANSCRIPTION_FALLBACK_MODELS=gpt-4o-mini-transcribe,whisper-1
 TRANSCRIPTION_TIMEOUT_MS=30000
 TRANSCRIPTION_MAX_RETRIES=2

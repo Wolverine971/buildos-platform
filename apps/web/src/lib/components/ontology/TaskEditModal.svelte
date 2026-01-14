@@ -49,7 +49,6 @@
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
-	import { TASK_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 
@@ -913,64 +912,42 @@
 											</Select>
 										</FormField>
 
-										<!-- Task State & Type -->
-										<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-											<FormField
-												label="State"
-												labelFor="state"
-												required={true}
+										<!-- Task State -->
+										<FormField
+											label="State"
+											labelFor="state"
+											required={true}
+										>
+											<Select
+												id="state"
+												bind:value={stateKey}
+												disabled={isSaving}
+												size="md"
+												placeholder="Select state"
 											>
-												<Select
-													id="state"
-													bind:value={stateKey}
-													disabled={isSaving}
-													size="md"
-													placeholder="Select state"
-												>
-													{#each TASK_STATES as state}
-														<option value={state}>
-															{state === 'todo'
-																? 'To Do'
-																: state === 'in_progress'
-																	? 'In Progress'
-																	: state === 'blocked'
-																		? 'Blocked'
-																		: state === 'done'
-																			? 'Done'
-																			: state}
-														</option>
-													{/each}
-												</Select>
-												{#if stateKey === 'done' && completedAt}
-													<p class="mt-2 text-xs text-muted-foreground">
-														Completed at:
-														<span class="font-medium text-foreground">
-															{format(new Date(completedAt), 'PPpp')}
-														</span>
-													</p>
-												{/if}
-											</FormField>
-
-											<FormField
-												label="Type"
-												labelFor="type"
-												hint="Task classification"
-											>
-												<Select
-													id="type"
-													bind:value={typeKey}
-													disabled={isSaving}
-													size="md"
-													placeholder="Select type"
-												>
-													{#each TASK_TYPE_KEYS as typeOption}
-														<option value={typeOption.value}>
-															{typeOption.label}
-														</option>
-													{/each}
-												</Select>
-											</FormField>
-										</div>
+												{#each TASK_STATES as state}
+													<option value={state}>
+														{state === 'todo'
+															? 'To Do'
+															: state === 'in_progress'
+																? 'In Progress'
+																: state === 'blocked'
+																	? 'Blocked'
+																	: state === 'done'
+																		? 'Done'
+																		: state}
+													</option>
+												{/each}
+											</Select>
+											{#if stateKey === 'done' && completedAt}
+												<p class="mt-2 text-xs text-muted-foreground">
+													Completed at:
+													<span class="font-medium text-foreground">
+														{format(new Date(completedAt), 'PPpp')}
+													</span>
+												</p>
+											{/if}
+										</FormField>
 
 										<!-- Connected Documents List -->
 										<div class="pt-6 border-t border-border">

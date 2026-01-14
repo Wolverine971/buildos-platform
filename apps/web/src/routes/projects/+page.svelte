@@ -434,10 +434,10 @@
 			</p>
 		</div>
 
-		<!-- Graph/Overview toggle - Admin Only - Inkprint tab design -->
+		<!-- Graph/Overview toggle - Admin Only - Inkprint tab design with card weight -->
 		{#if isAdmin}
 			<nav
-				class="inline-flex rounded-lg border border-border bg-card p-0.5 sm:p-1 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-hide shadow-ink tx tx-frame tx-weak"
+				class="inline-flex wt-card p-0.5 sm:p-1 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-hide tx tx-frame tx-weak"
 				aria-label="Project view mode"
 			>
 				<button
@@ -476,7 +476,7 @@
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each Array.from({ length: 3 }) as _}
 							<div
-								class="rounded-lg border border-border bg-card p-4 shadow-ink animate-pulse"
+								class="wt-paper p-4 tx tx-frame tx-weak animate-pulse"
 							>
 								<div class="h-5 w-1/3 rounded bg-muted"></div>
 								<div class="mt-4 h-4 w-3/4 rounded bg-muted/80"></div>
@@ -487,7 +487,7 @@
 				</div>
 			{:else if projectsError}
 				<div
-					class="rounded-lg border border-border bg-card p-6 text-center shadow-ink tx tx-static tx-weak"
+					class="wt-card p-6 text-center tx tx-static tx-weak"
 				>
 					<h2 class="text-base font-semibold text-foreground">
 						Unable to load ontology projects
@@ -554,11 +554,11 @@
 					</CardBody>
 				</Card>
 
-				<!-- Stats Grid - Semantic textures per brand guidelines -->
+				<!-- Stats Grid - Semantic textures per brand guidelines with weight -->
 				<div class="grid grid-cols-4 gap-2 sm:gap-3">
-					<!-- Projects count - Frame texture (canonical/structure) -->
+					<!-- Projects count - Frame texture (canonical/structure), paper weight (standard) -->
 					<div
-						class="rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-frame tx-weak"
+						class="wt-paper p-2.5 sm:p-4 tx tx-frame tx-weak"
 					>
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							PROJECTS
@@ -573,9 +573,9 @@
 							</p>
 						{/if}
 					</div>
-					<!-- Tasks count - Grain texture (execution/progress) -->
+					<!-- Tasks count - Grain texture (execution/progress), paper weight -->
 					<div
-						class="rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-grain tx-weak"
+						class="wt-paper p-2.5 sm:p-4 tx tx-grain tx-weak"
 					>
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							TASKS
@@ -590,9 +590,9 @@
 							</p>
 						{/if}
 					</div>
-					<!-- Documents count - Thread texture (connections/relationships) -->
+					<!-- Documents count - Thread texture (connections/relationships), paper weight -->
 					<div
-						class="rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-thread tx-weak"
+						class="wt-paper p-2.5 sm:p-4 tx tx-thread tx-weak"
 					>
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							DOCS
@@ -607,9 +607,9 @@
 							</p>
 						{/if}
 					</div>
-					<!-- Active count - Pulse texture (urgency/momentum) with accent -->
+					<!-- Active count - Pulse texture (urgency/momentum), paper weight with accent styling -->
 					<div
-						class="rounded-lg border border-accent/30 bg-accent/5 p-2.5 sm:p-4 shadow-ink tx tx-pulse tx-weak"
+						class="wt-paper p-2.5 sm:p-4 tx tx-pulse tx-weak border-accent/30 bg-accent/5"
 					>
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-accent">ACTIVE</p>
 						{#if showSkeletons}
@@ -624,9 +624,9 @@
 					</div>
 				</div>
 
-				<!-- Collapsible Filter Panel - Admin Only -->
+				<!-- Collapsible Filter Panel - Admin Only, frame texture with paper weight -->
 				{#if isAdmin && hasFilterOptions}
-					<div class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
+					<div class="wt-paper overflow-hidden tx tx-frame tx-weak">
 						<!-- Filter Panel Header (Always Visible) -->
 						<button
 							type="button"
@@ -791,7 +791,7 @@
 			<ProjectListSkeleton count={projectCount} />
 		{:else if filteredProjects.length === 0 && !projectsLoading}
 			<div
-				class="rounded-lg border border-dashed border-border bg-card px-4 py-12 text-center shadow-ink tx tx-thread tx-weak sm:px-6 sm:py-16"
+				class="wt-paper border-dashed px-4 py-12 text-center tx tx-thread tx-weak sm:px-6 sm:py-16"
 			>
 				<div
 					class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent sm:h-14 sm:w-14"
@@ -852,11 +852,11 @@
 									{ key: 'docs', count: project.document_count, Icon: FileText }
 								].filter((s) => s.count > 0)}
 								{@const mobileProjectStats = projectStats.slice(0, 3)}
-								<!-- Project Card - Inkprint interactive card pattern -->
+								<!-- Project Card - Inkprint interactive card pattern with weight -->
 								<a
 									href="/projects/{project.id}"
 									onclick={() => handleProjectClick(project)}
-									class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent/60 hover:shadow-ink-strong pressable"
+									class="group relative flex h-full flex-col wt-paper p-2.5 sm:p-4 tx tx-frame tx-weak hover:border-accent/60 pressable"
 								>
 									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 									<div
@@ -990,11 +990,11 @@
 									{ key: 'docs', count: project.document_count, Icon: FileText }
 								].filter((s) => s.count > 0)}
 								{@const mobileProjectStats = projectStats.slice(0, 3)}
-								<!-- Shared Project Card - Thread texture for collaboration context -->
+								<!-- Shared Project Card - Thread texture for collaboration, paper weight -->
 								<a
 									href="/projects/{project.id}"
 									onclick={() => handleProjectClick(project)}
-									class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-thread tx-weak transition-all duration-200 hover:border-accent/60 hover:shadow-ink-strong pressable"
+									class="group relative flex h-full flex-col wt-paper p-2.5 sm:p-4 tx tx-thread tx-weak hover:border-accent/60 pressable"
 								>
 									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 									<div
@@ -1121,7 +1121,7 @@
 	{:else if isAdmin}
 		<section class="space-y-4">
 			<div
-				class="rounded-lg border border-border bg-card shadow-ink overflow-hidden touch-none"
+				class="wt-paper overflow-hidden touch-none tx tx-frame tx-weak"
 			>
 				<div class="relative h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-18rem)]">
 					{#if graphComponentError}
@@ -1188,7 +1188,7 @@
 			</div>
 
 			<div class="grid gap-4 lg:grid-cols-2">
-				<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
+				<section class="wt-paper overflow-hidden tx tx-frame tx-weak">
 					{#if GraphControlsComponent}
 						<svelte:component
 							this={GraphControlsComponent}
@@ -1203,7 +1203,7 @@
 					{/if}
 				</section>
 
-				<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
+				<section class="wt-paper overflow-hidden tx tx-frame tx-weak">
 					{#if selectedGraphNode && $graphStore.status === 'ready' && NodeDetailsPanelComponent}
 						<svelte:component
 							this={NodeDetailsPanelComponent}

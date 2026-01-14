@@ -4,17 +4,18 @@
 	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
-	type CardVariant = 'default' | 'elevated' | 'interactive' | 'outline';
+	type CardVariant = 'default' | 'elevated' | 'interactive' | 'outline' | 'ghost';
 	type CardPadding = 'none' | 'sm' | 'md' | 'lg';
-	type CardTexture = 'none' | 'bloom' | 'grain' | 'thread' | 'frame' | 'static';
+	type CardTexture = 'none' | 'bloom' | 'grain' | 'thread' | 'frame' | 'static' | 'pulse';
+	type CardWeight = 'ghost' | 'paper' | 'card' | 'plate';
 
 	// Svelte 5 runes: Use $props() with rest syntax
 	let {
 		variant = 'default',
-		padding = 'md',
+		padding = 'none',
 		hoverable = false,
-		texture = 'none',
-		dithered = false, // Legacy prop - use texture instead
+		texture,
+		weight,
 		class: className = '',
 		children,
 		...restProps
@@ -23,60 +24,73 @@
 		padding?: CardPadding;
 		hoverable?: boolean;
 		texture?: CardTexture;
-		dithered?: boolean;
+		weight?: CardWeight;
 		class?: string;
 		children?: Snippet;
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
-	// Variant styles - Inkprint design system
-	const variantClasses = {
-		default: 'bg-card border border-border shadow-ink',
-		elevated: 'bg-card border border-border shadow-ink-strong ink-frame',
-		interactive:
-			'bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/50 cursor-pointer',
-		outline: 'bg-transparent border border-border hover:border-accent'
+	// Smart defaults based on variant
+	// These can be overridden by explicit texture/weight props
+	const variantDefaults: Record<CardVariant, { texture: CardTexture; weight: CardWeight }> = {
+		default: { texture: 'frame', weight: 'paper' },
+		elevated: { texture: 'frame', weight: 'card' },
+		interactive: { texture: 'grain', weight: 'paper' },
+		outline: { texture: 'none', weight: 'paper' },
+		ghost: { texture: 'bloom', weight: 'ghost' }
 	};
+
+	// Resolve texture and weight (explicit props override defaults)
+	let resolvedTexture = $derived(texture ?? variantDefaults[variant].texture);
+	let resolvedWeight = $derived(weight ?? variantDefaults[variant].weight);
 
 	// Padding styles - optimized for high information density
-	const paddingClasses = {
-		none: 'p-0',
-		sm: 'p-2', // Compact: 8px - consistent with 8px grid system
-		md: 'p-3 sm:p-4', // Compact: 12px/16px - provides just enough breathing room for shadow/border
-		lg: 'p-4 sm:p-6' // Comfortable: 16-24px - for special emphasis cards
+	const paddingClasses: Record<CardPadding, string> = {
+		none: '',
+		sm: 'p-2',
+		md: 'p-3 sm:p-4',
+		lg: 'p-4 sm:p-6'
 	};
 
-	// Texture classes - Inkprint textures
-	const textureClasses = {
+	// Texture classes - Inkprint semantic textures
+	const textureClasses: Record<CardTexture, string> = {
 		none: '',
 		bloom: 'tx tx-bloom tx-weak',
 		grain: 'tx tx-grain tx-weak',
 		thread: 'tx tx-thread tx-weak',
 		frame: 'tx tx-frame tx-weak',
-		static: 'tx tx-static tx-weak'
+		static: 'tx tx-static tx-weak',
+		pulse: 'tx tx-pulse tx-weak'
 	};
 
-	// Svelte 5 runes: Convert reactive declaration to $derived
+	// Weight classes - Inkprint semantic weight
+	const weightClasses: Record<CardWeight, string> = {
+		ghost: 'wt-ghost',
+		paper: 'wt-paper',
+		card: 'wt-card',
+		plate: 'wt-plate'
+	};
+
+	// Base classes that apply to all cards
+	const baseClasses = 'overflow-hidden';
+
+	// Svelte 5 runes: Derived card classes
 	let cardClasses = $derived(
 		twMerge(
-			// Base styles - Inkprint design system
-			'rounded-lg overflow-hidden', // Softer radius
+			baseClasses,
 
-			// Variant
-			variantClasses[variant],
+			// Weight (provides bg, border, shadow, radius, motion)
+			weightClasses[resolvedWeight],
 
 			// Padding
 			paddingClasses[padding],
 
-			// Hoverable
-			hoverable && 'transition-all hover:scale-[1.005] cursor-pointer pressable',
+			// Hoverable interaction
+			hoverable && 'cursor-pointer pressable hover:border-accent/50',
 
-			// Texture (new Inkprint system)
-			textureClasses[texture],
+			// Texture overlay
+			textureClasses[resolvedTexture],
 
-			// Legacy dithered support
-			dithered && texture === 'none' && 'tx tx-grain tx-weak',
-
-			// Custom classes
+			// Custom classes (can override anything)
 			className
 		)
 	);
@@ -89,23 +103,11 @@
 </div>
 
 <style>
-	/* Card transitions - optimized for performance */
+	/* Card-specific transitions - complements weight system */
 	div {
-		/* GPU acceleration */
+		/* GPU acceleration for smooth animations */
 		transform: translateZ(0);
 		backface-visibility: hidden;
-
-		/* Smooth transitions */
-		transition-property: box-shadow, border-color, transform;
-		transition-duration: 200ms;
-		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	/* Outline variant border transitions */
-	:global(.border-2) {
-		transition-property: border-color;
-		transition-duration: 200ms;
-		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	/* Focus ring offset - matches Inkprint background */

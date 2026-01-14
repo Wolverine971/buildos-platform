@@ -482,6 +482,7 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					fontSize: config.fontSize,
+					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
 					labelMarginY: config.labelMarginY ?? 0
 				}
@@ -523,6 +524,7 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					fontSize: config.fontSize,
+					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
 					labelMarginY: config.labelMarginY ?? 0
 				}
@@ -558,6 +560,7 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					fontSize: config.fontSize,
+					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
 					labelMarginY: config.labelMarginY ?? 0
 				}
@@ -594,6 +597,7 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					fontSize: config.fontSize,
+					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
 					labelMarginY: config.labelMarginY ?? 0
 				}
@@ -641,6 +645,7 @@ export class OntologyGraphService {
 					size: config.baseWidth,
 					shape: config.shape,
 					fontSize: config.fontSize,
+					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,
 					labelMarginY: config.labelMarginY ?? 0
 				}

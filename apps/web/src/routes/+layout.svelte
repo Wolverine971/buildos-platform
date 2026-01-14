@@ -282,6 +282,10 @@
 	let authSyncInProgress = $state(false);
 	let authSubscriptionCleanup = $state<(() => void) | null>(null);
 
+	// Track previous auth state to prevent unnecessary reloads on visibility change
+	// When tab becomes visible, Supabase may emit SIGNED_IN even if user was already signed in
+	let previousAuthUserId = $state<string | null>(null);
+
 	// Convert to $effect - load resources when user becomes available
 	$effect(() => {
 		if (browser && user && !resourcesLoaded && !resourcesLoadPromise) {
@@ -359,7 +363,13 @@
 		return null;
 	}
 
-	async function synchronizeAuthState() {
+	/**
+	 * Synchronize auth state with SvelteKit's data loading system.
+	 *
+	 * @param invalidateData - If true, invalidates all page data (triggers load function re-runs).
+	 *                         Set to false for session restores/token refreshes to avoid unnecessary reloads.
+	 */
+	async function synchronizeAuthState(invalidateData: boolean = true) {
 		if (!browser || authSyncInProgress) return;
 
 		authSyncInProgress = true;
@@ -367,9 +377,15 @@
 		try {
 			// Guard against calling invalidate when page context is not available
 			if ($page) {
+				// Always sync auth-specific dependencies
 				await invalidate('supabase:auth');
 				await invalidate('app:auth');
-				await invalidateAll();
+
+				// Only invalidate all data when auth state actually changed
+				// This prevents unnecessary data reloads on tab visibility change
+				if (invalidateData) {
+					await invalidateAll();
+				}
 			}
 		} catch (error) {
 			console.error('Failed to synchronize auth state:', error);
@@ -378,12 +394,27 @@
 		}
 	}
 
-	async function handleAuthSignedIn() {
+	/**
+	 * Handle user sign-in events.
+	 * Only triggers full data reload if the user actually changed (new sign-in).
+	 * Skips data reload for session restores after tab visibility change.
+	 */
+	async function handleAuthSignedIn(currentUserId: string | null) {
+		const isNewSignIn = previousAuthUserId !== currentUserId;
+		previousAuthUserId = currentUserId;
+
 		resetResourceLoaders();
-		await synchronizeAuthState();
+
+		// Only invalidate all data if this is an actual auth state change
+		// (user signed in for the first time or switched accounts)
+		// Skip invalidation if user was already signed in (session restore after visibility change)
+		await synchronizeAuthState(isNewSignIn);
 	}
 
 	async function handleAuthSignedOut() {
+		// Clear tracked auth state
+		previousAuthUserId = null;
+
 		resetResourceLoaders();
 		routeBasedState = {
 			...routeBasedState,
@@ -391,7 +422,8 @@
 			showOnboardingModal: false
 		};
 
-		await synchronizeAuthState();
+		// Always invalidate data on sign-out
+		await synchronizeAuthState(true);
 
 		if (!browser) return;
 
@@ -405,19 +437,40 @@
 		}
 	}
 
-	async function handleAuthStateChange(event: AuthChangeEvent) {
+	/**
+	 * Handle Supabase auth state change events.
+	 *
+	 * Key insight: When tab becomes visible after being hidden, Supabase may emit SIGNED_IN
+	 * even if the user was already signed in (session restore/token refresh).
+	 * We track the previous user ID to distinguish actual sign-ins from session restores.
+	 */
+	async function handleAuthStateChange(event: AuthChangeEvent, session: any) {
+		const currentUserId = session?.user?.id ?? null;
+
 		switch (event) {
 			case 'INITIAL_SESSION':
+				// Initialize tracking on first load without triggering invalidation
+				previousAuthUserId = currentUserId;
 				return;
+
 			case 'SIGNED_IN':
 			case 'USER_UPDATED':
-				await handleAuthSignedIn();
+				await handleAuthSignedIn(currentUserId);
 				break;
+
 			case 'SIGNED_OUT':
 			case 'USER_DELETED':
 				await handleAuthSignedOut();
 				break;
+
+			case 'TOKEN_REFRESHED':
+				// Token refresh doesn't require any data invalidation
+				// The session is still valid, just with a new access token
+				break;
+
 			default:
+				// Unknown events - log for debugging but don't invalidate
+				console.debug('[Auth] Unhandled auth event:', event);
 				break;
 		}
 	}
@@ -533,9 +586,9 @@
 		if (supabase) {
 			const {
 				data: { subscription }
-			} = supabase.auth.onAuthStateChange(async (event) => {
+			} = supabase.auth.onAuthStateChange(async (event, session) => {
 				try {
-					await handleAuthStateChange(event);
+					await handleAuthStateChange(event, session);
 				} catch (error) {
 					console.error('Auth state change listener error:', error);
 				}

@@ -4,6 +4,7 @@
 
 	Ultra-compact panel for the mobile command center layout.
 	Displays entity count in collapsed state and item list when expanded.
+	Supports optional filter/sort controls when panelConfig is provided.
 
 	Documentation:
 	- Mobile Command Center: /apps/web/docs/features/mobile-command-center/MOBILE_COMMAND_CENTER_SPEC.md
@@ -13,6 +14,12 @@
 	import type { ComponentType, Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Plus } from 'lucide-svelte';
+	import type { PanelConfig, InsightPanelState } from '$lib/components/ontology/insight-panels';
+	import {
+		InsightFilterDropdown,
+		InsightSortDropdown,
+		InsightSpecialToggles
+	} from '$lib/components/ontology/insight-panels';
 
 	type PanelKey = 'goals' | 'milestones' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
 
@@ -28,6 +35,13 @@
 		onAdd: () => void;
 		emptyMessage: string;
 		children: Snippet;
+		// Optional filter/sort props
+		panelConfig?: PanelConfig;
+		panelState?: InsightPanelState;
+		toggleCounts?: Record<string, number>;
+		onFilterChange?: (filters: Record<string, string[]>) => void;
+		onSortChange?: (sort: { field: string; direction: 'asc' | 'desc' }) => void;
+		onToggleChange?: (toggleId: string, value: boolean) => void;
 	}
 
 	let {
@@ -41,8 +55,19 @@
 		onToggle,
 		onAdd,
 		emptyMessage,
-		children
+		children,
+		panelConfig,
+		panelState,
+		toggleCounts = {},
+		onFilterChange,
+		onSortChange,
+		onToggleChange
 	}: Props = $props();
+
+	// Check if filter/sort controls should be shown
+	const hasControls = $derived(
+		panelConfig && panelState && onFilterChange && onSortChange && onToggleChange
+	);
 
 	// Panel width classes based on expansion state
 	const panelClasses = $derived.by(() => {
@@ -88,8 +113,29 @@
 	<!-- Expanded Content -->
 	{#if expanded}
 		<div class="border-t border-border" transition:slide={{ duration: 120 }}>
-			<!-- Add button row -->
-			<div class="flex justify-end px-2.5 py-1.5 border-b border-border/50 bg-muted/30">
+			<!-- Controls row: Filter/Sort + Add button -->
+			<div
+				class="flex items-center justify-between gap-1.5 px-2 py-1.5 border-b border-border/50 bg-muted/30"
+			>
+				<!-- Filter/Sort controls (left side) -->
+				{#if hasControls && panelConfig && panelState && onFilterChange && onSortChange}
+					<div class="flex items-center gap-1">
+						<InsightFilterDropdown
+							filterGroups={panelConfig.filters}
+							activeFilters={panelState.filters}
+							onchange={onFilterChange}
+						/>
+						<InsightSortDropdown
+							sortOptions={panelConfig.sorts}
+							currentSort={panelState.sort}
+							onchange={onSortChange}
+						/>
+					</div>
+				{:else}
+					<div></div>
+				{/if}
+
+				<!-- Add button (right side) -->
 				<button
 					type="button"
 					onclick={onAdd}
@@ -97,7 +143,7 @@
 						flex items-center gap-1 px-2 py-1
 						text-[10px] font-medium text-accent
 						hover:bg-accent/10 rounded transition-colors
-						pressable
+						pressable shrink-0
 					"
 				>
 					<Plus class="w-3 h-3" />
@@ -115,6 +161,16 @@
 					{@render children()}
 				{/if}
 			</div>
+
+			<!-- Special toggles (show completed, deleted, etc.) -->
+			{#if hasControls && panelConfig && panelState && onToggleChange}
+				<InsightSpecialToggles
+					toggles={panelConfig.specialToggles}
+					values={panelState.toggles}
+					counts={toggleCounts}
+					onchange={onToggleChange}
+				/>
+			{/if}
 		</div>
 	{/if}
 </div>

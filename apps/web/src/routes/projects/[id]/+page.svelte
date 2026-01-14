@@ -1302,13 +1302,13 @@
 				</div>
 			{:else}
 				<MobileCommandCenter
-					{goals}
-					{milestones}
-					{tasks}
-					{plans}
-					{risks}
+					goals={filteredGoals}
+					milestones={filteredMilestones}
+					tasks={filteredTasks}
+					plans={filteredPlans}
+					risks={filteredRisks}
 					{documents}
-					{events}
+					events={filteredEvents}
 					onAddGoal={() => canEdit && (showGoalCreateModal = true)}
 					onAddMilestone={() => canEdit && (showMilestoneCreateModal = true)}
 					onAddTask={() => canEdit && (showTaskCreateModal = true)}
@@ -1330,6 +1330,11 @@
 						showDocumentModal = true;
 					}}
 					onEditEvent={(id) => (editingEventId = id)}
+					{panelStates}
+					{panelCounts}
+					onFilterChange={updatePanelFilters}
+					onSortChange={updatePanelSort}
+					onToggleChange={updatePanelToggle}
 				/>
 			{/if}
 		</div>

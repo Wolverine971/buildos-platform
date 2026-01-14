@@ -4,6 +4,7 @@
 
 	Ultra-compact mobile layout for project data models.
 	Organizes 7 entity types into 4 rows with single-expansion behavior.
+	Supports filter/sort controls when panelStates are provided.
 
 	Row Layout:
 	1. Goals + Milestones (Strategic)
@@ -28,6 +29,11 @@
 	import CommandCenterRow from './CommandCenterRow.svelte';
 	import CommandCenterPanel from './CommandCenterPanel.svelte';
 	import type { Goal, Milestone, Task, Plan, Risk, Document, OntoEvent } from '$lib/types/onto';
+	import {
+		PANEL_CONFIGS,
+		type InsightPanelKey,
+		type InsightPanelState
+	} from '$lib/components/ontology/insight-panels';
 
 	type PanelKey = 'goals' | 'milestones' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
 
@@ -58,6 +64,16 @@
 		onEditRisk: (id: string) => void;
 		onEditDocument: (id: string) => void;
 		onEditEvent: (id: string) => void;
+
+		// Optional filter/sort state and callbacks
+		panelStates?: Record<InsightPanelKey, InsightPanelState>;
+		panelCounts?: Record<InsightPanelKey, Record<string, number>>;
+		onFilterChange?: (panelKey: InsightPanelKey, filters: Record<string, string[]>) => void;
+		onSortChange?: (
+			panelKey: InsightPanelKey,
+			sort: { field: string; direction: 'asc' | 'desc' }
+		) => void;
+		onToggleChange?: (panelKey: InsightPanelKey, toggleId: string, value: boolean) => void;
 	}
 
 	let {
@@ -81,8 +97,18 @@
 		onEditPlan,
 		onEditRisk,
 		onEditDocument,
-		onEditEvent
+		onEditEvent,
+		panelStates,
+		panelCounts,
+		onFilterChange,
+		onSortChange,
+		onToggleChange
 	}: Props = $props();
+
+	// Check if filter/sort controls are enabled
+	const hasControls = $derived(
+		panelStates && panelCounts && onFilterChange && onSortChange && onToggleChange
+	);
 
 	// Single expansion state - only one panel can be expanded at a time
 	let expandedPanel = $state<PanelKey | null>(null);
@@ -218,6 +244,18 @@
 			onToggle={togglePanel}
 			onAdd={onAddGoal}
 			emptyMessage="Define what success looks like"
+			panelConfig={hasControls ? PANEL_CONFIGS.goals : undefined}
+			panelState={hasControls && panelStates ? panelStates.goals : undefined}
+			toggleCounts={hasControls && panelCounts ? panelCounts.goals : undefined}
+			onFilterChange={hasControls && onFilterChange
+				? (filters) => onFilterChange('goals', filters)
+				: undefined}
+			onSortChange={hasControls && onSortChange
+				? (sort) => onSortChange('goals', sort)
+				: undefined}
+			onToggleChange={hasControls && onToggleChange
+				? (toggleId, value) => onToggleChange('goals', toggleId, value)
+				: undefined}
 		>
 			{#each goals as goal (goal.id)}
 				<button
@@ -249,6 +287,18 @@
 			onToggle={togglePanel}
 			onAdd={onAddMilestone}
 			emptyMessage="Set checkpoints and dates"
+			panelConfig={hasControls ? PANEL_CONFIGS.milestones : undefined}
+			panelState={hasControls && panelStates ? panelStates.milestones : undefined}
+			toggleCounts={hasControls && panelCounts ? panelCounts.milestones : undefined}
+			onFilterChange={hasControls && onFilterChange
+				? (filters) => onFilterChange('milestones', filters)
+				: undefined}
+			onSortChange={hasControls && onSortChange
+				? (sort) => onSortChange('milestones', sort)
+				: undefined}
+			onToggleChange={hasControls && onToggleChange
+				? (toggleId, value) => onToggleChange('milestones', toggleId, value)
+				: undefined}
 		>
 			{#each milestones as milestone (milestone.id)}
 				<button
@@ -283,6 +333,18 @@
 			onToggle={togglePanel}
 			onAdd={onAddTask}
 			emptyMessage="Add tasks to track work"
+			panelConfig={hasControls ? PANEL_CONFIGS.tasks : undefined}
+			panelState={hasControls && panelStates ? panelStates.tasks : undefined}
+			toggleCounts={hasControls && panelCounts ? panelCounts.tasks : undefined}
+			onFilterChange={hasControls && onFilterChange
+				? (filters) => onFilterChange('tasks', filters)
+				: undefined}
+			onSortChange={hasControls && onSortChange
+				? (sort) => onSortChange('tasks', sort)
+				: undefined}
+			onToggleChange={hasControls && onToggleChange
+				? (toggleId, value) => onToggleChange('tasks', toggleId, value)
+				: undefined}
 		>
 			{#each tasks as task (task.id)}
 				<button
@@ -314,6 +376,18 @@
 			onToggle={togglePanel}
 			onAdd={onAddPlan}
 			emptyMessage="Create a plan to organize work"
+			panelConfig={hasControls ? PANEL_CONFIGS.plans : undefined}
+			panelState={hasControls && panelStates ? panelStates.plans : undefined}
+			toggleCounts={hasControls && panelCounts ? panelCounts.plans : undefined}
+			onFilterChange={hasControls && onFilterChange
+				? (filters) => onFilterChange('plans', filters)
+				: undefined}
+			onSortChange={hasControls && onSortChange
+				? (sort) => onSortChange('plans', sort)
+				: undefined}
+			onToggleChange={hasControls && onToggleChange
+				? (toggleId, value) => onToggleChange('plans', toggleId, value)
+				: undefined}
 		>
 			{#each plans as plan (plan.id)}
 				<button
@@ -348,6 +422,18 @@
 			onToggle={togglePanel}
 			onAdd={onAddRisk}
 			emptyMessage="Track potential blockers"
+			panelConfig={hasControls ? PANEL_CONFIGS.risks : undefined}
+			panelState={hasControls && panelStates ? panelStates.risks : undefined}
+			toggleCounts={hasControls && panelCounts ? panelCounts.risks : undefined}
+			onFilterChange={hasControls && onFilterChange
+				? (filters) => onFilterChange('risks', filters)
+				: undefined}
+			onSortChange={hasControls && onSortChange
+				? (sort) => onSortChange('risks', sort)
+				: undefined}
+			onToggleChange={hasControls && onToggleChange
+				? (toggleId, value) => onToggleChange('risks', toggleId, value)
+				: undefined}
 		>
 			{#each risks as risk (risk.id)}
 				<button
@@ -367,7 +453,7 @@
 			{/each}
 		</CommandCenterPanel>
 
-		<!-- Documents Panel -->
+		<!-- Documents Panel (no filter/sort - handled separately in desktop view) -->
 		<CommandCenterPanel
 			panelKey="documents"
 			label="Documents"
@@ -413,6 +499,18 @@
 			onToggle={togglePanel}
 			onAdd={onAddEvent}
 			emptyMessage="Schedule meetings and events"
+			panelConfig={hasControls ? PANEL_CONFIGS.events : undefined}
+			panelState={hasControls && panelStates ? panelStates.events : undefined}
+			toggleCounts={hasControls && panelCounts ? panelCounts.events : undefined}
+			onFilterChange={hasControls && onFilterChange
+				? (filters) => onFilterChange('events', filters)
+				: undefined}
+			onSortChange={hasControls && onSortChange
+				? (sort) => onSortChange('events', sort)
+				: undefined}
+			onToggleChange={hasControls && onToggleChange
+				? (toggleId, value) => onToggleChange('events', toggleId, value)
+				: undefined}
 		>
 			{#each events as event (event.id)}
 				<button

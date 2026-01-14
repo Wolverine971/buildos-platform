@@ -6,7 +6,8 @@
 
   INKPRINT DESIGN SYSTEM:
   - Uses semantic tokens (bg-muted, border-border)
-  - Frame texture for structural elements
+  - Frame texture for structural elements (tx-frame)
+  - Paper weight for standard cards (wt-paper)
   - Responsive grid matching project cards (2 cols mobile, 3 cols xl)
 
   PERFORMANCE (Dec 2024):
@@ -25,7 +26,7 @@
 <div class="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 	{#each Array(count) as _, i (i)}
 		<div
-			class="group relative flex h-full flex-col rounded-lg border border-border bg-card p-2.5 sm:p-4 shadow-ink tx tx-frame tx-weak animate-pulse"
+			class="group relative flex h-full flex-col wt-paper p-2.5 sm:p-4 tx tx-frame tx-weak animate-pulse"
 			aria-hidden="true"
 		>
 			<!-- Header: Title + Badge -->

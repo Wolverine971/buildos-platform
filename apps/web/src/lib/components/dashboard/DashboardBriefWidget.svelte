@@ -240,9 +240,9 @@
 <!-- Fixed-height container prevents layout shift during state transitions -->
 <div class="w-full min-h-[48px] sm:min-h-[60px]">
 	{#if isLoading}
-		<!-- Skeleton Loading State - more compact on mobile -->
+		<!-- Skeleton Loading State - ghost weight for ephemeral state -->
 		<div
-			class="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-border bg-card/50 animate-pulse"
+			class="flex items-center gap-2 sm:gap-3 wt-ghost p-2 sm:p-3 animate-pulse"
 			aria-hidden="true"
 		>
 			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-muted">
@@ -254,8 +254,8 @@
 			</div>
 		</div>
 	{:else if isGenerating}
-		<!-- Generating State - compact on mobile -->
-		<div class="p-2 sm:p-3 rounded-lg border border-accent/30 bg-accent/5 tx tx-pulse tx-weak">
+		<!-- Generating State - paper weight with pulse texture -->
+		<div class="wt-paper p-2 sm:p-3 border-accent/30 bg-accent/5 tx tx-pulse tx-weak">
 			<div class="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
 				<div
 					class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20"
@@ -279,9 +279,9 @@
 			</div>
 		</div>
 	{:else if error}
-		<!-- Error State - compact on mobile -->
+		<!-- Error State - paper weight with static texture -->
 		<div
-			class="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-red-500/30 bg-red-500/5"
+			class="flex items-center gap-2 sm:gap-3 wt-paper p-2 sm:p-3 tx tx-static tx-weak"
 		>
 			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-red-500/10">
 				<AlertCircle class="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
@@ -297,10 +297,10 @@
 			</button>
 		</div>
 	{:else if brief}
-		<!-- Brief Available - Compact card on mobile -->
+		<!-- Brief Available - paper weight with frame texture -->
 		<button
 			onclick={handleClick}
-			class="w-full text-left p-2 sm:p-3 rounded-lg border border-border bg-card shadow-ink hover:border-accent hover:shadow-ink-strong transition-all duration-200 pressable tx tx-frame tx-weak group"
+			class="w-full text-left wt-paper p-2 sm:p-3 hover:border-accent pressable tx tx-frame tx-weak group"
 		>
 			<div class="flex items-center sm:items-start gap-2 sm:gap-3">
 				<div
@@ -354,11 +354,11 @@
 			</div>
 		</button>
 	{:else}
-		<!-- No Brief - Compact Generate CTA on mobile -->
+		<!-- No Brief - Compact Generate CTA on mobile - ghost weight for suggestion/CTA -->
 		<button
 			onclick={generateBrief}
 			disabled={isGenerating}
-			class="w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-dashed border-accent/50 bg-accent/5 hover:border-accent hover:bg-accent/10 transition-all duration-200 pressable group"
+			class="w-full flex items-center gap-2 sm:gap-3 wt-ghost border-dashed border-accent/50 p-2 sm:p-3 hover:border-accent hover:bg-accent/10 pressable group"
 		>
 			<div
 				class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-accent/10 border border-accent/20 group-hover:bg-accent group-hover:border-accent transition-colors flex-shrink-0"

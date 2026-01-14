@@ -281,7 +281,7 @@
 	</select>
 
 	<div class={iconClasses}>
-		<ChevronDown />
+		<ChevronDown class="w-full h-full" />
 	</div>
 </div>
 {#if error && errorMessage}

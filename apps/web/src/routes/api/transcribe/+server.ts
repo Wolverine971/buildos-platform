@@ -15,7 +15,9 @@ const openai = new OpenAI({
 // gpt-4o-transcribe: State-of-the-art accuracy (~8.9% WER), best for accented/noisy speech
 // gpt-4o-mini-transcribe: Good balance of cost/accuracy (~13.2% WER), half the price
 // whisper-1: Legacy model (deprecated for new projects)
-const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
+// const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
+// NOTE: Testing the cheaper model to reduce transcription costs.
+const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
 const USE_OPENROUTER_TRANSCRIPTION = env.TRANSCRIPTION_USE_OPENROUTER === 'true';
 
 // Timeout and retry configuration

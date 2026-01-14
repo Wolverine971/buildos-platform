@@ -235,10 +235,10 @@
 			<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
 		</section>
 
-		<!-- Error State -->
+		<!-- Error State - card weight for important errors -->
 		{#if error}
 			<div
-				class="mb-6 bg-card rounded-lg p-6 border border-border shadow-ink tx tx-static tx-weak"
+				class="mb-6 wt-card p-6 tx tx-static tx-weak"
 			>
 				<div class="text-center">
 					<AlertTriangle class="h-8 w-8 text-red-500 mx-auto mb-3" />
@@ -289,9 +289,9 @@
 			<!-- Loading State with Skeletons -->
 			{#if showSkeletons}
 				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
-					<!-- Create New Project Card (skeleton placeholder on desktop) -->
+					<!-- Create New Project Card (skeleton placeholder on desktop) - ghost weight -->
 					<div
-						class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink sm:min-h-[200px] opacity-50"
+						class="hidden sm:flex group flex-col items-center justify-center wt-ghost border-dashed p-4 sm:p-6 sm:min-h-[200px] opacity-50"
 					>
 						<div
 							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/20 bg-accent/10 text-accent"
@@ -309,9 +309,9 @@
 					{/each}
 				</div>
 			{:else if !hasProjects && !isLoading}
-				<!-- Empty State - Compact on mobile -->
+				<!-- Empty State - Compact on mobile, paper weight with bloom texture -->
 				<div
-					class="rounded-lg border-2 border-dashed border-border bg-card p-6 sm:p-12 text-center shadow-ink tx tx-bloom tx-weak"
+					class="wt-paper border-dashed p-6 sm:p-12 text-center tx tx-bloom tx-weak"
 				>
 					<div
 						class="mx-auto mb-4 sm:mb-6 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent"
@@ -343,10 +343,10 @@
 							My Projects
 						</h3>
 						<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
-							<!-- Create New Project Card (hidden on mobile, shown on desktop) -->
+							<!-- Create New Project Card (hidden on mobile, shown on desktop) - ghost weight for CTA -->
 							<button
 								onclick={handleCreateProject}
-								class="hidden sm:flex group flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card/50 p-4 sm:p-6 shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/5 pressable sm:min-h-[200px]"
+								class="hidden sm:flex group flex-col items-center justify-center wt-ghost border-dashed p-4 sm:p-6 hover:border-accent hover:bg-accent/5 pressable sm:min-h-[200px]"
 							>
 								<div
 									class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/20 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
@@ -360,12 +360,12 @@
 								</span>
 							</button>
 
-							<!-- Owned Project Cards -->
+							<!-- Owned Project Cards - paper weight with frame texture -->
 							{#each ownedProjects as project (project.id)}
 								<a
 									href="/projects/{project.id}"
 									onclick={() => handleProjectClick(project)}
-									class="group relative flex flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
+									class="group relative flex flex-col wt-paper p-2 sm:p-4 hover:border-accent pressable tx tx-frame tx-weak"
 								>
 									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 									<div
@@ -536,7 +536,7 @@
 									<a
 										href="/projects/{project.id}"
 										onclick={() => handleProjectClick(project)}
-										class="group relative flex flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink transition-all duration-200 hover:border-accent hover:shadow-ink-strong pressable tx tx-frame tx-weak"
+										class="group relative flex flex-col wt-paper p-2 sm:p-4 hover:border-accent pressable tx tx-thread tx-weak"
 									>
 										<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 										<div

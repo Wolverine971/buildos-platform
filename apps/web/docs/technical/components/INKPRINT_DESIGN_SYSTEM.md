@@ -13,11 +13,13 @@
 | Need to...                | Go to...                                                      |
 | ------------------------- | ------------------------------------------------------------- |
 | Understand the philosophy | [Section 1: Philosophy](#1-philosophy--principles)            |
-| Find color tokens         | [Section 4: Color System](#4-color-system-paper--ink--accent) |
 | Choose a texture          | [Section 3: Texture Grammar](#3-texture-grammar)              |
-| Style a component         | [Section 7: Component Recipes](#7-component-recipes-svelte-5) |
-| Migrate existing code     | [Section 9: Migration Playbook](#9-migration-playbook)        |
-| Check before shipping     | [Section 10: Checklist](#10-before-you-ship-checklist)        |
+| Choose a weight           | [Section 4: Weight System](#4-weight-system)                  |
+| Combine texture + weight  | [Section 5: Texture × Weight Matrix](#5-texture--weight-matrix) |
+| Find color tokens         | [Section 6: Color System](#6-color-system-paper--ink--accent) |
+| Style a component         | [Section 9: Component Recipes](#9-component-recipes-svelte-5) |
+| Migrate existing code     | [Section 11: Migration Playbook](#11-migration-playbook)      |
+| Check before shipping     | [Section 12: Checklist](#12-before-you-ship-checklist)        |
 
 ---
 
@@ -26,13 +28,16 @@
 1. [Philosophy & Principles](#1-philosophy--principles)
 2. [The Laws (Non-Negotiables)](#2-the-laws-non-negotiables)
 3. [Texture Grammar](#3-texture-grammar)
-4. [Color System](#4-color-system-paper--ink--accent)
-5. [Typography System](#5-typography-system)
-6. [Layout & Spacing](#6-layout--spacing)
-7. [Component Recipes (Svelte 5)](#7-component-recipes-svelte-5)
-8. [Motion System](#8-motion-system)
-9. [Migration Playbook](#9-migration-playbook)
-10. [Before You Ship Checklist](#10-before-you-ship-checklist)
+4. [Weight System](#4-weight-system)
+5. [Texture × Weight Matrix](#5-texture--weight-matrix)
+6. [Color System](#6-color-system-paper--ink--accent)
+7. [Typography System](#7-typography-system)
+8. [Layout & Spacing](#8-layout--spacing)
+9. [Component Recipes (Svelte 5)](#9-component-recipes-svelte-5)
+10. [Motion System](#10-motion-system)
+11. [Migration Playbook](#11-migration-playbook)
+12. [Before You Ship Checklist](#12-before-you-ship-checklist)
+13. [Data Model Icon Conventions](#13-data-model-icon-conventions)
 
 ---
 
@@ -171,9 +176,191 @@ Textures are **semantic tokens**. Each represents an internal state.
 
 ---
 
-## 4. Color System (Paper + Ink + Accent)
+## 4. Weight System
 
-### 4.1 Philosophy
+Weight is the **second semantic dimension** of the Inkprint system. While texture communicates *what kind of thing* something is, weight communicates *how important* it is.
+
+### 4.1 What Weight Communicates
+
+Weight expresses three aspects simultaneously:
+
+| Aspect        | Light (Ghost)                | Heavy (Plate)                   |
+| ------------- | ---------------------------- | ------------------------------- |
+| **Permanence**| Ephemeral, draft, suggestion | Canonical, committed, historical|
+| **Attention** | Ambient, ignorable           | Demands focus, requires decision|
+| **Hierarchy** | Supporting, contextual       | Primary, authoritative          |
+
+### 4.2 The Print Shop Metaphor
+
+Think of weight like paper types in a print shop:
+
+- **Onionskin (Ghost)** — So light you can see through it. Scratch notes. Disposable.
+- **Bond (Paper)** — Standard working paper. Most things live here.
+- **Cardstock (Card)** — Substantial. This matters. Keep this.
+- **Plate** — Carved in metal. Immutable. System-level.
+
+### 4.3 Weight Tokens
+
+| Token       | Class       | Meaning                            | Use For                                    |
+| ----------- | ----------- | ---------------------------------- | ------------------------------------------ |
+| **Ghost**   | `wt-ghost`  | Ephemeral, uncommitted, suggestion | AI suggestions, empty slots, draft states  |
+| **Paper**   | `wt-paper`  | Standard UI, working state         | Most cards, panels, default surfaces       |
+| **Card**    | `wt-card`   | Important, elevated, committed     | Milestones, key decisions, commitments     |
+| **Plate**   | `wt-plate`  | System-critical, immutable         | Modals, system alerts, canonical views     |
+
+### 4.4 Weight Visual Properties
+
+Each weight level affects multiple visual properties:
+
+| Weight    | Shadow              | Border      | Radius    | Motion Duration |
+| --------- | ------------------- | ----------- | --------- | --------------- |
+| `ghost`   | None                | 1px dashed  | 0.75rem   | 100ms (snappy)  |
+| `paper`   | `shadow-ink`        | 1px solid   | 0.5rem    | 150ms (default) |
+| `card`    | `shadow-ink-strong` | 1.5px solid | 0.5rem    | 200ms (deliberate) |
+| `plate`   | Deep + inset        | 2px solid   | 0.375rem  | 280ms (weighty) |
+
+### 4.5 Weight and Motion
+
+**Key principle:** Weight affects motion. Heavier elements move slower (more inertia).
+
+| Weight  | Duration | Easing               | Feeling                    |
+| ------- | -------- | -------------------- | -------------------------- |
+| `ghost` | 100ms    | `ease-out`           | Snappy, immediate, nimble  |
+| `paper` | 150ms    | `ease`               | Standard, comfortable      |
+| `card`  | 200ms    | `ease-in-out`        | Deliberate, confident      |
+| `plate` | 280ms    | `cubic-bezier(...)` | Weighty, authoritative     |
+
+### 4.6 Weight Rules
+
+**Do:**
+
+- Use `wt-paper` as the implicit default (no class needed)
+- Explicitly add weight classes only when deviating from paper
+- Match weight to semantic importance, not just visual preference
+- Use `wt-ghost` for truly ephemeral, dismissible content
+
+**Don't:**
+
+- Inherit weight from parent elements (always explicit)
+- Use `wt-plate` for non-system-critical UI
+- Mix heavy weights on minor UI elements
+- Forget that weight affects motion timing
+
+### 4.7 Light vs Dark Mode
+
+Weight must feel consistent across modes, but implementation differs:
+
+**Light Mode:**
+- Shadows convey weight naturally
+- Borders are subtle dividers
+- Ghost elements nearly invisible
+
+**Dark Mode:**
+- Shadows less visible; compensate with rim glows
+- Borders become luminous hints
+- Ghost elements use subtle luminous borders
+- Plate elements get luminous edge highlights
+
+The CSS variables automatically handle these differences.
+
+---
+
+## 5. Texture × Weight Matrix
+
+Texture and weight work together to create a **two-axis semantic system**:
+
+- **Texture** = *What kind of thing is this?* (qualitative)
+- **Weight** = *How important is this?* (quantitative)
+
+### 5.1 Usage Syntax
+
+```html
+<element class="tx tx-[texture] tx-[intensity] wt-[weight]">
+```
+
+Example:
+```html
+<!-- Draft task: grain texture (in-progress) + ghost weight (uncommitted) -->
+<div class="tx tx-grain tx-weak wt-ghost">Draft: Review PR</div>
+
+<!-- Completed milestone: frame texture (canonical) + card weight (important) -->
+<div class="tx tx-frame tx-med wt-card">✓ MVP Shipped</div>
+
+<!-- System modal: frame texture + plate weight -->
+<div class="tx tx-frame tx-weak wt-plate">Confirm Deletion</div>
+```
+
+### 5.2 The Semantic Matrix
+
+This matrix shows recommended texture × weight combinations:
+
+|             | Ghost              | Paper              | Card               | Plate              |
+| ----------- | ------------------ | ------------------ | ------------------ | ------------------ |
+| **Bloom**   | AI suggestion      | New idea card      | —                  | —                  |
+| **Grain**   | Draft task         | Active task        | —                  | —                  |
+| **Pulse**   | —                  | Upcoming deadline  | Urgent deadline    | —                  |
+| **Static**  | Dismissible warning| Error notice       | Critical error     | System failure     |
+| **Thread**  | Weak link hint     | Dependency card    | Key relationship   | —                  |
+| **Frame**   | —                  | Standard panel     | Milestone/decision | Modal, system view |
+
+### 5.3 Component Examples
+
+```svelte
+<!-- Suggestion chip: ephemeral, ignorable -->
+<div class="px-3 py-1.5 tx tx-bloom tx-weak wt-ghost">
+  Add a deadline?
+</div>
+
+<!-- Standard task card: working state -->
+<div class="p-3 tx tx-grain tx-weak wt-paper">
+  <h4 class="font-medium text-foreground">Write documentation</h4>
+  <p class="text-sm text-muted-foreground">In progress</p>
+</div>
+
+<!-- Completed milestone: canonical, important -->
+<div class="p-4 tx tx-frame tx-med wt-card">
+  <div class="flex items-center gap-2">
+    <span class="text-emerald-500">✓</span>
+    <h3 class="font-semibold text-foreground">MVP Shipped</h3>
+  </div>
+</div>
+
+<!-- System modal: demands attention, authoritative -->
+<div class="p-6 tx tx-frame tx-weak wt-plate">
+  <h2 class="text-lg font-semibold text-foreground">Confirm Deletion</h2>
+  <p class="text-muted-foreground">This action cannot be undone.</p>
+</div>
+
+<!-- Error that requires decision -->
+<div class="p-3 tx tx-static tx-med wt-card">
+  <p class="text-red-600 font-medium">Payment failed</p>
+  <p class="text-sm text-muted-foreground">Update billing info?</p>
+</div>
+```
+
+### 5.4 Card Component Integration
+
+The Card component supports both texture and weight:
+
+```svelte
+<Card texture="frame" weight="paper">
+  Standard panel
+</Card>
+
+<Card texture="grain" weight="ghost">
+  Draft state
+</Card>
+
+<Card texture="frame" weight="plate">
+  Modal-level importance
+</Card>
+```
+
+---
+
+## 6. Color System (Paper + Ink + Accent)
+
+### 6.1 Philosophy
 
 Color is not the star. **Texture + hierarchy are the star.**
 
@@ -183,7 +370,7 @@ Color provides:
 - Semantics (success/warn/danger/info)
 - One brand accent (BuildOS "signal" color)
 
-### 4.2 Semantic Tokens
+### 6.2 Semantic Tokens
 
 Use these everywhere in Tailwind:
 
@@ -198,7 +385,7 @@ Use these everywhere in Tailwind:
 | Accent          | `bg-accent text-accent-foreground` | Primary actions       |
 | Focus rings     | `ring-ring`                        | Focus states          |
 
-### 4.3 CSS Variable Definitions
+### 6.3 CSS Variable Definitions
 
 ```css
 /* Light mode (paper studio) */
@@ -228,7 +415,7 @@ Use these everywhere in Tailwind:
 }
 ```
 
-### 4.4 Status Colors + Texture Pairing
+### 6.4 Status Colors + Texture Pairing
 
 | Status  | Color         | Texture           |
 | ------- | ------------- | ----------------- |
@@ -237,7 +424,7 @@ Use these everywhere in Tailwind:
 | Danger  | `red-600`     | Static (stronger) |
 | Info    | `blue-600`    | Thread            |
 
-### 4.5 Light vs Dark Mode Philosophy
+### 6.5 Light vs Dark Mode Philosophy
 
 - **Light mode:** "Paper studio" — warm whites, ink lines visible, textures subtle
 - **Dark mode:** "Ink room" — near-black surfaces, textures switch to screen blend
@@ -246,9 +433,9 @@ Use these everywhere in Tailwind:
 
 ---
 
-## 5. Typography System
+## 7. Typography System
 
-### 5.1 Font Families
+### 7.1 Font Families
 
 ```css
 /* Primary: UI/Actions (default) */
@@ -267,7 +454,7 @@ font-family: 'IBM Plex Serif', Literata, serif;
 Use `font-ui` for commands, buttons, labels, navigation.
 Use `font-notes` for longform thinking, journaling, scratchpad.
 
-### 5.2 Type Hierarchy
+### 7.2 Type Hierarchy
 
 | Role            | Size                   | Weight                        | Use             |
 | --------------- | ---------------------- | ----------------------------- | --------------- |
@@ -278,7 +465,7 @@ Use `font-notes` for longform thinking, journaling, scratchpad.
 | Small           | `text-xs`              | `font-normal`                 | Helper text     |
 | Micro-label     | `text-[0.65rem]`       | `uppercase tracking-[0.15em]` | Metadata        |
 
-### 5.3 Micro-Label Pattern
+### 7.3 Micro-Label Pattern
 
 ```svelte
 <p class="micro-label text-accent">ONTOLOGY</p>
@@ -290,16 +477,16 @@ Use micro-labels for metadata anchors — users know what section they're in.
 
 ---
 
-## 6. Layout & Spacing
+## 8. Layout & Spacing
 
-### 6.1 Two Density Modes
+### 8.1 Two Density Modes
 
 BuildOS has both:
 
 - **Comfort mode:** Marketing, onboarding, settings — generous spacing
 - **Dense mode:** Ontology views, diffs, tables — tighter spacing
 
-### 6.2 Spacing Scale (8px Grid)
+### 8.2 Spacing Scale (8px Grid)
 
 ```css
 /* Standard spacing */
@@ -316,7 +503,7 @@ dense-8   /* 16px */
 dense-12  /* 24px */
 ```
 
-### 6.3 Surface Levels (Paper Stack)
+### 8.3 Surface Levels (Paper Stack)
 
 | Level         | Use                  | Classes                                        |
 | ------------- | -------------------- | ---------------------------------------------- |
@@ -325,7 +512,7 @@ dense-12  /* 24px */
 | 3. Inset      | Sub-surface in cards | `bg-background border-border shadow-ink-inner` |
 | 4. Overlay    | Modals, popovers     | `bg-card shadow-ink-strong tx tx-frame`        |
 
-### 6.4 Shadow Utilities
+### 8.4 Shadow Utilities
 
 ```css
 shadow-ink         /* Subtle card shadow */
@@ -335,9 +522,9 @@ shadow-ink-inner   /* Input/inset shadow */
 
 ---
 
-## 7. Component Recipes (Svelte 5)
+## 9. Component Recipes (Svelte 5)
 
-### 7.1 Button
+### 9.1 Button
 
 ```svelte
 <script lang="ts">
@@ -365,7 +552,7 @@ shadow-ink-inner   /* Input/inset shadow */
 - `ghost` — `bg-transparent hover:bg-muted/50`
 - `danger` — `bg-red-600 text-white shadow-ink pressable`
 
-### 7.2 Card
+### 9.2 Card
 
 ```svelte
 <script lang="ts">
@@ -398,7 +585,7 @@ shadow-ink-inner   /* Input/inset shadow */
 
 **Texture prop:** `'none' | 'bloom' | 'grain' | 'thread' | 'frame' | 'static'`
 
-### 7.3 Modal
+### 9.3 Modal
 
 ```svelte
 <script lang="ts">
@@ -424,7 +611,7 @@ shadow-ink-inner   /* Input/inset shadow */
 
 Modal automatically applies: `tx tx-frame tx-weak ink-frame shadow-ink-strong`
 
-### 7.4 Input
+### 9.4 Input
 
 ```svelte
 <script lang="ts">
@@ -446,7 +633,7 @@ Modal automatically applies: `tx tx-frame tx-weak ink-frame shadow-ink-strong`
 
 Input styling: `shadow-ink-inner border-border text-foreground focus:border-accent focus:ring-ring`
 
-### 7.5 Alert
+### 9.5 Alert
 
 ```svelte
 <script lang="ts">
@@ -466,7 +653,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 <Alert variant="success">Success message</Alert>
 ```
 
-### 7.6 Badge
+### 9.6 Badge
 
 ```svelte
 <script lang="ts">
@@ -480,7 +667,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 <Badge variant="danger">Blocked</Badge>
 ```
 
-### 7.7 Interactive List Item
+### 9.7 Interactive List Item
 
 ```svelte
 <button
@@ -494,7 +681,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 </button>
 ```
 
-### 7.8 Empty State
+### 9.8 Empty State
 
 ```svelte
 <div class="text-center py-12 border-2 border-dashed border-border rounded-lg">
@@ -504,7 +691,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 </div>
 ```
 
-### 7.9 Info Panel with Texture
+### 9.9 Info Panel with Texture
 
 ```svelte
 <div class="rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak">
@@ -513,7 +700,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 </div>
 ```
 
-### 7.10 Mobile Back Button
+### 9.10 Mobile Back Button
 
 ```svelte
 <button
@@ -531,9 +718,9 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 
 ---
 
-## 8. Motion System
+## 10. Motion System
 
-### 8.1 Motion Personality
+### 10.1 Motion Personality
 
 - Confident
 - Quick
@@ -541,7 +728,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 - No "floaty bouncy"
 - Tactile press feedback
 
-### 8.2 Motion Tokens
+### 10.2 Motion Tokens
 
 | Token   | Duration | Use                  |
 | ------- | -------- | -------------------- |
@@ -549,7 +736,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 | Default | `180ms`  | Standard transitions |
 | Slow    | `260ms`  | Complex animations   |
 
-### 8.3 Animation Classes
+### 10.3 Animation Classes
 
 ```css
 /* Entry animation */
@@ -573,7 +760,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 }
 ```
 
-### 8.4 Motion Guidelines
+### 10.4 Motion Guidelines
 
 **Allowed:**
 
@@ -592,9 +779,9 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 
 ---
 
-## 9. Migration Playbook
+## 11. Migration Playbook
 
-### 9.1 Class Replacement Table
+### 11.1 Class Replacement Table
 
 | Old Class                                      | New Class               |
 | ---------------------------------------------- | ----------------------- |
@@ -612,7 +799,7 @@ Input styling: `shadow-ink-inner border-border text-foreground focus:border-acce
 | `shadow-subtle` / `shadow-sm`                  | `shadow-ink`            |
 | `rounded`                                      | `rounded-lg`            |
 
-### 9.2 Step-by-Step Refactor Flow
+### 11.2 Step-by-Step Refactor Flow
 
 #### Pass A: Tokenize Colors
 
@@ -657,7 +844,7 @@ Only after structure is clean:
 - Ensure focus rings exist everywhere
 - Replace custom animations with ink-in/out patterns
 
-### 9.3 Adding Inkprint to New Components
+### 11.3 Adding Inkprint to New Components
 
 ```svelte
 <script lang="ts">
@@ -697,22 +884,38 @@ Only after structure is clean:
 
 ---
 
-## 10. Before You Ship Checklist
+## 12. Before You Ship Checklist
 
+### Color & Tokens
 - [ ] Did you use semantic color tokens (`bg-card`, `text-foreground`) instead of hardcoded colors?
-- [ ] Is texture semantic, consistent, and low enough intensity for readability?
+- [ ] Does it work in both light and dark mode without manual `dark:` overrides?
+
+### Texture & Weight
+- [ ] Is texture semantic and consistent with the meaning table (Section 3)?
+- [ ] Is texture intensity appropriate (weak for text areas, med for headers)?
+- [ ] Is weight appropriate for the element's importance (Section 4)?
+- [ ] Did you avoid using `wt-plate` for non-system-critical UI?
+- [ ] Does the texture × weight combination match the semantic matrix (Section 5)?
+
+### Hierarchy & Readability
 - [ ] Are surfaces clearly layered (background → card → inset → overlay)?
-- [ ] Do buttons have `pressable` class and feel tactile?
 - [ ] Can you scan the page in 3 seconds and understand the hierarchy?
-- [ ] Does it still feel like BuildOS in both light and dark mode?
+- [ ] Is information density appropriate (compact but not cramped)?
+
+### Interaction & Motion
+- [ ] Do buttons have `pressable` class and feel tactile?
+- [ ] Does motion timing feel appropriate for the element's weight?
+- [ ] Does `prefers-reduced-motion` disable animations?
 - [ ] Are focus states visible everywhere?
-- [ ] Does reduced motion still work?
+
+### Responsiveness & Accessibility
 - [ ] Is the component responsive (mobile-first with `sm:`, `md:`, `lg:` breakpoints)?
 - [ ] Are touch targets at least 44x44px?
+- [ ] Is contrast ratio WCAG AA compliant (4.5:1 for text)?
 
 ---
 
-## 11. Data Model Icon Conventions
+## 13. Data Model Icon Conventions
 
 BuildOS uses consistent icons from Lucide for all core data models. **These icons must be used everywhere a data model is represented visually.**
 

@@ -11,7 +11,8 @@ When invoked, respond with:
 
 I'll systematically analyze and enhance your component following:
 - High information density (no excess padding/margin)
-- Inkprint semantic textures and tokens
+- Inkprint semantic textures (what kind) + weights (how important)
+- PNG texture system for material depth (v2)
 - Svelte 5 runes and best practices
 - Mobile-first responsive design
 - WCAG AA accessibility
@@ -75,13 +76,40 @@ text-muted-foreground /* Secondary text */
 border-border        /* All borders */
 ```
 
-**Textures (semantic, not decorative):**
+**Textures (what KIND of thing - semantic, not decorative):**
 ```css
-tx tx-frame tx-weak  /* Primary containers, modals */
-tx tx-grain tx-weak  /* Active work, in-progress */
-tx tx-bloom tx-weak  /* Creation, new items, drafts */
-tx tx-static tx-weak /* Errors, warnings, blockers */
-tx tx-thread tx-weak /* Dependencies, relationships */
+tx tx-frame tx-weak  /* Primary containers, modals, canonical */
+tx tx-grain tx-weak  /* Active work, in-progress, execution */
+tx tx-bloom tx-weak  /* Creation, new items, drafts, ideation */
+tx tx-static tx-weak /* Errors, warnings, blockers, risk */
+tx tx-thread tx-weak /* Dependencies, relationships, links */
+tx tx-pulse tx-weak  /* Urgency, deadlines, momentum */
+```
+
+**Weights (how IMPORTANT - affects shadow, border, motion):**
+```css
+wt-ghost   /* Ephemeral, uncommitted, suggestions (100ms, dashed border) */
+wt-paper   /* Standard UI, working state - DEFAULT (150ms) */
+wt-card    /* Important, elevated, committed (200ms, stronger shadow) */
+wt-plate   /* System-critical, immutable, modals (280ms, heaviest) */
+```
+
+**Texture × Weight Combinations:**
+```css
+/* Draft task: in-progress + uncommitted */
+tx tx-grain tx-weak wt-ghost
+
+/* Active task: in-progress + standard */
+tx tx-grain tx-weak wt-paper
+
+/* Completed milestone: canonical + important */
+tx tx-frame tx-med wt-card
+
+/* System modal: canonical + critical */
+tx tx-frame tx-weak wt-plate
+
+/* Error requiring decision: blocker + important */
+tx tx-static tx-med wt-card
 ```
 
 **Shadows and Interactions:**
@@ -103,14 +131,18 @@ pressable            /* Add to buttons for tactile feel */
 3. **Check colors** - Are hardcoded colors used? (`gray-*`, `slate-*`, `blue-*`)
 4. **Check dark mode** - Does it use semantic tokens or manual `dark:` overrides?
 5. **Check responsiveness** - Mobile-first with breakpoints?
+6. **Check texture** - Is texture semantic or just decorative?
+7. **Check weight** - Is the element's visual weight appropriate for its importance?
 
 ### Phase 2: Enhance
 
 1. **Replace hardcoded colors** with semantic tokens
 2. **Tighten spacing** - Reduce padding/gaps where possible
-3. **Add appropriate texture** - Based on component purpose
-4. **Add `pressable`** to interactive elements
-5. **Ensure focus states** - `focus:ring-ring`
+3. **Add appropriate texture** - Based on what KIND of thing it is (Section 3)
+4. **Add appropriate weight** - Based on how IMPORTANT it is (Section 4)
+5. **Add `pressable`** to interactive elements
+6. **Ensure focus states** - `focus:ring-ring`
+7. **Verify texture × weight** - Check against semantic matrix (Section 5)
 
 ---
 
@@ -193,9 +225,20 @@ Before completing, verify:
 
 ### ✅ Inkprint Tokens
 - [ ] All colors use semantic tokens (no `gray-*`, `slate-*`, `blue-*`)
-- [ ] Appropriate texture applied based on purpose
 - [ ] Shadows use `shadow-ink` variants
 - [ ] Buttons have `pressable` class
+
+### ✅ Texture (What KIND)
+- [ ] Texture matches element's semantic meaning (bloom/grain/pulse/static/thread/frame)
+- [ ] Texture intensity is appropriate (weak for text areas, med for headers)
+- [ ] No decorative textures without semantic purpose
+
+### ✅ Weight (How IMPORTANT)
+- [ ] Weight matches element's importance level (ghost/paper/card/plate)
+- [ ] `wt-paper` used as default (or no weight class)
+- [ ] `wt-plate` only used for system-critical elements (modals, alerts)
+- [ ] `wt-ghost` used for ephemeral, dismissible content
+- [ ] Motion timing feels appropriate for element weight
 
 ### ✅ Responsiveness
 - [ ] Works on 375px (iPhone SE)
@@ -205,6 +248,7 @@ Before completing, verify:
 ### ✅ Dark Mode
 - [ ] Uses semantic tokens (automatic dark mode support)
 - [ ] No manual `dark:` overrides unless necessary
+- [ ] Weight visuals work in dark mode (shadows + rim glows)
 
 ### ✅ Accessibility
 - [ ] Focus rings visible (`focus:ring-ring`)
@@ -254,10 +298,20 @@ Before completing, verify:
 | Document | Purpose |
 |----------|---------|
 | `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` | **PRIMARY** - Complete design system |
+| `/apps/web/docs/technical/components/INKPRINT_V2_TEXTURE_EVOLUTION.md` | **v2** - PNG texture evolution |
+| `/apps/web/docs/technical/components/TEXTURE_CANDIDATES.md` | PNG texture catalog |
 | `/apps/web/docs/technical/MOBILE_RESPONSIVE_BEST_PRACTICES.md` | Mobile optimization patterns |
 | `/apps/web/docs/technical/components/modals/` | Modal system documentation |
 | `/apps/web/src/lib/components/ui/` | Base UI components |
 | `/apps/web/src/lib/styles/inkprint.css` | CSS variables and textures |
+| `/apps/web/static/textures/` | PNG texture files |
+
+### Testing Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/design-system/inkprint` | v1 CSS texture reference |
+| `/design-system/inkprint-v2` | v2 PNG texture testing |
 
 ---
 

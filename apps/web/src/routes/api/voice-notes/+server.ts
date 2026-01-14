@@ -7,7 +7,9 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 const MAX_SYNC_TRANSCRIBE_SECONDS = 180; // 3 minutes
-const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
+// const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
+// NOTE: Testing the cheaper model to reduce transcription costs.
+const TRANSCRIPTION_MODEL = env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
 
 const ALLOWED_AUDIO_MIME_TYPES = [
 	'audio/webm',

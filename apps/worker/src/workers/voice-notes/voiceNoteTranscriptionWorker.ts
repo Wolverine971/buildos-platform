@@ -18,7 +18,9 @@ type VoiceNoteRecord = {
 
 const OPENAI_API_KEY =
 	process.env.OPENAI_API_KEY?.trim() || process.env.PRIVATE_OPENAI_API_KEY?.trim();
-const TRANSCRIPTION_MODEL = process.env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
+// const TRANSCRIPTION_MODEL = process.env.TRANSCRIPTION_MODEL || 'gpt-4o-transcribe';
+// NOTE: Testing the cheaper model to reduce transcription costs.
+const TRANSCRIPTION_MODEL = process.env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
 const OPENAI_TRANSCRIBE_URL = 'https://api.openai.com/v1/audio/transcriptions';
 
 const BASE_VOCABULARY = 'BuildOS, brain dump, ontology, daily brief, phase, project context';

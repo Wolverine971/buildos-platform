@@ -8,9 +8,9 @@
 	// No props needed - this is a pure skeleton
 </script>
 
-<!-- Skeleton card - matches real project card structure exactly -->
+<!-- Skeleton card - matches real project card structure exactly, paper weight -->
 <div
-	class="group relative flex flex-col rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak animate-pulse"
+	class="group relative flex flex-col wt-paper p-2 sm:p-4 tx tx-frame tx-weak animate-pulse"
 	aria-hidden="true"
 >
 	<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
