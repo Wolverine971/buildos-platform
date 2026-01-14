@@ -250,6 +250,19 @@
 		milestones: false
 	});
 	let showMobileMenu = $state(false);
+	let mobileMenuButtonEl: HTMLButtonElement | null = $state(null);
+	let mobileMenuPos = $state({ top: 0, right: 0 });
+
+	function openMobileMenu() {
+		if (mobileMenuButtonEl) {
+			const rect = mobileMenuButtonEl.getBoundingClientRect();
+			mobileMenuPos = {
+				top: rect.bottom + 4,
+				right: window.innerWidth - rect.right
+			};
+		}
+		showMobileMenu = true;
+	}
 
 	// Insight panel filter/sort state
 	let panelStates = $state(createDefaultPanelStates());
@@ -1210,116 +1223,18 @@
 				<!-- Mobile: State + 3-dot menu -->
 				<div class="flex items-center gap-1.5 sm:hidden">
 					<StateDisplay state={project.state_key} entityKind="project" />
-					<div class="relative">
-						<button
-							onclick={() => (showMobileMenu = !showMobileMenu)}
-							class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
-							aria-label="Project options"
-							aria-expanded={showMobileMenu}
-						>
-							<MoreVertical class="w-5 h-5 text-muted-foreground" />
-						</button>
-
-						{#if showMobileMenu}
-							<!-- Backdrop -->
-							<button
-								type="button"
-								class="fixed inset-0 z-0"
-								onclick={() => (showMobileMenu = false)}
-								aria-label="Close menu"
-							></button>
-
-							<!-- Dropdown -->
-							<div
-								class="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1 tx tx-frame tx-weak"
-							>
-								{#if graphHidden}
-									<button
-										onclick={() => {
-											showMobileMenu = false;
-											handleGraphShow();
-										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
-									>
-										<GitBranch class="w-4 h-4 text-muted-foreground" />
-										Show graph
-									</button>
-								{/if}
-								{#if canInvite}
-									<button
-										onclick={() => {
-											showMobileMenu = false;
-											showShareModal = true;
-										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
-									>
-										<UserPlus class="w-4 h-4 text-muted-foreground" />
-										Share project
-									</button>
-								{/if}
-								{#if canEdit}
-									<button
-										onclick={() => {
-											showMobileMenu = false;
-											showProjectEditModal = true;
-										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
-									>
-										<Pencil class="w-4 h-4 text-muted-foreground" />
-										Edit project
-									</button>
-									<button
-										onclick={() => {
-											showMobileMenu = false;
-											showProjectCalendarSettingsModal = true;
-										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
-									>
-										<Calendar class="w-4 h-4 text-muted-foreground" />
-										Calendar settings
-									</button>
-								{/if}
-								{#if canAdmin}
-									<hr class="my-1 border-border" />
-									<button
-										onclick={() => {
-											showMobileMenu = false;
-											showDeleteProjectModal = true;
-										}}
-										class="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors pressable"
-									>
-										<Trash2 class="w-4 h-4" />
-										Delete project
-									</button>
-								{/if}
-							</div>
-						{/if}
-					</div>
+					<button
+						bind:this={mobileMenuButtonEl}
+						onclick={openMobileMenu}
+						class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
+						aria-label="Project options"
+						aria-expanded={showMobileMenu}
+					>
+						<MoreVertical class="w-5 h-5 text-muted-foreground" />
+					</button>
 				</div>
 			</div>
 
-			<!-- Mobile: Compact entity count summary bar -->
-			{#if true}
-				{@const mobileStats = [
-					{ key: 'tasks', count: tasks.length, Icon: ListChecks },
-					{ key: 'docs', count: documents.length, Icon: FileText },
-					{ key: 'goals', count: goals.length, Icon: Target },
-					{ key: 'plans', count: plans.length, Icon: Calendar }
-				].filter((s) => s.count > 0)}
-				{#if mobileStats.length > 0}
-					<div
-						class="flex sm:hidden items-center gap-2.5 text-muted-foreground overflow-x-auto pb-0.5"
-					>
-						{#each mobileStats as stat (stat.key)}
-							{@const StatIcon = stat.Icon}
-							<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
-								<StatIcon class="h-3 w-3" />
-								<span class="font-semibold text-[10px]">{stat.count}</span>
-							</span>
-						{/each}
-					</div>
-				{/if}
-			{/if}
 
 			<!-- Next Step Display -->
 			<NextStepDisplay
@@ -2424,4 +2339,78 @@
 			{/if}
 		{/snippet}
 	</ConfirmationModal>
+{/if}
+
+<!-- Mobile Menu Portal - Rendered outside all containers to avoid z-index issues -->
+{#if showMobileMenu}
+	<button
+		type="button"
+		class="fixed inset-0 z-[9998] bg-transparent"
+		onclick={() => (showMobileMenu = false)}
+		aria-label="Close menu"
+	></button>
+	<div
+		class="fixed z-[9999] w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1"
+		style="top: {mobileMenuPos.top}px; right: {mobileMenuPos.right}px;"
+	>
+		{#if graphHidden}
+			<button
+				onclick={() => {
+					showMobileMenu = false;
+					handleGraphShow();
+				}}
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
+			>
+				<GitBranch class="w-4 h-4 text-muted-foreground" />
+				Show graph
+			</button>
+		{/if}
+		{#if canInvite}
+			<button
+				onclick={() => {
+					showMobileMenu = false;
+					showShareModal = true;
+				}}
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
+			>
+				<UserPlus class="w-4 h-4 text-muted-foreground" />
+				Share project
+			</button>
+		{/if}
+		{#if canEdit}
+			<button
+				onclick={() => {
+					showMobileMenu = false;
+					showProjectEditModal = true;
+				}}
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
+			>
+				<Pencil class="w-4 h-4 text-muted-foreground" />
+				Edit project
+			</button>
+			<button
+				onclick={() => {
+					showMobileMenu = false;
+					showProjectCalendarSettingsModal = true;
+				}}
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
+			>
+				<Calendar class="w-4 h-4 text-muted-foreground" />
+				Calendar settings
+			</button>
+		{/if}
+		{#if canAdmin}
+			<hr class="my-1 border-border" />
+			<button
+				onclick={() => {
+					showMobileMenu = false;
+					showDeleteProjectModal = true;
+				}}
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors pressable"
+			>
+				<Trash2 class="w-4 h-4" />
+				Delete project
+			</button>
+		{/if}
+	</div>
 {/if}

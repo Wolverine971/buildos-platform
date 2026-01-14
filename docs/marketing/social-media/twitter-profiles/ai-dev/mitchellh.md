@@ -1,4 +1,4 @@
-<!-- twitter-profiles/ai-dev/mitchellh.md -->
+<!-- docs/marketing/social-media/twitter-profiles/ai-dev/mitchellh.md -->
 
 # @mitchellh - Mitchell Hashimoto
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@mitchellh](https://x.com/mitchellh)              |
-| Name      | Mitchell Hashimoto                                 |
-| Followers | 10K (verified 2026-01-13)                          |
-| Bio       | Founder of HashiCorp. Building things.             |
-| Location  | San Francisco                                      |
-| Website   | mitchellh.com                                      |
+| Field     | Value                                  |
+| --------- | -------------------------------------- |
+| Handle    | [@mitchellh](https://x.com/mitchellh)  |
+| Name      | Mitchell Hashimoto                     |
+| Followers | 10K (verified 2026-01-13)              |
+| Bio       | Founder of HashiCorp. Building things. |
+| Location  | San Francisco                          |
+| Website   | mitchellh.com                          |
 
 ## Why This Account Matters
 
 Mitchell Hashimoto founded HashiCorp (Vagrant, Terraform, Vault, Consul) and has recently been exploring AI development quality and tooling. A legend in the infrastructure space now applying that rigor to AI.
 
 **Strategic Value:**
+
 - Infrastructure and developer tooling expertise
 - Brings HashiCorp-level quality thinking to AI
 - Respected voice in developer community
@@ -37,12 +38,14 @@ Mitchell Hashimoto founded HashiCorp (Vagrant, Terraform, Vault, Consul) and has
 **Priority Level:** MEDIUM-HIGH
 
 **Approach:**
+
 - Engage on AI quality and testing discussions
 - Connect on developer experience topics
 - Appreciate infrastructure-level thinking applied to AI
 - Share relevant BuildOS architectural decisions
 
 **Topics to Engage On:**
+
 - AI development quality
 - Developer tooling design
 - Infrastructure thinking applied to AI
@@ -58,11 +61,13 @@ Mitchell Hashimoto founded HashiCorp (Vagrant, Terraform, Vault, Consul) and has
 ## Sample Engagement Templates
 
 **For AI quality posts:**
+
 ```
 this is the hashicorp rigor i was hoping to see applied to ai. [specific insight]. the [principle] maps directly to [your experience].
 ```
 
 **For dev tooling posts:**
+
 ```
 been thinking about this for [BuildOS context]. [your approach]. curious how you see [related challenge].
 ```

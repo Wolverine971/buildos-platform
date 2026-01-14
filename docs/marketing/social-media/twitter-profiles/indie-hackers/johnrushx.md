@@ -1,4 +1,4 @@
-<!-- twitter-profiles/indie-hackers/johnrushx.md -->
+<!-- docs/marketing/social-media/twitter-profiles/indie-hackers/johnrushx.md -->
 
 # @johnrushx - John Rush
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@johnrushx](https://x.com/johnrushx)              |
-| Name      | John Rush                                          |
-| Followers | 15K                                                |
-| Bio       | Building MarsX. Ship fast.                         |
-| Location  | N/A                                                |
-| Website   | marsx.dev                                          |
+| Field     | Value                                 |
+| --------- | ------------------------------------- |
+| Handle    | [@johnrushx](https://x.com/johnrushx) |
+| Name      | John Rush                             |
+| Followers | 15K                                   |
+| Bio       | Building MarsX. Ship fast.            |
+| Location  | N/A                                   |
+| Website   | marsx.dev                             |
 
 ## Why This Account Matters
 
 John Rush is a prolific builder known for MarsX and shipping many products. Embodies the "ship fast" indie hacker ethos.
 
 **Strategic Value:**
+
 - Prolific shipping culture
 - No-code/low-code tools
 - Building in public community
@@ -30,12 +31,14 @@ John Rush is a prolific builder known for MarsX and shipping many products. Embo
 **Priority Level:** MEDIUM
 
 **Approach:**
+
 - Engage on shipping and building posts
 - Comment on product launches
 - Appreciate velocity and iteration
 - Share relevant experiences
 
 **Topics to Engage On:**
+
 - Shipping fast
 - Product launches
 - Building in public

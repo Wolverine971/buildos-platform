@@ -1,4 +1,4 @@
-<!-- twitter-profiles/creator-economy/nicolevanderhoeven.md -->
+<!-- docs/marketing/social-media/twitter-profiles/creator-economy/nicolevanderhoeven.md -->
 
 # @nicolevanderhoeven - Nicole van der Hoeven
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
+| Field     | Value                                                   |
+| --------- | ------------------------------------------------------- |
 | Handle    | [@nicolevanderhoeven](https://x.com/nicolevanderhoeven) |
-| Name      | Nicole van der Hoeven                              |
-| Followers | 50K                                                |
-| Bio       | Obsidian tutorials. PKM. DevRel.                   |
-| Location  | Netherlands                                        |
-| Website   | nicolevanderhoeven.com                             |
+| Name      | Nicole van der Hoeven                                   |
+| Followers | 50K                                                     |
+| Bio       | Obsidian tutorials. PKM. DevRel.                        |
+| Location  | Netherlands                                             |
+| Website   | nicolevanderhoeven.com                                  |
 
 ## Why This Account Matters
 
 Nicole van der Hoeven is a prolific creator of Obsidian tutorials and PKM content. She has a large YouTube following and is influential in the tools-for-thought space.
 
 **Strategic Value:**
+
 - PKM/Obsidian community influence
 - Educational content creator
 - Tools for thought audience
@@ -30,12 +31,14 @@ Nicole van der Hoeven is a prolific creator of Obsidian tutorials and PKM conten
 **Priority Level:** MEDIUM
 
 **Approach:**
+
 - Engage on PKM and Obsidian content
 - Comment on knowledge management posts
 - Connect on tools for thought
 - Share relevant experiences
 
 **Topics to Engage On:**
+
 - Obsidian workflows
 - Personal knowledge management
 - Note-taking systems

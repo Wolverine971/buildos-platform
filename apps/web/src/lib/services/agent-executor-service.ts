@@ -35,6 +35,7 @@ import { getToolsForAgent } from '@buildos/shared-types';
 import { v4 as uuidv4 } from 'uuid';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
 
 // ============================================
 // TYPES
@@ -176,6 +177,18 @@ export class AgentExecutorService {
 			return successResult;
 		} catch (error) {
 			console.error('Executor error:', error);
+			const toolNames = tools.map((tool) => {
+				const toolAny = tool as any;
+				return toolAny?.function?.name ?? toolAny?.name ?? 'unknown';
+			});
+			const toolPreview = toolNames.slice(0, 20);
+			const taskSummary = sanitizeLogData({
+				id: task.id,
+				description: task.description,
+				goal: task.goal,
+				constraints: task.constraints,
+				contextDataKeys: Object.keys(task.contextData ?? {})
+			});
 			await this.errorLogger.logError(error, {
 				userId,
 				projectId: params.entityId,
@@ -186,7 +199,14 @@ export class AgentExecutorService {
 					planId,
 					stepNumber: params.stepNumber,
 					contextType: params.contextType,
-					entityId: params.entityId
+					entityId: params.entityId,
+					toolCount: toolNames.length,
+					toolNames: toolPreview,
+					toolNamesTruncated:
+						toolNames.length > toolPreview.length
+							? toolNames.length - toolPreview.length
+							: undefined,
+					taskSummary
 				}
 			});
 

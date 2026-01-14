@@ -155,6 +155,10 @@ export class ResponseSynthesizer implements BaseService {
 				sessionId: context.sessionId
 			});
 			if (this.errorLogger) {
+				const toolNames = Array.from(
+					new Set(toolResults.map((result) => result.toolName).filter(Boolean))
+				);
+				const toolPreview = toolNames.slice(0, 20);
 				void this.errorLogger.logError(error, {
 					userId: context.userId,
 					projectId: this.resolveProjectId(context),
@@ -163,7 +167,14 @@ export class ResponseSynthesizer implements BaseService {
 						sessionId: context.sessionId,
 						contextType: context.contextType,
 						userMessageLength: userMessage.length,
-						toolCount: toolResults.length
+						messagePreview: sanitizeLogText(userMessage, 160),
+						toolCount: toolResults.length,
+						toolNames: toolPreview,
+						toolNamesTruncated:
+							toolNames.length > toolPreview.length
+								? toolNames.length - toolPreview.length
+								: undefined,
+						successCount: toolResults.filter((result) => result.success).length
 					}
 				});
 			}
@@ -227,6 +238,18 @@ export class ResponseSynthesizer implements BaseService {
 				planId: plan.id
 			});
 			if (this.errorLogger) {
+				const toolNames = Array.from(
+					new Set(
+						executionResults
+							.filter((result) => this.isToolResult(result))
+							.map((result) => (result as ToolExecutionResult).toolName)
+							.filter(Boolean)
+					)
+				);
+				const toolPreview = toolNames.slice(0, 20);
+				const completedSteps = plan.steps.filter((step) => step.status === 'completed')
+					.length;
+				const failedSteps = plan.steps.filter((step) => step.status === 'failed').length;
 				void this.errorLogger.logError(error, {
 					userId: context.userId,
 					projectId: this.resolveProjectId(context),
@@ -234,7 +257,17 @@ export class ResponseSynthesizer implements BaseService {
 					metadata: {
 						sessionId: context.sessionId,
 						contextType: context.contextType,
-						planId: plan.id
+						planId: plan.id,
+						stepCount: plan.steps.length,
+						completedSteps,
+						failedSteps,
+						toolResultCount,
+						executorResultCount,
+						toolNames: toolPreview,
+						toolNamesTruncated:
+							toolNames.length > toolPreview.length
+								? toolNames.length - toolPreview.length
+								: undefined
 					}
 				});
 			}
@@ -284,6 +317,9 @@ export class ResponseSynthesizer implements BaseService {
 				sessionId: context.sessionId
 			});
 			if (this.errorLogger) {
+				const questionPreview = questions
+					.slice(0, 3)
+					.map((question) => sanitizeLogText(question, 120));
 				void this.errorLogger.logError(error, {
 					userId: context.userId,
 					projectId: this.resolveProjectId(context),
@@ -291,7 +327,12 @@ export class ResponseSynthesizer implements BaseService {
 					metadata: {
 						sessionId: context.sessionId,
 						contextType: context.contextType,
-						questionCount: questions.length
+						questionCount: questions.length,
+						questionPreview,
+						questionPreviewTruncated:
+							questions.length > questionPreview.length
+								? questions.length - questionPreview.length
+								: undefined
 					}
 				});
 			}
@@ -371,13 +412,25 @@ export class ResponseSynthesizer implements BaseService {
 				sessionId: context.sessionId
 			});
 			if (this.errorLogger) {
+				const toolNames = Array.from(
+					new Set(toolResults.map((result) => result.toolName).filter(Boolean))
+				);
+				const toolPreview = toolNames.slice(0, 20);
 				void this.errorLogger.logError(error, {
 					userId: context.userId,
 					projectId: this.resolveProjectId(context),
 					operationType: 'streaming_response_synthesis',
 					metadata: {
 						sessionId: context.sessionId,
-						contextType: context.contextType
+						contextType: context.contextType,
+						userMessageLength: userMessage.length,
+						messagePreview: sanitizeLogText(userMessage, 160),
+						toolCount: toolResults.length,
+						toolNames: toolPreview,
+						toolNamesTruncated:
+							toolNames.length > toolPreview.length
+								? toolNames.length - toolPreview.length
+								: undefined
 					}
 				});
 			}

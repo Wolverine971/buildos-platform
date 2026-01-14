@@ -1,4 +1,4 @@
-<!-- twitter-profiles/creator-economy/maggieappleton.md -->
+<!-- docs/marketing/social-media/twitter-profiles/creator-economy/maggieappleton.md -->
 
 # @maggieappleton - Maggie Appleton
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@maggieappleton](https://x.com/maggieappleton)    |
-| Name      | Maggie Appleton                                    |
-| Followers | 40K                                                |
-| Bio       | Visual essays. Digital gardening.                  |
-| Location  | London                                             |
-| Website   | maggieappleton.com                                 |
+| Field     | Value                                           |
+| --------- | ----------------------------------------------- |
+| Handle    | [@maggieappleton](https://x.com/maggieappleton) |
+| Name      | Maggie Appleton                                 |
+| Followers | 40K                                             |
+| Bio       | Visual essays. Digital gardening.               |
+| Location  | London                                          |
+| Website   | maggieappleton.com                              |
 
 ## Why This Account Matters
 
 Maggie Appleton is known for her illustrated essays and digital garden. She's influential in the tools for thought and knowledge management community.
 
 **Strategic Value:**
+
 - Digital garden pioneer
 - Visual communication expertise
 - Tools for thought community
@@ -30,12 +31,14 @@ Maggie Appleton is known for her illustrated essays and digital garden. She's in
 **Priority Level:** MEDIUM
 
 **Approach:**
+
 - Engage on digital gardening content
 - Appreciate visual essay format
 - Comment on tools for thought posts
 - Connect on knowledge sharing philosophy
 
 **Topics to Engage On:**
+
 - Digital gardens
 - Visual essays and notes
 - Tools for thought

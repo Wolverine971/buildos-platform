@@ -280,12 +280,21 @@ export class ProjectCreationAnalyzer {
 				chatSessionId
 			});
 			if (this.errorLogger) {
+				const contextPreview = accumulatedContext
+					? sanitizeLogText(accumulatedContext, 160)
+					: undefined;
 				void this.errorLogger.logError(error, {
 					userId,
 					operationType: 'project_creation_llm_analysis',
 					metadata: {
 						chatSessionId,
-						roundNumber
+						roundNumber,
+						contextLength: accumulatedContext?.length ?? 0,
+						contextPreview,
+						confidence: quickAnalysis.confidence,
+						inferredType: quickAnalysis.inferredType,
+						missingInfo: quickAnalysis.missingInfo,
+						presentInfo: quickAnalysis.presentInfo
 					}
 				});
 			}

@@ -1,4 +1,4 @@
-<!-- twitter-profiles/indie-hackers/GeorgeM_Growth.md -->
+<!-- docs/marketing/social-media/twitter-profiles/indie-hackers/GeorgeM_Growth.md -->
 
 # @GeorgeM_Growth - George Moulos
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@GeorgeM_Growth](https://x.com/GeorgeM_Growth)    |
-| Name      | George Moulos                                      |
-| Followers | 26K                                                |
-| Bio       | Helping you grow your solo business.               |
-| Location  | Sydney                                             |
-| Website   | georgemoulos.com                                   |
+| Field     | Value                                           |
+| --------- | ----------------------------------------------- |
+| Handle    | [@GeorgeM_Growth](https://x.com/GeorgeM_Growth) |
+| Name      | George Moulos                                   |
+| Followers | 26K                                             |
+| Bio       | Helping you grow your solo business.            |
+| Location  | Sydney                                          |
+| Website   | georgemoulos.com                                |
 
 ## Why This Account Matters
 
 George Moulos focuses on growing solo businesses and has experience acquiring and scaling small internet businesses. Good for solo founder strategy.
 
 **Strategic Value:**
+
 - Solo founder growth tactics
 - Acquisition entrepreneurship insights
 - Building in public community
@@ -30,12 +31,14 @@ George Moulos focuses on growing solo businesses and has experience acquiring an
 **Priority Level:** MEDIUM
 
 **Approach:**
+
 - Engage on solo founder content
 - Comment on growth tactics
 - Share BuildOS journey experiences
 - Connect on indie hacker philosophy
 
 **Topics to Engage On:**
+
 - Solo founder strategies
 - Business acquisition
 - Growth tactics

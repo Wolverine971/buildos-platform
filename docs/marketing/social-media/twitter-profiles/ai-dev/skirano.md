@@ -1,4 +1,4 @@
-<!-- twitter-profiles/ai-dev/skirano.md -->
+<!-- docs/marketing/social-media/twitter-profiles/ai-dev/skirano.md -->
 
 # @skirano - Sawyer Hood
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@skirano](https://x.com/skirano)                  |
-| Name      | Sawyer Hood                                        |
-| Followers | 31K (verified 2026-01-13)                          |
-| Bio       | Building at Cursor                                 |
-| Location  | San Francisco                                      |
-| Website   | cursor.so                                          |
+| Field     | Value                             |
+| --------- | --------------------------------- |
+| Handle    | [@skirano](https://x.com/skirano) |
+| Name      | Sawyer Hood                       |
+| Followers | 31K (verified 2026-01-13)         |
+| Bio       | Building at Cursor                |
+| Location  | San Francisco                     |
+| Website   | cursor.so                         |
 
 ## Why This Account Matters
 
 Sawyer Hood works at Cursor, the AI-first code editor that's competing/complementing Claude Code in the AI development space. Understanding Cursor's approach helps inform BuildOS development strategy.
 
 **Strategic Value:**
+
 - Building competing/adjacent AI dev tools
 - Deep expertise in AI-assisted coding
 - Insights into AI IDE design decisions
@@ -30,12 +31,14 @@ Sawyer Hood works at Cursor, the AI-first code editor that's competing/complemen
 **Priority Level:** MEDIUM-HIGH
 
 **Approach:**
+
 - Engage on AI dev tooling philosophy
 - Comment on Cursor features and updates
 - Discuss AI-assisted development workflows
 - Share comparative experiences (without being negative)
 
 **Topics to Engage On:**
+
 - AI IDE development
 - Code completion and generation
 - Developer experience with AI tools
@@ -51,11 +54,13 @@ Sawyer Hood works at Cursor, the AI-first code editor that's competing/complemen
 ## Sample Engagement Templates
 
 **For Cursor updates:**
+
 ```
 interesting approach to [feature]. been thinking about this from the [different angle]. how do you balance [tradeoff]?
 ```
 
 **For AI dev discussions:**
+
 ```
 this resonates - [specific insight]. curious how this plays out as [models/tools] evolve.
 ```

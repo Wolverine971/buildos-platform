@@ -56,6 +56,7 @@ import { ErrorLoggerService } from '../../errorLogger.service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
 import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { createLogger } from '$lib/utils/logger';
+import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 
 const logger = createLogger('AgentChatOrchestrator');
 
@@ -334,13 +335,23 @@ export class AgentChatOrchestrator {
 				sessionId: request.sessionId,
 				contextType: request.contextType
 			});
+			const toolNames =
+				plannerContext?.availableTools?.map((tool) => this.getToolName(tool)) ?? [];
+			const toolPreview = toolNames.slice(0, 20);
 			await this.deps.errorLogger.logError(error, {
 				userId: request.userId,
 				operationType: 'agent_chat_orchestration',
 				metadata: {
 					sessionId: request.sessionId,
 					contextType: request.contextType,
-					messageLength: request.userMessage.length
+					messageLength: request.userMessage.length,
+					messagePreview: sanitizeLogText(request.userMessage, 160),
+					toolCount: toolNames.length,
+					toolNames: toolPreview,
+					toolNamesTruncated:
+						toolNames.length > toolPreview.length
+							? toolNames.length - toolPreview.length
+							: undefined
 				}
 			});
 
@@ -420,6 +431,8 @@ export class AgentChatOrchestrator {
 				sessionId: serviceContext.sessionId,
 				contextType: serviceContext.contextType
 			});
+			const toolNames = plannerContext.availableTools.map((tool) => this.getToolName(tool));
+			const toolPreview = toolNames.slice(0, 20);
 			void this.deps.errorLogger.logError(
 				error,
 				{
@@ -428,7 +441,14 @@ export class AgentChatOrchestrator {
 					metadata: {
 						sessionId: serviceContext.sessionId,
 						contextType: serviceContext.contextType,
-						messageLength: request.userMessage.length
+						messageLength: request.userMessage.length,
+						messagePreview: sanitizeLogText(request.userMessage, 160),
+						toolCount: toolNames.length,
+						toolNames: toolPreview,
+						toolNamesTruncated:
+							toolNames.length > toolPreview.length
+								? toolNames.length - toolPreview.length
+								: undefined
 					}
 				},
 				'warning'
@@ -601,7 +621,9 @@ export class AgentChatOrchestrator {
 					metadata: {
 						sessionId: serviceContext.sessionId,
 						contextType: serviceContext.contextType,
-						entityId: serviceContext.entityId
+						entityId: serviceContext.entityId,
+						messageLength: request.userMessage.length,
+						messagePreview: sanitizeLogText(request.userMessage, 160)
 					}
 				},
 				'warning'
@@ -952,13 +974,23 @@ export class AgentChatOrchestrator {
 				operation: 'plan_tool_execution',
 				sessionId: serviceContext.sessionId
 			});
+			const sanitizedArgs = sanitizeLogData(rawArgs ?? {});
 			void this.deps.errorLogger.logError(error, {
 				userId: serviceContext.userId,
 				projectId: serviceContext.contextScope?.projectId ?? serviceContext.entityId,
 				operationType: 'plan_tool_execution',
+				operationPayload:
+					sanitizedArgs && typeof sanitizedArgs === 'object'
+						? (sanitizedArgs as Record<string, any>)
+						: undefined,
 				metadata: {
 					sessionId: serviceContext.sessionId,
-					contextType: serviceContext.contextType
+					contextType: serviceContext.contextType,
+					executionMode,
+					objectivePreview: sanitizeLogText(objective, 160),
+					objectiveLength: objective.length,
+					requestedOutputs: intent.requestedOutputs,
+					priorityEntities: intent.priorityEntities
 				}
 			});
 			streamEvents.push(
@@ -1486,7 +1518,9 @@ export class AgentChatOrchestrator {
 				metadata: {
 					sessionId: request.sessionId,
 					contextType: request.contextType,
-					messageLength: request.userMessage.length
+					messageLength: request.userMessage.length,
+					messagePreview: sanitizeLogText(request.userMessage, 160),
+					roundNumber
 				}
 			});
 

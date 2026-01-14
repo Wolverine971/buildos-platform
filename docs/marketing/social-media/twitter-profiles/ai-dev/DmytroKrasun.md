@@ -1,4 +1,4 @@
-<!-- twitter-profiles/ai-dev/DmytroKrasun.md -->
+<!-- docs/marketing/social-media/twitter-profiles/ai-dev/DmytroKrasun.md -->
 
 # @DmytroKrasun - Dmytro Krasun
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@DmytroKrasun](https://x.com/DmytroKrasun)        |
-| Name      | Dmytro Krasun                                      |
-| Followers | 28K (verified 2026-01-13)                          |
-| Bio       | Building ScreenshotOne. AI tools.                  |
-| Location  | Ukraine                                            |
-| Website   | screenshotone.com                                  |
+| Field     | Value                                       |
+| --------- | ------------------------------------------- |
+| Handle    | [@DmytroKrasun](https://x.com/DmytroKrasun) |
+| Name      | Dmytro Krasun                               |
+| Followers | 28K (verified 2026-01-13)                   |
+| Bio       | Building ScreenshotOne. AI tools.           |
+| Location  | Ukraine                                     |
+| Website   | screenshotone.com                           |
 
 ## Why This Account Matters
 
 Dmytro Krasun is a prolific indie hacker building AI-powered tools, including ScreenshotOne (screenshot API). He actively builds in public and shares AI development insights.
 
 **Strategic Value:**
+
 - Active indie hacker in AI space
 - Building in public with AI tools
 - Practical AI product development insights
@@ -30,12 +31,14 @@ Dmytro Krasun is a prolific indie hacker building AI-powered tools, including Sc
 **Priority Level:** MEDIUM
 
 **Approach:**
+
 - Engage on AI product building posts
 - Comment on indie hacker journey content
 - Share experiences with similar challenges
 - Connect on building in public culture
 
 **Topics to Engage On:**
+
 - AI product development
 - Indie hacker journey
 - Building in public
@@ -51,11 +54,13 @@ Dmytro Krasun is a prolific indie hacker building AI-powered tools, including Sc
 ## Sample Engagement Templates
 
 **For product updates:**
+
 ```
 the execution here is solid. [specific feature] solves [real problem]. how are you thinking about [related challenge]?
 ```
 
 **For building in public posts:**
+
 ```
 love the transparency. [specific insight] resonates - been dealing with [similar thing]. [your approach].
 ```

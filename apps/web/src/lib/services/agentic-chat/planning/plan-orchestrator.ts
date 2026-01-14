@@ -48,7 +48,7 @@ import { ToolExecutionService } from '../execution/tool-execution-service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
-import { sanitizeLogText } from '$lib/utils/logging-helpers';
+import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 
 const logger = createLogger('PlanOrchestrator');
 
@@ -266,6 +266,11 @@ export class PlanOrchestrator implements BaseService {
 				strategy
 			});
 			if (this.errorLogger) {
+				const toolNames = plannerContext.availableTools.map((tool) => {
+					const name = (tool as any)?.function?.name ?? (tool as any)?.name;
+					return name ?? 'unknown';
+				});
+				const toolPreview = toolNames.slice(0, 20);
 				void this.errorLogger.logError(error, {
 					userId: intent.userId,
 					projectId: context.contextScope?.projectId ?? context.entityId,
@@ -273,7 +278,18 @@ export class PlanOrchestrator implements BaseService {
 					metadata: {
 						sessionId: intent.sessionId,
 						contextType: intent.contextType,
-						strategy
+						strategy,
+						objectivePreview: sanitizeLogText(intent.objective, 160),
+						objectiveLength: intent.objective.length,
+						executionMode,
+						requestedOutputs: intent.requestedOutputs,
+						priorityEntities: intent.priorityEntities,
+						toolCount: toolNames.length,
+						toolNames: toolPreview,
+						toolNamesTruncated:
+							toolNames.length > toolPreview.length
+								? toolNames.length - toolPreview.length
+								: undefined
 					}
 				});
 			}
@@ -328,13 +344,26 @@ export class PlanOrchestrator implements BaseService {
 				planId: plan.id
 			});
 			if (this.errorLogger) {
+				const stepCount = plan.steps?.length ?? 0;
+				const toolNames = plan.steps
+					.flatMap((step) => step.tools ?? [])
+					.filter((tool) => typeof tool === 'string');
+				const toolPreview = toolNames.slice(0, 20);
 				void this.errorLogger.logError(error, {
 					userId: context.userId,
 					projectId: context.contextScope?.projectId ?? context.entityId,
 					operationType: 'plan_review',
 					metadata: {
 						sessionId: plan.sessionId,
-						planId: plan.id
+						planId: plan.id,
+						stepCount,
+						toolCount: toolNames.length,
+						toolNames: toolPreview,
+						toolNamesTruncated:
+							toolNames.length > toolPreview.length
+								? toolNames.length - toolPreview.length
+								: undefined,
+						planStatus: plan.status
 					}
 				});
 			}
@@ -540,6 +569,28 @@ export class PlanOrchestrator implements BaseService {
 				sessionId: plan.sessionId
 			});
 			if (this.errorLogger) {
+				const details =
+					error instanceof PlanExecutionError && error.details ? error.details : undefined;
+				const failedStep = details?.step as PlanStep | undefined;
+				const sanitizedStepMeta = failedStep?.metadata
+					? sanitizeLogData(failedStep.metadata)
+					: undefined;
+				const stepTools =
+					failedStep?.tools && Array.isArray(failedStep.tools)
+						? failedStep.tools
+						: undefined;
+				const stepInfo = failedStep
+					? {
+							stepNumber: failedStep.stepNumber,
+							description: failedStep.description,
+							tools: stepTools,
+							executorRequired: failedStep.executorRequired,
+							status: failedStep.status,
+							error: failedStep.error,
+							metadata: sanitizedStepMeta
+						}
+					: undefined;
+
 				void this.errorLogger.logError(error, {
 					userId: plan.userId,
 					projectId: context.contextScope?.projectId ?? context.entityId,
@@ -547,7 +598,10 @@ export class PlanOrchestrator implements BaseService {
 					metadata: {
 						sessionId: plan.sessionId,
 						planId: plan.id,
-						contextType: context.contextType
+						contextType: context.contextType,
+						stepNumber: details?.stepNumber,
+						stepDescription: details?.stepDescription,
+						failedStep: stepInfo
 					}
 				});
 			}

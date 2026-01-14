@@ -206,13 +206,25 @@ export class StrategyAnalyzer {
 				sessionId: context.sessionId
 			});
 			if (this.errorLogger) {
+				const toolPreview = availableToolNames.slice(0, 20);
 				void this.errorLogger.logError(error, {
 					userId: context.userId,
 					projectId: context.contextScope?.projectId ?? context.entityId,
 					operationType: 'strategy_analysis',
 					metadata: {
 						sessionId: context.sessionId,
-						contextType: context.contextType
+						contextType: context.contextType,
+						messagePreview: sanitizeLogText(message, 120),
+						messageLength: message.length,
+						toolCount: availableToolNames.length,
+						toolNames: toolPreview,
+						toolNamesTruncated:
+							availableToolNames.length > toolPreview.length
+								? availableToolNames.length - toolPreview.length
+								: undefined,
+						clarificationRound: clarificationMetadata?.roundNumber ?? 0,
+						hasLastTurn: Boolean(lastTurnContext),
+						hasOntology: Boolean(plannerContext.metadata?.hasOntology)
 					}
 				});
 			}

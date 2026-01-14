@@ -1,4 +1,4 @@
-<!-- twitter-profiles/dev-tools/supabase.md -->
+<!-- docs/marketing/social-media/twitter-profiles/dev-tools/supabase.md -->
 
 # @supabase - Supabase
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@supabase](https://x.com/supabase)                |
-| Name      | Supabase                                           |
-| Followers | 150K                                               |
-| Bio       | The open source Firebase alternative.              |
-| Location  | Singapore                                          |
-| Website   | supabase.com                                       |
+| Field     | Value                                 |
+| --------- | ------------------------------------- |
+| Handle    | [@supabase](https://x.com/supabase)   |
+| Name      | Supabase                              |
+| Followers | 150K                                  |
+| Bio       | The open source Firebase alternative. |
+| Location  | Singapore                             |
+| Website   | supabase.com                          |
 
 ## Why This Account Matters
 
 Supabase is the **backend provider for BuildOS** - the database, auth, and real-time infrastructure. Engaging with Supabase helps build relationship with a key vendor.
 
 **Strategic Value:**
+
 - BuildOS runs on Supabase
 - Could lead to case study opportunity
 - Stay updated on platform changes
@@ -30,12 +31,14 @@ Supabase is the **backend provider for BuildOS** - the database, auth, and real-
 **Priority Level:** MEDIUM
 
 **Approach:**
+
 - Engage on product updates relevant to BuildOS
 - Share wins using Supabase
 - Provide constructive feedback
 - Position as power user
 
 **Topics to Engage On:**
+
 - New Supabase features
 - Database and auth patterns
 - Real-time capabilities
@@ -51,11 +54,13 @@ Supabase is the **backend provider for BuildOS** - the database, auth, and real-
 ## Sample Engagement Templates
 
 **For product updates:**
+
 ```
 been using [feature] in production for [BuildOS use case]. [specific result]. this is a game changer for [scenario].
 ```
 
 **For community content:**
+
 ```
 supabase has been rock solid for [use case]. [specific metric or experience]. the [feature] particularly impressed.
 ```

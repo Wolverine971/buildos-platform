@@ -1100,7 +1100,7 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 				`
         id, name, slug, status, start_date, end_date,
         description, executive_summary, tags, context,
-        tasks!inner(id, status),
+        tasks(id, status),
         phases(id),
         notes(id),
         brain_dumps(id)

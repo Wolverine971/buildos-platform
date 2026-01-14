@@ -1,4 +1,4 @@
-<!-- twitter-profiles/adhd-neurodivergent/threehourcoffee.md -->
+<!-- docs/marketing/social-media/twitter-profiles/adhd-neurodivergent/threehourcoffee.md -->
 
 # @threehourcoffee - Marie Poulin
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@threehourcoffee](https://x.com/threehourcoffee)  |
-| Name      | Marie Poulin                                       |
-| Followers | 17.2K (verified 2026-01-13)                        |
-| Bio       | Building Llama Life. ADHD-friendly productivity.   |
-| Location  | Canada                                             |
-| Website   | llamalife.co                                       |
+| Field     | Value                                             |
+| --------- | ------------------------------------------------- |
+| Handle    | [@threehourcoffee](https://x.com/threehourcoffee) |
+| Name      | Marie Poulin                                      |
+| Followers | 17.2K (verified 2026-01-13)                       |
+| Bio       | Building Llama Life. ADHD-friendly productivity.  |
+| Location  | Canada                                            |
+| Website   | llamalife.co                                      |
 
 ## Why This Account Matters
 
 Marie Poulin is the founder of Llama Life, an ADHD-focused productivity tool. She's building in exactly the same space as BuildOS with strong overlap in target audience.
 
 **Strategic Value:**
+
 - Building ADHD productivity tool
 - Direct audience overlap
 - Active in ADHD + tech community
@@ -28,6 +29,7 @@ Marie Poulin is the founder of Llama Life, an ADHD-focused productivity tool. Sh
 ## Llama Life Overview
 
 Llama Life is a time-boxing and task management app designed for ADHD minds:
+
 - Visual time blocks
 - Focus mode
 - Gentle accountability
@@ -36,12 +38,14 @@ Llama Life is a time-boxing and task management app designed for ADHD minds:
 ## Competitive Analysis
 
 **Similarities to BuildOS:**
+
 - ADHD target audience
 - Productivity/task management
 - Tech-forward approach
 - Building in public
 
 **Differences:**
+
 - Llama Life = time-boxing focused
 - BuildOS = brain dump + AI extraction
 - Different core workflows
@@ -51,6 +55,7 @@ Llama Life is a time-boxing and task management app designed for ADHD minds:
 **Priority Level:** HIGH
 
 **Approach:**
+
 - Engage genuinely on ADHD productivity content
 - Share BuildOS journey authentically
 - Don't be competitive - be collaborative
@@ -58,6 +63,7 @@ Llama Life is a time-boxing and task management app designed for ADHD minds:
 - Support her wins publicly
 
 **Topics to Engage On:**
+
 - ADHD productivity challenges
 - Building for neurodivergent users
 - Product development journey
@@ -66,16 +72,19 @@ Llama Life is a time-boxing and task management app designed for ADHD minds:
 ## Sample Engagement Templates
 
 **For ADHD content:**
+
 ```
 this resonates deeply. the [specific ADHD challenge] is exactly why i'm building BuildOS. different approach but same mission - making productivity actually work for adhd brains.
 ```
 
 **For product updates:**
+
 ```
 love seeing llama life evolve. [specific feature] shows real understanding of how adhd minds work. the space needs more thoughtful tools like this.
 ```
 
 **For building in public:**
+
 ```
 the honesty here is refreshing. [specific challenge] is real - i'm in the trenches too. how are you thinking about [related question]?
 ```

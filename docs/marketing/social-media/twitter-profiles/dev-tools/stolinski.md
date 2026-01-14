@@ -1,4 +1,4 @@
-<!-- twitter-profiles/dev-tools/stolinski.md -->
+<!-- docs/marketing/social-media/twitter-profiles/dev-tools/stolinski.md -->
 
 # @stolinski - Scott Tolinski
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@stolinski](https://x.com/stolinski)              |
-| Name      | Scott Tolinski                                     |
-| Followers | 30K                                                |
-| Bio       | Level Up Tutorials. Syntax.fm. Svelte.             |
-| Location  | Denver                                             |
-| Website   | leveluptutorials.com                               |
+| Field     | Value                                  |
+| --------- | -------------------------------------- |
+| Handle    | [@stolinski](https://x.com/stolinski)  |
+| Name      | Scott Tolinski                         |
+| Followers | 30K                                    |
+| Bio       | Level Up Tutorials. Syntax.fm. Svelte. |
+| Location  | Denver                                 |
+| Website   | leveluptutorials.com                   |
 
 ## Why This Account Matters
 
 Scott Tolinski is the co-host of Syntax.fm (one of the most popular web dev podcasts) and runs Level Up Tutorials. He's been a major Svelte advocate and educator.
 
 **Strategic Value:**
+
 - Major Svelte advocate and educator
 - Syntax.fm reaches huge dev audience
 - Creates educational content
@@ -30,12 +31,14 @@ Scott Tolinski is the co-host of Syntax.fm (one of the most popular web dev podc
 **Priority Level:** HIGH
 
 **Approach:**
+
 - Engage on Svelte content and tutorials
 - Comment on Syntax.fm episode topics
 - Share practical dev experiences
 - Connect on indie creator/educator angle
 
 **Topics to Engage On:**
+
 - Svelte tutorials and courses
 - Syntax.fm episode topics
 - Web development best practices
@@ -51,11 +54,13 @@ Scott Tolinski is the co-host of Syntax.fm (one of the most popular web dev podc
 ## Sample Engagement Templates
 
 **For Svelte content:**
+
 ```
 your [tutorial/course] on [topic] is what got me into svelte. [specific thing that clicked]. using it daily now for [project].
 ```
 
 **For Syntax.fm discussions:**
+
 ```
 the syntax ep on [topic] hit at the perfect time. [specific insight]. have you seen [related thing]?
 ```

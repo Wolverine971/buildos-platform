@@ -330,10 +330,15 @@ export class ToolExecutionService implements BaseService {
 			return;
 		}
 		const sanitizedArgs = args ? sanitizeLogData(args) : undefined;
+		const operationPayload =
+			sanitizedArgs && typeof sanitizedArgs === 'object'
+				? (sanitizedArgs as Record<string, any>)
+				: undefined;
 		void this.errorLogger.logError(result.error ?? 'Tool execution failed', {
 			userId: context.userId,
 			projectId: context.contextScope?.projectId ?? context.entityId,
 			operationType: 'tool_execution',
+			operationPayload,
 			metadata: {
 				toolName,
 				toolCallId: result.toolCallId,

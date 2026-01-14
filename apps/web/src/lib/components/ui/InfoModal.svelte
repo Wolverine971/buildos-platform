@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/ui/InfoModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { Info } from 'lucide-svelte';
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
@@ -19,28 +18,23 @@
 	}
 
 	let {
-		isOpen = false,
+		isOpen = $bindable(false),
 		title = 'Information',
 		buttonText = 'Got it',
 		showIcon = true,
 		size = 'sm',
-		children,
-		footer,
+		children: slotContent,
+		footer: slotFooter,
 		onclose
 	}: Props = $props();
 
-	// Legacy event dispatcher for backwards compatibility with on:close
-	const dispatch = createEventDispatcher<{
-		close: void;
-	}>();
-
 	function handleClose() {
+		isOpen = false;
 		onclose?.();
-		dispatch('close');
 	}
 </script>
 
-<Modal {isOpen} {title} {size} onClose={handleClose}>
+<Modal bind:isOpen {title} {size} onClose={handleClose}>
 	{#snippet children()}
 		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
 			{#if showIcon}
@@ -53,20 +47,20 @@
 						</div>
 					</div>
 					<div class="flex-1">
-						{#if children}
-							{@render children()}
+						{#if slotContent}
+							{@render slotContent()}
 						{/if}
 					</div>
 				</div>
-			{:else if children}
-				{@render children()}
+			{:else if slotContent}
+				{@render slotContent()}
 			{/if}
 		</div>
 	{/snippet}
 
 	{#snippet footer()}
-		{#if footer}
-			{@render footer()}
+		{#if slotFooter}
+			{@render slotFooter()}
 		{:else}
 			<div
 				class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"

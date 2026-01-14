@@ -941,7 +941,7 @@
 <InfoModal
 	isOpen={infoModal.isOpen}
 	title={infoModal.title}
-	on:close={() => (infoModal.isOpen = false)}
+	onclose={() => (infoModal.isOpen = false)}
 >
 	<p class="text-gray-600 dark:text-gray-400">{infoModal.message}</p>
 </InfoModal>
@@ -951,7 +951,7 @@
 	isOpen={deleteConfirmModalOpen}
 	title="Delete Synthesis"
 	buttonText="Delete"
-	on:close={deleteSynthesis}
+	onclose={deleteSynthesis}
 >
 	<p class="text-gray-600 dark:text-gray-400">
 		Are you sure you want to delete this synthesis? This action cannot be undone.
@@ -980,7 +980,7 @@
 	isOpen={discardConfirmModalOpen}
 	title="Discard Changes"
 	buttonText="Discard"
-	on:close={discardChanges}
+	onclose={discardChanges}
 >
 	<p class="text-gray-600 dark:text-gray-400">
 		Are you sure you want to discard your unsaved changes?
@@ -1002,7 +1002,7 @@
 	isOpen={restoreDraftModalOpen}
 	title="Restore Draft"
 	buttonText="Restore"
-	on:close={restoreDraft}
+	onclose={restoreDraft}
 >
 	<p class="text-gray-600 dark:text-gray-400">
 		Found unsaved synthesis draft. Would you like to restore it?
@@ -1022,7 +1022,7 @@
 	isOpen={leaveConfirmModalOpen}
 	title="Unsaved Changes"
 	buttonText="Leave Page"
-	on:close={confirmLeave}
+	onclose={confirmLeave}
 >
 	<p class="text-gray-600 dark:text-gray-400">
 		You have unsaved changes. Are you sure you want to leave?

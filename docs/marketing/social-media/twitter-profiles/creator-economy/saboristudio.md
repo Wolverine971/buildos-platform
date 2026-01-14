@@ -1,4 +1,4 @@
-<!-- twitter-profiles/creator-economy/saboristudio.md -->
+<!-- docs/marketing/social-media/twitter-profiles/creator-economy/saboristudio.md -->
 
 # @saboristudio - Sabori Studio
 
@@ -6,20 +6,21 @@
 
 ## Profile
 
-| Field     | Value                                              |
-| --------- | -------------------------------------------------- |
-| Handle    | [@saboristudio](https://x.com/saboristudio)        |
-| Name      | Sabori Studio                                      |
-| Followers | 30K                                                |
-| Bio       | Notion templates. Productivity design.             |
-| Location  | N/A                                                |
-| Website   | saboristudio.com                                   |
+| Field     | Value                                       |
+| --------- | ------------------------------------------- |
+| Handle    | [@saboristudio](https://x.com/saboristudio) |
+| Name      | Sabori Studio                               |
+| Followers | 30K                                         |
+| Bio       | Notion templates. Productivity design.      |
+| Location  | N/A                                         |
+| Website   | saboristudio.com                            |
 
 ## Why This Account Matters
 
 Sabori Studio creates Notion templates and productivity systems. They're part of the productivity tools ecosystem that BuildOS competes with and learns from.
 
 **Strategic Value:**
+
 - Notion ecosystem insights
 - Productivity template market
 - Design for productivity
@@ -30,12 +31,14 @@ Sabori Studio creates Notion templates and productivity systems. They're part of
 **Priority Level:** LOW-MEDIUM
 
 **Approach:**
+
 - Monitor for productivity trends
 - Engage on design and productivity
 - Learn from template market
 - Don't be competitive, be collaborative
 
 **Topics to Engage On:**
+
 - Productivity template design
 - Notion ecosystem
 - Digital organization
