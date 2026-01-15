@@ -10,6 +10,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { env } from '$env/dynamic/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { BaseExecutor } from './base-executor';
 import {
@@ -31,6 +32,13 @@ import type { ExecutorContext } from './types';
 import { createLogger } from '$lib/utils/logger';
 
 const logger = createLogger('ExternalExecutor');
+const DEFAULT_WEB_VISIT_LLM_TIMEOUT_MS = 25000;
+
+function parseNumber(value: string | undefined, fallback: number): number {
+	if (!value) return fallback;
+	const parsed = Number.parseInt(value, 10);
+	return Number.isFinite(parsed) ? parsed : fallback;
+}
 
 /**
  * Executor for external service tool operations.
@@ -170,6 +178,10 @@ export class ExternalExecutor extends BaseExecutor {
 		const userPrompt = `Convert the following HTML into Markdown. Return Markdown only.\n\nHTML:\n\`\`\`html\n${fetched.trimmed_html}\n\`\`\``;
 
 		try {
+			const llmTimeoutMs = parseNumber(
+				env.WEB_VISIT_LLM_TIMEOUT_MS,
+				DEFAULT_WEB_VISIT_LLM_TIMEOUT_MS
+			);
 			const start = Date.now();
 			const result = await this.llmService.generateTextDetailed({
 				prompt: userPrompt,
@@ -177,7 +189,8 @@ export class ExternalExecutor extends BaseExecutor {
 				profile: 'balanced',
 				temperature: 0.2,
 				operationType: 'web_visit_markdown',
-				chatSessionId: this.sessionId
+				chatSessionId: this.sessionId,
+				timeoutMs: llmTimeoutMs
 			});
 			const markdown = result.text.trim();
 			const llmMs = Date.now() - start;

@@ -52,7 +52,8 @@
       "WebFetch(domain:herb.co)",
       "WebFetch(domain:careersinpsychology.org)",
       "WebFetch(domain:www.theleague.com)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(file *.png)"
     ],
     "deny": [],
     "ask": []

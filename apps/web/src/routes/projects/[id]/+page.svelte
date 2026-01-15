@@ -1336,6 +1336,34 @@
 					onSortChange={updatePanelSort}
 					onToggleChange={updatePanelToggle}
 				/>
+
+				<!-- Mobile History Section (Daily Briefs & Activity Log) -->
+				{#if canViewLogs}
+					<!-- History Section Divider -->
+					<div class="relative py-3 mt-3">
+						<div class="absolute inset-0 flex items-center px-2">
+							<div class="w-full border-t border-border/40"></div>
+						</div>
+						<div class="relative flex justify-center">
+							<span
+								class="bg-background px-2 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-widest"
+							>
+								History
+							</span>
+						</div>
+					</div>
+
+					<!-- Daily Briefs Panel -->
+					<div class="space-y-2">
+						<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
+
+						<!-- Activity Log Panel -->
+						<ProjectActivityLogPanel
+							projectId={project.id}
+							onEntityClick={handleActivityLogEntityClick}
+						/>
+					</div>
+				{/if}
 			{/if}
 		</div>
 

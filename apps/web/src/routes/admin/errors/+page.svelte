@@ -306,6 +306,79 @@
 		return str.substring(0, length) + '...';
 	}
 
+	function getMetadataRecord(metadata: unknown): Record<string, any> | undefined {
+		if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+			return undefined;
+		}
+		return metadata as Record<string, any>;
+	}
+
+	function hasMetadata(metadata: Record<string, any> | undefined): boolean {
+		return Boolean(metadata && Object.keys(metadata).length > 0);
+	}
+
+	function getMetadataValue(
+		metadata: Record<string, any> | undefined,
+		...keys: string[]
+	): unknown {
+		if (!metadata) return undefined;
+		for (const key of keys) {
+			if (metadata[key] !== undefined && metadata[key] !== null) {
+				return metadata[key];
+			}
+		}
+		return undefined;
+	}
+
+	function formatMetadataValue(value: unknown): string {
+		if (value === null || value === undefined) return '-';
+		if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+		if (typeof value === 'number') return value.toLocaleString();
+		return String(value);
+	}
+
+	function formatMs(value: unknown): string {
+		const numeric = typeof value === 'number' ? value : Number(value);
+		if (Number.isFinite(numeric)) {
+			return `${numeric.toLocaleString()}ms`;
+		}
+		return value ? String(value) : '-';
+	}
+
+	function formatJson(value: unknown): string {
+		if (value === null || value === undefined) return '';
+		if (typeof value === 'string') return value;
+		const seen = new WeakSet();
+		try {
+			return JSON.stringify(
+				value,
+				(_key, val) => {
+					if (val && typeof val === 'object') {
+						if (seen.has(val)) {
+							return '[circular]';
+						}
+						seen.add(val);
+					}
+					return val;
+				},
+				2
+			);
+		} catch {
+			try {
+				return JSON.stringify(value);
+			} catch {
+				return String(value);
+			}
+		}
+	}
+
+	function isToolExecutionError(error: ErrorLogEntry): boolean {
+		const operationType = error.operation_type || error.operationType;
+		if (operationType === 'tool_execution') return true;
+		const metadata = getMetadataRecord(error.metadata);
+		return Boolean(metadata?.toolName || metadata?.tool_name);
+	}
+
 	// Reset page when filters change
 	$effect(() => {
 		if (
@@ -479,6 +552,7 @@
 						<option value="">All</option>
 						<option value="brain_dump_processing">Brain Dump</option>
 						<option value="llm_error">LLM Error</option>
+						<option value="tool_execution">Tool Execution</option>
 						<option value="database_error">Database</option>
 						<option value="api_error">API</option>
 						<option value="validation_error">Validation</option>
@@ -839,6 +913,20 @@
 <!-- Error Detail Modal -->
 {#if selectedError}
 	{@const modalStyles = getSeverityStyles(selectedError.severity)}
+	{@const metadata = getMetadataRecord(selectedError.metadata)}
+	{@const isToolExecution = isToolExecutionError(selectedError)}
+	{@const operationPayload = selectedError.operation_payload || selectedError.operationPayload}
+	{@const toolName = getMetadataValue(metadata, 'toolName', 'tool_name')}
+	{@const toolCategory = getMetadataValue(metadata, 'toolCategory', 'tool_category')}
+	{@const toolCallId = getMetadataValue(metadata, 'toolCallId', 'tool_call_id')}
+	{@const toolErrorType = getMetadataValue(metadata, 'errorType', 'error_type')}
+	{@const toolSessionId = getMetadataValue(metadata, 'sessionId', 'session_id')}
+	{@const toolContextType = getMetadataValue(metadata, 'contextType', 'context_type')}
+	{@const toolEntityId = getMetadataValue(metadata, 'entityId', 'entity_id')}
+	{@const toolVirtual = getMetadataValue(metadata, 'virtual')}
+	{@const toolTimeoutMs = getMetadataValue(metadata, 'timeoutMs', 'timeout_ms')}
+	{@const toolDurationMs = getMetadataValue(metadata, 'durationMs', 'duration_ms')}
+	{@const toolArgs = getMetadataValue(metadata, 'args', 'arguments') ?? operationPayload}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
@@ -1007,6 +1095,130 @@
 						</div>
 					</div>
 
+					<!-- Tool Execution -->
+					{#if isToolExecution}
+						<div class="bg-sky-500/5 border border-sky-500/20 rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-2"
+							>
+								Tool Execution
+							</p>
+							<div class="grid grid-cols-2 gap-2 text-xs">
+								{#if toolName}
+									<div>
+										<span class="text-muted-foreground">Tool:</span>
+										<p class="text-foreground font-medium">{toolName}</p>
+									</div>
+								{/if}
+								{#if toolCategory}
+									<div>
+										<span class="text-muted-foreground">Category:</span>
+										<p class="text-foreground">{formatMetadataValue(toolCategory)}</p>
+									</div>
+								{/if}
+								{#if toolErrorType}
+									<div>
+										<span class="text-muted-foreground">Failure Type:</span>
+										<p class="text-foreground font-medium">
+											{formatMetadataValue(toolErrorType)}
+										</p>
+									</div>
+								{/if}
+								{#if toolCallId}
+									<div>
+										<span class="text-muted-foreground">Tool Call ID:</span>
+										<p class="text-foreground font-mono text-[0.65rem] truncate">
+											{formatMetadataValue(toolCallId)}
+										</p>
+									</div>
+								{/if}
+								{#if toolSessionId}
+									<div>
+										<span class="text-muted-foreground">Session ID:</span>
+										<p class="text-foreground font-mono text-[0.65rem] truncate">
+											{formatMetadataValue(toolSessionId)}
+										</p>
+									</div>
+								{/if}
+								{#if toolContextType}
+									<div>
+										<span class="text-muted-foreground">Context Type:</span>
+										<p class="text-foreground">{formatMetadataValue(toolContextType)}</p>
+									</div>
+								{/if}
+								{#if toolEntityId}
+									<div>
+										<span class="text-muted-foreground">Entity ID:</span>
+										<p class="text-foreground font-mono text-[0.65rem] truncate">
+											{formatMetadataValue(toolEntityId)}
+										</p>
+									</div>
+								{/if}
+								{#if toolVirtual !== undefined}
+									<div>
+										<span class="text-muted-foreground">Virtual:</span>
+										<p class="text-foreground">{formatMetadataValue(toolVirtual)}</p>
+									</div>
+								{/if}
+								{#if toolTimeoutMs !== undefined}
+									<div>
+										<span class="text-muted-foreground">Timeout:</span>
+										<p class="text-foreground tabular-nums">
+											{formatMs(toolTimeoutMs)}
+										</p>
+									</div>
+								{/if}
+								{#if toolDurationMs !== undefined}
+									<div>
+										<span class="text-muted-foreground">Duration:</span>
+										<p class="text-foreground tabular-nums">
+											{formatMs(toolDurationMs)}
+										</p>
+									</div>
+								{/if}
+							</div>
+							{#if toolArgs !== undefined && toolArgs !== null}
+								<div class="mt-2">
+									<span class="text-muted-foreground text-xs">Arguments:</span>
+									<pre
+										class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{formatJson(
+											toolArgs
+										)}</pre>
+								</div>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Operation Payload -->
+					{#if !isToolExecution && operationPayload}
+						<div class="bg-muted/50 border border-border rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
+							>
+								Operation Payload
+							</p>
+							<pre
+								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{formatJson(
+									operationPayload
+								)}</pre>
+						</div>
+					{/if}
+
+					<!-- Metadata -->
+					{#if hasMetadata(metadata)}
+						<div class="bg-muted/30 border border-border rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
+							>
+								Metadata
+							</p>
+							<pre
+								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-48 leading-relaxed">{formatJson(
+									metadata
+								)}</pre>
+						</div>
+					{/if}
+
 					<!-- Stack Trace -->
 					{#if selectedError.error_stack || selectedError.errorStack}
 						<div class="space-y-1">
@@ -1021,13 +1233,13 @@
 						</div>
 					{/if}
 
-					<!-- Database Operation -->
-					{#if selectedError.operation_type || selectedError.operationType || selectedError.table_name || selectedError.tableName}
+					<!-- Operation Context -->
+					{#if !isToolExecution && (selectedError.operation_type || selectedError.operationType || selectedError.table_name || selectedError.tableName)}
 						<div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
 							<p
 								class="text-[0.65rem] uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2"
 							>
-								Database Operation
+								Operation Context
 							</p>
 							<div class="grid grid-cols-2 gap-2 text-xs">
 								{#if selectedError.operation_type || selectedError.operationType}

@@ -84,6 +84,7 @@
 ## Configuration
 
 - `WEB_VISIT_TIMEOUT_MS` (default 12000)
+- `WEB_VISIT_LLM_TIMEOUT_MS` (default 25000)
 - `WEB_VISIT_MAX_BYTES` (default 2_000_000)
 - `WEB_VISIT_MAX_CHARS` (default 6000)
 - `WEB_VISIT_MAX_HTML_CHARS` (default 40000)

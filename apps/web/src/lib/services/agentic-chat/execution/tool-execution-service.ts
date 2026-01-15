@@ -63,6 +63,13 @@ export interface ToolExecutionTelemetry {
 	virtual: boolean;
 }
 
+interface ToolErrorLogDetails {
+	virtual: boolean;
+	args?: Record<string, any>;
+	durationMs?: number;
+	timeoutMs?: number;
+}
+
 export type ToolExecutionTelemetryHook = (
 	result: ToolExecutionResult,
 	telemetry: ToolExecutionTelemetry
@@ -110,6 +117,7 @@ export class ToolExecutionService implements BaseService {
 		const virtualHandler =
 			name && options.virtualHandlers ? options.virtualHandlers[name] : undefined;
 		let parsedArgs: Record<string, any> | undefined;
+		let resolvedTimeoutMs: number | undefined;
 
 		const finalizeResult = (
 			result: ToolExecutionResult,
@@ -139,7 +147,12 @@ export class ToolExecutionService implements BaseService {
 				}
 			}
 			if (!result.success) {
-				this.logToolError(result, context, toolName, virtualHandler, parsedArgs);
+				this.logToolError(result, context, toolName, {
+					virtual: Boolean(virtualHandler),
+					args: parsedArgs,
+					durationMs,
+					timeoutMs: resolvedTimeoutMs
+				});
 			}
 			return result;
 		};
@@ -234,6 +247,7 @@ export class ToolExecutionService implements BaseService {
 		try {
 			// Execute with timeout if specified or configured per tool
 			const timeout = this.resolveTimeoutMs(toolName, options.timeout);
+			resolvedTimeoutMs = timeout;
 			const execPromise = this.executeWithTimeout(
 				() => this.toolExecutor(toolName, args, context),
 				timeout
@@ -323,17 +337,17 @@ export class ToolExecutionService implements BaseService {
 		result: ToolExecutionResult,
 		context: ServiceContext,
 		toolName: string,
-		virtualHandler?: VirtualToolHandler,
-		args?: Record<string, any>
+		details: ToolErrorLogDetails
 	): void {
 		if (!this.errorLogger) {
 			return;
 		}
-		const sanitizedArgs = args ? sanitizeLogData(args) : undefined;
+		const sanitizedArgs = details.args ? sanitizeLogData(details.args) : undefined;
 		const operationPayload =
 			sanitizedArgs && typeof sanitizedArgs === 'object'
 				? (sanitizedArgs as Record<string, any>)
 				: undefined;
+		const toolMetadata = TOOL_METADATA[toolName];
 		void this.errorLogger.logError(result.error ?? 'Tool execution failed', {
 			userId: context.userId,
 			projectId: context.contextScope?.projectId ?? context.entityId,
@@ -341,13 +355,16 @@ export class ToolExecutionService implements BaseService {
 			operationPayload,
 			metadata: {
 				toolName,
+				toolCategory: toolMetadata?.category,
 				toolCallId: result.toolCallId,
 				sessionId: context.sessionId,
 				contextType: context.contextType,
 				entityId: context.entityId,
 				args: sanitizedArgs,
 				errorType: result.errorType,
-				virtual: Boolean(virtualHandler)
+				virtual: details.virtual,
+				timeoutMs: details.timeoutMs,
+				durationMs: details.durationMs
 			}
 		});
 	}

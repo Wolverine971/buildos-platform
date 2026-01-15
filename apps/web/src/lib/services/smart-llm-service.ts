@@ -60,6 +60,7 @@ export interface TextGenerationOptions {
 	systemPrompt?: string;
 	temperature?: number;
 	maxTokens?: number;
+	timeoutMs?: number;
 	streaming?: boolean;
 	requirements?: {
 		maxLatency?: number;
@@ -1225,6 +1226,7 @@ export class SmartLLMService {
 				],
 				temperature: options.temperature || 0.7,
 				max_tokens: options.maxTokens || 4096,
+				timeoutMs: options.timeoutMs,
 				stream: options.streaming || false
 			});
 
@@ -1388,6 +1390,7 @@ export class SmartLLMService {
 		messages: Array<{ role: string; content: string }>;
 		temperature?: number;
 		max_tokens?: number;
+		timeoutMs?: number;
 		response_format?: { type: string };
 		stream?: boolean;
 		route?: 'fallback'; // NOTE: Not used - kept for backwards compatibility
@@ -1424,11 +1427,12 @@ export class SmartLLMService {
 		}
 
 		try {
+			const timeoutMs = params.timeoutMs ?? 120000;
 			const response = await fetch(this.apiUrl, {
 				method: 'POST',
 				headers,
 				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(120000) // 2 minute timeout
+				signal: AbortSignal.timeout(timeoutMs)
 			});
 
 			if (!response.ok) {
@@ -1465,7 +1469,7 @@ export class SmartLLMService {
 						errorType: 'llm_api_timeout',
 						modelRequested: params.model,
 						alternativeModels: params.models?.join(', ') || 'none',
-						timeoutMs: 120000,
+						timeoutMs: params.timeoutMs ?? 120000,
 						temperature: params.temperature,
 						maxTokens: params.max_tokens
 					});
@@ -1482,6 +1486,7 @@ export class SmartLLMService {
 		prompt: string;
 		temperature?: number;
 		maxTokens?: number;
+		timeoutMs?: number;
 		userId?: string;
 		operationType?: string;
 		profile?: TextProfile; // Added profile parameter
@@ -1495,6 +1500,7 @@ export class SmartLLMService {
 					prompt: string;
 					temperature?: number;
 					maxTokens?: number;
+					timeoutMs?: number;
 					userId?: string;
 					operationType?: string;
 					profile?: TextProfile; // Added profile parameter
@@ -1509,6 +1515,7 @@ export class SmartLLMService {
 						systemPrompt: optionsOrParams.systemPrompt,
 						temperature: optionsOrParams.temperature,
 						maxTokens: optionsOrParams.maxTokens,
+						timeoutMs: optionsOrParams.timeoutMs,
 						operationType: optionsOrParams.operationType,
 						profile: optionsOrParams.profile // Pass through profile
 					}

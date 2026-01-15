@@ -431,7 +431,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'project_audit',
 			'project_forecast'
 		],
-		timeoutMs: 20000,
+		timeoutMs: 60000,
 		category: 'read'
 	},
 	get_buildos_overview: {

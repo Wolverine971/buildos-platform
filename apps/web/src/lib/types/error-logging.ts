@@ -6,6 +6,7 @@ export type ErrorType =
 	| 'database_error'
 	| 'validation_error'
 	| 'llm_error'
+	| 'tool_execution'
 	| 'calendar_sync_error'
 	| 'calendar_delete_error'
 	| 'calendar_update_error'

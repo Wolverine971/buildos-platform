@@ -87,6 +87,10 @@ export class ErrorLoggerService {
 		const errorMessage = typeof error === 'string' ? error : error?.message || '';
 		const errorCode = error?.code || '';
 
+		if (context?.operationType === 'tool_execution') {
+			return 'tool_execution';
+		}
+
 		if (
 			context?.brainDumpId ||
 			errorMessage.toLowerCase().includes('brain') ||
