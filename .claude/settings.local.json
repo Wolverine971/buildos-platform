@@ -54,7 +54,8 @@
       "WebFetch(domain:www.theleague.com)",
       "Bash(git checkout:*)",
       "Bash(file *.png)",
-      "WebFetch(domain:artificialanalysis.ai)"
+      "WebFetch(domain:artificialanalysis.ai)",
+      "Bash(pnpm exec svelte-check:*)"
     ],
     "deny": [],
     "ask": []

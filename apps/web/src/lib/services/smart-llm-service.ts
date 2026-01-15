@@ -191,8 +191,8 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		name: 'Gemini 2.5 Flash',
 		speed: 4.5,
 		smartness: 4.5,
-		cost: 0.15,
-		outputCost: 0.6,
+		cost: 0.3, // OpenRouter: $0.30/M input (thinking tokens extra)
+		outputCost: 2.5, // OpenRouter: $2.50/M output (thinking tokens expensive)
 		provider: 'google',
 		bestFor: [
 			'hybrid-reasoning',
@@ -201,7 +201,7 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 			'thinking-model',
 			'swe-bench'
 		],
-		limitations: []
+		limitations: ['thinking-tokens-expensive']
 	},
 	'google/gemini-2.0-flash-001': {
 		id: 'google/gemini-2.0-flash-001',
@@ -241,10 +241,10 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		name: 'Grok 4.1 Fast',
 		speed: 4.5,
 		smartness: 4.5,
-		cost: 0.3,
-		outputCost: 1.0,
+		cost: 0.2, // OpenRouter: $0.20/M input
+		outputCost: 0.5, // OpenRouter: $0.50/M output
 		provider: 'x-ai',
-		bestFor: ['tool-calling', 'json-mode', 'agentic-workflows', '2m-context', 'tau-bench-93%'],
+		bestFor: ['tool-calling', 'json-mode', 'agentic-workflows', '2m-context', 'tau-bench-100%'],
 		limitations: []
 	},
 	'x-ai/grok-code-fast-1': {
@@ -345,8 +345,8 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		name: 'DeepSeek R1',
 		speed: 3.5,
 		smartness: 4.9,
-		cost: 0.55,
-		outputCost: 2.19,
+		cost: 0.6, // OpenRouter pricing
+		outputCost: 2.3, // OpenRouter pricing
 		provider: 'deepseek',
 		bestFor: [
 			'complex-reasoning',
@@ -361,21 +361,21 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 	'moonshotai/kimi-k2-thinking': {
 		id: 'moonshotai/kimi-k2-thinking',
 		name: 'Kimi K2 Thinking',
-		speed: 3,
-		smartness: 4.85,
-		cost: 0.4,
-		outputCost: 1.75,
+		speed: 2.5, // Slower due to reasoning tokens, but high quality
+		smartness: 4.9, // Intelligence Index 67 (#2 overall, #1 open-source)
+		cost: 0.6,
+		outputCost: 2.5,
 		provider: 'moonshotai',
 		bestFor: [
 			'agentic-workflows',
 			'tau2-bench-93%',
+			'intelligence-index-67',
 			'multi-tool-sequences-200-300',
 			'256k-context',
-			'browsecomp-60.2%',
-			'livecode-83.1%',
+			'agentic-index-rank-2',
 			'best-independently-verified-tool-calling'
 		],
-		limitations: ['mandatory-reasoning-tokens', 'verbose-output', 'slower-for-simple-tasks']
+		limitations: ['mandatory-reasoning-tokens', 'verbose-2.5x-tokens', 'slower-for-simple-tasks']
 	},
 
 	// ============================================
@@ -585,29 +585,30 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		speed: 3.5,
 		smartness: 4.9,
 		creativity: 4.4,
-		cost: 0.55,
-		outputCost: 2.19,
+		cost: 0.6, // OpenRouter pricing
+		outputCost: 2.3, // OpenRouter pricing
 		provider: 'deepseek',
 		bestFor: ['reasoning', 'analysis', 'technical-writing', 'complex-content', 'coding']
 	},
 	'moonshotai/kimi-k2-thinking': {
 		id: 'moonshotai/kimi-k2-thinking',
 		name: 'Kimi K2 Thinking',
-		speed: 3,
-		smartness: 4.85,
+		speed: 2.5, // Slower due to reasoning tokens
+		smartness: 4.9, // Intelligence Index 67 (#2 overall, #1 open-source)
 		creativity: 4.5,
-		cost: 0.4,
-		outputCost: 1.75,
+		cost: 0.6, // OpenRouter pricing
+		outputCost: 2.5, // OpenRouter pricing
 		provider: 'moonshotai',
 		bestFor: [
 			'agentic-reasoning',
 			'tau2-bench-93%',
+			'intelligence-index-67',
 			'research-workflows',
 			'multi-tool-orchestration-200-300',
 			'256k-context',
-			'best-independently-verified-tool-calling'
+			'agentic-index-rank-2'
 		],
-		limitations: ['mandatory-reasoning-tokens', 'slower-for-simple-tasks']
+		limitations: ['mandatory-reasoning-tokens', 'verbose-2.5x-tokens', 'slower-for-simple-tasks']
 	},
 
 	// ============================================
@@ -643,7 +644,7 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 // Priority: Highest reliability first, then cost-effectiveness as tiebreaker
 const TOOL_CALLING_MODEL_ORDER = [
 	'x-ai/grok-4.1-fast', // Best τ²-Bench: 100% (xAI claim), 2M context, optimized for agents: $0.30/$1.00
-	'moonshotai/kimi-k2-thinking', // τ²-Bench: 93% (best independently verified), 256K ctx, 200-300 tool calls: $0.40/$1.75
+	'moonshotai/kimi-k2-thinking', // τ²-Bench: 93% (best independently verified by AA), 256K ctx, 200-300 tool calls, Agentic Index #2: $0.60/$2.50
 	// 'anthropic/claude-sonnet-4', // Excellent: ~92% success, 72.7% SWE-bench, 1M context: $3/$15
 	'anthropic/claude-haiku-4.5', // Fast + reliable: parallel tool calls, extended thinking: $1/$5
 	'openai/gpt-4o-mini', // Very good: 88% success rate, fast + cheap: $0.15/$0.60
@@ -651,7 +652,7 @@ const TOOL_CALLING_MODEL_ORDER = [
 	'minimax/minimax-m2.1', // Excellent agentic: 87% τ²-Bench, 69.4% SWE-bench: $0.30/$1.20
 	// 'anthropic/claude-sonnet-4.5', // Best overall quality: 61.4% OSWorld, extended thinking: $3/$15
 	'qwen/qwen3-32b', // Good: 69.6% τ²-Bench, excellent multilingual: $0.30/$0.60
-	'deepseek/deepseek-r1', // Good reasoning, slower: $0.55/$2.19
+	'deepseek/deepseek-r1', // Good reasoning, slower: $0.60/$2.30 (OpenRouter)
 	'deepseek/deepseek-chat', // Good for sequential tasks: $0.27/$1.10
 	'z-ai/glm-4.6', // Good tool use, strong coding: $0.50/$1.75
 	'google/gemini-2.5-flash', // Improved: hybrid reasoning model: $0.15/$0.60
@@ -680,16 +681,16 @@ const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 		'google/gemini-2.5-flash-lite' // Cost fallback
 	],
 	powerful: [
-		'moonshotai/kimi-k2-thinking', // Best value: 93% τ²-Bench, 256K ctx, cheaper than R1: $0.40/$1.75
-		'deepseek/deepseek-r1', // Native JSON + highest smartness (4.9): $0.55/$2.19
+		'moonshotai/kimi-k2-thinking', // Best agentic: 93% τ²-Bench, 256K ctx, Agentic Index #2: $0.60/$2.50
+		'deepseek/deepseek-r1', // Native JSON + good reasoning: $0.60/$2.30
 		// 'anthropic/claude-sonnet-4', // Best tool calling ~92%, 72.7% SWE-bench (no native JSON)
 		'minimax/minimax-m2.1', // Strong agentic: 87% τ²-Bench, 69.4% SWE-bench
 		'openai/gpt-4o', // Strong general purpose + native JSON
 		'z-ai/glm-4.6' // Strong coding + native JSON, MIT license
 	],
 	maximum: [
-		'moonshotai/kimi-k2-thinking', // Best for agentic: 93% τ²-Bench, 200-300 tool calls: $0.40/$1.75
-		'deepseek/deepseek-r1', // Native JSON + highest smartness (4.9) - best for pure reasoning
+		'moonshotai/kimi-k2-thinking', // Best for agentic: 93% τ²-Bench, 200-300 tool calls, Intelligence Index 67: $0.60/$2.50
+		'deepseek/deepseek-r1', // Native JSON + good for pure reasoning: $0.60/$2.30
 		// 'anthropic/claude-sonnet-4.5', // Best overall: 61.4% OSWorld, extended thinking
 		// 'anthropic/claude-sonnet-4', // Strong tool calling fallback
 		'minimax/minimax-m2.1', // Excellent agentic capabilities
@@ -714,10 +715,10 @@ const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 		'openai/gpt-4o-mini' // Reliable fallback
 	],
 	quality: [
-		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench (claimed), 2M context: $0.30/$1.00
-		'moonshotai/kimi-k2-thinking', // 93% τ²-Bench (independently verified), 256K ctx, 200-300 tools: $0.40/$1.75
+		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench (xAI claim), 2M context: $0.30/$1.00
+		'moonshotai/kimi-k2-thinking', // 93% τ²-Bench (AA verified), Intelligence Index 67, 256K ctx: $0.60/$2.50
 		'anthropic/claude-haiku-4.5', // Excellent tool-calling, parallel tools, extended thinking: $1/$5
-		'deepseek/deepseek-r1', // Highest reasoning (4.9), excellent for technical content: $0.55/$2.19
+		'deepseek/deepseek-r1', // Good reasoning, excellent for technical content: $0.60/$2.30
 		'minimax/minimax-m2.1', // 87% τ²-Bench, excellent coding
 		'openai/gpt-4o' // Reliable fallback
 	],

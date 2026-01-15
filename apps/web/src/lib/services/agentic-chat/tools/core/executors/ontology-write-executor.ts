@@ -607,11 +607,12 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		message: string;
 	}> {
 		const updateData: Record<string, unknown> = {};
+		const stateValue = args.state_key ?? args.state;
 
 		if (args.name !== undefined) updateData.name = args.name;
 		if (args.description !== undefined) updateData.description = args.description;
-		if (args.state_key !== undefined) {
-			updateData.state_key = this.normalizeProjectState(args.state_key);
+		if (stateValue !== undefined) {
+			updateData.state_key = this.normalizeProjectState(stateValue);
 		}
 		if (args.props !== undefined) updateData.props = args.props;
 
