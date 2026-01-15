@@ -358,6 +358,24 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		],
 		limitations: ['slower-than-chat', 'verbose-output']
 	},
+	'moonshotai/kimi-k2-thinking': {
+		id: 'moonshotai/kimi-k2-thinking',
+		name: 'Kimi K2 Thinking',
+		speed: 3,
+		smartness: 4.85,
+		cost: 0.4,
+		outputCost: 1.75,
+		provider: 'moonshotai',
+		bestFor: [
+			'agentic-workflows',
+			'multi-tool-sequences',
+			'complex-reasoning',
+			'256k-context',
+			'browsecomp-60.2%',
+			'livecode-83.1%'
+		],
+		limitations: ['mandatory-reasoning-tokens', 'verbose-output', 'slower-for-simple-tasks']
+	},
 
 	// ============================================
 	// Maximum tier (5-7s) - Best quality
@@ -571,6 +589,24 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		provider: 'deepseek',
 		bestFor: ['reasoning', 'analysis', 'technical-writing', 'complex-content', 'coding']
 	},
+	'moonshotai/kimi-k2-thinking': {
+		id: 'moonshotai/kimi-k2-thinking',
+		name: 'Kimi K2 Thinking',
+		speed: 3,
+		smartness: 4.85,
+		creativity: 4.5,
+		cost: 0.4,
+		outputCost: 1.75,
+		provider: 'moonshotai',
+		bestFor: [
+			'agentic-reasoning',
+			'research-workflows',
+			'multi-tool-orchestration',
+			'256k-context',
+			'complex-analysis'
+		],
+		limitations: ['mandatory-reasoning-tokens', 'slower-for-simple-tasks']
+	},
 
 	// ============================================
 	// Maximum tier - Best quality
@@ -609,6 +645,7 @@ const TOOL_CALLING_MODEL_ORDER = [
 	'anthropic/claude-haiku-4.5', // Fast + reliable: parallel tool calls, extended thinking: $1/$5
 	'openai/gpt-4o-mini', // Very good: 88% success rate, fast + cheap: $0.15/$0.60
 	'openai/gpt-4o', // Strong: 87%+ success rate: $2.50/$10
+	'moonshotai/kimi-k2-thinking', // Excellent agentic: 60.2% BrowseComp, 200-300 tool calls stable, 256K ctx: $0.40/$1.75
 	'minimax/minimax-m2.1', // Excellent agentic: 77.2% τ²-Bench, 69.4% SWE-bench: $0.30/$1.20
 	// 'anthropic/claude-sonnet-4.5', // Best overall quality: 61.4% OSWorld, extended thinking: $3/$15
 	'qwen/qwen3-32b', // Good: 69.6% τ²-Bench, excellent multilingual: $0.30/$0.60
@@ -642,6 +679,7 @@ const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 	],
 	powerful: [
 		'deepseek/deepseek-r1', // Native JSON + highest smartness (4.9): $0.55/$2.19
+		'moonshotai/kimi-k2-thinking', // Strong reasoning + 256K context: $0.40/$1.75
 		// 'anthropic/claude-sonnet-4', // Best tool calling ~92%, 72.7% SWE-bench (no native JSON)
 		'minimax/minimax-m2.1', // Best agentic: 77.2% τ²-Bench, 69.4% SWE-bench
 		'openai/gpt-4o', // Strong general purpose + native JSON
@@ -649,6 +687,7 @@ const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 	],
 	maximum: [
 		'deepseek/deepseek-r1', // Native JSON + highest smartness (4.9) - best for complex JSON
+		'moonshotai/kimi-k2-thinking', // Excellent for complex multi-step reasoning: $0.40/$1.75
 		// 'anthropic/claude-sonnet-4.5', // Best overall: 61.4% OSWorld, extended thinking
 		// 'anthropic/claude-sonnet-4', // Strong tool calling fallback
 		'minimax/minimax-m2.1', // Excellent agentic capabilities
@@ -674,6 +713,7 @@ const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 	],
 	quality: [
 		'x-ai/grok-4.1-fast', // Best tool-calling: 93% τ²-Bench, speed 4.5, smartness 4.5: $0.30/$1.00
+		'moonshotai/kimi-k2-thinking', // Best agentic reasoning: 60.2% BrowseComp, 256K context: $0.40/$1.75
 		'anthropic/claude-haiku-4.5', // Excellent tool-calling, parallel tools, extended thinking: $1/$5
 		'deepseek/deepseek-r1', // Highest reasoning (4.9), excellent for technical content
 		'minimax/minimax-m2.1', // 61 Intelligence Index, excellent coding
@@ -1788,7 +1828,8 @@ export class SmartLLMService {
 			'x-ai/grok-code-fast-1',
 			// Other models
 			'z-ai/glm-4.6', // Good structured output
-			'minimax/minimax-m2.1' // Supports structured outputs
+			'minimax/minimax-m2.1', // Supports structured outputs
+			'moonshotai/kimi-k2-thinking' // Supports structured outputs (reasoning tokens separate)
 			// Note: Anthropic Claude models do NOT support native JSON mode
 			// They require prompt-based JSON instructions
 		];

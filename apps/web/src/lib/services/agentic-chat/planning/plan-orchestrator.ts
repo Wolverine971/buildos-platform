@@ -48,6 +48,7 @@ import { ToolExecutionService } from '../execution/tool-execution-service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import type { JSONRequestOptions } from '$lib/services/smart-llm-service';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 
 const logger = createLogger('PlanOrchestrator');
@@ -68,6 +69,7 @@ interface LLMService {
 		agentPlanId?: string;
 		agentExecutionId?: string;
 	}): Promise<string>;
+	getJSONResponse?<T = any>(options: JSONRequestOptions): Promise<T>;
 }
 
 /**
@@ -756,6 +758,8 @@ export class PlanOrchestrator implements BaseService {
 	): Promise<{ steps: any[]; reasoning?: string }> {
 		const systemPrompt = this.buildPlanSystemPrompt(strategy, plannerContext, context, intent);
 		const basePrompt = this.buildPlanPrompt(intent, plannerContext);
+		const llmWithJson = this.llmService as LLMService;
+		const useJsonMode = typeof llmWithJson.getJSONResponse === 'function';
 		let lastError: Error | null = null;
 
 		for (let attempt = 1; attempt <= PlanOrchestrator.PLAN_GENERATION_ATTEMPTS; attempt++) {
@@ -764,27 +768,61 @@ export class PlanOrchestrator implements BaseService {
 					? basePrompt
 					: `${basePrompt}\n\nIMPORTANT: Return ONLY valid JSON shaped like {"steps":[...],"reasoning":"..."} with at most 5 steps. Do not include markdown fences or commentary.`;
 
-			const response = await this.llmService.generateText({
-				systemPrompt,
-				prompt: attemptPrompt,
-				temperature: 0.35,
-				maxTokens: 1200,
-				userId: context.userId,
-				operationType: 'plan_generation',
-				chatSessionId: context.sessionId
-			});
+			try {
+				if (useJsonMode && llmWithJson.getJSONResponse) {
+					const jsonResponse = await llmWithJson.getJSONResponse({
+						systemPrompt,
+						userPrompt: attemptPrompt,
+						temperature: 0.35,
+						userId: context.userId,
+						operationType: 'plan_generation',
+						chatSessionId: context.sessionId,
+						validation: { retryOnParseError: true }
+					});
+					const parsed =
+						typeof jsonResponse === 'string'
+							? this.tryParsePlanResponse(jsonResponse)
+							: this.normalizePlanResponse(jsonResponse);
+					if (parsed) {
+						return parsed;
+					}
 
-			const parsed = this.tryParsePlanResponse(response);
-			if (parsed) {
-				return parsed;
+					lastError = new Error('Invalid plan format from LLM');
+					logger.warn('Plan response normalization failed', {
+						attempt,
+						responsePreview: sanitizeLogText(JSON.stringify(jsonResponse) ?? '', 200)
+					});
+					continue;
+				}
+
+				const response = await this.llmService.generateText({
+					systemPrompt,
+					prompt: attemptPrompt,
+					temperature: 0.35,
+					maxTokens: 1200,
+					userId: context.userId,
+					operationType: 'plan_generation',
+					chatSessionId: context.sessionId
+				});
+
+				const parsed = this.tryParsePlanResponse(response);
+				if (parsed) {
+					return parsed;
+				}
+
+				lastError = new Error('Invalid plan format from LLM');
+				logger.warn('Plan response parsing failed', {
+					attempt,
+					responsePreview: sanitizeLogText(response, 200),
+					responseLength: response.length
+				});
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error('Invalid plan format from LLM');
+				logger.warn('Plan generation attempt failed', {
+					attempt,
+					error: lastError.message
+				});
 			}
-
-			lastError = new Error('Invalid plan format from LLM');
-			logger.warn('Plan response parsing failed', {
-				attempt,
-				responsePreview: sanitizeLogText(response, 200),
-				responseLength: response.length
-			});
 		}
 
 		throw lastError ?? new Error('Invalid plan format from LLM');
