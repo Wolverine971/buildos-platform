@@ -53,7 +53,8 @@
       "WebFetch(domain:careersinpsychology.org)",
       "WebFetch(domain:www.theleague.com)",
       "Bash(git checkout:*)",
-      "Bash(file *.png)"
+      "Bash(file *.png)",
+      "WebFetch(domain:artificialanalysis.ai)"
     ],
     "deny": [],
     "ask": []
