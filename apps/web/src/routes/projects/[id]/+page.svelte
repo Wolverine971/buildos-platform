@@ -874,9 +874,8 @@
 	// ============================================================
 
 	async function handleDocumentSaved() {
+		// Refresh data but keep modal open - user can close manually when done editing
 		await refreshData();
-		showDocumentModal = false;
-		activeDocumentId = null;
 	}
 
 	async function handleDocumentDeleted() {

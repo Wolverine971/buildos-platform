@@ -626,6 +626,11 @@
 		refreshData();
 	}
 
+	function handleDocumentSaved() {
+		// Refresh data but keep modal open - user can close manually when done editing
+		refreshData();
+	}
+
 	function handleLinkedEntityClick(kind: EntityKind, id: string) {
 		switch (kind) {
 			case 'goal':
@@ -1652,7 +1657,7 @@
 		bind:isOpen={showDocumentModal}
 		documentId={activeDocumentId}
 		onClose={handleModalClose}
-		onSaved={handleModalClose}
+		onSaved={handleDocumentSaved}
 		onDeleted={handleModalClose}
 	/>
 {/if}
