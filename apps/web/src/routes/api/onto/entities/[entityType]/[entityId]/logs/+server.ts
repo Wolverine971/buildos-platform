@@ -223,7 +223,11 @@ async function getProjectIdForEntity(
 	}
 
 	// For all other entities, they have a project_id column
-	const { data } = await supabase.from(tableName).select('project_id').eq('id', entityId).single();
+	const { data } = await supabase
+		.from(tableName)
+		.select('project_id')
+		.eq('id', entityId)
+		.single();
 
 	return data?.project_id ?? null;
 }

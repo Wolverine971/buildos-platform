@@ -19,13 +19,19 @@ import type {
 	ChatToolDefinition,
 	LLMMessage,
 	Json,
-	ChatToolCall
+	ChatToolCall,
+	ChatContextType
 } from '@buildos/shared-types';
 import { SmartLLMService } from './smart-llm-service';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { getToolsForAgent } from '@buildos/shared-types';
 import type { ExecutorTask } from './agent-context-service';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
+import {
+	createEnhancedLLMWrapper,
+	type EnhancedLLMWrapper
+} from '$lib/services/agentic-chat/config/enhanced-llm-wrapper';
+import { normalizeContextType } from '../../routes/api/agent/stream/utils/context-utils';
 
 // ============================================
 // TYPES
@@ -74,6 +80,8 @@ export interface ConversationSession {
 	error?: string;
 	createdAt: Date;
 	completedAt?: Date;
+	contextType?: ChatContextType;
+	entityId?: string;
 	// Context enrichment for executors
 	locationContext?: string; // Current project/entity/calendar context (from planner)
 	previousResults?: string; // Results from previous executors in the plan
@@ -113,6 +121,7 @@ type ExecutorResponseData = {
 
 export class AgentConversationService {
 	private smartLLM: SmartLLMService;
+	private enhancedLLM: EnhancedLLMWrapper;
 	private fetchFn: typeof fetch; // Custom fetch function for API requests
 
 	// Configuration
@@ -137,6 +146,7 @@ export class AgentConversationService {
 				httpReferer: 'https://buildos.com',
 				appName: 'BuildOS Agent Conversation'
 			});
+		this.enhancedLLM = createEnhancedLLMWrapper(this.smartLLM);
 	}
 
 	// ============================================
@@ -175,6 +185,8 @@ export class AgentConversationService {
 			previousResults
 		} = params;
 
+		const normalizedContextType = normalizeContextType(contextType);
+
 		// Create agent chat session in database
 		const { data: dbSession, error } = await this.supabase
 			.from('agent_chat_sessions')
@@ -190,7 +202,7 @@ export class AgentConversationService {
 					tools: tools.map((t) => t.function.name),
 					timestamp: new Date().toISOString()
 				}),
-				context_type: contextType,
+				context_type: normalizedContextType,
 				entity_id: entityId,
 				user_id: userId,
 				status: 'active'
@@ -217,6 +229,8 @@ export class AgentConversationService {
 			maxTurns: this.CONFIG.MAX_TURNS,
 			messages: [],
 			createdAt: new Date(),
+			contextType: normalizedContextType,
+			entityId,
 			// Context enrichment for executor
 			locationContext,
 			previousResults
@@ -468,21 +482,24 @@ export class AgentConversationService {
 		let tokensUsed = 0;
 		let responseData: ExecutorResponseData | null = null;
 
+		const normalizedContextType = normalizeContextType(session.contextType);
+		const projectId = normalizedContextType.startsWith('project') ? session.entityId : undefined;
+
 		// Stream from executor LLM
-		for await (const event of this.smartLLM.streamText({
+		for await (const event of this.enhancedLLM.streamText({
 			messages,
 			tools: readOnlyTools,
 			tool_choice: 'auto',
 			userId,
-			profile: 'speed', // Fast executor model
-			temperature: 0.3,
-			maxTokens: 1500,
 			sessionId: session.parentSessionId,
 			chatSessionId: session.parentSessionId,
 			agentSessionId: session.id,
 			agentPlanId: session.planId,
 			// Context for usage tracking
-			contextType: 'executor_conversation'
+			contextType: normalizedContextType,
+			operationType: 'executor_task',
+			entityId: session.entityId,
+			projectId
 		})) {
 			switch (event.type) {
 				case 'text':
@@ -697,19 +714,22 @@ export class AgentConversationService {
 		let responseContent = '';
 		let tokensUsed = 0;
 
+		const normalizedContextType = normalizeContextType(session.contextType);
+		const projectId = normalizedContextType.startsWith('project') ? session.entityId : undefined;
+
 		// Stream from planner LLM
-		for await (const event of this.smartLLM.streamText({
+		for await (const event of this.enhancedLLM.streamText({
 			messages,
 			userId,
-			profile: 'balanced', // Smart planner model
-			temperature: 0.7,
-			maxTokens: 1000,
 			sessionId: session.parentSessionId,
 			chatSessionId: session.parentSessionId,
 			agentSessionId: session.id,
 			agentPlanId: session.planId,
 			// Context for usage tracking
-			contextType: 'planner_response'
+			contextType: normalizedContextType,
+			operationType: 'planner_stream',
+			entityId: session.entityId,
+			projectId
 		})) {
 			switch (event.type) {
 				case 'text':

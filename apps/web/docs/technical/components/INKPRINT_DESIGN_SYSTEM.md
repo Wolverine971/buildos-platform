@@ -10,16 +10,16 @@
 
 ## Quick Reference
 
-| Need to...                | Go to...                                                      |
-| ------------------------- | ------------------------------------------------------------- |
-| Understand the philosophy | [Section 1: Philosophy](#1-philosophy--principles)            |
-| Choose a texture          | [Section 3: Texture Grammar](#3-texture-grammar)              |
-| Choose a weight           | [Section 4: Weight System](#4-weight-system)                  |
+| Need to...                | Go to...                                                        |
+| ------------------------- | --------------------------------------------------------------- |
+| Understand the philosophy | [Section 1: Philosophy](#1-philosophy--principles)              |
+| Choose a texture          | [Section 3: Texture Grammar](#3-texture-grammar)                |
+| Choose a weight           | [Section 4: Weight System](#4-weight-system)                    |
 | Combine texture + weight  | [Section 5: Texture × Weight Matrix](#5-texture--weight-matrix) |
-| Find color tokens         | [Section 6: Color System](#6-color-system-paper--ink--accent) |
-| Style a component         | [Section 9: Component Recipes](#9-component-recipes-svelte-5) |
-| Migrate existing code     | [Section 11: Migration Playbook](#11-migration-playbook)      |
-| Check before shipping     | [Section 12: Checklist](#12-before-you-ship-checklist)        |
+| Find color tokens         | [Section 6: Color System](#6-color-system-paper--ink--accent)   |
+| Style a component         | [Section 9: Component Recipes](#9-component-recipes-svelte-5)   |
+| Migrate existing code     | [Section 11: Migration Playbook](#11-migration-playbook)        |
+| Check before shipping     | [Section 12: Checklist](#12-before-you-ship-checklist)          |
 
 ---
 
@@ -178,17 +178,17 @@ Textures are **semantic tokens**. Each represents an internal state.
 
 ## 4. Weight System
 
-Weight is the **second semantic dimension** of the Inkprint system. While texture communicates *what kind of thing* something is, weight communicates *how important* it is.
+Weight is the **second semantic dimension** of the Inkprint system. While texture communicates _what kind of thing_ something is, weight communicates _how important_ it is.
 
 ### 4.1 What Weight Communicates
 
 Weight expresses three aspects simultaneously:
 
-| Aspect        | Light (Ghost)                | Heavy (Plate)                   |
-| ------------- | ---------------------------- | ------------------------------- |
-| **Permanence**| Ephemeral, draft, suggestion | Canonical, committed, historical|
-| **Attention** | Ambient, ignorable           | Demands focus, requires decision|
-| **Hierarchy** | Supporting, contextual       | Primary, authoritative          |
+| Aspect         | Light (Ghost)                | Heavy (Plate)                    |
+| -------------- | ---------------------------- | -------------------------------- |
+| **Permanence** | Ephemeral, draft, suggestion | Canonical, committed, historical |
+| **Attention**  | Ambient, ignorable           | Demands focus, requires decision |
+| **Hierarchy**  | Supporting, contextual       | Primary, authoritative           |
 
 ### 4.2 The Print Shop Metaphor
 
@@ -201,34 +201,34 @@ Think of weight like paper types in a print shop:
 
 ### 4.3 Weight Tokens
 
-| Token       | Class       | Meaning                            | Use For                                    |
-| ----------- | ----------- | ---------------------------------- | ------------------------------------------ |
-| **Ghost**   | `wt-ghost`  | Ephemeral, uncommitted, suggestion | AI suggestions, empty slots, draft states  |
-| **Paper**   | `wt-paper`  | Standard UI, working state         | Most cards, panels, default surfaces       |
-| **Card**    | `wt-card`   | Important, elevated, committed     | Milestones, key decisions, commitments     |
-| **Plate**   | `wt-plate`  | System-critical, immutable         | Modals, system alerts, canonical views     |
+| Token     | Class      | Meaning                            | Use For                                   |
+| --------- | ---------- | ---------------------------------- | ----------------------------------------- |
+| **Ghost** | `wt-ghost` | Ephemeral, uncommitted, suggestion | AI suggestions, empty slots, draft states |
+| **Paper** | `wt-paper` | Standard UI, working state         | Most cards, panels, default surfaces      |
+| **Card**  | `wt-card`  | Important, elevated, committed     | Milestones, key decisions, commitments    |
+| **Plate** | `wt-plate` | System-critical, immutable         | Modals, system alerts, canonical views    |
 
 ### 4.4 Weight Visual Properties
 
 Each weight level affects multiple visual properties:
 
-| Weight    | Shadow              | Border      | Radius    | Motion Duration |
-| --------- | ------------------- | ----------- | --------- | --------------- |
-| `ghost`   | None                | 1px dashed  | 0.75rem   | 100ms (snappy)  |
-| `paper`   | `shadow-ink`        | 1px solid   | 0.5rem    | 150ms (default) |
-| `card`    | `shadow-ink-strong` | 1.5px solid | 0.5rem    | 200ms (deliberate) |
-| `plate`   | Deep + inset        | 2px solid   | 0.375rem  | 280ms (weighty) |
+| Weight  | Shadow              | Border      | Radius   | Motion Duration    |
+| ------- | ------------------- | ----------- | -------- | ------------------ |
+| `ghost` | None                | 1px dashed  | 0.75rem  | 100ms (snappy)     |
+| `paper` | `shadow-ink`        | 1px solid   | 0.5rem   | 150ms (default)    |
+| `card`  | `shadow-ink-strong` | 1.5px solid | 0.5rem   | 200ms (deliberate) |
+| `plate` | Deep + inset        | 2px solid   | 0.375rem | 280ms (weighty)    |
 
 ### 4.5 Weight and Motion
 
 **Key principle:** Weight affects motion. Heavier elements move slower (more inertia).
 
-| Weight  | Duration | Easing               | Feeling                    |
-| ------- | -------- | -------------------- | -------------------------- |
-| `ghost` | 100ms    | `ease-out`           | Snappy, immediate, nimble  |
-| `paper` | 150ms    | `ease`               | Standard, comfortable      |
-| `card`  | 200ms    | `ease-in-out`        | Deliberate, confident      |
-| `plate` | 280ms    | `cubic-bezier(...)` | Weighty, authoritative     |
+| Weight  | Duration | Easing              | Feeling                   |
+| ------- | -------- | ------------------- | ------------------------- |
+| `ghost` | 100ms    | `ease-out`          | Snappy, immediate, nimble |
+| `paper` | 150ms    | `ease`              | Standard, comfortable     |
+| `card`  | 200ms    | `ease-in-out`       | Deliberate, confident     |
+| `plate` | 280ms    | `cubic-bezier(...)` | Weighty, authoritative    |
 
 ### 4.6 Weight Rules
 
@@ -251,11 +251,13 @@ Each weight level affects multiple visual properties:
 Weight must feel consistent across modes, but implementation differs:
 
 **Light Mode:**
+
 - Shadows convey weight naturally
 - Borders are subtle dividers
 - Ghost elements nearly invisible
 
 **Dark Mode:**
+
 - Shadows less visible; compensate with rim glows
 - Borders become luminous hints
 - Ghost elements use subtle luminous borders
@@ -269,16 +271,17 @@ The CSS variables automatically handle these differences.
 
 Texture and weight work together to create a **two-axis semantic system**:
 
-- **Texture** = *What kind of thing is this?* (qualitative)
-- **Weight** = *How important is this?* (quantitative)
+- **Texture** = _What kind of thing is this?_ (qualitative)
+- **Weight** = _How important is this?_ (quantitative)
 
 ### 5.1 Usage Syntax
 
 ```html
-<element class="tx tx-[texture] tx-[intensity] wt-[weight]">
+<element class="tx tx-[texture] tx-[intensity] wt-[weight]"></element>
 ```
 
 Example:
+
 ```html
 <!-- Draft task: grain texture (in-progress) + ghost weight (uncommitted) -->
 <div class="tx tx-grain tx-weak wt-ghost">Draft: Review PR</div>
@@ -294,47 +297,45 @@ Example:
 
 This matrix shows recommended texture × weight combinations:
 
-|             | Ghost              | Paper              | Card               | Plate              |
-| ----------- | ------------------ | ------------------ | ------------------ | ------------------ |
-| **Bloom**   | AI suggestion      | New idea card      | —                  | —                  |
-| **Grain**   | Draft task         | Active task        | —                  | —                  |
-| **Pulse**   | —                  | Upcoming deadline  | Urgent deadline    | —                  |
-| **Static**  | Dismissible warning| Error notice       | Critical error     | System failure     |
-| **Thread**  | Weak link hint     | Dependency card    | Key relationship   | —                  |
-| **Frame**   | —                  | Standard panel     | Milestone/decision | Modal, system view |
+|            | Ghost               | Paper             | Card               | Plate              |
+| ---------- | ------------------- | ----------------- | ------------------ | ------------------ |
+| **Bloom**  | AI suggestion       | New idea card     | —                  | —                  |
+| **Grain**  | Draft task          | Active task       | —                  | —                  |
+| **Pulse**  | —                   | Upcoming deadline | Urgent deadline    | —                  |
+| **Static** | Dismissible warning | Error notice      | Critical error     | System failure     |
+| **Thread** | Weak link hint      | Dependency card   | Key relationship   | —                  |
+| **Frame**  | —                   | Standard panel    | Milestone/decision | Modal, system view |
 
 ### 5.3 Component Examples
 
 ```svelte
 <!-- Suggestion chip: ephemeral, ignorable -->
-<div class="px-3 py-1.5 tx tx-bloom tx-weak wt-ghost">
-  Add a deadline?
-</div>
+<div class="px-3 py-1.5 tx tx-bloom tx-weak wt-ghost">Add a deadline?</div>
 
 <!-- Standard task card: working state -->
 <div class="p-3 tx tx-grain tx-weak wt-paper">
-  <h4 class="font-medium text-foreground">Write documentation</h4>
-  <p class="text-sm text-muted-foreground">In progress</p>
+	<h4 class="font-medium text-foreground">Write documentation</h4>
+	<p class="text-sm text-muted-foreground">In progress</p>
 </div>
 
 <!-- Completed milestone: canonical, important -->
 <div class="p-4 tx tx-frame tx-med wt-card">
-  <div class="flex items-center gap-2">
-    <span class="text-emerald-500">✓</span>
-    <h3 class="font-semibold text-foreground">MVP Shipped</h3>
-  </div>
+	<div class="flex items-center gap-2">
+		<span class="text-emerald-500">✓</span>
+		<h3 class="font-semibold text-foreground">MVP Shipped</h3>
+	</div>
 </div>
 
 <!-- System modal: demands attention, authoritative -->
 <div class="p-6 tx tx-frame tx-weak wt-plate">
-  <h2 class="text-lg font-semibold text-foreground">Confirm Deletion</h2>
-  <p class="text-muted-foreground">This action cannot be undone.</p>
+	<h2 class="text-lg font-semibold text-foreground">Confirm Deletion</h2>
+	<p class="text-muted-foreground">This action cannot be undone.</p>
 </div>
 
 <!-- Error that requires decision -->
 <div class="p-3 tx tx-static tx-med wt-card">
-  <p class="text-red-600 font-medium">Payment failed</p>
-  <p class="text-sm text-muted-foreground">Update billing info?</p>
+	<p class="text-red-600 font-medium">Payment failed</p>
+	<p class="text-sm text-muted-foreground">Update billing info?</p>
 </div>
 ```
 
@@ -343,17 +344,11 @@ This matrix shows recommended texture × weight combinations:
 The Card component supports both texture and weight:
 
 ```svelte
-<Card texture="frame" weight="paper">
-  Standard panel
-</Card>
+<Card texture="frame" weight="paper">Standard panel</Card>
 
-<Card texture="grain" weight="ghost">
-  Draft state
-</Card>
+<Card texture="grain" weight="ghost">Draft state</Card>
 
-<Card texture="frame" weight="plate">
-  Modal-level importance
-</Card>
+<Card texture="frame" weight="plate">Modal-level importance</Card>
 ```
 
 ---
@@ -887,10 +882,12 @@ Only after structure is clean:
 ## 12. Before You Ship Checklist
 
 ### Color & Tokens
+
 - [ ] Did you use semantic color tokens (`bg-card`, `text-foreground`) instead of hardcoded colors?
 - [ ] Does it work in both light and dark mode without manual `dark:` overrides?
 
 ### Texture & Weight
+
 - [ ] Is texture semantic and consistent with the meaning table (Section 3)?
 - [ ] Is texture intensity appropriate (weak for text areas, med for headers)?
 - [ ] Is weight appropriate for the element's importance (Section 4)?
@@ -898,17 +895,20 @@ Only after structure is clean:
 - [ ] Does the texture × weight combination match the semantic matrix (Section 5)?
 
 ### Hierarchy & Readability
+
 - [ ] Are surfaces clearly layered (background → card → inset → overlay)?
 - [ ] Can you scan the page in 3 seconds and understand the hierarchy?
 - [ ] Is information density appropriate (compact but not cramped)?
 
 ### Interaction & Motion
+
 - [ ] Do buttons have `pressable` class and feel tactile?
 - [ ] Does motion timing feel appropriate for the element's weight?
 - [ ] Does `prefers-reduced-motion` disable animations?
 - [ ] Are focus states visible everywhere?
 
 ### Responsiveness & Accessibility
+
 - [ ] Is the component responsive (mobile-first with `sm:`, `md:`, `lg:` breakpoints)?
 - [ ] Are touch targets at least 44x44px?
 - [ ] Is contrast ratio WCAG AA compliant (4.5:1 for text)?

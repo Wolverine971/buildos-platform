@@ -39,11 +39,7 @@
 	};
 
 	let bodyClasses = $derived(
-		twMerge(
-			paddingClasses[padding],
-			textureClasses[texture],
-			className
-		)
+		twMerge(paddingClasses[padding], textureClasses[texture], className)
 	);
 </script>
 

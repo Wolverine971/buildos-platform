@@ -42,7 +42,7 @@
 		'little-pluses.png': 'repeat', // 300x300 scattered plus signs
 		'groovepaper.png': 'repeat', // 300x300 herringbone
 		'tactile-noise-dark.png': 'repeat', // 48x48 small tile
-		'graphy.png': 'repeat', // 80x160 graph paper
+		'graphy.png': 'repeat' // 80x160 graph paper
 	};
 
 	function getTextureSize(file: string): TextureSize {
@@ -195,10 +195,7 @@
 					<p class="text-lg text-muted-foreground">PNG Texture Testing & Comparison</p>
 				</div>
 				<div class="flex items-center gap-4">
-					<a
-						href="/design-system/inkprint"
-						class="text-sm text-accent hover:underline"
-					>
+					<a href="/design-system/inkprint" class="text-sm text-accent hover:underline">
 						← View v1 (CSS)
 					</a>
 				</div>
@@ -209,12 +206,15 @@
 		<section class="bg-card border border-border rounded-lg p-4">
 			<h2 class="text-sm font-semibold text-foreground mb-2">Raw Texture Files</h2>
 			<p class="text-xs text-muted-foreground mb-3">
-				Actual PNG files with sizing info. <span class="text-accent">cover</span> = single image, <span class="text-accent">repeat</span> = tiled pattern.
+				Actual PNG files with sizing info. <span class="text-accent">cover</span> = single
+				image, <span class="text-accent">repeat</span> = tiled pattern.
 			</p>
 			<div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
 				{#each semanticTextures as tex}
 					<div class="flex flex-col items-center gap-1">
-						<div class="w-16 h-16 border border-border rounded overflow-hidden bg-white">
+						<div
+							class="w-16 h-16 border border-border rounded overflow-hidden bg-white"
+						>
 							<img
 								src="/textures/{tex.file}"
 								alt={tex.id}
@@ -231,7 +231,9 @@
 			<div class="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-border">
 				{#each materialTextures as mat}
 					<div class="flex flex-col items-center gap-1">
-						<div class="w-16 h-16 border border-border rounded overflow-hidden bg-white">
+						<div
+							class="w-16 h-16 border border-border rounded overflow-hidden bg-white"
+						>
 							<img
 								src="/textures/{mat.file}"
 								alt={mat.weight}
@@ -240,7 +242,9 @@
 								class:object-contain={getTextureSize(mat.file) === 'repeat'}
 							/>
 						</div>
-						<span class="text-[10px] text-muted-foreground text-center">{mat.weight}</span>
+						<span class="text-[10px] text-muted-foreground text-center"
+							>{mat.weight}</span
+						>
 						<span class="text-[9px] text-accent">{getTextureSize(mat.file)}</span>
 					</div>
 				{/each}
@@ -261,7 +265,9 @@
 							<option value={op.value}>{op.label}</option>
 						{/each}
 					</select>
-					<span class="text-xs text-accent font-mono">{Math.round(selectedOpacity * 100)}%</span>
+					<span class="text-xs text-accent font-mono"
+						>{Math.round(selectedOpacity * 100)}%</span
+					>
 				</div>
 				<label class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
 					<input type="checkbox" bind:checked={showBackup} class="rounded" />
@@ -285,7 +291,9 @@
 				{#each semanticTextures as texture}
 					{@const textureFile = showBackup ? texture.backup : texture.file}
 					{@const sizing = getTextureSize(textureFile)}
-					<div class="relative overflow-hidden rounded-lg border border-border bg-card p-4 min-h-[140px]">
+					<div
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 min-h-[140px]"
+					>
 						<!-- PNG Texture Layer -->
 						<div
 							class="absolute inset-0 pointer-events-none"
@@ -293,7 +301,9 @@
 							style:background-size={getBackgroundSize(textureFile)}
 							style:background-repeat={getBackgroundRepeat(textureFile)}
 							style:background-position={getBackgroundPosition(textureFile)}
-							style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+							style:background-color={darkModeTest
+								? 'rgba(255,255,255,0.15)'
+								: 'rgba(0,0,0,0.5)'}
 							style:background-blend-mode="multiply"
 							style:opacity={selectedOpacity}
 							class:mix-blend-overlay={darkModeTest}
@@ -310,7 +320,9 @@
 								</span>
 							</div>
 							<p class="text-sm text-muted-foreground">{texture.meaning}</p>
-							<p class="text-[10px] text-muted-foreground mt-1 font-mono">{textureFile}</p>
+							<p class="text-[10px] text-muted-foreground mt-1 font-mono">
+								{textureFile}
+							</p>
 
 							<!-- Sample content -->
 							<div class="mt-3 pt-3 border-t border-border/50">
@@ -336,7 +348,9 @@
 				{#each materialTextures as material}
 					{@const textureFile = showBackup ? material.backup : material.file}
 					{@const sizing = getTextureSize(textureFile)}
-					<div class="relative overflow-hidden rounded-lg border border-border bg-card p-4 min-h-[160px]">
+					<div
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 min-h-[160px]"
+					>
 						<!-- Material Texture Layer -->
 						<div
 							class="absolute inset-0 pointer-events-none"
@@ -344,7 +358,9 @@
 							style:background-size={getBackgroundSize(textureFile)}
 							style:background-repeat={getBackgroundRepeat(textureFile)}
 							style:background-position={getBackgroundPosition(textureFile)}
-							style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+							style:background-color={darkModeTest
+								? 'rgba(255,255,255,0.15)'
+								: 'rgba(0,0,0,0.5)'}
 							style:background-blend-mode="multiply"
 							style:opacity={selectedOpacity}
 							class:mix-blend-overlay={darkModeTest}
@@ -381,20 +397,34 @@
 
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 				<!-- AI Suggestion: bloom + ghost -->
-				<div class="relative overflow-hidden rounded-xl border border-dashed border-border bg-transparent p-4">
+				<div
+					class="relative overflow-hidden rounded-xl border border-dashed border-border bg-transparent p-4"
+				>
 					<div
 						class="absolute inset-0 pointer-events-none"
-						style:background-image={getTextureUrl(showBackup ? 'worn-dots.png' : 'little-pluses.png')}
-						style:background-size={getBackgroundSize(showBackup ? 'worn-dots.png' : 'little-pluses.png')}
-						style:background-repeat={getBackgroundRepeat(showBackup ? 'worn-dots.png' : 'little-pluses.png')}
-						style:background-position={getBackgroundPosition(showBackup ? 'worn-dots.png' : 'little-pluses.png')}
-						style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+						style:background-image={getTextureUrl(
+							showBackup ? 'worn-dots.png' : 'little-pluses.png'
+						)}
+						style:background-size={getBackgroundSize(
+							showBackup ? 'worn-dots.png' : 'little-pluses.png'
+						)}
+						style:background-repeat={getBackgroundRepeat(
+							showBackup ? 'worn-dots.png' : 'little-pluses.png'
+						)}
+						style:background-position={getBackgroundPosition(
+							showBackup ? 'worn-dots.png' : 'little-pluses.png'
+						)}
+						style:background-color={darkModeTest
+							? 'rgba(255,255,255,0.15)'
+							: 'rgba(0,0,0,0.5)'}
 						style:background-blend-mode="multiply"
 						style:opacity={selectedOpacity}
 						class:mix-blend-overlay={darkModeTest}
 					></div>
 					<div class="relative z-10">
-						<span class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+						<span
+							class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+						>
 							AI Suggestion
 						</span>
 						<p class="text-sm font-medium text-foreground mt-1">Add a deadline?</p>
@@ -403,20 +433,34 @@
 				</div>
 
 				<!-- Active Task: grain + paper -->
-				<div class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm">
+				<div
+					class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+				>
 					<div
 						class="absolute inset-0 pointer-events-none"
-						style:background-image={getTextureUrl(showBackup ? 'gray-sand.png' : 'sandpaper.png')}
-						style:background-size={getBackgroundSize(showBackup ? 'gray-sand.png' : 'sandpaper.png')}
-						style:background-repeat={getBackgroundRepeat(showBackup ? 'gray-sand.png' : 'sandpaper.png')}
-						style:background-position={getBackgroundPosition(showBackup ? 'gray-sand.png' : 'sandpaper.png')}
-						style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+						style:background-image={getTextureUrl(
+							showBackup ? 'gray-sand.png' : 'sandpaper.png'
+						)}
+						style:background-size={getBackgroundSize(
+							showBackup ? 'gray-sand.png' : 'sandpaper.png'
+						)}
+						style:background-repeat={getBackgroundRepeat(
+							showBackup ? 'gray-sand.png' : 'sandpaper.png'
+						)}
+						style:background-position={getBackgroundPosition(
+							showBackup ? 'gray-sand.png' : 'sandpaper.png'
+						)}
+						style:background-color={darkModeTest
+							? 'rgba(255,255,255,0.15)'
+							: 'rgba(0,0,0,0.5)'}
 						style:background-blend-mode="multiply"
 						style:opacity={selectedOpacity}
 						class:mix-blend-overlay={darkModeTest}
 					></div>
 					<div class="relative z-10">
-						<span class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+						<span
+							class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+						>
 							Active Task
 						</span>
 						<p class="text-sm font-medium text-foreground mt-1">Write documentation</p>
@@ -425,20 +469,34 @@
 				</div>
 
 				<!-- Urgent Deadline: pulse + card -->
-				<div class="relative overflow-hidden rounded-lg border-[1.5px] border-border bg-card p-4 shadow-md">
+				<div
+					class="relative overflow-hidden rounded-lg border-[1.5px] border-border bg-card p-4 shadow-md"
+				>
 					<div
 						class="absolute inset-0 pointer-events-none"
-						style:background-image={getTextureUrl(showBackup ? 'corrugation.png' : 'grilled-noise.png')}
-						style:background-size={getBackgroundSize(showBackup ? 'corrugation.png' : 'grilled-noise.png')}
-						style:background-repeat={getBackgroundRepeat(showBackup ? 'corrugation.png' : 'grilled-noise.png')}
-						style:background-position={getBackgroundPosition(showBackup ? 'corrugation.png' : 'grilled-noise.png')}
-						style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+						style:background-image={getTextureUrl(
+							showBackup ? 'corrugation.png' : 'grilled-noise.png'
+						)}
+						style:background-size={getBackgroundSize(
+							showBackup ? 'corrugation.png' : 'grilled-noise.png'
+						)}
+						style:background-repeat={getBackgroundRepeat(
+							showBackup ? 'corrugation.png' : 'grilled-noise.png'
+						)}
+						style:background-position={getBackgroundPosition(
+							showBackup ? 'corrugation.png' : 'grilled-noise.png'
+						)}
+						style:background-color={darkModeTest
+							? 'rgba(255,255,255,0.15)'
+							: 'rgba(0,0,0,0.5)'}
 						style:background-blend-mode="multiply"
 						style:opacity={selectedOpacity}
 						class:mix-blend-overlay={darkModeTest}
 					></div>
 					<div class="relative z-10">
-						<span class="text-[10px] uppercase tracking-wider text-amber-600 font-medium">
+						<span
+							class="text-[10px] uppercase tracking-wider text-amber-600 font-medium"
+						>
 							Due Today
 						</span>
 						<p class="text-sm font-medium text-foreground mt-1">Submit proposal</p>
@@ -447,14 +505,26 @@
 				</div>
 
 				<!-- Error Notice: static + paper -->
-				<div class="relative overflow-hidden rounded-lg border border-red-500/30 bg-card p-4">
+				<div
+					class="relative overflow-hidden rounded-lg border border-red-500/30 bg-card p-4"
+				>
 					<div
 						class="absolute inset-0 pointer-events-none"
-						style:background-image={getTextureUrl(showBackup ? 'tactile-noise-dark.png' : 'noisy.png')}
-						style:background-size={getBackgroundSize(showBackup ? 'tactile-noise-dark.png' : 'noisy.png')}
-						style:background-repeat={getBackgroundRepeat(showBackup ? 'tactile-noise-dark.png' : 'noisy.png')}
-						style:background-position={getBackgroundPosition(showBackup ? 'tactile-noise-dark.png' : 'noisy.png')}
-						style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.6)'}
+						style:background-image={getTextureUrl(
+							showBackup ? 'tactile-noise-dark.png' : 'noisy.png'
+						)}
+						style:background-size={getBackgroundSize(
+							showBackup ? 'tactile-noise-dark.png' : 'noisy.png'
+						)}
+						style:background-repeat={getBackgroundRepeat(
+							showBackup ? 'tactile-noise-dark.png' : 'noisy.png'
+						)}
+						style:background-position={getBackgroundPosition(
+							showBackup ? 'tactile-noise-dark.png' : 'noisy.png'
+						)}
+						style:background-color={darkModeTest
+							? 'rgba(255,255,255,0.15)'
+							: 'rgba(0,0,0,0.6)'}
 						style:background-blend-mode="multiply"
 						style:opacity={selectedOpacity}
 						class:mix-blend-overlay={darkModeTest}
@@ -469,20 +539,34 @@
 				</div>
 
 				<!-- Dependency: thread + paper -->
-				<div class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm">
+				<div
+					class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+				>
 					<div
 						class="absolute inset-0 pointer-events-none"
-						style:background-image={getTextureUrl(showBackup ? 'woven-light.png' : 'connected.png')}
-						style:background-size={getBackgroundSize(showBackup ? 'woven-light.png' : 'connected.png')}
-						style:background-repeat={getBackgroundRepeat(showBackup ? 'woven-light.png' : 'connected.png')}
-						style:background-position={getBackgroundPosition(showBackup ? 'woven-light.png' : 'connected.png')}
-						style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+						style:background-image={getTextureUrl(
+							showBackup ? 'woven-light.png' : 'connected.png'
+						)}
+						style:background-size={getBackgroundSize(
+							showBackup ? 'woven-light.png' : 'connected.png'
+						)}
+						style:background-repeat={getBackgroundRepeat(
+							showBackup ? 'woven-light.png' : 'connected.png'
+						)}
+						style:background-position={getBackgroundPosition(
+							showBackup ? 'woven-light.png' : 'connected.png'
+						)}
+						style:background-color={darkModeTest
+							? 'rgba(255,255,255,0.15)'
+							: 'rgba(0,0,0,0.5)'}
 						style:background-blend-mode="multiply"
 						style:opacity={selectedOpacity}
 						class:mix-blend-overlay={darkModeTest}
 					></div>
 					<div class="relative z-10">
-						<span class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+						<span
+							class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+						>
 							Linked
 						</span>
 						<p class="text-sm font-medium text-foreground mt-1">3 dependencies</p>
@@ -491,20 +575,34 @@
 				</div>
 
 				<!-- System Modal: frame + plate -->
-				<div class="relative overflow-hidden rounded-md border-2 border-border bg-card p-4 shadow-lg">
+				<div
+					class="relative overflow-hidden rounded-md border-2 border-border bg-card p-4 shadow-lg"
+				>
 					<div
 						class="absolute inset-0 pointer-events-none"
-						style:background-image={getTextureUrl(showBackup ? 'graphy.png' : 'tiny-grid.png')}
-						style:background-size={getBackgroundSize(showBackup ? 'graphy.png' : 'tiny-grid.png')}
-						style:background-repeat={getBackgroundRepeat(showBackup ? 'graphy.png' : 'tiny-grid.png')}
-						style:background-position={getBackgroundPosition(showBackup ? 'graphy.png' : 'tiny-grid.png')}
-						style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+						style:background-image={getTextureUrl(
+							showBackup ? 'graphy.png' : 'tiny-grid.png'
+						)}
+						style:background-size={getBackgroundSize(
+							showBackup ? 'graphy.png' : 'tiny-grid.png'
+						)}
+						style:background-repeat={getBackgroundRepeat(
+							showBackup ? 'graphy.png' : 'tiny-grid.png'
+						)}
+						style:background-position={getBackgroundPosition(
+							showBackup ? 'graphy.png' : 'tiny-grid.png'
+						)}
+						style:background-color={darkModeTest
+							? 'rgba(255,255,255,0.15)'
+							: 'rgba(0,0,0,0.5)'}
 						style:background-blend-mode="multiply"
 						style:opacity={selectedOpacity}
 						class:mix-blend-overlay={darkModeTest}
 					></div>
 					<div class="relative z-10">
-						<span class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+						<span
+							class="text-[10px] uppercase tracking-wider text-muted-foreground font-medium"
+						>
 							Confirm
 						</span>
 						<p class="text-sm font-medium text-foreground mt-1">Delete project?</p>
@@ -517,19 +615,25 @@
 		<!-- Additional Textures Gallery -->
 		<section class="space-y-4">
 			<h2 class="text-xl font-semibold text-foreground">Additional Textures</h2>
-			<p class="text-sm text-muted-foreground">Other textures available for special use cases.</p>
+			<p class="text-sm text-muted-foreground">
+				Other textures available for special use cases.
+			</p>
 
 			<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
 				{#each additionalTextures as tex}
 					{@const sizing = getTextureSize(tex.file)}
-					<div class="relative overflow-hidden rounded-lg border border-border bg-card p-3 min-h-[80px]">
+					<div
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-3 min-h-[80px]"
+					>
 						<div
 							class="absolute inset-0 pointer-events-none"
 							style:background-image={getTextureUrl(tex.file)}
 							style:background-size={getBackgroundSize(tex.file)}
 							style:background-repeat={getBackgroundRepeat(tex.file)}
 							style:background-position={getBackgroundPosition(tex.file)}
-							style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+							style:background-color={darkModeTest
+								? 'rgba(255,255,255,0.15)'
+								: 'rgba(0,0,0,0.5)'}
 							style:background-blend-mode="multiply"
 							style:opacity={selectedOpacity}
 							class:mix-blend-overlay={darkModeTest}
@@ -554,7 +658,9 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<!-- CSS Version -->
 				<div class="space-y-3">
-					<h3 class="text-sm font-medium text-muted-foreground">Current (CSS Patterns)</h3>
+					<h3 class="text-sm font-medium text-muted-foreground">
+						Current (CSS Patterns)
+					</h3>
 
 					<div class="wt-paper p-4 tx tx-bloom tx-weak">
 						<p class="text-sm font-medium text-foreground">Bloom (CSS)</p>
@@ -574,15 +680,21 @@
 
 				<!-- PNG Version -->
 				<div class="space-y-3">
-					<h3 class="text-sm font-medium text-muted-foreground">Proposed (PNG Textures) - {Math.round(selectedOpacity * 100)}%</h3>
+					<h3 class="text-sm font-medium text-muted-foreground">
+						Proposed (PNG Textures) - {Math.round(selectedOpacity * 100)}%
+					</h3>
 
-					<div class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm">
+					<div
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+					>
 						<div
 							class="absolute inset-0 pointer-events-none"
 							style:background-image={getTextureUrl('little-pluses.png')}
 							style:background-size="auto"
 							style:background-repeat="repeat"
-							style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+							style:background-color={darkModeTest
+								? 'rgba(255,255,255,0.15)'
+								: 'rgba(0,0,0,0.5)'}
 							style:background-blend-mode="multiply"
 							style:opacity={selectedOpacity}
 							class:mix-blend-overlay={darkModeTest}
@@ -593,13 +705,17 @@
 						</div>
 					</div>
 
-					<div class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm">
+					<div
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+					>
 						<div
 							class="absolute inset-0 pointer-events-none"
 							style:background-image={getTextureUrl('sandpaper.png')}
 							style:background-size="auto"
 							style:background-repeat="repeat"
-							style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+							style:background-color={darkModeTest
+								? 'rgba(255,255,255,0.15)'
+								: 'rgba(0,0,0,0.5)'}
 							style:background-blend-mode="multiply"
 							style:opacity={selectedOpacity}
 							class:mix-blend-overlay={darkModeTest}
@@ -610,13 +726,17 @@
 						</div>
 					</div>
 
-					<div class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm">
+					<div
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+					>
 						<div
 							class="absolute inset-0 pointer-events-none"
 							style:background-image={getTextureUrl('tiny-grid.png')}
 							style:background-size="auto"
 							style:background-repeat="repeat"
-							style:background-color={darkModeTest ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.5)'}
+							style:background-color={darkModeTest
+								? 'rgba(255,255,255,0.15)'
+								: 'rgba(0,0,0,0.5)'}
 							style:background-blend-mode="multiply"
 							style:opacity={selectedOpacity}
 							class:mix-blend-overlay={darkModeTest}
@@ -635,21 +755,35 @@
 			<h2 class="text-sm font-semibold text-foreground mb-2">Implementation Notes</h2>
 			<ul class="text-sm text-muted-foreground space-y-1">
 				<li>
-					• Textures use <code class="text-xs bg-muted px-1 rounded">background-blend-mode: multiply</code> with a dark tint
+					• Textures use <code class="text-xs bg-muted px-1 rounded"
+						>background-blend-mode: multiply</code
+					> with a dark tint
 				</li>
 				<li>
-					• Large organic textures (stardust, natural-paper, snow) use <code class="text-xs bg-muted px-1 rounded">background-size: cover</code>
+					• Large organic textures (stardust, natural-paper, snow) use <code
+						class="text-xs bg-muted px-1 rounded">background-size: cover</code
+					>
 				</li>
 				<li>
-					• Geometric patterns (tiny-grid, connected, corrugation) use <code class="text-xs bg-muted px-1 rounded">background-repeat: repeat</code>
+					• Geometric patterns (tiny-grid, connected, corrugation) use <code
+						class="text-xs bg-muted px-1 rounded">background-repeat: repeat</code
+					>
 				</li>
 				<li>
-					• Recommended opacity: <code class="text-xs bg-muted px-1 rounded">0.6-0.8</code> for visible texture
+					• Recommended opacity: <code class="text-xs bg-muted px-1 rounded">0.6-0.8</code
+					> for visible texture
 				</li>
 				<li>
-					• Dark mode: Use <code class="text-xs bg-muted px-1 rounded">mix-blend-mode: overlay</code> with lighter tint
+					• Dark mode: Use <code class="text-xs bg-muted px-1 rounded"
+						>mix-blend-mode: overlay</code
+					> with lighter tint
 				</li>
-				<li>• All textures from <a href="https://transparenttextures.com" class="text-accent hover:underline">TransparentTextures.com</a></li>
+				<li>
+					• All textures from <a
+						href="https://transparenttextures.com"
+						class="text-accent hover:underline">TransparentTextures.com</a
+					>
+				</li>
 			</ul>
 		</section>
 

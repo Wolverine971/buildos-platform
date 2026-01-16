@@ -913,11 +913,7 @@
 										</FormField>
 
 										<!-- Task State -->
-										<FormField
-											label="State"
-											labelFor="state"
-											required={true}
-										>
+										<FormField label="State" labelFor="state" required={true}>
 											<Select
 												id="state"
 												bind:value={stateKey}

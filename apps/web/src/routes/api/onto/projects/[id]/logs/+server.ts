@@ -65,7 +65,11 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		}
 
 		// Fetch logs with pagination
-		const { data: logs, error: logsError, count } = await supabase
+		const {
+			data: logs,
+			error: logsError,
+			count
+		} = await supabase
 			.from('onto_project_logs')
 			.select('*', { count: 'exact' })
 			.eq('project_id', projectId)
@@ -166,9 +170,7 @@ async function enrichLogsForDisplay(
 
 	const actorIds = Array.from(
 		new Set(
-			logs
-				.map((log) => log.changed_by_actor_id)
-				.filter((id): id is string => Boolean(id))
+			logs.map((log) => log.changed_by_actor_id).filter((id): id is string => Boolean(id))
 		)
 	);
 
@@ -219,7 +221,8 @@ async function enrichLogsForDisplay(
 				.then(({ data }: { data: any[] | null }) => {
 					entityNames[entityType] = {};
 					for (const entity of data || []) {
-						entityNames[entityType][entity.id] = entity[mapping.nameField] || 'Untitled';
+						entityNames[entityType][entity.id] =
+							entity[mapping.nameField] || 'Untitled';
 					}
 				})
 		);
@@ -256,7 +259,11 @@ function resolveActorName(
 /**
  * Try to extract entity name from the log's before/after data
  */
-function getNameFromLogData(log: { before_data: any; after_data: any; entity_type: string }): string {
+function getNameFromLogData(log: {
+	before_data: any;
+	after_data: any;
+	entity_type: string;
+}): string {
 	const data = log.after_data || log.before_data;
 	if (!data || typeof data !== 'object') {
 		return `${log.entity_type} (deleted)`;

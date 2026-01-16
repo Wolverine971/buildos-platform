@@ -247,8 +247,9 @@ export class ResponseSynthesizer implements BaseService {
 					)
 				);
 				const toolPreview = toolNames.slice(0, 20);
-				const completedSteps = plan.steps.filter((step) => step.status === 'completed')
-					.length;
+				const completedSteps = plan.steps.filter(
+					(step) => step.status === 'completed'
+				).length;
 				const failedSteps = plan.steps.filter((step) => step.status === 'failed').length;
 				void this.errorLogger.logError(error, {
 					userId: context.userId,

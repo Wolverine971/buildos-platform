@@ -280,9 +280,7 @@
 		</div>
 	{:else if error}
 		<!-- Error State - paper weight with static texture -->
-		<div
-			class="flex items-center gap-2 sm:gap-3 wt-paper p-2 sm:p-3 tx tx-static tx-weak"
-		>
+		<div class="flex items-center gap-2 sm:gap-3 wt-paper p-2 sm:p-3 tx tx-static tx-weak">
 			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-red-500/10">
 				<AlertCircle class="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
 			</div>

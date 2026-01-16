@@ -1234,7 +1234,6 @@
 				</div>
 			</div>
 
-
 			<!-- Next Step Display -->
 			<NextStepDisplay
 				projectId={project.id}

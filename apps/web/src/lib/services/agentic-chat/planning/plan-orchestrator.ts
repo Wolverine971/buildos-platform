@@ -50,6 +50,7 @@ import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { JSONRequestOptions } from '$lib/services/smart-llm-service';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
+import { getOptimalJSONProfile } from '../config/model-selection-config';
 
 const logger = createLogger('PlanOrchestrator');
 
@@ -572,7 +573,9 @@ export class PlanOrchestrator implements BaseService {
 			});
 			if (this.errorLogger) {
 				const details =
-					error instanceof PlanExecutionError && error.details ? error.details : undefined;
+					error instanceof PlanExecutionError && error.details
+						? error.details
+						: undefined;
 				const failedStep = details?.step as PlanStep | undefined;
 				const sanitizedStepMeta = failedStep?.metadata
 					? sanitizeLogData(failedStep.metadata)
@@ -762,6 +765,14 @@ export class PlanOrchestrator implements BaseService {
 		const useJsonMode = typeof llmWithJson.getJSONResponse === 'function';
 		let lastError: Error | null = null;
 
+		const planComplexity =
+			intent.objective.length > 4000
+				? 'complex'
+				: intent.objective.length > 1500
+					? 'moderate'
+					: 'simple';
+		const planProfile = getOptimalJSONProfile('plan_generation', planComplexity);
+
 		for (let attempt = 1; attempt <= PlanOrchestrator.PLAN_GENERATION_ATTEMPTS; attempt++) {
 			const attemptPrompt =
 				attempt === 1
@@ -774,6 +785,7 @@ export class PlanOrchestrator implements BaseService {
 						systemPrompt,
 						userPrompt: attemptPrompt,
 						temperature: 0.35,
+						profile: planProfile,
 						userId: context.userId,
 						operationType: 'plan_generation',
 						chatSessionId: context.sessionId,
@@ -817,7 +829,8 @@ export class PlanOrchestrator implements BaseService {
 					responseLength: response.length
 				});
 			} catch (error) {
-				lastError = error instanceof Error ? error : new Error('Invalid plan format from LLM');
+				lastError =
+					error instanceof Error ? error : new Error('Invalid plan format from LLM');
 				logger.warn('Plan generation attempt failed', {
 					attempt,
 					error: lastError.message

@@ -1113,7 +1113,9 @@
 								{#if toolCategory}
 									<div>
 										<span class="text-muted-foreground">Category:</span>
-										<p class="text-foreground">{formatMetadataValue(toolCategory)}</p>
+										<p class="text-foreground">
+											{formatMetadataValue(toolCategory)}
+										</p>
 									</div>
 								{/if}
 								{#if toolErrorType}
@@ -1127,7 +1129,9 @@
 								{#if toolCallId}
 									<div>
 										<span class="text-muted-foreground">Tool Call ID:</span>
-										<p class="text-foreground font-mono text-[0.65rem] truncate">
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
 											{formatMetadataValue(toolCallId)}
 										</p>
 									</div>
@@ -1135,7 +1139,9 @@
 								{#if toolSessionId}
 									<div>
 										<span class="text-muted-foreground">Session ID:</span>
-										<p class="text-foreground font-mono text-[0.65rem] truncate">
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
 											{formatMetadataValue(toolSessionId)}
 										</p>
 									</div>
@@ -1143,13 +1149,17 @@
 								{#if toolContextType}
 									<div>
 										<span class="text-muted-foreground">Context Type:</span>
-										<p class="text-foreground">{formatMetadataValue(toolContextType)}</p>
+										<p class="text-foreground">
+											{formatMetadataValue(toolContextType)}
+										</p>
 									</div>
 								{/if}
 								{#if toolEntityId}
 									<div>
 										<span class="text-muted-foreground">Entity ID:</span>
-										<p class="text-foreground font-mono text-[0.65rem] truncate">
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
 											{formatMetadataValue(toolEntityId)}
 										</p>
 									</div>
@@ -1157,7 +1167,9 @@
 								{#if toolVirtual !== undefined}
 									<div>
 										<span class="text-muted-foreground">Virtual:</span>
-										<p class="text-foreground">{formatMetadataValue(toolVirtual)}</p>
+										<p class="text-foreground">
+											{formatMetadataValue(toolVirtual)}
+										</p>
 									</div>
 								{/if}
 								{#if toolTimeoutMs !== undefined}

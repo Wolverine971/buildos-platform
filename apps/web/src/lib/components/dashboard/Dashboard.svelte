@@ -237,9 +237,7 @@
 
 		<!-- Error State - card weight for important errors -->
 		{#if error}
-			<div
-				class="mb-6 wt-card p-6 tx tx-static tx-weak"
-			>
+			<div class="mb-6 wt-card p-6 tx tx-static tx-weak">
 				<div class="text-center">
 					<AlertTriangle class="h-8 w-8 text-red-500 mx-auto mb-3" />
 					<p class="text-red-600 dark:text-red-400 mb-4">{error}</p>
@@ -310,9 +308,7 @@
 				</div>
 			{:else if !hasProjects && !isLoading}
 				<!-- Empty State - Compact on mobile, paper weight with bloom texture -->
-				<div
-					class="wt-paper border-dashed p-6 sm:p-12 text-center tx tx-bloom tx-weak"
-				>
+				<div class="wt-paper border-dashed p-6 sm:p-12 text-center tx tx-bloom tx-weak">
 					<div
 						class="mx-auto mb-4 sm:mb-6 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent"
 					>

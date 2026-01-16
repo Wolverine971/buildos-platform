@@ -17,8 +17,18 @@
 
 	// Weight definitions with semantic meanings
 	const weights = [
-		{ id: 'ghost', label: 'Ghost', meaning: 'Ephemeral, uncommitted, suggestion', duration: '100ms' },
-		{ id: 'paper', label: 'Paper', meaning: 'Standard UI, working state (default)', duration: '150ms' },
+		{
+			id: 'ghost',
+			label: 'Ghost',
+			meaning: 'Ephemeral, uncommitted, suggestion',
+			duration: '100ms'
+		},
+		{
+			id: 'paper',
+			label: 'Paper',
+			meaning: 'Standard UI, working state (default)',
+			duration: '150ms'
+		},
 		{ id: 'card', label: 'Card', meaning: 'Important, elevated, committed', duration: '200ms' },
 		{ id: 'plate', label: 'Plate', meaning: 'System-critical, immutable', duration: '280ms' }
 	] as const;
@@ -48,7 +58,9 @@
 
 	// Check if combination is recommended
 	function isRecommended(texture: TextureId, weight: WeightId): string | null {
-		const combo = recommendedCombinations.find((c) => c.texture === texture && c.weight === weight);
+		const combo = recommendedCombinations.find(
+			(c) => c.texture === texture && c.weight === weight
+		);
 		return combo ? combo.use : null;
 	}
 </script>
@@ -74,15 +86,15 @@
 				<div>
 					<h3 class="font-medium text-foreground mb-1">Texture = What KIND of thing</h3>
 					<p class="text-sm text-muted-foreground">
-						Communicates the semantic nature: is it new (bloom), in-progress (grain), urgent
-						(pulse), blocked (static), connected (thread), or canonical (frame)?
+						Communicates the semantic nature: is it new (bloom), in-progress (grain),
+						urgent (pulse), blocked (static), connected (thread), or canonical (frame)?
 					</p>
 				</div>
 				<div>
 					<h3 class="font-medium text-foreground mb-1">Weight = How IMPORTANT</h3>
 					<p class="text-sm text-muted-foreground">
-						Communicates hierarchy and permanence: ephemeral (ghost), standard (paper), elevated
-						(card), or system-critical (plate).
+						Communicates hierarchy and permanence: ephemeral (ghost), standard (paper),
+						elevated (card), or system-critical (plate).
 					</p>
 				</div>
 			</div>
@@ -95,7 +107,9 @@
 				{#each weights as weight}
 					<div class="wt-{weight.id} p-4 tx tx-frame tx-weak">
 						<div class="flex items-center justify-between mb-2">
-							<span class="font-mono text-sm font-medium text-foreground">wt-{weight.id}</span>
+							<span class="font-mono text-sm font-medium text-foreground"
+								>wt-{weight.id}</span
+							>
 							<span class="text-xs text-muted-foreground">{weight.duration}</span>
 						</div>
 						<p class="text-sm text-muted-foreground">{weight.meaning}</p>
@@ -110,7 +124,9 @@
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each textures as texture}
 					<div class="wt-paper p-4 tx tx-{texture.id} tx-weak">
-						<span class="font-mono text-sm font-medium text-foreground">tx-{texture.id}</span>
+						<span class="font-mono text-sm font-medium text-foreground"
+							>tx-{texture.id}</span
+						>
 						<p class="text-sm text-muted-foreground mt-1">{texture.meaning}</p>
 					</div>
 				{/each}
@@ -121,8 +137,8 @@
 		<section class="space-y-4">
 			<h2 class="text-xl font-semibold text-foreground">Texture × Weight Matrix</h2>
 			<p class="text-sm text-muted-foreground">
-				Green badges indicate recommended semantic combinations. Gray cells are valid but less
-				common.
+				Green badges indicate recommended semantic combinations. Gray cells are valid but
+				less common.
 			</p>
 
 			<div class="overflow-x-auto">
@@ -132,8 +148,12 @@
 						<div class="p-2"></div>
 						{#each weights as weight}
 							<div class="p-2 text-center">
-								<span class="font-mono text-xs font-medium text-foreground">wt-{weight.id}</span>
-								<p class="text-[10px] text-muted-foreground mt-0.5">{weight.duration}</p>
+								<span class="font-mono text-xs font-medium text-foreground"
+									>wt-{weight.id}</span
+								>
+								<p class="text-[10px] text-muted-foreground mt-0.5">
+									{weight.duration}
+								</p>
 							</div>
 						{/each}
 					</div>
@@ -143,7 +163,9 @@
 						<div class="grid grid-cols-5 gap-2 mb-2">
 							<!-- Texture label -->
 							<div class="p-2 flex items-center">
-								<span class="font-mono text-xs font-medium text-foreground">tx-{texture.id}</span>
+								<span class="font-mono text-xs font-medium text-foreground"
+									>tx-{texture.id}</span
+								>
 							</div>
 
 							<!-- Weight columns -->
@@ -174,8 +196,8 @@
 		<section class="space-y-4">
 			<h2 class="text-xl font-semibold text-foreground">Card Component Examples</h2>
 			<p class="text-sm text-muted-foreground">
-				The Card component uses smart defaults based on variant, which can be overridden with
-				explicit texture/weight props.
+				The Card component uses smart defaults based on variant, which can be overridden
+				with explicit texture/weight props.
 			</p>
 
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -265,8 +287,9 @@
 
 			<div class="wt-paper p-4 tx tx-frame tx-weak">
 				<h3 class="font-medium text-foreground mb-2">Raw CSS Classes</h3>
-				<pre
-					class="text-sm bg-muted/50 p-3 rounded-lg overflow-x-auto"><code class="text-foreground">&lt;div class="tx tx-grain tx-weak wt-paper"&gt;
+				<pre class="text-sm bg-muted/50 p-3 rounded-lg overflow-x-auto"><code
+						class="text-foreground"
+						>&lt;div class="tx tx-grain tx-weak wt-paper"&gt;
   Active task card
 &lt;/div&gt;
 
@@ -276,13 +299,15 @@
 
 &lt;div class="tx tx-frame tx-weak wt-plate"&gt;
   System modal
-&lt;/div&gt;</code></pre>
+&lt;/div&gt;</code
+					></pre>
 			</div>
 
 			<div class="wt-paper p-4 tx tx-frame tx-weak">
 				<h3 class="font-medium text-foreground mb-2">Card Component</h3>
-				<pre
-					class="text-sm bg-muted/50 p-3 rounded-lg overflow-x-auto"><code class="text-foreground">&lt;!-- Use variant defaults --&gt;
+				<pre class="text-sm bg-muted/50 p-3 rounded-lg overflow-x-auto"><code
+						class="text-foreground"
+						>&lt;!-- Use variant defaults --&gt;
 &lt;Card variant="default"&gt;...&lt;/Card&gt;
 
 &lt;!-- Override with explicit props --&gt;
@@ -293,7 +318,8 @@
 &lt;!-- Mix variant with overrides --&gt;
 &lt;Card variant="elevated" texture="static"&gt;
   Important error
-&lt;/Card&gt;</code></pre>
+&lt;/Card&gt;</code
+					></pre>
 			</div>
 		</section>
 

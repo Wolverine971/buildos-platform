@@ -2,7 +2,11 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
-export const GET: RequestHandler = async ({ request, locals: { supabase, safeGetSession }, url }) => {
+export const GET: RequestHandler = async ({
+	request,
+	locals: { supabase, safeGetSession },
+	url
+}) => {
 	try {
 		const { user } = await safeGetSession();
 

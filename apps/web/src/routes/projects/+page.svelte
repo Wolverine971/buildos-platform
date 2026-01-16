@@ -475,9 +475,7 @@
 				<div class="space-y-6">
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each Array.from({ length: 3 }) as _}
-							<div
-								class="wt-paper p-4 tx tx-frame tx-weak animate-pulse"
-							>
+							<div class="wt-paper p-4 tx tx-frame tx-weak animate-pulse">
 								<div class="h-5 w-1/3 rounded bg-muted"></div>
 								<div class="mt-4 h-4 w-3/4 rounded bg-muted/80"></div>
 								<div class="mt-2 h-3 w-2/3 rounded bg-muted/80"></div>
@@ -486,9 +484,7 @@
 					</div>
 				</div>
 			{:else if projectsError}
-				<div
-					class="wt-card p-6 text-center tx tx-static tx-weak"
-				>
+				<div class="wt-card p-6 text-center tx tx-static tx-weak">
 					<h2 class="text-base font-semibold text-foreground">
 						Unable to load ontology projects
 					</h2>
@@ -557,9 +553,7 @@
 				<!-- Stats Grid - Semantic textures per brand guidelines with weight -->
 				<div class="grid grid-cols-4 gap-2 sm:gap-3">
 					<!-- Projects count - Frame texture (canonical/structure), paper weight (standard) -->
-					<div
-						class="wt-paper p-2.5 sm:p-4 tx tx-frame tx-weak"
-					>
+					<div class="wt-paper p-2.5 sm:p-4 tx tx-frame tx-weak">
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							PROJECTS
 						</p>
@@ -574,9 +568,7 @@
 						{/if}
 					</div>
 					<!-- Tasks count - Grain texture (execution/progress), paper weight -->
-					<div
-						class="wt-paper p-2.5 sm:p-4 tx tx-grain tx-weak"
-					>
+					<div class="wt-paper p-2.5 sm:p-4 tx tx-grain tx-weak">
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							TASKS
 						</p>
@@ -591,9 +583,7 @@
 						{/if}
 					</div>
 					<!-- Documents count - Thread texture (connections/relationships), paper weight -->
-					<div
-						class="wt-paper p-2.5 sm:p-4 tx tx-thread tx-weak"
-					>
+					<div class="wt-paper p-2.5 sm:p-4 tx tx-thread tx-weak">
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							DOCS
 						</p>
@@ -1120,9 +1110,7 @@
 		<!-- Graph view - Admin Only -->
 	{:else if isAdmin}
 		<section class="space-y-4">
-			<div
-				class="wt-paper overflow-hidden touch-none tx tx-frame tx-weak"
-			>
+			<div class="wt-paper overflow-hidden touch-none tx tx-frame tx-weak">
 				<div class="relative h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-18rem)]">
 					{#if graphComponentError}
 						<div

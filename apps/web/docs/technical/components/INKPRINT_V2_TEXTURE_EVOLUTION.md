@@ -32,14 +32,15 @@ This creates an intuitive progression users will **feel** without thinking.
 ```css
 /* All patterns feel similarly "digital" */
 .tx-bloom::before {
-  background-image: radial-gradient(...);  /* Dots */
+	background-image: radial-gradient(...); /* Dots */
 }
 .tx-grain::before {
-  background-image: repeating-linear-gradient(45deg...);  /* Lines */
+	background-image: repeating-linear-gradient(45deg...); /* Lines */
 }
 ```
 
 **Problems:**
+
 - Synthetic, computer-generated feel
 - All textures have similar visual "weight"
 - Hard to distinguish at a glance
@@ -50,19 +51,20 @@ This creates an intuitive progression users will **feel** without thinking.
 ```css
 /* Semantic textures with real depth */
 .tx-bloom::before {
-  background-image: url('/textures/stardust.png');  /* Real particles */
+	background-image: url('/textures/stardust.png'); /* Real particles */
 }
 
 /* Weight IS material */
 .wt-ghost::before {
-  background-image: url('/textures/subtle-freckles.png');  /* Dust */
+	background-image: url('/textures/subtle-freckles.png'); /* Dust */
 }
 .wt-plate::before {
-  background-image: url('/textures/brushed-alum.png');  /* Metal */
+	background-image: url('/textures/brushed-alum.png'); /* Metal */
 }
 ```
 
 **Benefits:**
+
 - Organic, tactile feel
 - Weight communicates through material
 - Clearer visual distinction
@@ -76,25 +78,25 @@ This creates an intuitive progression users will **feel** without thinking.
 
 Weight classes now carry **material textures** that communicate importance:
 
-| Weight | Material Texture | Visual Feel | Use Case |
-|--------|------------------|-------------|----------|
-| `wt-ghost` | `subtle-freckles` | Dust, barely visible | Suggestions, uncommitted |
-| `wt-paper` | `natural-paper` | Paper fibers | Standard working state |
-| `wt-card` | `stressed-linen` | Woven fabric | Important, elevated |
-| `wt-plate` | `brushed-alum` | Brushed metal | Immutable, system-critical |
+| Weight     | Material Texture  | Visual Feel          | Use Case                   |
+| ---------- | ----------------- | -------------------- | -------------------------- |
+| `wt-ghost` | `subtle-freckles` | Dust, barely visible | Suggestions, uncommitted   |
+| `wt-paper` | `natural-paper`   | Paper fibers         | Standard working state     |
+| `wt-card`  | `stressed-linen`  | Woven fabric         | Important, elevated        |
+| `wt-plate` | `brushed-alum`    | Brushed metal        | Immutable, system-critical |
 
 ### Dimension 2: Semantic Texture = Pattern (What Kind)
 
 Semantic textures now use **real patterns** that communicate meaning:
 
-| Texture | PNG Texture | Visual Pattern | Meaning |
-|---------|-------------|----------------|---------|
-| `tx-bloom` | `stardust` | Scattered particles | Ideation, newness |
-| `tx-grain` | `sandpaper` | Fine sand grain | Execution, craftsmanship |
-| `tx-pulse` | `corrugation` | Horizontal ridges | Urgency, momentum |
-| `tx-static` | `broken-noise` | Dense noise | Blockers, risk |
-| `tx-thread` | `connected` | Interlocking blocks | Relationships, links |
-| `tx-frame` | `tiny-grid` | Fine grid | Structure, canon |
+| Texture     | PNG Texture    | Visual Pattern      | Meaning                  |
+| ----------- | -------------- | ------------------- | ------------------------ |
+| `tx-bloom`  | `stardust`     | Scattered particles | Ideation, newness        |
+| `tx-grain`  | `sandpaper`    | Fine sand grain     | Execution, craftsmanship |
+| `tx-pulse`  | `corrugation`  | Horizontal ridges   | Urgency, momentum        |
+| `tx-static` | `broken-noise` | Dense noise         | Blockers, risk           |
+| `tx-thread` | `connected`    | Interlocking blocks | Relationships, links     |
+| `tx-frame`  | `tiny-grid`    | Fine grid           | Structure, canon         |
 
 ---
 
@@ -107,22 +109,24 @@ Semantic textures now use **real patterns** that communicate meaning:
 ```css
 /* Before */
 .tx-bloom::before {
-  background-image: radial-gradient(...);
+	background-image: radial-gradient(...);
 }
 
 /* After */
 .tx-bloom::before {
-  background-image: url('/textures/stardust.png');
-  background-repeat: repeat;
+	background-image: url('/textures/stardust.png');
+	background-repeat: repeat;
 }
 ```
 
 **Pros:**
+
 - Zero migration needed
 - Same API for developers
 - Easy rollback
 
 **Cons:**
+
 - Weight system still shadow-only
 - Misses material metaphor opportunity
 
@@ -133,22 +137,24 @@ Semantic textures now use **real patterns** that communicate meaning:
 ```css
 /* Weight = material base (automatic with weight class) */
 .wt-paper::before {
-  background-image: url('/textures/natural-paper.png');
+	background-image: url('/textures/natural-paper.png');
 }
 
 /* Texture = semantic overlay (applied on top) */
 .tx-bloom::after {
-  background-image: url('/textures/stardust.png');
-  opacity: 0.03;
+	background-image: url('/textures/stardust.png');
+	opacity: 0.03;
 }
 ```
 
 **Pros:**
+
 - Two independent texture layers
 - Material metaphor fully realized
 - Maximum semantic expression
 
 **Cons:**
+
 - Two pseudo-elements needed
 - More complex CSS
 - Higher rendering cost
@@ -160,24 +166,22 @@ Semantic textures now use **real patterns** that communicate meaning:
 ```css
 /* Semantic texture with material baked in */
 .tx-bloom.wt-ghost::before {
-  background-image:
-    url('/textures/subtle-freckles.png'),
-    url('/textures/stardust.png');
+	background-image: url('/textures/subtle-freckles.png'), url('/textures/stardust.png');
 }
 
 .tx-bloom.wt-paper::before {
-  background-image:
-    url('/textures/natural-paper.png'),
-    url('/textures/stardust.png');
+	background-image: url('/textures/natural-paper.png'), url('/textures/stardust.png');
 }
 ```
 
 **Pros:**
+
 - Single pseudo-element
 - Best visual results
 - Clear developer API
 
 **Cons:**
+
 - More CSS rules (24 combinations)
 - Need to maintain matrix
 
@@ -191,9 +195,9 @@ Replace CSS patterns with PNG textures. No material layer yet.
 
 ```css
 .tx-bloom::before {
-  background-image: url('/textures/stardust.png');
-  background-repeat: repeat;
-  opacity: var(--tx-opacity, 0.04);
+	background-image: url('/textures/stardust.png');
+	background-repeat: repeat;
+	opacity: var(--tx-opacity, 0.04);
 }
 ```
 
@@ -207,9 +211,9 @@ Add material textures to weight classes for enhanced depth.
 
 ```css
 .wt-paper {
-  /* existing shadow/border */
-  background-image: url('/textures/natural-paper.png');
-  background-blend-mode: overlay;
+	/* existing shadow/border */
+	background-image: url('/textures/natural-paper.png');
+	background-blend-mode: overlay;
 }
 ```
 
@@ -231,23 +235,23 @@ Create purpose-built texture combinations for each semantic × weight intersecti
 
 ```css
 .tx {
-  position: relative;
+	position: relative;
 }
 
 .tx::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  border-radius: inherit;
-  background-repeat: repeat;
-  mix-blend-mode: multiply;
-  opacity: var(--tx-opacity, 0.04);
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 1;
+	border-radius: inherit;
+	background-repeat: repeat;
+	mix-blend-mode: multiply;
+	opacity: var(--tx-opacity, 0.04);
 }
 
 .dark .tx::before {
-  mix-blend-mode: screen;
+	mix-blend-mode: screen;
 }
 ```
 
@@ -256,32 +260,32 @@ Create purpose-built texture combinations for each semantic × weight intersecti
 ```css
 /* Bloom - scattered particles = emerging ideas */
 .tx-bloom::before {
-  background-image: url('/textures/stardust.png');
+	background-image: url('/textures/stardust.png');
 }
 
 /* Grain - fine sand = craftsmanship */
 .tx-grain::before {
-  background-image: url('/textures/sandpaper.png');
+	background-image: url('/textures/sandpaper.png');
 }
 
 /* Pulse - ridges = pressure/urgency */
 .tx-pulse::before {
-  background-image: url('/textures/corrugation.png');
+	background-image: url('/textures/corrugation.png');
 }
 
 /* Static - noise = disruption */
 .tx-static::before {
-  background-image: url('/textures/broken-noise.png');
+	background-image: url('/textures/broken-noise.png');
 }
 
 /* Thread - interlocking = connections */
 .tx-thread::before {
-  background-image: url('/textures/connected.png');
+	background-image: url('/textures/connected.png');
 }
 
 /* Frame - grid = structure */
 .tx-frame::before {
-  background-image: url('/textures/tiny-grid.png');
+	background-image: url('/textures/tiny-grid.png');
 }
 ```
 
@@ -290,27 +294,27 @@ Create purpose-built texture combinations for each semantic × weight intersecti
 ```css
 /* Ghost - dust/particles */
 .wt-ghost {
-  background-image: url('/textures/subtle-freckles.png');
-  background-blend-mode: soft-light;
-  background-size: auto;
+	background-image: url('/textures/subtle-freckles.png');
+	background-blend-mode: soft-light;
+	background-size: auto;
 }
 
 /* Paper - paper fibers */
 .wt-paper {
-  background-image: url('/textures/natural-paper.png');
-  background-blend-mode: soft-light;
+	background-image: url('/textures/natural-paper.png');
+	background-blend-mode: soft-light;
 }
 
 /* Card - woven fabric */
 .wt-card {
-  background-image: url('/textures/stressed-linen.png');
-  background-blend-mode: soft-light;
+	background-image: url('/textures/stressed-linen.png');
+	background-blend-mode: soft-light;
 }
 
 /* Plate - brushed metal */
 .wt-plate {
-  background-image: url('/textures/brushed-alum.png');
-  background-blend-mode: soft-light;
+	background-image: url('/textures/brushed-alum.png');
+	background-blend-mode: soft-light;
 }
 ```
 
@@ -323,12 +327,12 @@ Create purpose-built texture combinations for each semantic × weight intersecti
 ```css
 /* Light mode: multiply darkens */
 .tx::before {
-  mix-blend-mode: multiply;
+	mix-blend-mode: multiply;
 }
 
 /* Dark mode: screen lightens */
 .dark .tx::before {
-  mix-blend-mode: screen;
+	mix-blend-mode: screen;
 }
 ```
 
@@ -337,8 +341,8 @@ Create purpose-built texture combinations for each semantic × weight intersecti
 ```css
 /* Weight materials need different blends in dark */
 .dark .wt-paper {
-  background-blend-mode: overlay;
-  opacity: 0.15; /* Stronger in dark */
+	background-blend-mode: overlay;
+	opacity: 0.15; /* Stronger in dark */
 }
 ```
 
@@ -348,16 +352,16 @@ Create purpose-built texture combinations for each semantic × weight intersecti
 
 ### File Size Budget
 
-| Priority | Texture | Size | Notes |
-|----------|---------|------|-------|
-| High | tiny-grid.png | 232B | Tiny, efficient |
-| High | corrugation.png | 138B | Tiny, efficient |
-| High | subtle-freckles.png | ~2KB | Small tile |
-| High | stardust.png | ~4KB | Small tile |
-| Medium | sandpaper.png | ~8KB | Medium tile |
-| Medium | natural-paper.png | ~5KB | Medium tile |
-| Low | stressed-linen.png | ~15KB | Larger, detailed |
-| Low | brushed-alum.png | ~10KB | Larger, detailed |
+| Priority | Texture             | Size  | Notes            |
+| -------- | ------------------- | ----- | ---------------- |
+| High     | tiny-grid.png       | 232B  | Tiny, efficient  |
+| High     | corrugation.png     | 138B  | Tiny, efficient  |
+| High     | subtle-freckles.png | ~2KB  | Small tile       |
+| High     | stardust.png        | ~4KB  | Small tile       |
+| Medium   | sandpaper.png       | ~8KB  | Medium tile      |
+| Medium   | natural-paper.png   | ~5KB  | Medium tile      |
+| Low      | stressed-linen.png  | ~15KB | Larger, detailed |
+| Low      | brushed-alum.png    | ~10KB | Larger, detailed |
 
 **Total budget:** ~50KB for all textures
 
@@ -366,8 +370,12 @@ Create purpose-built texture combinations for each semantic × weight intersecti
 ```css
 /* Preload critical textures */
 @layer textures {
-  .tx-frame::before { background-image: url('/textures/tiny-grid.png'); }
-  .tx-grain::before { background-image: url('/textures/sandpaper.png'); }
+	.tx-frame::before {
+		background-image: url('/textures/tiny-grid.png');
+	}
+	.tx-grain::before {
+		background-image: url('/textures/sandpaper.png');
+	}
 }
 ```
 
@@ -376,10 +384,10 @@ Create purpose-built texture combinations for each semantic × weight intersecti
 ```js
 // Load weight materials only when used
 if (document.querySelector('.wt-card')) {
-  const link = document.createElement('link');
-  link.rel = 'prefetch';
-  link.href = '/textures/stressed-linen.png';
-  document.head.appendChild(link);
+	const link = document.createElement('link');
+	link.rel = 'prefetch';
+	link.href = '/textures/stressed-linen.png';
+	document.head.appendChild(link);
 }
 ```
 
@@ -399,6 +407,7 @@ Shows all textures at different opacities with real content.
 ### Step 3: A/B test critical paths
 
 Compare CSS vs PNG textures on:
+
 - Dashboard cards
 - Project cards
 - Task lists
@@ -416,14 +425,14 @@ Decide if weight-as-material adds value or complexity.
 
 ## 9. Decision Matrix
 
-| Criteria | CSS Patterns | PNG Textures | PNG + Material |
-|----------|--------------|--------------|----------------|
-| Visual richness | 3/5 | 4/5 | 5/5 |
-| Performance | 5/5 | 4/5 | 3/5 |
-| Maintainability | 5/5 | 4/5 | 3/5 |
-| Semantic clarity | 3/5 | 4/5 | 5/5 |
-| Developer simplicity | 5/5 | 5/5 | 4/5 |
-| **Total** | 21/25 | 21/25 | 20/25 |
+| Criteria             | CSS Patterns | PNG Textures | PNG + Material |
+| -------------------- | ------------ | ------------ | -------------- |
+| Visual richness      | 3/5          | 4/5          | 5/5            |
+| Performance          | 5/5          | 4/5          | 3/5            |
+| Maintainability      | 5/5          | 4/5          | 3/5            |
+| Semantic clarity     | 3/5          | 4/5          | 5/5            |
+| Developer simplicity | 5/5          | 5/5          | 4/5            |
+| **Total**            | 21/25        | 21/25        | 20/25          |
 
 **Recommendation:** Start with PNG Textures (Phase 1). Evaluate Material Weights (Phase 2) based on user feedback.
 
@@ -444,31 +453,31 @@ Decide if weight-as-material adds value or complexity.
 
 ### Semantic Textures (Primary)
 
-| Name | File | Purpose |
-|------|------|---------|
-| Bloom | `stardust.png` | Ideation, newness |
-| Grain | `sandpaper.png` | Execution, progress |
-| Pulse | `corrugation.png` | Urgency, momentum |
-| Static | `broken-noise.png` | Blockers, risk |
-| Thread | `connected.png` | Relationships |
-| Frame | `tiny-grid.png` | Structure, canon |
+| Name   | File               | Purpose             |
+| ------ | ------------------ | ------------------- |
+| Bloom  | `stardust.png`     | Ideation, newness   |
+| Grain  | `sandpaper.png`    | Execution, progress |
+| Pulse  | `corrugation.png`  | Urgency, momentum   |
+| Static | `broken-noise.png` | Blockers, risk      |
+| Thread | `connected.png`    | Relationships       |
+| Frame  | `tiny-grid.png`    | Structure, canon    |
 
 ### Material Textures (Weight)
 
-| Weight | File | Purpose |
-|--------|------|---------|
-| Ghost | `subtle-freckles.png` | Ephemeral |
-| Paper | `natural-paper.png` | Standard |
-| Card | `stressed-linen.png` | Important |
-| Plate | `brushed-alum.png` | Immutable |
+| Weight | File                  | Purpose   |
+| ------ | --------------------- | --------- |
+| Ghost  | `subtle-freckles.png` | Ephemeral |
+| Paper  | `natural-paper.png`   | Standard  |
+| Card   | `stressed-linen.png`  | Important |
+| Plate  | `brushed-alum.png`    | Immutable |
 
 ### Backup Textures
 
-| Primary | Backup | Notes |
-|---------|--------|-------|
-| stardust | little-pluses | More geometric |
-| sandpaper | gray-sand | More visible |
-| corrugation | grilled-noise | Chevron pattern |
-| broken-noise | noisy | Lighter |
-| connected | woven-light | More subtle |
-| tiny-grid | graphy | Graph paper |
+| Primary      | Backup        | Notes           |
+| ------------ | ------------- | --------------- |
+| stardust     | little-pluses | More geometric  |
+| sandpaper    | gray-sand     | More visible    |
+| corrugation  | grilled-noise | Chevron pattern |
+| broken-noise | noisy         | Lighter         |
+| connected    | woven-light   | More subtle     |
+| tiny-grid    | graphy        | Graph paper     |

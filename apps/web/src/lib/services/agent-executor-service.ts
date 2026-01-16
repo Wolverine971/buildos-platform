@@ -21,7 +21,8 @@ import type {
 	AgentChatSessionInsert,
 	AgentChatMessageInsert,
 	Json,
-	ExecutorTaskDefinition
+	ExecutorTaskDefinition,
+	ChatContextType
 } from '@buildos/shared-types';
 import {
 	AgentContextService,
@@ -36,6 +37,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
+import {
+	createEnhancedLLMWrapper,
+	type EnhancedLLMWrapper
+} from '$lib/services/agentic-chat/config/enhanced-llm-wrapper';
+import { normalizeContextType } from '../../routes/api/agent/stream/utils/context-utils';
 
 // ============================================
 // TYPES
@@ -98,6 +104,7 @@ export type ExecutorEvent =
 export class AgentExecutorService {
 	private contextService: AgentContextService;
 	private smartLLM: SmartLLMService;
+	private enhancedLLM: EnhancedLLMWrapper;
 	private fetchFn: typeof fetch; // Custom fetch function for API requests
 	private errorLogger: ErrorLoggerService;
 
@@ -127,6 +134,7 @@ export class AgentExecutorService {
 				httpReferer: 'https://buildos.com',
 				appName: 'BuildOS Executor Agent'
 			});
+		this.enhancedLLM = createEnhancedLLMWrapper(this.smartLLM);
 	}
 
 	// ============================================
@@ -160,7 +168,13 @@ export class AgentExecutorService {
 			persistenceHandles = await this.initializeExecutorPersistence(params, context);
 
 			// 2. Execute task with LLM + tools
-			const result = await this.executeWithContext(context, userId, persistenceHandles);
+			const result = await this.executeWithContext(
+				context,
+				userId,
+				persistenceHandles,
+				params.contextType,
+				params.entityId
+			);
 
 			const successResult: ExecutorResult = {
 				executorId,
@@ -312,12 +326,17 @@ export class AgentExecutorService {
 	private async executeWithContext(
 		context: ExecutorContext,
 		userId: string,
-		handles?: ExecutorPersistenceHandles
+		handles?: ExecutorPersistenceHandles,
+		contextType?: ChatContextType | string,
+		entityId?: string
 	): Promise<{
 		data: any;
 		toolCallsMade: number;
 		tokensUsed: number;
 	}> {
+		const normalizedContextType = normalizeContextType(contextType);
+		const projectId = normalizedContextType.startsWith('project') ? entityId : undefined;
+
 		// Build messages for LLM
 		const systemPrompt = context.systemPrompt;
 		const userPrompt = this.formatTaskForLLM(context.task);
@@ -386,21 +405,21 @@ export class AgentExecutorService {
 			);
 
 			try {
-				for await (const event of this.smartLLM.streamText({
+				for await (const event of this.enhancedLLM.streamText({
 					messages,
 					tools: writeEnabledTools,
 					tool_choice: 'auto',
 					userId,
-					profile: 'speed', // Use fast model for executor
-					temperature: 0.3,
-					maxTokens: 1500,
 					sessionId: context.metadata.sessionId,
 					chatSessionId: context.metadata.sessionId,
 					agentSessionId: handles?.agentSessionId,
 					agentPlanId: context.metadata.planId,
 					agentExecutionId: handles?.executionId,
 					// Context for usage tracking
-					contextType: 'executor',
+					contextType: normalizedContextType,
+					operationType: 'executor_task',
+					entityId,
+					projectId,
 					signal: streamAbortController.signal
 				})) {
 					switch (event.type) {
