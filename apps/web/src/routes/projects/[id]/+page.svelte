@@ -82,8 +82,15 @@
 	import ProjectActivityLogPanel from '$lib/components/ontology/ProjectActivityLogPanel.svelte';
 	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
 	import ProjectShareModal from '$lib/components/project/ProjectShareModal.svelte';
+	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
 	import type { Database, EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
+
+	// Edge type for goal->milestone relationships
+	interface GoalMilestoneEdge {
+		src_id: string; // goal ID
+		dst_id: string; // milestone ID
+	}
 	import {
 		InsightFilterDropdown,
 		InsightSortDropdown,
@@ -134,7 +141,8 @@
 	// Import MobileCommandCenter for mobile-first layout
 	import MobileCommandCenter from '$lib/components/project/MobileCommandCenter.svelte';
 
-	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'milestones' | 'events';
+	// Note: 'milestones' removed - now nested under goals
+	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'events';
 
 	type InsightPanel = {
 		key: InsightPanelKey;
@@ -216,6 +224,12 @@
 		data.skeleton ? null : ((data.context_document || null) as Document | null)
 	);
 
+	// Goal-milestone edges (loaded after hydration)
+	let goalMilestoneEdges = $state<GoalMilestoneEdge[]>([]);
+
+	// Context for creating milestone from within a goal
+	let milestoneCreateGoalContext = $state<{ goalId: string; goalName: string } | null>(null);
+
 	// Modal states
 	let showDocumentModal = $state(false);
 	let activeDocumentId = $state<string | null>(null);
@@ -246,8 +260,7 @@
 		plans: false,
 		goals: true,
 		events: false,
-		risks: false,
-		milestones: false
+		risks: false
 	});
 	let showMobileMenu = $state(false);
 	let mobileMenuButtonEl: HTMLButtonElement | null = $state(null);
@@ -310,6 +323,7 @@
 
 			isHydrating = false;
 			void loadProjectEvents();
+			void loadGoalMilestoneEdges();
 		} catch (err) {
 			console.error('[Project Page] Hydration failed:', err);
 			void logOntologyClientError(err, {
@@ -347,6 +361,7 @@
 			hydrateFullData();
 		} else {
 			void loadProjectEvents();
+			void loadGoalMilestoneEdges();
 		}
 	});
 
@@ -584,6 +599,31 @@
 		) as unknown as OntoEventWithSync[];
 	});
 
+	// Group milestones by their parent goal ID
+	// Uses edges to map milestone IDs to goal IDs
+	const milestonesByGoalId = $derived.by(() => {
+		const map = new Map<string, Milestone[]>();
+
+		// Build a lookup: milestone ID -> goal ID
+		const milestoneToGoal = new Map<string, string>();
+		for (const edge of goalMilestoneEdges) {
+			milestoneToGoal.set(edge.dst_id, edge.src_id);
+		}
+
+		// Group milestones by their goal
+		for (const milestone of milestones) {
+			const goalId = milestoneToGoal.get(milestone.id);
+			if (goalId) {
+				if (!map.has(goalId)) {
+					map.set(goalId, []);
+				}
+				map.get(goalId)!.push(milestone);
+			}
+		}
+
+		return map;
+	});
+
 	// Counts for special toggles
 	const panelCounts = $derived.by(() => ({
 		tasks: {
@@ -655,6 +695,8 @@
 		};
 	}
 
+	// Note: Milestones are now nested under goals, not shown as a separate panel
+	// See: /thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md
 	const insightPanels: InsightPanel[] = $derived([
 		{
 			key: 'goals',
@@ -662,13 +704,6 @@
 			icon: Target,
 			items: filteredGoals,
 			description: 'What success looks like'
-		},
-		{
-			key: 'milestones',
-			label: 'Milestones',
-			icon: Flag,
-			items: filteredMilestones,
-			description: 'Checkpoints and dates'
 		},
 		{
 			key: 'plans',
@@ -734,9 +769,7 @@
 			case 'risks':
 				showRiskCreateModal = true;
 				break;
-			case 'milestones':
-				showMilestoneCreateModal = true;
-				break;
+			// Note: 'milestones' case removed - milestones are now created from within goals
 			case 'events':
 				showEventCreateModal = true;
 				break;
@@ -830,6 +863,34 @@
 		}
 	}
 
+	/**
+	 * Load goal->milestone edges to determine which milestones belong to which goals.
+	 * This enables the nested milestones display within goal cards.
+	 */
+	async function loadGoalMilestoneEdges() {
+		const projectId = data.projectId || project?.id;
+		if (!projectId) return;
+
+		try {
+			// Fetch edges where goals have milestones
+			const response = await fetch(
+				`/api/onto/edges?project_id=${projectId}&src_kind=goal&dst_kind=milestone&rel=has_milestone`
+			);
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				// Silently fail - edges are optional enhancement
+				console.warn('[Project] Failed to load goal-milestone edges:', payload?.error);
+				return;
+			}
+
+			goalMilestoneEdges = (payload?.data?.edges || []) as GoalMilestoneEdge[];
+		} catch (error) {
+			// Silently fail - edges are optional enhancement
+			console.warn('[Project] Failed to load goal-milestone edges:', error);
+		}
+	}
+
 	async function refreshData() {
 		if (!project?.id) return;
 		dataRefreshing = true;
@@ -852,6 +913,7 @@
 			risks = newData.risks || [];
 			contextDocument = newData.context_document || null;
 			await loadProjectEvents();
+			await loadGoalMilestoneEdges();
 
 			toastService.success('Data refreshed');
 		} catch (error) {
@@ -947,6 +1009,7 @@
 	async function handleMilestoneCreated() {
 		await refreshData();
 		showMilestoneCreateModal = false;
+		milestoneCreateGoalContext = null;
 	}
 
 	async function handleMilestoneUpdated() {
@@ -957,6 +1020,58 @@
 	async function handleMilestoneDeleted() {
 		await refreshData();
 		editingMilestoneId = null;
+	}
+
+	/**
+	 * Open milestone create modal from within a goal context.
+	 * This pre-links the milestone to the specified goal.
+	 */
+	function handleAddMilestoneFromGoal(goalId: string, goalName: string) {
+		milestoneCreateGoalContext = { goalId, goalName };
+		showMilestoneCreateModal = true;
+	}
+
+	/**
+	 * Toggle milestone completion state.
+	 * Toggles between 'pending'/'in_progress' and 'completed'.
+	 */
+	async function handleToggleMilestoneComplete(milestoneId: string, currentState: string) {
+		const newState = currentState === 'completed' ? 'pending' : 'completed';
+
+		try {
+			const response = await fetch(`/api/onto/milestones/${milestoneId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ state_key: newState })
+			});
+
+			if (!response.ok) {
+				const payload = await response.json().catch(() => null);
+				throw new Error(payload?.error || 'Failed to update milestone');
+			}
+
+			// Optimistic update
+			milestones = milestones.map((m) =>
+				m.id === milestoneId ? { ...m, state_key: newState } : m
+			);
+
+			toastService.success(
+				newState === 'completed' ? 'Milestone completed!' : 'Milestone reopened'
+			);
+		} catch (error) {
+			console.error('[Project] Failed to toggle milestone:', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/milestones/${milestoneId}`,
+				method: 'PATCH',
+				projectId: project?.id,
+				entityType: 'milestone',
+				entityId: milestoneId,
+				operation: 'milestone_toggle_complete'
+			});
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to update milestone'
+			);
+		}
 	}
 
 	async function handleEventCreated() {
@@ -1138,7 +1253,7 @@
 	<!-- Header - Project identity card -->
 	<header class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4">
 		<div
-			class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak px-3 sm:px-4 py-2 sm:py-3 space-y-1 sm:space-y-3"
+			class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak p-3 sm:p-4 space-y-1 sm:space-y-3"
 		>
 			<!-- Title Row -->
 			<div class="flex items-center justify-between gap-1.5 sm:gap-2">
@@ -1287,16 +1402,28 @@
 		<div class="sm:hidden mb-4">
 			{#if isHydrating}
 				<div class="space-y-1.5">
-					{#each skeletonRows as _}
-						<div class="flex flex-wrap gap-1.5">
-							<div
-								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-							></div>
-							<div
-								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-							></div>
-						</div>
-					{/each}
+					<!-- Row 1: Goals (full width) -->
+					<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
+					<!-- Row 2: Tasks + Plans -->
+					<div class="flex flex-wrap gap-1.5">
+						<div
+							class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+						></div>
+						<div
+							class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+						></div>
+					</div>
+					<!-- Row 3: Risks + Documents -->
+					<div class="flex flex-wrap gap-1.5">
+						<div
+							class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+						></div>
+						<div
+							class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+						></div>
+					</div>
+					<!-- Row 4: Events (full width) -->
+					<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
 				</div>
 			{:else}
 				<MobileCommandCenter
@@ -1307,8 +1434,10 @@
 					risks={filteredRisks}
 					{documents}
 					events={filteredEvents}
+					{milestonesByGoalId}
+					{canEdit}
 					onAddGoal={() => canEdit && (showGoalCreateModal = true)}
-					onAddMilestone={() => canEdit && (showMilestoneCreateModal = true)}
+					onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
 					onAddTask={() => canEdit && (showTaskCreateModal = true)}
 					onAddPlan={() => canEdit && (showPlanCreateModal = true)}
 					onAddRisk={() => canEdit && (showRiskCreateModal = true)}
@@ -1328,6 +1457,7 @@
 						showDocumentModal = true;
 					}}
 					onEditEvent={(id) => (editingEventId = id)}
+					onToggleMilestoneComplete={handleToggleMilestoneComplete}
 					{panelStates}
 					{panelCounts}
 					onFilterChange={updatePanelFilters}
@@ -1516,12 +1646,6 @@
 						count={skeletonCounts.goal_count}
 						description="What success looks like"
 						expanded={true}
-					/>
-					<InsightPanelSkeleton
-						icon={Flag}
-						label="Milestones"
-						count={skeletonCounts.milestone_count}
-						description="Checkpoints and dates"
 					/>
 					<InsightPanelSkeleton
 						icon={Clock}
@@ -1832,14 +1956,18 @@
 										{/if}
 									{:else if section.key === 'goals'}
 										{#if filteredGoals.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each filteredGoals as goal}
+											<div class="divide-y divide-border/80">
+												{#each filteredGoals as goal (goal.id)}
 													{@const sortDisplay = getSortValueDisplay(
 														goal as unknown as Record<string, unknown>,
 														panelStates.goals.sort.field,
 														'goals'
 													)}
-													<li>
+													{@const goalMilestones =
+														milestonesByGoalId.get(goal.id) || []}
+													<!-- Goal Card with nested milestones -->
+													<div class="bg-card">
+														<!-- Goal Header (clickable to edit) -->
 														<button
 															type="button"
 															onclick={() =>
@@ -1849,12 +1977,29 @@
 															<Target
 																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5"
 															/>
-															<div class="min-w-0">
-																<p
-																	class="text-xs sm:text-sm text-foreground truncate"
+															<div class="min-w-0 flex-1">
+																<div
+																	class="flex items-center gap-2"
 																>
-																	{goal.name}
-																</p>
+																	<p
+																		class="text-xs sm:text-sm text-foreground truncate flex-1"
+																	>
+																		{goal.name}
+																	</p>
+																	{#if goalMilestones.length > 0}
+																		{@const completedCount =
+																			goalMilestones.filter(
+																				(m) =>
+																					m.state_key ===
+																					'completed'
+																			).length}
+																		<span
+																			class="text-[10px] text-muted-foreground shrink-0"
+																		>
+																			{completedCount}/{goalMilestones.length}
+																		</span>
+																	{/if}
+																</div>
 																<p
 																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
 																>
@@ -1876,9 +2021,22 @@
 																</p>
 															</div>
 														</button>
-													</li>
+
+														<!-- Nested Milestones Section -->
+														<GoalMilestonesSection
+															milestones={goalMilestones}
+															goalId={goal.id}
+															goalName={goal.name}
+															goalState={goal.state_key}
+															{canEdit}
+															onAddMilestone={handleAddMilestoneFromGoal}
+															onEditMilestone={(id) =>
+																(editingMilestoneId = id)}
+															onToggleMilestoneComplete={handleToggleMilestoneComplete}
+														/>
+													</div>
 												{/each}
-											</ul>
+											</div>
 										{:else}
 											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
 												<p class="text-xs sm:text-sm text-muted-foreground">
@@ -1957,82 +2115,6 @@
 													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
 												>
 													Track potential blockers
-												</p>
-											</div>
-										{/if}
-									{:else if section.key === 'milestones'}
-										{#if filteredMilestones.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each filteredMilestones as milestone}
-													{@const stateKey =
-														milestone.props?.state_key || 'pending'}
-													{@const stateColor =
-														stateKey === 'achieved'
-															? 'text-emerald-500'
-															: stateKey === 'missed'
-																? 'text-destructive'
-																: stateKey === 'in_progress'
-																	? 'text-accent'
-																	: stateKey === 'deferred'
-																		? 'text-amber-500'
-																		: 'text-muted-foreground'}
-													{@const sortDisplay = getSortValueDisplay(
-														milestone as unknown as Record<
-															string,
-															unknown
-														>,
-														panelStates.milestones.sort.field,
-														'milestones'
-													)}
-													<li>
-														<button
-															type="button"
-															onclick={() =>
-																(editingMilestoneId = milestone.id)}
-															class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
-														>
-															<Flag
-																class="w-3.5 h-3.5 sm:w-4 sm:h-4 {stateColor} mt-0.5"
-															/>
-															<div class="min-w-0 flex-1">
-																<p
-																	class="text-xs sm:text-sm text-foreground truncate"
-																>
-																	{milestone.title}
-																</p>
-																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
-																>
-																	<span class="capitalize"
-																		>{String(stateKey).replace(
-																			/_/g,
-																			' '
-																		)}</span
-																	>
-																	<span class="mx-1 opacity-50"
-																		>·</span
-																	>
-																	<span
-																		class={sortDisplay.color ||
-																			''}
-																	>
-																		{sortDisplay.value}
-																	</span>
-																</p>
-															</div>
-														</button>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
-												<p class="text-xs sm:text-sm text-muted-foreground">
-													No milestones yet
-												</p>
-												<p
-													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
-												>
-													Set checkpoints and deadlines
 												</p>
 											</div>
 										{/if}
@@ -2266,7 +2348,13 @@
 	{#await import('$lib/components/ontology/MilestoneCreateModal.svelte') then { default: MilestoneCreateModal }}
 		<MilestoneCreateModal
 			projectId={project.id}
-			onClose={() => (showMilestoneCreateModal = false)}
+			{goals}
+			goalId={milestoneCreateGoalContext?.goalId}
+			goalName={milestoneCreateGoalContext?.goalName}
+			onClose={() => {
+				showMilestoneCreateModal = false;
+				milestoneCreateGoalContext = null;
+			}}
 			onCreated={handleMilestoneCreated}
 		/>
 	{/await}

@@ -19,7 +19,6 @@ type ApplyMilestoneInput = {
 	title?: string;
 	due_at?: string | null;
 	summary?: string | null;
-	type_key?: string | null;
 	confidence?: number | null;
 	tasks?: ApplyTaskInput[];
 };
@@ -70,7 +69,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			const milestonePayload = {
 				project_id: context.project.id,
 				title: truncate(milestone.title, 140),
-				type_key: milestone.type_key ?? 'milestone.standard',
+				type_key: 'milestone.standard',
 				due_at: dueAt,
 				props: buildMilestoneProps(milestone.summary, milestone.confidence, goalId),
 				created_by: context.actorId
@@ -228,7 +227,6 @@ function sanitizeMilestones(inputs: ApplyMilestoneInput[]) {
 				title: (milestone.title ?? '').trim() || 'Milestone',
 				due_at: (milestone.due_at ?? null) as string | null,
 				summary: (milestone.summary ?? '')?.trim() || null,
-				type_key: milestone.type_key ?? undefined,
 				confidence:
 					typeof milestone.confidence === 'number' ? milestone.confidence : undefined,
 				tasks

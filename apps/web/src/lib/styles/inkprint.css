@@ -200,6 +200,41 @@
 }
 
 /* ============================================
+   Button Texture - Brushed Aluminum
+   ============================================ */
+
+/* tx-button - brushed metal texture for buttons */
+.tx-button {
+	position: relative;
+	overflow: hidden;
+}
+
+.tx-button::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 1;
+	border-radius: inherit;
+	background-image: url('/textures/brushed-alum.png');
+	background-size: 100px 100px;
+	background-repeat: repeat;
+	opacity: 0.08;
+	mix-blend-mode: overlay;
+}
+
+.dark .tx-button::before {
+	opacity: 0.12;
+	mix-blend-mode: soft-light;
+}
+
+/* Ensure button content stays above texture */
+.tx-button > * {
+	position: relative;
+	z-index: 2;
+}
+
+/* ============================================
    Texture Intensities
    ============================================ */
 

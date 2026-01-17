@@ -15,6 +15,10 @@ import { ensureTaskAccess, TASK_DOCUMENT_REL } from '../../task-document-helpers
 import { normalizeDocumentStateInput } from '../../../shared/document-state';
 import { normalizeMarkdownInput } from '../../../shared/markdown-normalization';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import {
+	createOrMergeDocumentVersion,
+	toDocumentSnapshot
+} from '$lib/services/ontology/versioning.service';
 
 type OntoEdge = Database['public']['Tables']['onto_edges']['Row'];
 
@@ -186,6 +190,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		} = body;
 
 		let document: Record<string, any> | null = null;
+		let version: { number: number; status: 'created' | 'merged' } | null = null;
 
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeDocumentStateInput(state_key);
@@ -264,6 +269,37 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			}
 
 			document = insertedDoc;
+
+			try {
+				const versionResult = await createOrMergeDocumentVersion({
+					supabase,
+					documentId: document.id,
+					actorId,
+					snapshot: toDocumentSnapshot(document)
+				});
+
+				if (versionResult.status !== 'skipped') {
+					version = {
+						number: versionResult.versionNumber,
+						status: versionResult.status
+					};
+				}
+			} catch (versionError) {
+				console.error('[TaskDoc API] Failed to create initial document version:', versionError);
+				await logOntologyApiError({
+					supabase,
+					error: versionError,
+					endpoint: `/api/onto/tasks/${taskId}/documents`,
+					method: 'POST',
+					userId: session.user.id,
+					projectId: project.id,
+					entityType: 'document',
+					entityId: document.id,
+					operation: 'task_document_version_create',
+					tableName: 'onto_document_versions',
+					metadata: { nonFatal: true }
+				});
+			}
 
 			// Ensure project → document edge exists for downstream consumers
 			const { error: projectEdgeError } = await supabase.from('onto_edges').insert({
@@ -346,7 +382,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				dst_id: document.id,
 				rel: TASK_DOCUMENT_REL,
 				props: edgeProps
-			}
+			},
+			version
 		});
 	} catch (error) {
 		console.error('[TaskDoc API] Unexpected POST error:', error);

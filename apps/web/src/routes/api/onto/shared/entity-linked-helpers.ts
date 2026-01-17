@@ -135,7 +135,7 @@ export async function resolveLinkedEntitiesGeneric(
 			'id',
 			'title',
 			'due_at',
-			'type_key'
+			'state_key'
 		]),
 		fetchEntityDetails(supabase, 'onto_documents', idsByKind.document, [
 			'id',

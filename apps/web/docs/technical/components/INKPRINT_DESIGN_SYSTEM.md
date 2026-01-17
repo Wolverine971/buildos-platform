@@ -127,6 +127,7 @@ Textures are **semantic tokens**. Each represents an internal state.
 | **Static** | `tx tx-static` | Blockers, noise, overwhelm, risk           | Error states, warnings, "needs triage"              |
 | **Thread** | `tx tx-thread` | Relationships, collaboration, dependencies | Shared projects, dependency graphs, linked entities |
 | **Frame**  | `tx tx-frame`  | Canon, structure, decisions, officialness  | Primary containers, modals, canonical views         |
+| **Grid**   | `tx tx-grid`   | Input, editable, writable                  | Text inputs, textareas, form fields                 |
 | **Strip**  | `tx tx-strip`  | Header band, separator, printed label      | Top borders, card headers, section transitions      |
 
 ### 3.2 Texture Intensities
@@ -171,6 +172,7 @@ Textures are **semantic tokens**. Each represents an internal state.
 | Blocked / Error / Risk            | Static  |
 | Depends on / Shared with / Linked | Thread  |
 | Approved / Canon / Primary UI     | Frame   |
+| Editable / Input / Writable       | Grid    |
 
 **If you need a new meaning, create a new semantic token and document it. Do not overload existing ones.**
 
@@ -627,6 +629,30 @@ Modal automatically applies: `tx tx-frame tx-weak ink-frame shadow-ink-strong`
 ```
 
 Input styling: `shadow-ink-inner border-border text-foreground focus:border-accent focus:ring-ring`
+
+**GRID texture for inputs (graph paper feel):**
+
+```svelte
+<!-- Wrap inputs with GRID texture to indicate "you can write here" -->
+<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+	<input
+		type="text"
+		placeholder="Enter text..."
+		class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none transition-colors"
+	/>
+</div>
+
+<!-- For textareas -->
+<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+	<textarea
+		placeholder="Add details..."
+		rows="3"
+		class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none resize-none transition-colors"
+	></textarea>
+</div>
+```
+
+The GRID texture uses `tiny-grid.png` for a refined graph paper appearance, semantically indicating "this is a place to write."
 
 ### 9.5 Alert
 

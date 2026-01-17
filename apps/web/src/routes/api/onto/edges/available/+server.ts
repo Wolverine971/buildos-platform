@@ -151,7 +151,7 @@ async function fetchAvailableForKind(
 		task: ['id', 'title', 'state_key', 'type_key'],
 		plan: ['id', 'name', 'state_key', 'type_key'],
 		goal: ['id', 'name', 'state_key', 'type_key'],
-		milestone: ['id', 'title', 'due_at', 'type_key'],
+		milestone: ['id', 'title', 'due_at', 'state_key'],
 		document: ['id', 'title', 'type_key', 'state_key'],
 		risk: ['id', 'title', 'state_key', 'type_key', 'impact'],
 		event: ['id', 'title', 'state_key', 'type_key', 'start_at']

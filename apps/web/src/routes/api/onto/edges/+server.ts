@@ -1,5 +1,17 @@
 // apps/web/src/routes/api/onto/edges/+server.ts
 /**
+ * GET /api/onto/edges
+ *
+ * Fetches edges with optional filters. All filters are optional.
+ *
+ * Query parameters:
+ * - project_id: string - Filter by project
+ * - src_kind: string - Filter by source entity kind
+ * - src_id: string - Filter by specific source entity
+ * - dst_kind: string - Filter by destination entity kind
+ * - dst_id: string - Filter by specific destination entity
+ * - rel: string - Filter by relationship type
+ *
  * POST /api/onto/edges
  *
  * Creates one or more edge relationships between entities.
@@ -140,6 +152,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (actorResult.error || !actorResult.data) {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
+
+		const actorId = actorResult.data as string;
 
 		// Verify user has access to all referenced entities before creating edges
 		const idsByKind = new Map<string, Set<string>>();
@@ -332,5 +346,88 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	} catch (error) {
 		console.error('[Edges API] Error:', error);
 		return ApiResponse.internalError(error, 'Failed to create edges');
+	}
+};
+
+/**
+ * GET /api/onto/edges
+ * Fetch edges with optional filters
+ */
+export const GET: RequestHandler = async ({ url, locals }) => {
+	try {
+		const { user } = await locals.safeGetSession();
+		if (!user) {
+			return ApiResponse.unauthorized('Authentication required');
+		}
+
+		const supabase = locals.supabase;
+
+		// Parse query parameters
+		const projectId = url.searchParams.get('project_id');
+		const srcKind = url.searchParams.get('src_kind');
+		const srcId = url.searchParams.get('src_id');
+		const dstKind = url.searchParams.get('dst_kind');
+		const dstId = url.searchParams.get('dst_id');
+		const rel = url.searchParams.get('rel');
+
+		// Build query
+		let query = supabase
+			.from('onto_edges')
+			.select('id, src_id, src_kind, dst_id, dst_kind, rel, props, project_id, created_at');
+
+		// Apply filters
+		if (projectId) {
+			// Verify user has access to this project
+			const { data: hasAccess, error: accessError } = await supabase.rpc(
+				'current_actor_has_project_access',
+				{
+					p_project_id: projectId,
+					p_required_access: 'read'
+				}
+			);
+
+			if (accessError) {
+				console.error('[Edges API GET] Project access check failed:', accessError);
+				return ApiResponse.internalError(accessError, 'Failed to check project access');
+			}
+
+			if (!hasAccess) {
+				return ApiResponse.forbidden('You do not have permission to view this project');
+			}
+
+			query = query.eq('project_id', projectId);
+		}
+
+		if (srcKind) {
+			query = query.eq('src_kind', srcKind);
+		}
+
+		if (srcId) {
+			query = query.eq('src_id', srcId);
+		}
+
+		if (dstKind) {
+			query = query.eq('dst_kind', dstKind);
+		}
+
+		if (dstId) {
+			query = query.eq('dst_id', dstId);
+		}
+
+		if (rel) {
+			query = query.eq('rel', rel);
+		}
+
+		const { data: edges, error } = await query;
+
+		if (error) {
+			console.error('[Edges API GET] Query error:', error);
+			return ApiResponse.databaseError(error);
+		}
+
+		return ApiResponse.success({ edges: edges || [] });
+	} catch (error) {
+		console.error('[Edges API GET] Error:', error);
+		return ApiResponse.internalError(error, 'Failed to fetch edges');
 	}
 };

@@ -782,7 +782,7 @@
 <IOSSplashScreens />
 
 <div
-	class="flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden bg-background text-foreground transition-colors"
+	class="layout-root flex min-h-screen min-h-[100dvh] w-full flex-col overflow-x-hidden bg-background text-foreground transition-colors"
 	style="padding-left: max(0px, env(safe-area-inset-left)); padding-right: max(0px, env(safe-area-inset-right));"
 >
 	<!-- Skip to main content link for accessibility -->
@@ -811,7 +811,7 @@
 
 	<main
 		id="main-content"
-		class={`relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] p-3 sm:px-6 lg:px-8 xl:px-10 ${showNavigation ? '' : 'min-h-screen'} sm:py-6 lg:py-8`}
+		class={`rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] p-1 ${showNavigation ? '' : 'min-h-screen'} `}
 	>
 		{#if children}
 			{@render children()}
@@ -844,3 +844,16 @@
 	<!-- Notification System -->
 	<NotificationStackManager />
 </div>
+
+<style>
+	/* Brushed aluminum background - switches based on theme */
+	#main-content {
+		background-image: url('/textures/brushed-alum.png');
+		background-size: 500px 500px;
+		background-repeat: repeat;
+	}
+
+	:global(.dark) #main-content {
+		background-image: url('/textures/brushed-alum-dark.png');
+	}
+</style>

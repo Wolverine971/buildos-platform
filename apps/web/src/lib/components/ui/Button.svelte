@@ -52,7 +52,7 @@
 	};
 
 	// Variant classes - Inkprint design system
-	// Tactile, pressable buttons with subtle shadows and clean borders
+	// Tactile buttons with brushed-alum texture and subtle shadows
 	const variantClasses = {
 		primary: `
 			bg-accent text-accent-foreground border border-accent font-semibold tracking-tight
@@ -60,7 +60,7 @@
 			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-ring focus:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink pressable
+			shadow-ink tx-button relative
 		`,
 		secondary: `
 			bg-foreground text-background border border-foreground font-semibold tracking-tight
@@ -68,7 +68,7 @@
 			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-ring focus:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink pressable
+			shadow-ink tx-button relative
 		`,
 		ghost: `
 			bg-transparent text-muted-foreground border border-transparent font-semibold tracking-tight
@@ -82,7 +82,7 @@
 			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-red-600 focus:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink pressable
+			shadow-ink tx-button relative
 		`,
 		warning: `
 			bg-amber-600 text-white border border-amber-700 font-semibold tracking-tight
@@ -90,7 +90,7 @@
 			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-amber-600 focus:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink pressable
+			shadow-ink tx-button relative
 		`,
 		outline: `
 			bg-card text-foreground border border-border font-semibold tracking-tight
@@ -98,7 +98,7 @@
 			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-ring focus:ring-offset-1
 			disabled:bg-muted/50 disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink pressable
+			shadow-ink tx-button relative
 		`,
 		success: `
 			bg-emerald-600 text-white border border-emerald-700 font-semibold tracking-tight
@@ -106,7 +106,7 @@
 			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-emerald-600 focus:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
-			shadow-ink pressable
+			shadow-ink tx-button relative
 		`
 	};
 

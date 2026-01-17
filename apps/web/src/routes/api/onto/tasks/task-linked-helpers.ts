@@ -124,7 +124,7 @@ export async function resolveLinkedEntities(
 		milestoneIds.length > 0
 			? supabase
 					.from('onto_milestones')
-					.select('id, title, due_at, type_key')
+					.select('id, title, due_at, state_key')
 					.is('deleted_at', null)
 					.in('id', milestoneIds)
 			: Promise.resolve({ data: [] }),
@@ -180,7 +180,7 @@ export async function resolveLinkedEntities(
 				id: m.id,
 				title: m.title,
 				due_at: m.due_at,
-				type_key: m.type_key,
+				state_key: m.state_key,
 				edge_rel: edgeInfo?.rel || 'targets_milestone',
 				edge_direction: edgeInfo?.direction || 'outgoing'
 			};

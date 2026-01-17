@@ -20,6 +20,7 @@ function createMockSupabase(tableData: TableData) {
 			const builder: any = {
 				select: () => builder,
 				eq: () => builder,
+				neq: () => builder,
 				is: () => builder,
 				in: () => builder,
 				single: () => Promise.resolve({ data: singleData, error: null }),
@@ -58,6 +59,45 @@ describe('loadProjectGraphData', () => {
 		expect(supabase.__calls).not.toContain('onto_plans');
 		expect(supabase.__calls).not.toContain('onto_goals');
 	});
+
+	it('filters out completed tasks and edges when excludeCompletedTasks is true', async () => {
+		const supabase = createMockSupabase({
+			onto_projects: { single: { id: 'proj-1', state_key: 'active' } },
+			onto_tasks: [
+				{ id: 'task-1', project_id: 'proj-1', state_key: 'done' },
+				{ id: 'task-2', project_id: 'proj-1', state_key: 'in_progress' }
+			],
+			onto_edges: [
+				{
+					id: 'edge-1',
+					project_id: 'proj-1',
+					src_id: 'task-1',
+					src_kind: 'task',
+					dst_id: 'goal-1',
+					dst_kind: 'goal',
+					rel: 'rel',
+					created_at: '2023-01-01T00:00:00Z'
+				},
+				{
+					id: 'edge-2',
+					project_id: 'proj-1',
+					src_id: 'task-2',
+					src_kind: 'task',
+					dst_id: 'goal-1',
+					dst_kind: 'goal',
+					rel: 'rel',
+					created_at: '2023-01-01T00:00:00Z'
+				}
+			]
+		});
+
+		const result = await loadProjectGraphData(supabase, 'proj-1', {
+			excludeCompletedTasks: true
+		});
+
+		expect(result.tasks.map((t: any) => t.id)).toEqual(['task-2']);
+		expect(result.edges.map((e: any) => e.id)).toEqual(['edge-2']);
+	});
 });
 
 describe('loadMultipleProjectGraphs', () => {
@@ -78,5 +118,44 @@ describe('loadMultipleProjectGraphs', () => {
 
 		expect(graphs.get('proj-1')?.tasks.map((t: any) => t.id)).toEqual(['task-1']);
 		expect(graphs.get('proj-2')?.tasks.map((t: any) => t.id)).toEqual(['task-2']);
+	});
+
+	it('filters completed tasks per project when excludeCompletedTasks is true', async () => {
+		const supabase = createMockSupabase({
+			onto_projects: [{ id: 'proj-1', state_key: 'active' }],
+			onto_tasks: [
+				{ id: 'task-1', project_id: 'proj-1', state_key: 'done' },
+				{ id: 'task-2', project_id: 'proj-1', state_key: 'in_progress' }
+			],
+			onto_edges: [
+				{
+					id: 'edge-1',
+					project_id: 'proj-1',
+					src_id: 'task-1',
+					src_kind: 'task',
+					dst_id: 'goal-1',
+					dst_kind: 'goal',
+					rel: 'rel',
+					created_at: '2023-01-01T00:00:00Z'
+				},
+				{
+					id: 'edge-2',
+					project_id: 'proj-1',
+					src_id: 'task-2',
+					src_kind: 'task',
+					dst_id: 'goal-1',
+					dst_kind: 'goal',
+					rel: 'rel',
+					created_at: '2023-01-01T00:00:00Z'
+				}
+			]
+		});
+
+		const graphs = await loadMultipleProjectGraphs(supabase, ['proj-1'], {
+			excludeCompletedTasks: true
+		});
+
+		expect(graphs.get('proj-1')?.tasks.map((t: any) => t.id)).toEqual(['task-2']);
+		expect(graphs.get('proj-1')?.edges.map((e: any) => e.id)).toEqual(['edge-2']);
 	});
 });

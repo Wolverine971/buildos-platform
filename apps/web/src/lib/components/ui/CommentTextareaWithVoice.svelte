@@ -784,13 +784,6 @@
 			return;
 		}
 
-		// Pre-warm microphone for faster recording start
-		voiceRecordingService.prewarmMicrophone().then((success: boolean) => {
-			if (success) {
-				microphonePermissionGranted = true;
-			}
-		});
-
 		voiceRecordingService.initialize(
 			{
 				onTextUpdate: (_text: string) => {

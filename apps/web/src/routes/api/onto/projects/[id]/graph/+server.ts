@@ -131,7 +131,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		}
 
 		// Load all project data using efficient parallel queries with project_id index
-		const data = await loadProjectGraphData(supabase, id);
+		const data = await loadProjectGraphData(supabase, id, { excludeCompletedTasks: true });
 
 		// Build source data for graph service
 		const sourceData: GraphSourceData = {

@@ -286,7 +286,7 @@ async function fetchLinkedEntities(
 				'id',
 				'title',
 				'due_at',
-				'type_key'
+				'state_key'
 			]),
 			fetchEntityDetails(supabase, 'onto_documents', idsByKind.document, [
 				'id',
@@ -435,7 +435,7 @@ async function fetchAvailableEntities(
 
 	const milestonesQuery = supabase
 		.from('onto_milestones')
-		.select('id, title, due_at, type_key')
+		.select('id, title, due_at, state_key')
 		.eq('project_id', projectId)
 		.is('deleted_at', null)
 		.order('due_at', { ascending: true })

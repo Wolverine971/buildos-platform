@@ -58,6 +58,7 @@ export async function loadProjectGraphData(
 ): Promise<ProjectGraphData> {
 	const requestedKinds = new Set(options.entityKinds ?? []);
 	const shouldFetch = (kind: EntityKind) => requestedKinds.size === 0 || requestedKinds.has(kind);
+	const excludeCompletedTasks = options.excludeCompletedTasks === true;
 
 	// Execute all queries in parallel - this is the key optimization!
 	// Each query uses the project_id index for O(1) lookups.
@@ -88,11 +89,14 @@ export async function loadProjectGraphData(
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('task')
-			? supabase
-					.from('onto_tasks')
-					.select('*')
-					.eq('project_id', projectId)
-					.is('deleted_at', null)
+			? (() => {
+					const query = supabase
+						.from('onto_tasks')
+						.select('*')
+						.eq('project_id', projectId)
+						.is('deleted_at', null);
+					return excludeCompletedTasks ? query.neq('state_key', 'done') : query;
+				})()
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('goal')
 			? supabase
@@ -166,10 +170,25 @@ export async function loadProjectGraphData(
 	logError('risks', risksResult.error);
 	logError('edges', edgesResult.error);
 
+	const filteredTasks =
+		shouldFetch('task') && excludeCompletedTasks
+			? ((tasksResult.data ?? []) as OntoTask[]).filter((task) => task.state_key !== 'done')
+			: ((tasksResult.data ?? []) as OntoTask[]);
+
+	const filteredTaskIds = new Set(filteredTasks.map((task) => task.id));
+	const filteredEdges =
+		shouldFetch('task') && excludeCompletedTasks
+			? ((edgesResult.data ?? []) as OntoEdge[]).filter((edge) => {
+					if (edge.src_kind === 'task' && !filteredTaskIds.has(edge.src_id)) return false;
+					if (edge.dst_kind === 'task' && !filteredTaskIds.has(edge.dst_id)) return false;
+					return true;
+				})
+			: ((edgesResult.data ?? []) as OntoEdge[]);
+
 	return {
 		project: projectResult.data as OntoProject,
 		plans: (plansResult.data ?? []) as OntoPlan[],
-		tasks: (tasksResult.data ?? []) as OntoTask[],
+		tasks: filteredTasks,
 		goals: (goalsResult.data ?? []) as OntoGoal[],
 		milestones: (milestonesResult.data ?? []) as OntoMilestone[],
 		documents: (documentsResult.data ?? []) as OntoDocument[],
@@ -177,7 +196,7 @@ export async function loadProjectGraphData(
 		metrics: (metricsResult.data ?? []) as OntoMetric[],
 		sources: (sourcesResult.data ?? []) as OntoSource[],
 		risks: (risksResult.data ?? []) as OntoRisk[],
-		edges: (edgesResult.data ?? []) as OntoEdge[]
+		edges: filteredEdges
 	};
 }
 
@@ -210,6 +229,7 @@ export async function loadMultipleProjectGraphs(
 
 	const requestedKinds = new Set(options.entityKinds ?? []);
 	const shouldFetch = (kind: EntityKind) => requestedKinds.size === 0 || requestedKinds.has(kind);
+	const excludeCompletedTasks = options.excludeCompletedTasks === true;
 
 	// Batch load with single query per entity type
 	const [
@@ -234,11 +254,14 @@ export async function loadMultipleProjectGraphs(
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('task')
-			? supabase
-					.from('onto_tasks')
-					.select('*')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
+			? (() => {
+					const query = supabase
+						.from('onto_tasks')
+						.select('*')
+						.in('project_id', projectIds)
+						.is('deleted_at', null);
+					return excludeCompletedTasks ? query.neq('state_key', 'done') : query;
+				})()
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('goal')
 			? supabase
@@ -304,8 +327,26 @@ export async function loadMultipleProjectGraphs(
 		return grouped;
 	};
 
+	const tasksData = (tasksResult.data ?? []) as OntoTask[];
+	const edgesData = (edgesResult.data ?? []) as OntoEdge[];
+
+	const filteredTasks =
+		shouldFetch('task') && excludeCompletedTasks
+			? tasksData.filter((task) => task.state_key !== 'done')
+			: tasksData;
+
+	const filteredTaskIds = new Set(filteredTasks.map((task) => task.id));
+	const filteredEdges =
+		shouldFetch('task') && excludeCompletedTasks
+			? edgesData.filter((edge) => {
+					if (edge.src_kind === 'task' && !filteredTaskIds.has(edge.src_id)) return false;
+					if (edge.dst_kind === 'task' && !filteredTaskIds.has(edge.dst_id)) return false;
+					return true;
+				})
+			: edgesData;
+
 	const plansByProject = groupByProjectId((plansResult.data ?? []) as OntoPlan[]);
-	const tasksByProject = groupByProjectId((tasksResult.data ?? []) as OntoTask[]);
+	const tasksByProject = groupByProjectId(filteredTasks);
 	const goalsByProject = groupByProjectId((goalsResult.data ?? []) as OntoGoal[]);
 	const milestonesByProject = groupByProjectId((milestonesResult.data ?? []) as OntoMilestone[]);
 	const documentsByProject = groupByProjectId((documentsResult.data ?? []) as OntoDocument[]);
@@ -315,7 +356,7 @@ export async function loadMultipleProjectGraphs(
 	const metricsByProject = groupByProjectId((metricsResult.data ?? []) as OntoMetric[]);
 	const sourcesByProject = groupByProjectId((sourcesResult.data ?? []) as OntoSource[]);
 	const risksByProject = groupByProjectId((risksResult.data ?? []) as OntoRisk[]);
-	const edgesByProject = groupByProjectId((edgesResult.data ?? []) as OntoEdge[]);
+	const edgesByProject = groupByProjectId(filteredEdges);
 
 	// Build result map
 	const result = new Map<string, ProjectGraphData>();

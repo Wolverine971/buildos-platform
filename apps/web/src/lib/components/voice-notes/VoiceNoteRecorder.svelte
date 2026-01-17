@@ -154,10 +154,6 @@
 				stopRecording();
 			}
 		});
-
-		voiceRecordingService.prewarmMicrophone().catch(() => {
-			// Pre-warm is best-effort; ignore failures.
-		});
 	});
 
 	onDestroy(() => {

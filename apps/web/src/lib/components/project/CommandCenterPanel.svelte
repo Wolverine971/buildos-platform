@@ -21,7 +21,8 @@
 		InsightSpecialToggles
 	} from '$lib/components/ontology/insight-panels';
 
-	type PanelKey = 'goals' | 'milestones' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
+	// Note: 'milestones' removed - now nested under goals
+	type PanelKey = 'goals' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
 
 	interface Props {
 		panelKey: PanelKey;
@@ -35,6 +36,8 @@
 		onAdd: () => void;
 		emptyMessage: string;
 		children: Snippet;
+		// Standalone panels take full width always (no partner)
+		fullWidth?: boolean;
 		// Optional filter/sort props
 		panelConfig?: PanelConfig;
 		panelState?: InsightPanelState;
@@ -56,6 +59,7 @@
 		onAdd,
 		emptyMessage,
 		children,
+		fullWidth = false,
 		panelConfig,
 		panelState,
 		toggleCounts = {},
@@ -70,7 +74,9 @@
 	);
 
 	// Panel width classes based on expansion state
+	// fullWidth panels always take full width (standalone panels like Goals)
 	const panelClasses = $derived.by(() => {
+		if (fullWidth) return 'w-full';
 		if (expanded) return 'w-full';
 		if (partnerExpanded) return 'w-full order-2';
 		return 'w-[calc(50%-3px)]';

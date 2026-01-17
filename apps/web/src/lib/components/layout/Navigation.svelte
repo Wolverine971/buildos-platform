@@ -18,7 +18,8 @@
 		Zap,
 		Clock,
 		Sun,
-		Moon
+		Moon,
+		Bell
 	} from 'lucide-svelte';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
@@ -579,6 +580,16 @@
 										Profile & Settings
 									</a>
 
+									<a
+										href="/notifications"
+										onclick={() => handleMenuItemClick('/notifications')}
+										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors
+										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+									>
+										<Bell class="w-4 h-4 mr-3" />
+										Notifications
+									</a>
+
 									{#if stripeEnabled}
 										<a
 											href={subscription?.hasActiveSubscription
@@ -816,6 +827,16 @@
 						>
 							<User class="w-5 h-5 mr-3" />
 							Profile & Settings
+						</a>
+
+						<a
+							href="/notifications"
+							onclick={() => handleMenuItemClick('/notifications')}
+							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors
+							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+						>
+							<Bell class="w-5 h-5 mr-3" />
+							Notifications
 						</a>
 
 						{#if stripeEnabled}

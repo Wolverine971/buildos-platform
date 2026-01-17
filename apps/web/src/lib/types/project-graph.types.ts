@@ -240,6 +240,8 @@ export interface LoadProjectGraphOptions {
 	includeDeleted?: boolean;
 	/** Filter to specific entity kinds */
 	entityKinds?: EntityKind[];
+	/** Exclude completed/done tasks from the graph payload */
+	excludeCompletedTasks?: boolean;
 }
 
 /**

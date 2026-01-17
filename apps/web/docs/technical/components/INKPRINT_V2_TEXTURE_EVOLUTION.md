@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/components/INKPRINT_V2_TEXTURE_EVOLUTION.md -->
+
 # Inkprint v2: PNG Texture Evolution
 
 > **Status:** Design Proposal

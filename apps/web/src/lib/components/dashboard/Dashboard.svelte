@@ -211,7 +211,7 @@
 	}
 </script>
 
-<main class="min-h-screen bg-background transition-colors">
+<main class="min-h-screen bg-background transition-colors rounded-md">
 	<div class="container mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 max-w-7xl">
 		<!-- Header Section - Compact on mobile -->
 		<header class="mb-2 sm:mb-4">

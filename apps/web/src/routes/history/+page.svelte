@@ -323,9 +323,9 @@
 	<meta name="description" content="View and explore your braindumps and chat conversations" />
 </svelte:head>
 
-<div class="min-h-screen bg-background">
+<div class="min-h-screen bg-background rounded-md">
 	<!-- Header -->
-	<div class="border-b border-border bg-card tx tx-frame tx-weak">
+	<div class="border-b border-border bg-card tx tx-frame tx-weak rounded-md">
 		<div class="mx-auto max-w-6xl px-2 sm:px-4 lg:px-8 py-3 sm:py-6">
 			<div class="flex items-center gap-2 sm:gap-3">
 				<div class="rounded-md sm:rounded-lg bg-accent/15 p-1.5 sm:p-2">

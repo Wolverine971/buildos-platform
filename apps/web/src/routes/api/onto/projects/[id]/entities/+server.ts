@@ -32,7 +32,7 @@ const ENTITY_CONFIG: Record<
 	},
 	milestone: {
 		table: 'onto_milestones',
-		select: 'id, title, due_at, created_at, props, type_key',
+		select: 'id, title, due_at, state_key, created_at, props',
 		searchField: 'title'
 	},
 	risk: {

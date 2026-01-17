@@ -3,14 +3,17 @@
 	Mobile Command Center Component
 
 	Ultra-compact mobile layout for project data models.
-	Organizes 7 entity types into 4 rows with single-expansion behavior.
+	Organizes entity types into rows with single-expansion behavior.
 	Supports filter/sort controls when panelStates are provided.
 
 	Row Layout:
-	1. Goals + Milestones (Strategic)
+	1. Goals (with nested milestone progress)
 	2. Tasks + Plans (Execution)
 	3. Risks + Documents (Context)
 	4. Events (Scheduling) - Standalone
+
+	Note: Milestones are now nested under goals, not shown as a separate panel.
+	See: /thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md
 
 	Documentation:
 	- Mobile Command Center: /apps/web/docs/features/mobile-command-center/MOBILE_COMMAND_CENTER_SPEC.md
@@ -28,6 +31,7 @@
 	} from 'lucide-svelte';
 	import CommandCenterRow from './CommandCenterRow.svelte';
 	import CommandCenterPanel from './CommandCenterPanel.svelte';
+	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
 	import type { Goal, Milestone, Task, Plan, Risk, Document, OntoEvent } from '$lib/types/onto';
 	import {
 		PANEL_CONFIGS,
@@ -35,7 +39,8 @@
 		type InsightPanelState
 	} from '$lib/components/ontology/insight-panels';
 
-	type PanelKey = 'goals' | 'milestones' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
+	// Note: 'milestones' removed from PanelKey - now nested under goals
+	type PanelKey = 'goals' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
 
 	interface Props {
 		// Data
@@ -47,9 +52,12 @@
 		documents: Document[];
 		events: OntoEvent[];
 
+		// Milestone-to-goal mapping for nested display
+		milestonesByGoalId?: Map<string, Milestone[]>;
+
 		// Add callbacks
 		onAddGoal: () => void;
-		onAddMilestone: () => void;
+		onAddMilestoneFromGoal?: (goalId: string, goalName: string) => void;
 		onAddTask: () => void;
 		onAddPlan: () => void;
 		onAddRisk: () => void;
@@ -65,6 +73,9 @@
 		onEditDocument: (id: string) => void;
 		onEditEvent: (id: string) => void;
 
+		// Toggle milestone complete callback
+		onToggleMilestoneComplete?: (milestoneId: string, currentState: string) => void;
+
 		// Optional filter/sort state and callbacks
 		panelStates?: Record<InsightPanelKey, InsightPanelState>;
 		panelCounts?: Record<InsightPanelKey, Record<string, number>>;
@@ -74,6 +85,9 @@
 			sort: { field: string; direction: 'asc' | 'desc' }
 		) => void;
 		onToggleChange?: (panelKey: InsightPanelKey, toggleId: string, value: boolean) => void;
+
+		// Whether user can edit (for milestone add buttons)
+		canEdit?: boolean;
 	}
 
 	let {
@@ -84,8 +98,9 @@
 		risks,
 		documents,
 		events,
+		milestonesByGoalId,
 		onAddGoal,
-		onAddMilestone,
+		onAddMilestoneFromGoal,
 		onAddTask,
 		onAddPlan,
 		onAddRisk,
@@ -98,11 +113,13 @@
 		onEditRisk,
 		onEditDocument,
 		onEditEvent,
+		onToggleMilestoneComplete,
 		panelStates,
 		panelCounts,
 		onFilterChange,
 		onSortChange,
-		onToggleChange
+		onToggleChange,
+		canEdit = true
 	}: Props = $props();
 
 	// Check if filter/sort controls are enabled
@@ -118,13 +135,12 @@
 	}
 
 	// Helper to check if a panel's partner is expanded
+	// Note: Goals and Events are standalone, others are paired
 	function isPartnerExpanded(key: PanelKey): boolean {
-		// Events is standalone - no partner
-		if (key === 'events') return false;
+		// Standalone panels have no partner
+		if (key === 'goals' || key === 'events') return false;
 
-		const pairs: Record<Exclude<PanelKey, 'events'>, PanelKey> = {
-			goals: 'milestones',
-			milestones: 'goals',
+		const pairs: Record<'tasks' | 'plans' | 'risks' | 'documents', PanelKey> = {
 			tasks: 'plans',
 			plans: 'tasks',
 			risks: 'documents',
@@ -230,9 +246,9 @@
 </script>
 
 <div class="space-y-1.5">
-	<!-- Row 1: Goals + Milestones (Strategic) -->
+	<!-- Row 1: Goals (Strategic) - Full Width with Nested Milestones -->
 	<CommandCenterRow>
-		<!-- Goals Panel -->
+		<!-- Goals Panel (Standalone Full Width) -->
 		<CommandCenterPanel
 			panelKey="goals"
 			label="Goals"
@@ -240,10 +256,11 @@
 			iconColor="text-amber-500"
 			count={goals.length}
 			expanded={expandedPanel === 'goals'}
-			partnerExpanded={isPartnerExpanded('goals')}
+			partnerExpanded={false}
 			onToggle={togglePanel}
 			onAdd={onAddGoal}
 			emptyMessage="Define what success looks like"
+			fullWidth={true}
 			panelConfig={hasControls ? PANEL_CONFIGS.goals : undefined}
 			panelState={hasControls && panelStates ? panelStates.goals : undefined}
 			toggleCounts={hasControls && panelCounts ? panelCounts.goals : undefined}
@@ -258,63 +275,54 @@
 				: undefined}
 		>
 			{#each goals as goal (goal.id)}
-				<button
-					type="button"
-					onclick={() => onEditGoal(goal.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
-				>
-					<div class="flex items-center justify-between gap-2">
-						<span class="text-xs text-foreground truncate">{goal.name}</span>
-						<span
-							class="text-[10px] capitalize shrink-0 {getGoalStateColor(
-								goal.state_key
-							)}">{goal.state_key}</span
-						>
-					</div>
-				</button>
-			{/each}
-		</CommandCenterPanel>
+				{@const goalMilestones = milestonesByGoalId?.get(goal.id) || []}
+				{@const completedCount = goalMilestones.filter((m) => {
+					const state = m.state_key || (m.props?.state_key as string) || 'pending';
+					return state === 'completed';
+				}).length}
+				<div class="border-b border-border/50 last:border-b-0">
+					<!-- Goal Header -->
+					<button
+						type="button"
+						onclick={() => onEditGoal(goal.id)}
+						class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
+					>
+						<div class="flex items-center justify-between gap-2">
+							<span class="text-xs text-foreground truncate">{goal.name}</span>
+							<div class="flex items-center gap-2 shrink-0">
+								{#if goalMilestones.length > 0}
+									<span class="text-[10px] text-muted-foreground">
+										<Flag class="w-2.5 h-2.5 inline-block mr-0.5" />
+										{completedCount}/{goalMilestones.length}
+									</span>
+								{/if}
+								<span
+									class="text-[10px] capitalize {getGoalStateColor(
+										goal.state_key
+									)}"
+								>
+									{goal.state_key}
+								</span>
+							</div>
+						</div>
+					</button>
 
-		<!-- Milestones Panel -->
-		<CommandCenterPanel
-			panelKey="milestones"
-			label="Milestones"
-			icon={Flag}
-			iconColor="text-emerald-500"
-			count={milestones.length}
-			expanded={expandedPanel === 'milestones'}
-			partnerExpanded={isPartnerExpanded('milestones')}
-			onToggle={togglePanel}
-			onAdd={onAddMilestone}
-			emptyMessage="Set checkpoints and dates"
-			panelConfig={hasControls ? PANEL_CONFIGS.milestones : undefined}
-			panelState={hasControls && panelStates ? panelStates.milestones : undefined}
-			toggleCounts={hasControls && panelCounts ? panelCounts.milestones : undefined}
-			onFilterChange={hasControls && onFilterChange
-				? (filters) => onFilterChange('milestones', filters)
-				: undefined}
-			onSortChange={hasControls && onSortChange
-				? (sort) => onSortChange('milestones', sort)
-				: undefined}
-			onToggleChange={hasControls && onToggleChange
-				? (toggleId, value) => onToggleChange('milestones', toggleId, value)
-				: undefined}
-		>
-			{#each milestones as milestone (milestone.id)}
-				<button
-					type="button"
-					onclick={() => onEditMilestone(milestone.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
-				>
-					<div class="flex items-center justify-between gap-2">
-						<span class="text-xs text-foreground truncate">{milestone.title}</span>
-						<span
-							class="text-[10px] capitalize shrink-0 {getMilestoneStateColor(
-								milestone.state_key
-							)}">{milestone.state_key}</span
-						>
-					</div>
-				</button>
+					<!-- Nested Milestones Section -->
+					{#if milestonesByGoalId && onAddMilestoneFromGoal}
+						<GoalMilestonesSection
+							milestones={goalMilestones}
+							goalId={goal.id}
+							goalName={goal.name}
+							goalState={goal.state_key}
+							{canEdit}
+							onAddMilestone={onAddMilestoneFromGoal}
+							{onEditMilestone}
+							{onToggleMilestoneComplete}
+							expanded={false}
+							maxVisible={3}
+						/>
+					{/if}
+				</div>
 			{/each}
 		</CommandCenterPanel>
 	</CommandCenterRow>
@@ -487,7 +495,7 @@
 
 	<!-- Row 4: Events (Scheduling) - Standalone -->
 	<CommandCenterRow>
-		<!-- Events Panel -->
+		<!-- Events Panel (Standalone Full Width) -->
 		<CommandCenterPanel
 			panelKey="events"
 			label="Events"
@@ -495,10 +503,11 @@
 			iconColor="text-teal-500"
 			count={events.length}
 			expanded={expandedPanel === 'events'}
-			partnerExpanded={isPartnerExpanded('events')}
+			partnerExpanded={false}
 			onToggle={togglePanel}
 			onAdd={onAddEvent}
 			emptyMessage="Schedule meetings and events"
+			fullWidth={true}
 			panelConfig={hasControls ? PANEL_CONFIGS.events : undefined}
 			panelState={hasControls && panelStates ? panelStates.events : undefined}
 			toggleCounts={hasControls && panelCounts ? panelCounts.events : undefined}

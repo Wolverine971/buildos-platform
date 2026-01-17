@@ -12,7 +12,6 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (ignored; auto-classified) - Template type key
  * - title: string (required) - Milestone title
  * - due_at: string (required) - ISO 8601 date/timestamp
  * - state_key?: string - Initial state (default: 'pending')
@@ -257,7 +256,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			createdMilestone.id,
 			{
 				title: createdMilestone.title,
-				type_key: createdMilestone.type_key,
 				due_at: createdMilestone.due_at
 			},
 			user.id,
@@ -276,7 +274,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		return ApiResponse.created({ milestone: createdMilestone });
+		const { type_key: _typeKey, ...milestonePayload } = createdMilestone;
+		return ApiResponse.created({ milestone: milestonePayload });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

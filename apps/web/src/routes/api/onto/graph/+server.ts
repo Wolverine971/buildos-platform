@@ -83,7 +83,9 @@ async function handleSingleProjectGraph(
 		}
 
 		// Load all project data in parallel using efficient pattern
-		const data = await loadProjectGraphData(supabase, projectId);
+		const data = await loadProjectGraphData(supabase, projectId, {
+			excludeCompletedTasks: true
+		});
 
 		// Build source data for graph service
 		const sourceData: GraphSourceData = {
@@ -221,7 +223,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			});
 		}
 
-		const graphs = await loadMultipleProjectGraphs(supabase, projectIds);
+		const graphs = await loadMultipleProjectGraphs(supabase, projectIds, {
+			excludeCompletedTasks: true
+		});
 		const missingGraphs = projectIds.filter((id) => !graphs.has(id));
 		if (missingGraphs.length > 0) {
 			console.warn('[Ontology Graph API] Missing graph data for projects', missingGraphs);

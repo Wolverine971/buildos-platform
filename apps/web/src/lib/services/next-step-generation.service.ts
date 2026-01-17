@@ -321,11 +321,7 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 	const allTasks = mergeUniqueTasks(tasks, recentCompletedTasks);
 	const tasksById = new Map(allTasks.map((task) => [task.id, task]));
 	const goalsById = new Map(goals.map((goal) => [goal.id, goal]));
-	const { taskToGoalIds, goalToTaskIds } = buildTaskGoalMaps(
-		taskGoalLinks,
-		tasksById,
-		goalsById
-	);
+	const { taskToGoalIds, goalToTaskIds } = buildTaskGoalMaps(taskGoalLinks, tasksById, goalsById);
 
 	// Build project section
 	let prompt = `## Project: ${project.name}\n`;

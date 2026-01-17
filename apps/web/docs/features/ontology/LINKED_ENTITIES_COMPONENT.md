@@ -3,7 +3,8 @@
 # LinkedEntities Component Specification
 
 **Created**: December 9, 2025
-**Status**: Phase 1-3 Complete (TaskEditModal integrated)
+**Updated**: January 16, 2026
+**Status**: Phase 1-3 Complete, Linking Constraints Implemented
 **Location**: `/apps/web/src/lib/components/ontology/linked-entities/`
 
 ## Overview
@@ -33,6 +34,26 @@ A self-contained, reusable component for displaying and managing entity relation
 - [ ] Add to PlanEditModal
 - [ ] Add to GoalEditModal
 - [ ] Add to other edit modals as needed
+
+### Phase 4: Linking Constraints - COMPLETE (January 16, 2026)
+
+- [x] Added `ALLOWED_LINKS` constraint map to enforce valid entity relationships
+- [x] Added `requirement` entity type to all interfaces and fetching logic
+- [x] Added `event` entity type with proper `has_event` relationship
+- [x] Fixed incorrect relationship mappings in `RELATIONSHIP_MAP`
+- [x] Updated UI to filter visible sections based on source entity kind
+- [x] Constrained `event` to only link to `task`
+- [x] Constrained `requirement` to only link to `goal` or `milestone`
+- [x] Updated canonical edge-direction.ts and containment-organizer.ts
+
+**Files Modified:**
+
+- `linked-entities.types.ts` - Added ALLOWED_LINKS, fixed RELATIONSHIP_MAP, added requirement/event
+- `linked-entities.service.ts` - Added requirement/event support, updated parent rules
+- `LinkedEntities.svelte` - Filter sections by ALLOWED_LINKS
+- `/api/onto/edges/linked/+server.ts` - Added requirement entity fetching
+- `/lib/services/ontology/edge-direction.ts` - Added event kind, has_event relationship
+- `/lib/services/ontology/containment-organizer.ts` - Added event parent rules
 
 ### Implementation Notes (December 9, 2025)
 
@@ -110,7 +131,7 @@ A self-contained, reusable component for displaying and managing entity relation
 interface LinkedEntitiesProps {
 	// Required
 	sourceId: string; // ID of the entity being edited
-	sourceKind: EntityKind; // 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'output' | 'risk' | 'decision'
+	sourceKind: EntityKind; // 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk' | 'event' | 'requirement'
 	projectId: string; // Current project context for scoping available entities
 
 	// Callbacks
@@ -118,7 +139,7 @@ interface LinkedEntitiesProps {
 	onLinksChanged?: () => void; // Notify parent of changes (for refresh)
 
 	// Configuration (optional)
-	allowedEntityTypes?: EntityKind[]; // Subset of types to show (default: all)
+	allowedEntityTypes?: EntityKind[]; // Subset of types to show (intersection with ALLOWED_LINKS)
 	readOnly?: boolean; // Hide +/× buttons (default: false)
 }
 
@@ -128,10 +149,31 @@ type EntityKind =
 	| 'goal'
 	| 'milestone'
 	| 'document'
-	| 'output'
 	| 'risk'
-	| 'decision';
+	| 'event'
+	| 'requirement';
 ```
+
+---
+
+## Allowed Link Constraints
+
+Not all entity types can link to each other. The `ALLOWED_LINKS` map defines valid linking options for each source kind:
+
+```typescript
+const ALLOWED_LINKS: Record<EntityKind, EntityKind[]> = {
+	task: ['plan', 'goal', 'task', 'milestone', 'document', 'risk', 'event'],
+	plan: ['task', 'goal', 'milestone', 'document', 'risk'],
+	goal: ['milestone', 'document', 'task', 'plan', 'risk', 'requirement'],
+	milestone: ['plan', 'task', 'goal', 'document', 'risk', 'requirement'],
+	document: ['task', 'plan', 'goal', 'milestone', 'document', 'risk'],
+	risk: ['task', 'plan', 'goal', 'milestone', 'document'],
+	event: ['task'], // Events can ONLY link to tasks
+	requirement: ['goal', 'milestone'] // Requirements can ONLY link to goals or milestones
+};
+```
+
+The UI automatically filters visible sections based on these constraints.
 
 ---
 
@@ -139,30 +181,63 @@ type EntityKind =
 
 Relationships are automatically determined based on entity type pairs:
 
-| Source Kind | Target Kind | Relationship        | Direction           |
-| ----------- | ----------- | ------------------- | ------------------- |
-| task        | plan        | `belongs_to_plan`   | task → plan         |
-| task        | goal        | `supports_goal`     | task → goal         |
-| task        | task        | `depends_on`        | task → task         |
-| task        | milestone   | `targets_milestone` | task → milestone    |
-| task        | document    | `references`        | task → document     |
-| task        | output      | `produces`          | task → output       |
-| plan        | goal        | `supports_goal`     | plan → goal         |
-| plan        | task        | `has_task`          | plan → task         |
-| plan        | milestone   | `targets_milestone` | plan → milestone    |
-| plan        | document    | `references`        | plan → document     |
-| plan        | decision    | `references`        | plan → decision     |
-| goal        | task        | `achieved_by`       | goal → task         |
-| goal        | plan        | `achieved_by`       | goal → plan         |
-| goal        | milestone   | `has_milestone`     | goal → milestone    |
-| goal        | document    | `references`        | goal → document     |
-| task        | decision    | `references`        | task → decision     |
-| document    | task        | `referenced_by`     | document → task     |
-| document    | plan        | `referenced_by`     | document → plan     |
-| document    | goal        | `referenced_by`     | document → goal     |
-| document    | decision    | `referenced_by`     | document → decision |
+### Task Relationships
 
-**Note:** Edges are created in a single direction. The component queries both directions when fetching.
+| Source | Target    | Relationship        | Notes                      |
+| ------ | --------- | ------------------- | -------------------------- |
+| task   | plan      | `has_task`          | Containment (plan → task)  |
+| task   | goal      | `supports_goal`     | Support relationship       |
+| task   | task      | `depends_on`        | Task dependencies          |
+| task   | milestone | `targets_milestone` | Task targets milestone     |
+| task   | document  | `references`        | Reference relationship     |
+| task   | risk      | `mitigates`         | Task mitigates risk        |
+| task   | event     | `has_event`         | Containment (task → event) |
+
+### Plan Relationships
+
+| Source | Target    | Relationship        | Notes                     |
+| ------ | --------- | ------------------- | ------------------------- |
+| plan   | task      | `has_task`          | Containment (plan → task) |
+| plan   | goal      | `supports_goal`     | Plan supports goal        |
+| plan   | milestone | `targets_milestone` | Plan targets milestone    |
+| plan   | document  | `references`        | Reference relationship    |
+| plan   | risk      | `addresses`         | Plan addresses risk       |
+
+### Goal Relationships
+
+| Source | Target      | Relationship      | Notes                            |
+| ------ | ----------- | ----------------- | -------------------------------- |
+| goal   | milestone   | `has_milestone`   | Containment (goal → milestone)   |
+| goal   | document    | `references`      | Reference relationship           |
+| goal   | task        | `supports_goal`   | Query: tasks that support goal   |
+| goal   | plan        | `supports_goal`   | Query: plans that support goal   |
+| goal   | risk        | `threatens`       | Query: risks that threaten goal  |
+| goal   | requirement | `has_requirement` | Containment (goal → requirement) |
+
+### Milestone Relationships
+
+| Source    | Target      | Relationship        | Notes                            |
+| --------- | ----------- | ------------------- | -------------------------------- |
+| milestone | plan        | `has_plan`          | Containment (milestone → plan)   |
+| milestone | task        | `targets_milestone` | Query: tasks targeting milestone |
+| milestone | goal        | `has_milestone`     | Query: parent goal               |
+| milestone | document    | `references`        | Reference relationship           |
+| milestone | risk        | `has_risk`          | Containment (milestone → risk)   |
+| milestone | requirement | `has_requirement`   | Containment (milestone → req)    |
+
+### Other Entity Relationships
+
+| Source      | Target    | Relationship      | Notes                            |
+| ----------- | --------- | ----------------- | -------------------------------- |
+| document    | \*        | `references`      | Documents can reference anything |
+| risk        | task/plan | `threatens`       | Risk threatens entities          |
+| risk        | goal/ms   | `threatens`       | Risk threatens entities          |
+| risk        | document  | `documented_in`   | Risk documented in document      |
+| event       | task      | `has_event`       | Query: parent task               |
+| requirement | goal      | `has_requirement` | Query: parent goal               |
+| requirement | milestone | `has_requirement` | Query: parent milestone          |
+
+**Note:** Edges are stored in canonical direction (Container → Contained, Supporter → Supported). The component queries both directions when fetching.
 
 ---
 
@@ -186,9 +261,9 @@ Fetches linked entities for a given source. Used by the component on mount.
       goals: LinkedEntity[],
       milestones: LinkedEntity[],
       documents: LinkedEntity[],
-      outputs: LinkedEntity[],
       risks: LinkedEntity[],
-      decisions: LinkedEntity[]
+      events: LinkedEntity[],
+      requirements: LinkedEntity[]
     },
     availableEntities: {
       tasks: AvailableEntity[],
@@ -196,9 +271,9 @@ Fetches linked entities for a given source. Used by the component on mount.
       goals: AvailableEntity[],
       milestones: AvailableEntity[],
       documents: AvailableEntity[],
-      outputs: AvailableEntity[],
       risks: AvailableEntity[],
-      decisions: AvailableEntity[]
+      events: AvailableEntity[],
+      requirements: AvailableEntity[]
     }
   }
 }

@@ -146,11 +146,6 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -169,6 +164,11 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -876,11 +876,15 @@
 			"type": "component",
 			"components": [],
 			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
 				"RELATIONSHIP_MAP",
 				"getRelationship",
+				"getAllowedTargetKinds",
 				"ENTITY_SECTIONS",
 				"getEntityDisplayName",
-				"formatRelationshipLabel"
+				"formatRelationshipLabel",
+				"getFilteredSections"
 			]
 		},
 		{

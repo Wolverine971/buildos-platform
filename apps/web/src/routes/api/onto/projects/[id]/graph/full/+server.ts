@@ -60,7 +60,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Project not found');
 		}
 
-		const data = await loadProjectGraphData(supabase, id);
+		const data = await loadProjectGraphData(supabase, id, { excludeCompletedTasks: true });
 
 		return ApiResponse.success({
 			graph: data,

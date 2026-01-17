@@ -4,13 +4,19 @@
 	TEXTURE PHILOSOPHY:
 	- Default to CLEAN. Most UI has no texture.
 	- Texture differentiates SEMANTIC TYPES, not decorates.
-	- Only 3 cases warrant texture:
+	- Cases that warrant texture:
 		1. AI-generated content (BLOOM) - "This came from AI"
 		2. Errors/warnings (STATIC) - "Something's wrong"
 		3. Time-critical alerts (PULSE) - "This is urgent"
-	- Buttons, inputs, regular cards = CLEAN
+		4. Inputs/editable areas (GRID) - "You can write here"
+		5. Pressable elements (45° DIAGONAL) - "This is clickable"
+		6. Buttons (BRUSHED-ALUM) - Metallic feel for action buttons
+	- Headers, regular cards = CLEAN (no texture)
+
+	LAYOUT: Matches /projects/[id] page structure for consistency
 -->
 <script lang="ts">
+	import { slide } from 'svelte/transition';
 	import {
 		ArrowLeft,
 		Plus,
@@ -26,48 +32,68 @@
 		X,
 		Sparkles,
 		Zap,
-		MoreHorizontal,
+		MoreVertical,
 		Calendar,
-		Link2
+		Link2,
+		Flag,
+		Trash2
 	} from 'lucide-svelte';
 
 	// Demo state
 	let showCreateModal = $state(false);
 	let showDeleteModal = $state(false);
 	let darkMode = $state(false);
-	let expandedSections = $state<Record<string, boolean>>({
-		tasks: true,
+
+	// Collapsible sections - matches project page pattern
+	let documentsExpanded = $state(true);
+	let expandedPanels = $state<Record<string, boolean>>({
 		goals: true,
-		documents: false
+		milestones: false,
+		tasks: true,
+		risks: false
 	});
 
-	function toggleSection(key: string) {
-		expandedSections = { ...expandedSections, [key]: !expandedSections[key] };
+	function togglePanel(key: string) {
+		expandedPanels = { ...expandedPanels, [key]: !expandedPanels[key] };
 	}
 
 	// Sample data
 	const project = {
 		name: 'BuildOS Platform Redesign',
 		description: 'Complete overhaul of the design system with Inkprint textures',
-		status: 'active',
-		nextStep: 'Review texture system with the team'
+		state_key: 'active',
+		next_step_short: 'Review texture system with the team'
 	};
 
 	const tasks = [
-		{ id: '1', title: 'Implement texture CSS classes', status: 'done', priority: 'high' },
-		{ id: '2', title: 'Create demo page', status: 'in_progress', priority: 'high' },
-		{ id: '3', title: 'Write documentation', status: 'todo', priority: 'medium' },
-		{ id: '4', title: 'Get team feedback', status: 'todo', priority: 'low' }
+		{ id: '1', title: 'Implement texture CSS classes', state_key: 'done', priority: 'high' },
+		{ id: '2', title: 'Create demo page', state_key: 'in_progress', priority: 'high' },
+		{ id: '3', title: 'Write documentation', state_key: 'todo', priority: 'medium' },
+		{ id: '4', title: 'Get team feedback', state_key: 'todo', priority: 'low' }
 	];
 
 	const goals = [
-		{ id: '1', name: 'Ship v2 design system', status: 'active' },
-		{ id: '2', name: 'Improve visual clarity', status: 'active' }
+		{ id: '1', name: 'Ship v2 design system', state_key: 'active' },
+		{ id: '2', name: 'Improve visual clarity', state_key: 'active' }
+	];
+
+	const milestones = [
+		{
+			id: '1',
+			title: 'Design system spec complete',
+			due_at: '2025-01-20',
+			state_key: 'pending'
+		},
+		{ id: '2', title: 'Component migration done', due_at: '2025-02-01', state_key: 'pending' }
 	];
 
 	const documents = [
-		{ id: '1', title: 'Design System Spec', type: 'spec' },
-		{ id: '2', title: 'Texture Philosophy', type: 'doc' }
+		{ id: '1', title: 'Design System Spec', type_key: 'spec', state_key: 'draft' },
+		{ id: '2', title: 'Texture Philosophy', type_key: 'doc', state_key: 'published' }
+	];
+
+	const risks = [
+		{ id: '1', title: 'Migration complexity', impact: 'medium', state_key: 'identified' }
 	];
 
 	// Urgent item for PULSE texture demo
@@ -77,17 +103,19 @@
 	};
 
 	// Helper for status styling
-	function getStatusStyle(status: string) {
-		switch (status) {
-			case 'done':
-				return { icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
-			case 'in_progress':
-				return { icon: Clock, color: 'text-accent', bg: 'bg-accent/10' };
-			case 'blocked':
-				return { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10' };
-			default:
-				return { icon: Circle, color: 'text-muted-foreground', bg: 'bg-muted' };
+	function getTaskVisuals(state: string) {
+		const normalized = state?.toLowerCase() || '';
+		if (normalized === 'done' || normalized === 'completed') {
+			return { icon: CheckCircle2, color: 'text-emerald-500' };
 		}
+		if (normalized === 'in_progress' || normalized === 'active') {
+			return { icon: Clock, color: 'text-accent' };
+		}
+		return { icon: Circle, color: 'text-muted-foreground' };
+	}
+
+	function getStateLabel(state: string): string {
+		return (state || 'draft').replace(/_/g, ' ');
 	}
 </script>
 
@@ -96,95 +124,115 @@
 </svelte:head>
 
 <div class="min-h-screen" class:dark={darkMode}>
-	<div class="min-h-screen bg-background text-foreground">
-		<!-- Top Navigation Bar -->
-		<nav class="sticky top-0 z-40 bg-card/95 backdrop-blur border-b border-border">
-			<div class="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between">
-				<a
-					href="/design-system/inkprint-v2"
-					class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-				>
-					<ArrowLeft class="w-4 h-4" />
-					<span>Back to Texture Test</span>
-				</a>
-
-				<div class="flex items-center gap-3">
-					<label class="flex items-center gap-2 text-sm cursor-pointer">
-						<input
-							type="checkbox"
-							bind:checked={darkMode}
-							class="rounded border-border"
-						/>
-						<span class="text-muted-foreground">Dark</span>
-					</label>
-				</div>
-			</div>
-		</nav>
-
-		<!-- Page Content -->
-		<div class="max-w-6xl mx-auto px-4 py-6">
-			<!-- Project Header - CLEAN (no texture, it's just a header) -->
-			<header class="mb-6">
-				<div class="flex items-start justify-between gap-4">
-					<div class="min-w-0">
-						<div class="flex items-center gap-3 mb-1">
-							<h1 class="text-2xl font-bold text-foreground truncate">
+	<div class="min-h-screen bg-background text-foreground overflow-x-hidden">
+		<!-- Header - Matches /projects/[id] structure, NO texture on structural cards -->
+		<header class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4">
+			<div
+				class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink p-3 sm:p-4 space-y-1 sm:space-y-3"
+			>
+				<!-- Title Row -->
+				<div class="flex items-center justify-between gap-1.5 sm:gap-2">
+					<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
+						<a
+							href="/design-system/inkprint-v2"
+							class="flex items-center justify-center p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0 pressable"
+							aria-label="Back to texture test"
+						>
+							<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+						</a>
+						<div class="min-w-0">
+							<h1
+								class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
+							>
 								{project.name}
 							</h1>
-							<span
-								class="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-600 capitalize"
+							<p
+								class="text-xs text-muted-foreground mt-0.5 line-clamp-2 hidden sm:block"
 							>
-								{project.status}
-							</span>
-						</div>
-						<p class="text-sm text-muted-foreground">{project.description}</p>
-					</div>
-
-					<div class="flex items-center gap-2 shrink-0">
-						<button class="p-2 rounded-lg hover:bg-muted transition-colors">
-							<Pencil class="w-4 h-4 text-muted-foreground" />
-						</button>
-						<button class="p-2 rounded-lg hover:bg-muted transition-colors">
-							<MoreHorizontal class="w-4 h-4 text-muted-foreground" />
-						</button>
-					</div>
-				</div>
-
-				<!-- Next Step - CLEAN card, just highlighted with accent -->
-				<div class="mt-4 p-3 rounded-lg bg-accent/5 border border-accent/20">
-					<div class="flex items-center gap-3">
-						<div
-							class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
-						>
-							<Zap class="w-4 h-4 text-accent" />
-						</div>
-						<div>
-							<p class="text-[10px] uppercase tracking-wider text-accent font-medium">
-								Next Step
+								{project.description}
 							</p>
-							<p class="text-sm text-foreground">{project.nextStep}</p>
 						</div>
 					</div>
-				</div>
-			</header>
 
-			<!-- Main Grid -->
-			<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+					<!-- Desktop: Show all buttons -->
+					<div class="hidden sm:flex items-center gap-1.5 shrink-0">
+						<!-- State Badge -->
+						<span
+							class="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-600 capitalize"
+						>
+							{project.state_key}
+						</span>
+						<!-- Dark mode toggle -->
+						<label
+							class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border cursor-pointer hover:bg-muted transition-colors"
+						>
+							<input type="checkbox" bind:checked={darkMode} class="rounded" />
+							<span class="text-xs text-muted-foreground">Dark</span>
+						</label>
+						<button
+							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+							aria-label="Edit project"
+						>
+							<Pencil class="w-5 h-5 text-muted-foreground" />
+						</button>
+						<button
+							onclick={() => (showDeleteModal = true)}
+							class="p-2 rounded-lg hover:bg-destructive/10 transition-colors pressable"
+							aria-label="Delete project"
+						>
+							<Trash2 class="w-5 h-5 text-destructive" />
+						</button>
+					</div>
+
+					<!-- Mobile: State + 3-dot menu -->
+					<div class="flex items-center gap-1.5 sm:hidden">
+						<span
+							class="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-600 capitalize"
+						>
+							{project.state_key}
+						</span>
+						<button
+							class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
+							aria-label="Project options"
+						>
+							<MoreVertical class="w-5 h-5 text-muted-foreground" />
+						</button>
+					</div>
+				</div>
+
+				<!-- Next Step Display - Matches project page -->
+				<div
+					class="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/20"
+				>
+					<div
+						class="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
+					>
+						<Zap class="w-4 h-4 text-accent" />
+					</div>
+					<div>
+						<p class="text-[10px] uppercase tracking-wider text-accent font-medium">
+							Next Step
+						</p>
+						<p class="text-sm text-foreground">{project.next_step_short}</p>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<!-- Main Content - Matches project page 2-column layout -->
+		<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
+			<div
+				class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-2 sm:gap-4 lg:gap-6"
+			>
 				<!-- Left Column: Main Content -->
-				<div class="lg:col-span-2 space-y-6">
+				<div class="min-w-0 space-y-2 sm:space-y-4">
 					<!-- ============================================ -->
 					<!-- AI SUGGESTION - Uses BLOOM texture           -->
 					<!-- This is AI-generated, needs differentiation  -->
 					<!-- ============================================ -->
 					<div
-						class="relative overflow-hidden rounded-xl border border-dashed border-accent/40 bg-accent/5 p-4"
+						class="relative overflow-hidden rounded-xl border border-dashed border-accent/40 bg-accent/5 p-4 tx tx-bloom tx-weak"
 					>
-						<!-- BLOOM texture - signals "AI generated" -->
-						<div
-							class="absolute inset-0 pointer-events-none opacity-[0.15]"
-							style="background-image: url('/textures/little-pluses.png'); background-repeat: repeat;"
-						></div>
-
 						<div class="relative z-10 flex items-start gap-3">
 							<div
 								class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
@@ -201,9 +249,9 @@
 								</p>
 								<div class="flex gap-2 mt-3">
 									<button
-										class="px-3 py-1.5 text-xs font-medium bg-accent text-accent-foreground rounded-lg pressable"
+										class="px-3 py-1.5 text-xs font-medium bg-accent text-accent-foreground rounded-lg tx-button pressable"
 									>
-										Yes, help me
+										<span>Yes, help me</span>
 									</button>
 									<button
 										class="px-3 py-1.5 text-xs font-medium border border-border rounded-lg hover:bg-muted transition-colors"
@@ -220,14 +268,8 @@
 					<!-- Time-critical, needs to grab attention       -->
 					<!-- ============================================ -->
 					<div
-						class="relative overflow-hidden rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-4"
+						class="relative overflow-hidden rounded-xl border-2 border-amber-500/50 bg-amber-500/5 p-4 tx tx-pulse tx-med"
 					>
-						<!-- PULSE texture - signals urgency -->
-						<div
-							class="absolute inset-0 pointer-events-none opacity-[0.2]"
-							style="background-image: url('/textures/grilled-noise.png'); background-repeat: repeat;"
-						></div>
-
 						<div class="relative z-10 flex items-center gap-3">
 							<div
 								class="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0"
@@ -248,86 +290,103 @@
 								</p>
 							</div>
 							<button
-								class="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg pressable"
+								class="px-4 py-2 text-sm font-medium bg-amber-500 text-white rounded-lg tx-button pressable"
 							>
-								Start Now
+								<span>Start Now</span>
 							</button>
 						</div>
 					</div>
 
 					<!-- ============================================ -->
-					<!-- TASKS SECTION - CLEAN (normal content)       -->
-					<!-- Tasks are user content, no special texture   -->
+					<!-- DOCUMENTS SECTION - Collapsible              -->
+					<!-- NO texture on containers, clean headers      -->
 					<!-- ============================================ -->
 					<section
-						class="bg-card border border-border rounded-xl shadow-ink overflow-hidden"
+						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink overflow-hidden"
 					>
-						<!-- Section Header -->
 						<div
-							role="button"
-							tabindex="0"
-							onclick={() => toggleSection('tasks')}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									toggleSection('tasks');
-								}
-							}}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
+							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
 						>
-							<div class="flex items-center gap-3">
+							<button
+								onclick={() => (documentsExpanded = !documentsExpanded)}
+								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
+							>
 								<div
-									class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
 								>
-									<ListChecks class="w-4 h-4 text-accent" />
+									<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 								</div>
-								<div class="text-left">
-									<h2 class="text-sm font-semibold text-foreground">Tasks</h2>
-									<p class="text-xs text-muted-foreground">
-										{tasks.length} items
+								<div>
+									<p class="text-xs sm:text-sm font-semibold text-foreground">
+										Documents
+									</p>
+									<p class="text-[10px] sm:text-xs text-muted-foreground">
+										{documents.length}
+										{documents.length === 1 ? 'document' : 'documents'}
 									</p>
 								</div>
-							</div>
-							<div class="flex items-center gap-2">
+							</button>
+							<div class="flex items-center gap-1 sm:gap-2">
 								<button
-									onclick={(e) => {
-										e.stopPropagation();
+									onclick={() => {
 										showCreateModal = true;
 									}}
-									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+									aria-label="Add document"
 								>
-									<Plus class="w-4 h-4 text-muted-foreground" />
+									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
 								</button>
-								<ChevronDown
-									class="w-4 h-4 text-muted-foreground transition-transform {expandedSections.tasks
-										? ''
-										: '-rotate-90'}"
-								/>
+								<button
+									onclick={() => (documentsExpanded = !documentsExpanded)}
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+									aria-label={documentsExpanded
+										? 'Collapse documents'
+										: 'Expand documents'}
+								>
+									<ChevronDown
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {documentsExpanded
+											? 'rotate-180'
+											: ''}"
+									/>
+								</button>
 							</div>
 						</div>
 
-						<!-- Task List -->
-						{#if expandedSections.tasks}
-							<div class="border-t border-border">
-								<ul class="divide-y divide-border">
-									{#each tasks as task}
-										{@const style = getStatusStyle(task.status)}
+						{#if documentsExpanded}
+							<div
+								class="border-t border-border"
+								transition:slide={{ duration: 120 }}
+							>
+								<ul class="divide-y divide-border/80">
+									{#each documents as doc}
 										<li>
 											<button
-												class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+												type="button"
+												class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<svelte:component
-													this={style.icon}
-													class="w-4 h-4 {style.color} shrink-0"
-												/>
-												<span
-													class="flex-1 text-sm text-foreground truncate"
-													>{task.title}</span
+												<div
+													class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0"
 												>
+													<FileText
+														class="w-3 h-3 sm:w-4 sm:h-4 text-accent"
+													/>
+												</div>
+												<div class="min-w-0 flex-1">
+													<p
+														class="text-xs sm:text-sm text-foreground truncate"
+													>
+														{doc.title}
+													</p>
+													<p
+														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block capitalize"
+													>
+														{doc.type_key}
+													</p>
+												</div>
 												<span
-													class="text-xs text-muted-foreground capitalize px-2 py-0.5 rounded bg-muted"
+													class="flex-shrink-0 text-[9px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-card border border-border capitalize"
 												>
-													{task.priority}
+													{getStateLabel(doc.state_key)}
 												</span>
 											</button>
 										</li>
@@ -342,14 +401,8 @@
 					<!-- Something is wrong, needs attention          -->
 					<!-- ============================================ -->
 					<div
-						class="relative overflow-hidden rounded-xl border border-destructive/30 bg-destructive/5 p-4"
+						class="relative overflow-hidden rounded-xl border border-destructive/30 bg-destructive/5 p-4 tx tx-static tx-weak"
 					>
-						<!-- STATIC texture - signals disruption/error -->
-						<div
-							class="absolute inset-0 pointer-events-none opacity-[0.2]"
-							style="background-image: url('/textures/noisy.png'); background-repeat: repeat;"
-						></div>
-
 						<div class="relative z-10 flex items-start gap-3">
 							<AlertTriangle class="w-5 h-5 text-destructive shrink-0 mt-0.5" />
 							<div>
@@ -362,9 +415,9 @@
 								</p>
 								<div class="flex gap-2 mt-3">
 									<button
-										class="px-3 py-1.5 text-xs font-medium bg-destructive text-destructive-foreground rounded-lg pressable"
+										class="px-3 py-1.5 text-xs font-medium bg-destructive text-destructive-foreground rounded-lg tx-button pressable"
 									>
-										Retry
+										<span>Retry</span>
 									</button>
 									<button
 										class="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -377,144 +430,443 @@
 					</div>
 
 					<!-- ============================================ -->
-					<!-- DOCUMENTS - CLEAN (normal content)           -->
-					<!-- Documents are user content, no texture       -->
+					<!-- TEXTURE REFERENCE CARD                       -->
+					<!-- Shows semantic texture mapping               -->
 					<!-- ============================================ -->
-					<section
-						class="bg-card border border-border rounded-xl shadow-ink overflow-hidden"
-					>
-						<!-- Section Header -->
-						<div class="flex items-center justify-between gap-3 px-4 py-3">
-							<div
-								role="button"
-								tabindex="0"
-								onclick={() => toggleSection('documents')}
-								onkeydown={(e) => {
-									if (e.key === 'Enter' || e.key === ' ') {
-										e.preventDefault();
-										toggleSection('documents');
-									}
-								}}
-								class="flex items-center gap-3 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
-							>
-								<div
-									class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
-								>
-									<FileText class="w-4 h-4 text-accent" />
-								</div>
-								<div class="text-left">
-									<h2 class="text-sm font-semibold text-foreground">Documents</h2>
-									<p class="text-xs text-muted-foreground">
-										{documents.length} files
-									</p>
+					<div class="bg-card border border-border rounded-xl shadow-ink p-4 sm:p-6">
+						<h3
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-4"
+						>
+							Texture Semantic Reference
+						</h3>
+						<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+							<div class="flex items-start gap-2">
+								<Sparkles class="w-4 h-4 text-accent mt-0.5 shrink-0" />
+								<div>
+									<span class="text-sm font-medium text-foreground">BLOOM</span>
+									<span class="block text-xs text-muted-foreground"
+										>AI suggestions, generated content</span
+									>
 								</div>
 							</div>
-							<div class="flex items-center gap-2">
-								<button class="p-1.5 rounded-md hover:bg-muted transition-colors">
-									<Plus class="w-4 h-4 text-muted-foreground" />
+							<div class="flex items-start gap-2">
+								<Clock class="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+								<div>
+									<span class="text-sm font-medium text-foreground">PULSE</span>
+									<span class="block text-xs text-muted-foreground"
+										>Urgent deadlines, time pressure</span
+									>
+								</div>
+							</div>
+							<div class="flex items-start gap-2">
+								<AlertTriangle class="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+								<div>
+									<span class="text-sm font-medium text-foreground">STATIC</span>
+									<span class="block text-xs text-muted-foreground"
+										>Errors, warnings, blockers</span
+									>
+								</div>
+							</div>
+							<div class="flex items-start gap-2">
+								<div
+									class="w-4 h-4 rounded border border-border bg-muted mt-0.5 shrink-0 tx tx-grid tx-weak"
+								></div>
+								<div>
+									<span class="text-sm font-medium text-foreground">GRID</span>
+									<span class="block text-xs text-muted-foreground"
+										>Inputs, editable fields</span
+									>
+								</div>
+							</div>
+							<div class="flex items-start gap-2">
+								<div
+									class="w-4 h-4 rounded border border-border bg-accent mt-0.5 shrink-0 pressable"
+								></div>
+								<div>
+									<span class="text-sm font-medium text-foreground"
+										>PRESSABLE</span
+									>
+									<span class="block text-xs text-muted-foreground"
+										>45° diagonals on clickable items</span
+									>
+								</div>
+							</div>
+							<div class="flex items-start gap-2">
+								<div
+									class="w-4 h-4 rounded border border-border bg-accent mt-0.5 shrink-0 tx-button"
+								></div>
+								<div>
+									<span class="text-sm font-medium text-foreground">BUTTON</span>
+									<span class="block text-xs text-muted-foreground"
+										>Brushed metal for action buttons</span
+									>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Right Column: Insight Panels (matches project page sidebar) -->
+				<aside class="min-w-0 space-y-2 sm:space-y-3 lg:sticky lg:top-24">
+					<!-- Goals Panel - NO texture on containers, clean headers -->
+					<div
+						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink overflow-hidden"
+					>
+						<div
+							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+						>
+							<button
+								onclick={() => togglePanel('goals')}
+								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
+							>
+								<div
+									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-amber-500/10 flex items-center justify-center"
+								>
+									<Target class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
+								</div>
+								<div class="min-w-0">
+									<p class="text-xs sm:text-sm font-semibold text-foreground">
+										Goals
+										<span class="text-muted-foreground font-normal"
+											>({goals.length})</span
+										>
+									</p>
+									<p
+										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+									>
+										What success looks like
+									</p>
+								</div>
+							</button>
+							<div class="flex items-center gap-1 sm:gap-2">
+								<button
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+									aria-label="Add goal"
+								>
+									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
 								</button>
 								<button
-									onclick={() => toggleSection('documents')}
-									class="p-1.5 rounded-md hover:bg-muted transition-colors"
+									onclick={() => togglePanel('goals')}
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
 								>
 									<ChevronDown
-										class="w-4 h-4 text-muted-foreground transition-transform {expandedSections.documents
-											? ''
-											: '-rotate-90'}"
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.goals
+											? 'rotate-180'
+											: ''}"
 									/>
 								</button>
 							</div>
 						</div>
 
-						{#if expandedSections.documents}
-							<div class="border-t border-border">
-								<ul class="divide-y divide-border">
-									{#each documents as doc}
-										<li>
-											<button
-												class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
-											>
-												<FileText class="w-4 h-4 text-accent shrink-0" />
-												<span
-													class="flex-1 text-sm text-foreground truncate"
-													>{doc.title}</span
-												>
-												<span
-													class="text-xs text-muted-foreground capitalize"
-													>{doc.type}</span
-												>
-											</button>
-										</li>
-									{/each}
-								</ul>
-							</div>
-						{/if}
-					</section>
-				</div>
-
-				<!-- Right Column: Sidebar -->
-				<aside class="space-y-4">
-					<!-- ============================================ -->
-					<!-- GOALS - CLEAN (normal content)               -->
-					<!-- Goals are user content, no texture needed    -->
-					<!-- ============================================ -->
-					<section
-						class="bg-card border border-border rounded-xl shadow-ink overflow-hidden"
-					>
-						<!-- Section Header -->
-						<div
-							role="button"
-							tabindex="0"
-							onclick={() => toggleSection('goals')}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									toggleSection('goals');
-								}
-							}}
-							class="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
-						>
-							<div class="flex items-center gap-3">
-								<div
-									class="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center"
-								>
-									<Target class="w-4 h-4 text-amber-500" />
-								</div>
-								<div class="text-left">
-									<h2 class="text-sm font-semibold text-foreground">Goals</h2>
-									<p class="text-xs text-muted-foreground">
-										{goals.length} active
-									</p>
-								</div>
-							</div>
-							<ChevronDown
-								class="w-4 h-4 text-muted-foreground transition-transform {expandedSections.goals
-									? ''
-									: '-rotate-90'}"
-							/>
-						</div>
-
-						{#if expandedSections.goals}
-							<div class="border-t border-border">
-								<ul class="divide-y divide-border">
+						{#if expandedPanels.goals}
+							<div
+								class="border-t border-border"
+								transition:slide={{ duration: 120 }}
+							>
+								<ul class="divide-y divide-border/80">
 									{#each goals as goal}
 										<li>
 											<button
-												class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+												type="button"
+												class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<Target class="w-4 h-4 text-amber-500 shrink-0" />
-												<span class="text-sm text-foreground"
-													>{goal.name}</span
-												>
+												<Target
+													class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5"
+												/>
+												<div class="min-w-0">
+													<p
+														class="text-xs sm:text-sm text-foreground truncate"
+													>
+														{goal.name}
+													</p>
+													<p
+														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block capitalize"
+													>
+														{getStateLabel(goal.state_key)}
+													</p>
+												</div>
 											</button>
 										</li>
 									{/each}
 								</ul>
 							</div>
 						{/if}
-					</section>
+					</div>
 
-					<!-- Quick Actions - CLEAN buttons -->
+					<!-- Milestones Panel - NO texture on containers -->
+					<div
+						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink overflow-hidden"
+					>
+						<div
+							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+						>
+							<button
+								onclick={() => togglePanel('milestones')}
+								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
+							>
+								<div
+									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-emerald-500/10 flex items-center justify-center"
+								>
+									<Flag class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500" />
+								</div>
+								<div class="min-w-0">
+									<p class="text-xs sm:text-sm font-semibold text-foreground">
+										Milestones
+										<span class="text-muted-foreground font-normal"
+											>({milestones.length})</span
+										>
+									</p>
+									<p
+										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+									>
+										Checkpoints and dates
+									</p>
+								</div>
+							</button>
+							<div class="flex items-center gap-1 sm:gap-2">
+								<button
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+									aria-label="Add milestone"
+								>
+									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+								</button>
+								<button
+									onclick={() => togglePanel('milestones')}
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+								>
+									<ChevronDown
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.milestones
+											? 'rotate-180'
+											: ''}"
+									/>
+								</button>
+							</div>
+						</div>
+
+						{#if expandedPanels.milestones}
+							<div
+								class="border-t border-border"
+								transition:slide={{ duration: 120 }}
+							>
+								<ul class="divide-y divide-border/80">
+									{#each milestones as milestone}
+										<li>
+											<button
+												type="button"
+												class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
+											>
+												<Flag
+													class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-500 mt-0.5"
+												/>
+												<div class="min-w-0 flex-1">
+													<p
+														class="text-xs sm:text-sm text-foreground truncate"
+													>
+														{milestone.title}
+													</p>
+													<p
+														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+													>
+														Due: {milestone.due_at}
+													</p>
+												</div>
+											</button>
+										</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Tasks Panel - NO texture on containers -->
+					<div
+						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink overflow-hidden"
+					>
+						<div
+							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+						>
+							<button
+								onclick={() => togglePanel('tasks')}
+								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
+							>
+								<div
+									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
+								>
+									<ListChecks class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
+								</div>
+								<div class="min-w-0">
+									<p class="text-xs sm:text-sm font-semibold text-foreground">
+										Tasks
+										<span class="text-muted-foreground font-normal"
+											>({tasks.length})</span
+										>
+									</p>
+									<p
+										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+									>
+										What needs to move
+									</p>
+								</div>
+							</button>
+							<div class="flex items-center gap-1 sm:gap-2">
+								<button
+									onclick={() => (showCreateModal = true)}
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+									aria-label="Add task"
+								>
+									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+								</button>
+								<button
+									onclick={() => togglePanel('tasks')}
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+								>
+									<ChevronDown
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.tasks
+											? 'rotate-180'
+											: ''}"
+									/>
+								</button>
+							</div>
+						</div>
+
+						{#if expandedPanels.tasks}
+							<div
+								class="border-t border-border"
+								transition:slide={{ duration: 120 }}
+							>
+								<ul class="divide-y divide-border/80">
+									{#each tasks as task}
+										{@const visuals = getTaskVisuals(task.state_key)}
+										{@const TaskIcon = visuals.icon}
+										<li>
+											<button
+												type="button"
+												class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
+											>
+												<TaskIcon
+													class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 {visuals.color}"
+												/>
+												<div class="min-w-0 flex-1">
+													<p
+														class="text-xs sm:text-sm text-foreground truncate"
+													>
+														{task.title}
+													</p>
+													<p
+														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+													>
+														<span class="capitalize"
+															>{getStateLabel(task.state_key)}</span
+														>
+														<span class="mx-1 opacity-50">·</span>
+														<span class="capitalize"
+															>{task.priority}</span
+														>
+													</p>
+												</div>
+											</button>
+										</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Risks Panel - NO texture on containers -->
+					<div
+						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink overflow-hidden"
+					>
+						<div
+							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
+						>
+							<button
+								onclick={() => togglePanel('risks')}
+								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
+							>
+								<div
+									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-destructive/10 flex items-center justify-center"
+								>
+									<AlertTriangle
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive"
+									/>
+								</div>
+								<div class="min-w-0">
+									<p class="text-xs sm:text-sm font-semibold text-foreground">
+										Risks
+										<span class="text-muted-foreground font-normal"
+											>({risks.length})</span
+										>
+									</p>
+									<p
+										class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+									>
+										What could go wrong
+									</p>
+								</div>
+							</button>
+							<div class="flex items-center gap-1 sm:gap-2">
+								<button
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+									aria-label="Add risk"
+								>
+									<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+								</button>
+								<button
+									onclick={() => togglePanel('risks')}
+									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+								>
+									<ChevronDown
+										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.risks
+											? 'rotate-180'
+											: ''}"
+									/>
+								</button>
+							</div>
+						</div>
+
+						{#if expandedPanels.risks}
+							<div
+								class="border-t border-border"
+								transition:slide={{ duration: 120 }}
+							>
+								<ul class="divide-y divide-border/80">
+									{#each risks as risk}
+										<li>
+											<button
+												type="button"
+												class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
+											>
+												<AlertTriangle
+													class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5"
+												/>
+												<div class="min-w-0 flex-1">
+													<p
+														class="text-xs sm:text-sm text-foreground truncate"
+													>
+														{risk.title}
+													</p>
+													<p
+														class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+													>
+														<span class="capitalize"
+															>{risk.state_key?.replace(/_/g, ' ') ||
+																'identified'}</span
+														>
+														<span class="mx-1 opacity-50">·</span>
+														<span class="capitalize">{risk.impact}</span
+														>
+														impact
+													</p>
+												</div>
+											</button>
+										</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Quick Actions Card -->
 					<div class="bg-card border border-border rounded-xl shadow-ink p-4">
 						<h3
 							class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3"
@@ -524,10 +876,10 @@
 						<div class="space-y-2">
 							<button
 								onclick={() => (showCreateModal = true)}
-								class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium bg-accent text-accent-foreground rounded-lg pressable"
+								class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium bg-accent text-accent-foreground rounded-lg tx-button pressable"
 							>
 								<Plus class="w-4 h-4" />
-								New Task
+								<span>New Task</span>
 							</button>
 							<button
 								class="w-full flex items-center gap-3 px-3 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
@@ -543,56 +895,15 @@
 							</button>
 						</div>
 					</div>
-
-					<!-- Texture Philosophy Reference -->
-					<div class="p-4 rounded-xl bg-muted/50 border border-border">
-						<h3
-							class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3"
-						>
-							Texture Usage
-						</h3>
-						<div class="space-y-3 text-xs text-muted-foreground">
-							<div class="flex items-start gap-2">
-								<Sparkles class="w-3.5 h-3.5 text-accent mt-0.5 shrink-0" />
-								<div>
-									<span class="font-medium text-foreground">BLOOM</span>
-									<span class="block">AI suggestions, generated content</span>
-								</div>
-							</div>
-							<div class="flex items-start gap-2">
-								<Clock class="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-								<div>
-									<span class="font-medium text-foreground">PULSE</span>
-									<span class="block">Urgent deadlines, time pressure</span>
-								</div>
-							</div>
-							<div class="flex items-start gap-2">
-								<AlertTriangle
-									class="w-3.5 h-3.5 text-destructive mt-0.5 shrink-0"
-								/>
-								<div>
-									<span class="font-medium text-foreground">STATIC</span>
-									<span class="block">Errors, warnings, blockers</span>
-								</div>
-							</div>
-							<div class="pt-2 border-t border-border">
-								<p class="italic">
-									Everything else: <span class="text-foreground font-medium"
-										>CLEAN</span
-									>
-								</p>
-							</div>
-						</div>
-					</div>
 				</aside>
 			</div>
-		</div>
+		</main>
 	</div>
 </div>
 
 <!-- ============================================ -->
-<!-- CREATE TASK MODAL - CLEAN (functional UI)   -->
-<!-- Modals are functional, no texture needed    -->
+<!-- CREATE TASK MODAL - Uses GRID for inputs    -->
+<!-- Inputs show grid texture (graph paper feel) -->
 <!-- ============================================ -->
 {#if showCreateModal}
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -602,12 +913,14 @@
 			onclick={() => (showCreateModal = false)}
 		></button>
 
-		<!-- Modal - CLEAN design -->
+		<!-- Modal - Clean container, GRID texture for inputs -->
 		<div
 			class="relative w-full max-w-md bg-card border border-border rounded-xl shadow-ink-strong"
 		>
 			<!-- Header -->
-			<div class="flex items-center justify-between px-4 py-3 border-b border-border">
+			<div
+				class="relative z-10 flex items-center justify-between px-4 py-3 border-b border-border"
+			>
 				<h2 class="text-lg font-semibold text-foreground">Create Task</h2>
 				<button
 					onclick={() => (showCreateModal = false)}
@@ -617,50 +930,62 @@
 				</button>
 			</div>
 
-			<!-- Form - CLEAN inputs -->
-			<div class="p-4 space-y-4">
+			<!-- Form - GRID texture on inputs -->
+			<div class="relative z-10 p-4 space-y-4">
 				<div class="space-y-1.5">
 					<label class="text-xs font-medium text-muted-foreground">Title</label>
-					<input
-						type="text"
-						placeholder="What needs to be done?"
-						class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none transition-colors"
-					/>
+					<!-- Input with GRID texture - "you can write here" -->
+					<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+						<input
+							type="text"
+							placeholder="What needs to be done?"
+							class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none transition-colors"
+						/>
+					</div>
 				</div>
 
 				<div class="space-y-1.5">
 					<label class="text-xs font-medium text-muted-foreground">Description</label>
-					<textarea
-						placeholder="Add details..."
-						rows="3"
-						class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none resize-none transition-colors"
-					></textarea>
+					<!-- Textarea with GRID texture -->
+					<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+						<textarea
+							placeholder="Add details..."
+							rows="3"
+							class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none resize-none transition-colors"
+						></textarea>
+					</div>
 				</div>
 
 				<div class="grid grid-cols-2 gap-3">
 					<div class="space-y-1.5">
 						<label class="text-xs font-medium text-muted-foreground">Priority</label>
-						<select
-							class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner text-foreground outline-none"
-						>
-							<option>Low</option>
-							<option>Medium</option>
-							<option selected>High</option>
-						</select>
+						<!-- Select with GRID texture -->
+						<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+							<select
+								class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner text-foreground outline-none"
+							>
+								<option>Low</option>
+								<option>Medium</option>
+								<option selected>High</option>
+							</select>
+						</div>
 					</div>
 					<div class="space-y-1.5">
 						<label class="text-xs font-medium text-muted-foreground">Due Date</label>
-						<input
-							type="date"
-							class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner text-foreground outline-none"
-						/>
+						<!-- Date input with GRID texture -->
+						<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+							<input
+								type="date"
+								class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner text-foreground outline-none"
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
 
 			<!-- Footer -->
 			<div
-				class="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30 rounded-b-xl"
+				class="relative z-10 flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30 rounded-b-xl"
 			>
 				<button
 					onclick={() => (showCreateModal = false)}
@@ -670,9 +995,9 @@
 				</button>
 				<button
 					onclick={() => (showCreateModal = false)}
-					class="px-4 py-2 text-sm font-medium bg-accent text-accent-foreground rounded-lg pressable"
+					class="px-4 py-2 text-sm font-medium bg-accent text-accent-foreground rounded-lg tx-button pressable"
 				>
-					Create
+					<span>Create</span>
 				</button>
 			</div>
 		</div>
@@ -692,13 +1017,8 @@
 
 		<!-- Modal with STATIC texture (this IS a warning state) -->
 		<div
-			class="relative w-full max-w-sm bg-card border border-destructive/30 rounded-xl shadow-ink-strong overflow-hidden"
+			class="relative w-full max-w-sm bg-card border border-destructive/30 rounded-xl shadow-ink-strong tx tx-static tx-weak overflow-hidden"
 		>
-			<div
-				class="absolute inset-0 pointer-events-none opacity-[0.15]"
-				style="background-image: url('/textures/noisy.png'); background-repeat: repeat;"
-			></div>
-
 			<div class="relative z-10 p-4">
 				<div class="flex items-start gap-3">
 					<div
@@ -723,87 +1043,12 @@
 					</button>
 					<button
 						onclick={() => (showDeleteModal = false)}
-						class="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground rounded-lg pressable"
+						class="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground rounded-lg tx-button pressable"
 					>
-						Delete
+						<span>Delete</span>
 					</button>
 				</div>
 			</div>
 		</div>
 	</div>
 {/if}
-
-<style>
-	/* Dark mode support */
-	.dark {
-		color-scheme: dark;
-	}
-
-	.dark .bg-background {
-		background-color: hsl(240 10% 6%);
-	}
-
-	.dark .bg-card {
-		background-color: hsl(240 10% 10%);
-	}
-
-	.dark .bg-muted {
-		background-color: hsl(240 10% 14%);
-	}
-
-	.dark .text-foreground {
-		color: hsl(40 10% 92%);
-	}
-
-	.dark .text-muted-foreground {
-		color: hsl(40 5% 55%);
-	}
-
-	.dark .border-border {
-		border-color: hsl(240 10% 18%);
-	}
-
-	/* Pressable micro-interaction */
-	.pressable {
-		transition:
-			transform 0.1s ease,
-			box-shadow 0.1s ease;
-	}
-
-	.pressable:active {
-		transform: scale(0.98);
-	}
-
-	/* Shadow utilities */
-	.shadow-ink {
-		box-shadow:
-			0 1px 3px rgba(0, 0, 0, 0.08),
-			0 1px 2px rgba(0, 0, 0, 0.06);
-	}
-
-	.dark .shadow-ink {
-		box-shadow:
-			0 1px 3px rgba(0, 0, 0, 0.3),
-			0 1px 2px rgba(0, 0, 0, 0.2);
-	}
-
-	.shadow-ink-strong {
-		box-shadow:
-			0 10px 25px rgba(0, 0, 0, 0.15),
-			0 4px 10px rgba(0, 0, 0, 0.1);
-	}
-
-	.dark .shadow-ink-strong {
-		box-shadow:
-			0 10px 25px rgba(0, 0, 0, 0.5),
-			0 4px 10px rgba(0, 0, 0, 0.3);
-	}
-
-	.shadow-ink-inner {
-		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
-	}
-
-	.dark .shadow-ink-inner {
-		box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
-	}
-</style>

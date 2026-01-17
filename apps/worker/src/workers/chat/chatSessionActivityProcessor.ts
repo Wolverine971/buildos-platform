@@ -59,12 +59,7 @@ interface SessionChangeSummary {
 	activityLogs: ProjectLogInsert[];
 }
 
-interface GoalSummary {
-	id: string;
-	name: string;
-	type_key: string | null;
-	props: Record<string, unknown> | null;
-}
+type GoalSummary = NonNullable<NextStepGenerationContext['goals']>[number];
 
 interface TaskSummary {
 	id: string;
@@ -652,7 +647,9 @@ function buildNextStepPrompt(
 		parts.push('');
 	}
 
-	parts.push('Prioritize goal-aligned momentum from recent progress when selecting the next step.');
+	parts.push(
+		'Prioritize goal-aligned momentum from recent progress when selecting the next step.'
+	);
 	parts.push('Based on this context, generate the next step recommendation.');
 
 	return parts.join('\n');
@@ -738,9 +735,12 @@ function appendToMap(map: Map<string, string[]>, key: string, value: string): vo
 }
 
 function getGoalStateValue(goal: GoalSummary): string | null {
-	if (!goal.props) return null;
-	const state = (goal.props.state as string) || (goal.props.status as string);
-	return state && typeof state === 'string' ? state : null;
+	const props = goal.props;
+	if (props === null || props === undefined) return null;
+	if (typeof props !== 'object' || Array.isArray(props)) return null;
+	const propsRecord = props as Record<string, Json | undefined>;
+	const state = propsRecord.state ?? propsRecord.status;
+	return typeof state === 'string' ? state : null;
 }
 
 function getGoalState(goal: GoalSummary): string | null {

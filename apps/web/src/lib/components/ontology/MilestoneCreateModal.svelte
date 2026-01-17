@@ -3,18 +3,22 @@
 	Milestone Creation Modal Component
 
 	Creates milestones within the BuildOS ontology system.
-	Type is auto-classified after creation.
+	Milestones are always linked to a parent goal.
+
+	Flow:
+	1. Select which goal this milestone belongs to (or pre-selected via goalId prop)
+	2. Fill in milestone details
+	3. Create milestone with edge linking to goal
 
 	Documentation:
 	- Ontology System Overview: /apps/web/docs/features/ontology/README.md
 	- Data Models & Schema: /apps/web/docs/features/ontology/DATA_MODELS.md
-	- Implementation Guide: /apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md
+	- Milestones Under Goals Spec: /thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md
 	- Modal Component Guide: /apps/web/docs/technical/components/modals/QUICK_REFERENCE.md
 
 	Related Files:
 	- API Endpoint: /apps/web/src/routes/api/onto/milestones/create/+server.ts
 	- Base Modal: /apps/web/src/lib/components/ui/Modal.svelte
-	- Risk Creation: /apps/web/src/lib/components/ontology/RiskCreateModal.svelte
 -->
 <script lang="ts">
 	import {
@@ -22,12 +26,10 @@
 		Loader,
 		Flag,
 		Save,
-		Package,
-		CheckCircle2,
-		Milestone as MilestoneIcon,
+		Target,
 		Calendar,
-		Rocket,
-		Clock
+		Search,
+		CheckCircle2
 	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -41,60 +43,55 @@
 	import { parseDateFromInput } from '$lib/utils/date-utils';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
+	interface Goal {
+		id: string;
+		name: string;
+		state_key: string;
+		description?: string | null;
+	}
+
 	interface Props {
 		projectId: string;
+		goals: Goal[];
+		goalId?: string | null;
+		goalName?: string | null;
 		onClose: () => void;
 		onCreated?: (milestoneId: string) => void;
 	}
 
-	let { projectId, onClose, onCreated }: Props = $props();
+	let { projectId, goals, goalId = null, goalName = null, onClose, onCreated }: Props = $props();
 
-	// Milestone type definitions (built-in, not fetched from templates)
-	const MILESTONE_TYPES = [
-		{
-			type_key: 'milestone.delivery',
-			name: 'Delivery',
-			description: 'A key deliverable or artifact completion',
-			icon: Package,
-			category: 'Project'
-		},
-		{
-			type_key: 'milestone.phase_complete',
-			name: 'Phase Complete',
-			description: 'Marks the end of a project phase',
-			icon: CheckCircle2,
-			category: 'Project'
-		},
-		{
-			type_key: 'milestone.review',
-			name: 'Review Point',
-			description: 'Scheduled review or checkpoint',
-			icon: MilestoneIcon,
-			category: 'Project'
-		},
-		{
-			type_key: 'milestone.deadline',
-			name: 'Deadline',
-			description: 'Hard deadline that must be met',
-			icon: Clock,
-			category: 'Timeline'
-		},
-		{
-			type_key: 'milestone.release',
-			name: 'Release',
-			description: 'Software or product release',
-			icon: Rocket,
-			category: 'Timeline'
-		},
-		{
-			type_key: 'milestone.launch',
-			name: 'Launch',
-			description: 'Go-live or public launch date',
-			icon: Flag,
-			category: 'Timeline'
-		}
-	];
+	// When goalId is provided, skip goal selection
+	const hasGoalContext = $derived(Boolean(goalId));
 
+	// Current step: 'goal-selection' or 'form'
+	let currentStep = $state<'goal-selection' | 'form'>(hasGoalContext ? 'form' : 'goal-selection');
+
+	// Selected goal
+	let selectedGoalId = $state<string | null>(goalId);
+	let selectedGoalName = $state<string | null>(goalName);
+
+	// Search/filter for goals
+	let goalSearchQuery = $state('');
+
+	// Filter goals based on search and exclude terminal states
+	const filteredGoals = $derived.by(() => {
+		// Only show active goals (not achieved or abandoned)
+		const activeGoals = goals.filter(
+			(g) => g.state_key !== 'achieved' && g.state_key !== 'abandoned'
+		);
+
+		if (!goalSearchQuery.trim()) return activeGoals;
+
+		const query = goalSearchQuery.toLowerCase();
+		return activeGoals.filter(
+			(g) =>
+				g.name.toLowerCase().includes(query) ||
+				(g.description && g.description.toLowerCase().includes(query))
+		);
+	});
+
+	// State options for milestone
 	const STATE_OPTIONS = MILESTONE_STATES.map((state) => ({
 		value: state,
 		label:
@@ -117,8 +114,6 @@
 						: 'Deadline was not met'
 	}));
 
-	let selectedType = $state<(typeof MILESTONE_TYPES)[0] | null>(null);
-	let showTypeSelection = $state(false);
 	let isSaving = $state(false);
 	let error = $state('');
 	let slideDirection = $state<1 | -1>(1);
@@ -129,16 +124,6 @@
 	let milestoneDetails = $state('');
 	let dueAt = $state('');
 	let stateKey = $state('pending');
-
-	// Group milestone types by category
-	const typesByCategory = $derived(
-		MILESTONE_TYPES.reduce((acc: Record<string, typeof MILESTONE_TYPES>, type) => {
-			const category = type.category || 'General';
-			if (!acc[category]) acc[category] = [];
-			acc[category].push(type);
-			return acc;
-		}, {})
-	);
 
 	// Format date for the input (local date)
 	function getDefaultDate(): string {
@@ -157,26 +142,46 @@
 		}
 	});
 
-	function selectType(type: (typeof MILESTONE_TYPES)[0]) {
-		selectedType = type;
-		slideDirection = 1;
-		showTypeSelection = false;
+	// Get goal state color
+	function getGoalStateColor(state: string): string {
+		switch (state) {
+			case 'achieved':
+				return 'text-emerald-500';
+			case 'active':
+				return 'text-amber-500';
+			case 'abandoned':
+				return 'text-red-500';
+			default:
+				return 'text-muted-foreground';
+		}
 	}
 
-	function skipTypeSelection() {
-		selectedType = {
-			type_key: 'milestone.general',
-			name: 'General Milestone',
-			description: 'A general project milestone',
-			icon: Flag,
-			category: 'General'
-		};
+	function selectGoal(goal: Goal) {
+		selectedGoalId = goal.id;
+		selectedGoalName = goal.name;
 		slideDirection = 1;
-		showTypeSelection = false;
+		currentStep = 'form';
+	}
+
+	function handleBack() {
+		slideDirection = -1;
+		currentStep = 'goal-selection';
+		// Reset form
+		title = '';
+		description = '';
+		milestoneDetails = '';
+		dueAt = getDefaultDate();
+		stateKey = 'pending';
+		error = '';
 	}
 
 	async function handleSubmit(e: Event): Promise<void> {
 		e.preventDefault();
+
+		if (!selectedGoalId) {
+			error = 'Please select a goal first';
+			return;
+		}
 
 		if (!title.trim()) {
 			error = 'Milestone title is required';
@@ -199,14 +204,15 @@
 				return;
 			}
 
-			const requestBody = {
+			const requestBody: Record<string, unknown> = {
 				project_id: projectId,
 				title: title.trim(),
 				milestone: milestoneDetails.trim() || null,
 				due_at: dueDateIso,
 				state_key: stateKey || 'pending',
 				description: description.trim() || null,
-				classification_source: 'create_modal'
+				classification_source: 'create_modal',
+				goal_id: selectedGoalId
 			};
 
 			const response = await fetch('/api/onto/milestones/create', {
@@ -242,19 +248,6 @@
 		}
 	}
 
-	function handleBack() {
-		slideDirection = -1;
-		showTypeSelection = true;
-		selectedType = null;
-		// Reset form
-		title = '';
-		description = '';
-		milestoneDetails = '';
-		dueAt = getDefaultDate();
-		stateKey = 'pending';
-		error = '';
-	}
-
 	function handleClose() {
 		onClose();
 	}
@@ -282,9 +275,15 @@
 					>
 						{title || 'New Milestone'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						Type will be auto-classified
-					</p>
+					{#if selectedGoalName}
+						<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+							For goal: <span class="text-foreground/80">{selectedGoalName}</span>
+						</p>
+					{:else}
+						<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+							Select a goal to add this milestone to
+						</p>
+					{/if}
 				</div>
 			</div>
 			<button
@@ -310,143 +309,170 @@
 		<div class="px-2 py-2 sm:px-6 sm:py-4">
 			<!-- Horizontal Slide Animation Between Views -->
 			<div class="relative overflow-hidden" style="min-height: 380px;">
-				{#key showTypeSelection}
+				{#key currentStep}
 					<div
 						in:fly={{ x: slideDirection * 100, duration: 300, easing: cubicOut }}
 						out:fly={{ x: slideDirection * -100, duration: 300, easing: cubicOut }}
 						class="absolute inset-0 overflow-y-auto"
 					>
-						{#if showTypeSelection}
-							<!-- MILESTONE TYPE SELECTION VIEW -->
+						{#if currentStep === 'goal-selection'}
+							<!-- GOAL SELECTION VIEW -->
 							<div class="space-y-3 sm:space-y-4">
 								<!-- Header -->
 								<div class="flex items-center gap-3 pb-4 border-b border-border">
 									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-										<Flag class="w-5 h-5 text-amber-500" />
+										<Target class="w-5 h-5 text-amber-500" />
 									</div>
 									<div>
 										<h3 class="text-lg font-semibold text-foreground">
-											What Type of Milestone?
+											Select a Goal
 										</h3>
 										<p class="text-sm text-muted-foreground">
-											Select a category to help organize and track this
-											milestone
+											Milestones are checkpoints that help track progress
+											toward a goal
 										</p>
 									</div>
 								</div>
 
-								<div class="space-y-4 sm:space-y-6">
-									{#each Object.entries(typesByCategory) as [category, types]}
-										<div>
-											<h3
-												class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
+								<!-- Search -->
+								{#if goals.length > 5}
+									<div class="relative">
+										<Search
+											class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"
+										/>
+										<input
+											type="text"
+											bind:value={goalSearchQuery}
+											placeholder="Search goals..."
+											class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-border bg-background text-foreground
+												focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+										/>
+									</div>
+								{/if}
+
+								<!-- Goals List -->
+								<div class="space-y-2">
+									{#if filteredGoals.length === 0}
+										<div
+											class="p-6 text-center bg-muted/30 rounded-lg tx tx-bloom tx-weak"
+										>
+											{#if goals.length === 0}
+												<Target
+													class="w-8 h-8 mx-auto mb-2 text-muted-foreground"
+												/>
+												<p class="text-sm text-muted-foreground">
+													No goals available
+												</p>
+												<p class="text-xs text-muted-foreground/70 mt-1">
+													Create a goal first to add milestones
+												</p>
+											{:else if goalSearchQuery}
+												<Search
+													class="w-8 h-8 mx-auto mb-2 text-muted-foreground"
+												/>
+												<p class="text-sm text-muted-foreground">
+													No goals match "{goalSearchQuery}"
+												</p>
+											{:else}
+												<CheckCircle2
+													class="w-8 h-8 mx-auto mb-2 text-emerald-500"
+												/>
+												<p class="text-sm text-muted-foreground">
+													All goals are completed or abandoned
+												</p>
+												<p class="text-xs text-muted-foreground/70 mt-1">
+													Create a new active goal to add milestones
+												</p>
+											{/if}
+										</div>
+									{:else}
+										{#each filteredGoals as goal (goal.id)}
+											<button
+												type="button"
+												onclick={() => selectGoal(goal)}
+												class="w-full bg-card border border-border p-3 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
 											>
-												<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"
-												></span>
-												{category}
-											</h3>
-											<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-												{#each types as type}
-													{@const TypeIcon = type.icon}
-													<button
-														type="button"
-														onclick={() => selectType(type)}
-														class="bg-card border border-border p-2.5 sm:p-4 rounded-lg text-left group hover:border-accent shadow-ink transition-all duration-200 pressable tx tx-frame tx-weak"
+												<div
+													class="flex items-center justify-between gap-3"
+												>
+													<div
+														class="flex items-center gap-3 min-w-0 flex-1"
 													>
 														<div
-															class="flex items-start justify-between mb-2"
+															class="p-2 rounded bg-muted shrink-0 group-hover:bg-accent/10 transition-colors"
 														>
-															<div class="flex items-center gap-2">
-																<TypeIcon
-																	class="w-4 h-4 text-accent"
-																/>
-																<h4
-																	class="font-semibold text-foreground group-hover:text-accent transition-colors"
-																>
-																	{type.name}
-																</h4>
-															</div>
-															<ChevronRight
-																class="w-5 h-5 text-muted-foreground group-hover:text-accent flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+															<Target
+																class="w-4 h-4 text-amber-500 group-hover:text-accent transition-colors"
 															/>
 														</div>
-														<p
-															class="text-sm text-muted-foreground line-clamp-2"
+														<div class="min-w-0 flex-1">
+															<h4
+																class="font-semibold text-foreground group-hover:text-accent transition-colors truncate"
+															>
+																{goal.name}
+															</h4>
+															{#if goal.description}
+																<p
+																	class="text-xs text-muted-foreground line-clamp-1 mt-0.5"
+																>
+																	{goal.description}
+																</p>
+															{/if}
+														</div>
+													</div>
+													<div class="flex items-center gap-2 shrink-0">
+														<span
+															class="text-xs capitalize {getGoalStateColor(
+																goal.state_key
+															)}"
 														>
-															{type.description}
-														</p>
-													</button>
-												{/each}
-											</div>
-										</div>
-									{/each}
-
-									<!-- Quick Add Option -->
-									<div class="pt-4 border-t border-border">
-										<button
-											type="button"
-											onclick={skipTypeSelection}
-											class="w-full bg-muted/50 border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-amber-500/50 transition-all duration-200"
-										>
-											<div class="flex items-center justify-between">
-												<div class="flex items-center gap-3">
-													<Flag class="w-5 h-5 text-muted-foreground" />
-													<div>
-														<h4 class="font-medium text-foreground">
-															General Milestone
-														</h4>
-														<p class="text-sm text-muted-foreground">
-															Skip categorization and create a general
-															milestone
-														</p>
+															{goal.state_key}
+														</span>
+														<ChevronRight
+															class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-transform group-hover:translate-x-0.5"
+														/>
 													</div>
 												</div>
-												<ChevronRight
-													class="w-5 h-5 text-muted-foreground"
-												/>
-											</div>
-										</button>
-									</div>
+											</button>
+										{/each}
+									{/if}
 								</div>
 							</div>
 						{:else}
 							<!-- MILESTONE DETAILS FORM -->
 							<form class="space-y-3 sm:space-y-4" onsubmit={handleSubmit}>
-								<!-- Selected Type Badge -->
-								{#if selectedType}
-									{@const SelectedTypeIcon = selectedType.icon}
+								<!-- Selected Goal Badge -->
+								{#if selectedGoalName}
 									<div
 										class="rounded-lg border border-border bg-muted/30 p-2.5 sm:p-4 tx tx-grain tx-weak"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3 flex-1 min-w-0">
 												<div class="p-2 rounded bg-card shadow-ink">
-													<SelectedTypeIcon
-														class="w-4 h-4 text-amber-500"
-													/>
+													<Target class="w-4 h-4 text-amber-500" />
 												</div>
 												<div class="flex-1 min-w-0">
-													<h4
-														class="text-sm font-semibold text-foreground"
-													>
-														{selectedType.name}
-													</h4>
-													<p
-														class="text-xs text-muted-foreground truncate"
-													>
-														{selectedType.description}
+													<p class="text-xs text-muted-foreground">
+														Goal
 													</p>
+													<h4
+														class="text-sm font-semibold text-foreground truncate"
+													>
+														{selectedGoalName}
+													</h4>
 												</div>
 											</div>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onclick={handleBack}
-												class="shrink-0"
-											>
-												Change
-											</Button>
+											{#if !hasGoalContext}
+												<Button
+													type="button"
+													variant="ghost"
+													size="sm"
+													onclick={handleBack}
+													class="shrink-0"
+												>
+													Change
+												</Button>
+											{/if}
 										</div>
 									</div>
 								{/if}
@@ -507,7 +533,7 @@
 									<Textarea
 										id="description"
 										bind:value={description}
-										placeholder="What does achieving this milestone mean for the project?"
+										placeholder="What does achieving this milestone mean for the goal?"
 										enterkeyhint="next"
 										rows={3}
 										disabled={isSaving}
@@ -570,7 +596,7 @@
 		<div
 			class="flex flex-row items-center justify-between gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
 		>
-			{#if showTypeSelection}
+			{#if currentStep === 'goal-selection'}
 				<div class="flex-1"></div>
 				<Button
 					type="button"
@@ -582,17 +608,21 @@
 					Cancel
 				</Button>
 			{:else}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onclick={handleBack}
-					disabled={isSaving}
-					class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
-				>
-					<span class="hidden sm:inline">&larr; Back</span>
-					<span class="sm:hidden">&larr;</span>
-				</Button>
+				{#if !hasGoalContext}
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={handleBack}
+						disabled={isSaving}
+						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+					>
+						<span class="hidden sm:inline">&larr; Back</span>
+						<span class="sm:hidden">&larr;</span>
+					</Button>
+				{:else}
+					<div></div>
+				{/if}
 				<div class="flex flex-row items-center gap-2">
 					<Button
 						type="button"
@@ -608,7 +638,7 @@
 						type="submit"
 						variant="primary"
 						size="sm"
-						disabled={isSaving || !title.trim() || !dueAt}
+						disabled={isSaving || !title.trim() || !dueAt || !selectedGoalId}
 						onclick={handleSubmit}
 						loading={isSaving}
 						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"

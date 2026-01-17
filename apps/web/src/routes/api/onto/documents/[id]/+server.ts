@@ -21,6 +21,10 @@ import {
 	assertEntityRefsInProject,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
+import {
+	createOrMergeDocumentVersion,
+	toDocumentSnapshot
+} from '$lib/services/ontology/versioning.service';
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
@@ -227,7 +231,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return accessResult.error;
 		}
 
-		const { document } = accessResult;
+		const { document, actorId } = accessResult;
 
 		const {
 			title,
@@ -334,6 +338,41 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
+		let version: { number: number; status: 'created' | 'merged' } | null = null;
+
+		try {
+			const versionResult = await createOrMergeDocumentVersion({
+				supabase: locals.supabase,
+				documentId,
+				actorId,
+				snapshot: toDocumentSnapshot(updatedDocument),
+				previousSnapshot: toDocumentSnapshot(document),
+				changeSource: getChangeSourceFromRequest(request)
+			});
+
+			if (versionResult.status !== 'skipped') {
+				version = {
+					number: versionResult.versionNumber,
+					status: versionResult.status
+				};
+			}
+		} catch (versionError) {
+			console.error('[Document API] Failed to create/merge document version:', versionError);
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: versionError,
+				endpoint: `/api/onto/documents/${documentId}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: document.project_id,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_version_create',
+				tableName: 'onto_document_versions',
+				metadata: { nonFatal: true }
+			});
+		}
+
 		const hasParentField = Object.prototype.hasOwnProperty.call(body, 'parent');
 		const hasParentsField = Object.prototype.hasOwnProperty.call(body, 'parents');
 		const hasConnectionsInput = Array.isArray(connections);
@@ -391,7 +430,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		return ApiResponse.success({ document: updatedDocument });
+		return ApiResponse.success({ document: updatedDocument, version });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

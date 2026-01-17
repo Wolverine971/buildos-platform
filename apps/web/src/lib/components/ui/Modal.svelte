@@ -442,7 +442,7 @@
 						{variantClasses.animation}
 						{animationComplete ? 'animation-complete' : ''}
 						modal-container
-						tx tx-frame tx-weak ink-frame"
+						ink-frame"
 					style="
 						transform: translateY({dragTranslateY}px) translateZ(0);
 						transition: {isDragging ? 'none' : 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'};
@@ -487,11 +487,11 @@
 							{/if}
 
 							{#if showCloseButton && !persistent}
-								<!-- Inkprint close button -->
+								<!-- Inkprint close button with brushed-alum texture -->
 								<button
 									type="button"
 									onclick={attemptClose}
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
+									class="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable tx-button hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
 									aria-label="Close dialog"
 								>
 									<X class="h-4 w-4" />

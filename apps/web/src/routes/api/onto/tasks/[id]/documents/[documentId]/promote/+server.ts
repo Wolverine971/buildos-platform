@@ -15,9 +15,15 @@ import {
 import { DOCUMENT_STATES } from '$lib/types/onto';
 import { normalizeDocumentStateInput } from '../../../../../shared/document-state';
 import { logOntologyApiError } from '../../../../../shared/error-logging';
+import { getChangeSourceFromRequest } from '$lib/services/async-activity-logger';
+import {
+	createOrMergeDocumentVersion,
+	toDocumentSnapshot
+} from '$lib/services/ontology/versioning.service';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	let projectId: string | undefined;
+	let version: { number: number; status: 'created' | 'merged' } | null = null;
 
 	try {
 		const session = await locals.safeGetSession();
@@ -46,6 +52,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const body = await request.json().catch(() => ({}));
 		const hasTargetState = Object.prototype.hasOwnProperty.call(body ?? {}, 'target_state');
 		const normalizedTargetState = normalizeDocumentStateInput(body?.target_state);
+		const changeSource = getChangeSourceFromRequest(request);
 
 		if (hasTargetState && !normalizedTargetState) {
 			return ApiResponse.badRequest(
@@ -126,6 +133,39 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			}
 
 			updatedDocument = patchedDoc;
+
+			try {
+				const versionResult = await createOrMergeDocumentVersion({
+					supabase,
+					documentId,
+					actorId,
+					snapshot: toDocumentSnapshot(updatedDocument),
+					previousSnapshot: toDocumentSnapshot(document),
+					changeSource
+				});
+
+				if (versionResult.status !== 'skipped') {
+					version = {
+						number: versionResult.versionNumber,
+						status: versionResult.status
+					};
+				}
+			} catch (versionError) {
+				console.error('[TaskDoc Promote] Failed to create document version:', versionError);
+				await logOntologyApiError({
+					supabase,
+					error: versionError,
+					endpoint: `/api/onto/tasks/${taskId}/documents/${documentId}/promote`,
+					method: 'POST',
+					userId: session.user.id,
+					projectId: project.id,
+					entityType: 'document',
+					entityId: documentId,
+					operation: 'task_document_promote_version',
+					tableName: 'onto_document_versions',
+					metadata: { nonFatal: true }
+				});
+			}
 		}
 
 		const mergedProps = mergeEdgeProps(edge.props ?? {}, {
@@ -166,7 +206,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				props: mergedProps
 			},
 			task,
-			project
+			project,
+			version
 		});
 	} catch (error) {
 		console.error('[TaskDoc Promote] Unexpected error:', error);

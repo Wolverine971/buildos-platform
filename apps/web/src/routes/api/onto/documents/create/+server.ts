@@ -13,6 +13,10 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import {
+	createOrMergeDocumentVersion,
+	toDocumentSnapshot
+} from '$lib/services/ontology/versioning.service';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import { normalizeDocumentStateInput } from '../../shared/document-state';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
@@ -195,6 +199,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.select('*')
 			.single();
 
+		let version: { number: number; status: 'created' | 'merged' } | null = null;
+
 		if (insertError) {
 			console.error('[Document API] Failed to create document:', insertError);
 			await logOntologyApiError({
@@ -210,6 +216,38 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				tableName: 'onto_documents'
 			});
 			return ApiResponse.databaseError(insertError);
+		}
+
+		try {
+			const versionResult = await createOrMergeDocumentVersion({
+				supabase,
+				documentId: document.id,
+				actorId,
+				snapshot: toDocumentSnapshot(document),
+				changeSource: getChangeSourceFromRequest(request)
+			});
+
+			if (versionResult.status !== 'skipped') {
+				version = {
+					number: versionResult.versionNumber,
+					status: versionResult.status
+				};
+			}
+		} catch (versionError) {
+			console.error('[Document API] Failed to create initial document version:', versionError);
+			await logOntologyApiError({
+				supabase,
+				error: versionError,
+				endpoint: '/api/onto/documents/create',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id as string,
+				entityType: 'document',
+				entityId: document?.id,
+				operation: 'document_version_create',
+				tableName: 'onto_document_versions',
+				metadata: { nonFatal: true }
+			});
 		}
 
 		const hasDocumentConnection = connectionList.some(
@@ -250,7 +288,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		return ApiResponse.success({ document });
+		return ApiResponse.success({ document, version });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

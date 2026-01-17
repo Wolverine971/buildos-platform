@@ -335,7 +335,12 @@ export class NextStepSeedingService {
 		let longStep: string;
 
 		const focusGoal =
-			this.pickGoalFromRecentTasks(recentCompletedTasks, taskToGoalIds, goalsById, activeGoals) ??
+			this.pickGoalFromRecentTasks(
+				recentCompletedTasks,
+				taskToGoalIds,
+				goalsById,
+				activeGoals
+			) ??
 			this.pickGoalByLinkedTasks(activeGoals, goalToTaskIds, tasksById) ??
 			activeGoals[0] ??
 			goals[0] ??
@@ -650,7 +655,10 @@ export class NextStepSeedingService {
 		return this.sortTasksByPriority(tasks);
 	}
 
-	private pickNextTask(goalTasks: TaskContext[], pendingTasks: TaskContext[]): TaskContext | null {
+	private pickNextTask(
+		goalTasks: TaskContext[],
+		pendingTasks: TaskContext[]
+	): TaskContext | null {
 		if (goalTasks.length > 0) {
 			return this.sortTasksByPriority(goalTasks)[0] ?? null;
 		}

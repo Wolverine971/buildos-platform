@@ -3,9 +3,13 @@
 # TaskEditModal Linked Entities Feature Specification
 
 **Created**: December 5, 2025
-**Status**: Planning
+**Status**: ✅ COMPLETE (Superseded by LINKED_ENTITIES_COMPONENT.md)
 **Priority**: High
 **Category**: Feature Enhancement
+**Updated**: January 16, 2026
+
+> **Note**: This spec has been fully implemented as the `LinkedEntities` reusable component.
+> See **[LINKED_ENTITIES_COMPONENT.md](./LINKED_ENTITIES_COMPONENT.md)** for current documentation.
 
 ## Overview
 
@@ -697,3 +701,45 @@ export async function resolveLinkedEntities(
 - [Ontology System Overview](/apps/web/docs/features/ontology/README.md)
 - [Modal Design Patterns](/apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md)
 - [BuildOS Style Guide](/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md)
+
+---
+
+## Implementation Summary (Added January 16, 2026)
+
+This spec was fully implemented as the reusable `LinkedEntities` component system:
+
+### What Was Built
+
+- **LinkedEntities.svelte** - Main container component with skeleton loading
+- **LinkedEntitiesSection.svelte** - Collapsible section per entity type
+- **LinkedEntitiesItem.svelte** - Individual entity row with hover actions
+- **LinkPickerModal.svelte** - Multi-select modal for adding links
+- **linked-entities.types.ts** - TypeScript types and ALLOWED_LINKS constraints
+- **linked-entities.service.ts** - API service layer
+- **GET /api/onto/edges/linked** - Fetch linked entities endpoint
+- **GET /api/onto/edges/available** - Lazy-load available entities endpoint
+- **POST /api/onto/edges** - Create edges endpoint
+- **DELETE /api/onto/edges/[id]** - Delete edge endpoint
+
+### Key Improvements Over Original Spec
+
+1. **Reusable Component** - Works with any entity kind, not just tasks
+2. **ALLOWED_LINKS Constraints** - Enforces valid linking rules at UI level
+3. **Performance Optimizations** - Lazy loading of available entities
+4. **Event & Requirement Support** - Added missing entity types
+5. **Correct Relationship Mapping** - Fixed canonical edge directions
+
+### Entity Linking Rules (January 2026)
+
+| Source Kind | Can Link To                                        |
+| ----------- | -------------------------------------------------- |
+| task        | plan, goal, task, milestone, document, risk, event |
+| plan        | task, goal, milestone, document, risk              |
+| goal        | milestone, document, task, plan, risk, requirement |
+| milestone   | plan, task, goal, document, risk, requirement      |
+| document    | task, plan, goal, milestone, document, risk        |
+| risk        | task, plan, goal, milestone, document              |
+| event       | task (ONLY)                                        |
+| requirement | goal, milestone (ONLY)                             |
+
+See **[LINKED_ENTITIES_COMPONENT.md](./LINKED_ENTITIES_COMPONENT.md)** for complete documentation.

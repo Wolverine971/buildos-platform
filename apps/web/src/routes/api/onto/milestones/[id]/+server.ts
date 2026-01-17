@@ -130,7 +130,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		// Extract project data and include project name in response
-		const { project, ...milestoneData } = milestone;
+		const { project, type_key: _typeKey, ...milestoneData } = milestone;
 
 		return ApiResponse.success({
 			milestone: { ...milestoneData, project: { name: project.name } }
@@ -443,7 +443,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		return ApiResponse.success({ milestone: updatedMilestone });
+		const { type_key: _typeKey, ...milestonePayload } = updatedMilestone;
+		return ApiResponse.success({ milestone: milestonePayload });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);
@@ -557,7 +558,6 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		const projectId = milestone.project_id;
 		const milestoneDataForLog = {
 			title: milestone.title,
-			type_key: milestone.type_key,
 			due_at: milestone.due_at
 		};
 

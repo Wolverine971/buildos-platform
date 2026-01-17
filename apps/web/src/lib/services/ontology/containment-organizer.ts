@@ -92,10 +92,7 @@ export function resolveContainmentRel(
 		['project', 'goal', 'milestone', 'plan', 'task'].includes(parentKind)
 	)
 		return 'has_risk';
-	if (
-		childKind === 'requirement' &&
-		['project', 'goal', 'milestone'].includes(parentKind)
-	)
+	if (childKind === 'requirement' && ['project', 'goal', 'milestone'].includes(parentKind))
 		return 'has_requirement';
 	if (
 		childKind === 'metric' &&
