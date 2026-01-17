@@ -147,9 +147,7 @@
 
 	<!-- Content -->
 	<div class="min-w-0 flex-1">
-		<p
-			class="text-[10px] truncate {stateVisuals.textColor} {stateVisuals.textDecoration}"
-		>
+		<p class="text-[10px] truncate {stateVisuals.textColor} {stateVisuals.textDecoration}">
 			{milestone.title}
 		</p>
 	</div>

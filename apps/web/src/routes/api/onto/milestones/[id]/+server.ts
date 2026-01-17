@@ -451,12 +451,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		const { type_key: _typeKey, ...milestonePayload } = withComputedMilestoneState(
-			updatedMilestone
-		);
+		const { type_key: _typeKey, ...milestonePayload } =
+			withComputedMilestoneState(updatedMilestone);
 
 		const goalFromInput = hasContainmentInput
-			? connectionList.find((connection) => connection.kind === 'goal')?.id ?? null
+			? (connectionList.find((connection) => connection.kind === 'goal')?.id ?? null)
 			: undefined;
 
 		const responseMilestone =

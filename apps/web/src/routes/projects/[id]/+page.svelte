@@ -633,7 +633,8 @@
 		milestones: {
 			showCompleted: milestones.filter((m) => resolveMilestoneState(m).state === 'completed')
 				.length,
-			showMissed: milestones.filter((m) => resolveMilestoneState(m).state === 'missed').length,
+			showMissed: milestones.filter((m) => resolveMilestoneState(m).state === 'missed')
+				.length,
 			showDeleted: milestones.filter(
 				(m) => (m as unknown as Record<string, unknown>).deleted_at
 			).length

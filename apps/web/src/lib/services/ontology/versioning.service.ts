@@ -72,7 +72,10 @@ function hashSnapshot(snapshot: DocumentSnapshot): string {
 	return createHash('sha256').update(JSON.stringify(snapshot)).digest('hex');
 }
 
-function buildWindow(start: string | undefined, end: string): { started_at: string; ended_at: string } {
+function buildWindow(
+	start: string | undefined,
+	end: string
+): { started_at: string; ended_at: string } {
 	return {
 		started_at: start ?? end,
 		ended_at: end

@@ -234,7 +234,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				};
 			}
 		} catch (versionError) {
-			console.error('[Document API] Failed to create initial document version:', versionError);
+			console.error(
+				'[Document API] Failed to create initial document version:',
+				versionError
+			);
 			await logOntologyApiError({
 				supabase,
 				error: versionError,

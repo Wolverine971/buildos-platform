@@ -153,7 +153,7 @@
 	});
 </script>
 
-<div class="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+<div class="min-h-screen bg-background rounded-md sm:px-6 py-6">
 	<!-- Header -->
 	<div class="flex items-center gap-3 pb-2 border-b border-border">
 		<div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">

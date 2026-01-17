@@ -485,7 +485,9 @@
 									label="Due Date (optional)"
 									labelFor="due_at"
 									required={false}
-									error={error && error.toLowerCase().includes('date') ? error : ''}
+									error={error && error.toLowerCase().includes('date')
+										? error
+										: ''}
 								>
 									<div class="relative">
 										<Calendar

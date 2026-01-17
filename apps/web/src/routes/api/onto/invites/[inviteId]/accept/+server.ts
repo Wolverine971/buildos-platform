@@ -67,7 +67,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				})
 				.then(({ error: logError }) => {
 					if (logError) {
-						console.warn('[Invite Accept API] Failed to log invite acceptance:', logError);
+						console.warn(
+							'[Invite Accept API] Failed to log invite acceptance:',
+							logError
+						);
 					}
 				});
 
@@ -152,7 +155,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 						);
 					}
 				} else if (eventError) {
-					console.warn('[Invite Accept API] Failed to create notification event:', eventError);
+					console.warn(
+						'[Invite Accept API] Failed to create notification event:',
+						eventError
+					);
 				}
 			}
 		}

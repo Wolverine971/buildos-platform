@@ -14,7 +14,14 @@
 	- onClose: Callback when drawer is closed
 -->
 <script lang="ts">
-	import { X, LoaderCircle, AlertCircle, GitCompare, ArrowRight, ToggleLeft } from 'lucide-svelte';
+	import {
+		X,
+		LoaderCircle,
+		AlertCircle,
+		GitCompare,
+		ArrowRight,
+		ToggleLeft
+	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import DiffView from '$lib/components/ui/DiffView.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -262,7 +269,9 @@
 			class="flex-shrink-0 bg-muted/50 border-b border-border px-4 py-3 flex items-center justify-between gap-2"
 		>
 			<div class="flex items-center gap-3 min-w-0">
-				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent">
+				<div
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent"
+				>
 					<GitCompare class="w-5 h-5" />
 				</div>
 				<div class="min-w-0">
@@ -307,9 +316,12 @@
 				<!-- Mode toggle -->
 				<div class="flex items-center justify-between mb-4 pb-3 border-b border-border">
 					<div class="flex items-center gap-2 text-sm">
-						<span class="font-medium text-rose-600 dark:text-rose-400">{fromLabel}</span>
+						<span class="font-medium text-rose-600 dark:text-rose-400">{fromLabel}</span
+						>
 						<ArrowRight class="w-4 h-4 text-muted-foreground" />
-						<span class="font-medium text-emerald-600 dark:text-emerald-400">{toLabel}</span>
+						<span class="font-medium text-emerald-600 dark:text-emerald-400"
+							>{toLabel}</span
+						>
 					</div>
 					{#if versionNumber > 1 && currentDocument}
 						<Button
@@ -319,7 +331,9 @@
 							class="text-xs"
 						>
 							<ToggleLeft class="w-4 h-4 mr-1" />
-							{activeCompareMode === 'previous' ? 'Compare to Current' : 'Compare to Previous'}
+							{activeCompareMode === 'previous'
+								? 'Compare to Current'
+								: 'Compare to Previous'}
 						</Button>
 					{/if}
 				</div>
@@ -328,31 +342,43 @@
 				{#if selectedVersion}
 					<div class="grid grid-cols-2 gap-4 mb-4 text-xs">
 						<!-- From version info -->
-						<div class="p-3 rounded-lg bg-rose-50/50 dark:bg-rose-900/10 border border-rose-200/50 dark:border-rose-800/50">
+						<div
+							class="p-3 rounded-lg bg-rose-50/50 dark:bg-rose-900/10 border border-rose-200/50 dark:border-rose-800/50"
+						>
 							<p class="font-medium text-rose-600 dark:text-rose-400 mb-1">
 								{fromLabel}
 							</p>
 							{#if activeCompareMode === 'previous' && compareVersion}
 								<p class="text-muted-foreground">
 									{compareVersion.created_by_name || 'Unknown'} ·
-									{formatDate(compareVersion.window?.ended_at || compareVersion.created_at)}
+									{formatDate(
+										compareVersion.window?.ended_at || compareVersion.created_at
+									)}
 								</p>
 							{:else if activeCompareMode === 'current'}
 								<p class="text-muted-foreground">
 									{selectedVersion.created_by_name || 'Unknown'} ·
-									{formatDate(selectedVersion.window?.ended_at || selectedVersion.created_at)}
+									{formatDate(
+										selectedVersion.window?.ended_at ||
+											selectedVersion.created_at
+									)}
 								</p>
 							{/if}
 						</div>
 						<!-- To version info -->
-						<div class="p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/50">
+						<div
+							class="p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/50"
+						>
 							<p class="font-medium text-emerald-600 dark:text-emerald-400 mb-1">
 								{toLabel}
 							</p>
 							{#if activeCompareMode === 'previous'}
 								<p class="text-muted-foreground">
 									{selectedVersion.created_by_name || 'Unknown'} ·
-									{formatDate(selectedVersion.window?.ended_at || selectedVersion.created_at)}
+									{formatDate(
+										selectedVersion.window?.ended_at ||
+											selectedVersion.created_at
+									)}
 								</p>
 							{:else}
 								<p class="text-muted-foreground">Current state</p>
@@ -368,10 +394,10 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30">
-			<Button variant="secondary" size="sm" onclick={handleClose}>
-				Close
-			</Button>
+		<div
+			class="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30"
+		>
+			<Button variant="secondary" size="sm" onclick={handleClose}>Close</Button>
 		</div>
 	{/snippet}
 </Modal>

@@ -285,7 +285,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					};
 				}
 			} catch (versionError) {
-				console.error('[TaskDoc API] Failed to create initial document version:', versionError);
+				console.error(
+					'[TaskDoc API] Failed to create initial document version:',
+					versionError
+				);
 				await logOntologyApiError({
 					supabase,
 					error: versionError,

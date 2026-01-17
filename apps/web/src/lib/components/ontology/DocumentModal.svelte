@@ -1112,7 +1112,7 @@
 			window: selectedVersionForRestore.window,
 			snapshot_hash: selectedVersionForRestore.snapshot_hash
 		}}
-		latestVersionNumber={latestVersionNumber}
+		{latestVersionNumber}
 		onClose={handleRestoreModalClose}
 		onRestored={handleVersionRestored}
 	/>

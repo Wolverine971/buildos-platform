@@ -587,11 +587,7 @@
 							</FormField>
 
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<FormField
-									label="Priority"
-									labelFor="priority"
-									required={true}
-								>
+								<FormField label="Priority" labelFor="priority" required={true}>
 									<Select
 										id="priority"
 										value={priority}
@@ -834,8 +830,8 @@
 									{:else}
 										<div class="space-y-2 mt-3">
 											<p class="text-sm text-muted-foreground">
-												Delete this series? Completed instances remain unless
-												you force delete.
+												Delete this series? Completed instances remain
+												unless you force delete.
 											</p>
 											<div class="flex flex-col gap-2">
 												<Button

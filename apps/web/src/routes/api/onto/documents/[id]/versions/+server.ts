@@ -103,7 +103,10 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		}
 
 		// Parse query parameters
-		const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10), 1), 100);
+		const limit = Math.min(
+			Math.max(parseInt(url.searchParams.get('limit') ?? '50', 10), 1),
+			100
+		);
 		const cursor = url.searchParams.get('cursor');
 		const userIdFilter = url.searchParams.get('user_id');
 		const fromDate = url.searchParams.get('from');
@@ -214,7 +217,10 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			versions: transformedVersions,
 			total: count ?? transformedVersions.length,
 			hasMore,
-			nextCursor: hasMore && versionList.length > 0 ? versionList[versionList.length - 1].number : null
+			nextCursor:
+				hasMore && versionList.length > 0
+					? versionList[versionList.length - 1].number
+					: null
 		};
 
 		return ApiResponse.success(response);

@@ -277,9 +277,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const goalIdForResponse =
 			connectionList.find((connection) => connection.kind === 'goal')?.id ?? null;
 
-		const { type_key: _typeKey, ...milestonePayload } = withComputedMilestoneState(
-			createdMilestone
-		);
+		const { type_key: _typeKey, ...milestonePayload } =
+			withComputedMilestoneState(createdMilestone);
 
 		return ApiResponse.created({
 			milestone: {

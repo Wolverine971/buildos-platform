@@ -430,7 +430,9 @@
 							<!-- Content -->
 							<div class="flex-1 min-w-0">
 								<div class="flex items-baseline justify-between gap-2">
-									<span class="text-xs text-foreground truncate flex items-center gap-1">
+									<span
+										class="text-xs text-foreground truncate flex items-center gap-1"
+									>
 										{#if version.created_by_name}
 											<User class="w-3 h-3 text-muted-foreground shrink-0" />
 											{version.created_by_name}
@@ -438,8 +440,12 @@
 											Unknown
 										{/if}
 									</span>
-									<span class="text-[10px] text-muted-foreground/70 shrink-0 tabular-nums">
-										{formatTimestamp(version.window?.ended_at || version.created_at)}
+									<span
+										class="text-[10px] text-muted-foreground/70 shrink-0 tabular-nums"
+									>
+										{formatTimestamp(
+											version.window?.ended_at || version.created_at
+										)}
 									</span>
 								</div>
 								<div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -465,7 +471,9 @@
 										</span>
 									{/if}
 									{#if windowLabel}
-										<span class="text-[10px] text-muted-foreground/50">{windowLabel}</span>
+										<span class="text-[10px] text-muted-foreground/50"
+											>{windowLabel}</span
+										>
 									{/if}
 								</div>
 							</div>
@@ -497,9 +505,14 @@
 			{#if selectedVersion}
 				<div class="px-3 py-2 border-t border-border bg-muted/20 space-y-2">
 					<div class="text-[10px] text-muted-foreground">
-						<span class="font-medium text-foreground">Version {selectedVersion.number}</span>
+						<span class="font-medium text-foreground"
+							>Version {selectedVersion.number}</span
+						>
 						{#if selectedVersion.snapshot_hash}
-							<span class="ml-1 font-mono text-muted-foreground/50" title="Snapshot hash">
+							<span
+								class="ml-1 font-mono text-muted-foreground/50"
+								title="Snapshot hash"
+							>
 								#{selectedVersion.snapshot_hash.slice(0, 8)}
 							</span>
 						{/if}

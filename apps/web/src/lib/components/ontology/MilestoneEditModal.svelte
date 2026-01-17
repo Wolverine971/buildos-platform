@@ -488,9 +488,7 @@
 										id="due_at"
 										bind:value={dueAt}
 										class="w-full pl-10 pr-3 py-2.5 rounded-lg border bg-background text-foreground
-											{error && error.toLowerCase().includes('date')
-												? 'border-destructive'
-												: 'border-border'}
+											{error && error.toLowerCase().includes('date') ? 'border-destructive' : 'border-border'}
 											focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500
 											disabled:opacity-50 disabled:cursor-not-allowed"
 										disabled={isSaving}

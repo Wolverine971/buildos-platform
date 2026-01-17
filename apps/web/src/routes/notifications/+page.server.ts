@@ -2,19 +2,18 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { Database } from '@buildos/shared-types';
 
-type NotificationDeliveryRow =
-	Database['public']['Tables']['notification_deliveries']['Row'] & {
-		notification_events?: {
-			id: string;
-			event_type: string;
-			event_source: string;
-			actor_user_id: string | null;
-			target_user_id: string | null;
-			payload: Record<string, unknown>;
-			created_at: string | null;
-			metadata?: Record<string, unknown> | null;
-		} | null;
-	};
+type NotificationDeliveryRow = Database['public']['Tables']['notification_deliveries']['Row'] & {
+	notification_events?: {
+		id: string;
+		event_type: string;
+		event_source: string;
+		actor_user_id: string | null;
+		target_user_id: string | null;
+		payload: Record<string, unknown>;
+		created_at: string | null;
+		metadata?: Record<string, unknown> | null;
+	} | null;
+};
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { user } = await locals.safeGetSession();

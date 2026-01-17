@@ -167,9 +167,7 @@
 			<div
 				class="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/50"
 			>
-				<AlertTriangle
-					class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
-				/>
+				<AlertTriangle class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
 				<div class="text-sm text-amber-800 dark:text-amber-200">
 					<p class="font-medium mb-1">This action will overwrite the current document.</p>
 					<p class="text-amber-700 dark:text-amber-300">
@@ -221,7 +219,9 @@
 					disabled={isRestoring}
 					class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent/50 disabled:opacity-50"
 				/>
-				<span class="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+				<span
+					class="text-sm text-muted-foreground group-hover:text-foreground transition-colors"
+				>
 					I understand this will overwrite the current document content with version
 					{version.number}
 				</span>
@@ -243,12 +243,7 @@
 		<div
 			class="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30"
 		>
-			<Button
-				variant="ghost"
-				size="sm"
-				onclick={handleClose}
-				disabled={isRestoring}
-			>
+			<Button variant="ghost" size="sm" onclick={handleClose} disabled={isRestoring}>
 				Cancel
 			</Button>
 			<Button

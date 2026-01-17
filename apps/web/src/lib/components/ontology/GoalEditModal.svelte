@@ -44,6 +44,7 @@
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
+	import GoalMilestonesSidebarSection from './GoalMilestonesSidebarSection.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
@@ -95,6 +96,14 @@
 	let showDocumentModal = $state(false);
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
+
+	// Milestone modal states
+	let showMilestoneCreateModal = $state(false);
+	let showMilestoneEditModal = $state(false);
+	let editingMilestoneId = $state<string | null>(null);
+
+	// Extract milestones from linkedEntities for the dedicated section
+	const milestones = $derived(linkedEntities?.milestones ?? []);
 
 	// Build focus for chat about this goal
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -293,6 +302,66 @@
 		hasChanges = true;
 		// Invalidate cached linked entities so component will refetch
 		linkedEntities = undefined;
+	}
+
+	// Milestone handlers
+	function handleAddMilestone() {
+		showMilestoneCreateModal = true;
+	}
+
+	function handleEditMilestone(milestoneId: string) {
+		editingMilestoneId = milestoneId;
+		showMilestoneEditModal = true;
+	}
+
+	async function handleToggleMilestoneComplete(milestoneId: string, currentState: string) {
+		const newState = currentState === 'completed' ? 'pending' : 'completed';
+		try {
+			const response = await fetch(`/api/onto/milestones/${milestoneId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ state_key: newState })
+			});
+
+			if (!response.ok) {
+				const result = await response.json();
+				throw new Error(result.error || 'Failed to update milestone');
+			}
+
+			// Refresh linked entities to show updated milestone
+			hasChanges = true;
+			loadGoal();
+		} catch (err) {
+			console.error('Error toggling milestone complete:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/milestones/${milestoneId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'milestone',
+				entityId: milestoneId,
+				operation: 'milestone_toggle_complete'
+			});
+		}
+	}
+
+	function handleMilestoneCreated() {
+		showMilestoneCreateModal = false;
+		hasChanges = true;
+		loadGoal();
+	}
+
+	function handleMilestoneUpdated() {
+		showMilestoneEditModal = false;
+		editingMilestoneId = null;
+		hasChanges = true;
+		loadGoal();
+	}
+
+	function handleMilestoneDeleted() {
+		showMilestoneEditModal = false;
+		editingMilestoneId = null;
+		hasChanges = true;
+		loadGoal();
 	}
 
 	// Chat about this goal handlers
@@ -548,6 +617,19 @@
 							onLinksChanged={handleLinksChanged}
 						/>
 
+						<!-- Milestones Section -->
+						<GoalMilestonesSidebarSection
+							{milestones}
+							{goalId}
+							goalName={name || goal?.name || 'Goal'}
+							goalState={stateKey}
+							{projectId}
+							canEdit={!isSaving && !isDeleting}
+							onAddMilestone={handleAddMilestone}
+							onEditMilestone={handleEditMilestone}
+							onToggleMilestoneComplete={handleToggleMilestoneComplete}
+						/>
+
 						<!-- Tags (from classification) -->
 						{#if goal?.props?.tags?.length}
 							<Card variant="elevated">
@@ -723,6 +805,42 @@
 		onSaved={closeLinkedEntityModals}
 		onDeleted={closeLinkedEntityModals}
 	/>
+{/if}
+
+<!-- Milestone Create Modal -->
+{#if showMilestoneCreateModal}
+	{#await import('./MilestoneCreateModal.svelte') then { default: MilestoneCreateModal }}
+		<MilestoneCreateModal
+			{projectId}
+			goals={[
+				{
+					id: goalId,
+					name: name || goal?.name || 'Goal',
+					state_key: stateKey,
+					description: description
+				}
+			]}
+			{goalId}
+			goalName={name || goal?.name || 'Goal'}
+			onClose={() => (showMilestoneCreateModal = false)}
+			onCreated={handleMilestoneCreated}
+		/>
+	{/await}
+{/if}
+
+<!-- Milestone Edit Modal -->
+{#if showMilestoneEditModal && editingMilestoneId}
+	{#await import('./MilestoneEditModal.svelte') then { default: MilestoneEditModal }}
+		<MilestoneEditModal
+			milestoneId={editingMilestoneId}
+			onClose={() => {
+				showMilestoneEditModal = false;
+				editingMilestoneId = null;
+			}}
+			onUpdated={handleMilestoneUpdated}
+			onDeleted={handleMilestoneDeleted}
+		/>
+	{/await}
 {/if}
 
 <!-- Chat About Modal (Lazy Loaded) -->

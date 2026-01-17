@@ -6,7 +6,10 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../../shared/error-logging';
-import type { DocumentSnapshot, DocumentVersionProps } from '$lib/services/ontology/versioning.service';
+import type {
+	DocumentSnapshot,
+	DocumentVersionProps
+} from '$lib/services/ontology/versioning.service';
 
 type Locals = App.Locals;
 
