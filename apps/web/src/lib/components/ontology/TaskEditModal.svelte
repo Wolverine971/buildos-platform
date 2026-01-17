@@ -996,12 +996,6 @@
 																					.title ||
 																					'Untitled Document'}
 																			</p>
-																			<p
-																				class="text-xs text-muted-foreground truncate mt-0.5"
-																			>
-																				{doc.document
-																					.type_key}
-																			</p>
 																			{#if timestamp}
 																				<p
 																					class="text-xs text-muted-foreground/70 mt-1"

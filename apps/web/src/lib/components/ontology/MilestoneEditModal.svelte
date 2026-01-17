@@ -33,7 +33,6 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
@@ -48,7 +47,6 @@
 	import DocumentModal from './DocumentModal.svelte';
 	import RiskEditModal from './RiskEditModal.svelte';
 	import { MILESTONE_STATES, type Milestone } from '$lib/types/onto';
-	import { MILESTONE_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import { formatDateForInput, parseDateFromInput } from '$lib/utils/date-utils';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
@@ -355,16 +353,6 @@
 		loadMilestone();
 	}
 
-	function getTypeLabel(typeKey: string): string {
-		if (!typeKey) return 'General';
-		const parts = typeKey.split('.');
-		const variant = parts[parts.length - 1] ?? typeKey;
-		return variant
-			.split('_')
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(' ');
-	}
-
 	function formatDueDate(dateStr: string): string {
 		const date = new Date(dateStr);
 		return date.toLocaleDateString(undefined, {
@@ -541,51 +529,26 @@
 								/>
 							</FormField>
 
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<FormField
-									label="State"
-									labelFor="state"
-									required={true}
-									hint="Current milestone status"
+							<FormField
+								label="State"
+								labelFor="state"
+								required={true}
+								hint="Current milestone status"
+							>
+								<Select
+									id="state"
+									bind:value={stateKey}
+									disabled={isSaving}
+									size="md"
+									placeholder="Select state"
 								>
-									<Select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select state"
-									>
-										{#each STATE_OPTIONS as opt}
-											<option value={opt.value}
-												>{opt.label} - {opt.description}</option
-											>
-										{/each}
-									</Select>
-								</FormField>
-
-								<FormField
-									label="Type"
-									labelFor="type-key"
-									hint="Milestone classification"
-								>
-									<Select
-										id="type-key"
-										bind:value={typeKey}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select type"
-									>
-										{#each MILESTONE_TYPE_KEYS as typeOption}
-											<option
-												value={typeOption.value}
-												title={typeOption.description}
-											>
-												{typeOption.label}
-											</option>
-										{/each}
-									</Select>
-								</FormField>
-							</div>
+									{#each STATE_OPTIONS as opt}
+										<option value={opt.value}
+											>{opt.label} - {opt.description}</option
+										>
+									{/each}
+								</Select>
+							</FormField>
 
 							{#if error}
 								<div
@@ -705,13 +668,6 @@
 							</CardHeader>
 							<CardBody padding="sm">
 								<div class="space-y-2 text-sm">
-									<div class="flex justify-between items-center">
-										<span class="text-muted-foreground">Type:</span>
-										<Badge variant="info" size="sm">
-											{getTypeLabel(milestone.type_key)}
-										</Badge>
-									</div>
-
 									<div class="flex justify-between items-center">
 										<span class="text-muted-foreground">State:</span>
 										{#if stateBadge}

@@ -31,7 +31,8 @@ export type EntityKind =
 	| 'risk'
 	| 'requirement'
 	| 'metric'
-	| 'source';
+	| 'source'
+	| 'event';
 
 /**
  * Valid relationship types
@@ -63,8 +64,8 @@ export const RELATIONSHIP_DIRECTIONS = {
 		srcKinds: ['project', 'goal', 'milestone', 'plan', 'task', 'risk']
 	},
 	has_requirement: {
-		description: 'Project, milestone, plan, or task contains requirement',
-		srcKinds: ['project', 'milestone', 'plan', 'task']
+		description: 'Project, goal, or milestone contains requirement',
+		srcKinds: ['project', 'goal', 'milestone']
 	},
 	has_source: { description: 'Project contains source', srcKinds: ['project'] },
 	has_context_document: {
@@ -72,6 +73,7 @@ export const RELATIONSHIP_DIRECTIONS = {
 		srcKinds: ['project']
 	},
 	has_part: { description: 'Document contains document part', srcKinds: ['document'] },
+	has_event: { description: 'Task has event', srcKinds: ['task'] },
 
 	// Goal relationships (task/plan → goal it supports)
 	supports_goal: { description: 'Task or plan supports goal', srcKinds: ['task', 'plan'] },
@@ -345,6 +347,7 @@ export function getRelationshipLabel(rel: RelationshipType, isSource: boolean): 
 		has_source: { asSource: 'Has source', asTarget: 'Source of' },
 		has_context_document: { asSource: 'Has context document', asTarget: 'Context document of' },
 		has_part: { asSource: 'Has part', asTarget: 'Part of' },
+		has_event: { asSource: 'Has event', asTarget: 'Event of' },
 		supports_goal: { asSource: 'Supports goal', asTarget: 'Supported by' },
 		achieved_by: { asSource: 'Achieved by', asTarget: 'Achieves' },
 		targets_milestone: { asSource: 'Targets milestone', asTarget: 'Targeted by' },

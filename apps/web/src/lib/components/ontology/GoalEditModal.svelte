@@ -32,14 +32,12 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import { GOAL_STATES } from '$lib/types/onto';
-	import { GOAL_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -498,61 +496,35 @@
 								/>
 							</FormField>
 
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<!-- Goal State -->
-								<FormField
-									label="State"
-									labelFor="state"
-									required={true}
-									hint="Current goal status"
+							<!-- Goal State -->
+							<FormField
+								label="State"
+								labelFor="state"
+								required={true}
+								hint="Current goal status"
+							>
+								<Select
+									id="state"
+									bind:value={stateKey}
+									disabled={isSaving}
+									size="md"
+									placeholder="Select state"
 								>
-									<Select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select state"
-									>
-										{#each GOAL_STATES as state}
-											<option value={state}>
-												{state === 'draft'
-													? 'Draft'
-													: state === 'active'
-														? 'Active'
-														: state === 'achieved'
-															? 'Achieved'
-															: state === 'abandoned'
-																? 'Abandoned'
-																: state}
-											</option>
-										{/each}
-									</Select>
-								</FormField>
-
-								<!-- Goal Type -->
-								<FormField
-									label="Type"
-									labelFor="type-key"
-									hint="Goal classification"
-								>
-									<Select
-										id="type-key"
-										bind:value={typeKey}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select type"
-									>
-										{#each GOAL_TYPE_KEYS as typeOption}
-											<option
-												value={typeOption.value}
-												title={typeOption.description}
-											>
-												{typeOption.label}
-											</option>
-										{/each}
-									</Select>
-								</FormField>
-							</div>
+									{#each GOAL_STATES as state}
+										<option value={state}>
+											{state === 'draft'
+												? 'Draft'
+												: state === 'active'
+													? 'Active'
+													: state === 'achieved'
+														? 'Achieved'
+														: state === 'abandoned'
+															? 'Abandoned'
+															: state}
+										</option>
+									{/each}
+								</Select>
+							</FormField>
 
 							{#if error}
 								<div
@@ -605,13 +577,6 @@
 							</CardHeader>
 							<CardBody padding="sm">
 								<div class="space-y-2 text-sm">
-									<div class="flex justify-between items-center">
-										<span class="text-muted-foreground">Type:</span>
-										<Badge variant="info" size="sm">
-											{goal.type_key || 'goal.outcome.project'}
-										</Badge>
-									</div>
-
 									<div class="flex justify-between gap-2">
 										<span class="text-muted-foreground shrink-0">ID:</span>
 										<span

@@ -483,7 +483,9 @@ export class AgentConversationService {
 		let responseData: ExecutorResponseData | null = null;
 
 		const normalizedContextType = normalizeContextType(session.contextType);
-		const projectId = normalizedContextType.startsWith('project') ? session.entityId : undefined;
+		const projectId = normalizedContextType.startsWith('project')
+			? session.entityId
+			: undefined;
 
 		// Stream from executor LLM
 		for await (const event of this.enhancedLLM.streamText({
@@ -715,7 +717,9 @@ export class AgentConversationService {
 		let tokensUsed = 0;
 
 		const normalizedContextType = normalizeContextType(session.contextType);
-		const projectId = normalizedContextType.startsWith('project') ? session.entityId : undefined;
+		const projectId = normalizedContextType.startsWith('project')
+			? session.entityId
+			: undefined;
 
 		// Stream from planner LLM
 		for await (const event of this.enhancedLLM.streamText({

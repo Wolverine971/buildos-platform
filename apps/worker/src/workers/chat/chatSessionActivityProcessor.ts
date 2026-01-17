@@ -59,6 +59,36 @@ interface SessionChangeSummary {
 	activityLogs: ProjectLogInsert[];
 }
 
+interface GoalSummary {
+	id: string;
+	name: string;
+	type_key: string | null;
+	props: Record<string, unknown> | null;
+}
+
+interface TaskSummary {
+	id: string;
+	title: string;
+	state_key: string;
+	completed_at: string | null;
+}
+
+interface EdgeSummary {
+	src_id: string;
+	src_kind: string;
+	dst_id: string;
+	dst_kind: string;
+	rel: string;
+}
+
+interface TaskGoalLink {
+	taskId: string;
+	goalId: string;
+	rel: string;
+}
+
+type RecentActivityEntry = NonNullable<NextStepGenerationContext['recentActivity']>[number];
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -99,21 +129,27 @@ const OPERATION_TO_ACTION: Record<string, 'created' | 'updated' | 'deleted'> = {
 /**
  * System prompt for next step generation
  */
-const NEXT_STEP_SYSTEM_PROMPT = `You are a project advisor helping users identify their next action. Based on the conversation and recent project activity, generate a clear, actionable next step.
+const NEXT_STEP_SYSTEM_PROMPT = `You are a project advisor helping users identify their next action. Use goals and recent progress to propose the most helpful next step.
+
+Priorities (in order):
+1. Anchor on active goals. The next step should directly advance a goal whenever possible.
+2. Use recent progress and recent session changes to infer momentum. Continue the same goal or phase if it makes sense.
+3. If recent work maps to a parent goal, propose the next task related to that goal.
+4. If no goals exist, choose the most impactful active or overdue task.
 
 Guidelines:
 1. The short version should be ONE clear sentence (max 100 chars) answering "What should I do next?"
 2. The long version should be 2-4 sentences (max 650 chars) explaining:
    - What to do and why
+   - The parent goal it supports when available
    - Any important context or considerations
-   - References to specific tasks/documents using the format [[type:id|name]]
-
+   - References to specific tasks/documents/goals using the format [[type:id|name]]
 3. Focus on momentum - what moves the project forward
 4. Be specific and actionable, not vague
-5. Consider what was just completed or discussed
+5. Prefer continuity with recent work unless there's a more urgent goal or blocker
 
 Entity reference format: [[type:id|display_name]]
-Valid types: task, document, goal, milestone, risk, plan
+Valid types: task, document, goal, milestone, risk, plan, user
 
 Example short: "Review the draft presentation and share feedback with the team."
 Example long: "The [[task:abc-123|draft presentation]] is ready for review. Focus on the key messaging in slides 3-5, then share your feedback with [[user:def-456|Sarah]] before the Friday deadline. Consider the [[document:ghi-789|brand guidelines]] for consistency."
@@ -368,6 +404,46 @@ async function generateNextSteps(
 		return null;
 	}
 
+	const [{ data: goals }, { data: recentCompletedTasks }, { data: recentActivity }] =
+		await Promise.all([
+			supabase
+				.from('onto_goals')
+				.select('id, name, type_key, props')
+				.eq('project_id', projectId)
+				.limit(10),
+			supabase
+				.from('onto_tasks')
+				.select('id, title, state_key, completed_at')
+				.eq('project_id', projectId)
+				.not('completed_at', 'is', null)
+				.order('completed_at', { ascending: false })
+				.limit(6),
+			supabase
+				.from('onto_project_logs')
+				.select('entity_type, entity_id, action, created_at, before_data, after_data')
+				.eq('project_id', projectId)
+				.order('created_at', { ascending: false })
+				.limit(8)
+		]);
+
+	const sessionTaskIds = new Set<string>();
+	for (const change of [
+		...changeSummary.created,
+		...changeSummary.updated,
+		...changeSummary.deleted
+	]) {
+		if (change.type === 'task') {
+			sessionTaskIds.add(change.id);
+		}
+	}
+
+	const taskIds = new Set<string>(sessionTaskIds);
+	for (const task of recentCompletedTasks ?? []) {
+		taskIds.add(task.id);
+	}
+
+	const taskGoalLinks = await fetchTaskGoalLinks(projectId, Array.from(taskIds));
+
 	// Get recent messages for context
 	const { data: messages } = await supabase
 		.from('chat_messages')
@@ -382,6 +458,10 @@ async function generateNextSteps(
 		projectName: project.name,
 		projectDescription: project.description ?? undefined,
 		templateType: project.type_key,
+		goals: (goals ?? []) as GoalSummary[],
+		recentCompletedTasks: (recentCompletedTasks ?? []) as TaskSummary[],
+		taskGoalLinks,
+		recentActivity: (recentActivity ?? []) as NextStepGenerationContext['recentActivity'],
 		sessionChanges: {
 			created: changeSummary.created,
 			updated: changeSummary.updated,
@@ -434,6 +514,13 @@ function buildNextStepPrompt(
 	messages: Array<{ role: string; content: string }>
 ): string {
 	const parts: string[] = [];
+	const goals = context.goals ?? [];
+	const recentCompletedTasks = context.recentCompletedTasks ?? [];
+	const recentActivity = context.recentActivity ?? [];
+	const taskGoalLinks = context.taskGoalLinks ?? [];
+	const { taskToGoalIds, goalToTaskIds } = buildTaskGoalMaps(taskGoalLinks);
+	const goalsById = new Map(goals.map((goal) => [goal.id, goal]));
+	const taskDisplayNames = new Map<string, string>();
 
 	// Project info
 	parts.push(`## Project: ${context.projectName}`);
@@ -441,6 +528,83 @@ function buildNextStepPrompt(
 		parts.push(`Description: ${context.projectDescription}`);
 	}
 	parts.push('');
+
+	for (const task of recentCompletedTasks) {
+		taskDisplayNames.set(task.id, task.title);
+	}
+
+	if (context.sessionChanges) {
+		const allSessionChanges = [
+			...context.sessionChanges.created,
+			...context.sessionChanges.updated,
+			...context.sessionChanges.deleted
+		];
+		for (const change of allSessionChanges) {
+			if (change.type === 'task' && !taskDisplayNames.has(change.id)) {
+				taskDisplayNames.set(change.id, change.name);
+			}
+		}
+	}
+
+	const recentTaskIds = new Set<string>(taskDisplayNames.keys());
+
+	// Goals first
+	if (goals.length > 0) {
+		parts.push('## Goals (Primary Focus)');
+		const activeGoals = goals.filter((goal) => !isCompletedGoal(goal));
+		const goalsToShow = activeGoals.length > 0 ? activeGoals : goals;
+		for (const goal of goalsToShow.slice(0, 5)) {
+			const goalRef = formatEntityReference('goal', goal.id, goal.name);
+			const goalState = getGoalState(goal);
+			parts.push(`- ${goalRef}${goalState ? ` (${goalState})` : ''}`);
+			const linkedTaskIds = goalToTaskIds.get(goal.id) ?? [];
+			const recentLinkedTasks = linkedTaskIds.filter((taskId) => recentTaskIds.has(taskId));
+			if (recentLinkedTasks.length > 0) {
+				const taskRefs = recentLinkedTasks
+					.slice(0, 3)
+					.map((taskId) =>
+						formatEntityReference(
+							'task',
+							taskId,
+							taskDisplayNames.get(taskId) ?? 'Task'
+						)
+					);
+				parts.push(`  Recent work: ${taskRefs.join(', ')}`);
+			}
+		}
+		parts.push('');
+	}
+
+	// Recent progress
+	if (recentCompletedTasks.length > 0 || recentActivity.length > 0) {
+		parts.push('## Recent Progress');
+		if (recentCompletedTasks.length > 0) {
+			parts.push('Completed:');
+			for (const task of recentCompletedTasks.slice(0, 5)) {
+				const taskRef = formatEntityReference('task', task.id, task.title);
+				const when = formatRelativeTime(task.completed_at);
+				const goalRefs = (taskToGoalIds.get(task.id) ?? [])
+					.map((goalId) => {
+						const goal = goalsById.get(goalId);
+						return goal ? formatEntityReference('goal', goal.id, goal.name) : null;
+					})
+					.filter((ref): ref is string => Boolean(ref));
+				const goalPart = goalRefs.length > 0 ? ` -> Goals: ${goalRefs.join(', ')}` : '';
+				const whenPart = when ? ` (${when})` : '';
+				parts.push(`- ${taskRef}${whenPart}${goalPart}`);
+			}
+		}
+		if (recentActivity.length > 0) {
+			parts.push('Activity:');
+			for (const log of recentActivity.slice(0, 5)) {
+				const line = formatActivityLogLine(log);
+				if (line) {
+					parts.push(`- ${line}`);
+				}
+			}
+		}
+		parts.push('');
+	}
 
 	// Recent changes
 	if (context.sessionChanges) {
@@ -488,9 +652,203 @@ function buildNextStepPrompt(
 		parts.push('');
 	}
 
+	parts.push('Prioritize goal-aligned momentum from recent progress when selecting the next step.');
 	parts.push('Based on this context, generate the next step recommendation.');
 
 	return parts.join('\n');
+}
+
+// =============================================================================
+// Prompt Helper Functions
+// =============================================================================
+
+const VALID_ENTITY_REFERENCE_TYPES = new Set([
+	'project',
+	'task',
+	'document',
+	'note',
+	'goal',
+	'milestone',
+	'risk',
+	'plan',
+	'requirement',
+	'source',
+	'edge',
+	'user'
+]);
+
+function formatEntityReference(type: string, id: string, displayText: string): string {
+	const sanitizedText = (displayText || '').replace(/[\[\]|]/g, '').trim();
+	const normalizedType = type.toLowerCase();
+	if (!VALID_ENTITY_REFERENCE_TYPES.has(normalizedType)) {
+		return sanitizedText || `${normalizedType}:${id}`;
+	}
+	return `[[${normalizedType}:${id}|${sanitizedText || id}]]`;
+}
+
+function formatRelativeTime(value?: string | null): string | null {
+	if (!value) return null;
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+
+	const diffMs = Date.now() - date.getTime();
+	const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+	if (diffMinutes < 1) return 'just now';
+	if (diffMinutes < 60) return `${diffMinutes}m ago`;
+	const diffHours = Math.floor(diffMinutes / 60);
+	if (diffHours < 24) return `${diffHours}h ago`;
+	const diffDays = Math.floor(diffHours / 24);
+	return `${diffDays}d ago`;
+}
+
+function formatActivityLogLine(log: RecentActivityEntry): string | null {
+	if (!log) return null;
+	const data = (log.after_data ?? log.before_data) as Record<string, unknown> | null;
+	const name = getEntityName(data, log.entity_type as ProjectLogEntityType);
+	const ref = formatEntityReference(log.entity_type, log.entity_id, name);
+	const when = formatRelativeTime(log.created_at);
+	return `${log.action} ${ref}${when ? ` (${when})` : ''}`;
+}
+
+function buildTaskGoalMaps(taskGoalLinks: TaskGoalLink[]): {
+	taskToGoalIds: Map<string, string[]>;
+	goalToTaskIds: Map<string, string[]>;
+} {
+	const taskToGoalIds = new Map<string, string[]>();
+	const goalToTaskIds = new Map<string, string[]>();
+
+	for (const link of taskGoalLinks) {
+		appendToMap(taskToGoalIds, link.taskId, link.goalId);
+		appendToMap(goalToTaskIds, link.goalId, link.taskId);
+	}
+
+	return { taskToGoalIds, goalToTaskIds };
+}
+
+function appendToMap(map: Map<string, string[]>, key: string, value: string): void {
+	const existing = map.get(key);
+	if (!existing) {
+		map.set(key, [value]);
+		return;
+	}
+	if (!existing.includes(value)) {
+		existing.push(value);
+	}
+}
+
+function getGoalStateValue(goal: GoalSummary): string | null {
+	if (!goal.props) return null;
+	const state = (goal.props.state as string) || (goal.props.status as string);
+	return state && typeof state === 'string' ? state : null;
+}
+
+function getGoalState(goal: GoalSummary): string | null {
+	const rawState = getGoalStateValue(goal);
+	return rawState ? formatStateLabel(rawState) : null;
+}
+
+function isCompletedGoal(goal: GoalSummary): boolean {
+	const rawState = getGoalStateValue(goal);
+	return isCompletedState(rawState);
+}
+
+function isCompletedState(state?: string | null): boolean {
+	if (!state) return false;
+	const completedStates = new Set([
+		'done',
+		'completed',
+		'complete',
+		'shipped',
+		'published',
+		'approved'
+	]);
+	return completedStates.has(state.toLowerCase());
+}
+
+function formatStateLabel(state: string): string {
+	return state.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function buildTaskGoalLinks(edges: EdgeSummary[]): TaskGoalLink[] {
+	const links: TaskGoalLink[] = [];
+	const seen = new Set<string>();
+
+	for (const edge of edges) {
+		const mapping = extractTaskGoalLink(edge);
+		if (!mapping) continue;
+		const key = `${mapping.taskId}:${mapping.goalId}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		links.push({ taskId: mapping.taskId, goalId: mapping.goalId, rel: edge.rel });
+	}
+
+	return links;
+}
+
+function extractTaskGoalLink(edge: EdgeSummary): { taskId: string; goalId: string } | null {
+	if (edge.rel === 'supports_goal') {
+		if (edge.src_kind === 'task' && edge.dst_kind === 'goal') {
+			return { taskId: edge.src_id, goalId: edge.dst_id };
+		}
+		if (edge.src_kind === 'goal' && edge.dst_kind === 'task') {
+			return { taskId: edge.dst_id, goalId: edge.src_id };
+		}
+	}
+
+	if (edge.rel === 'has_task') {
+		if (edge.src_kind === 'goal' && edge.dst_kind === 'task') {
+			return { taskId: edge.dst_id, goalId: edge.src_id };
+		}
+		if (edge.src_kind === 'task' && edge.dst_kind === 'goal') {
+			return { taskId: edge.src_id, goalId: edge.dst_id };
+		}
+	}
+
+	if (edge.rel === 'achieved_by') {
+		if (edge.src_kind === 'goal' && edge.dst_kind === 'task') {
+			return { taskId: edge.dst_id, goalId: edge.src_id };
+		}
+		if (edge.src_kind === 'task' && edge.dst_kind === 'goal') {
+			return { taskId: edge.src_id, goalId: edge.dst_id };
+		}
+	}
+
+	return null;
+}
+
+async function fetchTaskGoalLinks(projectId: string, taskIds: string[]): Promise<TaskGoalLink[]> {
+	if (taskIds.length === 0) return [];
+	const rels = ['supports_goal', 'has_task', 'achieved_by'];
+
+	const [srcResult, dstResult] = await Promise.all([
+		supabase
+			.from('onto_edges')
+			.select('src_id, src_kind, dst_id, dst_kind, rel')
+			.eq('project_id', projectId)
+			.in('rel', rels)
+			.in('src_id', taskIds),
+		supabase
+			.from('onto_edges')
+			.select('src_id, src_kind, dst_id, dst_kind, rel')
+			.eq('project_id', projectId)
+			.in('rel', rels)
+			.in('dst_id', taskIds)
+	]);
+
+	if (srcResult.error) {
+		console.error('Error fetching task goal edges (src):', srcResult.error);
+	}
+	if (dstResult.error) {
+		console.error('Error fetching task goal edges (dst):', dstResult.error);
+	}
+
+	const edges = [
+		...((srcResult.data ?? []) as EdgeSummary[]),
+		...((dstResult.data ?? []) as EdgeSummary[])
+	];
+
+	return buildTaskGoalLinks(edges);
 }
 
 /**

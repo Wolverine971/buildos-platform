@@ -33,7 +33,6 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
@@ -47,7 +46,6 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
 	import { RISK_STATES } from '$lib/types/onto';
-	import { RISK_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
@@ -327,18 +325,6 @@
 		loadRisk();
 	}
 
-	function getTypeLabel(typeKey: string): string {
-		if (!typeKey) return 'General Risk';
-		const parts = typeKey.split('.');
-		const variant = parts[parts.length - 1] ?? typeKey;
-		return (
-			variant
-				.split('_')
-				.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-				.join(' ') + ' Risk'
-		);
-	}
-
 	// Chat about this risk handlers
 	async function openChatAbout() {
 		if (!risk || !projectId) return;
@@ -563,25 +549,6 @@
 								</FormField>
 							</div>
 
-							<FormField label="Type" labelFor="type-key" hint="Risk classification">
-								<Select
-									id="type-key"
-									bind:value={typeKey}
-									disabled={isSaving}
-									size="md"
-									placeholder="Select type"
-								>
-									{#each RISK_TYPE_KEYS as typeOption}
-										<option
-											value={typeOption.value}
-											title={typeOption.description}
-										>
-											{typeOption.label}
-										</option>
-									{/each}
-								</Select>
-							</FormField>
-
 							{#if error}
 								<div
 									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
@@ -632,13 +599,6 @@
 							</CardHeader>
 							<CardBody padding="sm">
 								<div class="space-y-2 text-sm">
-									<div class="flex justify-between items-center">
-										<span class="text-muted-foreground">Type:</span>
-										<Badge variant="info" size="sm">
-											{getTypeLabel(risk.type_key)}
-										</Badge>
-									</div>
-
 									<div class="flex justify-between items-center">
 										<span class="text-muted-foreground">Impact:</span>
 										{#if impactBadge}

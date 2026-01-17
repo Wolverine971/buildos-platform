@@ -55,7 +55,9 @@
       "Bash(git checkout:*)",
       "Bash(file *.png)",
       "WebFetch(domain:artificialanalysis.ai)",
-      "Bash(pnpm exec svelte-check:*)"
+      "Bash(pnpm exec svelte-check:*)",
+      "Bash(for file in /Users/annawayne/buildos-platform/supabase/migrations/*.sql)",
+      "Bash(do grep -l \"deleted_at\\\\|state_key\\\\|description\" \"$file\")"
     ],
     "deny": [],
     "ask": []

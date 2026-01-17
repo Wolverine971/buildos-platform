@@ -37,6 +37,7 @@ export const CONTAINMENT_RELS: RelationshipType[] = [
 	'has_requirement',
 	'has_metric',
 	'has_part',
+	'has_event',
 	'contains'
 ];
 
@@ -48,9 +49,10 @@ export const ALLOWED_PARENTS: Record<EntityKind, EntityKind[]> = {
 	task: ['plan', 'milestone', 'goal', 'project'],
 	document: ['document', 'project'],
 	risk: ['task', 'plan', 'milestone', 'goal', 'project'],
-	requirement: ['task', 'milestone', 'plan', 'project'],
+	requirement: ['milestone', 'goal', 'project'],
 	metric: ['task', 'plan', 'milestone', 'goal', 'risk', 'project'],
-	source: ['project']
+	source: ['project'],
+	event: ['task']
 };
 
 export function normalizeParentRefs(input?: {
@@ -92,7 +94,7 @@ export function resolveContainmentRel(
 		return 'has_risk';
 	if (
 		childKind === 'requirement' &&
-		['project', 'milestone', 'plan', 'task'].includes(parentKind)
+		['project', 'goal', 'milestone'].includes(parentKind)
 	)
 		return 'has_requirement';
 	if (
@@ -101,6 +103,7 @@ export function resolveContainmentRel(
 	)
 		return 'has_metric';
 	if (childKind === 'document' && parentKind === 'document') return 'has_part';
+	if (childKind === 'event' && parentKind === 'task') return 'has_event';
 	return null;
 }
 

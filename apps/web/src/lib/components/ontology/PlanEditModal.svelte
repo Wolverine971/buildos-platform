@@ -30,7 +30,6 @@
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import { PLAN_STATES, type Plan } from '$lib/types/onto';
-	import { PLAN_TYPE_KEYS } from '$lib/types/onto-taxonomy';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -128,7 +127,6 @@
 		return days > 0 ? `${days} day${days === 1 ? '' : 's'}` : 'Flexible timeline';
 	});
 	const lastUpdatedLabel = $derived(formatRelativeTime(plan?.updated_at || plan?.created_at));
-	const planTypeLabel = $derived(plan?.type_key || 'plan.process.base');
 	const planIdLabel = $derived(plan?.id || planId);
 	const formDisabled = $derived(isSaving || isDeleting);
 
@@ -530,54 +528,30 @@
 										</FormField>
 									</div>
 
-									<div class="grid gap-4 sm:grid-cols-2">
-										<!-- Plan State -->
-										<FormField
-											label="State"
-											labelFor="plan-state"
-											showOptional={false}
+									<!-- Plan State -->
+									<FormField
+										label="State"
+										labelFor="plan-state"
+										showOptional={false}
+									>
+										<Select
+											id="plan-state"
+											bind:value={stateKey}
+											disabled={formDisabled}
 										>
-											<Select
-												id="plan-state"
-												bind:value={stateKey}
-												disabled={formDisabled}
-											>
-												{#each PLAN_STATES as state}
-													<option value={state}>
-														{state === 'draft'
-															? 'Draft'
-															: state === 'active'
-																? 'Active'
-																: state === 'completed'
-																	? 'Completed'
-																	: state}
-													</option>
-												{/each}
-											</Select>
-										</FormField>
-
-										<!-- Plan Type -->
-										<FormField
-											label="Type"
-											labelFor="plan-type"
-											hint="Plan classification"
-										>
-											<Select
-												id="plan-type"
-												bind:value={typeKey}
-												disabled={formDisabled}
-											>
-												{#each PLAN_TYPE_KEYS as typeOption}
-													<option
-														value={typeOption.value}
-														title={typeOption.description}
-													>
-														{typeOption.label}
-													</option>
-												{/each}
-											</Select>
-										</FormField>
-									</div>
+											{#each PLAN_STATES as state}
+												<option value={state}>
+													{state === 'draft'
+														? 'Draft'
+														: state === 'active'
+															? 'Active'
+															: state === 'completed'
+																? 'Completed'
+																: state}
+												</option>
+											{/each}
+										</Select>
+									</FormField>
 
 									{#if error}
 										<div

@@ -42,13 +42,17 @@ const PARENTING_RULES: Record<string, { childKind: EntityKind; parentKind: Entit
 const ALLOWED_PARENTS_BY_CHILD: Partial<Record<EntityKind, EntityKind[]>> = {
 	task: ['plan', 'goal'],
 	plan: ['milestone', 'goal'],
-	milestone: ['goal']
+	milestone: ['goal'],
+	requirement: ['milestone', 'goal'],
+	event: ['task']
 };
 
 const CHILD_KIND_BY_REL: Record<string, EntityKind> = {
 	has_task: 'task',
 	has_plan: 'plan',
-	has_milestone: 'milestone'
+	has_milestone: 'milestone',
+	has_requirement: 'requirement',
+	has_event: 'event'
 };
 
 const PARENT_ENDPOINTS: Partial<Record<EntityKind, string>> = {
@@ -159,7 +163,8 @@ function flattenLinkedEntities(
 		['milestone', linked.milestones ?? []],
 		['document', linked.documents ?? []],
 		['risk', linked.risks ?? []],
-		['event', linked.events ?? []]
+		['event', linked.events ?? []],
+		['requirement', linked.requirements ?? []]
 	];
 
 	const flattened: Array<{ kind: EntityKind; entity: LinkedEntity }> = [];

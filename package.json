@@ -17,7 +17,7 @@
 		"gen:types": "tsx scripts/generate-types.ts",
 		"gen:schema": "tsx scripts/extract-database-schema.ts",
 		"gen:web": "pnpm --filter=web gen:web",
-		"gen:all": "pnpm run gen:types && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm format && pnpm typecheck",
+		"gen:all": "pnpm run gen:types && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm format && pnpm run label-paths && pnpm typecheck",
 		"label-paths": "tsx scripts/labelFilePaths.ts"
 	},
 	"devDependencies": {

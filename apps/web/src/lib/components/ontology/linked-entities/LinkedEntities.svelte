@@ -27,7 +27,7 @@
 		LinkedEntity,
 		AvailableEntity
 	} from './linked-entities.types';
-	import { ENTITY_SECTIONS } from './linked-entities.types';
+	import { ENTITY_SECTIONS, ALLOWED_LINKS } from './linked-entities.types';
 	import {
 		fetchLinkedEntities,
 		fetchAvailableEntities,
@@ -70,7 +70,8 @@
 		milestones: [],
 		documents: [],
 		risks: [],
-		events: []
+		events: [],
+		requirements: []
 	});
 
 	// Track which kinds have been loaded for available entities
@@ -82,7 +83,8 @@
 		milestone: [],
 		document: [],
 		risk: [],
-		event: []
+		event: [],
+		requirement: []
 	});
 	let loadingAvailableKind = $state<EntityKind | null>(null);
 
@@ -90,19 +92,15 @@
 	let showLinkPicker = $state(false);
 	let linkPickerKind = $state<EntityKind>('task');
 
-	// Filter sections based on allowedEntityTypes and exclude self-type unless explicitly allowed
+	// Filter sections based on ALLOWED_LINKS rules and optional allowedEntityTypes prop
 	const visibleSections = $derived.by(() => {
-		let sections = ENTITY_SECTIONS;
+		// Start with sections that are allowed by the ALLOWED_LINKS rules for this source kind
+		const allowedByRules = ALLOWED_LINKS[sourceKind] || [];
+		let sections = ENTITY_SECTIONS.filter((s) => allowedByRules.includes(s.kind));
 
-		// Filter by allowed types if specified
+		// Further filter by allowedEntityTypes prop if specified (intersection)
 		if (allowedEntityTypes && allowedEntityTypes.length > 0) {
 			sections = sections.filter((s) => allowedEntityTypes.includes(s.kind));
-		}
-
-		// Don't show the same kind as the source (except tasks/documents can self-link)
-		const allowsSelfLink = sourceKind === 'task' || sourceKind === 'document';
-		if (!allowsSelfLink) {
-			sections = sections.filter((s) => s.kind !== sourceKind);
 		}
 
 		return sections;
@@ -116,7 +114,8 @@
 		milestone: linkedEntities.milestones,
 		document: linkedEntities.documents,
 		risk: linkedEntities.risks,
-		event: linkedEntities.events
+		event: linkedEntities.events,
+		requirement: linkedEntities.requirements
 	}));
 
 	// Reactive mapping of available counts by kind
@@ -128,7 +127,8 @@
 			milestone: -1,
 			document: -1,
 			risk: -1,
-			event: -1
+			event: -1,
+			requirement: -1
 		};
 		for (const kind of [
 			'task',
@@ -137,7 +137,8 @@
 			'milestone',
 			'document',
 			'risk',
-			'event'
+			'event',
+			'requirement'
 		] as EntityKind[]) {
 			if (!loadedAvailableKinds.has(kind)) {
 				counts[kind] = -1;
@@ -161,7 +162,8 @@
 				milestone: [],
 				document: [],
 				risk: [],
-				event: []
+				event: [],
+				requirement: []
 			};
 
 			// Use initial data if provided, otherwise fetch
@@ -174,7 +176,8 @@
 					milestones: initialLinkedEntities.milestones ?? [],
 					documents: initialLinkedEntities.documents ?? [],
 					risks: initialLinkedEntities.risks ?? [],
-					events: initialLinkedEntities.events ?? []
+					events: initialLinkedEntities.events ?? [],
+					requirements: initialLinkedEntities.requirements ?? []
 				};
 				isLoading = false;
 				error = null;

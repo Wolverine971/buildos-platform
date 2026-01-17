@@ -207,6 +207,26 @@ export interface NextStepGenerationContext {
 	projectName: string;
 	projectDescription?: string;
 	templateType?: string;
+	/** Active goals for goal-first recommendations */
+	goals?: Array<{
+		id: string;
+		name: string;
+		type_key?: string | null;
+		props?: Json | null;
+	}>;
+	/** Recently completed tasks to preserve momentum */
+	recentCompletedTasks?: Array<{
+		id: string;
+		title: string;
+		state_key?: string | null;
+		completed_at?: string | null;
+	}>;
+	/** Links between tasks and goals for goal-aligned next steps */
+	taskGoalLinks?: Array<{
+		taskId: string;
+		goalId: string;
+		rel: string;
+	}>;
 	/** Recent activity on the project */
 	recentActivity?: ProjectLogEntry[];
 	/** What was discussed/changed in the current session */
