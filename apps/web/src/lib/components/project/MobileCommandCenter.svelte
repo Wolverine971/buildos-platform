@@ -38,6 +38,7 @@
 		type InsightPanelKey,
 		type InsightPanelState
 	} from '$lib/components/ontology/insight-panels';
+	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 
 	// Note: 'milestones' removed from PanelKey - now nested under goals
 	type PanelKey = 'goals' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
@@ -276,10 +277,9 @@
 		>
 			{#each goals as goal (goal.id)}
 				{@const goalMilestones = milestonesByGoalId?.get(goal.id) || []}
-				{@const completedCount = goalMilestones.filter((m) => {
-					const state = m.state_key || (m.props?.state_key as string) || 'pending';
-					return state === 'completed';
-				}).length}
+				{@const completedCount = goalMilestones.filter(
+					(m) => resolveMilestoneState(m).state === 'completed'
+				).length}
 				<div class="border-b border-border/50 last:border-b-0">
 					<!-- Goal Header -->
 					<button

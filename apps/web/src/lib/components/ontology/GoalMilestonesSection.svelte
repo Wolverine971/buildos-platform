@@ -16,6 +16,7 @@
 	import { slide } from 'svelte/transition';
 	import { Plus, Flag, ChevronDown } from 'lucide-svelte';
 	import MilestoneListItem from './MilestoneListItem.svelte';
+	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 
 	interface Milestone {
 		id: string;
@@ -65,8 +66,8 @@
 	// Sort and group milestones
 	const sortedMilestones = $derived.by(() => {
 		const sorted = [...milestones].sort((a, b) => {
-			const aState = a.state_key || (a.props?.state_key as string) || 'pending';
-			const bState = b.state_key || (b.props?.state_key as string) || 'pending';
+			const aState = resolveMilestoneState(a).state;
+			const bState = resolveMilestoneState(b).state;
 
 			// Completed/missed go to bottom
 			const aIsTerminal = aState === 'completed' || aState === 'missed';
@@ -77,7 +78,9 @@
 			// Then sort by due_at ascending
 			const aDate = a.due_at ? new Date(a.due_at).getTime() : Infinity;
 			const bDate = b.due_at ? new Date(b.due_at).getTime() : Infinity;
-			if (aDate !== bDate) return aDate - bDate;
+			const safeADate = Number.isNaN(aDate) ? Infinity : aDate;
+			const safeBDate = Number.isNaN(bDate) ? Infinity : bDate;
+			if (safeADate !== safeBDate) return safeADate - safeBDate;
 
 			// Fallback to title
 			return a.title.localeCompare(b.title);
@@ -88,14 +91,14 @@
 	// Split into active and completed
 	const activeMilestones = $derived(
 		sortedMilestones.filter((m) => {
-			const state = m.state_key || (m.props?.state_key as string) || 'pending';
+			const state = resolveMilestoneState(m).state;
 			return state !== 'completed' && state !== 'missed';
 		})
 	);
 
 	const completedMilestones = $derived(
 		sortedMilestones.filter((m) => {
-			const state = m.state_key || (m.props?.state_key as string) || 'pending';
+			const state = resolveMilestoneState(m).state;
 			return state === 'completed' || state === 'missed';
 		})
 	);
@@ -103,7 +106,7 @@
 	// Progress calculation
 	const completedCount = $derived(
 		milestones.filter((m) => {
-			const state = m.state_key || (m.props?.state_key as string) || 'pending';
+			const state = resolveMilestoneState(m).state;
 			return state === 'completed';
 		}).length
 	);
@@ -188,7 +191,7 @@
 						<MilestoneListItem
 							{milestone}
 							onEdit={onEditMilestone}
-							onToggleComplete={onToggleMilestoneComplete}
+							onToggleComplete={canEdit ? onToggleMilestoneComplete : undefined}
 							compact={true}
 						/>
 					{/each}

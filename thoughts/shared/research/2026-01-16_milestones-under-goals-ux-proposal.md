@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md -->
 # Milestones Under Goals - UX Proposal
 
 **Date:** 2026-01-16
@@ -10,6 +11,26 @@
 ## Executive Summary
 
 Milestones are conceptually and structurally children of goals, but the current UI displays them as independent entities in separate panels. This proposal outlines a UX redesign to nest milestones under their parent goals, creating a clearer hierarchy and more intuitive user experience.
+
+---
+
+## Goals and Non-Goals
+
+**Goals**
+- Make the goal -> milestone hierarchy visible in the primary workflow.
+- Reduce context switching by creating milestones in-place on the goal.
+- Preserve (or improve) speed for create/edit milestone actions.
+
+**Non-Goals**
+- Changing database schema or the goal/milestone relationship model.
+- Adding milestone dependencies, drag-and-drop ordering, or bulk edits.
+- Redesigning unrelated insight panels.
+
+## Assumptions and Constraints
+
+- Each milestone has exactly one parent goal; multiple goal edges are treated as data errors.
+- Goal and milestone always share the same `project_id`; APIs must validate this.
+- `due_at` is required; UI should not allow creation without a due date.
 
 ---
 
@@ -151,6 +172,8 @@ When user clicks "+ Add Milestone" on a goal card:
 | Completed | ● (filled) + ✓ | Optional strikethrough | `text-success` / green |
 | Missed | ○ (hollow) + ✗ | Normal | `text-destructive` / red |
 
+**State source of truth:** `missed` should be computed on the server (based on `due_at` and `state_key`) to avoid timezone drift; UI can fall back to local computation if the API does not provide it.
+
 ### 5. Interaction Patterns
 
 | Action | Behavior |
@@ -158,7 +181,7 @@ When user clicks "+ Add Milestone" on a goal card:
 | Click goal card header | Expand/collapse milestone section |
 | Click individual milestone | Open `MilestoneEditModal` |
 | Click "+ Add Milestone" | Open `MilestoneCreateModal` with goal pre-linked |
-| Hover milestone | Show quick actions (edit, mark complete) |
+| Hover milestone | Show quick actions (edit, mark complete); on touch, expose via "..." menu |
 | Complete all milestones | Visual indicator on goal card |
 
 ### 6. Collapsed Goal View
@@ -173,6 +196,24 @@ When a goal is collapsed, show summary information:
 
 - `▶` indicates expandable
 - `2/4 ●` shows milestone progress (2 of 4 completed)
+
+### 7. Ordering and Grouping
+
+- Default order: `due_at` ascending, tie-breaker `created_at` ascending for stable ordering.
+- Completed and missed milestones render at the bottom unless a user-selected filter overrides.
+- If a goal has more than 10 milestones, show the first 10 with a "Show all" affordance.
+
+### 8. Loading, Empty, and Error States
+
+- On expand, show a lightweight skeleton list while milestones load.
+- If a fetch fails, show an inline error with a Retry action scoped to that goal.
+- If a goal has zero milestones, show the empty state (as in section 3).
+
+### 9. Accessibility and Input
+
+- Expand/collapse is keyboard-accessible and announced via `aria-expanded`.
+- Inline toggle actions have `aria-label` and visible focus states.
+- Mobile users access quick actions via a menu, not hover.
 
 ---
 
@@ -210,11 +251,26 @@ When a goal is collapsed, show summary information:
 ### Phase 4: Data Loading
 
 **Considerations:**
-- Load milestones with goals in a single query (join via `onto_edges`)
-- Or lazy-load milestones when goal is expanded
-- Cache milestones to avoid refetching on collapse/expand
+- Load milestones with goals in a single query (join via `onto_edges`) or batch by `goal_ids` to avoid N+1 fetches.
+- If lazy-loading on expand, dedupe in-flight requests and cache per goal.
+- API response should include `goal_id`, `title`, `state_key`, `due_at`, `type`, and `updated_at` at minimum.
+
+### Phase 5: Behavior and QA
+
+- Disable "+ Add Milestone" for `achieved` or `abandoned` goals (show tooltip or helper text).
+- Do not auto-change goal state when all milestones are completed; instead show a CTA to "Mark goal achieved".
+- Ensure "missed" state updates at day-boundary in the user's timezone.
 
 ---
+
+## Edge Cases and Failure Modes (Bug Mitigation)
+
+- Orphaned milestones (no valid goal edge) should be hidden from the goal list and surfaced via telemetry or admin views.
+- Multiple goal edges for a milestone should be treated as a data error; pick the most recent edge for display and log.
+- Goals with 0 milestones should not show a `0/0` progress indicator; show "No milestones" instead.
+- Rapid create/edit should optimistically update the list and roll back on API failure with a toast.
+- Concurrent edits should update counts and states on refresh or realtime events to avoid stale progress.
+- Very large milestone lists should not block main thread; paginate or virtualize if needed.
 
 ## Open Questions
 
@@ -262,6 +318,17 @@ When a goal is collapsed, show summary information:
 
 **Recommendation:** Option C - show active work by default.
 
+### 5. Completed Milestone Visibility
+
+**Question:** Should completed milestones be collapsed by default within expanded goals?
+
+**Options:**
+- A) Always show all milestones
+- B) Show completed in a collapsed "Completed (n)" section
+- C) Hide completed by default, with a filter toggle
+
+**Recommendation:** Option B - reduces clutter while keeping completion visible.
+
 ---
 
 ## Success Metrics
@@ -272,6 +339,8 @@ When a goal is collapsed, show summary information:
 | Visual clarity of goal-milestone relationship | None | Immediate |
 | Screen space efficiency | 2 panels | 1 panel |
 | User confusion about milestone ownership | Common | Eliminated |
+| Milestone create/edit error rate | Unknown | < 1% |
+| Time to locate a milestone | Unknown | -30% |
 
 ---
 

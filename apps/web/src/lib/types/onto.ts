@@ -585,13 +585,18 @@ export const MilestoneSchema = z.object({
 	state_key: MilestoneStateSchema,
 	milestone: z.string().nullable().optional(),
 	description: z.string().nullable().optional(),
-	due_at: z.string().datetime(),
+	due_at: z.string().datetime().nullable().optional(),
 	completed_at: z.string().datetime().nullable().optional(),
 	deleted_at: z.string().datetime().nullable().optional(),
 	props: z.record(z.unknown()),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),
 	updated_at: z.string().datetime()
+}).extend({
+	// Computed/derived fields added by API responses
+	goal_id: z.string().uuid().nullable().optional(),
+	effective_state_key: MilestoneStateSchema.optional(),
+	is_missed: z.boolean().optional()
 });
 
 export type Milestone = z.infer<typeof MilestoneSchema>;

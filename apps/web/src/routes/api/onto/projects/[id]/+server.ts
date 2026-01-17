@@ -15,6 +15,11 @@ import {
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
 import { logOntologyApiError } from '../../shared/error-logging';
+import type { Database } from '@buildos/shared-types';
+import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
+
+type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
+type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -159,7 +164,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.select('*')
 				.eq('project_id', id)
 				.is('deleted_at', null)
-				.order('due_at'),
+				.order('due_at', { ascending: true, nullsFirst: false }),
 			supabase
 				.from('onto_risks')
 				.select('*')
@@ -200,6 +205,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// The !inner join creates an aliased property with the table name
 		const contextDocument: Document | null = (contextDocResult.data as any)?.document ?? null;
 
+		const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(
+			supabase,
+			(goalsResult.data || []) as GoalRow[],
+			(milestonesResult.data || []) as MilestoneRow[]
+		);
+
 		return ApiResponse.success({
 			project,
 			goals: goalsResult.data || [],
@@ -208,7 +219,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			tasks: tasksResult.data || [],
 			documents: documentsResult.data || [],
 			sources: sourcesResult.data || [],
-			milestones: milestonesResult.data || [],
+			milestones: decoratedMilestones,
 			risks: risksResult.data || [],
 			metrics: metricsResult.data || [],
 			context_document: contextDocument

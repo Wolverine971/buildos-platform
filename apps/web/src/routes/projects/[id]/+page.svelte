@@ -50,6 +50,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { getNavigationData } from '$lib/stores/project-navigation.store';
+	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import InsightPanelSkeleton from '$lib/components/ontology/InsightPanelSkeleton.svelte';
 	import ProjectContentSkeleton from '$lib/components/ontology/ProjectContentSkeleton.svelte';
 	import {
@@ -85,12 +86,6 @@
 	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
 	import type { Database, EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
-
-	// Edge type for goal->milestone relationships
-	interface GoalMilestoneEdge {
-		src_id: string; // goal ID
-		dst_id: string; // milestone ID
-	}
 	import {
 		InsightFilterDropdown,
 		InsightSortDropdown,
@@ -124,6 +119,9 @@
 		due_at: string | null;
 		state_key?: string | null;
 		props?: Record<string, unknown> | null;
+		goal_id?: string | null;
+		effective_state_key?: string | null;
+		is_missed?: boolean | null;
 	}
 
 	interface Risk {
@@ -224,9 +222,6 @@
 		data.skeleton ? null : ((data.context_document || null) as Document | null)
 	);
 
-	// Goal-milestone edges (loaded after hydration)
-	let goalMilestoneEdges = $state<GoalMilestoneEdge[]>([]);
-
 	// Context for creating milestone from within a goal
 	let milestoneCreateGoalContext = $state<{ goalId: string; goalName: string } | null>(null);
 
@@ -323,7 +318,6 @@
 
 			isHydrating = false;
 			void loadProjectEvents();
-			void loadGoalMilestoneEdges();
 		} catch (err) {
 			console.error('[Project Page] Hydration failed:', err);
 			void logOntologyClientError(err, {
@@ -361,7 +355,6 @@
 			hydrateFullData();
 		} else {
 			void loadProjectEvents();
-			void loadGoalMilestoneEdges();
 		}
 	});
 
@@ -404,8 +397,9 @@
 			if (!toggles.showAchieved && item.state_key === 'achieved') return false;
 			if (!toggles.showAbandoned && item.state_key === 'abandoned') return false;
 		} else if (entityType === 'milestones') {
-			if (!toggles.showCompleted && item.state_key === 'completed') return false;
-			if (!toggles.showMissed && item.state_key === 'missed') return false;
+			const { state } = resolveMilestoneState(item as unknown as Milestone);
+			if (!toggles.showCompleted && state === 'completed') return false;
+			if (!toggles.showMissed && state === 'missed') return false;
 		} else if (entityType === 'risks') {
 			if (!toggles.showClosed && item.state_key === 'closed') return false;
 		} else if (entityType === 'events') {
@@ -420,6 +414,11 @@
 			if (field === 'priority' && entityType === 'tasks') {
 				const priorityGroup = getPriorityGroup(item.priority as number | null);
 				if (!selectedValues.includes(priorityGroup)) return false;
+				continue;
+			}
+			if (field === 'state_key' && entityType === 'milestones') {
+				const { state } = resolveMilestoneState(item as unknown as Milestone);
+				if (!selectedValues.includes(state)) return false;
 				continue;
 			}
 
@@ -600,25 +599,16 @@
 	});
 
 	// Group milestones by their parent goal ID
-	// Uses edges to map milestone IDs to goal IDs
 	const milestonesByGoalId = $derived.by(() => {
 		const map = new Map<string, Milestone[]>();
 
-		// Build a lookup: milestone ID -> goal ID
-		const milestoneToGoal = new Map<string, string>();
-		for (const edge of goalMilestoneEdges) {
-			milestoneToGoal.set(edge.dst_id, edge.src_id);
-		}
-
-		// Group milestones by their goal
 		for (const milestone of milestones) {
-			const goalId = milestoneToGoal.get(milestone.id);
-			if (goalId) {
-				if (!map.has(goalId)) {
-					map.set(goalId, []);
-				}
-				map.get(goalId)!.push(milestone);
+			const goalId = milestone.goal_id;
+			if (!goalId) continue;
+			if (!map.has(goalId)) {
+				map.set(goalId, []);
 			}
+			map.get(goalId)!.push(milestone);
 		}
 
 		return map;
@@ -641,8 +631,9 @@
 				.length
 		},
 		milestones: {
-			showCompleted: milestones.filter((m) => m.state_key === 'completed').length,
-			showMissed: milestones.filter((m) => m.state_key === 'missed').length,
+			showCompleted: milestones.filter((m) => resolveMilestoneState(m).state === 'completed')
+				.length,
+			showMissed: milestones.filter((m) => resolveMilestoneState(m).state === 'missed').length,
 			showDeleted: milestones.filter(
 				(m) => (m as unknown as Record<string, unknown>).deleted_at
 			).length
@@ -863,34 +854,6 @@
 		}
 	}
 
-	/**
-	 * Load goal->milestone edges to determine which milestones belong to which goals.
-	 * This enables the nested milestones display within goal cards.
-	 */
-	async function loadGoalMilestoneEdges() {
-		const projectId = data.projectId || project?.id;
-		if (!projectId) return;
-
-		try {
-			// Fetch edges where goals have milestones
-			const response = await fetch(
-				`/api/onto/edges?project_id=${projectId}&src_kind=goal&dst_kind=milestone&rel=has_milestone`
-			);
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				// Silently fail - edges are optional enhancement
-				console.warn('[Project] Failed to load goal-milestone edges:', payload?.error);
-				return;
-			}
-
-			goalMilestoneEdges = (payload?.data?.edges || []) as GoalMilestoneEdge[];
-		} catch (error) {
-			// Silently fail - edges are optional enhancement
-			console.warn('[Project] Failed to load goal-milestone edges:', error);
-		}
-	}
-
 	async function refreshData() {
 		if (!project?.id) return;
 		dataRefreshing = true;
@@ -913,7 +876,6 @@
 			risks = newData.risks || [];
 			contextDocument = newData.context_document || null;
 			await loadProjectEvents();
-			await loadGoalMilestoneEdges();
 
 			toastService.success('Data refreshed');
 		} catch (error) {
@@ -1051,9 +1013,12 @@
 			}
 
 			// Optimistic update
-			milestones = milestones.map((m) =>
-				m.id === milestoneId ? { ...m, state_key: newState } : m
-			);
+			milestones = milestones.map((m) => {
+				if (m.id !== milestoneId) return m;
+				const updated = { ...m, state_key: newState };
+				const { state, isMissed } = resolveMilestoneState(updated);
+				return { ...updated, effective_state_key: state, is_missed: isMissed };
+			});
 
 			toastService.success(
 				newState === 'completed' ? 'Milestone completed!' : 'Milestone reopened'
@@ -1990,7 +1955,9 @@
 																		{@const completedCount =
 																			goalMilestones.filter(
 																				(m) =>
-																					m.state_key ===
+																					resolveMilestoneState(
+																						m
+																					).state ===
 																					'completed'
 																			).length}
 																		<span

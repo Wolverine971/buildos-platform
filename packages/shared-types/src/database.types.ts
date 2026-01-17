@@ -4841,7 +4841,7 @@ export type Database = {
           created_by: string
           deleted_at: string | null
           description: string | null
-          due_at: string
+          due_at: string | null
           id: string
           milestone: string | null
           project_id: string
@@ -4858,7 +4858,7 @@ export type Database = {
           created_by: string
           deleted_at?: string | null
           description?: string | null
-          due_at: string
+          due_at?: string | null
           id?: string
           milestone?: string | null
           project_id: string
@@ -4875,7 +4875,7 @@ export type Database = {
           created_by?: string
           deleted_at?: string | null
           description?: string | null
-          due_at?: string
+          due_at?: string | null
           id?: string
           milestone?: string | null
           project_id?: string

@@ -210,20 +210,18 @@
 			return;
 		}
 
-		if (!dueAt) {
-			error = 'Due date is required';
-			return;
-		}
-
 		isSaving = true;
 		error = '';
 
 		try {
-			const dueDateIso = parseDateFromInput(dueAt);
-			if (!dueDateIso) {
-				error = 'Due date must be a valid date';
-				isSaving = false;
-				return;
+			let dueDateIso: string | null = null;
+			if (dueAt && dueAt.trim()) {
+				dueDateIso = parseDateFromInput(dueAt);
+				if (!dueDateIso) {
+					error = 'Due date must be a valid date';
+					isSaving = false;
+					return;
+				}
 			}
 
 			const requestBody = {
@@ -353,8 +351,10 @@
 		loadMilestone();
 	}
 
-	function formatDueDate(dateStr: string): string {
+	function formatDueDate(dateStr?: string | null): string {
+		if (!dateStr) return 'No due date';
 		const date = new Date(dateStr);
+		if (Number.isNaN(date.getTime())) return 'No due date';
 		return date.toLocaleDateString(undefined, {
 			weekday: 'short',
 			month: 'short',
@@ -474,10 +474,10 @@
 							</FormField>
 
 							<FormField
-								label="Due Date"
+								label="Due Date (optional)"
 								labelFor="due_at"
-								required={true}
-								error={!dueAt && error ? 'Due date is required' : ''}
+								required={false}
+								error={error && error.toLowerCase().includes('date') ? error : ''}
 							>
 								<div class="relative">
 									<Calendar
@@ -488,11 +488,12 @@
 										id="due_at"
 										bind:value={dueAt}
 										class="w-full pl-10 pr-3 py-2.5 rounded-lg border bg-background text-foreground
-											{!dueAt && error ? 'border-destructive' : 'border-border'}
+											{error && error.toLowerCase().includes('date')
+												? 'border-destructive'
+												: 'border-border'}
 											focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500
 											disabled:opacity-50 disabled:cursor-not-allowed"
 										disabled={isSaving}
-										required
 									/>
 								</div>
 							</FormField>
@@ -650,7 +651,7 @@
 											</p>
 										{/if}
 									{:else}
-										<p class="text-muted-foreground">No due date set</p>
+										<p class="text-sm text-muted-foreground">No due date set</p>
 									{/if}
 								</div>
 							</CardBody>
@@ -755,7 +756,7 @@
 						size="sm"
 						onclick={handleSave}
 						loading={isSaving}
-						disabled={isSaving || isDeleting || !title.trim() || !dueAt}
+						disabled={isSaving || isDeleting || !title.trim()}
 						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />

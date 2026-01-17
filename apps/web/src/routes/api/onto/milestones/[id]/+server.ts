@@ -50,6 +50,7 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { withComputedMilestoneState } from '$lib/utils/milestone-state';
 
 // GET /api/onto/milestones/[id] - Get a single milestone
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -129,8 +130,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.forbidden('You do not have access to this milestone');
 		}
 
+		const decoratedMilestone = withComputedMilestoneState(milestone);
+
 		// Extract project data and include project name in response
-		const { project, type_key: _typeKey, ...milestoneData } = milestone;
+		const { project, type_key: _typeKey, ...milestoneData } = decoratedMilestone;
 
 		return ApiResponse.success({
 			milestone: { ...milestoneData, project: { name: project.name } }
@@ -178,16 +181,24 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		// Validate state_key if provided
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
+		const hasDueAtInput = Object.prototype.hasOwnProperty.call(body, 'due_at');
 		const normalizedState = normalizeMilestoneStateInput(state_key);
 		if (hasStateInput && !normalizedState) {
 			return ApiResponse.badRequest(`State must be one of: ${MILESTONE_STATES.join(', ')}`);
 		}
 
+		let normalizedDueAt: string | null | undefined = undefined;
+
 		// Validate due_at if provided
-		if (due_at !== undefined && due_at !== null) {
-			const dueDate = new Date(due_at);
-			if (isNaN(dueDate.getTime())) {
-				return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
+		if (hasDueAtInput) {
+			if (due_at === null || String(due_at).trim() === '') {
+				normalizedDueAt = null;
+			} else {
+				const dueDate = new Date(due_at);
+				if (isNaN(dueDate.getTime())) {
+					return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
+				}
+				normalizedDueAt = dueDate.toISOString();
 			}
 		}
 
@@ -312,11 +323,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.title = title.trim();
 		}
 
-		if (due_at !== undefined) {
-			if (due_at === null) {
-				return ApiResponse.badRequest('Due date cannot be removed');
-			}
-			updateData.due_at = new Date(due_at).toISOString();
+		if (hasDueAtInput) {
+			updateData.due_at = normalizedDueAt ?? null;
 		}
 
 		// Update dedicated columns
@@ -443,8 +451,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		const { type_key: _typeKey, ...milestonePayload } = updatedMilestone;
-		return ApiResponse.success({ milestone: milestonePayload });
+		const { type_key: _typeKey, ...milestonePayload } = withComputedMilestoneState(
+			updatedMilestone
+		);
+
+		const goalFromInput = hasContainmentInput
+			? connectionList.find((connection) => connection.kind === 'goal')?.id ?? null
+			: undefined;
+
+		const responseMilestone =
+			goalFromInput !== undefined
+				? { ...milestonePayload, goal_id: goalFromInput }
+				: milestonePayload;
+
+		return ApiResponse.success({ milestone: responseMilestone });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

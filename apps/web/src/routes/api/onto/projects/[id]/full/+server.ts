@@ -15,6 +15,8 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import type { Database } from '@buildos/shared-types';
+import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -30,6 +32,9 @@ interface ProjectFullData {
 	metrics: unknown[];
 	context_document: unknown | null;
 }
+
+type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
+type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -97,15 +102,24 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
+		const goals = (data.goals || []) as GoalRow[];
+		const milestones = (data.milestones || []) as MilestoneRow[];
+
+		const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(
+			supabase,
+			goals,
+			milestones
+		);
+
 		return ApiResponse.success({
 			project: data.project,
-			goals: data.goals || [],
+			goals,
 			requirements: data.requirements || [],
 			plans: data.plans || [],
 			tasks: data.tasks || [],
 			documents: data.documents || [],
 			sources: data.sources || [],
-			milestones: data.milestones || [],
+			milestones: decoratedMilestones,
 			risks: data.risks || [],
 			metrics: data.metrics || [],
 			context_document: data.context_document

@@ -28,6 +28,11 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import type { Database } from '@buildos/shared-types';
+import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
+
+type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
+type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 
 /**
  * Skeleton data structure - minimal data for instant rendering
@@ -208,10 +213,20 @@ async function loadFullData(
 		throw error(404, 'Project not found');
 	}
 
+	const goals = (data.goals || []) as GoalRow[];
+	const milestones = (data.milestones || []) as MilestoneRow[];
+	const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(
+		supabase,
+		goals,
+		milestones
+	);
+
 	// Return full data (legacy format for backward compatibility)
 	return {
 		skeleton: false,
 		projectId: id,
-		...data
+		...data,
+		goals,
+		milestones: decoratedMilestones
 	};
 }

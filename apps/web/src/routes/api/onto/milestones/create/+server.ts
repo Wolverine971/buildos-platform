@@ -48,6 +48,7 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { withComputedMilestoneState } from '$lib/utils/milestone-state';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -85,14 +86,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('Milestone title is required');
 		}
 
-		if (!due_at) {
-			return ApiResponse.badRequest('Due date is required');
-		}
-
-		// Validate due_at is a valid date
-		const dueDate = new Date(due_at);
-		if (isNaN(dueDate.getTime())) {
-			return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
+		let dueDateIso: string | null = null;
+		if (due_at !== undefined && due_at !== null && String(due_at).trim() !== '') {
+			const dueDate = new Date(due_at);
+			if (isNaN(dueDate.getTime())) {
+				return ApiResponse.badRequest('Due date must be a valid ISO 8601 date');
+			}
+			dueDateIso = dueDate.toISOString();
 		}
 
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
@@ -206,7 +206,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key: 'milestone.default',
 			title: title.trim(),
 			milestone: milestone?.trim() || null,
-			due_at: dueDate.toISOString(),
+			due_at: dueDateIso,
 			state_key: finalState,
 			description: description?.trim() || null, // Use dedicated column
 			created_by: actorId,
@@ -274,8 +274,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		const { type_key: _typeKey, ...milestonePayload } = createdMilestone;
-		return ApiResponse.created({ milestone: milestonePayload });
+		const goalIdForResponse =
+			connectionList.find((connection) => connection.kind === 'goal')?.id ?? null;
+
+		const { type_key: _typeKey, ...milestonePayload } = withComputedMilestoneState(
+			createdMilestone
+		);
+
+		return ApiResponse.created({
+			milestone: {
+				...milestonePayload,
+				goal_id: goalIdForResponse
+			}
+		});
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

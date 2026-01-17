@@ -17,6 +17,7 @@
 -->
 <script lang="ts">
 	import { Circle, CircleDot, CheckCircle2, XCircle, MoreHorizontal, Check } from 'lucide-svelte';
+	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 
 	interface Milestone {
 		id: string;
@@ -35,18 +36,8 @@
 
 	let { milestone, onEdit, onToggleComplete, compact = false }: Props = $props();
 
-	// Get effective state (check both state_key and props.state_key for compatibility)
-	const effectiveState = $derived(
-		milestone.state_key || (milestone.props?.state_key as string) || 'pending'
-	);
-
-	// Determine if milestone is past due
-	const isPastDue = $derived.by(() => {
-		if (!milestone.due_at) return false;
-		const dueDate = new Date(milestone.due_at);
-		const now = new Date();
-		return dueDate < now && effectiveState !== 'completed';
-	});
+	const resolvedState = $derived(resolveMilestoneState(milestone));
+	const effectiveState = $derived(resolvedState.state);
 
 	// Get visual properties based on state
 	const stateVisuals = $derived.by(() => {
@@ -62,7 +53,7 @@
 			};
 		}
 
-		if (state === 'missed' || (isPastDue && state !== 'in_progress')) {
+		if (resolvedState.isMissed) {
 			return {
 				icon: XCircle,
 				iconColor: 'text-destructive',
@@ -166,7 +157,7 @@
 	<!-- Due date badge (compact, always inline) -->
 	{#if formattedDueDate}
 		<span
-			class="text-[9px] shrink-0 {isPastDue && effectiveState !== 'completed'
+			class="text-[9px] shrink-0 {resolvedState.isMissed
 				? 'text-destructive'
 				: 'text-muted-foreground/60'}"
 		>

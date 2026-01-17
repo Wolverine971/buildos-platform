@@ -26,6 +26,10 @@
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import DocumentVersionHistoryPanel from './DocumentVersionHistoryPanel.svelte';
+	import DocumentVersionDiffDrawer from './DocumentVersionDiffDrawer.svelte';
+	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
+	import type { VersionListItem } from './DocumentVersionHistoryPanel.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -159,6 +163,16 @@
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let showMobileMetadata = $state(false);
+
+	// Version history state
+	let showDiffDrawer = $state(false);
+	let selectedVersionForDiff = $state<VersionListItem | null>(null);
+	let diffCompareMode = $state<'previous' | 'current'>('previous');
+	let showRestoreModal = $state(false);
+	let selectedVersionForRestore = $state<VersionListItem | null>(null);
+	let latestVersionNumber = $state(0);
+	let versionHistoryPanelRef = $state<{ refresh: () => void } | null>(null);
+	let isAdminUser = $state(false);
 
 	// Build focus for chat about this document
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -474,6 +488,73 @@
 	function handleChatClose() {
 		showChatModal = false;
 	}
+
+	// Version history handlers
+	function handleDiffRequested(version: VersionListItem, compareMode: 'previous' | 'current') {
+		selectedVersionForDiff = version;
+		diffCompareMode = compareMode;
+		showDiffDrawer = true;
+	}
+
+	function handleRestoreRequested(version: VersionListItem, latestVersion: number) {
+		selectedVersionForRestore = version;
+		latestVersionNumber = latestVersion;
+		showRestoreModal = true;
+	}
+
+	function handleDiffDrawerClose() {
+		showDiffDrawer = false;
+		selectedVersionForDiff = null;
+	}
+
+	function handleRestoreModalClose() {
+		showRestoreModal = false;
+		selectedVersionForRestore = null;
+	}
+
+	async function handleVersionRestored() {
+		showRestoreModal = false;
+		selectedVersionForRestore = null;
+		// Reload the document to show restored content
+		if (activeDocumentId) {
+			await loadDocument(activeDocumentId);
+		}
+		// Refresh version history panel
+		versionHistoryPanelRef?.refresh();
+		onSaved?.();
+	}
+
+	// Check admin access for restore permission
+	// Since we don't have a dedicated access check endpoint, we'll be optimistic
+	// and show the restore button. The API will enforce permissions anyway.
+	// For a production implementation, add GET /api/onto/projects/{id}/access endpoint
+	async function checkAdminAccess() {
+		if (!projectId) {
+			isAdminUser = false;
+			return;
+		}
+		try {
+			// Try to fetch project details - if user can access, they likely have write access
+			// The restore endpoint enforces admin access server-side
+			const response = await fetch(`/api/onto/projects/${projectId}`);
+			if (response.ok) {
+				// User has at least read access; show restore button (server will validate)
+				// For proper implementation, the project API should return access level
+				isAdminUser = true;
+			} else {
+				isAdminUser = false;
+			}
+		} catch {
+			isAdminUser = false;
+		}
+	}
+
+	// Check admin access when document loads
+	$effect(() => {
+		if (activeDocumentId && projectId) {
+			checkAdminAccess();
+		}
+	});
 </script>
 
 <Modal
@@ -483,7 +564,7 @@
 	closeOnBackdrop={false}
 	closeOnEscape={!saving}
 	showCloseButton={false}
-	customClasses="lg:!max-w-5xl xl:!max-w-6xl"
+	customClasses="lg:!max-w-6xl xl:!max-w-7xl"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
@@ -643,18 +724,7 @@
 									</div>
 								{/if}
 
-								<!-- Activity Log -->
-								{#if isEditing && activeDocumentId}
-									<div class="pt-2 border-t border-border">
-										<EntityActivityLog
-											entityType="document"
-											entityId={activeDocumentId}
-											autoLoad={!loading}
-										/>
-									</div>
-								{/if}
-
-								<!-- Metadata -->
+								<!-- Metadata (Activity Log moved to right rail) -->
 								{#if isEditing}
 									<div
 										class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground"
@@ -857,6 +927,32 @@
 								{/if}
 							</div>
 						</div>
+
+						<!-- Right rail (Version History + Activity) - Desktop only -->
+						{#if isEditing && activeDocumentId}
+							<div
+								class="hidden lg:flex lg:flex-col lg:w-72 xl:w-80 flex-shrink-0 lg:border-l border-border overflow-y-auto bg-muted/10"
+							>
+								<div class="p-3 space-y-3">
+									<!-- Version History Panel -->
+									<DocumentVersionHistoryPanel
+										bind:this={versionHistoryPanelRef}
+										documentId={activeDocumentId}
+										{projectId}
+										isAdmin={isAdminUser}
+										onDiffRequested={handleDiffRequested}
+										onRestoreRequested={handleRestoreRequested}
+									/>
+
+									<!-- Activity Log -->
+									<EntityActivityLog
+										entityType="document"
+										entityId={activeDocumentId}
+										autoLoad={!loading}
+									/>
+								</div>
+							</div>
+						{/if}
 					</div>
 
 					{#if globalFormError}
@@ -982,6 +1078,43 @@
 		onClose={closeLinkedEntityModals}
 		onSaved={closeLinkedEntityModals}
 		onDeleted={closeLinkedEntityModals}
+	/>
+{/if}
+
+<!-- Version Diff Drawer -->
+{#if showDiffDrawer && selectedVersionForDiff && activeDocumentId}
+	<DocumentVersionDiffDrawer
+		bind:isOpen={showDiffDrawer}
+		documentId={activeDocumentId}
+		{projectId}
+		versionNumber={selectedVersionForDiff.number}
+		compareMode={diffCompareMode}
+		currentDocument={{
+			title,
+			description,
+			content: body,
+			state_key: stateKey
+		}}
+		onClose={handleDiffDrawerClose}
+	/>
+{/if}
+
+<!-- Version Restore Modal -->
+{#if showRestoreModal && selectedVersionForRestore && activeDocumentId}
+	<DocumentVersionRestoreModal
+		bind:isOpen={showRestoreModal}
+		documentId={activeDocumentId}
+		{projectId}
+		version={{
+			number: selectedVersionForRestore.number,
+			created_by_name: selectedVersionForRestore.created_by_name,
+			created_at: selectedVersionForRestore.created_at,
+			window: selectedVersionForRestore.window,
+			snapshot_hash: selectedVersionForRestore.snapshot_hash
+		}}
+		latestVersionNumber={latestVersionNumber}
+		onClose={handleRestoreModalClose}
+		onRestored={handleVersionRestored}
 	/>
 {/if}
 

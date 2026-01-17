@@ -125,23 +125,6 @@
 	let dueAt = $state('');
 	let stateKey = $state('pending');
 
-	// Format date for the input (local date)
-	function getDefaultDate(): string {
-		const date = new Date();
-		date.setDate(date.getDate() + 7); // Default to 1 week from now
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, '0');
-		const day = String(date.getDate()).padStart(2, '0');
-		return `${year}-${month}-${day}`;
-	}
-
-	// Initialize date
-	$effect(() => {
-		if (!dueAt) {
-			dueAt = getDefaultDate();
-		}
-	});
-
 	// Get goal state color
 	function getGoalStateColor(state: string): string {
 		switch (state) {
@@ -170,7 +153,7 @@
 		title = '';
 		description = '';
 		milestoneDetails = '';
-		dueAt = getDefaultDate();
+		dueAt = '';
 		stateKey = 'pending';
 		error = '';
 	}
@@ -188,20 +171,18 @@
 			return;
 		}
 
-		if (!dueAt) {
-			error = 'Due date is required';
-			return;
-		}
-
 		isSaving = true;
 		error = '';
 
 		try {
-			const dueDateIso = parseDateFromInput(dueAt);
-			if (!dueDateIso) {
-				error = 'Due date must be a valid date';
-				isSaving = false;
-				return;
+			let dueDateIso: string | null = null;
+			if (dueAt && dueAt.trim()) {
+				dueDateIso = parseDateFromInput(dueAt);
+				if (!dueDateIso) {
+					error = 'Due date must be a valid date';
+					isSaving = false;
+					return;
+				}
 			}
 
 			const requestBody: Record<string, unknown> = {
@@ -501,10 +482,10 @@
 
 								<!-- Due Date -->
 								<FormField
-									label="Due Date"
+									label="Due Date (optional)"
 									labelFor="due_at"
-									required={true}
-									error={!dueAt && error ? 'Due date is required' : ''}
+									required={false}
+									error={error && error.toLowerCase().includes('date') ? error : ''}
 								>
 									<div class="relative">
 										<Calendar
@@ -519,7 +500,6 @@
 												focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500
 												disabled:opacity-50 disabled:cursor-not-allowed"
 											disabled={isSaving}
-											required
 										/>
 									</div>
 								</FormField>
@@ -638,7 +618,7 @@
 						type="submit"
 						variant="primary"
 						size="sm"
-						disabled={isSaving || !title.trim() || !dueAt || !selectedGoalId}
+						disabled={isSaving || !title.trim() || !selectedGoalId}
 						onclick={handleSubmit}
 						loading={isSaving}
 						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
