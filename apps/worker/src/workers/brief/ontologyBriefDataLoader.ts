@@ -384,6 +384,16 @@ export function getMilestoneStatus(
 	todayStr: string,
 	timezone: string
 ): MilestoneStatus {
+	// Handle milestones without due dates
+	if (!milestone.due_at) {
+		return {
+			milestone,
+			daysAway: Infinity,
+			isAtRisk: false,
+			projectName: project.name
+		};
+	}
+
 	// Format the milestone due date in user's timezone
 	const dueDateStr = formatInTimeZone(parseISO(milestone.due_at), timezone, 'yyyy-MM-dd');
 
@@ -1135,8 +1145,8 @@ export class OntologyBriefDataLoader {
 
 			// Get next milestone
 			const nextMilestone = data.milestones
-				.filter((m) => m.state_key !== 'completed' && m.state_key !== 'missed')
-				.sort((a, b) => parseISO(a.due_at).getTime() - parseISO(b.due_at).getTime())[0];
+				.filter((m) => m.state_key !== 'completed' && m.state_key !== 'missed' && m.due_at !== null)
+				.sort((a, b) => parseISO(a.due_at!).getTime() - parseISO(b.due_at!).getTime())[0];
 
 			const projectTodaysTasks = todaysTasksByProject.get(data.project.id) ?? [];
 			const projectUpcomingAll = upcomingTasksByProject.get(data.project.id) ?? [];
@@ -1211,7 +1221,7 @@ export class OntologyBriefDataLoader {
 
 		// Count milestones this week
 		const milestonesThisWeek = allMilestones.filter((m) => {
-			if (m.state_key === 'completed' || m.state_key === 'missed') return false;
+			if (m.state_key === 'completed' || m.state_key === 'missed' || !m.due_at) return false;
 			const dueDateStr = formatInTimeZone(parseISO(m.due_at), timezone, 'yyyy-MM-dd');
 			return dueDateStr >= briefDate && dueDateStr <= weekEndStr;
 		}).length;
