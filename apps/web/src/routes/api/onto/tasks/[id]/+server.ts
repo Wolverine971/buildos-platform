@@ -45,6 +45,7 @@ import {
 } from '$lib/services/async-activity-logger';
 import { normalizeTaskStateInput } from '../../shared/task-state';
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
+import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import {
 	AutoOrganizeError,
 	ENTITY_TABLES,
@@ -553,6 +554,15 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 
 	const supabase = locals.supabase;
 	const chatSessionId = getChatSessionIdFromRequest(request);
+	const body = await request.json().catch(() => null);
+	const shouldSyncEventsToCalendar =
+		body && typeof body === 'object'
+			? (body.sync_to_calendar as boolean | undefined) !== false
+			: true;
+	const shouldDeleteLinkedEvents =
+		body && typeof body === 'object'
+			? (body.delete_linked_events as boolean | undefined) !== false
+			: true;
 
 	try {
 		// Get user's actor ID
@@ -657,6 +667,52 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 				tableName: 'onto_tasks'
 			});
 			return ApiResponse.error('Failed to delete task', 500);
+		}
+
+		if (shouldDeleteLinkedEvents) {
+			try {
+				const { data: taskEvents, error: taskEventsError } = await supabase
+					.from('onto_events')
+					.select('id')
+					.eq('owner_entity_type', 'task')
+					.eq('owner_entity_id', params.id)
+					.is('deleted_at', null);
+
+				if (taskEventsError) {
+					console.error('[Task DELETE] Failed to load linked events:', taskEventsError);
+					await logOntologyApiError({
+						supabase,
+						error: taskEventsError,
+						endpoint: `/api/onto/tasks/${params.id}`,
+						method: 'DELETE',
+						userId: session.user.id,
+						projectId,
+						entityType: 'event',
+						operation: 'task_delete_linked_events_fetch',
+						tableName: 'onto_events'
+					});
+				} else if (taskEvents && taskEvents.length > 0) {
+					const eventService = new OntoEventSyncService(supabase);
+					for (const taskEvent of taskEvents) {
+						await eventService.deleteEvent(session.user.id, {
+							eventId: taskEvent.id,
+							syncToCalendar: shouldSyncEventsToCalendar
+						});
+					}
+				}
+			} catch (error) {
+				console.error('[Task DELETE] Failed to delete linked events:', error);
+				await logOntologyApiError({
+					supabase,
+					error,
+					endpoint: `/api/onto/tasks/${params.id}`,
+					method: 'DELETE',
+					userId: session.user.id,
+					projectId,
+					entityType: 'event',
+					operation: 'task_delete_linked_events'
+				});
+			}
 		}
 
 		// Note: We keep the edges for soft-deleted tasks to preserve relationships

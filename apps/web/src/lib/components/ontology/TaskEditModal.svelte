@@ -110,6 +110,8 @@
 	let isDeleting = $state(false);
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
+	let hasCalendarLink = $state(false);
+	let deleteFromCalendar = $state(true);
 	let hasChanges = $state(false);
 
 	// Form fields
@@ -175,6 +177,13 @@
 		}
 	});
 
+	$effect(() => {
+		if (!browser) return;
+		if (showDeleteConfirm) {
+			void loadCalendarLinkStatus();
+		}
+	});
+
 	function formatDateTimeForInput(date: Date | string | null): string {
 		if (!date) return '';
 		try {
@@ -234,6 +243,38 @@
 			error = 'Failed to load task';
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	async function loadCalendarLinkStatus() {
+		if (!projectId || !taskId) {
+			hasCalendarLink = false;
+			return;
+		}
+
+		try {
+			const response = await fetch(
+				`/api/onto/projects/${projectId}/events?owner_type=task&owner_id=${taskId}&limit=10`
+			);
+
+			if (!response.ok) {
+				hasCalendarLink = false;
+				return;
+			}
+
+			const result = await response.json();
+			const events = result?.data?.events ?? [];
+
+			hasCalendarLink = events.some((event: any) => {
+				const syncRows = event.onto_event_sync || [];
+				const props = event.props || {};
+				return (
+					syncRows.length > 0 ||
+					Boolean(props.external_event_id || props.external_calendar_id)
+				);
+			});
+		} catch (err) {
+			hasCalendarLink = false;
 		}
 	}
 
@@ -304,7 +345,9 @@
 
 		try {
 			const response = await fetch(`/api/onto/tasks/${taskId}`, {
-				method: 'DELETE'
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ sync_to_calendar: deleteFromCalendar })
 			});
 
 			const result = await response.json();
@@ -979,7 +1022,13 @@
 	<ConfirmationModal
 		isOpen={showDeleteConfirm}
 		title="Delete Task"
-		confirmText="Delete Task"
+		confirmText={
+			hasCalendarLink
+				? deleteFromCalendar
+					? 'Delete + Calendar'
+					: 'Delete only here'
+				: 'Delete Task'
+		}
 		confirmVariant="danger"
 		loading={isDeleting}
 		loadingText="Deleting..."
@@ -988,9 +1037,29 @@
 		oncancel={() => (showDeleteConfirm = false)}
 	>
 		{#snippet content()}
-			<p class="text-sm text-muted-foreground">
-				This action cannot be undone. The task and all its data will be permanently deleted.
-			</p>
+			<div class="space-y-3">
+				<p class="text-sm text-muted-foreground">
+					This action cannot be undone. The task will be permanently deleted from BuildOS.
+				</p>
+				{#if hasCalendarLink}
+					<label
+						class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
+					>
+						<input
+							type="checkbox"
+							bind:checked={deleteFromCalendar}
+							class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
+						/>
+						<span class="group-hover:text-foreground transition-colors">
+							Also delete linked calendar events
+						</span>
+					</label>
+				{:else}
+					<p class="text-xs text-muted-foreground italic">
+						No linked calendar events found.
+					</p>
+				{/if}
+			</div>
 		{/snippet}
 	</ConfirmationModal>
 {/if}

@@ -5,6 +5,7 @@ import { CalendarService } from '$lib/services/calendar-service';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { OntoEventService, type OntoEventOwner } from './onto-event.service';
+import { PUBLIC_APP_URL } from '$env/static/public';
 
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
 type OntoEventSyncRow = Database['public']['Tables']['onto_event_sync']['Row'];
@@ -72,6 +73,32 @@ export interface CreateOntoEventResult {
 }
 
 const DEFAULT_EVENT_DURATION_MINUTES = 30;
+const FALLBACK_APP_URL = 'https://build-os.com';
+const APP_BASE_URL = (PUBLIC_APP_URL || FALLBACK_APP_URL).replace(/\/$/, '');
+
+function buildProjectUrl(projectId: string): string {
+	return `${APP_BASE_URL}/projects/${projectId}`;
+}
+
+function buildTaskUrl(projectId: string, taskId: string): string {
+	return `${APP_BASE_URL}/projects/${projectId}/tasks/${taskId}`;
+}
+
+function buildAppUrlFromPath(path: string): string {
+	const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+	return `${APP_BASE_URL}${normalizedPath}`;
+}
+
+function isProbablyGoogleCalendarLink(text: string): boolean {
+	const normalized = text.trim().toLowerCase();
+	if (!normalized.startsWith('http')) return false;
+
+	return (
+		normalized.includes('calendar.google.com') ||
+		normalized.includes('www.google.com/calendar') ||
+		normalized.includes('google.com/calendar')
+	);
+}
 
 export class OntoEventSyncService {
 	private readonly calendarService: CalendarService;
@@ -284,6 +311,117 @@ export class OntoEventSyncService {
 		return updated;
 	}
 
+	private async buildCalendarEventDescription(event: OntoEventRow): Promise<string | undefined> {
+		const existingDescription = (event.description ?? '').trim();
+		const props = (event.props as Record<string, unknown>) ?? {};
+
+		const taskId =
+			event.owner_entity_type === 'task' && event.owner_entity_id
+				? event.owner_entity_id
+				: typeof props.task_id === 'string'
+					? props.task_id
+					: null;
+
+		const projectId =
+			event.project_id ?? (typeof props.project_id === 'string' ? props.project_id : null);
+
+		const notes =
+			existingDescription.length > 0 && !isProbablyGoogleCalendarLink(existingDescription)
+				? existingDescription
+				: '';
+
+		if (!taskId) {
+			return notes.length > 0 ? notes : undefined;
+		}
+
+		let resolvedProjectId = projectId;
+		let taskTitle: string | null = typeof props.task_title === 'string' ? props.task_title : null;
+		let taskDescription: string | null = null;
+		let projectName: string | null = null;
+
+		try {
+			const { data: task, error } = await this.supabase
+				.from('onto_tasks')
+				.select('id, title, description, project_id')
+				.eq('id', taskId)
+				.is('deleted_at', null)
+				.maybeSingle();
+
+			if (!error && task) {
+				taskTitle = task.title ?? taskTitle;
+				taskDescription = task.description ?? null;
+				resolvedProjectId = resolvedProjectId ?? task.project_id ?? null;
+			}
+		} catch (error) {
+			console.warn('[OntoEventSyncService] Failed to load task metadata for calendar sync:', error);
+		}
+
+		if (resolvedProjectId) {
+			try {
+				const { data: project, error } = await this.supabase
+					.from('onto_projects')
+					.select('id, name')
+					.eq('id', resolvedProjectId)
+					.is('deleted_at', null)
+					.maybeSingle();
+
+				if (!error && project?.name) {
+					projectName = project.name;
+				}
+			} catch (error) {
+				console.warn(
+					'[OntoEventSyncService] Failed to load project metadata for calendar sync:',
+					error
+				);
+			}
+		}
+
+		const taskUrl =
+			resolvedProjectId && taskId
+				? buildTaskUrl(resolvedProjectId, taskId)
+				: typeof props.task_link === 'string'
+					? buildAppUrlFromPath(props.task_link)
+					: null;
+
+		const projectUrl = resolvedProjectId ? buildProjectUrl(resolvedProjectId) : null;
+
+		const sections: string[] = [];
+
+		if (projectUrl) {
+			if (!existingDescription.includes(projectUrl)) {
+				sections.push(
+					projectName ? `Project: ${projectName}\n${projectUrl}` : `Project: ${projectUrl}`
+				);
+			}
+		}
+
+		if (taskUrl) {
+			const marker = `[BuildOS Task #${taskId}]`;
+			const taskUrlSansScheme = taskUrl.replace(/^https?:\/\//, '');
+			const hasTaskReference =
+				existingDescription.includes(marker) ||
+				existingDescription.includes(taskUrl) ||
+				existingDescription.includes(taskUrlSansScheme);
+
+			if (!hasTaskReference) {
+				const label = taskTitle ? `📋 View Task: ${taskTitle}` : '📋 View Task';
+				const block = `${label}\n${taskUrl}\n${marker}`;
+				sections.push(block);
+			}
+		}
+
+		if (taskDescription?.trim()) {
+			sections.push(taskDescription.trim());
+		}
+
+		if (notes.length > 0) {
+			sections.push(notes);
+		}
+
+		const combined = sections.join('\n\n').trim();
+		return combined.length > 0 ? combined : undefined;
+	}
+
 	private async syncEventToCalendar(
 		userId: string,
 		event: OntoEventRow,
@@ -337,9 +475,10 @@ export class OntoEventSyncService {
 			}
 
 			try {
+				const description = await this.buildCalendarEventDescription(event);
 				const calendarEvent = await this.calendarService.createStandaloneEvent(userId, {
 					summary: event.title,
-					description: event.description ?? undefined,
+					description,
 					start: new Date(event.start_at),
 					end: new Date(event.end_at ?? event.start_at),
 					timeZone: event.timezone ?? undefined,
@@ -396,9 +535,10 @@ export class OntoEventSyncService {
 
 		const googleCalendarId = options.calendarId ?? 'primary';
 		try {
+			const description = await this.buildCalendarEventDescription(event);
 			const calendarEvent = await this.calendarService.createStandaloneEvent(userId, {
 				summary: event.title,
-				description: event.description ?? undefined,
+				description,
 				start: new Date(event.start_at),
 				end: new Date(event.end_at ?? event.start_at),
 				timeZone: event.timezone ?? undefined,
@@ -456,13 +596,14 @@ export class OntoEventSyncService {
 		if (!mapping) return;
 
 		try {
+			const description = await this.buildCalendarEventDescription(event);
 			await this.calendarService.updateCalendarEvent(userId, {
 				event_id: mapping.externalEventId,
 				calendar_id: mapping.calendarId,
 				start_time: event.start_at,
 				end_time: event.end_at ?? undefined,
 				summary: event.title,
-				description: event.description ?? undefined,
+				description,
 				location: event.location ?? undefined,
 				timeZone: event.timezone ?? undefined
 			});
