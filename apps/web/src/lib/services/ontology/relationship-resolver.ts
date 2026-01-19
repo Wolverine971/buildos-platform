@@ -270,6 +270,9 @@ export function resolveConnections(params: {
 		}
 
 		if (connection.kind === 'document' || entity.kind === 'document') {
+			if (connection.kind === 'project' || entity.kind === 'project') {
+				continue;
+			}
 			if (connection.kind === 'document' && entity.kind === 'document') {
 				continue;
 			}
@@ -279,6 +282,9 @@ export function resolveConnections(params: {
 		}
 
 		if (connection.kind === 'source' || entity.kind === 'source') {
+			if (connection.kind === 'project' || entity.kind === 'project') {
+				continue;
+			}
 			const { direction, target } = inferReferenceDirection(entity, connection);
 			addSemanticEdge(semantic, 'references', direction, target);
 			continue;

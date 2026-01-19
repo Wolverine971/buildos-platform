@@ -45,3 +45,25 @@ describe('resolveConnections task fallback behavior', () => {
 		expect(semanticRels).toContain('depends_on');
 	});
 });
+
+describe('resolveConnections project reference safeguards', () => {
+	it('does not infer references for project-document connections', () => {
+		const plan = resolveConnections({
+			entity: { kind: 'document' as const, id: 'doc-1' },
+			connections: [{ kind: 'project', id: 'project-1' }]
+		});
+
+		expect(plan.entitySemantic).toHaveLength(0);
+		expect(plan.entityProjectEdge).toEqual({ rel: 'has_document', mode: 'ensure' });
+	});
+
+	it('does not infer references for project-source connections', () => {
+		const plan = resolveConnections({
+			entity: { kind: 'source' as const, id: 'source-1' },
+			connections: [{ kind: 'project', id: 'project-1' }]
+		});
+
+		expect(plan.entitySemantic).toHaveLength(0);
+		expect(plan.entityProjectEdge).toEqual({ rel: 'has_source', mode: 'ensure' });
+	});
+});
