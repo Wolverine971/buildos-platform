@@ -20,6 +20,7 @@ const VALID_ENTITY_TYPES: Set<ProjectLogEntityType> = new Set([
 	'project',
 	'note',
 	'document',
+	'event',
 	'requirement',
 	'source',
 	'edge'
@@ -194,6 +195,7 @@ async function getProjectIdForEntity(
 		project: 'onto_projects',
 		note: 'onto_documents',
 		document: 'onto_documents',
+		event: 'onto_events',
 		requirement: 'onto_requirements',
 		source: 'onto_sources',
 		edge: 'onto_edges'
