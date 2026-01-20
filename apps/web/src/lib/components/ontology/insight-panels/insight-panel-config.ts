@@ -361,10 +361,11 @@ export const EVENT_CONFIG: PanelConfig = {
 		{ field: 'created_at', label: 'Created', defaultDirection: 'desc' }
 	],
 	specialToggles: [
+		{ id: 'showPast', label: 'Past', defaultValue: false },
 		{ id: 'showCancelled', label: 'Cancelled', defaultValue: false },
 		{ id: 'showDeleted', label: 'Deleted', defaultValue: false }
 	],
-	defaultSort: { field: 'updated_at', direction: 'desc' },
+	defaultSort: { field: 'start_at', direction: 'asc' },
 	defaultFilters: {
 		state_key: ['scheduled']
 	}

@@ -356,9 +356,11 @@
 
 			// If we just created a new document, transition to edit mode
 			// by updating internal state and loading the full document
-			if (wasCreating && result?.data?.id) {
-				internalDocumentId = result.data.id;
-				await loadDocument(result.data.id);
+			// API returns { document, version } so ID is at result.data.document.id
+			const newDocumentId = result?.data?.document?.id ?? result?.data?.id;
+			if (wasCreating && newDocumentId) {
+				internalDocumentId = newDocumentId;
+				await loadDocument(newDocumentId);
 			}
 			// Modal stays open - no closeModal() call
 		} catch (error) {

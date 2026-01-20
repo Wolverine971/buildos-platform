@@ -404,6 +404,13 @@
 			if (!toggles.showClosed && item.state_key === 'closed') return false;
 		} else if (entityType === 'events') {
 			if (!toggles.showCancelled && item.state_key === 'cancelled') return false;
+			// Filter out past events (end_at or start_at before now)
+			if (!toggles.showPast) {
+				const endAt = item.end_at as string | null;
+				const startAt = item.start_at as string | null;
+				const eventEnd = endAt ? new Date(endAt) : startAt ? new Date(startAt) : null;
+				if (eventEnd && eventEnd < new Date()) return false;
+			}
 		}
 
 		// Check multi-select filters
@@ -645,6 +652,10 @@
 				.length
 		},
 		events: {
+			showPast: events.filter((e) => {
+				const eventEnd = e.end_at ? new Date(e.end_at) : e.start_at ? new Date(e.start_at) : null;
+				return eventEnd && eventEnd < new Date();
+			}).length,
 			showCancelled: events.filter((e) => e.state_key === 'cancelled').length,
 			showDeleted: events.filter((e) => e.deleted_at).length
 		}
@@ -818,6 +829,69 @@
 		return `${startLabel} – ${endLabel}`;
 	}
 
+	/**
+	 * Format event dates compactly for insight panel display.
+	 * Shows: "Jan 15, 9am–10am" or "Jan 15, 9am" or "Jan 15–16"
+	 */
+	function formatEventDateCompact(event: OntoEventWithSync): string {
+		const start = new Date(event.start_at);
+		if (Number.isNaN(start.getTime())) return 'No date';
+
+		const now = new Date();
+		const isToday =
+			start.getDate() === now.getDate() &&
+			start.getMonth() === now.getMonth() &&
+			start.getFullYear() === now.getFullYear();
+
+		const tomorrow = new Date(now);
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		const isTomorrow =
+			start.getDate() === tomorrow.getDate() &&
+			start.getMonth() === tomorrow.getMonth() &&
+			start.getFullYear() === tomorrow.getFullYear();
+
+		// Format time compactly (9am, 10:30am)
+		const formatTime = (d: Date) => {
+			const hours = d.getHours();
+			const mins = d.getMinutes();
+			const ampm = hours >= 12 ? 'pm' : 'am';
+			const h = hours % 12 || 12;
+			return mins === 0 ? `${h}${ampm}` : `${h}:${mins.toString().padStart(2, '0')}${ampm}`;
+		};
+
+		// Format date part
+		const dateLabel = isToday
+			? 'Today'
+			: isTomorrow
+				? 'Tomorrow'
+				: start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+		const startTime = formatTime(start);
+
+		if (!event.end_at) {
+			return `${dateLabel}, ${startTime}`;
+		}
+
+		const end = new Date(event.end_at);
+		if (Number.isNaN(end.getTime())) {
+			return `${dateLabel}, ${startTime}`;
+		}
+
+		// Check if same day
+		const sameDay =
+			start.getDate() === end.getDate() &&
+			start.getMonth() === end.getMonth() &&
+			start.getFullYear() === end.getFullYear();
+
+		if (sameDay) {
+			return `${dateLabel}, ${startTime}–${formatTime(end)}`;
+		} else {
+			// Multi-day event: show date range
+			const endDateLabel = end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+			return `${dateLabel}–${endDateLabel}`;
+		}
+	}
+
 	function isEventSynced(event: OntoEventWithSync): boolean {
 		return Boolean(event.onto_event_sync && event.onto_event_sync.length > 0);
 	}
@@ -909,9 +983,12 @@
 		activeDocumentId = null;
 	}
 
-	async function handleTaskCreated() {
+	async function handleTaskCreated(taskId: string) {
+		toastService.success('Task created');
 		await refreshData();
 		showTaskCreateModal = false;
+		// Auto-open edit modal for the newly created task
+		editingTaskId = taskId;
 	}
 
 	async function handleTaskUpdated() {
@@ -924,9 +1001,12 @@
 		editingTaskId = null;
 	}
 
-	async function handlePlanCreated() {
+	async function handlePlanCreated(planId: string) {
+		toastService.success('Plan created');
 		await refreshData();
 		showPlanCreateModal = false;
+		// Auto-open edit modal for the newly created plan
+		editingPlanId = planId;
 	}
 
 	async function handlePlanUpdated() {
@@ -939,9 +1019,12 @@
 		editingPlanId = null;
 	}
 
-	async function handleGoalCreated() {
+	async function handleGoalCreated(goalId: string) {
+		toastService.success('Goal created');
 		await refreshData();
 		showGoalCreateModal = false;
+		// Auto-open edit modal for the newly created goal
+		editingGoalId = goalId;
 	}
 
 	async function handleGoalUpdated() {
@@ -954,9 +1037,12 @@
 		editingGoalId = null;
 	}
 
-	async function handleRiskCreated() {
+	async function handleRiskCreated(riskId: string) {
+		toastService.success('Risk created');
 		await refreshData();
 		showRiskCreateModal = false;
+		// Auto-open edit modal for the newly created risk
+		editingRiskId = riskId;
 	}
 
 	async function handleRiskUpdated() {
@@ -969,10 +1055,13 @@
 		editingRiskId = null;
 	}
 
-	async function handleMilestoneCreated() {
+	async function handleMilestoneCreated(milestoneId: string) {
+		toastService.success('Milestone created');
 		await refreshData();
 		showMilestoneCreateModal = false;
 		milestoneCreateGoalContext = null;
+		// Auto-open edit modal for the newly created milestone
+		editingMilestoneId = milestoneId;
 	}
 
 	async function handleMilestoneUpdated() {
@@ -1040,9 +1129,12 @@
 		}
 	}
 
-	async function handleEventCreated() {
+	async function handleEventCreated(eventId: string) {
+		toastService.success('Event created');
 		await loadProjectEvents(true);
 		showEventCreateModal = false;
+		// Auto-open edit modal for the newly created event
+		editingEventId = eventId;
 	}
 
 	async function handleEventUpdated() {
@@ -2090,11 +2182,6 @@
 										{#if filteredEvents.length > 0}
 											<ul class="divide-y divide-border/80">
 												{#each filteredEvents as event}
-													{@const sortDisplay = getSortValueDisplay(
-														event as unknown as Record<string, unknown>,
-														panelStates.events.sort.field,
-														'events'
-													)}
 													<li>
 														<button
 															type="button"
@@ -2112,23 +2199,9 @@
 																	{event.title}
 																</p>
 																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+																	class="text-[10px] sm:text-xs text-muted-foreground"
 																>
-																	<span class="capitalize"
-																		>{(
-																			event.state_key ||
-																			'scheduled'
-																		).replace(/_/g, ' ')}</span
-																	>
-																	<span class="mx-1 opacity-50"
-																		>·</span
-																	>
-																	<span
-																		class={sortDisplay.color ||
-																			''}
-																	>
-																		{sortDisplay.value}
-																	</span>
+																	{formatEventDateCompact(event)}
 																</p>
 																{#if !isEventSynced(event)}
 																	<p
@@ -2145,7 +2218,7 @@
 										{:else}
 											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
 												<p class="text-xs sm:text-sm text-muted-foreground">
-													No events yet
+													No upcoming events
 												</p>
 												<p
 													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
