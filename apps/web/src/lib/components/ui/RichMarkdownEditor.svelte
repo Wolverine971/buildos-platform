@@ -1353,10 +1353,11 @@
 				bind:this={textareaElement}
 				class="w-full border-0 resize-none focus:ring-0 px-4 py-3 bg-card text-foreground placeholder:text-muted-foreground {sizeConfig[
 					size
-				].textarea} {fillHeight ? 'flex-1 min-h-0' : ''}"
+				].textarea} {fillHeight ? 'flex-1' : ''}"
 				{placeholder}
 				{required}
 				{disabled}
+				style="min-height: 80dvw;"
 				rows={fillHeight ? undefined : rows}
 				aria-required={required}
 				aria-disabled={disabled}

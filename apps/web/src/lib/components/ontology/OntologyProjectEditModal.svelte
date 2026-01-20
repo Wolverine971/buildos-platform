@@ -755,25 +755,25 @@
 											</span>
 										{/if}
 									</div>
-									<div class="flex items-center gap-1">
+									<div class="flex items-center gap-1.5">
 										<!-- Generate/Regenerate button -->
 										<button
 											type="button"
 											onclick={handleGenerateNextStep}
 											disabled={isGeneratingNextStep || isSaving}
-											class="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted rounded-md transition-colors disabled:opacity-50 pressable"
+											class="inline-flex items-center justify-center gap-1.5 h-8 min-w-8 px-2 sm:px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted rounded-md transition-colors disabled:opacity-50 pressable"
 											title={hasNextStep
 												? 'Regenerate with AI'
 												: 'Generate with AI'}
 										>
 											{#if isGeneratingNextStep}
-												<LoaderCircle class="w-3 h-3 animate-spin" />
+												<LoaderCircle class="w-4 h-4 sm:w-3.5 sm:h-3.5 animate-spin shrink-0" />
 												<span class="hidden sm:inline">Generating...</span>
 											{:else if hasNextStep}
-												<RefreshCw class="w-3 h-3" />
+												<RefreshCw class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
 												<span class="hidden sm:inline">Regenerate</span>
 											{:else}
-												<Sparkles class="w-3 h-3" />
+												<Sparkles class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
 												<span class="hidden sm:inline">Generate</span>
 											{/if}
 										</button>
@@ -783,10 +783,10 @@
 												type="button"
 												onclick={handleClearNextStep}
 												disabled={isSaving}
-												class="p-1 text-muted-foreground hover:text-destructive rounded transition-colors disabled:opacity-50"
+												class="inline-flex items-center justify-center h-8 w-8 sm:h-auto sm:w-auto sm:p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors disabled:opacity-50"
 												title="Clear next step"
 											>
-												<X class="w-3.5 h-3.5" />
+												<X class="w-4 h-4 sm:w-3.5 sm:h-3.5" />
 											</button>
 										{/if}
 									</div>
