@@ -136,7 +136,7 @@
 			});
 
 			responseStatus = response.status;
-			const result = await response.json().catch(() => null);
+			const result = await response.json();
 			responseCode = result?.code;
 
 			if (!response.ok) {

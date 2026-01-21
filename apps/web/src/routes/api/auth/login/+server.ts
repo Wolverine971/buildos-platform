@@ -97,7 +97,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.single();
 
 			if (insertError) {
-				console.error('[Login] Error creating public.users entry:', insertError);
+				// Handle duplicate key error - user exists but RLS blocked the read
+				if (insertError.code === '23505') {
+					console.log('[Login] User exists but was not readable (RLS issue), fetching directly');
+					// Try fetching again - the session should now be properly set
+					const { data: existingUser } = await supabase
+						.from('users')
+						.select('*')
+						.eq('id', data.user.id)
+						.single();
+					if (existingUser) {
+						user = existingUser;
+						locals.user = existingUser;
+					}
+				} else {
+					console.error('[Login] Error creating public.users entry:', insertError);
+				}
 			} else {
 				console.log('[Login] Successfully created public.users entry');
 				// Use the inserted user directly (safeGetSession cache won't have it)

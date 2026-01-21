@@ -4,6 +4,7 @@ import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/sta
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -344,6 +345,19 @@ export class GoogleOAuthHandler {
 				const { data: pendingInvites, error: pendingError } = await this.supabase.rpc(
 					'list_pending_project_invites'
 				);
+				if (pendingError) {
+					const errorLogger = ErrorLoggerService.getInstance(this.supabase);
+					await errorLogger.logError(pendingError, {
+						userId: authResult?.user?.id,
+						endpoint: '/api/onto/invites/pending',
+						httpMethod: 'GET',
+						operationType: 'project_invites_pending_list',
+						metadata: {
+							source: 'google_oauth',
+							flow: config.isRegistration ? 'register' : 'login'
+						}
+					});
+				}
 				if (!pendingError && Array.isArray(pendingInvites) && pendingInvites.length > 0) {
 					pendingInviteRedirect = `/invites?message=${encodeURIComponent(
 						'You have pending invites'
@@ -351,6 +365,17 @@ export class GoogleOAuthHandler {
 				}
 			} catch (err) {
 				console.warn('[Auth] Failed to check pending invites after OAuth:', err);
+				const errorLogger = ErrorLoggerService.getInstance(this.supabase);
+				await errorLogger.logError(err, {
+					userId: authResult?.user?.id,
+					endpoint: '/api/onto/invites/pending',
+					httpMethod: 'GET',
+					operationType: 'project_invites_pending_list',
+					metadata: {
+						source: 'google_oauth',
+						flow: config.isRegistration ? 'register' : 'login'
+					}
+				});
 			}
 		}
 
