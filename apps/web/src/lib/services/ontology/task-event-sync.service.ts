@@ -90,6 +90,7 @@ export class TaskEventSyncService {
 					title: spec.title,
 					startAt: spec.startAt,
 					endAt: spec.endAt,
+					deferCalendarSync: true,
 					props: {
 						...((existing.props as Record<string, unknown>) ?? {}),
 						task_event_kind: spec.kind,
@@ -110,6 +111,7 @@ export class TaskEventSyncService {
 					startAt: spec.startAt,
 					endAt: spec.endAt,
 					createdBy: actorId,
+					deferCalendarSync: true,
 					props: {
 						task_event_kind: spec.kind,
 						task_id: task.id,
@@ -223,7 +225,8 @@ export class TaskEventSyncService {
 	private async removeEvents(userId: string, events: OntoEventRow[]): Promise<void> {
 		for (const event of events) {
 			await this.eventSyncService.deleteEvent(userId, {
-				eventId: event.id
+				eventId: event.id,
+				deferCalendarSync: true
 			});
 			await this.supabase
 				.from('onto_edges')

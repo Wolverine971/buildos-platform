@@ -346,7 +346,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			createdBy: actorId,
 			calendarScope,
 			calendarId,
-			syncToCalendar
+			syncToCalendar,
+			deferCalendarSync: true
 		});
 
 		if (resolvedOwnerType === 'task' && resolvedOwnerId) {

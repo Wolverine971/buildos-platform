@@ -208,7 +208,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			recurrence: body.recurrence,
 			externalLink: body.external_link,
 			props: body.props,
-			syncToCalendar: body.sync_to_calendar
+			syncToCalendar: body.sync_to_calendar,
+			deferCalendarSync: true
 		});
 
 		return ApiResponse.success({ event: updated });
@@ -247,7 +248,8 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		const eventService = new OntoEventSyncService(locals.supabase);
 		const event = await eventService.deleteEvent(access.userId, {
 			eventId,
-			syncToCalendar
+			syncToCalendar,
+			deferCalendarSync: true
 		});
 
 		return ApiResponse.success({ event });

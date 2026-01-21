@@ -983,94 +983,94 @@
 		activeDocumentId = null;
 	}
 
-	async function handleTaskCreated(taskId: string) {
+	function handleTaskCreated(taskId: string) {
 		toastService.success('Task created');
-		await refreshData();
 		showTaskCreateModal = false;
 		// Auto-open edit modal for the newly created task
 		editingTaskId = taskId;
+		void refreshData();
 	}
 
-	async function handleTaskUpdated() {
-		await refreshData();
+	function handleTaskUpdated() {
+		void refreshData();
 		editingTaskId = null;
 	}
 
-	async function handleTaskDeleted() {
-		await refreshData();
+	function handleTaskDeleted() {
+		void refreshData();
 		editingTaskId = null;
 	}
 
-	async function handlePlanCreated(planId: string) {
+	function handlePlanCreated(planId: string) {
 		toastService.success('Plan created');
-		await refreshData();
 		showPlanCreateModal = false;
 		// Auto-open edit modal for the newly created plan
 		editingPlanId = planId;
+		void refreshData();
 	}
 
-	async function handlePlanUpdated() {
-		await refreshData();
+	function handlePlanUpdated() {
+		void refreshData();
 		editingPlanId = null;
 	}
 
-	async function handlePlanDeleted() {
-		await refreshData();
+	function handlePlanDeleted() {
+		void refreshData();
 		editingPlanId = null;
 	}
 
-	async function handleGoalCreated(goalId: string) {
+	function handleGoalCreated(goalId: string) {
 		toastService.success('Goal created');
-		await refreshData();
 		showGoalCreateModal = false;
 		// Auto-open edit modal for the newly created goal
 		editingGoalId = goalId;
+		void refreshData();
 	}
 
-	async function handleGoalUpdated() {
-		await refreshData();
+	function handleGoalUpdated() {
+		void refreshData();
 		editingGoalId = null;
 	}
 
-	async function handleGoalDeleted() {
-		await refreshData();
+	function handleGoalDeleted() {
+		void refreshData();
 		editingGoalId = null;
 	}
 
-	async function handleRiskCreated(riskId: string) {
+	function handleRiskCreated(riskId: string) {
 		toastService.success('Risk created');
-		await refreshData();
 		showRiskCreateModal = false;
 		// Auto-open edit modal for the newly created risk
 		editingRiskId = riskId;
+		void refreshData();
 	}
 
-	async function handleRiskUpdated() {
-		await refreshData();
+	function handleRiskUpdated() {
+		void refreshData();
 		editingRiskId = null;
 	}
 
-	async function handleRiskDeleted() {
-		await refreshData();
+	function handleRiskDeleted() {
+		void refreshData();
 		editingRiskId = null;
 	}
 
-	async function handleMilestoneCreated(milestoneId: string) {
+	function handleMilestoneCreated(milestoneId: string) {
 		toastService.success('Milestone created');
-		await refreshData();
 		showMilestoneCreateModal = false;
 		milestoneCreateGoalContext = null;
 		// Auto-open edit modal for the newly created milestone
 		editingMilestoneId = milestoneId;
+		void refreshData();
 	}
 
-	async function handleMilestoneUpdated() {
-		await refreshData();
+	function handleMilestoneUpdated() {
+		void refreshData();
 		editingMilestoneId = null;
 	}
 
-	async function handleMilestoneDeleted() {
-		await refreshData();
+	function handleMilestoneDeleted() {
+		void refreshData();
 		editingMilestoneId = null;
 	}
 
@@ -1129,21 +1129,21 @@
 		}
 	}
 
-	async function handleEventCreated(eventId: string) {
+	function handleEventCreated(eventId: string) {
 		toastService.success('Event created');
-		await loadProjectEvents(true);
 		showEventCreateModal = false;
 		// Auto-open edit modal for the newly created event
 		editingEventId = eventId;
+		void loadProjectEvents(true);
 	}
 
-	async function handleEventUpdated() {
-		await loadProjectEvents(true);
+	function handleEventUpdated() {
+		void loadProjectEvents(true);
 		editingEventId = null;
 	}
 
-	async function handleEventDeleted() {
-		await loadProjectEvents(true);
+	function handleEventDeleted() {
+		void loadProjectEvents(true);
 		editingEventId = null;
 	}
 

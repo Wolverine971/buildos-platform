@@ -49,7 +49,7 @@
 <script lang="ts">
 	import { X } from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { portal } from '$lib/actions/portal';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
@@ -152,6 +152,9 @@
 	let previousFocusElement = $state<HTMLElement | null>(null);
 	let focusTrapCleanup = $state<(() => void) | null>(null);
 	let animationComplete = $state(false);
+	let scrollLockHeld = $state(false);
+	let unlockRafId = $state<number | null>(null);
+	let animationCompleteTimeoutId = $state<ReturnType<typeof setTimeout> | null>(null);
 
 	// Touch gesture state
 	let isDragging = $state(false);
@@ -197,8 +200,8 @@
 			return;
 		}
 
-		onClose?.();
 		isOpen = false;
+		onClose?.();
 	}
 
 	// ==================== Touch Gesture Handlers ====================
@@ -340,11 +343,17 @@
 			console.log('[Modal] Opening:', { title, variant, size });
 		}
 
+		if (unlockRafId !== null) {
+			cancelAnimationFrame(unlockRafId);
+			unlockRafId = null;
+		}
+
 		await tick();
 
 		// Lock body scroll
-		if (browser) {
+		if (browser && !scrollLockHeld) {
 			lockBodyScroll();
+			scrollLockHeld = true;
 		}
 
 		trapFocus();
@@ -352,8 +361,13 @@
 
 		// Set animation complete flag after animation duration
 		animationComplete = false;
-		setTimeout(() => {
+		if (animationCompleteTimeoutId !== null) {
+			clearTimeout(animationCompleteTimeoutId);
+			animationCompleteTimeoutId = null;
+		}
+		animationCompleteTimeoutId = setTimeout(() => {
 			animationComplete = true;
+			animationCompleteTimeoutId = null;
 		}, 350);
 	}
 
@@ -367,35 +381,55 @@
 			focusTrapCleanup = null;
 		}
 
-		// Restore scroll position
-		if (browser) {
-			unlockBodyScroll();
+		animationComplete = false;
+		if (animationCompleteTimeoutId !== null) {
+			clearTimeout(animationCompleteTimeoutId);
+			animationCompleteTimeoutId = null;
 		}
 
-		restoreFocus();
+		// Defer scroll unlock to next frame so the close state/transition can render first.
+		if (browser) {
+			if (unlockRafId !== null) {
+				cancelAnimationFrame(unlockRafId);
+			}
+			unlockRafId = requestAnimationFrame(() => {
+				unlockRafId = null;
+				if (isOpen) return;
+				if (scrollLockHeld) {
+					unlockBodyScroll();
+					scrollLockHeld = false;
+				}
+				restoreFocus();
+			});
+		} else {
+			restoreFocus();
+		}
 	}
 
 	$effect(() => {
 		if (isOpen) {
-			handleModalOpen();
+			untrack(() => handleModalOpen());
 		} else {
-			handleModalClose();
+			untrack(() => handleModalClose());
 		}
-
-		return () => {
-			// Cleanup on unmount
-			if (isOpen) {
-				handleModalClose();
-			}
-		};
 	});
 
 	onDestroy(() => {
+		if (unlockRafId !== null) {
+			cancelAnimationFrame(unlockRafId);
+			unlockRafId = null;
+		}
+		if (animationCompleteTimeoutId !== null) {
+			clearTimeout(animationCompleteTimeoutId);
+			animationCompleteTimeoutId = null;
+		}
 		if (focusTrapCleanup) {
 			focusTrapCleanup();
 		}
-		if (browser && document.body.style.position === 'fixed') {
-			handleModalClose();
+		if (browser && scrollLockHeld) {
+			unlockBodyScroll();
+			scrollLockHeld = false;
+			restoreFocus();
 		}
 	});
 </script>
@@ -403,7 +437,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if isOpen}
-	<div use:portal class="modal-root" transition:fade={{ duration: 150 }} role="presentation">
+	<div use:portal class="modal-root" transition:fade={{ duration: 100 }} role="presentation">
 		<!-- Backdrop with touch optimization -->
 		<div
 			class="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-[9998]"

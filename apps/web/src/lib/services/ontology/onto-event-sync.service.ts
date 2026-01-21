@@ -35,6 +35,7 @@ export interface CreateOntoEventRequest {
 	calendarScope?: CalendarScope;
 	calendarId?: string | null;
 	syncToCalendar?: boolean;
+	deferCalendarSync?: boolean;
 	createProjectCalendarIfMissing?: boolean;
 }
 
@@ -53,12 +54,14 @@ export interface UpdateOntoEventRequest {
 	externalLink?: string | null;
 	props?: Json;
 	syncToCalendar?: boolean;
+	deferCalendarSync?: boolean;
 	syncTaskFromEvent?: boolean;
 }
 
 export interface DeleteOntoEventRequest {
 	eventId: string;
 	syncToCalendar?: boolean;
+	deferCalendarSync?: boolean;
 }
 
 export interface CreateOntoEventResult {
@@ -109,6 +112,14 @@ export class OntoEventSyncService {
 		this.calendarService = new CalendarService(supabase);
 		this.projectCalendarService = new ProjectCalendarService(supabase);
 		this.googleOAuthService = new GoogleOAuthService(supabase);
+	}
+
+	private defer(label: string, task: () => Promise<void>): void {
+		queueMicrotask(() => {
+			task().catch((error) => {
+				console.warn(`[OntoEventSyncService] Deferred ${label} failed:`, error);
+			});
+		});
 	}
 
 	async listProjectEvents(
@@ -237,11 +248,23 @@ export class OntoEventSyncService {
 			return { event };
 		}
 
-		const syncResult = await this.syncEventToCalendar(userId, event, {
+		const syncOptions = {
 			scope: request.calendarScope ?? 'project',
 			calendarId: request.calendarId ?? null,
 			createProjectCalendarIfMissing: request.createProjectCalendarIfMissing ?? true
-		});
+		};
+
+		if (request.deferCalendarSync) {
+			this.defer('calendar create', async () => {
+				const latest = await this.getEvent(event.id);
+				if (!latest) return;
+				if ((latest as any).deleted_at) return;
+				await this.syncEventToCalendar(userId, latest as any, syncOptions);
+			});
+			return { event };
+		}
+
+		const syncResult = await this.syncEventToCalendar(userId, event, syncOptions);
 
 		return { event: syncResult.event, sync: syncResult.sync };
 	}
@@ -280,6 +303,20 @@ export class OntoEventSyncService {
 			return updated;
 		}
 
+		if (request.deferCalendarSync) {
+			this.defer('calendar update', async () => {
+				const latest = await this.getEvent(request.eventId);
+				if (!latest) return;
+				if ((latest as any).deleted_at) return;
+				await this.updateCalendarFromEvent(
+					userId,
+					latest as any,
+					latest.onto_event_sync ?? []
+				);
+			});
+			return updated;
+		}
+
 		await this.updateCalendarFromEvent(userId, updated, existing.onto_event_sync ?? []);
 		return updated;
 	}
@@ -305,7 +342,19 @@ export class OntoEventSyncService {
 		}
 
 		if (request.syncToCalendar !== false) {
-			await this.deleteCalendarEvent(userId, existing, existing.onto_event_sync ?? []);
+			if (request.deferCalendarSync) {
+				this.defer('calendar delete', async () => {
+					const latest = await this.getEvent(request.eventId);
+					if (!latest) return;
+					await this.deleteCalendarEvent(
+						userId,
+						latest as any,
+						latest.onto_event_sync ?? []
+					);
+				});
+			} else {
+				await this.deleteCalendarEvent(userId, existing, existing.onto_event_sync ?? []);
+			}
 		}
 
 		return updated;
