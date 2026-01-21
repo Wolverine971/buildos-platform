@@ -1357,7 +1357,7 @@
 				{placeholder}
 				{required}
 				{disabled}
-				style="min-height: min(50dvh, 300px);"
+				style="min-height: min(50dvh, 300px); max-height: min(80dvh, 100%);"
 				rows={fillHeight ? undefined : rows}
 				aria-required={required}
 				aria-disabled={disabled}
