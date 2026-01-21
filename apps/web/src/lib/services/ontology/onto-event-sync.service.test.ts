@@ -1,8 +1,17 @@
+// apps/web/src/lib/services/ontology/onto-event-sync.service.test.ts
 import { describe, expect, it } from 'vitest';
 import { OntoEventSyncService } from './onto-event-sync.service';
 
 function createSupabaseMock(fixtures: {
-	tasks?: Record<string, { id: string; title?: string | null; description?: string | null; project_id?: string | null }>;
+	tasks?: Record<
+		string,
+		{
+			id: string;
+			title?: string | null;
+			description?: string | null;
+			project_id?: string | null;
+		}
+	>;
 	projects?: Record<string, { id: string; name?: string | null }>;
 }) {
 	return {
@@ -42,7 +51,12 @@ describe('OntoEventSyncService calendar descriptions', () => {
 	it('includes BuildOS task + project links and task description', async () => {
 		const supabase = createSupabaseMock({
 			tasks: {
-				task1: { id: 'task1', title: 'Write spec', description: 'Do the thing.', project_id: 'proj1' }
+				task1: {
+					id: 'task1',
+					title: 'Write spec',
+					description: 'Do the thing.',
+					project_id: 'proj1'
+				}
 			},
 			projects: {
 				proj1: { id: 'proj1', name: 'BuildOS' }

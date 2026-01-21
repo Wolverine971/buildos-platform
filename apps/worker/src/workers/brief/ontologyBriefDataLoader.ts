@@ -1145,7 +1145,10 @@ export class OntologyBriefDataLoader {
 
 			// Get next milestone
 			const nextMilestone = data.milestones
-				.filter((m) => m.state_key !== 'completed' && m.state_key !== 'missed' && m.due_at !== null)
+				.filter(
+					(m) =>
+						m.state_key !== 'completed' && m.state_key !== 'missed' && m.due_at !== null
+				)
 				.sort((a, b) => parseISO(a.due_at!).getTime() - parseISO(b.due_at!).getTime())[0];
 
 			const projectTodaysTasks = todaysTasksByProject.get(data.project.id) ?? [];

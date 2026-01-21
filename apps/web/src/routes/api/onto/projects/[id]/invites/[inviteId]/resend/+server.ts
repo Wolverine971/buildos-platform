@@ -25,19 +25,21 @@ function escapeHtml(value: string): string {
 const INVITE_EXPIRY_DAYS = 7;
 
 export const POST: RequestHandler = async ({ params, locals }) => {
+	const supabase = locals.supabase;
+	let userId: string | undefined;
+	const projectId = params.id;
+	const inviteId = params.inviteId;
 	try {
 		const { user } = await locals.safeGetSession();
+		userId = user?.id;
 		if (!user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
 
-		const projectId = params.id;
-		const inviteId = params.inviteId;
 		if (!projectId || !inviteId) {
 			return ApiResponse.badRequest('Project ID and invite ID required');
 		}
 
-		const supabase = locals.supabase;
 		const actorId = await ensureActorId(supabase, user.id);
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
@@ -136,6 +138,20 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.maybeSingle();
+
+		if (projectError) {
+			await logOntologyApiError({
+				supabase,
+				error: projectError,
+				endpoint: `/api/onto/projects/${projectId}/invites/${inviteId}/resend`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_invites_project_fetch',
+				tableName: 'onto_projects'
+			});
+		}
 
 		if (projectError || !project) {
 			return ApiResponse.error('Project not found', 404);
@@ -236,13 +252,28 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		});
 
 		if (!emailResult.success) {
+			const inviteeDomain = invite.invitee_email.split('@')[1] ?? null;
+			await logOntologyApiError({
+				supabase,
+				error: new Error(emailResult.error ?? 'Email send failed'),
+				endpoint: `/api/onto/projects/${projectId}/invites/${inviteId}/resend`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project_invite',
+				operation: 'project_invite_email_resend',
+				metadata: {
+					inviteId,
+					inviteeDomain
+				}
+			});
 			return ApiResponse.error(
 				`Invite updated, but email failed to send: ${emailResult.error ?? 'Unknown error'}`,
 				500
 			);
 		}
 
-		await supabase.from('onto_project_logs').insert({
+		const { error: logError } = await supabase.from('onto_project_logs').insert({
 			project_id: projectId,
 			entity_type: 'project',
 			entity_id: projectId,
@@ -257,10 +288,35 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				access: invite.access
 			}
 		});
+		if (logError) {
+			console.warn('[Project Invites API] Failed to log invite resend:', logError);
+			void logOntologyApiError({
+				supabase,
+				error: logError,
+				endpoint: `/api/onto/projects/${projectId}/invites/${inviteId}/resend`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_invite_log_resend'
+			});
+		}
 
 		return ApiResponse.success({ inviteId, expires_at: expiresAt });
 	} catch (error) {
 		console.error('[Project Invites API] Failed to resend invite:', error);
+		await logOntologyApiError({
+			supabase,
+			error,
+			endpoint: projectId && inviteId
+				? `/api/onto/projects/${projectId}/invites/${inviteId}/resend`
+				: '/api/onto/projects/:id/invites/:inviteId/resend',
+			method: 'POST',
+			userId,
+			projectId,
+			entityType: 'project',
+			operation: 'project_invite_resend'
+		});
 		return ApiResponse.internalError(error, 'Failed to resend invite');
 	}
 };

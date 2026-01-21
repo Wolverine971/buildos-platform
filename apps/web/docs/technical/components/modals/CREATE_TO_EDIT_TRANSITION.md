@@ -1,3 +1,4 @@
+<!-- apps/web/docs/technical/components/modals/CREATE_TO_EDIT_TRANSITION.md -->
 # Create-to-Edit Modal Transition
 
 > **Status**: Implementation in Progress
@@ -32,15 +33,15 @@ When a user creates a new entity (task, plan, goal, etc.) on the project page, t
 
 ### Entity Modal Patterns
 
-| Entity | Create Component | Edit Component | Pattern |
-|--------|-----------------|----------------|---------|
-| **Document** | `DocumentModal.svelte` | Same component | **Unified** (already works!) |
-| Task | `TaskCreateModal.svelte` | `TaskEditModal.svelte` | Separate |
-| Plan | `PlanCreateModal.svelte` | `PlanEditModal.svelte` | Separate |
-| Goal | `GoalCreateModal.svelte` | `GoalEditModal.svelte` | Separate |
-| Risk | `RiskCreateModal.svelte` | `RiskEditModal.svelte` | Separate |
-| Milestone | `MilestoneCreateModal.svelte` | `MilestoneEditModal.svelte` | Separate |
-| Event | `EventCreateModal.svelte` | `EventEditModal.svelte` | Separate |
+| Entity       | Create Component              | Edit Component              | Pattern                      |
+| ------------ | ----------------------------- | --------------------------- | ---------------------------- |
+| **Document** | `DocumentModal.svelte`        | Same component              | **Unified** (already works!) |
+| Task         | `TaskCreateModal.svelte`      | `TaskEditModal.svelte`      | Separate                     |
+| Plan         | `PlanCreateModal.svelte`      | `PlanEditModal.svelte`      | Separate                     |
+| Goal         | `GoalCreateModal.svelte`      | `GoalEditModal.svelte`      | Separate                     |
+| Risk         | `RiskCreateModal.svelte`      | `RiskEditModal.svelte`      | Separate                     |
+| Milestone    | `MilestoneCreateModal.svelte` | `MilestoneEditModal.svelte` | Separate                     |
+| Event        | `EventCreateModal.svelte`     | `EventEditModal.svelte`     | Separate                     |
 
 ### DocumentModal - The Reference Implementation
 
@@ -51,7 +52,7 @@ When a user creates a new entity (task, plan, goal, etc.) on the project page, t
 let internalDocumentId = $state<string | null>(null);
 
 $effect(() => {
-    internalDocumentId = documentId;
+	internalDocumentId = documentId;
 });
 
 const activeDocumentId = $derived(internalDocumentId);
@@ -59,14 +60,14 @@ const isEditing = $derived(Boolean(activeDocumentId));
 
 // Lines 354-362: Transition after creation
 async function handleSave(event?: SubmitEvent) {
-    // ... save logic ...
+	// ... save logic ...
 
-    // If we just created a new document, transition to edit mode
-    if (wasCreating && result?.data?.id) {
-        internalDocumentId = result.data.id;
-        await loadDocument(result.data.id);
-    }
-    // Modal stays open - no closeModal() call
+	// If we just created a new document, transition to edit mode
+	if (wasCreating && result?.data?.id) {
+		internalDocumentId = result.data.id;
+		await loadDocument(result.data.id);
+	}
+	// Modal stays open - no closeModal() call
 }
 ```
 
@@ -79,11 +80,13 @@ async function handleSave(event?: SubmitEvent) {
 Modify the parent page (`+page.svelte`) handlers to automatically open the edit modal after creation.
 
 **Advantages:**
+
 - Minimal changes to existing create modal components
 - Leverages existing edit modal infrastructure
 - Quick to implement
 
 **Trade-off:**
+
 - Brief visual "flash" as create modal closes and edit modal opens
 - Two separate components still maintained
 
@@ -92,11 +95,13 @@ Modify the parent page (`+page.svelte`) handlers to automatically open the edit 
 Merge create and edit modals into single unified components (like DocumentModal).
 
 **Advantages:**
+
 - Smoother in-place transition
 - Single component to maintain
 - Better code reuse
 
 **Trade-off:**
+
 - Larger refactor
 - More complex component logic
 
@@ -105,20 +110,22 @@ Merge create and edit modals into single unified components (like DocumentModal)
 ### Handler Changes in `+page.svelte`
 
 #### Before (Current)
+
 ```typescript
 async function handleTaskCreated() {
-    await refreshData();
-    showTaskCreateModal = false;
+	await refreshData();
+	showTaskCreateModal = false;
 }
 ```
 
 #### After (With Transition)
+
 ```typescript
 async function handleTaskCreated(taskId: string) {
-    await refreshData();
-    showTaskCreateModal = false;
-    // Auto-open edit modal for the newly created task
-    editingTaskId = taskId;
+	await refreshData();
+	showTaskCreateModal = false;
+	// Auto-open edit modal for the newly created task
+	editingTaskId = taskId;
 }
 ```
 
@@ -129,7 +136,7 @@ Create modals already pass the new entity ID via `onCreated`:
 ```typescript
 // TaskCreateModal.svelte - Lines 177-180
 if (onCreated) {
-    onCreated(result.data.task.id);
+	onCreated(result.data.task.id);
 }
 onClose();
 ```
@@ -151,17 +158,17 @@ Consider adding a brief toast notification during transition:
 
 ```typescript
 async function handleTaskCreated(taskId: string) {
-    toastService.success('Task created');
-    await refreshData();
-    showTaskCreateModal = false;
-    editingTaskId = taskId;
+	toastService.success('Task created');
+	await refreshData();
+	showTaskCreateModal = false;
+	editingTaskId = taskId;
 }
 ```
 
 ## File Changes Required
 
-| File | Change |
-|------|--------|
+| File                                              | Change                                                                 |
+| ------------------------------------------------- | ---------------------------------------------------------------------- |
 | `/apps/web/src/routes/projects/[id]/+page.svelte` | Update all `handle*Created` functions to accept ID and open edit modal |
 
 ## Testing Checklist

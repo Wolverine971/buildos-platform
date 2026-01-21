@@ -10,8 +10,13 @@ import { logOntologyApiError } from '../../../../shared/error-logging';
 import { createHash } from 'crypto';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
+	const supabase = locals.supabase;
+	let userId: string | undefined;
+	let projectId: string | undefined;
+	let tokenHashPrefix: string | undefined;
 	try {
 		const { user } = await locals.safeGetSession();
+		userId = user?.id;
 		if (!user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
@@ -25,9 +30,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('User email required to accept invite');
 		}
 
-		const supabase = locals.supabase;
 		const actorId = await ensureActorId(supabase, user.id);
 		const tokenHash = createHash('sha256').update(token).digest('hex');
+		tokenHashPrefix = tokenHash.slice(0, 8);
 
 		const { data, error } = await supabase.rpc('accept_project_invite', {
 			p_token_hash: tokenHash,
@@ -53,6 +58,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const result = Array.isArray(data) ? data[0] : data;
+		projectId = result?.project_id;
 		return ApiResponse.success({
 			projectId: result?.project_id,
 			role_key: result?.role_key,
@@ -60,6 +66,17 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Invite Accept API] Failed to accept invite:', error);
+		await logOntologyApiError({
+			supabase,
+			error,
+			endpoint: '/api/onto/invites/token/:token/accept',
+			method: 'POST',
+			userId,
+			projectId,
+			entityType: 'project_invite',
+			operation: 'project_invite_accept',
+			metadata: tokenHashPrefix ? { tokenHashPrefix } : undefined
+		});
 		return ApiResponse.internalError(error, 'Failed to accept invite');
 	}
 };

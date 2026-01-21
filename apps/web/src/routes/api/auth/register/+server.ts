@@ -2,10 +2,20 @@
 import type { RequestHandler } from './$types';
 import { validateEmail } from '$lib/utils/email-validation';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+
+function getEmailDomain(value: string): string | null {
+	const trimmed = value.trim().toLowerCase();
+	const atIndex = trimmed.lastIndexOf('@');
+	if (atIndex <= 0 || atIndex === trimmed.length - 1) return null;
+	return trimmed.slice(atIndex + 1);
+}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { email, password, name } = await request.json();
 	const { supabase, safeGetSession } = locals;
+	const errorLogger = ErrorLoggerService.getInstance(supabase);
+	const emailDomain = typeof email === 'string' ? getEmailDomain(email) : null;
 
 	// Validation
 	if (!email || !password) {
@@ -67,12 +77,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (signUpError) {
 			console.error('Registration error:', signUpError);
+			const isSchemaError =
+				signUpError.message.includes('column') &&
+				signUpError.message.includes('does not exist');
+			const isExistingUser =
+				signUpError.message.includes('already registered') ||
+				signUpError.message.includes('already exists') ||
+				signUpError.message.includes('User already registered');
+			await errorLogger.logError(
+				signUpError,
+				{
+					endpoint: '/api/auth/register',
+					httpMethod: 'POST',
+					operationType: 'auth_register',
+					metadata: {
+						emailDomain,
+						flow: 'password',
+						code: signUpError.code
+					}
+				},
+				isSchemaError ? 'critical' : isExistingUser ? 'warning' : 'error'
+			);
 
 			// Enhanced error logging for auth schema issues
-			if (
-				signUpError.message.includes('column') &&
-				signUpError.message.includes('does not exist')
-			) {
+			if (isSchemaError) {
 				console.error('AUTH SCHEMA ERROR - Missing column detected:', {
 					message: signUpError.message,
 					error: signUpError,
@@ -92,11 +120,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			// Handle specific error cases
-			if (
-				signUpError.message.includes('already registered') ||
-				signUpError.message.includes('already exists') ||
-				signUpError.message.includes('User already registered')
-			) {
+			if (isExistingUser) {
 				return ApiResponse.error(
 					'An account with this email already exists. Please sign in instead.',
 					HttpStatus.CONFLICT,
@@ -125,6 +149,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			if (fetchError) {
 				// Unexpected error checking user existence
 				console.error('Error checking user existence:', fetchError);
+				await errorLogger.logError(fetchError, {
+					endpoint: '/api/auth/register',
+					httpMethod: 'POST',
+					operationType: 'auth_register_profile_check',
+					metadata: {
+						emailDomain,
+						userId: data.user.id
+					}
+				});
 			} else if (existingUser) {
 				// User already exists in public.users
 				console.log('public.users entry already exists');
@@ -148,6 +181,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				if (insertError) {
 					console.error('Error creating public.users entry:', insertError);
+					await errorLogger.logError(insertError, {
+						endpoint: '/api/auth/register',
+						httpMethod: 'POST',
+						operationType: 'auth_register_profile_insert',
+						metadata: {
+							emailDomain,
+							userId: data.user.id
+						}
+					});
 					// Don't fail registration, but log the error
 					// The user can still authenticate, and we can fix the profile later
 				} else {
@@ -184,6 +226,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		await errorLogger.logError(new Error('Registration failed - missing user/session'), {
+			endpoint: '/api/auth/register',
+			httpMethod: 'POST',
+			operationType: 'auth_register',
+			metadata: {
+				emailDomain,
+				flow: 'password'
+			}
+		});
 		return ApiResponse.error(
 			'Registration failed. Please try again.',
 			HttpStatus.INTERNAL_SERVER_ERROR,
@@ -191,6 +242,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	} catch (err: any) {
 		console.error('Unexpected registration error:', err);
+		await errorLogger.logError(err, {
+			endpoint: '/api/auth/register',
+			httpMethod: 'POST',
+			operationType: 'auth_register',
+			metadata: {
+				emailDomain,
+				flow: 'password'
+			}
+		});
 
 		// Network error handling
 		if (err instanceof TypeError && err.message.includes('fetch')) {

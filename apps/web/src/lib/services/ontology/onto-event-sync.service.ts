@@ -384,7 +384,8 @@ export class OntoEventSyncService {
 		}
 
 		let resolvedProjectId = projectId;
-		let taskTitle: string | null = typeof props.task_title === 'string' ? props.task_title : null;
+		let taskTitle: string | null =
+			typeof props.task_title === 'string' ? props.task_title : null;
 		let taskDescription: string | null = null;
 		let projectName: string | null = null;
 
@@ -402,7 +403,10 @@ export class OntoEventSyncService {
 				resolvedProjectId = resolvedProjectId ?? task.project_id ?? null;
 			}
 		} catch (error) {
-			console.warn('[OntoEventSyncService] Failed to load task metadata for calendar sync:', error);
+			console.warn(
+				'[OntoEventSyncService] Failed to load task metadata for calendar sync:',
+				error
+			);
 		}
 
 		if (resolvedProjectId) {
@@ -439,7 +443,9 @@ export class OntoEventSyncService {
 		if (projectUrl) {
 			if (!existingDescription.includes(projectUrl)) {
 				sections.push(
-					projectName ? `Project: ${projectName}\n${projectUrl}` : `Project: ${projectUrl}`
+					projectName
+						? `Project: ${projectName}\n${projectUrl}`
+						: `Project: ${projectUrl}`
 				);
 			}
 		}

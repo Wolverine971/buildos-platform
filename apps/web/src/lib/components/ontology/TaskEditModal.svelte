@@ -1022,13 +1022,11 @@
 	<ConfirmationModal
 		isOpen={showDeleteConfirm}
 		title="Delete Task"
-		confirmText={
-			hasCalendarLink
-				? deleteFromCalendar
-					? 'Delete + Calendar'
-					: 'Delete only here'
-				: 'Delete Task'
-		}
+		confirmText={hasCalendarLink
+			? deleteFromCalendar
+				? 'Delete + Calendar'
+				: 'Delete only here'
+			: 'Delete Task'}
 		confirmVariant="danger"
 		loading={isDeleting}
 		loadingText="Deleting..."

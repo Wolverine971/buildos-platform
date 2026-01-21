@@ -1,6 +1,14 @@
 // apps/web/src/routes/api/auth/login/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+
+function getEmailDomain(value: string): string | null {
+	const trimmed = value.trim().toLowerCase();
+	const atIndex = trimmed.lastIndexOf('@');
+	if (atIndex <= 0 || atIndex === trimmed.length - 1) return null;
+	return trimmed.slice(atIndex + 1);
+}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { supabase, safeGetSession } = locals;
@@ -15,6 +23,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	}
 
+	const emailDomain = typeof email === 'string' ? getEmailDomain(email) : null;
+
 	try {
 		// Sign in using the server-side client
 		const { data, error } = await supabase.auth.signInWithPassword({
@@ -23,10 +33,34 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 
 		if (error) {
+			const errorLogger = ErrorLoggerService.getInstance(supabase);
+			await errorLogger.logError(
+				error,
+				{
+					endpoint: '/api/auth/login',
+					httpMethod: 'POST',
+					operationType: 'auth_login',
+					metadata: {
+						emailDomain,
+						flow: 'password'
+					}
+				},
+				'warning'
+			);
 			return ApiResponse.unauthorized(error.message);
 		}
 
 		if (!data.session) {
+			const errorLogger = ErrorLoggerService.getInstance(supabase);
+			await errorLogger.logError(new Error('Login failed - no session created'), {
+				endpoint: '/api/auth/login',
+				httpMethod: 'POST',
+				operationType: 'auth_login',
+				metadata: {
+					emailDomain,
+					flow: 'password'
+				}
+			});
 			return ApiResponse.error(
 				'Login failed - no session created',
 				HttpStatus.UNAUTHORIZED,
@@ -43,7 +77,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// If user doesn't exist in public.users (edge case from old registration bug), create them now
 		if (!user && data.user) {
-			console.log('[Login] User missing from public.users, creating entry for:', data.user.email);
+			console.log(
+				'[Login] User missing from public.users, creating entry for:',
+				data.user.email
+			);
 
 			const { data: insertedUser, error: insertError } = await supabase
 				.from('users')
@@ -78,6 +115,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	} catch (err: any) {
 		console.error('Server login error:', err);
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
+		await errorLogger.logError(err, {
+			endpoint: '/api/auth/login',
+			httpMethod: 'POST',
+			operationType: 'auth_login',
+			metadata: {
+				emailDomain,
+				flow: 'password'
+			}
+		});
 		return ApiResponse.internalError(err, 'Login failed');
 	}
 };

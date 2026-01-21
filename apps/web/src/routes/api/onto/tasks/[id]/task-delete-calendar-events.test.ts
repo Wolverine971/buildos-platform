@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/onto/tasks/[id]/task-delete-calendar-events.test.ts
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const deleteEventMock = vi.fn();
@@ -76,10 +77,7 @@ class QueryBuilderMock {
 	}
 }
 
-function createSupabaseMock(fixtures: {
-	taskRow?: any;
-	eventRows?: Array<{ id: string }>;
-}) {
+function createSupabaseMock(fixtures: { taskRow?: any; eventRows?: Array<{ id: string }> }) {
 	return {
 		rpc: vi.fn(async (fn: string) => {
 			if (fn === 'ensure_actor_for_user') {
@@ -203,4 +201,3 @@ describe('DELETE /api/onto/tasks/[id] calendar cleanup', () => {
 		expect(deleteEventMock).not.toHaveBeenCalled();
 	});
 });
-

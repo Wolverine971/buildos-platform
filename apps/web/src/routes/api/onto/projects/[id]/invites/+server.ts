@@ -34,18 +34,20 @@ const ROLE_ACCESS_MAP = {
 type InviteRole = keyof typeof ROLE_ACCESS_MAP;
 
 export const GET: RequestHandler = async ({ params, locals }) => {
+	const supabase = locals.supabase;
+	let userId: string | undefined;
+	const projectId = params.id;
 	try {
 		const { user } = await locals.safeGetSession();
+		userId = user?.id;
 		if (!user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
 
-		const projectId = params.id;
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
 		}
 
-		const supabase = locals.supabase;
 		const actorId = await ensureActorId(supabase, user.id);
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
@@ -99,18 +101,33 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.success({ invites: invites ?? [], actorId });
 	} catch (error) {
 		console.error('[Project Invites API] Failed to load invites:', error);
+		await logOntologyApiError({
+			supabase,
+			error,
+			endpoint: projectId
+				? `/api/onto/projects/${projectId}/invites`
+				: '/api/onto/projects/:id/invites',
+			method: 'GET',
+			userId,
+			projectId,
+			entityType: 'project',
+			operation: 'project_invites_list'
+		});
 		return ApiResponse.internalError(error, 'Failed to load invites');
 	}
 };
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
+	const supabase = locals.supabase;
+	let userId: string | undefined;
+	const projectId = params.id;
 	try {
 		const { user } = await locals.safeGetSession();
+		userId = user?.id;
 		if (!user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
 
-		const projectId = params.id;
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
 		}
@@ -134,7 +151,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('You cannot invite yourself');
 		}
 
-		const supabase = locals.supabase;
 		const actorId = await ensureActorId(supabase, user.id);
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
@@ -344,34 +360,55 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		if (!emailResult.success) {
+			const inviteeDomain = inviteeEmail.split('@')[1] ?? null;
+			await logOntologyApiError({
+				supabase,
+				error: new Error(emailResult.error ?? 'Email send failed'),
+				endpoint: `/api/onto/projects/${projectId}/invites`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project_invite',
+				operation: 'project_invite_email_send',
+				metadata: {
+					inviteId: invite?.id,
+					inviteeDomain
+				}
+			});
 			return ApiResponse.error(
 				`Invite created, but email failed to send: ${emailResult.error ?? 'Unknown error'}`,
 				500
 			);
 		}
 
-		await supabase
-			.from('onto_project_logs')
-			.insert({
-				project_id: projectId,
-				entity_type: 'project',
-				entity_id: projectId,
-				action: 'updated',
-				changed_by: user.id,
-				changed_by_actor_id: actorId,
-				change_source: 'api',
-				after_data: {
-					event: 'invite_created',
-					invitee_email: inviteeEmail,
-					role_key: roleKey,
-					access
-				}
-			})
-			.then(({ error: logError }: { error: any }) => {
-				if (logError) {
-					console.warn('[Project Invites API] Failed to log invite creation:', logError);
-				}
+		const { error: logError } = await supabase.from('onto_project_logs').insert({
+			project_id: projectId,
+			entity_type: 'project',
+			entity_id: projectId,
+			action: 'updated',
+			changed_by: user.id,
+			changed_by_actor_id: actorId,
+			change_source: 'api',
+			after_data: {
+				event: 'invite_created',
+				invitee_email: inviteeEmail,
+				role_key: roleKey,
+				access
+			}
+		});
+		if (logError) {
+			console.warn('[Project Invites API] Failed to log invite creation:', logError);
+			void logOntologyApiError({
+				supabase,
+				error: logError,
+				endpoint: `/api/onto/projects/${projectId}/invites`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_invite_log_create'
 			});
+		}
 
 		return ApiResponse.success({
 			inviteId: invite?.id,
@@ -382,6 +419,18 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Project Invites API] Failed to create invite:', error);
+		await logOntologyApiError({
+			supabase,
+			error,
+			endpoint: projectId
+				? `/api/onto/projects/${projectId}/invites`
+				: '/api/onto/projects/:id/invites',
+			method: 'POST',
+			userId,
+			projectId,
+			entityType: 'project',
+			operation: 'project_invite_create'
+		});
 		return ApiResponse.internalError(error, 'Failed to create invite');
 	}
 };

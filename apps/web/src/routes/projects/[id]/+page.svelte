@@ -653,7 +653,11 @@
 		},
 		events: {
 			showPast: events.filter((e) => {
-				const eventEnd = e.end_at ? new Date(e.end_at) : e.start_at ? new Date(e.start_at) : null;
+				const eventEnd = e.end_at
+					? new Date(e.end_at)
+					: e.start_at
+						? new Date(e.start_at)
+						: null;
 				return eventEnd && eventEnd < new Date();
 			}).length,
 			showCancelled: events.filter((e) => e.state_key === 'cancelled').length,
@@ -887,7 +891,10 @@
 			return `${dateLabel}, ${startTime}–${formatTime(end)}`;
 		} else {
 			// Multi-day event: show date range
-			const endDateLabel = end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+			const endDateLabel = end.toLocaleDateString(undefined, {
+				month: 'short',
+				day: 'numeric'
+			});
 			return `${dateLabel}–${endDateLabel}`;
 		}
 	}

@@ -1,3 +1,4 @@
+<!-- docs/features/notifications/IN_APP_ACTIVITY_FEED_SPEC.md -->
 # In-App Notifications & Activity Feed (Project Sharing)
 
 Status: draft (MVP in-progress)  

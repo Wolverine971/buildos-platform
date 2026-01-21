@@ -1,5 +1,19 @@
+<!-- apps/web/src/routes/notifications/+page.svelte -->
 <script lang="ts">
-	import { Bell, AlertCircle, Inbox, Users, FileText, CheckCircle2, Share2, MessageSquare, Mail, Smartphone, Monitor, Send } from 'lucide-svelte';
+	import {
+		Bell,
+		AlertCircle,
+		Inbox,
+		Users,
+		FileText,
+		CheckCircle2,
+		Share2,
+		MessageSquare,
+		Mail,
+		Smartphone,
+		Monitor,
+		Send
+	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -31,8 +45,14 @@
 	const getEventDescription = (eventType?: string | null): { action: string; past: string } => {
 		if (!eventType) return { action: 'Activity', past: 'Activity occurred' };
 		const descriptions: Record<string, { action: string; past: string }> = {
-			'project.invite.sent': { action: 'Project Invite', past: 'You were invited to a project' },
-			'project.invite.accepted': { action: 'Invite Accepted', past: 'Someone accepted your invite' },
+			'project.invite.sent': {
+				action: 'Project Invite',
+				past: 'You were invited to a project'
+			},
+			'project.invite.accepted': {
+				action: 'Invite Accepted',
+				past: 'Someone accepted your invite'
+			},
 			'project.shared': { action: 'Project Shared', past: 'A project was shared with you' },
 			'task.assigned': { action: 'Task Assigned', past: 'A task was assigned to you' },
 			'task.completed': { action: 'Task Completed', past: 'A task was marked complete' },
@@ -43,7 +63,9 @@
 
 		// Fallback: convert event_type to readable format
 		const parts = eventType.split('.');
-		const action = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1).replace(/_/g, ' ')).join(' ');
+		const action = parts
+			.map((p) => p.charAt(0).toUpperCase() + p.slice(1).replace(/_/g, ' '))
+			.join(' ');
 		return { action, past: action };
 	};
 
@@ -108,7 +130,8 @@
 
 		// Extract additional details
 		if (typeof ep.inviter_name === 'string') details.push(`from ${ep.inviter_name}`);
-		if (typeof ep.project_name === 'string' && title !== ep.project_name) details.push(ep.project_name);
+		if (typeof ep.project_name === 'string' && title !== ep.project_name)
+			details.push(ep.project_name);
 		if (typeof ep.task_name === 'string' && title !== ep.task_name) details.push(ep.task_name);
 
 		return { title, body, details };
@@ -167,7 +190,9 @@
 
 	<!-- Error State -->
 	{#if errorMessage}
-		<div class="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3">
+		<div
+			class="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3"
+		>
 			<AlertCircle class="w-4 h-4 shrink-0" />
 			<span>{errorMessage}</span>
 		</div>
@@ -175,28 +200,36 @@
 
 	<!-- Empty State -->
 	{#if notifications.length === 0 && !errorMessage}
-		<div class="rounded-xl bg-card border border-border px-6 py-12 flex flex-col items-center text-center gap-3">
+		<div
+			class="rounded-xl bg-card border border-border px-6 py-12 flex flex-col items-center text-center gap-3"
+		>
 			<div class="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
 				<Inbox class="w-7 h-7 text-muted-foreground" />
 			</div>
 			<div>
 				<p class="text-base font-medium text-foreground">No notifications yet</p>
-				<p class="text-sm text-muted-foreground mt-1">Invites, mentions, and project activity will appear here</p>
+				<p class="text-sm text-muted-foreground mt-1">
+					Invites, mentions, and project activity will appear here
+				</p>
 			</div>
 		</div>
 
-	<!-- Notification List -->
+		<!-- Notification List -->
 	{:else if groupedNotifications.length > 0}
 		<div class="space-y-6">
 			{#each groupedNotifications as group}
 				<div class="space-y-2">
 					<!-- Date Group Header -->
-					<h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+					<h2
+						class="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1"
+					>
 						{group.label}
 					</h2>
 
 					<!-- Notification Cards -->
-					<div class="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border">
+					<div
+						class="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border"
+					>
 						{#each group.items as notification (notification.id)}
 							{@const event = notification.notification_events}
 							{@const EventIcon = getEventIcon(event?.event_type)}
@@ -211,7 +244,9 @@
 								<div class="flex gap-3">
 									<!-- Icon -->
 									<div class="shrink-0 pt-0.5">
-										<div class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center">
+										<div
+											class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+										>
 											<EventIcon class="w-4 h-4 text-accent" />
 										</div>
 									</div>
@@ -220,29 +255,42 @@
 									<div class="flex-1 min-w-0">
 										<div class="flex items-start justify-between gap-3">
 											<div class="min-w-0">
-												<p class="text-sm font-medium text-foreground leading-snug">
+												<p
+													class="text-sm font-medium text-foreground leading-snug"
+												>
 													{content.title}
 												</p>
 												{#if content.body}
-													<p class="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2">
+													<p
+														class="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2"
+													>
 														{content.body}
 													</p>
 												{/if}
 											</div>
-											<span class="text-xs text-muted-foreground tabular-nums shrink-0 pt-0.5">
+											<span
+												class="text-xs text-muted-foreground tabular-nums shrink-0 pt-0.5"
+											>
 												{formatRelativeTime(notification.created_at)}
 											</span>
 										</div>
 
 										<!-- Meta row -->
 										<div class="flex items-center gap-2 mt-1.5">
-											<span class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
+											<span
+												class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80"
+											>
 												<ChannelIcon class="w-3 h-3" />
-												<span class="capitalize">{notification.channel?.replace('_', ' ') || 'in app'}</span>
+												<span class="capitalize"
+													>{notification.channel?.replace('_', ' ') ||
+														'in app'}</span
+												>
 											</span>
 											{#if content.details.length > 0}
 												<span class="text-muted-foreground/40">·</span>
-												<span class="text-[11px] text-muted-foreground/70 truncate">
+												<span
+													class="text-[11px] text-muted-foreground/70 truncate"
+												>
 													{content.details.join(' · ')}
 												</span>
 											{/if}

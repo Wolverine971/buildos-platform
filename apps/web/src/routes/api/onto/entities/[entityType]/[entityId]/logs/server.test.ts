@@ -81,4 +81,3 @@ describe('GET /api/onto/entities/[entityType]/[entityId]/logs', () => {
 		});
 	});
 });
-

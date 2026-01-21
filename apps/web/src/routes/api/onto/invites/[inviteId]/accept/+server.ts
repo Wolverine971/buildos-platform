@@ -10,18 +10,22 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 import { randomUUID } from 'crypto';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
+	const supabase = locals.supabase;
+	let userId: string | undefined;
+	let projectId: string | undefined;
+	const inviteId = params.inviteId?.trim();
+
 	try {
 		const { user } = await locals.safeGetSession();
+		userId = user?.id;
 		if (!user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
 
-		const inviteId = params.inviteId?.trim();
 		if (!inviteId) {
 			return ApiResponse.badRequest('Invite ID required');
 		}
 
-		const supabase = locals.supabase;
 		const { data, error } = await supabase.rpc('accept_project_invite_by_id', {
 			p_invite_id: inviteId
 		});
@@ -40,39 +44,41 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const result = Array.isArray(data) ? data[0] : data;
-		const projectId = result?.project_id as string | undefined;
+		projectId = result?.project_id as string | undefined;
 
 		// Log acceptance to project activity + notify owners
 		if (projectId) {
-			const supabase = locals.supabase;
 			const actorId = await ensureActorId(supabase, user.id);
 
 			// Activity log entry for project feed
-			await supabase
-				.from('onto_project_logs')
-				.insert({
-					project_id: projectId,
-					entity_type: 'project',
-					entity_id: projectId,
-					action: 'updated',
-					changed_by: user.id,
-					changed_by_actor_id: actorId,
-					change_source: 'api',
-					after_data: {
-						event: 'invite_accepted',
-						role_key: result?.role_key ?? null,
-						access: result?.access ?? null,
-						actor_id: actorId
-					}
-				})
-				.then(({ error: logError }) => {
-					if (logError) {
-						console.warn(
-							'[Invite Accept API] Failed to log invite acceptance:',
-							logError
-						);
-					}
+			const { error: logError } = await supabase.from('onto_project_logs').insert({
+				project_id: projectId,
+				entity_type: 'project',
+				entity_id: projectId,
+				action: 'updated',
+				changed_by: user.id,
+				changed_by_actor_id: actorId,
+				change_source: 'api',
+				after_data: {
+					event: 'invite_accepted',
+					role_key: result?.role_key ?? null,
+					access: result?.access ?? null,
+					actor_id: actorId
+				}
+			});
+			if (logError) {
+				console.warn('[Invite Accept API] Failed to log invite acceptance:', logError);
+				void logOntologyApiError({
+					supabase,
+					error: logError,
+					endpoint: `/api/onto/invites/${inviteId}/accept`,
+					method: 'POST',
+					userId,
+					projectId,
+					entityType: 'project_invite',
+					operation: 'project_invite_accept_log'
 				});
+			}
 
 			// Build in-app notification for project owners (and inviter if distinct)
 			const { data: project, error: projectError } = await supabase
@@ -80,13 +86,37 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				.select('id, name')
 				.eq('id', projectId)
 				.maybeSingle();
+			if (projectError) {
+				void logOntologyApiError({
+					supabase,
+					error: projectError,
+					endpoint: `/api/onto/invites/${inviteId}/accept`,
+					method: 'POST',
+					userId,
+					projectId,
+					entityType: 'project_invite',
+					operation: 'project_invite_accept_project_fetch'
+				});
+			}
 
-			const { data: owners } = await supabase
+			const { data: owners, error: ownersError } = await supabase
 				.from('onto_project_members')
 				.select('actor_id, role_key, access, removed_at, actor:onto_actors(user_id)')
 				.eq('project_id', projectId)
 				.eq('role_key', 'owner')
 				.is('removed_at', null);
+			if (ownersError) {
+				void logOntologyApiError({
+					supabase,
+					error: ownersError,
+					endpoint: `/api/onto/invites/${inviteId}/accept`,
+					method: 'POST',
+					userId,
+					projectId,
+					entityType: 'project_invite',
+					operation: 'project_invite_accept_owner_fetch'
+				});
+			}
 
 			const recipients = new Set<string>();
 			for (const owner of owners ?? []) {
@@ -95,11 +125,23 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			}
 
 			// Ensure inviter also gets notified if available
-			const { data: inviteRow } = await supabase
+			const { data: inviteRow, error: inviteRowError } = await supabase
 				.from('onto_project_invites')
 				.select('invited_by_actor_id, invited_by:invited_by_actor_id(user_id)')
 				.eq('id', inviteId)
 				.maybeSingle();
+			if (inviteRowError) {
+				void logOntologyApiError({
+					supabase,
+					error: inviteRowError,
+					endpoint: `/api/onto/invites/${inviteId}/accept`,
+					method: 'POST',
+					userId,
+					projectId,
+					entityType: 'project_invite',
+					operation: 'project_invite_accept_inviter_fetch'
+				});
+			}
 
 			const inviterUserId = (inviteRow as any)?.invited_by?.user_id as string | null;
 			if (inviterUserId) {
@@ -153,12 +195,32 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 							'[Invite Accept API] Failed to create notification deliveries:',
 							deliveryError
 						);
+						void logOntologyApiError({
+							supabase,
+							error: deliveryError,
+							endpoint: `/api/onto/invites/${inviteId}/accept`,
+							method: 'POST',
+							userId,
+							projectId,
+							entityType: 'project_invite',
+							operation: 'project_invite_accept_notify_deliveries'
+						});
 					}
 				} else if (eventError) {
 					console.warn(
 						'[Invite Accept API] Failed to create notification event:',
 						eventError
 					);
+					void logOntologyApiError({
+						supabase,
+						error: eventError,
+						endpoint: `/api/onto/invites/${inviteId}/accept`,
+						method: 'POST',
+						userId,
+						projectId,
+						entityType: 'project_invite',
+						operation: 'project_invite_accept_notify_event'
+					});
 				}
 			}
 		}
@@ -170,6 +232,19 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Invite Accept API] Failed to accept invite:', error);
+		await logOntologyApiError({
+			supabase,
+			error,
+			endpoint: inviteId
+				? `/api/onto/invites/${inviteId}/accept`
+				: '/api/onto/invites/:inviteId/accept',
+			method: 'POST',
+			userId,
+			projectId,
+			entityType: 'project_invite',
+			entityId: inviteId,
+			operation: 'project_invite_accept'
+		});
 		return ApiResponse.internalError(error, 'Failed to accept invite');
 	}
 };

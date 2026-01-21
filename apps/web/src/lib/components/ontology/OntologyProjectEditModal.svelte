@@ -767,13 +767,19 @@
 												: 'Generate with AI'}
 										>
 											{#if isGeneratingNextStep}
-												<LoaderCircle class="w-4 h-4 sm:w-3.5 sm:h-3.5 animate-spin shrink-0" />
+												<LoaderCircle
+													class="w-4 h-4 sm:w-3.5 sm:h-3.5 animate-spin shrink-0"
+												/>
 												<span class="hidden sm:inline">Generating...</span>
 											{:else if hasNextStep}
-												<RefreshCw class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+												<RefreshCw
+													class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0"
+												/>
 												<span class="hidden sm:inline">Regenerate</span>
 											{:else}
-												<Sparkles class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+												<Sparkles
+													class="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0"
+												/>
 												<span class="hidden sm:inline">Generate</span>
 											{/if}
 										</button>

@@ -9,19 +9,21 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 import { logOntologyApiError } from '../../../../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
+	const supabase = locals.supabase;
+	let userId: string | undefined;
+	const projectId = params.id;
+	const inviteId = params.inviteId;
 	try {
 		const { user } = await locals.safeGetSession();
+		userId = user?.id;
 		if (!user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
 
-		const projectId = params.id;
-		const inviteId = params.inviteId;
 		if (!projectId || !inviteId) {
 			return ApiResponse.badRequest('Project ID and invite ID required');
 		}
 
-		const supabase = locals.supabase;
 		const actorId = await ensureActorId(supabase, user.id);
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
@@ -100,7 +102,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
-		await supabase.from('onto_project_logs').insert({
+		const { error: logError } = await supabase.from('onto_project_logs').insert({
 			project_id: projectId,
 			entity_type: 'project',
 			entity_id: projectId,
@@ -113,10 +115,35 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				invitee_email: invite.invitee_email
 			}
 		});
+		if (logError) {
+			console.warn('[Project Invites API] Failed to log invite revoke:', logError);
+			void logOntologyApiError({
+				supabase,
+				error: logError,
+				endpoint: `/api/onto/projects/${projectId}/invites/${inviteId}/revoke`,
+				method: 'POST',
+				userId: user.id,
+				projectId,
+				entityType: 'project',
+				operation: 'project_invite_log_revoke'
+			});
+		}
 
 		return ApiResponse.success({ inviteId });
 	} catch (error) {
 		console.error('[Project Invites API] Failed to revoke invite:', error);
+		await logOntologyApiError({
+			supabase,
+			error,
+			endpoint: projectId && inviteId
+				? `/api/onto/projects/${projectId}/invites/${inviteId}/revoke`
+				: '/api/onto/projects/:id/invites/:inviteId/revoke',
+			method: 'POST',
+			userId,
+			projectId,
+			entityType: 'project',
+			operation: 'project_invite_revoke'
+		});
 		return ApiResponse.internalError(error, 'Failed to revoke invite');
 	}
 };

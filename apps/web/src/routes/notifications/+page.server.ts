@@ -1,3 +1,4 @@
+// apps/web/src/routes/notifications/+page.server.ts
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import type { Database } from '@buildos/shared-types';

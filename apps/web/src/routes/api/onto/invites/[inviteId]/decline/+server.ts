@@ -8,8 +8,11 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
+	const supabase = locals.supabase;
+	let userId: string | undefined;
 	try {
 		const { user } = await locals.safeGetSession();
+		userId = user?.id;
 		if (!user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
@@ -19,7 +22,6 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Invite ID required');
 		}
 
-		const supabase = locals.supabase;
 		const { data, error } = await supabase.rpc('decline_project_invite', {
 			p_invite_id: inviteId
 		});
@@ -44,6 +46,18 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		});
 	} catch (error) {
 		console.error('[Invite Decline API] Failed to decline invite:', error);
+		await logOntologyApiError({
+			supabase,
+			error,
+			endpoint: inviteId
+				? `/api/onto/invites/${inviteId}/decline`
+				: '/api/onto/invites/:inviteId/decline',
+			method: 'POST',
+			userId,
+			entityType: 'project_invite',
+			entityId: inviteId,
+			operation: 'project_invite_decline'
+		});
 		return ApiResponse.internalError(error, 'Failed to decline invite');
 	}
 };
