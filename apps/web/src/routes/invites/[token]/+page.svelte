@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { AlertCircle, ArrowRight, CheckCircle2, Mail, UserPlus } from 'lucide-svelte';
 
 	let { data } = $props();
@@ -27,11 +28,13 @@
 		if (!invite?.invite_id || accepting || declining) return;
 		actionError = '';
 		accepting = true;
+		let responseStatus: number | null = null;
 
 		try {
 			const response = await fetch(`/api/onto/invites/${invite.invite_id}/accept`, {
 				method: 'POST'
 			});
+			responseStatus = response.status;
 			const payload = await response.json();
 
 			if (!response.ok || !payload?.success) {
@@ -47,6 +50,18 @@
 
 			await goto(redirectPath);
 		} catch (err) {
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/invites/${invite.invite_id}/accept`,
+				method: 'POST',
+				projectId: invite?.project_id ?? undefined,
+				entityType: 'project_invite',
+				entityId: invite?.invite_id ?? undefined,
+				operation: 'project_invite_accept',
+				metadata: {
+					source: 'invite_token_page',
+					status: responseStatus
+				}
+			});
 			actionError = err instanceof Error ? err.message : 'Failed to accept invite';
 		} finally {
 			accepting = false;
@@ -57,11 +72,13 @@
 		if (!invite?.invite_id || accepting || declining) return;
 		actionError = '';
 		declining = true;
+		let responseStatus: number | null = null;
 
 		try {
 			const response = await fetch(`/api/onto/invites/${invite.invite_id}/decline`, {
 				method: 'POST'
 			});
+			responseStatus = response.status;
 			const payload = await response.json();
 
 			if (!response.ok || !payload?.success) {
@@ -71,6 +88,18 @@
 			localStatusOverride = 'declined';
 			toastService.success('Invite declined');
 		} catch (err) {
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/invites/${invite.invite_id}/decline`,
+				method: 'POST',
+				projectId: invite?.project_id ?? undefined,
+				entityType: 'project_invite',
+				entityId: invite?.invite_id ?? undefined,
+				operation: 'project_invite_decline',
+				metadata: {
+					source: 'invite_token_page',
+					status: responseStatus
+				}
+			});
 			actionError = err instanceof Error ? err.message : 'Failed to decline invite';
 		} finally {
 			declining = false;

@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { AlertCircle, ArrowRight, CheckCircle2, Mail, UserPlus } from 'lucide-svelte';
 
 	let { data } = $props();
@@ -19,11 +20,13 @@
 		if (!inviteId || processingId) return;
 		actionError = '';
 		processingId = inviteId;
+		let responseStatus: number | null = null;
 
 		try {
 			const response = await fetch(`/api/onto/invites/${inviteId}/accept`, {
 				method: 'POST'
 			});
+			responseStatus = response.status;
 			const payload = await response.json();
 
 			if (!response.ok || !payload?.success) {
@@ -40,6 +43,18 @@
 
 			await goto(redirectPath);
 		} catch (err) {
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/invites/${inviteId}/accept`,
+				method: 'POST',
+				projectId: projectId ?? undefined,
+				entityType: 'project_invite',
+				entityId: inviteId,
+				operation: 'project_invite_accept',
+				metadata: {
+					source: 'invite_page',
+					status: responseStatus
+				}
+			});
 			actionError = err instanceof Error ? err.message : 'Failed to accept invite';
 		} finally {
 			processingId = null;
@@ -50,11 +65,13 @@
 		if (!inviteId || processingId) return;
 		actionError = '';
 		processingId = inviteId;
+		let responseStatus: number | null = null;
 
 		try {
 			const response = await fetch(`/api/onto/invites/${inviteId}/decline`, {
 				method: 'POST'
 			});
+			responseStatus = response.status;
 			const payload = await response.json();
 
 			if (!response.ok || !payload?.success) {
@@ -64,6 +81,17 @@
 			invites = invites.filter((invite) => invite.invite_id !== inviteId);
 			toastService.success('Invite declined');
 		} catch (err) {
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/invites/${inviteId}/decline`,
+				method: 'POST',
+				entityType: 'project_invite',
+				entityId: inviteId,
+				operation: 'project_invite_decline',
+				metadata: {
+					source: 'invite_page',
+					status: responseStatus
+				}
+			});
 			actionError = err instanceof Error ? err.message : 'Failed to decline invite';
 		} finally {
 			processingId = null;

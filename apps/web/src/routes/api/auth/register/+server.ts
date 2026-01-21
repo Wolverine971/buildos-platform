@@ -122,8 +122,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.eq('id', data.user.id)
 				.maybeSingle();
 
-			if (fetchError && fetchError.code === 'PGRST116') {
-				// User doesn't exist, create them
+			if (fetchError) {
+				// Unexpected error checking user existence
+				console.error('Error checking user existence:', fetchError);
+			} else if (existingUser) {
+				// User already exists in public.users
+				console.log('public.users entry already exists');
+			} else {
+				// User doesn't exist in public.users - create them
+				// Note: .maybeSingle() returns { data: null, error: null } when no rows found
 				const { error: insertError } = await supabase.from('users').insert({
 					id: data.user.id,
 					email: data.user.email as string,
@@ -146,10 +153,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				} else {
 					console.log('Successfully created public.users entry');
 				}
-			} else if (!fetchError && existingUser) {
-				console.log('public.users entry already exists');
-			} else if (fetchError) {
-				console.error('Error checking user existence:', fetchError);
 			}
 		}
 

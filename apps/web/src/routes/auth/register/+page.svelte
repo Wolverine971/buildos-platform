@@ -11,6 +11,8 @@
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
+	import { logAuthClientError } from '$lib/utils/auth-client-logger';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	let loading = $state(false);
 	let googleLoading = $state(false);
@@ -41,10 +43,31 @@
 		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 	}
 
+	function getEmailDomain(value: string): string | null {
+		const trimmed = value.trim().toLowerCase();
+		const atIndex = trimmed.lastIndexOf('@');
+		if (atIndex <= 0 || atIndex === trimmed.length - 1) return null;
+		return trimmed.slice(atIndex + 1);
+	}
+
 	async function resolvePendingInviteRedirect() {
+		let responseStatus: number | null = null;
 		try {
 			const response = await fetch('/api/onto/invites/pending');
-			if (!response.ok) return null;
+			responseStatus = response.status;
+			if (!response.ok) {
+				void logOntologyClientError(new Error('Pending invite check failed'), {
+					endpoint: '/api/onto/invites/pending',
+					method: 'GET',
+					entityType: 'project_invite',
+					operation: 'project_invites_pending_check',
+					metadata: {
+						source: 'auth_register',
+						status: responseStatus
+					}
+				});
+				return null;
+			}
 			const payload = await response.json();
 			const invites = payload?.data?.invites ?? [];
 			if (invites.length > 0) {
@@ -52,6 +75,16 @@
 			}
 		} catch (err) {
 			console.warn('[Auth] Failed to check pending invites:', err);
+			void logOntologyClientError(err, {
+				endpoint: '/api/onto/invites/pending',
+				method: 'GET',
+				entityType: 'project_invite',
+				operation: 'project_invites_pending_check',
+				metadata: {
+					source: 'auth_register',
+					status: responseStatus
+				}
+			});
 		}
 		return null;
 	}
@@ -158,6 +191,10 @@
 			return;
 		}
 
+		const emailDomain = getEmailDomain(email);
+		let responseStatus: number | null = null;
+		let responseCode: string | undefined;
+
 		loading = true;
 		error = '';
 		success = false;
@@ -175,10 +212,23 @@
 				})
 			});
 
-			const result = await response.json();
+			responseStatus = response.status;
+			const result = await response.json().catch(() => null);
+			responseCode = result?.code;
 
 			if (!response.ok) {
 				const errorMessage = result?.error || result?.message || 'Registration failed';
+				void logAuthClientError(new Error(errorMessage), {
+					endpoint: '/api/auth/register',
+					method: 'POST',
+					operation: 'auth_register',
+					metadata: {
+						status: responseStatus,
+						code: responseCode,
+						emailDomain,
+						flow: 'password'
+					}
+				});
 
 				// Handle specific error codes
 				if (result?.code === 'USER_EXISTS') {
@@ -233,6 +283,17 @@
 			}
 		} catch (err: any) {
 			console.error('Registration error:', err);
+			void logAuthClientError(err, {
+				endpoint: '/api/auth/register',
+				method: 'POST',
+				operation: 'auth_register',
+				metadata: {
+					status: responseStatus,
+					code: responseCode,
+					emailDomain,
+					flow: 'password'
+				}
+			});
 			error = err.message || 'Registration failed';
 		} finally {
 			loading = false;

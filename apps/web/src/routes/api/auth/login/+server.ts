@@ -39,7 +39,35 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		locals.user = null; // Will be loaded by safeGetSession
 
 		// Force load user data
-		const { user } = await safeGetSession();
+		let { user } = await safeGetSession();
+
+		// If user doesn't exist in public.users (edge case from old registration bug), create them now
+		if (!user && data.user) {
+			console.log('[Login] User missing from public.users, creating entry for:', data.user.email);
+
+			const { data: insertedUser, error: insertError } = await supabase
+				.from('users')
+				.insert({
+					id: data.user.id,
+					email: data.user.email as string,
+					name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+					is_admin: false,
+					completed_onboarding: false,
+					created_at: new Date().toISOString(),
+					updated_at: new Date().toISOString()
+				})
+				.select()
+				.single();
+
+			if (insertError) {
+				console.error('[Login] Error creating public.users entry:', insertError);
+			} else {
+				console.log('[Login] Successfully created public.users entry');
+				// Use the inserted user directly (safeGetSession cache won't have it)
+				user = insertedUser;
+				locals.user = insertedUser;
+			}
+		}
 
 		// Return success with user data
 		return ApiResponse.success(

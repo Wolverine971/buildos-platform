@@ -5,6 +5,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { Mail, Users } from 'lucide-svelte';
 
 	type MemberRole = 'owner' | 'editor' | 'viewer';
@@ -79,6 +80,8 @@
 		canInvite = true;
 		isLoading = true;
 		error = null;
+		let membersStatus: number | null = null;
+		let invitesStatus: number | null = null;
 
 		try {
 			const [membersRes, invitesRes] = await Promise.all([
@@ -92,9 +95,28 @@
 				})
 			]);
 
+			membersStatus = membersRes.status;
+			invitesStatus = invitesRes.status;
+
 			if (membersRes.ok) {
 				const payload = await membersRes.json();
 				members = payload?.data?.members ?? [];
+			} else {
+				const payload = await membersRes.json().catch(() => null);
+				void logOntologyClientError(
+					new Error(payload?.error || 'Failed to load project members'),
+					{
+						endpoint: `/api/onto/projects/${projectId}/members`,
+						method: 'GET',
+						projectId,
+						entityType: 'project_member',
+						operation: 'project_members_fetch',
+						metadata: {
+							source: 'project_share_modal',
+							status: membersStatus
+						}
+					}
+				);
 			}
 
 			if (invitesRes.status === 403) {
@@ -102,9 +124,37 @@
 			} else if (invitesRes.ok) {
 				const payload = await invitesRes.json();
 				invites = payload?.data?.invites ?? [];
+			} else {
+				const payload = await invitesRes.json().catch(() => null);
+				void logOntologyClientError(
+					new Error(payload?.error || 'Failed to load project invites'),
+					{
+						endpoint: `/api/onto/projects/${projectId}/invites`,
+						method: 'GET',
+						projectId,
+						entityType: 'project_invite',
+						operation: 'project_invites_fetch',
+						metadata: {
+							source: 'project_share_modal',
+							status: invitesStatus
+						}
+					}
+				);
 			}
 		} catch (err) {
 			console.error('[ProjectShareModal] Failed to load share data:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/invites`,
+				method: 'GET',
+				projectId,
+				entityType: 'project_invite',
+				operation: 'project_share_load',
+				metadata: {
+					source: 'project_share_modal',
+					membersStatus,
+					invitesStatus
+				}
+			});
 			error = err instanceof Error ? err.message : 'Failed to load sharing data';
 		} finally {
 			isLoading = false;
@@ -125,6 +175,7 @@
 
 		isSending = true;
 		error = null;
+		let responseStatus: number | null = null;
 
 		try {
 			const response = await fetch(`/api/onto/projects/${projectId}/invites`, {
@@ -137,6 +188,7 @@
 				})
 			});
 
+			responseStatus = response.status;
 			const payload = await response.json();
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to send invite');
@@ -147,6 +199,17 @@
 			await loadShareData();
 		} catch (err) {
 			console.error('[ProjectShareModal] Failed to invite:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/invites`,
+				method: 'POST',
+				projectId,
+				entityType: 'project_invite',
+				operation: 'project_invite_create',
+				metadata: {
+					source: 'project_share_modal',
+					status: responseStatus
+				}
+			});
 			error = err instanceof Error ? err.message : 'Failed to send invite';
 			toastService.error(error);
 		} finally {
@@ -161,6 +224,7 @@
 
 		inviteActionId = invite.id;
 		inviteActionType = 'resend';
+		let responseStatus: number | null = null;
 
 		try {
 			const response = await fetch(
@@ -171,6 +235,7 @@
 				}
 			);
 
+			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to resend invite');
@@ -180,6 +245,18 @@
 			await loadShareData();
 		} catch (err) {
 			console.error('[ProjectShareModal] Failed to resend invite:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/invites/${invite.id}/resend`,
+				method: 'POST',
+				projectId,
+				entityType: 'project_invite',
+				entityId: invite.id,
+				operation: 'project_invite_resend',
+				metadata: {
+					source: 'project_share_modal',
+					status: responseStatus
+				}
+			});
 			const message = err instanceof Error ? err.message : 'Failed to resend invite';
 			toastService.error(message);
 			await loadShareData();
@@ -201,6 +278,7 @@
 
 		inviteActionId = invite.id;
 		inviteActionType = 'revoke';
+		let responseStatus: number | null = null;
 
 		try {
 			const response = await fetch(
@@ -211,6 +289,7 @@
 				}
 			);
 
+			responseStatus = response.status;
 			const payload = await response.json().catch(() => null);
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to revoke invite');
@@ -220,6 +299,18 @@
 			await loadShareData();
 		} catch (err) {
 			console.error('[ProjectShareModal] Failed to revoke invite:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/invites/${invite.id}/revoke`,
+				method: 'POST',
+				projectId,
+				entityType: 'project_invite',
+				entityId: invite.id,
+				operation: 'project_invite_revoke',
+				metadata: {
+					source: 'project_share_modal',
+					status: responseStatus
+				}
+			});
 			const message = err instanceof Error ? err.message : 'Failed to revoke invite';
 			toastService.error(message);
 			await loadShareData();
