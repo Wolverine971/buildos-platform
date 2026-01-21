@@ -4,6 +4,7 @@
 	import { twMerge } from 'tailwind-merge';
 	import AdminCard from './AdminCard.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import { ChevronRight } from 'lucide-svelte';
 
 	let {
 		title,
@@ -14,7 +15,8 @@
 		badge = null,
 		active = false,
 		meta = '',
-		compact = false
+		compact = false,
+		ultraCompact = false
 	}: {
 		title: string;
 		description?: string;
@@ -25,6 +27,7 @@
 		active?: boolean;
 		meta?: string;
 		compact?: boolean;
+		ultraCompact?: boolean;
 	} = $props();
 </script>
 
@@ -37,11 +40,37 @@
 >
 	<AdminCard
 		tone={active ? 'brand' : 'default'}
-		padding={compact ? 'sm' : 'md'}
+		padding={ultraCompact ? 'xs' : compact ? 'sm' : 'md'}
 		interactive
 		class="h-full admin-panel--tinted"
 	>
-		{#if compact}
+		{#if ultraCompact}
+			<!-- Ultra-compact: Mobile command center style - single row -->
+			<div class="flex items-center gap-2">
+				{#if icon}
+					{@const Icon = icon}
+					<span
+						class="flex flex-shrink-0 h-6 w-6 items-center justify-center rounded-md bg-muted text-muted-foreground"
+					>
+						<Icon class="h-3 w-3" />
+					</span>
+				{/if}
+				<span class="text-xs font-semibold text-foreground truncate flex-1">
+					{title}
+				</span>
+				{#if stat !== null && stat !== undefined && stat !== ''}
+					<span
+						class="flex-shrink-0 rounded px-1 py-0.5 text-[10px] font-bold bg-muted text-foreground"
+					>
+						{stat}
+					</span>
+				{/if}
+				{#if badge}
+					<Badge variant="info" size="xs">{badge}</Badge>
+				{/if}
+				<ChevronRight class="h-3 w-3 text-muted-foreground shrink-0" />
+			</div>
+		{:else if compact}
 			<!-- Compact: Vertical stacked layout for better title visibility -->
 			<div class="flex h-full flex-col gap-2">
 				<div class="flex items-start justify-between gap-2">

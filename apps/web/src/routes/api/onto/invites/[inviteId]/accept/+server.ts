@@ -101,7 +101,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 
 			const { data: owners, error: ownersError } = await supabase
 				.from('onto_project_members')
-				.select('actor_id, role_key, access, removed_at, actor:onto_actors(user_id)')
+				.select(
+					'actor_id, role_key, access, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(user_id)'
+				)
 				.eq('project_id', projectId)
 				.eq('role_key', 'owner')
 				.is('removed_at', null);

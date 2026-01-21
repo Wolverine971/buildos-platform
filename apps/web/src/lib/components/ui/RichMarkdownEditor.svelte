@@ -20,7 +20,9 @@
 		Edit3,
 		Mic,
 		MicOff,
-		LoaderCircle
+		LoaderCircle,
+		MoreHorizontal,
+		ChevronUp
 	} from 'lucide-svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import {
@@ -113,6 +115,7 @@
 
 	let mode = $state<'edit' | 'preview'>('edit');
 	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	let showMoreTools = $state(false);
 	const generatedId = `rich-markdown-${++richMarkdownIdCounter}`;
 	const textareaId = $derived(id ?? generatedId);
 
@@ -201,16 +204,27 @@
 	const proseSize = size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'base';
 	const proseClasses = $derived(getProseClasses(proseSize));
 
-	const toolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> = [
+	// Primary toolbar buttons (always visible)
+	const primaryToolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> = [
 		{ id: 'bold', icon: Bold, label: 'Bold' },
 		{ id: 'italic', icon: Italic, label: 'Italic' },
 		{ id: 'h1', icon: Heading1, label: 'Heading 1' },
 		{ id: 'h2', icon: Heading2, label: 'Heading 2' },
 		{ id: 'ul', icon: List, label: 'Bulleted list' },
-		{ id: 'ol', icon: ListOrdered, label: 'Numbered list' },
+		{ id: 'ol', icon: ListOrdered, label: 'Numbered list' }
+	];
+
+	// Secondary toolbar buttons (overflow on mobile)
+	const secondaryToolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> = [
 		{ id: 'quote', icon: Quote, label: 'Quote' },
 		{ id: 'code', icon: Code, label: 'Code' },
 		{ id: 'link', icon: LinkIcon, label: 'Link' }
+	];
+
+	// All toolbar buttons combined (for desktop)
+	const toolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> = [
+		...primaryToolbarButtons,
+		...secondaryToolbarButtons
 	];
 
 	// Voice button state machine
@@ -1298,52 +1312,142 @@
 			? 'flex-1 flex flex-col min-h-0'
 			: ''}"
 	>
-		<!-- Toolbar -->
-		<div
-			class="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2 bg-muted/50"
-		>
-			<div class="flex flex-wrap items-center gap-1">
-				{#each toolbarButtons as action}
-					{@const ActionIcon = action.icon}
+		<!-- Header: Mode Toggle (Mobile-First Design) -->
+		<div class="border-b border-border bg-muted/30">
+			<!-- Top row: Mode toggle + character count (visible on mobile) -->
+			<div class="flex items-center justify-between px-2 py-1.5 sm:px-3">
+				<!-- Segmented Control for Edit/Preview -->
+				<div
+					class="inline-flex rounded-lg bg-muted/60 p-0.5 border border-border/50"
+					role="tablist"
+				>
 					<button
 						type="button"
-						onmousedown={(e) => e.preventDefault()}
-						onclick={() => handleToolbar(action.id)}
-						class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50 transition-colors"
-						title={action.label}
-						disabled={disabled || mode === 'preview'}
+						role="tab"
+						aria-selected={mode === 'edit'}
+						class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
+						'edit'
+							? 'bg-card text-foreground shadow-sm'
+							: 'text-muted-foreground hover:text-foreground'}"
+						onclick={() => toggleMode('edit')}
 					>
-						<ActionIcon class="w-4 h-4" />
+						<Edit3 class="w-3.5 h-3.5" />
+						<span class="hidden xs:inline">Edit</span>
 					</button>
-				{/each}
+					<button
+						type="button"
+						role="tab"
+						aria-selected={mode === 'preview'}
+						class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
+						'preview'
+							? 'bg-card text-foreground shadow-sm'
+							: 'text-muted-foreground hover:text-foreground'}"
+						onclick={() => toggleMode('preview')}
+					>
+						<Eye class="w-3.5 h-3.5" />
+						<span class="hidden xs:inline">Preview</span>
+					</button>
+				</div>
+
+				<!-- Stats (compact on mobile) -->
+				<div class="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground">
+					<span class="tabular-nums">{stats.words}w</span>
+					<span class="hidden sm:inline text-border">·</span>
+					<span class="hidden sm:inline tabular-nums">{stats.chars}c</span>
+					{#if maxLength}
+						<span class="hidden md:inline text-border">·</span>
+						<span class="hidden md:inline tabular-nums"
+							>{Math.max(0, maxLength - stats.chars)} left</span
+						>
+					{/if}
+				</div>
 			</div>
 
-			<div class="flex items-center gap-2">
-				<button
-					type="button"
-					class="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors {mode ===
-					'edit'
-						? 'bg-accent text-accent-foreground shadow-ink'
-						: 'bg-card border border-border text-muted-foreground hover:text-foreground'}"
-					onclick={() => toggleMode('edit')}
-					disabled={mode === 'edit'}
+			<!-- Formatting Toolbar (only in edit mode) -->
+			{#if mode === 'edit'}
+				<div
+					class="flex items-center gap-0.5 px-1.5 py-1 border-t border-border/50 bg-muted/20 overflow-x-auto scrollbar-hide"
 				>
-					<Edit3 class="w-3 h-3" />
-					Edit
-				</button>
-				<button
-					type="button"
-					class="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors {mode ===
-					'preview'
-						? 'bg-accent text-accent-foreground shadow-ink'
-						: 'bg-card border border-border text-muted-foreground hover:text-foreground'}"
-					onclick={() => toggleMode('preview')}
-					disabled={mode === 'preview'}
-				>
-					<Eye class="w-3 h-3" />
-					Preview
-				</button>
-			</div>
+					<!-- Primary buttons (always visible) -->
+					{#each primaryToolbarButtons as action}
+						{@const ActionIcon = action.icon}
+						<button
+							type="button"
+							onmousedown={(e) => e.preventDefault()}
+							onclick={() => handleToolbar(action.id)}
+							class="flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
+							title={action.label}
+							aria-label={action.label}
+							disabled={disabled}
+						>
+							<ActionIcon class="w-4 h-4" />
+						</button>
+					{/each}
+
+					<!-- Divider before secondary buttons -->
+					<div class="w-px h-5 bg-border/50 mx-0.5 hidden sm:block"></div>
+
+					<!-- Secondary buttons (visible on sm+, hidden on mobile) -->
+					{#each secondaryToolbarButtons as action}
+						{@const ActionIcon = action.icon}
+						<button
+							type="button"
+							onmousedown={(e) => e.preventDefault()}
+							onclick={() => handleToolbar(action.id)}
+							class="hidden sm:flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
+							title={action.label}
+							aria-label={action.label}
+							disabled={disabled}
+						>
+							<ActionIcon class="w-4 h-4" />
+						</button>
+					{/each}
+
+					<!-- More button (mobile only) -->
+					<button
+						type="button"
+						onclick={() => (showMoreTools = !showMoreTools)}
+						class="sm:hidden flex items-center justify-center w-8 h-8 rounded-md transition-colors active:scale-95 {showMoreTools
+							? 'bg-accent/20 text-accent'
+							: 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'}"
+						title="More formatting"
+						aria-label="More formatting options"
+						aria-expanded={showMoreTools}
+					>
+						{#if showMoreTools}
+							<ChevronUp class="w-4 h-4" />
+						{:else}
+							<MoreHorizontal class="w-4 h-4" />
+						{/if}
+					</button>
+				</div>
+
+				<!-- Expanded tools (mobile only) -->
+				{#if showMoreTools}
+					<div
+						class="sm:hidden flex items-center gap-0.5 px-1.5 py-1.5 border-t border-border/30 bg-muted/10"
+					>
+						{#each secondaryToolbarButtons as action}
+							{@const ActionIcon = action.icon}
+							<button
+								type="button"
+								onmousedown={(e) => e.preventDefault()}
+								onclick={() => {
+									handleToolbar(action.id);
+									showMoreTools = false;
+								}}
+								class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 transition-colors active:scale-95"
+								title={action.label}
+								aria-label={action.label}
+								disabled={disabled}
+							>
+								<ActionIcon class="w-3.5 h-3.5" />
+								<span>{action.label}</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
+			{/if}
 		</div>
 
 		<!-- Content area -->
@@ -1384,129 +1488,113 @@
 			</div>
 		{/if}
 
-		<!-- Footer with stats and voice controls -->
-		<div
-			class="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-t border-border bg-muted/50 text-xs text-muted-foreground"
-		>
-			<!-- Left side: Stats OR Recording Status -->
-			<div class="flex items-center gap-4 transition-opacity duration-150">
-				{#if enableVoice && isCurrentlyRecording && !isTransitioningFromRecording}
-					<!-- Recording indicator -->
-					<span class="flex items-center gap-1.5 text-destructive">
-						<span class="relative flex h-2 w-2 items-center justify-center">
-							<span
-								class="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60"
-							></span>
-							<span
-								class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"
-							></span>
+		<!-- Footer with voice controls (compact, mobile-optimized) -->
+		{#if enableVoice}
+			<div
+				class="flex items-center justify-between gap-2 px-2 py-1.5 sm:px-3 sm:py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground"
+			>
+				<!-- Left side: Recording status or voice info -->
+				<div class="flex items-center gap-2 min-w-0 flex-1">
+					{#if isCurrentlyRecording && !isTransitioningFromRecording}
+						<!-- Recording indicator -->
+						<span class="flex items-center gap-1.5 text-destructive">
+							<span class="relative flex h-2 w-2 items-center justify-center shrink-0">
+								<span
+									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60"
+								></span>
+								<span
+									class="relative inline-flex h-1.5 w-1.5 rounded-full bg-destructive"
+								></span>
+							</span>
+							<span class="font-semibold text-[11px]">Recording</span>
+							<span class="font-bold tabular-nums text-[11px]"
+								>{formatDuration(_recordingDuration)}</span
+							>
 						</span>
-						<span class="font-semibold">Listening</span>
-						<span class="font-bold tabular-nums"
-							>{formatDuration(_recordingDuration)}</span
-						>
-						<kbd
-							class="hidden rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-destructive md:inline-flex"
-						>
-							Enter
-						</kbd>
-					</span>
-				{:else if enableVoice && isTransitioningFromRecording}
-					<!-- Smooth transition: "Inserted" indicator -->
-					<span
-						class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-in fade-in duration-150"
-					>
-						<svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-							<path
-								fill-rule="evenodd"
-								d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-						<span class="font-semibold">Inserted</span>
-					</span>
-				{:else if enableVoice && isInitializingRecording}
-					<!-- Initializing state -->
-					<span class="flex items-center gap-1.5 text-muted-foreground">
-						<LoaderCircle class="h-3 w-3 animate-spin" />
-						<span class="font-medium">Preparing microphone...</span>
-					</span>
-				{:else if enableVoice && _isTranscribing}
-					<!-- Transcribing state -->
-					<span class="flex items-center gap-1.5 text-accent">
-						<LoaderCircle class="h-3 w-3 animate-spin" />
-						<span class="font-semibold">{transcribingStatusLabel}</span>
-					</span>
-				{:else}
-					<!-- Normal stats -->
-					<span class="transition-opacity duration-150">{stats.words} words</span>
-					<span class="transition-opacity duration-150">{stats.chars} characters</span>
-				{/if}
-			</div>
-
-			<!-- Middle: Live transcript preview (during recording or transition) -->
-			{#if enableVoice && ((isCurrentlyRecording && liveTranscriptPreview) || (isTransitioningFromRecording && transitionTranscript))}
-				<div
-					class="flex-1 max-w-md truncate px-2 py-1 rounded border transition-all duration-150 {isTransitioningFromRecording
-						? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20'
-						: 'text-accent bg-accent/10 border-accent/20'}"
-				>
-					<span class="text-[10px] uppercase tracking-wider text-muted-foreground mr-1"
-						>{isTransitioningFromRecording ? 'Added:' : 'Live:'}</span
-					>
-					{isTransitioningFromRecording ? transitionTranscript : liveTranscriptPreview}
-				</div>
-			{/if}
-
-			<!-- Right side: Error, character limit, and voice button -->
-			<div class="flex items-center gap-2">
-				{#if enableVoice && _voiceError}
-					<span
-						role="alert"
-						class="max-w-[150px] truncate text-destructive text-xs font-medium px-2 py-0.5 rounded bg-destructive/10 border border-destructive/20"
-					>
-						{_voiceError}
-					</span>
-				{/if}
-
-				{#if maxLength && !isCurrentlyRecording && !_isTranscribing}
-					<div
-						class="hidden sm:flex items-center gap-2 text-[11px] uppercase tracking-wide"
-					>
-						<span>Remaining: {Math.max(0, maxLength - stats.chars)}</span>
-						<div class="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-							<div
-								class="h-full bg-accent transition-all"
-								style={`width: ${Math.min(100, Math.round((stats.chars / maxLength) * 100))}%`}
-							></div>
-						</div>
-					</div>
-				{/if}
-
-				{#if enableVoice}
-					<button
-						type="button"
-						class={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
-						style="-webkit-tap-highlight-color: transparent;"
-						onclick={toggleVoiceRecording}
-						aria-label={voiceButtonState.label}
-						title={voiceButtonState.label}
-						aria-pressed={voiceButtonState.variant === 'recording' ? true : undefined}
-						disabled={voiceButtonState.disabled}
-					>
-						{#if voiceButtonState.isLoading}
-							<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-						{:else}
-							{@const VoiceIcon = voiceButtonState.icon}
-							<VoiceIcon class="h-3.5 w-3.5" />
+						<!-- Live transcript preview (inline on mobile) -->
+						{#if liveTranscriptPreview}
+							<span
+								class="truncate text-accent text-[10px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 max-w-[150px] sm:max-w-[250px]"
+							>
+								{liveTranscriptPreview}
+							</span>
 						{/if}
-					</button>
-				{/if}
+					{:else if isTransitioningFromRecording}
+						<!-- Inserted indicator -->
+						<span
+							class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-in fade-in duration-150"
+						>
+							<svg class="h-3 w-3 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+								<path
+									fill-rule="evenodd"
+									d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+									clip-rule="evenodd"
+								/>
+							</svg>
+							<span class="font-medium text-[11px]">Added</span>
+						</span>
+					{:else if isInitializingRecording}
+						<!-- Initializing state -->
+						<span class="flex items-center gap-1.5 text-muted-foreground">
+							<LoaderCircle class="h-3 w-3 animate-spin shrink-0" />
+							<span class="text-[11px]">Preparing mic...</span>
+						</span>
+					{:else if _isTranscribing}
+						<!-- Transcribing state -->
+						<span class="flex items-center gap-1.5 text-accent">
+							<LoaderCircle class="h-3 w-3 animate-spin shrink-0" />
+							<span class="font-medium text-[11px]">{transcribingStatusLabel}</span>
+						</span>
+					{:else if _voiceError}
+						<!-- Error state -->
+						<span
+							role="alert"
+							class="truncate text-destructive text-[11px] font-medium px-1.5 py-0.5 rounded bg-destructive/10 border border-destructive/20 max-w-[200px]"
+						>
+							{_voiceError}
+						</span>
+					{:else}
+						<!-- Ready state hint -->
+						<span class="text-[10px] text-muted-foreground/60 hidden sm:inline">
+							Tap mic to record voice note
+						</span>
+					{/if}
+				</div>
+
+				<!-- Right side: Voice button -->
+				<button
+					type="button"
+					class={`flex h-8 w-8 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
+					style="-webkit-tap-highlight-color: transparent;"
+					onclick={toggleVoiceRecording}
+					aria-label={voiceButtonState.label}
+					title={voiceButtonState.label}
+					aria-pressed={voiceButtonState.variant === 'recording' ? true : undefined}
+					disabled={voiceButtonState.disabled}
+				>
+					{#if voiceButtonState.isLoading}
+						<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+					{:else}
+						{@const VoiceIcon = voiceButtonState.icon}
+						<VoiceIcon class="h-3.5 w-3.5" />
+					{/if}
+				</button>
 			</div>
-		</div>
+		{/if}
 	</div>
 
 	{#if helpText}
 		<p class="text-xs text-muted-foreground">{helpText}</p>
 	{/if}
 </div>
+
+<style>
+	/* Hide scrollbar but allow scroll */
+	.scrollbar-hide {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;
+	}
+</style>

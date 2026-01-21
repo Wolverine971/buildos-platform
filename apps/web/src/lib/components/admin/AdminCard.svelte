@@ -5,7 +5,7 @@
 	import { twMerge } from 'tailwind-merge';
 
 	type Tone = 'default' | 'muted' | 'brand' | 'success' | 'danger' | 'warning' | 'info';
-	type Padding = 'none' | 'sm' | 'md' | 'lg';
+	type Padding = 'none' | 'xs' | 'sm' | 'md' | 'lg';
 
 	let {
 		tone = 'default',
@@ -34,6 +34,7 @@
 
 	const paddingClasses: Record<Padding, string> = {
 		none: '',
+		xs: 'px-2.5 py-2',
 		sm: 'px-4 py-3 sm:px-4 sm:py-4',
 		md: 'px-4 py-4 sm:px-6 sm:py-5',
 		lg: 'px-6 py-5 sm:px-6 sm:py-6'
