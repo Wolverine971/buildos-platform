@@ -76,7 +76,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			description,
 			priority = 3,
 			plan_id,
-			state_key,
+			state_key = 'todo',
 			goal_id,
 			supporting_milestone_id,
 			start_at,
@@ -93,10 +93,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeTaskStateInput(state_key);
-
-		if (hasStateInput && !normalizedState) {
-			return ApiResponse.badRequest(`state_key must be one of: ${TASK_STATES.join(', ')}`);
-		}
+		
 		const finalState = normalizedState ?? 'todo';
 
 		// Get user's actor ID

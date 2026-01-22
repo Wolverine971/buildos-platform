@@ -289,7 +289,16 @@ export class BaseExecutor {
 		};
 
 		const candidate = stateMap[normalized] ?? normalized;
-		return ['todo', 'in_progress', 'blocked', 'done'].includes(candidate) ? candidate : state;
+		if (['todo', 'in_progress', 'blocked', 'done'].includes(candidate)) {
+			return candidate;
+		}
+
+		logger.warn('Invalid task state_key received; dropping value', {
+			state,
+			normalized,
+			candidate
+		});
+		return undefined;
 	}
 
 	protected normalizeProjectState(state?: string | null): string | undefined {

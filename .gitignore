@@ -47,3 +47,4 @@ coverage
 # nul
 # Calendar analysis prompt audits (contain user data)
 # /apps/web/docs/prompts/**/*prompt.md
+.env*.local
