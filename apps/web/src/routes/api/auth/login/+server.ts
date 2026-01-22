@@ -99,7 +99,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			if (insertError) {
 				// Handle duplicate key error - user exists but RLS blocked the read
 				if (insertError.code === '23505') {
-					console.log('[Login] User exists but was not readable (RLS issue), fetching directly');
+					console.log(
+						'[Login] User exists but was not readable (RLS issue), fetching directly'
+					);
 					// Try fetching again - the session should now be properly set
 					const { data: existingUser } = await supabase
 						.from('users')

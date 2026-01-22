@@ -1,4 +1,5 @@
 <!-- apps/web/docs/prompts/existing-project/preparatory-analysis/prep-analysis-prompt.md -->
+
 # Prompt Audit: preparatory-analysis
 
 **Generated at:** 2026-01-19T20:03:46.705Z

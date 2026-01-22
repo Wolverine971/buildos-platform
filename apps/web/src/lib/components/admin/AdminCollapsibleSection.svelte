@@ -56,9 +56,7 @@
 	};
 </script>
 
-<div
-	class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
->
+<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden">
 	<!-- Section Header -->
 	<button
 		type="button"
@@ -89,7 +87,9 @@
 		<div class="flex items-center gap-2 shrink-0">
 			{#if badge !== null && badge !== undefined}
 				<span
-					class="rounded px-1.5 py-0.5 text-[10px] font-semibold {badgeColors[badgeColor]}"
+					class="rounded px-1.5 py-0.5 text-[10px] font-semibold {badgeColors[
+						badgeColor
+					]}"
 				>
 					{badge}
 				</span>

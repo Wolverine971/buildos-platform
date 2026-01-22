@@ -1,4 +1,5 @@
 <!-- apps/web/docs/prompts/existing-project/dual-processing/context/existing-project-context-prompt.md -->
+
 # Prompt Audit: existing-project-dual-context
 
 **Generated at:** 2026-01-19T20:03:46.707Z

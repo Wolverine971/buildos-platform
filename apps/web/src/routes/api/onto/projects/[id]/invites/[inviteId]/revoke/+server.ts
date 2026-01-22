@@ -135,9 +135,10 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		await logOntologyApiError({
 			supabase,
 			error,
-			endpoint: projectId && inviteId
-				? `/api/onto/projects/${projectId}/invites/${inviteId}/revoke`
-				: '/api/onto/projects/:id/invites/:inviteId/revoke',
+			endpoint:
+				projectId && inviteId
+					? `/api/onto/projects/${projectId}/invites/${inviteId}/revoke`
+					: '/api/onto/projects/:id/invites/:inviteId/revoke',
 			method: 'POST',
 			userId,
 			projectId,

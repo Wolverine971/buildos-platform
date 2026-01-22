@@ -215,11 +215,12 @@
 	];
 
 	// Secondary toolbar buttons (overflow on mobile)
-	const secondaryToolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> = [
-		{ id: 'quote', icon: Quote, label: 'Quote' },
-		{ id: 'code', icon: Code, label: 'Code' },
-		{ id: 'link', icon: LinkIcon, label: 'Link' }
-	];
+	const secondaryToolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> =
+		[
+			{ id: 'quote', icon: Quote, label: 'Quote' },
+			{ id: 'code', icon: Code, label: 'Code' },
+			{ id: 'link', icon: LinkIcon, label: 'Link' }
+		];
 
 	// All toolbar buttons combined (for desktop)
 	const toolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> = [
@@ -1378,7 +1379,7 @@
 							class="flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
 							title={action.label}
 							aria-label={action.label}
-							disabled={disabled}
+							{disabled}
 						>
 							<ActionIcon class="w-4 h-4" />
 						</button>
@@ -1397,7 +1398,7 @@
 							class="hidden sm:flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
 							title={action.label}
 							aria-label={action.label}
-							disabled={disabled}
+							{disabled}
 						>
 							<ActionIcon class="w-4 h-4" />
 						</button>
@@ -1439,7 +1440,7 @@
 								class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 transition-colors active:scale-95"
 								title={action.label}
 								aria-label={action.label}
-								disabled={disabled}
+								{disabled}
 							>
 								<ActionIcon class="w-3.5 h-3.5" />
 								<span>{action.label}</span>
@@ -1498,7 +1499,9 @@
 					{#if isCurrentlyRecording && !isTransitioningFromRecording}
 						<!-- Recording indicator -->
 						<span class="flex items-center gap-1.5 text-destructive">
-							<span class="relative flex h-2 w-2 items-center justify-center shrink-0">
+							<span
+								class="relative flex h-2 w-2 items-center justify-center shrink-0"
+							>
 								<span
 									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive/60"
 								></span>

@@ -1,25 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 48" width="160" height="48">
   <defs>
     <!-- Radial bloom gradient for OS background -->
-    <radialGradient id="osBloomLight" cx="50%" cy="55%" rx="100%" ry="100%" fx="50%" fy="55%">
+    <radialGradient id="osBloom" cx="50%" cy="55%" rx="100%" ry="100%" fx="50%" fy="55%">
       <stop offset="0%" stop-color="#f97316" stop-opacity="0.4"/>
       <stop offset="50%" stop-color="#f97316" stop-opacity="0.18"/>
       <stop offset="80%" stop-color="#f97316" stop-opacity="0"/>
     </radialGradient>
 
     <!-- Dot pattern for texture -->
-    <pattern id="dotTextureLight" x="0" y="0" width="3" height="3" patternUnits="userSpaceOnUse">
+    <pattern id="dotTexture" x="0" y="0" width="3" height="3" patternUnits="userSpaceOnUse">
       <circle cx="1.5" cy="1.5" r="0.5" fill="#f97316" fill-opacity="0.3"/>
     </pattern>
   </defs>
 
   <!-- OS bloom background -->
-  <rect x="82" y="4" width="56" height="40" rx="6" fill="url(#osBloomLight)"/>
+  <rect x="82" y="4" width="56" height="40" rx="6" fill="url(#osBloom)"/>
 
   <!-- Dot texture overlay on OS -->
-  <rect x="84" y="6" width="52" height="36" rx="5" fill="url(#dotTextureLight)" opacity="0.6"/>
+  <rect x="84" y="6" width="52" height="36" rx="5" fill="url(#dotTexture)" opacity="0.6"/>
 
-  <!-- Build text (dark for light backgrounds) -->
+  <!-- Build text -->
   <text x="8" y="36" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="32" font-weight="900" letter-spacing="-0.02em" fill="#1a1a1a">Build</text>
 
   <!-- OS text with accent color -->

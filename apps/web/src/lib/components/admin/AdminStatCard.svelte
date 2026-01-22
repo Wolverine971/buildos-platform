@@ -111,7 +111,9 @@
 				</p>
 			</div>
 			{#if footnote}
-				<p class="text-[10px] text-muted-foreground shrink-0 max-w-[80px] text-right truncate">
+				<p
+					class="text-[10px] text-muted-foreground shrink-0 max-w-[80px] text-right truncate"
+				>
 					{footnote}
 				</p>
 			{/if}

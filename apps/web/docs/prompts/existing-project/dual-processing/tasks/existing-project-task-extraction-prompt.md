@@ -1,4 +1,5 @@
 <!-- apps/web/docs/prompts/existing-project/dual-processing/tasks/existing-project-task-extraction-prompt.md -->
+
 # Prompt Audit: existing-project-dual-tasks
 
 **Generated at:** 2026-01-19T20:03:49.174Z

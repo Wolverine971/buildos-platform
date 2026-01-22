@@ -1399,9 +1399,8 @@
 					{/if}
 				</div>
 
-				<!-- Mobile: State + 3-dot menu -->
+				<!-- Mobile: 3-dot menu -->
 				<div class="flex items-center gap-1.5 sm:hidden">
-					<StateDisplay state={project.state_key} entityKind="project" />
 					<button
 						bind:this={mobileMenuButtonEl}
 						onclick={openMobileMenu}
