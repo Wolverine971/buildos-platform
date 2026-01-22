@@ -442,7 +442,7 @@ Guidelines:
 					onclick={() => (editMode = 'manual')}
 					class="text-xs sm:text-sm flex-shrink-0"
 				>
-					<PenTool class="w-4 h-4" />
+					<PenTool class="w-4 h-4 shrink-0" />
 					<span class="ml-1 hidden sm:inline">Manual</span>
 				</Button>
 				<Button
@@ -451,7 +451,7 @@ Guidelines:
 					onclick={() => (editMode = 'split')}
 					class="text-xs sm:text-sm flex-shrink-0"
 				>
-					<SquarePen class="w-4 h-4" />
+					<SquarePen class="w-4 h-4 shrink-0" />
 					<span class="ml-1 hidden sm:inline">Split</span>
 				</Button>
 				<Button
@@ -460,7 +460,7 @@ Guidelines:
 					onclick={() => (editMode = 'ai')}
 					class="text-xs sm:text-sm flex-shrink-0"
 				>
-					<Bot class="w-4 h-4" />
+					<Bot class="w-4 h-4 shrink-0" />
 					<span class="ml-1 hidden sm:inline">AI</span>
 				</Button>
 			</div>
@@ -667,7 +667,7 @@ Guidelines:
 								disabled={!generatedEmail}
 								class="text-xs sm:text-sm text-green-600 dark:text-green-400 inline-flex items-center gap-1 px-3 py-2"
 							>
-								<ArrowRight class="w-3 h-3"></ArrowRight>
+								<ArrowRight class="w-3 h-3 shrink-0"></ArrowRight>
 								<span class="hidden sm:inline">Use AI Content</span>
 								<span class="sm:hidden">Use AI</span>
 							</button>
@@ -676,7 +676,7 @@ Guidelines:
 								disabled={!manualEmail}
 								class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 inline-flex items-center gap-1 px-3 py-2"
 							>
-								<Copy class="w-3 h-3"></Copy>
+								<Copy class="w-3 h-3 shrink-0"></Copy>
 								<span class="hidden sm:inline">Copy to AI</span>
 								<span class="sm:hidden">Copy</span>
 							</button>
@@ -758,16 +758,16 @@ Guidelines:
 				{#if generatedEmail || manualEmail}
 					<div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
 						<Button variant="outline" onclick={copyToClipboard} class="text-sm">
-							<Copy class="w-4 h-4 mr-2" />
+							<Copy class="w-4 h-4 mr-2 shrink-0" />
 							<span class="hidden sm:inline">Copy to Clipboard</span>
 							<span class="sm:hidden">Copy</span>
 						</Button>
 						<Button onclick={sendEmail} disabled={isSending} class="text-sm">
 							{#if isSending}
-								<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
+								<LoaderCircle class="w-4 h-4 mr-2 shrink-0 animate-spin" />
 								Sending...
 							{:else}
-								<Send class="w-4 h-4 mr-2" />
+								<Send class="w-4 h-4 mr-2 shrink-0" />
 								<span class="hidden sm:inline">Send Email</span>
 								<span class="sm:hidden">Send</span>
 							{/if}

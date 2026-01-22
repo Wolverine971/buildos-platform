@@ -58,7 +58,8 @@ export {
 	getFallbackMessage,
 	getContextDisplayName,
 	getContextTypeGuidance,
-	buildBrainDumpPrompt
+	buildBrainDumpPrompt,
+	buildFocusedEntityPrompt
 } from './context-prompts';
 
 // ============================================

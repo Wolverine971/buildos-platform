@@ -230,7 +230,7 @@
 						class="flex items-center space-x-1 text-xs text-accent hover:text-accent/80 transition-colors"
 						onclick={(e) => e.stopPropagation()}
 					>
-						<ExternalLink class="w-3 h-3" />
+						<ExternalLink class="w-3 h-3 shrink-0" />
 						<span class="hidden sm:inline">View</span>
 					</a>
 				{/if}

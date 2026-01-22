@@ -34,7 +34,7 @@
 							href={backHref}
 							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-all duration-200 hover:border-accent hover:bg-muted hover:text-foreground shadow-ink pressable"
 						>
-							<ArrowLeft class="h-3 w-3" />
+							<ArrowLeft class="h-3 w-3 shrink-0" />
 							<span class="hidden sm:inline">{backLabel}</span>
 							<span class="sm:hidden">Back</span>
 						</a>

@@ -354,7 +354,7 @@
 						</p>
 						{#if displayDailyBrief.priority_actions?.length}
 							<span class="preview-pill">
-								<ArrowRight class="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+								<ArrowRight class="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
 								<span class="hidden sm:inline"
 									>{displayDailyBrief.priority_actions.length} priority action{displayDailyBrief
 										.priority_actions.length !== 1

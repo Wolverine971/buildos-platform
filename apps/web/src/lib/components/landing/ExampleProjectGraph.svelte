@@ -312,10 +312,10 @@
 									type="button"
 									onclick={shuffleProject}
 									disabled={isLoading}
-									class="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
+									class="flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
 									title="Show a different example project"
 								>
-									<Shuffle class="w-3.5 h-3.5" />
+									<Shuffle class="w-3.5 h-3.5 shrink-0" />
 									<span class="hidden sm:inline">Shuffle</span>
 								</button>
 							{/if}
@@ -324,9 +324,9 @@
 								type="button"
 								onclick={handleFitToView}
 								disabled={!graphInstance}
-								class="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
+								class="flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
 							>
-								<Maximize2 class="w-3.5 h-3.5" />
+								<Maximize2 class="w-3.5 h-3.5 shrink-0" />
 								<span class="hidden sm:inline">Fit</span>
 							</button>
 						</div>

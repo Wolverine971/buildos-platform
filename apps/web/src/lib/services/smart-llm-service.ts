@@ -115,15 +115,17 @@ export interface TranscriptionResult {
 interface OpenRouterResponse {
 	id: string;
 	provider?: string;
-	model: string;
-	object: string;
-	created: number;
+	model?: string;
+	object?: string;
+	created?: number;
 	choices: Array<{
-		message: {
-			content: string;
-			role: string;
+		message?: {
+			content?: unknown;
+			role?: string;
+			tool_calls?: any[];
 		};
-		finish_reason: string;
+		text?: string;
+		finish_reason?: string;
 		native_finish_reason?: string;
 	}>;
 	usage?: {
@@ -952,8 +954,8 @@ export class SmartLLMService {
 				throw new Error('OpenRouter returned empty choices array');
 			}
 
-			const content = response.choices[0]?.message?.content;
-			if (!content) {
+			const content = this.extractTextFromChoice(response.choices[0]);
+			if (!content || content.trim().length === 0) {
 				throw new Error('OpenRouter returned empty content');
 			}
 
@@ -1015,8 +1017,8 @@ export class SmartLLMService {
 							throw new Error('Retry: OpenRouter returned empty choices array');
 						}
 
-						const retryContent = retryResponse.choices[0]?.message?.content;
-						if (!retryContent) {
+						const retryContent = this.extractTextFromChoice(retryResponse.choices[0]);
+						if (!retryContent || retryContent.trim().length === 0) {
 							throw new Error('Retry: OpenRouter returned empty content');
 						}
 
@@ -1221,118 +1223,173 @@ export class SmartLLMService {
 		);
 
 		// Make the OpenRouter API call with model routing
+		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
+		const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 2);
+		const attemptedModels = new Set<string>();
+		let lastResponse: OpenRouterResponse | null = null;
+		let lastFinishReason: string | undefined;
+		let lastError: Error | null = null;
+
 		try {
-			const response = await this.callOpenRouter({
-				model: preferredModels[0] || 'openai/gpt-4o-mini', // Primary model with fallback
-				models: preferredModels, // All models for fallback routing (via extra_body)
-				messages: [
-					{
-						role: 'system',
-						content:
-							options.systemPrompt ||
-							'You are an expert writer who creates clear, engaging, and well-structured content.'
-					},
-					{ role: 'user', content: options.prompt }
-				],
-				temperature: options.temperature || 0.7,
-				max_tokens: options.maxTokens || 4096,
-				timeoutMs: options.timeoutMs,
-				stream: options.streaming || false
-			});
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				const remainingModels = preferredModels.filter(
+					(model) => !attemptedModels.has(model)
+				);
+				const requestedModel = remainingModels[0] || baseModel;
 
-			// Guard against malformed response
-			if (!response.choices || response.choices.length === 0) {
-				throw new Error('OpenRouter returned empty choices array');
-			}
+				let attemptResponse: OpenRouterResponse | null = null;
 
-			const content = response.choices[0]?.message?.content;
-			if (!content) {
-				throw new Error('OpenRouter returned empty content');
-			}
+				try {
+					attemptResponse = await this.callOpenRouter({
+						model: requestedModel, // Primary model with fallback
+						models: remainingModels.length > 0 ? remainingModels : [requestedModel],
+						messages: [
+							{
+								role: 'system',
+								content:
+									options.systemPrompt ||
+									'You are an expert writer who creates clear, engaging, and well-structured content.'
+							},
+							{ role: 'user', content: options.prompt }
+						],
+						temperature: options.temperature || 0.7,
+						max_tokens: options.maxTokens || 4096,
+						timeoutMs: options.timeoutMs,
+						stream: options.streaming || false
+					});
 
-			const actualModel = response.model || preferredModels[0] || 'openai/gpt-4o-mini';
+					lastResponse = attemptResponse;
+					lastFinishReason = attemptResponse.choices?.[0]?.finish_reason;
 
-			// Track metrics
-			const duration = performance.now() - startTime;
-			const requestCompletedAt = new Date();
-			this.trackPerformance(actualModel, duration);
-			this.trackCost(actualModel, response.usage);
+					// Guard against malformed response
+					if (!attemptResponse.choices || attemptResponse.choices.length === 0) {
+						throw new Error('OpenRouter returned empty choices array');
+					}
 
-			// Calculate costs
-			const modelConfig = TEXT_MODELS[actualModel];
-			const inputCost = modelConfig
-				? ((response.usage?.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
-				: 0;
-			const outputCost = modelConfig
-				? ((response.usage?.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
-				: 0;
+					const content = this.extractTextFromChoice(attemptResponse.choices[0]);
+					if (!content || content.trim().length === 0) {
+						throw new Error('OpenRouter returned empty content');
+					}
 
-			console.log(`Text Generation Success:
+					const actualModel = attemptResponse.model || requestedModel;
+					const modelsAttempted = Array.from(
+						new Set([...attemptedModels, actualModel])
+					);
+
+					// Track metrics
+					const duration = performance.now() - startTime;
+					const requestCompletedAt = new Date();
+					this.trackPerformance(actualModel, duration);
+					this.trackCost(actualModel, attemptResponse.usage);
+
+					// Calculate costs
+					const modelConfig = TEXT_MODELS[actualModel];
+					const inputCost = modelConfig
+						? ((attemptResponse.usage?.prompt_tokens || 0) / 1_000_000) *
+							modelConfig.cost
+						: 0;
+					const outputCost = modelConfig
+						? ((attemptResponse.usage?.completion_tokens || 0) / 1_000_000) *
+							modelConfig.outputCost
+						: 0;
+
+					console.log(`Text Generation Success:
 				Model: ${actualModel}
 				Duration: ${duration.toFixed(0)}ms
 				Length: ${content.length} chars
-				Cost: ${this.calculateCost(actualModel, response.usage)}
+				Cost: ${this.calculateCost(actualModel, attemptResponse.usage)}
 			`);
 
-			// Log to database (async, non-blocking)
-			const cachedTokens = response.usage?.prompt_tokens_details?.cached_tokens || 0;
-			this.logUsageToDatabase({
-				userId: options.userId,
-				operationType: options.operationType || 'other',
-				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-				modelUsed: actualModel,
-				provider: response.provider || modelConfig?.provider,
-				promptTokens: response.usage?.prompt_tokens || 0,
-				completionTokens: response.usage?.completion_tokens || 0,
-				totalTokens: response.usage?.total_tokens || 0,
-				inputCost,
-				outputCost,
-				totalCost: inputCost + outputCost,
-				responseTimeMs: Math.round(duration),
-				requestStartedAt,
-				requestCompletedAt,
-				status: 'success',
-				temperature: options.temperature,
-				maxTokens: options.maxTokens,
-				profile,
-				streaming: options.streaming,
-				projectId: options.projectId,
-				brainDumpId: options.brainDumpId,
-				taskId: options.taskId,
-				briefId: options.briefId,
-				chatSessionId: options.chatSessionId,
-				agentSessionId: options.agentSessionId,
-				agentPlanId: options.agentPlanId,
-				agentExecutionId: options.agentExecutionId,
-				openrouterRequestId: response.id,
-				openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
-				metadata: {
-					estimatedLength,
-					preferredModels,
-					contentLength: content.length,
-					cachedTokens,
-					reasoningTokens:
-						response.usage?.completion_tokens_details?.reasoning_tokens || 0,
-					systemFingerprint: response.system_fingerprint
-				}
-			}).catch((err) => console.error('Failed to log usage:', err));
+					// Log to database (async, non-blocking)
+					const cachedTokens =
+						attemptResponse.usage?.prompt_tokens_details?.cached_tokens || 0;
+					this.logUsageToDatabase({
+						userId: options.userId,
+						operationType: options.operationType || 'other',
+						modelRequested: baseModel,
+						modelUsed: actualModel,
+						provider: attemptResponse.provider || modelConfig?.provider,
+						promptTokens: attemptResponse.usage?.prompt_tokens || 0,
+						completionTokens: attemptResponse.usage?.completion_tokens || 0,
+						totalTokens: attemptResponse.usage?.total_tokens || 0,
+						inputCost,
+						outputCost,
+						totalCost: inputCost + outputCost,
+						responseTimeMs: Math.round(duration),
+						requestStartedAt,
+						requestCompletedAt,
+						status: 'success',
+						temperature: options.temperature,
+						maxTokens: options.maxTokens,
+						profile,
+						streaming: options.streaming,
+						projectId: options.projectId,
+						brainDumpId: options.brainDumpId,
+						taskId: options.taskId,
+						briefId: options.briefId,
+						chatSessionId: options.chatSessionId,
+						agentSessionId: options.agentSessionId,
+						agentPlanId: options.agentPlanId,
+						agentExecutionId: options.agentExecutionId,
+						openrouterRequestId: attemptResponse.id,
+						openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
+						metadata: {
+							estimatedLength,
+							preferredModels,
+							contentLength: content.length,
+							cachedTokens,
+							attempts: attempt + 1,
+							modelsAttempted,
+							finishReason: attemptResponse.choices?.[0]?.finish_reason ?? null,
+							reasoningTokens:
+								attemptResponse.usage?.completion_tokens_details?.reasoning_tokens ||
+								0,
+							systemFingerprint: attemptResponse.system_fingerprint
+						}
+					}).catch((err) => console.error('Failed to log usage:', err));
 
-			const usage: TextGenerationUsage | undefined = response.usage
-				? {
-						promptTokens: response.usage.prompt_tokens || 0,
-						completionTokens: response.usage.completion_tokens || 0,
-						totalTokens: response.usage.total_tokens || 0
+					const usage: TextGenerationUsage | undefined = attemptResponse.usage
+						? {
+								promptTokens: attemptResponse.usage.prompt_tokens || 0,
+								completionTokens: attemptResponse.usage.completion_tokens || 0,
+								totalTokens: attemptResponse.usage.total_tokens || 0
+							}
+						: undefined;
+
+					return {
+						text: content,
+						usage,
+						model: actualModel
+					};
+				} catch (error) {
+					lastError = error as Error;
+					attemptedModels.add(requestedModel);
+					if (attemptResponse?.model && attemptResponse.model !== requestedModel) {
+						attemptedModels.add(attemptResponse.model);
 					}
-				: undefined;
+					const failedModel = attemptResponse?.model || requestedModel;
 
-			return {
-				text: content,
-				usage,
-				model: actualModel
-			};
+					if (attempt < maxAttempts - 1) {
+						console.warn('OpenRouter text generation retrying after failure', {
+							attempt: attempt + 1,
+							maxAttempts,
+							model: failedModel,
+							error: lastError.message
+						});
+						continue;
+					}
+
+					throw lastError;
+				}
+			}
+
+			throw lastError ?? new Error('OpenRouter text generation failed');
 		} catch (error) {
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
+			const modelsAttempted = Array.from(attemptedModels);
+			const lastModel =
+				lastResponse?.model || modelsAttempted[modelsAttempted.length - 1] || baseModel;
 
 			console.error(`OpenRouter text generation failed:`, error);
 
@@ -1341,13 +1398,19 @@ export class SmartLLMService {
 				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
 					operation: 'generateText',
 					errorType: 'llm_text_generation_failure',
-					modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+					modelRequested: baseModel,
 					profile,
 					estimatedLength,
 					isTimeout: (error as Error).message.includes('timeout'),
 					projectId: options.projectId,
 					brainDumpId: options.brainDumpId,
-					taskId: options.taskId
+					taskId: options.taskId,
+					attempts: modelsAttempted.length,
+					modelsAttempted,
+					lastModel,
+					lastFinishReason,
+					openrouterRequestId: lastResponse?.id,
+					openrouterProvider: lastResponse?.provider
 				});
 			}
 
@@ -1355,8 +1418,8 @@ export class SmartLLMService {
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'other',
-				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-				modelUsed: preferredModels[0] || 'openai/gpt-4o-mini',
+				modelRequested: baseModel,
+				modelUsed: lastModel,
 				promptTokens: 0,
 				completionTokens: 0,
 				totalTokens: 0,
@@ -1382,12 +1445,100 @@ export class SmartLLMService {
 				agentExecutionId: options.agentExecutionId,
 				metadata: {
 					estimatedLength,
-					preferredModels
+					preferredModels,
+					attempts: modelsAttempted.length,
+					modelsAttempted,
+					lastFinishReason,
+					openrouterRequestId: lastResponse?.id,
+					openrouterProvider: lastResponse?.provider
 				}
 			}).catch((err) => console.error('Failed to log error:', err));
 
 			throw new Error('Failed to generate text');
 		}
+	}
+
+	private coerceContentToString(content: unknown): string | null {
+		if (typeof content === 'string') {
+			return content;
+		}
+
+		if (Array.isArray(content)) {
+			const parts: string[] = [];
+
+			for (const part of content) {
+				if (typeof part === 'string') {
+					parts.push(part);
+					continue;
+				}
+
+				if (!part || typeof part !== 'object') {
+					continue;
+				}
+
+				const partValue = part as {
+					type?: string;
+					text?: string | { value?: string };
+					value?: string;
+					content?: string;
+				};
+				const partType =
+					typeof partValue.type === 'string' ? partValue.type.toLowerCase() : '';
+				if (partType && ['reasoning', 'analysis', 'thinking', 'system'].includes(partType)) {
+					continue;
+				}
+
+				if (typeof partValue.text === 'string') {
+					parts.push(partValue.text);
+				} else if (partValue.text && typeof partValue.text.value === 'string') {
+					parts.push(partValue.text.value);
+				} else if (typeof partValue.value === 'string') {
+					parts.push(partValue.value);
+				} else if (typeof partValue.content === 'string') {
+					parts.push(partValue.content);
+				}
+			}
+
+			return parts.join('');
+		}
+
+		if (content && typeof content === 'object') {
+			const partValue = content as {
+				text?: string | { value?: string };
+				value?: string;
+				content?: string;
+			};
+
+			if (typeof partValue.text === 'string') {
+				return partValue.text;
+			}
+			if (partValue.text && typeof partValue.text.value === 'string') {
+				return partValue.text.value;
+			}
+			if (typeof partValue.value === 'string') {
+				return partValue.value;
+			}
+			if (typeof partValue.content === 'string') {
+				return partValue.content;
+			}
+		}
+
+		return null;
+	}
+
+	private extractTextFromChoice(
+		choice?: OpenRouterResponse['choices'][0]
+	): string | null {
+		if (!choice) {
+			return null;
+		}
+
+		const messageContent = this.coerceContentToString(choice.message?.content);
+		if (messageContent !== null) {
+			return messageContent;
+		}
+
+		return typeof choice.text === 'string' ? choice.text : null;
 	}
 
 	// ============================================
@@ -2127,8 +2278,8 @@ You must respond with valid JSON only. Follow these rules:
 						throw new Error('OpenRouter returned empty choices array');
 					}
 
-					const content = response.choices[0]?.message?.content;
-					if (!content) {
+					const content = this.extractTextFromChoice(response.choices[0]);
+					if (!content || content.trim().length === 0) {
 						throw new Error('OpenRouter returned empty content');
 					}
 

@@ -441,7 +441,7 @@
 									size="sm"
 									class="flex items-center gap-1 text-xs"
 								>
-									<Copy class="w-3 h-3" />
+									<Copy class="w-3 h-3 shrink-0" />
 									<span class="hidden sm:inline">Copy</span>
 								</Button>
 							{/if}

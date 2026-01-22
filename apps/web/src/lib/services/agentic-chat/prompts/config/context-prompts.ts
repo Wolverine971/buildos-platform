@@ -10,6 +10,7 @@
  */
 
 import type { ChatContextType } from '@buildos/shared-types';
+import type { OntologyEntityType } from '$lib/types/agent-chat-enhancement';
 import type {
 	ProjectCreationPromptConfig,
 	BrainDumpPromptConfig,
@@ -213,6 +214,112 @@ const BRAIN_DUMP_GUIDE: PromptSection = {
 export const BRAIN_DUMP_PROMPTS: BrainDumpPromptConfig = {
 	guide: BRAIN_DUMP_GUIDE
 };
+
+// ============================================
+// FOCUSED ENTITY PROMPTS
+// ============================================
+
+type FocusEntityType = Exclude<OntologyEntityType, 'project'>;
+
+const FOCUS_ORGANIZATION_GUIDANCE: PromptSection = {
+	id: 'focus-organization-guidance',
+	title: 'Focused Organization Lens',
+	content: `Preferred structure: project -> goal -> plan OR milestones; plans own tasks. If a goal uses milestones, each milestone should have its own plan with tasks.
+
+When organizing, apply three acts:
+- Categorize (Kind): group like with like; ask "what kind of thing is this?"
+- Relate (Constraint): map dependencies and sequence (order is about what comes before/after, not importance)
+- Rank (Choice): prioritize based on urgency, impact, or leverage
+
+Always consider "what's next" after the focused entity and how it advances the goal or plan. Suggest links, sequencing, or next steps, but avoid creating new entities without user intent.
+Minimal mnemonic: Kind -> Constraint -> Choice.`,
+	includeHeader: true
+};
+
+const FOCUSED_ENTITY_PROMPTS: Record<FocusEntityType, PromptSection> = {
+	task: {
+		id: 'focus-task-guidance',
+		title: 'Task Focus Guidance',
+		content: `You are focused on a task.
+- Tasks should belong to a plan (and usually a goal).
+- If no plan is linked, suggest linking to an existing plan or creating one under the relevant goal or milestone.
+- Think about sequencing: what must happen before or after? Note dependencies and propose the next task.
+- Keep tasks atomic and action-oriented; if the task implies a larger effort, propose a plan and split tasks under it.`,
+		includeHeader: true
+	},
+	goal: {
+		id: 'focus-goal-guidance',
+		title: 'Goal Focus Guidance',
+		content: `You are focused on a goal.
+- Goals should be structured by a plan or milestones.
+- If milestones are used, each milestone should have its own plan with tasks.
+- Avoid piling tasks directly under the goal unless they are small, one-off actions.
+- Identify what is missing next (plan, milestones, or first plan step) and suggest it.`,
+		includeHeader: true
+	},
+	plan: {
+		id: 'focus-plan-guidance',
+		title: 'Plan Focus Guidance',
+		content: `You are focused on a plan.
+- Plans should roll up to a goal (or be the plan for a milestone).
+- Ensure tasks are linked to this plan and ordered by dependency (not priority).
+- If tasks exist outside the plan, suggest linking or moving them in.
+- Use the plan to surface the next task after the current one.`,
+		includeHeader: true
+	},
+	milestone: {
+		id: 'focus-milestone-guidance',
+		title: 'Milestone Focus Guidance',
+		content: `You are focused on a milestone.
+- Milestones should tie to a goal and be achieved via a dedicated plan with tasks.
+- If no plan exists, propose creating one; if tasks exist, link them under the milestone's plan.
+- Use the milestone date to sequence work and identify the next action.`,
+		includeHeader: true
+	},
+	document: {
+		id: 'focus-document-guidance',
+		title: 'Document Focus Guidance',
+		content: `You are focused on a document.
+- Documents can link to multiple entities, but prefer a primary anchor (goal, plan, or task) for context.
+- If the document implies work, propose creating or linking a plan or tasks.
+- Keep links purposeful; avoid over-linking.`,
+		includeHeader: true
+	},
+	risk: {
+		id: 'focus-risk-guidance',
+		title: 'Risk Focus Guidance',
+		content: `You are focused on a risk.
+- Risks should link to the goal, plan, or task they threaten.
+- Mitigation should be expressed as a plan or tasks under a plan.
+- If the risk affects a milestone, link it and ensure a plan exists to address it.`,
+		includeHeader: true
+	},
+	requirement: {
+		id: 'focus-requirement-guidance',
+		title: 'Requirement Focus Guidance',
+		content: `You are focused on a requirement.
+- Requirements should attach to a goal or plan, with tasks implementing them under the plan.
+- Clarify acceptance criteria if missing.
+- If the requirement implies a milestone, suggest linking it.`,
+		includeHeader: true
+	}
+};
+
+const formatPromptSection = (section: PromptSection): string => {
+	const header = section.includeHeader === false ? '' : `## ${section.title}\n\n`;
+	return `${header}${section.content}`;
+};
+
+export function buildFocusedEntityPrompt(focusType?: FocusEntityType | string): string {
+	if (!focusType) return '';
+
+	const sections: PromptSection[] = [FOCUS_ORGANIZATION_GUIDANCE];
+	const typedFocus = focusType as FocusEntityType;
+	const focusSection = FOCUSED_ENTITY_PROMPTS[typedFocus];
+	if (focusSection) sections.push(focusSection);
+
+	return sections.map(formatPromptSection).join('\n\n');
+}
 
 // ============================================
 // CONTEXT DISPLAY NAMES

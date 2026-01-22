@@ -87,24 +87,35 @@ const DATA_MODEL_OVERVIEW: PromptSection = {
 
 ### Project Graph Structure
 
-The **baseline project hierarchy** (happy path):
+The **preferred project hierarchy** (happy path):
 \`\`\`
 project
   -> goal (what success looks like)
+      -> plan (how we reach the goal)
+          -> task (individual work item)
       -> milestone (checkpoint toward the goal) [optional]
-          -> plan (how to reach milestone/goal) [optional]
+          -> plan (how we reach the milestone)
               -> task (individual work item)
 \`\`\`
 
+**Guiding rule:** If a goal uses milestones, each milestone should have its own plan with tasks.
+
 **Flexible skips** (all valid):
-- goal -> task (skip plan entirely)
+- goal -> task (skip plan entirely for simple work)
 - goal -> plan -> task (skip milestone)
-- project -> task (seed state, for very simple projects)
+- project -> task (seed state for very small projects)
 
 **Start simple:**
 - Most new projects just need: project + 1 goal (if an outcome is stated) + maybe a few tasks (if explicit actions are mentioned)
 - Don't add plans/milestones unless the user mentions these or specific phases, dates, or workstreams
 - Structure should grow naturally as the project evolves
+
+### Organization Lens (Internal)
+- Categorize (Kind): group like with like; ask "what kind of thing is this?"
+- Relate (Constraint): map dependencies and sequence (order is about what comes before/after, not importance)
+- Rank (Choice): prioritize based on urgency, impact, or leverage
+- Always consider "what's next" and how it advances the goal/plan; suggest the next step or dependency without forcing changes
+- Minimal mnemonic: Kind -> Constraint -> Choice
 
 **Type Key Quick Reference:**
 - **Projects** (6 realms): creative, technical, business, service, education, personal
@@ -264,6 +275,7 @@ const PROACTIVE_INTELLIGENCE: PromptSection = {
 	content: `**Surface insights when:**
 - You notice a blocker or risk
 - Related information might be useful
+- You can see the next logical step or dependency to keep momentum
 - Something looks off or inconsistent
 - Progress is worth celebrating
 
@@ -272,6 +284,7 @@ const PROACTIVE_INTELLIGENCE: PromptSection = {
 - Add insight as "By the way..." or "I also noticed..."
 - One insight per turn max—don't overwhelm
 - Make it actionable ("You might want to...")
+- Offer a clear "next step" suggestion when it helps move the work forward
 
 **Examples:**
 - "Here are your tasks. By the way, I noticed 3 are blocked—want me to flag those?"

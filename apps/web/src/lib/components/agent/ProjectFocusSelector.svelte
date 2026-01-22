@@ -178,7 +178,7 @@
 					{/each}
 				</div>
 				<Button variant="ghost" size="sm" onclick={handleProjectWide} class="shrink-0">
-					<LayoutGrid class="h-4 w-4" />
+					<LayoutGrid class="h-4 w-4 shrink-0" />
 					<span class="hidden sm:inline">Overview</span>
 				</Button>
 			</div>

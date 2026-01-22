@@ -202,9 +202,9 @@
 				<div class="flex items-center gap-2">
 					<span class="text-foreground font-bold">{stats.totalEdges} edges</span>
 					{#if statsExpanded}
-						<ChevronDown class="w-3.5 h-3.5" />
+						<ChevronDown class="w-3.5 h-3.5 shrink-0" />
 					{:else}
-						<ChevronRight class="w-3.5 h-3.5" />
+						<ChevronRight class="w-3.5 h-3.5 shrink-0" />
 					{/if}
 				</div>
 			</button>
@@ -375,7 +375,7 @@
 						onclick={handleFitToView}
 						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted/50 shadow-ink pressable transition"
 					>
-						<Maximize2 class="w-3.5 h-3.5" />
+						<Maximize2 class="w-3.5 h-3.5 shrink-0" />
 						<span>Fit</span>
 					</button>
 				{/if}
@@ -385,7 +385,7 @@
 						onclick={handleExport}
 						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted/50 shadow-ink pressable transition"
 					>
-						<Download class="w-3.5 h-3.5" />
+						<Download class="w-3.5 h-3.5 shrink-0" />
 						<span>Export</span>
 					</button>
 				{/if}
@@ -402,9 +402,9 @@
 			>
 				<span>Legend</span>
 				{#if legendExpanded}
-					<ChevronDown class="w-3 h-3" />
+					<ChevronDown class="w-3 h-3 shrink-0" />
 				{:else}
-					<ChevronRight class="w-3 h-3" />
+					<ChevronRight class="w-3 h-3 shrink-0" />
 				{/if}
 			</button>
 

@@ -32,7 +32,8 @@ import {
 	PROJECT_CREATION_PROMPTS,
 	buildBrainDumpPrompt,
 	buildExecutorPromptFromConfig,
-	getContextTypeGuidance
+	getContextTypeGuidance,
+	buildFocusedEntityPrompt
 } from './config';
 
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
@@ -71,6 +72,14 @@ export class PromptGenerationService {
 		if (contextType === 'ontology') {
 			prompt +=
 				'\n\n## Ontology Mode Override\n- The user opted into technical detail; internal field names and tool terminology are allowed when it improves precision.\n- Keep explanations concise and still prioritize user goals over system jargon.';
+		}
+
+		const focusType = ontologyContext?.scope?.focus?.type;
+		if (focusType) {
+			const focusPrompt = buildFocusedEntityPrompt(focusType);
+			if (focusPrompt) {
+				prompt += '\n\n' + focusPrompt;
+			}
 		}
 
 		// Note: Last turn context is now consolidated in buildSessionContext()

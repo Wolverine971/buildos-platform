@@ -222,10 +222,10 @@
 						type="button"
 						onclick={handleFitToView}
 						disabled={!graphInstance}
-						class="flex items-center gap-1 sm:gap-1.5 h-6 sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
+						class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
 						aria-label="Fit to view"
 					>
-						<Maximize2 class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+						<Maximize2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
 						<span class="hidden sm:inline">Fit</span>
 					</button>
 				</div>
@@ -234,10 +234,10 @@
 				<button
 					type="button"
 					onclick={handleHide}
-					class="flex items-center gap-1 sm:gap-1.5 h-6 sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
+					class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
 					aria-label="Hide graph"
 				>
-					<EyeOff class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+					<EyeOff class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
 					<span class="hidden sm:inline">Hide</span>
 				</button>
 			</div>

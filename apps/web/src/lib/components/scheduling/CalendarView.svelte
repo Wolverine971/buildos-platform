@@ -208,7 +208,7 @@
 				class="p-1.5"
 				disabled={!canNavigateBack}
 			>
-				<ChevronLeft class="w-4 h-4 sm:w-5 sm:h-5" />
+				<ChevronLeft class="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
 			</Button>
 
 			<span
@@ -224,7 +224,7 @@
 				class="p-1.5"
 				disabled={!canNavigateForward}
 			>
-				<ChevronRight class="w-4 h-4 sm:w-5 sm:h-5" />
+				<ChevronRight class="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
 			</Button>
 
 			<Button onclick={goToToday} variant="ghost" size="sm" class="px-2 py-1 text-xs">
@@ -241,7 +241,7 @@
 				class="p-1.5"
 				title="Refresh calendar data"
 			>
-				<RefreshCw class="w-4 h-4 sm:w-5 sm:h-5 {refreshing ? 'animate-spin' : ''}" />
+				<RefreshCw class="w-4 h-4 sm:w-5 sm:h-5 shrink-0 {refreshing ? 'animate-spin' : ''}" />
 			</Button>
 
 			<div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">

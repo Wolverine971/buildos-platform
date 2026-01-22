@@ -252,7 +252,7 @@
 						class="inline-flex items-center px-3 py-3 sm:py-2 text-xs text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors bg-primary-50 dark:bg-primary-900/20 rounded-md touch-manipulation min-h-[44px]"
 						title="View project"
 					>
-						<ExternalLink class="w-3 h-3 mr-1" />
+						<ExternalLink class="w-3 h-3 mr-1 shrink-0" />
 						<span class="hidden sm:inline">Project</span>
 					</a>
 				{/if}
