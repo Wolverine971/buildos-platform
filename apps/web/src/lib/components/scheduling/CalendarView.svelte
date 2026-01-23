@@ -241,7 +241,9 @@
 				class="p-1.5"
 				title="Refresh calendar data"
 			>
-				<RefreshCw class="w-4 h-4 sm:w-5 sm:h-5 shrink-0 {refreshing ? 'animate-spin' : ''}" />
+				<RefreshCw
+					class="w-4 h-4 sm:w-5 sm:h-5 shrink-0 {refreshing ? 'animate-spin' : ''}"
+				/>
 			</Button>
 
 			<div class="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">

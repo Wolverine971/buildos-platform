@@ -9,7 +9,7 @@
  */
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { DOCUMENT_STATES } from '$lib/types/onto';
+import { DOCUMENT_STATES, type DocumentState } from '$lib/types/onto';
 import type { Json, Database } from '@buildos/shared-types';
 import { ensureTaskAccess, TASK_DOCUMENT_REL } from '../../task-document-helpers';
 import { normalizeDocumentStateInput } from '../../../shared/document-state';
@@ -221,7 +221,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		} else {
 			const docTitle = title?.trim() || `${task.title ?? 'Task'} Document`;
 			const docType = type_key?.trim() || 'document.task.scratch';
-			const docState = normalizedState ?? 'draft';
+			const docState: DocumentState = (normalizedState ?? 'draft') as DocumentState;
 			// Prefer content param, fall back to body_markdown for backwards compatibility
 			const rawContent =
 				typeof content === 'string'

@@ -16,6 +16,7 @@ import {
 	type DocumentSnapshot,
 	type DocumentVersionProps
 } from '$lib/services/ontology/versioning.service';
+import type { Json } from '@buildos/shared-types';
 import {
 	logUpdateAsync,
 	getChangeSourceFromRequest,
@@ -267,7 +268,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					document_id: documentId,
 					number: nextNumber,
 					storage_uri: 'inline://document-snapshot',
-					props: restoreVersionProps,
+					props: restoreVersionProps as Json,
 					created_by: actorId
 				})
 				.select('id, number')

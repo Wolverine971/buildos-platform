@@ -1272,9 +1272,7 @@ export class SmartLLMService {
 					}
 
 					const actualModel = attemptResponse.model || requestedModel;
-					const modelsAttempted = Array.from(
-						new Set([...attemptedModels, actualModel])
-					);
+					const modelsAttempted = Array.from(new Set([...attemptedModels, actualModel]));
 
 					// Track metrics
 					const duration = performance.now() - startTime;
@@ -1342,8 +1340,8 @@ export class SmartLLMService {
 							modelsAttempted,
 							finishReason: attemptResponse.choices?.[0]?.finish_reason ?? null,
 							reasoningTokens:
-								attemptResponse.usage?.completion_tokens_details?.reasoning_tokens ||
-								0,
+								attemptResponse.usage?.completion_tokens_details
+									?.reasoning_tokens || 0,
 							systemFingerprint: attemptResponse.system_fingerprint
 						}
 					}).catch((err) => console.error('Failed to log usage:', err));
@@ -1484,7 +1482,10 @@ export class SmartLLMService {
 				};
 				const partType =
 					typeof partValue.type === 'string' ? partValue.type.toLowerCase() : '';
-				if (partType && ['reasoning', 'analysis', 'thinking', 'system'].includes(partType)) {
+				if (
+					partType &&
+					['reasoning', 'analysis', 'thinking', 'system'].includes(partType)
+				) {
 					continue;
 				}
 
@@ -1526,9 +1527,7 @@ export class SmartLLMService {
 		return null;
 	}
 
-	private extractTextFromChoice(
-		choice?: OpenRouterResponse['choices'][0]
-	): string | null {
+	private extractTextFromChoice(choice?: OpenRouterResponse['choices'][0]): string | null {
 		if (!choice) {
 			return null;
 		}

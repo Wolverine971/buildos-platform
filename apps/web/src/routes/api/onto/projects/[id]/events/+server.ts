@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/events/+server.ts
 import type { RequestHandler } from './$types';
+import type { Json } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import { logOntologyApiError } from '../../../shared/error-logging';
@@ -342,7 +343,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			endAt,
 			allDay,
 			timezone,
-			props: mergedProps,
+			props: mergedProps as Json | undefined,
 			createdBy: actorId,
 			calendarScope,
 			calendarId,

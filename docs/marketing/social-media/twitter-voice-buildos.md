@@ -49,6 +49,7 @@
 **The angle:** Most productivity tools are the problem, not the solution.
 
 **Hot takes to use:**
+
 - "Your Notion workspace isn't a second brain. It's a second graveyard."
 - "Spending 3 hours organizing your tasks isn't productivity. It's procrastination with extra steps."
 - "The best productivity system is the one you actually use."
@@ -80,6 +81,7 @@ you need:
 **The angle:** Scattered minds aren't broken. The tools are.
 
 **Hot takes to use:**
+
 - "Your brain isn't disorganized. It's just non-linear."
 - "ADHD isn't a productivity problem. Linear thinking is an ADHD problem."
 - "The 'just write it down' advice was clearly written by someone who's never lost 47 notebooks."
@@ -158,6 +160,7 @@ that's the whole product tbh.
 When replying as @build_os:
 
 **DO:**
+
 - React genuinely to their struggle/win
 - Offer a perspective (not advice)
 - Light product mention only if genuinely relevant
@@ -165,6 +168,7 @@ When replying as @build_os:
 - Use humor when it fits
 
 **DON'T:**
+
 - Hard sell the product
 - Give unsolicited productivity advice
 - Be corporate or formal
@@ -174,6 +178,7 @@ When replying as @build_os:
 ### Reply Templates by Situation
 
 **Someone complaining about Notion/complex tools:**
+
 ```
 [validate their pain specifically]
 
@@ -183,6 +188,7 @@ When replying as @build_os:
 ```
 
 Example:
+
 > "the worst part about Notion is how bad you feel for not using it 'right'
 >
 > it's not you. it's a tool designed for PMs with 8 hours to configure it.
@@ -190,6 +196,7 @@ Example:
 > (shameless plug: we built BuildOS specifically for people who've given up on this stuff)"
 
 **Someone sharing ADHD/productivity struggle:**
+
 ```
 [genuine validation - we get it]
 
@@ -199,11 +206,13 @@ Example:
 ```
 
 Example:
+
 > "this is so real. the whole 'just make a list' advice completely ignores how ADHD brains work.
 >
 > the problem isn't remembering to do things. it's figuring out wtf to do FIRST when everything feels equally important."
 
 **Someone sharing a win:**
+
 ```
 [genuine celebration - be specific about what's impressive]
 
@@ -211,11 +220,13 @@ Example:
 ```
 
 Example:
+
 > "hell yes. the part where you finally saw the 3 actual tasks instead of the 47 imagined ones - that's the breakthrough.
 >
 > what project are you tackling next?"
 
 **Someone asking for tool recommendations:**
+
 ```
 [honest answer about what works for their situation]
 
@@ -223,6 +234,7 @@ Example:
 ```
 
 Example:
+
 > "depends on how your brain works honestly.
 >
 > if you need structure and love organizing → Notion
@@ -233,6 +245,7 @@ Example:
 ## Cross-Promotion with @djwayne3
 
 **Occasionally:**
+
 - RT @djwayne3's build-in-public posts with a comment
 - Reply to his threads about BuildOS development
 - Quote tweet his wins
@@ -240,6 +253,7 @@ Example:
 **Keep it natural.** Don't overdo it. 1-2x per week max.
 
 **Example:**
+
 ```
 @djwayne3: "shipped the new brain dump flow at 2am. wife found a bug. fixed it by 3am. this is the founder life."
 
@@ -276,12 +290,12 @@ Example:
 
 ### Tools We Can Drag (Carefully)
 
-| Tool | Our Take | How to Mention |
-|------|----------|----------------|
-| **Notion** | Powerful but overwhelming, makes people feel bad | "Your abandoned Notion workspace isn't a failure. It's a symptom." |
-| **Todoist/Things** | Fine if your brain thinks in lists (most don't) | "Lists work great. If your brain thinks in lists." |
-| **Asana/Monday** | Built for teams, not humans | "Enterprise tools for your personal life? No thanks." |
-| **Generic AI** | ChatGPT forgets everything | "ChatGPT is smart but it forgets you exist between sessions." |
+| Tool               | Our Take                                         | How to Mention                                                     |
+| ------------------ | ------------------------------------------------ | ------------------------------------------------------------------ |
+| **Notion**         | Powerful but overwhelming, makes people feel bad | "Your abandoned Notion workspace isn't a failure. It's a symptom." |
+| **Todoist/Things** | Fine if your brain thinks in lists (most don't)  | "Lists work great. If your brain thinks in lists."                 |
+| **Asana/Monday**   | Built for teams, not humans                      | "Enterprise tools for your personal life? No thanks."              |
+| **Generic AI**     | ChatGPT forgets everything                       | "ChatGPT is smart but it forgets you exist between sessions."      |
 
 ### Tools We Respect (Don't Drag)
 
@@ -322,5 +336,5 @@ Before posting, ask:
 
 ---
 
-*Last Updated: 2026-01-21*
-*Companion account: @djwayne3*
+_Last Updated: 2026-01-21_
+_Companion account: @djwayne3_

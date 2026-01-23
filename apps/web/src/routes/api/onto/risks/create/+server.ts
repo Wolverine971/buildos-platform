@@ -201,12 +201,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			props: {
 				description: normalizedContent,
 				mitigation_strategy: mitigation_strategy?.trim() || null
-			}
+			},
+			...(state_key === 'mitigated' && { mitigated_at: new Date().toISOString() })
 		};
-
-		if (state_key === 'mitigated') {
-			riskData.mitigated_at = new Date().toISOString();
-		}
 
 		const { data: risk, error: createError } = await supabase
 			.from('onto_risks')
@@ -224,7 +221,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				userId: user.id,
 				projectId: project_id,
 				entityType: 'risk',
-				entityId: risk?.id,
+				entityId: undefined,
 				operation: 'risk_create',
 				tableName: 'onto_risks'
 			});

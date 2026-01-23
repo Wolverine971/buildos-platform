@@ -27,6 +27,8 @@ import {
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import type { ParentRef } from '$lib/services/ontology/containment-organizer';
+import type { DocumentState } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -155,7 +157,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		const explicitParents = toParentRefs({ parent, parents });
+		const explicitParents = toParentRefs({
+			parent: parent as ParentRef | null | undefined,
+			parents: parents as ParentRef[] | null | undefined
+		});
 		const connectionList: ConnectionRef[] =
 			Array.isArray(connections) && connections.length > 0 ? connections : explicitParents;
 
@@ -187,10 +192,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: document, error: insertError } = await supabase
 			.from('onto_documents')
 			.insert({
-				project_id,
+				project_id: project_id as string,
 				title: title.trim(),
 				type_key: 'document.default',
-				state_key: normalizedState ?? 'draft',
+				state_key: (normalizedState ?? 'draft') as DocumentState,
 				content: normalizedContent,
 				description: normalizedDescription,
 				props: documentProps,
@@ -211,7 +216,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				userId: session.user.id,
 				projectId: project_id as string,
 				entityType: 'document',
-				entityId: document?.id,
 				operation: 'document_create',
 				tableName: 'onto_documents'
 			});

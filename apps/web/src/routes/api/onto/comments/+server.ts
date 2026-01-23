@@ -336,13 +336,43 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('Invalid comment target');
 		}
 
+		// Generate comment ID upfront (needed for root_id on top-level comments)
+		const commentId = crypto.randomUUID();
+
+		// Determine root_id for threaded comments
+		let rootId: string;
+		if (parentId) {
+			// If replying to a comment, look up the parent to get root_id
+			const { data: parentComment, error: parentError } = await supabase
+				.from('onto_comments')
+				.select('id, root_id')
+				.eq('id', parentId)
+				.eq('project_id', projectId)
+				.eq('entity_type', entityType)
+				.eq('entity_id', entityId)
+				.is('deleted_at', null)
+				.single();
+
+			if (parentError || !parentComment) {
+				return ApiResponse.badRequest('Parent comment not found');
+			}
+
+			// Use parent's root_id (parent is already in a thread) or parent's id (parent is the root)
+			rootId = parentComment.root_id ?? parentComment.id;
+		} else {
+			// Top-level comment: root_id is the comment's own ID
+			rootId = commentId;
+		}
+
 		const { data: comment, error } = await supabase
 			.from('onto_comments')
 			.insert({
+				id: commentId,
 				project_id: projectId,
 				entity_type: entityType,
 				entity_id: entityId,
 				parent_id: parentId,
+				root_id: rootId,
 				body: bodyText,
 				created_by: actorId
 			})

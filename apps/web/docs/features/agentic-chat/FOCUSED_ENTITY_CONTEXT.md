@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/FOCUSED_ENTITY_CONTEXT.md -->
+
 # Focused Ontology Entity Context (Agentic Chat)
 
 This document describes the context injected when agentic chat is focused on a specific ontology entity (task, goal, plan) and where it is defined in code.

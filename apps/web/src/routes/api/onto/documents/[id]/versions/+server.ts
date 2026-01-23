@@ -177,13 +177,13 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		if (actorIds.length > 0) {
 			const { data: actors } = await locals.supabase
 				.from('onto_actors')
-				.select('id, display_name')
+				.select('id, name')
 				.in('id', actorIds);
 
 			if (actors) {
 				actorNames = actors.reduce(
 					(acc, actor) => {
-						acc[actor.id] = actor.display_name ?? 'Unknown';
+						acc[actor.id] = actor.name ?? 'Unknown';
 						return acc;
 					},
 					{} as Record<string, string>
@@ -219,7 +219,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			hasMore,
 			nextCursor:
 				hasMore && versionList.length > 0
-					? versionList[versionList.length - 1].number
+					? (versionList[versionList.length - 1]?.number ?? null)
 					: null
 		};
 

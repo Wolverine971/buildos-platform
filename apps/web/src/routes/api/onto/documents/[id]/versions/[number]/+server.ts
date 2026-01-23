@@ -135,11 +135,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (version.created_by) {
 			const { data: actor } = await locals.supabase
 				.from('onto_actors')
-				.select('display_name')
+				.select('name')
 				.eq('id', version.created_by)
 				.maybeSingle();
 
-			actorName = actor?.display_name ?? null;
+			actorName = actor?.name ?? null;
 		}
 
 		const props = (version.props ?? {}) as Partial<DocumentVersionProps>;

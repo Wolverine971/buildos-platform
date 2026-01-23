@@ -93,7 +93,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeTaskStateInput(state_key);
-		
+
 		const finalState = normalizedState ?? 'todo';
 
 		// Get user's actor ID
@@ -196,10 +196,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const legacyConnections: ConnectionRef[] = [
 			...explicitParents,
-			...(normalizedPlanId ? [{ kind: 'plan', id: normalizedPlanId }] : []),
-			...(normalizedGoalId ? [{ kind: 'goal', id: normalizedGoalId }] : []),
+			...(normalizedPlanId ? [{ kind: 'plan' as const, id: normalizedPlanId }] : []),
+			...(normalizedGoalId ? [{ kind: 'goal' as const, id: normalizedGoalId }] : []),
 			...(normalizedMilestoneId
-				? [{ kind: 'milestone', id: normalizedMilestoneId, rel: 'targets_milestone' }]
+				? [
+						{
+							kind: 'milestone' as const,
+							id: normalizedMilestoneId,
+							rel: 'targets_milestone' as const
+						}
+					]
 				: [])
 		];
 
@@ -261,7 +267,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				userId: user.id,
 				projectId: project_id,
 				entityType: 'task',
-				entityId: task?.id,
 				operation: 'task_create',
 				tableName: 'onto_tasks'
 			});

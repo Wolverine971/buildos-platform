@@ -77,9 +77,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		// OPTIMIZED: Single RPC call for all project data
+		// Note: actorId can be null for anonymous access to public projects
 		const { data, error } = (await supabase.rpc('get_project_full', {
 			p_project_id: id,
-			p_actor_id: actorId
+			p_actor_id: actorId as string
 		})) as { data: ProjectFullData | null; error: unknown };
 
 		if (error) {
