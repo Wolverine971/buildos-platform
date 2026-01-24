@@ -18,6 +18,7 @@ describe('Admin Users API - Security Fixes', () => {
 			eq: vi.fn().mockReturnThis(),
 			or: vi.fn().mockReturnThis(),
 			order: vi.fn().mockReturnThis(),
+			is: vi.fn().mockReturnThis(),
 			range: vi.fn().mockReturnThis(),
 			in: vi.fn().mockReturnThis(),
 			single: vi.fn().mockResolvedValue({ data: null, error: null })

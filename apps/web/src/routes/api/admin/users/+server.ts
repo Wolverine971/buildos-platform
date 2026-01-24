@@ -2,6 +2,26 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
+type OntologyCounts = {
+	tasks: number;
+	goals: number;
+	plans: number;
+	documents: number;
+	milestones: number;
+	risks: number;
+	requirements: number;
+};
+
+const EMPTY_ONTOLOGY_COUNTS: OntologyCounts = {
+	tasks: 0,
+	goals: 0,
+	plans: 0,
+	documents: 0,
+	milestones: 0,
+	risks: 0,
+	requirements: 0
+};
+
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
@@ -71,36 +91,118 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		if (error) throw error;
 
+		if (!users || users.length === 0) {
+			return ApiResponse.success({
+				users: [],
+				pagination: {
+					page,
+					limit,
+					total: count || 0,
+					totalPages: Math.ceil((count || 0) / limit)
+				}
+			});
+		}
+
 		// Get additional metrics for each user
 		const userIds = users?.map((u) => u.id) || [];
 
+		// Resolve ontology actors for these users (needed because ontology tables use actor ids)
+		const { data: actors, error: actorError } = await supabase
+			.from('onto_actors')
+			.select('id, user_id')
+			.in('user_id', userIds);
+
+		if (actorError) throw actorError;
+
+		const actorIds = actors?.map((a) => a.id).filter(Boolean) || [];
+		const userIdByActor =
+			actors?.reduce((acc, row) => {
+				if (row.id && row.user_id) acc[row.id] = row.user_id;
+				return acc;
+			}, {} as Record<string, string>) || {};
+
 		// Get all metrics in parallel for better performance
 		const [
-			{ data: brainDumpCounts },
-			{ data: briefCounts },
 			{ data: projectCounts },
 			{ data: calendarTokens },
-			{ data: phaseGenerations },
+			{ data: agentSessions },
+			{ data: userBriefPrefs },
+			{ data: dailyBriefs },
+			{ data: ontoTasks },
+			{ data: ontoGoals },
+			{ data: ontoPlans },
+			{ data: ontoDocuments },
+			{ data: ontoMilestones },
+			{ data: ontoRisks },
+			{ data: ontoRequirements },
 			{ data: smsPreferences }
 		] = await Promise.all([
-			supabase.from('onto_braindumps').select('user_id').in('user_id', userIds),
-			supabase
-				.from('ontology_daily_briefs')
-				.select('user_id')
-				.eq('generation_status', 'completed')
-				.in('user_id', userIds),
-			supabase
-				.from('onto_projects')
-				.select('created_by')
-				.in('created_by', userIds)
-				.is('deleted_at', null),
+			actorIds.length
+				? supabase
+						.from('onto_projects')
+						.select('created_by')
+						.in('created_by', actorIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
 			supabase.from('user_calendar_tokens').select('user_id').in('user_id', userIds),
 			supabase
-				.from('onto_plans')
-				.select('created_by')
-				.eq('type_key', 'plan.phase.project')
-				.in('created_by', userIds)
-				.is('deleted_at', null),
+				.from('agent_chat_sessions')
+				.select('user_id, message_count')
+				.in('user_id', userIds),
+			supabase
+				.from('user_brief_preferences')
+				.select('user_id, is_active, email_daily_brief')
+				.in('user_id', userIds),
+			supabase.from('daily_briefs').select('user_id').in('user_id', userIds),
+			actorIds.length
+				? supabase
+						.from('onto_tasks')
+						.select('created_by')
+						.in('created_by', actorIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
+			actorIds.length
+				? supabase
+						.from('onto_goals')
+						.select('created_by')
+						.in('created_by', actorIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
+			actorIds.length
+				? supabase
+						.from('onto_plans')
+						.select('created_by')
+						.in('created_by', actorIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
+			actorIds.length
+				? supabase
+						.from('onto_documents')
+						.select('created_by')
+						.in('created_by', actorIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
+			actorIds.length
+				? supabase
+						.from('onto_milestones')
+						.select('created_by')
+						.in('created_by', actorIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
+			actorIds.length
+				? supabase
+						.from('onto_risks')
+						.select('created_by')
+						.in('created_by', actorIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
+			actorIds.length
+				? supabase
+						.from('onto_requirements')
+						.select('created_by')
+						.in('created_by', actorIds)
+						.is('deleted_at', null)
+				: Promise.resolve({ data: [], error: null }),
 			supabase
 				.from('user_sms_preferences')
 				.select(
@@ -110,28 +212,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		]);
 
 		// Create count maps
-		const brainDumpCountMap =
-			brainDumpCounts?.reduce(
-				(acc, dump) => {
-					acc[dump.user_id] = (acc[dump.user_id] || 0) + 1;
-					return acc;
-				},
-				{} as Record<string, number>
-			) || {};
-
-		const briefCountMap =
-			briefCounts?.reduce(
-				(acc, brief) => {
-					acc[brief.user_id] = (acc[brief.user_id] || 0) + 1;
-					return acc;
-				},
-				{} as Record<string, number>
-			) || {};
-
 		const projectCountMap =
 			projectCounts?.reduce(
 				(acc, project) => {
-					acc[project.created_by] = (acc[project.created_by] || 0) + 1;
+					const uid = userIdByActor[project.created_by];
+					if (!uid) return acc;
+					acc[uid] = (acc[uid] || 0) + 1;
 					return acc;
 				},
 				{} as Record<string, number>
@@ -147,15 +233,63 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				{} as Record<string, boolean>
 			) || {};
 
-		// Create phase generation map
-		const hasGeneratedPhasesMap =
-			phaseGenerations?.reduce(
-				(acc, generation) => {
-					acc[generation.created_by] = true;
+		// Agentic chat/session metrics
+		const agenticSessionCountMap =
+			agentSessions?.reduce(
+				(acc, session) => {
+					acc[session.user_id] = (acc[session.user_id] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			) || {};
+
+		const agenticMessageCountMap =
+			agentSessions?.reduce(
+				(acc, session) => {
+					acc[session.user_id] = (acc[session.user_id] || 0) + (session.message_count || 0);
+					return acc;
+				},
+				{} as Record<string, number>
+			) || {};
+
+		// Daily brief preferences and counts
+		const dailyBriefPreferenceMap =
+			userBriefPrefs?.reduce(
+				(acc, pref) => {
+					const isOptedIn = Boolean(pref.is_active) || Boolean(pref.email_daily_brief);
+					acc[pref.user_id] = acc[pref.user_id] || isOptedIn;
 					return acc;
 				},
 				{} as Record<string, boolean>
 			) || {};
+
+		const dailyBriefCountMap =
+			dailyBriefs?.reduce(
+				(acc, brief) => {
+					acc[brief.user_id] = (acc[brief.user_id] || 0) + 1;
+					return acc;
+				},
+				{} as Record<string, number>
+			) || {};
+
+		// Ontology entity counts
+		const ontologyCountsMap: Record<string, OntologyCounts> = {};
+		const bump = (actorId: string, key: keyof OntologyCounts) => {
+			const userId = userIdByActor[actorId];
+			if (!userId) return;
+			if (!ontologyCountsMap[userId]) {
+				ontologyCountsMap[userId] = { ...EMPTY_ONTOLOGY_COUNTS };
+			}
+			ontologyCountsMap[userId][key] = (ontologyCountsMap[userId][key] || 0) + 1;
+		};
+
+		ontoTasks?.forEach((row) => bump(row.created_by, 'tasks'));
+		ontoGoals?.forEach((row) => bump(row.created_by, 'goals'));
+		ontoPlans?.forEach((row) => bump(row.created_by, 'plans'));
+		ontoDocuments?.forEach((row) => bump(row.created_by, 'documents'));
+		ontoMilestones?.forEach((row) => bump(row.created_by, 'milestones'));
+		ontoRisks?.forEach((row) => bump(row.created_by, 'risks'));
+		ontoRequirements?.forEach((row) => bump(row.created_by, 'requirements'));
 
 		// Create SMS preferences map
 		const smsPreferencesMap =
@@ -181,15 +315,29 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			) || {};
 
 		// Enrich user data
-		const enrichedUsers = users?.map((user) => ({
-			...user,
-			brain_dump_count: brainDumpCountMap[user.id] || 0,
-			brief_count: briefCountMap[user.id] || 0,
-			project_count: projectCountMap[user.id] || 0,
-			calendar_connected: calendarConnectedMap[user.id] || false,
-			has_generated_phases: hasGeneratedPhasesMap[user.id] || false,
-			sms_preferences: smsPreferencesMap[user.id] || null
-		}));
+		const enrichedUsers = users?.map((user) => {
+			const ontologyCounts = ontologyCountsMap[user.id]
+				? { ...ontologyCountsMap[user.id] }
+				: { ...EMPTY_ONTOLOGY_COUNTS };
+
+			const ontologyEntityTotal = Object.values(ontologyCounts).reduce(
+				(total, value) => total + value,
+				0
+			);
+
+			return {
+				...user,
+				project_count: projectCountMap[user.id] || 0,
+				calendar_connected: calendarConnectedMap[user.id] || false,
+				agentic_session_count: agenticSessionCountMap[user.id] || 0,
+				agentic_message_count: agenticMessageCountMap[user.id] || 0,
+				daily_brief_opt_in: dailyBriefPreferenceMap[user.id] || false,
+				daily_brief_count: dailyBriefCountMap[user.id] || 0,
+				ontology_counts: ontologyCounts,
+				ontology_entity_total: ontologyEntityTotal,
+				sms_preferences: smsPreferencesMap[user.id] || null
+			};
+		});
 
 		return ApiResponse.success({
 			users: enrichedUsers,

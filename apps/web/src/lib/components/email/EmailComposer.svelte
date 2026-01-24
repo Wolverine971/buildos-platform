@@ -274,10 +274,10 @@
 						project_count: 0,
 						tasks_created: 0,
 						tasks_completed: 0,
-						brain_dumps_count: 0,
 						daily_briefs_count: 0,
-						phases_generated_count: 0,
 						notes_count: 0,
+						agentic_sessions_count: 0,
+						agentic_messages_count: 0,
 						calendar_connected: false,
 						recent_projects: []
 					}

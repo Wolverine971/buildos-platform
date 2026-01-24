@@ -2,7 +2,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import UserContextPanel from './UserContextPanel.svelte';
 	import EmailHistoryViewerModal from './EmailHistoryViewerModal.svelte';
@@ -53,7 +52,6 @@
 	let customSystemPrompt = $state('');
 	let defaultSystemPrompt = $state('');
 	let emailHistory = $state<any[]>([]);
-	let emailHistoryLoading = $state(false);
 	let showEmailHistory = $state(false);
 	let selectedEmailForViewer = $state<any>(null);
 	let EmailHistoryViewerModalOpen = $state(false);
@@ -172,7 +170,6 @@ Guidelines:
 	}
 
 	async function loadEmailHistory() {
-		emailHistoryLoading = true;
 		try {
 			const response = await fetch(
 				`/api/admin/emails/history?email=${encodeURIComponent(userEmail)}`
@@ -182,10 +179,7 @@ Guidelines:
 			emailHistory = data.data || [];
 		} catch (error) {
 			console.error('Error loading email history:', error);
-			// Silently fail - email history is optional
 			emailHistory = [];
-		} finally {
-			emailHistoryLoading = false;
 		}
 	}
 
@@ -372,59 +366,44 @@ Guidelines:
 <Modal {isOpen} onClose={closeModal} size="xl">
 	<div class="flex flex-col h-full max-h-[90vh]">
 		<!-- Header -->
-		<div class="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-				<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate">
-					Email: {userName || userEmail}
+		<div class="px-3 py-2 border-b border-border bg-muted/30">
+			<div class="flex items-center justify-between gap-2">
+				<h2 class="text-sm sm:text-base font-semibold text-foreground truncate">
+					{userName || userEmail}
 				</h2>
 				{#if emailHistory.length > 0}
-					<Button
+					<button
 						onclick={() => (showEmailHistory = !showEmailHistory)}
-						class="inline-flex items-center gap-1 text-xs sm:text-sm px-3 py-2 rounded-lg
-								 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300
-								 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors w-full sm:w-auto justify-center"
+						class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded
+								 bg-muted text-muted-foreground border border-border
+								 hover:bg-accent/10 hover:text-accent transition-colors pressable"
 					>
-						<History class="w-4 h-4" />
-						History ({emailHistory.length})
-					</Button>
+						<History class="w-3.5 h-3.5" />
+						<span class="hidden sm:inline">History</span> ({emailHistory.length})
+					</button>
 				{/if}
 			</div>
 		</div>
 
 		<!-- Content -->
-		<div class="flex-1 px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
+		<div class="flex-1 px-3 py-2 space-y-2 overflow-y-auto">
 			<!-- Email History Section -->
 			{#if showEmailHistory && emailHistory.length > 0}
-				<div
-					class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4"
-				>
-					<h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3">
-						Previous Emails ({emailHistory.length})
-					</h3>
-					<div class="space-y-2 max-h-48 overflow-y-auto">
+				<div class="bg-muted/50 border border-border rounded-lg p-2 tx tx-thread tx-weak">
+					<div class="space-y-1 max-h-32 overflow-y-auto">
 						{#each emailHistory as email (email.id)}
 							<button
 								onclick={() => openEmailViewer(email)}
-								class="w-full text-left p-2 rounded hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors text-xs sm:text-sm"
+								class="w-full text-left px-2 py-1.5 rounded hover:bg-accent/10 transition-colors text-xs pressable"
 							>
-								<div class="flex items-start gap-2">
-									<Eye
-										class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
-									/>
-									<div class="min-w-0 flex-1">
-										<p
-											class="font-medium text-gray-900 dark:text-white truncate"
-										>
-											{email.subject || 'No subject'}
-										</p>
-										<p
-											class="text-xs text-gray-600 dark:text-gray-400 truncate"
-										>
-											{new Date(
-												email.created_at || email.sent_at
-											).toLocaleDateString()}
-										</p>
-									</div>
+								<div class="flex items-center gap-2">
+									<Eye class="w-3.5 h-3.5 text-accent flex-shrink-0" />
+									<span class="font-medium text-foreground truncate flex-1">
+										{email.subject || 'No subject'}
+									</span>
+									<span class="text-muted-foreground shrink-0">
+										{new Date(email.created_at || email.sent_at).toLocaleDateString()}
+									</span>
 								</div>
 							</button>
 						{/each}
@@ -432,87 +411,87 @@ Guidelines:
 				</div>
 			{/if}
 
-			<!-- Edit Mode Toggle - Horizontal Scrollable on Mobile -->
-			<div
-				class="flex gap-2 pb-2 border-b border-gray-200 dark:border-gray-700 overflow-x-auto"
-			>
-				<Button
-					variant={editMode === 'manual' ? 'primary' : 'outline'}
-					size="sm"
+			<!-- Edit Mode Toggle -->
+			<div class="flex gap-1 pb-2 border-b border-border">
+				<button
 					onclick={() => (editMode = 'manual')}
-					class="text-xs sm:text-sm flex-shrink-0"
+					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable
+						{editMode === 'manual'
+						? 'bg-accent text-accent-foreground'
+						: 'bg-muted text-muted-foreground hover:text-foreground'}"
 				>
-					<PenTool class="w-4 h-4 shrink-0" />
-					<span class="ml-1 hidden sm:inline">Manual</span>
-				</Button>
-				<Button
-					variant={editMode === 'split' ? 'primary' : 'outline'}
-					size="sm"
+					<PenTool class="w-3.5 h-3.5" />
+					<span class="hidden sm:inline">Manual</span>
+				</button>
+				<button
 					onclick={() => (editMode = 'split')}
-					class="text-xs sm:text-sm flex-shrink-0"
+					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable
+						{editMode === 'split'
+						? 'bg-accent text-accent-foreground'
+						: 'bg-muted text-muted-foreground hover:text-foreground'}"
 				>
-					<SquarePen class="w-4 h-4 shrink-0" />
-					<span class="ml-1 hidden sm:inline">Split</span>
-				</Button>
-				<Button
-					variant={editMode === 'ai' ? 'primary' : 'outline'}
-					size="sm"
+					<SquarePen class="w-3.5 h-3.5" />
+					<span class="hidden sm:inline">Split</span>
+				</button>
+				<button
 					onclick={() => (editMode = 'ai')}
-					class="text-xs sm:text-sm flex-shrink-0"
+					class="px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors pressable
+						{editMode === 'ai'
+						? 'bg-accent text-accent-foreground'
+						: 'bg-muted text-muted-foreground hover:text-foreground'}"
 				>
-					<Bot class="w-4 h-4 shrink-0" />
-					<span class="ml-1 hidden sm:inline">AI</span>
-				</Button>
+					<Bot class="w-3.5 h-3.5" />
+					<span class="hidden sm:inline">AI</span>
+				</button>
 			</div>
 			<!-- User Context Panel - Collapsible -->
 			{#if contextLoading}
-				<div class="flex items-center justify-center py-6">
-					<LoaderCircle class="w-5 h-5 animate-spin text-primary-500" />
-					<span class="ml-2 text-sm text-gray-600 dark:text-gray-400"
-						>Loading user information...</span
-					>
+				<div class="flex items-center justify-center py-3">
+					<LoaderCircle class="w-4 h-4 animate-spin text-accent" />
+					<span class="ml-2 text-xs text-muted-foreground">Loading context...</span>
 				</div>
 			{:else if userContext}
-				<div
-					class="bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-				>
-					<Button
+				<div class="bg-card rounded border border-border overflow-hidden shadow-ink tx tx-frame tx-weak">
+					<button
 						onclick={() => (contextPanelExpanded = !contextPanelExpanded)}
-						class="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+						class="w-full px-2 py-1.5 flex items-center justify-between hover:bg-muted/50 transition-colors text-left"
 					>
-						<span class="text-sm font-medium text-gray-900 dark:text-white"
-							>User Context</span
-						>
+						<span class="text-xs font-medium text-foreground">Context</span>
 						{#if contextPanelExpanded}
-							<ChevronUp class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+							<ChevronUp class="w-3.5 h-3.5 text-muted-foreground" />
 						{:else}
-							<ChevronDown class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+							<ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
 						{/if}
-					</Button>
+					</button>
 					{#if contextPanelExpanded}
-						<div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-							<UserContextPanel {userContext} expanded={true} />
+						<div class="px-2 py-2 border-t border-border">
+							<UserContextPanel
+								{userContext}
+								expanded={true}
+								on:composeEmail={(e) => {
+									instructions = e.detail.instructions;
+									emailType = 'custom';
+									setTimeout(() => generateEmail(), 100);
+								}}
+							/>
 						</div>
 					{/if}
 				</div>
 			{/if}
 
 			<!-- Email Configuration -->
-			<div class="space-y-3 sm:space-y-4">
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+			<div class="space-y-2">
+				<div class="grid grid-cols-2 gap-2">
 					<!-- Template Selection -->
-					<div>
-						<label
-							for="email-template"
-							class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>
+					<div class="space-y-1">
+						<label for="email-template" class="text-xs font-medium text-muted-foreground">
 							Template
 						</label>
 						<select
 							id="email-template"
-							class="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-									 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-									 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+							class="w-full px-2 py-1.5 text-xs border border-border rounded
+									 bg-background text-foreground shadow-ink-inner
+									 focus:border-accent focus:ring-1 focus:ring-ring"
 							bind:value={emailType}
 							onchange={handleTemplateChange}
 						>
@@ -523,18 +502,15 @@ Guidelines:
 					</div>
 
 					<!-- Tone Selection -->
-					<div>
-						<label
-							for="email-tone"
-							class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-						>
+					<div class="space-y-1">
+						<label for="email-tone" class="text-xs font-medium text-muted-foreground">
 							Tone
 						</label>
 						<select
 							id="email-tone"
-							class="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-									 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-									 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+							class="w-full px-2 py-1.5 text-xs border border-border rounded
+									 bg-background text-foreground shadow-ink-inner
+									 focus:border-accent focus:ring-1 focus:ring-ring"
 							bind:value={tone}
 							onchange={() => {
 								defaultSystemPrompt = generateDefaultSystemPrompt();
@@ -552,166 +528,141 @@ Guidelines:
 
 				<!-- Instructions / System Prompt Section -->
 				{#if editMode !== 'manual'}
-					<div class="space-y-3 sm:space-y-4">
+					<div class="space-y-2">
 						<!-- Instructions -->
-						<div>
-							<label
-								for="instructions"
-								class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-							>
-								Instructions for AI
-							</label>
+						<div class="space-y-1">
+							<div class="flex items-center justify-between">
+								<label for="instructions" class="text-xs font-medium text-muted-foreground">
+									Instructions
+								</label>
+								<span class="text-[10px] text-muted-foreground">{instructions.length}/5000</span>
+							</div>
 							<textarea
 								id="instructions"
 								bind:value={instructions}
-								placeholder="Provide specific instructions..."
+								placeholder="Describe what the email should communicate..."
 								rows="2"
 								maxlength="5000"
-								class="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-										 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-										 placeholder-gray-400 dark:placeholder-gray-500
-										 focus:ring-2 focus:ring-primary-500 focus:border-transparent
-										 resize-none"
+								class="w-full px-2 py-1.5 text-xs border border-border rounded
+										 bg-background text-foreground shadow-ink-inner
+										 placeholder:text-muted-foreground
+										 focus:border-accent focus:ring-1 focus:ring-ring resize-none"
 							></textarea>
-							<div class="mt-1 text-xs text-gray-500 dark:text-gray-400 text-right">
-								{instructions.length}/5000
-							</div>
 						</div>
 
 						<!-- System Prompt Toggle -->
 						<button
 							onclick={() => (showSystemPrompt = !showSystemPrompt)}
-							class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1"
+							class="text-xs text-accent hover:text-accent/80 flex items-center gap-1"
 						>
 							{#if showSystemPrompt}
 								<ChevronUp class="w-3 h-3"></ChevronUp>
-								Hide System Prompt
+								Hide prompt
 							{:else}
 								<ChevronDown class="w-3 h-3"></ChevronDown>
-								Show/Edit System Prompt
+								Edit prompt
 							{/if}
 						</button>
 
 						<!-- System Prompt Editor -->
 						{#if showSystemPrompt}
-							<div>
-								<label
-									for="system-prompt"
-									class="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-								>
-									System Prompt
-								</label>
+							<div class="space-y-1">
+								<div class="flex items-center justify-between">
+									<label for="system-prompt" class="text-xs font-medium text-muted-foreground">
+										System Prompt
+									</label>
+									<button
+										onclick={() => (customSystemPrompt = defaultSystemPrompt)}
+										class="text-[10px] text-accent hover:underline"
+									>
+										Reset
+									</button>
+								</div>
 								<textarea
 									id="system-prompt"
 									bind:value={customSystemPrompt}
-									placeholder="System prompt for AI..."
-									rows="5"
-									class="w-full px-2 sm:px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg
-											 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-											 placeholder-gray-400 dark:placeholder-gray-500
-											 focus:ring-2 focus:ring-primary-500 focus:border-transparent
-											 resize-y font-mono"
+									placeholder="System prompt..."
+									rows="4"
+									class="w-full px-2 py-1.5 text-xs border border-border rounded
+											 bg-background text-foreground shadow-ink-inner
+											 placeholder:text-muted-foreground font-mono
+											 focus:border-accent focus:ring-1 focus:ring-ring resize-y"
 								></textarea>
-								<div class="mt-1 flex flex-col sm:flex-row justify-between gap-2">
-									<Button
-										variant="ghost"
-										size="sm"
-										onclick={() => (customSystemPrompt = defaultSystemPrompt)}
-										class="text-xs"
-									>
-										Reset to Default
-									</Button>
-									<span class="text-xs text-gray-500 dark:text-gray-400">
-										{customSystemPrompt.length} chars
-									</span>
-								</div>
 							</div>
 						{/if}
-					</div>
 
-					<!-- Generate Button -->
-					<div class="flex flex-col sm:flex-row justify-end gap-2">
-						<Button
-							variant="outline"
-							onclick={() => (instructions = '')}
-							disabled={!instructions || isGenerating}
-							class="text-sm"
-						>
-							Clear
-						</Button>
-						<Button
-							onclick={generateEmail}
-							disabled={!instructions.trim() || isGenerating || !userContext}
-							class="text-sm"
-						>
-							{#if isGenerating}
-								<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
-								Generating...
-							{:else}
-								<Sparkles class="w-4 h-4 mr-2" />
-								Generate
+						<!-- Generate Button -->
+						<div class="flex justify-end gap-2">
+							{#if instructions}
+								<button
+									onclick={() => (instructions = '')}
+									disabled={isGenerating}
+									class="px-2 py-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+								>
+									Clear
+								</button>
 							{/if}
-						</Button>
+							<button
+								onclick={generateEmail}
+								disabled={!instructions.trim() || isGenerating || !userContext}
+								class="px-3 py-1.5 text-xs rounded bg-accent text-accent-foreground
+									   shadow-ink pressable disabled:opacity-50 flex items-center gap-1.5"
+							>
+								{#if isGenerating}
+									<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
+									Generating...
+								{:else}
+									<Sparkles class="w-3.5 h-3.5" />
+									Generate
+								{/if}
+							</button>
+						</div>
 					</div>
 				{/if}
 
 				<!-- Email Editors -->
-				<div class="space-y-3 sm:space-y-4">
+				<div class="space-y-2 flex-1 min-h-0">
 					{#if editMode === 'split'}
 						<!-- Copy buttons in split mode -->
-						<div
-							class="flex flex-col sm:flex-row gap-2 justify-center sm:justify-start"
-						>
+						<div class="flex gap-3 text-xs">
 							<button
 								onclick={useAiContent}
 								disabled={!generatedEmail}
-								class="text-xs sm:text-sm text-green-600 dark:text-green-400 inline-flex items-center gap-1 px-3 py-2"
+								class="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 hover:underline disabled:opacity-40"
 							>
-								<ArrowRight class="w-3 h-3 shrink-0"></ArrowRight>
-								<span class="hidden sm:inline">Use AI Content</span>
-								<span class="sm:hidden">Use AI</span>
+								<ArrowRight class="w-3 h-3"></ArrowRight>
+								Use AI
 							</button>
 							<button
 								onclick={copyManualToAi}
 								disabled={!manualEmail}
-								class="text-xs sm:text-sm text-blue-600 dark:text-blue-400 inline-flex items-center gap-1 px-3 py-2"
+								class="text-accent inline-flex items-center gap-1 hover:underline disabled:opacity-40"
 							>
-								<Copy class="w-3 h-3 shrink-0"></Copy>
-								<span class="hidden sm:inline">Copy to AI</span>
-								<span class="sm:hidden">Copy</span>
+								<Copy class="w-3 h-3"></Copy>
+								Copy to AI
 							</button>
 						</div>
 					{/if}
 
-					<div
-						class={editMode === 'split'
-							? 'grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4'
-							: ''}
-					>
+					<div class={editMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2 gap-2' : ''}>
 						<!-- Manual Editor -->
 						{#if editMode === 'manual' || editMode === 'split'}
 							<div class="space-y-1">
-								<div class="flex items-center gap-2">
-									<PenTool
-										class="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-400"
-									></PenTool>
-									<label
-										for="manual-email"
-										class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
-									>
-										Manual Email
+								<div class="flex items-center gap-1.5">
+									<PenTool class="w-3 h-3 text-muted-foreground"></PenTool>
+									<label for="manual-email" class="text-xs font-medium text-muted-foreground">
+										Manual
 									</label>
 								</div>
 								<textarea
 									id="manual-email"
 									bind:value={manualEmail}
-									placeholder="Write your email here..."
-									rows={editMode === 'split' ? 6 : 10}
-									class="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-											 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-											 placeholder-gray-400 dark:placeholder-gray-500
-											 focus:ring-2 focus:ring-primary-500 focus:border-transparent
-											 resize-y"
+									placeholder="Write your email..."
+									rows={editMode === 'split' ? 5 : 8}
+									class="w-full px-2 py-1.5 text-xs border border-border rounded
+											 bg-background text-foreground shadow-ink-inner
+											 placeholder:text-muted-foreground
+											 focus:border-accent focus:ring-1 focus:ring-ring resize-y"
 								></textarea>
 							</div>
 						{/if}
@@ -719,27 +670,21 @@ Guidelines:
 						<!-- AI Editor -->
 						{#if editMode === 'ai' || editMode === 'split'}
 							<div class="space-y-1">
-								<div class="flex items-center gap-2">
-									<Bot
-										class="w-3 h-3 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400"
-									></Bot>
-									<label
-										for="generated-email"
-										class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300"
-									>
-										AI-Generated Email
+								<div class="flex items-center gap-1.5">
+									<Bot class="w-3 h-3 text-accent"></Bot>
+									<label for="generated-email" class="text-xs font-medium text-muted-foreground">
+										AI Generated
 									</label>
 								</div>
 								<textarea
 									id="generated-email"
 									bind:value={generatedEmail}
-									placeholder="AI-generated email will appear here..."
-									rows={editMode === 'split' ? 6 : 10}
-									class="w-full px-2 sm:px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
-											 bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-											 placeholder-gray-400 dark:placeholder-gray-500
-											 focus:ring-2 focus:ring-primary-500 focus:border-transparent
-											 resize-y"
+									placeholder="AI content appears here..."
+									rows={editMode === 'split' ? 5 : 8}
+									class="w-full px-2 py-1.5 text-xs border border-border rounded
+											 bg-background text-foreground shadow-ink-inner
+											 placeholder:text-muted-foreground
+											 focus:border-accent focus:ring-1 focus:ring-ring resize-y"
 								></textarea>
 							</div>
 						{/if}
@@ -749,29 +694,40 @@ Guidelines:
 		</div>
 
 		<!-- Footer -->
-		<div
-			class="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
-		>
-			<div class="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-between">
-				<Button variant="outline" onclick={closeModal} class="text-sm">Cancel</Button>
+		<div class="px-3 py-2 border-t border-border bg-muted/30">
+			<div class="flex items-center justify-between gap-2">
+				<button
+					onclick={closeModal}
+					class="px-3 py-1.5 text-xs rounded border border-border bg-card text-foreground
+						   hover:bg-muted shadow-ink pressable"
+				>
+					Cancel
+				</button>
 
 				{#if generatedEmail || manualEmail}
-					<div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-						<Button variant="outline" onclick={copyToClipboard} class="text-sm">
-							<Copy class="w-4 h-4 mr-2 shrink-0" />
-							<span class="hidden sm:inline">Copy to Clipboard</span>
-							<span class="sm:hidden">Copy</span>
-						</Button>
-						<Button onclick={sendEmail} disabled={isSending} class="text-sm">
+					<div class="flex items-center gap-2">
+						<button
+							onclick={copyToClipboard}
+							class="px-2 py-1.5 text-xs rounded border border-border bg-card text-foreground
+								   hover:bg-muted shadow-ink pressable flex items-center gap-1.5"
+						>
+							<Copy class="w-3.5 h-3.5" />
+							<span class="hidden sm:inline">Copy</span>
+						</button>
+						<button
+							onclick={sendEmail}
+							disabled={isSending}
+							class="px-3 py-1.5 text-xs rounded bg-accent text-accent-foreground
+								   shadow-ink pressable disabled:opacity-50 flex items-center gap-1.5"
+						>
 							{#if isSending}
-								<LoaderCircle class="w-4 h-4 mr-2 shrink-0 animate-spin" />
+								<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
 								Sending...
 							{:else}
-								<Send class="w-4 h-4 mr-2 shrink-0" />
-								<span class="hidden sm:inline">Send Email</span>
-								<span class="sm:hidden">Send</span>
+								<Send class="w-3.5 h-3.5" />
+								Send
 							{/if}
-						</Button>
+						</button>
 					</div>
 				{/if}
 			</div>

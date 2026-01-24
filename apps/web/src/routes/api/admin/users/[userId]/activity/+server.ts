@@ -59,10 +59,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		const [
 			tasksResult,
 			documentsResult,
-			brainDumpsResult,
 			dailyBriefsResult,
 			projectLogsResult,
-			scheduledBriefsResult
+			scheduledBriefsResult,
+			agentSessionsResult
 		] = await Promise.all([
 			projectIds.length
 				? supabase
@@ -80,11 +80,6 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						.is('deleted_at', null)
 						.order('created_at', { ascending: false })
 				: Promise.resolve({ data: [] }),
-			supabase
-				.from('onto_braindumps')
-				.select('*')
-				.eq('user_id', userId)
-				.order('created_at', { ascending: false }),
 			supabase
 				.from('ontology_daily_briefs')
 				.select('*')
@@ -104,15 +99,20 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.from('task_calendar_events')
 				.select('*')
 				.eq('user_id', userId)
+				.order('created_at', { ascending: false }),
+			supabase
+				.from('agent_chat_sessions')
+				.select('id, status, session_type, message_count, created_at')
+				.eq('user_id', userId)
 				.order('created_at', { ascending: false })
 		]);
 
 		const tasks = tasksResult.data || [];
 		const documents = documentsResult.data || [];
-		const brainDumps = brainDumpsResult.data || [];
 		const dailyBriefs = dailyBriefsResult.data || [];
 		const projectLogs = projectLogsResult.data || [];
 		const scheduledBriefs = scheduledBriefsResult.data || [];
+		const agentSessions = agentSessionsResult.data || [];
 
 		// Aggregate task counts by project_id
 		const taskCountsByProject: Record<string, { total: number; completed: number }> = {};
@@ -166,16 +166,6 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			});
 		});
 
-		brainDumps.forEach((dump) => {
-			activities.push({
-				entity_type: 'brain_dump',
-				action: 'created',
-				created_at: dump.created_at,
-				object_name: dump.title || 'Brain Dump',
-				details: dump.content ? dump.content.substring(0, 150) : 'No content'
-			});
-		});
-
 		dailyBriefs.forEach((brief) => {
 			activities.push({
 				entity_type: 'brief',
@@ -198,6 +188,16 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			});
 		});
 
+		agentSessions.forEach((session) => {
+			activities.push({
+				entity_type: 'agentic_session',
+				action: session.status || 'started',
+				created_at: session.created_at,
+				object_name: session.session_type || 'Agentic Chat',
+				details: `${session.message_count || 0} messages`
+			});
+		});
+
 		// Sort activities by date (most recent first)
 		activities.sort(
 			(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -210,8 +210,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			completed_tasks: tasks?.filter((t) => t.state_key === 'done').length || 0,
 			total_notes: documents?.length || 0,
 			total_briefs: dailyBriefs?.length || 0,
-			total_brain_dumps: brainDumps?.length || 0,
-			scheduled_briefs: scheduledBriefs?.length || 0
+			scheduled_briefs: scheduledBriefs?.length || 0,
+			total_agentic_sessions: agentSessions?.length || 0,
+			total_agentic_messages:
+				agentSessions?.reduce((sum, s) => sum + (s.message_count || 0), 0) || 0
 		};
 
 		// Return comprehensive user data
@@ -219,13 +221,13 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			...userData,
 			user_context: userContext,
 			projects: processedProjects,
-			brain_dumps: brainDumps || [],
 			recent_activity: activities.slice(0, 50), // Last 50 activities sorted by date
 			activity_stats: activityStats,
 			tasks: tasks || [],
 			notes: documents || [],
 			daily_briefs: dailyBriefs || [],
-			scheduled_briefs: scheduledBriefs || []
+			scheduled_briefs: scheduledBriefs || [],
+			agentic_sessions: agentSessions || []
 		});
 	} catch (error) {
 		return ApiResponse.internalError(error, 'Failed to fetch user activity');

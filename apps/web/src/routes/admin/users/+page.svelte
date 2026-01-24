@@ -14,6 +14,7 @@
 		XCircle,
 		Clock,
 		Activity,
+		MessageSquare,
 		Calendar,
 		ChevronUp,
 		ChevronDown,
@@ -52,6 +53,16 @@
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	let rawUsers = $state<any[]>([]); // Store raw data for client-side sorting
 
+	const clientSortableFields = [
+		'project_count',
+		'agentic_session_count',
+		'agentic_message_count',
+		'daily_brief_count',
+		'daily_brief_opt_in',
+		'calendar_connected',
+		'ontology_entity_total'
+	];
+
 	function handleSort(column: string) {
 		if (sortBy === column) {
 			// Toggle sort order if clicking same column
@@ -64,11 +75,7 @@
 		currentPage = 1;
 
 		// Check if we need client-side sorting for computed fields
-		if (
-			['brain_dump_count', 'project_count', 'brief_count', 'has_generated_phases'].includes(
-				column
-			)
-		) {
+		if (clientSortableFields.includes(column)) {
 			sortUsersClientSide();
 		} else {
 			loadUsers();
@@ -82,8 +89,8 @@
 			let aVal = a[sortBy] || 0;
 			let bVal = b[sortBy] || 0;
 
-			// Handle boolean values for completed_onboarding and has_generated_phases
-			if (sortBy === 'completed_onboarding' || sortBy === 'has_generated_phases') {
+			// Handle boolean values for derived flags
+			if (['completed_onboarding', 'daily_brief_opt_in', 'calendar_connected'].includes(sortBy)) {
 				aVal = aVal ? 1 : 0;
 				bVal = bVal ? 1 : 0;
 			}
@@ -130,13 +137,7 @@
 
 		try {
 			// For client-side sortable fields, we need to fetch all users
-			const isClientSort = [
-				'brain_dump_count',
-				'project_count',
-				'brief_count',
-				'completed_onboarding',
-				'has_generated_phases'
-			].includes(sortBy);
+			const isClientSort = clientSortableFields.includes(sortBy);
 
 			const params = new URLSearchParams({
 				page: isClientSort ? '1' : currentPage.toString(),
@@ -252,24 +253,24 @@
 		}
 	}
 
-	function getBriefCountColor(count: number): string {
-		if (count >= 50) return 'text-green-600';
-		if (count >= 20) return 'text-blue-600';
-		if (count >= 5) return 'text-yellow-600';
-		return 'text-gray-600';
+	function getDailyBriefCountColor(count: number): string {
+		if (count >= 50) return 'text-emerald-600 dark:text-emerald-400';
+		if (count >= 20) return 'text-accent';
+		if (count >= 5) return 'text-amber-600 dark:text-amber-400';
+		return 'text-muted-foreground';
 	}
 
 	function getLastVisitColor(dateString: string | null): string {
-		if (!dateString) return 'text-gray-400';
+		if (!dateString) return 'text-muted-foreground/50';
 
 		const date = new Date(dateString);
 		const now = new Date();
 		const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-		if (diffDays <= 1) return 'text-green-600';
-		if (diffDays <= 7) return 'text-yellow-600';
-		if (diffDays <= 30) return 'text-orange-600';
-		return 'text-red-600';
+		if (diffDays <= 1) return 'text-emerald-600 dark:text-emerald-400';
+		if (diffDays <= 7) return 'text-amber-600 dark:text-amber-400';
+		if (diffDays <= 30) return 'text-orange-600 dark:text-orange-400';
+		return 'text-rose-600 dark:text-rose-400';
 	}
 
 	function nextPage() {
@@ -309,8 +310,8 @@
 		backHref="/admin"
 		backLabel="Dashboard"
 	>
-		<div slot="actions" class="flex items-center space-x-4">
-			<div class="text-sm text-gray-600 dark:text-gray-400">
+		<div slot="actions" class="flex items-center gap-3">
+			<div class="text-sm text-muted-foreground">
 				{totalUsers} total users
 			</div>
 			<Button
@@ -362,10 +363,13 @@
 				<Select bind:value={sortBy} size="md" placeholder="Last Visit">
 					<option value="last_visit">Last Visit</option>
 					<option value="created_at">Join Date</option>
-					<option value="brain_dump_count">Brain Dumps</option>
 					<option value="project_count">Projects</option>
-					<option value="brief_count">Briefs</option>
-					<option value="has_generated_phases">Phase Generation</option>
+					<option value="agentic_session_count">Agentic Sessions</option>
+					<option value="agentic_message_count">Agentic Messages</option>
+					<option value="daily_brief_count">Daily Briefs Generated</option>
+					<option value="daily_brief_opt_in">Daily Brief Opt-in</option>
+					<option value="calendar_connected">Calendar Connected</option>
+					<option value="ontology_entity_total">Ontology Entities</option>
 					<option value="email">Email</option>
 					<option value="name">Name</option>
 					<option value="completed_onboarding">Onboarding Status</option>
@@ -388,17 +392,17 @@
 	<!-- Users Table -->
 	<div class="admin-panel overflow-hidden">
 		{#if isLoading}
-			<div class="p-8 text-center">
-				<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-				<p class="text-gray-600 dark:text-gray-400">Loading users...</p>
+			<div class="p-6 text-center">
+				<RefreshCw class="h-6 w-6 animate-spin text-muted-foreground mx-auto mb-3" />
+				<p class="text-sm text-muted-foreground">Loading users...</p>
 			</div>
 		{:else if users.length === 0}
-			<div class="p-8 text-center">
-				<Users class="h-16 w-16 text-gray-400 mx-auto mb-4" />
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+			<div class="p-6 text-center">
+				<Users class="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+				<h3 class="text-sm font-semibold text-foreground mb-1">
 					No Users Found
 				</h3>
-				<p class="text-gray-600 dark:text-gray-400">
+				<p class="text-xs text-muted-foreground">
 					{searchQuery
 						? 'Try adjusting your search criteria.'
 						: 'No users in the system yet.'}
@@ -406,11 +410,11 @@
 			</div>
 		{:else}
 			<div class="overflow-x-auto">
-				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-					<thead class="bg-gray-50 dark:bg-gray-900">
+				<table class="min-w-full divide-y divide-border">
+					<thead class="bg-muted/50">
 						<tr>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 								onclick={() => handleSort('email')}
 								title="Click to sort by email"
 							>
@@ -424,7 +428,7 @@
 										{/if}
 									{:else}
 										<span
-											class="h-4 w-4 flex items-center justify-center text-gray-300"
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
 										>
 											<svg
 												class="h-3 w-3"
@@ -439,7 +443,7 @@
 								</div>
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 								onclick={() => handleSort('last_visit')}
 								title="Click to sort by last visit"
 							>
@@ -453,7 +457,7 @@
 										{/if}
 									{:else}
 										<span
-											class="h-4 w-4 flex items-center justify-center text-gray-300"
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
 										>
 											<svg
 												class="h-3 w-3"
@@ -468,7 +472,7 @@
 								</div>
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 								onclick={() => handleSort('created_at')}
 								title="Click to sort by join date"
 							>
@@ -482,7 +486,7 @@
 										{/if}
 									{:else}
 										<span
-											class="h-4 w-4 flex items-center justify-center text-gray-300"
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
 										>
 											<svg
 												class="h-3 w-3"
@@ -497,36 +501,7 @@
 								</div>
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								onclick={() => handleSort('brain_dump_count')}
-								title="Click to sort by brain dumps"
-							>
-								<div class="flex items-center space-x-1">
-									<span>Dumps</span>
-									{#if sortBy === 'brain_dump_count'}
-										{#if sortOrder === 'asc'}
-											<ChevronUp class="h-4 w-4" />
-										{:else}
-											<ChevronDown class="h-4 w-4" />
-										{/if}
-									{:else}
-										<span
-											class="h-4 w-4 flex items-center justify-center text-gray-300"
-										>
-											<svg
-												class="h-3 w-3"
-												fill="currentColor"
-												viewBox="0 0 20 20"
-											>
-												<path d="M5 8l5-5 5 5H5z" />
-												<path d="M5 12l5 5 5-5H5z" />
-											</svg>
-										</span>
-									{/if}
-								</div>
-							</th>
-							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 								onclick={() => handleSort('project_count')}
 								title="Click to sort by projects"
 							>
@@ -540,7 +515,7 @@
 										{/if}
 									{:else}
 										<span
-											class="h-4 w-4 flex items-center justify-center text-gray-300"
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
 										>
 											<svg
 												class="h-3 w-3"
@@ -555,13 +530,13 @@
 								</div>
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								onclick={() => handleSort('brief_count')}
-								title="Click to sort by briefs"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
+								onclick={() => handleSort('agentic_session_count')}
+								title="Click to sort by agentic sessions"
 							>
 								<div class="flex items-center space-x-1">
-									<span>Briefs</span>
-									{#if sortBy === 'brief_count'}
+									<span>Agentic Sessions</span>
+									{#if sortBy === 'agentic_session_count'}
 										{#if sortOrder === 'asc'}
 											<ChevronUp class="h-4 w-4" />
 										{:else}
@@ -569,7 +544,7 @@
 										{/if}
 									{:else}
 										<span
-											class="h-4 w-4 flex items-center justify-center text-gray-300"
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
 										>
 											<svg
 												class="h-3 w-3"
@@ -584,13 +559,13 @@
 								</div>
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
-								onclick={() => handleSort('has_generated_phases')}
-								title="Click to sort by phase generation"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
+								onclick={() => handleSort('agentic_message_count')}
+								title="Click to sort by agentic chat messages"
 							>
 								<div class="flex items-center space-x-1">
-									<span>Phases</span>
-									{#if sortBy === 'has_generated_phases'}
+									<span>Agentic Chat</span>
+									{#if sortBy === 'agentic_message_count'}
 										{#if sortOrder === 'asc'}
 											<ChevronUp class="h-4 w-4" />
 										{:else}
@@ -598,7 +573,7 @@
 										{/if}
 									{:else}
 										<span
-											class="h-4 w-4 flex items-center justify-center text-gray-300"
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
 										>
 											<svg
 												class="h-3 w-3"
@@ -613,13 +588,94 @@
 								</div>
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-								title="Calendar connection status"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
+								onclick={() => handleSort('daily_brief_count')}
+								title="Click to sort by daily briefs"
 							>
-								<span>Calendar</span>
+								<div class="flex items-center space-x-1">
+									<span>Daily Briefs</span>
+									{#if sortBy === 'daily_brief_count'}
+										{#if sortOrder === 'asc'}
+											<ChevronUp class="h-4 w-4" />
+										{:else}
+											<ChevronDown class="h-4 w-4" />
+										{/if}
+									{:else}
+										<span
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
+										>
+											<svg
+												class="h-3 w-3"
+												fill="currentColor"
+												viewBox="0 0 20 20"
+											>
+												<path d="M5 8l5-5 5 5H5z" />
+												<path d="M5 12l5 5 5-5H5z" />
+											</svg>
+										</span>
+									{/if}
+								</div>
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
+								onclick={() => handleSort('calendar_connected')}
+								title="Click to sort by calendar connection"
+							>
+								<div class="flex items-center space-x-1">
+									<span>Calendar</span>
+									{#if sortBy === 'calendar_connected'}
+										{#if sortOrder === 'asc'}
+											<ChevronUp class="h-4 w-4" />
+										{:else}
+											<ChevronDown class="h-4 w-4" />
+										{/if}
+									{:else}
+										<span
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
+										>
+											<svg
+												class="h-3 w-3"
+												fill="currentColor"
+												viewBox="0 0 20 20"
+											>
+												<path d="M5 8l5-5 5 5H5z" />
+												<path d="M5 12l5 5 5-5H5z" />
+											</svg>
+										</span>
+									{/if}
+								</div>
+							</th>
+							<th
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
+								onclick={() => handleSort('ontology_entity_total')}
+								title="Click to sort by ontology entities created"
+							>
+								<div class="flex items-center space-x-1">
+									<span>Ontology</span>
+									{#if sortBy === 'ontology_entity_total'}
+										{#if sortOrder === 'asc'}
+											<ChevronUp class="h-4 w-4" />
+										{:else}
+											<ChevronDown class="h-4 w-4" />
+										{/if}
+									{:else}
+										<span
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
+										>
+											<svg
+												class="h-3 w-3"
+												fill="currentColor"
+												viewBox="0 0 20 20"
+											>
+												<path d="M5 8l5-5 5 5H5z" />
+												<path d="M5 12l5 5 5-5H5z" />
+											</svg>
+										</span>
+									{/if}
+								</div>
+							</th>
+							<th
+								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 								onclick={() => handleSort('completed_onboarding')}
 								title="Click to sort by onboarding status"
 							>
@@ -633,7 +689,7 @@
 										{/if}
 									{:else}
 										<span
-											class="h-4 w-4 flex items-center justify-center text-gray-300"
+											class="h-4 w-4 flex items-center justify-center text-muted-foreground/30"
 										>
 											<svg
 												class="h-3 w-3"
@@ -648,25 +704,25 @@
 								</div>
 							</th>
 							<th
-								class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								class="px-3 py-2 text-right text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider"
 							>
 								Actions
 							</th>
 						</tr>
 					</thead>
 					<tbody
-						class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+						class="bg-card divide-y divide-border"
 					>
 						{#each users as user}
-							<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-								<td class="px-6 py-4 whitespace-nowrap">
-									<div class="flex items-center">
-										<div class="flex-shrink-0 h-10 w-10">
+							<tr class="hover:bg-muted/50">
+								<td class="px-3 py-2 whitespace-nowrap">
+									<div class="flex items-center gap-2">
+										<div class="flex-shrink-0 h-8 w-8">
 											<div
-												class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+												class="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center"
 											>
 												<span
-													class="text-sm font-medium text-blue-800 dark:text-blue-200"
+													class="text-xs font-medium text-accent"
 												>
 													{(user.name || user.email)
 														.charAt(0)
@@ -674,92 +730,117 @@
 												</span>
 											</div>
 										</div>
-										<div class="ml-4">
+										<div class="min-w-0">
 											<div
-												class="text-sm font-medium text-gray-900 dark:text-white flex items-center"
+												class="text-sm font-medium text-foreground flex items-center gap-1"
 											>
-												{user.name || 'No name'}
+												<span class="truncate max-w-[120px]">{user.name || 'No name'}</span>
 												{#if user.is_admin}
-													<Shield class="ml-2 h-4 w-4 text-red-500" />
+													<Shield class="h-3.5 w-3.5 text-rose-500 flex-shrink-0" />
 												{/if}
 											</div>
-											<div class="text-sm text-gray-500 dark:text-gray-400">
+											<div class="text-xs text-muted-foreground truncate max-w-[150px]">
 												{user.email}
 											</div>
 										</div>
 									</div>
 								</td>
-								<td class="px-6 py-4 whitespace-nowrap">
-									<div class="flex items-center">
+								<td class="px-3 py-2 whitespace-nowrap">
+									<div class="flex items-center gap-1">
 										<Clock
-											class="h-4 w-4 {getLastVisitColor(
+											class="h-3.5 w-3.5 {getLastVisitColor(
 												user.last_visit
-											)} mr-1"
+											)}"
 										/>
-										<span class="text-sm {getLastVisitColor(user.last_visit)}">
+										<span class="text-xs {getLastVisitColor(user.last_visit)}">
 											{formatLastVisit(user.last_visit)}
 										</span>
 									</div>
 								</td>
 								<td
-									class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+									class="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground"
 								>
 									{formatDate(user.created_at)}
 								</td>
-								<td class="px-6 py-4 whitespace-nowrap text-sm">
-									<span class="font-medium text-indigo-600">
-										{user.brain_dump_count || 0}
-									</span>
-								</td>
-								<td class="px-6 py-4 whitespace-nowrap text-sm">
-									<span class="font-medium text-purple-600">
+								<td class="px-3 py-2 whitespace-nowrap text-xs">
+									<span class="font-medium text-purple-600 dark:text-purple-400">
 										{user.project_count || 0}
 									</span>
 								</td>
-								<td class="px-6 py-4 whitespace-nowrap text-sm">
-									<span
-										class="{getBriefCountColor(user.brief_count)} font-medium"
-									>
-										{user.brief_count || 0}
-									</span>
+								<td class="px-3 py-2 whitespace-nowrap text-xs">
+									<div class="flex items-center gap-1">
+										<Activity class="h-3.5 w-3.5 text-accent" />
+										<span class="font-medium text-accent">
+											{user.agentic_session_count || 0}
+										</span>
+									</div>
 								</td>
-								<td class="px-6 py-4 whitespace-nowrap">
-									<div class="flex items-center">
-										{#if user.has_generated_phases}
-											<CheckCircle class="h-4 w-4 text-green-500 mr-1" />
-											<span class="text-sm text-green-600">Yes</span>
+								<td class="px-3 py-2 whitespace-nowrap">
+									<div class="flex items-center gap-1">
+										<MessageSquare class="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
+										<span class="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+											{user.agentic_message_count || 0}
+										</span>
+									</div>
+								</td>
+								<td class="px-3 py-2 whitespace-nowrap">
+									<div class="flex items-center gap-1">
+										{#if user.daily_brief_opt_in}
+											<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
+											<span class="text-xs text-emerald-600 dark:text-emerald-400">
+												On · {user.daily_brief_count || 0}
+											</span>
 										{:else}
-											<XCircle class="h-4 w-4 text-gray-400 mr-1" />
-											<span class="text-sm text-gray-500">No</span>
+											<XCircle class="h-3.5 w-3.5 text-muted-foreground/50" />
+											<span class="text-xs text-muted-foreground">
+												Off · {user.daily_brief_count || 0}
+											</span>
 										{/if}
 									</div>
 								</td>
-								<td class="px-6 py-4 whitespace-nowrap">
-									<div class="flex items-center">
+								<td class="px-3 py-2 whitespace-nowrap">
+									<div class="flex items-center gap-1">
 										{#if user.calendar_connected}
-											<Calendar class="h-4 w-4 text-green-500 mr-1" />
-											<span class="text-sm text-green-600">Yes</span>
+											<Calendar class="h-3.5 w-3.5 text-emerald-500" />
+											<span class="text-xs text-emerald-600 dark:text-emerald-400">Yes</span>
 										{:else}
-											<Calendar class="h-4 w-4 text-gray-400 mr-1" />
-											<span class="text-sm text-gray-500">No</span>
+											<Calendar class="h-3.5 w-3.5 text-muted-foreground/50" />
+											<span class="text-xs text-muted-foreground">No</span>
 										{/if}
 									</div>
 								</td>
-								<td class="px-6 py-4 whitespace-nowrap">
-									<div class="flex items-center">
+								<td class="px-3 py-2 whitespace-nowrap">
+									<div class="text-xs">
+										<div class="font-medium text-indigo-600 dark:text-indigo-400">
+											{user.ontology_entity_total || 0} total
+										</div>
+										<div class="text-[0.65rem] text-muted-foreground">
+											T {user.ontology_counts?.tasks || 0} • G {user
+												.ontology_counts?.goals || 0} • P {user.ontology_counts?.plans ||
+												0} • D {user.ontology_counts?.documents || 0}
+										</div>
+										<div class="text-[0.65rem] text-muted-foreground">
+											Mi {user.ontology_counts?.milestones || 0} • Rk {user
+												.ontology_counts?.risks || 0} • Req {user.ontology_counts
+												?.requirements || 0}
+										</div>
+									</div>
+								</td>
+								<td class="px-3 py-2 whitespace-nowrap">
+									<div class="flex items-center gap-1">
 										{#if user.completed_onboarding}
-											<CheckCircle class="h-4 w-4 text-green-500 mr-1" />
-											<span class="text-sm text-green-600">Complete</span>
+											<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
+											<span class="text-xs text-emerald-600 dark:text-emerald-400">Complete</span>
 										{:else}
-											<Clock class="h-4 w-4 text-amber-500 mr-1" />
-											<span class="text-sm text-amber-600">Pending</span>
+											<Clock class="h-3.5 w-3.5 text-amber-500" />
+											<span class="text-xs text-amber-600 dark:text-amber-400">Pending</span>
 										{/if}
 									</div>
 								</td>
 								<td
-									class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
+									class="px-3 py-2 whitespace-nowrap text-right text-xs font-medium"
 								>
-									<div class="flex items-center justify-end space-x-2">
+									<div class="flex items-center justify-end gap-1">
 										<!-- Send Email -->
 										<Button
 											onclick={() => {
@@ -771,7 +852,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Mail}
-											class="!p-2 text-gray-400 hover:text-indigo-600"
+											class="!p-1.5 text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400"
 											title="Send email"
 										/>
 										<!-- View Activity -->
@@ -780,7 +861,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Activity}
-											class="!p-2 text-gray-400 hover:text-purple-600"
+											class="!p-1.5 text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400"
 											title="View activity details"
 										/>
 
@@ -791,7 +872,7 @@
 											variant="ghost"
 											size="sm"
 											icon={user.is_admin ? ShieldOff : Shield}
-											class="!p-2 text-gray-400 hover:text-blue-600"
+											class="!p-1.5 text-muted-foreground hover:text-accent"
 											title={user.is_admin ? 'Remove admin' : 'Make admin'}
 										/>
 
@@ -804,7 +885,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Eye}
-											class="!p-2 text-gray-400 hover:text-green-600"
+											class="!p-1.5 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
 											title="View basic details"
 										/>
 									</div>
@@ -818,7 +899,7 @@
 			<!-- Pagination -->
 			{#if totalPages > 1}
 				<div
-					class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
+					class="bg-card px-3 py-2 flex items-center justify-between border-t border-border"
 				>
 					<div class="flex-1 flex justify-between sm:hidden">
 						<Button
@@ -840,9 +921,9 @@
 					</div>
 					<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 						<div>
-							<p class="text-sm text-gray-700 dark:text-gray-300">
-								Showing page <span class="font-medium">{currentPage}</span> of
-								<span class="font-medium">{totalPages}</span>
+							<p class="text-xs text-muted-foreground">
+								Page <span class="font-medium text-foreground">{currentPage}</span> of
+								<span class="font-medium text-foreground">{totalPages}</span>
 							</p>
 						</div>
 						<div>
@@ -874,122 +955,125 @@
 
 <!-- Basic User Details Modal -->
 {#if showUserModal && selectedUser}
-	<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-		<div class="admin-panel-xl max-w-md w-full mx-4">
-			<div class="p-6">
-				<div class="flex items-center justify-between mb-4">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+	<div class="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+		<div class="bg-card border border-border rounded-lg shadow-ink-strong max-w-md w-full mx-4 tx tx-frame tx-weak">
+			<div class="p-4">
+				<div class="flex items-center justify-between mb-3">
+					<h3 class="text-sm font-semibold text-foreground">
 						User Details
 					</h3>
 					<Button
 						onclick={() => (showUserModal = false)}
 						variant="ghost"
 						size="sm"
-						class="!p-1 text-2xl leading-none"
+						class="!p-1 text-lg leading-none text-muted-foreground hover:text-foreground"
 					>
 						×
 					</Button>
 				</div>
 
-				<div class="space-y-4">
+				<div class="space-y-3">
 					<div>
-						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
 							Email
 						</div>
-						<p class="text-sm text-gray-900 dark:text-white">{selectedUser.email}</p>
+						<p class="text-sm text-foreground">{selectedUser.email}</p>
 					</div>
 
 					<div>
-						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
 							Name
 						</div>
-						<p class="text-sm text-gray-900 dark:text-white">
+						<p class="text-sm text-foreground">
 							{selectedUser.name || 'Not provided'}
 						</p>
 					</div>
 
 					<div>
-						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
 							Admin Status
 						</div>
 						<span
-							class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {selectedUser.is_admin
-								? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-								: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'}"
+							class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full {selectedUser.is_admin
+								? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+								: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}"
 						>
 							{selectedUser.is_admin ? 'Admin' : 'Regular User'}
 						</span>
 					</div>
 
 					<div>
-						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
 							Onboarding
 						</div>
-						<div class="flex items-center mt-1">
+						<div class="flex items-center gap-1.5 mt-0.5">
 							{#if selectedUser.completed_onboarding}
-								<CheckCircle class="h-4 w-4 text-green-500 mr-2" />
-								<span class="text-sm text-green-600">Completed</span>
+								<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
+								<span class="text-xs text-emerald-600 dark:text-emerald-400">Completed</span>
 							{:else}
-								<XCircle class="h-4 w-4 text-red-500 mr-2" />
-								<span class="text-sm text-red-600">Not completed</span>
+								<XCircle class="h-3.5 w-3.5 text-rose-500" />
+								<span class="text-xs text-rose-600 dark:text-rose-400">Not completed</span>
 							{/if}
 						</div>
 					</div>
 
 					<div>
-						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
 							Activity
 						</div>
-						<p class="text-sm text-gray-900 dark:text-white">
-							{selectedUser.brain_dump_count || 0} brain dumps, {selectedUser.project_count ||
-								0} projects, {selectedUser.brief_count} briefs
+						<p class="text-xs text-foreground">
+							{selectedUser.project_count || 0} projects ·{' '}
+							{selectedUser.agentic_session_count || 0} agentic sessions ·{' '}
+							{selectedUser.daily_brief_count || 0} daily briefs
 						</p>
 					</div>
 
 					<div>
-						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
 							Calendar
 						</div>
-						<div class="flex items-center mt-1">
+						<div class="flex items-center gap-1.5 mt-0.5">
 							{#if selectedUser.calendar_connected}
-								<Calendar class="h-4 w-4 text-green-500 mr-2" />
-								<span class="text-sm text-green-600">Connected</span>
+								<Calendar class="h-3.5 w-3.5 text-emerald-500" />
+								<span class="text-xs text-emerald-600 dark:text-emerald-400">Connected</span>
 							{:else}
-								<Calendar class="h-4 w-4 text-gray-400 mr-2" />
-								<span class="text-sm text-gray-500">Not connected</span>
+								<Calendar class="h-3.5 w-3.5 text-muted-foreground/50" />
+								<span class="text-xs text-muted-foreground">Not connected</span>
 							{/if}
 						</div>
 					</div>
 
-					<div>
-						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Last Visit
+					<div class="grid grid-cols-2 gap-3">
+						<div>
+							<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+								Last Visit
+							</div>
+							<p class="text-xs text-foreground">
+								{formatLastVisit(selectedUser.last_visit)}
+							</p>
 						</div>
-						<p class="text-sm text-gray-900 dark:text-white">
-							{formatLastVisit(selectedUser.last_visit)}
-						</p>
-					</div>
 
-					<div>
-						<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Joined
+						<div>
+							<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+								Joined
+							</div>
+							<p class="text-xs text-foreground">
+								{formatDate(selectedUser.created_at)}
+							</p>
 						</div>
-						<p class="text-sm text-gray-900 dark:text-white">
-							{formatDate(selectedUser.created_at)}
-						</p>
 					</div>
 
 					{#if selectedUser.bio}
 						<div>
-							<div class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+							<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
 								Bio
 							</div>
-							<p class="text-sm text-gray-900 dark:text-white">{selectedUser.bio}</p>
+							<p class="text-xs text-foreground">{selectedUser.bio}</p>
 						</div>
 					{/if}
 				</div>
 
-				<div class="mt-6 flex justify-between space-x-3">
+				<div class="mt-4 flex justify-between gap-2">
 					<Button
 						onclick={() => {
 							showUserModal = false;
@@ -997,11 +1081,11 @@
 						}}
 						variant="primary"
 						size="sm"
-						class="bg-purple-600 hover:bg-purple-700"
+						class="bg-purple-600 hover:bg-purple-700 pressable"
 					>
 						View Activity
 					</Button>
-					<div class="flex space-x-2">
+					<div class="flex gap-2">
 						<Button
 							onclick={() => (showUserModal = false)}
 							variant="secondary"
@@ -1014,6 +1098,7 @@
 								toggleAdminStatus(selectedUser.id, selectedUser.is_admin)}
 							variant="primary"
 							size="sm"
+							class="pressable"
 						>
 							{selectedUser.is_admin ? 'Remove Admin' : 'Make Admin'}
 						</Button>

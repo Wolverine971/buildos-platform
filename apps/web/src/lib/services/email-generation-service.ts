@@ -49,10 +49,10 @@ export interface UserActivitySummary {
 	project_count: number;
 	tasks_created: number;
 	tasks_completed: number;
-	brain_dumps_count: number;
 	daily_briefs_count: number;
-	phases_generated_count: number;
 	notes_count: number;
+	agentic_sessions_count: number;
+	agentic_messages_count: number;
 	calendar_connected: boolean;
 	recent_projects: Array<{
 		id: string;
@@ -237,10 +237,10 @@ export class EmailGenerationService {
 			project_count: 0,
 			tasks_created: 0,
 			tasks_completed: 0,
-			brain_dumps_count: 0,
 			daily_briefs_count: 0,
-			phases_generated_count: 0,
 			notes_count: 0,
+			agentic_sessions_count: 0,
+			agentic_messages_count: 0,
 			calendar_connected: false,
 			recent_projects: []
 		};
@@ -312,11 +312,10 @@ export class EmailGenerationService {
 			projectsResult,
 			projectCountResult,
 			tasksResult,
-			brainDumpsResult,
 			dailyBriefsResult,
-			planCountResult,
 			documentsResult,
 			calendarTokensResult,
+			agentSessionsResult,
 			emailHistoryResult
 		] = await Promise.all([
 			// Onboarding context
@@ -358,26 +357,12 @@ export class EmailGenerationService {
 				.is('deleted_at', null)
 				.gte('created_at', thirtyDaysAgoISO),
 
-			// Brain dumps count
-			this.supabase
-				.from('onto_braindumps')
-				.select('*', { count: 'exact', head: true })
-				.eq('user_id', userId)
-				.gte('created_at', thirtyDaysAgoISO),
-
 			// Daily briefs count
 			this.supabase
 				.from('ontology_daily_briefs')
 				.select('*', { count: 'exact', head: true })
 				.eq('actor_id', actorId)
 				.gte('created_at', thirtyDaysAgoISO),
-
-			// Plans count (ontology)
-			this.supabase
-				.from('onto_plans')
-				.select('*', { count: 'exact', head: true })
-				.eq('created_by', actorId)
-				.is('deleted_at', null),
 
 			// Documents count (ontology notes/documents)
 			this.supabase
@@ -392,6 +377,13 @@ export class EmailGenerationService {
 				.from('user_calendar_tokens')
 				.select('*', { count: 'exact', head: true })
 				.eq('user_id', userId),
+
+			// Agentic chat sessions (30d)
+			this.supabase
+				.from('agent_chat_sessions')
+				.select('id, message_count')
+				.eq('user_id', userId)
+				.gte('created_at', thirtyDaysAgoISO),
 			// Email history - get emails sent to this user from email_recipients joined with emails
 			this.supabase
 				.from('email_recipients')
@@ -427,11 +419,10 @@ export class EmailGenerationService {
 		const { data: projects } = projectsResult;
 		const { count: projectCount } = projectCountResult;
 		const { data: tasks } = tasksResult;
-		const { count: brainDumpsCount } = brainDumpsResult;
 		const { count: dailyBriefsCount } = dailyBriefsResult;
-		const { count: planCount } = planCountResult;
 		const { count: documentsCount } = documentsResult;
 		const { count: calendarTokensCount } = calendarTokensResult;
+		const { data: agentSessions } = agentSessionsResult;
 		const { data: emailHistory } = emailHistoryResult;
 
 		const basic: UserBasicInfo = {
@@ -483,14 +474,18 @@ export class EmailGenerationService {
 		const tasksCreated = tasks?.length || 0;
 		const tasksCompleted = tasks?.filter((t) => t.state_key === 'done').length || 0;
 
+		const agenticSessionsCount = agentSessions?.length || 0;
+		const agenticMessagesCount =
+			agentSessions?.reduce((sum, s) => sum + (s.message_count || 0), 0) || 0;
+
 		const activity: UserActivitySummary = {
 			project_count: projectCount || 0,
 			tasks_created: tasksCreated,
 			tasks_completed: tasksCompleted,
-			brain_dumps_count: brainDumpsCount || 0,
 			daily_briefs_count: dailyBriefsCount || 0,
-			phases_generated_count: planCount || 0,
 			notes_count: documentsCount || 0,
+			agentic_sessions_count: agenticSessionsCount,
+			agentic_messages_count: agenticMessagesCount,
 			calendar_connected: (calendarTokensCount || 0) > 0,
 			recent_projects:
 				projects?.map((p) => ({
@@ -594,10 +589,10 @@ export class EmailGenerationService {
 		context += `- Projects: ${userInfo.activity.project_count}\n`;
 		context += `- Tasks created: ${userInfo.activity.tasks_created}\n`;
 		context += `- Tasks completed: ${userInfo.activity.tasks_completed}\n`;
-		context += `- Brain dumps: ${userInfo.activity.brain_dumps_count}\n`;
 		context += `- Daily briefs: ${userInfo.activity.daily_briefs_count}\n`;
-		context += `- Phases generated: ${userInfo.activity.phases_generated_count}\n`;
 		context += `- Notes created: ${userInfo.activity.notes_count}\n`;
+		context += `- Agentic sessions: ${userInfo.activity.agentic_sessions_count}\n`;
+		context += `- Agentic messages: ${userInfo.activity.agentic_messages_count}\n`;
 		context += `- Calendar connected: ${userInfo.activity.calendar_connected ? 'Yes' : 'No'}\n`;
 
 		if (userInfo.activity.recent_projects.length > 0) {

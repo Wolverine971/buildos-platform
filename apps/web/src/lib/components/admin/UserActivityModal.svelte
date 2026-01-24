@@ -7,22 +7,20 @@
 		FolderOpen,
 		CheckSquare,
 		StickyNote,
-		Brain,
 		Clock,
 		TrendingUp,
-		Activity,
-		Target,
-		Settings,
-		CheckCircle,
-		XCircle,
-		BarChart3,
-		Layers,
-		RefreshCw
-	} from 'lucide-svelte';
+	Activity,
+	Target,
+	Settings,
+	CheckCircle,
+	XCircle,
+	BarChart3,
+	RefreshCw,
+	MessageSquare
+} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ProjectActivityChart from './ProjectActivityChart.svelte';
-	import BrainDumpChart from './BrainDumpChart.svelte';
 	import ActivityTimelineChart from './ActivityTimelineChart.svelte';
 	import UserContextPanel from './UserContextPanel.svelte';
 	import { onMount } from 'svelte';
@@ -98,83 +96,82 @@
 		});
 	}
 
-	let projects = $derived(user.projects || []);
-	let brainDumps = $derived(user.brain_dumps || []);
-	let recentActivity = $derived(user.recent_activity || []);
-	let activityStats = $derived(user.activity_stats || {});
+let projects = $derived(user.projects || []);
+let recentActivity = $derived(user.recent_activity || []);
+let activityStats = $derived(user.activity_stats || {});
 </script>
 
 <Modal {isOpen} onClose={handleClose} size="xl" customClasses="max-h-[95vh] overflow-y-auto">
 	{#snippet header()}
 		<div
-			class="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 min-w-0"
+			class="flex items-center gap-3 px-4 py-3 border-b border-border min-w-0"
 		>
 			<div
-				class="h-10 sm:h-12 w-10 sm:w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0"
+				class="h-9 w-9 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0"
 			>
-				<span class="text-base sm:text-lg font-bold text-blue-800 dark:text-blue-200">
+				<span class="text-sm font-bold text-accent">
 					{(user.name || user.email).charAt(0).toUpperCase()}
 				</span>
 			</div>
 			<div class="min-w-0 flex-1">
-				<h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">
+				<h2 class="text-base font-semibold text-foreground truncate">
 					{user.name || 'User'}
 				</h2>
-				<p class="text-xs text-gray-600 dark:text-gray-400 truncate">{user.email}</p>
+				<p class="text-xs text-muted-foreground truncate">{user.email}</p>
 			</div>
 		</div>
 	{/snippet}
 	{#snippet children()}
-		<div class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4">
+		<div class="px-4 py-3 space-y-3">
 			<!-- User Overview Cards -->
-			<div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+			<div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
 				<!-- Last Visit -->
 				<div
-					class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-lg p-3 sm:p-4"
+					class="bg-accent/5 border border-accent/20 rounded-lg p-2.5"
 				>
-					<div class="flex items-start sm:items-center justify-between gap-2">
+					<div class="flex items-center justify-between gap-2">
 						<div class="min-w-0 flex-1">
 							<p
-								class="text-xs font-medium text-blue-600 dark:text-blue-400 truncate"
+								class="text-[0.65rem] font-medium uppercase tracking-wide text-accent truncate"
 							>
 								Last Visit
 							</p>
 							<p
-								class="text-sm sm:text-lg font-bold text-blue-900 dark:text-blue-100 line-clamp-1"
+								class="text-sm font-bold text-foreground line-clamp-1"
 							>
 								{formatLastVisit(user.last_visit)}
 							</p>
 						</div>
 						<Clock
-							class="h-5 w-5 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400 flex-shrink-0"
+							class="h-5 w-5 text-accent flex-shrink-0"
 						/>
 					</div>
 				</div>
 
 				<!-- Onboarding Status -->
 				<div
-					class="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-3 sm:p-4"
+					class="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-2.5"
 				>
-					<div class="flex items-start sm:items-center justify-between gap-2">
+					<div class="flex items-center justify-between gap-2">
 						<div class="min-w-0 flex-1">
 							<p
-								class="text-xs font-medium text-green-600 dark:text-green-400 truncate"
+								class="text-[0.65rem] font-medium uppercase tracking-wide text-emerald-600 dark:text-emerald-400 truncate"
 							>
 								Onboarding
 							</p>
 							<p
-								class="text-sm sm:text-lg font-bold text-green-900 dark:text-green-100"
+								class="text-sm font-bold text-foreground"
 							>
 								{user.completed_onboarding ? 'Done' : 'Pending'}
 							</p>
 						</div>
 						{#if user.completed_onboarding}
 							<CheckCircle
-								class="h-5 w-5 sm:h-8 sm:w-8 text-green-600 dark:text-green-400 flex-shrink-0"
+								class="h-5 w-5 text-emerald-500 flex-shrink-0"
 							/>
 						{:else}
 							<XCircle
-								class="h-5 w-5 sm:h-8 sm:w-8 text-red-600 dark:text-red-400 flex-shrink-0"
+								class="h-5 w-5 text-rose-500 flex-shrink-0"
 							/>
 						{/if}
 					</div>
@@ -182,177 +179,172 @@
 
 				<!-- Total Projects -->
 				<div
-					class="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-lg p-3 sm:p-4"
+					class="bg-purple-500/5 border border-purple-500/20 rounded-lg p-2.5"
 				>
-					<div class="flex items-start sm:items-center justify-between gap-2">
+					<div class="flex items-center justify-between gap-2">
 						<div class="min-w-0 flex-1">
 							<p
-								class="text-xs font-medium text-purple-600 dark:text-purple-400 truncate"
+								class="text-[0.65rem] font-medium uppercase tracking-wide text-purple-600 dark:text-purple-400 truncate"
 							>
 								Projects
 							</p>
 							<p
-								class="text-sm sm:text-lg font-bold text-purple-900 dark:text-purple-100"
+								class="text-sm font-bold text-foreground"
 							>
 								{activityStats.total_projects || 0}
 							</p>
 						</div>
 						<FolderOpen
-							class="h-5 w-5 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400 flex-shrink-0"
+							class="h-5 w-5 text-purple-600 dark:text-purple-400 flex-shrink-0"
 						/>
 					</div>
 				</div>
 
 				<!-- Total Tasks -->
 				<div
-					class="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-lg p-3 sm:p-4"
+					class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5"
 				>
-					<div class="flex items-start sm:items-center justify-between gap-2">
+					<div class="flex items-center justify-between gap-2">
 						<div class="min-w-0 flex-1">
 							<p
-								class="text-xs font-medium text-orange-600 dark:text-orange-400 truncate"
+								class="text-[0.65rem] font-medium uppercase tracking-wide text-amber-600 dark:text-amber-400 truncate"
 							>
 								Tasks
 							</p>
 							<p
-								class="text-sm sm:text-lg font-bold text-orange-900 dark:text-orange-100"
+								class="text-sm font-bold text-foreground"
 							>
 								{activityStats.total_tasks || 0}
 							</p>
 						</div>
 						<CheckSquare
-							class="h-5 w-5 sm:h-8 sm:w-8 text-orange-600 dark:text-orange-400 flex-shrink-0"
+							class="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0"
 						/>
 					</div>
 				</div>
 			</div>
 
 			<!-- Activity Stats Grid - Compact on Mobile -->
-			<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
+			<div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+					class="bg-card rounded-lg border border-border p-2 text-center shadow-ink"
 				>
-					<div class="flex items-center justify-center mb-1">
-						<FileText class="h-4 sm:h-6 w-4 sm:w-6 text-blue-600" />
+					<div class="flex items-center justify-center mb-0.5">
+						<FileText class="h-4 w-4 text-accent" />
 					</div>
-					<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+					<p class="text-base font-bold text-foreground">
 						{activityStats.total_briefs || 0}
 					</p>
-					<p class="text-xs text-gray-600 dark:text-gray-400">Briefs</p>
+					<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Briefs</p>
 				</div>
 
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+					class="bg-card rounded-lg border border-border p-2 text-center shadow-ink"
 				>
-					<div class="flex items-center justify-center mb-1">
-						<Brain class="h-4 sm:h-6 w-4 sm:w-6 text-purple-600" />
+					<div class="flex items-center justify-center mb-0.5">
+						<MessageSquare class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
 					</div>
-					<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-						{activityStats.total_brain_dumps || 0}
+					<p class="text-base font-bold text-foreground">
+						{activityStats.total_agentic_sessions || 0}
 					</p>
-					<p class="text-xs text-gray-600 dark:text-gray-400">Dumps</p>
+					<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Agentic</p>
 				</div>
 
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+					class="bg-card rounded-lg border border-border p-2 text-center shadow-ink"
 				>
-					<div class="flex items-center justify-center mb-1">
-						<StickyNote class="h-4 sm:h-6 w-4 sm:w-6 text-green-600" />
+					<div class="flex items-center justify-center mb-0.5">
+						<StickyNote class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
 					</div>
-					<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+					<p class="text-base font-bold text-foreground">
 						{activityStats.total_notes || 0}
 					</p>
-					<p class="text-xs text-gray-600 dark:text-gray-400">Notes</p>
+					<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Notes</p>
 				</div>
 
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+					class="bg-card rounded-lg border border-border p-2 text-center shadow-ink"
 				>
-					<div class="flex items-center justify-center mb-1">
-						<Calendar class="h-4 sm:h-6 w-4 sm:w-6 text-indigo-600" />
+					<div class="flex items-center justify-center mb-0.5">
+						<Calendar class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
 					</div>
-					<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+					<p class="text-base font-bold text-foreground">
 						{activityStats.scheduled_briefs || 0}
 					</p>
-					<p class="text-xs text-gray-600 dark:text-gray-400">Sched</p>
+					<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Sched</p>
 				</div>
 
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+					class="bg-card rounded-lg border border-border p-2 text-center shadow-ink"
 				>
-					<div class="flex items-center justify-center mb-1">
-						<CheckSquare class="h-4 sm:h-6 w-4 sm:w-6 text-emerald-600" />
+					<div class="flex items-center justify-center mb-0.5">
+						<CheckSquare class="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
 					</div>
-					<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+					<p class="text-base font-bold text-foreground">
 						{activityStats.completed_tasks || 0}
 					</p>
-					<p class="text-xs text-gray-600 dark:text-gray-400">Done</p>
+					<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Done</p>
 				</div>
 			</div>
 
 			<!-- Enhanced Activity Stats with Context Data -->
 			{#if userContext?.activity}
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3 sm:p-4"
+					class="bg-card rounded-lg border border-border p-3 shadow-ink"
 				>
 					<h3
-						class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5"
 					>
-						<Activity class="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-green-600 flex-shrink-0" />
+						<Activity class="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
 						Enhanced Activity Metrics
 					</h3>
-					<div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+					<div class="grid grid-cols-2 md:grid-cols-4 gap-2">
 						<div
-							class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+							class="bg-muted/50 rounded-md border border-border/50 p-2 text-center"
 						>
-							<div class="flex items-center justify-center mb-1">
-								<Layers class="h-4 sm:h-5 w-4 sm:w-5 text-orange-600" />
+							<div class="flex items-center justify-center mb-0.5">
+								<MessageSquare class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
 							</div>
-							<p class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-								{userContext.activity.phases_generated_count || 0}
+							<p class="text-sm font-bold text-foreground">
+								{userContext.activity.agentic_sessions_count || 0}
 							</p>
-							<p class="text-xs text-gray-600 dark:text-gray-400">Phases</p>
+							<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Agentic</p>
 						</div>
 
 						<div
-							class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+							class="bg-muted/50 rounded-md border border-border/50 p-2 text-center"
 						>
-							<div class="flex items-center justify-center mb-1">
-								<StickyNote class="h-4 sm:h-5 w-4 sm:w-5 text-yellow-600" />
+							<div class="flex items-center justify-center mb-0.5">
+								<StickyNote class="h-4 w-4 text-amber-500" />
 							</div>
-							<p class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+							<p class="text-sm font-bold text-foreground">
 								{userContext.activity.notes_count || 0}
 							</p>
-							<p class="text-xs text-gray-600 dark:text-gray-400">Notes</p>
+							<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Notes</p>
 						</div>
 
 						<div
-							class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+							class="bg-muted/50 rounded-md border border-border/50 p-2 text-center"
 						>
-							<div class="flex items-center justify-center mb-1">
-								<Calendar
-									class="h-4 sm:h-5 w-4 sm:w-5 text-{userContext.activity
-										.calendar_connected
-										? 'green'
-										: 'gray'}-600"
-								/>
+							<div class="flex items-center justify-center mb-0.5">
+								<MessageSquare class="h-4 w-4 text-accent" />
 							</div>
-							<p class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-								{userContext.activity.calendar_connected ? 'Yes' : 'No'}
+							<p class="text-sm font-bold text-foreground">
+								{userContext.activity.agentic_messages_count || 0}
 							</p>
-							<p class="text-xs text-gray-600 dark:text-gray-400">Cal</p>
+							<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Messages</p>
 						</div>
 
 						<div
-							class="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-2 sm:p-3 text-center"
+							class="bg-muted/50 rounded-md border border-border/50 p-2 text-center"
 						>
-							<div class="flex items-center justify-center mb-1">
-								<CheckSquare class="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
+							<div class="flex items-center justify-center mb-0.5">
+								<CheckSquare class="h-4 w-4 text-accent" />
 							</div>
-							<p class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+							<p class="text-sm font-bold text-foreground">
 								{userContext.activity.tasks_created || 0}
 							</p>
-							<p class="text-xs text-gray-600 dark:text-gray-400">Tasks</p>
+							<p class="text-[0.65rem] text-muted-foreground uppercase tracking-wide">Tasks</p>
 						</div>
 					</div>
 				</div>
@@ -361,23 +353,23 @@
 			<!-- Comprehensive User Context Panel -->
 			{#if contextLoading}
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-6"
+					class="bg-card rounded-lg border border-border p-4 shadow-ink"
 				>
-					<div class="flex items-center justify-center">
-						<RefreshCw class="w-6 h-6 animate-spin text-primary-500 mr-2" />
-						<span class="text-gray-600 dark:text-gray-400"
+					<div class="flex items-center justify-center gap-2">
+						<RefreshCw class="w-4 h-4 animate-spin text-accent" />
+						<span class="text-sm text-muted-foreground"
 							>Loading comprehensive user data...</span
 						>
 					</div>
 				</div>
 			{:else if contextError}
 				<div
-					class="bg-red-50 border border-red-200 rounded-lg p-4 dark:bg-red-900/20 dark:border-red-800"
+					class="bg-rose-500/5 border border-rose-500/20 rounded-lg p-3 tx tx-static tx-weak"
 				>
-					<p class="text-red-800 dark:text-red-200">
+					<p class="text-sm text-rose-600 dark:text-rose-400">
 						Error loading user context: {contextError}
 					</p>
-					<Button onclick={loadUserContext} variant="outline" size="sm" class="mt-2">
+					<Button onclick={loadUserContext} variant="outline" size="sm" class="mt-2 pressable">
 						Retry
 					</Button>
 				</div>
@@ -386,42 +378,29 @@
 			{/if}
 
 			<!-- Charts Section -->
-			<div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+			<div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
 				<!-- Project Activity Chart -->
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3 sm:p-4"
+					class="bg-card rounded-lg border border-border p-3 shadow-ink"
 				>
 					<h3
-						class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5"
 					>
-						<BarChart3 class="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-blue-600 flex-shrink-0" />
+						<BarChart3 class="h-3.5 w-3.5 text-accent flex-shrink-0" />
 						Project Activity
 					</h3>
 					<ProjectActivityChart {projects} />
-				</div>
-
-				<!-- Brain Dump Frequency -->
-				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3 sm:p-4"
-				>
-					<h3
-						class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
-					>
-						<Brain class="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-purple-600 flex-shrink-0" />
-						Brain Dump Activity
-					</h3>
-					<BrainDumpChart {brainDumps} />
 				</div>
 			</div>
 
 			<!-- Activity Timeline -->
 			<div
-				class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3 sm:p-4"
+				class="bg-card rounded-lg border border-border p-3 shadow-ink"
 			>
 				<h3
-					class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+					class="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5"
 				>
-					<Activity class="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-green-600 flex-shrink-0" />
+					<Activity class="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
 					Recent Activity Timeline
 				</h3>
 				<ActivityTimelineChart activities={recentActivity} />
@@ -430,26 +409,26 @@
 			<!-- User Context -->
 			{#if userContext && Object.keys(userContext).length > 0}
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3 sm:p-4"
+					class="bg-card rounded-lg border border-border p-3 shadow-ink"
 				>
 					<h3
-						class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5"
 					>
-						<User class="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-indigo-600 flex-shrink-0" />
+						<User class="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
 						User Context & Preferences
 					</h3>
 
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
 						{#if userContext.goals_overview}
 							<div>
 								<h4
-									class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1"
+									class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1"
 								>
-									<Target class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+									<Target class="h-3 w-3 flex-shrink-0" />
 									<span class="truncate">Goals</span>
 								</h4>
 								<p
-									class="text-xs sm:text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-600 p-2 sm:p-3 rounded line-clamp-2"
+									class="text-xs text-foreground bg-muted/50 p-2 rounded border border-border/50 line-clamp-2"
 								>
 									{userContext.goals_overview}
 								</p>
@@ -459,13 +438,13 @@
 						{#if userContext.work_style}
 							<div>
 								<h4
-									class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1"
+									class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1"
 								>
-									<Settings class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+									<Settings class="h-3 w-3 flex-shrink-0" />
 									<span class="truncate">Work Style</span>
 								</h4>
 								<p
-									class="text-xs sm:text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-600 p-2 sm:p-3 rounded line-clamp-2"
+									class="text-xs text-foreground bg-muted/50 p-2 rounded border border-border/50 line-clamp-2"
 								>
 									{userContext.work_style}
 								</p>
@@ -475,12 +454,12 @@
 						{#if userContext.focus_areas}
 							<div>
 								<h4
-									class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate"
+									class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1 truncate"
 								>
 									Focus Areas
 								</h4>
 								<p
-									class="text-xs sm:text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-600 p-2 sm:p-3 rounded line-clamp-2"
+									class="text-xs text-foreground bg-muted/50 p-2 rounded border border-border/50 line-clamp-2"
 								>
 									{userContext.focus_areas}
 								</p>
@@ -490,12 +469,12 @@
 						{#if userContext.active_projects}
 							<div>
 								<h4
-									class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate"
+									class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1 truncate"
 								>
 									Active Projects
 								</h4>
 								<p
-									class="text-xs sm:text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-600 p-2 sm:p-3 rounded line-clamp-2"
+									class="text-xs text-foreground bg-muted/50 p-2 rounded border border-border/50 line-clamp-2"
 								>
 									{userContext.active_projects}
 								</p>
@@ -505,12 +484,12 @@
 						{#if userContext.productivity_challenges}
 							<div>
 								<h4
-									class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate"
+									class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1 truncate"
 								>
 									Challenges
 								</h4>
 								<p
-									class="text-xs sm:text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-600 p-2 sm:p-3 rounded line-clamp-2"
+									class="text-xs text-foreground bg-muted/50 p-2 rounded border border-border/50 line-clamp-2"
 								>
 									{userContext.productivity_challenges}
 								</p>
@@ -520,12 +499,12 @@
 						{#if userContext.preferred_work_hours}
 							<div>
 								<h4
-									class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 truncate"
+									class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1 truncate"
 								>
 									Work Hours
 								</h4>
 								<p
-									class="text-xs sm:text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-600 p-2 sm:p-3 rounded line-clamp-2"
+									class="text-xs text-foreground bg-muted/50 p-2 rounded border border-border/50 line-clamp-2"
 								>
 									{userContext.preferred_work_hours}
 								</p>
@@ -534,10 +513,10 @@
 					</div>
 
 					{#if userContext.onboarding_completed_at}
-						<div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-							<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+						<div class="mt-2 pt-2 border-t border-border">
+							<p class="text-xs text-muted-foreground flex items-center gap-1">
 								<CheckCircle
-									class="inline h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-1"
+									class="h-3 w-3 text-emerald-500"
 								/>
 								Onboarding completed on {formatDate(
 									userContext.onboarding_completed_at
@@ -551,42 +530,42 @@
 			<!-- Projects Summary -->
 			{#if projects.length > 0}
 				<div
-					class="bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-3 sm:p-4"
+					class="bg-card rounded-lg border border-border p-3 shadow-ink"
 				>
 					<h3
-						class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1.5"
 					>
 						<FolderOpen
-							class="mr-2 h-4 sm:h-5 w-4 sm:w-5 text-purple-600 flex-shrink-0"
+							class="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 flex-shrink-0"
 						/>
 						<span class="truncate">Projects ({projects.length})</span>
 					</h3>
 
-					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
 						{#each projects.slice(0, 6) as project}
 							<div
-								class="border border-gray-200 dark:border-gray-600 rounded-lg p-2 sm:p-3"
+								class="border border-border rounded-md p-2 bg-muted/30 hover:bg-muted/50 transition-colors"
 							>
 								<h4
-									class="font-medium text-gray-900 dark:text-white mb-1 text-sm truncate"
+									class="font-medium text-foreground mb-1 text-sm truncate"
 								>
 									{project.name || 'Untitled'}
 								</h4>
 								<div
-									class="space-y-0.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+									class="space-y-0.5 text-xs text-muted-foreground"
 								>
 									<p class="truncate">
-										<span class="font-medium"
+										<span class="font-medium text-foreground"
 											>{project.status || 'Unknown'}</span
 										>
 									</p>
 									<p>
-										<span class="font-medium">{project.task_count || 0}</span> tasks
+										<span class="font-medium text-foreground">{project.task_count || 0}</span> tasks
 									</p>
 									<p>
-										<span class="font-medium">{project.notes_count || 0}</span> notes
+										<span class="font-medium text-foreground">{project.notes_count || 0}</span> notes
 									</p>
-									<p class="text-xs">{formatDate(project.created_at)}</p>
+									<p class="text-[0.65rem]">{formatDate(project.created_at)}</p>
 								</div>
 							</div>
 						{/each}
@@ -594,7 +573,7 @@
 
 					{#if projects.length > 6}
 						<p
-							class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-3 text-center"
+							class="text-xs text-muted-foreground mt-2 text-center"
 						>
 							+{projects.length - 6} more...
 						</p>
@@ -605,9 +584,9 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
+			class="flex justify-end px-4 py-3 border-t border-border"
 		>
-			<Button onclick={handleClose} variant="secondary" size="sm" class="text-sm"
+			<Button onclick={handleClose} variant="secondary" size="sm" class="pressable"
 				>Close</Button
 			>
 		</div>

@@ -55,23 +55,23 @@
 	function getActivityColor(type: string, action: string) {
 		switch (type) {
 			case 'brief':
-				return 'text-blue-600 bg-blue-100 dark:bg-blue-900/20';
+				return 'text-accent bg-accent/10';
 			case 'project':
-				return 'text-purple-600 bg-purple-100 dark:bg-purple-900/20';
+				return 'text-purple-600 dark:text-purple-400 bg-purple-500/10';
 			case 'task':
 				if (action === 'completed' || action === 'done') {
-					return 'text-green-600 bg-green-100 dark:bg-green-900/20';
+					return 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10';
 				}
-				return 'text-orange-600 bg-orange-100 dark:bg-orange-900/20';
+				return 'text-amber-600 dark:text-amber-400 bg-amber-500/10';
 			case 'note':
 			case 'document':
-				return 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/20';
+				return 'text-teal-600 dark:text-teal-400 bg-teal-500/10';
 			case 'brain_dump':
-				return 'text-indigo-600 bg-indigo-100 dark:bg-indigo-900/20';
+				return 'text-indigo-600 dark:text-indigo-400 bg-indigo-500/10';
 			case 'calendar':
-				return 'text-teal-600 bg-teal-100 dark:bg-teal-900/20';
+				return 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10';
 			default:
-				return 'text-gray-600 bg-gray-100 dark:bg-gray-900/20';
+				return 'text-muted-foreground bg-muted';
 		}
 	}
 
@@ -122,26 +122,26 @@
 	<Card variant="elevated">
 		<CardBody padding="md" class="w-full">
 			<!-- Activity Type Legend -->
-			<div class="flex flex-wrap gap-2 mb-4 sm:mb-6">
+			<div class="flex flex-wrap gap-2 mb-3">
 				<div class="flex items-center text-xs">
-					<div class="w-3 h-3 bg-blue-500 rounded mr-1"></div>
-					<span class="text-gray-600 dark:text-gray-400">Briefs</span>
+					<div class="w-2.5 h-2.5 bg-accent rounded mr-1"></div>
+					<span class="text-muted-foreground">Briefs</span>
 				</div>
 				<div class="flex items-center text-xs">
-					<div class="w-3 h-3 bg-purple-500 rounded mr-1"></div>
-					<span class="text-gray-600 dark:text-gray-400">Projects</span>
+					<div class="w-2.5 h-2.5 bg-purple-500 rounded mr-1"></div>
+					<span class="text-muted-foreground">Projects</span>
 				</div>
 				<div class="flex items-center text-xs">
-					<div class="w-3 h-3 bg-orange-500 rounded mr-1"></div>
-					<span class="text-gray-600 dark:text-gray-400">Tasks</span>
+					<div class="w-2.5 h-2.5 bg-amber-500 rounded mr-1"></div>
+					<span class="text-muted-foreground">Tasks</span>
 				</div>
 				<div class="flex items-center text-xs">
-					<div class="w-3 h-3 bg-emerald-500 rounded mr-1"></div>
-					<span class="text-gray-600 dark:text-gray-400">Notes</span>
+					<div class="w-2.5 h-2.5 bg-teal-500 rounded mr-1"></div>
+					<span class="text-muted-foreground">Notes</span>
 				</div>
 				<div class="flex items-center text-xs">
-					<div class="w-3 h-3 bg-indigo-500 rounded mr-1"></div>
-					<span class="text-gray-600 dark:text-gray-400">Brain Dumps</span>
+					<div class="w-2.5 h-2.5 bg-indigo-500 rounded mr-1"></div>
+					<span class="text-muted-foreground">Brain Dumps</span>
 				</div>
 			</div>
 
@@ -149,18 +149,18 @@
 			<div class="relative">
 				<!-- Vertical line -->
 				<div
-					class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-300 dark:bg-gray-600"
+					class="absolute left-5 top-0 bottom-0 w-0.5 bg-border"
 				></div>
 
-				<div class="space-y-6">
+				<div class="space-y-4">
 					{#each Object.entries(groupedActivities) as [date, dayActivities]}
 						<!-- Date header -->
 						<div class="relative">
 							<div
-								class="absolute left-4 w-4 h-4 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-full"
+								class="absolute left-3 w-4 h-4 bg-card border-2 border-border rounded-full"
 							></div>
-							<div class="ml-12">
-								<h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
+							<div class="ml-10">
+								<h4 class="text-sm font-medium text-foreground mb-2">
 									{new Date(date).toLocaleDateString('en-US', {
 										weekday: 'long',
 										month: 'short',
@@ -170,7 +170,7 @@
 								</h4>
 
 								<!-- Activities for this day -->
-								<div class="space-y-2">
+								<div class="space-y-1.5">
 									{#each dayActivities as activity}
 										{@const Activity_type = getActivityIcon(
 											activity.entity_type,
@@ -178,38 +178,38 @@
 										)}
 
 										<div
-											class="flex items-start space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+											class="flex items-start gap-2 px-2 py-1.5 bg-muted/50 rounded-md border border-border/50"
 										>
 											<div
-												class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center {getActivityColor(
+												class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center {getActivityColor(
 													activity.entity_type,
 													activity.action
 												)}"
 											>
-												<Activity_type class="w-4 h-4" />
+												<Activity_type class="w-3.5 h-3.5" />
 											</div>
 
 											<div class="flex-1 min-w-0">
-												<p class="text-sm text-gray-900 dark:text-white">
+												<p class="text-sm text-foreground">
 													{formatActivityText(activity)}
 												</p>
 												{#if activity.project_name}
 													<p
-														class="text-xs text-gray-600 dark:text-gray-400"
+														class="text-xs text-muted-foreground"
 													>
 														in project: {activity.project_name}
 													</p>
 												{/if}
 												{#if activity.details}
 													<p
-														class="text-xs text-gray-600 dark:text-gray-400 truncate"
+														class="text-xs text-muted-foreground truncate"
 													>
 														{activity.details}
 													</p>
 												{/if}
 											</div>
 
-											<div class="flex-shrink-0 text-xs text-gray-500">
+											<div class="flex-shrink-0 text-xs text-muted-foreground">
 												{formatRelativeTime(activity.created_at)}
 											</div>
 										</div>
@@ -222,21 +222,21 @@
 			</div>
 
 			<!-- Activity Summary -->
-			<div class="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-				<h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">
+			<div class="mt-4 p-3 bg-muted/50 border border-border rounded-lg">
+				<h4 class="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
 					Activity Summary
 				</h4>
-				<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+				<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
 					{#each Object.entries(sortedActivities.reduce((counts, activity) => {
-							const type = activity.activity_type.split('_')[0];
-							counts[type] = (counts[type || 0] || 0) + 1;
+							const type = activity.entity_type.split('_')[0];
+							counts[type] = (counts[type] || 0) + 1;
 							return counts;
 						}, {})) as [type, count]}
 						<div class="text-center">
-							<div class="text-lg font-bold text-gray-900 dark:text-white">
+							<div class="text-base font-bold text-foreground">
 								{count}
 							</div>
-							<div class="text-xs text-gray-600 dark:text-gray-400 capitalize">
+							<div class="text-[0.65rem] uppercase tracking-wide text-muted-foreground capitalize">
 								{type}s
 							</div>
 						</div>
@@ -249,9 +249,9 @@
 	<Card variant="default">
 		<CardBody
 			padding="md"
-			class="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400"
+			class="flex flex-col items-center justify-center h-48 text-muted-foreground"
 		>
-			<svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<svg class="w-12 h-12 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
@@ -259,8 +259,8 @@
 					d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
 				></path>
 			</svg>
-			<p class="text-lg font-medium">No Activity Data</p>
-			<p class="text-sm text-center">No recent activity found for this user</p>
+			<p class="text-sm font-medium text-foreground">No Activity Data</p>
+			<p class="text-xs text-center">No recent activity found for this user</p>
 		</CardBody>
 	</Card>
 {/if}
