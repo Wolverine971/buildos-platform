@@ -116,10 +116,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const actorIds = actors?.map((a) => a.id).filter(Boolean) || [];
 		const userIdByActor =
-			actors?.reduce((acc, row) => {
-				if (row.id && row.user_id) acc[row.id] = row.user_id;
-				return acc;
-			}, {} as Record<string, string>) || {};
+			actors?.reduce(
+				(acc, row) => {
+					if (row.id && row.user_id) acc[row.id] = row.user_id;
+					return acc;
+				},
+				{} as Record<string, string>
+			) || {};
 
 		// Get all metrics in parallel for better performance
 		const [
@@ -246,7 +249,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const agenticMessageCountMap =
 			agentSessions?.reduce(
 				(acc, session) => {
-					acc[session.user_id] = (acc[session.user_id] || 0) + (session.message_count || 0);
+					acc[session.user_id] =
+						(acc[session.user_id] || 0) + (session.message_count || 0);
 					return acc;
 				},
 				{} as Record<string, number>

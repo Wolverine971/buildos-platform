@@ -148,9 +148,7 @@
 			<!-- Timeline -->
 			<div class="relative">
 				<!-- Vertical line -->
-				<div
-					class="absolute left-5 top-0 bottom-0 w-0.5 bg-border"
-				></div>
+				<div class="absolute left-5 top-0 bottom-0 w-0.5 bg-border"></div>
 
 				<div class="space-y-4">
 					{#each Object.entries(groupedActivities) as [date, dayActivities]}
@@ -194,9 +192,7 @@
 													{formatActivityText(activity)}
 												</p>
 												{#if activity.project_name}
-													<p
-														class="text-xs text-muted-foreground"
-													>
+													<p class="text-xs text-muted-foreground">
 														in project: {activity.project_name}
 													</p>
 												{/if}
@@ -209,7 +205,9 @@
 												{/if}
 											</div>
 
-											<div class="flex-shrink-0 text-xs text-muted-foreground">
+											<div
+												class="flex-shrink-0 text-xs text-muted-foreground"
+											>
 												{formatRelativeTime(activity.created_at)}
 											</div>
 										</div>
@@ -236,7 +234,9 @@
 							<div class="text-base font-bold text-foreground">
 								{count}
 							</div>
-							<div class="text-[0.65rem] uppercase tracking-wide text-muted-foreground capitalize">
+							<div
+								class="text-[0.65rem] uppercase tracking-wide text-muted-foreground capitalize"
+							>
 								{type}s
 							</div>
 						</div>
@@ -251,7 +251,12 @@
 			padding="md"
 			class="flex flex-col items-center justify-center h-48 text-muted-foreground"
 		>
-			<svg class="w-12 h-12 mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+			<svg
+				class="w-12 h-12 mb-3 opacity-50"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+			>
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"

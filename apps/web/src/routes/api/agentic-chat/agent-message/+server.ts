@@ -57,11 +57,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const actorId = actorData as EnsureActorResponse;
 
+	const { data: hasAccess, error: accessError } = await locals.supabase.rpc(
+		'current_actor_has_project_access',
+		{
+			p_project_id: projectId,
+			p_required_access: 'write'
+		}
+	);
+
+	if (accessError) {
+		console.error('[Agentic Chat] Failed to check project access:', accessError, {
+			actorId
+		});
+		return ApiResponse.error('Failed to verify project access', 500);
+	}
+
+	if (!hasAccess) {
+		return ApiResponse.forbidden('You do not have access to this project');
+	}
+
 	const { data: project, error: projectError } = await locals.supabase
 		.from('onto_projects')
 		.select('id, name, props')
 		.eq('id', projectId)
-		.eq('created_by', actorId)
 		.single();
 
 	if (projectError || !project) {

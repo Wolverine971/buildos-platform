@@ -3,7 +3,7 @@ title: 'Under the Hood: How BuildOS Organizes Your Thoughts'
 description: 'A peek behind the curtain at the ontology that powers BuildOS—rich context architecture where goals, plans, tasks, and documents all connect.'
 author: 'DJ Wayne'
 date: '2025-12-17'
-lastmod: '2026-01-01'
+lastmod: '2026-01-24'
 changefreq: 'monthly'
 priority: '0.8'
 published: true
@@ -32,9 +32,7 @@ But here's the thing: your projects don't fit neatly into boxes. Your book proje
 
 We built BuildOS differently.
 
-If you still want a template it is as simple as saying "BuildOS create me a template with goals, milestones, plans, tasks and documents so that i can finish this project"
-
-<!-- ${two side by side screenshots} -->
+(That said, if you *need* structure upfront, you can always ask: "Create me a template with goals, milestones, and phases." BuildOS accommodates—it just doesn't require it.)
 
 ---
 
@@ -92,7 +90,7 @@ Things that could go wrong. Every project has them. BuildOS helps you identify a
 
 ---
 
-## Why This Matters
+## Intelligent Classification
 
 Here's where it gets interesting.
 
@@ -105,6 +103,14 @@ When you tell BuildOS "I need to prepare for the investor meeting on Thursday," 
 
 The system creates the right structures automatically. You don't have to think about whether something is a "task" or a "milestone"—you just describe what you're trying to do.
 
+### But What If It Gets It Wrong?
+
+Fair question. No AI is perfect.
+
+BuildOS uses a hybrid approach: fast pattern matching for immediate responsiveness, with optional AI refinement running in the background. But more importantly, **you're always in control**.
+
+Every entity has a full editing interface. If the system thinks something is a coordination meeting when it's really a research task, you click, change it, done. Classifications, states, priorities—all editable. The AI gives you a starting point; you refine it.
+
 ---
 
 ## Flexible Properties
@@ -113,7 +119,7 @@ Here's another thing we do differently: **flexible properties**.
 
 Traditional tools have rigid fields. A task has a title, description, due date, priority. That's it.
 
-In BuildOS, entities have **props**—flexible properties that can be anything. A book project might track:
+In BuildOS, entities have **props**—flexible key-value properties stored directly on each entity. A book project might track:
 
 - `genre`: "fantasy"
 - `target_word_count`: 80000
@@ -128,6 +134,20 @@ A startup project might track:
 - `team_size`: 3
 
 These props aren't predetermined. They emerge as you chat. The AI picks up on what matters for YOUR specific project and tracks it accordingly.
+
+### Where You See Them
+
+Props appear in entity detail views and edit modals. You can add, edit, or remove props anytime—they're yours to customize.
+
+### Built-in Facets
+
+Beyond custom props, BuildOS has structured **facets** for common dimensions:
+
+- **Context**: personal, client, commercial, open source, nonprofit
+- **Scale**: micro, small, medium, large, epic
+- **Stage**: discovery, planning, execution, launch, maintenance
+
+Facets help the AI understand what kind of work this is—so it can give you better recommendations and surface relevant tasks.
 
 ---
 
@@ -206,23 +226,34 @@ Zoom into a document
 
 Every zoom level loads the right context automatically.
 
+### How It Works (For the Curious)
+
+When you focus on an entity, the system runs a parallel context load:
+
+1. **Full project context**: all entities, relationships, recent activity
+2. **Element focus**: the specific entity you're zoomed into
+
+The result is merged into a combined projection—recent tasks, upcoming deadlines, related documents, risks—intelligently filtered so the AI has what it needs without hitting token limits. A one-minute cache keeps things snappy for multi-turn conversations.
+
 ---
 
-## Why the Ontology Matters Over Time
+## Context That Compounds
 
 Here's what makes this architecture powerful: **context compounds through the ontology**.
 
 Every brain dump, every task completed, every decision documented—it all connects through these relationships. Day 1 context is helpful. Day 100 context—where everything connects to everything—is like having a partner who knows your entire work history.
 
-(For a deeper dive on context compounding as a concept, see [Context Engineering 101](/blog/context-engineering-101).)
+The AI doesn't just remember your tasks. It understands which goals they serve, what risks might block them, and which documents provide the context you need.
+
+(For a deeper dive on context compounding, see [Context Engineering 101](/blog/context-engineering-101).)
+
+## Team Collaboration
+
+You can invite collaborators to any project. Invitees get role-based access—some can edit, others can view—and everyone benefits from the shared context. The AI understands who's working on what.
 
 ## The Bottom Line
 
-BuildOS doesn't force your messy, creative, human brain into rigid boxes.
-
-Instead, it provides a **connected ontology**—goals, plans, tasks, documents—that forms rich context for AI to actually help you. Structure emerges from conversations. Properties adapt to context. Connections create meaning.
-
-Project Lens lets you zoom into any level of that context. And everything compounds over time.
+BuildOS doesn't force your brain into rigid boxes. Structure emerges from conversations. Properties adapt to your work. And everything compounds over time.
 
 That's what's under the hood.
 
@@ -233,3 +264,8 @@ That's what's under the hood.
 Start with a brain dump. Watch structure emerge from your thoughts. See how goals connect to plans connect to tasks.
 
 [Try the connected approach →](/)
+
+<!-- dj notes 
+
+In this article, we need to talk about the proper structure that is ideal. Ideally, in a project, you have goals. These are your end states. And goals are big and their main goals. And you usually break down a goal into milestones, incremental steps to get to your end goal. From there, each milestone has a plan to get there. Your whole plan to reach that milestone and those plans is a detailed strategy. And that plan consists of tasks. With all this you have risks and different requirements. And you might be referring to different documents. This is the hierarchy and layout that BuildOS tries to get to and it's flexible so starting out you may just have a project with a few tasks or you may just have a project with a goal. As you continue to talk about your project and add to it, the structure will emerge and you'll be able to get clarity into what's next and what's helping you get to where you want to be. 
+-->

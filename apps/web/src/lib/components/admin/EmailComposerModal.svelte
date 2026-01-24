@@ -402,7 +402,9 @@ Guidelines:
 										{email.subject || 'No subject'}
 									</span>
 									<span class="text-muted-foreground shrink-0">
-										{new Date(email.created_at || email.sent_at).toLocaleDateString()}
+										{new Date(
+											email.created_at || email.sent_at
+										).toLocaleDateString()}
 									</span>
 								</div>
 							</button>
@@ -451,7 +453,9 @@ Guidelines:
 					<span class="ml-2 text-xs text-muted-foreground">Loading context...</span>
 				</div>
 			{:else if userContext}
-				<div class="bg-card rounded border border-border overflow-hidden shadow-ink tx tx-frame tx-weak">
+				<div
+					class="bg-card rounded border border-border overflow-hidden shadow-ink tx tx-frame tx-weak"
+				>
 					<button
 						onclick={() => (contextPanelExpanded = !contextPanelExpanded)}
 						class="w-full px-2 py-1.5 flex items-center justify-between hover:bg-muted/50 transition-colors text-left"
@@ -484,7 +488,10 @@ Guidelines:
 				<div class="grid grid-cols-2 gap-2">
 					<!-- Template Selection -->
 					<div class="space-y-1">
-						<label for="email-template" class="text-xs font-medium text-muted-foreground">
+						<label
+							for="email-template"
+							class="text-xs font-medium text-muted-foreground"
+						>
 							Template
 						</label>
 						<select
@@ -532,10 +539,15 @@ Guidelines:
 						<!-- Instructions -->
 						<div class="space-y-1">
 							<div class="flex items-center justify-between">
-								<label for="instructions" class="text-xs font-medium text-muted-foreground">
+								<label
+									for="instructions"
+									class="text-xs font-medium text-muted-foreground"
+								>
 									Instructions
 								</label>
-								<span class="text-[10px] text-muted-foreground">{instructions.length}/5000</span>
+								<span class="text-[10px] text-muted-foreground"
+									>{instructions.length}/5000</span
+								>
 							</div>
 							<textarea
 								id="instructions"
@@ -568,7 +580,10 @@ Guidelines:
 						{#if showSystemPrompt}
 							<div class="space-y-1">
 								<div class="flex items-center justify-between">
-									<label for="system-prompt" class="text-xs font-medium text-muted-foreground">
+									<label
+										for="system-prompt"
+										class="text-xs font-medium text-muted-foreground"
+									>
 										System Prompt
 									</label>
 									<button
@@ -644,13 +659,18 @@ Guidelines:
 						</div>
 					{/if}
 
-					<div class={editMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2 gap-2' : ''}>
+					<div
+						class={editMode === 'split' ? 'grid grid-cols-1 lg:grid-cols-2 gap-2' : ''}
+					>
 						<!-- Manual Editor -->
 						{#if editMode === 'manual' || editMode === 'split'}
 							<div class="space-y-1">
 								<div class="flex items-center gap-1.5">
 									<PenTool class="w-3 h-3 text-muted-foreground"></PenTool>
-									<label for="manual-email" class="text-xs font-medium text-muted-foreground">
+									<label
+										for="manual-email"
+										class="text-xs font-medium text-muted-foreground"
+									>
 										Manual
 									</label>
 								</div>
@@ -672,7 +692,10 @@ Guidelines:
 							<div class="space-y-1">
 								<div class="flex items-center gap-1.5">
 									<Bot class="w-3 h-3 text-accent"></Bot>
-									<label for="generated-email" class="text-xs font-medium text-muted-foreground">
+									<label
+										for="generated-email"
+										class="text-xs font-medium text-muted-foreground"
+									>
 										AI Generated
 									</label>
 								</div>

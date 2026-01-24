@@ -90,7 +90,11 @@
 			let bVal = b[sortBy] || 0;
 
 			// Handle boolean values for derived flags
-			if (['completed_onboarding', 'daily_brief_opt_in', 'calendar_connected'].includes(sortBy)) {
+			if (
+				['completed_onboarding', 'daily_brief_opt_in', 'calendar_connected'].includes(
+					sortBy
+				)
+			) {
 				aVal = aVal ? 1 : 0;
 				bVal = bVal ? 1 : 0;
 			}
@@ -399,9 +403,7 @@
 		{:else if users.length === 0}
 			<div class="p-6 text-center">
 				<Users class="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
-				<h3 class="text-sm font-semibold text-foreground mb-1">
-					No Users Found
-				</h3>
+				<h3 class="text-sm font-semibold text-foreground mb-1">No Users Found</h3>
 				<p class="text-xs text-muted-foreground">
 					{searchQuery
 						? 'Try adjusting your search criteria.'
@@ -710,9 +712,7 @@
 							</th>
 						</tr>
 					</thead>
-					<tbody
-						class="bg-card divide-y divide-border"
-					>
+					<tbody class="bg-card divide-y divide-border">
 						{#each users as user}
 							<tr class="hover:bg-muted/50">
 								<td class="px-3 py-2 whitespace-nowrap">
@@ -721,9 +721,7 @@
 											<div
 												class="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center"
 											>
-												<span
-													class="text-xs font-medium text-accent"
-												>
+												<span class="text-xs font-medium text-accent">
 													{(user.name || user.email)
 														.charAt(0)
 														.toUpperCase()}
@@ -734,12 +732,18 @@
 											<div
 												class="text-sm font-medium text-foreground flex items-center gap-1"
 											>
-												<span class="truncate max-w-[120px]">{user.name || 'No name'}</span>
+												<span class="truncate max-w-[120px]"
+													>{user.name || 'No name'}</span
+												>
 												{#if user.is_admin}
-													<Shield class="h-3.5 w-3.5 text-rose-500 flex-shrink-0" />
+													<Shield
+														class="h-3.5 w-3.5 text-rose-500 flex-shrink-0"
+													/>
 												{/if}
 											</div>
-											<div class="text-xs text-muted-foreground truncate max-w-[150px]">
+											<div
+												class="text-xs text-muted-foreground truncate max-w-[150px]"
+											>
 												{user.email}
 											</div>
 										</div>
@@ -748,9 +752,7 @@
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-1">
 										<Clock
-											class="h-3.5 w-3.5 {getLastVisitColor(
-												user.last_visit
-											)}"
+											class="h-3.5 w-3.5 {getLastVisitColor(user.last_visit)}"
 										/>
 										<span class="text-xs {getLastVisitColor(user.last_visit)}">
 											{formatLastVisit(user.last_visit)}
@@ -777,8 +779,12 @@
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-1">
-										<MessageSquare class="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
-										<span class="text-xs font-medium text-indigo-600 dark:text-indigo-400">
+										<MessageSquare
+											class="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400"
+										/>
+										<span
+											class="text-xs font-medium text-indigo-600 dark:text-indigo-400"
+										>
 											{user.agentic_message_count || 0}
 										</span>
 									</div>
@@ -787,7 +793,9 @@
 									<div class="flex items-center gap-1">
 										{#if user.daily_brief_opt_in}
 											<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
-											<span class="text-xs text-emerald-600 dark:text-emerald-400">
+											<span
+												class="text-xs text-emerald-600 dark:text-emerald-400"
+											>
 												On · {user.daily_brief_count || 0}
 											</span>
 										{:else}
@@ -802,27 +810,35 @@
 									<div class="flex items-center gap-1">
 										{#if user.calendar_connected}
 											<Calendar class="h-3.5 w-3.5 text-emerald-500" />
-											<span class="text-xs text-emerald-600 dark:text-emerald-400">Yes</span>
+											<span
+												class="text-xs text-emerald-600 dark:text-emerald-400"
+												>Yes</span
+											>
 										{:else}
-											<Calendar class="h-3.5 w-3.5 text-muted-foreground/50" />
+											<Calendar
+												class="h-3.5 w-3.5 text-muted-foreground/50"
+											/>
 											<span class="text-xs text-muted-foreground">No</span>
 										{/if}
 									</div>
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="text-xs">
-										<div class="font-medium text-indigo-600 dark:text-indigo-400">
+										<div
+											class="font-medium text-indigo-600 dark:text-indigo-400"
+										>
 											{user.ontology_entity_total || 0} total
 										</div>
 										<div class="text-[0.65rem] text-muted-foreground">
 											T {user.ontology_counts?.tasks || 0} • G {user
-												.ontology_counts?.goals || 0} • P {user.ontology_counts?.plans ||
-												0} • D {user.ontology_counts?.documents || 0}
+												.ontology_counts?.goals || 0} • P {user
+												.ontology_counts?.plans || 0} • D {user
+												.ontology_counts?.documents || 0}
 										</div>
 										<div class="text-[0.65rem] text-muted-foreground">
 											Mi {user.ontology_counts?.milestones || 0} • Rk {user
-												.ontology_counts?.risks || 0} • Req {user.ontology_counts
-												?.requirements || 0}
+												.ontology_counts?.risks || 0} • Req {user
+												.ontology_counts?.requirements || 0}
 										</div>
 									</div>
 								</td>
@@ -830,10 +846,15 @@
 									<div class="flex items-center gap-1">
 										{#if user.completed_onboarding}
 											<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
-											<span class="text-xs text-emerald-600 dark:text-emerald-400">Complete</span>
+											<span
+												class="text-xs text-emerald-600 dark:text-emerald-400"
+												>Complete</span
+											>
 										{:else}
 											<Clock class="h-3.5 w-3.5 text-amber-500" />
-											<span class="text-xs text-amber-600 dark:text-amber-400">Pending</span>
+											<span class="text-xs text-amber-600 dark:text-amber-400"
+												>Pending</span
+											>
 										{/if}
 									</div>
 								</td>
@@ -922,7 +943,8 @@
 					<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 						<div>
 							<p class="text-xs text-muted-foreground">
-								Page <span class="font-medium text-foreground">{currentPage}</span> of
+								Page <span class="font-medium text-foreground">{currentPage}</span>
+								of
 								<span class="font-medium text-foreground">{totalPages}</span>
 							</p>
 						</div>
@@ -955,13 +977,15 @@
 
 <!-- Basic User Details Modal -->
 {#if showUserModal && selectedUser}
-	<div class="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-		<div class="bg-card border border-border rounded-lg shadow-ink-strong max-w-md w-full mx-4 tx tx-frame tx-weak">
+	<div
+		class="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50"
+	>
+		<div
+			class="bg-card border border-border rounded-lg shadow-ink-strong max-w-md w-full mx-4 tx tx-frame tx-weak"
+		>
 			<div class="p-4">
 				<div class="flex items-center justify-between mb-3">
-					<h3 class="text-sm font-semibold text-foreground">
-						User Details
-					</h3>
+					<h3 class="text-sm font-semibold text-foreground">User Details</h3>
 					<Button
 						onclick={() => (showUserModal = false)}
 						variant="ghost"
@@ -974,14 +998,18 @@
 
 				<div class="space-y-3">
 					<div>
-						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+						<div
+							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+						>
 							Email
 						</div>
 						<p class="text-sm text-foreground">{selectedUser.email}</p>
 					</div>
 
 					<div>
-						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+						<div
+							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+						>
 							Name
 						</div>
 						<p class="text-sm text-foreground">
@@ -990,7 +1018,9 @@
 					</div>
 
 					<div>
-						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+						<div
+							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+						>
 							Admin Status
 						</div>
 						<span
@@ -1003,22 +1033,30 @@
 					</div>
 
 					<div>
-						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+						<div
+							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+						>
 							Onboarding
 						</div>
 						<div class="flex items-center gap-1.5 mt-0.5">
 							{#if selectedUser.completed_onboarding}
 								<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
-								<span class="text-xs text-emerald-600 dark:text-emerald-400">Completed</span>
+								<span class="text-xs text-emerald-600 dark:text-emerald-400"
+									>Completed</span
+								>
 							{:else}
 								<XCircle class="h-3.5 w-3.5 text-rose-500" />
-								<span class="text-xs text-rose-600 dark:text-rose-400">Not completed</span>
+								<span class="text-xs text-rose-600 dark:text-rose-400"
+									>Not completed</span
+								>
 							{/if}
 						</div>
 					</div>
 
 					<div>
-						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+						<div
+							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+						>
 							Activity
 						</div>
 						<p class="text-xs text-foreground">
@@ -1029,13 +1067,17 @@
 					</div>
 
 					<div>
-						<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+						<div
+							class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+						>
 							Calendar
 						</div>
 						<div class="flex items-center gap-1.5 mt-0.5">
 							{#if selectedUser.calendar_connected}
 								<Calendar class="h-3.5 w-3.5 text-emerald-500" />
-								<span class="text-xs text-emerald-600 dark:text-emerald-400">Connected</span>
+								<span class="text-xs text-emerald-600 dark:text-emerald-400"
+									>Connected</span
+								>
 							{:else}
 								<Calendar class="h-3.5 w-3.5 text-muted-foreground/50" />
 								<span class="text-xs text-muted-foreground">Not connected</span>
@@ -1045,7 +1087,9 @@
 
 					<div class="grid grid-cols-2 gap-3">
 						<div>
-							<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+							<div
+								class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+							>
 								Last Visit
 							</div>
 							<p class="text-xs text-foreground">
@@ -1054,7 +1098,9 @@
 						</div>
 
 						<div>
-							<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+							<div
+								class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+							>
 								Joined
 							</div>
 							<p class="text-xs text-foreground">
@@ -1065,7 +1111,9 @@
 
 					{#if selectedUser.bio}
 						<div>
-							<div class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+							<div
+								class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground"
+							>
 								Bio
 							</div>
 							<p class="text-xs text-foreground">{selectedUser.bio}</p>

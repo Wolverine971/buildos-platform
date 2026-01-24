@@ -9220,6 +9220,10 @@ export type Database = {
         Args: { client_ip: unknown }
         Returns: boolean
       }
+      check_onboarding_complete: {
+        Args: { p_user_id: string }
+        Returns: boolean
+      }
       claim_pending_jobs: {
         Args: { p_batch_size?: number; p_job_types: string[] }
         Returns: {

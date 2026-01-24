@@ -1,9 +1,9 @@
 ---
 title: 'Prompt Engineering is Out. Context Engineering is In.'
-description: 'Why the future of AI productivity moves beyond crafting clever prompts to building persistent, contextual systems. See how Build OS implements context engineering with rich ontology and Project Lens.'
+description: 'Why the future of AI productivity moves beyond crafting clever prompts to building persistent, contextual systems. See how BuildOS implements context engineering with rich ontology and Project Lens.'
 author: 'DJ Wayne'
 date: '2025-08-05'
-lastmod: '2025-12-31'
+lastmod: '2026-01-24'
 changefreq: 'monthly'
 priority: '0.9'
 published: true
@@ -23,23 +23,29 @@ tags:
         'project-lens',
         'zoom'
     ]
-readingTime: 10
-excerpt: 'The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts—and how Build OS implements this with rich context architecture and Project Lens.'
+readingTime: 7
+excerpt: 'The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts—and how BuildOS implements this with rich context architecture and Project Lens.'
 pic: ''
 path: apps/web/src/content/blogs/productivity-tips/context-engineering-101.md
 ---
 
-The way we work with AI is fundamentally changing. What started as prompt engineering-crafting the perfect message to get good AI responses-is evolving into something much more powerful: context engineering.
+The way we work with AI is fundamentally changing. What started as prompt engineering is evolving into something more powerful: context engineering.
 
-This shift represents the difference between having individual conversations with AI and building systems that remember, organize, and build upon everything you've done before.
+This is the difference between having individual conversations with AI and building systems that remember, organize, and build upon everything you've done before.
 
-<!-- EDITOR'S NOTE: The average knowledge worker has 47 ChatGPT conversations per month, but 94% are never referenced again -->
+## The Rise of Context Engineering
+
+The term "context engineering" was popularized in mid-2025 by Shopify CEO Tobi Lütke and AI researcher Andrej Karpathy. By July 2025, Gartner declared: "Context engineering is in, and prompt engineering is out."
+
+Karpathy describes context engineering as "the careful practice of populating the context window with precisely the right information at exactly the right moment." Lütke puts it more simply: "the art of providing all the context for the task to be plausibly solvable by the LLM."
+
+This represents a fundamental change in how we think about AI workflows.
 
 ## Phase 1: Prompt Engineering Was Just the Beginning
 
-Prompt engineering emerged as our first attempt to work effectively with Large Language Models. The focus was simple: what do you say to an AI to get the response you want?
+Prompt engineering was our first attempt to work effectively with Large Language Models. The focus was simple: what do you say to an AI to get the response you want?
 
-This approach made sense when we were all figuring out how to talk to these new AI systems. Like learning to Google effectively, we developed techniques for crafting queries that produced useful results.
+This made sense when we were all figuring out how to talk to these new systems. Like learning to Google effectively, we developed techniques for crafting queries that produced useful results.
 
 **Prompt engineering works for:**
 
@@ -57,9 +63,9 @@ This approach made sense when we were all figuring out how to talk to these new 
 
 The fundamental limitation: every conversation starts from scratch.
 
-## Phase 2: Context Engineering - System-Level AI Integration
+## Phase 2: Context Engineering
 
-Context engineering shifts the focus from individual messages to designing what context an AI system needs at specific times for specific tasks.
+Context engineering shifts focus from individual messages to designing what context an AI system needs at specific times for specific tasks.
 
 Instead of asking "what should I say to the AI?" you ask:
 
@@ -79,11 +85,33 @@ This requires system-level thinking, not just message-level optimization.
 - Resources and constraints
 - Preferred workflows and output formats
 
-<!-- EDITOR'S NOTE: A well-structured context file typically reduces prompt length by 67% while improving response relevance -->
+## Why Context Compounds
 
-## Build OS: Context Engineering in Practice
+**Context compounds over time.**
 
-Build OS implements context engineering through a **rich context architecture**—structured data that gives AI the right information at the right time:
+| Time Building Context | What Your System Knows         | Quality of AI Help              |
+| --------------------- | ------------------------------ | ------------------------------- |
+| Week 1                | Basic project structure        | Generic responses               |
+| Month 1               | Your patterns and preferences  | Personalized guidance           |
+| Month 6               | Deep history and relationships | Intelligence that surprises you |
+
+Every brain dump, every decision captured, every task completed adds to your context. Day 1 context engineering gives you better prompts. Day 100 gives you an AI that actually knows your work.
+
+Starting matters more than perfecting. Every day you wait is context you don't have.
+
+## The Strategic Imperative: Own Your Context
+
+This shift isn't just about productivity. It's about strategic independence.
+
+If you build all your context inside ChatGPT or Claude, you're locked into that platform. When better models emerge or pricing changes, you lose everything. Your project history, your decisions, your patterns, all trapped in a vendor's system.
+
+Build your context in systems you control. LLMs will keep evolving, and you don't want to be trapped by vendor lock-in. Your structured context can work with any AI model, current or future. You maintain control over your intellectual property and workflow systems.
+
+This is the difference between renting intelligence and building it.
+
+## BuildOS: Context Engineering in Practice
+
+BuildOS implements context engineering through a rich context architecture. Structured data that gives AI the right information at the right time:
 
 ```
 Goals (Why you're doing this)
@@ -92,18 +120,18 @@ Goals (Why you're doing this)
             └── Documents (What you've learned)
 ```
 
-This isn't just organization—it's **context infrastructure**:
+This is context infrastructure:
 
 - **Goals** provide strategic context for every conversation
 - **Plans** show how work connects to outcomes
 - **Tasks** carry their parent context (which goal they serve, which plan they belong to)
 - **Documents** preserve decisions and learnings in context
 
-When you talk to AI in Build OS, it doesn't just know what you typed. It knows the goal you're working toward, the plan you're executing, and the history of decisions you've made.
+When you talk to AI in BuildOS, it doesn't just know what you typed. It knows the goal you're working toward, the plan you're executing, and the history of decisions you've made.
 
-### Project Lens: Zoom In and Out
+### Project Lens: Control Your Altitude
 
-Here's where context engineering becomes interactive: **Project Lens lets you zoom into any level of your context**.
+Project Lens lets you zoom into any level of your context.
 
 | Zoom Level | What AI Knows                          | Example Conversation                   |
 | ---------- | -------------------------------------- | -------------------------------------- |
@@ -113,171 +141,102 @@ Here's where context engineering becomes interactive: **Project Lens lets you zo
 | Task       | Parent context + task-specific details | "How do I approach this?"              |
 | Document   | Full document + what it connects to    | "Summarize this research"              |
 
-**You control the altitude. AI follows.**
+You control the altitude. AI follows.
 
-This is context engineering in action:
+- You don't craft prompts. You **select context**.
+- You don't explain your project. You **zoom into it**.
+- You don't start over. You **continue building**.
 
-- You don't craft prompts—you **select context**
-- You don't explain your project—you **zoom into it**
-- You don't start over—you **continue building**
-
-## The Critical Mistakes People Make
+## Three Critical Mistakes
 
 ### Mistake #1: Letting Insights Disappear
 
-The biggest mistake is having insightful conversations with AI and then losing all that context when you close the chat. You're not building upon what you've learned-you're starting over every time.
+You have an insightful conversation with AI, then close the chat and lose everything. Next time, you start from scratch.
 
-**Solution:** Dump important insights and conversations into BuildOS immediately. Build a persistent record of your AI interactions.
+**Solution:** Capture important insights immediately. Build a persistent record of your AI interactions that you can reference and build upon.
 
-### Mistake #2: Getting Lost in Details Without Organization
+### Mistake #2: Capture Without Structure
 
-People capture everything but never structure it into actionable systems. Raw brain dumps without organization just create more chaos.
+People capture everything but never organize it. Raw brain dumps without structure create more chaos.
 
-**Solution:** Use AI to organize your thoughts automatically. BuildOS mirrors your chaotic raw thoughts back as structured projects, helping you see the next steps clearly.
+**Solution:** Use AI to organize your thoughts automatically. BuildOS transforms chaotic raw thoughts into structured projects, surfacing clear next steps.
 
 ### Mistake #3: Wrong Context Scope
 
-Building contexts that are either too narrow (missing critical information) or too broad (creating noise that distracts from the actual task).
+Building contexts that are too narrow (missing critical information) or too broad (creating noise that distracts from the actual task).
 
-**Solution:** Start with core project context and expand based on what you find yourself repeating. The sweet spot is giving enough context without overwhelming the AI with irrelevant details.
+**Solution:** Start with core project context and expand based on what you find yourself repeating. Give enough context without overwhelming the AI.
 
-<!-- EDITOR'S NOTE: The optimal context is typically 5-7 key facts, 5-7 constraints, and 2-3 examples - fitting in 1-2 pages -->
+## The Tradeoffs
 
-## One-Shot vs Multi-Shot: The Future is Strategic One-Shots
+No system is perfect. Context engineering has real limitations:
 
-**Multi-shot prompting** uses multiple examples to guide AI behavior. This works for a while but breaks down at scale or over long sessions.
+**Context becomes stale.** Information from six months ago might mislead rather than help. Treat your context like code that needs refactoring. Review periodically.
 
-**One-shot prompting** delivers one concise, powerful instruction that encapsulates everything the AI needs to know.
+**More context isn't always better.** Research shows models overloaded with information struggle to identify what's relevant, sometimes increasing errors. Quality beats quantity.
 
-Think of marketing taglines-"Just Do It" or "Think Different"-they capture entire brand philosophies in a few words. For BuildOS, we use "Forget nothing, continue to build." This one-shot prompt encapsulates our entire approach to context preservation and iterative development.
+**Cost scales with context.** Larger context windows mean higher API costs.
 
-The future isn't better multi-shot prompting. It's building **systems of strategic one-shots** paired with rich, structured context that AI can access when needed.
+**Privacy requires attention.** You're trusting your thoughts and decisions to a system. BuildOS keeps your data encrypted and under your control, but understand what you're storing and where.
 
-## Context Engineering in Practice: Three Real Examples
+Build systems that are easy to maintain, prune regularly, and stay focused on what actually helps.
 
-### Content Creator: Idea Management System
+## Context Engineering in Practice
 
-**Problem:** Constantly generating social media ideas but forgetting them when it's time to create content.
+**The Problem:** You constantly generate ideas for products, features, and improvements. You lose track of the details and reasoning behind each concept.
 
-**Context Engineering Solution:** Brain dump all content ideas into BuildOS. The system organizes them by platform, theme, and timing. When you're ready to create, you have a searchable library of your own ideas with full context about what inspired each one.
-
-**Before:** "I know I had a great video idea last week but I can't remember what it was."
-**After:** "Show me all my TikTok ideas related to productivity from the last month."
-
-### Parent: Developmental Milestone Tracking
-
-**Problem:** Constantly receiving parenting tips and advice but forgetting them when the relevant developmental stage arrives.
-
-**Context Engineering Solution:** Create a "Parenting Milestones" project in BuildOS. Dump tips, advice, and strategies as you encounter them. The system organizes by age range and development area. Plan ahead for when to implement specific approaches as your child grows.
-
-**Before:** "I remember reading something about helping toddlers with bedtime routines but I can't find it."
-**After:** "What are all the sleep strategies I've saved for the 2-3 year range?"
-
-### Builder: Project Idea Development
-
-**Problem:** Constantly generating ideas for products, features, and improvements but losing track of the details and reasoning behind each concept.
-
-**Context Engineering Solution:** Maintain builder projects in BuildOS for each area of focus. When inspiration strikes, dump the idea with full context about market problems, technical approaches, and potential implementations. Build upon ideas over time instead of starting fresh.
+**The Solution:** Maintain a dedicated project space for each area of focus. When inspiration strikes, capture the idea with full context: market problems, technical approaches, potential implementations. Build upon ideas over time instead of starting fresh.
 
 **Before:** "I had an idea for improving our user onboarding but I can't remember the specific pain point it solved."
+
 **After:** "Here's the evolution of our onboarding improvement ideas and the user research behind each iteration."
 
-## How to Start Context Engineering Today
+This pattern applies whether you're a content creator managing ideas across platforms, a parent tracking developmental strategies, or a student organizing research across multiple courses. Capture with context, organize automatically, build over time.
+
+## How to Start Today
 
 **Step 1: Audit Your Repetitive Prompts**
-Review your ChatGPT or Claude history. What context do you find yourself explaining repeatedly? What project details do you re-type in every conversation?
 
-This is similar to how developers using Cursor create rules files to give their AI context about coding standards and project structure. You need to identify the context you're constantly recreating.
-
-<!-- EDITOR'S NOTE: Most people find they're repeating 23% of their context across conversations - that's about 2.3 hours per week of retyping -->
+Review your ChatGPT or Claude history. What context do you explain repeatedly? What project details do you re-type in every conversation? This is the context you need to capture once and reuse.
 
 **Step 2: Build Your Context Foundation**
-Start with BuildOS or build your own system that can:
+
+Start with a system that can:
 
 - Capture raw thoughts quickly (voice and text)
 - Organize information automatically
 - Maintain persistent project context
 - Export context to other AI tools
 
+BuildOS is designed for exactly this workflow, but the principle matters more than the tool. You need a persistent layer between you and your AI interactions.
+
 **Step 3: Context-First Workflows**
-Instead of starting fresh conversations with AI, begin with: "Using the context from my [project name], help me with [specific task]."
 
-## The Strategic Imperative: Avoiding AI Vendor Lock-in
+Instead of starting fresh conversations with AI, begin with your project context loaded. Never explain your project from scratch again.
 
-This shift to context engineering isn't just about productivity-it's about strategic independence.
+## The Future: Model Context Protocol (MCP)
 
-**The Problem:** If you build all your context inside ChatGPT or Claude, you're locked into that platform. When better models emerge or pricing changes, you lose everything.
+The next evolution is already here. Anthropic introduced the Model Context Protocol (MCP) in November 2024 as an open standard for connecting AI systems to external data sources. Think of it as USB-C for AI: a universal way to plug any model into any context system.
 
-**The Solution:** Build your context in systems you control. LLMs will continue evolving, and you don't want to be trapped by vendor lock-in or LLM lock-in.
+MCP has seen rapid adoption. OpenAI integrated it in March 2025. Google announced Gemini support in April 2025. Microsoft joined the steering committee in May 2025. Major platforms like Notion, Stripe, GitHub, and Hugging Face have all built official MCP servers.
 
-Context engineering gives you portability. Your structured context can work with any AI model, current or future. You maintain control over your intellectual property and workflow systems.
+This creates a future where your context stays centralized and under your control, multiple AI agents can access it when needed, and you can switch between providers without losing anything.
 
-## The Future: Model Control Protocol (MCP) Integration
+BuildOS is positioned to be the contextual core for this future. The place where AI agents ask "what's happening with this person's marketing project?" and execute tasks with full context.
 
-The next evolution is AI agents that can interact with your context systems directly. BuildOS is positioned to be the contextual core where ChatGPT asks "what's happening with this person's marketing project?" and then executes tasks with full project context.
+## How to Know It's Working
 
-This creates workflows where:
-
-- Your context stays centralized and under your control
-- Multiple AI agents can access relevant context when needed
-- You build rich project histories over time
-- Privacy and permissions can be managed systematically
-
-## Context Engineering Success Metrics
-
-You know your context engineering is working when:
-
-- You can pick up projects after weeks away without re-explaining context
-- AI gives you relevant responses without lengthy setup prompts
-- You're building upon previous work instead of starting over
+- You pick up projects after weeks away without re-explaining context
+- AI gives relevant responses without lengthy setup prompts
+- You build upon previous work instead of starting over
 - Information loss becomes rare instead of constant
 
-<!-- EDITOR'S NOTE: Users typically see project resumption time drop from 25 minutes to 3 minutes -->
-
-## Making the Transition
-
-**From Prompt Engineering thinking:**
-"How do I craft the perfect prompt for this task?"
-
-**To Context Engineering thinking:**
-"What persistent context does this workflow need, and how can I structure it so AI can help me build over time?"
-
-The companies and individuals who master context engineering will have exponentially more leverage with AI tools. They'll build compound benefits from every interaction while others stay trapped in one-off conversation cycles.
-
-Context engineering isn't just a productivity upgrade—it's the foundation for building AI-augmented workflows that get smarter and more valuable over time.
-
-## Context Compounding: The Long Game
-
-Here's the insight that changes everything: **context compounds**.
-
-| Time Building Context | What Your System Knows         | Quality of AI Help              |
-| --------------------- | ------------------------------ | ------------------------------- |
-| Week 1                | Basic project structure        | Generic responses               |
-| Month 1               | Your patterns and preferences  | Personalized guidance           |
-| Month 6               | Deep history and relationships | Intelligence that surprises you |
-
-Every brain dump, every decision captured, every task completed—it all adds to your context. Day 1 context engineering gives you better prompts. Day 100 context engineering gives you an AI that actually knows your work.
-
-This is why starting matters more than perfecting. Every day you wait is context you don't have.
-
-## The Future is Context-First
-
-The future belongs to those who can build and maintain rich contextual systems, not those who craft perfect prompts.
-
-Build OS bets on this future:
-
-- **Rich Context Architecture** gives AI structured knowledge
-- **Project Lens** delivers that context through zoom in/out
-- **Context Compounding** means your system gets smarter every day
-
-You don't need to become a prompt engineer. You need to become a context builder.
+The people who master context engineering will have exponentially more leverage with AI tools. They'll build compound benefits from every interaction while others stay trapped in one-off conversation cycles.
 
 ---
 
-**Ready to start context engineering?**
+**Ready to start?**
 
-Stop crafting prompts. Start building context. Every brain dump, every task, every document makes your AI smarter about YOUR work.
+Stop crafting prompts. Start building context. Every brain dump, every task, every document makes your AI smarter about your work.
 
-The future isn't about better prompts. It's about better context. Start building today.
-
-[Start building context →](/)
+[Start building context](/)

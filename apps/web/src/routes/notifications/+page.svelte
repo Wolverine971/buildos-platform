@@ -12,7 +12,18 @@
 		Mail,
 		Smartphone,
 		Monitor,
-		Send
+		Send,
+		Clock,
+		Eye,
+		MousePointer,
+		XCircle,
+		CheckCircle,
+		Calendar,
+		Zap,
+		ListTodo,
+		AlertTriangle,
+		Sparkles,
+		Coffee
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 
@@ -56,8 +67,23 @@
 			'project.shared': { action: 'Project Shared', past: 'A project was shared with you' },
 			'task.assigned': { action: 'Task Assigned', past: 'A task was assigned to you' },
 			'task.completed': { action: 'Task Completed', past: 'A task was marked complete' },
+			'task.due_soon': { action: 'Task Due Soon', past: 'A task is due soon' },
 			'comment.added': { action: 'New Comment', past: 'Someone commented' },
-			'document.shared': { action: 'Document Shared', past: 'A document was shared' }
+			'document.shared': { action: 'Document Shared', past: 'A document was shared' },
+			'brief.completed': { action: 'Daily Brief Ready', past: 'Your daily brief is ready' },
+			'brief.failed': { action: 'Brief Failed', past: 'Daily brief generation failed' },
+			'brain_dump.processed': {
+				action: 'Brain Dump Processed',
+				past: 'Your brain dump was processed'
+			},
+			'project.phase_scheduled': {
+				action: 'Phase Scheduled',
+				past: 'A project phase was scheduled'
+			},
+			'calendar.sync_failed': {
+				action: 'Calendar Sync Failed',
+				past: 'Calendar sync encountered an error'
+			}
 		};
 		if (descriptions[eventType]) return descriptions[eventType];
 
@@ -73,10 +99,16 @@
 	const getEventIcon = (eventType?: string | null) => {
 		if (!eventType) return Bell;
 		if (eventType.includes('invite') || eventType.includes('shared')) return Share2;
+		if (eventType === 'brief.completed') return Coffee;
+		if (eventType === 'brief.failed') return AlertTriangle;
+		if (eventType === 'brain_dump.processed') return Sparkles;
+		if (eventType === 'task.due_soon') return Clock;
 		if (eventType.includes('task')) return CheckCircle2;
 		if (eventType.includes('comment')) return MessageSquare;
 		if (eventType.includes('document')) return FileText;
 		if (eventType.includes('user') || eventType.includes('member')) return Users;
+		if (eventType.includes('calendar')) return Calendar;
+		if (eventType.includes('phase')) return ListTodo;
 		return Bell;
 	};
 
@@ -87,6 +119,156 @@
 		if (channel === 'sms') return Smartphone;
 		if (channel === 'push') return Send;
 		return Monitor; // in_app
+	};
+
+	// Get delivery status info
+	const getStatusInfo = (
+		status?: string | null,
+		openedAt?: string | null,
+		clickedAt?: string | null,
+		failedAt?: string | null,
+		lastError?: string | null
+	): {
+		label: string;
+		color: string;
+		bgColor: string;
+		icon: typeof CheckCircle;
+	} => {
+		if (clickedAt) {
+			return {
+				label: 'Clicked',
+				color: 'text-green-600 dark:text-green-400',
+				bgColor: 'bg-green-50 dark:bg-green-950/50',
+				icon: MousePointer
+			};
+		}
+		if (openedAt) {
+			return {
+				label: 'Opened',
+				color: 'text-blue-600 dark:text-blue-400',
+				bgColor: 'bg-blue-50 dark:bg-blue-950/50',
+				icon: Eye
+			};
+		}
+		if (failedAt || status === 'failed') {
+			return {
+				label: 'Failed',
+				color: 'text-red-600 dark:text-red-400',
+				bgColor: 'bg-red-50 dark:bg-red-950/50',
+				icon: XCircle
+			};
+		}
+		if (status === 'delivered' || status === 'sent') {
+			return {
+				label: 'Delivered',
+				color: 'text-muted-foreground',
+				bgColor: 'bg-muted/50',
+				icon: CheckCircle
+			};
+		}
+		if (status === 'pending') {
+			return {
+				label: 'Pending',
+				color: 'text-amber-600 dark:text-amber-400',
+				bgColor: 'bg-amber-50 dark:bg-amber-950/50',
+				icon: Clock
+			};
+		}
+		return {
+			label: status || 'Unknown',
+			color: 'text-muted-foreground',
+			bgColor: 'bg-muted/50',
+			icon: Bell
+		};
+	};
+
+	// Extract rich event-specific details
+	const extractEventDetails = (
+		eventType?: string | null,
+		eventPayload?: Record<string, unknown> | null
+	): { stats: { label: string; value: string | number }[]; summary: string | null } => {
+		const ep = eventPayload || {};
+		const stats: { label: string; value: string | number }[] = [];
+		let summary: string | null = null;
+
+		if (eventType === 'brief.completed') {
+			// Daily brief completion - show task breakdown
+			const todayTasks = ep.todays_task_count as number | undefined;
+			const overdueTasks = ep.overdue_task_count as number | undefined;
+			const upcomingTasks = ep.upcoming_task_count as number | undefined;
+			const next7Days = ep.next_seven_days_task_count as number | undefined;
+			const completed = ep.recently_completed_count as number | undefined;
+			const blocked = ep.blocked_task_count as number | undefined;
+			const projects = ep.project_count as number | undefined;
+
+			if (todayTasks !== undefined) stats.push({ label: 'Today', value: todayTasks });
+			if (overdueTasks && overdueTasks > 0)
+				stats.push({ label: 'Overdue', value: overdueTasks });
+			if (upcomingTasks !== undefined)
+				stats.push({ label: 'Upcoming', value: upcomingTasks });
+			if (next7Days !== undefined) stats.push({ label: 'Next 7 days', value: next7Days });
+			if (completed && completed > 0)
+				stats.push({ label: 'Recently done', value: completed });
+			if (blocked && blocked > 0) stats.push({ label: 'Blocked', value: blocked });
+			if (projects !== undefined) stats.push({ label: 'Projects', value: projects });
+
+			if (todayTasks !== undefined) {
+				summary =
+					todayTasks > 0
+						? `You have ${todayTasks} task${todayTasks !== 1 ? 's' : ''} for today`
+						: 'No tasks scheduled for today';
+			}
+		} else if (eventType === 'brief.failed') {
+			const errorMsg = ep.error_message as string | undefined;
+			const retryCount = ep.retry_count as number | undefined;
+			if (retryCount !== undefined) stats.push({ label: 'Retries', value: retryCount });
+			if (errorMsg) summary = errorMsg;
+		} else if (eventType === 'brain_dump.processed') {
+			const tasksCreated = ep.tasks_created as number | undefined;
+			const processingTime = ep.processing_time_ms as number | undefined;
+			const projectName = ep.project_name as string | undefined;
+
+			if (tasksCreated !== undefined)
+				stats.push({ label: 'Tasks created', value: tasksCreated });
+			if (processingTime !== undefined) {
+				const seconds = (processingTime / 1000).toFixed(1);
+				stats.push({ label: 'Processing time', value: `${seconds}s` });
+			}
+			if (projectName) {
+				summary = `Added to project: ${projectName}`;
+			}
+		} else if (eventType === 'task.due_soon') {
+			const taskTitle = ep.task_title as string | undefined;
+			const projectName = ep.project_name as string | undefined;
+			const hoursUntil = ep.hours_until_due as number | undefined;
+
+			if (hoursUntil !== undefined) {
+				stats.push({
+					label: 'Due in',
+					value: hoursUntil < 1 ? 'Less than 1 hour' : `${Math.round(hoursUntil)} hours`
+				});
+			}
+			if (taskTitle) summary = taskTitle;
+			if (projectName && taskTitle !== projectName) {
+				stats.push({ label: 'Project', value: projectName });
+			}
+		} else if (eventType === 'project.phase_scheduled') {
+			const phaseName = ep.phase_name as string | undefined;
+			const taskCount = ep.task_count as number | undefined;
+			const scheduledDate = ep.scheduled_date as string | undefined;
+
+			if (phaseName) stats.push({ label: 'Phase', value: phaseName });
+			if (taskCount !== undefined) stats.push({ label: 'Tasks', value: taskCount });
+			if (scheduledDate) {
+				const date = new Date(scheduledDate);
+				stats.push({
+					label: 'Date',
+					value: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+				});
+			}
+		}
+
+		return { stats, summary };
 	};
 
 	// Extract meaningful content from payloads
@@ -239,6 +421,18 @@
 								event?.payload as Record<string, unknown>,
 								event?.event_type
 							)}
+							{@const statusInfo = getStatusInfo(
+								notification.status,
+								notification.opened_at,
+								notification.clicked_at,
+								notification.failed_at,
+								notification.last_error
+							)}
+							{@const StatusIcon = statusInfo.icon}
+							{@const eventDetails = extractEventDetails(
+								event?.event_type,
+								event?.payload as Record<string, unknown>
+							)}
 
 							<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
 								<div class="flex gap-3">
@@ -260,7 +454,13 @@
 												>
 													{content.title}
 												</p>
-												{#if content.body}
+												{#if eventDetails.summary}
+													<p
+														class="text-sm text-muted-foreground mt-0.5 leading-snug"
+													>
+														{eventDetails.summary}
+													</p>
+												{:else if content.body}
 													<p
 														class="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2"
 													>
@@ -268,15 +468,51 @@
 													</p>
 												{/if}
 											</div>
-											<span
-												class="text-xs text-muted-foreground tabular-nums shrink-0 pt-0.5"
-											>
-												{formatRelativeTime(notification.created_at)}
-											</span>
+											<div class="shrink-0 flex flex-col items-end gap-1">
+												<span
+													class="text-xs text-muted-foreground tabular-nums"
+												>
+													{formatRelativeTime(notification.created_at)}
+												</span>
+												<!-- Status badge -->
+												<span
+													class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded {statusInfo.bgColor} {statusInfo.color}"
+												>
+													<StatusIcon class="w-2.5 h-2.5" />
+													{statusInfo.label}
+												</span>
+											</div>
 										</div>
 
+										<!-- Event-specific stats -->
+										{#if eventDetails.stats.length > 0}
+											<div class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+												{#each eventDetails.stats as stat}
+													<span
+														class="inline-flex items-center gap-1 text-xs"
+													>
+														<span class="text-muted-foreground"
+															>{stat.label}:</span
+														>
+														<span class="font-medium text-foreground"
+															>{stat.value}</span
+														>
+													</span>
+												{/each}
+											</div>
+										{/if}
+
+										<!-- Error message for failed notifications -->
+										{#if notification.last_error && (notification.status === 'failed' || notification.failed_at)}
+											<div
+												class="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1.5 rounded border border-red-200 dark:border-red-900"
+											>
+												{notification.last_error}
+											</div>
+										{/if}
+
 										<!-- Meta row -->
-										<div class="flex items-center gap-2 mt-1.5">
+										<div class="flex items-center gap-2 mt-2">
 											<span
 												class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80"
 											>
@@ -286,12 +522,27 @@
 														'in app'}</span
 												>
 											</span>
+											{#if notification.attempts && notification.attempts > 1}
+												<span class="text-muted-foreground/40">·</span>
+												<span class="text-[11px] text-muted-foreground/70">
+													Attempt {notification.attempts}/{notification.max_attempts ||
+														3}
+												</span>
+											{/if}
 											{#if content.details.length > 0}
 												<span class="text-muted-foreground/40">·</span>
 												<span
 													class="text-[11px] text-muted-foreground/70 truncate"
 												>
 													{content.details.join(' · ')}
+												</span>
+											{/if}
+											{#if notification.opened_at}
+												<span class="text-muted-foreground/40">·</span>
+												<span class="text-[11px] text-muted-foreground/70">
+													Opened {formatRelativeTime(
+														notification.opened_at
+													)}
 												</span>
 											{/if}
 										</div>

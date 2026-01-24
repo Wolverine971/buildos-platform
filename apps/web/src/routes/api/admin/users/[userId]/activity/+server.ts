@@ -46,15 +46,43 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			throw actorError || new Error('Failed to resolve actor');
 		}
 
-		// Get ontology projects
-		const { data: projects } = await supabase
+		// Get ontology projects: include owned and shared membership
+		const { data: memberRows, error: memberError } = await supabase
+			.from('onto_project_members')
+			.select('project_id')
+			.eq('actor_id', actorId)
+			.is('removed_at', null);
+		if (memberError) throw memberError;
+
+		const { data: ownedProjects, error: ownedProjectsError } = await supabase
 			.from('onto_projects')
 			.select('*')
 			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('created_at', { ascending: false });
+		if (ownedProjectsError) throw ownedProjectsError;
 
-		const projectIds = (projects || []).map((project) => project.id);
+		const ownedIds = new Set((ownedProjects || []).map((project) => project.id));
+		const sharedProjectIds = (memberRows || [])
+			.map((row) => row.project_id)
+			.filter((id): id is string => Boolean(id) && !ownedIds.has(id));
+
+		const { data: sharedProjects, error: sharedProjectsError } =
+			sharedProjectIds.length > 0
+				? await supabase
+						.from('onto_projects')
+						.select('*')
+						.in('id', sharedProjectIds)
+						.is('deleted_at', null)
+						.order('created_at', { ascending: false })
+				: { data: [], error: null };
+		if (sharedProjectsError) throw sharedProjectsError;
+
+		const projects = [...(ownedProjects || []), ...(sharedProjects || [])].sort(
+			(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+		);
+
+		const projectIds = projects.map((project) => project.id);
 
 		const [
 			tasksResult,

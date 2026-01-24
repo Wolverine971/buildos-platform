@@ -1037,10 +1037,10 @@
 				},
 				"context-engineering-101": {
 					"title": "Prompt Engineering is Out. Context Engineering is In.",
-					"description": "Why the future of AI productivity moves beyond crafting clever prompts to building persistent, contextual systems. See how Build OS implements context engineering with rich ontology and Project Lens.",
+					"description": "Why the future of AI productivity moves beyond crafting clever prompts to building persistent, contextual systems. See how BuildOS implements context engineering with rich ontology and Project Lens.",
 					"author": "DJ Wayne",
 					"date": "2025-08-05",
-					"lastmod": "2025-12-31",
+					"lastmod": "2026-01-24",
 					"changefreq": "monthly",
 					"priority": "0.9",
 					"published": true,
@@ -1059,8 +1059,8 @@
 						"project-lens",
 						"zoom"
 					],
-					"readingTime": 10,
-					"excerpt": "The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts—and how Build OS implements this with rich context architecture and Project Lens.",
+					"readingTime": 8,
+					"excerpt": "The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts—and how BuildOS implements this with rich context architecture and Project Lens.",
 					"pic": "",
 					"path": "apps/web/src/content/blogs/productivity-tips/context-engineering-101.md",
 					"slug": "context-engineering-101",
@@ -1213,7 +1213,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-01-23T05:41:25.432Z",
+	"generatedAt": "2026-01-24T06:19:26.391Z",
 	"totalPosts": 51,
 	"totalCategories": 6
 }
