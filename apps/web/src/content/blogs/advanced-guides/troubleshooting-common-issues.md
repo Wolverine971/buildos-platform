@@ -1,6 +1,6 @@
 ---
-title: 'Troubleshooting Common Build OS Issues: Solutions and Workarounds'
-description: 'Solutions to the most common problems users encounter with Build OS. Quick fixes, diagnostic steps, and optimization tips to keep your personal operating system running smoothly.'
+title: 'BuildOS Troubleshooting Guide: Fix Common Issues Fast'
+description: 'Quick fixes for the most common BuildOS problems. Calendar sync not working? Brain dump not parsing right? Projects feeling off? Start here.'
 author: 'DJ Wayne'
 date: '2025-6-27'
 lastmod: '2025-6-27'
@@ -8,409 +8,175 @@ changefreq: 'weekly'
 priority: '0.6'
 published: true
 tags: ['troubleshooting', 'support', 'solutions', 'advanced-guides', 'optimization']
-readingTime: 11
-excerpt: 'Comprehensive troubleshooting guide for Build OS users. Find solutions to common issues, optimization tips, and preventive measures to ensure smooth productivity system operation.'
+readingTime: 9
+excerpt: 'Quick fixes for common BuildOS problems. Calendar sync issues, brain dump parsing, project organization, and performance optimization.'
 pic: 'troubleshooting-guide'
 path: apps/web/src/content/blogs/advanced-guides/troubleshooting-common-issues.md
 ---
 
-Even the most well-designed systems occasionally need troubleshooting. Build OS is designed to be robust and reliable, but understanding how to diagnose and resolve common issues will help you maintain peak productivity and confidence in your personal operating system.
+Something not working right? This guide covers the fixes for issues we see most often. Jump to your problem, try the solution, and get back to work.
 
-This guide covers the most frequently encountered issues, their solutions, and preventive measures to keep your Build OS running smoothly.
+## Quick Diagnostic Checklist
 
-## General Diagnostic Approach
+Before diving into specific fixes, run through this:
 
-### The 3-Step Diagnostic Process
+1. **Scope it**: One project or everything? If it's one project, the issue is probably data-related. If it's everything, check your integrations.
+2. **Timeline it**: When did this start? Right after connecting a calendar? After a big brain dump? That narrows down the cause.
+3. **Verify connections**: Check your [calendar settings](/profile?tab=calendar) and make sure the right accounts are linked.
 
-**Step 1: Isolate the Issue**
+## Project Issues
 
-- Is this affecting one project or all projects?
-- Did this start after a specific action or change?
-- Can you reproduce the issue consistently?
-- Is this a data issue, interface issue, or workflow issue?
+### "My project context seems generic or wrong"
 
-**Step 2: Check System Status**
+**What's happening**: BuildOS generates context from what you give it. Thin input produces thin context.
 
-- Are all integrations (calendar, etc.) functioning?
-- Did you link the right calendar? Check your [settings here](/profile?tab=calendar)
-- Is your account syncing properly across devices?
-- Are there any pending updates or maintenance notifications?
-- When did you last perform system maintenance tasks?
+**Quick fixes**:
 
-**Step 3: Apply Systematic Solutions**
+1. **Add more detail to your project description**. Include your goals, constraints, timeline, and who's involved. Two paragraphs minimum.
+2. **Check you linked the right project**. If you ran a brain dump and it went to the wrong place, the context will be off.
+3. **Use specific language**. Industry terms, methodology names, and technical details help the AI understand what you're actually doing.
 
-- Start with simplest solution first
-- Test one change at a time
-- Document what works for future reference
-- Escalate to support if basic solutions don't work
+**If that doesn't work**: Add custom context fields manually. Three to five specific fields (like "Tech Stack: React/Node" or "Deadline: March 15") give the AI much better signal than generic descriptions.
 
-## Project-Related Issues
+### "The generated phases don't match how I actually work"
 
-### Issue: "My project isn't generating intelligent context"
+Phase generation works best when it has context about your workflow. If the phases feel off:
 
-**Symptoms**:
+1. **Delete and recreate**. Remove phases that don't fit and add ones that do. Drag to reorder.
+2. **Merge or split**. If you got five phases that should be two, combine them. If one phase is doing too much, break it apart.
+3. **Be more explicit in your brain dump**. Mention phases directly: "First I need to do X, then Y, finally Z." The AI picks up on structure cues.
 
-- Generic or minimal context fields
-- AI suggestions seem irrelevant
-- Context doesn't reflect project complexity
+### "Tasks aren't showing up in the right project"
 
-**Common Causes**:
+This usually happens when tasks get created outside of a project context, or when a brain dump creates tasks before you've specified which project they belong to.
 
-- You didnt link the to the right project.
-- Missing initial brain dump content
-- Project type not recognized by AI
+**Fix it**:
 
-**Solutions**:
+1. Open the task and reassign it to the correct project.
+2. Check for duplicates. If the same task appears in multiple places, delete the extras.
+3. Going forward, create tasks from within the project view rather than from the global task list.
 
-**Level 1 (Basic)**:
+## Calendar Issues
 
-1. **Enhance project description**: Add 2-3 detailed paragraphs about goals, approach, and expected outcomes
-2. **Provide more context**: Include information about timeline, resources, stakeholders, and constraints
-3. **Use specific language**: Include industry terms, methodologies, and technical details relevant to your project
+### "Tasks aren't showing up in my calendar"
 
-**Level 2 (Intermediate)**:
+**First, check the basics**:
 
-1. **Manual context addition**: Add 3-5 custom context fields with specific information
-2. **Reference similar projects**: Mention comparable projects or case studies in your description
-3. **Include stakeholder information**: Add details about who's involved and their roles
+- Go to [calendar settings](/profile?tab=calendar) and verify you're connected to the right calendar.
+- Make sure BuildOS has read/write permission. If you only granted read access, tasks can't sync.
+- Check that your time zones match between BuildOS and Google Calendar.
 
-**Level 3 (Advanced)**:
+**If it's still not working**:
 
-1. **Context field templating**: Create reusable context templates for similar project types
-2. **Integration enhancement**: Connect external data sources that provide additional project context
-3. **AI training feedback**: Explicitly mark which context suggestions are helpful vs. not helpful
+1. Disconnect the calendar integration completely.
+2. Reconnect it fresh.
+3. Create a test task with a due date and see if it appears.
 
-### Issue: "Project phases don't make sense for my work"
+This clears out any stale OAuth tokens or cached connection state.
 
-**Symptoms**:
+### "Events are scheduled at the wrong times"
 
-- Generated phases seem generic or inappropriate
-- Phase sequencing doesn't match your workflow
-- Important phases are missing or irrelevant phases included
+Usually a time zone mismatch or incorrect work hours configuration.
 
-**Solutions**:
+1. **Check your time zone** in profile settings. If you travel, this might need updating.
+2. **Set your work hours** so BuildOS knows when you're available. Events won't schedule outside these windows.
+3. **Review buffer settings** if tasks are getting crammed together without breaks.
 
-**Immediate Fix**:
+## Brain Dump Issues
 
-1. **Custom phase creation**: Delete irrelevant phases and create custom ones that match your workflow
-2. **Phase reordering**: Drag phases into logical sequence for your project type
-3. **Phase merging/splitting**: Combine overly granular phases or split complex ones
+### "Brain dump created too many projects (or the wrong ones)"
 
-**Long-term Optimization**:
+The AI groups your thoughts based on what looks like distinct outcomes. If you get fragmented projects, your brain dump probably had multiple unrelated threads without clear connections.
 
-1. **Phase templates**: Create and save phase structures for recurring project types
-2. **Workflow documentation**: Document your preferred phase patterns for different project categories
-3. **Iterative refinement**: Adjust phases as you learn what works best for your projects
+**How to fix it**:
 
-### Issue: "Tasks aren't connecting properly to projects"
+1. **Merge the projects** that should be one. Select them and combine.
+2. **Delete irrelevant ones** that got created by mistake.
+3. **Next time, be explicit** about what belongs together. "These three things are all part of launching the product" helps the AI group correctly.
 
-**Symptoms**:
+### "AI suggestions don't match how I work"
 
-- Tasks appear unrelated to project context
-- Project progress doesn't reflect task completion
-- Missing task dependencies or relationships
+BuildOS learns from your patterns, but it needs data. If suggestions feel off:
 
-**Solutions**:
+1. **Be consistent with your feedback**. When you accept or reject a suggestion, that trains the system.
+2. **Update your preferences** in settings. Tell it when you do deep work, when you handle admin tasks, what your priorities actually are.
+3. **Keep your context current**. Stale project descriptions lead to stale suggestions.
 
-**Data Cleanup**:
+## Performance Issues
 
-1. **Re-link orphaned tasks**: Explicitly connect existing tasks to appropriate projects
-2. **Remove duplicate tasks**: Consolidate tasks that represent the same work
-3. **Update task descriptions**: Ensure task names clearly indicate project relationship
+### "Everything feels slow"
 
-**System Optimization**:
+**Quick fixes**:
 
-1. **Task creation workflow**: Always create tasks within project context rather than independently
-2. **Dependency mapping**: Explicitly define task dependencies for better project flow
-3. **Phase assignment**: Ensure tasks are assigned to appropriate project phases
+1. **Hard refresh** (Ctrl+F5 on Windows, Cmd+Shift+R on Mac) to clear cached resources.
+2. **Check your internet connection**. BuildOS needs a stable connection for AI features.
+3. **Close other tabs**. If you have 50 tabs open, your browser is fighting for memory.
 
-## Calendar Integration Issues
+**If it's still slow**: Archive old projects. A cleaner workspace means less data to load.
 
-### Issue: "Tasks aren't appearing in my calendar"
+### "Changes aren't syncing between devices"
 
-**Symptoms**:
+1. Make sure you're logged into the same account on both devices.
+2. Check that both devices have internet access.
+3. Force a refresh on the device that's behind.
 
-- Tasks created but no calendar events generated
-- Calendar integration showing as connected but not syncing
-- Manual calendar additions not reflecting in Build OS
+If you're making rapid changes on multiple devices simultaneously, give the sync a moment to catch up before switching.
 
-**Diagnostic Steps**:
+## Workflow Issues
 
-1. **Check integration status**: Verify calendar connection in settings
-2. **Review permissions**: Ensure Build OS has calendar read/write access
-3. **Test with simple task**: Create a basic task and check if it syncs
+### "I'm completing tasks but not making real progress"
 
-**Solutions**:
+This is a strategy problem, not a technical one. BuildOS can organize your work, but it can't tell you which work matters.
 
-**Basic Troubleshooting**:
+**Ask yourself**:
 
-1. **Disconnect and reconnect**: Remove calendar integration and re-add it
-2. **Check calendar selection**: Ensure you're syncing with the correct calendar
-3. **Verify time zone settings**: Make sure Build OS and calendar use same time zone
+- Are these tasks actually moving projects forward, or just keeping you busy?
+- Do your active projects connect to goals you care about?
+- Are you working on urgent things while important things wait?
 
-**Advanced Solutions**:
+**Fix it**: Do a weekly review. Look at what you spent time on versus what actually mattered. Pause or archive projects that aren't serving real goals.
 
-1. **Clear sync cache**: Force a fresh sync between Build OS and calendar
-2. **Check for calendar conflicts**: Ensure no other apps are interfering with calendar access
-3. **Update integration credentials**: Refresh OAuth tokens for calendar access
+### "BuildOS feels overwhelming"
 
-### Issue: "Calendar events are being scheduled at wrong times"
+You're probably trying to use everything at once.
 
-**Symptoms**:
+1. **Reduce active projects to 2-3**. You can have more in the system, but only focus on a few.
+2. **Turn off notifications** you don't need.
+3. **Simplify your dashboard** to show only what matters today.
 
-- Tasks scheduled outside work hours
-- Events appearing in wrong time zone
-- Scheduling conflicts with existing appointments
+BuildOS works best when it reflects your actual capacity, not your aspirational to-do list.
 
-**Solutions**:
+## Keeping Things Running Smoothly
 
-**Settings Adjustment**:
-
-1. **Update work hours**: Set correct start/end times for your work schedule
-2. **Configure time zone**: Ensure primary time zone matches your location
-3. **Set scheduling preferences**: Adjust AI scheduling preferences for your patterns
-
-**Advanced Configuration**:
-
-1. **Calendar priority rules**: Set which calendars take precedence for conflict detection
-2. **Buffer time settings**: Adjust automatic buffer time between tasks
-3. **Energy preference mapping**: Configure when different task types should be scheduled
-
-## Brain Dump and AI Processing Issues
-
-### Issue: "Brain dump parsing isn't creating relevant projects"
-
-**Symptoms**:
-
-- AI creates too many small projects instead of logical groupings
-- Important themes not recognized as projects
-- Irrelevant or duplicate projects generated
-
-**Solutions**:
-
-**Input Optimization**:
-
-1. **Provide more context**: Include background, goals, and relationships between ideas
-2. **Use clear project indicators**: Explicitly mention deliverables, timelines, and outcomes
-3. **Structure your brain dump**: Group related thoughts together in your input
-
-**Processing Refinement**:
-
-1. **Manual project creation**: Create projects manually if AI parsing isn't effective
-2. **Merge generated projects**: Combine overly granular AI-created projects
-3. **Provide parsing feedback**: Mark which AI decisions were helpful vs. not helpful
-
-### Issue: "AI suggestions don't match my working style"
-
-**Symptoms**:
-
-- Recommended priorities don't align with your preferences
-- Suggested timing conflicts with your energy patterns
-- AI doesn't seem to learn from your choices
-
-**Solutions**:
-
-**Pattern Training**:
-
-1. **Consistent feedback**: Regularly mark which suggestions you follow vs. ignore
-2. **Explicit preferences**: Update system settings with your working style preferences
-3. **Override explanations**: When you override AI suggestions, briefly note why
-
-**System Tuning**:
-
-1. **Energy pattern tracking**: Log when you're most productive for different task types
-2. **Priority calibration**: Regularly review and adjust how you define task priorities
-3. **Context updates**: Keep project and goal context current so AI has better information
-
-## Performance and Sync Issues
-
-### Issue: "System feels slow or unresponsive"
-
-**Symptoms**:
-
-- Long loading times for project pages
-- Delays in AI processing or recommendations
-- Sync issues between devices
-
-**Diagnostic Steps**:
-
-1. **Check internet connection**: Ensure stable, fast internet connectivity
-2. **Clear browser cache**: Remove stored data that might be causing conflicts
-3. **Test on different device**: Determine if issue is device-specific
-
-**Solutions**:
-
-**Basic Performance Fixes**:
-
-1. **Browser refresh**: Hard refresh (Ctrl+F5) to reload all resources
-2. **Close unnecessary tabs**: Reduce browser memory usage
-3. **Update browser**: Ensure you're using a current browser version
-
-**Advanced Performance Optimization**:
-
-1. **Data cleanup**: Archive completed projects to reduce active data load
-2. **Integration review**: Disable unused integrations that might be causing overhead
-3. **Bulk operations**: Use batch operations for large data changes
-
-### Issue: "Data not syncing between devices"
-
-**Symptoms**:
-
-- Changes on one device don't appear on others
-- Different data showing on mobile vs. desktop
-- Recent work seems to disappear
-
-**Solutions**:
-
-**Immediate Sync Fix**:
-
-1. **Manual sync trigger**: Use refresh or sync button to force data update
-2. **Network check**: Ensure all devices have stable internet connection
-3. **Login status**: Verify you're logged into the same account on all devices
-
-**Long-term Sync Reliability**:
-
-1. **Single device rule**: Make major changes on one primary device when possible
-2. **Sync pause**: Wait for sync completion before switching devices
-3. **Backup verification**: Regularly verify important data appears on all devices
-
-## Workflow and Productivity Issues
-
-### Issue: "I'm not making progress despite using the system"
-
-**Symptoms**:
-
-- Tasks get completed but projects don't advance
-- Busy work outweighs important work
-- Goals feel disconnected from daily activities
-
-**Root Cause Analysis**:
-
-1. **Task-project alignment**: Are your tasks actually advancing project goals?
-2. **Priority calibration**: Are you working on truly important vs. merely urgent tasks?
-3. **Goal-project connection**: Do your active projects serve your life goals?
-
-**Solutions**:
-
-**Strategic Realignment**:
-
-1. **Weekly goal review**: Regular assessment of goal-project-task alignment
-2. **Priority audit**: Review what you're actually spending time on vs. what matters most
-3. **Project pruning**: Pause or eliminate projects that don't serve important goals
-
-**Execution Optimization**:
-
-1. **Energy-task matching**: Ensure challenging tasks get your best energy
-2. **Focus time protection**: Block time for deep work on important projects
-3. **Progress measurement**: Track meaningful metrics, not just task completion
-
-### Issue: "The system feels overwhelming rather than helpful"
-
-**Symptoms**:
-
-- Too many notifications or recommendations
-- Interface feels cluttered or confusing
-- More time spent managing system than working
-
-**Solutions**:
-
-**Simplification Strategy**:
-
-1. **Reduce active projects**: Focus on 2-3 most important projects
-2. **Simplify notifications**: Turn off non-essential alerts and updates
-3. **Streamline interface**: Customize dashboard to show only most relevant information
-
-**Gradual Adoption**:
-
-1. **Feature introduction**: Add one new feature at a time rather than using everything immediately
-2. **Workflow development**: Build sustainable routines before adding complexity
-3. **Regular system review**: Monthly assessment of what's helping vs. hurting
-
-## Preventive Maintenance
-
-### Weekly System Health Checks
-
-**Data Hygiene** (10 minutes):
+### Weekly (10 minutes)
 
 - Archive completed projects
-- Update project status and priorities
-- Clean up deleted or duplicate tasks
-- Review and update context fields
+- Update project statuses
+- Delete duplicate or stale tasks
+- Quick check that calendar sync is working
 
-**Integration Verification** (5 minutes):
+### Monthly (30 minutes)
 
-- Check calendar sync status
-- Verify external integrations are functioning
-- Test notifications and alerts
-- Confirm mobile/desktop sync
-
-**Performance Assessment** (5 minutes):
-
-- Note any slowdowns or issues
-- Clear browser cache if needed
-- Update any pending software
-- Review system resource usage
-
-### Monthly System Optimization
-
-**Strategic Review** (30 minutes):
-
-- Assess goal-project alignment
-- Review project portfolio for balance
-- Evaluate system effectiveness and ROI
-- Plan system improvements or changes
-
-**Settings Tuning** (15 minutes):
-
-- Update work hours and preferences
-- Adjust AI suggestion settings based on feedback
-- Optimize notification timing and frequency
-- Review privacy and security settings
-
-**Learning Integration** (15 minutes):
-
-- Document what's working well vs. needs improvement
-- Update templates and workflows based on experience
-- Share insights with Build OS community
-- Plan adoption of new features or techniques
+- Review whether your active projects still align with your goals
+- Adjust your work hours and preferences if your schedule changed
+- Clear out anything that's accumulated but isn't useful
 
 ## When to Contact Support
 
-Contact Build OS support when:
+Reach out if:
 
-- You've tried basic troubleshooting without success
-- Data appears to be lost or corrupted
-- Security or privacy concerns arise
-- Feature requests for workflow improvements
-- Consistent performance issues that affect productivity
+- You've tried the fixes above and nothing worked
+- Data seems lost or corrupted
+- You're seeing security or privacy issues
+- Performance problems persist across devices and browsers
 
-Before contacting support, prepare:
+**Before you contact us**, grab:
 
-- Specific description of the issue
-- Steps you've already tried
-- Screenshots or examples of the problem
-- Information about your browser, device, and integrations
-
-## Building System Resilience
-
-### Backup Strategies
-
-- Regular export of important project data
-- Documentation of custom workflows and templates
-- Screenshots of important configurations
-- Contact list for key integrations and accounts
-
-### Recovery Planning
-
-- Procedure for rebuilding system if needed
-- Priority order for data restoration
-- Alternative workflows during system issues
-- Communication plan for stakeholders during outages
-
-Effective troubleshooting is about building confidence in your system and maintaining momentum in your productivity. Most issues have straightforward solutions, and understanding these common problems and their fixes helps you maintain trust in Build OS as your reliable personal operating system.
-
-Remember: the goal isn't to avoid all issues, but to resolve them quickly and learn from them to prevent future problems.
+- A clear description of what's happening
+- What you've already tried
+- Screenshots if possible
+- Your browser and device info
 
 ---
 
-_Need additional support? [Contact our team](/contact) for personalized troubleshooting assistance or visit our [community forum](/community) to connect with other Build OS users._
+_Still stuck? [Contact our team](/contact) or check the [community forum](/community) where other users share solutions._

@@ -180,8 +180,8 @@
 					"filePath": "src/content/blogs/advanced-guides/power-user-automation-techniques.md"
 				},
 				"troubleshooting-common-issues": {
-					"title": "Troubleshooting Common Build OS Issues: Solutions and Workarounds",
-					"description": "Solutions to the most common problems users encounter with Build OS. Quick fixes, diagnostic steps, and optimization tips to keep your personal operating system running smoothly.",
+					"title": "BuildOS Troubleshooting Guide: Fix Common Issues Fast",
+					"description": "Quick fixes for the most common BuildOS problems. Calendar sync not working? Brain dump not parsing right? Projects feeling off? Start here.",
 					"author": "DJ Wayne",
 					"date": "2025-6-27",
 					"lastmod": "2025-6-27",
@@ -195,8 +195,8 @@
 						"advanced-guides",
 						"optimization"
 					],
-					"readingTime": 11,
-					"excerpt": "Comprehensive troubleshooting guide for Build OS users. Find solutions to common issues, optimization tips, and preventive measures to ensure smooth productivity system operation.",
+					"readingTime": 9,
+					"excerpt": "Quick fixes for common BuildOS problems. Calendar sync issues, brain dump parsing, project organization, and performance optimization.",
 					"pic": "troubleshooting-guide",
 					"path": "apps/web/src/content/blogs/advanced-guides/troubleshooting-common-issues.md",
 					"slug": "troubleshooting-common-issues",
@@ -421,8 +421,8 @@
 					"filePath": "src/content/blogs/getting-started/daily-brief-guide.md"
 				},
 				"effective-brain-dumping": {
-					"title": "How to Master the Art of Brain Dumping in Build OS",
-					"description": "Transform chaotic thoughts into rich, connected context with our complete guide to effective brain dumping. Learn how brain dumps create goals, plans, tasks, and documents—not just task lists.",
+					"title": "Brain Dumping That Actually Works: From Chaos to Compounding Context",
+					"description": "Your brain dump doesn't have to become another abandoned note. Here's how Build OS transforms scattered thoughts into goals, plans, and tasks that actually connect.",
 					"author": "DJ Wayne",
 					"date": "2025-06-28",
 					"lastmod": "2025-12-31",
@@ -438,8 +438,8 @@
 						"project-lens",
 						"zoom"
 					],
-					"readingTime": 9,
-					"excerpt": "Master the foundational skill of transforming scattered thoughts into rich, connected context using Build OS intelligent parsing—then zoom in to refine it.",
+					"readingTime": 8,
+					"excerpt": "Your brain dump doesn't have to become another abandoned note. Here's how Build OS transforms scattered thoughts into goals, plans, and tasks that actually connect.",
 					"pic": "brain-dumping-guide",
 					"path": "apps/web/src/content/blogs/getting-started/effective-brain-dumping.md",
 					"slug": "effective-brain-dumping",
@@ -491,10 +491,10 @@
 				},
 				"under-the-hood": {
 					"title": "Under the Hood: How BuildOS Organizes Your Thoughts",
-					"description": "A peek behind the curtain at the ontology that powers BuildOS—rich context architecture where goals, plans, tasks, and documents all connect.",
+					"description": "A peek behind the curtain at the ontology that powers BuildOS—rich context architecture where goals, milestones, plans, tasks, and documents all connect.",
 					"author": "DJ Wayne",
 					"date": "2025-12-17",
-					"lastmod": "2026-01-01",
+					"lastmod": "2026-01-24",
 					"changefreq": "monthly",
 					"priority": "0.8",
 					"published": true,
@@ -508,8 +508,8 @@
 						"context-building",
 						"zoom"
 					],
-					"readingTime": 9,
-					"excerpt": "Most productivity tools force you into rigid templates. BuildOS takes a different approach—a connected ontology where goals, plans, tasks, and documents form rich context that compounds over time.",
+					"readingTime": 10,
+					"excerpt": "Most productivity tools force you into rigid templates. BuildOS takes a different approach—a connected ontology where goals, milestones, plans, tasks, and documents form rich context that compounds over time.",
 					"pic": "under-the-hood",
 					"path": "apps/web/src/content/blogs/getting-started/under-the-hood.md",
 					"slug": "under-the-hood",
@@ -517,11 +517,11 @@
 					"filePath": "src/content/blogs/getting-started/under-the-hood.md"
 				},
 				"understanding-life-goals": {
-					"title": "Understanding Life Goals vs Projects: Strategic vs Tactical Thinking",
+					"title": "Goals vs Projects: Why Most Productivity Systems Get This Wrong",
 					"description": "Learn how goals sit at the top of Build OS ontology—connecting to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.",
 					"author": "DJ Wayne",
 					"date": "2025-6-27",
-					"lastmod": "2026-01-01",
+					"lastmod": "2026-01-24",
 					"changefreq": "monthly",
 					"priority": "0.8",
 					"published": true,
@@ -536,7 +536,7 @@
 						"context-building",
 						"zoom"
 					],
-					"readingTime": 11,
+					"readingTime": 8,
 					"excerpt": "Master how goals connect to plans, tasks, and documents in Build OS rich context architecture. When your context is structured, strategic alignment becomes automatic.",
 					"pic": "goals-vs-projects",
 					"path": "apps/web/src/content/blogs/getting-started/understanding-life-goals.md",
@@ -604,7 +604,7 @@
 				},
 				"anti-ai-assistant-execution-engine": {
 					"title": "Build OS: The Anti-AI-Assistant That Actually Helps You Ship",
-					"description": "Why Build OS isn't trying to do everything for you – and why that's exactly what makes it work. Plus: how Project Lens delivers intelligence without autonomy.",
+					"description": "Why Build OS refuses to do everything for you, and why that makes it work. How context engineering beats autonomous agents for actually shipping products.",
 					"author": "DJ Wayne",
 					"date": "2025-08-24",
 					"lastmod": "2025-12-31",
@@ -628,7 +628,7 @@
 						"human-in-the-loop"
 					],
 					"readingTime": 9,
-					"excerpt": "While everyone races to build AI that does everything for you, Build OS takes the opposite approach: AI that helps you see clearly so you can do what matters. Learn why clarity beats automation for actually shipping products.",
+					"excerpt": "Everyone races to build AI that does everything for you. Build OS takes the opposite approach: AI that helps you see clearly so you can do what matters. Clarity beats automation for actually shipping products.",
 					"pic": "ai-clarity-execution",
 					"path": "apps/web/src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md",
 					"slug": "anti-ai-assistant-execution-engine",
@@ -655,7 +655,7 @@
 				},
 				"future-of-personal-knowledge-management": {
 					"title": "The Future of Personal Knowledge Management: From Collection to Action",
-					"description": "Personal knowledge management is shifting from manual curation to AI-assisted discovery, from static archives to dynamic context that evolves with your thinking. Here's what that means for how we work.",
+					"description": "Personal knowledge management is shifting from manual curation to AI-assisted discovery. Static archives are becoming dynamic context that evolves with your thinking.",
 					"author": "DJ Wayne",
 					"date": "2025-10-09",
 					"lastmod": "2025-10-09",
@@ -676,8 +676,8 @@
 						"ADHD",
 						"AI-organization"
 					],
-					"readingTime": 12,
-					"excerpt": "Most knowledge management is productivity theater-80% of notes are never revisited. The future isn't better filing cabinets, it's AI systems that turn chaos into clarity and knowledge into action. Learn why strategic forgetting beats total recall, and how to prepare for the shift from passive archives to active intelligence.",
+					"readingTime": 10,
+					"excerpt": "Most knowledge management is productivity theater. Studies suggest 80% of notes are never revisited. The future is not better filing cabinets. It is AI systems that turn chaos into clarity and knowledge into action.",
 					"pic": "knowledge-management-future",
 					"path": "apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management.md",
 					"slug": "future-of-personal-knowledge-management",
@@ -1059,7 +1059,7 @@
 						"project-lens",
 						"zoom"
 					],
-					"readingTime": 8,
+					"readingTime": 7,
 					"excerpt": "The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts—and how BuildOS implements this with rich context architecture and Project Lens.",
 					"pic": "",
 					"path": "apps/web/src/content/blogs/productivity-tips/context-engineering-101.md",
@@ -1069,10 +1069,10 @@
 				},
 				"evolution-of-note-taking": {
 					"title": "The Evolution of Note-Taking: From Paper to AI-Powered Organization",
-					"description": "Explore the progression from traditional note-taking to AI-native systems with rich context architecture. See how Build OS ontology makes notes connected, actionable, and compounding.",
+					"description": "Explore the progression from traditional note-taking to AI-native systems with rich context architecture. See how BuildOS ontology makes notes connected, actionable, and compounding.",
 					"author": "DJ Wayne",
 					"date": "2025-07-08",
-					"lastmod": "2026-01-01",
+					"lastmod": "2026-01-24",
 					"changefreq": "monthly",
 					"priority": "0.8",
 					"published": true,
@@ -1085,12 +1085,10 @@
 						"knowledge-management",
 						"voice-ai",
 						"context-building",
-						"ontology",
-						"project-lens",
-						"zoom"
+						"ontology"
 					],
-					"readingTime": 11,
-					"excerpt": "From GTD to Notion to AI-native systems: how note-taking evolved from manual organization to rich context architecture. Discover why Build OS ontology solves problems that traditional systems never could.",
+					"readingTime": 8,
+					"excerpt": "From GTD to Notion to AI-native systems: how note-taking evolved from manual organization to rich context architecture. Discover why BuildOS ontology solves problems that traditional systems never could.",
 					"pic": "note-taking-evolution",
 					"path": "apps/web/src/content/blogs/productivity-tips/evolution-of-note-taking.md",
 					"slug": "evolution-of-note-taking",
@@ -1202,7 +1200,7 @@
 						"context-building",
 						"zoom"
 					],
-					"readingTime": 14,
+					"readingTime": 11,
 					"excerpt": "Transform scattered to-do lists into connected context—where tasks serve goals, link to plans, and compound over time. Plus: how to zoom into any task with Project Lens.",
 					"pic": "task-management-mastery",
 					"path": "apps/web/src/content/blogs/productivity-tips/task-management-best-practices.md",
@@ -1213,7 +1211,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-01-24T06:19:26.391Z",
+	"generatedAt": "2026-01-24T12:57:53.445Z",
 	"totalPosts": 51,
 	"totalCategories": 6
 }
