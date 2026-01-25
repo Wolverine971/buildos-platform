@@ -132,10 +132,10 @@
 		return classArray.join(' ');
 	}
 
-	// Size classes with minimum touch target of 44x44px per WCAG AA standards
+	// Size classes with minimum touch target of 44x44px per WCAG AA standards (8px grid)
 	const sizeClasses = {
 		sm: 'pl-3 pr-9 py-2 text-sm min-h-[44px]',
-		md: 'pl-4 pr-11 py-2.5 text-base min-h-[44px]',
+		md: 'pl-4 pr-11 py-3 text-base min-h-[44px]',
 		lg: 'pl-4 pr-12 py-3 text-lg min-h-[48px]'
 	};
 

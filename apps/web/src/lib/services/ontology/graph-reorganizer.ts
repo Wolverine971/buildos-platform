@@ -7,7 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 import type { OntoEdge } from '$lib/types/onto-api';
 import type { EntityKind, RelationshipType } from './edge-direction';
 import {
@@ -123,6 +123,13 @@ function buildEdgeKey(edge: {
 	dst_id: string;
 }): string {
 	return `${edge.rel}:${edge.src_kind}:${edge.src_id}:${edge.dst_kind}:${edge.dst_id}`;
+}
+
+type EdgeRow = Database['public']['Tables']['onto_edges']['Row'];
+
+function toOntoEdge(row: EdgeRow): OntoEdge {
+	const props = isPlainObject(row.props) ? (row.props as Record<string, unknown>) : null;
+	return { ...row, props };
 }
 
 function normalizeProps(
@@ -429,16 +436,19 @@ export async function planGraphReorg(params: {
 		throw new Error(dstEdgesResult.error.message);
 	}
 
+	const srcEdges = (srcEdgesResult.data ?? []).map(toOntoEdge);
+	const dstEdges = (dstEdgesResult.data ?? []).map(toOntoEdge);
+
 	const edgesById = new Map<string, OntoEdge>();
 	const isListedEdge = (edge: OntoEdge): boolean =>
 		listedKeys.has(`${edge.src_kind}:${edge.src_id}`) ||
 		listedKeys.has(`${edge.dst_kind}:${edge.dst_id}`);
-	for (const edge of srcEdgesResult.data ?? []) {
+	for (const edge of srcEdges) {
 		if (isListedEdge(edge)) {
 			edgesById.set(edge.id, edge);
 		}
 	}
-	for (const edge of dstEdgesResult.data ?? []) {
+	for (const edge of dstEdges) {
 		if (!edgesById.has(edge.id) && isListedEdge(edge)) {
 			edgesById.set(edge.id, edge);
 		}
@@ -629,6 +639,9 @@ export async function planGraphReorg(params: {
 		for (const scope of nodePlan.deleteScopes) {
 			if (scope.type === 'containment') {
 				const [kind, id] = scope.nodeKey.split(':');
+				if (!kind || !id) {
+					continue;
+				}
 				const edges =
 					edgesByDst
 						.get(id)
@@ -722,35 +735,41 @@ export async function applyGraphReorgPlan(params: {
 }): Promise<void> {
 	const { supabase, plan, projectId } = params;
 
+	const deletesPayload = plan.edgesToDelete.map((edge) => ({
+		id: edge.id,
+		src_kind: edge.src_kind,
+		src_id: edge.src_id,
+		rel: edge.rel,
+		dst_kind: edge.dst_kind,
+		dst_id: edge.dst_id,
+		props: normalizeProps(edge.props)
+	})) as unknown as Json;
+
+	const updatesPayload = plan.edgesToUpdate.map((edge) => ({
+		id: edge.id,
+		src_kind: edge.src_kind,
+		src_id: edge.src_id,
+		rel: edge.rel,
+		dst_kind: edge.dst_kind,
+		dst_id: edge.dst_id,
+		props: normalizeProps(edge.props),
+		expected_props: normalizeProps(edge.expected_props)
+	})) as unknown as Json;
+
+	const insertsPayload = plan.edgesToCreate.map((edge) => ({
+		src_kind: edge.src_kind,
+		src_id: edge.src_id,
+		rel: edge.rel,
+		dst_kind: edge.dst_kind,
+		dst_id: edge.dst_id,
+		props: normalizeProps(edge.props)
+	})) as unknown as Json;
+
 	const { error } = await supabase.rpc('apply_graph_reorg_changes', {
 		p_project_id: projectId,
-		p_deletes: plan.edgesToDelete.map((edge) => ({
-			id: edge.id,
-			src_kind: edge.src_kind,
-			src_id: edge.src_id,
-			rel: edge.rel,
-			dst_kind: edge.dst_kind,
-			dst_id: edge.dst_id,
-			props: normalizeProps(edge.props)
-		})),
-		p_updates: plan.edgesToUpdate.map((edge) => ({
-			id: edge.id,
-			src_kind: edge.src_kind,
-			src_id: edge.src_id,
-			rel: edge.rel,
-			dst_kind: edge.dst_kind,
-			dst_id: edge.dst_id,
-			props: normalizeProps(edge.props),
-			expected_props: normalizeProps(edge.expected_props)
-		})),
-		p_inserts: plan.edgesToCreate.map((edge) => ({
-			src_kind: edge.src_kind,
-			src_id: edge.src_id,
-			rel: edge.rel,
-			dst_kind: edge.dst_kind,
-			dst_id: edge.dst_id,
-			props: normalizeProps(edge.props)
-		}))
+		p_deletes: deletesPayload,
+		p_updates: updatesPayload,
+		p_inserts: insertsPayload
 	});
 
 	if (error) {

@@ -49,8 +49,9 @@
 		lg: 'px-4 py-3 text-lg min-h-[48px]'
 	};
 
-	// Wrapper classes - minimal container
-	let wrapperClasses = 'relative';
+	// Wrapper classes - Inkprint design with GRID texture
+	// Per Inkprint Design System: "Grid = Input, editable, writable"
+	let wrapperClasses = 'relative rounded-lg overflow-hidden tx tx-grid tx-weak bg-card';
 
 	let textareaClasses = $derived(
 		twMerge(
@@ -80,8 +81,8 @@
 			// Text color
 			'text-foreground',
 
-			// Position relative for proper stacking
-			'relative',
+			// Position relative for proper stacking (above GRID texture)
+			'relative z-10',
 
 			// Shadow
 			'shadow-ink-inner',

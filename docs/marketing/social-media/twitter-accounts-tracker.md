@@ -4,7 +4,7 @@
 
 > Living document tracking all engagement accounts with last visited dates.
 > Updated automatically during each Twitter warmup scan.
-> Last Updated: 2026-01-13
+> Last Updated: 2026-01-24 (includes @build_os warmup)
 
 **Related Docs:**
 
@@ -30,15 +30,15 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                  | Name            | Followers | Last Visited | Notes                                   |
 | --------------------------------------- | --------------- | --------- | ------------ | --------------------------------------- |
-| [@levelsio](https://x.com/levelsio)     | Pieter Levels   | 791.8K    | 2026-01-12   | Indie hacker GOAT, building in public   |
-| [@shaanvp](https://x.com/ShaanVP)       | Shaan Puri      | 515K      | 2026-01-12   | My First Million, startup wisdom        |
+| [@levelsio](https://x.com/levelsio)     | Pieter Levels   | 794.4K    | 2026-01-24   | Indie hacker GOAT, building in public   |
+| [@shaanvp](https://x.com/ShaanVP)       | Shaan Puri      | 457.8K    | 2026-01-24   | My First Million, startup wisdom        |
 | [@thesamparr](https://x.com/thesamparr) | Sam Parr        | 319K      | ---          | MFM co-host, The Hustle                 |
 | [@lennysan](https://x.com/lennysan)     | Lenny Rachitsky | 249K      | ---          | Product leadership, scaling             |
-| [@danshipper](https://x.com/danshipper) | Dan Shipper     | 140K      | 2026-01-12   | AI productivity, Every - LAUNCHED PROOF |
+| [@danshipper](https://x.com/danshipper) | Dan Shipper     | 84.4K     | 2026-01-24   | AI productivity, Every - LAUNCHED PROOF |
 | [@swyx](https://x.com/swyx)             | swyx            | 112K      | ---          | AI Engineer, Latent Space               |
-| [@simonw](https://x.com/simonw)         | Simon Willison  | 130.8K    | 2026-01-12   | Datasette, LLM writing                  |
+| [@simonw](https://x.com/simonw)         | Simon Willison  | 140.9K    | 2026-01-24   | Datasette, LLM writing                  |
 | [@arvidkahl](https://x.com/arvidkahl)   | Arvid Kahl      | 96K       | ---          | Zero to Sold, bootstrapping             |
-| [@dexhorthy](https://x.com/dexhorthy)   | Dexter Horthy   | 10.7K     | 2026-01-12   | COINED "Context Engineering" - CRITICAL |
+| [@dexhorthy](https://x.com/dexhorthy)   | Dexter Horthy   | 11.3K     | 2026-01-24   | COINED "Context Engineering" - CRITICAL |
 
 ---
 
@@ -48,7 +48,7 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                      | Name               | Followers | Last Visited | Notes                                 |
 | ------------------------------------------- | ------------------ | --------- | ------------ | ------------------------------------- |
-| [@bcherny](https://x.com/bcherny)           | Boris Cherny       | 163.7K    | 2026-01-13   | **Claude Code creator at Anthropic!** |
+| [@bcherny](https://x.com/bcherny)           | Boris Cherny       | 183.9K    | 2026-01-24   | **Claude Code creator at Anthropic!** |
 | [@trq212](https://x.com/trq212)             | Thorsten Ball      | 46.2K     | 2026-01-13   | **Anthropic Claude Code team!**       |
 | [@mckaywrigley](https://x.com/mckaywrigley) | Mckay Wrigley      | 217K      | ---          | AI product builder, Chatbot UI        |
 | [@skirano](https://x.com/skirano)           | Sawyer Hood        | 31K       | ---          | Cursor/AI dev                         |
@@ -63,7 +63,7 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                        | Name             | Followers | Last Visited | Notes                        |
 | --------------------------------------------- | ---------------- | --------- | ------------ | ---------------------------- |
-| [@dexhorthy](https://x.com/dexhorthy)         | Dexter Horthy    | 10.7K     | 2026-01-12   | Coined term - ENGAGE HEAVILY |
+| [@dexhorthy](https://x.com/dexhorthy)         | Dexter Horthy    | 11.3K     | 2026-01-24   | Coined term - ENGAGE HEAVILY |
 | [@datachaz](https://x.com/datachaz)           | Chaz Acheronti   | 149K      | ---          | 16-page Claude guide author  |
 | [@fchollet](https://x.com/fchollet)           | Francois Chollet | 596K      | ---          | Keras creator, ARC-AGI       |
 | [@drjimfan](https://x.com/drjimfan)           | Jim Fan          | 346K      | ---          | NVIDIA Robotics              |
@@ -89,7 +89,7 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                    | Name         | Followers | Last Visited | Product                               | Threat Level  |
 | ----------------------------------------- | ------------ | --------- | ------------ | ------------------------------------- | ------------- |
-| [@dannypostma](https://x.com/dannypostma) | Danny Postma | 166K      | 2026-01-12   | PostmaOS - AI Life OS (laying low)    | DIRECT        |
+| [@dannypostma](https://x.com/dannypostma) | Danny Postma | 166.4K    | 2026-01-24   | PostmaOS - AI Life OS (laying low)    | DIRECT        |
 | [@danidonovan](https://x.com/danidonovan) | Dani Donovan | 126K      | 2026-01-12   | Anti-Planner (ADHD) - quiet since Dec | PHILOSOPHICAL |
 | [@tdinh_me](https://x.com/tdinh_me)       | Tony Dinh    | 175K      | ---          | TypingMind                            | ADJACENT      |
 

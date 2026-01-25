@@ -140,7 +140,7 @@
 
 	{#if isArchived}
 		<div
-			class="mb-2 flex items-center gap-1.5 rounded-md border border-dashed border-border bg-muted/50 px-2 py-0.5 text-[10px] sm:text-xs font-medium text-muted-foreground"
+			class="mb-2 flex items-center gap-2 rounded-md border border-dashed border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground"
 		>
 			<Archive class="w-3 h-3" />
 			<span class="hidden sm:inline">Archived — read only</span>
@@ -150,22 +150,16 @@
 
 	<!-- Description - compact on mobile -->
 	{#if project.description}
-		<p
-			class="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-2 sm:mb-3 leading-snug min-h-[2rem] sm:min-h-[2.5rem]"
-		>
+		<p class="text-sm text-muted-foreground line-clamp-2 mb-3 leading-snug min-h-[2.5rem]">
 			{project.description}
 		</p>
 	{:else}
-		<p
-			class="text-xs sm:text-sm text-muted-foreground/60 italic mb-2 sm:mb-3 min-h-[2rem] sm:min-h-[2.5rem]"
-		>
-			No description
-		</p>
+		<p class="text-sm text-muted-foreground/60 italic mb-3 min-h-[2.5rem]">No description</p>
 	{/if}
 
 	<!-- Progress bar and stats - ultra compact for mobile -->
 	{#if hasTaskStats}
-		<div class="space-y-1.5 sm:space-y-2">
+		<div class="space-y-2">
 			<!-- Progress bar with percentage -->
 			<div class="flex items-center gap-2">
 				<div class="flex-1">
@@ -185,22 +179,22 @@
 			</div>
 
 			<!-- Task stats in compact row -->
-			<div class="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs">
-				<div class="flex items-center gap-0.5 sm:gap-1">
-					<CheckCircle2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-accent" />
+			<div class="flex items-center gap-3 text-xs">
+				<div class="flex items-center gap-1">
+					<CheckCircle2 class="w-3.5 h-3.5 text-accent" />
 					<span class="text-muted-foreground tabular-nums">
 						{project.taskStats.completed}
 					</span>
 				</div>
-				<div class="flex items-center gap-0.5 sm:gap-1">
-					<Clock class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground" />
+				<div class="flex items-center gap-1">
+					<Clock class="w-3.5 h-3.5 text-muted-foreground" />
 					<span class="text-muted-foreground tabular-nums">
 						{project.taskStats.active}
 					</span>
 				</div>
 				{#if hasBlockedTasks}
-					<div class="flex items-center gap-0.5 sm:gap-1">
-						<AlertCircle class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-destructive" />
+					<div class="flex items-center gap-1">
+						<AlertCircle class="w-3.5 h-3.5 text-destructive" />
 						<span class="text-muted-foreground tabular-nums">
 							{project.taskStats.blocked}
 						</span>
@@ -209,21 +203,21 @@
 			</div>
 		</div>
 	{:else}
-		<div class="text-[10px] sm:text-xs text-muted-foreground/60 italic">No tasks yet</div>
+		<div class="text-xs text-muted-foreground/60 italic">No tasks yet</div>
 	{/if}
 
 	<!-- View Brief Button - compact on mobile -->
 	{#if projectBrief}
-		<div class="mt-2 sm:mt-3 mb-1 sm:mb-2">
+		<div class="mt-3 mb-2">
 			<Button
 				type="button"
 				onclick={handleViewBrief}
 				variant="outline"
 				size="sm"
-				class="w-full text-accent border-accent/30 hover:bg-accent/10 text-[10px] sm:text-xs py-1 sm:py-1.5"
+				class="w-full text-accent border-accent/30 hover:bg-accent/10"
 				data-no-pulse
 			>
-				<FileText class="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+				<FileText class="w-3.5 h-3.5 mr-1" />
 				<span class="hidden sm:inline">View Brief</span>
 				<span class="sm:hidden">Brief</span>
 			</Button>
@@ -235,7 +229,7 @@
 		<div class="flex flex-wrap gap-1">
 			{#each visibleTags.slice(0, 2) as tag}
 				<span
-					class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-muted text-muted-foreground truncate max-w-[80px] sm:max-w-none"
+					class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground truncate max-w-[80px] sm:max-w-none"
 					title={tag}
 				>
 					{tag}
@@ -243,7 +237,7 @@
 			{/each}
 			{#if hasTags && project.tags.length > 2}
 				<span
-					class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-muted text-muted-foreground/60"
+					class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground/60"
 				>
 					+{project.tags.length - 2}
 				</span>

@@ -58,7 +58,8 @@
       "Bash(pnpm exec svelte-check:*)",
       "Bash(for file in /Users/annawayne/buildos-platform/supabase/migrations/*.sql)",
       "Bash(do grep -l \"deleted_at\\\\|state_key\\\\|description\" \"$file\")",
-      "Bash(magick:*)"
+      "Bash(magick:*)",
+      "Bash(pnpm run lint)"
     ],
     "deny": [],
     "ask": []

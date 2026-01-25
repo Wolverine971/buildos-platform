@@ -86,10 +86,12 @@
 		}
 	};
 
-	// Wrapper classes - Inkprint design
+	// Wrapper classes - Inkprint design with GRID texture
+	// Per Inkprint Design System: "Grid = Input, editable, writable"
 	let wrapperClasses = $derived(
 		twMerge(
 			'relative rounded-lg overflow-hidden', // Container with softer radius
+			'tx tx-grid tx-weak', // Semantic texture: "you can write here"
 			'bg-card' // Clean card background
 		)
 	);
@@ -123,8 +125,8 @@
 			// Text color
 			'text-foreground',
 
-			// Position relative for proper stacking
-			'relative',
+			// Position relative for proper stacking (above GRID texture)
+			'relative z-10',
 
 			// Shadow
 			'shadow-ink-inner',

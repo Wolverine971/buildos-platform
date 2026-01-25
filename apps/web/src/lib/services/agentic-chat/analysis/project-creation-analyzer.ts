@@ -271,7 +271,8 @@ export class ProjectCreationAnalyzer {
 				accumulatedContext,
 				quickAnalysis,
 				userId,
-				clarificationMetadata
+				clarificationMetadata,
+				chatSessionId
 			);
 			return llmAnalysis;
 		} catch (error) {
@@ -426,7 +427,8 @@ export class ProjectCreationAnalyzer {
 		accumulatedContext: string,
 		quickAnalysis: ReturnType<typeof this.quickHeuristicAnalysis>,
 		userId: string,
-		clarificationMetadata?: ClarificationRoundMetadata
+		clarificationMetadata?: ClarificationRoundMetadata,
+		chatSessionId?: string
 	): Promise<ProjectCreationIntentAnalysis> {
 		const previousQuestionsContext = clarificationMetadata?.previousQuestions?.length
 			? `\nPrevious questions asked: ${clarificationMetadata.previousQuestions.join('; ')}`

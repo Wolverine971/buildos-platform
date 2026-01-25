@@ -246,7 +246,9 @@ export async function instantiateProject(
 
 	const counts: InstantiationCounts = { ...INITIAL_COUNTS };
 
-	const actorId = await ensureActorExists(client, userId);
+	// Resolve actor ID from the current auth context to satisfy RLS
+	// (created_by must equal current_actor_id()).
+	const actorId = await resolveActorId(client, userId);
 
 	const resolvedProjectFacets = resolveFacets(
 		undefined,
@@ -874,6 +876,31 @@ export function validateProjectSpec(spec: unknown): { valid: boolean; errors: st
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Resolve the actor id tied to the current session.
+ * Tries current_actor_id() first (what RLS uses), then falls back to creating
+ * the actor via ensure_actor_for_user and re-checks. Throws if still missing.
+ */
+async function resolveActorId(client: TypedSupabaseClient, userId: string): Promise<string> {
+	// First, try the same resolver used by RLS policies.
+	const { data: currentActorId } = await client.rpc('current_actor_id');
+	if (currentActorId) return currentActorId;
+
+	// If not found, create/ensure the actor row for this user.
+	await ensureActorExists(client, userId);
+
+	// Re-fetch to align with RLS check during insert.
+	const { data: resolvedActorId, error: resolvedError } = await client.rpc('current_actor_id');
+	if (resolvedActorId) return resolvedActorId;
+
+	// If we still can't resolve, surface a clear, user-friendly error.
+	throw new OntologyInstantiationError(
+		`Failed to resolve actor for user session${
+			resolvedError?.message ? `: ${resolvedError.message}` : ''
+		}. Please reauthenticate and try again.`
+	);
+}
 
 async function ensureActorExists(client: TypedSupabaseClient, userId: string): Promise<string> {
 	const { data, error } = await client.rpc('ensure_actor_for_user', {

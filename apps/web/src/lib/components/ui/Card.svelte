@@ -43,12 +43,12 @@
 	let resolvedTexture = $derived(texture ?? variantDefaults[variant].texture);
 	let resolvedWeight = $derived(weight ?? variantDefaults[variant].weight);
 
-	// Padding styles - optimized for high information density
+	// Padding styles - optimized for high information density (8px grid system)
 	const paddingClasses: Record<CardPadding, string> = {
 		none: '',
-		sm: 'p-2',
-		md: 'p-3 sm:p-4',
-		lg: 'p-4 sm:p-6'
+		sm: 'p-3', // 12px
+		md: 'p-4', // 16px
+		lg: 'p-6' // 24px
 	};
 
 	// Texture classes - Inkprint semantic textures

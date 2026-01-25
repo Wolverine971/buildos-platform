@@ -79,7 +79,7 @@
 
 	/* Tab navigation with smooth scrolling */
 	.tab-nav {
-		@apply flex gap-1 sm:gap-2 overflow-x-auto overflow-y-hidden px-2 sm:px-0;
+		@apply flex gap-2 overflow-x-auto overflow-y-hidden px-2 sm:px-0;
 		-webkit-overflow-scrolling: touch;
 		scroll-behavior: smooth;
 		scrollbar-width: none;
@@ -91,11 +91,11 @@
 		display: none;
 	}
 
-	/* Tab button - compact mobile, comfortable desktop */
+	/* Tab button - consistent spacing on 8px grid */
 	.tab-button {
 		@apply inline-flex items-center justify-center;
-		@apply gap-1.5 sm:gap-2;
-		@apply px-3 py-2 sm:px-4 sm:py-3;
+		@apply gap-2;
+		@apply px-4 py-3;
 		@apply border-none border-b-2 border-transparent;
 		@apply bg-transparent;
 		@apply text-sm font-medium leading-5;
@@ -132,9 +132,9 @@
 		transform: scale(0.98);
 	}
 
-	/* Tab icon - responsive sizing */
+	/* Tab icon - consistent sizing */
 	.tab-icon {
-		@apply w-4 h-4 sm:w-[1.125rem] sm:h-[1.125rem] flex-shrink-0;
+		@apply w-4 h-4 flex-shrink-0;
 		@apply transition-transform duration-200;
 	}
 

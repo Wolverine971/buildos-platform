@@ -820,9 +820,9 @@
 				</div>
 			</div>
 		{:else if filteredProjects.length > 0}
-			<div class="space-y-5 sm:space-y-6">
+			<div class="space-y-6">
 				{#if ownedFilteredProjects.length > 0}
-					<div class="space-y-3">
+					<div class="space-y-4">
 						<!-- Section Header - Inkprint micro-label pattern -->
 						<div class="flex items-baseline gap-2">
 							<p class="micro-label text-accent">MY PROJECTS</p>
@@ -831,9 +831,7 @@
 							</span>
 						</div>
 						<!-- Project Cards Grid -->
-						<div
-							class="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
-						>
+						<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 							{#each ownedFilteredProjects as project (project.id)}
 								{@const projectStats = [
 									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
@@ -846,7 +844,7 @@
 								<a
 									href="/projects/{project.id}"
 									onclick={() => handleProjectClick(project)}
-									class="group relative flex h-full flex-col wt-paper p-2.5 sm:p-4 tx tx-frame tx-weak hover:border-accent/60 pressable"
+									class="group relative flex h-full flex-col wt-paper p-3 sm:p-4 tx tx-frame tx-weak hover:border-accent/60 pressable"
 								>
 									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 									<div
@@ -960,7 +958,7 @@
 				{/if}
 
 				{#if sharedFilteredProjects.length > 0}
-					<div class="space-y-3">
+					<div class="space-y-4">
 						<!-- Section Header - Inkprint micro-label pattern with Thread texture indicator -->
 						<div class="flex items-baseline gap-2">
 							<p class="micro-label text-muted-foreground">SHARED WITH ME</p>
@@ -969,9 +967,7 @@
 							</span>
 						</div>
 						<!-- Shared Project Cards Grid - Thread texture to indicate collaboration -->
-						<div
-							class="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3"
-						>
+						<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 							{#each sharedFilteredProjects as project (project.id)}
 								{@const projectStats = [
 									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
@@ -984,7 +980,7 @@
 								<a
 									href="/projects/{project.id}"
 									onclick={() => handleProjectClick(project)}
-									class="group relative flex h-full flex-col wt-paper p-2.5 sm:p-4 tx tx-thread tx-weak hover:border-accent/60 pressable"
+									class="group relative flex h-full flex-col wt-paper p-3 sm:p-4 tx tx-thread tx-weak hover:border-accent/60 pressable"
 								>
 									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 									<div

@@ -1790,64 +1790,56 @@
 				</aside>
 			{:else}
 				<!-- Hydrated insight panels -->
-				<aside class="min-w-0 space-y-2 sm:space-y-3 lg:sticky lg:top-24">
+				<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
 					{#each insightPanels as section}
 						{@const isOpen = expandedPanels[section.key]}
 						{@const SectionIcon = section.icon}
 						<div
-							class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+							class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 						>
-							<div
-								class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
-							>
+							<div class="flex items-center justify-between gap-3 px-4 py-3">
 								<button
 									onclick={() => togglePanel(section.key)}
-									class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
+									class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors pressable"
 								>
 									<div
-										class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
+										class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
 									>
-										<SectionIcon
-											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent"
-										/>
+										<SectionIcon class="w-4 h-4 text-accent" />
 									</div>
 									<div class="min-w-0">
-										<p class="text-xs sm:text-sm font-semibold text-foreground">
+										<p class="text-sm font-semibold text-foreground">
 											{section.label}
 											<span class="text-muted-foreground font-normal"
 												>({section.items.length})</span
 											>
 										</p>
-										<p
-											class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
-										>
+										<p class="text-xs text-muted-foreground">
 											{#if section.description}
 												{section.description}
 											{/if}
 										</p>
 									</div>
 								</button>
-								<div class="flex items-center gap-1 sm:gap-2">
+								<div class="flex items-center gap-2">
 									{#if canEdit}
 										<button
 											onclick={() => openCreateModalForPanel(section.key)}
-											class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+											class="p-1.5 rounded-md hover:bg-muted transition-colors pressable"
 											aria-label="Add {section.label.toLowerCase()}"
 										>
-											<Plus
-												class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
-											/>
+											<Plus class="w-4 h-4 text-muted-foreground" />
 										</button>
 									{/if}
 									<button
 										onclick={() => togglePanel(section.key)}
-										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
+										class="p-1.5 rounded-md hover:bg-muted transition-colors pressable"
 										aria-label={isOpen
 											? `Collapse ${section.label.toLowerCase()}`
 											: `Expand ${section.label.toLowerCase()}`}
 									>
 										<ChevronDown
-											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isOpen
+											class="w-4 h-4 text-muted-foreground transition-transform duration-[120ms] {isOpen
 												? 'rotate-180'
 												: ''}"
 										/>
@@ -1862,7 +1854,7 @@
 								>
 									<!-- Filter/Sort Controls -->
 									<div
-										class="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 tx tx-grain tx-weak"
+										class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 tx tx-grain tx-weak"
 									>
 										<InsightFilterDropdown
 											filterGroups={PANEL_CONFIGS[section.key].filters}
@@ -1896,19 +1888,19 @@
 																type="button"
 																onclick={() =>
 																	(editingTaskId = task.id)}
-																class="flex-1 min-w-0 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
+																class="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 															>
 																<TaskIcon
-																	class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 {visuals.color}"
+																	class="w-4 h-4 flex-shrink-0 {visuals.color}"
 																/>
 																<div class="min-w-0 flex-1">
 																	<p
-																		class="text-xs sm:text-sm text-foreground truncate"
+																		class="text-sm text-foreground truncate"
 																	>
 																		{task.title}
 																	</p>
 																	<p
-																		class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+																		class="text-xs text-muted-foreground"
 																	>
 																		<span class="capitalize"
 																			>{(
@@ -1934,11 +1926,11 @@
 															</button>
 															<a
 																href="/projects/{project.id}/tasks/{task.id}"
-																class="flex-shrink-0 p-1.5 sm:p-2 mr-1.5 sm:mr-2 rounded-lg hover:bg-accent/10 transition-colors pressable"
+																class="flex-shrink-0 p-2 mr-2 rounded-lg hover:bg-accent/10 transition-colors pressable"
 																title="Open task focus page"
 															>
 																<ExternalLink
-																	class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground hover:text-accent"
+																	class="w-4 h-4 text-muted-foreground hover:text-accent"
 																/>
 															</a>
 														</div>
@@ -1946,13 +1938,11 @@
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
-												<p class="text-xs sm:text-sm text-muted-foreground">
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
 													No tasks yet
 												</p>
-												<p
-													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
-												>
+												<p class="text-xs text-muted-foreground/70 mt-1">
 													Add tasks to track work
 												</p>
 											</div>
@@ -1971,19 +1961,19 @@
 															type="button"
 															onclick={() =>
 																(editingPlanId = plan.id)}
-															class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
+															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
 														>
 															<Calendar
-																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
+																class="w-4 h-4 text-muted-foreground"
 															/>
 															<div class="min-w-0">
 																<p
-																	class="text-xs sm:text-sm text-foreground truncate"
+																	class="text-sm text-foreground truncate"
 																>
 																	{plan.name}
 																</p>
 																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
+																	class="text-xs text-muted-foreground"
 																>
 																	<span class="capitalize"
 																		>{(

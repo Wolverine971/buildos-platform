@@ -103,7 +103,6 @@ export class TaskEventSyncService {
 				});
 			} else {
 				const result = await this.eventSyncService.createEvent(userId, {
-					orgId: task.org_id,
 					projectId: task.project_id,
 					owner: { type: 'task', id: task.id },
 					typeKey: 'event.task_work',

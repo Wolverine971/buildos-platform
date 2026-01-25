@@ -503,8 +503,8 @@
 						{@render header()}
 					{:else if title || showCloseButton}
 						<div
-							class="flex h-12 items-center justify-between gap-2
-								px-3 sm:px-4
+							class="flex h-12 items-center justify-between gap-3
+								px-4
 								border-b border-border
 								bg-muted/30
 								flex-shrink-0"

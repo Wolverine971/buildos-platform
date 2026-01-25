@@ -149,7 +149,7 @@
 		[iconSizes[size], loading ? 'animate-spin' : ''].filter(Boolean).join(' ')
 	);
 
-	let iconSpacingClass = $derived(size === 'sm' ? 'gap-1.5' : 'gap-2');
+	let iconSpacingClass = $derived('gap-2'); // Consistent 8px spacing for all sizes
 </script>
 
 <button type="button" class={buttonClasses} disabled={disabled || loading} {...restProps}>

@@ -65,11 +65,11 @@
 	}
 </script>
 
-<div class="flex flex-col gap-5 sm:gap-6">
-	<div class="flex flex-col gap-3 sm:gap-4">
-		<div class="flex flex-col gap-2.5 sm:gap-3">
+<div class="flex flex-col gap-6">
+	<div class="flex flex-col gap-4">
+		<div class="flex flex-col gap-3">
 			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-				<div class="space-y-1.5 sm:space-y-2 flex-1 min-w-0">
+				<div class="space-y-2 flex-1 min-w-0">
 					<h1
 						class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white leading-tight"
 					>
@@ -87,7 +87,7 @@
 						</span>
 					</div>
 				</div>
-				<div class="flex flex-wrap items-center gap-2.5 sm:flex-shrink-0">
+				<div class="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
 					<Button
 						variant="secondary"
 						size="sm"
@@ -120,7 +120,7 @@
 		</div>
 
 		{#if facetChips.length > 0}
-			<div class="flex flex-wrap gap-2 sm:gap-2.5">
+			<div class="flex flex-wrap gap-2">
 				{#each facetChips as chip}
 					<span
 						class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-sm dither-subtle"
@@ -133,11 +133,11 @@
 		{/if}
 	</div>
 
-	<div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+	<div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
 		<div
-			class="p-3 sm:p-4 rounded bg-surface-elevated border-2 border-gray-300 dark:border-gray-600/50 shadow-subtle hover:shadow-elevated transition-all duration-200"
+			class="p-4 rounded bg-surface-elevated border-2 border-gray-300 dark:border-gray-600/50 shadow-subtle hover:shadow-elevated transition-all duration-200"
 		>
-			<div class="flex items-start gap-2.5 sm:gap-3">
+			<div class="flex items-start gap-3">
 				<div class="flex-shrink-0 rounded-full p-2 bg-surface-panel shadow-sm">
 					<FileText class="w-5 h-5 text-accent-blue" aria-hidden="true" />
 				</div>

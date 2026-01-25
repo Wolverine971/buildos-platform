@@ -260,6 +260,7 @@ export interface PlannerContext {
 		totalTokens: number;
 		hasOntology: boolean;
 		plannerAgentId?: string;
+		planId?: string;
 		/** Current project focus (project + optional entity) */
 		focus?: ProjectFocus | null;
 		/** Ontology scope information */

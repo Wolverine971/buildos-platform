@@ -21,12 +21,12 @@
 		children: Snippet;
 	} & HTMLAttributes<HTMLDivElement> = $props();
 
-	// Padding optimized for high information density
+	// Padding optimized for high information density (8px grid system)
 	const paddingClasses: Record<BodyPadding, string> = {
 		none: '',
-		sm: 'px-2 py-1.5',
-		md: 'px-3 py-2.5',
-		lg: 'px-4 py-3'
+		sm: 'px-3 py-2', // 12px x 8px
+		md: 'px-4 py-3', // 16px x 12px
+		lg: 'px-6 py-4' // 24px x 16px
 	};
 
 	// Texture classes - only for special cases where body needs different texture than card

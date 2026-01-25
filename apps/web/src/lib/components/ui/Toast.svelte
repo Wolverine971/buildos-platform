@@ -150,7 +150,7 @@
 	class="
 		relative overflow-hidden
 		flex items-center gap-3 p-3
-		rounded-xl border
+		rounded-lg border
 		shadow-ink-strong backdrop-blur-sm
 		w-full max-w-[calc(100vw-2rem)] sm:max-w-md
 		{config.containerClass}
@@ -173,13 +173,13 @@
 	<div
 		class="
 			flex-shrink-0
-			w-8 h-8 sm:w-7 sm:h-7
+			w-8 h-8
 			flex items-center justify-center
 			rounded-full
 			{config.iconContainerClass}
 		"
 	>
-		<config.Icon class="w-4 h-4 sm:w-3.5 sm:h-3.5 {config.iconClass}" strokeWidth={2.5} />
+		<config.Icon class="w-4 h-4 {config.iconClass}" strokeWidth={2.5} />
 	</div>
 
 	<!-- Content -->

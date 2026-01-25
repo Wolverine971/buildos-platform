@@ -1,7 +1,7 @@
 <!-- apps/web/src/routes/auth/login/+page.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { goto, invalidateAll, replaceState } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';

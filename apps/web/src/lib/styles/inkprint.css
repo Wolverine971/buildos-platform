@@ -267,6 +267,175 @@
 }
 
 /* ============================================
+   Spatial Emphasis - Layout Permission Layer
+   ============================================
+
+   Purpose:
+   - Mode A (App): default dense, aligned, predictable.
+   - Mode B (Marketing/Editorial/Transitions): opt-in spatial flare.
+
+   Tokens:
+   - sp-inline : list-level / dense / no layout break
+   - sp-block  : normal card/section (default-ish)
+   - sp-focus  : allowed to break grid, overlap, breathe (rare, opt-in)
+
+   Notes:
+   - These DO NOT add padding. They only authorize layout behavior + subtle presence.
+*/
+
+.sp-inline {
+	/* Keep things tight and stable */
+	isolation: isolate;
+}
+
+.sp-block {
+	/* Mild emphasis; still command-center safe */
+	isolation: isolate;
+}
+
+.sp-focus {
+	/* Rare, opt-in: allow emphasis without forcing whitespace everywhere */
+	position: relative;
+	isolation: isolate;
+	z-index: 2;
+}
+
+/* Optional: a tiny presence boost for focused elements without adding padding */
+.sp-focus.sp-lift {
+	transform: translateY(-1px);
+}
+
+/* ============================================
+   Atmosphere Layer - Depth / Context (Opt-in)
+   ============================================
+
+   Use on: landing pages, blog, onboarding panels, creation moments, transitions.
+   Avoid on: dense task lists, tables, command-center grids.
+
+   How it works:
+   - Adds a subtle background "field" behind content
+   - Uses ::after so it doesn't collide with .tx::before texture grammar
+*/
+
+.atmo {
+	position: relative;
+	isolation: isolate;
+}
+
+.atmo::after {
+	content: '';
+	position: absolute;
+	inset: -1px; /* slightly beyond border to avoid seams */
+	pointer-events: none;
+	z-index: 0;
+	border-radius: inherit;
+	opacity: var(--atmo-opacity, 0.25);
+	mix-blend-mode: multiply;
+	background:
+		/* soft vignette */
+		radial-gradient(120% 80% at 20% 0%, rgba(var(--tx-ink-rgb), 0.06), transparent 55%),
+		radial-gradient(100% 70% at 90% 20%, rgba(var(--tx-ink-rgb), 0.05), transparent 60%),
+		/* faint paper grain */
+			linear-gradient(0deg, rgba(var(--tx-ink-rgb), 0.02), rgba(var(--tx-ink-rgb), 0.02));
+}
+
+/* Keep content above atmosphere */
+.atmo > * {
+	position: relative;
+	z-index: 1;
+}
+
+.dark .atmo::after {
+	mix-blend-mode: screen;
+	opacity: var(--atmo-opacity, 0.22);
+}
+
+.atmo-weak {
+	--atmo-opacity: 0.18;
+}
+.atmo-med {
+	--atmo-opacity: 0.26;
+}
+.atmo-strong {
+	--atmo-opacity: 0.34;
+}
+
+/* ============================================
+   Grid-Break Utilities (Opt-in, Mode B)
+   ============================================ */
+
+.grid-break {
+	/* lets a child break typical grid rhythm without new layout primitives */
+	align-self: stretch;
+}
+
+@media (min-width: 640px) {
+	.span-2 {
+		grid-column: span 2 / span 2;
+	}
+	.span-3 {
+		grid-column: span 3 / span 3;
+	}
+}
+
+.flow-diagonal {
+	/* subtle diagonal energy without making everything slanted */
+	transform: skewY(-0.35deg);
+	transform-origin: left top;
+}
+
+.overlap-1 {
+	margin-top: -0.25rem;
+}
+.overlap-2 {
+	margin-top: -0.5rem;
+}
+.overlap-3 {
+	margin-top: -0.75rem;
+}
+
+/* “Float” for callouts / hero blocks (Mode B only) */
+.float-left {
+	float: left;
+	margin-right: 0.75rem;
+	margin-bottom: 0.5rem;
+}
+.float-right {
+	float: right;
+	margin-left: 0.75rem;
+	margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   Rim / Edge Accents (Semantic Presence, Minimal)
+   ============================================ */
+
+.rim {
+	box-shadow:
+		inset 0 0 0 1px hsl(var(--border) / 0.9),
+		0 0 0 1px hsl(var(--border) / 0.15);
+}
+
+.dark .rim {
+	box-shadow:
+		inset 0 0 0 1px hsl(var(--border) / 0.65),
+		0 0 0 1px hsl(var(--foreground) / 0.06);
+}
+
+/* Accent rim for “orientation” moments: onboarding, creation, primary CTA */
+.rim-accent {
+	box-shadow:
+		inset 0 0 0 1px hsl(var(--accent) / 0.35),
+		0 0 0 1px hsl(var(--accent) / 0.12);
+}
+
+.dark .rim-accent {
+	box-shadow:
+		inset 0 0 0 1px hsl(var(--accent) / 0.45),
+		0 0 0 1px hsl(var(--accent) / 0.18);
+}
+
+/* ============================================
    Interactive States
    ============================================ */
 

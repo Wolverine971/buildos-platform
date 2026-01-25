@@ -407,15 +407,13 @@
 				</div>
 			{/if}
 
-			<div
-				class="space-y-2 sm:space-y-3 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 flex-1 min-h-0 bg-muted/30"
-			>
+			<div class="space-y-4 overflow-y-auto px-4 py-4 flex-1 min-h-0 bg-muted/30">
 				{#each Object.entries(formConfig) as [field, config] (field)}
 					{@const FieldIcon = getFieldIcon(field, config)}
 
 					<!-- Inkprint field card - flat design with semantic texture -->
 					<div
-						class="bg-card border border-border rounded-lg p-3 sm:p-4 shadow-ink tx tx-frame tx-weak"
+						class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak"
 					>
 						<!-- Compact label with icon -->
 						<div class="flex items-center justify-between mb-2">

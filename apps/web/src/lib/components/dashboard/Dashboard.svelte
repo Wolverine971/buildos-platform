@@ -257,12 +257,12 @@
 		{/if}
 
 		<!-- Projects Grid - Always render structure, use skeletons or real cards -->
-		<section class="space-y-2 sm:space-y-4">
+		<section class="space-y-4">
 			<!-- Mobile Create Button (compact) -->
 			{#if hasProjects}
 				<button
 					onclick={handleCreateProject}
-					class="sm:hidden w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-accent/50 bg-accent/5 py-2 text-xs font-bold text-accent transition-all duration-200 hover:border-accent hover:bg-accent/10 pressable"
+					class="sm:hidden w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-accent/50 bg-accent/5 py-2 text-xs font-bold text-accent transition-all duration-200 hover:border-accent hover:bg-accent/10 pressable"
 				>
 					<Plus class="h-3.5 w-3.5" />
 					New Project
@@ -270,7 +270,7 @@
 			{/if}
 
 			<!-- Section Header - More compact on mobile -->
-			<div class="flex items-center gap-1.5 sm:gap-3">
+			<div class="flex items-center gap-3">
 				<div
 					class="p-1 sm:p-2 bg-accent/10 rounded-md sm:rounded-lg border border-accent/20"
 				>
@@ -286,7 +286,7 @@
 
 			<!-- Loading State with Skeletons -->
 			{#if showSkeletons}
-				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
+				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
 					<!-- Create New Project Card (skeleton placeholder on desktop) - ghost weight -->
 					<div
 						class="hidden sm:flex group flex-col items-center justify-center wt-ghost border-dashed p-4 sm:p-6 sm:min-h-[200px] opacity-50"
@@ -333,12 +333,12 @@
 					</Button>
 				</div>
 			{:else}
-				<div class="space-y-3 sm:space-y-4">
-					<div class="space-y-2 sm:space-y-3">
+				<div class="space-y-4">
+					<div class="space-y-3">
 						<h3 class="text-sm sm:text-base font-semibold text-foreground">
 							My Projects
 						</h3>
-						<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
+						<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
 							<!-- Create New Project Card (hidden on mobile, shown on desktop) - ghost weight for CTA -->
 							<button
 								onclick={handleCreateProject}
@@ -361,11 +361,11 @@
 								<a
 									href="/projects/{project.id}"
 									onclick={() => handleProjectClick(project)}
-									class="group relative flex flex-col wt-paper p-2 sm:p-4 hover:border-accent pressable tx tx-frame tx-weak"
+									class="group relative flex flex-col wt-paper p-3 sm:p-4 hover:border-accent pressable tx tx-frame tx-weak"
 								>
 									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 									<div
-										class="mb-1 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
+										class="mb-2 sm:mb-3 flex items-start justify-between gap-2 sm:gap-3"
 									>
 										<div class="flex-1 min-w-0">
 											<h3
