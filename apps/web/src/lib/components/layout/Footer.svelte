@@ -208,7 +208,7 @@
 							</a>
 
 							<!-- Navigation Links -->
-							<nav class="flex items-center space-x-1">
+							<nav aria-label="Footer navigation" class="flex items-center space-x-1">
 								{#each [...AUTH_LINKS, ...SUPPORT_LINKS] as link}
 									<a
 										href={link.href}
@@ -237,7 +237,7 @@
 
 						<!-- Right: Legal and Social -->
 						<div class="flex items-center space-x-6">
-							<nav class="flex space-x-4">
+							<nav aria-label="Legal links" class="flex space-x-4">
 								{#each LEGAL_LINKS as link}
 									<a
 										href={link.href}

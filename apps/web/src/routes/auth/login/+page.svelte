@@ -24,6 +24,7 @@
 	let redirectQuery = $derived(
 		redirectParam ? `?redirect=${encodeURIComponent(redirectParam)}` : ''
 	);
+	let prefersReducedMotion = $state(false);
 
 	function resolveRedirectTarget() {
 		return normalizeRedirectPath($page.url.searchParams.get('redirect'));
@@ -243,6 +244,18 @@
 			url.searchParams.delete('error');
 			replaceState(url.toString(), {});
 		}
+
+		// Check for reduced motion preference
+		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+		prefersReducedMotion = mediaQuery.matches;
+
+		// Listen for changes
+		const handleChange = (e: MediaQueryListEvent) => {
+			prefersReducedMotion = e.matches;
+		};
+		mediaQuery.addEventListener('change', handleChange);
+
+		return () => mediaQuery.removeEventListener('change', handleChange);
 	});
 </script>
 
@@ -264,27 +277,29 @@
 		<div class="text-center">
 			<div class="flex justify-center mb-6">
 				<div
-					class="w-16 h-16 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink tx tx-bloom tx-weak"
+					class="w-16 h-16 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink"
 				>
 					<video
 						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
 						class="w-12 h-12"
-						autoplay
+						autoplay={!prefersReducedMotion}
 						loop
 						muted
 						playsinline
-						aria-label="BuildOS Icon"
+						aria-hidden="true"
 					></video>
 				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-foreground mb-2">Welcome back</h2>
-			<p class="text-muted-foreground mb-8">Sign in to your BuildOS account</p>
+			<h1 id="login-heading" class="text-3xl font-bold text-foreground mb-2">Welcome back</h1>
+			<p id="login-description" class="text-muted-foreground mb-8">
+				Sign in to your BuildOS account
+			</p>
 		</div>
 
 		<!-- Form Section -->
 		<div
-			class="rounded-lg border border-border bg-card py-8 px-6 shadow-ink tx tx-grain tx-weak"
+			class="rounded-lg border border-border bg-card p-6 sm:p-8 shadow-ink tx tx-frame tx-weak wt-card"
 		>
 			<!-- Google OAuth Button -->
 			<div class="mb-6">
@@ -295,7 +310,12 @@
 					class="w-full px-6 py-3 text-base flex items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-ink hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed pressable"
 				>
 					{#if !googleLoading}
-						<svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
+						<svg
+							class="w-5 h-5 mr-3"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+							focusable="false"
+						>
 							<path
 								fill="currentColor"
 								d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -328,35 +348,57 @@
 				</div>
 			</div>
 
-			<form onsubmit={handleSubmit} class="space-y-6">
+			<form
+				onsubmit={handleSubmit}
+				class="space-y-6"
+				aria-labelledby="login-heading"
+				aria-describedby="login-description"
+			>
+				<!-- Required field legend -->
+				<p class="text-sm text-muted-foreground">
+					Fields marked with <span class="text-accent" aria-hidden="true">*</span> are required
+				</p>
+
 				{#if error}
 					<div
-						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
+						role="alert"
+						aria-live="assertive"
+						aria-atomic="true"
+						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive p-4 tx tx-static tx-med"
 					>
-						{error}
+						<span class="sr-only">Error: </span>{error}
 					</div>
 				{/if}
 
-				<div class="space-y-5">
+				<div class="space-y-4">
 					<div>
 						<label for="email" class="block text-sm font-semibold text-foreground mb-2">
-							Email address <span class="text-accent">*</span>
+							Email address
+							<span class="text-accent" aria-hidden="true">*</span>
+							<span class="sr-only">(required)</span>
 						</label>
-						<input
-							id="email"
-							bind:value={email}
-							type="email"
-							autocomplete="email"
-							inputmode="email"
-							enterkeyhint="next"
-							required
-							disabled={loading || googleLoading}
-							placeholder="Enter your email"
-							onblur={validateEmail}
-							class="w-full px-4 py-3 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-						/>
+						<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+							<input
+								id="email"
+								bind:value={email}
+								type="email"
+								autocomplete="email"
+								inputmode="email"
+								enterkeyhint="next"
+								required
+								aria-required="true"
+								aria-invalid={emailError ? 'true' : undefined}
+								aria-describedby={emailError ? 'email-error' : undefined}
+								disabled={loading || googleLoading}
+								placeholder="Enter your email"
+								onblur={validateEmail}
+								class="relative z-10 w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring disabled:opacity-50 shadow-ink-inner transition-colors"
+							/>
+						</div>
 						{#if emailError}
-							<p class="mt-1 text-sm text-destructive">{emailError}</p>
+							<p id="email-error" class="mt-2 text-sm text-destructive" role="alert">
+								{emailError}
+							</p>
 						{/if}
 					</div>
 
@@ -365,20 +407,25 @@
 							for="password"
 							class="block text-sm font-semibold text-foreground mb-2"
 						>
-							Password <span class="text-accent">*</span>
+							Password
+							<span class="text-accent" aria-hidden="true">*</span>
+							<span class="sr-only">(required)</span>
 						</label>
-						<input
-							id="password"
-							bind:value={password}
-							type="password"
-							autocomplete="current-password"
-							enterkeyhint="go"
-							required
-							disabled={loading || googleLoading}
-							onkeydown={handleKeydown}
-							placeholder="Enter your password"
-							class="w-full px-4 py-3 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-						/>
+						<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+							<input
+								id="password"
+								bind:value={password}
+								type="password"
+								autocomplete="current-password"
+								enterkeyhint="go"
+								required
+								aria-required="true"
+								disabled={loading || googleLoading}
+								onkeydown={handleKeydown}
+								placeholder="Enter your password"
+								class="relative z-10 w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-accent focus:ring-2 focus:ring-ring disabled:opacity-50 shadow-ink-inner transition-colors"
+							/>
+						</div>
 					</div>
 				</div>
 

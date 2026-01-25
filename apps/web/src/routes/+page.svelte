@@ -294,12 +294,12 @@
 		<!-- hero -->
 		<section class="border-b border-border">
 			<div
-				class="mx-auto max-w-6xl px-4 py-10 sm:py-12 grid md:grid-cols-2 gap-8 items-center"
+				class="mx-auto max-w-6xl px-4 py-8 sm:py-12 grid md:grid-cols-2 gap-6 sm:gap-8 items-center"
 			>
-				<div class="space-y-6">
+				<div class="space-y-4 sm:space-y-6">
 					<a
 						href="/blogs/getting-started/who-is-buildos-for"
-						class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 tx tx-static tx-weak hover:border-accent/50 transition-colors"
+						class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-ink tx tx-frame tx-weak hover:border-accent transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 						<span
@@ -322,15 +322,15 @@
 						context warm — so you can stay in flow.
 					</p>
 
-					<div class="flex flex-wrap gap-3 items-center">
+					<div class="flex flex-wrap gap-2 sm:gap-3 items-center">
 						<a
 							href="/auth/register"
-							class="pressable rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-ink"
+							class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						>
 							Get started free
 						</a>
 						<a
-							class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
+							class="text-xs text-muted-foreground hover:text-accent underline underline-offset-4 transition-colors px-2 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
 							href="#how"
 						>
 							See how it works →
@@ -339,17 +339,17 @@
 				</div>
 
 				<div
-					class="rounded-xl border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden"
+					class="rounded-xl border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
 				>
 					<div
-						class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground"
+						class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
 					>
 						Project: Raise Seed & Ship v1
 					</div>
-					<div class="p-4 space-y-3">
-						<div class="grid sm:grid-cols-2 gap-3">
+					<div class="p-3 sm:p-4 space-y-2 sm:space-y-3">
+						<div class="grid sm:grid-cols-2 gap-2 sm:gap-3">
 							<div
-								class="rounded-lg border border-border bg-background tx tx-static tx-weak p-3"
+								class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-static tx-weak p-3"
 							>
 								<div
 									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
@@ -362,7 +362,7 @@
 								</p>
 							</div>
 							<div
-								class="rounded-lg border border-border bg-background tx tx-grain tx-weak p-3"
+								class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-grain tx-weak p-3"
 							>
 								<div
 									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
@@ -379,17 +379,19 @@
 						</div>
 
 						<div
-							class="rounded-lg border border-border bg-background tx tx-thread tx-weak p-3 flex items-center justify-between gap-3"
+							class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-thread tx-weak p-3 flex items-center justify-between gap-3"
 						>
-							<p class="text-[0.85rem]">
+							<p class="text-sm">
 								<span class="text-muted-foreground">Next move:</span> Follow up with
 								the 4 investors who opened your deck twice.
 							</p>
-							<button
-								class="pressable rounded-full border border-border bg-card px-3 py-1.5 text-xs shadow-ink shrink-0"
+							<a
+								href="/auth/register"
+								class="pressable rounded-full border border-border bg-accent text-accent-foreground px-3 py-1.5 text-xs font-semibold shadow-ink shrink-0 hover:opacity-90 transition-opacity"
+								aria-label="Sign up to use BuildOS"
 							>
 								Do this now
-							</button>
+							</a>
 						</div>
 					</div>
 				</div>
@@ -398,7 +400,7 @@
 
 		<!-- how it works -->
 		<section id="how" class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-10 space-y-6">
+			<div class="mx-auto max-w-6xl px-4 py-8 sm:py-10 space-y-6">
 				<div class="flex items-end justify-between gap-4 flex-wrap">
 					<div>
 						<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
@@ -417,47 +419,53 @@
 					</a>
 				</div>
 
-				<div class="grid md:grid-cols-3 gap-4">
+				<div class="grid md:grid-cols-3 gap-3 sm:gap-4">
 					<article
-						class="rounded-xl border border-border bg-card shadow-ink tx tx-bloom tx-weak p-4"
+						class="rounded-lg border border-border bg-card shadow-ink tx tx-bloom tx-weak p-4"
 					>
 						<div
 							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
 						>
 							01 • Capture
 						</div>
-						<h3 class="mt-2 text-sm font-semibold">Dump everything in your head.</h3>
-						<p class="mt-2 text-[0.85rem] text-muted-foreground leading-relaxed">
+						<h3 class="mt-2 text-sm font-semibold text-foreground">
+							Dump everything in your head.
+						</h3>
+						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
 							Talk, type, or paste chaos. BuildOS ingests notes and half-baked ideas
 							into a single project brain.
 						</p>
 					</article>
 
 					<article
-						class="rounded-xl border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
+						class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
 					>
 						<div
 							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
 						>
 							02 • Shape
 						</div>
-						<h3 class="mt-2 text-sm font-semibold">Carve structure out of noise.</h3>
-						<p class="mt-2 text-[0.85rem] text-muted-foreground leading-relaxed">
+						<h3 class="mt-2 text-sm font-semibold text-foreground">
+							Carve structure out of noise.
+						</h3>
+						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
 							Agents split your dump into goals, tasks, plans, risks — adapting to
 							your project instead of forcing rigid templates.
 						</p>
 					</article>
 
 					<article
-						class="rounded-xl border border-border bg-card shadow-ink tx tx-pulse tx-weak p-4"
+						class="rounded-lg border border-border bg-card shadow-ink tx tx-pulse tx-weak p-4"
 					>
 						<div
 							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
 						>
 							03 • Drive
 						</div>
-						<h3 class="mt-2 text-sm font-semibold">Stay in flow. The OS remembers.</h3>
-						<p class="mt-2 text-[0.85rem] text-muted-foreground leading-relaxed">
+						<h3 class="mt-2 text-sm font-semibold text-foreground">
+							Stay in flow. The OS remembers.
+						</h3>
+						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
 							BuildOS surfaces next moves, tracks dependencies, and keeps long-term
 							context warm.
 						</p>
@@ -468,7 +476,7 @@
 
 		<!-- under the hood -->
 		<section id="stack" class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-10 space-y-6">
+			<div class="mx-auto max-w-6xl px-4 py-8 sm:py-10 space-y-6">
 				<div class="flex items-end justify-between gap-4 flex-wrap">
 					<div>
 						<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
@@ -572,7 +580,7 @@
 						</p>
 					</div>
 					<div
-						class="rounded-lg border border-border bg-accent/10 tx tx-bloom tx-weak p-3"
+						class="rounded-lg border border-accent/20 bg-accent/5 shadow-ink tx tx-bloom tx-weak p-3"
 					>
 						<div class="flex items-center gap-2 mb-1">
 							<Sparkles class="w-3.5 h-3.5 text-accent" />
@@ -606,7 +614,7 @@
 		</div>
 
 		<!-- final CTA -->
-		<section class="py-12 sm:py-16">
+		<section class="py-10 sm:py-12">
 			<div class="mx-auto max-w-6xl px-4 text-center">
 				<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-3">
 					Ready to turn chaos into clarity?
@@ -615,16 +623,16 @@
 					14-day free trial. No credit card required. Built for how your brain actually
 					works.
 				</p>
-				<div class="flex flex-wrap justify-center gap-3">
+				<div class="flex flex-wrap justify-center gap-2 sm:gap-3">
 					<a
 						href="/auth/register"
-						class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink"
+						class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity"
 					>
 						Get started free
 					</a>
 					<a
 						href="/blogs/getting-started/how-buildos-works"
-						class="pressable rounded-full border border-border bg-card px-6 py-2.5 text-sm shadow-ink hover:border-accent/50 transition-colors"
+						class="pressable rounded-full border border-border bg-card px-6 py-2.5 text-sm font-semibold shadow-ink hover:border-accent transition-colors"
 					>
 						Learn more
 					</a>

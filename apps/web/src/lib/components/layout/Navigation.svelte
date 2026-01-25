@@ -255,6 +255,7 @@
 </script>
 
 <nav
+	aria-label="Main navigation"
 	data-fixed-element
 	bind:this={element}
 	class="sticky top-0 z-10 bg-card border-b border-border shadow-ink transition-all duration-200"

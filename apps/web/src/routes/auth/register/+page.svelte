@@ -313,6 +313,22 @@
 	}
 
 	// Real-time password validation feedback
+	let prefersReducedMotion = $state(false);
+
+	onMount(() => {
+		// Check for reduced motion preference
+		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+		prefersReducedMotion = mediaQuery.matches;
+
+		// Listen for changes
+		const handleChange = (e: MediaQueryListEvent) => {
+			prefersReducedMotion = e.matches;
+		};
+		mediaQuery.addEventListener('change', handleChange);
+
+		return () => mediaQuery.removeEventListener('change', handleChange);
+	});
+
 	let passwordStrength = $derived.by(() => {
 		if (!password) {
 			return null;
@@ -355,16 +371,16 @@
 					<video
 						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
 						class="w-12 h-12"
-						autoplay
+						autoplay={!prefersReducedMotion}
 						loop
 						muted
 						playsinline
-						aria-label="BuildOS Icon"
+						aria-hidden="true"
 					></video>
 				</div>
 			</div>
 
-			<h2 class="text-3xl font-bold text-foreground mb-2">Join BuildOS</h2>
+			<h1 class="text-3xl font-bold text-foreground mb-2">Join BuildOS</h1>
 			<p class="text-muted-foreground mb-8">Create your personal operating system</p>
 		</div>
 
@@ -378,10 +394,15 @@
 					type="button"
 					onclick={handleGoogleSignUp}
 					disabled={googleLoading || loading || success}
-					class="w-full px-6 py-3 text-base flex items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-ink hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed pressable"
+					class="w-full px-6 py-3 text-base flex items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-ink hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					{#if !googleLoading}
-						<svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
+						<svg
+							class="w-5 h-5 mr-3"
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+							focusable="false"
+						>
 							<path
 								fill="currentColor"
 								d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -420,9 +441,11 @@
 				<form onsubmit={handleSubmit} class="space-y-6">
 					{#if error}
 						<div
-							class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
+							class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3 tx tx-static tx-weak"
+							role="alert"
+							aria-live="assertive"
 						>
-							{error}
+							<span class="sr-only">Error: </span>{error}
 						</div>
 					{/if}
 
@@ -489,9 +512,9 @@
 													class="h-full rounded-full transition-colors {passwordStrength.score >
 													i
 														? passwordStrength.score === 4
-															? 'bg-green-500'
+															? 'bg-accent'
 															: passwordStrength.score >= 2
-																? 'bg-yellow-500'
+																? 'bg-accent/60'
 																: 'bg-destructive'
 														: ''}"
 												></div>
@@ -503,28 +526,28 @@
 										<ul class="mt-1 space-y-0.5">
 											<li
 												class={passwordStrength.checks.length
-													? 'text-green-600 dark:text-green-400'
+													? 'text-accent'
 													: ''}
 											>
 												✓ At least 8 characters
 											</li>
 											<li
 												class={passwordStrength.checks.uppercase
-													? 'text-green-600 dark:text-green-400'
+													? 'text-accent'
 													: ''}
 											>
 												✓ One uppercase letter
 											</li>
 											<li
 												class={passwordStrength.checks.lowercase
-													? 'text-green-600 dark:text-green-400'
+													? 'text-accent'
 													: ''}
 											>
 												✓ One lowercase letter
 											</li>
 											<li
 												class={passwordStrength.checks.number
-													? 'text-green-600 dark:text-green-400'
+													? 'text-accent'
 													: ''}
 											>
 												✓ One number
@@ -580,9 +603,11 @@
 			{:else}
 				<!-- Success message -->
 				<div
-					class="rounded-lg border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-300 px-4 py-3"
+					class="rounded-lg border border-accent/50 bg-accent/10 text-foreground px-4 py-3 tx tx-bloom tx-weak"
+					role="status"
+					aria-live="polite"
 				>
-					<h3 class="font-semibold mb-2">Check your email!</h3>
+					<h2 class="font-semibold mb-2 text-accent">Check your email!</h2>
 					<p>{successMessage}</p>
 				</div>
 
@@ -602,7 +627,7 @@
 						Already have an account?
 						<a
 							href={`/auth/login${redirectQuery}`}
-							class="font-medium text-accent hover:opacity-80 transition-opacity"
+							class="font-medium text-accent hover:opacity-80 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
 						>
 							Sign in here
 						</a>

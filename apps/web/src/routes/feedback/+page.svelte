@@ -185,11 +185,11 @@
 
 <div class="min-h-screen bg-background">
 	<!-- Header -->
-	<div class="bg-card py-20">
+	<div class="bg-card py-16">
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 			<div class="flex justify-center mb-8">
 				<div class="flex items-center justify-center w-16 h-16 bg-accent/10 rounded-lg">
-					<MessageCircle class="w-8 h-8 text-accent" />
+					<MessageCircle class="w-8 h-8 text-accent" aria-hidden="true" />
 				</div>
 			</div>
 			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-6">
@@ -200,7 +200,7 @@
 				and experiences.
 			</p>
 			<div class="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
-				<Heart class="w-4 h-4 text-red-500" />
+				<Heart class="w-4 h-4 text-destructive" aria-hidden="true" />
 				<span>Built with love by two founders who read every message</span>
 			</div>
 		</div>
@@ -208,13 +208,13 @@
 
 	<!-- Success Message -->
 	{#if submitSuccess}
-		<section id="success-message" class="py-20">
+		<section id="success-message" class="py-16">
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div
 					class="bg-accent/10 border border-accent/30 rounded-lg p-8 text-center shadow-ink tx tx-bloom tx-weak"
 				>
 					<div class="flex justify-center mb-6">
-						<CheckCircle class="w-16 h-16 text-accent" />
+						<CheckCircle class="w-16 h-16 text-accent" aria-hidden="true" />
 					</div>
 					<h2 class="text-2xl font-bold text-foreground mb-4">
 						Thank You for Your Feedback!
@@ -231,7 +231,7 @@
 		</section>
 	{:else}
 		<!-- Feedback Form -->
-		<section class="py-20">
+		<section class="py-16">
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div
 					class="bg-card rounded-lg p-8 md:p-12 shadow-ink border border-border tx tx-grain tx-weak"
@@ -244,9 +244,14 @@
 					{#if submitError}
 						<div
 							class="mb-6 bg-destructive/10 border border-destructive/50 rounded-lg p-4"
+							role="alert"
+							aria-live="assertive"
 						>
 							<div class="flex items-center">
-								<AlertTriangle class="w-5 h-5 text-destructive mr-3" />
+								<AlertTriangle
+									class="w-5 h-5 text-destructive mr-3"
+									aria-hidden="true"
+								/>
 								<p class="text-destructive">{submitError}</p>
 							</div>
 						</div>
@@ -305,6 +310,7 @@
 												class="w-5 h-5 {selectedCategory === category.id
 													? 'text-accent'
 													: 'text-foreground'}"
+												aria-hidden="true"
 											/>
 										</div>
 										<div class="text-left">
@@ -435,9 +441,9 @@
 	{/if}
 
 	<!-- Why Feedback Matters -->
-	<section class="py-20 bg-card">
+	<section class="py-16 bg-card">
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="text-center mb-16">
+			<div class="text-center mb-12">
 				<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
 					Why Your Feedback <span class="text-accent">Matters</span>
 				</h2>
@@ -447,12 +453,12 @@
 				</p>
 			</div>
 
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="text-center">
 					<div
 						class="flex items-center justify-center w-16 h-16 bg-accent/10 rounded-lg mb-6 mx-auto"
 					>
-						<Target class="w-8 h-8 text-accent" />
+						<Target class="w-8 h-8 text-accent" aria-hidden="true" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-4">Direct Impact</h3>
 					<p class="text-muted-foreground">
@@ -465,7 +471,7 @@
 					<div
 						class="flex items-center justify-center w-16 h-16 bg-muted rounded-lg mb-6 mx-auto"
 					>
-						<Users class="w-8 h-8 text-foreground" />
+						<Users class="w-8 h-8 text-foreground" aria-hidden="true" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-4">Community Building</h3>
 					<p class="text-muted-foreground">
@@ -478,7 +484,7 @@
 					<div
 						class="flex items-center justify-center w-16 h-16 bg-muted rounded-lg mb-6 mx-auto"
 					>
-						<Zap class="w-8 h-8 text-foreground" />
+						<Zap class="w-8 h-8 text-foreground" aria-hidden="true" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-4">Rapid Iteration</h3>
 					<p class="text-muted-foreground">
@@ -491,9 +497,9 @@
 	</section>
 
 	<!-- Recent Feedback Examples -->
-	<section class="py-20 bg-background">
+	<section class="py-16 bg-background">
 		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="text-center mb-16">
+			<div class="text-center mb-12">
 				<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
 					Feedback in <span class="text-accent">Action</span>
 				</h2>
@@ -502,7 +508,7 @@
 				</p>
 			</div>
 
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 				<!-- Feedback Example 1 -->
 				<div
 					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
@@ -596,7 +602,7 @@
 	</section>
 
 	<!-- Other Ways to Connect -->
-	<section class="py-20 bg-card">
+	<section class="py-16 bg-card">
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 			<h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
 				Other Ways to Connect
@@ -606,15 +612,15 @@
 				channels.
 			</p>
 
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 				<a
 					href="/contact"
-					class="bg-accent/10 border border-accent/30 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-bloom tx-weak pressable"
+					class="bg-accent/10 border border-accent/30 rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-bloom tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					<div
 						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
-						<MessageCircle class="w-6 h-6 text-accent" />
+						<MessageCircle class="w-6 h-6 text-accent" aria-hidden="true" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-3">Direct Contact</h3>
 					<p class="text-muted-foreground">
@@ -625,12 +631,12 @@
 
 				<a
 					href="/beta"
-					class="bg-muted border border-border rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-grain tx-weak pressable"
+					class="bg-muted border border-border rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-grain tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					<div
 						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"
 					>
-						<Users class="w-6 h-6 text-foreground" />
+						<Users class="w-6 h-6 text-foreground" aria-hidden="true" />
 					</div>
 					<h3 class="text-xl font-bold text-foreground mb-3">Beta Community</h3>
 					<p class="text-muted-foreground">

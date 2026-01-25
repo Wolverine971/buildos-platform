@@ -2,6 +2,22 @@
 <script lang="ts">
 	import { Mail, Linkedin, Twitter, MessageCircle, Lightbulb, TrendingUp } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { onMount } from 'svelte';
+
+	let prefersReducedMotion = $state(false);
+
+	onMount(() => {
+		const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+		prefersReducedMotion = mediaQuery.matches;
+
+		// Listen for changes
+		const handleChange = (e: MediaQueryListEvent) => {
+			prefersReducedMotion = e.matches;
+		};
+		mediaQuery.addEventListener('change', handleChange);
+
+		return () => mediaQuery.removeEventListener('change', handleChange);
+	});
 
 	const contactMethods = [
 		{
@@ -81,11 +97,11 @@
 					<video
 						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
 						class="w-10 h-10"
-						autoplay
+						autoplay={!prefersReducedMotion}
 						loop
 						muted
 						playsinline
-						aria-label="BuildOS"
+						aria-hidden="true"
 					></video>
 				</div>
 			</div>
@@ -100,32 +116,33 @@
 				<span
 					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
 				>
-					<div class="w-2 h-2 bg-accent rounded-full mr-2"></div>
+					<div class="w-2 h-2 bg-accent rounded-full mr-2" aria-hidden="true"></div>
 					Veteran Founder
 				</span>
 				<span
 					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
 				>
-					<div class="w-2 h-2 bg-accent rounded-full mr-2"></div>
+					<div class="w-2 h-2 bg-accent rounded-full mr-2" aria-hidden="true"></div>
 					YC-backed startup experience
 				</span>
 				<span
 					class="flex items-center rounded-lg border border-border bg-muted px-2 py-1 text-sm text-muted-foreground"
 				>
-					<div class="w-2 h-2 bg-accent rounded-full mr-2"></div>
+					<div class="w-2 h-2 bg-accent rounded-full mr-2" aria-hidden="true"></div>
 					USMC Veteran
 				</span>
 			</div>
 		</header>
 
 		<!-- Primary Actions -->
-		<section class="mb-12">
+		<section class="mb-12" aria-labelledby="primary-actions-heading">
+			<h2 id="primary-actions-heading" class="sr-only">Get Started with BuildOS</h2>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 				{#each actionCards as card}
 					{@const Icon = card.icon}
 					<a
 						href={card.href}
-						class="relative rounded-lg border border-border bg-card shadow-ink p-6 hover:brightness-105 transition-all group tx tx-grain tx-weak"
+						class="relative rounded-lg border border-border bg-card shadow-ink p-6 hover:brightness-105 hover:border-accent transition-all group tx tx-bloom tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						{#if card.badge}
 							<div
@@ -141,6 +158,7 @@
 								>
 									<Icon
 										class="w-6 h-6 text-foreground group-hover:scale-110 transition-transform"
+										aria-hidden="true"
 									/>
 								</div>
 							</div>
@@ -160,7 +178,7 @@
 
 		<!-- Why BuildOS -->
 		<section
-			class="rounded-lg border border-border bg-card shadow-ink p-8 mb-12 relative tx tx-grain tx-weak"
+			class="rounded-lg border border-border bg-card shadow-ink p-6 sm:p-8 mb-12 relative tx tx-frame tx-weak"
 		>
 			<h2 class="text-2xl font-bold text-foreground mb-6">The Problem We're Solving</h2>
 			<div class="grid md:grid-cols-2 gap-8">
@@ -180,19 +198,31 @@
 					<h3 class="font-semibold text-foreground mb-3">BuildOS Solution</h3>
 					<ul class="space-y-2 text-muted-foreground">
 						<li class="flex items-center">
-							<div class="w-2 h-2 bg-accent rounded-full mr-3"></div>
+							<div
+								class="w-2 h-2 bg-accent rounded-full mr-3"
+								aria-hidden="true"
+							></div>
 							Brain dump → AI organizes automatically
 						</li>
 						<li class="flex items-center">
-							<div class="w-2 h-2 bg-accent rounded-full mr-3"></div>
+							<div
+								class="w-2 h-2 bg-accent rounded-full mr-3"
+								aria-hidden="true"
+							></div>
 							Build rich project context over time
 						</li>
 						<li class="flex items-center">
-							<div class="w-2 h-2 bg-accent rounded-full mr-3"></div>
+							<div
+								class="w-2 h-2 bg-accent rounded-full mr-3"
+								aria-hidden="true"
+							></div>
 							Copy/paste context to any LLM
 						</li>
 						<li class="flex items-center">
-							<div class="w-2 h-2 bg-accent rounded-full mr-3"></div>
+							<div
+								class="w-2 h-2 bg-accent rounded-full mr-3"
+								aria-hidden="true"
+							></div>
 							Smart scheduling bridges thoughts to action
 						</li>
 					</ul>
@@ -200,9 +230,9 @@
 			</div>
 		</section>
 
-		<!-- Meet the Founders -->
+		<!-- Meet the Founder -->
 		<section
-			class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-8 mb-12"
+			class="rounded-lg border border-border bg-card shadow-ink p-6 sm:p-8 mb-12 tx tx-frame tx-weak"
 		>
 			<h2 class="text-2xl font-bold text-foreground text-center mb-8">Meet the Founder</h2>
 
@@ -222,7 +252,10 @@
 						Dad, former USMC Scout Sniper, creator of <a
 							href="https://9takes.com"
 							target="_blank"
-							class="text-accent hover:text-accent/80">9takes</a
+							rel="noopener noreferrer"
+							class="text-accent hover:text-accent/80"
+							aria-label="9takes personality insights website (opens in new tab)"
+							>9takes</a
 						>, Tiny Tibe Adventures, The Cadre Training. Software engineer with
 						YC-backed startup experience (Curri).
 					</p>
@@ -235,21 +268,20 @@
 
 		<!-- Contact Methods -->
 		<section class="mb-12">
-			<h3 class="text-1xl font-bold text-foreground text-center mb-8">
-				Connect With BuildOS
-			</h3>
+			<h2 class="text-xl font-bold text-foreground text-center mb-8">Connect With BuildOS</h2>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 				{#each contactMethods as method}
 					{@const MethodIcon = method.icon}
 					<a
 						href={method.href}
 						{...method.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}}
-						class="rounded-lg border border-border bg-card shadow-ink p-6 hover:brightness-105 transition-all group tx tx-grain tx-weak relative"
+						aria-label="{method.title}{method.external ? ' (opens in new tab)' : ''}"
+						class="rounded-lg border border-border bg-card shadow-ink p-6 hover:brightness-105 hover:border-accent transition-all group tx tx-frame tx-weak pressable"
 					>
 						<div
 							class="rounded-lg border border-border bg-card shadow-ink w-12 h-12 rounded-sm flex items-center justify-center mb-4 mx-auto group-hover:scale-110 transition-transform"
 						>
-							<MethodIcon class="w-6 h-6 text-foreground" />
+							<MethodIcon class="w-6 h-6 text-foreground" aria-hidden="true" />
 						</div>
 						<h3 class="font-semibold text-foreground text-center mb-2">
 							{method.title}
@@ -272,9 +304,12 @@
 							{...founder.external
 								? { target: '_blank', rel: 'noopener noreferrer' }
 								: {}}
-							class="inline-flex items-center space-x-2 px-4 py-2 rounded-lg border border-border bg-card shadow-ink hover:brightness-105 transition-all"
+							aria-label="{founder.title}{founder.external
+								? ' on LinkedIn (opens in new tab)'
+								: ''}"
+							class="inline-flex items-center space-x-2 px-4 py-3 min-h-[44px] rounded-lg border border-border bg-card shadow-ink hover:brightness-105 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						>
-							<FounderIcon class="w-4 h-4 text-foreground" />
+							<FounderIcon class="w-4 h-4 text-foreground" aria-hidden="true" />
 							<div class="text-left">
 								<span class="block text-sm font-medium text-foreground"
 									>{founder.title}</span
@@ -296,7 +331,7 @@
 			<div
 				class="inline-flex items-center space-x-2 rounded-full bg-accent text-accent-foreground text-xs font-bold px-2 py-1"
 			>
-				<div class="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
+				<div class="w-2 h-2 bg-accent rounded-full animate-pulse" aria-hidden="true"></div>
 				<span class="text-sm font-medium">Response within 24 hours</span>
 			</div>
 		</footer>

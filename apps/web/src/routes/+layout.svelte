@@ -788,7 +788,7 @@
 	<!-- Skip to main content link for accessibility -->
 	<a
 		href="#main-content"
-		class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-accent text-accent-foreground px-4 py-2 rounded z-50 shadow-ink pressable"
+		class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 bg-accent text-accent-foreground px-4 py-2 rounded-lg shadow-ink-strong font-semibold"
 	>
 		Skip to main content
 	</a>

@@ -291,9 +291,9 @@
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="p-1.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
-					<Target class="w-4 h-4" />
+					<Target class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2

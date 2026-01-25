@@ -371,7 +371,7 @@
 
 <main class="min-h-screen bg-background">
 	<!-- Simple Hero Section -->
-	<section class="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+	<section class="pt-20 pb-12 px-4 sm:px-6 lg:px-8">
 		<div class="max-w-4xl mx-auto text-center">
 			<div class="flex justify-center mb-8">
 				<div class="relative">
@@ -433,15 +433,15 @@
 				<div class="flex flex-col sm:flex-row gap-4 justify-center">
 					<button
 						onclick={openSignupForm}
-						class="px-8 py-4 text-lg font-semibold rounded-lg bg-accent text-accent-foreground shadow-ink hover:opacity-90 transition-opacity pressable"
+						class="px-8 py-4 text-lg font-semibold rounded-lg bg-accent text-accent-foreground shadow-ink hover:opacity-90 transition-opacity pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						aria-describedby="join-beta-description"
 					>
-						<Users class="w-5 h-5 inline mr-2" />
+						<Users class="w-5 h-5 inline mr-2" aria-hidden="true" />
 						Join Beta
 					</button>
 					<a
 						href="#what-you-get"
-						class="inline-flex items-center px-8 py-4 text-lg font-semibold text-foreground border border-border hover:bg-muted rounded-lg transition-colors"
+						class="inline-flex items-center px-8 py-4 text-lg font-semibold text-foreground border border-border hover:bg-muted rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						aria-label="View what you get in the beta program"
 					>
 						Learn More
@@ -472,10 +472,10 @@
 						</h2>
 						<button
 							onclick={closeSignupForm}
-							class="p-2 hover:bg-muted rounded-lg transition-colors"
+							class="p-2 hover:bg-muted rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 							aria-label="Close signup form"
 						>
-							<X class="w-5 h-5 text-muted-foreground" />
+							<X class="w-5 h-5 text-muted-foreground" aria-hidden="true" />
 						</button>
 					</header>
 
@@ -695,14 +695,14 @@
 							<button
 								type="button"
 								onclick={closeSignupForm}
-								class="flex-1 px-6 py-3 text-foreground border border-border hover:bg-muted rounded-lg transition-colors font-semibold"
+								class="flex-1 px-6 py-3 text-foreground border border-border hover:bg-muted rounded-lg transition-colors font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 							>
 								Cancel
 							</button>
 							<button
 								type="submit"
 								disabled={isSubmitting}
-								class="flex-1 px-6 py-3 font-semibold rounded-lg bg-accent text-accent-foreground shadow-ink hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed pressable"
+								class="flex-1 px-6 py-3 font-semibold rounded-lg bg-accent text-accent-foreground shadow-ink hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 								aria-describedby="submit-help"
 							>
 								{#if isSubmitting}
@@ -727,9 +727,9 @@
 	{/if}
 
 	<!-- What You Get -->
-	<section id="what-you-get" class="py-16 bg-muted" aria-labelledby="benefits-heading">
+	<section id="what-you-get" class="py-12 sm:py-14 bg-muted" aria-labelledby="benefits-heading">
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-			<header class="text-center mb-12">
+			<header class="text-center mb-10">
 				<h2 id="benefits-heading" class="text-3xl font-bold text-foreground mb-4">
 					What You Get
 				</h2>
@@ -738,15 +738,15 @@
 				</p>
 			</header>
 
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
 				<div
-					class="rounded-lg border border-border bg-card p-6 shadow-ink tx tx-grain tx-weak"
+					class="rounded-lg border border-border bg-card p-5 sm:p-6 shadow-ink tx tx-grain tx-weak"
 				>
 					<div class="flex items-start space-x-4">
 						<div
 							class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border border-border bg-muted"
 						>
-							<CheckCircle class="w-5 h-5 text-foreground" />
+							<CheckCircle class="w-5 h-5 text-foreground" aria-hidden="true" />
 						</div>
 						<div>
 							<h3 class="font-semibold text-foreground mb-2">Early Access</h3>
@@ -764,7 +764,7 @@
 						<div
 							class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border border-border bg-muted"
 						>
-							<MessageCircle class="w-5 h-5 text-foreground" />
+							<MessageCircle class="w-5 h-5 text-foreground" aria-hidden="true" />
 						</div>
 						<div>
 							<h3 class="font-semibold text-foreground mb-2">Direct Collaboration</h3>
@@ -783,7 +783,7 @@
 						<div
 							class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border border-border bg-muted"
 						>
-							<Star class="w-5 h-5 text-foreground" />
+							<Star class="w-5 h-5 text-foreground" aria-hidden="true" />
 						</div>
 						<div>
 							<h3 class="font-semibold text-foreground mb-2">
@@ -803,7 +803,7 @@
 						<div
 							class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border border-border bg-muted"
 						>
-							<Zap class="w-5 h-5 text-foreground" />
+							<Zap class="w-5 h-5 text-foreground" aria-hidden="true" />
 						</div>
 						<div>
 							<h3 class="font-semibold text-foreground mb-2">Priority Feedback</h3>
@@ -821,7 +821,7 @@
 						<div
 							class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border border-border bg-muted"
 						>
-							<Gift class="w-5 h-5 text-foreground" />
+							<Gift class="w-5 h-5 text-foreground" aria-hidden="true" />
 						</div>
 						<div>
 							<h3 class="font-semibold text-foreground mb-2">Free Premium Access</h3>
@@ -839,7 +839,7 @@
 						<div
 							class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 border border-border bg-muted"
 						>
-							<Users class="w-5 h-5 text-foreground" />
+							<Users class="w-5 h-5 text-foreground" aria-hidden="true" />
 						</div>
 						<div>
 							<h3 class="font-semibold text-foreground mb-2">Connect with Others</h3>
@@ -855,7 +855,7 @@
 	</section>
 
 	<!-- Simple CTA -->
-	<section class="py-16">
+	<section class="py-12 sm:py-14">
 		<div class="max-w-3xl mx-auto text-center px-4 sm:px-6 lg:px-8">
 			<h2 class="text-3xl font-bold mb-4 text-foreground">Ready to Help Build BuildOS?</h2>
 			<p class="text-lg text-muted-foreground mb-8">
@@ -866,15 +866,15 @@
 				<div class="flex flex-col sm:flex-row gap-4 justify-center">
 					<button
 						onclick={openSignupForm}
-						class="px-8 py-4 text-lg font-semibold rounded-lg bg-accent text-accent-foreground shadow-ink hover:opacity-90 transition-opacity pressable"
+						class="px-8 py-4 text-lg font-semibold rounded-lg bg-accent text-accent-foreground shadow-ink hover:opacity-90 transition-opacity pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						aria-label="Join the BuildOS beta program"
 					>
-						<Users class="w-5 h-5 inline mr-2" />
+						<Users class="w-5 h-5 inline mr-2" aria-hidden="true" />
 						Join Beta Program
 					</button>
 					<a
 						href="/contact"
-						class="inline-flex items-center px-8 py-4 text-lg font-semibold text-foreground border border-border hover:bg-muted rounded-lg transition-colors"
+						class="inline-flex items-center px-8 py-4 text-lg font-semibold text-foreground border border-border hover:bg-muted rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						aria-label="Contact with questions about the beta program"
 					>
 						<MessageCircle class="w-5 h-5 mr-3" aria-hidden="true" />

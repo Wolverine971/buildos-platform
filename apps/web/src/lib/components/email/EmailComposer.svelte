@@ -34,11 +34,28 @@
 
 	const dispatch = createEventDispatcher();
 
+	// Recipient type for email data
+	interface EmailRecipient {
+		recipient_email?: string;
+		recipient_name?: string;
+		recipient_type?: string;
+		recipient_id?: string;
+		email?: string;
+		name?: string;
+		type?: string;
+		id?: string;
+		status?: string;
+		sent_at?: string;
+		delivered_at?: string;
+		opened_at?: string;
+		open_count?: number;
+	}
+
 	// Editor state
-	let editor: Editor;
+	let editor: Editor | null = null;
 	let editorElement: HTMLElement;
 	let aiEditorElement: HTMLElement;
-	let aiEditor: Editor;
+	let aiEditor: Editor | null = null;
 	let activeTab: 'compose' | 'preview' = 'compose';
 	let previousTab: 'compose' | 'preview' = 'compose';
 	let composeMode: 'manual' | 'ai-assist' = 'manual';
@@ -47,7 +64,18 @@
 	let generationInstructions = '';
 
 	// Email data
-	let emailData = {
+	let emailData: {
+		id: string | null;
+		subject: string;
+		content: string;
+		from_email: string;
+		from_name: string;
+		category: string;
+		status: string;
+		scheduled_at: string | null;
+		recipients: EmailRecipient[];
+		attachments: any[];
+	} = {
 		id: null,
 		subject: '',
 		content: '',
@@ -148,7 +176,7 @@
 			content: emailData.content,
 			editorProps: {
 				attributes: {
-					class: `max-w-none min-h-[400px] p-4 focus:outline-none prose prose-gray dark:text-white max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600 prose-blockquote:text-gray-700 dark:prose-headings:text-white dark:prose-p:text-gray-300 dark:prose-li:text-gray-300 dark:prose-strong:text-white dark:prose-a:text-blue-400 dark:prose-blockquote:text-gray-300 dark:prose-hr:border-gray-700`
+					class: `min-h-[320px] p-3 focus:outline-none prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-p:my-2 prose-li:text-foreground prose-strong:text-foreground prose-a:text-accent hover:prose-a:text-accent/80 prose-blockquote:text-muted-foreground prose-blockquote:border-border prose-hr:border-border prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground`
 				}
 			},
 			onUpdate: ({ editor }) => {
@@ -213,10 +241,12 @@
 				Color,
 				TextStyle
 			],
-			content: aiGeneratedContent || '<p>AI-generated email will appear here...</p>',
+			content:
+				aiGeneratedContent ||
+				'<p class="text-muted-foreground">AI-generated email will appear here...</p>',
 			editorProps: {
 				attributes: {
-					class: `max-w-none min-h-[300px] p-4 focus:outline-none prose prose-gray dark:text-white max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900 prose-a:text-blue-600 prose-blockquote:text-gray-700 dark:prose-headings:text-white dark:prose-p:text-gray-300 dark:prose-li:text-gray-300 dark:prose-strong:text-white dark:prose-a:text-blue-400 dark:prose-blockquote:text-gray-300 dark:prose-hr:border-gray-700`
+					class: `min-h-[320px] p-3 focus:outline-none prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-p:my-2 prose-li:text-foreground prose-strong:text-foreground prose-a:text-accent hover:prose-a:text-accent/80 prose-blockquote:text-muted-foreground prose-blockquote:border-border prose-hr:border-border prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground`
 				}
 			},
 			onUpdate: ({ editor }) => {
@@ -246,6 +276,10 @@
 		try {
 			// Get the first recipient's user context for personalization
 			const recipient = emailData.recipients[0];
+			if (!recipient) {
+				error = 'No recipient available';
+				return;
+			}
 			const recipientId = recipient.recipient_id || recipient.id;
 
 			// Fetch user context first
@@ -385,7 +419,7 @@
 		// Set schedule data if email is scheduled
 		if (email.scheduled_at) {
 			const scheduledDate = new Date(email.scheduled_at);
-			scheduleDate = scheduledDate.toISOString().split('T')[0];
+			scheduleDate = scheduledDate.toISOString().split('T')[0] ?? '';
 			scheduleTime = scheduledDate.toTimeString().slice(0, 5);
 			isScheduled = true;
 		}
@@ -578,25 +612,25 @@
 	$: isEmailSent = emailData.status === 'sent' || emailData.status === 'delivered';
 </script>
 
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-	<!-- Header -->
-	<div class="border-b border-gray-200 dark:border-gray-700 p-4 sm:p-6">
-		<div class="flex items-center justify-between">
-			<div class="flex items-center space-x-3">
-				<Mail class="h-6 w-6 text-blue-600 dark:text-blue-400" />
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+<div class="bg-card rounded-lg shadow-ink border border-border overflow-hidden tx tx-frame tx-weak">
+	<!-- Header with Strip texture for section separation -->
+	<div class="border-b border-border px-4 py-3 sm:px-5 sm:py-4 tx tx-strip tx-weak">
+		<div class="flex items-center justify-between gap-3">
+			<div class="flex items-center gap-2 min-w-0">
+				<Mail class="h-5 w-5 text-accent shrink-0" />
+				<h2 class="text-base font-semibold text-foreground truncate">
 					{emailData.id ? 'Edit Email' : 'Compose Email'}
 				</h2>
 				{#if emailData.status && emailData.status !== 'draft'}
 					<span
-						class="inline-flex px-2 py-1 text-xs font-medium rounded-full {emailData.status ===
+						class="inline-flex px-1.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.15em] rounded shrink-0 {emailData.status ===
 						'sent'
-							? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+							? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
 							: emailData.status === 'scheduled'
-								? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+								? 'bg-accent/10 text-accent'
 								: emailData.status === 'failed'
-									? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-									: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'}"
+									? 'bg-red-500/10 text-red-600 dark:text-red-400'
+									: 'bg-muted text-muted-foreground'}"
 					>
 						{emailData.status}
 					</span>
@@ -604,14 +638,15 @@
 			</div>
 
 			<!-- Action Buttons -->
-			<div class="flex items-center space-x-2">
+			<div class="flex items-center gap-1.5 shrink-0">
 				<Button
 					onclick={saveEmail}
 					disabled={isSaving || isEmailSent}
 					variant="secondary"
-					size="md"
+					size="sm"
 					icon={Save}
 					loading={isSaving}
+					class="pressable"
 				>
 					{isSaving ? 'Saving...' : 'Save'}
 				</Button>
@@ -620,147 +655,138 @@
 					onclick={() => (showSendModal = true)}
 					disabled={!canSend || isSending || isEmailSent}
 					variant="primary"
-					size="md"
+					size="sm"
 					icon={Send}
 					loading={isSending}
+					class="pressable"
 				>
 					{isSending ? 'Sending...' : 'Send'}
 				</Button>
 			</div>
 		</div>
 
-		<!-- Tab Navigation -->
-		<div class="mt-4 border-b border-gray-200 dark:border-gray-700">
-			<nav class="-mb-px flex space-x-8">
-				<Button
-					onclick={() => (activeTab = 'compose')}
-					variant="ghost"
-					size="sm"
-					class="!py-2 !px-1 !border-b-2 !rounded-none {activeTab === 'compose'
-						? '!border-blue-500 !text-blue-600 dark:!text-blue-400'
-						: '!border-transparent !text-gray-500 hover:!text-gray-700 hover:!border-gray-300 dark:!text-gray-400 dark:hover:!text-gray-300'}"
-				>
-					Compose
-				</Button>
-				<Button
-					onclick={() => (activeTab = 'preview')}
-					variant="ghost"
-					size="sm"
-					class="!py-2 !px-1 !border-b-2 !rounded-none {activeTab === 'preview'
-						? '!border-blue-500 !text-blue-600 dark:!text-blue-400'
-						: '!border-transparent !text-gray-500 hover:!text-gray-700 hover:!border-gray-300 dark:!text-gray-400 dark:hover:!text-gray-300'}"
-				>
-					Preview
-				</Button>
-			</nav>
-		</div>
+		<!-- Tab Navigation - tighter spacing -->
+		<nav class="mt-3 -mb-px flex gap-4 border-b border-border">
+			<button
+				onclick={() => (activeTab = 'compose')}
+				class="pb-2 text-sm font-medium border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-t {activeTab ===
+				'compose'
+					? 'border-accent text-accent'
+					: 'border-transparent text-muted-foreground hover:text-foreground'}"
+			>
+				Compose
+			</button>
+			<button
+				onclick={() => (activeTab = 'preview')}
+				class="pb-2 text-sm font-medium border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-t {activeTab ===
+				'preview'
+					? 'border-accent text-accent'
+					: 'border-transparent text-muted-foreground hover:text-foreground'}"
+			>
+				Preview
+			</button>
+		</nav>
 	</div>
 
-	<!-- Messages -->
+	<!-- Messages - compact inline alerts -->
 	{#if error}
 		<div
-			class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 m-4 rounded-md"
+			class="mx-4 mt-3 px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/5 tx tx-static tx-weak"
 		>
-			<div class="flex justify-between items-center">
-				<p class="text-red-800 dark:text-red-200">{error}</p>
-				<Button
+			<div class="flex justify-between items-center gap-2">
+				<p class="text-xs text-red-600 dark:text-red-400">{error}</p>
+				<button
 					onclick={clearMessages}
-					variant="ghost"
-					size="sm"
-					icon={Trash2}
-					class="!text-red-400 hover:!text-red-600"
-				/>
+					class="p-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 transition-colors shrink-0"
+				>
+					<Trash2 class="h-3.5 w-3.5" />
+				</button>
 			</div>
 		</div>
 	{/if}
 
 	{#if success}
 		<div
-			class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 m-4 rounded-md"
+			class="mx-4 mt-3 px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 tx tx-grain tx-weak"
 		>
-			<div class="flex justify-between items-center">
-				<p class="text-green-800 dark:text-green-200">{success}</p>
-				<Button
+			<div class="flex justify-between items-center gap-2">
+				<p class="text-xs text-emerald-600 dark:text-emerald-400">{success}</p>
+				<button
 					onclick={clearMessages}
-					variant="ghost"
-					size="sm"
-					icon={Trash2}
-					class="!text-green-400 hover:!text-green-600"
-				/>
+					class="p-0.5 rounded text-emerald-400 hover:text-emerald-600 hover:bg-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 transition-colors shrink-0"
+				>
+					<Trash2 class="h-3.5 w-3.5" />
+				</button>
 			</div>
 		</div>
 	{/if}
 
-	<!-- Content Area -->
-	<div class="p-4 sm:p-6">
+	<!-- Content Area - tighter padding for density -->
+	<div class="p-4 sm:p-5">
 		{#if activeTab === 'compose'}
-			<!-- Compose Mode Toggle -->
-			<div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
-				<div class="flex items-center justify-between">
-					<div class="flex items-center space-x-4">
-						<Button
+			<!-- Compose Mode Toggle - compact segmented control -->
+			<div class="mb-4 pb-3 border-b border-border">
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<div class="inline-flex items-center p-0.5 bg-muted rounded-lg">
+						<button
 							onclick={() => (composeMode = 'manual')}
-							variant={composeMode === 'manual' ? 'primary' : 'secondary'}
-							size="sm"
-							icon={PenTool}
-							class={composeMode === 'manual' ? '' : '!bg-gray-100 dark:!bg-gray-700'}
+							class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all pressable {composeMode ===
+							'manual'
+								? 'bg-card text-foreground shadow-ink'
+								: 'text-muted-foreground hover:text-foreground'}"
 						>
-							Manual Draft
-						</Button>
-						<Button
+							<PenTool class="h-3.5 w-3.5" />
+							Manual
+						</button>
+						<button
 							onclick={() => (composeMode = 'ai-assist')}
-							variant={composeMode === 'ai-assist' ? 'primary' : 'secondary'}
-							size="sm"
-							icon={Bot}
-							class={composeMode === 'ai-assist'
-								? ''
-								: '!bg-gray-100 dark:!bg-gray-700'}
+							class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-all pressable {composeMode ===
+							'ai-assist'
+								? 'bg-card text-foreground shadow-ink'
+								: 'text-muted-foreground hover:text-foreground'}"
 						>
+							<Bot class="h-3.5 w-3.5" />
 							AI Assist
-						</Button>
+						</button>
 					</div>
 					{#if composeMode === 'ai-assist'}
-						<div class="flex items-center space-x-2">
-							<Button
+						<div class="flex items-center gap-1">
+							<button
 								onclick={useAiContent}
 								disabled={!aiGeneratedContent ||
 									aiGeneratedContent ===
 										'<p>AI-generated email will appear here...</p>'}
-								variant="ghost"
-								size="sm"
-								icon={ArrowRight}
-								class="!text-green-600 hover:!text-green-700 dark:!text-green-400"
+								class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 								title="Use AI content in main editor"
 							>
-								Use AI Content
-							</Button>
-							<Button
+								<ArrowRight class="h-3.5 w-3.5" />
+								Use AI
+							</button>
+							<button
 								onclick={copyToAi}
 								disabled={!emailData.content || emailData.content === ''}
-								variant="ghost"
-								size="sm"
-								icon={Copy}
-								class="!text-blue-600 hover:!text-blue-700 dark:!text-blue-400"
+								class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded text-accent hover:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 								title="Copy manual content to AI editor"
 							>
-								Copy to AI
-							</Button>
+								<Copy class="h-3.5 w-3.5" />
+								To AI
+							</button>
 						</div>
 					{/if}
 				</div>
 			</div>
 
-			<!-- Email Form -->
-			<div class="space-y-6">
-				<!-- Basic Fields -->
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+			<!-- Email Form - tighter vertical rhythm -->
+			<div class="space-y-3">
+				<!-- Basic Fields - 2 column grid -->
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 					<FormField label="From Email" labelFor="from-email">
 						<Select
 							bind:value={emailData.from_email}
-							onchange={(e) => (emailData.from_email = e)}
+							onchange={(e) => (emailData.from_email = String(e))}
 							disabled={isEmailSent}
-							size="md"
-							placeholder="Select sender email"
+							size="sm"
+							placeholder="Select sender"
 							id="from-email"
 						>
 							<option value="dj@build-os.com">dj@build-os.com</option>
@@ -774,13 +800,13 @@
 							disabled={isEmailSent}
 							inputmode="text"
 							enterkeyhint="next"
-							size="md"
+							size="sm"
 						/>
 					</FormField>
 				</div>
 
 				<!-- Subject -->
-				<FormField label="Subject *" labelFor="subject">
+				<FormField label="Subject" labelFor="subject" required>
 					<TextInput
 						id="subject"
 						bind:value={emailData.subject}
@@ -788,33 +814,36 @@
 						inputmode="text"
 						enterkeyhint="next"
 						placeholder="Email subject..."
-						size="md"
+						size="sm"
 					/>
 				</FormField>
 
-				<!-- Recipients -->
-				<div>
-					<div class="flex items-center justify-between mb-2">
-						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-							Recipients ({emailData.recipients.length})
-						</p>
-						<Button
+				<!-- Recipients - inline label with action -->
+				<div class="space-y-1.5">
+					<div class="flex items-center justify-between">
+						<span
+							class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em]"
+						>
+							Recipients
+							<span class="text-foreground ml-1">{emailData.recipients.length}</span>
+						</span>
+						<button
 							onclick={() => (showRecipientModal = true)}
 							disabled={isEmailSent}
-							variant="ghost"
-							size="sm"
-							icon={Users}
-							class="!text-blue-600 dark:!text-blue-400 hover:!text-blue-800 dark:hover:!text-blue-300"
+							class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded text-accent hover:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 						>
-							{emailData.recipients.length > 0 ? 'Edit' : 'Add'} Recipients
-						</Button>
+							<Users class="h-3.5 w-3.5" />
+							{emailData.recipients.length > 0 ? 'Edit' : 'Add'}
+						</button>
 					</div>
 					{#if emailData.recipients.length > 0}
-						<div class="bg-gray-50 dark:bg-gray-700 rounded-md p-3">
-							<div class="flex flex-wrap gap-2">
+						<div
+							class="bg-muted/30 rounded-lg px-2.5 py-2 border border-border/50 tx tx-thread tx-weak"
+						>
+							<div class="flex flex-wrap gap-1">
 								{#each emailData.recipients.slice(0, 10) as recipient}
 									<span
-										class="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 rounded-full"
+										class="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium bg-accent/10 text-accent rounded"
 									>
 										{recipient.recipient_name ||
 											recipient.name ||
@@ -824,9 +853,9 @@
 								{/each}
 								{#if emailData.recipients.length > 10}
 									<span
-										class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-300 rounded-full"
+										class="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium bg-muted text-muted-foreground rounded"
 									>
-										+{emailData.recipients.length - 10} more
+										+{emailData.recipients.length - 10}
 									</span>
 								{/if}
 							</div>
@@ -834,45 +863,42 @@
 					{/if}
 				</div>
 
-				<!-- Scheduling -->
-				<div>
-					<div class="flex items-center space-x-3 mb-3">
-						<label class="flex items-center cursor-pointer">
-							<input
-								type="checkbox"
-								bind:checked={isScheduled}
-								disabled={isEmailSent}
-								class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
-							/>
-							<span class="ml-2 text-sm text-gray-700 dark:text-gray-300"
-								>Schedule for later</span
-							>
-						</label>
-					</div>
+				<!-- Scheduling - compact -->
+				<div class="flex items-center gap-3">
+					<label class="flex items-center gap-1.5 cursor-pointer group">
+						<input
+							type="checkbox"
+							bind:checked={isScheduled}
+							disabled={isEmailSent}
+							class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent/30 focus:ring-offset-0 cursor-pointer bg-background checked:bg-accent disabled:opacity-40 disabled:cursor-not-allowed"
+						/>
+						<span
+							class="text-xs text-muted-foreground group-hover:text-foreground transition-colors"
+							>Schedule</span
+						>
+					</label>
 					{#if isScheduled}
-						<div class="grid grid-cols-2 gap-4">
-							<FormField label="Date" labelFor="schedule-date">
-								<TextInput
-									id="schedule-date"
-									type="date"
-									inputmode="numeric"
-									enterkeyhint="next"
-									bind:value={scheduleDate}
-									disabled={isEmailSent}
-									size="md"
-								/>
-							</FormField>
-							<FormField label="Time" labelFor="schedule-time">
-								<TextInput
-									id="schedule-time"
-									type="time"
-									inputmode="numeric"
-									enterkeyhint="done"
-									bind:value={scheduleTime}
-									disabled={isEmailSent}
-									size="md"
-								/>
-							</FormField>
+						<div class="flex items-center gap-2 flex-1">
+							<TextInput
+								id="schedule-date"
+								type="date"
+								inputmode="numeric"
+								enterkeyhint="next"
+								bind:value={scheduleDate}
+								disabled={isEmailSent}
+								size="sm"
+								class="flex-1"
+							/>
+							<TextInput
+								id="schedule-time"
+								type="time"
+								inputmode="numeric"
+								enterkeyhint="done"
+								bind:value={scheduleTime}
+								disabled={isEmailSent}
+								size="sm"
+								class="w-24"
+							/>
 						</div>
 					{/if}
 				</div>
@@ -880,177 +906,220 @@
 				<!-- AI Generation Panel (only visible in AI assist mode) -->
 				{#if composeMode === 'ai-assist'}
 					<div
-						class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800"
+						class="rounded-lg p-3 border border-accent/15 bg-accent/5 tx tx-bloom tx-weak"
 					>
-						<div class="flex items-center gap-2 mb-3">
-							<Bot class="h-4 w-4 text-blue-600 dark:text-blue-400" />
-							<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-								AI Email Generation
-							</h3>
+						<div class="flex items-center gap-1.5 mb-3">
+							<Bot class="h-4 w-4 text-accent" />
+							<span
+								class="text-[0.65rem] font-medium text-accent uppercase tracking-[0.15em]"
+							>
+								AI Generation
+							</span>
 						</div>
-						<div class="space-y-4">
-							<div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-								<FormField label="Email Type" labelFor="email-type">
+						<div class="space-y-3">
+							<!-- Controls row -->
+							<div class="flex flex-wrap items-end gap-2">
+								<div class="flex-1 min-w-[100px]">
+									<label
+										for="email-type"
+										class="block text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] mb-1"
+										>Type</label
+									>
 									<Select id="email-type" bind:value={emailType} size="sm">
 										<option value="custom">Custom</option>
 										<option value="welcome">Welcome</option>
 										<option value="follow-up">Follow-up</option>
-										<option value="feature">Feature Update</option>
-										<option value="feedback">Feedback Request</option>
+										<option value="feature">Feature</option>
+										<option value="feedback">Feedback</option>
 									</Select>
-								</FormField>
-								<FormField label="Tone" labelFor="email-tone">
+								</div>
+								<div class="flex-1 min-w-[100px]">
+									<label
+										for="email-tone"
+										class="block text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] mb-1"
+										>Tone</label
+									>
 									<Select id="email-tone" bind:value={emailTone} size="sm">
 										<option value="friendly">Friendly</option>
 										<option value="professional">Professional</option>
 										<option value="casual">Casual</option>
 									</Select>
-								</FormField>
-								<div class="flex items-end">
-									<Button
-										onclick={generateEmail}
-										disabled={isGeneratingEmail ||
-											emailData.recipients.length === 0}
-										variant="primary"
-										size="sm"
-										icon={Sparkles}
-										loading={isGeneratingEmail}
-										class="w-full"
-									>
-										{isGeneratingEmail ? 'Generating...' : 'Generate Email'}
-									</Button>
 								</div>
+								<Button
+									onclick={generateEmail}
+									disabled={isGeneratingEmail ||
+										emailData.recipients.length === 0}
+									variant="primary"
+									size="sm"
+									icon={Sparkles}
+									loading={isGeneratingEmail}
+									class="pressable"
+								>
+									{isGeneratingEmail ? 'Generating...' : 'Generate'}
+								</Button>
 							</div>
-							<FormField label="Instructions for AI" labelFor="ai-instructions">
+							<!-- Instructions textarea -->
+							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 								<textarea
 									id="ai-instructions"
 									bind:value={generationInstructions}
 									enterkeyhint="done"
-									placeholder="Describe what you want the email to say... (e.g., 'Thank them for signing up for the beta program and highlight the key features they can explore')"
-									rows="3"
-									class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"
+									placeholder="Describe what you want the email to say..."
+									rows="2"
+									class="relative z-10 w-full px-2.5 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none resize-none transition-colors"
 								></textarea>
-							</FormField>
+							</div>
 							{#if emailData.recipients.length === 0}
 								<div
-									class="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded"
+									class="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-1.5 rounded-lg tx tx-static tx-weak"
 								>
-									<Users class="h-4 w-4" />
-									<span
-										>Please select recipients first to generate personalized
-										content</span
-									>
+									<Users class="h-3.5 w-3.5 shrink-0" />
+									<span>Add recipients first</span>
 								</div>
 							{/if}
 						</div>
 					</div>
 				{/if}
 
-				<!-- Editor Toolbar -->
-				<div class="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-					<div
-						class="bg-gray-50 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 p-3"
-					>
-						<div class="flex flex-wrap items-center gap-2">
+				<!-- Editor Toolbar - compact and unified -->
+				<div class="border border-border rounded-lg overflow-hidden shadow-ink">
+					<div class="bg-muted/50 border-b border-border px-2 py-1.5">
+						<div class="flex flex-wrap items-center gap-0.5">
 							<!-- Text Formatting -->
-							<Button
+							<button
 								onclick={toggleBold}
-								variant="ghost"
-								size="sm"
-								class="!p-2 {editor?.isActive('bold')
-									? '!bg-gray-200 dark:!bg-gray-600'
+								class="w-7 h-7 flex items-center justify-center rounded text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+									'bold'
+								)
+									? 'bg-card text-foreground shadow-ink-inner'
 									: ''}"
 								title="Bold"
 							>
-								<strong>B</strong>
-							</Button>
-							<Button
+								B
+							</button>
+							<button
 								onclick={toggleItalic}
-								variant="ghost"
-								size="sm"
-								class="!p-2 {editor?.isActive('italic')
-									? '!bg-gray-200 dark:!bg-gray-600'
+								class="w-7 h-7 flex items-center justify-center rounded text-xs italic text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+									'italic'
+								)
+									? 'bg-card text-foreground shadow-ink-inner'
 									: ''}"
 								title="Italic"
 							>
-								<em>I</em>
-							</Button>
+								I
+							</button>
 
-							<div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-2"></div>
+							<div class="w-px h-4 bg-border mx-1"></div>
 
 							<!-- Headings -->
-							<Button
+							<button
 								onclick={() => insertHeading(1)}
-								variant="ghost"
-								size="sm"
-								class="!px-2 !py-1 {editor?.isActive('heading', { level: 1 })
-									? '!bg-gray-200 dark:!bg-gray-600'
+								class="px-1.5 h-7 flex items-center justify-center rounded text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+									'heading',
+									{ level: 1 }
+								)
+									? 'bg-card text-foreground shadow-ink-inner'
 									: ''}"
 								title="Heading 1"
 							>
 								H1
-							</Button>
-							<Button
+							</button>
+							<button
 								onclick={() => insertHeading(2)}
-								variant="ghost"
-								size="sm"
-								class="!px-2 !py-1 {editor?.isActive('heading', { level: 2 })
-									? '!bg-gray-200 dark:!bg-gray-600'
+								class="px-1.5 h-7 flex items-center justify-center rounded text-[10px] font-semibold text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+									'heading',
+									{ level: 2 }
+								)
+									? 'bg-card text-foreground shadow-ink-inner'
 									: ''}"
 								title="Heading 2"
 							>
 								H2
-							</Button>
+							</button>
 
-							<div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-2"></div>
+							<div class="w-px h-4 bg-border mx-1"></div>
 
 							<!-- Text Alignment -->
-							<Button
+							<button
 								onclick={() => setTextAlign('left')}
-								variant="ghost"
-								size="sm"
-								class="!p-2 {editor?.isActive({ textAlign: 'left' })
-									? '!bg-gray-200 dark:!bg-gray-600'
+								class="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+									{ textAlign: 'left' }
+								)
+									? 'bg-card text-foreground shadow-ink-inner'
 									: ''}"
 								title="Align Left"
 							>
-								⫸
-							</Button>
-							<Button
+								<svg
+									class="w-3.5 h-3.5"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M3 10h18M3 6h12M3 14h18M3 18h12"
+									/>
+								</svg>
+							</button>
+							<button
 								onclick={() => setTextAlign('center')}
-								variant="ghost"
-								size="sm"
-								class="!p-2 {editor?.isActive({ textAlign: 'center' })
-									? '!bg-gray-200 dark:!bg-gray-600'
+								class="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+									{ textAlign: 'center' }
+								)
+									? 'bg-card text-foreground shadow-ink-inner'
 									: ''}"
 								title="Align Center"
 							>
-								⫷
-							</Button>
-							<Button
+								<svg
+									class="w-3.5 h-3.5"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M3 10h18M6 6h12M3 14h18M6 18h12"
+									/>
+								</svg>
+							</button>
+							<button
 								onclick={() => setTextAlign('right')}
-								variant="ghost"
-								size="sm"
-								class="!p-2 {editor?.isActive({ textAlign: 'right' })
-									? '!bg-gray-200 dark:!bg-gray-600'
+								class="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors {editor?.isActive(
+									{ textAlign: 'right' }
+								)
+									? 'bg-card text-foreground shadow-ink-inner'
 									: ''}"
 								title="Align Right"
 							>
-								⫸
-							</Button>
+								<svg
+									class="w-3.5 h-3.5"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M3 10h18M9 6h12M3 14h18M9 18h12"
+									/>
+								</svg>
+							</button>
 
-							<div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-2"></div>
+							<div class="w-px h-4 bg-border mx-1"></div>
 
 							<!-- Insert Options -->
-							<Button
+							<button
 								onclick={addLink}
-								variant="ghost"
-								size="sm"
-								class="!p-2"
+								class="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
 								title="Add Link"
 							>
 								<svg
-									class="w-4 h-4"
+									class="w-3.5 h-3.5"
 									fill="none"
 									stroke="currentColor"
 									viewBox="0 0 24 24"
@@ -1062,42 +1131,35 @@
 										d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
 									/>
 								</svg>
-							</Button>
-							<Button
+							</button>
+							<button
 								onclick={() => (showImageModal = true)}
-								variant="ghost"
-								size="sm"
-								icon={ImageIcon}
-								class="!p-2"
+								class="w-7 h-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
 								title="Insert Image"
-							/>
+							>
+								<ImageIcon class="w-3.5 h-3.5" />
+							</button>
 						</div>
 					</div>
 
 					<!-- Editor Content -->
 					<div
-						class={composeMode === 'ai-assist'
-							? 'grid grid-cols-1 lg:grid-cols-2 gap-4'
-							: ''}
+						class={composeMode === 'ai-assist' ? 'grid grid-cols-1 lg:grid-cols-2' : ''}
 					>
 						<!-- Manual Editor -->
-						<div
-							class={composeMode === 'ai-assist'
-								? ''
-								: 'bg-white dark:bg-gray-800 min-h-[400px]'}
-						>
+						<div class={composeMode === 'ai-assist' ? 'lg:border-r border-border' : ''}>
 							{#if composeMode === 'ai-assist'}
 								<div
-									class="bg-gray-50 dark:bg-gray-700 px-3 py-2 border-b border-gray-300 dark:border-gray-600 flex items-center gap-2"
+									class="bg-muted/30 px-2.5 py-1.5 border-b border-border flex items-center gap-1.5"
 								>
-									<PenTool class="h-4 w-4 text-gray-600 dark:text-gray-400" />
+									<PenTool class="h-3.5 w-3.5 text-muted-foreground" />
 									<span
-										class="text-sm font-medium text-gray-700 dark:text-gray-300"
-										>Manual Draft</span
+										class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em]"
+										>Manual</span
 									>
 								</div>
 							{/if}
-							<div class="bg-white dark:bg-gray-800 min-h-[400px]">
+							<div class="bg-card min-h-[320px] tx tx-grid tx-weak">
 								<div bind:this={editorElement}></div>
 							</div>
 						</div>
@@ -1106,17 +1168,15 @@
 						{#if composeMode === 'ai-assist'}
 							<div>
 								<div
-									class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-700 dark:to-indigo-700 px-3 py-2 border-b border-blue-300 dark:border-blue-600 flex items-center gap-2"
+									class="bg-accent/5 px-2.5 py-1.5 border-b border-accent/15 flex items-center gap-1.5"
 								>
-									<Bot class="h-4 w-4 text-blue-900 dark:text-blue-100" />
+									<Bot class="h-3.5 w-3.5 text-accent" />
 									<span
-										class="text-sm font-medium text-blue-900 dark:text-blue-100"
-										>AI-Generated Draft</span
+										class="text-[0.65rem] font-medium text-accent uppercase tracking-[0.15em]"
+										>AI</span
 									>
 								</div>
-								<div
-									class="bg-white dark:bg-gray-800 min-h-[400px] border-l-2 border-blue-200 dark:border-blue-700"
-								>
+								<div class="bg-card min-h-[320px] tx tx-bloom tx-weak">
 									<div bind:this={aiEditorElement}></div>
 								</div>
 							</div>
@@ -1146,31 +1206,39 @@
 >
 	{#snippet content()}
 		<p class="text-sm text-muted-foreground">
-			Are you sure you want to send this email to {emailData.recipients.length} recipient{emailData
-				.recipients.length !== 1
+			Send this email to {emailData.recipients.length} recipient{emailData.recipients
+				.length !== 1
 				? 's'
 				: ''}?
 		</p>
 		{#if emailData.recipients.length > 0}
-			<div class="mt-3 text-sm text-muted-foreground">
-				<p><strong>Recipients include:</strong></p>
-				<ul class="mt-1 space-y-1">
+			<div class="mt-3">
+				<p
+					class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] mb-2"
+				>
+					Recipients
+				</p>
+				<ul class="space-y-1">
 					{#each emailData.recipients.slice(0, 5) as recipient}
-						<li class="flex items-center">
-							<span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-							{recipient.recipient_name || recipient.name || 'No name'}
-							&lt;{recipient.recipient_email || recipient.email}&gt;
+						<li class="flex items-center text-sm text-muted-foreground">
+							<span class="w-1 h-1 bg-accent rounded-full mr-2 shrink-0"></span>
+							<span class="truncate">
+								{recipient.recipient_name || recipient.name || 'No name'}
+								<span class="text-muted-foreground/60 ml-1"
+									>{recipient.recipient_email || recipient.email}</span
+								>
+							</span>
 							{#if recipient.recipient_type === 'custom' || recipient.type === 'custom'}
 								<span
-									class="ml-2 text-xs bg-muted text-muted-foreground px-1 rounded"
+									class="ml-2 text-[0.65rem] bg-muted text-muted-foreground px-1 py-0.5 rounded uppercase tracking-[0.15em] shrink-0"
 									>Custom</span
 								>
 							{/if}
 						</li>
 					{/each}
 					{#if emailData.recipients.length > 5}
-						<li class="text-muted-foreground italic">
-							...and {emailData.recipients.length - 5} more
+						<li class="text-muted-foreground/60 text-xs pl-3">
+							+{emailData.recipients.length - 5} more
 						</li>
 					{/if}
 				</ul>
@@ -1178,11 +1246,31 @@
 		{/if}
 	{/snippet}
 	{#snippet details()}
-		<div class="mt-3 text-sm text-muted-foreground">
-			<p><strong>Subject:</strong> {emailData.subject}</p>
-			<p><strong>From:</strong> {emailData.from_name} &lt;{emailData.from_email}&gt;</p>
+		<div class="mt-4 pt-3 border-t border-border space-y-1.5">
+			<div class="flex items-baseline gap-2 text-sm">
+				<span
+					class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] w-16 shrink-0"
+					>Subject</span
+				>
+				<span class="text-foreground truncate">{emailData.subject}</span>
+			</div>
+			<div class="flex items-baseline gap-2 text-sm">
+				<span
+					class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] w-16 shrink-0"
+					>From</span
+				>
+				<span class="text-foreground"
+					>{emailData.from_name} &lt;{emailData.from_email}&gt;</span
+				>
+			</div>
 			{#if isScheduled && scheduleDate && scheduleTime}
-				<p><strong>Scheduled for:</strong> {scheduleDate} at {scheduleTime}</p>
+				<div class="flex items-baseline gap-2 text-sm">
+					<span
+						class="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-[0.15em] w-16 shrink-0"
+						>Scheduled</span
+					>
+					<span class="text-foreground">{scheduleDate} at {scheduleTime}</span>
+				</div>
 			{/if}
 		</div>
 	{/snippet}

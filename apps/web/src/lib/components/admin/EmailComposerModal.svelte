@@ -40,6 +40,7 @@
 	let instructions = $state('');
 	let generatedEmail = $state('');
 	let manualEmail = $state('');
+	let subject = $state('Message from BuildOS');
 	let emailType = $state<EmailGenerationContext['emailType']>('custom');
 	let tone = $state<EmailGenerationContext['tone']>('friendly');
 	let isGenerating = $state(false);
@@ -291,7 +292,7 @@ Guidelines:
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					to: userEmail,
-					subject: `Message from BuildOS`,
+					subject: subject.trim() || 'Message from BuildOS',
 					body: finalEmail,
 					userId: effectiveUserId
 				})
@@ -319,6 +320,7 @@ Guidelines:
 		instructions = '';
 		generatedEmail = '';
 		manualEmail = '';
+		subject = 'Message from BuildOS';
 		emailType = 'custom';
 		tone = 'friendly';
 		userContext = null;
@@ -412,6 +414,23 @@ Guidelines:
 					</div>
 				</div>
 			{/if}
+
+			<!-- Subject Field -->
+			<div class="space-y-1">
+				<label for="email-subject" class="text-xs font-medium text-muted-foreground">
+					Subject
+				</label>
+				<input
+					id="email-subject"
+					type="text"
+					bind:value={subject}
+					placeholder="Email subject..."
+					class="w-full px-2 py-1.5 text-xs border border-border rounded
+							 bg-background text-foreground shadow-ink-inner
+							 placeholder:text-muted-foreground
+							 focus:border-accent focus:ring-1 focus:ring-ring"
+				/>
+			</div>
 
 			<!-- Edit Mode Toggle -->
 			<div class="flex gap-1 pb-2 border-b border-border">

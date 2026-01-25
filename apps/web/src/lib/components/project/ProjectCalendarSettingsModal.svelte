@@ -234,40 +234,39 @@
 
 <Modal bind:isOpen onClose={handleClose}>
 	{#snippet header()}
-		<div class="px-4 py-3 border-b border-border sm:px-5 sm:py-4">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-2 sm:gap-3">
-					<div class="p-2 bg-accent/10 rounded-lg">
-						<Calendar class="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
-					</div>
-					<div>
-						<h2 class="text-base sm:text-lg font-semibold text-foreground">
-							Calendar Settings
-						</h2>
-						<p class="text-xs sm:text-sm text-muted-foreground">
-							Manage Google Calendar for {project?.name || 'this project'}
-						</p>
-					</div>
+		<!-- Compact Inkprint header -->
+		<div
+			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+		>
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0">
+					<Calendar class="w-5 h-5" />
 				</div>
-				<button
-					type="button"
-					onclick={handleClose}
-					class="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground pressable"
-					aria-label="Close modal"
-				>
-					<svg
-						class="w-4 h-4 sm:w-5 sm:h-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
+				<div class="min-w-0 flex-1">
+					<h2
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
 					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						></path>
-					</svg>
+						Calendar Settings
+					</h2>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+						Manage Google Calendar for {project?.name || 'this project'}
+					</p>
+				</div>
+			</div>
+			<button
+				type="button"
+				onclick={handleClose}
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring tx tx-grain tx-weak"
+				aria-label="Close modal"
+			>
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M6 18L18 6M6 6l12 12"
+					></path>
+				</svg>
 				</button>
 			</div>
 		</div>

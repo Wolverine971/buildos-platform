@@ -96,7 +96,10 @@
 					<div class="max-w-md mx-auto mb-8" role="alert" aria-live="polite">
 						<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
 							<div class="flex items-center">
-								<AlertCircle class="h-5 w-5 text-destructive mr-2" />
+								<AlertCircle
+									class="h-5 w-5 text-destructive mr-2"
+									aria-hidden="true"
+								/>
 								<p class="text-destructive">{error}</p>
 							</div>
 						</div>
@@ -108,7 +111,7 @@
 			<div class="max-w-md mx-auto" role="region" aria-label="Pricing plan">
 				<!-- BuildOS Pro -->
 				<article
-					class="rounded-lg border border-border bg-card shadow-ink p-8 relative tx tx-grain tx-weak"
+					class="rounded-lg border border-border bg-card shadow-ink p-6 sm:p-8 relative tx tx-frame tx-weak wt-card"
 					aria-labelledby="pro-plan-heading"
 				>
 					{#if data.trialStatus?.is_in_trial}
@@ -123,9 +126,9 @@
 					{/if}
 
 					<div class="text-center mb-8">
-						<h3 id="pro-plan-heading" class="text-2xl font-bold text-foreground mb-2">
+						<h2 id="pro-plan-heading" class="text-2xl font-bold text-foreground mb-2">
 							BuildOS Pro
-						</h3>
+						</h2>
 						<p class="text-muted-foreground mb-6">
 							Your personal productivity operating system
 						</p>
@@ -138,37 +141,61 @@
 						</p>
 					</div>
 
-					<ul class="space-y-4 mb-8" role="list" aria-label="Plan features">
+					<ul class="space-y-3 mb-8" role="list" aria-label="Plan features">
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
+							<Check
+								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<span class="text-muted-foreground">Unlimited projects</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
+							<Check
+								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<span class="text-muted-foreground">AI-powered brain dump parsing</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
+							<Check
+								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<span class="text-muted-foreground">Advanced task automation</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
+							<Check
+								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<span class="text-muted-foreground">Daily AI insights & briefs</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
+							<Check
+								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<span class="text-muted-foreground">Goal-task alignment tracking</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
+							<Check
+								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<span class="text-muted-foreground">Priority email support</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
+							<Check
+								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<span class="text-muted-foreground">Calendar integrations</span>
 						</li>
 						<li class="flex items-center">
-							<Check class="w-5 h-5 text-accent mr-3 flex-shrink-0" />
+							<Check
+								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
+								aria-hidden="true"
+							/>
 							<span class="text-muted-foreground">Data export</span>
 						</li>
 					</ul>
@@ -180,7 +207,7 @@
 					{:else if data.hasActiveSubscription}
 						<a
 							href="/profile?tab=billing"
-							class="w-full bg-accent hover:opacity-90 text-accent-foreground py-3 px-6 rounded-lg font-semibold transition-colors text-center block shadow-ink pressable"
+							class="w-full bg-accent hover:opacity-90 text-accent-foreground py-3 px-6 rounded-lg font-semibold transition-colors text-center block shadow-ink pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						>
 							Manage Subscription
 						</a>
@@ -277,9 +304,9 @@
 			<div class="flex justify-center">
 				<a
 					href="/auth/register"
-					class="inline-flex items-center px-8 py-4 text-lg font-semibold bg-card text-foreground hover:opacity-90 rounded-lg shadow-ink transform hover:scale-105 transition-all duration-200"
+					class="inline-flex items-center px-8 py-4 text-lg font-semibold bg-card text-foreground hover:opacity-90 rounded-lg shadow-ink transform hover:scale-105 motion-reduce:hover:scale-100 transition-all duration-200 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
 				>
-					<Brain class="w-5 h-5 mr-3" />
+					<Brain class="w-5 h-5 mr-3" aria-hidden="true" />
 					Start Free Trial
 				</a>
 			</div>

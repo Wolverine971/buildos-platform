@@ -59,7 +59,16 @@
       "Bash(for file in /Users/annawayne/buildos-platform/supabase/migrations/*.sql)",
       "Bash(do grep -l \"deleted_at\\\\|state_key\\\\|description\" \"$file\")",
       "Bash(magick:*)",
-      "Bash(pnpm run lint)"
+      "Bash(pnpm run lint)",
+      "Bash(claude plugin list:*)",
+      "Bash(claude plugin info:*)",
+      "WebFetch(domain:blog.devgenius.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:awesomeclaude.ai)",
+      "Bash(claude help:*)",
+      "Bash(claude skill list:*)",
+      "Bash(wc:*)",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []
