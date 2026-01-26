@@ -145,6 +145,26 @@ export interface VoiceNoteTranscriptionJobMetadata {
 	userId: string;
 }
 
+export interface HomeworkJobMetadata {
+	run_id: string;
+	iteration: number;
+	chat_session_id?: string | null;
+	context_type?: string;
+	entity_id?: string;
+	scope?: 'global' | 'project' | 'multi_project';
+	project_ids?: string[];
+	budgets: {
+		max_iterations?: number;
+		max_wall_clock_ms: number;
+		max_cost_usd?: number;
+		max_total_tokens?: number;
+	};
+	permissions: {
+		write_mode: 'autopilot' | 'approve_plan' | 'per_write';
+		allowed_tools?: string[];
+	};
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	generate_daily_brief: DailyBriefJobMetadata;
@@ -162,6 +182,7 @@ export interface JobMetadataMap {
 	classify_chat_session: ClassifyChatSessionJobMetadata;
 	process_onto_braindump: OntoBraindumpProcessingJobMetadata;
 	transcribe_voice_note: VoiceNoteTranscriptionJobMetadata;
+	buildos_homework: HomeworkJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -202,6 +223,21 @@ export interface VoiceNoteTranscriptionResult {
 	error?: string;
 }
 
+export interface HomeworkJobResult {
+	success: boolean;
+	run_id: string;
+	iteration: number;
+	status?:
+		| 'queued'
+		| 'running'
+		| 'waiting_on_user'
+		| 'completed'
+		| 'stopped'
+		| 'canceled'
+		| 'failed';
+	message?: string;
+}
+
 // Job result types
 export interface JobResultMap {
 	generate_daily_brief: DailyBriefResult;
@@ -219,6 +255,7 @@ export interface JobResultMap {
 	classify_chat_session: ClassifyChatSessionResult;
 	process_onto_braindump: OntoBraindumpProcessingResult;
 	transcribe_voice_note: VoiceNoteTranscriptionResult;
+	buildos_homework: HomeworkJobResult;
 	other: unknown;
 }
 

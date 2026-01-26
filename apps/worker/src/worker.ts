@@ -10,6 +10,7 @@ import { processDailySMS } from './workers/dailySmsWorker';
 import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
 import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
+import { processHomeworkJob } from './workers/homework/homeworkWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -266,6 +267,22 @@ async function processVoiceNoteTranscription(job: ProcessingJob) {
 }
 
 /**
+ * Homework (long-running task) processor
+ */
+async function processHomework(job: ProcessingJob) {
+	await job.log('Homework job received');
+
+	try {
+		const result = await processHomeworkJob(job);
+		await job.log('Homework job completed');
+		return result;
+	} catch (error: any) {
+		await job.log(`Homework job failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -292,6 +309,9 @@ export async function startWorker() {
 
 	// Register voice note transcription processor
 	queue.process('transcribe_voice_note', processVoiceNoteTranscription);
+
+	// Register homework (long-running task) processor
+	queue.process('buildos_homework', processHomework);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(

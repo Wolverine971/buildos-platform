@@ -667,6 +667,15 @@ const TOOL_CALLING_MODEL_ORDER = [
 ] as const;
 const TOOL_CALLING_MODEL_SET = new Set<string>(TOOL_CALLING_MODEL_ORDER);
 
+const EMPTY_CONTENT_RETRY_INSTRUCTION =
+	'Return only the final answer. Do not include analysis or reasoning.';
+const EMPTY_CONTENT_RETRY_MIN_TOKENS = 800;
+const EMERGENCY_TEXT_FALLBACKS = [
+	'openai/gpt-4o-mini',
+	'anthropic/claude-haiku-4.5',
+	'openai/gpt-4o'
+] as const;
+
 // ============================================
 // PROFILE MAPPINGS
 // ============================================
@@ -993,17 +1002,17 @@ export class SmartLLMService {
 				throw new Error('OpenRouter returned empty choices array');
 			}
 
-				const choice = response.choices[0];
-				const content = this.extractTextFromChoice(choice);
-				if (!content || content.trim().length === 0) {
-					throw this.buildOpenRouterEmptyContentError({
-						operation: 'getJSONResponse',
-						requestedModel: preferredModels[0] || 'openai/gpt-4o-mini',
-						response,
-						choice,
-						extractedText: content
-					});
-				}
+			const choice = response.choices[0];
+			const content = this.extractTextFromChoice(choice);
+			if (!content || content.trim().length === 0) {
+				throw this.buildOpenRouterEmptyContentError({
+					operation: 'getJSONResponse',
+					requestedModel: preferredModels[0] || 'openai/gpt-4o-mini',
+					response,
+					choice,
+					extractedText: content
+				});
+			}
 
 			// Parse the response
 			let result: T;
@@ -1063,17 +1072,17 @@ export class SmartLLMService {
 							throw new Error('Retry: OpenRouter returned empty choices array');
 						}
 
-							const retryChoice = retryResponse.choices[0];
-							const retryContent = this.extractTextFromChoice(retryChoice);
-							if (!retryContent || retryContent.trim().length === 0) {
-								throw this.buildOpenRouterEmptyContentError({
-									operation: 'getJSONResponse_retry',
-									requestedModel: 'anthropic/claude-sonnet-4',
-									response: retryResponse,
-									choice: retryChoice,
-									extractedText: retryContent
-								});
-							}
+						const retryChoice = retryResponse.choices[0];
+						const retryContent = this.extractTextFromChoice(retryChoice);
+						if (!retryContent || retryContent.trim().length === 0) {
+							throw this.buildOpenRouterEmptyContentError({
+								operation: 'getJSONResponse_retry',
+								requestedModel: 'anthropic/claude-sonnet-4',
+								response: retryResponse,
+								choice: retryChoice,
+								extractedText: retryContent
+							});
+						}
 
 						cleanedRetry = this.cleanJSONResponse(retryContent);
 						result = JSON.parse(cleanedRetry) as T;
@@ -1193,35 +1202,35 @@ export class SmartLLMService {
 			}).catch((err) => console.error('Failed to log usage:', err));
 
 			return result;
-			} catch (error) {
-				lastError = error as Error;
-				const duration = performance.now() - startTime;
-				const requestCompletedAt = new Date();
-				const emptyContentDetails =
-					error instanceof OpenRouterEmptyContentError ? error.details : undefined;
-				const openrouterErrorDetails =
-					(error as any)?.openrouter && typeof (error as any).openrouter === 'object'
-						? (error as any).openrouter
-						: undefined;
+		} catch (error) {
+			lastError = error as Error;
+			const duration = performance.now() - startTime;
+			const requestCompletedAt = new Date();
+			const emptyContentDetails =
+				error instanceof OpenRouterEmptyContentError ? error.details : undefined;
+			const openrouterErrorDetails =
+				(error as any)?.openrouter && typeof (error as any).openrouter === 'object'
+					? (error as any).openrouter
+					: undefined;
 
-				console.error(`OpenRouter request failed:`, error);
+			console.error(`OpenRouter request failed:`, error);
 
-				// Log to error tracking system
-				if (this.errorLogger) {
-					await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
+			// Log to error tracking system
+			if (this.errorLogger) {
+				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
 					operation: 'getJSONResponse',
 					errorType: 'llm_api_request_failure',
 					modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
 					profile,
 					complexity,
-						isTimeout: lastError.message.includes('timeout'),
-						projectId: options.projectId,
-						brainDumpId: options.brainDumpId,
-						taskId: options.taskId,
-						openrouterErrorDetails: openrouterErrorDetails ?? null,
-						emptyContentDetails: emptyContentDetails ?? null
-					});
-				}
+					isTimeout: lastError.message.includes('timeout'),
+					projectId: options.projectId,
+					brainDumpId: options.brainDumpId,
+					taskId: options.taskId,
+					openrouterErrorDetails: openrouterErrorDetails ?? null,
+					emptyContentDetails: emptyContentDetails ?? null
+				});
+			}
 
 			// Log failure to database
 			this.logUsageToDatabase({
@@ -1272,6 +1281,12 @@ export class SmartLLMService {
 		const requestStartedAt = new Date();
 		const startTime = performance.now();
 		const profile = options.profile || 'balanced';
+		const baseSystemPrompt =
+			options.systemPrompt ||
+			'You are an expert writer who creates clear, engaging, and well-structured content.';
+		let forceFinalAnswerOnly = false;
+		let maxTokensOverride = options.maxTokens || 4096;
+		let overrideModel: string | null = null;
 
 		// Estimate response length
 		const estimatedLength = this.estimateResponseLength(options.prompt);
@@ -1285,7 +1300,7 @@ export class SmartLLMService {
 
 		// Make the OpenRouter API call with model routing
 		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
-		const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 2);
+		const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 3);
 		const attemptedModels = new Set<string>();
 		let lastResponse: OpenRouterResponse | null = null;
 		let lastFinishReason: string | undefined;
@@ -1296,25 +1311,33 @@ export class SmartLLMService {
 				const remainingModels = preferredModels.filter(
 					(model) => !attemptedModels.has(model)
 				);
-				const requestedModel = remainingModels[0] || baseModel;
+				const requestedModel =
+					overrideModel && !attemptedModels.has(overrideModel)
+						? overrideModel
+						: remainingModels[0] || baseModel;
+				const routingModels = [
+					requestedModel,
+					...remainingModels.filter((model) => model !== requestedModel)
+				];
 
 				let attemptResponse: OpenRouterResponse | null = null;
 
 				try {
+					const systemPrompt = forceFinalAnswerOnly
+						? `${baseSystemPrompt}\n\n${EMPTY_CONTENT_RETRY_INSTRUCTION}`
+						: baseSystemPrompt;
 					attemptResponse = await this.callOpenRouter({
 						model: requestedModel, // Primary model with fallback
-						models: remainingModels.length > 0 ? remainingModels : [requestedModel],
+						models: routingModels.length > 0 ? routingModels : [requestedModel],
 						messages: [
 							{
 								role: 'system',
-								content:
-									options.systemPrompt ||
-									'You are an expert writer who creates clear, engaging, and well-structured content.'
+								content: systemPrompt
 							},
 							{ role: 'user', content: options.prompt }
 						],
 						temperature: options.temperature || 0.7,
-						max_tokens: options.maxTokens || 4096,
+						max_tokens: maxTokensOverride,
 						timeoutMs: options.timeoutMs,
 						stream: options.streaming || false
 					});
@@ -1327,17 +1350,17 @@ export class SmartLLMService {
 						throw new Error('OpenRouter returned empty choices array');
 					}
 
-						const choice = attemptResponse.choices[0];
-						const content = this.extractTextFromChoice(choice);
-						if (!content || content.trim().length === 0) {
-							throw this.buildOpenRouterEmptyContentError({
-								operation: 'generateText',
-								requestedModel,
-								response: attemptResponse,
-								choice,
-								extractedText: content
-							});
-						}
+					const choice = attemptResponse.choices[0];
+					const content = this.extractTextFromChoice(choice);
+					if (!content || content.trim().length === 0) {
+						throw this.buildOpenRouterEmptyContentError({
+							operation: 'generateText',
+							requestedModel,
+							response: attemptResponse,
+							choice,
+							extractedText: content
+						});
+					}
 
 					const actualModel = attemptResponse.model || requestedModel;
 					const modelsAttempted = Array.from(new Set([...attemptedModels, actualModel]));
@@ -1434,13 +1457,41 @@ export class SmartLLMService {
 						attemptedModels.add(attemptResponse.model);
 					}
 					const failedModel = attemptResponse?.model || requestedModel;
+					const emptyContentDetails =
+						error instanceof OpenRouterEmptyContentError ? error.details : undefined;
+					const inferredCause =
+						typeof emptyContentDetails?.inferredCause === 'string'
+							? emptyContentDetails.inferredCause
+							: null;
+					const finishReason =
+						typeof emptyContentDetails?.finishReason === 'string'
+							? emptyContentDetails.finishReason
+							: null;
+
+					if (error instanceof OpenRouterEmptyContentError) {
+						forceFinalAnswerOnly = true;
+						if (maxTokensOverride < EMPTY_CONTENT_RETRY_MIN_TOKENS) {
+							maxTokensOverride = EMPTY_CONTENT_RETRY_MIN_TOKENS;
+						}
+						if (!overrideModel || attemptedModels.has(overrideModel)) {
+							overrideModel = this.pickEmergencyTextModel(
+								preferredModels,
+								attemptedModels
+							);
+						}
+					}
 
 					if (attempt < maxAttempts - 1) {
 						console.warn('OpenRouter text generation retrying after failure', {
 							attempt: attempt + 1,
 							maxAttempts,
 							model: failedModel,
-							error: lastError.message
+							error: lastError.message,
+							inferredCause,
+							finishReason,
+							overrideModel,
+							maxTokens: maxTokensOverride,
+							forceFinalAnswerOnly
 						});
 						continue;
 					}
@@ -1453,21 +1504,21 @@ export class SmartLLMService {
 		} catch (error) {
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
-				const modelsAttempted = Array.from(attemptedModels);
-				const lastModel =
-					lastResponse?.model || modelsAttempted[modelsAttempted.length - 1] || baseModel;
-				const emptyContentDetails =
-					error instanceof OpenRouterEmptyContentError ? error.details : undefined;
-				const openrouterErrorDetails =
-					(error as any)?.openrouter && typeof (error as any).openrouter === 'object'
-						? (error as any).openrouter
-						: undefined;
+			const modelsAttempted = Array.from(attemptedModels);
+			const lastModel =
+				lastResponse?.model || modelsAttempted[modelsAttempted.length - 1] || baseModel;
+			const emptyContentDetails =
+				error instanceof OpenRouterEmptyContentError ? error.details : undefined;
+			const openrouterErrorDetails =
+				(error as any)?.openrouter && typeof (error as any).openrouter === 'object'
+					? (error as any).openrouter
+					: undefined;
 
-				console.error(`OpenRouter text generation failed:`, error);
+			console.error(`OpenRouter text generation failed:`, error);
 
-				// Log to error tracking system
-				if (this.errorLogger) {
-					await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
+			// Log to error tracking system
+			if (this.errorLogger) {
+				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
 					operation: 'generateText',
 					errorType: 'llm_text_generation_failure',
 					modelRequested: baseModel,
@@ -1480,16 +1531,16 @@ export class SmartLLMService {
 					attempts: modelsAttempted.length,
 					modelsAttempted,
 					lastModel,
-						lastFinishReason,
-						openrouterRequestId: lastResponse?.id,
-						openrouterProvider: lastResponse?.provider,
-						openrouterNativeFinishReason:
-							lastResponse?.choices?.[0]?.native_finish_reason ?? null,
-						openrouterResponseError: lastResponse?.error ?? null,
-						openrouterErrorDetails: openrouterErrorDetails ?? null,
-						emptyContentDetails: emptyContentDetails ?? null
-					});
-				}
+					lastFinishReason,
+					openrouterRequestId: lastResponse?.id,
+					openrouterProvider: lastResponse?.provider,
+					openrouterNativeFinishReason:
+						lastResponse?.choices?.[0]?.native_finish_reason ?? null,
+					openrouterResponseError: lastResponse?.error ?? null,
+					openrouterErrorDetails: openrouterErrorDetails ?? null,
+					emptyContentDetails: emptyContentDetails ?? null
+				});
+			}
 
 			// Log failure to database
 			this.logUsageToDatabase({
@@ -1520,21 +1571,21 @@ export class SmartLLMService {
 				agentSessionId: options.agentSessionId,
 				agentPlanId: options.agentPlanId,
 				agentExecutionId: options.agentExecutionId,
-					metadata: {
-						estimatedLength,
-						preferredModels,
-						attempts: modelsAttempted.length,
-						modelsAttempted,
-						lastFinishReason,
-						openrouterRequestId: lastResponse?.id,
-						openrouterProvider: lastResponse?.provider,
-						openrouterNativeFinishReason:
-							lastResponse?.choices?.[0]?.native_finish_reason ?? null,
-						openrouterResponseError: lastResponse?.error ?? null,
-						openrouterErrorDetails: openrouterErrorDetails ?? null,
-						emptyContentDetails: emptyContentDetails ?? null
-					}
-				}).catch((err) => console.error('Failed to log error:', err));
+				metadata: {
+					estimatedLength,
+					preferredModels,
+					attempts: modelsAttempted.length,
+					modelsAttempted,
+					lastFinishReason,
+					openrouterRequestId: lastResponse?.id,
+					openrouterProvider: lastResponse?.provider,
+					openrouterNativeFinishReason:
+						lastResponse?.choices?.[0]?.native_finish_reason ?? null,
+					openrouterResponseError: lastResponse?.error ?? null,
+					openrouterErrorDetails: openrouterErrorDetails ?? null,
+					emptyContentDetails: emptyContentDetails ?? null
+				}
+			}).catch((err) => console.error('Failed to log error:', err));
 
 			throw new Error('Failed to generate text');
 		}
@@ -1617,11 +1668,35 @@ export class SmartLLMService {
 		}
 
 		const messageContent = this.coerceContentToString(choice.message?.content);
-		if (messageContent !== null) {
+		if (messageContent !== null && messageContent.trim().length > 0) {
 			return messageContent;
 		}
 
-		return typeof choice.text === 'string' ? choice.text : null;
+		const choiceText = typeof choice.text === 'string' ? choice.text : null;
+		if (choiceText !== null) {
+			return choiceText;
+		}
+
+		return messageContent;
+	}
+
+	private pickEmergencyTextModel(
+		preferredModels: string[],
+		attemptedModels: Set<string>
+	): string | null {
+		for (const model of EMERGENCY_TEXT_FALLBACKS) {
+			if (!attemptedModels.has(model) && TEXT_MODELS[model]) {
+				return model;
+			}
+		}
+
+		for (const model of preferredModels) {
+			if (!attemptedModels.has(model)) {
+				return model;
+			}
+		}
+
+		return null;
 	}
 
 	private summarizeOpenRouterMessageContent(content: unknown): OpenRouterMessageContentSummary {
@@ -1721,7 +1796,9 @@ export class SmartLLMService {
 		const { operation, requestedModel, response, choice, extractedText } = params;
 		const actualModel = response.model || requestedModel;
 
-		const toolCalls = Array.isArray(choice.message?.tool_calls) ? choice.message.tool_calls : [];
+		const toolCalls = Array.isArray(choice.message?.tool_calls)
+			? choice.message.tool_calls
+			: [];
 		const toolCallNames = toolCalls
 			.map((call) => call?.function?.name)
 			.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
@@ -1734,7 +1811,10 @@ export class SmartLLMService {
 		let inferredCause: string = 'unknown';
 		if (toolCalls.length > 0) {
 			inferredCause = 'tool_calls_without_text';
-		} else if (contentSummary.contentType === 'null' || contentSummary.contentType === 'undefined') {
+		} else if (
+			contentSummary.contentType === 'null' ||
+			contentSummary.contentType === 'undefined'
+		) {
 			inferredCause = 'null_content';
 		} else if (
 			contentSummary.contentType === 'string' &&
@@ -1772,7 +1852,8 @@ export class SmartLLMService {
 						prompt_tokens: response.usage.prompt_tokens ?? null,
 						completion_tokens: response.usage.completion_tokens ?? null,
 						total_tokens: response.usage.total_tokens ?? null,
-						reasoning_tokens: response.usage.completion_tokens_details?.reasoning_tokens ?? null
+						reasoning_tokens:
+							response.usage.completion_tokens_details?.reasoning_tokens ?? null
 					}
 				: null,
 			openrouterError: response.error ?? null
@@ -1837,56 +1918,59 @@ export class SmartLLMService {
 				signal: AbortSignal.timeout(timeoutMs)
 			});
 
-				if (!response.ok) {
-					const errorText = await response.text();
-					let parsed: any = null;
-					try {
-						parsed = JSON.parse(errorText);
-					} catch {
-						parsed = null;
-					}
-
-					const errorObject = parsed?.error && typeof parsed.error === 'object' ? parsed.error : parsed;
-					const providerMessage =
-						typeof errorObject?.message === 'string'
-							? errorObject.message
-							: typeof errorText === 'string'
-								? errorText
-								: 'Unknown error';
-					const trimmedMessage =
-						providerMessage.length > 4000
-							? `${providerMessage.slice(0, 4000)}…`
-							: providerMessage;
-					const requestIdHeader =
-						response.headers.get('x-request-id') ||
-						response.headers.get('x-openrouter-request-id') ||
-						response.headers.get('openrouter-request-id');
-
-					const enrichedError = new Error(
-						`OpenRouter API error: ${response.status} - ${trimmedMessage}`
-					) as Error & {
-						status?: number;
-						openrouter?: Record<string, unknown>;
-					};
-					enrichedError.status = response.status;
-					enrichedError.openrouter = {
-						httpStatus: response.status,
-						requestId: requestIdHeader ?? null,
-						errorType: errorObject?.type ?? null,
-						errorCode: errorObject?.code ?? null,
-						errorParam: errorObject?.param ?? null
-					};
-					throw enrichedError;
+			if (!response.ok) {
+				const errorText = await response.text();
+				let parsed: any = null;
+				try {
+					parsed = JSON.parse(errorText);
+				} catch {
+					parsed = null;
 				}
 
-				const data = (await response.json()) as OpenRouterResponse;
-				if (data.error && typeof data.error.message === 'string' && data.error.message.trim()) {
-					const enrichedError = new Error(`OpenRouter API error: ${data.error.message}`) as Error & {
-						openrouter?: Record<string, unknown>;
-					};
-					enrichedError.openrouter = { error: data.error };
-					throw enrichedError;
-				}
+				const errorObject =
+					parsed?.error && typeof parsed.error === 'object' ? parsed.error : parsed;
+				const providerMessage =
+					typeof errorObject?.message === 'string'
+						? errorObject.message
+						: typeof errorText === 'string'
+							? errorText
+							: 'Unknown error';
+				const trimmedMessage =
+					providerMessage.length > 4000
+						? `${providerMessage.slice(0, 4000)}…`
+						: providerMessage;
+				const requestIdHeader =
+					response.headers.get('x-request-id') ||
+					response.headers.get('x-openrouter-request-id') ||
+					response.headers.get('openrouter-request-id');
+
+				const enrichedError = new Error(
+					`OpenRouter API error: ${response.status} - ${trimmedMessage}`
+				) as Error & {
+					status?: number;
+					openrouter?: Record<string, unknown>;
+				};
+				enrichedError.status = response.status;
+				enrichedError.openrouter = {
+					httpStatus: response.status,
+					requestId: requestIdHeader ?? null,
+					errorType: errorObject?.type ?? null,
+					errorCode: errorObject?.code ?? null,
+					errorParam: errorObject?.param ?? null
+				};
+				throw enrichedError;
+			}
+
+			const data = (await response.json()) as OpenRouterResponse;
+			if (data.error && typeof data.error.message === 'string' && data.error.message.trim()) {
+				const enrichedError = new Error(
+					`OpenRouter API error: ${data.error.message}`
+				) as Error & {
+					openrouter?: Record<string, unknown>;
+				};
+				enrichedError.openrouter = { error: data.error };
+				throw enrichedError;
+			}
 
 			// Log OpenRouter routing result with all available metadata
 			const cachedTokens = data.usage?.prompt_tokens_details?.cached_tokens || 0;
@@ -2596,32 +2680,32 @@ You must respond with valid JSON only. Follow these rules:
 					}
 				}
 			}
-			}
+		}
 
-			if (this.errorLogger) {
-				const emptyContentDetails =
-					lastError instanceof OpenRouterEmptyContentError ? lastError.details : undefined;
-				const openrouterErrorDetails =
-					(lastError as any)?.openrouter && typeof (lastError as any).openrouter === 'object'
-						? (lastError as any).openrouter
-						: undefined;
+		if (this.errorLogger) {
+			const emptyContentDetails =
+				lastError instanceof OpenRouterEmptyContentError ? lastError.details : undefined;
+			const openrouterErrorDetails =
+				(lastError as any)?.openrouter && typeof (lastError as any).openrouter === 'object'
+					? (lastError as any).openrouter
+					: undefined;
 
-				await this.errorLogger.logAPIError(
-					lastError || new Error('OpenRouter transcription failed'),
-					this.apiUrl,
-					'POST',
-					options.userId,
-					{
-						operation: 'transcribeAudio',
-						errorType: 'openrouter_transcription_failure',
-						modelsTried: models.join(', '),
-						timeoutMs,
-						requestStartedAt: requestStartedAt.toISOString(),
-						openrouterErrorDetails: openrouterErrorDetails ?? null,
-						emptyContentDetails: emptyContentDetails ?? null
-					}
-				);
-			}
+			await this.errorLogger.logAPIError(
+				lastError || new Error('OpenRouter transcription failed'),
+				this.apiUrl,
+				'POST',
+				options.userId,
+				{
+					operation: 'transcribeAudio',
+					errorType: 'openrouter_transcription_failure',
+					modelsTried: models.join(', '),
+					timeoutMs,
+					requestStartedAt: requestStartedAt.toISOString(),
+					openrouterErrorDetails: openrouterErrorDetails ?? null,
+					emptyContentDetails: emptyContentDetails ?? null
+				}
+			);
+		}
 
 		throw lastError || new Error('OpenRouter transcription failed');
 	}

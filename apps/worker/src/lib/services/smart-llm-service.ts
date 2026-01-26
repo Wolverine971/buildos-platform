@@ -38,6 +38,24 @@ export interface JSONRequestOptions<T> {
 		minAccuracy?: number;
 		maxCost?: number;
 	};
+	operationType?: string;
+	projectId?: string;
+	taskId?: string;
+	briefId?: string;
+	chatSessionId?: string;
+	agentSessionId?: string;
+	agentPlanId?: string;
+	agentExecutionId?: string;
+	metadata?: Record<string, unknown>;
+	onUsage?: (event: {
+		model: string;
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		inputCost: number;
+		outputCost: number;
+		totalCost: number;
+	}) => void | Promise<void>;
 }
 
 export interface TextGenerationOptions {
@@ -53,6 +71,24 @@ export interface TextGenerationOptions {
 		minQuality?: number;
 		maxCost?: number;
 	};
+	operationType?: string;
+	projectId?: string;
+	taskId?: string;
+	briefId?: string;
+	chatSessionId?: string;
+	agentSessionId?: string;
+	agentPlanId?: string;
+	agentExecutionId?: string;
+	metadata?: Record<string, unknown>;
+	onUsage?: (event: {
+		model: string;
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		inputCost: number;
+		outputCost: number;
+		totalCost: number;
+	}) => void | Promise<void>;
 }
 
 interface OpenRouterResponse {
@@ -602,6 +638,14 @@ export class SmartLLMService {
 			this.trackPerformance(actualModel, duration);
 			this.trackCost(actualModel, response.usage);
 
+			await this.emitUsageEvent({
+				options,
+				actualModel,
+				requestDurationMs: duration,
+				usage: response.usage,
+				modelRequested: preferredModels[0]
+			});
+
 			console.log(`JSON Response Success:
 				Model: ${actualModel}
 				Duration: ${duration.toFixed(0)}ms
@@ -666,6 +710,14 @@ export class SmartLLMService {
 			const duration = performance.now() - startTime;
 			this.trackPerformance(actualModel, duration);
 			this.trackCost(actualModel, response.usage);
+
+			await this.emitUsageEvent({
+				options,
+				actualModel,
+				requestDurationMs: duration,
+				usage: response.usage,
+				modelRequested: preferredModels[0]
+			});
 
 			console.log(`Text Generation Success:
 				Model: ${actualModel}
@@ -1050,6 +1102,144 @@ You must respond with valid JSON only. Follow these rules:
 		const totalCost = inputCost + outputCost;
 
 		return `$${totalCost.toFixed(6)}`;
+	}
+
+	private async emitUsageEvent(params: {
+		options: JSONRequestOptions<any> | TextGenerationOptions;
+		actualModel: string;
+		modelRequested: string;
+		requestDurationMs: number;
+		usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+	}): Promise<void> {
+		const { options, actualModel, modelRequested, requestDurationMs, usage } = params;
+		if (!usage) return;
+
+		const modelConfig = JSON_MODELS[actualModel] || TEXT_MODELS[actualModel];
+		const inputCost = modelConfig
+			? ((usage.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
+			: 0;
+		const outputCost = modelConfig
+			? ((usage.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
+			: 0;
+		const totalCost = inputCost + outputCost;
+
+		const usageEvent = {
+			model: actualModel,
+			promptTokens: usage.prompt_tokens || 0,
+			completionTokens: usage.completion_tokens || 0,
+			totalTokens: usage.total_tokens || 0,
+			inputCost,
+			outputCost,
+			totalCost
+		};
+
+		if (typeof options.onUsage === 'function') {
+			await options.onUsage(usageEvent);
+		}
+
+		await this.logUsageToDatabase({
+			userId: options.userId,
+			operationType: options.operationType ?? 'other',
+			modelRequested,
+			modelUsed: actualModel,
+			promptTokens: usage.prompt_tokens || 0,
+			completionTokens: usage.completion_tokens || 0,
+			totalTokens: usage.total_tokens || 0,
+			inputCost,
+			outputCost,
+			totalCost,
+			responseTimeMs: Math.round(requestDurationMs),
+			requestStartedAt: new Date(Date.now() - requestDurationMs),
+			requestCompletedAt: new Date(),
+			temperature: 'temperature' in options ? options.temperature : undefined,
+			maxTokens: 'maxTokens' in options ? options.maxTokens : undefined,
+			profile: options.profile,
+			streaming: 'streaming' in options ? options.streaming : undefined,
+			projectId: options.projectId,
+			briefId: options.briefId,
+			taskId: options.taskId,
+			chatSessionId: options.chatSessionId,
+			agentSessionId: options.agentSessionId,
+			agentPlanId: options.agentPlanId,
+			agentExecutionId: options.agentExecutionId,
+			metadata: options.metadata
+		});
+	}
+
+	private async logUsageToDatabase(params: {
+		userId: string;
+		operationType: string;
+		modelRequested: string;
+		modelUsed: string;
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		inputCost: number;
+		outputCost: number;
+		totalCost: number;
+		responseTimeMs: number;
+		requestStartedAt: Date;
+		requestCompletedAt: Date;
+		temperature?: number;
+		maxTokens?: number;
+		profile?: string;
+		streaming?: boolean;
+		projectId?: string;
+		taskId?: string;
+		briefId?: string;
+		chatSessionId?: string;
+		agentSessionId?: string;
+		agentPlanId?: string;
+		agentExecutionId?: string;
+		metadata?: Record<string, unknown>;
+	}): Promise<void> {
+		if (!this.supabase) return;
+		if (!this.isUUID(params.userId)) return;
+
+		const payload = {
+			user_id: params.userId,
+			operation_type: params.operationType ?? 'other',
+			model_requested: params.modelRequested,
+			model_used: params.modelUsed,
+			prompt_tokens: params.promptTokens,
+			completion_tokens: params.completionTokens,
+			total_tokens: params.totalTokens,
+			input_cost_usd: params.inputCost,
+			output_cost_usd: params.outputCost,
+			total_cost_usd: params.totalCost,
+			response_time_ms: params.responseTimeMs,
+			request_started_at: params.requestStartedAt.toISOString(),
+			request_completed_at: params.requestCompletedAt.toISOString(),
+			status: 'success',
+			temperature: params.temperature,
+			max_tokens: params.maxTokens,
+			profile: params.profile,
+			streaming: params.streaming,
+			project_id: this.isUUID(params.projectId) ? params.projectId : undefined,
+			task_id: this.isUUID(params.taskId) ? params.taskId : undefined,
+			brief_id: this.isUUID(params.briefId) ? params.briefId : undefined,
+			chat_session_id: this.isUUID(params.chatSessionId) ? params.chatSessionId : undefined,
+			agent_session_id: this.isUUID(params.agentSessionId)
+				? params.agentSessionId
+				: undefined,
+			agent_plan_id: this.isUUID(params.agentPlanId) ? params.agentPlanId : undefined,
+			agent_execution_id: this.isUUID(params.agentExecutionId)
+				? params.agentExecutionId
+				: undefined,
+			metadata: params.metadata ?? null
+		};
+
+		const { error } = await this.supabase.from('llm_usage_logs').insert(payload);
+		if (error) {
+			console.error('Failed to log LLM usage (worker):', error);
+		}
+	}
+
+	private isUUID(value?: string | null): boolean {
+		if (!value) return false;
+		return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+			value
+		);
 	}
 
 	// ============================================

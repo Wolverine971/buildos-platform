@@ -3035,6 +3035,211 @@ export type Database = {
         }
         Relationships: []
       }
+      homework_run_events: {
+        Row: {
+          created_at: string
+          event: Json
+          id: string
+          iteration: number
+          run_id: string
+          seq: number
+        }
+        Insert: {
+          created_at?: string
+          event: Json
+          id?: string
+          iteration: number
+          run_id: string
+          seq: number
+        }
+        Update: {
+          created_at?: string
+          event?: Json
+          id?: string
+          iteration?: number
+          run_id?: string
+          seq?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_run_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "homework_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_run_iterations: {
+        Row: {
+          artifacts: Json | null
+          branch_id: string | null
+          created_at: string
+          ended_at: string | null
+          error: string | null
+          error_fingerprint: string | null
+          id: string
+          iteration: number
+          metrics: Json
+          progress_delta: Json | null
+          run_id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["homework_iteration_status"]
+          summary: string | null
+        }
+        Insert: {
+          artifacts?: Json | null
+          branch_id?: string | null
+          created_at?: string
+          ended_at?: string | null
+          error?: string | null
+          error_fingerprint?: string | null
+          id?: string
+          iteration: number
+          metrics?: Json
+          progress_delta?: Json | null
+          run_id: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["homework_iteration_status"]
+          summary?: string | null
+        }
+        Update: {
+          artifacts?: Json | null
+          branch_id?: string | null
+          created_at?: string
+          ended_at?: string | null
+          error?: string | null
+          error_fingerprint?: string | null
+          id?: string
+          iteration?: number
+          metrics?: Json
+          progress_delta?: Json | null
+          run_id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["homework_iteration_status"]
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_run_iterations_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "homework_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      homework_runs: {
+        Row: {
+          budgets: Json
+          chat_session_id: string | null
+          completed_at: string | null
+          completion_criteria: Json | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          iteration: number
+          last_error_fingerprint: string | null
+          max_iterations: number | null
+          metrics: Json
+          objective: string
+          project_ids: string[] | null
+          report: Json | null
+          scope: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["homework_run_status"]
+          stop_reason: Json | null
+          updated_at: string
+          user_id: string
+          workspace_document_id: string | null
+          workspace_project_id: string | null
+        }
+        Insert: {
+          budgets?: Json
+          chat_session_id?: string | null
+          completed_at?: string | null
+          completion_criteria?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          iteration?: number
+          last_error_fingerprint?: string | null
+          max_iterations?: number | null
+          metrics?: Json
+          objective: string
+          project_ids?: string[] | null
+          report?: Json | null
+          scope?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["homework_run_status"]
+          stop_reason?: Json | null
+          updated_at?: string
+          user_id: string
+          workspace_document_id?: string | null
+          workspace_project_id?: string | null
+        }
+        Update: {
+          budgets?: Json
+          chat_session_id?: string | null
+          completed_at?: string | null
+          completion_criteria?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          iteration?: number
+          last_error_fingerprint?: string | null
+          max_iterations?: number | null
+          metrics?: Json
+          objective?: string
+          project_ids?: string[] | null
+          report?: Json | null
+          scope?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["homework_run_status"]
+          stop_reason?: Json | null
+          updated_at?: string
+          user_id?: string
+          workspace_document_id?: string | null
+          workspace_project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_runs_chat_session_id_fkey"
+            columns: ["chat_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "homework_runs_workspace_document_id_fkey"
+            columns: ["workspace_document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_runs_workspace_document_id_fkey"
+            columns: ["workspace_document_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["document_id"]
+          },
+          {
+            foreignKeyName: "homework_runs_workspace_project_id_fkey"
+            columns: ["workspace_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_due: number
@@ -9984,6 +10189,15 @@ export type Database = {
         | "archived"
       execution_status: "pending" | "executing" | "completed" | "failed"
       goal_state: "draft" | "active" | "achieved" | "abandoned"
+      homework_iteration_status: "success" | "failed" | "waiting_on_user"
+      homework_run_status:
+        | "queued"
+        | "running"
+        | "waiting_on_user"
+        | "completed"
+        | "stopped"
+        | "canceled"
+        | "failed"
       llm_operation_type:
         | "brain_dump"
         | "brain_dump_short"
@@ -10043,6 +10257,7 @@ export type Database = {
         | "classify_chat_session"
         | "process_onto_braindump"
         | "transcribe_voice_note"
+        | "buildos_homework"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -10220,6 +10435,16 @@ export const Constants = {
       ],
       execution_status: ["pending", "executing", "completed", "failed"],
       goal_state: ["draft", "active", "achieved", "abandoned"],
+      homework_iteration_status: ["success", "failed", "waiting_on_user"],
+      homework_run_status: [
+        "queued",
+        "running",
+        "waiting_on_user",
+        "completed",
+        "stopped",
+        "canceled",
+        "failed",
+      ],
       llm_operation_type: [
         "brain_dump",
         "brain_dump_short",
@@ -10283,6 +10508,7 @@ export const Constants = {
         "classify_chat_session",
         "process_onto_braindump",
         "transcribe_voice_note",
+        "buildos_homework",
       ],
       recurrence_end_reason: [
         "indefinite",

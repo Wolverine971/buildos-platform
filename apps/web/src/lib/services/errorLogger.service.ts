@@ -272,11 +272,11 @@ export class ErrorLoggerService {
 				record_id: context?.recordId,
 				operation_payload: context?.operationPayload,
 
-					metadata: {
-						...context?.metadata,
-						originalError: this.serializeErrorForStorage(error),
-						timestamp: new Date().toISOString()
-					},
+				metadata: {
+					...context?.metadata,
+					originalError: this.serializeErrorForStorage(error),
+					timestamp: new Date().toISOString()
+				},
 				environment: this.environment,
 				app_version: this.appVersion,
 				browser_info: browser ? this.getBrowserInfo() : context?.browserInfo

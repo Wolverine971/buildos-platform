@@ -26,6 +26,7 @@ This spec proposes an opt-in **server-side background flow** called **BuildOS Ho
 - Is **triggered via the existing worker/queue system** (Supabase `queue_jobs` + `apps/worker`), not via the chat SSE loop.
 - Sends a **completion notification** with a deep link to a **run report page**.
 - Tracks **duration**, **iteration count**, and **token + cost** for the run.
+- Maintains a **research workspace** (tree + scratchpad) that is visible while running and queryable later.
 
 ---
 
@@ -77,6 +78,7 @@ Executors already run their own “LLM → tools → results” loop:
 4. **Self-correction:** When an execution attempt fails, the system tries again with a revised approach, within safety limits.
 5. **Safety & control:** Provide cancellation, bounded budgets, and circuit breakers.
 6. **Observability:** Every iteration has traceable events + a “why we continued/stopped” explanation.
+7. **Research workspace:** Every run produces a structured, queryable tree of research docs plus a scratchpad.
 
 ### 2.2 Non-goals (for MVP)
 
@@ -211,7 +213,16 @@ Cons: web must be able to execute iterations reliably (hosting/timeouts); harder
 Pros: fastest if limited scope.
 Cons: duplication; diverges from agentic chat tooling.
 
-**Recommendation:** Option A for the durable end-state, Option B for a rapid MVP if your web runtime can safely execute 15–30s iterations.
+#### Option D — Worker-native Homework Engine (recommended)
+
+- Build a dedicated engine under `apps/worker/src/services/homework-engine/` with the same architecture as `AgentChatOrchestrator` (planner → tools → results → plan → executors), but **headless** and **worker-first**.
+- Reuse shared types + tool definitions, but avoid SvelteKit-only dependencies (`$env`, `$app/environment`) by injecting config and services.
+- Keep it separate from the web chat runtime; parity is architectural, not code-shared.
+
+Pros: clean worker integration; avoids web runtime timeouts; full control over budgets/loops.
+Cons: more engineering than Option B; needs careful parity tests.
+
+**Recommendation:** Option D as the durable end-state. Option B is acceptable only for a short MVP.
 
 ---
 
@@ -226,6 +237,8 @@ Create new tables (names illustrative):
 - `chat_session_id` (optional but recommended; used for LLM cost aggregation)
 - `user_id`
 - `objective` (string)
+- `scope` (`global | project | multi_project`)  // controls context + write targets
+- `project_ids` (uuid[], nullable)               // for project/multi-project runs
 - `status` (`queued | running | waiting_on_user | completed | stopped | canceled | failed`)
 - `iteration` (int)
 - `max_iterations` (int, nullable)
@@ -237,10 +250,13 @@ Create new tables (names illustrative):
 - `completion_criteria` (jsonb; optional)
 - `last_error_fingerprint` (string; for repeated-error breaker)
 - `report` (jsonb or text; final “what happened” narrative + created/updated entities)
+- `workspace_document_id` (uuid, nullable)       // root document for research tree
+- `workspace_project_id` (uuid, nullable)        // per-user workspace project (for global scope)
 
 #### `homework_run_iterations`
 - `run_id`
 - `iteration` (int)
+- `branch_id` (string, nullable)  // optional for parallel executor branches
 - `started_at`, `ended_at`
 - `summary` (text)
 - `status` (`success | failed | waiting_on_user`)
@@ -258,6 +274,61 @@ Create new tables (names illustrative):
 - `created_at`
 
 This enables replay on the run page and makes “Ralph persistence” real (analogous to `.claude/ralph-loop.local.md` + file system artifacts).
+
+### 4.3 Research Workspace (Tree + Scratchpad)
+
+Every Homework run should maintain a **workspace** of documents that:
+- are hierarchical (tree structure for rabbit holes),
+- are queryable (search, tags, path, run_id),
+- are visible while the run is active,
+- persist as part of the user’s knowledge base.
+
+**Recommendation: use `onto_documents` + graph edges** (no new table needed).
+
+Create a **root workspace document** for each run:
+- `type_key`: `document.homework.workspace`
+- `state_key`: `workspace`
+- `props.homework = { run_id, scope, created_by: "homework_engine" }`
+- `workspace_document_id` saved on `homework_runs`
+
+Create **child documents** for branches, notes, summaries, and scratchpad:
+- `type_key` examples:
+  - `document.homework.scratchpad`
+  - `document.homework.branch`
+  - `document.homework.note`
+  - `document.homework.summary`
+  - `document.homework.plan`
+- `props.homework = { run_id, iteration, branch_id, path, tags, source }`
+- `description` for short summary; `content` for markdown body
+
+Represent the tree using `onto_edges`:
+- `rel`: `document_has_document` (or `document_child_of`)
+- `src_id` = parent doc, `dst_id` = child doc
+
+**Path convention** (for query + UI):
+```
+/homework/<run_id>/
+  scratchpad.md
+  branches/
+    <branch_id>/
+      topic.md
+      findings.md
+  iterations/
+    001-summary.md
+    002-summary.md
+```
+
+**Global scope support:** `onto_documents.project_id` is required, so for global or multi-project runs:
+- Create or reuse a per-user **Homework Workspace Project**.
+- Store its `id` on `workspace_project_id` and attach workspace docs there.
+
+**Queryability requirements:**
+- Index `props->>'homework.run_id'` (btree) and `props->'homework'` (GIN).
+- Use existing `search_vector` for full-text search over content.
+
+**Scratchpad behavior:**
+- Append-only per iteration (bounded by size; roll over into new scratchpad docs if needed).
+- Planner reads scratchpad summary each iteration to avoid context bloat.
 
 ### 4.1.1 Run report contract (what the user reads)
 
@@ -350,15 +421,14 @@ This is faster to ship but weaker for observability and reconnect.
 
 In Ralph Loop, exit requires both heuristic completion + explicit signal. In BuildOS we can implement:
 
-**Gate A — Explicit signal** (preferred):
-- the model emits a structured status block `BUILDOS_LOOP_STATUS` with `exit_signal: true`, OR
-- the run controller marks completion based on plan status and requested outputs.
+**Gate A — Explicit signal** (required):
+- the model emits a structured status block `BUILDOS_HOMEWORK_STATUS` with `exit_signal: true`.
 
 **Gate B — Evidence of completion** (heuristic):
 - all run deliverables satisfied (e.g., plan status `completed`, required entities created/updated, user question answered)
 - no pending “next actions” recognized by the planner
 
-**Rule for safety:** require at least one explicit signal OR a deterministic artifact-based completion (like plan completed + verification checks).
+**Rule for safety:** require **explicit signal AND evidence**. The only exception is a deterministic artifact-based completion (e.g., plan completed + verification checks).
 
 ### 5.2 Proposed status contract
 
@@ -373,10 +443,11 @@ BUILDOS_HOMEWORK_STATUS:
   progress_summary: "..."
   remaining_work:
     - "..."
-  completion_indicators:
+  completion_evidence:
     - "plan_completed"
     - "no_pending_tasks"
   next_action_hint: "replan|execute|ask_user|stop"
+  confidence: "low|medium|high"
 ```
 
 The controller parses this and decides:
@@ -406,10 +477,19 @@ Two practical designs:
 
 At run start:
 - `max_iterations` (default 10–25)
-- `max_wall_clock_ms` (default 5–15 min per run)
+- `max_wall_clock_ms` (default **60 minutes** per run)
 - `max_total_tokens` or `max_cost_usd` (optional; depends on usage tracking)
 
-If any budget exceeded → stop with `status: stopped` + `stop_reason`.
+If any budget exceeded → finish the **current iteration** and then stop with `status: stopped` + `stop_reason`.
+
+**Wall-clock budget definition:**
+- Wall-clock is **elapsed RUNNING time**, not including `WAITING_ON_USER`.
+- Reason: if a run pauses for user input, it should not expire just because time passed while idle.
+- If you decide Homework should be "best-effort without waiting on user" by default, this only matters when a run truly blocks.
+
+**Default policy (per your direction):**
+- **60 minutes max per run**, then stop after the current iteration.
+- User must explicitly **Continue** to resume (creates a new job and increments `iteration`).
 
 ### 6.2 No-progress detection (soft → hard stop)
 
@@ -486,6 +566,11 @@ This is a product decision; the loop design must support at least two modes:
 Implementation hook:
 - `AgentRun.budgets/permissions` + prompt section that states the active permission mode clearly.
 
+**Tool policy update (per your direction):**
+- No tools are permanently disallowed.
+- The engine must enforce the **same access floor as the planner agent** (project membership, RLS, and scoped writes).
+- Every write is attributed to the run and linked to the research workspace for auditability.
+
 ---
 
 ## 9. UX, Notifications, and Deep Links
@@ -499,7 +584,9 @@ Homework should be a **separate flow** from agentic chat streaming:
   - status, progress, iteration history
   - what was created/updated
   - final report and artifacts
+  - **live cost + token usage** (continually updated)
   - total tokens + total cost + duration
+  - **research tree** (workspace documents + branches)
 
 Suggested route:
 - `apps/web/src/routes/homework/runs/[id]/+page.svelte`
@@ -521,9 +608,10 @@ In the agentic chat composer UI:
 
 Run detail page sections:
 - **Overview:** objective, status, started/ended, duration, iterations
-- **Costs:** tokens + cost (and optionally model breakdown)
+- **Costs (live):** tokens + cost (and optionally model breakdown), updated as usage logs arrive
 - **Timeline:** iteration list with summaries + errors + “why we continued”
 - **Outputs:** “Created” / “Updated” entity lists (clickable)
+- **Research Tree:** expandable tree of workspace documents (scratchpad, branches, summaries)
 - **Final report:** the narrative summary + stopping reason
 - **Controls:** cancel (if queued/running), resume (if waiting_on_user/stopped), “ask follow-up” (creates a new chat message referencing the run)
 
@@ -531,6 +619,17 @@ Deep links in “Outputs”:
 - Tasks: `/projects/{project_id}/tasks/{task_id}` (if project_id known)
 - Projects: `/projects/{project_id}`
 - Otherwise: link to the best available entity page (or fallback to project page with highlight params).
+
+#### 9.1.3 Live status + modal view
+
+While a run is active:
+- Show a persistent **"Homework running"** indicator.
+- Clicking opens a **modal** with:
+  - current iteration status
+  - most recent events/logs
+  - current branch being explored
+  - a live view of the scratchpad + latest notes
+  - **current cost + tokens** (live)
 
 ### 9.2 Events (still useful, but persisted)
 
@@ -570,6 +669,14 @@ Recommended correlation strategy:
 - Create a dedicated `chat_session_id` per HomeworkRun.
 - Ensure all LLM calls made by the worker set `chat_session_id` (so you can aggregate from `llm_usage_logs`).
 - The worker updates `homework_runs.metrics` by summing new usage logs (or by accumulating locally using OpenRouter usage + pricing).
+
+**Live cost updates:**
+- After each LLM call, update:
+  - `homework_runs.metrics.tokens_total`
+  - `homework_runs.metrics.cost_total_usd`
+  - `homework_runs.metrics.by_model` (optional)
+- Emit `iteration_cost_update` events to `homework_run_events` for realtime UI.
+- UI should subscribe to `homework_runs` + `homework_run_events` and refresh cost counters without page reload.
 
 ### 9.5 Progress viewing (optional but nice)
 
@@ -620,7 +727,8 @@ Accepts user answers and enqueues the next iteration.
 ### Phase 0 — Spec alignment (1–2 days)
 - Decide permission model: `human_in_the_loop` vs `autopilot`
 - Decide persistence: new tables vs chat_sessions metadata
-- Define completion criteria contract (`BUILDOS_LOOP_STATUS` vs artifact-based)
+- Define completion criteria contract (`BUILDOS_HOMEWORK_STATUS`)
+- Confirm research workspace model (onto_documents + edges + props)
 
 ### Phase 1 — MVP Homework Runs (server-side worker) (3–7 days)
 - Add `queue_type` enum value: `buildos_homework`
@@ -633,6 +741,10 @@ Accepts user answers and enqueues the next iteration.
   - add processor `apps/worker/src/workers/homework/homeworkWorker.ts`
   - register it in `apps/worker/src/worker.ts`
   - implement one-iteration-per-job loop with dedup
+- Workspace:
+  - create `workspace_document_id` root
+  - write scratchpad + branch docs to `onto_documents`
+  - link docs with `onto_edges`
 - Notifications:
   - create `user_notifications` entry on completion/failure
 - Metrics:
@@ -667,30 +779,51 @@ Accepts user answers and enqueues the next iteration.
 5. **No autonomous repair** (plan/tool failures generally stop the run).
 6. **No durable iteration log** for reconnect/debugging (optional but important).
 7. **Permission model ambiguity**: prompt says “confirm writes”, but Ralph-like flow wants autonomy.
+8. **Parallel runs:** no explicit guidance for concurrent run scheduling and UI.
 
 ---
 
-## 12. Open Questions (Need Your Decisions)
+## 12. Decisions (Captured)
+
+1. **Completion promise:** not required; the loop should continue until done using `BUILDOS_HOMEWORK_STATUS` + evidence.
+2. **Write permissions:** default to **autopilot** with full write capability within the run scope; no permanently disallowed tools.
+3. **Runtime budget:** default **60 minutes**, stop after current iteration; user must explicitly continue.
+
+## 13. Open Questions (Remaining)
 
 1. **Product naming:** in the UI do you want “Homework” or “Long-Running Task” (or both with one as subtitle)?
-2. **Write permissions (Homework-specific):** when a user starts homework, should writes be:
-   - auto-approved for this run (scoped autopilot), OR
-   - “approve plan then run”, OR
-   - still prompt per-write (likely too slow for homework)?
-3. **Scope:** does a homework run always target a project (`project_id`) or can it be global?
-4. **Completion criteria:** canonical “done” signal:
-   - plan completed,
-   - `BUILDOS_HOMEWORK_STATUS.exit_signal`,
-   - deliverables check,
-   - or a “completion promise” phrase the user supplies?
-5. **Notification channels:** in-app only for MVP, or also push/email if enabled?
-6. **Token/cost visibility:** should costs be visible to:
+2. **Scope default:** should new runs default to `global`, `project`, or prompt the user?
+3. **Workspace placement:** should Homework workspace docs appear in the main project document list, or live in a dedicated per-user “Homework Workspace” project by default?
+4. **Notification channels:** in-app only for MVP, or also push/email if enabled?
+5. **Token/cost visibility:** should costs be visible to:
    - admins only,
    - the user who ran it,
    - or both?
-7. **WAITING_ON_USER:** if homework needs clarification, do we:
+6. **WAITING_ON_USER behavior:** if the run needs clarification, do we:
    - send a notification with questions and pause, OR
    - attempt “best-effort” and keep going?
+7. **Parallelism policy:** limit concurrent runs per user? default 3? queue beyond limit?
+
+---
+
+## 14. Parallel Homework Runs (Multi-Run Support)
+
+**Requirement:** A user can run multiple Homework runs in parallel (e.g., 3 concurrent runs).
+
+**Design considerations:**
+- **Queue model:** jobs are independent by `run_id`; dedup keys remain per run+iteration.
+- **Worker fairness:** avoid starvation by letting queue process a mix of run_ids.
+- **UI:** show a “Running” badge per run in the run list + allow multiple active modals.
+
+**Suggested limits (configurable):**
+- `max_concurrent_runs_per_user` (default 3)
+- Behavior when exceeded:
+  - Option A: queue new runs as `queued` until a slot frees
+  - Option B: allow but **reduce tool budgets per run** to protect cost
+
+**Tracking:**
+- Add a query that counts active runs per user (`status in queued|running|waiting_on_user`).
+- Enforce concurrency in `POST /api/homework/runs` (soft or hard limit).
 
 ---
 

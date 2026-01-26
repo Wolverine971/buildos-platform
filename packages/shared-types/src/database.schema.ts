@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-01-26T00:03:47.031Z
+// Generated on: 2026-01-26T05:40:11.025Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -733,6 +733,54 @@ export type DatabaseSchema = {
 		is_blocked: boolean | null;
 		last_submission: string | null;
 		submission_count: number | null;
+	};
+	homework_run_events: {
+		created_at: string;
+		event: Json;
+		id: string;
+		iteration: number;
+		run_id: string;
+		seq: number;
+	};
+	homework_run_iterations: {
+		artifacts: Json | null;
+		branch_id: string | null;
+		created_at: string;
+		ended_at: string | null;
+		error: string | null;
+		error_fingerprint: string | null;
+		id: string;
+		iteration: number;
+		metrics: Json;
+		progress_delta: Json | null;
+		run_id: string;
+		started_at: string | null;
+		status: string;
+		summary: string | null;
+	};
+	homework_runs: {
+		budgets: Json;
+		chat_session_id: string | null;
+		completed_at: string | null;
+		completion_criteria: Json | null;
+		created_at: string;
+		duration_ms: number | null;
+		id: string;
+		iteration: number;
+		last_error_fingerprint: string | null;
+		max_iterations: number | null;
+		metrics: Json;
+		objective: string;
+		project_ids: string[] | null;
+		report: Json | null;
+		scope: string;
+		started_at: string | null;
+		status: string;
+		stop_reason: Json | null;
+		updated_at: string;
+		user_id: string;
+		workspace_document_id: string | null;
+		workspace_project_id: string | null;
 	};
 	invoices: {
 		amount_due: number;
@@ -2227,6 +2275,9 @@ export const tableNames = [
 	'feature_flags',
 	'feedback',
 	'feedback_rate_limit',
+	'homework_run_events',
+	'homework_run_iterations',
+	'homework_runs',
 	'invoices',
 	'legacy_entity_mappings',
 	'llm_prompts',
