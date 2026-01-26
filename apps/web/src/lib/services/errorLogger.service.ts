@@ -83,6 +83,88 @@ export class ErrorLoggerService {
 		return { message: String(error) };
 	}
 
+	private safeJsonValue(
+		value: unknown,
+		depth: number,
+		seen: WeakSet<object> = new WeakSet()
+	): unknown {
+		if (depth < 0) return '[Truncated]';
+		if (value === null || value === undefined) return value;
+
+		const valueType = typeof value;
+		if (valueType === 'string' || valueType === 'number' || valueType === 'boolean') {
+			return value;
+		}
+		if (valueType === 'bigint') {
+			return value.toString();
+		}
+		if (valueType === 'symbol') {
+			return value.toString();
+		}
+		if (valueType === 'function') {
+			return `[Function ${(value as Function).name || 'anonymous'}]`;
+		}
+
+		if (value instanceof Date) {
+			return value.toISOString();
+		}
+
+		if (value instanceof Error) {
+			const errObj = value as unknown as object;
+			if (seen.has(errObj)) return '[Circular]';
+			seen.add(errObj);
+
+			const serialized: Record<string, unknown> = {
+				name: value.name,
+				message: value.message,
+				stack: value.stack
+			};
+
+			const cause = (value as any).cause;
+			if (cause !== undefined) {
+				serialized.cause = this.safeJsonValue(cause, depth - 1, seen);
+			}
+
+			for (const [key, nested] of Object.entries(value as any)) {
+				if (key in serialized) continue;
+				serialized[key] = this.safeJsonValue(nested, depth - 1, seen);
+			}
+
+			return serialized;
+		}
+
+		if (valueType !== 'object') {
+			return String(value);
+		}
+
+		const obj = value as object;
+		if (seen.has(obj)) return '[Circular]';
+		seen.add(obj);
+
+		if (Array.isArray(value)) {
+			const limited = value.slice(0, 50);
+			return limited.map((item) => this.safeJsonValue(item, depth - 1, seen));
+		}
+
+		const entries = Object.entries(value as Record<string, unknown>).slice(0, 50);
+		const result: Record<string, unknown> = {};
+		for (const [key, nested] of entries) {
+			result[key] = this.safeJsonValue(nested, depth - 1, seen);
+		}
+		return result;
+	}
+
+	private serializeErrorForStorage(error: unknown): unknown {
+		try {
+			return this.safeJsonValue(error, 3);
+		} catch (serializationError) {
+			return {
+				message: 'Failed to serialize error',
+				serializationError: String(serializationError)
+			};
+		}
+	}
+
 	private determineErrorType(error: any, context?: ErrorContext): ErrorType {
 		const errorMessage = typeof error === 'string' ? error : error?.message || '';
 		const errorCode = error?.code || '';
@@ -190,11 +272,11 @@ export class ErrorLoggerService {
 				record_id: context?.recordId,
 				operation_payload: context?.operationPayload,
 
-				metadata: {
-					...context?.metadata,
-					originalError: error,
-					timestamp: new Date().toISOString()
-				},
+					metadata: {
+						...context?.metadata,
+						originalError: this.serializeErrorForStorage(error),
+						timestamp: new Date().toISOString()
+					},
 				environment: this.environment,
 				app_version: this.appVersion,
 				browser_info: browser ? this.getBrowserInfo() : context?.browserInfo
