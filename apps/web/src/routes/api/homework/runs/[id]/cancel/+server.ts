@@ -46,5 +46,15 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession } 
 		p_metadata_filter: { run_id: runId }
 	});
 
+	// Notify user about cancellation
+	await admin.from('user_notifications').insert({
+		user_id: user.id,
+		title: 'Homework canceled',
+		message: 'Your homework run was canceled.',
+		type: 'homework',
+		action_url: `/homework/runs/${runId}`,
+		data: { run_id: runId, status: 'canceled' }
+	});
+
 	return ApiResponse.success({ run_id: runId, status: 'canceled' }, 'Run canceled');
 };

@@ -3235,7 +3235,7 @@ export type Database = {
             foreignKeyName: "homework_runs_workspace_project_id_fkey"
             columns: ["workspace_project_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "onto_projects"
             referencedColumns: ["id"]
           },
         ]

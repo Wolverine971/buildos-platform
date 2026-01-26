@@ -1,6 +1,6 @@
 // apps/worker/src/lib/services/smart-llm-service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 
 // ============================================
 // TYPE DEFINITIONS
@@ -1196,7 +1196,7 @@ You must respond with valid JSON only. Follow these rules:
 		if (!this.supabase) return;
 		if (!this.isUUID(params.userId)) return;
 
-		const payload = {
+		const payload: Database['public']['Tables']['llm_usage_logs']['Insert'] = {
 			user_id: params.userId,
 			operation_type: params.operationType ?? 'other',
 			model_requested: params.modelRequested,
@@ -1226,7 +1226,7 @@ You must respond with valid JSON only. Follow these rules:
 			agent_execution_id: this.isUUID(params.agentExecutionId)
 				? params.agentExecutionId
 				: undefined,
-			metadata: params.metadata ?? null
+			metadata: params.metadata ? (params.metadata as Json) : null
 		};
 
 		const { error } = await this.supabase.from('llm_usage_logs').insert(payload);

@@ -669,7 +669,9 @@ const TOOL_CALLING_MODEL_SET = new Set<string>(TOOL_CALLING_MODEL_ORDER);
 
 const EMPTY_CONTENT_RETRY_INSTRUCTION =
 	'Return only the final answer. Do not include analysis or reasoning.';
-const EMPTY_CONTENT_RETRY_MIN_TOKENS = 800;
+const EMPTY_CONTENT_RETRY_MIN_TOKENS = 1200;
+const EMPTY_CONTENT_RETRY_BUFFER_TOKENS = 256;
+const EMPTY_CONTENT_RETRY_MAX_TOKENS = 2048;
 const EMERGENCY_TEXT_FALLBACKS = [
 	'openai/gpt-4o-mini',
 	'anthropic/claude-haiku-4.5',
@@ -1292,10 +1294,8 @@ export class SmartLLMService {
 		const estimatedLength = this.estimateResponseLength(options.prompt);
 
 		// Select models based on profile and requirements
-		const preferredModels = this.selectTextModels(
-			profile,
-			estimatedLength,
-			options.requirements
+		const preferredModels = this.ensureMinimumTextModels(
+			this.selectTextModels(profile, estimatedLength, options.requirements)
 		);
 
 		// Make the OpenRouter API call with model routing
@@ -1470,8 +1470,22 @@ export class SmartLLMService {
 
 					if (error instanceof OpenRouterEmptyContentError) {
 						forceFinalAnswerOnly = true;
-						if (maxTokensOverride < EMPTY_CONTENT_RETRY_MIN_TOKENS) {
-							maxTokensOverride = EMPTY_CONTENT_RETRY_MIN_TOKENS;
+						const reasoningTokens =
+							typeof emptyContentDetails?.usage?.reasoning_tokens === 'number'
+								? emptyContentDetails.usage.reasoning_tokens
+								: null;
+						const targetMaxTokens =
+							reasoningTokens && reasoningTokens > 0
+								? Math.min(
+										Math.max(
+											reasoningTokens + EMPTY_CONTENT_RETRY_BUFFER_TOKENS,
+											EMPTY_CONTENT_RETRY_MIN_TOKENS
+										),
+										EMPTY_CONTENT_RETRY_MAX_TOKENS
+									)
+								: EMPTY_CONTENT_RETRY_MIN_TOKENS;
+						if (maxTokensOverride < targetMaxTokens) {
+							maxTokensOverride = targetMaxTokens;
 						}
 						if (!overrideModel || attemptedModels.has(overrideModel)) {
 							overrideModel = this.pickEmergencyTextModel(
@@ -1697,6 +1711,19 @@ export class SmartLLMService {
 		}
 
 		return null;
+	}
+
+	private ensureMinimumTextModels(models: string[], minModels = 3): string[] {
+		const result = [...models];
+
+		for (const fallback of EMERGENCY_TEXT_FALLBACKS) {
+			if (result.length >= minModels) break;
+			if (!result.includes(fallback)) {
+				result.push(fallback);
+			}
+		}
+
+		return result;
 	}
 
 	private summarizeOpenRouterMessageContent(content: unknown): OpenRouterMessageContentSummary {

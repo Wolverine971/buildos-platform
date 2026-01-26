@@ -79,20 +79,26 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 
 	const contextType = typeof payload.context_type === 'string' ? payload.context_type : 'global';
 	const entityId = typeof payload.entity_id === 'string' ? payload.entity_id : undefined;
-	const scope =
-		typeof payload.scope === 'string'
-			? payload.scope
-			: entityId
-				? 'project'
-				: Array.isArray(payload.project_ids) && payload.project_ids.length > 1
-					? 'multi_project'
-					: 'global';
-
+	const rawScope = typeof payload.scope === 'string' ? payload.scope : 'global';
 	const projectIds = Array.isArray(payload.project_ids)
-		? payload.project_ids
+		? payload.project_ids.filter((p: unknown) => typeof p === 'string')
 		: entityId
 			? [entityId]
-			: null;
+			: [];
+
+	let scope: string = rawScope;
+	if (rawScope === 'project' && projectIds.length === 0) {
+		return ApiResponse.badRequest('Project scope requires a project_id');
+	}
+	if (rawScope === 'multi_project' && projectIds.length < 2) {
+		return ApiResponse.badRequest('Multiple Projects scope requires at least two project_ids');
+	}
+	if (rawScope === 'global' && entityId) {
+		scope = 'project';
+	}
+	if (rawScope === 'multi_project' && projectIds.length === 1) {
+		scope = 'project';
+	}
 
 	const budgets = normalizeBudgets(payload.budgets);
 	const permissions =
@@ -157,7 +163,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		budgets,
 		metrics: { tokens_total: 0, cost_total_usd: 0 },
 		scope,
-		project_ids: projectIds,
+		project_ids: projectIds.length ? projectIds : null,
 		chat_session_id: chatSession?.id ?? null
 	};
 

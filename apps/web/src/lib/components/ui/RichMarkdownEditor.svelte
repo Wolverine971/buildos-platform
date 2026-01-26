@@ -244,7 +244,7 @@
 			hasAttemptedVoice,
 			voiceError: _voiceError,
 			microphonePermissionGranted,
-			disabled,
+			disabled: disabled ?? false,
 			mode,
 			voiceBlockedLabel
 		})
@@ -280,7 +280,7 @@
 	// ============================================
 	// Text Manipulation Functions
 	// ============================================
-	function handleInput(event: Event) {
+	function handleInput(event: Event & { currentTarget: EventTarget & HTMLTextAreaElement }) {
 		if (disabled) return;
 		const nextValue = (event.target as HTMLTextAreaElement).value;
 		if (maxLength && nextValue.length > maxLength) {
@@ -288,7 +288,7 @@
 		} else {
 			value = nextValue;
 		}
-		oninput?.(event as InputEvent);
+		oninput?.(event as InputEvent & { currentTarget: EventTarget & HTMLTextAreaElement });
 	}
 
 	function setValue(next: string) {

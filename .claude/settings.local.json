@@ -68,7 +68,11 @@
       "Bash(claude help:*)",
       "Bash(claude skill list:*)",
       "Bash(wc:*)",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(git log:*)",
+      "Bash(pnpm svelte-check:*)",
+      "Bash(pnpm exec eslint:*)",
+      "Bash(pnpm tsc:*)"
     ],
     "deny": [],
     "ask": []

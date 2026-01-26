@@ -789,7 +789,113 @@ Accepts user answers and enqueues the next iteration.
 2. **Write permissions:** default to **autopilot** with full write capability within the run scope; no permanently disallowed tools.
 3. **Runtime budget:** default **60 minutes**, stop after current iteration; user must explicitly continue.
 
-## 13. Open Questions (Remaining)
+---
+
+## 13. Implementation Status (2026-01-26)
+
+This section documents the concrete implementation that now exists in the repo so another agent can audit it against the intent.
+
+### 13.1 Core intent (from you)
+
+- **Run-until-done loop** in a worker, not tied to UI sessions.
+- **Budget behavior:** default **1 hour**, finish current iteration then stop. User must click **Continue** to resume.
+- **Costs tracked live** and visible in the UI while running.
+- **Parallel runs** supported; user can run ~3 homework sessions at once.
+- **Research workspace** with nested documents, scratchpad, and live visibility.
+- **Planner/executor model** with fan‑out and tool execution, looped until completion.
+- **Full write capability** within scope (no permanently disallowed tools), but observable in UI.
+
+### 13.2 DB schema + migrations
+
+- **Migration**: `supabase/migrations/20260126_120000_homework_runs.sql` adds:
+  - `homework_runs`, `homework_run_iterations`, `homework_run_events`
+  - enums `homework_run_status`, `homework_iteration_status`
+  - RLS policies and indexes
+  - queue type `buildos_homework`
+- **FK fix**: `supabase/migrations/20260126_130000_fix_homework_workspace_project_fk.sql`
+  - `homework_runs.workspace_project_id` now references `onto_projects(id)` (not `projects`).
+
+### 13.3 Worker loop + engine
+
+**Queue processor**
+- `apps/worker/src/worker.ts` registers `buildos_homework`.
+- `apps/worker/src/workers/homework/homeworkWorker.ts`:
+  - One iteration per job.
+  - Updates run status, creates iteration rows, emits events.
+  - Stop logic:
+    - `waiting_on_user` when planner requests input.
+    - `completed` only if `exit_signal` **and** evidence exists.
+    - `stopped` on wall‑clock, max iterations, **max cost**, or **max tokens**.
+  - Records `iteration_cost_update` events and increments totals.
+  - Synthesizes a **run report** on completion/stopped.
+  - Sends **user notifications** on completion/stopped.
+
+**Homework engine**
+- `apps/worker/src/workers/homework/engine/homeworkEngine.ts`:
+  - Ensures `onto_actor`, **workspace project**, **workspace root doc**, and **scratchpad**.
+  - Planner prompt returns JSON: status + tool_calls + executor_tasks.
+  - Executor fan‑out: runs each task with its own tool_calls.
+  - Tool calls are executed directly via Supabase with a **bounded list** (docs + tasks).
+  - Tool outputs + iteration summary are appended to scratchpad.
+  - Tools auto‑tag `props.homework_run_id` and newly created docs are **linked** into the workspace tree.
+
+### 13.4 Cost + usage tracking
+
+- `apps/worker/src/lib/services/smart-llm-service.ts`
+  - Emits usage events for every LLM call.
+  - Writes to `llm_usage_logs`.
+  - Homework worker increments `homework_runs.metrics`:
+    - `tokens_total`, `cost_total_usd`, `by_model`.
+
+### 13.5 API endpoints
+
+- `POST /api/homework/runs`
+  - Creates run + chat session.
+  - Enforces **max 3 concurrent runs** per user.
+  - Queues iteration 1.
+- `GET /api/homework/runs/[id]`
+  - Returns run, iterations, events.
+  - `include_workspace=true` returns workspace docs, edges, scratchpad.
+- `POST /api/homework/runs/[id]/respond`
+  - Adds user response event.
+  - Queues next iteration and resumes run.
+- `POST /api/homework/runs/[id]/cancel`
+  - Cancels the run.
+
+### 13.6 UI / visibility
+
+- `apps/web/src/routes/homework/+page.svelte`:
+  - Lists runs and current status.
+- `apps/web/src/routes/homework/runs/[id]/+page.svelte`:
+  - Live **cost** + **tokens** display.
+  - **Workspace tree** (recursive).
+  - **Live View modal** showing scratchpad + recent events.
+  - **Continue** button if stopped.
+  - **Run report** section once synthesized.
+
+### 13.7 Known constraints (MVP tradeoffs)
+
+- Toolset is currently limited to ontology **projects/documents/tasks**.
+- Planner/executor live in worker‑only engine (not yet shared with web agentic system).
+- Heuristics for completion are still bounded (exit_signal + evidence).
+- No automated retry/repair strategies beyond planner iteration.
+
+### 13.8 2026-01-26 Updates (codex)
+
+- **Access control:** Worker tool calls are now scoped to the user’s accessible projects; unauthorized project ids are rejected.
+- **Wait-on-user loop:** Runs can pause, collect user answers from the UI, and resume; answers are injected into the next planner prompt.
+- **Budgets/time:** Wall‑clock budget counts running time only; waiting time no longer burns the budget. `running_ms` metric stored.
+- **Iteration durability:** Iteration rows are upserted to survive retries; per-iteration metrics store deltas.
+- **No-progress breaker:** Stops after 3 no‑progress iterations; stop reasons persisted.
+- **Repair loop:** Failed tool calls get an automatic arg-repair pass (LLM) before stopping; artifacts merged.
+- **Workspace:** Workspace bootstrap is idempotent; scratchpad always linked; unparented docs created are auto-linked to the workspace when possible.
+- **Notifications:** Users are notified on completed, stopped, failed, and canceled states.
+- **UI:** Homework list now has a “Start Homework” composer; run page shows waiting-on-user answer box and continue action.
+- **Indexes:** Added btree + GIN indexes on `onto_documents/edges` homework props for workspace discoverability.
+
+---
+
+## 14. Open Questions (Remaining)
 
 1. **Product naming:** in the UI do you want “Homework” or “Long-Running Task” (or both with one as subtitle)?
 2. **Scope default:** should new runs default to `global`, `project`, or prompt the user?
@@ -806,7 +912,7 @@ Accepts user answers and enqueues the next iteration.
 
 ---
 
-## 14. Parallel Homework Runs (Multi-Run Support)
+## 15. Parallel Homework Runs (Multi-Run Support)
 
 **Requirement:** A user can run multiple Homework runs in parallel (e.g., 3 concurrent runs).
 
