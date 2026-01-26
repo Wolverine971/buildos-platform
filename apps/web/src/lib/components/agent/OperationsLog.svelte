@@ -67,7 +67,7 @@
 		completed: 'text-green-600 dark:text-green-400',
 		failed: 'text-red-600 dark:text-red-400',
 		partial: 'text-yellow-600 dark:text-yellow-400',
-		pending: 'text-gray-500 dark:text-gray-400',
+		pending: 'text-muted-foreground',
 		queued: 'text-blue-500 dark:text-blue-400',
 		executing: 'text-blue-600 dark:text-blue-400',
 		rolled_back: 'text-orange-600 dark:text-orange-400'
@@ -150,30 +150,25 @@
 	});
 </script>
 
-<div class="h-full overflow-y-auto">
+<div class="h-full overflow-y-auto tx tx-frame tx-weak">
 	{#if operations.length === 0}
 		<div class="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-			<Database class="h-12 w-12 text-slate-300 dark:text-slate-600" />
-			<p class="text-sm text-slate-500 dark:text-slate-400">No operations executed yet</p>
-			<p class="text-xs text-slate-400 dark:text-slate-500">
-				Operations will appear here after approval
-			</p>
+			<Database class="h-12 w-12 text-muted-foreground" />
+			<p class="text-sm text-muted-foreground">No operations executed yet</p>
+			<p class="text-xs text-muted-foreground">Operations will appear here after approval</p>
 		</div>
 	{:else}
 		<!-- Summary Stats -->
-		<div
-			class="flex gap-4 border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-800"
-		>
+		<div class="flex gap-3 border-b border-border bg-muted p-3">
 			<div class="flex flex-col items-center">
-				<span
-					class="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400"
+				<span class="text-xs font-medium uppercase tracking-[0.15em] text-muted-foreground"
 					>Total</span
 				>
-				<span class="text-xl font-bold text-slate-900 dark:text-white">{stats.total}</span>
+				<span class="text-xl font-bold text-foreground">{stats.total}</span>
 			</div>
 			<div class="flex flex-col items-center">
 				<span
-					class="text-xs font-medium uppercase tracking-wide text-green-600 dark:text-green-400"
+					class="text-xs font-medium uppercase tracking-[0.15em] text-green-600 dark:text-green-400"
 					>Completed</span
 				>
 				<span class="text-xl font-bold text-green-600 dark:text-green-400"
@@ -183,7 +178,7 @@
 			{#if stats.failed > 0}
 				<div class="flex flex-col items-center">
 					<span
-						class="text-xs font-medium uppercase tracking-wide text-red-600 dark:text-red-400"
+						class="text-xs font-medium uppercase tracking-[0.15em] text-red-600 dark:text-red-400"
 						>Failed</span
 					>
 					<span class="text-xl font-bold text-red-600 dark:text-red-400"
@@ -194,7 +189,7 @@
 			{#if stats.partial > 0}
 				<div class="flex flex-col items-center">
 					<span
-						class="text-xs font-medium uppercase tracking-wide text-amber-600 dark:text-amber-400"
+						class="text-xs font-medium uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
 						>Partial</span
 					>
 					<span class="text-xl font-bold text-amber-600 dark:text-amber-400"
@@ -217,7 +212,7 @@
 					]}"
 				>
 					<button
-						class="flex w-full items-center justify-between bg-transparent p-3 text-left transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-800/50"
+						class="flex w-full items-center justify-between bg-transparent p-3 text-left transition-colors pressable hover:bg-muted"
 						onclick={() => toggleOperation(operation.id)}
 						aria-label={isExpanded
 							? `Collapse ${getOperationTitle(operation)}`
@@ -226,25 +221,17 @@
 						<div class="flex min-w-0 items-center gap-2">
 							<span class="flex-shrink-0">
 								{#if isExpanded}
-									<ChevronDown
-										class="h-4 w-4 text-slate-600 dark:text-slate-400"
-									/>
+									<ChevronDown class="h-4 w-4 text-muted-foreground" />
 								{:else}
-									<ChevronRight
-										class="h-4 w-4 text-slate-600 dark:text-slate-400"
-									/>
+									<ChevronRight class="h-4 w-4 text-muted-foreground" />
 								{/if}
 							</span>
 							<Icon class="h-4 w-4 flex-shrink-0" />
 							<div class="flex min-w-0 flex-col">
-								<span
-									class="truncate text-sm font-semibold text-slate-900 dark:text-white"
-								>
+								<span class="truncate text-sm font-semibold text-foreground">
 									{getOperationTitle(operation)}
 								</span>
-								<span
-									class="truncate text-xs text-slate-600 opacity-70 dark:text-slate-400"
-								>
+								<span class="truncate text-xs text-muted-foreground">
 									{getOperationDescription(operation)}
 								</span>
 							</div>
@@ -265,28 +252,20 @@
 					</button>
 
 					{#if isExpanded}
-						<div
-							class="border-t border-slate-200/40 bg-slate-50/50 p-3 dark:border-slate-700/40 dark:bg-slate-800/30"
-						>
+						<div class="border-t border-border bg-muted p-3">
 							<!-- Timing Info -->
 							{#if operation.executed_at}
 								<div class="mb-2 flex gap-2 text-sm">
-									<span
-										class="font-medium text-slate-600 opacity-70 dark:text-slate-400"
-										>Executed:</span
-									>
-									<span class="text-slate-900 dark:text-white"
+									<span class="font-medium text-muted-foreground">Executed:</span>
+									<span class="text-foreground"
 										>{formatDate(operation.executed_at)}</span
 									>
 								</div>
 							{/if}
 							{#if operation.duration_ms}
 								<div class="mb-2 flex gap-2 text-sm">
-									<span
-										class="font-medium text-slate-600 opacity-70 dark:text-slate-400"
-										>Duration:</span
-									>
-									<span class="text-slate-900 dark:text-white"
+									<span class="font-medium text-muted-foreground">Duration:</span>
+									<span class="text-foreground"
 										>{formatDuration(operation.duration_ms)}</span
 									>
 								</div>
@@ -295,22 +274,17 @@
 							<!-- Operation Data -->
 							{#if operation.data && Object.keys(operation.data).length > 0}
 								<div class="mt-3">
-									<h4
-										class="mb-2 text-sm font-semibold text-slate-900 dark:text-white"
-									>
-										Data
-									</h4>
+									<h4 class="mb-2 text-sm font-semibold text-foreground">Data</h4>
 									<div
-										class="rounded bg-white/50 p-2 font-mono text-xs dark:bg-slate-900/30"
+										class="rounded bg-muted p-2 sm:p-3 font-mono text-xs shadow-ink-inner tx tx-frame tx-weak"
 									>
 										{#each Object.entries(operation.data).slice(0, 5) as [key, value]}
-											<div class="mb-1 flex gap-2">
-												<span
-													class="font-medium text-slate-700 dark:text-slate-300"
+											<div class="mb-2 flex gap-2">
+												<span class="font-medium text-foreground"
 													>{key}:</span
 												>
 												<span
-													class="overflow-hidden text-ellipsis text-slate-900 dark:text-white"
+													class="overflow-hidden text-ellipsis text-foreground"
 												>
 													{typeof value === 'object'
 														? JSON.stringify(value, null, 2)
@@ -325,7 +299,7 @@
 							<!-- Error Message -->
 							{#if operation.error}
 								<div
-									class="mt-3 rounded bg-red-50 p-2 text-sm text-red-600 dark:bg-red-900/10 dark:text-red-400"
+									class="mt-3 rounded bg-red-50 p-2 text-sm text-red-600 tx tx-static tx-weak dark:bg-red-900/10 dark:text-red-400"
 								>
 									<span class="mr-2 font-medium">Error:</span>
 									<span>{operation.error}</span>
@@ -335,27 +309,21 @@
 							<!-- Reasoning -->
 							{#if operation.reasoning}
 								<div
-									class="mt-3 rounded bg-blue-50 p-2 text-sm text-slate-900 dark:bg-blue-900/10 dark:text-white"
+									class="mt-3 rounded-lg border border-border bg-muted p-2 text-sm shadow-ink tx tx-thread tx-weak"
 								>
-									<span class="mr-2 font-medium text-blue-600 dark:text-blue-400"
-										>Reasoning:</span
-									>
-									<span class="text-slate-700 dark:text-slate-300"
-										>{operation.reasoning}</span
-									>
+									<span class="mr-2 font-medium text-accent">Reasoning:</span>
+									<span class="text-foreground">{operation.reasoning}</span>
 								</div>
 							{/if}
 
 							<!-- Result -->
 							{#if operation.result}
 								<div class="mt-3">
-									<h4
-										class="mb-2 text-sm font-semibold text-slate-900 dark:text-white"
-									>
+									<h4 class="mb-2 text-sm font-semibold text-foreground">
 										Result
 									</h4>
 									<pre
-										class="max-h-[200px] overflow-x-auto rounded bg-white/50 p-2 font-mono text-xs dark:bg-slate-900/30">{JSON.stringify(
+										class="max-h-[200px] overflow-x-auto rounded bg-muted p-2 font-mono text-xs shadow-ink-inner">{JSON.stringify(
 											operation.result,
 											null,
 											2

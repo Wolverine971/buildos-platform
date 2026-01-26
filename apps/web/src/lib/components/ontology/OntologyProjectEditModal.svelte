@@ -589,16 +589,9 @@
 		const regex = /\[\[(\w+):([\w-]+)\|([^\]]+)\]\]/gi;
 
 		html = html.replace(regex, (_match, type, _id, displayText) => {
-			// Use different colors based on entity type
-			const typeColors: Record<string, string> = {
-				task: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-				document: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-				goal: 'bg-green-500/15 text-green-600 dark:text-green-400',
-				plan: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
-				milestone: 'bg-pink-500/15 text-pink-600 dark:text-pink-400',
-				risk: 'bg-red-500/15 text-red-600 dark:text-red-400'
-			};
-			const colorClass = typeColors[type.toLowerCase()] || 'bg-accent/15 text-accent';
+			// Use semantic accent color with opacity for entity badges
+			// Entity type is already clear from displayText, no need for different colors
+			const colorClass = 'bg-accent/15 text-accent';
 
 			return `<span class="inline-flex items-center px-1.5 py-0.5 rounded ${colorClass} text-xs font-medium">${displayText}</span>`;
 		});
@@ -622,7 +615,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -698,7 +691,7 @@
 					>
 						<!-- Project Name Header -->
 						<div
-							class="bg-muted/30 p-3 sm:p-4 rounded-t border-b border-border tx tx-frame tx-weak"
+							class="bg-muted p-3 sm:p-4 rounded-t border-b border-border tx tx-frame tx-weak"
 						>
 							<label
 								for="project-name"
@@ -763,7 +756,7 @@
 											type="button"
 											onclick={handleGenerateNextStep}
 											disabled={isGeneratingNextStep || isSaving}
-											class="inline-flex items-center justify-center gap-1.5 h-8 min-w-8 px-2 sm:px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted rounded-md transition-colors disabled:opacity-50 pressable"
+											class="inline-flex items-center justify-center gap-1.5 h-8 min-w-8 px-2 sm:px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-muted rounded-md transition-colors disabled:opacity-50 pressable"
 											title={hasNextStep
 												? 'Regenerate with AI'
 												: 'Generate with AI'}
@@ -824,7 +817,7 @@
 										<!-- Preview of rendered long content with entity badges -->
 										{#if nextStepLong && hasEntityLinks(nextStepLong)}
 											<div
-												class="mt-2 p-2.5 rounded-md bg-muted/30 border border-border/50"
+												class="mt-2 p-2.5 rounded-md bg-muted border border-border"
 											>
 												<span
 													class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider block mb-1.5"
@@ -918,7 +911,7 @@
 					<div
 						class="lg:col-span-1 bg-card rounded border border-border shadow-ink transition-all duration-200 lg:max-h-full lg:overflow-y-auto tx tx-grain tx-weak"
 					>
-						<div class="bg-muted/30 p-3 sm:p-3.5 rounded-t border-b border-border">
+						<div class="bg-muted p-3 sm:p-3.5 rounded-t border-b border-border">
 							<h3
 								class="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-2"
 							>
@@ -1189,7 +1182,7 @@
 
 				{#if error}
 					<div
-						class="p-3 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
+						class="p-3 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-med"
 					>
 						<p class="text-sm text-destructive">{error}</p>
 					</div>
@@ -1209,7 +1202,7 @@
 			<!-- Footer Actions - delete on left, cancel/save on right -->
 			<form onsubmit={handleSubmit} class="contents">
 				<div
-					class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+					class="flex flex-row items-center justify-between gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted tx tx-grain tx-weak"
 				>
 					<!-- Delete button on left -->
 					<div class="flex items-center gap-1.5 sm:gap-2">

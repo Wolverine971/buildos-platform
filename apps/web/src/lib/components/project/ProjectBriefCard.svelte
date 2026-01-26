@@ -45,7 +45,7 @@
 		<div class="flex items-start justify-between">
 			<div class="flex-1 min-w-0">
 				<div class="flex items-center space-x-2 mb-1">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+					<h3 class="text-lg font-semibold text-foreground truncate">
 						{brief.project_name || brief.projects?.name || 'Unknown Project'}
 					</h3>
 					{#if brief.projects?.slug}
@@ -54,7 +54,7 @@
 							onclick={goToProject}
 							variant="ghost"
 							size="sm"
-							class="p-1 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400"
+							class="p-1 text-muted-foreground hover:text-primary-600 dark:hover:text-primary-400"
 							title="Go to project"
 						>
 							<ExternalLink class="w-4 h-4" />
@@ -62,7 +62,7 @@
 					{/if}
 				</div>
 
-				<div class="flex items-center text-sm text-gray-600 dark:text-gray-400 space-x-3">
+				<div class="flex items-center text-sm text-muted-foreground space-x-3">
 					<div class="flex items-center">
 						<Calendar class="w-4 h-4 mr-1" />
 						{formatDate(brief.brief_date)}
@@ -112,9 +112,9 @@
 	<!-- Content -->
 	<CardBody padding="md">
 		{#if isGenerating}
-			<div class="flex items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+			<div class="flex items-center justify-center py-8 text-muted-foreground">
 				<div
-					class="w-6 h-6 animate-spin rounded-full border-2 border-gray-300 border-t-primary-600 mr-3"
+					class="w-6 h-6 animate-spin rounded-full border-2 border-muted-foreground border-t-primary-600 mr-3"
 				></div>
 				<span>Generating daily brief...</span>
 			</div>
@@ -123,14 +123,14 @@
 				<AlertTriangle class="w-8 h-8 text-red-500 mx-auto mb-2" />
 				<p class="text-red-600 dark:text-red-400 text-sm">Brief generation failed</p>
 				{#if brief.generation_error}
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+					<p class="text-xs text-muted-foreground mt-1">
 						{brief.generation_error}
 					</p>
 				{/if}
 			</div>
 		{:else if brief.brief_content}
 			<!-- Brief content preview -->
-			<div class="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+			<div class="text-foreground text-sm leading-relaxed">
 				{truncateContent(brief.brief_content)}
 			</div>
 
@@ -148,12 +148,10 @@
 
 			<!-- Metadata in collapsed view -->
 			{#if brief.metadata}
-				<div
-					class="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
-				>
+				<div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
 					{#if brief.metadata.task_count}
 						<span
-							class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full"
+							class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full shadow-ink"
 						>
 							{brief.metadata.task_count} tasks
 						</span>
@@ -161,7 +159,7 @@
 
 					{#if brief.metadata.completion_rate !== undefined}
 						<span
-							class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full"
+							class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full shadow-ink"
 						>
 							{brief.metadata.completion_rate}% complete
 						</span>
@@ -169,7 +167,7 @@
 
 					{#if brief.metadata.priority_level}
 						<span
-							class="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full"
+							class="px-2 py-1 bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 rounded-full shadow-ink"
 						>
 							{brief.metadata.priority_level} priority
 						</span>
@@ -177,7 +175,7 @@
 				</div>
 			{/if}
 		{:else}
-			<div class="text-center py-8 text-gray-500 dark:text-gray-400">
+			<div class="text-center py-8 text-muted-foreground">
 				<FileText class="w-8 h-8 mx-auto mb-2" />
 				<p class="text-sm">No content available</p>
 			</div>

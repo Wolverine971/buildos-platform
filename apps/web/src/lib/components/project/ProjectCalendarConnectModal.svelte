@@ -81,13 +81,13 @@
 >
 	<div class="space-y-6 px-1 py-4 sm:px-6">
 		<section class="space-y-3">
-			<p class="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+			<p class="text-sm leading-relaxed text-foreground">
 				Connect your Google Calendar to sync scheduled tasks, keep your plan aligned, and
 				surface upcoming commitments automatically inside BuildOS.
 			</p>
-			<ul class="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+			<ul class="space-y-3 text-sm text-foreground">
 				<li
-					class="flex items-start gap-3 rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900/40"
+					class="flex items-start gap-3 rounded-lg border border-border bg-card p-3 shadow-ink"
 				>
 					<span class="mt-1 inline-flex h-2 w-2 flex-none rounded-full bg-blue-500"
 					></span>
@@ -97,7 +97,7 @@
 					>
 				</li>
 				<li
-					class="flex items-start gap-3 rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900/40"
+					class="flex items-start gap-3 rounded-lg border border-border bg-card p-3 shadow-ink"
 				>
 					<span class="mt-1 inline-flex h-2 w-2 flex-none rounded-full bg-blue-500"
 					></span>
@@ -107,7 +107,7 @@
 					>
 				</li>
 				<li
-					class="flex items-start gap-3 rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900/40"
+					class="flex items-start gap-3 rounded-lg border border-border bg-card p-3 shadow-ink"
 				>
 					<span class="mt-1 inline-flex h-2 w-2 flex-none rounded-full bg-blue-500"
 					></span>
@@ -121,7 +121,7 @@
 
 		{#if connectError}
 			<div
-				class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-900/30 dark:text-red-200"
+				class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-900 dark:text-red-200"
 			>
 				{connectError}
 			</div>

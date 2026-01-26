@@ -96,18 +96,16 @@
 
 {#if blocks.length === 0}
 	<div
-		class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300/60 bg-white/70 px-6 py-8 text-center text-slate-600 backdrop-blur-sm dark:border-slate-700/60 dark:bg-slate-900/40 dark:text-slate-300"
+		class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted px-6 py-8 text-center text-muted-foreground shadow-ink-inner"
 	>
 		<p class="text-sm font-medium">No time blocks yet</p>
-		<p class="max-w-xs text-xs text-slate-500 dark:text-slate-400">
-			Create a focus session above
-		</p>
+		<p class="max-w-xs text-xs text-muted-foreground">Create a focus session above</p>
 	</div>
 {:else}
 	<div class="flex flex-col gap-2.5">
 		{#each blocks as block (block.id)}
 			<article
-				class="group relative overflow-hidden rounded-lg border border-slate-200/70 bg-white/80 px-3 py-3 shadow-sm shadow-slate-200/50 transition hover:-translate-y-[1px] hover:border-blue-200/80 hover:shadow-md hover:shadow-blue-200/40 dark:border-slate-800/70 dark:bg-slate-900/60 dark:shadow-black/20 sm:px-4 sm:py-4"
+				class="group relative overflow-hidden rounded-lg border border-border bg-card px-3 py-3 shadow-ink transition hover:-translate-y-[1px] hover:border-blue-200 hover:shadow-ink-strong tx tx-frame tx-weak sm:px-4 sm:py-4"
 			>
 				<div
 					class="absolute inset-y-2.5 left-2 w-[2px] rounded-full opacity-90 transition group-hover:scale-y-105"
@@ -117,30 +115,30 @@
 					<div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
 						<div class="space-y-1.5">
 							<div class="flex flex-wrap items-center gap-1.5">
-								<h3 class="text-sm font-semibold text-slate-900 dark:text-slate-50">
+								<h3 class="text-sm font-semibold text-foreground">
 									{blockTitle(block)}
 								</h3>
 								<span
-									class="rounded-full border border-slate-200/80 bg-slate-100/70 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300"
+									class="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground shadow-ink"
 								>
 									{blockTypeLabel(block)}
 								</span>
 								<span
-									class="rounded-full bg-blue-100/80 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-200"
+									class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 shadow-ink dark:bg-blue-900 dark:text-blue-200"
 								>
 									{block.duration_minutes}m
 								</span>
 							</div>
-							<p class="text-xs text-slate-600 dark:text-slate-300">
+							<p class="text-xs text-foreground">
 								{formatRange(block)}
 							</p>
 							{#if block.suggestions_summary}
-								<p class="text-xs text-slate-600 dark:text-slate-300">
+								<p class="text-xs text-foreground">
 									{block.suggestions_summary}
 								</p>
 							{/if}
 							{#if formattedSuggestionsTimestamp(block)}
-								<p class="text-xs text-slate-400 dark:text-slate-500">
+								<p class="text-xs text-muted-foreground">
 									Updated {formattedSuggestionsTimestamp(block)}
 								</p>
 							{/if}
@@ -207,7 +205,7 @@
 													</span>
 												{/if}
 											</div>
-											<p class="text-xs text-slate-600 dark:text-slate-300">
+											<p class="text-xs text-foreground">
 												{suggestion.reason}
 											</p>
 										</li>
@@ -215,9 +213,9 @@
 								</ul>
 							</div>
 						{:else}
-							<div class="space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+							<div class="space-y-0.5 text-xs text-foreground">
 								<p>No AI suggestions yet</p>
-								<p class="text-xs text-slate-500 dark:text-slate-400">
+								<p class="text-xs text-muted-foreground">
 									Click Regenerate to get ideas
 								</p>
 							</div>

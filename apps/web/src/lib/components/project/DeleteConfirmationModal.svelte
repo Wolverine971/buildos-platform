@@ -36,13 +36,13 @@
 	{oncancel}
 >
 	{#snippet content()}
-		<p class="text-sm text-gray-500 dark:text-gray-400">
+		<p class="text-sm text-muted-foreground">
 			Are you sure you want to delete this project? This action cannot be undone.
 		</p>
 	{/snippet}
 
 	{#snippet details()}
-		<div class="mt-3 space-y-1 text-sm text-gray-500 dark:text-gray-400">
+		<div class="mt-3 space-y-1 text-sm text-muted-foreground">
 			<p class="font-semibold">This will permanently delete:</p>
 			<ul class="list-disc list-inside space-y-1 ml-2">
 				<li>The project and all its settings</li>

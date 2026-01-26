@@ -131,15 +131,15 @@
 <Modal {isOpen} onClose={handleCancel} size="md" closeOnBackdrop={true} closeOnEscape={true}>
 	{#snippet header()}
 		<div class="flex items-center space-x-3 p-3 sm:p-4">
-			<div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex-shrink-0">
+			<div class="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg flex-shrink-0">
 				<Calendar class="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 dark:text-primary-400" />
 			</div>
 			<div class="min-w-0">
-				<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+				<h2 class="text-lg sm:text-xl font-semibold text-foreground">
 					Move Task to Phase
 					<!-- here -->
 				</h2>
-				<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+				<p class="text-xs sm:text-sm text-muted-foreground mt-1">
 					Task date will be updated to fit the target phase
 				</p>
 			</div>
@@ -150,19 +150,17 @@
 		<div class="space-y-4 sm:space-y-6">
 			<!-- Task Info -->
 			{#if task}
-				<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 sm:p-4">
+				<div class="bg-muted rounded-lg p-3 sm:p-4 shadow-ink-inner">
 					<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-2">
 						Task
 					</h3>
-					<p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300">{task.title}</p>
+					<p class="text-xs sm:text-sm text-foreground">{task.title}</p>
 					{#if task.start_date}
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+						<p class="text-xs text-muted-foreground mt-1">
 							Current date: {formatDateDisplay(task.start_date)}
 						</p>
 					{:else}
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							No current date set
-						</p>
+						<p class="text-xs text-muted-foreground mt-1">No current date set</p>
 					{/if}
 				</div>
 			{/if}
@@ -173,10 +171,10 @@
 					<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-2">
 						Target Phase
 					</h3>
-					<p class="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+					<p class="text-xs sm:text-sm text-foreground">
 						{targetPhase.name}
 					</p>
-					<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+					<p class="text-xs text-muted-foreground mt-1">
 						{formatDateDisplay(targetPhase.start_date)} - {formatDateDisplay(
 							targetPhase.end_date
 						)}
@@ -187,9 +185,7 @@
 			<!-- Date Assignment -->
 			<div class="space-y-3">
 				<div class="flex items-center justify-between">
-					<h3 class="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
-						New Task Date
-					</h3>
+					<h3 class="text-sm sm:text-base font-medium text-foreground">New Task Date</h3>
 					<Button
 						onclick={() => (isEditingDate = !isEditingDate)}
 						variant="outline"

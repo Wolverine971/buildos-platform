@@ -1,0 +1,167 @@
+/* ============================================
+   Inkprint Texture System - Core Textures
+   ============================================
+
+   Seven semantic texture types plus button texture.
+
+   Semantic Meanings:
+   - Bloom  : ideation, newness, creative expansion
+   - Grain  : execution, steady progress, craftsmanship
+   - Pulse  : urgency, sprints, deadlines, momentum
+   - Static : blockers, noise, overwhelm, risk
+   - Thread : relationships, collaboration, dependencies
+   - Frame  : canon, structure, decisions, officialness
+   - Strip  : header band, separator, printed label strip
+   - Button : brushed aluminum tactile texture
+
+   Usage:
+   <div class="tx tx-frame tx-weak">...</div>
+*/
+
+/* Base texture class - enables texture layer */
+.tx {
+	position: relative;
+}
+
+.tx::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 1;
+	border-radius: inherit;
+	mix-blend-mode: multiply;
+}
+
+.dark .tx::before {
+	mix-blend-mode: screen;
+}
+
+/* Ensure text remains readable over textures */
+.tx > * {
+	position: relative;
+	z-index: 2;
+}
+
+/* ============================================
+   Texture Types
+   ============================================ */
+
+/* Bloom - radial halftone pattern */
+.tx-bloom::before {
+	background-image: radial-gradient(
+		circle at 50% 50%,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 1px,
+		transparent 1px
+	);
+	background-size: 8px 8px;
+}
+
+/* Grain - diagonal line pattern (woodgrain feel) */
+.tx-grain::before {
+	background-image: repeating-linear-gradient(
+		45deg,
+		transparent,
+		transparent 2px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.03)) 2px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.03)) 3px
+	);
+}
+
+/* Pulse - horizontal stripe pattern (heartbeat) */
+.tx-pulse::before {
+	background-image: repeating-linear-gradient(
+		0deg,
+		transparent,
+		transparent 3px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 3px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 4px
+	);
+}
+
+/* Static - noise pattern (interference) */
+.tx-static::before {
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+	opacity: var(--tx-opacity, 0.06);
+}
+
+/* Thread - crosshatch pattern (woven) */
+.tx-thread::before {
+	background-image:
+		repeating-linear-gradient(
+			45deg,
+			transparent,
+			transparent 4px,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.025)) 4px,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.025)) 5px
+		),
+		repeating-linear-gradient(
+			-45deg,
+			transparent,
+			transparent 4px,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.025)) 4px,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.025)) 5px
+		);
+}
+
+/* Frame - carved border effect (linocut) */
+.tx-frame::before {
+	background-image:
+		linear-gradient(
+			to right,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.03)) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			to bottom,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.03)) 1px,
+			transparent 1px
+		);
+	background-size: 12px 12px;
+}
+
+/* Strip - horizontal band pattern (printed label) */
+.tx-strip::before {
+	background-image: repeating-linear-gradient(
+		90deg,
+		transparent,
+		transparent 1px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 1px,
+		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 2px
+	);
+}
+
+/* ============================================
+   Button Texture - Brushed Aluminum
+   ============================================ */
+
+/* tx-button - brushed metal texture for buttons */
+.tx-button {
+	position: relative;
+	overflow: hidden;
+}
+
+.tx-button::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 1;
+	border-radius: inherit;
+	background-image: url('/textures/brushed-alum.png');
+	background-size: 100px 100px;
+	background-repeat: repeat;
+	opacity: 0.08;
+	mix-blend-mode: overlay;
+}
+
+.dark .tx-button::before {
+	opacity: 0.12;
+	mix-blend-mode: soft-light;
+}
+
+/* Ensure button content stays above texture */
+.tx-button > * {
+	position: relative;
+	z-index: 2;
+}

@@ -51,7 +51,7 @@
 </script>
 
 <!-- INKPRINT wizard container with muted background -->
-<div class="flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-muted p-3 sm:gap-4 sm:p-4">
+<div class="flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-muted p-4 sm:gap-4 sm:p-6">
 	<div class="flex items-start justify-between gap-3 sm:gap-4">
 		<div class="min-w-0 flex-1">
 			<!-- INKPRINT micro-label -->
@@ -73,7 +73,7 @@
 		</div>
 		<button
 			type="button"
-			class="shrink-0 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-semibold text-muted-foreground shadow-ink transition pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			class="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-muted-foreground shadow-ink transition pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			onclick={onExit}
 		>
 			Exit
@@ -86,7 +86,7 @@
 			<button
 				type="button"
 				onclick={onUseActionableInsight}
-				class="group flex flex-col gap-3 rounded-lg border border-border bg-card p-5 text-left shadow-ink tx tx-thread tx-weak transition-all duration-200 pressable hover:border-accent hover:shadow-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="group flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left shadow-ink tx tx-thread tx-weak transition-all duration-200 pressable hover:border-accent hover:shadow-ink-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-6"
 			>
 				<div
 					class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent transition-transform duration-200 group-hover:scale-105"
@@ -125,7 +125,7 @@
 						</p>
 					</div>
 				{:else}
-					<div class="grid gap-2 sm:gap-3 sm:grid-cols-2">
+					<div class="grid gap-3 sm:gap-4 sm:grid-cols-2">
 						{#each agentProjects as project}
 							<button
 								type="button"
@@ -133,7 +133,7 @@
 								onclick={() => onProjectSelect(project)}
 								aria-label={`Select ${project.name} project`}
 							>
-								<div class="space-y-1.5">
+								<div class="space-y-2">
 									<div class="flex items-center justify-between gap-3">
 										<h5 class="text-sm font-semibold text-foreground">
 											{project.name}
@@ -180,13 +180,13 @@
 							class="flex flex-wrap items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground sm:gap-2"
 						>
 							<span
-								class="rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1 text-accent"
+								class="rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-accent"
 							>
 								Helper: {selectedAgentLabel}
 							</span>
 							{#if selectedContextLabel}
 								<span
-									class="rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+									class="rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1.5 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
 								>
 									Project: {selectedContextLabel}
 								</span>
@@ -201,7 +201,7 @@
 							</label>
 							<textarea
 								id="agent-goal-input"
-								class="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+								class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 								rows="3"
 								value={agentGoal}
 								oninput={(event) =>

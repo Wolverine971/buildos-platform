@@ -1,0 +1,59 @@
+/* ============================================
+   Atmosphere Layer - Depth / Context (Opt-in)
+   ============================================
+
+   Use on: landing pages, blog, onboarding panels, creation moments, transitions.
+   Avoid on: dense task lists, tables, command-center grids.
+
+   How it works:
+   - Adds a subtle background "field" behind content
+   - Uses ::after so it doesn't collide with .tx::before texture grammar
+
+   Usage:
+   <div class="atmo atmo-weak">Subtle atmospheric depth</div>
+   <div class="atmo atmo-med">Balanced atmosphere</div>
+   <div class="atmo atmo-strong">Strong atmosphere</div>
+*/
+
+.atmo {
+	position: relative;
+	isolation: isolate;
+}
+
+.atmo::after {
+	content: '';
+	position: absolute;
+	inset: -1px; /* slightly beyond border to avoid seams */
+	pointer-events: none;
+	z-index: 0;
+	border-radius: inherit;
+	opacity: var(--atmo-opacity, 0.25);
+	mix-blend-mode: multiply;
+	background:
+		/* soft vignette */
+		radial-gradient(120% 80% at 20% 0%, rgba(var(--tx-ink-rgb), 0.06), transparent 55%),
+		radial-gradient(100% 70% at 90% 20%, rgba(var(--tx-ink-rgb), 0.05), transparent 60%),
+		/* faint paper grain */
+			linear-gradient(0deg, rgba(var(--tx-ink-rgb), 0.02), rgba(var(--tx-ink-rgb), 0.02));
+}
+
+/* Keep content above atmosphere */
+.atmo > * {
+	position: relative;
+	z-index: 1;
+}
+
+.dark .atmo::after {
+	mix-blend-mode: screen;
+	opacity: var(--atmo-opacity, 0.22);
+}
+
+.atmo-weak {
+	--atmo-opacity: 0.18;
+}
+.atmo-med {
+	--atmo-opacity: 0.26;
+}
+.atmo-strong {
+	--atmo-opacity: 0.34;
+}

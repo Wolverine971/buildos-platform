@@ -236,10 +236,12 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0">
+				<div
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
+				>
 					<Calendar class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
@@ -267,8 +269,7 @@
 						d="M6 18L18 6M6 6l12 12"
 					></path>
 				</svg>
-				</button>
-			</div>
+			</button>
 		</div>
 	{/snippet}
 

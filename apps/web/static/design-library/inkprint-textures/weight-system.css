@@ -1,0 +1,154 @@
+/* ============================================
+   Weight System - Semantic Mass
+   ============================================
+
+   Weight communicates:
+   - Permanence: ephemeral ↔ canonical
+   - Attention: ambient ↔ demanding
+   - Hierarchy: supporting ↔ authoritative
+
+   Tokens:
+   - wt-ghost : Suggestions, drafts, uncommitted, ephemeral
+   - wt-paper : Standard UI, working state (default)
+   - wt-card  : Important, elevated, committed
+   - wt-plate : System-critical, immutable, modal-level
+
+   Weight does NOT affect typography (intentional).
+   Weight DOES affect motion (heavier = slower, more inertia).
+   Weight is NOT inherited (explicit per-element).
+
+   Usage:
+   <div class="wt-ghost">Draft content</div>
+   <div class="wt-paper">Standard card</div>
+   <div class="wt-card">Important element</div>
+   <div class="wt-plate">System-critical</div>
+*/
+
+/* --- Weight CSS Custom Properties --- */
+:root {
+	/* Weight: Ghost - ephemeral, uncommitted */
+	--wt-ghost-shadow: none;
+	--wt-ghost-border-width: 1px;
+	--wt-ghost-border-style: dashed;
+	--wt-ghost-border-color: hsl(var(--border));
+	--wt-ghost-bg: transparent;
+	--wt-ghost-radius: 0.75rem;
+	--wt-ghost-duration: 100ms;
+	--wt-ghost-easing: ease-out;
+
+	/* Weight: Paper - standard working state (default) */
+	--wt-paper-shadow: var(--shadow-ink);
+	--wt-paper-border-width: 1px;
+	--wt-paper-border-style: solid;
+	--wt-paper-border-color: hsl(var(--border));
+	--wt-paper-bg: hsl(var(--card));
+	--wt-paper-radius: 0.75rem; /* 12px - matches rounded-lg standard */
+	--wt-paper-duration: 150ms;
+	--wt-paper-easing: ease;
+
+	/* Weight: Card - elevated, important, committed */
+	--wt-card-shadow: var(--shadow-ink-strong);
+	--wt-card-border-width: 1.5px;
+	--wt-card-border-style: solid;
+	--wt-card-border-color: hsl(var(--border));
+	--wt-card-bg: hsl(var(--card));
+	--wt-card-radius: 0.75rem; /* 12px - matches rounded-lg standard */
+	--wt-card-duration: 200ms;
+	--wt-card-easing: ease-in-out;
+
+	/* Weight: Plate - canonical, immutable, system-critical */
+	--wt-plate-shadow: var(--shadow-ink-strong), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+	--wt-plate-border-width: 2px;
+	--wt-plate-border-style: solid;
+	--wt-plate-border-color: hsl(var(--border));
+	--wt-plate-bg: hsl(var(--card));
+	--wt-plate-radius: 0.75rem; /* 12px - matches rounded-lg standard */
+	--wt-plate-duration: 280ms;
+	--wt-plate-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+	/* Ghost: luminous hint instead of shadow */
+	--wt-ghost-border-color: hsl(var(--border) / 0.5);
+
+	/* Paper: subtle lift in dark mode */
+	--wt-paper-shadow: var(--shadow-ink), 0 0 0 1px hsl(var(--border) / 0.5);
+
+	/* Card: rim glow for perceived weight */
+	--wt-card-shadow: var(--shadow-ink-strong), 0 0 0 1px hsl(var(--border) / 0.8);
+	--wt-card-border-color: hsl(var(--border) / 0.9);
+
+	/* Plate: luminous edge, carved presence */
+	--wt-plate-shadow:
+		var(--shadow-ink-strong), 0 0 0 1px hsl(var(--foreground) / 0.1),
+		inset 0 1px 0 hsl(var(--foreground) / 0.05);
+}
+
+/* --- Weight Classes --- */
+
+/* Ghost: ephemeral, uncommitted, suggestion */
+.wt-ghost {
+	box-shadow: var(--wt-ghost-shadow);
+	border-width: var(--wt-ghost-border-width);
+	border-style: var(--wt-ghost-border-style);
+	border-color: var(--wt-ghost-border-color);
+	background: var(--wt-ghost-bg);
+	border-radius: var(--wt-ghost-radius);
+	transition-duration: var(--wt-ghost-duration);
+	transition-timing-function: var(--wt-ghost-easing);
+}
+
+/* Paper: standard working state (default) */
+.wt-paper {
+	box-shadow: var(--wt-paper-shadow);
+	border-width: var(--wt-paper-border-width);
+	border-style: var(--wt-paper-border-style);
+	border-color: var(--wt-paper-border-color);
+	background: var(--wt-paper-bg);
+	border-radius: var(--wt-paper-radius);
+	transition-duration: var(--wt-paper-duration);
+	transition-timing-function: var(--wt-paper-easing);
+}
+
+/* Card: elevated, important, committed */
+.wt-card {
+	box-shadow: var(--wt-card-shadow);
+	border-width: var(--wt-card-border-width);
+	border-style: var(--wt-card-border-style);
+	border-color: var(--wt-card-border-color);
+	background: var(--wt-card-bg);
+	border-radius: var(--wt-card-radius);
+	transition-duration: var(--wt-card-duration);
+	transition-timing-function: var(--wt-card-easing);
+}
+
+/* Plate: canonical, immutable, system-critical */
+.wt-plate {
+	box-shadow: var(--wt-plate-shadow);
+	border-width: var(--wt-plate-border-width);
+	border-style: var(--wt-plate-border-style);
+	border-color: var(--wt-plate-border-color);
+	background: var(--wt-plate-bg);
+	border-radius: var(--wt-plate-radius);
+	transition-duration: var(--wt-plate-duration);
+	transition-timing-function: var(--wt-plate-easing);
+}
+
+/* --- Weight Motion Properties --- */
+
+.wt-ghost,
+.wt-paper,
+.wt-card,
+.wt-plate {
+	transition-property: box-shadow, border-color, background-color, transform, opacity;
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+	.wt-ghost,
+	.wt-paper,
+	.wt-card,
+	.wt-plate {
+		transition-duration: 0ms;
+	}
+}

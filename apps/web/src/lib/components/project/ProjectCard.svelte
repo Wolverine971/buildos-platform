@@ -140,7 +140,7 @@
 
 	{#if isArchived}
 		<div
-			class="mb-2 flex items-center gap-2 rounded-md border border-dashed border-border bg-muted/50 px-2 py-0.5 text-xs font-medium text-muted-foreground"
+			class="mb-2 flex items-center gap-2 rounded-md border border-dashed border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
 		>
 			<Archive class="w-3 h-3" />
 			<span class="hidden sm:inline">Archived — read only</span>

@@ -31,8 +31,8 @@
 
 	// Variant styles
 	const variantClasses: Record<FooterVariant, string> = {
-		default: 'bg-muted/30',
-		muted: 'bg-muted/50',
+		default: 'bg-muted',
+		muted: 'bg-muted',
 		transparent: 'bg-transparent'
 	};
 

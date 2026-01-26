@@ -518,7 +518,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -629,24 +629,7 @@
 								/>
 							</FormField>
 
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<FormField label="Priority" labelFor="priority" required={true}>
-									<Select
-										id="priority"
-										value={priority}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select priority"
-										onchange={(val) => (priority = Number(val))}
-									>
-										<option value={1}>P1 - Critical</option>
-										<option value={2}>P2 - High</option>
-										<option value={3}>P3 - Medium</option>
-										<option value={4}>P4 - Low</option>
-										<option value={5}>P5 - Nice to have</option>
-									</Select>
-								</FormField>
-
+							<div class="grid grid-cols-2 gap-2 sm:gap-4">
 								<FormField label="State" labelFor="state" required={true}>
 									<Select
 										id="state"
@@ -668,6 +651,23 @@
 																: state}
 											</option>
 										{/each}
+									</Select>
+								</FormField>
+
+								<FormField label="Priority" labelFor="priority" required={true}>
+									<Select
+										id="priority"
+										value={priority}
+										disabled={isSaving}
+										size="md"
+										placeholder="Select priority"
+										onchange={(val) => (priority = Number(val))}
+									>
+										<option value={1}>P1 - Critical</option>
+										<option value={2}>P2 - High</option>
+										<option value={3}>P3 - Medium</option>
+										<option value={4}>P4 - Low</option>
+										<option value={5}>P5 - Nice to have</option>
 									</Select>
 								</FormField>
 							</div>
@@ -959,7 +959,7 @@
 	{#snippet footer()}
 		{#if !isLoading && task}
 			<div
-				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/50 tx tx-grain tx-weak"
+				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
 			>
 				<!-- Delete button on left -->
 				<div class="flex items-center gap-1.5 sm:gap-2">

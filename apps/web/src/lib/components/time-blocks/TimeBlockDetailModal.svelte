@@ -298,41 +298,39 @@
 			<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5">
 				<section class="lg:col-span-3 order-2 flex flex-col gap-4 lg:order-1 lg:pr-1">
 					<div
-						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
+						class="rounded-2xl border border-border bg-card shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
 					>
 						<div
-							class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4"
+							class="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 sm:px-6 py-4"
 						>
 							<div class="space-y-2">
 								<p
-									class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500"
+									class="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 								>
 									Session Overview
 								</p>
-								<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+								<h2 class="text-lg font-semibold text-foreground">
 									{dayOfWeek}, {monthDay}
 								</h2>
 								<div
-									class="flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300"
+									class="flex flex-wrap items-center gap-2 text-sm text-foreground"
 								>
 									<Clock class="h-4 w-4 text-blue-500 dark:text-blue-300" />
-									<span class="font-semibold text-slate-900 dark:text-white"
-										>{timeRange}</span
-									>
+									<span class="font-semibold text-foreground">{timeRange}</span>
 									{#if durationDisplay}
-										<span class="text-slate-400">|</span>
+										<span class="text-muted-foreground">|</span>
 										<span>{durationDisplay}</span>
 									{/if}
 								</div>
 								<div
-									class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
 								>
 									{timezoneDisplay}
 								</div>
 							</div>
 							<div class="flex flex-wrap gap-2">
 								<span
-									class="inline-flex items-center rounded-full bg-slate-100/80 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-200"
+									class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground shadow-ink"
 								>
 									{block.block_type === 'project'
 										? 'Project focus'
@@ -357,30 +355,30 @@
 						<div class="px-4 sm:px-6 py-4 sm:py-6 space-y-5">
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div
-									class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5"
+									class="rounded-xl border border-border bg-card p-4 space-y-1.5 shadow-ink"
 								>
 									<span
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>Start</span
 									>
-									<p class="text-sm font-semibold text-slate-900 dark:text-white">
+									<p class="text-sm font-semibold text-foreground">
 										{startDateSummary}
 									</p>
-									<p class="text-xs text-slate-500 dark:text-slate-400">
+									<p class="text-xs text-muted-foreground">
 										Started {formatRelativeTime(block.start_time)}
 									</p>
 								</div>
 								<div
-									class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5"
+									class="rounded-xl border border-border bg-card p-4 space-y-1.5 shadow-ink"
 								>
 									<span
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>End</span
 									>
-									<p class="text-sm font-semibold text-slate-900 dark:text-white">
+									<p class="text-sm font-semibold text-foreground">
 										{endDateSummary}
 									</p>
-									<p class="text-xs text-slate-500 dark:text-slate-400">
+									<p class="text-xs text-muted-foreground">
 										Ends {formatRelativeTime(block.end_time)}
 									</p>
 								</div>
@@ -400,18 +398,18 @@
 					</div>
 
 					<div
-						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
+						class="rounded-2xl border border-border bg-card shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
 					>
 						<div
-							class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4"
+							class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 sm:px-6 py-4"
 						>
 							<div>
 								<p
-									class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500"
+									class="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 								>
 									Focus Suggestions
 								</p>
-								<h3 class="text-base font-semibold text-slate-900 dark:text-white">
+								<h3 class="text-base font-semibold text-foreground">
 									{suggestionCount > 0
 										? `${suggestionCount} curated ideas`
 										: 'Personalized guidance'}
@@ -419,7 +417,7 @@
 							</div>
 							{#if block.suggestions_generated_at}
 								<span
-									class="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
 								>
 									Updated {format(
 										new Date(block.suggestions_generated_at),
@@ -433,7 +431,7 @@
 								<div class="space-y-3">
 									{#each suggestions as suggestion, index}
 										<div
-											class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white/85 p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70"
+											class="group relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
 										>
 											<div
 												class="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-blue-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-blue-400/5 dark:to-purple-400/5"
@@ -447,20 +445,20 @@
 												<div class="flex-1 space-y-1.5">
 													<div class="flex flex-wrap items-center gap-2">
 														<h4
-															class="text-sm font-semibold text-slate-900 dark:text-white"
+															class="text-sm font-semibold text-foreground"
 														>
 															{suggestion.title}
 														</h4>
 														{#if suggestionMeta(suggestion)}
 															<span
-																class="inline-flex items-center rounded-full bg-slate-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/60 dark:bg-slate-800/70 dark:text-slate-200 dark:ring-white/10"
+																class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-foreground ring-1 ring-border shadow-ink"
 															>
 																{suggestionMeta(suggestion)}
 															</span>
 														{/if}
 													</div>
 													<p
-														class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+														class="text-sm leading-relaxed text-foreground"
 													>
 														{suggestion.reason}
 													</p>
@@ -471,14 +469,10 @@
 								</div>
 							{:else}
 								<div
-									class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-slate-200/60 bg-slate-50/60 p-5 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+									class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border bg-muted p-5 text-sm text-foreground shadow-ink-inner"
 								>
-									<p class="font-semibold text-slate-700 dark:text-slate-200">
-										No suggestions yet
-									</p>
-									<p
-										class="text-xs leading-relaxed text-slate-500 dark:text-slate-400"
-									>
+									<p class="font-semibold text-foreground">No suggestions yet</p>
+									<p class="text-xs leading-relaxed text-muted-foreground">
 										Generate tailored focus ideas to make the most of this
 										block.
 									</p>
@@ -506,10 +500,10 @@
 
 					{#if block.suggestions_summary}
 						<div
-							class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-5 py-5 text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+							class="rounded-2xl border border-border bg-card shadow-ink px-5 py-5 text-sm leading-relaxed text-foreground tx tx-frame tx-weak"
 						>
 							<p
-								class="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
+								class="mb-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground"
 							>
 								AI Summary
 							</p>
@@ -520,16 +514,16 @@
 
 				<aside class="lg:col-span-1 order-1 flex flex-col gap-4 lg:order-2">
 					<div
-						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+						class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
 					>
 						<div class="flex items-center justify-between">
 							<h3
-								class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+								class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 							>
 								Session Controls
 							</h3>
 							<span
-								class="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300"
+								class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-foreground shadow-ink"
 							>
 								{isEditMode ? 'Editing' : 'Viewing'}
 							</span>
@@ -562,7 +556,7 @@
 								>
 							</Button>
 						{/if}
-						<p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+						<p class="text-xs leading-relaxed text-muted-foreground">
 							Keep this block aligned with your schedule. Toggle editing to adjust
 							timing or refresh suggestions.
 						</p>
@@ -570,10 +564,10 @@
 
 					{#if isEditMode}
 						<div
-							class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+							class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
 						>
 							<h4
-								class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+								class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 							>
 								Edit details
 							</h4>
@@ -589,40 +583,40 @@
 									{/if}
 								</div>
 							{/if}
-							<div class="space-y-4 text-sm text-slate-600 dark:text-slate-300">
+							<div class="space-y-4 text-sm text-foreground">
 								<div class="space-y-2">
 									<label
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										for="edit-start">Start date & time</label
 									>
 									<input
 										id="edit-start"
 										type="datetime-local"
 										bind:value={editFormData.start_time}
-										class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
 									/>
 								</div>
 								<div class="space-y-2">
 									<label
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										for="edit-end">End date & time</label
 									>
 									<input
 										id="edit-end"
 										type="datetime-local"
 										bind:value={editFormData.end_time}
-										class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
 									/>
 								</div>
 								<div class="space-y-2">
 									<label
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										for="edit-timezone">Timezone</label
 									>
 									<select
 										id="edit-timezone"
 										bind:value={editFormData.timezone}
-										class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
 									>
 										{#each TIMEZONES as tz}
 											<option value={tz}>{tz}</option>
@@ -630,17 +624,17 @@
 									</select>
 								</div>
 								<label
-									class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+									class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 								>
 									<input
 										type="checkbox"
 										bind:checked={editFormData.regenerate_suggestions}
-										class="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+										class="h-3.5 w-3.5 rounded border-border text-blue-600 focus:ring-blue-500"
 									/>
 									<span>Regenerate suggestions after saving</span>
 								</label>
 								<div
-									class="rounded-lg border border-slate-200/60 bg-slate-50/70 px-3 py-2 text-xs text-slate-500 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+									class="rounded-lg border border-border bg-muted px-3 py-2 text-xs text-muted-foreground shadow-ink-inner"
 								>
 									New duration: {calculateDuration(
 										editFormData.start_time,
@@ -652,16 +646,14 @@
 					{/if}
 
 					<div
-						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
+						class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-3 tx tx-frame tx-weak"
 					>
 						<h4
-							class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Calendar Sync
 						</h4>
-						<div
-							class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300"
-						>
+						<div class="flex items-center gap-2 text-xs text-foreground">
 							<div
 								class="h-2.5 w-2.5 rounded-full {block.sync_status === 'synced'
 									? 'bg-emerald-500'
@@ -676,19 +668,17 @@
 					</div>
 
 					<div
-						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+						class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-4 tx tx-frame tx-weak"
 					>
 						<h4
-							class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Overview
 						</h4>
-						<div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+						<div class="space-y-2 text-xs text-foreground">
 							<div class="flex items-center justify-between gap-3">
 								<span>Focus type</span>
-								<span
-									class="text-right font-semibold text-slate-900 dark:text-white"
-								>
+								<span class="text-right font-semibold text-foreground">
 									{block.block_type === 'project'
 										? 'Project session'
 										: 'Build session'}
@@ -697,51 +687,39 @@
 							{#if durationDisplay}
 								<div class="flex items-center justify-between gap-3">
 									<span>Duration</span>
-									<span
-										class="text-right font-semibold text-slate-900 dark:text-white"
-									>
+									<span class="text-right font-semibold text-foreground">
 										{durationDisplay}
 									</span>
 								</div>
 							{/if}
 							<div class="flex items-start justify-between gap-3">
 								<span>Starts</span>
-								<span
-									class="text-right font-semibold text-slate-900 dark:text-white"
-								>
+								<span class="text-right font-semibold text-foreground">
 									{startDateSummary}
 								</span>
 							</div>
 							<div class="flex items-start justify-between gap-3">
 								<span>Ends</span>
-								<span
-									class="text-right font-semibold text-slate-900 dark:text-white"
-								>
+								<span class="text-right font-semibold text-foreground">
 									{endDateSummary}
 								</span>
 							</div>
 							<div class="flex items-start justify-between gap-3">
 								<span>Timezone</span>
-								<span
-									class="text-right font-semibold text-slate-900 dark:text-white"
-								>
+								<span class="text-right font-semibold text-foreground">
 									{timezoneDisplay}
 								</span>
 							</div>
 							<div class="flex items-start justify-between gap-3">
 								<span>Suggestions</span>
-								<span
-									class="text-right font-semibold text-slate-900 dark:text-white"
-								>
+								<span class="text-right font-semibold text-foreground">
 									{suggestionCount > 0 ? `${suggestionCount} ready` : 'None yet'}
 								</span>
 							</div>
 							{#if block.block_type === 'project' && block.project?.name}
 								<div class="flex items-start justify-between gap-3">
 									<span>Project</span>
-									<span
-										class="text-right font-semibold text-slate-900 dark:text-white"
-									>
+									<span class="text-right font-semibold text-foreground">
 										{block.project.name}
 									</span>
 								</div>
@@ -750,14 +728,14 @@
 					</div>
 
 					<div
-						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
+						class="rounded-2xl border border-border bg-card shadow-ink px-4 sm:px-5 py-5 space-y-3 tx tx-frame tx-weak"
 					>
 						<h4
-							class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Activity
 						</h4>
-						<div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+						<div class="space-y-2 text-xs text-foreground">
 							<div>Created {formatRelativeTime(block.created_at)}</div>
 							{#if block.updated_at !== block.created_at}
 								<div>Updated {formatRelativeTime(block.updated_at)}</div>
@@ -771,7 +749,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+			class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted"
 		>
 			{#if isEditMode}
 				<div class="flex flex-col sm:flex-row gap-3 w-full sm:justify-end">

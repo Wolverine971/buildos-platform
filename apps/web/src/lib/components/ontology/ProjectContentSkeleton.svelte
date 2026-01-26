@@ -60,7 +60,7 @@
 		<div class="border-t border-border">
 			{#if documentCount === 0}
 				<div
-					class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 bg-muted/30 tx tx-bloom tx-weak"
+					class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 bg-muted tx tx-bloom tx-weak"
 				>
 					<div
 						class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
@@ -85,7 +85,7 @@
 								<div class="flex-1 space-y-1.5 sm:space-y-2">
 									<div class="h-3 sm:h-4 rounded bg-muted w-2/3"></div>
 									<div
-										class="h-2.5 sm:h-3 rounded bg-muted/70 w-1/4 hidden sm:block"
+										class="h-2.5 sm:h-3 rounded bg-muted w-1/4 hidden sm:block"
 									></div>
 								</div>
 								<div class="h-4 sm:h-5 w-8 sm:w-12 rounded-full bg-muted"></div>

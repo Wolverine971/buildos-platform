@@ -34,14 +34,14 @@
 			icon: 'text-amber-500'
 		},
 		todo: {
-			bg: 'bg-gray-50 dark:bg-gray-800',
-			border: 'border-gray-400',
-			icon: 'text-gray-500'
+			bg: 'bg-muted',
+			border: 'border-border',
+			icon: 'text-muted-foreground'
 		},
 		draft: {
-			bg: 'bg-gray-50 dark:bg-gray-800',
-			border: 'border-gray-400',
-			icon: 'text-gray-500'
+			bg: 'bg-muted',
+			border: 'border-border',
+			icon: 'text-muted-foreground'
 		}
 	};
 
@@ -53,16 +53,16 @@
 		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}
 		{style.bg} {style.border}"
 >
-	<Handle type="target" position={Position.Top} class="!bg-gray-500 !w-2 !h-2" />
+	<Handle type="target" position={Position.Top} class="!bg-muted-foreground !w-2 !h-2" />
 
 	<div class="flex items-center gap-1.5">
 		<ListChecks class="w-3.5 h-3.5 flex-shrink-0 {style.icon}" />
-		<span class="text-xs font-medium truncate text-gray-700 dark:text-gray-300">
+		<span class="text-xs font-medium truncate text-foreground">
 			{data.label}
 		</span>
 	</div>
 
-	<Handle type="source" position={Position.Bottom} class="!bg-gray-500 !w-2 !h-2" />
+	<Handle type="source" position={Position.Bottom} class="!bg-muted-foreground !w-2 !h-2" />
 </div>
 
 <style>

@@ -289,14 +289,12 @@
 </script>
 
 <div
-	class="flex flex-col bg-gradient-to-br from-white to-gray-50/30 dark:from-gray-900 dark:to-gray-800/30 relative {inModal
+	class="flex flex-col bg-background relative {inModal
 		? 'h-[min(70vh,650px)] sm:h-[min(60vh,650px)] min-h-[50vh] max-h-[80vh]'
 		: 'h-full'}"
 >
 	<!-- Header -->
-	<header
-		class="flex-shrink-0 border-b border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-r from-gray-50/50 to-gray-100/30 dark:from-gray-900/50 dark:to-gray-800/30 backdrop-blur-sm z-[5]"
-	>
+	<header class="flex-shrink-0 border-b border-border bg-muted z-[5]">
 		<div class="flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 max-w-full">
 			{#if !inModal}
 				<Button
@@ -304,7 +302,7 @@
 					variant="ghost"
 					size="sm"
 					icon={ChevronLeft}
-					class="flex-shrink-0 -ml-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					class="flex-shrink-0 -ml-1 hover:bg-muted transition-colors"
 					aria-label="Back to project selection"
 				/>
 			{/if}
@@ -327,9 +325,7 @@
 						{/each}
 					</Select>
 				{:else}
-					<div
-						class="font-semibold text-gray-900 dark:text-white text-[0.9375rem] py-2 truncate"
-					>
+					<div class="font-semibold text-foreground text-[0.9375rem] py-2 truncate">
 						{selectedProjectName}
 					</div>
 				{/if}
@@ -359,7 +355,7 @@
 				onblur={handleTextBlur}
 				placeholder={placeholderText}
 				disabled={isProcessing || isInitializingRecording}
-				class="input-scratchpad dither-soft flex-1 w-full p-5 pb-[env(keyboard-inset-height,4rem)] resize-none text-base sm:text-[15px] leading-relaxed placeholder:text-slate-500 dark:placeholder:text-slate-400 placeholder:whitespace-pre-line disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+				class="input-scratchpad flex-1 w-full p-5 pb-[env(keyboard-inset-height,4rem)] resize-none text-base sm:text-[15px] leading-relaxed placeholder:text-muted-foreground placeholder:whitespace-pre-line disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-background text-foreground border border-border rounded-lg focus:ring-2 focus:ring-ring focus:outline-none shadow-ink-inner tx tx-grain tx-weak"
 				spellcheck="true"
 				autocomplete="off"
 			></textarea>
@@ -371,11 +367,11 @@
 				<!-- Live Transcription Preview -->
 				{#if isCurrentlyRecording && accumulatedTranscript && canUseLiveTranscript}
 					<div
-						class="p-2.5 px-3.5 bg-gradient-to-r from-purple-50/60 to-pink-50/60 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200/40 dark:border-purple-700/40 rounded-lg backdrop-blur-md max-h-20 overflow-y-auto pointer-events-auto shadow-sm"
+						class="p-2.5 px-3.5 bg-accent/10 border border-accent/20 rounded-lg backdrop-blur-md max-h-20 overflow-y-auto pointer-events-auto shadow-ink"
 						transition:fade={{ duration: 200 }}
 					>
 						<p
-							class="text-sm text-gray-600 dark:text-gray-400 italic m-0 leading-normal break-words"
+							class="text-sm text-muted-foreground italic m-0 leading-normal break-words"
 						>
 							{accumulatedTranscript}
 						</p>
@@ -386,12 +382,12 @@
 				<div class="flex justify-between items-center text-xs px-0.5">
 					<!-- Save Status -->
 					<div
-						class="flex items-center gap-1.5 text-gray-600 dark:text-gray-400 pointer-events-auto"
+						class="flex items-center gap-1.5 text-muted-foreground pointer-events-auto"
 					>
 						{#key `${isSaving}-${hasUnsavedChanges}-${localInputText.trim().length > 0}`}
 							{#if isSaving}
 								<span
-									class="flex items-center gap-1.5 px-2 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded transition-all duration-200"
+									class="flex items-center gap-1.5 px-2 py-1 bg-muted rounded transition-all duration-200"
 									in:fade={{ duration: 150 }}
 								>
 									<LoaderCircle class="w-3 h-3 flex-shrink-0 animate-spin" />
@@ -399,7 +395,7 @@
 								</span>
 							{:else if hasUnsavedChanges && localInputText.trim()}
 								<span
-									class="flex items-center gap-1.5 px-2 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded transition-all duration-200"
+									class="flex items-center gap-1.5 px-2 py-1 bg-muted rounded transition-all duration-200"
 									in:fade={{ duration: 150 }}
 								>
 									<Circle
@@ -409,7 +405,7 @@
 								</span>
 							{:else if !hasUnsavedChanges && localInputText.trim()}
 								<span
-									class="flex items-center gap-1.5 px-2 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded transition-all duration-200"
+									class="flex items-center gap-1.5 px-2 py-1 bg-muted rounded transition-all duration-200"
 									in:fade={{ duration: 150 }}
 								>
 									<Check class="w-3 h-3 flex-shrink-0 text-emerald-500" />
@@ -422,7 +418,7 @@
 					<!-- Character Count -->
 					{#if localInputText.length > 0}
 						<div
-							class="text-gray-500 dark:text-gray-400 px-2 py-1 bg-gray-100/50 dark:bg-gray-800/50 rounded pointer-events-auto"
+							class="text-muted-foreground px-2 py-1 bg-muted rounded pointer-events-auto"
 							transition:fade={{ duration: 150 }}
 						>
 							{localInputText.length} characters
@@ -446,7 +442,7 @@
 
 	<!-- Action Bar -->
 	<footer
-		class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 sm:px-5 py-3 sm:py-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-10"
+		class="flex-shrink-0 border-t border-border bg-card px-4 sm:px-5 py-3 sm:py-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-10"
 	>
 		<div class="flex justify-end max-w-full">
 			<div class="flex gap-3 items-center w-full justify-end">
@@ -477,7 +473,7 @@
 				<!-- Auto-accept toggle -->
 				{#if !isCurrentlyRecording}
 					<label
-						class="flex items-center gap-2 cursor-pointer mr-auto px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+						class="flex items-center gap-2 cursor-pointer mr-auto px-2 py-1 rounded-lg hover:bg-muted transition-colors"
 					>
 						<input
 							type="checkbox"
@@ -486,9 +482,7 @@
 							disabled={isProcessing || currentPhase !== 'idle'}
 							class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 disabled:opacity-50"
 						/>
-						<span class="text-sm text-gray-700 dark:text-gray-300 select-none">
-							Auto-accept
-						</span>
+						<span class="text-sm text-foreground select-none"> Auto-accept </span>
 					</label>
 				{/if}
 
@@ -498,10 +492,10 @@
 							onclick={handleVoiceToggle}
 							disabled={voiceButtonState.disabled}
 							class="ml-auto w-11 h-11 sm:w-12 sm:h-12 p-0 rounded-full flex-shrink-0 transition-all duration-200 relative overflow-visible flex items-center justify-center shadow-sm {voiceButtonState.isLoading
-								? 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+								? 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-muted-foreground'
 								: isCurrentlyRecording
 									? 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 border-red-600 dark:border-red-500 text-white scale-110 animate-recording-pulse shadow-lg'
-									: 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:scale-105 hover:shadow-md'} disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+									: 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 text-foreground hover:scale-105 hover:shadow-md'} disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
 							aria-label={voiceButtonState.text ||
 								(isCurrentlyRecording ? 'Stop recording' : 'Start recording')}
 							title={voiceButtonState.text}

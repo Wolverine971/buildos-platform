@@ -9,8 +9,8 @@
 
 	const stateStyles: Record<string, { bg: string; border: string }> = {
 		draft: {
-			bg: 'bg-slate-50 dark:bg-slate-800',
-			border: 'border-slate-400'
+			bg: 'bg-muted',
+			border: 'border-border'
 		},
 		active: {
 			bg: 'bg-indigo-50 dark:bg-indigo-900/30',
@@ -21,8 +21,8 @@
 			border: 'border-indigo-600'
 		},
 		archived: {
-			bg: 'bg-gray-100 dark:bg-gray-700',
-			border: 'border-gray-500'
+			bg: 'bg-muted',
+			border: 'border-border'
 		}
 	};
 

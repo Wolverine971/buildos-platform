@@ -368,7 +368,7 @@ Guidelines:
 <Modal {isOpen} onClose={closeModal} size="xl">
 	<div class="flex flex-col h-full max-h-[90vh]">
 		<!-- Header -->
-		<div class="px-3 py-2 border-b border-border bg-muted/30">
+		<div class="px-3 py-2 border-b border-border bg-muted">
 			<div class="flex items-center justify-between gap-2">
 				<h2 class="text-sm sm:text-base font-semibold text-foreground truncate">
 					{userName || userEmail}
@@ -391,7 +391,7 @@ Guidelines:
 		<div class="flex-1 px-3 py-2 space-y-2 overflow-y-auto">
 			<!-- Email History Section -->
 			{#if showEmailHistory && emailHistory.length > 0}
-				<div class="bg-muted/50 border border-border rounded-lg p-2 tx tx-thread tx-weak">
+				<div class="bg-muted border border-border rounded-lg p-2 tx tx-thread tx-weak">
 					<div class="space-y-1 max-h-32 overflow-y-auto">
 						{#each emailHistory as email (email.id)}
 							<button
@@ -477,7 +477,7 @@ Guidelines:
 				>
 					<button
 						onclick={() => (contextPanelExpanded = !contextPanelExpanded)}
-						class="w-full px-2 py-1.5 flex items-center justify-between hover:bg-muted/50 transition-colors text-left"
+						class="w-full px-2 py-1.5 flex items-center justify-between hover:bg-muted transition-colors text-left"
 					>
 						<span class="text-xs font-medium text-foreground">Context</span>
 						{#if contextPanelExpanded}
@@ -736,7 +736,7 @@ Guidelines:
 		</div>
 
 		<!-- Footer -->
-		<div class="px-3 py-2 border-t border-border bg-muted/30">
+		<div class="px-3 py-2 border-t border-border bg-muted">
 			<div class="flex items-center justify-between gap-2">
 				<button
 					onclick={closeModal}

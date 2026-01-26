@@ -28,9 +28,9 @@
 
 	// Variant styles - Inkprint design system
 	const variantClasses: Record<HeaderVariant, string> = {
-		default: 'bg-muted/50',
+		default: 'bg-muted',
 		muted: 'bg-muted',
-		accent: 'bg-accent/10',
+		accent: 'bg-accent/10', // Opacity OK for subtle accent tint
 		transparent: 'bg-transparent'
 	};
 

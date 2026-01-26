@@ -1,0 +1,55 @@
+/* ============================================
+   Inkprint Shadows
+   ============================================
+
+   Printmaking-inspired shadow system.
+
+   Usage:
+   - shadow-ink        : Standard elevation
+   - shadow-ink-strong : Modal/overlay elevation
+   - shadow-ink-inner  : Inset/carved effects
+   - ink-frame         : Carved inner border effect
+*/
+
+:root {
+	/* Inkprint shadows */
+	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
+	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dark {
+	/* Dark mode shadows */
+	--shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.15);
+	--shadow-ink-strong: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+	--shadow-ink-inner: inset 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Shadow utility classes */
+.shadow-ink {
+	box-shadow: var(--shadow-ink);
+}
+
+.shadow-ink-strong {
+	box-shadow: var(--shadow-ink-strong);
+}
+
+.shadow-ink-inner {
+	box-shadow: var(--shadow-ink-inner);
+}
+
+/* ============================================
+   Ink Frame - Carved Inner Border
+   ============================================ */
+
+.ink-frame {
+	box-shadow:
+		inset 0 0 0 1px rgba(var(--tx-ink-rgb), 0.06),
+		inset 0 1px 0 rgba(var(--tx-ink-rgb), 0.04);
+}
+
+.dark .ink-frame {
+	box-shadow:
+		inset 0 0 0 1px rgba(var(--tx-ink-rgb), 0.08),
+		inset 0 1px 0 rgba(var(--tx-ink-rgb), 0.06);
+}

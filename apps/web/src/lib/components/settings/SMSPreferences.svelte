@@ -196,7 +196,7 @@
 					<!-- Event Reminders -->
 					<div class="space-y-2">
 						<div
-							class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+							class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 						>
 							<div class="flex items-start gap-3">
 								<Bell class="w-5 h-5 text-blue-500 mt-0.5" />
@@ -248,7 +248,7 @@
 					<!-- Morning Kickoff -->
 					<div class="space-y-2">
 						<div
-							class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+							class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 						>
 							<div class="flex items-start gap-3">
 								<Sun class="w-5 h-5 text-amber-500 mt-0.5" />
@@ -295,7 +295,7 @@
 
 					<!-- Evening Recap -->
 					<div
-						class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+						class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 					>
 						<div class="flex items-start gap-3">
 							<Moon class="w-5 h-5 text-indigo-500 mt-0.5" />
@@ -327,7 +327,7 @@
 
 					<!-- Urgent Alerts -->
 					<div
-						class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+						class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 					>
 						<div class="flex items-start gap-3">
 							<AlertTriangle class="w-5 h-5 text-red-500 mt-0.5" />

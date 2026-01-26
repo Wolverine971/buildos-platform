@@ -319,7 +319,7 @@
 			</div>
 			<!-- Inkprint compact header -->
 			<div
-				class="flex h-12 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-muted/30"
+				class="flex h-12 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-muted"
 			>
 				<h2 class="text-sm font-semibold text-foreground truncate">
 					{modalTitle}
@@ -343,15 +343,13 @@
 			<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 min-h-[50vh] flex-1">
 				<!-- Content Section (Takes most space) -->
 				<div
-					class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200"
+					class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-200"
 				>
 					<!-- Project Name Header -->
-					<div
-						class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-4 sm:p-5 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
-					>
+					<div class="bg-accent/10 p-4 sm:p-5 rounded-t-xl border-b border-border">
 						<label
 							for="project-name"
-							class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+							class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2"
 						>
 							Project Name <span class="text-red-500">*</span>
 						</label>
@@ -360,7 +358,7 @@
 							bind:value={nameValue}
 							placeholder="Enter a clear, memorable project name"
 							size="lg"
-							class="font-semibold bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+							class="font-semibold bg-card border-border focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 						/>
 					</div>
 
@@ -372,7 +370,7 @@
 						<div>
 							<label
 								for="project-description"
-								class="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2"
+								class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2"
 							>
 								Brief Description
 							</label>
@@ -381,7 +379,7 @@
 								bind:value={descriptionValue}
 								placeholder="One-line summary of what this project achieves"
 								rows={2}
-								class="bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+								class="bg-muted border-border focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 							/>
 						</div>
 
@@ -391,7 +389,7 @@
 								<Sparkles class="w-4 h-4 text-purple-600 dark:text-purple-400" />
 								<label
 									for="executive-summary"
-									class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 								>
 									Executive Summary
 								</label>
@@ -401,7 +399,7 @@
 								onUpdate={(newValue) => (executiveSummaryValue = newValue)}
 								placeholder="Key highlights, updates, and current status"
 								rows={3}
-								class="bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+								class="bg-muted border-border focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 							/>
 						</div>
 
@@ -412,7 +410,7 @@
 									<FileText class="w-4 h-4 text-green-600 dark:text-green-400" />
 									<label
 										for="project-context"
-										class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 									>
 										Detailed Context
 									</label>
@@ -455,7 +453,7 @@
 						</div>
 
 						<!-- Core Dimensions - Strategic Insights -->
-						<div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+						<div class="pt-4 border-t border-border">
 							<CoreDimensionsField
 								core_integrity_ideals={coreIntegrityIdeals}
 								core_people_bonds={corePeopleBonds}
@@ -472,7 +470,7 @@
 
 						<!-- Character Counts -->
 						<div
-							class="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-gray-700"
+							class="flex flex-wrap gap-4 text-xs text-muted-foreground pt-3 border-t border-border"
 						>
 							{#if contextValue.length > 0}
 								<span class="flex items-center gap-1">
@@ -497,13 +495,11 @@
 
 				<!-- Metadata Sidebar -->
 				<div
-					class="lg:col-span-1 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200 lg:max-h-full lg:overflow-y-auto"
+					class="lg:col-span-1 bg-muted rounded-xl border border-border shadow-ink hover:shadow-ink-strong transition-all duration-200 lg:max-h-full lg:overflow-y-auto"
 				>
-					<div
-						class="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 sm:p-4 rounded-t-xl border-b border-gray-200 dark:border-gray-700"
-					>
+					<div class="bg-accent/10 p-3 sm:p-4 rounded-t-xl border-b border-border">
 						<h3
-							class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider flex items-center"
+							class="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center"
 						>
 							<span class="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-pulse"
 							></span>
@@ -516,7 +512,7 @@
 						<div>
 							<label
 								for="project-status"
-								class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block"
+								class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block"
 							>
 								📈 Status
 							</label>
@@ -524,7 +520,7 @@
 								id="project-status"
 								bind:value={statusValue}
 								size="sm"
-								class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+								class="bg-card border-border focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 							>
 								{#each statusOptions as option}
 									<option value={option.value}>{option.label}</option>
@@ -535,7 +531,7 @@
 						<!-- Timeline Section -->
 						<div class="space-y-3">
 							<div
-								class="flex items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+								class="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 							>
 								<Calendar class="w-3.5 h-3.5" />
 								Timeline
@@ -545,7 +541,7 @@
 							<div>
 								<label
 									for="project-start-date"
-									class="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
+									class="text-xs text-muted-foreground mb-1 block"
 								>
 									Start Date
 								</label>
@@ -554,7 +550,7 @@
 									type="date"
 									bind:value={startDateValue}
 									size="sm"
-									class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+									class="bg-card border-border focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 								/>
 							</div>
 
@@ -562,7 +558,7 @@
 							<div>
 								<label
 									for="project-end-date"
-									class="text-xs text-gray-500 dark:text-gray-400 mb-1 block"
+									class="text-xs text-muted-foreground mb-1 block"
 								>
 									End Date
 								</label>
@@ -572,7 +568,7 @@
 									bind:value={endDateValue}
 									min={startDateValue}
 									size="sm"
-									class="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+									class="bg-card border-border focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 								/>
 							</div>
 						</div>
@@ -580,25 +576,21 @@
 						<!-- Duration Display -->
 						{#if projectDuration}
 							<div
-								class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800"
+								class="bg-blue-50 dark:bg-blue-900 rounded-lg p-3 border border-blue-200 dark:border-blue-800"
 							>
 								<div class="flex items-center justify-between text-xs mb-2">
-									<span class="text-gray-600 dark:text-gray-400 font-medium"
-										>Progress</span
-									>
-									<span class="font-semibold text-gray-900 dark:text-white">
+									<span class="text-muted-foreground font-medium">Progress</span>
+									<span class="font-semibold text-foreground">
 										{projectDuration.days} days
 									</span>
 								</div>
-								<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+								<div class="w-full bg-muted rounded-full h-2">
 									<div
 										class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 shadow-sm"
 										style="width: {projectDuration.progress}%"
 									></div>
 								</div>
-								<div
-									class="text-xs text-gray-500 dark:text-gray-400 mt-1.5 font-medium"
-								>
+								<div class="text-xs text-muted-foreground mt-1.5 font-medium">
 									{Math.round(projectDuration.progress)}% elapsed
 								</div>
 							</div>
@@ -608,7 +600,7 @@
 						<div>
 							<label
 								for="tag-input"
-								class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2 block flex items-center gap-1.5"
+								class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block flex items-center gap-1.5"
 							>
 								<Tag class="w-3.5 h-3.5" />
 								Tags
@@ -621,7 +613,7 @@
 										placeholder="Add tag..."
 										onkeydown={handleTagKeydown}
 										size="sm"
-										class="flex-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+										class="flex-1 bg-card border-border focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
 									/>
 									<Button
 										type="button"
@@ -637,7 +629,7 @@
 									<div class="flex flex-wrap gap-1.5">
 										{#each tagsValue as tag}
 											<span
-												class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-800 dark:text-blue-200 rounded-full border border-blue-200 dark:border-blue-800"
+												class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full border border-blue-200 dark:border-blue-800"
 											>
 												{tag}
 												<Button
@@ -658,13 +650,11 @@
 
 						<!-- Activity Indicator (if editing) -->
 						{#if project}
-							<hr class="border-gray-200 dark:border-gray-700" />
-							<div
-								class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
-							>
+							<hr class="border-border" />
+							<div class="bg-muted rounded-lg p-3 border border-border shadow-ink">
 								<div class="flex items-center justify-between mb-3">
 									<span
-										class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 									>
 										⏰ Activity
 									</span>
@@ -677,13 +667,10 @@
 								<div class="grid grid-cols-2 gap-3 text-xs">
 									{#if project.created_at}
 										<div>
-											<span
-												class="text-gray-500 dark:text-gray-400 block mb-0.5"
+											<span class="text-muted-foreground block mb-0.5"
 												>Created</span
 											>
-											<span
-												class="text-gray-700 dark:text-gray-300 font-medium"
-											>
+											<span class="text-foreground font-medium">
 												{format(
 													new Date(project.created_at),
 													'MMM d, yyyy'
@@ -693,13 +680,10 @@
 									{/if}
 									{#if project.updated_at}
 										<div>
-											<span
-												class="text-gray-500 dark:text-gray-400 block mb-0.5"
+											<span class="text-muted-foreground block mb-0.5"
 												>Updated</span
 											>
-											<span
-												class="text-gray-700 dark:text-gray-300 font-medium"
-											>
+											<span class="text-foreground font-medium">
 												{format(
 													new Date(project.updated_at),
 													'MMM d, yyyy'

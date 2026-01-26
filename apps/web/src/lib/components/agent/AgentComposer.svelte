@@ -57,8 +57,8 @@
 	}
 </script>
 
-<!-- INKPRINT form with tight spacing -->
-<form onsubmit={handleSubmit} class="space-y-1">
+<!-- INKPRINT form with compact spacing and Grain texture for active input workspace -->
+<form onsubmit={handleSubmit} class="space-y-2 tx tx-grain tx-weak rounded-lg">
 	<TextareaWithVoice
 		bind:this={voiceInputRef}
 		bind:value={inputValue}
@@ -74,7 +74,7 @@
 		{onVoiceNoteSegmentError}
 		class="w-full"
 		containerClass="rounded-lg border border-border bg-background shadow-ink-inner"
-		textareaClass="border-none bg-transparent px-2.5 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-3 sm:py-2.5"
+		textareaClass="border-none bg-transparent px-3 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-4 sm:py-3"
 		placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
 		autoResize
 		rows={1}
@@ -98,7 +98,7 @@
 				<!-- Stop button: destructive semantic for urgency -->
 				<button
 					type="button"
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-destructive/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background"
+					class="flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-destructive/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Stop response"
 					onclick={onStop}
@@ -109,7 +109,7 @@
 					<!-- Send while streaming: accent for primary action -->
 					<button
 						type="submit"
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
+						class="flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
 						style="-webkit-tap-highlight-color: transparent;"
 						aria-label="Send & stop"
 						title="Send & stop"
@@ -122,7 +122,7 @@
 				<!-- Send button: accent color for primary action, clear disabled state -->
 				<button
 					type="submit"
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
+					class="flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Send message"
 					disabled={isSendDisabled}
@@ -135,9 +135,9 @@
 
 	{#if isStreaming}
 		<!-- INKPRINT streaming status indicator -->
-		<div class="flex items-center gap-1 px-0.5">
+		<div class="flex items-center gap-2 px-1">
 			<div
-				class="flex items-center gap-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2 py-0.5 text-emerald-700 tx tx-grain tx-weak dark:bg-emerald-950/30 dark:text-emerald-400"
+				class="flex items-center gap-1.5 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1.5 text-emerald-700 tx tx-grain tx-weak dark:bg-emerald-950/30 dark:text-emerald-400"
 			>
 				<div
 					class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"

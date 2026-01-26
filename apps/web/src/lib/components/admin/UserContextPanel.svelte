@@ -417,7 +417,7 @@
 
 <div class="bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-frame tx-weak">
 	<!-- Header with Health Status -->
-	<div class="px-3 py-2 border-b border-border bg-muted/30">
+	<div class="px-3 py-2 border-b border-border bg-muted">
 		<div class="flex items-center justify-between gap-2">
 			<!-- User Identity -->
 			<div class="flex items-center gap-2 min-w-0 flex-1">
@@ -565,7 +565,7 @@
 			<div>
 				<button
 					onclick={() => toggleSection('basic')}
-					class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/50 transition-colors text-left"
+					class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted transition-colors text-left"
 				>
 					{#if expandedSections.has('basic')}
 						<ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
@@ -613,7 +613,7 @@
 				<div>
 					<button
 						onclick={() => toggleSection('beta')}
-						class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/50 transition-colors text-left"
+						class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted transition-colors text-left"
 					>
 						{#if expandedSections.has('beta')}
 							<ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
@@ -635,19 +635,19 @@
 						<div class="px-3 pb-2 space-y-2">
 							<!-- Beta Stats -->
 							<div class="grid grid-cols-3 gap-2">
-								<div class="text-center p-1.5 rounded-md bg-muted/50">
+								<div class="text-center p-1.5 rounded-md bg-muted">
 									<div class="text-sm font-semibold text-foreground">
 										{userContext.beta.total_feedback_submitted || 0}
 									</div>
 									<div class="text-[0.6rem] text-muted-foreground">Feedback</div>
 								</div>
-								<div class="text-center p-1.5 rounded-md bg-muted/50">
+								<div class="text-center p-1.5 rounded-md bg-muted">
 									<div class="text-sm font-semibold text-foreground">
 										{userContext.beta.total_calls_attended || 0}
 									</div>
 									<div class="text-[0.6rem] text-muted-foreground">Calls</div>
 								</div>
-								<div class="text-center p-1.5 rounded-md bg-muted/50">
+								<div class="text-center p-1.5 rounded-md bg-muted">
 									<div class="text-sm font-semibold text-foreground">
 										{userContext.beta.total_features_requested || 0}
 									</div>
@@ -730,7 +730,7 @@
 			<div>
 				<button
 					onclick={() => toggleSection('activity')}
-					class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/50 transition-colors text-left"
+					class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted transition-colors text-left"
 				>
 					{#if expandedSections.has('activity')}
 						<ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
@@ -778,7 +778,7 @@
 								<div class="space-y-1">
 									{#each userContext.activity.recent_projects.slice(0, 3) as project}
 										<div
-											class="flex items-center justify-between text-xs p-1.5 rounded-md bg-muted/50"
+											class="flex items-center justify-between text-xs p-1.5 rounded-md bg-muted"
 										>
 											<span class="text-foreground truncate flex-1"
 												>{project.title}</span
@@ -818,7 +818,7 @@
 				<div>
 					<button
 						onclick={() => toggleSection('onboarding')}
-						class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/50 transition-colors text-left"
+						class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted transition-colors text-left"
 					>
 						{#if expandedSections.has('onboarding')}
 							<ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
@@ -888,7 +888,7 @@
 				<div>
 					<button
 						onclick={() => toggleSection('emails')}
-						class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/50 transition-colors text-left"
+						class="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted transition-colors text-left"
 					>
 						{#if expandedSections.has('emails')}
 							<ChevronDown class="w-3.5 h-3.5 text-muted-foreground" />
@@ -911,7 +911,7 @@
 									<!-- Email Header (clickable to expand) -->
 									<button
 										onclick={() => toggleEmailExpanded(email.id)}
-										class="w-full p-2 bg-muted/30 hover:bg-muted/50 transition-colors text-left flex items-start gap-2"
+										class="w-full p-2 bg-muted hover:bg-muted transition-colors text-left flex items-start gap-2"
 									>
 										<div class="pt-0.5 shrink-0">
 											{#if expandedEmails.has(email.id)}
@@ -1041,14 +1041,14 @@
 													<button
 														onclick={() =>
 															copyEmailContent(email.content)}
-														class="px-1.5 py-0.5 text-[0.65rem] rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors pressable flex items-center gap-1"
+														class="px-1.5 py-0.5 text-[0.65rem] rounded bg-muted hover:bg-muted text-muted-foreground transition-colors pressable flex items-center gap-1"
 													>
 														<Copy class="w-3 h-3" />
 														Copy
 													</button>
 												</div>
 												<div
-													class="p-3 rounded-md bg-muted/50 border border-border text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto"
+													class="p-3 rounded-md bg-muted border border-border text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto"
 												>
 													{stripHtmlToText(email.content)}
 												</div>

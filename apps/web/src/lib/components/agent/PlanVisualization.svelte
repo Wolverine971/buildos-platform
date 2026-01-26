@@ -146,12 +146,12 @@
 
 <!-- INKPRINT plan visualization container with Thread texture -->
 <div
-	class="plan-visualization rounded-lg border border-border bg-card p-3 shadow-ink tx tx-thread tx-weak"
+	class="plan-visualization rounded-lg border border-border bg-card p-4 shadow-ink tx tx-thread tx-weak"
 >
 	<!-- INKPRINT Collapsible Header -->
 	<button
 		onclick={onToggle}
-		class="w-full space-y-2 text-left rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		class="w-full space-y-2 text-left rounded-lg pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		aria-expanded={!isCollapsed}
 		aria-label={isCollapsed ? 'Expand plan details' : 'Collapse plan details'}
 	>
@@ -196,10 +196,10 @@
 		{/if}
 
 		<!-- INKPRINT Metadata Pills -->
-		<div class="mt-2 flex flex-wrap gap-1.5">
+		<div class="mt-2 flex flex-wrap gap-2">
 			{#if plan.metadata?.estimatedDuration}
 				<span
-					class="inline-flex items-center gap-1 rounded-lg border border-purple-600/30 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950/30 dark:text-purple-400"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-purple-600/30 bg-purple-50 px-2.5 py-1.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950/30 dark:text-purple-400"
 				>
 					<Clock class="h-3 w-3" aria-hidden="true" />
 					~{formatDuration(plan.metadata.estimatedDuration)}
@@ -208,7 +208,7 @@
 
 			{#if hasDependencies}
 				<span
-					class="inline-flex items-center gap-1 rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-amber-600/30 bg-amber-50 px-2.5 py-1.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/30 dark:text-amber-400"
 				>
 					<GitBranch class="h-3 w-3" aria-hidden="true" />
 					Dependencies
@@ -217,7 +217,7 @@
 
 			{#if uniqueTools.length > 0}
 				<span
-					class="inline-flex items-center gap-1 rounded-lg border border-blue-600/30 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-blue-600/30 bg-blue-50 px-2.5 py-1.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
 				>
 					<Wrench class="h-3 w-3" aria-hidden="true" />
 					{uniqueTools.length}
@@ -227,7 +227,7 @@
 
 			{#if hasExecutors}
 				<span
-					class="inline-flex items-center gap-1 rounded-lg border border-teal-600/30 bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-950/30 dark:text-teal-400"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-teal-600/30 bg-teal-50 px-2.5 py-1.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-950/30 dark:text-teal-400"
 				>
 					<Zap class="h-3 w-3" aria-hidden="true" />
 					Executors
@@ -275,7 +275,7 @@
 
 					<!-- INKPRINT Step Content -->
 					<div
-						class="rounded-lg border bg-background p-2 shadow-ink-inner {isActive
+						class="rounded-lg border bg-background p-3 shadow-ink-inner {isActive
 							? 'border-accent ring-1 ring-accent/30'
 							: 'border-border'} {step.status === 'completed' ? 'opacity-75' : ''}"
 					>
@@ -284,7 +284,7 @@
 								Step {step.stepNumber}
 							</span>
 							<span
-								class="rounded-lg border px-1.5 py-0.5 text-[10px] font-mono {getStepTypeColor(
+								class="rounded-lg border px-2.5 py-1.5 text-[10px] font-mono {getStepTypeColor(
 									step.type
 								)}"
 							>
@@ -307,13 +307,13 @@
 						<!-- INKPRINT Tools Required -->
 						{#if step.tools && step.tools.length > 0}
 							<div
-								class="mt-1.5 flex flex-wrap gap-1"
+								class="mt-1.5 flex flex-wrap gap-1.5"
 								role="list"
 								aria-label="Required tools"
 							>
 								{#each step.tools as tool}
 									<span
-										class="inline-block rounded-lg border border-blue-600/30 bg-blue-50 px-2 py-0.5 text-[10px] font-mono text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
+										class="inline-block rounded-lg border border-blue-600/30 bg-blue-50 px-2.5 py-1.5 text-[10px] font-mono text-blue-700 dark:bg-blue-950/30 dark:text-blue-400"
 										title={tool}
 										role="listitem"
 									>
@@ -335,7 +335,7 @@
 						<!-- INKPRINT Error Display with Static texture -->
 						{#if step.error}
 							<div
-								class="mt-1.5 flex items-start gap-1 rounded-lg border border-red-600/30 bg-red-50 p-1.5 text-[10px] text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400"
+								class="mt-1.5 flex items-start gap-2 rounded-lg border border-red-600/30 bg-red-50 p-3 text-[10px] text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400"
 								role="alert"
 							>
 								<AlertCircle class="h-3 w-3 shrink-0 mt-0.5" aria-hidden="true" />
@@ -346,7 +346,7 @@
 						<!-- INKPRINT Result Preview (if completed) -->
 						{#if step.result && step.status === 'completed'}
 							<div
-								class="mt-1 rounded-lg border border-emerald-600/30 bg-emerald-50 p-1 text-[10px] text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
+								class="mt-1 rounded-lg border border-emerald-600/30 bg-emerald-50 p-2 text-[10px] text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
 							>
 								✓ {formatResult(step.result)}
 							</div>

@@ -72,7 +72,7 @@
 		`,
 		ghost: `
 			bg-transparent text-muted-foreground border border-transparent font-semibold tracking-tight
-			hover:bg-muted/50 hover:text-foreground hover:border-border
+			hover:bg-muted hover:text-foreground hover:border-border
 			focus:ring-2 focus:ring-ring focus:ring-offset-0
 			disabled:text-muted-foreground/50 disabled:cursor-not-allowed
 		`,
@@ -94,10 +94,10 @@
 		`,
 		outline: `
 			bg-card text-foreground border border-border font-semibold tracking-tight
-			hover:bg-muted/50 hover:border-accent hover:text-accent
+			hover:bg-muted hover:border-accent hover:text-accent
 			active:translate-y-[1px] active:shadow-ink-inner
 			focus:ring-2 focus:ring-ring focus:ring-offset-1
-			disabled:bg-muted/50 disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
+			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
 			shadow-ink tx-button relative
 		`,
 		success: `

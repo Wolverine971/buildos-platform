@@ -71,13 +71,11 @@
 			<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
 				<div class="space-y-2 flex-1 min-w-0">
 					<h1
-						class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white leading-tight"
+						class="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-tight"
 					>
 						{project.name}
 					</h1>
-					<div
-						class="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
-					>
+					<div class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 						<span
 							class="px-3 py-1 rounded-full text-xs font-semibold capitalize {getProjectStateBadgeClass(
 								project.state_key
@@ -113,7 +111,7 @@
 				</div>
 			</div>
 			{#if project.description}
-				<p class="text-sm sm:text-base text-gray-600 dark:text-gray-300 leading-relaxed">
+				<p class="text-sm sm:text-base text-foreground leading-relaxed">
 					{project.description}
 				</p>
 			{/if}
@@ -123,7 +121,7 @@
 			<div class="flex flex-wrap gap-2">
 				{#each facetChips as chip}
 					<span
-						class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-sm dither-subtle"
+						class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-muted text-foreground border border-border shadow-ink"
 					>
 						<span class="font-semibold">{chip.label}:</span>
 						<span class="ml-1.5">{formatLabel(chip.value as string)}</span>
@@ -148,11 +146,11 @@
 						<span class="w-1.5 h-1.5 bg-accent-blue rounded-full"></span>
 						Context Document
 					</p>
-					<p class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate mb-1">
+					<p class="text-sm font-semibold text-foreground truncate mb-1">
 						{contextDocTitle}
 					</p>
 					{#if !contextDocument}
-						<p class="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">
+						<p class="text-xs text-muted-foreground mt-1 leading-relaxed">
 							Create a document with type <code
 								class="px-1 py-0.5 bg-surface-panel rounded text-xs font-medium"
 								>document.context.project</code
@@ -166,9 +164,9 @@
 			class="p-3 sm:p-4 rounded border-2 border-gray-300 dark:border-gray-600/50 bg-surface-elevated shadow-subtle hover:shadow-elevated transition-all duration-200"
 		>
 			<p
-				class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 tracking-wide mb-2.5 sm:mb-3 flex items-center gap-1.5"
+				class="text-xs uppercase font-semibold text-muted-foreground tracking-wide mb-2.5 sm:mb-3 flex items-center gap-1.5"
 			>
-				<span class="w-1.5 h-1.5 bg-gray-500 dark:bg-gray-400 rounded-full"></span>
+				<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
 				Project Entities
 			</p>
 			<div class="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-2.5 text-center">
@@ -176,11 +174,11 @@
 					<div
 						class="rounded bg-surface-panel py-2 px-1.5 sm:px-2 border border-gray-200 dark:border-gray-600/30 hover:border-accent-orange transition-colors"
 					>
-						<p class="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+						<p class="text-lg sm:text-xl font-bold text-foreground">
 							{stat.value}
 						</p>
 						<p
-							class="text-xs uppercase tracking-wide text-gray-600 dark:text-gray-400 font-semibold"
+							class="text-xs uppercase tracking-wide text-muted-foreground font-semibold"
 						>
 							{stat.label}
 						</p>

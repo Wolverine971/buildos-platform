@@ -1,0 +1,23 @@
+/* ============================================
+   Texture Intensities
+   ============================================
+
+   Control texture opacity with semantic intensity tokens.
+
+   Usage:
+   <div class="tx tx-frame tx-weak">Subtle texture</div>
+   <div class="tx tx-grain tx-med">Balanced texture</div>
+   <div class="tx tx-bloom tx-strong">Bold texture</div>
+*/
+
+.tx-weak {
+	--tx-opacity: 0.03;
+}
+
+.tx-med {
+	--tx-opacity: 0.06;
+}
+
+.tx-strong {
+	--tx-opacity: 0.1;
+}

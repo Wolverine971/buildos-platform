@@ -86,7 +86,7 @@
 						type="text"
 						placeholder="Search {sectionConfig?.labelPlural.toLowerCase() ||
 							'entities'}..."
-						class="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-muted/50 border border-border rounded-md
+						class="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-muted border border-border rounded-md
 							placeholder:text-muted-foreground
 							focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-colors"
 						oninput={handleSearchInput}
@@ -137,8 +137,8 @@
 						<button
 							type="button"
 							class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border/50
-								hover:bg-muted/50 transition-colors text-left pressable
-								focus:outline-none focus-visible:bg-muted/50"
+								hover:bg-muted transition-colors text-left pressable
+								focus:outline-none focus-visible:bg-muted"
 							onclick={() => toggleSelection(entity.id)}
 						>
 							<div
@@ -168,7 +168,7 @@
 
 			<!-- Footer Info -->
 			<div
-				class="px-3 sm:px-4 py-1.5 sm:py-2 border-t border-border bg-muted/30 text-[10px] sm:text-xs text-muted-foreground"
+				class="px-3 sm:px-4 py-1.5 sm:py-2 border-t border-border bg-muted text-[10px] sm:text-xs text-muted-foreground"
 			>
 				{selectedCount} of {availableCount} available selected
 			</div>
@@ -177,7 +177,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-end gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+			class="flex items-center justify-end gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
 		>
 			<Button variant="ghost" size="sm" onclick={handleClose} class="pressable">Cancel</Button
 			>

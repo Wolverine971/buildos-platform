@@ -1425,7 +1425,7 @@
 >
 	{#snippet header()}
 		<div
-			class="brain-dump-modal-header dither-soft bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 relative overflow-hidden"
+			class="brain-dump-modal-header bg-muted border-b border-border relative overflow-hidden"
 		>
 			<div
 				class="header-content"
@@ -1436,7 +1436,7 @@
 			>
 				<div class="flex items-center">
 					<div
-						class="p-1.5 dither-gradient bg-gradient-to-br from-purple-100/50 to-pink-100/50 dark:from-purple-800/30 dark:to-pink-800/30 rounded mr-3 overflow-hidden relative"
+						class="p-1.5 bg-accent/10 rounded mr-3 overflow-hidden relative shadow-ink-inner"
 						data-brain-dump-indicator={enableViewTransitions && isOpen
 							? true
 							: undefined}
@@ -1457,8 +1457,8 @@
 						{/if}
 					</div>
 					<div>
-						<h2 class="text-xl font-bold text-gray-900 dark:text-white">Brain Dump</h2>
-						<p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+						<h2 class="text-xl font-bold text-foreground">Brain Dump</h2>
+						<p class="text-sm text-muted-foreground mt-0.5">
 							Organize your thoughts into actionable tasks
 						</p>
 					</div>
@@ -1490,13 +1490,11 @@
 			{#if isHandingOff}
 				<!-- Handoff transition message -->
 				<div
-					class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 z-50 rounded"
+					class="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50 rounded"
 				>
 					<div class="text-center">
 						<LoaderCircle class="w-8 h-8 animate-spin mx-auto mb-2 text-primary-500" />
-						<p class="text-sm text-gray-600 dark:text-gray-400">
-							Starting processing...
-						</p>
+						<p class="text-sm text-muted-foreground">Starting processing...</p>
 					</div>
 				</div>
 			{/if}
@@ -1517,15 +1515,11 @@
 					<!-- Loading state for ProjectSelectionView -->
 					<div class="p-6">
 						<div class="space-y-4">
-							<div class="animate-shimmer">
-								<div
-									class="h-4 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded w-1/4 mb-4"
-								></div>
+							<div class="animate-pulse">
+								<div class="h-4 bg-muted rounded w-1/4 mb-4"></div>
 								<div class="grid grid-cols-2 gap-4">
 									{#each [1, 2, 3, 4] as _}
-										<div
-											class="h-24 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded shadow-sm"
-										></div>
+										<div class="h-24 bg-muted rounded shadow-ink"></div>
 									{/each}
 								</div>
 							</div>
@@ -1609,7 +1603,7 @@
 						<div class="space-y-4">
 							<!-- Show a basic textarea immediately so users can start typing -->
 							<textarea
-								class="w-full h-64 p-4 border border-gray-300 dark:border-gray-600 rounded resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+								class="w-full h-64 p-4 border border-border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-ring bg-background text-foreground"
 								placeholder="Start typing or use voice recording..."
 								value={inputText}
 								oninput={(e) => {
@@ -1617,7 +1611,7 @@
 									debouncedAutoSave();
 								}}
 							></textarea>
-							<div class="text-sm text-gray-500 dark:text-gray-400">
+							<div class="text-sm text-muted-foreground">
 								Loading full interface...
 							</div>
 						</div>
@@ -1641,12 +1635,8 @@
 					<!-- Loading state for SuccessView -->
 					<div class="p-6 text-center">
 						<div class="animate-pulse">
-							<div
-								class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mx-auto mb-4"
-							></div>
-							<div
-								class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mx-auto"
-							></div>
+							<div class="h-8 bg-muted rounded-lg w-3/4 mx-auto mb-4"></div>
+							<div class="h-4 bg-muted rounded-lg w-1/2 mx-auto"></div>
 						</div>
 					</div>
 				{/if}
@@ -1681,13 +1671,7 @@
 
 	.brain-dump-modal-header {
 		padding: 1.5rem;
-		border-bottom: 1px solid rgba(229, 231, 235, 0.5);
-		backdrop-filter: blur(8px);
 		border-radius: 0.75rem 0.75rem 0 0;
-	}
-
-	:global(.dark) .brain-dump-modal-header {
-		border-bottom-color: rgba(55, 65, 81, 0.5);
 	}
 
 	.brain-dump-modal-content {
@@ -1702,58 +1686,11 @@
 		}
 	}
 
-	/* Shimmer animation */
-	@keyframes shimmer {
-		0% {
-			background-position: -200% center;
-		}
-		100% {
-			background-position: 200% center;
-		}
-	}
-
-	.animate-shimmer {
-		background-size: 200% 100%;
-		animation: shimmer 2s ease-in-out infinite;
-	}
-
 	.header-content {
 		display: flex;
 		justify-content: space-between;
 		align-items: flex-start;
 		width: 100%;
-	}
-
-	/* Apply styles globally since the Button component encapsulates styles */
-	:global(.close-button) {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 2rem;
-		height: 2rem;
-		padding: 0;
-		background: transparent;
-		border: none;
-		border-radius: 0.375rem;
-		color: rgb(107 114 128);
-		cursor: pointer;
-		transition: all 0.2s;
-		flex-shrink: 0;
-		margin-left: 1rem;
-	}
-
-	:global(.close-button:hover) {
-		background: rgb(243 244 246);
-		color: rgb(55 65 81);
-	}
-
-	:global(.dark .close-button) {
-		color: rgb(156 163 175);
-	}
-
-	:global(.dark .close-button:hover) {
-		background: rgb(55 65 81);
-		color: rgb(209 213 219);
 	}
 
 	/* View Transition Styles */

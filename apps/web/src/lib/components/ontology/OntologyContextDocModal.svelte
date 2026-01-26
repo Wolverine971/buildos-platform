@@ -160,7 +160,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div class="p-1.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shrink-0">
@@ -193,7 +193,7 @@
 	{#snippet children()}
 		{#if !document}
 			<div
-				class="text-center py-12 px-4 bg-muted/30 rounded border-2 border-dashed border-border"
+				class="text-center py-12 px-4 bg-muted rounded border-2 border-dashed border-border"
 			>
 				<FileText class="w-16 h-16 text-muted-foreground mx-auto mb-4" />
 				<p class="text-foreground text-lg font-medium mb-2">No Context Document</p>
@@ -373,7 +373,7 @@
 					</div>
 				{:else}
 					<!-- No Content -->
-					<div class="text-center py-8 px-4 bg-muted/30 rounded-lg border border-border">
+					<div class="text-center py-8 px-4 bg-muted rounded-lg border border-border">
 						<p class="text-muted-foreground">No content available for this document.</p>
 					</div>
 				{/if}

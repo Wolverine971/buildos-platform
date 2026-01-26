@@ -216,7 +216,7 @@
 >
 	<button
 		onclick={handleToggle}
-		class="w-full flex items-center justify-between gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/60 transition-colors pressable"
+		class="w-full flex items-center justify-between gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted transition-colors pressable"
 	>
 		<div class="flex items-center gap-2 sm:gap-3">
 			<div
@@ -259,7 +259,7 @@
 			{:else if logs.length === 0}
 				<div class="px-3 sm:px-4 py-3 sm:py-4 text-center tx tx-bloom tx-weak">
 					<div
-						class="w-8 h-8 sm:w-10 sm:h-10 rounded-md sm:rounded-lg bg-muted/50 flex items-center justify-center mx-auto mb-2"
+						class="w-8 h-8 sm:w-10 sm:h-10 rounded-md sm:rounded-lg bg-muted flex items-center justify-center mx-auto mb-2"
 					>
 						<Clock class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 					</div>
@@ -280,7 +280,7 @@
 						{#if isClickable}
 							<button
 								type="button"
-								class="group flex items-start gap-2 px-4 py-2 hover:bg-muted/60 cursor-pointer text-left w-full pressable"
+								class="group flex items-start gap-2 px-4 py-2 hover:bg-muted cursor-pointer text-left w-full pressable"
 								onclick={() => handleEntityClick(log)}
 							>
 								<!-- Timestamp + Source -->

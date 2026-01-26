@@ -718,16 +718,16 @@
 				return `${base} border-2 border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90`;
 			case 'loading':
 				// Processing state - subtle muted, non-interactive feel
-				return `${base} border border-border bg-muted/80 text-muted-foreground`;
+				return `${base} border border-border bg-muted text-muted-foreground`;
 			case 'prompt':
 				// Needs attention (enable mic) - accent outline to draw eye
 				return `${base} border-2 border-accent bg-accent/10 text-accent hover:bg-accent/20 dark:bg-accent/15 dark:hover:bg-accent/25`;
 			case 'muted':
 				// Disabled/unavailable - clearly inactive, no pressable
-				return `border border-border bg-muted/60 text-muted-foreground/40 cursor-not-allowed`;
+				return `border border-border bg-muted text-muted-foreground/40 cursor-not-allowed`;
 			default:
 				// Ready state - outline style to complement accent send button
-				return `${base} border border-foreground/20 bg-card text-foreground hover:border-foreground/40 hover:bg-muted/50 dark:border-foreground/15 dark:hover:border-foreground/30`;
+				return `${base} border border-foreground/20 bg-card text-foreground hover:border-foreground/40 hover:bg-muted dark:border-foreground/15 dark:hover:border-foreground/30`;
 		}
 	}
 

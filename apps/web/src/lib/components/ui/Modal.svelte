@@ -119,14 +119,14 @@
 		if (variant === 'bottom-sheet') {
 			return {
 				container: 'items-end sm:items-center',
-				modal: 'rounded-t-2xl sm:rounded-lg mb-0 sm:mb-4', // Softer radius
+				modal: 'rounded-t-lg sm:rounded-lg mb-0 sm:mb-4', // 0.5rem radius (card/plate weight)
 				animation: 'animate-modal-slide-up sm:animate-modal-scale'
 			};
 		}
 		// Default: center variant
 		return {
 			container: 'items-center',
-			modal: 'rounded-lg', // Softer radius
+			modal: 'rounded-lg', // 0.5rem radius (card/plate weight)
 			animation: 'animate-modal-scale'
 		};
 	});
@@ -464,9 +464,8 @@
 					bind:this={modalElement}
 					use:touchGesture
 					class="relative {sizeClasses[size]}
-						bg-card border border-border
+						wt-plate
 						{variantClasses.modal}
-						shadow-ink-strong
 						max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)]
 						landscape:max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.5rem)]
 						sm:max-h-[85dvh]
@@ -476,6 +475,7 @@
 						{variantClasses.animation}
 						{animationComplete ? 'animation-complete' : ''}
 						modal-container
+						tx tx-frame tx-weak
 						ink-frame"
 					style="
 						transform: translateY({dragTranslateY}px) translateZ(0);
@@ -506,7 +506,7 @@
 							class="flex h-12 items-center justify-between gap-3
 								px-4
 								border-b border-border
-								bg-muted/30
+								bg-muted
 								flex-shrink-0"
 						>
 							{#if title}

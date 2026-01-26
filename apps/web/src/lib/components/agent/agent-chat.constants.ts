@@ -56,5 +56,4 @@ export const CONTEXT_BADGE_CLASSES: Partial<Record<ChatContextType, string>> = {
 	calendar: 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300'
 };
 
-export const DEFAULT_CONTEXT_BADGE_CLASS =
-	'bg-slate-500/10 text-slate-700 dark:bg-slate-500/20 dark:text-slate-200';
+export const DEFAULT_CONTEXT_BADGE_CLASS = 'bg-muted text-muted-foreground border border-border';

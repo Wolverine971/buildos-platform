@@ -166,7 +166,7 @@
 	<button
 		type="button"
 		onclick={handleToggle}
-		class="w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted/60 transition-colors pressable"
+		class="w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted transition-colors pressable"
 		aria-expanded={isExpanded}
 	>
 		<div class="flex items-center gap-2 sm:gap-3">
@@ -201,7 +201,7 @@
 		<div class="border-t border-border" transition:slide={{ duration: 120 }}>
 			<!-- Controls Row -->
 			<div
-				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-muted/30 border-b border-border tx tx-grain tx-weak"
+				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-muted border-b border-border tx tx-grain tx-weak"
 			>
 				<div class="flex items-center gap-1.5 sm:gap-2">
 					<!-- Layout Selector -->
@@ -246,7 +246,7 @@
 			<div class="h-[200px] sm:h-[250px] lg:h-[280px] relative">
 				{#if isLoading}
 					<div
-						class="absolute inset-0 flex items-center justify-center bg-muted/20 tx tx-pulse tx-weak"
+						class="absolute inset-0 flex items-center justify-center bg-muted tx tx-pulse tx-weak"
 					>
 						<div
 							class="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground"

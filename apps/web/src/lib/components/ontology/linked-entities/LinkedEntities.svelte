@@ -317,11 +317,9 @@
 	const availableForSelectedKind = $derived(availableEntitiesCache[linkPickerKind] || []);
 </script>
 
-<div
-	class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
->
+<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden">
 	<!-- Header -->
-	<div class="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border bg-muted/30">
+	<div class="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border bg-muted">
 		<h3
 			class="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 sm:gap-2"
 		>

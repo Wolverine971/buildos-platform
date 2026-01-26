@@ -339,7 +339,7 @@
 				</div>
 
 				<div
-					class="rounded-xl border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
+					class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
 				>
 					<div
 						class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
@@ -535,7 +535,7 @@
 					</div>
 					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
 						<div class="flex items-center gap-2 mb-1">
-							<ListChecks class="w-3.5 h-3.5 text-slate-500" />
+							<ListChecks class="w-3.5 h-3.5 text-muted-foreground" />
 							<span
 								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
 								>Tasks</span
@@ -601,10 +601,10 @@
 			{#if ExampleProjectGraphComponent}
 				<ExampleProjectGraphComponent />
 			{:else}
-				<section id="example" class="border-t border-border bg-muted/30">
+				<section id="example" class="border-t border-border bg-muted">
 					<div class="mx-auto max-w-6xl px-4 py-6">
 						<div
-							class="rounded-lg border border-border bg-card/60 p-6 text-sm text-muted-foreground"
+							class="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground"
 						>
 							Loading example project graph...
 						</div>

@@ -275,7 +275,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
@@ -465,7 +465,7 @@
 								<div class="grid gap-6 lg:grid-cols-3">
 									<Card class="lg:col-span-2 shadow-ink">
 										<CardHeader
-											class="flex items-center justify-between border-b border-border bg-muted/30 tx tx-frame tx-weak"
+											class="flex items-center justify-between border-b border-border bg-muted tx tx-frame tx-weak"
 										>
 											<div>
 												<p
@@ -598,7 +598,7 @@
 												</div>
 												<div class="grid grid-cols-2 gap-3 text-sm">
 													<div
-														class="rounded bg-muted/50 p-3 border border-border"
+														class="rounded bg-muted p-3 border border-border"
 													>
 														<p
 															class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
@@ -610,7 +610,7 @@
 														</p>
 													</div>
 													<div
-														class="rounded bg-muted/50 p-3 border border-border"
+														class="rounded bg-muted p-3 border border-border"
 													>
 														<p
 															class="text-xs uppercase tracking-[0.3em] text-muted-foreground"

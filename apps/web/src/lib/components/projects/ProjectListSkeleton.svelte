@@ -33,35 +33,35 @@
 			<div class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3">
 				<div class="min-w-0 flex-1">
 					<!-- Title skeleton - smaller on mobile -->
-					<div class="h-4 sm:h-6 bg-muted/60 rounded w-3/4"></div>
+					<div class="h-4 sm:h-6 bg-muted rounded w-3/4"></div>
 					<!-- Mobile inline status -->
-					<div class="sm:hidden h-3 w-12 bg-muted/50 rounded mt-1.5"></div>
+					<div class="sm:hidden h-3 w-12 bg-muted rounded mt-1.5"></div>
 				</div>
 				<!-- Desktop status badge skeleton -->
-				<div class="hidden sm:block h-6 w-16 bg-muted/60 rounded-md flex-shrink-0"></div>
+				<div class="hidden sm:block h-6 w-16 bg-muted rounded-md flex-shrink-0"></div>
 			</div>
 
 			<!-- Description skeleton - hidden on mobile -->
 			<div class="hidden sm:block mb-3 space-y-2">
-				<div class="h-4 bg-muted/50 rounded w-full"></div>
-				<div class="h-4 bg-muted/50 rounded w-4/5"></div>
+				<div class="h-4 bg-muted rounded w-full"></div>
+				<div class="h-4 bg-muted rounded w-4/5"></div>
 			</div>
 
 			<!-- Next Step skeleton - hidden on mobile -->
-			<div class="hidden sm:block mb-3 p-2.5 rounded-lg border border-border/60 bg-muted/20">
-				<div class="h-3.5 bg-muted/50 rounded w-4/5"></div>
+			<div class="hidden sm:block mb-3 p-2.5 rounded-lg border border-border bg-muted">
+				<div class="h-3.5 bg-muted rounded w-4/5"></div>
 			</div>
 
 			<!-- Footer Stats skeleton -->
-			<div class="mt-auto flex flex-col gap-1.5 border-t border-border/60 pt-2 sm:pt-3">
+			<div class="mt-auto flex flex-col gap-1.5 border-t border-border pt-2 sm:pt-3">
 				<!-- Stats row -->
 				<div class="flex flex-wrap items-center gap-2 sm:gap-x-3 sm:gap-y-1.5">
-					<div class="h-3 sm:h-4 w-8 sm:w-10 bg-muted/50 rounded"></div>
-					<div class="h-3 sm:h-4 w-8 sm:w-10 bg-muted/50 rounded"></div>
-					<div class="hidden sm:block h-4 w-10 bg-muted/50 rounded"></div>
+					<div class="h-3 sm:h-4 w-8 sm:w-10 bg-muted rounded"></div>
+					<div class="h-3 sm:h-4 w-8 sm:w-10 bg-muted rounded"></div>
+					<div class="hidden sm:block h-4 w-10 bg-muted rounded"></div>
 				</div>
 				<!-- Updated date skeleton - hidden on mobile -->
-				<div class="hidden sm:block h-3 w-28 bg-muted/40 rounded"></div>
+				<div class="hidden sm:block h-3 w-28 bg-muted rounded"></div>
 			</div>
 		</div>
 	{/each}

@@ -1,0 +1,99 @@
+/* ============================================
+   Utility Classes
+   ============================================
+
+   Layout, spacing, and semantic utilities.
+*/
+
+/* Micro-label pattern for metadata */
+.micro-label {
+	font-size: 0.65rem;
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	color: hsl(var(--muted-foreground));
+}
+
+/* ============================================
+   Spatial Emphasis - Layout Permission Layer
+   ============================================
+
+   Purpose:
+   - Mode A (App): default dense, aligned, predictable.
+   - Mode B (Marketing/Editorial/Transitions): opt-in spatial flare.
+
+   Tokens:
+   - sp-inline : list-level / dense / no layout break
+   - sp-block  : normal card/section (default-ish)
+   - sp-focus  : allowed to break grid, overlap, breathe (rare, opt-in)
+
+   Notes:
+   - These DO NOT add padding. They only authorize layout behavior + subtle presence.
+*/
+
+.sp-inline {
+	/* Keep things tight and stable */
+	isolation: isolate;
+}
+
+.sp-block {
+	/* Mild emphasis; still command-center safe */
+	isolation: isolate;
+}
+
+.sp-focus {
+	/* Rare, opt-in: allow emphasis without forcing whitespace everywhere */
+	position: relative;
+	isolation: isolate;
+	z-index: 2;
+}
+
+/* Optional: a tiny presence boost for focused elements without adding padding */
+.sp-focus.sp-lift {
+	transform: translateY(-1px);
+}
+
+/* ============================================
+   Grid-Break Utilities (Opt-in, Mode B)
+   ============================================ */
+
+.grid-break {
+	/* lets a child break typical grid rhythm without new layout primitives */
+	align-self: stretch;
+}
+
+@media (min-width: 640px) {
+	.span-2 {
+		grid-column: span 2 / span 2;
+	}
+	.span-3 {
+		grid-column: span 3 / span 3;
+	}
+}
+
+.flow-diagonal {
+	/* subtle diagonal energy without making everything slanted */
+	transform: skewY(-0.35deg);
+	transform-origin: left top;
+}
+
+.overlap-1 {
+	margin-top: -0.25rem;
+}
+.overlap-2 {
+	margin-top: -0.5rem;
+}
+.overlap-3 {
+	margin-top: -0.75rem;
+}
+
+/* "Float" for callouts / hero blocks (Mode B only) */
+.float-left {
+	float: left;
+	margin-right: 0.75rem;
+	margin-bottom: 0.5rem;
+}
+.float-right {
+	float: right;
+	margin-left: 0.75rem;
+	margin-bottom: 0.5rem;
+}

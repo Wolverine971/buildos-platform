@@ -46,7 +46,7 @@
 	// Initialize activeTab from localStorage on mount
 	$effect(() => {
 		if (typeof window !== 'undefined') {
-			const savedTab = localStorage.getItem('dashboard-tab-position');
+			const savedTab = localStorage?.getItem('dashboard-tab-position');
 			if (savedTab !== null) {
 				const tabIndex = parseInt(savedTab, 10);
 				if (!isNaN(tabIndex) && tabIndex >= 0 && tabIndex <= 2) {

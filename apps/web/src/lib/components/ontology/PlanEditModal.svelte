@@ -363,7 +363,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -577,7 +577,7 @@
 							</CardHeader>
 							<CardBody class="space-y-3">
 								<div class="grid grid-cols-2 gap-3 text-sm">
-									<div class="rounded bg-muted/30 p-3 border border-border">
+									<div class="rounded bg-muted p-3 border border-border">
 										<p
 											class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
 										>
@@ -587,7 +587,7 @@
 											{startLabel}
 										</p>
 									</div>
-									<div class="rounded bg-muted/30 p-3 border border-border">
+									<div class="rounded bg-muted p-3 border border-border">
 										<p
 											class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
 										>
@@ -645,7 +645,7 @@
 	{#snippet footer()}
 		{#if !isLoading && plan}
 			<div
-				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
 			>
 				<!-- Delete button on left -->
 				<div class="flex items-center gap-1.5 sm:gap-2">

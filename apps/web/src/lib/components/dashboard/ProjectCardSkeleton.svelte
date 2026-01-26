@@ -32,7 +32,7 @@
 	</div>
 
 	<!-- Next Step skeleton - Hidden on mobile for density -->
-	<div class="hidden sm:block mb-3 p-2 rounded-lg border border-border bg-muted/30">
+	<div class="hidden sm:block mb-3 p-2 rounded-lg border border-border bg-muted">
 		<div class="h-3 bg-muted rounded w-4/5"></div>
 	</div>
 

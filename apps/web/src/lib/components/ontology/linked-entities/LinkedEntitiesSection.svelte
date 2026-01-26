@@ -94,8 +94,8 @@
 		<button
 			type="button"
 			class="flex-1 flex items-center gap-1.5 sm:gap-2 min-w-0 transition-colors text-left rounded
-				{isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer pressable'}
-				focus:outline-none focus-visible:bg-muted/50"
+				{isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer pressable'}
+				focus:outline-none focus-visible:bg-muted"
 			onclick={toggleExpand}
 			disabled={isDisabled}
 			aria-expanded={expanded}

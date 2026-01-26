@@ -53,6 +53,7 @@
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import InsightPanelSkeleton from '$lib/components/ontology/InsightPanelSkeleton.svelte';
 	import ProjectContentSkeleton from '$lib/components/ontology/ProjectContentSkeleton.svelte';
+	import EntityListItem from '$lib/components/ontology/EntityListItem.svelte';
 	import {
 		Plus,
 		FileText,
@@ -275,12 +276,8 @@
 	// Insight panel filter/sort state
 	let panelStates = $state(createDefaultPanelStates());
 
-	// Graph visibility state - load from localStorage on mount
-	let graphHidden = $state(
-		typeof localStorage !== 'undefined'
-			? localStorage.getItem('buildos:project-graph-hidden') === 'true'
-			: false
-	);
+	// Graph visibility state - will be loaded from localStorage in onMount
+	let graphHidden = $state(false);
 
 	// ============================================================
 	// HYDRATION - Load full data after skeleton render
@@ -334,6 +331,12 @@
 
 	// Hydrate on mount if in skeleton mode
 	onMount(() => {
+		// Load graph visibility preference from localStorage (browser-only)
+		if (typeof window !== 'undefined' && window.localStorage) {
+			const stored = window.localStorage.getItem('buildos:project-graph-hidden');
+			graphHidden = stored === 'true';
+		}
+
 		if (data.skeleton) {
 			// Check for warm navigation data first
 			const navData = getNavigationData(data.projectId);
@@ -805,6 +808,74 @@
 		});
 	}
 
+	/**
+	 * Format entity state for display
+	 */
+	function formatState(state: string | null | undefined): string {
+		if (!state) return 'Draft';
+		return state
+			.split('_')
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(' ');
+	}
+
+	/**
+	 * Format last modified date for display
+	 */
+	function formatLastModified(dateString: string | null | undefined): string {
+		if (!dateString) return 'Never';
+		const date = new Date(dateString);
+		if (Number.isNaN(date.getTime())) return 'Never';
+
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / 60000);
+		const diffHours = Math.floor(diffMs / 3600000);
+		const diffDays = Math.floor(diffMs / 86400000);
+
+		// Less than 1 hour: "X min ago"
+		if (diffMins < 60) {
+			return diffMins <= 1 ? '1 min ago' : `${diffMins} min ago`;
+		}
+
+		// Less than 24 hours: "X hr ago"
+		if (diffHours < 24) {
+			return diffHours === 1 ? '1 hr ago' : `${diffHours} hr ago`;
+		}
+
+		// Less than 7 days: "X days ago"
+		if (diffDays < 7) {
+			return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
+		}
+
+		// Otherwise: "Mon DD, YYYY" format
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	/**
+	 * Get panel icon background and text color styles
+	 */
+	function getPanelIconStyles(key: InsightPanelKey): string {
+		switch (key) {
+			case 'goals':
+				return 'bg-amber-500/10 text-amber-500';
+			case 'plans':
+				return 'bg-indigo-500/10 text-indigo-500';
+			case 'tasks':
+				return 'bg-slate-500/10 text-slate-500';
+			case 'risks':
+				return 'bg-red-500/10 text-red-500';
+			case 'events':
+				return 'bg-blue-500/10 text-blue-500';
+			default:
+				return 'bg-accent/10 text-accent';
+		}
+	}
+
 	function formatEventWindow(event: OntoEventWithSync): string {
 		const start = new Date(event.start_at);
 		if (Number.isNaN(start.getTime())) return 'No time';
@@ -1256,15 +1327,15 @@
 
 	function handleGraphHide() {
 		graphHidden = true;
-		if (typeof localStorage !== 'undefined') {
-			localStorage.setItem('buildos:project-graph-hidden', 'true');
+		if (typeof window !== 'undefined' && window.localStorage) {
+			window.localStorage.setItem('buildos:project-graph-hidden', 'true');
 		}
 	}
 
 	function handleGraphShow() {
 		graphHidden = false;
-		if (typeof localStorage !== 'undefined') {
-			localStorage.removeItem('buildos:project-graph-hidden');
+		if (typeof window !== 'undefined' && window.localStorage) {
+			window.localStorage.removeItem('buildos:project-graph-hidden');
 		}
 	}
 
@@ -1318,7 +1389,7 @@
 	<!-- Header - Project identity card -->
 	<header class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4">
 		<div
-			class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak p-3 sm:p-4 space-y-1 sm:space-y-3"
+			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-3 sm:p-4 space-y-1 sm:space-y-3"
 		>
 			<!-- Title Row -->
 			<div class="flex items-center justify-between gap-1.5 sm:gap-2">
@@ -1572,7 +1643,7 @@
 				<div class="min-w-0 space-y-2 sm:space-y-4">
 					<!-- Documents Section - Collapsible -->
 					<section
-						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 					>
 						<div
 							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
@@ -1678,16 +1749,15 @@
 														<p
 															class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
 														>
-															{getTypeLabel(doc.type_key)}
+															Modified {formatLastModified(
+																doc.updated_at
+															)}
 														</p>
 													</div>
 													<span
-														class="flex-shrink-0 text-[9px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full bg-card border border-border capitalize"
+														class="flex-shrink-0 text-[9px] sm:text-[11px] text-muted-foreground"
 													>
-														{(doc.state_key || 'draft').replace(
-															/_/g,
-															' '
-														)}
+														{formatLastModified(doc.updated_at)}
 													</span>
 												</button>
 											</li>
@@ -1752,7 +1822,7 @@
 
 					<!-- Daily Briefs Panel - loads lazily, show placeholder -->
 					<div
-						class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 					>
 						<div class="flex items-center gap-3 px-4 py-3">
 							<div
@@ -1770,7 +1840,7 @@
 					{#if canViewLogs}
 						<!-- Activity Log Panel - loads lazily, show placeholder -->
 						<div
-							class="bg-card border border-border rounded-xl shadow-ink tx tx-frame tx-weak overflow-hidden"
+							class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 						>
 							<div class="flex items-center gap-3 px-4 py-3">
 								<div
@@ -1794,6 +1864,7 @@
 					{#each insightPanels as section}
 						{@const isOpen = expandedPanels[section.key]}
 						{@const SectionIcon = section.icon}
+						{@const iconStyles = getPanelIconStyles(section.key)}
 						<div
 							class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 						>
@@ -1803,9 +1874,9 @@
 									class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors pressable"
 								>
 									<div
-										class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+										class="w-9 h-9 rounded-lg flex items-center justify-center {iconStyles}"
 									>
-										<SectionIcon class="w-4 h-4 text-accent" />
+										<SectionIcon class="w-4 h-4" />
 									</div>
 									<div class="min-w-0">
 										<p class="text-sm font-semibold text-foreground">
@@ -1854,7 +1925,7 @@
 								>
 									<!-- Filter/Sort Controls -->
 									<div
-										class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 tx tx-grain tx-weak"
+										class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30"
 									>
 										<InsightFilterDropdown
 											filterGroups={PANEL_CONFIGS[section.key].filters}
@@ -1873,10 +1944,6 @@
 										{#if filteredTasks.length > 0}
 											<ul class="divide-y divide-border/80">
 												{#each filteredTasks as task}
-													{@const visuals = getTaskVisuals(
-														task.state_key
-													)}
-													{@const TaskIcon = visuals.icon}
 													{@const sortDisplay = getSortValueDisplay(
 														task as unknown as Record<string, unknown>,
 														panelStates.tasks.sort.field,
@@ -1884,46 +1951,17 @@
 													)}
 													<li>
 														<div class="flex items-center min-w-0">
-															<button
-																type="button"
+															<EntityListItem
+																type="task"
+																title={task.title}
+																metadata="{formatState(
+																	task.state_key
+																)} · {sortDisplay.value}"
+																state={task.state_key}
 																onclick={() =>
 																	(editingTaskId = task.id)}
-																class="flex-1 min-w-0 flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
-															>
-																<TaskIcon
-																	class="w-4 h-4 flex-shrink-0 {visuals.color}"
-																/>
-																<div class="min-w-0 flex-1">
-																	<p
-																		class="text-sm text-foreground truncate"
-																	>
-																		{task.title}
-																	</p>
-																	<p
-																		class="text-xs text-muted-foreground"
-																	>
-																		<span class="capitalize"
-																			>{(
-																				task.state_key ||
-																				'draft'
-																			).replace(
-																				/_/g,
-																				' '
-																			)}</span
-																		>
-																		<span
-																			class="mx-1 opacity-50"
-																			>·</span
-																		>
-																		<span
-																			class={sortDisplay.color ||
-																				''}
-																		>
-																			{sortDisplay.value}
-																		</span>
-																	</p>
-																</div>
-															</button>
+																class="flex-1"
+															/>
 															<a
 																href="/projects/{project.id}/tasks/{task.id}"
 																class="flex-shrink-0 p-2 mr-2 rounded-lg hover:bg-accent/10 transition-colors pressable"
@@ -1957,53 +1995,25 @@
 														'plans'
 													)}
 													<li>
-														<button
-															type="button"
+														<EntityListItem
+															type="plan"
+															title={plan.name}
+															metadata="{formatState(
+																plan.state_key
+															)} · {sortDisplay.value}"
+															state={plan.state_key}
 															onclick={() =>
 																(editingPlanId = plan.id)}
-															class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/5 transition-colors pressable"
-														>
-															<Calendar
-																class="w-4 h-4 text-muted-foreground"
-															/>
-															<div class="min-w-0">
-																<p
-																	class="text-sm text-foreground truncate"
-																>
-																	{plan.name}
-																</p>
-																<p
-																	class="text-xs text-muted-foreground"
-																>
-																	<span class="capitalize"
-																		>{(
-																			plan.state_key ||
-																			'draft'
-																		).replace(/_/g, ' ')}</span
-																	>
-																	<span class="mx-1 opacity-50"
-																		>·</span
-																	>
-																	<span
-																		class={sortDisplay.color ||
-																			''}
-																	>
-																		{sortDisplay.value}
-																	</span>
-																</p>
-															</div>
-														</button>
+														/>
 													</li>
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
-												<p class="text-xs sm:text-sm text-muted-foreground">
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
 													No plans yet
 												</p>
-												<p
-													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
-												>
+												<p class="text-xs text-muted-foreground/70 mt-1">
 													Create a plan to organize work
 												</p>
 											</div>
@@ -2019,64 +2029,36 @@
 													)}
 													{@const goalMilestones =
 														milestonesByGoalId.get(goal.id) || []}
+													{@const completedCount = goalMilestones.filter(
+														(m) =>
+															resolveMilestoneState(m).state ===
+															'completed'
+													).length}
 													<!-- Goal Card with nested milestones -->
-													<div class="bg-card">
-														<!-- Goal Header (clickable to edit) -->
-														<button
-															type="button"
-															onclick={() =>
-																(editingGoalId = goal.id)}
-															class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
-														>
-															<Target
-																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 mt-0.5"
+													<div
+														class="bg-card rounded-lg overflow-hidden shadow-ink border-t border-r border-b border-border"
+													>
+														<!-- Goal Header -->
+														<div class="flex items-start">
+															<EntityListItem
+																type="goal"
+																title={goal.name}
+																metadata="{formatState(
+																	goal.state_key
+																)} · {sortDisplay.value}"
+																state={goal.state_key}
+																onclick={() =>
+																	(editingGoalId = goal.id)}
+																class="flex-1 !rounded-none !shadow-none"
 															/>
-															<div class="min-w-0 flex-1">
-																<div
-																	class="flex items-center gap-2"
+															{#if goalMilestones.length > 0}
+																<span
+																	class="px-2.5 py-2.5 text-[10px] text-muted-foreground shrink-0"
 																>
-																	<p
-																		class="text-xs sm:text-sm text-foreground truncate flex-1"
-																	>
-																		{goal.name}
-																	</p>
-																	{#if goalMilestones.length > 0}
-																		{@const completedCount =
-																			goalMilestones.filter(
-																				(m) =>
-																					resolveMilestoneState(
-																						m
-																					).state ===
-																					'completed'
-																			).length}
-																		<span
-																			class="text-[10px] text-muted-foreground shrink-0"
-																		>
-																			{completedCount}/{goalMilestones.length}
-																		</span>
-																	{/if}
-																</div>
-																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
-																>
-																	<span class="capitalize"
-																		>{(
-																			goal.state_key ||
-																			'draft'
-																		).replace(/_/g, ' ')}</span
-																	>
-																	<span class="mx-1 opacity-50"
-																		>·</span
-																	>
-																	<span
-																		class={sortDisplay.color ||
-																			''}
-																	>
-																		{sortDisplay.value}
-																	</span>
-																</p>
-															</div>
-														</button>
+																	{completedCount}/{goalMilestones.length}
+																</span>
+															{/if}
+														</div>
 
 														<!-- Nested Milestones Section -->
 														<GoalMilestonesSection
@@ -2094,14 +2076,12 @@
 												{/each}
 											</div>
 										{:else}
-											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
-												<p class="text-xs sm:text-sm text-muted-foreground">
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
 													No goals yet
 												</p>
-												<p
-													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
-												>
-													Define what success looks like
+												<p class="text-xs text-muted-foreground/70 mt-1">
+													Set goals to define success
 												</p>
 											</div>
 										{/if}
@@ -2109,68 +2089,41 @@
 										{#if filteredRisks.length > 0}
 											<ul class="divide-y divide-border/80">
 												{#each filteredRisks as risk}
-													{@const impactColor =
-														risk.impact === 'critical'
-															? 'text-destructive'
-															: risk.impact === 'high'
-																? 'text-orange-500'
-																: risk.impact === 'medium'
-																	? 'text-amber-500'
-																	: 'text-emerald-500'}
 													{@const sortDisplay = getSortValueDisplay(
 														risk as unknown as Record<string, unknown>,
 														panelStates.risks.sort.field,
 														'risks'
 													)}
+													{@const severity = risk.props?.severity as
+														| 'low'
+														| 'medium'
+														| 'high'
+														| 'critical'
+														| undefined}
 													<li>
-														<button
-															type="button"
+														<EntityListItem
+															type="risk"
+															title={risk.title}
+															metadata="{formatState(
+																risk.state_key
+															)}{severity
+																? ` · ${severity} severity`
+																: ''} · {sortDisplay.value}"
+															state={risk.state_key}
+															{severity}
 															onclick={() =>
 																(editingRiskId = risk.id)}
-															class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
-														>
-															<AlertTriangle
-																class="w-3.5 h-3.5 sm:w-4 sm:h-4 {impactColor} mt-0.5"
-															/>
-															<div class="min-w-0 flex-1">
-																<p
-																	class="text-xs sm:text-sm text-foreground truncate"
-																>
-																	{risk.title}
-																</p>
-																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
-																>
-																	<span class="capitalize"
-																		>{risk.state_key?.replace(
-																			/_/g,
-																			' '
-																		) || 'identified'}</span
-																	>
-																	<span class="mx-1 opacity-50"
-																		>·</span
-																	>
-																	<span
-																		class={sortDisplay.color ||
-																			''}
-																	>
-																		{sortDisplay.value}
-																	</span>
-																</p>
-															</div>
-														</button>
+														/>
 													</li>
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
-												<p class="text-xs sm:text-sm text-muted-foreground">
-													No risks logged
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
+													No risks identified
 												</p>
-												<p
-													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
-												>
-													Track potential blockers
+												<p class="text-xs text-muted-foreground/70 mt-1">
+													Document risks to track blockers
 												</p>
 											</div>
 										{/if}
@@ -2178,48 +2131,35 @@
 										{#if filteredEvents.length > 0}
 											<ul class="divide-y divide-border/80">
 												{#each filteredEvents as event}
+													{@const sortDisplay = getSortValueDisplay(
+														event as unknown as Record<string, unknown>,
+														panelStates.events.sort.field,
+														'events'
+													)}
+													{@const syncStatus = isEventSynced(event)
+														? ''
+														: ' · Local only'}
 													<li>
-														<button
-															type="button"
+														<EntityListItem
+															type="event"
+															title={event.title}
+															metadata="{formatEventDateCompact(
+																event
+															)} · {sortDisplay.value}{syncStatus}"
+															state={event.state_key}
 															onclick={() =>
 																(editingEventId = event.id)}
-															class="w-full flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
-														>
-															<Clock
-																class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground mt-0.5"
-															/>
-															<div class="min-w-0 flex-1">
-																<p
-																	class="text-xs sm:text-sm text-foreground truncate"
-																>
-																	{event.title}
-																</p>
-																<p
-																	class="text-[10px] sm:text-xs text-muted-foreground"
-																>
-																	{formatEventDateCompact(event)}
-																</p>
-																{#if !isEventSynced(event)}
-																	<p
-																		class="text-[10px] sm:text-xs text-amber-500"
-																	>
-																		Local only
-																	</p>
-																{/if}
-															</div>
-														</button>
+														/>
 													</li>
 												{/each}
 											</ul>
 										{:else}
-											<div class="px-3 sm:px-4 py-3 sm:py-4 text-center">
-												<p class="text-xs sm:text-sm text-muted-foreground">
-													No upcoming events
+											<div class="px-4 py-4 text-center">
+												<p class="text-sm text-muted-foreground">
+													No events scheduled
 												</p>
-												<p
-													class="text-[10px] sm:text-xs text-muted-foreground/70 mt-0.5 hidden sm:block"
-												>
-													Add events to track time
+												<p class="text-xs text-muted-foreground/70 mt-1">
+													Add events to track meetings
 												</p>
 											</div>
 										{/if}

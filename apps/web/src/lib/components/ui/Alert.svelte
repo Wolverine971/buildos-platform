@@ -38,7 +38,7 @@
 	> = {
 		info: {
 			icon: Info,
-			bg: 'bg-muted/50',
+			bg: 'bg-muted',
 			border: 'border border-border',
 			text: 'text-foreground',
 			icon_color: 'text-muted-foreground',

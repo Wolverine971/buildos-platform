@@ -65,7 +65,7 @@
 	<!-- Content Container -->
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
 		<div
-			class="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+			class="relative w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border overflow-hidden"
 			transition:fade={{ duration: 300, delay: 100 }}
 		>
 			<!-- Decorative gradient top bar -->
@@ -78,15 +78,15 @@
 					<div class="relative">
 						<!-- Animated rings -->
 						<div
-							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 animate-ping opacity-20"
+							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 animate-ping opacity-20"
 						></div>
 						<div
-							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950/50 dark:to-indigo-950/50 animate-ping animation-delay-200 opacity-15"
+							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 animate-ping animation-delay-200 opacity-15"
 						></div>
 
 						<!-- Icon circle -->
 						<div
-							class="relative w-20 h-20 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border border-blue-200 dark:border-blue-800 flex items-center justify-center"
+							class="relative w-20 h-20 rounded-full bg-accent/10 border border-accent flex items-center justify-center"
 						>
 							<Calendar
 								class="w-10 h-10 text-blue-600 dark:text-blue-400"
@@ -99,14 +99,14 @@
 				<!-- Title and Description -->
 				<h2
 					id="calendar-overlay-title"
-					class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight mb-3"
+					class="text-2xl font-semibold text-foreground tracking-tight mb-3"
 				>
 					Calendar Connection Required
 				</h2>
 
 				<p
 					id="calendar-overlay-description"
-					class="text-base text-gray-600 dark:text-gray-400 mb-8 leading-relaxed"
+					class="text-base text-muted-foreground mb-8 leading-relaxed"
 				>
 					Connect your Google Calendar to use time blocks. Your focus sessions will sync
 					automatically, helping you protect deep work time and see your full schedule in
@@ -117,21 +117,21 @@
 				<div class="space-y-3 mb-8">
 					<div class="flex items-center gap-3 text-left">
 						<div
-							class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center"
+							class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center"
 						>
 							<Clock class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></Clock>
 						</div>
-						<p class="text-sm text-gray-700 dark:text-gray-300">
+						<p class="text-sm text-foreground">
 							Blocks sync to your calendar automatically
 						</p>
 					</div>
 					<div class="flex items-center gap-3 text-left">
 						<div
-							class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center"
+							class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950 flex items-center justify-center"
 						>
 							<Shield class="w-4 h-4 text-purple-600 dark:text-purple-400"></Shield>
 						</div>
-						<p class="text-sm text-gray-700 dark:text-gray-300">
+						<p class="text-sm text-foreground">
 							See available time slots between events
 						</p>
 					</div>
@@ -140,7 +140,7 @@
 				<!-- Error Message -->
 				{#if hasError}
 					<div
-						class="mb-6 px-4 py-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900"
+						class="mb-6 px-4 py-3 rounded-lg bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-900"
 					>
 						<p class="text-sm text-rose-700 dark:text-rose-400">
 							{errorMessage}
@@ -172,13 +172,13 @@
 				</Button>
 
 				<!-- Privacy Note -->
-				<p class="mt-4 text-xs text-gray-500 dark:text-gray-500">
+				<p class="mt-4 text-xs text-muted-foreground">
 					Takes 30 seconds • We never read your private events
 				</p>
 
 				<!-- Navigation Notice -->
-				<div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
-					<p class="text-sm text-gray-600 dark:text-gray-400">
+				<div class="mt-8 pt-6 border-t border-border">
+					<p class="text-sm text-muted-foreground">
 						You can navigate to other pages using the sidebar, but time blocks require
 						calendar connection to function.
 					</p>

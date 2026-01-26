@@ -501,7 +501,7 @@
 					{#each members as member (member.id)}
 						<div
 							class="flex items-center justify-between gap-2 px-2 py-1.5 -mx-2 rounded-md
-								hover:bg-muted/50 transition-colors"
+								hover:bg-muted transition-colors"
 						>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm text-foreground truncate">
@@ -560,7 +560,7 @@
 					{#each invites as invite (invite.id)}
 						<div
 							class="flex items-center justify-between gap-2 px-2 py-1.5 -mx-2 rounded-md
-								hover:bg-muted/50 transition-colors"
+								hover:bg-muted transition-colors"
 						>
 							<div class="min-w-0 flex-1">
 								<p class="text-sm text-foreground truncate">

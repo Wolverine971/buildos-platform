@@ -366,7 +366,7 @@
 				</div>
 				{#if title}
 					<div
-						class="flex h-12 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-muted/30"
+						class="flex h-12 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-muted"
 					>
 						<h2 class="text-sm font-semibold text-foreground truncate">
 							{title}
@@ -394,7 +394,7 @@
 		<form onsubmit={handleSubmit} class="flex flex-col flex-1 min-h-0">
 			{#if errors.length > 0}
 				<div
-					class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mx-3 sm:mx-4 mb-3 tx tx-static tx-weak"
+					class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mx-3 sm:mx-4 mb-3 tx tx-static tx-med"
 				>
 					<div class="flex items-start gap-2">
 						<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
@@ -407,7 +407,7 @@
 				</div>
 			{/if}
 
-			<div class="space-y-4 overflow-y-auto px-4 py-4 flex-1 min-h-0 bg-muted/30">
+			<div class="space-y-4 overflow-y-auto px-4 py-4 flex-1 min-h-0 bg-background">
 				{#each Object.entries(formConfig) as [field, config] (field)}
 					{@const FieldIcon = getFieldIcon(field, config)}
 
@@ -601,7 +601,7 @@
 			{/if}
 
 			<div
-				class="flex flex-col gap-2 sm:gap-3 pt-3 pb-4 sm:pb-3 px-3 sm:px-4 border-t border-border bg-muted/30 safe-area-bottom flex-shrink-0"
+				class="flex flex-col gap-2 sm:gap-3 pt-3 pb-4 sm:pb-3 px-3 sm:px-4 border-t border-border bg-muted safe-area-bottom flex-shrink-0"
 			>
 				<!-- Mobile Layout: Stack buttons with proper hierarchy -->
 				<div class="sm:hidden space-y-2">

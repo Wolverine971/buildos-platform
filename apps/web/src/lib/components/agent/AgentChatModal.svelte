@@ -3511,7 +3511,7 @@
 							<div class="flex flex-wrap items-center gap-2">
 								<button
 									type="button"
-									class="inline-flex items-center justify-center rounded-lg bg-accent px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
+									class="inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
 									disabled={isStreaming ||
 										agentMessageLoading ||
 										agentTurnsRemaining <= 0}
@@ -3524,7 +3524,7 @@
 								</button>
 								<button
 									type="button"
-									class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
+									class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
 									onclick={stopAgentLoop}
 								>
 									Stop
@@ -3541,7 +3541,7 @@
 									type="number"
 									min="1"
 									max="50"
-									class="w-16 rounded-lg border border-border bg-background px-1.5 py-0.5 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-ring"
+									class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-ring"
 									value={agentTurnBudget}
 									disabled={agentLoopActive || agentMessageLoading || isStreaming}
 									oninput={(e) =>
@@ -3553,7 +3553,7 @@
 							{#if agentTurnsRemaining <= 0}
 								<!-- INKPRINT warning badge with Static texture -->
 								<span
-									class="rounded-lg bg-amber-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-700 tx tx-static tx-weak dark:bg-amber-900/30 dark:text-amber-300"
+									class="rounded-lg bg-amber-100 px-2.5 py-1.5 text-[0.65rem] font-semibold text-amber-700 tx tx-static tx-weak dark:bg-amber-900/30 dark:text-amber-300"
 								>
 									Turn limit reached — adjust and resume.
 								</span>
@@ -3571,7 +3571,7 @@
 					<!-- INKPRINT composer footer - hidden for braindump input/options modes -->
 					<div
 						bind:this={composerContainer}
-						class="border-t border-border bg-card p-2 sm:p-2.5"
+						class="border-t border-border bg-card p-2 sm:p-2.5 tx tx-grain tx-weak"
 					>
 						<AgentComposer
 							bind:voiceInputRef
@@ -3631,12 +3631,12 @@
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-track) {
 		background: hsl(var(--muted));
-		border-radius: 4px;
+		border-radius: 0.5rem; /* 8px - rounded-md */
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-thumb) {
 		background: hsl(var(--muted-foreground) / 0.3);
-		border-radius: 4px;
+		border-radius: 0.5rem; /* 8px - rounded-md */
 	}
 
 	:global(.agent-chat-scroll::-webkit-scrollbar-thumb:hover) {

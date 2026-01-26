@@ -171,7 +171,7 @@
 	<div class="empty-state">
 		<div class="empty-icon">
 			<svg
-				class="h-12 w-12 text-slate-400 dark:text-slate-600"
+				class="h-12 w-12 text-muted-foreground"
 				fill="none"
 				stroke="currentColor"
 				viewBox="0 0 24 24"
@@ -193,14 +193,14 @@
 
 <style lang="postcss">
 	.available-slot-list {
-		@apply rounded-2xl border border-emerald-200/70 bg-emerald-50/50 backdrop-blur-xl;
-		@apply dark:border-emerald-500/30 dark:bg-emerald-950/20;
+		@apply rounded-2xl border border-emerald-200 bg-emerald-50 shadow-ink;
+		@apply dark:border-emerald-500 dark:bg-emerald-900;
 	}
 
 	.section-header {
 		@apply w-full px-6 py-4 text-left transition-colors;
 		@apply text-emerald-900 dark:text-emerald-100;
-		@apply hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30;
+		@apply hover:bg-emerald-100 dark:hover:bg-emerald-900;
 		@apply focus:outline-none focus:ring-2 focus:ring-emerald-500/40;
 		border-radius: 1rem 1rem 0 0;
 	}
@@ -228,10 +228,10 @@
 	}
 
 	.slot-item {
-		@apply flex w-full items-center justify-between rounded-lg border border-emerald-200/70 bg-white/80 px-4 py-3 text-left transition-all;
-		@apply hover:border-emerald-400 hover:bg-emerald-50/80 hover:shadow-md;
-		@apply dark:border-emerald-700/50 dark:bg-slate-900/60;
-		@apply dark:hover:border-emerald-500 dark:hover:bg-emerald-950/40;
+		@apply flex w-full items-center justify-between rounded-lg border border-emerald-200 bg-card px-4 py-3 text-left transition-all shadow-ink;
+		@apply hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-ink-strong;
+		@apply dark:border-emerald-700 dark:bg-card;
+		@apply dark:hover:border-emerald-500 dark:hover:bg-emerald-900;
 		@apply focus:outline-none focus:ring-2 focus:ring-emerald-500/40;
 	}
 
@@ -240,11 +240,11 @@
 	}
 
 	.slot-time {
-		@apply text-sm font-medium text-slate-900 dark:text-white;
+		@apply text-sm font-medium text-foreground;
 	}
 
 	.slot-duration {
-		@apply mt-1 text-xs text-slate-600 dark:text-slate-400;
+		@apply mt-1 text-xs text-muted-foreground;
 	}
 
 	.slot-action {
@@ -252,8 +252,8 @@
 	}
 
 	.empty-state {
-		@apply flex flex-col items-center justify-center rounded-2xl border border-slate-200/70 bg-white/80 px-8 py-12 text-center;
-		@apply dark:border-slate-800/70 dark:bg-slate-900/60;
+		@apply flex flex-col items-center justify-center rounded-2xl border border-border bg-muted px-8 py-12 text-center shadow-ink-inner;
+		@apply dark:border-border dark:bg-muted;
 	}
 
 	.empty-icon {
@@ -261,10 +261,10 @@
 	}
 
 	.empty-title {
-		@apply mb-2 text-base font-semibold text-slate-900 dark:text-white;
+		@apply mb-2 text-base font-semibold text-foreground;
 	}
 
 	.empty-description {
-		@apply text-sm text-slate-600 dark:text-slate-400;
+		@apply text-sm text-muted-foreground;
 	}
 </style>

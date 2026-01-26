@@ -110,48 +110,48 @@ Follow the existing lazy-loading pattern:
 
 ```svelte
 <script lang="ts">
-  import type { ComponentType } from 'svelte';
-  import type { ProjectFocus } from '@buildos/shared-types';
+	import type { ComponentType } from 'svelte';
+	import type { ProjectFocus } from '@buildos/shared-types';
 
-  // Props (already available in each modal)
-  let { entityId, projectId, ... }: Props = $props();
+	// Props (already available in each modal)
+	let { entityId, projectId, ...rest }: Props = $props();
 
-  // Entity data (loaded by modal)
-  let entity = $state<any>(null);
+	// Entity data (loaded by modal)
+	let entity = $state<any>(null);
 
-  // Lazy-loaded AgentChatModal
-  let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
-  let showChatModal = $state(false);
+	// Lazy-loaded AgentChatModal
+	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+	let showChatModal = $state(false);
 
-  // Build the focus for this entity
-  const entityFocus = $derived.by((): ProjectFocus | null => {
-    if (!entity || !projectId) return null;
-    return {
-      focusType: 'task',  // or 'goal', 'plan', etc.
-      focusEntityId: entityId,
-      focusEntityName: entity.title || entity.name || 'Untitled',
-      projectId: projectId,
-      projectName: entity.project?.name || 'Project'
-    };
-  });
+	// Build the focus for this entity
+	const entityFocus = $derived.by((): ProjectFocus | null => {
+		if (!entity || !projectId) return null;
+		return {
+			focusType: 'task', // or 'goal', 'plan', etc.
+			focusEntityId: entityId,
+			focusEntityName: entity.title || entity.name || 'Untitled',
+			projectId: projectId,
+			projectName: entity.project?.name || 'Project'
+		};
+	});
 
-  async function loadAgentChatModal() {
-    if (!AgentChatModalComponent) {
-      const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-      AgentChatModalComponent = mod.default;
-    }
-    return AgentChatModalComponent;
-  }
+	async function loadAgentChatModal() {
+		if (!AgentChatModalComponent) {
+			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
+			AgentChatModalComponent = mod.default;
+		}
+		return AgentChatModalComponent;
+	}
 
-  async function openChatAbout() {
-    if (!entity || !projectId) return;
-    await loadAgentChatModal();
-    showChatModal = true;
-  }
+	async function openChatAbout() {
+		if (!entity || !projectId) return;
+		await loadAgentChatModal();
+		showChatModal = true;
+	}
 
-  function handleChatClose() {
-    showChatModal = false;
-  }
+	function handleChatClose() {
+		showChatModal = false;
+	}
 </script>
 ```
 

@@ -60,42 +60,38 @@
 >
 	{#snippet content()}
 		<div class="space-y-4">
-			<p class="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+			<p class="text-base text-muted-foreground leading-relaxed">
 				BuildOS can analyze your calendar to identify projects from your meetings and
 				events.
 			</p>
 
-			<div
-				class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm"
-			>
-				<h4 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-					What we'll look for:
-				</h4>
-				<ul class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+			<div class="bg-accent/10 rounded-lg p-6 border border-accent/20 shadow-ink">
+				<h4 class="text-lg font-semibold text-foreground mb-3">What we'll look for:</h4>
+				<ul class="space-y-3 text-sm text-muted-foreground">
 					<li class="flex items-start gap-3">
 						<span
-							class="inline-flex w-5 h-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-bold mt-0.5 flex-shrink-0"
+							class="inline-flex w-5 h-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 text-xs font-bold mt-0.5 flex-shrink-0"
 							>✓</span
 						>
 						<span>Recurring meetings that might be ongoing projects</span>
 					</li>
 					<li class="flex items-start gap-3">
 						<span
-							class="inline-flex w-5 h-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-bold mt-0.5 flex-shrink-0"
+							class="inline-flex w-5 h-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 text-xs font-bold mt-0.5 flex-shrink-0"
 							>✓</span
 						>
 						<span>Related events like sprints, reviews, and milestones</span>
 					</li>
 					<li class="flex items-start gap-3">
 						<span
-							class="inline-flex w-5 h-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-bold mt-0.5 flex-shrink-0"
+							class="inline-flex w-5 h-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 text-xs font-bold mt-0.5 flex-shrink-0"
 							>✓</span
 						>
 						<span>Meeting patterns that suggest project work</span>
 					</li>
 					<li class="flex items-start gap-3">
 						<span
-							class="inline-flex w-5 h-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-bold mt-0.5 flex-shrink-0"
+							class="inline-flex w-5 h-5 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 text-xs font-bold mt-0.5 flex-shrink-0"
 							>✓</span
 						>
 						<span>Events with multiple attendees collaborating</span>

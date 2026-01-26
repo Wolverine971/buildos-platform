@@ -257,7 +257,7 @@
 	);
 </script>
 
-<section id="example" class="border-t border-border bg-muted/30">
+<section id="example" class="border-t border-border bg-muted">
 	<div class="mx-auto max-w-6xl px-4 py-6 space-y-6">
 		<!-- Section Header -->
 		<div class="space-y-4">
@@ -289,7 +289,7 @@
 				class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak overflow-hidden"
 			>
 				<!-- Project Header -->
-				<div class="px-4 sm:px-6 py-4 border-b border-border bg-muted/30">
+				<div class="px-4 sm:px-6 py-4 border-b border-border bg-muted">
 					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 						<div>
 							<h3 class="text-lg font-semibold text-foreground">
@@ -393,9 +393,7 @@
 					<!-- Main Graph Area -->
 					<div class="flex-1 relative {showDetailsPanel ? 'lg:mr-[320px]' : ''}">
 						{#if isLoading}
-							<div
-								class="absolute inset-0 flex items-center justify-center bg-muted/20"
-							>
+							<div class="absolute inset-0 flex items-center justify-center bg-muted">
 								<div class="flex items-center gap-2 text-sm text-muted-foreground">
 									<LoaderCircle class="w-5 h-5 animate-spin" />
 									<span>Loading example project...</span>

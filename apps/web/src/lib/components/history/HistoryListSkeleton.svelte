@@ -41,15 +41,15 @@
 
 			<!-- Preview / Summary skeleton - hidden on mobile for density -->
 			<div class="hidden sm:block mb-3 flex-1 space-y-2">
-				<div class="h-4 w-full rounded bg-muted/80"></div>
-				<div class="h-4 w-full rounded bg-muted/80"></div>
-				<div class="h-4 w-3/4 rounded bg-muted/80"></div>
+				<div class="h-4 w-full rounded bg-muted"></div>
+				<div class="h-4 w-full rounded bg-muted"></div>
+				<div class="h-4 w-3/4 rounded bg-muted"></div>
 			</div>
 
 			<!-- Topics skeleton - compact on mobile -->
 			<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
-				<div class="h-3 sm:h-4 w-10 sm:w-12 rounded-full bg-muted/70"></div>
-				<div class="h-3 sm:h-4 w-8 sm:w-16 rounded-full bg-muted/70"></div>
+				<div class="h-3 sm:h-4 w-10 sm:w-12 rounded-full bg-muted"></div>
+				<div class="h-3 sm:h-4 w-8 sm:w-16 rounded-full bg-muted"></div>
 			</div>
 
 			<!-- Footer: Metadata skeleton - compact on mobile -->
@@ -57,11 +57,11 @@
 				class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3"
 			>
 				<!-- Date skeleton -->
-				<div class="h-2.5 sm:h-3 w-14 sm:w-24 rounded bg-muted/60"></div>
+				<div class="h-2.5 sm:h-3 w-14 sm:w-24 rounded bg-muted"></div>
 				<!-- Message count + chevron skeleton -->
 				<div class="flex items-center gap-1 sm:gap-2">
-					<div class="h-2.5 sm:h-3 w-5 sm:w-8 rounded bg-muted/60"></div>
-					<div class="h-3 w-3 sm:h-4 sm:w-4 rounded bg-muted/60"></div>
+					<div class="h-2.5 sm:h-3 w-5 sm:w-8 rounded bg-muted"></div>
+					<div class="h-3 w-3 sm:h-4 sm:w-4 rounded bg-muted"></div>
 				</div>
 			</div>
 		</div>

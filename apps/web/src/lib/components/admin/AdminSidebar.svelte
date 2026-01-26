@@ -77,7 +77,7 @@
 									class={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ${
 										active
 											? 'bg-accent text-accent-foreground shadow-ink'
-											: 'bg-muted text-muted-foreground group-hover:bg-muted/80 group-hover:text-foreground'
+											: 'bg-muted text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
 									}`}
 								>
 									<Icon class="h-4 w-4" />

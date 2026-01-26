@@ -1,0 +1,76 @@
+/* ============================================
+   Inkprint Color System
+   ============================================
+
+   Semantic color tokens for light and dark mode.
+   These colors work with the Inkprint texture system.
+
+   Usage:
+   - bg-background, bg-card, bg-muted, bg-accent
+   - text-foreground, text-muted-foreground, text-accent
+   - border-border
+*/
+
+:root {
+	/* Paper & Ink base (light mode = paper studio) */
+	--background: 40 20% 98%; /* warm paper white */
+	--foreground: 240 10% 10%; /* deep ink black */
+
+	/* Card surfaces */
+	--card: 40 15% 96%;
+	--card-foreground: 240 10% 10%;
+
+	/* Muted surfaces */
+	--muted: 40 10% 92%;
+	--muted-foreground: 240 5% 45%;
+
+	/* Border */
+	--border: 40 10% 85%;
+
+	/* Accent (BuildOS signal color) */
+	--accent: 24 80% 55%; /* warm orange-amber */
+	--accent-foreground: 0 0% 100%;
+
+	/* Ring for focus states */
+	--ring: 24 80% 55%;
+
+	/* Destructive (danger/error states) */
+	--destructive: 0 72% 51%; /* red-600 equivalent */
+	--destructive-foreground: 0 0% 100%;
+
+	/* Inkprint texture base color */
+	--tx-ink: 240 10% 10%;
+	--tx-ink-rgb: 24, 24, 27;
+}
+
+.dark {
+	/* Ink room (dark mode) */
+	--background: 240 10% 6%; /* near-black */
+	--foreground: 40 10% 92%; /* off-white */
+
+	/* Card surfaces */
+	--card: 240 10% 10%;
+	--card-foreground: 40 10% 92%;
+
+	/* Muted surfaces */
+	--muted: 240 10% 14%;
+	--muted-foreground: 40 5% 55%;
+
+	/* Border */
+	--border: 240 10% 18%;
+
+	/* Accent (glows slightly in dark) */
+	--accent: 24 85% 58%;
+	--accent-foreground: 240 10% 6%;
+
+	/* Ring */
+	--ring: 24 85% 58%;
+
+	/* Destructive (brighter in dark mode for visibility) */
+	--destructive: 0 72% 55%;
+	--destructive-foreground: 0 0% 100%;
+
+	/* Dark mode texture ink */
+	--tx-ink: 40 10% 92%;
+	--tx-ink-rgb: 235, 233, 228;
+}

@@ -103,7 +103,7 @@
 			'flex items-start gap-3 group',
 			effectiveDisabled ? 'cursor-not-allowed' : 'cursor-pointer',
 			// Add hover effect to container - Inkprint
-			!effectiveDisabled ? 'hover:bg-muted/50 rounded transition-colors' : '',
+			!effectiveDisabled ? 'hover:bg-muted rounded transition-colors' : '',
 			containerPadding[effectiveSize],
 			className
 		)

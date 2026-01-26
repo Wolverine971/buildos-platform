@@ -58,9 +58,9 @@
 	> = {
 		project: {
 			icon: FolderKanban,
-			color: 'text-slate-600 dark:text-slate-300',
-			bgColor: 'bg-slate-100 dark:bg-slate-800',
-			borderColor: 'border-slate-300 dark:border-slate-600',
+			color: 'text-muted-foreground',
+			bgColor: 'bg-muted',
+			borderColor: 'border-border',
 			texture: 'tx tx-frame tx-weak',
 			label: 'Project'
 		},
@@ -90,9 +90,9 @@
 		},
 		task: {
 			icon: ListChecks,
-			color: 'text-slate-600 dark:text-slate-400',
-			bgColor: 'bg-slate-50 dark:bg-slate-900/50',
-			borderColor: 'border-slate-200 dark:border-slate-700',
+			color: 'text-muted-foreground',
+			bgColor: 'bg-muted',
+			borderColor: 'border-border',
 			texture: 'tx tx-grain tx-weak',
 			label: 'Task'
 		},
@@ -130,8 +130,8 @@
 	const stateConfig: Record<string, { color: string; bgColor: string; label: string }> = {
 		// Project states
 		planning: {
-			color: 'text-slate-700 dark:text-slate-300',
-			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			color: 'text-muted-foreground',
+			bgColor: 'bg-muted',
 			label: 'Planning'
 		},
 		active: {
@@ -151,8 +151,8 @@
 		},
 		// Task states
 		todo: {
-			color: 'text-slate-700 dark:text-slate-300',
-			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			color: 'text-muted-foreground',
+			bgColor: 'bg-muted',
 			label: 'To Do'
 		},
 		in_progress: {
@@ -172,8 +172,8 @@
 		},
 		// Goal states
 		defined: {
-			color: 'text-slate-700 dark:text-slate-300',
-			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			color: 'text-muted-foreground',
+			bgColor: 'bg-muted',
 			label: 'Defined'
 		},
 		achieved: {
@@ -188,8 +188,8 @@
 		},
 		// Plan states
 		draft: {
-			color: 'text-slate-700 dark:text-slate-300',
-			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			color: 'text-muted-foreground',
+			bgColor: 'bg-muted',
 			label: 'Draft'
 		},
 		// Risk states
@@ -373,11 +373,11 @@
 
 <div class="h-full flex flex-col bg-card border-l border-border shadow-ink-inner {config.texture}">
 	<!-- Header with type icon and close button -->
-	<header class="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30">
+	<header class="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted">
 		{#if config.icon}
 			{@const IconComponent = config.icon}
 			<div
-				class="flex items-center justify-center w-10 h-10 rounded-xl {config.bgColor} border {config.borderColor} flex-shrink-0 shadow-ink"
+				class="flex items-center justify-center w-10 h-10 rounded-lg {config.bgColor} border {config.borderColor} flex-shrink-0 shadow-ink"
 			>
 				<IconComponent class="w-5 h-5 {config.color}" />
 			</div>
@@ -406,7 +406,7 @@
 		</div>
 		<button
 			type="button"
-			class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition pressable"
+			class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
 			onclick={onClose}
 			aria-label="Close details panel"
 		>
@@ -683,7 +683,7 @@
 							Content Preview
 						</p>
 						<div
-							class="text-sm text-foreground leading-relaxed bg-muted/30 rounded-lg p-3 border border-border/50"
+							class="text-sm text-foreground leading-relaxed bg-muted rounded-lg p-3 border border-border"
 						>
 							{truncateText(content, 300)}
 						</div>
@@ -837,7 +837,7 @@
 
 	<!-- Action Footer -->
 	{#if showDetailLink && detailUrl}
-		<div class="px-4 py-3 border-t border-border bg-muted/20">
+		<div class="px-4 py-3 border-t border-border bg-muted">
 			<a
 				href={detailUrl}
 				class="flex items-center justify-center gap-2 w-full h-9 text-sm font-semibold rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 shadow-ink pressable transition"

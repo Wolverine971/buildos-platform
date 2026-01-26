@@ -1,19 +1,18 @@
 <!-- apps/web/src/lib/components/ontology/MilestoneListItem.svelte -->
 <!--
-	Compact Milestone List Item Component
+	Milestone List Item - Standards-Compliant Nested Design
 
-	Displays a milestone row within a goal's milestone section.
-	Shows state icon, title, due date, and provides click-to-edit.
+	PRINCIPLE: Proper nesting with maintained readability.
 
-	Visual States:
-	- Pending: hollow circle, muted text
-	- In Progress: half-filled circle, primary text
-	- Completed: filled circle with check, success color
-	- Missed: hollow circle with X, destructive color
-
-	Documentation:
-	- Milestones Under Goals Spec: /thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md
-	- Inkprint Design System: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
+	Design (per SPACING_BORDER_STANDARDS.md - Compact/Nested pattern):
+	- Edge-to-edge (no rounded corners - structural element)
+	- Emerald hover (semantic color identity for milestones)
+	- Icons provide state-based semantic color
+	- Compact/Nested spacing (px-3 py-1.5 = 12px/6px when compact)
+	- Gap: gap-2 (8px - proper icon+text pairing)
+	- Icons: w-3.5 h-3.5 (14px - Compact tier)
+	- Text: text-xs (12px - comfortable reading)
+	- Clean, readable, properly subordinate to parent goals
 -->
 <script lang="ts">
 	import { Circle, CircleDot, CheckCircle2, XCircle, MoreHorizontal, Check } from 'lucide-svelte';
@@ -39,7 +38,6 @@
 	const resolvedState = $derived(resolveMilestoneState(milestone));
 	const effectiveState = $derived(resolvedState.state);
 
-	// Get visual properties based on state
 	const stateVisuals = $derived.by(() => {
 		const state = effectiveState;
 
@@ -73,7 +71,6 @@
 			};
 		}
 
-		// Default: pending
 		return {
 			icon: Circle,
 			iconColor: 'text-muted-foreground',
@@ -85,7 +82,6 @@
 
 	const StateIcon = $derived(stateVisuals.icon);
 
-	// Format due date
 	function formatDueDate(dateString: string | null): string {
 		if (!dateString) return '';
 		const date = new Date(dateString);
@@ -94,20 +90,17 @@
 		const now = new Date();
 		const diffDays = Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-		// Show relative for near dates
 		if (diffDays === 0) return 'Today';
 		if (diffDays === 1) return 'Tomorrow';
 		if (diffDays === -1) return 'Yesterday';
 		if (diffDays > 0 && diffDays <= 7) return `In ${diffDays}d`;
 		if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)}d ago`;
 
-		// Otherwise show date
 		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	}
 
 	const formattedDueDate = $derived(formatDueDate(milestone.due_at));
 
-	// Handle quick complete toggle
 	function handleToggleComplete(e: MouseEvent) {
 		e.stopPropagation();
 		if (onToggleComplete) {
@@ -115,12 +108,10 @@
 		}
 	}
 
-	// Handle row click
 	function handleRowClick() {
 		onEdit(milestone.id);
 	}
 
-	// Handle keyboard navigation
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
@@ -129,74 +120,56 @@
 	}
 </script>
 
+<!-- Clean edge-to-edge list item with emerald hover -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	onclick={handleRowClick}
 	onkeydown={handleKeyDown}
 	role="button"
 	tabindex="0"
-	class="
-		w-full flex items-center gap-1.5 px-2 text-left cursor-pointer
-		hover:bg-accent/5 transition-colors
-		group focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset
-		{compact ? 'py-0.5' : 'py-1'}
-	"
+	class="w-full flex items-center gap-2 text-left cursor-pointer px-3 {compact
+		? 'py-1.5'
+		: 'py-2'} hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors group"
+	aria-label="Edit milestone: {milestone.title}"
 >
-	<!-- State Icon (tiny) -->
-	<StateIcon class="w-2.5 h-2.5 shrink-0 {stateVisuals.iconColor}" />
+	<StateIcon class="w-3.5 h-3.5 shrink-0 {stateVisuals.iconColor}" />
 
-	<!-- Content -->
 	<div class="min-w-0 flex-1">
-		<p class="text-[10px] truncate {stateVisuals.textColor} {stateVisuals.textDecoration}">
+		<p class="text-xs truncate {stateVisuals.textColor} {stateVisuals.textDecoration}">
 			{milestone.title}
 		</p>
 	</div>
 
-	<!-- Due date badge (compact, always inline) -->
 	{#if formattedDueDate}
 		<span
-			class="text-[9px] shrink-0 {resolvedState.isMissed
+			class="text-xs shrink-0 {resolvedState.isMissed
 				? 'text-destructive'
-				: 'text-muted-foreground/60'}"
+				: 'text-muted-foreground'}"
 		>
 			{formattedDueDate}
 		</span>
 	{/if}
 
-	<!-- Quick action: Toggle complete (hover only on desktop) -->
 	{#if onToggleComplete && effectiveState !== 'completed' && effectiveState !== 'missed'}
 		<button
 			type="button"
 			onclick={handleToggleComplete}
-			class="
-				hidden group-hover:flex
-				items-center justify-center
-				w-4 h-4 rounded shrink-0
-				bg-emerald-500/10 hover:bg-emerald-500/20
-				text-emerald-500 transition-colors
-			"
-			aria-label="Mark as complete"
+			class="hidden group-hover:flex items-center justify-center w-4 h-4 rounded-md shrink-0 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors pressable"
+			aria-label="Mark {milestone.title} as complete"
 			title="Mark as complete"
 		>
 			<Check class="w-2.5 h-2.5" />
 		</button>
 	{/if}
 
-	<!-- Mobile: Show menu trigger -->
 	<button
 		type="button"
 		onclick={(e) => {
 			e.stopPropagation();
 			onEdit(milestone.id);
 		}}
-		class="
-			flex sm:hidden
-			items-center justify-center
-			w-4 h-4 rounded shrink-0
-			hover:bg-muted
-			text-muted-foreground transition-colors
-		"
-		aria-label="Edit milestone"
+		class="flex sm:hidden items-center justify-center w-4 h-4 rounded-md shrink-0 hover:bg-muted text-muted-foreground transition-colors pressable"
+		aria-label="Edit {milestone.title}"
 	>
 		<MoreHorizontal class="w-3 h-3" />
 	</button>

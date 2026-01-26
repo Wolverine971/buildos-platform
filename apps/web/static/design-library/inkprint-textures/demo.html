@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Inkprint Texture Library - Demo</title>
+		<link rel="stylesheet" href="all-textures.css" />
+		<script src="https://cdn.tailwindcss.com"></script>
+		<style>
+			body {
+				background: hsl(var(--background));
+				color: hsl(var(--foreground));
+			}
+		</style>
+	</head>
+	<body class="p-8">
+		<div class="max-w-6xl mx-auto">
+			<!-- Header -->
+			<header class="mb-12">
+				<h1 class="text-4xl font-bold text-foreground mb-2">Inkprint Texture Library</h1>
+				<p class="text-muted-foreground">
+					A comprehensive collection of printmaking-inspired textures for the BuildOS
+					design system.
+				</p>
+				<div class="mt-4">
+					<button
+						onclick="document.documentElement.classList.toggle('dark')"
+						class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-semibold shadow-ink pressable"
+					>
+						Toggle Dark Mode
+					</button>
+				</div>
+			</header>
+
+			<!-- Textures Section -->
+			<section class="mb-12">
+				<h2 class="text-2xl font-semibold mb-6">Texture Types</h2>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					<!-- Bloom -->
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-bloom tx-weak">
+						<h3 class="font-semibold mb-2">Bloom</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Ideation, newness, creative expansion
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx tx-bloom tx-weak</code>
+					</div>
+
+					<!-- Grain -->
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-grain tx-weak">
+						<h3 class="font-semibold mb-2">Grain</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Execution, steady progress, craftsmanship
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx tx-grain tx-weak</code>
+					</div>
+
+					<!-- Pulse -->
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-pulse tx-weak">
+						<h3 class="font-semibold mb-2">Pulse</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Urgency, sprints, deadlines, momentum
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx tx-pulse tx-weak</code>
+					</div>
+
+					<!-- Static -->
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-static tx-weak">
+						<h3 class="font-semibold mb-2">Static</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Blockers, noise, overwhelm, risk
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx tx-static tx-weak</code>
+					</div>
+
+					<!-- Thread -->
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-thread tx-weak">
+						<h3 class="font-semibold mb-2">Thread</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Relationships, collaboration, dependencies
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx tx-thread tx-weak</code>
+					</div>
+
+					<!-- Frame -->
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-frame tx-weak">
+						<h3 class="font-semibold mb-2">Frame</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Canon, structure, decisions, officialness
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx tx-frame tx-weak</code>
+					</div>
+
+					<!-- Strip -->
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-strip tx-weak">
+						<h3 class="font-semibold mb-2">Strip</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Header band, separator, printed label
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx tx-strip tx-weak</code>
+					</div>
+
+					<!-- Button Texture -->
+					<div class="bg-card border border-border rounded-lg p-6 tx-button">
+						<h3 class="font-semibold mb-2">Button</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Brushed aluminum tactile texture
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx-button</code>
+					</div>
+				</div>
+			</section>
+
+			<!-- Intensities Section -->
+			<section class="mb-12">
+				<h2 class="text-2xl font-semibold mb-6">Texture Intensities</h2>
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-frame tx-weak">
+						<h3 class="font-semibold mb-2">Weak</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Subtle, ambient (opacity: 0.03)
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx-weak</code>
+					</div>
+
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-frame tx-med">
+						<h3 class="font-semibold mb-2">Medium</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Balanced, noticeable (opacity: 0.06)
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx-med</code>
+					</div>
+
+					<div class="bg-card border border-border rounded-lg p-6 tx tx-frame tx-strong">
+						<h3 class="font-semibold mb-2">Strong</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Bold, prominent (opacity: 0.1)
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">tx-strong</code>
+					</div>
+				</div>
+			</section>
+
+			<!-- Weight System Section -->
+			<section class="mb-12">
+				<h2 class="text-2xl font-semibold mb-6">Weight System</h2>
+				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+					<div class="wt-ghost p-6">
+						<h3 class="font-semibold mb-2">Ghost</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Ephemeral, uncommitted, suggestion
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">wt-ghost</code>
+					</div>
+
+					<div class="wt-paper p-6">
+						<h3 class="font-semibold mb-2">Paper</h3>
+						<p class="text-sm text-muted-foreground mb-3">Standard UI, working state</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">wt-paper</code>
+					</div>
+
+					<div class="wt-card p-6">
+						<h3 class="font-semibold mb-2">Card</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Important, elevated, committed
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">wt-card</code>
+					</div>
+
+					<div class="wt-plate p-6">
+						<h3 class="font-semibold mb-2">Plate</h3>
+						<p class="text-sm text-muted-foreground mb-3">
+							Canonical, immutable, system-critical
+						</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">wt-plate</code>
+					</div>
+				</div>
+			</section>
+
+			<!-- Shadows Section -->
+			<section class="mb-12">
+				<h2 class="text-2xl font-semibold mb-6">Shadows</h2>
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<div class="bg-card border border-border rounded-lg p-6 shadow-ink">
+						<h3 class="font-semibold mb-2">Ink</h3>
+						<p class="text-sm text-muted-foreground mb-3">Standard elevation</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">shadow-ink</code>
+					</div>
+
+					<div class="bg-card border border-border rounded-lg p-6 shadow-ink-strong">
+						<h3 class="font-semibold mb-2">Ink Strong</h3>
+						<p class="text-sm text-muted-foreground mb-3">Modal/overlay elevation</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">shadow-ink-strong</code>
+					</div>
+
+					<div class="bg-card border border-border rounded-lg p-6 ink-frame">
+						<h3 class="font-semibold mb-2">Ink Frame</h3>
+						<p class="text-sm text-muted-foreground mb-3">Carved inner border</p>
+						<code class="text-xs bg-muted px-2 py-1 rounded">ink-frame</code>
+					</div>
+				</div>
+			</section>
+
+			<!-- Interactive Section -->
+			<section class="mb-12">
+				<h2 class="text-2xl font-semibold mb-6">Interactive States</h2>
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<div>
+						<button
+							class="w-full px-4 py-3 bg-accent text-accent-foreground rounded-lg font-semibold shadow-ink pressable"
+						>
+							Pressable Button
+						</button>
+						<code class="text-xs bg-muted px-2 py-1 rounded mt-2 block">pressable</code>
+					</div>
+
+					<div>
+						<div class="bg-card p-4 rounded-lg rim">
+							<p class="text-sm">Element with rim</p>
+						</div>
+						<code class="text-xs bg-muted px-2 py-1 rounded mt-2 block">rim</code>
+					</div>
+
+					<div>
+						<div class="bg-card p-4 rounded-lg rim-accent">
+							<p class="text-sm">Element with accent rim</p>
+						</div>
+						<code class="text-xs bg-muted px-2 py-1 rounded mt-2 block"
+							>rim-accent</code
+						>
+					</div>
+				</div>
+			</section>
+
+			<!-- Atmosphere Section -->
+			<section class="mb-12">
+				<h2 class="text-2xl font-semibold mb-6">Atmosphere (Opt-in Depth)</h2>
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<div class="bg-card border border-border rounded-lg p-6 atmo atmo-weak">
+						<h3 class="font-semibold mb-2">Weak</h3>
+						<p class="text-sm text-muted-foreground">Subtle atmospheric depth</p>
+					</div>
+
+					<div class="bg-card border border-border rounded-lg p-6 atmo atmo-med">
+						<h3 class="font-semibold mb-2">Medium</h3>
+						<p class="text-sm text-muted-foreground">Balanced atmosphere</p>
+					</div>
+
+					<div class="bg-card border border-border rounded-lg p-6 atmo atmo-strong">
+						<h3 class="font-semibold mb-2">Strong</h3>
+						<p class="text-sm text-muted-foreground">Strong atmospheric presence</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- Combined Examples -->
+			<section class="mb-12">
+				<h2 class="text-2xl font-semibold mb-6">Combined Examples</h2>
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+					<!-- Example Card -->
+					<div class="wt-card tx tx-frame tx-weak">
+						<div class="px-4 py-3 border-b border-border">
+							<h3 class="font-semibold">Project Card</h3>
+							<p class="text-sm text-muted-foreground">Card weight + frame texture</p>
+						</div>
+						<div class="p-4">
+							<p class="text-sm mb-4">
+								This card combines weight system with texture system.
+							</p>
+							<button
+								class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-semibold shadow-ink pressable tx tx-grain tx-weak"
+							>
+								Take Action
+							</button>
+						</div>
+					</div>
+
+					<!-- Marketing Panel -->
+					<div class="wt-paper atmo atmo-med tx tx-bloom tx-weak">
+						<div class="p-6">
+							<h3 class="font-semibold mb-2">Marketing Panel</h3>
+							<p class="text-sm text-muted-foreground">
+								Paper weight + atmosphere + bloom texture
+							</p>
+							<p class="text-sm mt-4">
+								Perfect for landing pages and onboarding flows.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Footer -->
+			<footer class="mt-16 pt-8 border-t border-border">
+				<p class="text-sm text-muted-foreground text-center">
+					Inkprint Texture Library v1.0.0 | Part of the BuildOS Design System
+				</p>
+			</footer>
+		</div>
+	</body>
+</html>

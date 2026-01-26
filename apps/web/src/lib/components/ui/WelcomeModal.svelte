@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ui/WelcomeModal.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
 
@@ -60,7 +61,7 @@
 
 	// Check if modal has been dismissed before and update effective state
 	$effect(() => {
-		if (storageKey && typeof localStorage !== 'undefined') {
+		if (browser && storageKey) {
 			hasBeenDismissed = localStorage.getItem(storageKey) === 'true';
 		}
 		effectiveIsOpen = isOpen && !hasBeenDismissed;
@@ -75,7 +76,7 @@
 	}
 
 	function handleDismiss() {
-		if (storageKey && typeof localStorage !== 'undefined') {
+		if (browser && storageKey) {
 			localStorage.setItem(storageKey, 'true');
 			hasBeenDismissed = true;
 		}

@@ -194,7 +194,7 @@
 		<div class="border-b border-border">
 			<button
 				type="button"
-				class="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition pressable"
+				class="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
 				onclick={() => (statsExpanded = !statsExpanded)}
 				aria-expanded={statsExpanded}
 			>
@@ -212,7 +212,7 @@
 			{#if statsExpanded}
 				<div class="px-3 pb-3 grid grid-cols-3 gap-2 text-xs animate-ink-in">
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
 						<span class="text-lg font-bold text-foreground">{stats.totalProjects}</span>
 						<span class="text-muted-foreground">Projects</span>
@@ -224,13 +224,13 @@
 						<span class="text-accent/80">Active</span>
 					</div>
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
 						<span class="text-lg font-bold text-foreground">{stats.totalTasks}</span>
 						<span class="text-muted-foreground">Tasks</span>
 					</div>
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
 						<span class="text-lg font-bold text-foreground"
 							>{stats.totalPlans ?? 0}</span
@@ -238,7 +238,7 @@
 						<span class="text-muted-foreground">Plans</span>
 					</div>
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
 						<span class="text-lg font-bold text-foreground"
 							>{stats.totalGoals ?? 0}</span
@@ -246,7 +246,7 @@
 						<span class="text-muted-foreground">Goals</span>
 					</div>
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
 						<span class="text-lg font-bold text-foreground"
 							>{stats.totalMilestones ?? 0}</span
@@ -254,13 +254,13 @@
 						<span class="text-muted-foreground">Milestones</span>
 					</div>
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
 						<span class="text-lg font-bold text-foreground">{stats.totalOutputs}</span>
 						<span class="text-muted-foreground">Outputs</span>
 					</div>
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted/50 border border-border"
+						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
 						<span class="text-lg font-bold text-foreground">{stats.totalDocuments}</span
 						>
@@ -373,7 +373,7 @@
 					<button
 						type="button"
 						onclick={handleFitToView}
-						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted/50 shadow-ink pressable transition"
+						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition"
 					>
 						<Maximize2 class="w-3.5 h-3.5 shrink-0" />
 						<span>Fit</span>
@@ -383,7 +383,7 @@
 					<button
 						type="button"
 						onclick={handleExport}
-						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted/50 shadow-ink pressable transition"
+						class="flex-1 flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-bold rounded-lg border border-border bg-card text-foreground hover:border-accent hover:bg-muted shadow-ink pressable transition"
 					>
 						<Download class="w-3.5 h-3.5 shrink-0" />
 						<span>Export</span>
@@ -437,7 +437,7 @@
 		<!-- Library Notice -->
 		{#if !features.search && !features.filter}
 			<div
-				class="text-[0.65rem] text-muted-foreground bg-muted/50 border border-border rounded-lg px-2 py-1.5"
+				class="text-[0.65rem] text-muted-foreground bg-muted border border-border rounded-lg px-2 py-1.5"
 			>
 				<span class="font-bold text-foreground">Note:</span> Full controls require Cytoscape.
 			</div>

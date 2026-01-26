@@ -48,7 +48,7 @@
 </script>
 
 <div
-	class="group flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
+	class="group flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-muted transition-colors"
 >
 	<button
 		type="button"

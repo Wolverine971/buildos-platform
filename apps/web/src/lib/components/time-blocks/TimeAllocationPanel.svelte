@@ -141,9 +141,9 @@
 	{#if isLoading}
 		<div class="flex flex-col items-center justify-center gap-3 py-16 text-center">
 			<div
-				class="h-10 w-10 animate-spin rounded-full border-[3px] border-gray-300 border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400"
+				class="h-10 w-10 animate-spin rounded-full border-[3px] border-muted-foreground border-t-blue-600 dark:border-muted-foreground dark:border-t-blue-400"
 			></div>
-			<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+			<p class="text-sm font-medium text-muted-foreground">
 				Calculating your time allocation…
 			</p>
 		</div>
@@ -154,7 +154,7 @@
 			<p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
 				No focus blocks scheduled in this range yet.
 			</p>
-			<p class="text-xs text-gray-600 dark:text-gray-400">
+			<p class="text-xs text-muted-foreground">
 				Add a time block to see how your projects split your focus.
 			</p>
 		</div>

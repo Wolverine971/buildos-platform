@@ -146,7 +146,7 @@
 			<!-- Error Display -->
 			{#if errors.length > 0}
 				<div
-					class="p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-md"
+					class="p-3 bg-rose-50 dark:bg-rose-900 border border-rose-200 dark:border-rose-800 rounded-md"
 					role="alert"
 				>
 					<div class="flex items-start gap-2">
@@ -173,7 +173,7 @@
 					<div class="space-y-3">
 						<!-- Group Header -->
 						<h4
-							class="text-sm font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2"
+							class="text-sm font-semibold text-foreground border-b border-border pb-2"
 						>
 							{group.label}
 						</h4>
@@ -189,7 +189,7 @@
 									<!-- Textarea Field -->
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="block text-xs font-medium text-foreground"
 									>
 										{config.label}
 										{#if config.required}
@@ -218,7 +218,7 @@
 									<!-- Select Field -->
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="block text-xs font-medium text-foreground"
 									>
 										{config.label}
 										{#if config.required}
@@ -244,7 +244,7 @@
 									<!-- DateTime Field -->
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="block text-xs font-medium text-foreground"
 									>
 										{config.label}
 										{#if config.required}
@@ -263,7 +263,7 @@
 									<!-- Date Field -->
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="block text-xs font-medium text-foreground"
 									>
 										{config.label}
 										{#if config.required}
@@ -282,7 +282,7 @@
 									<!-- Number Field -->
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="block text-xs font-medium text-foreground"
 									>
 										{config.label}
 										{#if config.required}
@@ -303,7 +303,7 @@
 									<!-- Tags Field -->
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="block text-xs font-medium text-foreground"
 									>
 										{config.label}
 										{#if config.required}
@@ -319,19 +319,19 @@
 										size="sm"
 										class="text-sm"
 									/>
-									<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+									<p class="text-xs text-muted-foreground mt-1">
 										Separate tags with commas
 									</p>
 								{:else if config.readonly}
 									<!-- Read-only Field -->
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="block text-xs font-medium text-foreground"
 									>
 										{config.label}
 									</label>
 									<div
-										class="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-400"
+										class="px-3 py-2 text-sm bg-muted border border-border rounded-md text-muted-foreground"
 									>
 										{value || 'Not linked'}
 									</div>
@@ -339,7 +339,7 @@
 									<!-- Text Field (default) -->
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="block text-xs font-medium text-foreground"
 									>
 										{config.label}
 										{#if config.required}
@@ -363,9 +363,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<!-- Footer -->
-		<div
-			class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700"
-		>
+		<div class="flex items-center justify-between px-4 py-3 bg-muted border-t border-border">
 			<Button onclick={onClose} variant="outline" size="sm" class="min-w-[80px]">
 				Cancel
 			</Button>

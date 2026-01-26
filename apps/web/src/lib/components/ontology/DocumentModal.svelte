@@ -571,7 +571,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -649,7 +649,7 @@
 					<div class="flex flex-col lg:flex-row h-full">
 						<!-- Left sidebar (metadata) - Desktop only, hidden on mobile -->
 						<div
-							class="hidden lg:block lg:w-72 xl:w-80 flex-shrink-0 lg:border-r border-border bg-muted/20"
+							class="hidden lg:block lg:w-72 xl:w-80 flex-shrink-0 lg:border-r border-border bg-muted"
 						>
 							<div class="p-3 space-y-3">
 								<!-- Title field -->
@@ -796,12 +796,12 @@
 							</div>
 
 							<!-- Mobile: Collapsible metadata section at bottom -->
-							<div class="lg:hidden border-t border-border bg-muted/20">
+							<div class="lg:hidden border-t border-border bg-muted">
 								<!-- Toggle button -->
 								<button
 									type="button"
 									onclick={() => (showMobileMetadata = !showMobileMetadata)}
-									class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+									class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
 								>
 									<span class="flex items-center gap-2">
 										<Settings2 class="w-4 h-4 text-muted-foreground" />
@@ -933,7 +933,7 @@
 						<!-- Right rail (Version History + Activity) - Desktop only -->
 						{#if isEditing && activeDocumentId}
 							<div
-								class="hidden lg:flex lg:flex-col lg:w-72 xl:w-80 flex-shrink-0 lg:border-l border-border overflow-y-auto bg-muted/10"
+								class="hidden lg:flex lg:flex-col lg:w-72 xl:w-80 flex-shrink-0 lg:border-l border-border overflow-y-auto bg-muted"
 							>
 								<div class="p-3 space-y-3">
 									<!-- Version History Panel -->
@@ -978,7 +978,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
 		>
 			{#if activeDocumentId}
 				<Button

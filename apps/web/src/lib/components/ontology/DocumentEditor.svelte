@@ -216,11 +216,11 @@
 			case 'recording':
 				return `${base} border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink-strong pressable hover:bg-destructive/90`;
 			case 'loading':
-				return `${base} border border-border bg-muted/80 text-muted-foreground shadow-ink cursor-wait`;
+				return `${base} border border-border bg-muted text-muted-foreground shadow-ink cursor-wait`;
 			case 'muted':
-				return `${base} border border-border bg-muted/60 text-muted-foreground/40 cursor-not-allowed`;
+				return `${base} border border-border bg-muted text-muted-foreground/40 cursor-not-allowed`;
 			default:
-				return `${base} border border-foreground/20 bg-card text-foreground shadow-ink pressable hover:border-foreground/40 hover:bg-muted/50 dark:border-foreground/15 dark:hover:border-foreground/30`;
+				return `${base} border border-foreground/20 bg-card text-foreground shadow-ink pressable hover:border-foreground/40 hover:bg-muted dark:border-foreground/15 dark:hover:border-foreground/30`;
 		}
 	});
 
@@ -655,7 +655,7 @@
 	class="document-editor flex flex-col h-full bg-card border border-border rounded-lg shadow-ink overflow-hidden tx tx-frame tx-weak"
 >
 	<!-- Compact Header -->
-	<div class="editor-header border-b border-border px-3 py-2 bg-muted/30">
+	<div class="editor-header border-b border-border px-3 py-2 bg-muted">
 		<!-- Title Row -->
 		<div class="flex items-center gap-2">
 			<FileText class="w-4 h-4 text-muted-foreground shrink-0" />
@@ -711,7 +711,7 @@
 
 	<!-- Comprehensive Toolbar - Mobile & Desktop Optimized -->
 	<div
-		class="editor-toolbar border-b border-border bg-muted/50 sticky top-0 z-10"
+		class="editor-toolbar border-b border-border bg-muted sticky top-0 z-10"
 		role="toolbar"
 		aria-label="Text formatting toolbar"
 	>
@@ -957,7 +957,7 @@
 		<!-- Expanded tools row (mobile/tablet) -->
 		{#if showMoreTools}
 			<div
-				class="md:hidden flex items-center gap-0.5 px-1.5 py-1.5 border-t border-border/50 bg-muted/30 overflow-x-auto scrollbar-hide"
+				class="md:hidden flex items-center gap-0.5 px-1.5 py-1.5 border-t border-border/50 bg-muted overflow-x-auto scrollbar-hide"
 			>
 				<!-- Strikethrough (mobile) -->
 				<button
@@ -1134,7 +1134,7 @@
 				<!-- Keyboard hint when recording -->
 				{#if isRecording}
 					<span
-						class="text-[10px] text-muted-foreground/70 bg-muted/80 px-1.5 py-0.5 rounded backdrop-blur-sm hidden sm:block"
+						class="text-[10px] text-muted-foreground/70 bg-muted px-1.5 py-0.5 rounded backdrop-blur-sm hidden sm:block"
 					>
 						Press <kbd class="font-mono font-medium text-foreground/70">Esc</kbd> to stop
 					</span>
@@ -1176,7 +1176,7 @@
 
 	<!-- Footer Stats Bar -->
 	<div
-		class="editor-footer border-t border-border px-3 py-2 bg-muted/30 flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground"
+		class="editor-footer border-t border-border px-3 py-2 bg-muted flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground"
 	>
 		<div class="flex items-center gap-2 sm:gap-3">
 			<!-- Recording status indicator -->
@@ -1234,7 +1234,7 @@
 		</div>
 		{#if propsData.typeKey}
 			<div
-				class="font-mono text-[9px] sm:text-[10px] truncate max-w-[100px] sm:max-w-[200px] opacity-60 bg-muted/50 px-1.5 py-0.5 rounded"
+				class="font-mono text-[9px] sm:text-[10px] truncate max-w-[100px] sm:max-w-[200px] opacity-60 bg-muted px-1.5 py-0.5 rounded"
 			>
 				{propsData.typeKey}
 			</div>

@@ -48,7 +48,7 @@
 	<p class="micro-label text-accent mb-4 sm:mb-6">PROJECT OVERVIEW</p>
 	<div class="grid grid-cols-2 md:grid-cols-5 gap-4 sm:gap-6">
 		{#each stats as stat}
-			<div class="text-center p-3 rounded-lg bg-muted/30 {stat.texture}">
+			<div class="text-center p-3 rounded-lg bg-muted {stat.texture}">
 				<div class="text-2xl sm:text-3xl font-bold {stat.colorClass} mb-1">
 					{stat.value === 'total' ? totalProjects : filterCounts[stat.value]}
 				</div>

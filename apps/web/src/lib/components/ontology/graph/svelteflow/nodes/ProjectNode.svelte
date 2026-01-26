@@ -8,9 +8,9 @@
 	let { data, selected }: { data: SvelteFlowNodeData; selected?: boolean } = $props();
 
 	const defaultStyle = {
-		bg: 'bg-gray-50 dark:bg-gray-800',
-		border: 'border-gray-400',
-		text: 'text-gray-700 dark:text-gray-300'
+		bg: 'bg-muted',
+		border: 'border-border',
+		text: 'text-foreground'
 	};
 
 	const stateStyles: Record<string, { bg: string; border: string; text: string }> = {
@@ -26,9 +26,9 @@
 			text: 'text-blue-700 dark:text-blue-300'
 		},
 		archived: {
-			bg: 'bg-gray-100 dark:bg-gray-700',
-			border: 'border-gray-500',
-			text: 'text-gray-600 dark:text-gray-400'
+			bg: 'bg-muted',
+			border: 'border-border',
+			text: 'text-muted-foreground'
 		}
 	};
 
@@ -36,7 +36,7 @@
 </script>
 
 <div
-	class="project-node px-3 py-2 rounded-xl border-2 shadow-md min-w-[140px] max-w-[200px] transition-all duration-200
+	class="project-node px-3 py-2 rounded-lg border-2 shadow-md min-w-[140px] max-w-[200px] transition-all duration-200
 		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}
 		{style.bg} {style.border}"
 >
@@ -57,12 +57,12 @@
 					? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400'
 					: data.state === 'complete'
 						? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400'
-						: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}"
+						: 'bg-muted text-muted-foreground'}"
 			>
 				{data.state}
 			</span>
 			{#if data.metadata?.scale}
-				<span class="text-[10px] text-gray-500 dark:text-gray-400">
+				<span class="text-[10px] text-muted-foreground">
 					{data.metadata.scale}
 				</span>
 			{/if}

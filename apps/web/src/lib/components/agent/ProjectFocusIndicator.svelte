@@ -57,7 +57,7 @@
 
 {#if focus}
 	<!-- INKPRINT compact inline focus indicator -->
-	<span class="inline-flex items-center gap-0.5 text-xs sm:gap-1">
+	<span class="inline-flex items-center gap-2 text-xs">
 		<!-- Focus type icon -->
 		<span class="text-muted-foreground" aria-hidden="true">
 			<FocusIcon class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
@@ -67,7 +67,7 @@
 		<button
 			type="button"
 			onclick={() => onChangeFocus?.()}
-			class="inline-flex items-center gap-0.5 rounded-lg px-1 py-0.5 text-xs font-medium text-accent transition-all hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-1.5"
+			class="inline-flex items-center gap-0.5 rounded-lg px-3 py-2 text-xs font-medium text-accent transition-all hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 			title={resolvedLabel}
 		>
 			<!-- Narrower max-width on mobile for high density -->
@@ -84,7 +84,7 @@
 		{#if onClearFocus && focus.focusType !== 'project-wide'}
 			<button
 				type="button"
-				class="ml-0 rounded-lg px-0.5 py-0.5 text-[0.65rem] font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:ml-0.5 sm:px-1"
+				class="rounded-lg px-3 py-2 text-[0.65rem] font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				onclick={() => onClearFocus?.()}
 				aria-label="Clear focus"
 			>

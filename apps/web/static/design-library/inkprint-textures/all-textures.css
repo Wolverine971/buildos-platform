@@ -1,0 +1,31 @@
+/* ============================================
+   Inkprint Texture Library - Complete Bundle
+   ============================================
+
+   This file imports all Inkprint texture modules.
+   Use this for quick setup, or import individual modules as needed.
+
+   Files included:
+   1. color-system.css       - Color tokens
+   2. textures-core.css      - All texture types
+   3. textures-intensities.css - Intensity modifiers
+   4. shadows.css            - Shadow system
+   5. atmosphere.css         - Atmospheric depth
+   6. weight-system.css      - Semantic weight
+   7. interactive.css        - Interactive states
+   8. motion.css             - Animations
+   9. utilities.css          - Layout utilities
+
+   Version: 1.0.0
+   Last Updated: 2026-01-25
+*/
+
+@import url('./color-system.css');
+@import url('./textures-core.css');
+@import url('./textures-intensities.css');
+@import url('./shadows.css');
+@import url('./atmosphere.css');
+@import url('./weight-system.css');
+@import url('./interactive.css');
+@import url('./motion.css');
+@import url('./utilities.css');

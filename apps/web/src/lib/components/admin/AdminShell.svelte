@@ -228,7 +228,7 @@
 <div class="admin-shell relative flex min-h-screen bg-background text-foreground transition-colors">
 	<!-- Desktop sidebar -->
 	<aside
-		class="relative hidden w-72 shrink-0 border-r border-border bg-card/95 backdrop-blur-xl lg:flex lg:flex-col tx tx-frame tx-weak"
+		class="relative hidden w-72 shrink-0 border-r border-border bg-card backdrop-blur-xl lg:flex lg:flex-col tx tx-frame tx-weak"
 	>
 		<!-- Logo Section -->
 		<div class="border-b border-border px-6 py-6">
@@ -283,7 +283,7 @@
 		<main class="relative flex-1 overflow-y-auto">
 			<div class="min-h-full">
 				{#if hero}
-					<div class="border-b border-border bg-muted/30">
+					<div class="border-b border-border bg-muted">
 						<div class="px-4 py-6 sm:px-6 lg:px-8">
 							{@render hero?.()}
 						</div>

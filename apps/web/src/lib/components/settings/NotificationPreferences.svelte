@@ -329,7 +329,7 @@
 			<div class="p-4 space-y-3">
 				<!-- Daily Brief Email -->
 				<div
-					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 				>
 					<div class="flex items-start gap-3">
 						<Mail class="w-5 h-5 text-blue-500 mt-0.5" />
@@ -361,7 +361,7 @@
 
 				<!-- Daily Brief SMS -->
 				<div
-					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 				>
 					<div class="flex items-start gap-3">
 						<MessageSquare class="w-5 h-5 text-orange-500 mt-0.5" />
@@ -423,7 +423,7 @@
 			<div class="p-4 space-y-4">
 				<!-- Push Notifications -->
 				<div
-					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 				>
 					<div class="flex items-start gap-3">
 						<Smartphone class="w-5 h-5 text-green-500 mt-0.5" />
@@ -484,7 +484,7 @@
 
 				<!-- In-App Notifications -->
 				<div
-					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 				>
 					<div class="flex items-start gap-3">
 						<Bell class="w-5 h-5 text-purple-500 mt-0.5" />

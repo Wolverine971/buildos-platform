@@ -48,7 +48,7 @@
 			<div class="space-y-3">
 				{#if event.status === 'cancelled'}
 					<div
-						class="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-300"
+						class="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900 dark:text-red-300"
 					>
 						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path
@@ -68,7 +68,7 @@
 				<!-- Time -->
 				<div class="flex items-start gap-3">
 					<svg
-						class="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500"
+						class="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -81,17 +81,15 @@
 						/>
 					</svg>
 					<div class="flex-1">
-						<div class="text-sm font-medium text-slate-900 dark:text-slate-50">
+						<div class="text-sm font-medium text-foreground">
 							{formatDateTime(event.start.dateTime, event.start.date)}
 						</div>
 						{#if !isAllDayEvent() && event.end.dateTime}
-							<div class="mt-1 text-xs text-slate-600 dark:text-slate-400">
+							<div class="mt-1 text-xs text-muted-foreground">
 								Until {formatTime(event.end.dateTime)}
 							</div>
 						{:else if isAllDayEvent()}
-							<div class="mt-1 text-xs text-slate-600 dark:text-slate-400">
-								All day event
-							</div>
+							<div class="mt-1 text-xs text-muted-foreground">All day event</div>
 						{/if}
 					</div>
 				</div>
@@ -100,7 +98,7 @@
 				{#if event.description}
 					<div class="flex items-start gap-3">
 						<svg
-							class="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500"
+							class="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -113,9 +111,7 @@
 							/>
 						</svg>
 						<div class="flex-1">
-							<div
-								class="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300"
-							>
+							<div class="whitespace-pre-wrap text-sm text-foreground">
 								{event.description}
 							</div>
 						</div>
@@ -126,7 +122,7 @@
 				{#if event.location}
 					<div class="flex items-start gap-3">
 						<svg
-							class="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500"
+							class="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -145,7 +141,7 @@
 							/>
 						</svg>
 						<div class="flex-1">
-							<div class="text-sm text-slate-700 dark:text-slate-300">
+							<div class="text-sm text-foreground">
 								{event.location}
 							</div>
 						</div>
@@ -156,7 +152,7 @@
 				{#if event.attendees && event.attendees.length > 0}
 					<div class="flex items-start gap-3">
 						<svg
-							class="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500"
+							class="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -169,7 +165,7 @@
 							/>
 						</svg>
 						<div class="flex-1">
-							<div class="text-sm font-medium text-slate-900 dark:text-slate-50">
+							<div class="text-sm font-medium text-foreground">
 								{event.attendees.length}
 								{event.attendees.length === 1 ? 'attendee' : 'attendees'}
 							</div>
@@ -184,13 +180,13 @@
 														? 'bg-red-500'
 														: attendee.responseStatus === 'tentative'
 															? 'bg-yellow-500'
-															: 'bg-slate-300'
+															: 'bg-muted-foreground'
 											}`}
 										></span>
-										<span class="text-slate-700 dark:text-slate-300">
+										<span class="text-foreground">
 											{attendee.displayName || attendee.email}
 											{#if attendee.organizer}
-												<span class="text-slate-500 dark:text-slate-400"
+												<span class="text-muted-foreground"
 													>(Organizer)</span
 												>
 											{/if}
@@ -206,7 +202,7 @@
 				{#if event.hangoutLink}
 					<div class="flex items-start gap-3">
 						<svg
-							class="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500"
+							class="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -235,7 +231,7 @@
 				{#if event.recurringEventId}
 					<div class="flex items-start gap-3">
 						<svg
-							class="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-400 dark:text-slate-500"
+							class="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -248,9 +244,7 @@
 							/>
 						</svg>
 						<div class="flex-1">
-							<div class="text-sm text-slate-700 dark:text-slate-300">
-								Recurring event
-							</div>
+							<div class="text-sm text-foreground">Recurring event</div>
 						</div>
 					</div>
 				{/if}
@@ -261,7 +255,7 @@
 	{#snippet footer()}
 		<!-- Actions in Footer -->
 		<div
-			class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30"
+			class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted"
 		>
 			<a
 				href={event.htmlLink}
@@ -278,7 +272,7 @@
 			</a>
 			<button
 				onclick={onClose}
-				class="order-1 sm:order-2 w-full sm:w-auto rounded-lg px-4 py-3 sm:py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 touch-manipulation"
+				class="order-1 sm:order-2 w-full sm:w-auto rounded-lg px-4 py-3 sm:py-2 text-sm font-medium text-foreground transition hover:bg-muted/80 touch-manipulation"
 			>
 				Close
 			</button>

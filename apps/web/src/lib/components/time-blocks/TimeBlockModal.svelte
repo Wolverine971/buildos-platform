@@ -325,24 +325,24 @@
 		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 min-h-[38vh]">
 			<section class="lg:col-span-3 flex flex-col gap-4 lg:pr-1">
 				<div
-					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
+					class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
 				>
 					<div
-						class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4"
+						class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 sm:px-6 py-4"
 					>
 						<div class="space-y-1">
 							<p
-								class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500"
+								class="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 							>
 								Session Setup
 							</p>
-							<h2 class="text-base font-semibold text-slate-900 dark:text-white">
+							<h2 class="text-base font-semibold text-foreground">
 								{sessionTypeLabel}
 							</h2>
 						</div>
 						{#if durationDisplay}
 							<div
-								class="inline-flex items-center gap-1.5 rounded-full bg-blue-50/80 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-200/60 dark:bg-blue-500/15 dark:text-blue-200 dark:ring-blue-500/30"
+								class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 shadow-ink ring-1 ring-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:ring-blue-800"
 							>
 								<Clock class="w-3.5 h-3.5" />
 								<span>{durationDisplay}</span>
@@ -354,33 +354,33 @@
 						<div class="px-4 sm:px-6 py-4 sm:py-6 space-y-5">
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div
-									class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5"
+									class="rounded-xl border border-border bg-card p-4 space-y-1.5"
 								>
 									<span
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>Start</span
 									>
-									<p class="text-sm font-semibold text-slate-900 dark:text-white">
+									<p class="text-sm font-semibold text-foreground">
 										{startDateSummary || 'Not scheduled'}
 									</p>
 									{#if block?.start_time}
-										<p class="text-xs text-slate-500 dark:text-slate-400">
+										<p class="text-xs text-muted-foreground">
 											Started {formatRelativeTime(block.start_time)}
 										</p>
 									{/if}
 								</div>
 								<div
-									class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5"
+									class="rounded-xl border border-border bg-card p-4 space-y-1.5"
 								>
 									<span
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>End</span
 									>
-									<p class="text-sm font-semibold text-slate-900 dark:text-white">
+									<p class="text-sm font-semibold text-foreground">
 										{endDateSummary || 'Not scheduled'}
 									</p>
 									{#if block?.end_time}
-										<p class="text-xs text-slate-500 dark:text-slate-400">
+										<p class="text-xs text-muted-foreground">
 											Ends {formatRelativeTime(block.end_time)}
 										</p>
 									{/if}
@@ -389,40 +389,38 @@
 
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div
-									class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5"
+									class="rounded-xl border border-border bg-card p-4 space-y-1.5"
 								>
 									<span
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>Focus type</span
 									>
-									<p class="text-sm font-semibold text-slate-900 dark:text-white">
+									<p class="text-sm font-semibold text-foreground">
 										{blockType === 'project'
 											? 'Project session'
 											: 'Build session'}
 									</p>
 								</div>
 								<div
-									class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5"
+									class="rounded-xl border border-border bg-card p-4 space-y-1.5"
 								>
 									<span
-										class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 										>Timezone</span
 									>
-									<p class="text-sm font-semibold text-slate-900 dark:text-white">
+									<p class="text-sm font-semibold text-foreground">
 										{timezoneDisplay}
 									</p>
 								</div>
 								{#if blockType === 'project' && block?.project?.name}
 									<div
-										class="rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/60 p-4 space-y-1.5 sm:col-span-2"
+										class="rounded-xl border border-border bg-card p-4 space-y-1.5 sm:col-span-2"
 									>
 										<span
-											class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+											class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 											>Project</span
 										>
-										<p
-											class="text-sm font-semibold text-slate-900 dark:text-white"
-										>
+										<p class="text-sm font-semibold text-foreground">
 											{block.project.name}
 										</p>
 									</div>
@@ -437,8 +435,8 @@
 										type="button"
 										class="group rounded-xl border-2 p-3 sm:p-4 text-left transition-all duration-200 {blockType ===
 										'project'
-											? 'border-blue-500 bg-blue-50/80 dark:border-blue-400 dark:bg-blue-950/40 shadow-md'
-											: 'border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}"
+											? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-900 shadow-ink'
+											: 'border-border hover:border-muted-foreground'}"
 										onclick={() => (blockType = 'project')}
 									>
 										<div class="flex items-center gap-2">
@@ -446,14 +444,13 @@
 												class="h-2.5 w-2.5 rounded-full border-2 {blockType ===
 												'project'
 													? 'border-blue-500 bg-blue-500'
-													: 'border-slate-400'}"
+													: 'border-muted-foreground'}"
 											></div>
-											<span
-												class="text-sm font-semibold text-slate-900 dark:text-white"
+											<span class="text-sm font-semibold text-foreground"
 												>Project focus</span
 											>
 										</div>
-										<p class="mt-2 text-xs text-slate-600 dark:text-slate-300">
+										<p class="mt-2 text-xs text-foreground">
 											Connect this session to one of your projects.
 										</p>
 									</button>
@@ -461,8 +458,8 @@
 										type="button"
 										class="group rounded-xl border-2 p-3 sm:p-4 text-left transition-all duration-200 {blockType ===
 										'build'
-											? 'border-purple-500 bg-purple-50/80 dark:border-purple-400 dark:bg-purple-950/40 shadow-md'
-											: 'border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'}"
+											? 'border-purple-500 bg-purple-50 dark:border-purple-400 dark:bg-purple-900 shadow-ink'
+											: 'border-border hover:border-muted-foreground'}"
 										onclick={() => (blockType = 'build')}
 									>
 										<div class="flex items-center gap-2">
@@ -470,14 +467,13 @@
 												class="h-2.5 w-2.5 rounded-full border-2 {blockType ===
 												'build'
 													? 'border-purple-500 bg-purple-500'
-													: 'border-slate-400'}"
+													: 'border-muted-foreground'}"
 											></div>
-											<span
-												class="text-sm font-semibold text-slate-900 dark:text-white"
+											<span class="text-sm font-semibold text-foreground"
 												>Build session</span
 											>
 										</div>
-										<p class="mt-2 text-xs text-slate-600 dark:text-slate-300">
+										<p class="mt-2 text-xs text-foreground">
 											Flexible time to push high-impact work forward.
 										</p>
 									</button>
@@ -519,7 +515,7 @@
 							</div>
 							{#if durationMinutes > 0}
 								<div
-									class="rounded-xl border border-blue-200/60 bg-blue-50/80 px-4 py-3 text-sm text-blue-800 shadow-sm dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-200"
+									class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 shadow-ink dark:border-blue-800 dark:bg-blue-900 dark:text-blue-200"
 								>
 									<div class="flex items-center gap-2">
 										<Clock class="h-4 w-4" />
@@ -534,18 +530,18 @@
 				</div>
 
 				<div
-					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
+					class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
 				>
 					<div
-						class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 dark:border-slate-700/60 px-4 sm:px-6 py-4"
+						class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 sm:px-6 py-4"
 					>
 						<div>
 							<p
-								class="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500"
+								class="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground"
 							>
 								Focus Suggestions
 							</p>
-							<h3 class="text-base font-semibold text-slate-900 dark:text-white">
+							<h3 class="text-base font-semibold text-foreground">
 								{isEditing && block?.ai_suggestions?.length
 									? `${block.ai_suggestions.length} curated ideas`
 									: 'Personalized ideas'}
@@ -570,7 +566,7 @@
 							<div class="space-y-3">
 								{#each block.ai_suggestions as suggestion, index}
 									<div
-										class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white/85 p-4 shadow-sm transition-all hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70"
+										class="group relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
 									>
 										<div
 											class="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-blue-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-blue-400/5 dark:to-purple-400/5"
@@ -584,13 +580,13 @@
 											<div class="flex-1 space-y-1.5">
 												<div class="flex flex-wrap items-center gap-2">
 													<h4
-														class="text-sm font-semibold text-slate-900 dark:text-white"
+														class="text-sm font-semibold text-foreground"
 													>
 														{suggestion.title}
 													</h4>
 													{#if suggestion.project_name || suggestion.priority || suggestion.estimated_minutes}
 														<span
-															class="inline-flex flex-wrap items-center gap-1 rounded-full bg-slate-100/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200/60 dark:bg-slate-800/70 dark:text-slate-200 dark:ring-white/10"
+															class="inline-flex flex-wrap items-center gap-1 rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground ring-1 ring-border shadow-ink"
 														>
 															{#if suggestion.project_name}
 																<span
@@ -618,9 +614,7 @@
 														</span>
 													{/if}
 												</div>
-												<p
-													class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
-												>
+												<p class="text-sm leading-relaxed text-foreground">
 													{suggestion.reason}
 												</p>
 											</div>
@@ -630,14 +624,10 @@
 							</div>
 						{:else}
 							<div
-								class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-slate-200/60 bg-slate-50/60 p-5 text-sm text-slate-600 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-300"
+								class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border bg-muted p-5 text-sm text-muted-foreground shadow-ink-inner"
 							>
-								<p class="font-semibold text-slate-700 dark:text-slate-200">
-									No suggestions yet
-								</p>
-								<p
-									class="text-xs leading-relaxed text-slate-500 dark:text-slate-400"
-								>
+								<p class="font-semibold text-foreground">No suggestions yet</p>
+								<p class="text-xs leading-relaxed text-muted-foreground">
 									Save this session or regenerate to receive tailored focus ideas.
 								</p>
 								{#if isEditing && block}
@@ -665,17 +655,17 @@
 
 			<aside class="lg:col-span-1 flex flex-col gap-4">
 				<div
-					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+					class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
 				>
 					<div class="flex items-center justify-between">
 						<h3
-							class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Session Controls
 						</h3>
 						{#if isEditing}
 							<span
-								class="inline-flex items-center gap-1 rounded-full bg-slate-100/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800/70 dark:text-slate-300"
+								class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground shadow-ink"
 							>
 								{editingEnabled ? 'Editing' : 'Viewing'}
 							</span>
@@ -691,7 +681,7 @@
 							<PencilLine class="h-4 w-4" />
 							<span>{editingEnabled ? 'Exit Edit Mode' : 'Edit Session'}</span>
 						</Button>
-						<p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+						<p class="text-xs leading-relaxed text-muted-foreground">
 							{editingEnabled
 								? 'Adjust session details and timing, then save your changes.'
 								: 'Enable editing to adjust timing, project context, or session type.'}
@@ -713,7 +703,7 @@
 							>
 						</Button>
 					{:else}
-						<p class="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+						<p class="text-xs leading-relaxed text-muted-foreground">
 							Craft the perfect block: set the type, project, and timing, then add it
 							to your schedule.
 						</p>
@@ -722,16 +712,14 @@
 
 				{#if isEditing && block}
 					<div
-						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
+						class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
 					>
 						<h4
-							class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Calendar Sync
 						</h4>
-						<div
-							class="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300"
-						>
+						<div class="flex items-center gap-2 text-xs text-foreground">
 							<div
 								class="h-2.5 w-2.5 rounded-full {block.sync_status === 'synced'
 									? 'bg-emerald-500'
@@ -758,12 +746,12 @@
 				{/if}
 
 				<div
-					class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+					class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
 				>
-					<div class="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+					<div class="space-y-3 text-xs text-foreground">
 						<div class="flex items-center justify-between gap-3">
 							<span
-								class="font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.32em]"
+								class="font-semibold text-muted-foreground uppercase tracking-[0.32em]"
 							>
 								Overview
 							</span>
@@ -771,18 +759,14 @@
 						<div class="space-y-2">
 							<div class="flex items-center justify-between gap-3">
 								<span>Focus type</span>
-								<span
-									class="text-right font-semibold text-slate-900 dark:text-white"
-								>
+								<span class="text-right font-semibold text-foreground">
 									{blockType === 'project' ? 'Project session' : 'Build session'}
 								</span>
 							</div>
 							{#if durationMinutes > 0}
 								<div class="flex items-center justify-between gap-3">
 									<span>Duration</span>
-									<span
-										class="text-right font-semibold text-slate-900 dark:text-white"
-									>
+									<span class="text-right font-semibold text-foreground">
 										{durationDisplay}
 									</span>
 								</div>
@@ -790,9 +774,7 @@
 							{#if startDateSummary}
 								<div class="flex items-start justify-between gap-3">
 									<span>Starts</span>
-									<span
-										class="text-right font-semibold text-slate-900 dark:text-white"
-									>
+									<span class="text-right font-semibold text-foreground">
 										{startDateSummary}
 									</span>
 								</div>
@@ -800,18 +782,14 @@
 							{#if endDateSummary}
 								<div class="flex items-start justify-between gap-3">
 									<span>Ends</span>
-									<span
-										class="text-right font-semibold text-slate-900 dark:text-white"
-									>
+									<span class="text-right font-semibold text-foreground">
 										{endDateSummary}
 									</span>
 								</div>
 							{/if}
 							<div class="flex items-start justify-between gap-3">
 								<span>Timezone</span>
-								<span
-									class="text-right font-semibold text-slate-900 dark:text-white"
-								>
+								<span class="text-right font-semibold text-foreground">
 									{timezoneDisplay}
 								</span>
 							</div>
@@ -819,12 +797,10 @@
 					</div>
 					{#if blockType === 'project' && (block?.project?.name || selectedProjectId)}
 						<div
-							class="rounded-xl border border-slate-200/60 bg-slate-50/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-600 dark:bg-slate-800/60 dark:text-slate-300"
+							class="rounded-xl border border-border bg-muted px-3 py-2 text-xs text-foreground shadow-ink"
 						>
-							<span class="font-semibold text-slate-700 dark:text-slate-200">
-								Project
-							</span>
-							<p class="mt-1 text-sm font-medium text-slate-900 dark:text-white">
+							<span class="font-semibold text-foreground"> Project </span>
+							<p class="mt-1 text-sm font-medium text-foreground">
 								{#if block?.project?.name}
 									{block.project.name}
 								{:else if selectedProjectId}
@@ -843,14 +819,14 @@
 
 				{#if isEditing && block}
 					<div
-						class="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/70 shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
+						class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
 					>
 						<h4
-							class="text-xs font-semibold uppercase tracking-[0.32em] text-slate-500 dark:text-slate-400"
+							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Activity
 						</h4>
-						<div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+						<div class="space-y-2 text-xs text-foreground">
 							<div>Created {formatRelativeTime(block.created_at)}</div>
 							{#if block.updated_at !== block.created_at}
 								<div>Updated {formatRelativeTime(block.updated_at)}</div>

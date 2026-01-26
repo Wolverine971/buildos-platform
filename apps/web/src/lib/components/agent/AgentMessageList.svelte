@@ -44,17 +44,17 @@
 <div
 	bind:this={container}
 	onscroll={onScroll}
-	class="agent-chat-scroll flex-1 min-h-0 space-y-2 overflow-y-auto overscroll-contain bg-muted px-3 py-3 sm:px-4 sm:py-4"
+	class="agent-chat-scroll flex-1 min-h-0 space-y-2 overflow-y-auto overscroll-contain bg-muted p-3 sm:p-4 lg:px-6 lg:py-4"
 	style="overflow-anchor: none; -webkit-overflow-scrolling: touch;"
 >
 	{#if messages.length === 0}
 		<!-- INKPRINT empty state card with Bloom texture -->
 		<div
-			class="rounded-lg border-2 border-dashed border-border bg-card px-4 py-3 tx tx-bloom tx-weak shadow-ink sm:px-5 sm:py-4"
+			class="rounded-lg border border-dashed border-border bg-card p-3 tx tx-bloom tx-weak shadow-ink sm:p-4"
 		>
 			<div class="space-y-2">
 				<!-- INKPRINT micro-label heading -->
-				<p class="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent">
+				<p class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent">
 					READY TO OPERATE
 				</p>
 				<!-- Body text -->
@@ -63,7 +63,7 @@
 					{displayContextLabel.toLowerCase()}.
 				</p>
 				<!-- Suggestion list -->
-				<ul class="space-y-1.5 text-sm font-medium text-muted-foreground">
+				<ul class="space-y-2 text-sm font-medium text-muted-foreground">
 					<li class="flex items-start gap-2">
 						<span class="mt-0.5 text-accent">▸</span>
 						<span>Summarize where this stands</span>
@@ -87,7 +87,7 @@
 				<div class="flex flex-col items-end gap-1.5">
 					<!-- Message bubble -->
 					<div
-						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:px-4 sm:py-3"
+						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:p-4"
 					>
 						<div
 							class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
@@ -117,12 +117,12 @@
 				<div class="flex sm:gap-3">
 					<!-- INKPRINT avatar badge - DESKTOP ONLY -->
 					<div
-						class="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-bold uppercase tracking-[0.1em] text-background shadow-ink"
+						class="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink"
 					>
 						OS
 					</div>
 					<div
-						class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:max-w-[85%] sm:px-4 sm:py-3"
+						class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:max-w-[85%] sm:p-4"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div
@@ -130,7 +130,7 @@
 							>
 								<!-- INKPRINT avatar badge - MOBILE ONLY (floated inside BFC for text wrap) -->
 								<div
-									class="sm:hidden float-left mr-2.5 mb-1 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-foreground text-[0.5rem] font-bold uppercase tracking-[0.05em] text-background shadow-ink"
+									class="sm:hidden float-left mr-2 mb-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink"
 								>
 									OS
 								</div>
@@ -140,7 +140,7 @@
 							<div class="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
 								<!-- INKPRINT avatar badge - MOBILE ONLY (floated for text wrap) -->
 								<div
-									class="sm:hidden float-left mr-2.5 mb-1 flex h-6 w-6 items-center justify-center rounded-md border border-border bg-foreground text-[0.5rem] font-bold uppercase tracking-[0.05em] text-background shadow-ink"
+									class="sm:hidden float-left mr-2 mb-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink"
 								>
 									OS
 								</div>
@@ -168,12 +168,12 @@
 				<!-- INKPRINT agent peer message with Thread texture -->
 				<div class="flex gap-2 sm:gap-3">
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-600/30 bg-amber-50 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-amber-700 shadow-ink tx tx-thread tx-weak dark:bg-amber-950/30 dark:text-amber-400 sm:h-9 sm:w-9"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-600/30 bg-amber-50 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 shadow-ink tx tx-thread tx-weak dark:bg-amber-950/30 dark:text-amber-400 sm:h-9 sm:w-9"
 					>
 						AI↔
 					</div>
 					<div
-						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-amber-600/20 bg-amber-50/50 px-3 py-2.5 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak dark:bg-amber-950/10 sm:max-w-[85%] sm:px-4 sm:py-3"
+						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-amber-600/20 bg-amber-50/50 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak dark:bg-amber-950/10 sm:max-w-[85%] sm:p-4"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div class="{proseClasses} overflow-x-auto break-words">
@@ -201,16 +201,16 @@
 				<!-- INKPRINT clarification message with Bloom texture -->
 				<div class="flex gap-2 sm:gap-3">
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-600/30 bg-emerald-50 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-emerald-700 shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/30 dark:text-emerald-400 sm:h-9 sm:w-9"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-600/30 bg-emerald-50 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-emerald-700 shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/30 dark:text-emerald-400 sm:h-9 sm:w-9"
 					>
 						AI
 					</div>
 					<div
-						class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-emerald-600/20 bg-emerald-50/50 px-3 py-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/10 sm:max-w-[88%] sm:px-4 sm:py-3.5"
+						class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-emerald-600/20 bg-emerald-50/50 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/10 sm:max-w-[88%] sm:p-4"
 					>
 						<!-- INKPRINT micro-label heading -->
 						<p
-							class="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-foreground"
+							class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-foreground"
 						>
 							{message.content}
 						</p>
@@ -248,14 +248,14 @@
 			{:else if message.type === 'plan'}
 				{#if dev}
 					<div
-						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
+						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
 					>
 						⚠️ Dev Warning: Legacy plan message
 					</div>
 				{/if}
 				<!-- Legacy plan with INKPRINT styling -->
 				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
-					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
+					<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
 					<div
@@ -270,7 +270,7 @@
 							{message.content}
 						</p>
 						{#if message.data?.steps}
-							<ol class="mt-1 space-y-0.5 text-sm text-muted-foreground">
+							<ol class="mt-1 space-y-1 text-sm text-muted-foreground">
 								{#each message.data.steps as step}
 									<li class="flex gap-1.5 leading-tight">
 										<span class="w-3 text-right font-semibold">
@@ -288,18 +288,18 @@
 			{:else if message.type === 'activity'}
 				{#if dev}
 					<div
-						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
+						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
 					>
 						⚠️ Dev Warning: Legacy activity message
 					</div>
 				{/if}
 				<!-- Legacy activity with INKPRINT styling -->
 				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
-					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
+					<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
 					<div
-						class="max-w-[65%] rounded-lg border border-border bg-muted px-2 py-1 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
+						class="max-w-[65%] rounded-lg border border-border bg-muted px-2.5 py-1.5 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
 					>
 						<p class="leading-snug">{message.content}</p>
 					</div>
@@ -307,11 +307,11 @@
 			{:else}
 				<!-- Default message with INKPRINT styling -->
 				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
-					<div class="w-12 shrink-0 pt-[2px] font-mono uppercase tracking-[0.1em]">
+					<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
 						{formatTime(message.timestamp)}
 					</div>
 					<div
-						class="max-w-[65%] rounded-lg border border-border bg-muted px-2 py-1 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
+						class="max-w-[65%] rounded-lg border border-border bg-muted px-2.5 py-1.5 text-sm font-medium italic leading-tight text-muted-foreground shadow-ink"
 					>
 						<p class="leading-snug">{message.content}</p>
 					</div>

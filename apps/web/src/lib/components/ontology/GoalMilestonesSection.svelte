@@ -1,16 +1,30 @@
 <!-- apps/web/src/lib/components/ontology/GoalMilestonesSection.svelte -->
 <!--
-	Goal Milestones Section Component
+	Goal Milestones Section - Standards-Compliant Inkprint Design
 
-	Displays milestones nested within a goal card. Shows:
-	- Milestone list (sorted by due_at, completed at bottom)
-	- Empty state with helpful prompt
-	- Add milestone button
-	- Optional progress indicator
+	Visual Treatment:
+	- tx-frame tx-weak (canonical achievement zone)
+	- Subtle emerald-tinted background (visual grouping within goal)
+	- Clean borders (full opacity, crisp)
+	- Compact/Nested spacing (follows SPACING_BORDER_STANDARDS.md)
+	- Proper visual hierarchy (subordinate but distinct)
 
-	Documentation:
-	- Milestones Under Goals Spec: /thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md
-	- Inkprint Design System: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
+	Semantic Justification:
+	- Goals (tx-bloom) = aspirational, ideation
+	- Milestones (tx-frame) = canonical checkpoints, achievements
+	- Emerald = success, completion (milestone identity)
+	- Nested but visually grouped within parent goal
+
+	Design Standards (per SPACING_BORDER_STANDARDS.md):
+	- Container: tx-frame tx-weak + subtle bg-emerald tint
+	- Spacing: px-3 py-1.5 (Compact/Nested pattern for "milestones under goals")
+	- Gap: gap-2 (8px - proper icon+text pairing)
+	- Icons: w-3.5 h-3.5 (14px - Compact tier)
+	- Text: text-xs (12px - comfortable reading)
+	- Borders: border-border (full opacity, crisp)
+	- Dividers: divide-border/80 (matches page-wide pattern)
+	- Radius: CTAs only (structure is edge-to-edge)
+	- Hover: subtle emerald hints (semantic coherence)
 -->
 <script lang="ts">
 	import { slide } from 'svelte/transition';
@@ -56,39 +70,28 @@
 		maxVisible = 10
 	}: Props = $props();
 
-	// Local expanded state if not controlled
 	let localExpanded = $state(expanded);
 	const isExpanded = $derived(onToggleExpanded ? expanded : localExpanded);
-
-	// Check if goal is in terminal state (can't add milestones)
 	const isGoalTerminal = $derived(goalState === 'achieved' || goalState === 'abandoned');
 
-	// Sort and group milestones
 	const sortedMilestones = $derived.by(() => {
 		const sorted = [...milestones].sort((a, b) => {
 			const aState = resolveMilestoneState(a).state;
 			const bState = resolveMilestoneState(b).state;
-
-			// Completed/missed go to bottom
 			const aIsTerminal = aState === 'completed' || aState === 'missed';
 			const bIsTerminal = bState === 'completed' || bState === 'missed';
 			if (aIsTerminal && !bIsTerminal) return 1;
 			if (!aIsTerminal && bIsTerminal) return -1;
-
-			// Then sort by due_at ascending
 			const aDate = a.due_at ? new Date(a.due_at).getTime() : Infinity;
 			const bDate = b.due_at ? new Date(b.due_at).getTime() : Infinity;
 			const safeADate = Number.isNaN(aDate) ? Infinity : aDate;
 			const safeBDate = Number.isNaN(bDate) ? Infinity : bDate;
 			if (safeADate !== safeBDate) return safeADate - safeBDate;
-
-			// Fallback to title
 			return a.title.localeCompare(b.title);
 		});
 		return sorted;
 	});
 
-	// Split into active and completed
 	const activeMilestones = $derived(
 		sortedMilestones.filter((m) => {
 			const state = resolveMilestoneState(m).state;
@@ -103,7 +106,6 @@
 		})
 	);
 
-	// Progress calculation
 	const completedCount = $derived(
 		milestones.filter((m) => {
 			const state = resolveMilestoneState(m).state;
@@ -112,14 +114,11 @@
 	);
 	const totalCount = $derived(milestones.length);
 
-	// Show "Show all" if more than maxVisible active milestones
 	let showAll = $state(false);
 	const visibleActiveMilestones = $derived(
 		showAll ? activeMilestones : activeMilestones.slice(0, maxVisible)
 	);
 	const hasMore = $derived(activeMilestones.length > maxVisible);
-
-	// Completed section collapsed state
 	let completedExpanded = $state(false);
 
 	function handleToggle() {
@@ -131,62 +130,53 @@
 	}
 </script>
 
-<div class="border-t border-border/30">
-	<!-- Section Header (ultra-compact) -->
-	<button
-		type="button"
-		onclick={handleToggle}
-		class="
-			w-full flex items-center justify-between gap-1.5
-			px-2.5 py-1 text-left
-			hover:bg-muted/30 transition-colors
-			focus:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset
-		"
-		aria-expanded={isExpanded}
-	>
-		<div class="flex items-center gap-1.5">
-			<Flag class="w-2.5 h-2.5 text-muted-foreground/70" />
-			<span class="text-[10px] text-muted-foreground/70">
-				{#if totalCount > 0}
-					{completedCount}/{totalCount} milestones
-				{:else}
-					Milestones
-				{/if}
-			</span>
+<!-- Achievement zone: tx-frame + subtle emerald background for visual grouping -->
+<div
+	class="border-t border-l border-border tx tx-frame tx-weak bg-emerald-50/5 dark:bg-emerald-900/5"
+>
+	{#if milestones.length === 0}
+		<!-- Empty state: single compact row -->
+		<div class="w-full flex items-center justify-between gap-2 px-3 py-1.5">
+			<div class="flex items-center gap-2 min-w-0">
+				<Flag class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+				<span class="text-xs text-muted-foreground truncate">No Milestones</span>
+			</div>
+			{#if canEdit && !isGoalTerminal}
+				<button
+					type="button"
+					onclick={() => onAddMilestone(goalId, goalName)}
+					class="px-2 py-0.5 rounded text-xs text-accent hover:bg-accent/10 transition-colors pressable"
+					aria-label="Add milestone to {goalName}"
+				>
+					Add
+				</button>
+			{/if}
 		</div>
-		<ChevronDown
-			class="w-2.5 h-2.5 text-muted-foreground/50 transition-transform duration-100
-				{isExpanded ? 'rotate-180' : ''}"
-		/>
-	</button>
+	{:else}
+		<!-- Section header -->
+		<button
+			type="button"
+			onclick={handleToggle}
+			class="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-emerald-50/20 dark:hover:bg-emerald-900/10 transition-colors"
+			aria-expanded={isExpanded}
+			aria-label={isExpanded ? 'Collapse milestones' : 'Expand milestones'}
+		>
+			<div class="flex items-center gap-2 min-w-0">
+				<Flag class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+				<span class="text-xs text-muted-foreground truncate">
+					{completedCount}/{totalCount} milestones
+				</span>
+			</div>
+			<ChevronDown
+				class="w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-150 {isExpanded
+					? 'rotate-180'
+					: ''}"
+			/>
+		</button>
 
-	<!-- Content -->
-	{#if isExpanded}
-		<div transition:slide={{ duration: 100 }}>
-			{#if milestones.length === 0}
-				<!-- Empty State (minimal) -->
-				<div class="px-2.5 py-1.5 flex items-center justify-between bg-muted/10">
-					<span class="text-[10px] text-muted-foreground/60 italic">None defined</span>
-					{#if canEdit && !isGoalTerminal}
-						<button
-							type="button"
-							onclick={() => onAddMilestone(goalId, goalName)}
-							class="
-								inline-flex items-center gap-0.5
-								px-1.5 py-0.5 rounded
-								hover:bg-accent/10
-								text-[10px] text-accent/80 hover:text-accent
-								transition-colors
-							"
-						>
-							<Plus class="w-2.5 h-2.5" />
-							Add
-						</button>
-					{/if}
-				</div>
-			{:else}
-				<!-- Milestone List (ultra-compact) -->
-				<div class="divide-y divide-border/20">
+		{#if isExpanded}
+			<div transition:slide={{ duration: 120 }}>
+				<div class="divide-y divide-border/80">
 					{#each visibleActiveMilestones as milestone (milestone.id)}
 						<MilestoneListItem
 							{milestone}
@@ -196,74 +186,67 @@
 						/>
 					{/each}
 
-					<!-- Show All Button -->
 					{#if hasMore && !showAll}
 						<button
 							type="button"
 							onclick={() => (showAll = true)}
-							class="
-								w-full px-2 py-1 text-center
-								text-[10px] text-accent/70 hover:text-accent hover:bg-accent/5
-								transition-colors
-							"
+							class="w-full px-3 py-1.5 text-center text-xs text-accent hover:bg-accent/10 transition-colors"
+							aria-label="Show {activeMilestones.length - maxVisible} more milestones"
 						>
 							+{activeMilestones.length - maxVisible} more
 						</button>
 					{/if}
 
-					<!-- Completed Section (inline, minimal) -->
 					{#if showCompletedSection && completedMilestones.length > 0}
-						<div class="bg-muted/10">
+						<div>
 							<button
 								type="button"
 								onclick={() => (completedExpanded = !completedExpanded)}
-								class="
-									w-full flex items-center justify-between
-									px-2 py-0.5 text-left
-									hover:bg-muted/20 transition-colors
-								"
+								class="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-emerald-50/20 dark:hover:bg-emerald-900/10 transition-colors"
+								aria-expanded={completedExpanded}
+								aria-label={completedExpanded
+									? 'Collapse completed milestones'
+									: `Show ${completedMilestones.length} completed milestones`}
 							>
-								<span class="text-[9px] text-muted-foreground/60">
-									{completedMilestones.length} done
+								<span class="text-xs text-muted-foreground">
+									{completedMilestones.length} completed
 								</span>
 								<ChevronDown
-									class="w-2 h-2 text-muted-foreground/40 transition-transform duration-100
-										{completedExpanded ? 'rotate-180' : ''}"
+									class="w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform duration-150 {completedExpanded
+										? 'rotate-180'
+										: ''}"
 								/>
 							</button>
 
 							{#if completedExpanded}
-								<div transition:slide={{ duration: 80 }}>
-									{#each completedMilestones as milestone (milestone.id)}
-										<MilestoneListItem
-											{milestone}
-											onEdit={onEditMilestone}
-											compact={true}
-										/>
-									{/each}
+								<div transition:slide={{ duration: 120 }}>
+									<div class="divide-y divide-border/80">
+										{#each completedMilestones as milestone (milestone.id)}
+											<MilestoneListItem
+												{milestone}
+												onEdit={onEditMilestone}
+												compact={true}
+											/>
+										{/each}
+									</div>
 								</div>
 							{/if}
 						</div>
 					{/if}
 
-					<!-- Add Milestone (inline link) -->
 					{#if canEdit && !isGoalTerminal}
 						<button
 							type="button"
 							onclick={() => onAddMilestone(goalId, goalName)}
-							class="
-								w-full flex items-center justify-center gap-0.5
-								px-2 py-1
-								text-[10px] text-accent/60 hover:text-accent
-								hover:bg-accent/5 transition-colors
-							"
+							class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs text-accent hover:bg-accent/10 transition-all pressable"
+							aria-label="Add milestone to {goalName}"
 						>
-							<Plus class="w-2.5 h-2.5" />
-							Add
+							<Plus class="w-3 h-3 shrink-0" />
+							Add milestone
 						</button>
 					{/if}
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	{/if}
 </div>

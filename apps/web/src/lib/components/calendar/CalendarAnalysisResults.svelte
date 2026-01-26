@@ -410,13 +410,12 @@
 	}
 
 	function getConfidenceColorClass(score: number | null): string {
-		if (!score)
-			return 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-600 dark:from-gray-800/30 dark:to-slate-800/30 dark:text-gray-400';
+		if (!score) return 'bg-muted text-muted-foreground';
 		if (score >= 0.8)
-			return 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 dark:from-emerald-900/20 dark:to-green-900/20 dark:text-emerald-300';
+			return 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300';
 		if (score >= 0.6)
-			return 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 dark:from-amber-900/20 dark:to-yellow-900/20 dark:text-amber-300';
-		return 'bg-gradient-to-r from-gray-50 to-slate-50 text-gray-600 dark:from-gray-800/30 dark:to-slate-800/30 dark:text-gray-400';
+			return 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300';
+		return 'bg-muted text-muted-foreground';
 	}
 </script>
 
@@ -424,7 +423,7 @@
 	<div
 		class="space-y-6 px-4 sm:px-6 py-3 sm:py-4 {embedded
 			? ''
-			: 'border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0'}"
+			: 'border-b border-border bg-gray-50 dark:bg-gray-900/50 flex-shrink-0'}"
 	>
 		{#if errorMessage}
 			<div
@@ -435,13 +434,9 @@
 		{/if}
 		{#if !analyzing && !analysisId && suggestions.length === 0 && !autoStart}
 			<!-- Date Range Selection (only show if not autoStart) -->
-			<div
-				class="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm mx-1"
-			>
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-					Select Analysis Period
-				</h3>
-				<p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+			<div class="bg-accent/10 rounded p-6 border border-accent/20 shadow-sm mx-1">
+				<h3 class="text-lg font-semibold text-foreground mb-4">Select Analysis Period</h3>
+				<p class="text-sm text-muted-foreground mb-6">
 					Choose how far back and forward to analyze your calendar
 				</p>
 
@@ -449,14 +444,14 @@
 					<div>
 						<label
 							for="daysBack"
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+							class="block text-sm font-medium text-foreground mb-2"
 						>
 							Look back
 						</label>
 						<select
 							id="daysBack"
 							bind:value={daysBack}
-							class="w-full rounded border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+							class="w-full rounded border border-border px-4 py-2.5 text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 						>
 							<option value={30}>1 month</option>
 							<option value={60}>2 months</option>
@@ -467,14 +462,14 @@
 					<div>
 						<label
 							for="daysForward"
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+							class="block text-sm font-medium text-foreground mb-2"
 						>
 							Look forward
 						</label>
 						<select
 							id="daysForward"
 							bind:value={daysForward}
-							class="w-full rounded border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+							class="w-full rounded border border-border px-4 py-2.5 text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 						>
 							<option value={30}>1 month</option>
 							<option value={60}>2 months (default)</option>
@@ -507,7 +502,7 @@
 						class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-full blur-xl opacity-20 animate-pulse"
 					></div>
 					<div
-						class="relative bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-5 rounded-full border-2 border-blue-200 dark:border-blue-800/50 shadow-lg"
+						class="relative bg-accent/10 p-5 rounded-full border border-accent/20 shadow-lg"
 					>
 						<LoaderCircle
 							class="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin"
@@ -516,12 +511,8 @@
 				</div>
 
 				<!-- Loading Text -->
-				<h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3">
-					Analyzing Your Calendar
-				</h3>
-				<p
-					class="text-base text-gray-600 dark:text-gray-400 text-center max-w-md leading-relaxed"
-				>
+				<h3 class="text-xl font-semibold text-foreground mb-3">Analyzing Your Calendar</h3>
+				<p class="text-base text-muted-foreground text-center max-w-md leading-relaxed">
 					Looking for project patterns in your meetings and events. This typically takes
 					10-30 seconds...
 				</p>
@@ -544,20 +535,20 @@
 		{:else if suggestions.length > 0}
 			<!-- Summary -->
 			<div
-				class="clarity-zone bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded p-6 border-2 border-blue-200 dark:border-blue-800/50 shadow-sm mx-1"
+				class="clarity-zone bg-accent/10 rounded p-6 border border-accent/20 shadow-sm mx-1"
 			>
 				<div class="flex items-center justify-between">
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-foreground">
 							Found {suggestions.length} potential project{suggestions.length !== 1
 								? 's'
 								: ''}
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+						<p class="text-sm text-muted-foreground mt-2">
 							Review and select the projects you'd like to create
 						</p>
 					</div>
-					<div class="bg-white dark:bg-gray-800 p-3 rounded shadow-sm">
+					<div class="bg-card p-3 rounded shadow-sm">
 						<Calendar class="w-8 h-8 text-purple-600 dark:text-purple-400" />
 					</div>
 				</div>
@@ -577,7 +568,7 @@
 					<div
 						class="border-2 rounded p-6 transition-all duration-300 hover:shadow-md {isSelected
 							? 'border-purple-500 dark:border-purple-400 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20'
-							: 'clarity-zone border-gray-200 dark:border-gray-700'}"
+							: 'clarity-zone border-border'}"
 					>
 						<div class="flex items-start gap-4">
 							<!-- Selection Indicator -->
@@ -606,22 +597,20 @@
 												type="text"
 												bind:value={modifications.name}
 												placeholder={suggestion.suggested_name}
-												class="w-full rounded border border-gray-300 dark:border-gray-600 px-4 py-2.5 mb-3 text-base text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+												class="w-full rounded border border-border px-4 py-2.5 mb-3 text-base text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 											/>
 											<textarea
 												bind:value={modifications.description}
 												placeholder={suggestion.suggested_description}
-												class="w-full rounded border border-gray-300 dark:border-gray-600 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+												class="w-full rounded border border-border px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 												rows="2"
 											></textarea>
 										{:else}
-											<h4
-												class="text-lg font-semibold text-gray-900 dark:text-white"
-											>
+											<h4 class="text-lg font-semibold text-foreground">
 												{modifications?.name || suggestion.suggested_name}
 											</h4>
 											<p
-												class="text-sm text-gray-600 dark:text-gray-400 mt-2 leading-relaxed"
+												class="text-sm text-muted-foreground mt-2 leading-relaxed"
 											>
 												{modifications?.description ||
 													suggestion.suggested_description}
@@ -650,7 +639,7 @@
 
 									<!-- Confidence Badge -->
 									<span
-										class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full shadow-sm border border-gray-200 dark:border-gray-700 {getConfidenceColorClass(
+										class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full shadow-sm border border-border {getConfidenceColorClass(
 											confidence
 										)}"
 									>
@@ -660,7 +649,7 @@
 
 								<!-- Metadata -->
 								<div
-									class="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-500 dark:text-gray-400"
+									class="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground"
 								>
 									<span class="flex items-center gap-1.5">
 										<Calendar class="w-4 h-4" />
@@ -697,7 +686,7 @@
 								{#if tasks && Array.isArray(tasks) && tasks.length > 0}
 									{@const tasksAreExpanded = tasksExpanded.has(suggestion.id)}
 									<button
-										class="flex items-center gap-2 mt-4 text-sm text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
+										class="flex items-center gap-2 mt-4 text-sm text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
 										onclick={() => toggleTasksExpanded(suggestion.id)}
 									>
 										<span
@@ -750,7 +739,7 @@
 																		class="flex items-center gap-2 mb-2"
 																	>
 																		<h5
-																			class="font-medium text-gray-900 dark:text-white text-sm"
+																			class="font-medium text-foreground text-sm"
 																		>
 																			{task.title}
 																		</h5>
@@ -785,7 +774,7 @@
 																	<!-- Description -->
 																	{#if task.description}
 																		<p
-																			class="text-sm text-gray-600 dark:text-gray-400 mb-2"
+																			class="text-sm text-muted-foreground mb-2"
 																		>
 																			{task.description}
 																		</p>
@@ -794,10 +783,10 @@
 																	<!-- Details (if present) -->
 																	{#if task.details}
 																		<div
-																			class="text-xs text-gray-500 dark:text-gray-400 mb-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700"
+																			class="text-xs text-muted-foreground mb-2 p-2 bg-card rounded border border-border"
 																		>
 																			<strong
-																				class="text-gray-700 dark:text-gray-300"
+																				class="text-foreground"
 																				>Details:</strong
 																			>
 																			<p
@@ -810,7 +799,7 @@
 
 																	<!-- Metadata Grid -->
 																	<div
-																		class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
+																		class="flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
 																	>
 																		<!-- Priority -->
 																		{#if task.priority}
@@ -900,7 +889,7 @@
 																		>
 																			{#each task.tags as tag}
 																				<span
-																					class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+																					class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-foreground rounded-full"
 																				>
 																					{tag}
 																				</span>
@@ -947,7 +936,7 @@
 								<!-- AI Reasoning (expandable) -->
 								{#if suggestion.ai_reasoning}
 									<button
-										class="flex items-center gap-2 mt-4 text-sm text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
+										class="flex items-center gap-2 mt-4 text-sm text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
 										onclick={() => toggleExpanded(suggestion.id)}
 									>
 										<span>Why this was suggested</span>
@@ -967,7 +956,7 @@
 											class="clarity-zone mt-4 p-4 border-l-2 border-purple-200 dark:border-purple-800/50"
 										>
 											<p
-												class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
+												class="text-sm text-muted-foreground leading-relaxed"
 											>
 												{suggestion.ai_reasoning}
 											</p>
@@ -991,7 +980,7 @@
 
 											{#if patterns && (patterns?.start_date || patterns?.end_date)}
 												<div
-													class="mt-3 flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400"
+													class="mt-3 flex items-center gap-4 text-sm text-muted-foreground"
 												>
 													{#if patterns?.start_date}
 														<span
@@ -1018,7 +1007,7 @@
 													</span>
 													{#each suggestion.detected_keywords as keyword}
 														<span
-															class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full"
+															class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-foreground rounded-full"
 														>
 															{keyword}
 														</span>
@@ -1068,7 +1057,7 @@
 										</Button>
 									{:else}
 										<button
-											class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded transition-all duration-200"
+											class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded transition-all duration-200"
 											onclick={() => startEditingSuggestion(suggestion.id)}
 											disabled={processing}
 										>
@@ -1076,7 +1065,7 @@
 											Edit
 										</button>
 										<button
-											class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded transition-all duration-200"
+											class="px-3 py-1.5 text-sm text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded transition-all duration-200"
 											onclick={() => toggleSuggestion(suggestion.id)}
 											disabled={processing}
 										>
@@ -1097,7 +1086,7 @@
 				>
 					<Calendar class="w-12 h-12 text-gray-400 dark:text-gray-600" />
 				</div>
-				<p class="text-lg font-medium text-gray-700 dark:text-gray-300">
+				<p class="text-lg font-medium text-foreground">
 					No project patterns found in your calendar
 				</p>
 				<p class="text-sm text-gray-500 dark:text-gray-500 mt-2 max-w-md mx-auto">
@@ -1113,10 +1102,10 @@
 	<div
 		class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 {embedded
 			? ''
-			: 'border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'}"
+			: 'border-t border-border bg-gray-50 dark:bg-gray-900/50'}"
 	>
 		{#if !analyzing}
-			<div class="text-sm text-gray-600 dark:text-gray-400 font-medium">
+			<div class="text-sm text-muted-foreground font-medium">
 				{#if suggestions.length > 0}
 					<span class="text-purple-600 dark:text-purple-400"
 						>{selectedSuggestions.size}</span

@@ -384,23 +384,21 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Compact Inkprint header -->
+		<!-- Header: Strip texture (semantic band) + Plate weight (system authority) -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-4 py-2.5 flex items-center justify-between gap-2.5 tx tx-strip tx-weak wt-plate"
 		>
-			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+			<div class="flex items-center gap-2.5 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent shrink-0 shadow-ink-inner"
 				>
 					<Target class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
-					>
+					<h2 class="text-base font-semibold leading-none truncate text-foreground">
 						{name || goal?.name || 'Goal'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+					<p class="text-[10px] text-muted-foreground mt-1 leading-none">
 						{#if goal?.created_at}Created {new Date(goal.created_at).toLocaleDateString(
 								undefined,
 								{ month: 'short', day: 'numeric' }
@@ -413,60 +411,61 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
-				<!-- Chat about this goal button -->
+				<!-- Chat about this goal -->
 				<button
 					type="button"
 					onclick={openChatAbout}
 					disabled={isLoading || isSaving || !goal}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card border border-border text-muted-foreground shadow-ink transition-all duration-150 pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 					title="Chat about this goal"
 				>
-					<img
-						src="/brain-bolt.png"
-						alt="Chat about this goal"
-						class="w-5 h-5 rounded object-cover"
-					/>
+					<img src="/brain-bolt.png" alt="Chat" class="w-4 h-4 rounded object-cover" />
 				</button>
 				<!-- Close button -->
 				<button
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
-					aria-label="Close modal"
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card border border-border text-muted-foreground shadow-ink transition-all duration-150 pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
+					aria-label="Close"
 				>
-					<X class="w-5 h-5" />
+					<X class="w-4 h-4" />
 				</button>
 			</div>
 		</div>
 	{/snippet}
 
 	{#snippet children()}
-		<!-- Main content - minimal padding on mobile -->
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<!-- Main content: Maximum information density on 8px grid -->
+		<div class="px-4 py-3">
 			{#if isLoading}
-				<div class="flex items-center justify-center py-12">
+				<div
+					class="flex items-center justify-center py-12 rounded-lg bg-muted/30 tx tx-pulse tx-weak"
+				>
 					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
 				</div>
 			{:else if !goal}
-				<div class="text-center py-8">
-					<p class="text-destructive">Goal not found</p>
+				<div
+					class="flex items-center justify-center py-8 rounded-lg border-2 border-dashed border-destructive/30 bg-destructive/5 tx tx-static tx-weak"
+				>
+					<p class="text-xs font-semibold text-destructive">Goal not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-					<!-- Main Form (Left 2 columns) -->
-					<div class="lg:col-span-2">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+					<!-- Main Form: Paper weight for standard working state -->
+					<div class="lg:col-span-2 wt-paper">
 						<form
 							onsubmit={(e) => {
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-3 sm:space-y-4"
+							class="space-y-3"
 						>
 							<FormField
 								label="Goal Name"
 								labelFor="name"
 								required={true}
+								uppercase={false}
 								error={!name.trim() && error ? 'Goal name is required' : ''}
 							>
 								<TextInput
@@ -481,51 +480,49 @@
 								/>
 							</FormField>
 
-							<FormField
-								label="Description"
-								labelFor="description"
-								hint="Describe what you want to achieve"
-							>
+							<FormField label="Description" labelFor="description" uppercase={false}>
 								<Textarea
 									id="description"
 									bind:value={description}
 									enterkeyhint="next"
-									placeholder="Describe the goal..."
-									rows={3}
+									placeholder="Describe what you want to achieve..."
+									rows={2}
 									disabled={isSaving}
-									size="md"
+									size="sm"
 								/>
 							</FormField>
 
 							<FormField
 								label="Goal Details"
 								labelFor="goal-details"
-								hint="Optional extended goal statement"
+								uppercase={false}
 							>
 								<Textarea
 									id="goal-details"
 									bind:value={goalDetails}
 									enterkeyhint="next"
-									placeholder="Add any additional context or structured goal notes..."
-									rows={3}
+									placeholder="Add context or structured goal notes..."
+									rows={2}
 									disabled={isSaving}
-									size="md"
+									size="sm"
 								/>
 							</FormField>
 
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+							<!-- Priority + State: Compact row (8px gap) -->
+							<div class="grid grid-cols-2 gap-2">
 								<FormField
 									label="Priority"
 									labelFor="priority"
 									required={true}
-									hint="Set goal importance level"
+									uppercase={false}
+									showOptional={false}
 								>
 									<Select
 										id="priority"
 										bind:value={priority}
 										disabled={isSaving}
-										size="md"
-										placeholder="Select priority"
+										size="sm"
+										placeholder="Priority"
 									>
 										<option value="high">High</option>
 										<option value="medium">Medium</option>
@@ -534,80 +531,78 @@
 								</FormField>
 
 								<FormField
-									label="Target Date"
-									labelFor="target-date"
-									hint="When do you want to achieve this?"
+									label="State"
+									labelFor="state"
+									required={true}
+									uppercase={false}
+									showOptional={false}
 								>
-									<TextInput
-										type="date"
-										inputmode="numeric"
-										enterkeyhint="next"
-										id="target-date"
-										bind:value={targetDate}
+									<Select
+										id="state"
+										bind:value={stateKey}
 										disabled={isSaving}
-									/>
+										size="sm"
+										placeholder="State"
+									>
+										{#each GOAL_STATES as state}
+											<option value={state}>
+												{state === 'draft'
+													? 'Draft'
+													: state === 'active'
+														? 'Active'
+														: state === 'achieved'
+															? 'Achieved'
+															: state === 'abandoned'
+																? 'Abandoned'
+																: state}
+											</option>
+										{/each}
+									</Select>
 								</FormField>
 							</div>
+
+							<FormField label="Target Date" labelFor="target-date" uppercase={false}>
+								<TextInput
+									type="date"
+									inputmode="numeric"
+									enterkeyhint="next"
+									id="target-date"
+									bind:value={targetDate}
+									disabled={isSaving}
+								/>
+							</FormField>
 
 							<FormField
 								label="Success Criteria"
 								labelFor="measurement-criteria"
-								hint="How will you measure success?"
+								uppercase={false}
 							>
 								<Textarea
 									id="measurement-criteria"
 									bind:value={measurementCriteria}
 									enterkeyhint="done"
 									placeholder="How will you measure success..."
-									rows={3}
+									rows={2}
 									disabled={isSaving}
-									size="md"
+									size="sm"
 								/>
-							</FormField>
-
-							<!-- Goal State -->
-							<FormField
-								label="State"
-								labelFor="state"
-								required={true}
-								hint="Current goal status"
-							>
-								<Select
-									id="state"
-									bind:value={stateKey}
-									disabled={isSaving}
-									size="md"
-									placeholder="Select state"
-								>
-									{#each GOAL_STATES as state}
-										<option value={state}>
-											{state === 'draft'
-												? 'Draft'
-												: state === 'active'
-													? 'Active'
-													: state === 'achieved'
-														? 'Achieved'
-														: state === 'abandoned'
-															? 'Abandoned'
-															: state}
-										</option>
-									{/each}
-								</Select>
 							</FormField>
 
 							{#if error}
 								<div
-									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
+									class="px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg shadow-ink-inner tx tx-static tx-weak"
 								>
-									<p class="text-sm text-destructive">{error}</p>
+									<p class="text-xs font-medium text-destructive leading-tight">
+										{error}
+									</p>
 								</div>
 							{/if}
 						</form>
 					</div>
 
-					<!-- Sidebar (Right column) -->
-					<div class="space-y-4">
-						<!-- Linked Entities -->
+					<!-- Sidebar: Card weight (important elevation) -->
+					<div class="space-y-3 wt-card">
+						<!-- Linked Entities (Thread texture for relationships) -->
 						<LinkedEntities
 							sourceId={goalId}
 							sourceKind="goal"
@@ -617,7 +612,7 @@
 							onLinksChanged={handleLinksChanged}
 						/>
 
-						<!-- Milestones Section -->
+						<!-- Milestones (Grain texture for execution) -->
 						<GoalMilestonesSidebarSection
 							{milestones}
 							{goalId}
@@ -630,14 +625,14 @@
 							onToggleMilestoneComplete={handleToggleMilestoneComplete}
 						/>
 
-						<!-- Tags (from classification) -->
+						<!-- Tags (Frame + Card) -->
 						{#if goal?.props?.tags?.length}
-							<Card variant="elevated">
-								<CardHeader variant="default">
+							<Card variant="elevated" texture="frame" weight="card">
+								<CardHeader variant="compact">
 									<h3
-										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
+										class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"
 									>
-										<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
+										<span class="w-1 h-1 bg-accent rounded-full"></span>
 										Tags
 									</h3>
 								</CardHeader>
@@ -647,44 +642,65 @@
 							</Card>
 						{/if}
 
-						<!-- Goal Metadata -->
-						<Card variant="elevated">
-							<CardHeader variant="default">
+						<!-- Metadata (Frame + Card) -->
+						<Card variant="elevated" texture="frame" weight="card">
+							<CardHeader variant="compact">
 								<h3
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
+									class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"
 								>
-									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-									Goal Information
+									<span class="w-1 h-1 bg-accent rounded-full"></span>
+									Metadata
 								</h3>
 							</CardHeader>
 							<CardBody padding="sm">
-								<div class="space-y-2 text-sm">
-									<div class="flex justify-between gap-2">
-										<span class="text-muted-foreground shrink-0">ID:</span>
-										<span
-											class="font-mono text-xs text-muted-foreground break-all text-right"
-											>{goal.id}</span
+								<dl class="space-y-1">
+									<div class="flex justify-between gap-2 items-start">
+										<dt class="text-[10px] text-muted-foreground shrink-0">
+											ID
+										</dt>
+										<dd
+											class="font-mono text-[9px] text-muted-foreground break-all text-right leading-tight"
 										>
+											{goal.id}
+										</dd>
 									</div>
 
 									{#if goal.created_at}
-										<div class="flex justify-between">
-											<span class="text-muted-foreground">Created:</span>
-											<span class="text-foreground">
-												{new Date(goal.created_at).toLocaleDateString()}
-											</span>
+										<div class="flex justify-between gap-2">
+											<dt class="text-[10px] text-muted-foreground">
+												Created
+											</dt>
+											<dd class="text-[10px] text-foreground">
+												{new Date(goal.created_at).toLocaleDateString(
+													undefined,
+													{
+														month: 'short',
+														day: 'numeric',
+														year: '2-digit'
+													}
+												)}
+											</dd>
 										</div>
 									{/if}
 
 									{#if goal.updated_at}
-										<div class="flex justify-between">
-											<span class="text-muted-foreground">Updated:</span>
-											<span class="text-foreground">
-												{new Date(goal.updated_at).toLocaleDateString()}
-											</span>
+										<div class="flex justify-between gap-2">
+											<dt class="text-[10px] text-muted-foreground">
+												Updated
+											</dt>
+											<dd class="text-[10px] text-foreground">
+												{new Date(goal.updated_at).toLocaleDateString(
+													undefined,
+													{
+														month: 'short',
+														day: 'numeric',
+														year: '2-digit'
+													}
+												)}
+											</dd>
 										</div>
 									{/if}
-								</div>
+								</dl>
 							</CardBody>
 						</Card>
 
@@ -697,42 +713,41 @@
 					</div>
 				</div>
 
-				<EntityCommentsSection {projectId} entityType="goal" entityId={goalId} />
+				<!-- Comments (Thread texture for collaboration) -->
+				<div class="mt-4 pt-4 border-t border-border/80 tx tx-thread tx-weak">
+					<EntityCommentsSection {projectId} entityType="goal" entityId={goalId} />
+				</div>
 			{/if}
 		</div>
 	{/snippet}
 
-	<!-- Footer Actions - delete on left, cancel/save on right -->
+	<!-- Footer: Grain texture (execution) + Plate weight (authority) -->
 	{#snippet footer()}
 		{#if !isLoading && goal}
 			<div
-				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/50 tx tx-grain tx-weak"
+				class="flex items-center justify-between gap-2.5 px-4 py-2.5 border-t border-border bg-muted tx tx-grain tx-weak wt-plate"
 			>
 				<!-- Delete button on left -->
-				<div class="flex items-center gap-1.5 sm:gap-2">
-					<Button
-						type="button"
-						variant="danger"
-						size="sm"
-						onclick={() => (showDeleteConfirm = true)}
-						disabled={isDeleting || isSaving}
-						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 tx tx-grain tx-weak"
-						icon={Trash2}
-					>
-						<span class="hidden sm:inline">Delete</span>
-						<span class="sm:hidden">Del</span>
-					</Button>
-				</div>
+				<Button
+					type="button"
+					variant="danger"
+					size="sm"
+					onclick={() => (showDeleteConfirm = true)}
+					disabled={isDeleting || isSaving}
+					icon={Trash2}
+					iconSize="sm"
+				>
+					Delete
+				</Button>
 
-				<!-- Cancel and Save on right -->
-				<div class="flex flex-row items-center gap-2">
+				<!-- Actions on right -->
+				<div class="flex items-center gap-2">
 					<Button
 						type="button"
 						variant="ghost"
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
 					>
 						Cancel
 					</Button>
@@ -743,11 +758,10 @@
 						onclick={handleSave}
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !name.trim()}
-						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+						icon={Save}
+						iconSize="sm"
 					>
-						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
-						<span class="hidden sm:inline">Save Changes</span>
-						<span class="sm:hidden">Save</span>
+						Save Changes
 					</Button>
 				</div>
 			</div>
@@ -768,7 +782,7 @@
 		oncancel={() => (showDeleteConfirm = false)}
 	>
 		{#snippet content()}
-			<p class="text-sm text-muted-foreground">
+			<p class="text-xs text-muted-foreground leading-relaxed">
 				This action cannot be undone. The goal and all its data will be permanently deleted.
 			</p>
 		{/snippet}

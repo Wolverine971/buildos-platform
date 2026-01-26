@@ -215,23 +215,23 @@
 	}
 </script>
 
-<div class="h-full overflow-y-auto">
+<div class="h-full overflow-y-auto tx tx-grain tx-weak">
 	{#if operations.length === 0}
 		<div class="flex h-full flex-col items-center justify-center gap-2 p-8 text-center">
-			<Layers class="h-12 w-12 text-slate-300 dark:text-slate-600" />
-			<p class="text-sm text-slate-500 dark:text-slate-400">No pending operations</p>
-			<p class="text-xs text-slate-400 dark:text-slate-500">
+			<Layers class="h-12 w-12 text-muted-foreground" />
+			<p class="text-sm text-muted-foreground">No pending operations</p>
+			<p class="text-xs text-muted-foreground">
 				Operations will queue here when manual approval is enabled
 			</p>
 		</div>
 	{:else}
 		<!-- Action Bar -->
 		<div
-			class="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-800"
+			class="flex items-center justify-between border-b border-border bg-muted p-3 tx tx-frame tx-weak"
 		>
 			<div class="flex items-center gap-3">
 				<button
-					class="flex cursor-pointer items-center border-none bg-transparent p-0"
+					class="flex cursor-pointer items-center border-none bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
 					onclick={toggleAll}
 					title={allSelected ? 'Deselect all' : 'Select all'}
 					aria-label={allSelected ? 'Deselect all operations' : 'Select all operations'}
@@ -241,17 +241,17 @@
 					{:else if someSelected}
 						<Square class="h-5 w-5 text-blue-600 opacity-50 dark:text-blue-400" />
 					{:else}
-						<Square class="h-5 w-5 text-slate-400 dark:text-slate-500" />
+						<Square class="h-5 w-5 text-muted-foreground" />
 					{/if}
 				</button>
-				<span class="text-sm text-slate-600 dark:text-slate-400">
+				<span class="text-sm text-muted-foreground">
 					{selectedOperations.size} of {operations.length} selected
 				</span>
 			</div>
 
 			<div class="flex items-center gap-2">
 				<button
-					class="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+					class="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs transition-colors hover:bg-muted shadow-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					onclick={() => {
 						const options: Array<'sequence' | 'type' | 'table'> = [
 							'sequence',
@@ -283,14 +283,14 @@
 					class="transition-all motion-reduce:transition-none {operationColors[
 						operation.operation
 					]} {isSelected
-						? 'border-blue-500 bg-blue-50/5 dark:border-blue-400 dark:bg-blue-900/10'
+						? 'border-blue-500 bg-blue-50/10 ring-1 ring-blue-500/30 dark:border-blue-400 dark:bg-blue-900/20 dark:ring-blue-400/30'
 						: ''}"
 				>
-					<div class="flex items-start gap-3 p-3">
+					<div class="flex items-start gap-3 p-4">
 						<!-- Selection & Icon -->
 						<div class="flex flex-shrink-0 items-center gap-2">
 							<button
-								class="flex cursor-pointer items-center border-none bg-transparent p-0"
+								class="flex cursor-pointer items-center border-none bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
 								onclick={() => toggleSelection(operation.id)}
 								aria-label={isSelected
 									? `Deselect ${getOperationTitle(operation)}`
@@ -299,7 +299,7 @@
 								{#if isSelected}
 									<SquareCheck class="h-5 w-5 text-blue-600 dark:text-blue-400" />
 								{:else}
-									<Square class="h-5 w-5 text-slate-400 dark:text-slate-500" />
+									<Square class="h-5 w-5 text-muted-foreground" />
 								{/if}
 							</button>
 							<Icon class="h-5 w-5 flex-shrink-0" />
@@ -307,17 +307,15 @@
 
 						<!-- Main Content -->
 						<div class="min-w-0 flex-1">
-							<div class="mb-1 flex items-center gap-2">
-								<span
-									class="truncate text-sm font-semibold text-slate-900 dark:text-white"
-								>
+							<div class="mb-2 flex items-center gap-2">
+								<span class="truncate text-sm font-semibold text-foreground">
 									{getOperationTitle(operation)}
 								</span>
 								{#if hasDependencies}
 									<Badge variant="info" size="sm">Has dependencies</Badge>
 								{/if}
 							</div>
-							<div class="mb-2 text-xs text-slate-600 opacity-70 dark:text-slate-400">
+							<div class="mb-2 text-xs text-muted-foreground">
 								{getOperationType(operation)}
 							</div>
 
@@ -326,12 +324,10 @@
 								<div class="mb-2 flex flex-wrap gap-1">
 									{#each getMetadataFields(operation) as [key, value]}
 										<span
-											class="inline-flex items-center gap-1 rounded bg-slate-100/50 px-2 py-0.5 text-xs dark:bg-slate-800/50"
+											class="inline-flex items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs shadow-ink"
 										>
 											<span class="font-medium opacity-70">{key}:</span>
-											<span class="text-slate-900 dark:text-white"
-												>{value}</span
-											>
+											<span class="text-foreground">{value}</span>
 										</span>
 									{/each}
 								</div>
@@ -340,7 +336,7 @@
 							<!-- Dependencies Warning -->
 							{#if hasDependencies}
 								<div
-									class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
+									class="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400"
 								>
 									<TriangleAlert class="h-3 w-3" />
 									<span>
@@ -379,9 +375,7 @@
 		</div>
 
 		<!-- Action Footer -->
-		<div
-			class="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-700 dark:bg-slate-800"
-		>
+		<div class="flex items-center justify-between border-t border-border bg-muted p-3">
 			<div class="flex items-center gap-2">
 				{#if selectedOperations.size > 0}
 					<Button
@@ -390,7 +384,7 @@
 						size="sm"
 						disabled={isProcessing}
 					>
-						<CircleX class="mr-1 h-4 w-4" />
+						<CircleX class="mr-2 h-4 w-4" />
 						Reject Selected
 					</Button>
 				{/if}
@@ -404,7 +398,7 @@
 						size="sm"
 						disabled={isProcessing}
 					>
-						<CircleCheck class="mr-1 h-4 w-4" />
+						<CircleCheck class="mr-2 h-4 w-4" />
 						Approve {selectedOperations.size} Operation{selectedOperations.size === 1
 							? ''
 							: 's'}
@@ -416,7 +410,7 @@
 					size="sm"
 					disabled={isProcessing || operations.length === 0}
 				>
-					<Play class="mr-1 h-4 w-4" />
+					<Play class="mr-2 h-4 w-4" />
 					Approve All
 				</Button>
 			</div>

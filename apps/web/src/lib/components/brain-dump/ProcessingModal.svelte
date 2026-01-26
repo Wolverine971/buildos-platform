@@ -184,9 +184,7 @@
 >
 	{#snippet header()}
 		<!-- Custom Header -->
-		<div
-			class="text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-gray-200 dark:border-gray-700"
-		>
+		<div class="text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-border">
 			<div class="flex justify-center mb-4">
 				{#if processingType === 'dual'}
 					<div class="relative">
@@ -206,10 +204,10 @@
 					</div>
 				{/if}
 			</div>
-			<h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+			<h2 class="text-2xl font-bold text-foreground mb-2">
 				{title}
 			</h2>
-			<p class="text-sm text-gray-500 dark:text-gray-400">
+			<p class="text-sm text-muted-foreground">
 				{subtitle}
 			</p>
 		</div>
@@ -222,7 +220,7 @@
 				<!-- Dual Processing Content -->
 				<div class="space-y-4">
 					<div class="text-center mb-4 sm:mb-6">
-						<p class="text-sm text-gray-600 dark:text-gray-300">
+						<p class="text-sm text-muted-foreground">
 							Your brain dump is being analyzed in two ways: understanding the big
 							picture context and extracting specific tasks and actions. This
 							comprehensive approach ensures nothing important is missed.
@@ -241,7 +239,7 @@
 
 					<!-- Rotating Tips for Dual Processing -->
 					<div class="text-center mt-4">
-						<p class="text-xs text-gray-500 dark:text-gray-400 italic">
+						<p class="text-xs text-muted-foreground italic">
 							💡 Tip: {tips[currentTipIndex]}
 						</p>
 					</div>
@@ -259,7 +257,7 @@
 								<div class="flex-shrink-0">
 									{#if step.completed}
 										<div
-											class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center"
+											class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center"
 										>
 											<CircleCheck
 												class="w-5 h-5 text-emerald-600 dark:text-emerald-400"
@@ -267,7 +265,7 @@
 										</div>
 									{:else if step.active}
 										<div
-											class="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center"
+											class="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center"
 										>
 											<LoaderCircle
 												class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin"
@@ -275,19 +273,19 @@
 										</div>
 									{:else}
 										<div
-											class="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center"
+											class="w-8 h-8 bg-muted rounded-full flex items-center justify-center"
 										>
 											<div
-												class="w-2 h-2 bg-gray-400 dark:bg-gray-600 rounded-full"
+												class="w-2 h-2 bg-muted-foreground rounded-full"
 											></div>
 										</div>
 									{/if}
 								</div>
 								<div class="flex-1">
-									<h4 class="text-sm font-medium text-gray-900 dark:text-white">
+									<h4 class="text-sm font-medium text-foreground">
 										{step.title}
 									</h4>
-									<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+									<p class="text-xs text-muted-foreground mt-0.5">
 										{step.description}
 									</p>
 								</div>
@@ -309,14 +307,14 @@
 
 					<!-- Progress Message -->
 					<div class="text-center">
-						<p class="text-sm text-gray-600 dark:text-gray-300 animate-pulse">
+						<p class="text-sm text-muted-foreground animate-pulse">
 							Turning your thoughts into organized, actionable next steps...
 						</p>
 					</div>
 
 					<!-- Rotating Tips -->
 					<div class="text-center mt-4">
-						<p class="text-xs text-gray-500 dark:text-gray-400 italic">
+						<p class="text-xs text-muted-foreground italic">
 							💡 Tip: {tips[currentTipIndex]}
 						</p>
 					</div>
@@ -327,10 +325,8 @@
 
 	{#snippet footer()}
 		<!-- Footer info -->
-		<div
-			class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700"
-		>
-			<p class="text-xs text-center text-gray-500 dark:text-gray-400 mb-3">
+		<div class="px-4 sm:px-6 py-3 sm:py-4 bg-muted border-t border-border">
+			<p class="text-xs text-center text-muted-foreground mb-3">
 				{#if processingType === 'dual'}
 					Processing longer content thoroughly - this ensures accurate task extraction and
 					context understanding
@@ -345,7 +341,7 @@
 						variant="ghost"
 						size="sm"
 						onclick={handleCancel}
-						class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+						class="text-muted-foreground hover:text-foreground"
 					>
 						Cancel Processing
 					</Button>

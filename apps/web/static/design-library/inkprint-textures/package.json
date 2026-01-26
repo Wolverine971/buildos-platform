@@ -1,0 +1,26 @@
+{
+	"name": "inkprint-textures",
+	"version": "1.0.0",
+	"description": "Printmaking-inspired texture library for the BuildOS Inkprint Design System",
+	"keywords": [
+		"design-system",
+		"textures",
+		"inkprint",
+		"buildos",
+		"css",
+		"printmaking",
+		"semantic-design"
+	],
+	"author": "BuildOS",
+	"license": "MIT",
+	"files": [
+		"*.css",
+		"*.md",
+		"demo.html"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/yourusername/buildos-platform"
+	},
+	"homepage": "https://buildos.com"
+}

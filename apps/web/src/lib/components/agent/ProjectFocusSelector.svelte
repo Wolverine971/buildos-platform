@@ -154,7 +154,7 @@
 		<!-- INKPRINT Compact Filter Bar -->
 		<div class="border-b border-border bg-muted px-4 py-3 tx tx-frame tx-weak">
 			<div class="mb-2 flex items-center justify-between">
-				<div class="flex flex-wrap gap-1.5">
+				<div class="flex flex-wrap gap-2">
 					{#each focusTypes as type}
 						{@const IconComponent = type.icon}
 						{@const isSelected = selectedType === type.value}
@@ -163,7 +163,7 @@
 							onclick={() => (selectedType = type.value)}
 							aria-pressed={isSelected}
 							class={`
-								group inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold
+								group inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold
 								shadow-ink transition-all duration-200 pressable
 								${
 									isSelected
@@ -194,7 +194,7 @@
 						inputmode="search"
 						enterkeyhint="search"
 						placeholder={`Search ${selectedType}s...`}
-						class="w-full rounded-lg border border-border bg-background py-1.5 pl-8 pr-3 text-xs text-foreground shadow-ink-inner transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+						class="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-3 text-xs text-foreground shadow-ink-inner transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 						bind:value={searchTerm}
 						aria-label={`Search ${selectedType}s`}
 					/>
@@ -243,18 +243,18 @@
 				</div>
 			{:else}
 				<!-- INKPRINT Entity List -->
-				<div class="space-y-1.5" role="list">
+				<div class="space-y-2" role="list">
 					{#each entities as entity (entity.id)}
 						<button
 							type="button"
 							onclick={() => handleSelect(entity)}
 							aria-pressed={isActive(entity)}
 							class={`
-								group w-full rounded-lg border px-3 py-2.5 text-left shadow-ink transition-all duration-200 pressable
+								group w-full rounded-lg border p-3 text-left shadow-ink transition-all duration-200 pressable
 								${
 									isActive(entity)
 										? 'border-accent bg-accent/5 ring-1 ring-accent/30'
-										: 'border-border bg-card hover:border-accent hover:shadow-ink-strong'
+										: 'border-border bg-card hover:border-accent hover:bg-muted/50 hover:shadow-ink-strong'
 								}
 							`}
 						>
@@ -266,10 +266,10 @@
 									>
 										{entity.name}
 									</p>
-									<div class="mt-1 flex flex-wrap items-center gap-1.5">
+									<div class="mt-1 flex flex-wrap items-center gap-2">
 										{#if entity.metadata?.state_key}
 											<span
-												class="inline-flex items-center rounded-lg border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+												class="inline-flex items-center rounded-lg border border-border bg-muted p-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
 											>
 												{entity.metadata.state_key}
 											</span>

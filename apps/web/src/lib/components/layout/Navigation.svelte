@@ -325,7 +325,7 @@
 								class="relative inline-flex items-center px-2 lg:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded transition-all duration-200 whitespace-nowrap
 								{currentPath === item.href
 									? 'text-accent bg-muted'
-									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
+									: 'text-muted-foreground hover:text-foreground hover:bg-muted'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === item.href ? 'animate-pulse' : ''}"
 							>
@@ -574,7 +574,7 @@
 									<a
 										href="/profile"
 										onclick={() => handleMenuItemClick('/profile')}
-										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<User class="w-4 h-4 mr-3" />
@@ -584,7 +584,7 @@
 									<a
 										href="/notifications"
 										onclick={() => handleMenuItemClick('/notifications')}
-										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 									>
 										<Bell class="w-4 h-4 mr-3" />
@@ -602,7 +602,7 @@
 														? '/profile?tab=billing'
 														: '/pricing'
 												)}
-											class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<svg
@@ -638,7 +638,7 @@
 
 									<button
 										onclick={toggleMode}
-										class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										disabled={loggingOut}
 										aria-label="Toggle theme"
@@ -660,7 +660,7 @@
 										fullWidth
 										btnType="container"
 										loading={loggingOut}
-										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted/50 min-h-0 transition-colors rounded-none"
+										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted min-h-0 transition-colors rounded-none"
 									>
 										{#if loggingOut}
 											<LoaderCircle class="w-4 h-4 mr-3 animate-spin" />
@@ -680,7 +680,7 @@
 						<!-- Theme toggle button -->
 						<button
 							onclick={toggleMode}
-							class="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+							class="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
 							aria-label="Toggle theme"
 						>
 							{#if isDark}
@@ -770,7 +770,7 @@
 							class="relative flex items-center px-3 py-2 text-base font-bold rounded transition-colors
 							{currentPath === item.href
 								? 'text-accent bg-muted'
-								: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}
+								: 'text-muted-foreground hover:text-foreground hover:bg-muted'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === item.href ? 'animate-pulse' : ''}"
 						>
@@ -823,7 +823,7 @@
 						<a
 							href="/profile"
 							onclick={() => handleMenuItemClick('/profile')}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<User class="w-5 h-5 mr-3" />
@@ -833,7 +833,7 @@
 						<a
 							href="/notifications"
 							onclick={() => handleMenuItemClick('/notifications')}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<Bell class="w-5 h-5 mr-3" />
@@ -851,7 +851,7 @@
 											? '/profile?tab=billing'
 											: '/pricing'
 									)}
-								class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<svg
@@ -885,7 +885,7 @@
 
 						<button
 							onclick={toggleMode}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors w-full
+							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors w-full
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							disabled={loggingOut}
 							aria-label="Toggle theme"
@@ -908,7 +908,7 @@
 							icon={loggingOut ? LoaderCircle : LogOut}
 							iconPosition="left"
 							loading={loggingOut}
-							class="justify-start px-3 py-1.5 text-muted-foreground hover:bg-muted/50 min-h-0"
+							class="justify-start px-3 py-1.5 text-muted-foreground hover:bg-muted min-h-0"
 						>
 							{loggingOut ? 'Signing out...' : 'Sign out'}
 						</Button>

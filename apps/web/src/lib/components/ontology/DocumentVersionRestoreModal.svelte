@@ -178,7 +178,7 @@
 			</div>
 
 			<!-- Version details -->
-			<div class="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+			<div class="rounded-lg border border-border bg-muted p-3 space-y-2">
 				<h3 class="text-xs font-semibold text-foreground uppercase tracking-wide mb-2">
 					Target Version
 				</h3>
@@ -240,9 +240,7 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div
-			class="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30"
-		>
+		<div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted">
 			<Button variant="ghost" size="sm" onclick={handleClose} disabled={isRestoring}>
 				Cancel
 			</Button>

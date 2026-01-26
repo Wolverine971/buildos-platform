@@ -319,7 +319,7 @@
 			<button
 				type="button"
 				onclick={() => (showFilters = !showFilters)}
-				class="p-1 rounded hover:bg-muted/50 transition-colors"
+				class="p-1 rounded hover:bg-muted transition-colors"
 				aria-label="Toggle filters"
 			>
 				<Filter class="w-3.5 h-3.5 text-muted-foreground" />
@@ -333,7 +333,7 @@
 	</CardHeader>
 
 	{#if showFilters}
-		<div class="px-3 py-2 border-b border-border/50 bg-muted/30 space-y-2">
+		<div class="px-3 py-2 border-b border-border/50 bg-muted space-y-2">
 			<!-- Time filter -->
 			<div class="flex items-center gap-1">
 				<button
@@ -341,7 +341,7 @@
 					onclick={() => handleTimeFilterChange('24h')}
 					class="px-2 py-1 text-[10px] rounded transition-colors {timeFilter === '24h'
 						? 'bg-accent text-accent-foreground'
-						: 'bg-muted/50 text-muted-foreground hover:bg-muted'}"
+						: 'bg-muted text-muted-foreground hover:bg-muted'}"
 				>
 					24h
 				</button>
@@ -350,7 +350,7 @@
 					onclick={() => handleTimeFilterChange('7d')}
 					class="px-2 py-1 text-[10px] rounded transition-colors {timeFilter === '7d'
 						? 'bg-accent text-accent-foreground'
-						: 'bg-muted/50 text-muted-foreground hover:bg-muted'}"
+						: 'bg-muted text-muted-foreground hover:bg-muted'}"
 				>
 					7d
 				</button>
@@ -359,7 +359,7 @@
 					onclick={() => handleTimeFilterChange('all')}
 					class="px-2 py-1 text-[10px] rounded transition-colors {timeFilter === 'all'
 						? 'bg-accent text-accent-foreground'
-						: 'bg-muted/50 text-muted-foreground hover:bg-muted'}"
+						: 'bg-muted text-muted-foreground hover:bg-muted'}"
 				>
 					All
 				</button>
@@ -415,7 +415,7 @@
 					<button
 						type="button"
 						onclick={() => handleVersionSelect(version)}
-						class="w-full text-left px-3 py-2 hover:bg-muted/30 transition-colors {isSelected
+						class="w-full text-left px-3 py-2 hover:bg-muted transition-colors {isSelected
 							? 'bg-accent/10 border-l-2 border-accent'
 							: ''}"
 					>
@@ -465,7 +465,7 @@
 									{/if}
 									{#if sourceLabel}
 										<span
-											class="text-[10px] px-1 py-0.5 rounded bg-muted/50 text-muted-foreground/70"
+											class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground/70"
 										>
 											{sourceLabel}
 										</span>
@@ -503,7 +503,7 @@
 
 			<!-- Selected version actions -->
 			{#if selectedVersion}
-				<div class="px-3 py-2 border-t border-border bg-muted/20 space-y-2">
+				<div class="px-3 py-2 border-t border-border bg-muted space-y-2">
 					<div class="text-[10px] text-muted-foreground">
 						<span class="font-medium text-foreground"
 							>Version {selectedVersion.number}</span

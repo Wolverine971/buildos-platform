@@ -287,7 +287,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -362,7 +362,7 @@
 				{#if reasoning}
 					<div class="border-t border-border px-4 pb-4 sm:px-5">
 						<div
-							class="rounded border border-border bg-muted/30 p-3.5 tx tx-bloom tx-weak text-sm text-foreground"
+							class="rounded border border-border bg-muted p-3.5 tx tx-bloom tx-weak text-sm text-foreground"
 						>
 							<p
 								class="text-xs font-semibold uppercase tracking-wide text-accent flex items-center gap-2"
@@ -381,7 +381,7 @@
 			<div class="space-y-3 overflow-y-auto pr-1 max-h-[65vh]">
 				{#if editableMilestones.length === 0}
 					<div
-						class="rounded border border-dashed border-border bg-muted/30 p-10 text-center text-sm text-muted-foreground"
+						class="rounded border border-dashed border-border bg-muted p-10 text-center text-sm text-muted-foreground"
 					>
 						No milestones yet. Use "Add milestone" to capture the model's proposal.
 					</div>
@@ -443,7 +443,7 @@
 
 							{#if isMilestoneExpanded(milestone.tempId)}
 								<div
-									class="rounded-b border-t border-border bg-muted/30 px-4 pb-5 pt-4 tx tx-grain tx-weak sm:px-6"
+									class="rounded-b border-t border-border bg-muted px-4 pb-5 pt-4 tx tx-grain tx-weak sm:px-6"
 								>
 									<div class="grid gap-3 md:grid-cols-3">
 										<label
@@ -511,7 +511,7 @@
 									</label>
 
 									<div
-										class="mt-4 space-y-4 rounded border border-border bg-muted/20 p-4"
+										class="mt-4 space-y-4 rounded border border-border bg-muted p-4"
 									>
 										<div
 											class="flex flex-wrap items-center justify-between gap-3"
@@ -615,7 +615,7 @@
 
 														{#if isTaskExpanded(milestone.tempId, task.tempId)}
 															<div
-																class="space-y-3 border-t border-border bg-muted/30 px-4 py-4"
+																class="space-y-3 border-t border-border bg-muted px-4 py-4"
 															>
 																<div
 																	class="grid gap-3 md:grid-cols-2"
@@ -758,7 +758,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+			class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-6 border-t border-border bg-muted tx tx-grain tx-weak"
 		>
 			<Button
 				variant="ghost"

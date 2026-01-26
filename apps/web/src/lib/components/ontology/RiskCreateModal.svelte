@@ -263,7 +263,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted/50 border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 shrink-0">
@@ -378,7 +378,7 @@
 										<button
 											type="button"
 											onclick={skipTypeSelection}
-											class="w-full bg-muted/50 border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-amber-500/50 transition-all duration-200"
+											class="w-full bg-muted border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-amber-500/50 transition-all duration-200"
 										>
 											<div class="flex items-center justify-between">
 												<div class="flex items-center gap-3">
@@ -410,7 +410,7 @@
 								{#if selectedType}
 									{@const SelectedTypeIcon = selectedType.icon}
 									<div
-										class="rounded-lg border border-border bg-muted/30 p-2.5 sm:p-4 tx tx-grain tx-weak"
+										class="rounded-lg border border-border bg-muted p-2.5 sm:p-4 tx tx-grain tx-weak"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3 flex-1 min-w-0">
@@ -581,7 +581,7 @@
 	<!-- Footer Actions -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted/30 tx tx-grain tx-weak"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
 		>
 			{#if showTypeSelection}
 				<div class="flex-1"></div>
