@@ -153,6 +153,7 @@ Returns:
 - `apps/web/src/routes/dashboard/calendar/+page.server.ts` (auth gate)
 - `apps/web/src/routes/dashboard/calendar/+page.svelte` (calendar page, fetch + modal wiring)
 - `apps/web/src/lib/components/scheduling/CalendarView.svelte` (event rendering tweaks)
+- `apps/web/src/lib/components/scheduling/CalendarItemDrawer.svelte` (item detail drawer)
 
 ### API & Data Access
 
@@ -164,3 +165,16 @@ Returns:
 ### Database
 
 - `supabase/migrations/20260127_180000_dashboard_calendar.sql` (view/RPC/indexes/preferences columns)
+
+## Related Specs & Diagrams
+
+### Specs
+
+- `/apps/web/docs/features/calendar-integration/README.md` (calendar integration overview)
+- `/apps/web/docs/design/calendar-per-project-architecture.md` (project calendar model)
+- `/apps/web/docs/design/calendar-webhook-integration.md` (webhook sync flow)
+
+### Diagrams
+
+- `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` (feature flow diagrams)
+- `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md` (queue/job lifecycle)

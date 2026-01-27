@@ -12,8 +12,8 @@
 		ArrowLeft
 	} from 'lucide-svelte';
 	import CalendarView from '$lib/components/scheduling/CalendarView.svelte';
+	import CalendarItemDrawer from '$lib/components/scheduling/CalendarItemDrawer.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Modal from '$lib/components/ui/Modal.svelte';
 	import { debounce } from '$lib/utils/performance-optimization';
 	import { getWeekDates, getMonthDates } from '$lib/utils/schedulingUtils';
 	import { fetchCalendarItems } from '$lib/services/calendar-items.service';
@@ -67,7 +67,7 @@
 	let detail = $state<ItemDetail>(null);
 	let detailLoading = $state(false);
 	let detailError = $state<string | null>(null);
-	let showDetailModal = $state(false);
+	let showDetailDrawer = $state(false);
 
 	type LazyComponent = Component<any, any, any> | null;
 	let TaskEditModalComponent = $state<LazyComponent>(null);
@@ -112,7 +112,7 @@
 			}
 			return 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700';
 		}
-		return 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700';
+		return 'bg-muted border border-border';
 	}
 
 	function getViewRange(date: Date, mode: ViewMode): { start: Date; end: Date } {
@@ -352,13 +352,13 @@
 		const item = resolveCalendarItem(event.detail.event);
 		if (!item) return;
 		selectedItem = item;
-		showDetailModal = true;
+		showDetailDrawer = true;
 		detail = null;
 		await loadItemDetail(item);
 	}
 
 	function closeDetail() {
-		showDetailModal = false;
+		showDetailDrawer = false;
 		selectedItem = null;
 		detail = null;
 		detailError = null;
@@ -387,7 +387,7 @@
 		editTaskId = selectedItem.task_id;
 		editProjectId = selectedItem.project_id;
 		showTaskModal = true;
-		showDetailModal = false;
+		showDetailDrawer = false;
 	}
 
 	async function openEventEditor() {
@@ -396,7 +396,7 @@
 		editEventId = selectedItem.event_id;
 		editProjectId = selectedItem.project_id;
 		showEventModal = true;
-		showDetailModal = false;
+		showDetailDrawer = false;
 	}
 
 	function handleEditorClosed() {
@@ -435,6 +435,20 @@
 			return detailData.data?.external_link || detailData.data?.props?.external_link || null;
 		}
 		return detailData.data?.props?.external_link || null;
+	}
+
+	function getTaskMarkerIcon(itemKind: string): string {
+		if (itemKind === 'range') return '📅';
+		if (itemKind === 'start') return '▶️';
+		if (itemKind === 'due') return '🎯';
+		return '📌';
+	}
+
+	function getTaskMarkerLabel(itemKind: string): string {
+		if (itemKind === 'range') return 'Scheduled';
+		if (itemKind === 'start') return 'Start marker';
+		if (itemKind === 'due') return 'Due marker';
+		return itemKind;
 	}
 
 	function openProject(projectId: string | null) {
@@ -503,7 +517,7 @@
 						<input
 							type="checkbox"
 							bind:checked={includeEvents}
-							on:change={handleToggleChange}
+							onchange={handleToggleChange}
 							class="h-4 w-4 rounded border-border"
 						/>
 						<span>Events</span>
@@ -512,7 +526,7 @@
 						<input
 							type="checkbox"
 							bind:checked={includeTaskRange}
-							on:change={handleToggleChange}
+							onchange={handleToggleChange}
 							class="h-4 w-4 rounded border-border"
 						/>
 						<span>Task ranges</span>
@@ -521,7 +535,7 @@
 						<input
 							type="checkbox"
 							bind:checked={includeTaskStart}
-							on:change={handleToggleChange}
+							onchange={handleToggleChange}
 							class="h-4 w-4 rounded border-border"
 						/>
 						<span>Task start markers</span>
@@ -530,7 +544,7 @@
 						<input
 							type="checkbox"
 							bind:checked={includeTaskDue}
-							on:change={handleToggleChange}
+							onchange={handleToggleChange}
 							class="h-4 w-4 rounded border-border"
 						/>
 						<span>Task due markers</span>
@@ -541,7 +555,7 @@
 
 		{#if error}
 			<div
-				class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+				class="mt-4 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-700 dark:text-red-400"
 			>
 				{error}
 			</div>
@@ -555,101 +569,107 @@
 				workingHours={calendarWorkingHours}
 				loading={isLoading}
 				refreshing={isRefreshing}
-				on:dateChange={handleDateChange}
-				on:viewModeChange={handleViewModeChange}
-				on:refresh={handleRefresh}
-				on:eventClick={handleEventClick}
+				ondateChange={handleDateChange}
+				onviewModeChange={handleViewModeChange}
+				onrefresh={handleRefresh}
+				oneventClick={handleEventClick}
 			/>
 		</div>
 	</div>
 </main>
 
-{#if showDetailModal && selectedItem}
-	<Modal
-		isOpen={showDetailModal}
+{#if showDetailDrawer && selectedItem}
+	<CalendarItemDrawer
+		isOpen={showDetailDrawer}
 		onClose={closeDetail}
-		size="md"
 		title={selectedItem.title || 'Calendar item'}
 	>
-		{#snippet children()}
-			<div class="space-y-4 px-4 py-3">
-				<div class="text-xs uppercase tracking-wide text-muted-foreground">
-					{selectedItem.item_type === 'task' ? 'Task' : 'Event'}
-					· {selectedItem.item_kind}
-				</div>
-
-				<div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
-					{formatRange(selectedItem.start_at, selectedItem.end_at, selectedItem.all_day)}
-				</div>
-
-				{#if detailLoading}
-					<div class="flex items-center gap-2 text-sm text-muted-foreground">
-						<LoaderCircle class="h-4 w-4 animate-spin" />
-						Loading details…
-					</div>
-				{:else if detailError}
-					<div class="text-sm text-rose-600">{detailError}</div>
-				{:else if detail}
-					{@const description = getDescription(detail)}
-					{#if description}
-						<div class="text-sm text-foreground whitespace-pre-wrap">
-							{description}
+		<div class="space-y-4">
+			<div class="flex items-center gap-2">
+				{#if selectedItem.item_type === 'task'}
+					<span class="text-lg">{getTaskMarkerIcon(selectedItem.item_kind)}</span>
+					<div>
+						<div class="text-xs uppercase tracking-wide font-semibold text-muted-foreground">
+							Task · {getTaskMarkerLabel(selectedItem.item_kind)}
 						</div>
-					{/if}
-					{@const externalLink = getExternalLink(detail)}
-					{#if externalLink}
-						<a
-							href={externalLink}
-							target="_blank"
-							rel="noreferrer"
-							class="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-500"
-						>
-							<ExternalLink class="h-4 w-4" />
-							Open in Calendar
-						</a>
-					{/if}
+					</div>
+				{:else}
+					<div class="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+						Event
+					</div>
 				{/if}
+			</div>
 
-				<div class="flex flex-wrap gap-2 pt-2">
-					{#if selectedItem.item_type === 'task'}
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={openTaskEditor}
-							disabled={!selectedItem.task_id || !selectedItem.project_id}
-						>
-							Open Task
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							onclick={() =>
-								openTaskPage(selectedItem.task_id, selectedItem.project_id)}
-						>
-							Open Task Page
-						</Button>
-					{:else}
-						<Button
-							variant="primary"
-							size="sm"
-							onclick={openEventEditor}
-							disabled={!selectedItem.event_id || !selectedItem.project_id}
-						>
-							Open Event
-						</Button>
-					{/if}
+			<div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
+				{formatRange(selectedItem.start_at, selectedItem.end_at, selectedItem.all_day)}
+			</div>
+
+			{#if detailLoading}
+				<div class="flex items-center gap-2 text-sm text-muted-foreground">
+					<LoaderCircle class="h-4 w-4 animate-spin" />
+					Loading details…
+				</div>
+			{:else if detailError}
+				<div class="text-sm text-rose-600">{detailError}</div>
+			{:else if detail}
+				{@const description = getDescription(detail)}
+				{#if description}
+					<div class="text-sm text-foreground whitespace-pre-wrap">
+						{description}
+					</div>
+				{/if}
+				{@const externalLink = getExternalLink(detail)}
+				{#if externalLink}
+					<a
+						href={externalLink}
+						target="_blank"
+						rel="noreferrer"
+						class="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-500"
+					>
+						<ExternalLink class="h-4 w-4" />
+						Open in Calendar
+					</a>
+				{/if}
+			{/if}
+
+			<div class="flex flex-wrap gap-2 pt-2">
+				{#if selectedItem.item_type === 'task'}
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={openTaskEditor}
+						disabled={!selectedItem.task_id || !selectedItem.project_id}
+					>
+						Open Task
+					</Button>
 					<Button
 						variant="ghost"
 						size="sm"
-						onclick={() => openProject(selectedItem.project_id)}
-						disabled={!selectedItem.project_id}
+						onclick={() => openTaskPage(selectedItem.task_id, selectedItem.project_id)}
 					>
-						Open Project
+						Open Task Page
 					</Button>
-				</div>
+				{:else}
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={openEventEditor}
+						disabled={!selectedItem.event_id || !selectedItem.project_id}
+					>
+						Open Event
+					</Button>
+				{/if}
+				<Button
+					variant="ghost"
+					size="sm"
+					onclick={() => openProject(selectedItem.project_id)}
+					disabled={!selectedItem.project_id}
+				>
+					Open Project
+				</Button>
 			</div>
-		{/snippet}
-	</Modal>
+		</div>
+	</CalendarItemDrawer>
 {/if}
 
 {#if showTaskModal && TaskEditModalComponent && editTaskId && editProjectId}
