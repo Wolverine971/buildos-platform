@@ -73,6 +73,7 @@
 		"@tailwindcss/typography": "^0.5.16",
 		"@testing-library/jest-dom": "^6.8.0",
 		"@testing-library/svelte": "^5.2.8",
+		"@types/cytoscape-dagre": "^2.3.4",
 		"@types/dom-speech-recognition": "^0.0.7",
 		"@types/node": "^20.19.0",
 		"@types/nodemailer": "^6.4.17",

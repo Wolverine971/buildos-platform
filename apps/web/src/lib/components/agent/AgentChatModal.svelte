@@ -1276,7 +1276,7 @@
 				notesByGroup[note.group_id] = existing;
 			}
 			for (const groupId of Object.keys(notesByGroup)) {
-				notesByGroup[groupId] = notesByGroup[groupId].sort((a, b) => {
+				notesByGroup[groupId] = notesByGroup[groupId]!.sort((a, b) => {
 					const aIndex = a.segment_index ?? 0;
 					const bIndex = b.segment_index ?? 0;
 					if (aIndex !== bIndex) return aIndex - bIndex;

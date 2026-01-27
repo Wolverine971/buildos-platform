@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-01-26T23:09:18.512Z
+// Generated on: 2026-01-27T23:05:34.731Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1944,6 +1944,68 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	tree_agent_artifacts: {
+		artifact_type: string;
+		created_at: string;
+		document_id: string | null;
+		id: string;
+		is_primary: boolean;
+		json_payload: Json | null;
+		label: string;
+		node_id: string;
+		run_id: string;
+	};
+	tree_agent_events: {
+		created_at: string;
+		event_type: string;
+		id: string;
+		node_id: string;
+		payload: Json;
+		run_id: string;
+		seq: number | null;
+	};
+	tree_agent_nodes: {
+		band_index: number;
+		context: Json;
+		created_at: string;
+		depth: number;
+		ended_at: string | null;
+		id: string;
+		parent_node_id: string | null;
+		reason: string;
+		result: Json | null;
+		role_state: string;
+		run_id: string;
+		scratchpad_doc_id: string | null;
+		started_at: string | null;
+		status: string;
+		step_index: number;
+		success_criteria: Json;
+		title: string;
+		updated_at: string;
+	};
+	tree_agent_plans: {
+		created_at: string;
+		id: string;
+		node_id: string;
+		plan_json: Json;
+		run_id: string;
+		version: number;
+	};
+	tree_agent_runs: {
+		budgets: Json;
+		completed_at: string | null;
+		created_at: string;
+		id: string;
+		metrics: Json;
+		objective: string;
+		root_node_id: string | null;
+		started_at: string | null;
+		status: string;
+		updated_at: string;
+		user_id: string;
+		workspace_project_id: string | null;
+	};
 	trial_reminders: {
 		created_at: string | null;
 		id: string;
@@ -1979,6 +2041,10 @@ export type DatabaseSchema = {
 		max_task_duration_minutes: number | null;
 		min_task_duration_minutes: number | null;
 		prefer_morning_for_important_tasks: boolean | null;
+		show_events: boolean;
+		show_task_due: boolean;
+		show_task_scheduled: boolean;
+		show_task_start: boolean;
 		updated_at: string;
 		user_id: string;
 		work_end_time: string | null;
@@ -2357,6 +2423,11 @@ export const tableNames = [
 	'task_calendar_events',
 	'tasks',
 	'time_blocks',
+	'tree_agent_artifacts',
+	'tree_agent_events',
+	'tree_agent_nodes',
+	'tree_agent_plans',
+	'tree_agent_runs',
 	'trial_reminders',
 	'user_activity_logs',
 	'user_brief_preferences',

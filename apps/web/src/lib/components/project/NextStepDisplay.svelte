@@ -21,6 +21,16 @@
 	import type { EntityReference } from '@buildos/shared-types';
 	import { toastService } from '$lib/stores/toast.store';
 
+	// Helper to escape HTML special characters
+	function escapeHtml(value: string): string {
+		return value
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
 	// Props
 	interface Props {
 		projectId: string;
@@ -142,11 +152,16 @@
 		const regex = /\[\[(\w+):([\w-]+)\|([^\]]+)\]\]/gi;
 
 		html = html.replace(regex, (match, type, id, displayText) => {
+			// Properly escape all dynamic content for safe HTML injection
+			const safeType = escapeHtml(type);
+			const safeId = escapeHtml(id);
+			const safeText = escapeHtml(displayText);
+
 			return `<button
 				class="inline-flex items-center px-1.5 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors text-sm font-medium cursor-pointer"
-				data-entity-type="${type}"
-				data-entity-id="${id}"
-			>${displayText}</button>`;
+				data-entity-type="${safeType}"
+				data-entity-id="${safeId}"
+			>${safeText}</button>`;
 		});
 
 		return html;

@@ -271,10 +271,10 @@
 				/>
 			{/if}
 			<h3 class="text-lg font-semibold text-gray-900 dark:text-white tracking-tight">
-				{activeTabConfig.label}
-				{#if activeTabConfig.count > 0}
+				{activeTabConfig?.label}
+				{#if activeTabConfig?.count}
 					<span class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-						({activeTabConfig.count})
+						({activeTabConfig?.count})
 					</span>
 				{/if}
 			</h3>
@@ -301,7 +301,7 @@
 									<div class="flex items-center gap-2 min-w-0 flex-1">
 										<div
 											class="h-2.5 w-2.5 rounded-full bg-blue-500 flex-shrink-0"
-										/>
+										></div>
 										<div class="min-w-0">
 											<p
 												class="text-sm font-semibold text-gray-900 dark:text-white truncate"
@@ -541,9 +541,9 @@
 			<div class="text-center py-12">
 				<AlertTriangle class="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
 				<p class="text-sm text-gray-500">
-					{activeTabConfig.label === 'Past Due'
+					{activeTabConfig?.label === 'Past Due'
 						? 'No overdue tasks'
-						: activeTabConfig.label === 'Today'
+						: activeTabConfig?.label === 'Today'
 							? 'No tasks for today'
 							: 'No tasks for tomorrow'}
 				</p>
@@ -583,7 +583,7 @@
 		border-radius: 9999px;
 	}
 
-	.dark .scrollbar-thumb-gray-600::-webkit-scrollbar-thumb {
+	.dark .scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
 		background-color: rgb(75 85 99);
 	}
 

@@ -106,6 +106,8 @@
 	});
 	let polling = $state<ReturnType<typeof setInterval> | null>(null);
 	let updating = $state(false);
+	let pollError = $state<string | null>(null);
+	let pollFailureCount = $state(0);
 	let showLiveModal = $state(false);
 	let userAnswer = $state('');
 	let expandedIterations = $state<Set<string>>(new Set());
@@ -203,9 +205,22 @@
 	const refresh = async () => {
 		if (updating) return;
 		updating = true;
+		pollError = null;
 		try {
-			const res = await fetch(`/api/homework/runs/${run.id}?include_workspace=true`);
+			const res = await fetch(
+				`/api/homework/runs/${run.id}?include_workspace=true&include_iterations=true&include_events=true`
+			);
+
+			if (!res.ok) {
+				throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+			}
+
 			const json = await res.json();
+
+			if (json?.error) {
+				throw new Error(json.error);
+			}
+
 			if (json?.data?.run) {
 				run = json.data.run;
 				iterations = json.data.iterations ?? iterations;
@@ -218,6 +233,18 @@
 				if (scratchpadSaveStatus !== 'saving' && scratchpad?.content) {
 					scratchpadContent = scratchpad.content;
 				}
+				pollFailureCount = 0;
+			}
+		} catch (err) {
+			pollFailureCount++;
+			const message = err instanceof Error ? err.message : 'Unknown error';
+			pollError = `Failed to refresh: ${message}`;
+
+			// Stop polling after 3 failures
+			if (pollFailureCount >= 3 && polling) {
+				clearInterval(polling);
+				polling = null;
+				pollError = `Polling stopped after ${pollFailureCount} failures. Refresh page to retry.`;
 			}
 		} finally {
 			updating = false;
@@ -299,19 +326,35 @@
 		selectedDocumentId = null;
 	};
 
+	let lastScratchpadUpdate = $state(0);
+	let lastScratchpadEdit = $state(0);
+
 	// Initialize scratchpad content
 	$effect(() => {
 		if (scratchpad?.content && !scratchpadContent) {
 			scratchpadContent = scratchpad.content;
+			lastScratchpadUpdate = Date.now();
 		}
 	});
 
 	// Sync scratchpad content when scratchpad changes (e.g., from polling)
+	// Bug #3: Only update if we've been idle for 2+ seconds to avoid race with user edits
 	$effect(() => {
-		if (scratchpad?.content && scratchpadSaveStatus !== 'saving') {
-			// Only update if content differs (to avoid cursor jumps during typing)
-			if (scratchpadContent !== scratchpad.content) {
+		if (scratchpad?.content && scratchpadSaveStatus === 'idle') {
+			const now = Date.now();
+			const timeSinceLastUpdate = now - lastScratchpadUpdate;
+			const timeSinceLastEdit = now - lastScratchpadEdit;
+
+			// Only update if content differs AND:
+			// 1. We've been idle for 2+ seconds (not actively typing)
+			// 2. Save is idle (not currently saving)
+			if (
+				scratchpadContent !== scratchpad.content &&
+				timeSinceLastUpdate > 2000 &&
+				timeSinceLastEdit > 2000
+			) {
 				scratchpadContent = scratchpad.content;
+				lastScratchpadUpdate = now;
 			}
 		}
 	});
@@ -356,6 +399,16 @@
 			{/if}
 		</div>
 	</header>
+
+	<!-- Poll error banner -->
+	{#if pollError}
+		<div
+			class="px-3 py-2 mb-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg tx tx-pulse tx-weak"
+		>
+			<p class="text-sm font-medium text-red-900 dark:text-red-100">Data refresh error</p>
+			<p class="text-xs text-red-700 dark:text-red-300">{pollError}</p>
+		</div>
+	{/if}
 
 	<!-- Waiting banner -->
 	{#if run.status === 'waiting_on_user'}
@@ -583,14 +636,21 @@
 				class="w-full text-left p-4 bg-card border border-border rounded-lg shadow-ink hover:border-accent/50 transition-colors"
 			>
 				<p class="text-sm text-muted-foreground">
-					{scratchpad?.content
-						? `${scratchpad.content.substring(0, 200)}${scratchpad.content.length > 200 ? '...' : ''}`
-						: 'No scratchpad content yet. Click to expand and edit.'}
+					{#if scratchpad?.content}
+						{@const preview = scratchpad.content.substring(0, 200)}
+						{@const hasMore = scratchpad.content.length > 200}
+						{preview}{hasMore ? '...' : ''}
+					{:else}
+						No scratchpad content yet. Click to expand and edit.
+					{/if}
 				</p>
 			</button>
 		{:else if scratchpad}
 			<RichMarkdownEditor
 				bind:value={scratchpadContent}
+				onchange={() => {
+					lastScratchpadEdit = Date.now();
+				}}
 				placeholder="Write your notes here... Use markdown for formatting. Press mic to dictate."
 				rows={16}
 				maxLength={50000}

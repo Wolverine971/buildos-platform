@@ -165,6 +165,21 @@ export interface HomeworkJobMetadata {
 	};
 }
 
+export interface TreeAgentJobMetadata {
+	run_id: string;
+	root_node_id: string;
+	workspace_project_id: string;
+	budgets: {
+		max_wall_clock_ms: number;
+	};
+	// Context fields - priority over metrics.context
+	context_type?: 'global' | 'project';
+	context_project_id?: string | null;
+	// Optional: future support for multi-project scope
+	scope?: 'global' | 'project' | 'multi_project';
+	project_ids?: string[] | null;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	generate_daily_brief: DailyBriefJobMetadata;
@@ -183,6 +198,7 @@ export interface JobMetadataMap {
 	process_onto_braindump: OntoBraindumpProcessingJobMetadata;
 	transcribe_voice_note: VoiceNoteTranscriptionJobMetadata;
 	buildos_homework: HomeworkJobMetadata;
+	buildos_tree_agent: TreeAgentJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -240,6 +256,8 @@ export interface HomeworkJobResult {
 
 // Job result types
 export interface JobResultMap {
+	// Allow indexing by queue job types that are not explicitly listed yet.
+	[key: string]: unknown;
 	generate_daily_brief: DailyBriefResult;
 	generate_phases: PhaseGenerationResult;
 	onboarding_analysis: OnboardingAnalysisResult;

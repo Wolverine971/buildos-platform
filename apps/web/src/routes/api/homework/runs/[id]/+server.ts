@@ -15,7 +15,7 @@ type WorkspaceDoc = Pick<
 	'id' | 'title' | 'type_key' | 'state_key' | 'project_id' | 'props' | 'updated_at' | 'created_at'
 >;
 type WorkspaceEdge = Pick<OntoEdge, 'id' | 'src_id' | 'dst_id' | 'rel' | 'props'>;
-type ScratchpadDoc = Pick<OntoDocument, 'id' | 'content' | 'title'>;
+type ScratchpadDoc = Pick<OntoDocument, 'id' | 'content' | 'title' | 'updated_at'>;
 type ExecutorPadDoc = Pick<
 	OntoDocument,
 	'id' | 'title' | 'content' | 'props' | 'updated_at' | 'created_at'
@@ -32,8 +32,8 @@ export const GET: RequestHandler = async ({
 	}
 
 	const runId = params.id;
-	const includeIterations = url.searchParams.get('include_iterations') !== 'false';
-	const includeEvents = url.searchParams.get('include_events') !== 'false';
+	const includeIterations = url.searchParams.get('include_iterations') === 'true';
+	const includeEvents = url.searchParams.get('include_events') === 'true';
 	const includeWorkspace = url.searchParams.get('include_workspace') === 'true';
 
 	const { data: run, error } = await supabase
@@ -92,7 +92,7 @@ export const GET: RequestHandler = async ({
 
 		const { data: scratch } = await supabase
 			.from('onto_documents')
-			.select('id, content, title')
+			.select('id, content, title, updated_at')
 			.contains('props', { homework_run_id: runId, doc_role: 'scratchpad' })
 			.order('updated_at', { ascending: false })
 			.limit(1)
@@ -104,7 +104,7 @@ export const GET: RequestHandler = async ({
 			.select('id, title, content, props, updated_at, created_at')
 			.contains('props', { homework_run_id: runId, doc_role: 'scratchpad_exec' })
 			.order('updated_at', { ascending: false })
-			.limit(20);
+			.limit(50);
 		executorPads = execPads ?? [];
 	}
 

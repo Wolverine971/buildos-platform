@@ -22,6 +22,16 @@
 
 	let { nextStepShort, nextStepLong, class: className = '' }: Props = $props();
 
+	// Helper to escape HTML special characters
+	function escapeHtml(value: string): string {
+		return value
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+	}
+
 	let isExpanded = $state(false);
 
 	const hasNextStep = $derived(!!nextStepShort);
@@ -39,7 +49,9 @@
 		const regex = /\[\[(\w+):([\w-]+)\|([^\]]+)\]\]/gi;
 
 		return text.replace(regex, (match, type, id, displayText) => {
-			return `<span class="inline-flex items-center px-1 py-0.5 rounded bg-accent/15 text-accent text-[10px] font-medium">${displayText}</span>`;
+			// Properly escape all dynamic content for safe HTML injection
+			const safeText = escapeHtml(displayText);
+			return `<span class="inline-flex items-center px-1 py-0.5 rounded bg-accent/15 text-accent text-[10px] font-medium">${safeText}</span>`;
 		});
 	}
 

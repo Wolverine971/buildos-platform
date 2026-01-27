@@ -797,7 +797,7 @@ export class OntologyBriefDataLoader {
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_plans')
-				.select('id, project_id, state_key')
+				.select('id, project_id, name, state_key, type_key')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase

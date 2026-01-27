@@ -12,6 +12,7 @@
   - Zero layout shift - exact number of cards rendered from start
 -->
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import {
 		Plus,
 		FolderOpen,
@@ -184,6 +185,10 @@
 		showChatModal = true;
 	}
 
+	function handleOpenCalendar() {
+		goto('/dashboard/calendar');
+	}
+
 	function handleChatClose() {
 		showChatModal = false;
 		// Refresh projects after modal closes in case a new project was created
@@ -227,6 +232,12 @@
 						{formatFullDate(new Date())}
 					</time>
 				</p>
+			</div>
+			<div class="mt-2 flex flex-wrap items-center gap-2">
+				<Button variant="ghost" size="sm" onclick={handleOpenCalendar}>
+					<Calendar class="h-4 w-4 mr-1.5" />
+					Calendar
+				</Button>
 			</div>
 		</header>
 

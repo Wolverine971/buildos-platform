@@ -11,6 +11,7 @@ import { processChatClassificationJob } from './workers/chat/chatSessionClassifi
 import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
 import { processHomeworkJob } from './workers/homework/homeworkWorker';
+import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -283,6 +284,22 @@ async function processHomework(job: ProcessingJob) {
 }
 
 /**
+ * Tree Agent orchestration processor
+ */
+async function processTreeAgent(job: ProcessingJob) {
+	await job.log('Tree Agent job received');
+
+	try {
+		const result = await processTreeAgentJob(job as any);
+		await job.log('Tree Agent job completed');
+		return result;
+	} catch (error: any) {
+		await job.log(`Tree Agent job failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -312,6 +329,9 @@ export async function startWorker() {
 
 	// Register homework (long-running task) processor
 	queue.process('buildos_homework', processHomework);
+
+	// Register Tree Agent processor (cast until database types are regenerated)
+	queue.process('buildos_tree_agent' as any, processTreeAgent);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(
@@ -385,7 +405,8 @@ export async function startWorker() {
 		'onboarding_analysis',
 		'send_notification',
 		'classify_chat_session',
-		'process_onto_braindump'
+		'process_onto_braindump',
+		'buildos_tree_agent'
 	];
 
 	if (twilioEnabled) {

@@ -212,9 +212,9 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 		})
 		.eq('id', run_id);
 
-	// Emit run_started once per run
+	// Emit run_started once per run - use seq 0 for first event
 	if (!run.started_at) {
-		await insertRunEvent(run_id, iteration, { type: 'run_started', runId: run_id }, 1);
+		await insertRunEvent(run_id, iteration, { type: 'run_started', runId: run_id }, 0);
 	}
 
 	// Create iteration row; tolerate duplicate by selecting existing on conflict
@@ -417,7 +417,7 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 	metricsState.metrics.cost_total_usd = metricsState.costTotal;
 	metricsState.metrics.plan = iterationResult.plan ?? metricsState.metrics.plan;
 
-	let finalStatus: HomeworkRunStatus = 'queued';
+	let finalStatus: HomeworkRunStatus;
 	let stopReason: { type: string; detail: string } | null = null;
 
 	if (waitingOnUser) {
@@ -478,7 +478,7 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 			{ type: 'run_stopped', runId: run_id, stopReason },
 			iterationSeqBase + 3
 		);
-	} else if (maxIterations !== null && iteration >= maxIterations) {
+	} else if (maxIterations !== null && iteration > maxIterations) {
 		finalStatus = 'stopped';
 		stopReason = buildStopReason(
 			'max_iterations',
@@ -499,8 +499,50 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 			{ type: 'run_stopped', runId: run_id, stopReason },
 			iterationSeqBase + 3
 		);
+	} else {
+		// Bug #13: No exit condition matched - should continue
+		finalStatus = 'queued';
+		await insertRunEvent(
+			run_id,
+			iteration,
+			{ type: 'iteration_completed_continuing', runId: run_id, iteration },
+			iterationSeqBase + 3
+		);
 	}
 
+	// Queue next job FIRST if needed, before updating status (Bug #10: prevent race condition)
+	if (finalStatus === 'queued') {
+		const nextJobIteration = iteration + 1;
+		const { error: queueError } = await supabase.rpc('add_queue_job', {
+			p_user_id: run.user_id,
+			p_job_type: 'buildos_homework',
+			p_metadata: {
+				...job.data,
+				iteration: nextJobIteration,
+				chat_session_id: run.chat_session_id
+			},
+			p_priority: 7,
+			p_scheduled_for: new Date(Date.now() + 5000).toISOString(),
+			p_dedup_key: `homework:${run_id}:${nextJobIteration}`
+		});
+
+		if (queueError) {
+			// If queueing fails, mark as failed instead of queued to prevent stuck runs
+			finalStatus = 'failed';
+			stopReason = buildStopReason(
+				'queue_error',
+				`Failed to queue next iteration: ${queueError.message}`
+			);
+			await insertRunEvent(
+				run_id,
+				iteration,
+				{ type: 'run_failed', runId: run_id, stopReason },
+				iterationSeqBase + 5
+			);
+		}
+	}
+
+	// NOW update run status
 	await supabase
 		.from('homework_runs')
 		.update({
@@ -539,6 +581,14 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 				{ type: 'run_report_created', runId: run_id },
 				iterationSeqBase + 4
 			);
+		} else if (scratchpad && !run.report) {
+			// Bug #8: Log event on report synthesis failure
+			await insertRunEvent(
+				run_id,
+				iteration,
+				{ type: 'run_report_generation_failed', reason: 'report synthesis returned null' },
+				iterationSeqBase + 4
+			);
 		}
 
 		if (finalStatus === 'completed' || finalStatus === 'stopped') {
@@ -547,22 +597,6 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 				status: finalStatus
 			});
 		}
-	}
-
-	if (finalStatus === 'queued') {
-		const nextJobIteration = iteration + 1;
-		await supabase.rpc('add_queue_job', {
-			p_user_id: run.user_id,
-			p_job_type: 'buildos_homework',
-			p_metadata: {
-				...job.data,
-				iteration: nextJobIteration,
-				chat_session_id: run.chat_session_id
-			},
-			p_priority: 7,
-			p_scheduled_for: new Date(Date.now() + 5000).toISOString(),
-			p_dedup_key: `homework:${run_id}:${nextJobIteration}`
-		});
 	}
 
 	await job.log(

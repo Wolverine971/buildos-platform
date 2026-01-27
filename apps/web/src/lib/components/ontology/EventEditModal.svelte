@@ -107,6 +107,9 @@
 	let allDay = $state(false);
 	let syncToCalendar = $state(true);
 
+	// Track which date field was last modified by user interaction (not programmatic changes)
+	let dateFieldLastChanged = $state<'start' | 'end' | null>(null);
+
 	// Modal states for linked entity navigation
 	let showTaskModal = $state(false);
 	let selectedTaskIdForModal = $state<string | null>(null);
@@ -126,6 +129,55 @@
 			loadEvent();
 		}
 	});
+
+	// Bidirectional date adjustment: when user changes one date to create an invalid range,
+	// intelligently adjust the OTHER date to maintain a 30-minute minimum duration
+	$effect(() => {
+		// Only run when user has explicitly changed a date field
+		if (!dateFieldLastChanged) return;
+
+		const startDate = startAt ? new Date(startAt) : null;
+		const endDate = endAt ? new Date(endAt) : null;
+
+		// Validate dates
+		const validStart = startDate && !isNaN(startDate.getTime());
+		const validEnd = endDate && !isNaN(endDate.getTime());
+
+		// Reset flag before making changes to prevent loops
+		const changedField = dateFieldLastChanged;
+		dateFieldLastChanged = null;
+
+		const THIRTY_MINUTES = 30 * 60 * 1000;
+
+		if (changedField === 'start' && validStart) {
+			// User changed start date
+			if (!validEnd || startDate >= endDate) {
+				// End is missing or start is at/after end: move end to 30 min after start
+				const newEndDate = new Date(startDate.getTime() + THIRTY_MINUTES);
+				endAt = format(newEndDate, "yyyy-MM-dd'T'HH:mm");
+			}
+		} else if (changedField === 'end' && validEnd) {
+			// User changed end date
+			if (!validStart) {
+				// No start date: set start to 30 min before end
+				const newStartDate = new Date(endDate.getTime() - THIRTY_MINUTES);
+				startAt = format(newStartDate, "yyyy-MM-dd'T'HH:mm");
+			} else if (validStart && endDate <= startDate) {
+				// End is at/before start: move start to 30 min before end
+				const newStartDate = new Date(endDate.getTime() - THIRTY_MINUTES);
+				startAt = format(newStartDate, "yyyy-MM-dd'T'HH:mm");
+			}
+		}
+	});
+
+	// Event handlers to track user-initiated date changes
+	function handleStartDateChange() {
+		dateFieldLastChanged = 'start';
+	}
+
+	function handleEndDateChange() {
+		dateFieldLastChanged = 'end';
+	}
 
 	function formatDateTimeForInput(date: string | null | undefined): string {
 		if (!date) return '';
@@ -553,6 +605,7 @@
 											inputmode="numeric"
 											enterkeyhint="next"
 											bind:value={startAt}
+											oninput={handleStartDateChange}
 											disabled={isSaving}
 											size="sm"
 											required={true}
@@ -583,6 +636,7 @@
 											inputmode="numeric"
 											enterkeyhint="done"
 											bind:value={endAt}
+											oninput={handleEndDateChange}
 											disabled={isSaving}
 											size="sm"
 											class="border-border bg-card focus:ring-2 focus:ring-accent w-full"

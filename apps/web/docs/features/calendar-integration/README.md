@@ -12,6 +12,7 @@ Google Calendar sync with bidirectional updates for task scheduling and availabi
 - `calendar-cleanup-phase-regeneration-analysis.md` - Phase regeneration analysis
 - `calendar-analysis-bugs-investigation.md` - Bug investigation notes
 - `calendar-analysis-task-improvement-research.md` - Task improvement research
+- `dashboard-calendar-spec.md` - Dashboard calendar UI spec
 
 ## Features
 

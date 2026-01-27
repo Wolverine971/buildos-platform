@@ -8048,6 +8048,317 @@ export type Database = {
           },
         ]
       }
+      tree_agent_artifacts: {
+        Row: {
+          artifact_type: Database["public"]["Enums"]["tree_agent_artifact_type"]
+          created_at: string
+          document_id: string | null
+          id: string
+          is_primary: boolean
+          json_payload: Json | null
+          label: string
+          node_id: string
+          run_id: string
+        }
+        Insert: {
+          artifact_type: Database["public"]["Enums"]["tree_agent_artifact_type"]
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          is_primary?: boolean
+          json_payload?: Json | null
+          label?: string
+          node_id: string
+          run_id: string
+        }
+        Update: {
+          artifact_type?: Database["public"]["Enums"]["tree_agent_artifact_type"]
+          created_at?: string
+          document_id?: string | null
+          id?: string
+          is_primary?: boolean
+          json_payload?: Json | null
+          label?: string
+          node_id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tree_agent_artifacts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_agent_artifacts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["document_id"]
+          },
+          {
+            foreignKeyName: "tree_agent_artifacts_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_agent_artifacts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tree_agent_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          node_id: string
+          payload: Json
+          run_id: string
+          seq: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          node_id: string
+          payload?: Json
+          run_id: string
+          seq?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          node_id?: string
+          payload?: Json
+          run_id?: string
+          seq?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tree_agent_events_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_agent_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tree_agent_nodes: {
+        Row: {
+          band_index: number
+          context: Json
+          created_at: string
+          depth: number
+          ended_at: string | null
+          id: string
+          parent_node_id: string | null
+          reason: string
+          result: Json | null
+          role_state: Database["public"]["Enums"]["tree_agent_role_state"]
+          run_id: string
+          scratchpad_doc_id: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["tree_agent_node_status"]
+          step_index: number
+          success_criteria: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          band_index?: number
+          context?: Json
+          created_at?: string
+          depth?: number
+          ended_at?: string | null
+          id?: string
+          parent_node_id?: string | null
+          reason?: string
+          result?: Json | null
+          role_state?: Database["public"]["Enums"]["tree_agent_role_state"]
+          run_id: string
+          scratchpad_doc_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["tree_agent_node_status"]
+          step_index?: number
+          success_criteria?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          band_index?: number
+          context?: Json
+          created_at?: string
+          depth?: number
+          ended_at?: string | null
+          id?: string
+          parent_node_id?: string | null
+          reason?: string
+          result?: Json | null
+          role_state?: Database["public"]["Enums"]["tree_agent_role_state"]
+          run_id?: string
+          scratchpad_doc_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["tree_agent_node_status"]
+          step_index?: number
+          success_criteria?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tree_agent_nodes_parent_node_id_fkey"
+            columns: ["parent_node_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_agent_nodes_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_agent_nodes_scratchpad_doc_id_fkey"
+            columns: ["scratchpad_doc_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_agent_nodes_scratchpad_doc_id_fkey"
+            columns: ["scratchpad_doc_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["document_id"]
+          },
+        ]
+      }
+      tree_agent_plans: {
+        Row: {
+          created_at: string
+          id: string
+          node_id: string
+          plan_json: Json
+          run_id: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          node_id: string
+          plan_json: Json
+          run_id: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          node_id?: string
+          plan_json?: Json
+          run_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tree_agent_plans_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_agent_plans_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tree_agent_runs: {
+        Row: {
+          budgets: Json
+          completed_at: string | null
+          created_at: string
+          id: string
+          metrics: Json
+          objective: string
+          root_node_id: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["tree_agent_run_status"]
+          updated_at: string
+          user_id: string
+          workspace_project_id: string | null
+        }
+        Insert: {
+          budgets?: Json
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          metrics?: Json
+          objective: string
+          root_node_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["tree_agent_run_status"]
+          updated_at?: string
+          user_id: string
+          workspace_project_id?: string | null
+        }
+        Update: {
+          budgets?: Json
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          metrics?: Json
+          objective?: string
+          root_node_id?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["tree_agent_run_status"]
+          updated_at?: string
+          user_id?: string
+          workspace_project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tree_agent_runs_root_node_fkey"
+            columns: ["root_node_id"]
+            isOneToOne: false
+            referencedRelation: "tree_agent_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tree_agent_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "tree_agent_runs_workspace_project_id_fkey"
+            columns: ["workspace_project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trial_reminders: {
         Row: {
           created_at: string | null
@@ -8169,6 +8480,10 @@ export type Database = {
           max_task_duration_minutes: number | null
           min_task_duration_minutes: number | null
           prefer_morning_for_important_tasks: boolean | null
+          show_events: boolean
+          show_task_due: boolean
+          show_task_scheduled: boolean
+          show_task_start: boolean
           updated_at: string
           user_id: string
           work_end_time: string | null
@@ -8184,6 +8499,10 @@ export type Database = {
           max_task_duration_minutes?: number | null
           min_task_duration_minutes?: number | null
           prefer_morning_for_important_tasks?: boolean | null
+          show_events?: boolean
+          show_task_due?: boolean
+          show_task_scheduled?: boolean
+          show_task_start?: boolean
           updated_at?: string
           user_id: string
           work_end_time?: string | null
@@ -8199,6 +8518,10 @@ export type Database = {
           max_task_duration_minutes?: number | null
           min_task_duration_minutes?: number | null
           prefer_morning_for_important_tasks?: boolean | null
+          show_events?: boolean
+          show_task_due?: boolean
+          show_task_scheduled?: boolean
+          show_task_start?: boolean
           updated_at?: string
           user_id?: string
           work_end_time?: string | null
@@ -9292,6 +9615,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_calendar_items: {
+        Row: {
+          all_day: boolean | null
+          calendar_item_id: string | null
+          created_at: string | null
+          end_at: string | null
+          event_id: string | null
+          item_kind: string | null
+          item_type: string | null
+          owner_entity_id: string | null
+          owner_entity_type: string | null
+          project_id: string | null
+          props: Json | null
+          source_table: string | null
+          start_at: string | null
+          state_key: string | null
+          task_id: string | null
+          timezone: string | null
+          title: string | null
+          type_key: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       user_migration_stats: {
         Row: {
           avatar_url: string | null
@@ -9906,6 +10253,39 @@ export type Database = {
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }
+      list_calendar_items: {
+        Args: {
+          p_end: string
+          p_include_events?: boolean
+          p_include_task_due?: boolean
+          p_include_task_range?: boolean
+          p_include_task_start?: boolean
+          p_limit?: number
+          p_project_ids?: string[]
+          p_start: string
+        }
+        Returns: {
+          all_day: boolean
+          calendar_item_id: string
+          created_at: string
+          end_at: string
+          event_id: string
+          item_kind: string
+          item_type: string
+          owner_entity_id: string
+          owner_entity_type: string
+          project_id: string
+          props: Json
+          source_table: string
+          start_at: string
+          state_key: string
+          task_id: string
+          timezone: string
+          title: string
+          type_key: string
+          updated_at: string
+        }[]
+      }
       list_pending_project_invites: {
         Args: never
         Returns: {
@@ -10258,6 +10638,7 @@ export type Database = {
         | "process_onto_braindump"
         | "transcribe_voice_note"
         | "buildos_homework"
+        | "buildos_tree_agent"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -10291,6 +10672,25 @@ export type Database = {
       task_state: "todo" | "in_progress" | "blocked" | "done"
       task_status: "backlog" | "in_progress" | "done" | "blocked"
       task_type: "one_off" | "recurring"
+      tree_agent_artifact_type: "document" | "json" | "summary" | "other"
+      tree_agent_node_status:
+        | "planning"
+        | "delegating"
+        | "executing"
+        | "waiting"
+        | "aggregating"
+        | "completed"
+        | "failed"
+        | "blocked"
+      tree_agent_role_state: "planner" | "executor"
+      tree_agent_run_status:
+        | "queued"
+        | "running"
+        | "waiting_on_user"
+        | "completed"
+        | "stopped"
+        | "canceled"
+        | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -10509,6 +10909,7 @@ export const Constants = {
         "process_onto_braindump",
         "transcribe_voice_note",
         "buildos_homework",
+        "buildos_tree_agent",
       ],
       recurrence_end_reason: [
         "indefinite",
@@ -10546,6 +10947,27 @@ export const Constants = {
       task_state: ["todo", "in_progress", "blocked", "done"],
       task_status: ["backlog", "in_progress", "done", "blocked"],
       task_type: ["one_off", "recurring"],
+      tree_agent_artifact_type: ["document", "json", "summary", "other"],
+      tree_agent_node_status: [
+        "planning",
+        "delegating",
+        "executing",
+        "waiting",
+        "aggregating",
+        "completed",
+        "failed",
+        "blocked",
+      ],
+      tree_agent_role_state: ["planner", "executor"],
+      tree_agent_run_status: [
+        "queued",
+        "running",
+        "waiting_on_user",
+        "completed",
+        "stopped",
+        "canceled",
+        "failed",
+      ],
     },
   },
 } as const

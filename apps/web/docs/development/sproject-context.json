@@ -146,6 +146,16 @@
 			"components": ["SynthesisLoadingState"]
 		},
 		{
+			"file": "src/routes/dashboard/calendar/+page.svelte",
+			"type": "page",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -164,11 +174,6 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -307,6 +312,12 @@
 			"type": "service",
 			"components": [],
 			"exports": ["CalendarDisconnectService"]
+		},
+		{
+			"file": "src/lib/services/calendar-items.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["fetchCalendarItems"]
 		},
 		{
 			"file": "src/lib/services/calendar-service.ts",
@@ -644,6 +655,12 @@
 			"exports": ["TimeBlockService"]
 		},
 		{
+			"file": "src/lib/services/treeAgentRealtime.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["TreeAgentRealtimeService"]
+		},
+		{
 			"file": "src/lib/services/visitor.service.ts",
 			"type": "service",
 			"components": [],
@@ -813,6 +830,12 @@
 			"exports": ["TOAST_DURATION", "toasts", "toastService"]
 		},
 		{
+			"file": "src/lib/stores/treeAgentGraph.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["treeAgentGraphStore"]
+		},
+		{
 			"file": "src/lib/stores/unifiedBriefGeneration.store.ts",
 			"type": "store",
 			"components": [],
@@ -946,6 +969,10 @@
 			"src/lib/components/ontology/DocumentModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte"
+		],
+		"src/routes/dashboard/calendar/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
 		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",

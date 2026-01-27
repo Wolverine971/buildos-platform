@@ -13,18 +13,14 @@ import { format, parseISO } from 'date-fns';
 import { utcToZonedTime, zonedTimeToUtc, formatInTimeZone } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
 import { SmartLLMService } from '../../lib/services/smart-llm-service.js';
-import {
-	OntologyBriefDataLoader,
-	categorizeTasks,
-	findUnblockingTasks,
-	getWorkMode
-} from './ontologyBriefDataLoader.js';
+import { OntologyBriefDataLoader, getWorkMode } from './ontologyBriefDataLoader.js';
 import {
 	OntologyAnalysisPrompt,
 	OntologyExecutiveSummaryPrompt,
 	OntologyProjectBriefPrompt,
 	OntologyReengagementPrompt
 } from './ontologyPrompts.js';
+import { generateProjectNextStepsForBrief } from './projectNextStepGenerator.js';
 import type {
 	OntoProjectWithRelations,
 	OntologyBriefData,
@@ -687,7 +683,25 @@ export async function generateOntologyDailyBrief(
 
 		console.log(`[OntologyBrief] Loaded ${projectsData.length} projects for user ${userId}`);
 
-		// Step 2: Prepare brief data
+		// Step 2: Generate fresh project next steps (used in briefs + saved to projects)
+		await updateProgress(
+			dailyBrief.id,
+			{ step: 'generating_project_next_steps', progress: 18 },
+			jobId
+		);
+
+		const { results: nextStepResults, failed: nextStepFailed } =
+			await generateProjectNextStepsForBrief(projectsData, {
+				userId,
+				briefDate: briefDateInUserTz,
+				timezone: userTimezone
+			});
+
+		console.log(
+			`[OntologyBrief] Generated project next steps (${nextStepResults.length}/${projectsData.length}); failed: ${nextStepFailed}`
+		);
+
+		// Step 3: Prepare brief data
 		await updateProgress(dailyBrief.id, { step: 'preparing_brief_data', progress: 25 }, jobId);
 
 		const briefData = dataLoader.prepareBriefData(
@@ -702,7 +716,7 @@ export async function generateOntologyDailyBrief(
 			userTimezone
 		);
 
-		// Step 3: Generate project briefs
+		// Step 4: Generate project briefs
 		await updateProgress(
 			dailyBrief.id,
 			{ step: 'generating_project_briefs', progress: 40 },
@@ -775,7 +789,7 @@ export async function generateOntologyDailyBrief(
 			`[OntologyBrief] Generated ${projectBriefs.length}/${briefData.projects.length} project briefs`
 		);
 
-		// Step 4: Generate executive summary via LLM
+		// Step 5: Generate executive summary via LLM
 		// NOTE: Executive summary now generated AFTER project briefs so it has full formatted context
 		await updateProgress(
 			dailyBrief.id,
@@ -830,7 +844,7 @@ export async function generateOntologyDailyBrief(
 			}
 		}
 
-		// Step 5: Generate full LLM analysis
+		// Step 6: Generate full LLM analysis
 		await updateProgress(dailyBrief.id, { step: 'llm_analysis', progress: 75 }, jobId);
 
 		let llmAnalysis: string | null = null;
@@ -925,7 +939,7 @@ export async function generateOntologyDailyBrief(
 			}
 		}
 
-		// Step 6: Generate main brief markdown
+		// Step 7: Generate main brief markdown
 		await updateProgress(dailyBrief.id, { step: 'finalizing', progress: 90 }, jobId);
 
 		const mainBriefContent = generateMainBriefMarkdown(
@@ -937,7 +951,7 @@ export async function generateOntologyDailyBrief(
 
 		const priorityActions = extractPriorityActions(briefData);
 
-		// Step 7: Update the daily brief with final content
+		// Step 8: Update the daily brief with final content
 		const finalMetadata: OntologyBriefMetadata = {
 			...metadata,
 			isReengagement,
@@ -962,7 +976,7 @@ export async function generateOntologyDailyBrief(
 			throw new Error(`Failed to update ontology daily brief: ${updateError.message}`);
 		}
 
-		// Step 8: Record entity references for analytics
+		// Step 9: Record entity references for analytics
 		await recordBriefEntities(dailyBrief.id, briefData);
 
 		console.log(`[OntologyBrief] Successfully generated brief for user ${userId}`);

@@ -121,23 +121,23 @@
 				selector: 'node',
 				style: {
 					// Shape and size from data
-					shape: 'data(shape)',
-					width: 'data(width)',
-					height: 'data(height)',
+					shape: 'data(shape)' as any,
+					width: 'data(width)' as any,
+					height: 'data(height)' as any,
 					// Colors from data
-					'background-color': 'data(color)',
-					'border-color': 'data(borderColor)',
-					'border-width': 'data(borderWidth)',
+					'background-color': 'data(color)' as any,
+					'border-color': 'data(borderColor)' as any,
+					'border-width': 'data(borderWidth)' as any,
 					// Label styling
-					label: 'data(label)',
-					'font-size': 'data(fontSize)',
+					label: 'data(label)' as any,
+					'font-size': 'data(fontSize)' as any,
 					'font-family': 'Inter, system-ui, sans-serif',
-					'font-weight': 'data(fontWeight)',
-					'text-valign': 'data(labelValign)',
+					'font-weight': 'data(fontWeight)' as any,
+					'text-valign': 'data(labelValign)' as any,
 					'text-halign': 'center',
 					'text-wrap': 'wrap',
 					'text-max-width': '75px',
-					'text-margin-y': 'data(labelMarginY)',
+					'text-margin-y': 'data(labelMarginY)' as any,
 					color: labelColor
 				}
 			},
@@ -174,12 +174,12 @@
 			{
 				selector: 'edge',
 				style: {
-					width: 'data(width)',
-					'line-color': 'data(color)',
-					'target-arrow-color': 'data(color)',
-					'target-arrow-shape': 'data(arrowShape)',
+					width: 'data(width)' as any,
+					'line-color': 'data(color)' as any,
+					'target-arrow-color': 'data(color)' as any,
+					'target-arrow-shape': 'data(arrowShape)' as any,
 					'curve-style': 'bezier',
-					'line-style': 'data(lineStyle)',
+					'line-style': 'data(lineStyle)' as any,
 					// Edge labels (hidden by default for cleaner look)
 					label: '',
 					'font-size': '8px',
@@ -366,11 +366,11 @@
 				if (!cy) return;
 				cy.batch(() => {
 					// Dim all nodes and edges
-					cy.nodes().addClass('dimmed');
-					cy.edges().addClass('dimmed');
+					cy!.nodes().addClass('dimmed');
+					cy!.edges().addClass('dimmed');
 
 					// Show matching nodes
-					const matchingNodes = cy.nodes(`[type = "${type}"]`);
+					const matchingNodes = cy!.nodes(`[type = "${type}"]`);
 					matchingNodes.removeClass('dimmed');
 
 					// Show connected edges and fade connected nodes
@@ -384,8 +384,8 @@
 			resetFilters: () => {
 				if (!cy) return;
 				cy.batch(() => {
-					cy.nodes().removeClass('dimmed faded');
-					cy.edges().removeClass('dimmed');
+					cy!.nodes().removeClass('dimmed faded');
+					cy!.edges().removeClass('dimmed');
 				});
 			},
 			search: (query: string) => {
@@ -415,36 +415,38 @@
 		return api;
 	}
 
-	function getLayoutOptions(layoutName: string) {
-		const layouts: Record<string, Record<string, unknown>> = {
-			dagre: {
-				name: 'dagre',
-				rankDir: 'TB',
-				nodeSep: 60,
-				rankSep: 80,
-				animate: true,
-				animationDuration: 400
-			},
+	function getLayoutOptions(layoutName: string): cytoscape.LayoutOptions {
+		const defaultLayout: cytoscape.LayoutOptions = {
+			name: 'dagre',
+			rankDir: 'TB',
+			nodeSep: 60,
+			rankSep: 80,
+			animate: true,
+			animationDuration: 400
+		} as any;
+
+		const layouts: Record<string, cytoscape.LayoutOptions> = {
+			dagre: defaultLayout,
 			cola: {
 				name: 'cola',
 				animate: true,
 				nodeSpacing: 60,
 				flow: { axis: 'y' }
-			},
+			} as any,
 			'cose-bilkent': {
 				name: 'cose-bilkent',
 				animate: true,
 				idealEdgeLength: 120,
 				nodeOverlap: 25,
 				nodeRepulsion: 6000
-			},
+			} as any,
 			circle: {
 				name: 'circle',
 				animate: true
 			}
 		};
 
-		return layouts[layoutName] ?? layouts.dagre;
+		return layouts[layoutName] || defaultLayout;
 	}
 
 	// React to data/viewMode changes
@@ -453,11 +455,11 @@
 		const graphData = OntologyGraphService.buildGraphData(data, viewMode, isDark);
 
 		cy.batch(() => {
-			cy.elements().remove();
-			cy.add([...graphData.nodes, ...graphData.edges]);
+			cy!.elements().remove();
+			cy!.add([...graphData.nodes, ...graphData.edges]);
 		});
 
-		cy.layout(getLayoutOptions(currentLayout)).run();
+		cy!.layout(getLayoutOptions(currentLayout)).run();
 		graphInstance?.resetFilters();
 		selectedNode = null;
 	});

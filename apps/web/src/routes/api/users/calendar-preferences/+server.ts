@@ -39,18 +39,22 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			exclude_holidays: true,
 			holiday_country_code: 'US',
 			timezone: userData?.timezone || 'America/New_York',
-			prefer_morning_for_important_tasks: false
+			prefer_morning_for_important_tasks: false,
+			show_events: true,
+			show_task_scheduled: true,
+			show_task_start: true,
+			show_task_due: true
+		};
+
+		const timezone = userData?.timezone || 'America/New_York';
+		const mergedPreferences = {
+			...defaultPreferences,
+			...(preferences ?? {}),
+			timezone
 		};
 
 		// Return preferences with timezone from users table (centralized source of truth)
-		return ApiResponse.success(
-			preferences
-				? {
-						...preferences,
-						timezone: userData?.timezone || 'America/New_York'
-					}
-				: defaultPreferences
-		);
+		return ApiResponse.success(mergedPreferences);
 	} catch (error) {
 		console.error('Error in calendar preferences GET:', error);
 		return ApiResponse.internalError(
