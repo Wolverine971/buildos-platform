@@ -410,7 +410,7 @@ export async function loadUserProjectSummaries(
 		.from('onto_projects')
 		.select('*')
 		.eq('created_by', actorId)
-		.order('updated_at', { ascending: false });
+		.order('created_at', { ascending: false });
 
 	if (projectsError || !projects) {
 		console.error('[ProjectGraphLoader] Failed to load projects:', projectsError);

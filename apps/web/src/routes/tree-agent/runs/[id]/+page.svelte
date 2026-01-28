@@ -62,12 +62,19 @@
 
 		const normalized = (json.data.events ?? [])
 			.map((row: TreeAgentEventRow) => normalizeTreeAgentEvent(row))
-			.filter((e): e is NonNullable<typeof e> => Boolean(e))
-			.sort((a, b) => {
-				const aSeq = typeof a.seq === 'number' ? a.seq : 0;
-				const bSeq = typeof b.seq === 'number' ? b.seq : 0;
-				return aSeq - bSeq;
-			});
+			.filter((event): event is NonNullable<ReturnType<typeof normalizeTreeAgentEvent>> =>
+				Boolean(event)
+			)
+			.sort(
+				(
+					a: NonNullable<ReturnType<typeof normalizeTreeAgentEvent>>,
+					b: NonNullable<ReturnType<typeof normalizeTreeAgentEvent>>
+				) => {
+					const aSeq = typeof a.seq === 'number' ? a.seq : 0;
+					const bSeq = typeof b.seq === 'number' ? b.seq : 0;
+					return aSeq - bSeq;
+				}
+			);
 		if (normalized.length > 0) {
 			treeAgentGraphStore.applyEvents(normalized);
 		}
@@ -197,8 +204,8 @@
 
 	<!-- Context Selector Modal -->
 	<TreeAgentContextSelector
-		currentContextType
-		currentProjectId
+		{currentContextType}
+		{currentProjectId}
 		onContextChange={handleContextChange}
 		onClose={() => (contextSelectorOpen = false)}
 		isOpen={contextSelectorOpen}

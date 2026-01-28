@@ -8,7 +8,6 @@
 		Calendar,
 		RefreshCw
 	} from 'lucide-svelte';
-	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		formatTime,
@@ -18,34 +17,61 @@
 		parseLocalDate
 	} from '$lib/utils/schedulingUtils';
 
-	export let viewMode: 'day' | 'week' | 'month' = 'week';
-	export let currentDate = new Date();
-	export let events: any[] = [];
-	export let proposedSchedules: any[] = [];
-	export let workingHours = {
-		work_start_time: '09:00',
-		work_end_time: '17:00',
-		working_days: [1, 2, 3, 4, 5]
-	};
-	export let loading = false;
-	export let refreshing = false;
-	export let phaseStart: Date | string | null = null;
-	export let phaseEnd: Date | string | null = null;
-	export let highlightedTaskId: string | null = null;
-
-	const dispatch = createEventDispatcher();
-
-	// Internal date state
-	let internalDate = new Date(currentDate);
-
-	// Sync internal date when prop changes
-	$: if (currentDate && currentDate.getTime() !== internalDate.getTime()) {
-		internalDate = new Date(currentDate);
+	interface Props {
+		viewMode?: 'day' | 'week' | 'month';
+		currentDate?: Date;
+		events?: any[];
+		proposedSchedules?: any[];
+		workingHours?: {
+			work_start_time: string;
+			work_end_time: string;
+			working_days?: number[];
+		};
+		loading?: boolean;
+		refreshing?: boolean;
+		phaseStart?: Date | string | null;
+		phaseEnd?: Date | string | null;
+		highlightedTaskId?: string | null;
+		ondateChange?: (date: Date) => void;
+		onviewModeChange?: (mode: 'day' | 'week' | 'month') => void;
+		onrefresh?: () => void;
+		oneventClick?: (event: any) => void;
 	}
 
+	let {
+		viewMode = 'week',
+		currentDate = new Date(),
+		events = [],
+		proposedSchedules = [],
+		workingHours = {
+			work_start_time: '09:00',
+			work_end_time: '17:00',
+			working_days: [1, 2, 3, 4, 5]
+		},
+		loading = false,
+		refreshing = false,
+		phaseStart = null,
+		phaseEnd = null,
+		highlightedTaskId = null,
+		ondateChange,
+		onviewModeChange,
+		onrefresh,
+		oneventClick
+	}: Props = $props();
+
+	// Internal date state
+	let internalDate = $state(new Date(currentDate));
+
 	// Calculate effective date boundaries
-	$: effectivePhaseStart = phaseStart ? parseLocalDate(phaseStart) : null;
-	$: effectivePhaseEnd = phaseEnd ? parseLocalDate(phaseEnd) : null;
+	let effectivePhaseStart = $derived(phaseStart ? parseLocalDate(phaseStart) : null);
+	let effectivePhaseEnd = $derived(phaseEnd ? parseLocalDate(phaseEnd) : null);
+
+	// Sync internal date when prop changes
+	$effect(() => {
+		if (currentDate && currentDate.getTime() !== internalDate.getTime()) {
+			internalDate = new Date(currentDate);
+		}
+	});
 
 	function navigatePeriod(direction: 1 | -1) {
 		const newDate = new Date(internalDate);
@@ -71,7 +97,7 @@
 			internalDate = newDate;
 		}
 
-		dispatch('dateChange', { date: internalDate });
+		ondateChange?.(internalDate);
 	}
 
 	function goToToday() {
@@ -86,20 +112,27 @@
 			internalDate = now;
 		}
 
-		dispatch('dateChange', { date: internalDate });
+		ondateChange?.(internalDate);
 	}
 
 	function handleRefresh() {
-		dispatch('refresh');
+		onrefresh?.();
 	}
 
 	function changeViewMode(mode: 'day' | 'week' | 'month') {
 		viewMode = mode;
-		dispatch('viewModeChange', { mode });
+		onviewModeChange?.(mode);
 	}
 
 	function handleEventClick(event: any) {
-		dispatch('eventClick', { event });
+		console.log('[CalendarView] Event clicked:', {
+			event,
+			hasCalendarItem: !!event?.calendarItem,
+			hasOriginalEvent: !!event?.originalEvent,
+			calendarItemTaskId: event?.calendarItem?.task_id,
+			calendarItemProjectId: event?.calendarItem?.project_id
+		});
+		oneventClick?.(event);
 	}
 
 	function getEventsForDay(date: Date): any[] {
@@ -126,7 +159,8 @@
 					end: new Date(event.end?.dateTime || event.end?.date),
 					color: colorClass,
 					htmlLink,
-					originalEvent: event
+					originalEvent: event,
+					calendarItem: event.calendarItem
 				});
 			}
 		}
@@ -158,6 +192,38 @@
 		// Sort by start time
 		dayEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
 		return dayEvents;
+	}
+
+	function calculateEventColumns(dayEvents: any[]): Map<number, any[]> {
+		const columns: Map<number, any[]> = new Map();
+
+		for (const event of dayEvents) {
+			let columnIndex = 0;
+
+			// Find the first available column where this event doesn't overlap
+			while (columns.has(columnIndex)) {
+				const eventsInColumn = columns.get(columnIndex) || [];
+				let hasOverlap = false;
+
+				for (const existingEvent of eventsInColumn) {
+					// Check if events overlap
+					if (!(event.end <= existingEvent.start || event.start >= existingEvent.end)) {
+						hasOverlap = true;
+						break;
+					}
+				}
+
+				if (!hasOverlap) break;
+				columnIndex++;
+			}
+
+			if (!columns.has(columnIndex)) {
+				columns.set(columnIndex, []);
+			}
+			columns.get(columnIndex)!.push(event);
+		}
+
+		return columns;
 	}
 
 	function getTimePosition(date: Date): number {
@@ -194,8 +260,8 @@
 	}
 
 	// Check if navigation buttons should be disabled
-	$: canNavigateBack = !effectivePhaseStart || internalDate > effectivePhaseStart;
-	$: canNavigateForward = !effectivePhaseEnd || internalDate < effectivePhaseEnd;
+	let canNavigateBack = $derived(!effectivePhaseStart || internalDate > effectivePhaseStart);
+	let canNavigateForward = $derived(!effectivePhaseEnd || internalDate < effectivePhaseEnd);
 
 	const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 </script>
@@ -349,6 +415,8 @@
 				<!-- Day columns -->
 				{#each getWeekDates(internalDate) as date, i}
 					{@const dayEvents = getEventsForDay(date)}
+					{@const eventColumns = calculateEventColumns(dayEvents)}
+					{@const columnCount = eventColumns.size || 1}
 					<div class="bg-card">
 						<div class="h-12 p-2 border-b border-border text-center">
 							<div class="text-xs text-muted-foreground">
@@ -369,20 +437,28 @@
 								parseInt(workingHours.work_start_time.split(':')[0])) *
 								80}px"
 						>
-							{#each dayEvents as event}
-								<button
-									onclick={() => handleEventClick(event)}
-									class="absolute left-1 right-1 p-1 rounded text-xs overflow-hidden transition-opacity hover:opacity-90 {event.color}"
-									style="top: {getTimePosition(event.start)}%; height: {Math.max(
-										5,
-										getTimePosition(event.end) - getTimePosition(event.start)
-									)}%"
-								>
-									<div class="font-medium truncate">{event.title}</div>
-									<div class="text-xs opacity-75">
-										{formatTime(event.start)}
-									</div>
-								</button>
+							{#each Array.from(eventColumns.entries()) as [columnIndex, eventsInColumn]}
+								{#each eventsInColumn as event}
+									{@const left = (columnIndex / columnCount) * 100}
+									{@const width = 100 / columnCount - 4}
+									<button
+										onclick={() => handleEventClick(event)}
+										class="absolute p-1 rounded text-xs overflow-hidden transition-opacity hover:opacity-90 {event.color}"
+										style="left: {left + 2}%; right: {100 -
+											(left + width + 2)}%; top: {getTimePosition(
+											event.start
+										)}%; height: {Math.max(
+											5,
+											getTimePosition(event.end) -
+												getTimePosition(event.start)
+										)}%"
+									>
+										<div class="font-medium truncate">{event.title}</div>
+										<div class="text-xs opacity-75">
+											{formatTime(event.start)}
+										</div>
+									</button>
+								{/each}
 							{/each}
 						</div>
 					</div>

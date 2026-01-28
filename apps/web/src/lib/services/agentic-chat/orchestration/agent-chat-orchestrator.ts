@@ -120,6 +120,7 @@ export class AgentChatOrchestrator {
 	private projectCreationAnalyzer: ProjectCreationAnalyzer;
 	private strategyAnalyzer: StrategyAnalyzer;
 	private toolSelectionService: ToolSelectionService;
+	private streamCallback?: StreamCallback;
 
 	constructor(private deps: AgentChatOrchestratorDependencies) {
 		// Create enhanced wrapper for intelligent model selection
@@ -144,6 +145,8 @@ export class AgentChatOrchestrator {
 		let plannerAgentId: string | undefined;
 		let doneEmitted = false;
 
+		this.streamCallback = callback;
+
 		if (request.contextType === 'project_create') {
 			const ackEvent: StreamEvent = {
 				type: 'text',
@@ -152,7 +155,6 @@ export class AgentChatOrchestrator {
 			yield ackEvent;
 			await callback(ackEvent);
 		}
-
 		try {
 			plannerContext = await contextService.buildPlannerContext({
 				sessionId: request.sessionId,
@@ -375,6 +377,7 @@ export class AgentChatOrchestrator {
 				yield doneEvent;
 				await callback(doneEvent);
 			}
+			this.streamCallback = undefined;
 		}
 	}
 
@@ -941,7 +944,7 @@ export class AgentChatOrchestrator {
 				serviceContext
 			);
 
-			streamEvents.push({ type: 'plan_created', plan });
+			await this.emitStreamEvent({ type: 'plan_created', plan }, streamEvents);
 
 			switch (executionMode) {
 				case 'draft_only':
@@ -993,12 +996,13 @@ export class AgentChatOrchestrator {
 					priorityEntities: intent.priorityEntities
 				}
 			});
-			streamEvents.push(
+			await this.emitStreamEvent(
 				this.buildAgentStateEvent(
 					'waiting_on_user',
 					serviceContext.contextType,
 					'Plan creation failed. Try rephrasing your request.'
-				)
+				),
+				streamEvents
 			);
 
 			return {
@@ -1019,23 +1023,27 @@ export class AgentChatOrchestrator {
 	}): Promise<ToolExecutionResult> {
 		const { plan, streamEvents, plannerContext, serviceContext } = params;
 
-		streamEvents.push(
+		await this.emitStreamEvent(
 			this.buildAgentStateEvent(
 				'executing_plan',
 				serviceContext.contextType,
 				'Executing plan...'
-			)
+			),
+			streamEvents
 		);
 
 		const execution = await this.executePlan(plan, plannerContext, serviceContext);
-		streamEvents.push(...execution.events);
+		if (!this.streamCallback) {
+			streamEvents.push(...execution.events);
+		}
 		if (execution.error) {
-			streamEvents.push(
+			await this.emitStreamEvent(
 				this.buildAgentStateEvent(
 					'waiting_on_user',
 					serviceContext.contextType,
 					'Plan failed. Review the error details and try again.'
-				)
+				),
+				streamEvents
 			);
 			return {
 				success: false,
@@ -1050,12 +1058,13 @@ export class AgentChatOrchestrator {
 				toolCallId: `virtual-${uuidv4()}`
 			};
 		}
-		streamEvents.push(
+		await this.emitStreamEvent(
 			this.buildAgentStateEvent(
 				'waiting_on_user',
 				serviceContext.contextType,
 				'Plan complete. Ready for the next instruction.'
-			)
+			),
+			streamEvents
 		);
 
 		return {
@@ -1080,17 +1089,21 @@ export class AgentChatOrchestrator {
 		const summary = this.summarizePlan(plan);
 
 		await this.deps.planOrchestrator.persistDraft(plan);
-		streamEvents.push({
-			type: 'plan_ready_for_review',
-			plan,
-			summary
-		});
-		streamEvents.push(
+		await this.emitStreamEvent(
+			{
+				type: 'plan_ready_for_review',
+				plan,
+				summary
+			},
+			streamEvents
+		);
+		await this.emitStreamEvent(
 			this.buildAgentStateEvent(
 				'waiting_on_user',
 				serviceContext.contextType,
 				'Plan drafted. Share feedback or say “run it” to execute.'
-			)
+			),
+			streamEvents
 		);
 
 		return {
@@ -1116,31 +1129,38 @@ export class AgentChatOrchestrator {
 		const { plan, intent, streamEvents, plannerContext, serviceContext } = params;
 
 		const review = await this.deps.planOrchestrator.reviewPlan(plan, intent, serviceContext);
-		streamEvents.push({
-			type: 'plan_review',
-			plan,
-			verdict: review.verdict,
-			notes: review.notes,
-			reviewer: review.reviewer
-		});
+		await this.emitStreamEvent(
+			{
+				type: 'plan_review',
+				plan,
+				verdict: review.verdict,
+				notes: review.notes,
+				reviewer: review.reviewer
+			},
+			streamEvents
+		);
 
 		if (review.verdict === 'approved') {
-			streamEvents.push(
+			await this.emitStreamEvent(
 				this.buildAgentStateEvent(
 					'executing_plan',
 					serviceContext.contextType,
 					'Reviewer approved the plan. Executing now...'
-				)
+				),
+				streamEvents
 			);
 			const execution = await this.executePlan(plan, plannerContext, serviceContext);
-			streamEvents.push(...execution.events);
+			if (!this.streamCallback) {
+				streamEvents.push(...execution.events);
+			}
 			if (execution.error) {
-				streamEvents.push(
+				await this.emitStreamEvent(
 					this.buildAgentStateEvent(
 						'waiting_on_user',
 						serviceContext.contextType,
 						'Plan failed after review. Review the errors and try again.'
-					)
+					),
+					streamEvents
 				);
 				return {
 					success: false,
@@ -1156,12 +1176,13 @@ export class AgentChatOrchestrator {
 					toolCallId: `virtual-${uuidv4()}`
 				};
 			}
-			streamEvents.push(
+			await this.emitStreamEvent(
 				this.buildAgentStateEvent(
 					'waiting_on_user',
 					serviceContext.contextType,
 					'Plan complete. Ready for the next instruction.'
-				)
+				),
+				streamEvents
 			);
 
 			return {
@@ -1180,18 +1201,22 @@ export class AgentChatOrchestrator {
 
 		await this.deps.planOrchestrator.persistDraft(plan);
 		const summary = this.summarizePlan(plan);
-		streamEvents.push({
-			type: 'plan_ready_for_review',
-			plan,
-			summary,
-			recommendations: intent.requestedOutputs
-		});
-		streamEvents.push(
+		await this.emitStreamEvent(
+			{
+				type: 'plan_ready_for_review',
+				plan,
+				summary,
+				recommendations: intent.requestedOutputs
+			},
+			streamEvents
+		);
+		await this.emitStreamEvent(
 			this.buildAgentStateEvent(
 				'waiting_on_user',
 				serviceContext.contextType,
 				'Reviewer requested changes. Adjust the plan and try again.'
-			)
+			),
+			streamEvents
 		);
 
 		return {
@@ -1223,12 +1248,14 @@ export class AgentChatOrchestrator {
 		const collectedToolResults: ToolExecutionResult[] = [];
 		let planUsage: { total_tokens: number } | undefined;
 
+		const streamCallback = this.streamCallback ?? (async () => {});
+
 		try {
 			for await (const event of this.deps.planOrchestrator.executePlan(
 				plan,
 				plannerContext,
 				serviceContext,
-				async () => {}
+				streamCallback
 			)) {
 				if (event.type === 'done') {
 					if (event.usage) {
@@ -1543,6 +1570,14 @@ export class AgentChatOrchestrator {
 
 		// Second round - acknowledge their input
 		return `Thanks for the additional details! Just one more thing to make sure I get this right:\n\n`;
+	}
+
+	private async emitStreamEvent(event: StreamEvent, streamEvents: StreamEvent[]): Promise<void> {
+		if (this.streamCallback) {
+			await this.streamCallback(event);
+			return;
+		}
+		streamEvents.push(event);
 	}
 
 	private buildAgentStateEvent(

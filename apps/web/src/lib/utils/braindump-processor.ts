@@ -30,7 +30,6 @@ import type {
 import type { ProjectWithRelations, Task } from '$lib/types/project';
 
 import { formatDateTimeForDisplay } from './date-utils';
-import { selectModelsForPromptComplexity } from './llm-utils';
 import { savePromptForAudit, determineScenarioType } from './prompt-audit';
 import { validateSynthesisResult } from '$lib/services/prompts/core/validations';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
@@ -1184,14 +1183,6 @@ ${brainDump}`;
 				timestamp: new Date().toISOString()
 			}
 		});
-
-		// Use dynamic model selection based on prompt complexity
-		const totalPromptLength = systemPrompt.length + userPrompt.length;
-		const preferredModels = selectModelsForPromptComplexity(
-			totalPromptLength,
-			isNewProject,
-			true // isDualProcessing
-		);
 
 		const response = await this.llmService.getJSONResponse({
 			systemPrompt,

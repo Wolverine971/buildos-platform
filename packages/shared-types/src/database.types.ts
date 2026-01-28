@@ -10302,6 +10302,10 @@ export type Database = {
           status: string
         }[]
       }
+      load_project_graph_context: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
       log_notification_event: {
         Args: {
           p_context?: Json

@@ -253,8 +253,10 @@ export class ProjectBriefGenerator {
 			finalPrompt += `\n\nUse this template:\n${template.template_content}`;
 		}
 
+		const systemPrompt = `You are a helpful assistant creating a brief summary of a project for a daily briefing. Highlight key tasks, progress, and upcoming deadlines. Keep the response focused and actionable.`;
 		// Generate content with LLM
 		const content = await this.smartLLM.generateText({
+			systemPrompt,
 			prompt: finalPrompt,
 			userId,
 			profile: 'balanced',
@@ -400,8 +402,10 @@ Focus the condensed summary on:
 
 Keep it under ${this.sizeConfig.condensedMaxChars} characters.`;
 
+		const systemPrompt = `You are a helpful assistant creating a condensed brief of a project. Provide only the most essential information: 1-2 key tasks, critical deadlines, and main blocker. Be very concise.`;
 		try {
 			const condensed = await this.smartLLM.generateText({
+				systemPrompt,
 				prompt: condensedPrompt,
 				userId,
 				profile: 'speed',

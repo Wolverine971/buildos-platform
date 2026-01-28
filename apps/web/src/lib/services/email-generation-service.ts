@@ -112,7 +112,8 @@ export interface EmailTemplate {
 
 const EMAIL_CONFIG = {
 	llm: {
-		model: 'gpt-5-nano', // Using the cheapest GPT-5 model
+		// Note: Model selection is now handled by SmartLLMService profiles
+		// The service uses generateText() with profile='balanced' for optimal cost/quality
 		maxTokens: 500,
 		temperature: 0.7
 	},

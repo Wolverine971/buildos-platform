@@ -63,11 +63,10 @@ export class MainBriefGenerator {
 				}
 			);
 
-			// Select appropriate model based on context size
-			const preferredModels = this.selectModelsForContextSize(prompt);
-
 			// Generate content
+			const systemPrompt = `You are a helpful assistant creating a comprehensive daily brief for a user. Your task is to synthesize multiple project briefs into a cohesive summary that highlights key priorities, progress, and action items. Format the response in a clear, scannable way using markdown.`;
 			const content = await this.smartLLM.generateText({
+				systemPrompt,
 				prompt,
 				userId,
 				profile:
@@ -341,21 +340,6 @@ Include these links naturally within the brief sections where each project is di
 		});
 
 		return filtered;
-	}
-
-	private selectModelsForContextSize(prompt: string): string[] {
-		const estimatedTokens = Math.ceil(prompt.length / 4);
-
-		if (estimatedTokens < 4000) {
-			// Can use Mistral
-			return ['gpt-5-nano'];
-		} else if (estimatedTokens < 25000) {
-			// Skip Mistral, use Qwen or GPT
-			return ['gpt-5-nano'];
-		} else {
-			// Only GPT can handle
-			return ['gpt-5-nano', 'gpt-5-mini'];
-		}
 	}
 
 	private extractKeyMetrics(projectBriefs: ProjectBriefResult[]): {

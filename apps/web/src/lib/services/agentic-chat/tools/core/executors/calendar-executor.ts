@@ -80,6 +80,29 @@ export class CalendarExecutor extends BaseExecutor {
 		this.googleOAuthService = new GoogleOAuthService(this.supabase as any);
 	}
 
+	private normalizeCalendarId(value?: string | null): string | null {
+		if (typeof value !== 'string') {
+			return null;
+		}
+		const trimmed = value.trim();
+		if (!trimmed) {
+			return null;
+		}
+		if (trimmed.length > 200) {
+			return null;
+		}
+		if (/\s/.test(trimmed)) {
+			return null;
+		}
+		if (trimmed === 'primary') {
+			return trimmed;
+		}
+		if (trimmed.includes('@')) {
+			return trimmed;
+		}
+		return null;
+	}
+
 	private async resolveTaskMetadata(
 		taskId: string,
 		expectedProjectId?: string
@@ -146,6 +169,7 @@ export class CalendarExecutor extends BaseExecutor {
 		let googleEvents: CalendarEvent[] = [];
 		let googleError: string | null = null;
 		let googleCalendarId: string | null = null;
+		const requestedCalendarId = this.normalizeCalendarId(args.calendar_id);
 
 		if (scope === 'project') {
 			if (!args.project_id) {
@@ -163,8 +187,13 @@ export class CalendarExecutor extends BaseExecutor {
 			if (projectCalendar?.calendar_id && projectCalendar.sync_enabled !== false) {
 				googleCalendarId = projectCalendar.calendar_id;
 			}
+		} else if (scope === 'calendar_id') {
+			if (!requestedCalendarId) {
+				throw new Error('calendar_id must be a valid Google Calendar ID');
+			}
+			googleCalendarId = requestedCalendarId;
 		} else {
-			googleCalendarId = args.calendar_id ?? 'primary';
+			googleCalendarId = requestedCalendarId ?? 'primary';
 		}
 
 		if (googleCalendarId) {
@@ -370,7 +399,7 @@ export class CalendarExecutor extends BaseExecutor {
 			throw new Error('event_id is required for Google event lookup');
 		}
 
-		let calendarId = args.calendar_id ?? 'primary';
+		let calendarId = this.normalizeCalendarId(args.calendar_id) ?? 'primary';
 		if (args.calendar_scope === 'project') {
 			if (!args.project_id) {
 				throw new Error('project_id is required for project calendar lookup');
@@ -385,6 +414,12 @@ export class CalendarExecutor extends BaseExecutor {
 			if (projectCalendar?.calendar_id) {
 				calendarId = projectCalendar.calendar_id;
 			}
+		} else if (args.calendar_scope === 'calendar_id') {
+			const requestedCalendarId = this.normalizeCalendarId(args.calendar_id);
+			if (!requestedCalendarId) {
+				throw new Error('calendar_id must be a valid Google Calendar ID');
+			}
+			calendarId = requestedCalendarId;
 		}
 
 		const event = await this.calendarService.getCalendarEvent(this.userId, {
@@ -417,6 +452,10 @@ export class CalendarExecutor extends BaseExecutor {
 		const scope = args.calendar_scope ?? (projectId ? 'project' : 'user');
 		if (scope === 'project' && !projectId) {
 			throw new Error('project_id is required when calendar_scope is project');
+		}
+		const requestedCalendarId = this.normalizeCalendarId(args.calendar_id);
+		if (scope === 'calendar_id' && !requestedCalendarId) {
+			throw new Error('calendar_id must be a valid Google Calendar ID');
 		}
 
 		let ownerType: 'task' | 'project' | 'actor' | 'standalone' = 'actor';
@@ -454,7 +493,7 @@ export class CalendarExecutor extends BaseExecutor {
 			createdBy: actorId,
 			props,
 			calendarScope: scope,
-			calendarId: args.calendar_id ?? null,
+			calendarId: requestedCalendarId,
 			syncToCalendar: args.sync_to_calendar
 		});
 
@@ -548,7 +587,7 @@ export class CalendarExecutor extends BaseExecutor {
 			throw new Error('event_id is required for Google event update');
 		}
 
-		const calendarId = args.calendar_id ?? 'primary';
+		const calendarId = this.normalizeCalendarId(args.calendar_id) ?? 'primary';
 		const updated = await this.calendarService.updateCalendarEvent(this.userId, {
 			event_id: args.event_id,
 			calendar_id: calendarId,
@@ -575,7 +614,7 @@ export class CalendarExecutor extends BaseExecutor {
 			throw new Error('event_id is required for Google event delete');
 		}
 
-		const calendarId = args.calendar_id ?? 'primary';
+		const calendarId = this.normalizeCalendarId(args.calendar_id) ?? 'primary';
 		const result = await this.calendarService.deleteCalendarEvent(this.userId, {
 			event_id: args.event_id,
 			calendar_id: calendarId,

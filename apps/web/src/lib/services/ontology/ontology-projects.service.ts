@@ -124,7 +124,7 @@ export async function fetchProjectSummaries(
 			.is('onto_goals.deleted_at', null)
 			.is('onto_plans.deleted_at', null)
 			.is('onto_documents.deleted_at', null)
-			.order('updated_at', { ascending: false })
+			.order('created_at', { ascending: false })
 	);
 
 	if (error) {

@@ -37,6 +37,11 @@
 			"components": ["AgentChatModal", "DailyBriefModal"]
 		},
 		{
+			"file": "src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
+			"type": "component",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
@@ -953,6 +958,10 @@
 		}
 	],
 	"dependencies": {
+		"src/lib/components/dashboard/WeeklyTaskCalendar.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
+		],
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
@@ -993,6 +1002,7 @@
 	"unusedComponents": [
 		"src/lib/components/brain-dump/BrainDumpModal.svelte",
 		"src/lib/components/dashboard/Dashboard.svelte",
+		"src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",

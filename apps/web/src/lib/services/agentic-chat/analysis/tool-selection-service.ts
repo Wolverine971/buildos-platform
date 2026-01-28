@@ -131,6 +131,12 @@ export class ToolSelectionService {
 			toolCatalog = ALL_TOOLS
 		} = params;
 
+		const llmSelectionDisabled =
+			typeof process !== 'undefined' &&
+			['true', '1', 'yes'].includes(
+				String(process.env.AGENTIC_CHAT_DISABLE_TOOL_SELECTION_LLM ?? '').toLowerCase()
+			);
+
 		const normalizedContextType = normalizeContextType(serviceContext.contextType);
 		const analysisContext =
 			serviceContext.contextType === normalizedContextType
@@ -151,6 +157,33 @@ export class ToolSelectionService {
 		const readOnlyCatalog = this.applyReadOnlyContextFilter(toolCatalog, normalizedContextType);
 		const toolCatalogNames = new Set(extractToolNamesFromDefinitions(readOnlyCatalog));
 		const defaultSet = new Set(defaultToolNames);
+
+		if (llmSelectionDisabled) {
+			let selectedToolNames = defaultToolNames.filter((name) => toolCatalogNames.has(name));
+			selectedToolNames = this.ensureProjectCreationTool(
+				selectedToolNames,
+				normalizedContextType
+			);
+			const tools = extractTools(selectedToolNames);
+			const analysis = this.buildDefaultAnalysis(
+				ChatStrategy.PLANNER_STREAM,
+				'Tool selection LLM disabled via AGENTIC_CHAT_DISABLE_TOOL_SELECTION_LLM.'
+			);
+
+			return {
+				tools,
+				analysis,
+				metadata: {
+					mode: 'default',
+					defaultToolNames,
+					selectedToolNames,
+					addedTools: [],
+					removedTools: defaultToolNames.filter((name) => !toolCatalogNames.has(name)),
+					strategy: analysis.primary_strategy,
+					confidence: analysis.confidence
+				}
+			};
+		}
 
 		let analysis: StrategyAnalysis;
 		let selectedToolNames: string[] = [];

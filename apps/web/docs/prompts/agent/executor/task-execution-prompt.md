@@ -2,18 +2,18 @@
 
 # Prompt Audit: agent-executor-task-execution
 
-**Generated at:** 2026-01-05T06:09:45.282Z
+**Generated at:** 2026-01-28T05:32:10.052Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"executorId": "20b4844d-5c50-4d66-8468-2d9a2bb58313",
-	"sessionId": "be205311-161b-482e-9aee-b3e39d372c2e",
-	"taskDescription": "If project calendar exists, create linked calendar events for updated tasks using task names/titles and start_at.",
-	"taskGoal": "Complete plan step 4 for strategy planner_stream",
-	"availableTools": ["create_calendar_event"],
+	"executorId": "2bdcaf5a-7483-470a-960d-d2dbf2e1e063",
+	"sessionId": "600857a2-9fe1-45ae-ace1-3d8cd471e1bd",
+	"taskDescription": "Fetch todo and in_progress tasks for retrieved projects to identify top priority items",
+	"taskGoal": "Complete plan step 2 for strategy planner_stream",
+	"availableTools": ["list_onto_tasks"],
 	"hasRelevantData": true,
 	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435"
 }
@@ -30,13 +30,13 @@ Execute ONE task with the provided tools. No conversation, no questions.
 
 ## Your Task
 
-If project calendar exists, create linked calendar events for updated tasks using task names/titles and start_at.
+Fetch todo and in_progress tasks for retrieved projects to identify top priority items
 
-**Goal:** Complete plan step 4 for strategy planner_stream
+**Goal:** Complete plan step 2 for strategy planner_stream
 
 **Constraints:**
-- Incorporate outputs from plan steps 1, 3
-- Use only the assigned tools: `create_calendar_event`
+- Incorporate outputs from plan steps 1
+- Use only the assigned tools: `list_onto_tasks`
 - Return structured JSON data that can be used by subsequent plan steps
 
 ## Operating Rules
@@ -65,12 +65,12 @@ If blocked, set success=false and fill error and next_step. Return JSON only (no
 ```
 Execute this task:
 
-**Description:** If project calendar exists, create linked calendar events for updated tasks using task names/titles and start_at.
-**Goal:** Complete plan step 4 for strategy planner_stream
+**Description:** Fetch todo and in_progress tasks for retrieved projects to identify top priority items
+**Goal:** Complete plan step 2 for strategy planner_stream
 
 **Constraints:**
-- Incorporate outputs from plan steps 1, 3
-- Use only the assigned tools: `create_calendar_event`
+- Incorporate outputs from plan steps 1
+- Use only the assigned tools: `list_onto_tasks`
 - Return structured JSON data that can be used by subsequent plan steps
 
 Use the available tools to complete this task. Return JSON only, following the system prompt schema.
@@ -78,9 +78,9 @@ Use the available tools to complete this task. Return JSON only, following the s
 
 ## Token Estimates
 
-- **System Prompt:** ~285 tokens
-- **User Prompt:** ~125 tokens
-- **Total Estimate:** ~410 tokens
+- **System Prompt:** ~276 tokens
+- **User Prompt:** ~116 tokens
+- **Total Estimate:** ~392 tokens
 
 ---
 

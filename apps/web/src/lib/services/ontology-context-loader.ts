@@ -79,6 +79,20 @@ type ProjectGraphDataLight = {
 	edges: Database['public']['Tables']['onto_edges']['Row'][];
 };
 
+type ProjectGraphContextRpcPayload = {
+	project: ProjectGraphDataLight['project'] | null;
+	tasks?: ProjectGraphDataLight['tasks'] | null;
+	goals?: ProjectGraphDataLight['goals'] | null;
+	plans?: ProjectGraphDataLight['plans'] | null;
+	documents?: ProjectGraphDataLight['documents'] | null;
+	milestones?: ProjectGraphDataLight['milestones'] | null;
+	risks?: ProjectGraphDataLight['risks'] | null;
+	requirements?: ProjectGraphDataLight['requirements'] | null;
+	signals?: ProjectGraphDataLight['signals'] | null;
+	insights?: ProjectGraphDataLight['insights'] | null;
+	edges?: ProjectGraphDataLight['edges'] | null;
+};
+
 const PROJECT_HIGHLIGHT_LIMITS = {
 	goals: 10,
 	risks: 6,
@@ -223,99 +237,33 @@ export class OntologyContextLoader {
 	private async loadProjectGraphDataForContext(
 		projectId: string
 	): Promise<ProjectGraphDataLight> {
-		const [
-			projectResult,
-			tasksResult,
-			goalsResult,
-			plansResult,
-			milestonesResult,
-			risksResult,
-			documentsResult,
-			requirementsResult,
-			signalsResult,
-			insightsResult,
-			edgesResult
-		] = await Promise.all([
-			this.supabase
-				.from('onto_projects')
-				.select(
-					'id, name, description, type_key, state_key, facet_context, facet_scale, facet_stage, start_at, end_at, next_step_short, next_step_long, created_at, updated_at'
-				)
-				.eq('id', projectId)
-				.single(),
-			this.supabase
-				.from('onto_tasks')
-				.select(
-					'id, title, description, state_key, type_key, priority, start_at, due_at, completed_at, created_at, updated_at'
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_goals')
-				.select(
-					'id, name, goal, description, state_key, type_key, target_date, completed_at, created_at, updated_at'
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_plans')
-				.select('id, name, description, state_key, type_key, created_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_milestones')
-				.select(
-					'id, title, description, state_key, type_key, due_at, completed_at, created_at, updated_at'
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_risks')
-				.select(
-					'id, title, content, state_key, type_key, impact, probability, mitigated_at, created_at, updated_at'
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_documents')
-				.select('id, title, description, state_key, type_key, created_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_requirements')
-				.select('id, text, priority, type_key, created_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			this.supabase
-				.from('onto_signals')
-				.select('id, channel, ts, payload, created_at')
-				.eq('project_id', projectId),
-			this.supabase
-				.from('onto_insights')
-				.select('id, title, derived_from_signal_id, props, created_at')
-				.eq('project_id', projectId),
-			this.supabase
-				.from('onto_edges')
-				.select('id, src_kind, src_id, rel, dst_kind, dst_id, project_id')
-				.eq('project_id', projectId)
-		]);
+		const { data, error } = await this.supabase.rpc('load_project_graph_context', {
+			p_project_id: projectId
+		});
 
-		if (projectResult.error || !projectResult.data) {
+		if (error) {
+			throw new Error(
+				`Failed to load project graph context for ${projectId}: ${error.message}`
+			);
+		}
+
+		const payload = data as ProjectGraphContextRpcPayload | null;
+		if (!payload?.project) {
 			throw new Error(`Project ${projectId} not found or access denied`);
 		}
 
 		return {
-			project: projectResult.data,
-			tasks: (tasksResult.data ?? []) as ProjectGraphDataLight['tasks'],
-			goals: (goalsResult.data ?? []) as ProjectGraphDataLight['goals'],
-			plans: (plansResult.data ?? []) as ProjectGraphDataLight['plans'],
-			documents: (documentsResult.data ?? []) as ProjectGraphDataLight['documents'],
-			milestones: (milestonesResult.data ?? []) as ProjectGraphDataLight['milestones'],
-			risks: (risksResult.data ?? []) as ProjectGraphDataLight['risks'],
-			requirements: (requirementsResult.data ?? []) as ProjectGraphDataLight['requirements'],
-			signals: (signalsResult.data ?? []) as ProjectGraphDataLight['signals'],
-			insights: (insightsResult.data ?? []) as ProjectGraphDataLight['insights'],
-			edges: (edgesResult.data ?? []) as ProjectGraphDataLight['edges']
+			project: payload.project,
+			tasks: Array.isArray(payload.tasks) ? payload.tasks : [],
+			goals: Array.isArray(payload.goals) ? payload.goals : [],
+			plans: Array.isArray(payload.plans) ? payload.plans : [],
+			documents: Array.isArray(payload.documents) ? payload.documents : [],
+			milestones: Array.isArray(payload.milestones) ? payload.milestones : [],
+			risks: Array.isArray(payload.risks) ? payload.risks : [],
+			requirements: Array.isArray(payload.requirements) ? payload.requirements : [],
+			signals: Array.isArray(payload.signals) ? payload.signals : [],
+			insights: Array.isArray(payload.insights) ? payload.insights : [],
+			edges: Array.isArray(payload.edges) ? payload.edges : []
 		};
 	}
 

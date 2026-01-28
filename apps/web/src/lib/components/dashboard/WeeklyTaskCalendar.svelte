@@ -13,6 +13,7 @@
 	import { getProjectColor } from '$lib/utils/project-colors';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { TimeBlockWithProject } from '@buildos/shared-types';
+	import type { Component } from 'svelte';
 
 	type Props = {
 		tasksByDate?: Record<string, any[]>;
@@ -20,6 +21,7 @@
 		calendarStatus?: any;
 		onTaskClick?: (task: any) => void;
 		onTimeBlockClick?: (block: TimeBlockWithProject) => void;
+		projectId?: string;
 	};
 
 	let {
@@ -27,8 +29,124 @@
 		timeBlocks = [],
 		calendarStatus = { isConnected: false },
 		onTaskClick = () => {},
-		onTimeBlockClick = undefined
+		onTimeBlockClick = undefined,
+		projectId = ''
 	}: Props = $props();
+
+	// Modal state
+	type LazyComponent = Component<any, any, any> | null;
+	let TaskEditModalComponent = $state<LazyComponent>(null);
+	let EventEditModalComponent = $state<LazyComponent>(null);
+	let showTaskModal = $state(false);
+	let showEventModal = $state(false);
+	let editTaskId = $state<string | null>(null);
+	let editEventId = $state<string | null>(null);
+	let editProjectId = $state<string | null>(null);
+
+	async function loadTaskEditModal() {
+		if (!TaskEditModalComponent) {
+			const mod = await import('$lib/components/ontology/TaskEditModal.svelte');
+			TaskEditModalComponent = mod.default;
+		}
+		return TaskEditModalComponent;
+	}
+
+	async function loadEventEditModal() {
+		if (!EventEditModalComponent) {
+			const mod = await import('$lib/components/ontology/EventEditModal.svelte');
+			EventEditModalComponent = mod.default;
+		}
+		return EventEditModalComponent;
+	}
+
+	function handleTaskClick(task: any) {
+		if (!task) {
+			console.warn('[WeeklyTaskCalendar] No task provided to handleTaskClick');
+			return;
+		}
+
+		const taskId = task?.id;
+		const projectId_ = task?.project_id || task?.projects?.id || task?.onto_project_id;
+
+		console.log('[WeeklyTaskCalendar] Task clicked:', {
+			taskId,
+			projectId_,
+			title: task?.title,
+			hasProjectId: !!projectId_
+		});
+
+		// Call the callback regardless
+		onTaskClick?.(task);
+
+		// Only open modal if we have required IDs
+		if (!taskId || !projectId_) {
+			console.warn('[WeeklyTaskCalendar] Cannot open modal - missing IDs:', {
+				taskId: !!taskId,
+				projectId_: !!projectId_
+			});
+			return;
+		}
+
+		editTaskId = taskId;
+		editProjectId = projectId_;
+
+		loadTaskEditModal().then(() => {
+			console.log('[WeeklyTaskCalendar] Opening TaskEditModal with IDs:', {
+				editTaskId,
+				editProjectId
+			});
+			showTaskModal = true;
+		});
+	}
+
+	function handleEventClick(event: any) {
+		if (!event) {
+			console.warn('[WeeklyTaskCalendar] No event provided to handleEventClick');
+			return;
+		}
+
+		const eventId = event?.id;
+		const projectId_ = event?.project_id;
+
+		console.log('[WeeklyTaskCalendar] Event clicked:', {
+			eventId,
+			projectId_,
+			title: event?.title,
+			hasProjectId: !!projectId_
+		});
+
+		// Only open modal if we have required IDs
+		if (!eventId || !projectId_) {
+			console.warn('[WeeklyTaskCalendar] Cannot open event modal - missing IDs:', {
+				eventId: !!eventId,
+				projectId_: !!projectId_
+			});
+			return;
+		}
+
+		editEventId = eventId;
+		editProjectId = projectId_;
+
+		loadEventEditModal().then(() => {
+			console.log('[WeeklyTaskCalendar] Opening EventEditModal with IDs:', {
+				editEventId,
+				editProjectId
+			});
+			showEventModal = true;
+		});
+	}
+
+	function closeTaskModal() {
+		showTaskModal = false;
+		editTaskId = null;
+		editProjectId = null;
+	}
+
+	function closeEventModal() {
+		showEventModal = false;
+		editEventId = null;
+		editProjectId = null;
+	}
 
 	// Generate the next 7 days
 	const today = new Date();
@@ -346,7 +464,7 @@
 							<div class="space-y-2">
 								{#each day.tasks as task}
 									<button
-										onclick={() => onTaskClick(task)}
+										onclick={() => handleTaskClick(task)}
 										class="w-full text-left p-3 rounded-lg border transition-all hover:shadow-md
 											{task.completed
 											? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'
@@ -483,7 +601,7 @@
 
 									<!-- Render tasks for this time slot -->
 									{#if tasksInSlot.length > 1 && timeSlot !== 'unscheduled'}
-										<!-- Multiple tasks at same time, show in grid -->
+										<!-- Multiple tasks at same time, show in wrapped flex layout -->
 										<div class="space-y-1">
 											<div
 												class="text-[10px] text-gray-500 dark:text-gray-400 font-medium px-1"
@@ -492,11 +610,11 @@
 													? 'Unscheduled'
 													: formatTime(tasksInSlot[0].start_date)}
 											</div>
-											<div class="grid grid-cols-2 gap-1">
+											<div class="flex flex-wrap gap-1">
 												{#each tasksInSlot as task}
 													<button
-														onclick={() => onTaskClick(task)}
-														class="w-full text-left p-1.5 rounded-lg border text-[10px] transition-all hover:shadow-md
+														onclick={() => handleTaskClick(task)}
+														class="flex-1 min-w-[calc(50%-0.25rem)] text-left p-1.5 rounded-lg border text-[10px] transition-all hover:shadow-md
 															{task.completed
 															? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'
 															: task.projects
@@ -535,7 +653,7 @@
 										<!-- Single task or unscheduled tasks -->
 										{#each tasksInSlot as task}
 											<button
-												onclick={() => onTaskClick(task)}
+												onclick={() => handleTaskClick(task)}
 												class="w-full text-left p-2 rounded-lg border text-xs transition-all hover:shadow-md hover:scale-105
 													{task.completed
 													? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30'
@@ -630,6 +748,29 @@
 		</div>
 	</div>
 </div>
+
+<!-- Modal Components -->
+{#if showTaskModal && editTaskId && editProjectId}
+	{#await loadTaskEditModal() then TaskModal}
+		<svelte:component
+			this={TaskModal}
+			taskId={editTaskId}
+			projectId={editProjectId}
+			onClose={closeTaskModal}
+		/>
+	{/await}
+{/if}
+
+{#if showEventModal && editEventId && editProjectId}
+	{#await loadEventEditModal() then EventModal}
+		<svelte:component
+			this={EventModal}
+			eventId={editEventId}
+			projectId={editProjectId}
+			onClose={closeEventModal}
+		/>
+	{/await}
+{/if}
 
 <style>
 	.line-clamp-2 {

@@ -4,799 +4,68 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
 import { ErrorLoggerService } from './errorLogger.service';
+import type {
+	JSONProfile,
+	TextProfile,
+	JSONRequestOptions,
+	TextGenerationOptions,
+	TextGenerationUsage,
+	TextGenerationResult,
+	TranscriptionOptions,
+	TranscriptionResult,
+	OpenRouterResponse
+} from './smart-llm/types';
+import {
+	JSON_MODELS,
+	TEXT_MODELS,
+	EMPTY_CONTENT_RETRY_INSTRUCTION,
+	EMPTY_CONTENT_RETRY_MIN_TOKENS,
+	EMPTY_CONTENT_RETRY_BUFFER_TOKENS,
+	EMPTY_CONTENT_RETRY_MAX_TOKENS
+} from './smart-llm/model-config';
+import {
+	OpenRouterEmptyContentError,
+	buildOpenRouterEmptyContentError,
+	isRetryableOpenRouterError
+} from './smart-llm/errors';
+import {
+	analyzeComplexity,
+	ensureMinimumTextModels,
+	ensureToolCompatibleModels,
+	estimateResponseLength,
+	pickEmergencyTextModel,
+	selectJSONModels,
+	selectTextModels,
+	supportsJsonMode
+} from './smart-llm/model-selection';
+import { OpenRouterClient } from './smart-llm/openrouter-client';
+import {
+	cleanJSONResponse,
+	enhanceSystemPromptForJSON,
+	extractTextFromChoice,
+	normalizeStreamingContent
+} from './smart-llm/response-parsing';
+import {
+	buildTranscriptionVocabulary,
+	encodeAudioToBase64,
+	getAudioFormat,
+	isRetryableTranscriptionError,
+	sleep
+} from './smart-llm/transcription-utils';
+import { LLMUsageLogger } from './smart-llm/usage-logger';
 
-// ============================================
-// TYPE DEFINITIONS
-// ============================================
-
-export type JSONProfile = 'fast' | 'balanced' | 'powerful' | 'maximum' | 'custom';
-export type TextProfile = 'speed' | 'balanced' | 'quality' | 'creative' | 'custom';
-
-export interface ModelProfile {
-	id: string;
-	name: string;
-	speed: number; // 1-5 (5 = fastest)
-	smartness: number; // 1-5 (5 = smartest)
-	creativity?: number; // 1-5 (for text generation)
-	cost: number; // per 1M input tokens
-	outputCost: number; // per 1M output tokens
-	provider: string;
-	bestFor: string[];
-	limitations?: string[];
-}
-
-export interface JSONRequestOptions {
-	systemPrompt: string;
-	userPrompt: string;
-	userId?: string; // Made optional to match LLMService interface expectations
-	profile?: JSONProfile;
-	temperature?: number;
-	validation?: {
-		retryOnParseError?: boolean;
-		validateSchema?: boolean;
-		maxRetries?: number;
-	};
-	requirements?: {
-		maxLatency?: number;
-		minAccuracy?: number;
-		maxCost?: number;
-	};
-	// Optional context for usage tracking
-	operationType?: string;
-	projectId?: string;
-	brainDumpId?: string;
-	taskId?: string;
-	briefId?: string;
-	chatSessionId?: string;
-	agentSessionId?: string;
-	agentPlanId?: string;
-	agentExecutionId?: string;
-}
-
-export interface TextGenerationOptions {
-	prompt: string;
-	userId?: string; // Made optional to match LLMService interface expectations
-	profile?: TextProfile;
-	systemPrompt?: string;
-	temperature?: number;
-	maxTokens?: number;
-	timeoutMs?: number;
-	streaming?: boolean;
-	requirements?: {
-		maxLatency?: number;
-		minQuality?: number;
-		maxCost?: number;
-	};
-	// Optional context for usage tracking
-	operationType?: string;
-	projectId?: string;
-	brainDumpId?: string;
-	taskId?: string;
-	briefId?: string;
-	chatSessionId?: string;
-	agentSessionId?: string;
-	agentPlanId?: string;
-	agentExecutionId?: string;
-}
-
-export interface TextGenerationUsage {
-	promptTokens: number;
-	completionTokens: number;
-	totalTokens: number;
-}
-
-export interface TextGenerationResult {
-	text: string;
-	usage?: TextGenerationUsage;
-	model?: string;
-}
-
-export type TranscriptionProvider = 'openrouter' | 'openai' | 'auto';
-
-export interface TranscriptionOptions {
-	audioFile: File;
-	userId?: string;
-	vocabularyTerms?: string;
-	models?: string[]; // Ordered OpenRouter model list
-	timeoutMs?: number;
-	maxRetries?: number;
-	initialRetryDelayMs?: number;
-}
-
-export interface TranscriptionResult {
-	text: string;
-	durationMs: number;
-	audioDuration?: number | null;
-	model: string;
-	service: 'openrouter' | 'openai';
-	requestId?: string;
-}
-
-interface OpenRouterResponse {
-	id: string;
-	provider?: string;
-	model?: string;
-	object?: string;
-	created?: number;
-	choices: Array<{
-		message?: {
-			content?: unknown;
-			role?: string;
-			tool_calls?: any[];
-		};
-		text?: string;
-		finish_reason?: string;
-		native_finish_reason?: string;
-	}>;
-	usage?: {
-		prompt_tokens: number;
-		completion_tokens: number;
-		total_tokens: number;
-		prompt_tokens_details?: {
-			cached_tokens?: number;
-			audio_tokens?: number;
-		};
-		completion_tokens_details?: {
-			reasoning_tokens?: number;
-		};
-	};
-	system_fingerprint?: string;
-	error?: {
-		message?: string;
-		type?: string;
-		param?: string;
-		code?: string | number;
-		metadata?: Record<string, unknown>;
-	};
-}
-
-type OpenRouterMessageContentSummary = {
-	contentType:
-		| 'undefined'
-		| 'null'
-		| 'string'
-		| 'array'
-		| 'object'
-		| 'number'
-		| 'boolean'
-		| 'bigint'
-		| 'function'
-		| 'symbol';
-	stringLength?: number;
-	trimmedStringLength?: number;
-	objectKeys?: string[];
-	partCount?: number;
-	partTypeCounts?: Record<string, number>;
-	textLengthByType?: Record<string, number>;
-	reasoningTextLength?: number;
-	nonReasoningTextLength?: number;
-};
-
-class OpenRouterEmptyContentError extends Error {
-	public override name = 'OpenRouterEmptyContentError';
-	public details: Record<string, unknown>;
-
-	constructor(message: string, details: Record<string, unknown>) {
-		super(message);
-		this.details = details;
-	}
-}
-
-// ============================================
-// MODEL CONFIGURATIONS
-// ============================================
-
-const JSON_MODELS: Record<string, ModelProfile> = {
-	// ============================================
-	// Ultra-fast tier (1-2s) - Budget options
-	// Updated: 2026-01-15 based on OpenRouter pricing
-	// ============================================
-	'openai/gpt-5-nano': {
-		id: 'openai/gpt-5-nano',
-		name: 'GPT-5 Nano',
-		speed: 5,
-		smartness: 4.0,
-		cost: 0.05,
-		outputCost: 0.4,
-		provider: 'openai',
-		bestFor: ['ultra-fast', 'json-mode', 'classification', 'autocomplete', '400k-context'],
-		limitations: ['limited-reasoning-depth']
-	},
-	'qwen/qwen3-32b': {
-		id: 'qwen/qwen3-32b',
-		name: 'Qwen 3 32B',
-		speed: 4,
-		smartness: 4.5,
-		cost: 0.08,
-		outputCost: 0.24,
-		provider: 'qwen',
-		bestFor: ['best-value', 'structured-output', 'multilingual', 'coding', 'tool-calling'],
-		limitations: []
-	},
-	'google/gemini-2.5-flash-lite': {
-		id: 'google/gemini-2.5-flash-lite',
-		name: 'Gemini 2.5 Flash Lite',
-		speed: 4.5,
-		smartness: 4.2,
-		cost: 0.1,
-		outputCost: 0.4,
-		provider: 'google',
-		bestFor: ['ultra-low-cost', 'lightweight-reasoning', 'json-mode', 'structured-output'],
-		limitations: ['reasoning-disabled-by-default']
-	},
-
-	// ============================================
-	// Fast tier (2-3s) - Good value options
-	// ============================================
-	'openai/gpt-4o-mini': {
-		id: 'openai/gpt-4o-mini',
-		name: 'GPT-4o Mini',
-		speed: 4,
-		smartness: 4,
-		cost: 0.15,
-		outputCost: 0.6,
-		provider: 'openai',
-		bestFor: ['json-mode', 'cost-effective', 'structured-output', 'general-purpose'],
-		limitations: []
-	},
-	'x-ai/grok-4.1-fast': {
-		id: 'x-ai/grok-4.1-fast',
-		name: 'Grok 4.1 Fast',
-		speed: 4.5,
-		smartness: 4.5,
-		cost: 0.2,
-		outputCost: 0.5,
-		provider: 'x-ai',
-		bestFor: [
-			'tool-calling',
-			'json-mode',
-			'agentic-workflows',
-			'2m-context',
-			'tau2-bench-100%'
-		],
-		limitations: []
-	},
-	'google/gemini-2.5-flash': {
-		id: 'google/gemini-2.5-flash',
-		name: 'Gemini 2.5 Flash',
-		speed: 4.5,
-		smartness: 4.5,
-		cost: 0.3,
-		outputCost: 2.5,
-		provider: 'google',
-		bestFor: ['hybrid-reasoning', 'json-mode', 'structured-output', 'thinking-model'],
-		limitations: ['thinking-tokens-expensive', 'deprecated-june-2026']
-	},
-	'deepseek/deepseek-chat': {
-		id: 'deepseek/deepseek-chat',
-		name: 'DeepSeek Chat V3',
-		speed: 3.5,
-		smartness: 4.5,
-		cost: 0.27,
-		outputCost: 1.1,
-		provider: 'deepseek',
-		bestFor: ['complex-json', 'instruction-following', 'nested-structures', 'best-value'],
-		limitations: []
-	},
-	'minimax/minimax-m2.1': {
-		id: 'minimax/minimax-m2.1',
-		name: 'MiniMax M2.1',
-		speed: 3.5,
-		smartness: 4.6,
-		cost: 0.27,
-		outputCost: 1.12,
-		provider: 'minimax',
-		bestFor: [
-			'agentic-workflows',
-			'tool-calling',
-			'coding',
-			'swe-bench-multilingual-72.5%',
-			'tau-bench-87%'
-		],
-		limitations: ['verbose-output', 'requires-reasoning-tokens']
-	},
-	'z-ai/glm-4.7': {
-		id: 'z-ai/glm-4.7',
-		name: 'GLM 4.7',
-		speed: 3.5,
-		smartness: 4.6,
-		cost: 0.4,
-		outputCost: 1.5,
-		provider: 'z-ai',
-		bestFor: [
-			'coding',
-			'long-context',
-			'reasoning',
-			'structured-output',
-			'terminal-bench-90%+'
-		],
-		limitations: []
-	},
-
-	// ============================================
-	// Balanced tier (3-4s) - Quality + Speed
-	// ============================================
-	'anthropic/claude-haiku-4.5': {
-		id: 'anthropic/claude-haiku-4.5',
-		name: 'Claude Haiku 4.5',
-		speed: 4.5,
-		smartness: 4.3,
-		cost: 1.0,
-		outputCost: 5.0,
-		provider: 'anthropic',
-		bestFor: [
-			'fast-json',
-			'excellent-tool-calling',
-			'parallel-tools',
-			'agent-chat',
-			'extended-thinking'
-		],
-		limitations: ['no-native-json-mode']
-	},
-
-	// ============================================
-	// Powerful tier (4-5s) - High quality
-	// ============================================
-	'anthropic/claude-sonnet-4': {
-		id: 'anthropic/claude-sonnet-4',
-		name: 'Claude Sonnet 4',
-		speed: 2.5,
-		smartness: 4.8,
-		cost: 3.0,
-		outputCost: 15.0,
-		provider: 'anthropic',
-		bestFor: ['complex-reasoning', 'nuanced-instructions', 'tool-calling-92%', '1m-context'],
-		limitations: ['no-native-json-mode']
-	},
-	'deepseek/deepseek-r1': {
-		id: 'deepseek/deepseek-r1',
-		name: 'DeepSeek R1',
-		speed: 3.5,
-		smartness: 4.9,
-		cost: 0.55,
-		outputCost: 1.68,
-		provider: 'deepseek',
-		bestFor: ['complex-reasoning', 'math', 'coding', 'tool-calling', 'best-reasoning-value'],
-		limitations: ['slower-than-chat', 'verbose-output']
-	},
-	'moonshotai/kimi-k2.5': {
-		id: 'moonshotai/kimi-k2.5',
-		name: 'Kimi K2.5',
-		speed: 3.5,
-		smartness: 4.9,
-		cost: 0.6,
-		outputCost: 0.3,
-		provider: 'moonshotai',
-		bestFor: [
-			'agentic-workflows',
-			'visual-coding',
-			'multimodal',
-			'agent-swarm-100-agents',
-			'1500-parallel-tool-calls',
-			'office-productivity',
-			'262k-context',
-			'cost-effective-reasoning'
-		],
-		limitations: []
-	},
-	'moonshotai/kimi-k2-thinking': {
-		id: 'moonshotai/kimi-k2-thinking',
-		name: 'Kimi K2 Thinking',
-		speed: 2.5,
-		smartness: 4.9,
-		cost: 0.57,
-		outputCost: 2.42,
-		provider: 'moonshotai',
-		bestFor: [
-			'agentic-workflows',
-			'tau2-bench-93%',
-			'intelligence-index-67',
-			'multi-tool-200-300-calls',
-			'256k-context',
-			'agentic-index-rank-2'
-		],
-		limitations: [
-			'mandatory-reasoning-tokens',
-			'verbose-2.5x-tokens',
-			'slower-for-simple-tasks',
-			'deprecated-replaced-by-k2.5'
-		]
-	},
-	'openai/gpt-4o': {
-		id: 'openai/gpt-4o',
-		name: 'GPT-4o',
-		speed: 2.5,
-		smartness: 4.5,
-		cost: 2.5,
-		outputCost: 10.0,
-		provider: 'openai',
-		bestFor: ['json-mode', 'general-purpose', 'reliable-fallback', '128k-context'],
-		limitations: []
-	},
-
-	// ============================================
-	// Maximum tier (5-7s) - Best quality
-	// ============================================
-	'anthropic/claude-sonnet-4.5': {
-		id: 'anthropic/claude-sonnet-4.5',
-		name: 'Claude Sonnet 4.5',
-		speed: 2,
-		smartness: 4.9,
-		cost: 3.0,
-		outputCost: 15.0,
-		provider: 'anthropic',
-		bestFor: ['extended-thinking', 'osworld-61.4%', 'complex-reasoning', 'nuanced-tasks'],
-		limitations: ['no-native-json-mode']
-	},
-	'anthropic/claude-opus-4.5': {
-		id: 'anthropic/claude-opus-4.5',
-		name: 'Claude Opus 4.5',
-		speed: 1.5,
-		smartness: 5.0,
-		cost: 5.0,
-		outputCost: 25.0,
-		provider: 'anthropic',
-		bestFor: [
-			'best-coding-swe-bench-80.9%',
-			'agents',
-			'computer-use',
-			'deep-research',
-			'complex-reasoning'
-		],
-		limitations: ['no-native-json-mode', 'expensive']
-	}
-};
-
-const TEXT_MODELS: Record<string, ModelProfile> = {
-	// ============================================
-	// Ultra-speed tier (<1s) - Budget options
-	// Updated: 2026-01-15 based on OpenRouter pricing
-	// ============================================
-	'openai/gpt-5-nano': {
-		id: 'openai/gpt-5-nano',
-		name: 'GPT-5 Nano',
-		speed: 5,
-		smartness: 4.0,
-		creativity: 3.8,
-		cost: 0.05,
-		outputCost: 0.4,
-		provider: 'openai',
-		bestFor: ['ultra-fast', 'classification', 'autocomplete', '400k-context'],
-		limitations: ['limited-reasoning-depth']
-	},
-	'qwen/qwen3-32b': {
-		id: 'qwen/qwen3-32b',
-		name: 'Qwen 3 32B',
-		speed: 4,
-		smartness: 4.5,
-		creativity: 4.3,
-		cost: 0.08,
-		outputCost: 0.24,
-		provider: 'qwen',
-		bestFor: ['best-value', 'multilingual', 'coding', 'tool-calling', 'creative-writing']
-	},
-	'google/gemini-2.5-flash-lite': {
-		id: 'google/gemini-2.5-flash-lite',
-		name: 'Gemini 2.5 Flash Lite',
-		speed: 4.5,
-		smartness: 4.2,
-		creativity: 4,
-		cost: 0.1,
-		outputCost: 0.4,
-		provider: 'google',
-		bestFor: ['ultra-low-latency', 'lightweight-reasoning', 'cost-efficient']
-	},
-
-	// ============================================
-	// Fast tier (1-2s) - Good value options
-	// ============================================
-	'openai/gpt-4o-mini': {
-		id: 'openai/gpt-4o-mini',
-		name: 'GPT-4o Mini',
-		speed: 4,
-		smartness: 4,
-		creativity: 4,
-		cost: 0.15,
-		outputCost: 0.6,
-		provider: 'openai',
-		bestFor: ['cost-effective', 'general-purpose', 'balanced-quality']
-	},
-	'x-ai/grok-4.1-fast': {
-		id: 'x-ai/grok-4.1-fast',
-		name: 'Grok 4.1 Fast',
-		speed: 4.5,
-		smartness: 4.5,
-		creativity: 4.2,
-		cost: 0.2,
-		outputCost: 0.5,
-		provider: 'x-ai',
-		bestFor: ['tool-calling', 'agentic-workflows', '2m-context', 'tau2-bench-100%']
-	},
-	'deepseek/deepseek-chat': {
-		id: 'deepseek/deepseek-chat',
-		name: 'DeepSeek Chat V3',
-		speed: 3.5,
-		smartness: 4.5,
-		creativity: 4,
-		cost: 0.27,
-		outputCost: 1.1,
-		provider: 'deepseek',
-		bestFor: ['briefs', 'reports', 'structured-content', 'best-value']
-	},
-	'minimax/minimax-m2.1': {
-		id: 'minimax/minimax-m2.1',
-		name: 'MiniMax M2.1',
-		speed: 3.5,
-		smartness: 4.6,
-		creativity: 4.3,
-		cost: 0.27,
-		outputCost: 1.12,
-		provider: 'minimax',
-		bestFor: ['agentic-workflows', 'tool-calling', 'coding', 'swe-bench-multilingual-72.5%'],
-		limitations: ['verbose-output', 'requires-reasoning-tokens']
-	},
-	'google/gemini-2.5-flash': {
-		id: 'google/gemini-2.5-flash',
-		name: 'Gemini 2.5 Flash',
-		speed: 4.5,
-		smartness: 4.5,
-		creativity: 4.3,
-		cost: 0.3,
-		outputCost: 2.5,
-		provider: 'google',
-		bestFor: ['hybrid-reasoning', 'thinking-model', 'fast-quality', 'multimodal'],
-		limitations: ['deprecated-june-2026']
-	},
-	'z-ai/glm-4.7': {
-		id: 'z-ai/glm-4.7',
-		name: 'GLM 4.7',
-		speed: 3.5,
-		smartness: 4.6,
-		creativity: 4.4,
-		cost: 0.4,
-		outputCost: 1.5,
-		provider: 'z-ai',
-		bestFor: ['coding', 'long-content', 'reasoning', 'refined-writing', 'terminal-bench-90%+']
-	},
-
-	// ============================================
-	// Balanced tier (2-3s) - Quality + Speed
-	// ============================================
-	'anthropic/claude-haiku-4.5': {
-		id: 'anthropic/claude-haiku-4.5',
-		name: 'Claude Haiku 4.5',
-		speed: 4.5,
-		smartness: 4.3,
-		creativity: 4.2,
-		cost: 1.0,
-		outputCost: 5.0,
-		provider: 'anthropic',
-		bestFor: [
-			'fast-generation',
-			'excellent-tool-calling',
-			'agent-chat',
-			'briefs',
-			'extended-thinking'
-		]
-	},
-
-	// ============================================
-	// Quality tier (3-5s) - High quality
-	// ============================================
-	'deepseek/deepseek-r1': {
-		id: 'deepseek/deepseek-r1',
-		name: 'DeepSeek R1',
-		speed: 3.5,
-		smartness: 4.9,
-		creativity: 4.4,
-		cost: 0.55,
-		outputCost: 1.68,
-		provider: 'deepseek',
-		bestFor: ['reasoning', 'analysis', 'technical-writing', 'complex-content', 'coding']
-	},
-	'moonshotai/kimi-k2.5': {
-		id: 'moonshotai/kimi-k2.5',
-		name: 'Kimi K2.5',
-		speed: 3.5,
-		smartness: 4.9,
-		creativity: 4.6,
-		cost: 0.6,
-		outputCost: 0.3,
-		provider: 'moonshotai',
-		bestFor: [
-			'agentic-workflows',
-			'visual-coding',
-			'multimodal',
-			'agent-swarm-100-agents',
-			'office-productivity',
-			'research-workflows',
-			'1500-parallel-tool-calls',
-			'262k-context',
-			'cost-effective-reasoning'
-		],
-		limitations: []
-	},
-	'moonshotai/kimi-k2-thinking': {
-		id: 'moonshotai/kimi-k2-thinking',
-		name: 'Kimi K2 Thinking',
-		speed: 2.5,
-		smartness: 4.9,
-		creativity: 4.5,
-		cost: 0.57,
-		outputCost: 2.42,
-		provider: 'moonshotai',
-		bestFor: [
-			'agentic-reasoning',
-			'tau2-bench-93%',
-			'intelligence-index-67',
-			'research-workflows',
-			'multi-tool-200-300-calls',
-			'256k-context'
-		],
-		limitations: [
-			'mandatory-reasoning-tokens',
-			'verbose-2.5x-tokens',
-			'slower-for-simple-tasks',
-			'deprecated-replaced-by-k2.5'
-		]
-	},
-	'openai/gpt-4o': {
-		id: 'openai/gpt-4o',
-		name: 'GPT-4o',
-		speed: 2.5,
-		smartness: 4.5,
-		creativity: 4.5,
-		cost: 2.5,
-		outputCost: 10.0,
-		provider: 'openai',
-		bestFor: ['general-purpose', 'reliable-fallback', 'multimodal', '128k-context']
-	},
-	'anthropic/claude-sonnet-4': {
-		id: 'anthropic/claude-sonnet-4',
-		name: 'Claude Sonnet 4',
-		speed: 2.5,
-		smartness: 4.8,
-		creativity: 4.6,
-		cost: 3.0,
-		outputCost: 15.0,
-		provider: 'anthropic',
-		bestFor: ['high-quality-writing', 'complex-content', 'nuanced-text', 'tool-calling']
-	},
-
-	// ============================================
-	// Maximum tier - Best quality
-	// ============================================
-	'anthropic/claude-sonnet-4.5': {
-		id: 'anthropic/claude-sonnet-4.5',
-		name: 'Claude Sonnet 4.5',
-		speed: 2,
-		smartness: 4.9,
-		creativity: 4.7,
-		cost: 3.0,
-		outputCost: 15.0,
-		provider: 'anthropic',
-		bestFor: ['extended-thinking', 'complex-reasoning', 'creative-writing', 'osworld-61.4%']
-	},
-	'anthropic/claude-opus-4.5': {
-		id: 'anthropic/claude-opus-4.5',
-		name: 'Claude Opus 4.5',
-		speed: 1.5,
-		smartness: 5.0,
-		creativity: 4.8,
-		cost: 5.0,
-		outputCost: 25.0,
-		provider: 'anthropic',
-		bestFor: ['best-coding-swe-bench-80.9%', 'agents', 'computer-use', 'deep-research'],
-		limitations: ['expensive']
-	}
-};
-
-// Models that have reliable tool-calling support when routed through OpenRouter.
-// The order doubles as our fallback priority list whenever we must guarantee tool support.
-// Updated 2026-01-15 based on latest benchmark data (τ²-Bench, SWE-bench, tool-calling success rates)
-// Priority: Highest reliability first, then cost-effectiveness as tiebreaker
-const TOOL_CALLING_MODEL_ORDER = [
-	'x-ai/grok-4.1-fast', // Best τ²-Bench: 100% (xAI claim), 2M context, optimized for agents: $0.20/$0.50
-	'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, 1500 parallel tools, 262K ctx, multimodal: $0.60/$0.30
-	'moonshotai/kimi-k2-thinking', // τ²-Bench: 93% (legacy), 256K ctx, 200-300 tool calls: $0.57/$2.42
-	'anthropic/claude-opus-4.5', // Best coding: 80.9% SWE-bench, agents, computer-use: $5/$25
-	'anthropic/claude-haiku-4.5', // Fast + reliable: parallel tool calls, extended thinking: $1/$5
-	'openai/gpt-4o-mini', // Very good: 88% success rate, fast + cheap: $0.15/$0.60
-	'openai/gpt-4o', // Strong: 87%+ success rate: $2.50/$10
-	'minimax/minimax-m2.1', // Excellent agentic: 87% τ²-Bench, 72.5% SWE-bench-multilingual: $0.27/$1.12
-	'qwen/qwen3-32b', // Best value: excellent multilingual, good tool-calling: $0.08/$0.24
-	'deepseek/deepseek-r1', // Good reasoning, slower: $0.55/$1.68
-	'deepseek/deepseek-chat', // Good for sequential tasks: $0.27/$1.10
-	'z-ai/glm-4.7', // Good tool use, strong coding, terminal-bench 90%+: $0.40/$1.50
-	'google/gemini-2.5-flash' // Hybrid reasoning model (deprecated June 2026): $0.30/$2.50
-] as const;
-const TOOL_CALLING_MODEL_SET = new Set<string>(TOOL_CALLING_MODEL_ORDER);
-
-const EMPTY_CONTENT_RETRY_INSTRUCTION =
-	'Return only the final answer. Do not include analysis or reasoning.';
-const EMPTY_CONTENT_RETRY_MIN_TOKENS = 1200;
-const EMPTY_CONTENT_RETRY_BUFFER_TOKENS = 256;
-const EMPTY_CONTENT_RETRY_MAX_TOKENS = 2048;
-const EMERGENCY_TEXT_FALLBACKS = [
-	'openai/gpt-4o-mini',
-	'anthropic/claude-haiku-4.5',
-	'openai/gpt-4o'
-] as const;
-
-// ============================================
-// PROFILE MAPPINGS
-// ============================================
-
-const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
-	fast: [
-		'openai/gpt-5-nano', // Fastest (speed:5) + native JSON schema: $0.05/$0.40
-		'qwen/qwen3-32b', // Best value + good JSON: $0.08/$0.24
-		'google/gemini-2.5-flash-lite', // Ultra-low cost: $0.10/$0.40
-		'openai/gpt-4o-mini', // Reliable fallback with JSON mode: $0.15/$0.60
-		'deepseek/deepseek-chat' // Native JSON mode + good value: $0.27/$1.10
-	],
-	balanced: [
-		'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, 1500 tools, multimodal: $0.60/$0.30
-		'qwen/qwen3-32b', // Best value + native JSON: $0.08/$0.24
-		'x-ai/grok-4.1-fast', // Best tool-calling + fast: $0.20/$0.50
-		'minimax/minimax-m2.1', // Strong agentic + structured output: 87% τ²-Bench: $0.27/$1.12
-		'deepseek/deepseek-chat', // Good value + native JSON: $0.27/$1.10
-		'anthropic/claude-haiku-4.5', // Excellent tool calling, extended thinking: $1/$5
-		'google/gemini-2.5-flash' // Hybrid reasoning model: $0.30/$2.50
-	],
-	powerful: [
-		'moonshotai/kimi-k2.5', // Best agentic: agent swarm, 262K ctx, multimodal: $0.60/$0.30
-		'deepseek/deepseek-r1', // Native JSON + good reasoning: $0.55/$1.68
-		'minimax/minimax-m2.1', // Strong agentic: 87% τ²-Bench, 72.5% SWE-bench-multilingual
-		'openai/gpt-4o', // Strong general purpose + native JSON: $2.50/$10
-		'z-ai/glm-4.7', // Strong coding + native JSON, terminal-bench 90%+: $0.40/$1.50
-		'moonshotai/kimi-k2-thinking', // Best agentic (legacy): 93% τ²-Bench, 256K ctx: $0.57/$2.42
-		'anthropic/claude-sonnet-4' // Best tool calling ~92%: $3/$15
-	],
-	maximum: [
-		'anthropic/claude-opus-4.5', // Best coding: 80.9% SWE-bench: $5/$25
-		'moonshotai/kimi-k2.5', // Best agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
-		'anthropic/claude-sonnet-4.5', // Best overall: 61.4% OSWorld, extended thinking: $3/$15
-		'deepseek/deepseek-r1', // Native JSON + good for pure reasoning: $0.55/$1.68
-		'openai/gpt-4o' // Reliable fallback with native JSON: $2.50/$10
-	],
-	custom: [] // Will be determined by requirements
-};
-
-const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
-	speed: [
-		'openai/gpt-5-nano', // Fastest (speed:5), 400K context: $0.05/$0.40
-		'qwen/qwen3-32b', // Best value + fast: $0.08/$0.24
-		'google/gemini-2.5-flash-lite', // Very fast + cheap: $0.10/$0.40
-		'openai/gpt-4o-mini', // Reliable fallback: $0.15/$0.60
-		'anthropic/claude-haiku-4.5' // Fast with extended thinking: $1/$5
-	],
-	balanced: [
-		'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, multimodal, 262K ctx: $0.60/$0.30
-		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
-		'qwen/qwen3-32b', // Best value: $0.08/$0.24, smartness 4.5
-		'deepseek/deepseek-chat', // Good value: $0.27/$1.10, smartness 4.5
-		'minimax/minimax-m2.1', // Strong agentic, smartness 4.6: $0.27/$1.12
-		'anthropic/claude-haiku-4.5', // Good for agents, extended thinking: $1/$5
-		'openai/gpt-4o-mini' // Reliable fallback: $0.15/$0.60
-	],
-	quality: [
-		'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
-		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
-		'deepseek/deepseek-r1', // Good reasoning, excellent for technical content: $0.55/$1.68
-		'anthropic/claude-haiku-4.5', // Excellent tool-calling, parallel tools: $1/$5
-		'minimax/minimax-m2.1', // 87% τ²-Bench, excellent coding: $0.27/$1.12
-		'openai/gpt-4o' // Reliable fallback: $2.50/$10
-	],
-	creative: [
-		'anthropic/claude-opus-4.5', // Best creative: highest creativity (4.8): $5/$25
-		'anthropic/claude-sonnet-4.5', // Strong creative: creativity 4.7: $3/$15
-		'anthropic/claude-sonnet-4', // Strong creative: creativity 4.6: $3/$15
-		'openai/gpt-4o', // Good creative: creativity 4.5: $2.50/$10
-		'deepseek/deepseek-r1' // Good for creative reasoning: $0.55/$1.68
-	],
-	custom: []
-};
+export type {
+	JSONProfile,
+	TextProfile,
+	ModelProfile,
+	JSONRequestOptions,
+	TextGenerationOptions,
+	TextGenerationUsage,
+	TextGenerationResult,
+	TranscriptionProvider,
+	TranscriptionOptions,
+	TranscriptionResult
+} from './smart-llm/types';
 
 // ============================================
 // MAIN SERVICE CLASS
@@ -808,6 +77,8 @@ export class SmartLLMService {
 	private costTracking = new Map<string, number>();
 	private performanceMetrics = new Map<string, number[]>();
 	private errorLogger?: ErrorLoggerService;
+	private openRouterClient: OpenRouterClient;
+	private usageLogger: LLMUsageLogger;
 
 	// Optional: For logging and metrics
 	private supabase?: SupabaseClient<Database>;
@@ -827,281 +98,17 @@ export class SmartLLMService {
 		if (config?.supabase) {
 			this.errorLogger = ErrorLoggerService.getInstance(config.supabase);
 		}
-	}
-
-	// ============================================
-	// DATABASE LOGGING
-	// ============================================
-
-	private async logUsageToDatabase(params: {
-		userId?: string; // Made optional to match TextGenerationOptions
-		operationType: string;
-		modelRequested: string;
-		modelUsed: string;
-		provider?: string;
-		promptTokens: number;
-		completionTokens: number;
-		totalTokens: number;
-		inputCost: number;
-		outputCost: number;
-		totalCost: number;
-		responseTimeMs: number;
-		requestStartedAt: Date;
-		requestCompletedAt: Date;
-		status: 'success' | 'failure' | 'timeout' | 'rate_limited' | 'invalid_response';
-		errorMessage?: string;
-		temperature?: number;
-		maxTokens?: number;
-		profile?: string;
-		streaming?: boolean;
-		projectId?: string;
-		brainDumpId?: string;
-		taskId?: string;
-		briefId?: string;
-		chatSessionId?: string;
-		agentSessionId?: string;
-		agentPlanId?: string;
-		agentExecutionId?: string;
-		openrouterRequestId?: string;
-		openrouterCacheStatus?: string;
-		rateLimitRemaining?: number;
-		metadata?: any;
-	}): Promise<void> {
-		if (!this.supabase) {
-			console.warn('Supabase client not configured, skipping usage logging');
-			return;
-		}
-
-		try {
-			const sanitizedUserId = this.normalizeUserIdForLogging(params.userId);
-
-			// Defensive check: Skip logging if user_id is invalid
-			// This prevents foreign key constraint violations
-			if (!sanitizedUserId) {
-				console.warn('Invalid user_id for LLM usage logging, skipping database insert', {
-					providedUserId: params.userId,
-					operationType: params.operationType,
-					modelUsed: params.modelUsed,
-					status: params.status
-				});
-				return;
-			}
-
-			const projectId = this.normalizeProjectIdForLogging(params.projectId);
-			const chatSessionId = this.normalizeOptionalIdForLogging(
-				params.chatSessionId || this.getMetadataId(params.metadata, 'sessionId')
-			);
-			const agentSessionId = this.normalizeOptionalIdForLogging(
-				params.agentSessionId || this.getMetadataId(params.metadata, 'agentSessionId')
-			);
-			const agentPlanId = this.normalizeOptionalIdForLogging(
-				params.agentPlanId || this.getMetadataId(params.metadata, 'planId')
-			);
-			const agentExecutionId = this.normalizeOptionalIdForLogging(
-				params.agentExecutionId || this.getMetadataId(params.metadata, 'executionId')
-			);
-			const payload = {
-				user_id: sanitizedUserId,
-				operation_type: params.operationType,
-				model_requested: params.modelRequested,
-				model_used: params.modelUsed,
-				provider: params.provider,
-				prompt_tokens: params.promptTokens,
-				completion_tokens: params.completionTokens,
-				total_tokens: params.totalTokens,
-				input_cost_usd: params.inputCost,
-				output_cost_usd: params.outputCost,
-				total_cost_usd: params.totalCost,
-				response_time_ms: params.responseTimeMs,
-				request_started_at: params.requestStartedAt.toISOString(),
-				request_completed_at: params.requestCompletedAt.toISOString(),
-				status: params.status,
-				error_message: params.errorMessage,
-				temperature: params.temperature,
-				max_tokens: params.maxTokens,
-				profile: params.profile,
-				streaming: params.streaming,
-				project_id: projectId ?? undefined,
-				chat_session_id: chatSessionId ?? undefined,
-				agent_session_id: agentSessionId ?? undefined,
-				agent_plan_id: agentPlanId ?? undefined,
-				agent_execution_id: agentExecutionId ?? undefined,
-				brain_dump_id: params.brainDumpId,
-				task_id: params.taskId,
-				brief_id: params.briefId,
-				openrouter_request_id: params.openrouterRequestId,
-				openrouter_cache_status: params.openrouterCacheStatus,
-				rate_limit_remaining: params.rateLimitRemaining,
-				metadata: params.metadata
-			};
-
-			const { error } = await this.supabase.from('llm_usage_logs').insert(payload);
-
-			if (error) {
-				if (
-					error.code === '23503' &&
-					error.message?.includes('llm_usage_logs_project_id_fkey')
-				) {
-					const { error: retryError } = await this.supabase
-						.from('llm_usage_logs')
-						.insert({ ...payload, project_id: null });
-					if (retryError) {
-						console.error(
-							'Failed to log LLM usage (retry without project_id):',
-							retryError
-						);
-					}
-					return;
-				}
-
-				console.error('Failed to log LLM usage to database:', error);
-			}
-		} catch (error) {
-			console.error('Exception while logging LLM usage:', error);
-			if (this.errorLogger) {
-				await this.errorLogger.logDatabaseError(
-					error,
-					'INSERT',
-					'llm_usage_logs',
-					params.userId,
-					{
-						operation: 'logUsageToDatabase',
-						errorType: 'llm_usage_logging_failure',
-						operationType: params.operationType,
-						modelUsed: params.modelUsed,
-						status: params.status
-					}
-				);
-			}
-		}
-	}
-
-	private normalizeUserIdForLogging(userId?: string | null): string | null {
-		if (!userId) return null;
-		const trimmed = userId.trim();
-		return this.isUUID(trimmed) ? trimmed : null;
-	}
-
-	private normalizeProjectIdForLogging(projectId?: string | null): string | null {
-		if (!projectId) return null;
-		const trimmed = projectId.trim();
-		return this.isUUID(trimmed) ? trimmed : null;
-	}
-
-	private normalizeOptionalIdForLogging(value?: string | null): string | null {
-		if (!value) return null;
-		const trimmed = value.trim();
-		return this.isUUID(trimmed) ? trimmed : null;
-	}
-
-	private getMetadataId(metadata: any, key: string): string | undefined {
-		if (!metadata || typeof metadata !== 'object') {
-			return undefined;
-		}
-		const value = metadata[key];
-		return typeof value === 'string' ? value : undefined;
-	}
-
-	private isUUID(value: string): boolean {
-		const uuidRegex =
-			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-		return uuidRegex.test(value);
-	}
-
-	private getOpenRouterErrorMetadata(error: unknown): {
-		status?: number;
-		message?: string;
-		error?: Record<string, unknown> | null;
-		metadata?: Record<string, unknown> | null;
-		providerName?: string | null;
-	} {
-		if (!error || typeof error !== 'object') {
-			return {};
-		}
-
-		const maybeError = error as {
-			status?: number;
-			message?: string;
-			openrouter?: Record<string, unknown>;
-		};
-		const openrouter =
-			maybeError.openrouter && typeof maybeError.openrouter === 'object'
-				? maybeError.openrouter
-				: null;
-		const errorObject =
-			openrouter?.error && typeof openrouter.error === 'object' ? openrouter.error : null;
-		const metadata =
-			errorObject?.metadata && typeof errorObject.metadata === 'object'
-				? (errorObject.metadata as Record<string, unknown>)
-				: openrouter?.metadata && typeof openrouter.metadata === 'object'
-					? (openrouter.metadata as Record<string, unknown>)
-					: null;
-		const providerName =
-			typeof metadata?.provider_name === 'string'
-				? metadata.provider_name
-				: typeof openrouter?.providerName === 'string'
-					? openrouter.providerName
-					: typeof (openrouter as Record<string, unknown> | null)?.provider_name ===
-							'string'
-						? ((openrouter as Record<string, unknown>).provider_name as string)
-						: null;
-		const message =
-			typeof errorObject?.message === 'string'
-				? errorObject.message
-				: typeof maybeError.message === 'string'
-					? maybeError.message
-					: undefined;
-
-		return {
-			status: maybeError.status,
-			message,
-			error: errorObject,
-			metadata,
-			providerName
-		};
-	}
-
-	private isOpenRouterProviderError(error: unknown): boolean {
-		const metadata = this.getOpenRouterErrorMetadata(error);
-		const message =
-			typeof metadata.message === 'string' ? metadata.message.toLowerCase() : '';
-
-		if (message.includes('provider returned error')) {
-			return true;
-		}
-
-		return Boolean(metadata.providerName);
-	}
-
-	private isRetryableOpenRouterError(error: unknown): boolean {
-		if (!error || typeof error !== 'object') {
-			return false;
-		}
-
-		const maybeError = error as { status?: number; message?: string };
-		const status = maybeError.status;
-
-		if (status === 408 || status === 409 || status === 429) {
-			return true;
-		}
-
-		if (status && status >= 500 && status < 600) {
-			return true;
-		}
-
-		const message =
-			typeof maybeError.message === 'string' ? maybeError.message.toLowerCase() : '';
-		if (message.includes('timeout') || message.includes('timed out')) {
-			return true;
-		}
-		if (message.includes('rate limit')) {
-			return true;
-		}
-		if (message.includes('provider returned error')) {
-			return true;
-		}
-
-		return this.isOpenRouterProviderError(error);
+		this.openRouterClient = new OpenRouterClient({
+			apiKey: this.apiKey,
+			apiUrl: this.apiUrl,
+			httpReferer: this.httpReferer,
+			appName: this.appName,
+			errorLogger: this.errorLogger
+		});
+		this.usageLogger = new LLMUsageLogger({
+			supabase: this.supabase,
+			errorLogger: this.errorLogger
+		});
 	}
 
 	// ============================================
@@ -1114,13 +121,13 @@ export class SmartLLMService {
 		const profile = options.profile || 'balanced';
 
 		// Analyze prompt complexity
-		const complexity = this.analyzeComplexity(options.systemPrompt + options.userPrompt);
+		const complexity = analyzeComplexity(options.systemPrompt + options.userPrompt);
 
 		// Select models based on profile and requirements
-		const preferredModels = this.selectJSONModels(profile, complexity, options.requirements);
+		const preferredModels = selectJSONModels(profile, complexity, options.requirements);
 
 		// Add JSON-specific instructions to system prompt
-		const enhancedSystemPrompt = this.enhanceSystemPromptForJSON(options.systemPrompt);
+		const enhancedSystemPrompt = enhanceSystemPromptForJSON(options.systemPrompt);
 
 		let lastError: Error | null = null;
 		let retryCount = 0;
@@ -1144,15 +151,15 @@ export class SmartLLMService {
 					requestedModel,
 					...remainingModels.filter((model) => model !== requestedModel)
 				];
-				const useJsonMode = this.supportsJsonMode(requestedModel);
+				const useJsonMode = supportsJsonMode(requestedModel);
 				const routingModels = useJsonMode
-					? routingCandidates.filter((model) => this.supportsJsonMode(model))
+					? routingCandidates.filter((model) => supportsJsonMode(model))
 					: routingCandidates;
 				const modelsForRequest =
 					routingModels.length > 0 ? routingModels : [requestedModel];
 
 				try {
-					const response = await this.callOpenRouter({
+					const response = await this.openRouterClient.callOpenRouter({
 						model: requestedModel, // Primary model with fallback
 						models: modelsForRequest, // Filtered models for fallback routing
 						messages: [
@@ -1172,9 +179,9 @@ export class SmartLLMService {
 					}
 
 					const choice = response.choices[0];
-					const content = this.extractTextFromChoice(choice);
+					const content = extractTextFromChoice(choice);
 					if (!content || content.trim().length === 0) {
-						throw this.buildOpenRouterEmptyContentError({
+						throw buildOpenRouterEmptyContentError({
 							operation: 'getJSONResponse',
 							requestedModel,
 							response,
@@ -1192,7 +199,7 @@ export class SmartLLMService {
 
 					try {
 						// Clean and parse JSON
-						cleaned = this.cleanJSONResponse(content);
+						cleaned = cleanJSONResponse(content);
 						result = JSON.parse(cleaned) as T;
 					} catch (parseError) {
 						// Log which model actually responded
@@ -1228,11 +235,11 @@ export class SmartLLMService {
 							);
 
 							let cleanedRetry = ''; // Declare outside try block for error logging
+							let retryModel = 'anthropic/claude-sonnet-4';
+							const retryModels = ['anthropic/claude-sonnet-4', 'openai/gpt-4o'];
 							try {
 								// Try again with powerful profile
-								const retryModel = 'anthropic/claude-sonnet-4';
-								const retryModels = ['anthropic/claude-sonnet-4', 'openai/gpt-4o'];
-								const retryResponse = await this.callOpenRouter({
+								const retryResponse = await this.openRouterClient.callOpenRouter({
 									model: retryModel,
 									models: retryModels,
 									messages: [
@@ -1240,7 +247,7 @@ export class SmartLLMService {
 										{ role: 'user', content: options.userPrompt }
 									],
 									temperature: 0.1, // Lower temperature for retry
-									response_format: this.supportsJsonMode(retryModel)
+									response_format: supportsJsonMode(retryModel)
 										? { type: 'json_object' }
 										: undefined,
 									max_tokens: 8192
@@ -1248,13 +255,15 @@ export class SmartLLMService {
 
 								// Guard against malformed retry response
 								if (!retryResponse.choices || retryResponse.choices.length === 0) {
-									throw new Error('Retry: OpenRouter returned empty choices array');
+									throw new Error(
+										'Retry: OpenRouter returned empty choices array'
+									);
 								}
 
 								const retryChoice = retryResponse.choices[0];
-								const retryContent = this.extractTextFromChoice(retryChoice);
+								const retryContent = extractTextFromChoice(retryChoice);
 								if (!retryContent || retryContent.trim().length === 0) {
-									throw this.buildOpenRouterEmptyContentError({
+									throw buildOpenRouterEmptyContentError({
 										operation: 'getJSONResponse_retry',
 										requestedModel: retryModel,
 										response: retryResponse,
@@ -1263,7 +272,7 @@ export class SmartLLMService {
 									});
 								}
 
-								cleanedRetry = this.cleanJSONResponse(retryContent);
+								cleanedRetry = cleanJSONResponse(retryContent);
 								result = JSON.parse(cleanedRetry) as T;
 								responseForLogging = retryResponse;
 								actualModel = retryResponse.model || retryModel;
@@ -1350,51 +359,53 @@ export class SmartLLMService {
 							...(retryModelUsed ? [retryModelUsed] : [])
 						])
 					);
-					this.logUsageToDatabase({
-						userId: options.userId,
-						operationType: options.operationType || 'other',
-						modelRequested: baseModel,
-						modelUsed: actualModel,
-						provider: responseForLogging.provider || modelConfig?.provider,
-						promptTokens: responseForLogging.usage?.prompt_tokens || 0,
-						completionTokens: responseForLogging.usage?.completion_tokens || 0,
-						totalTokens: responseForLogging.usage?.total_tokens || 0,
-						inputCost,
-						outputCost,
-						totalCost: inputCost + outputCost,
-						responseTimeMs: Math.round(duration),
-						requestStartedAt,
-						requestCompletedAt,
-						status: 'success',
-						temperature: options.temperature,
-						maxTokens: 8192,
-						profile,
-						streaming: false,
-						projectId: options.projectId,
-						brainDumpId: options.brainDumpId,
-						taskId: options.taskId,
-						briefId: options.briefId,
-						chatSessionId: options.chatSessionId,
-						agentSessionId: options.agentSessionId,
-						agentPlanId: options.agentPlanId,
-						agentExecutionId: options.agentExecutionId,
-						openrouterRequestId: responseForLogging.id,
-						openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
-						metadata: {
-							complexity,
-							retryCount,
-							preferredModels,
-							requestedModel,
-							modelsAttempted,
-							attempts: attempt + 1,
-							retryModelUsed,
-							cachedTokens,
-							reasoningTokens:
-								responseForLogging.usage?.completion_tokens_details
-									?.reasoning_tokens || 0,
-							systemFingerprint: responseForLogging.system_fingerprint
-						}
-					}).catch((err) => console.error('Failed to log usage:', err));
+					this.usageLogger
+						.logUsageToDatabase({
+							userId: options.userId,
+							operationType: options.operationType || 'other',
+							modelRequested: baseModel,
+							modelUsed: actualModel,
+							provider: responseForLogging.provider || modelConfig?.provider,
+							promptTokens: responseForLogging.usage?.prompt_tokens || 0,
+							completionTokens: responseForLogging.usage?.completion_tokens || 0,
+							totalTokens: responseForLogging.usage?.total_tokens || 0,
+							inputCost,
+							outputCost,
+							totalCost: inputCost + outputCost,
+							responseTimeMs: Math.round(duration),
+							requestStartedAt,
+							requestCompletedAt,
+							status: 'success',
+							temperature: options.temperature,
+							maxTokens: 8192,
+							profile,
+							streaming: false,
+							projectId: options.projectId,
+							brainDumpId: options.brainDumpId,
+							taskId: options.taskId,
+							briefId: options.briefId,
+							chatSessionId: options.chatSessionId,
+							agentSessionId: options.agentSessionId,
+							agentPlanId: options.agentPlanId,
+							agentExecutionId: options.agentExecutionId,
+							openrouterRequestId: responseForLogging.id,
+							openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
+							metadata: {
+								complexity,
+								retryCount,
+								preferredModels,
+								requestedModel,
+								modelsAttempted,
+								attempts: attempt + 1,
+								retryModelUsed,
+								cachedTokens,
+								reasoningTokens:
+									responseForLogging.usage?.completion_tokens_details
+										?.reasoning_tokens || 0,
+								systemFingerprint: responseForLogging.system_fingerprint
+							}
+						})
+						.catch((err) => console.error('Failed to log usage:', err));
 
 					return result;
 				} catch (error) {
@@ -1403,7 +414,7 @@ export class SmartLLMService {
 					const shouldRetry =
 						error instanceof OpenRouterEmptyContentError ||
 						error instanceof SyntaxError ||
-						this.isRetryableOpenRouterError(error);
+						isRetryableOpenRouterError(error);
 
 					if (attempt < maxAttempts - 1 && shouldRetry) {
 						console.warn('OpenRouter JSON response retrying after failure', {
@@ -1425,8 +436,7 @@ export class SmartLLMService {
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
 			const modelsAttempted = Array.from(attemptedModels);
-			const lastModel =
-				lastResponse?.model || lastRequestedModel || baseModel;
+			const lastModel = lastResponse?.model || lastRequestedModel || baseModel;
 			const emptyContentDetails =
 				error instanceof OpenRouterEmptyContentError ? error.details : undefined;
 			const openrouterErrorDetails =
@@ -1460,47 +470,49 @@ export class SmartLLMService {
 			}
 
 			// Log failure to database
-			this.logUsageToDatabase({
-				userId: options.userId,
-				operationType: options.operationType || 'other',
-				modelRequested: baseModel,
-				modelUsed: lastModel,
-				promptTokens: 0,
-				completionTokens: 0,
-				totalTokens: 0,
-				inputCost: 0,
-				outputCost: 0,
-				totalCost: 0,
-				responseTimeMs: Math.round(duration),
-				requestStartedAt,
-				requestCompletedAt,
-				status: lastError.message.includes('timeout') ? 'timeout' : 'failure',
-				errorMessage: lastError.message,
-				temperature: options.temperature,
-				maxTokens: 8192,
-				profile,
-				streaming: false,
-				projectId: options.projectId,
-				brainDumpId: options.brainDumpId,
-				taskId: options.taskId,
-				briefId: options.briefId,
-				chatSessionId: options.chatSessionId,
-				agentSessionId: options.agentSessionId,
-				agentPlanId: options.agentPlanId,
-				agentExecutionId: options.agentExecutionId,
-				metadata: {
-					complexity,
-					preferredModels,
-					attempts: modelsAttempted.length,
-					modelsAttempted,
-					lastRequestedModel,
-					lastModel,
-					openrouterRequestId: lastResponse?.id,
-					openrouterProvider: lastResponse?.provider,
-					openrouterErrorDetails: openrouterErrorDetails ?? null,
-					emptyContentDetails: emptyContentDetails ?? null
-				}
-			}).catch((err) => console.error('Failed to log error:', err));
+			this.usageLogger
+				.logUsageToDatabase({
+					userId: options.userId,
+					operationType: options.operationType || 'other',
+					modelRequested: baseModel,
+					modelUsed: lastModel,
+					promptTokens: 0,
+					completionTokens: 0,
+					totalTokens: 0,
+					inputCost: 0,
+					outputCost: 0,
+					totalCost: 0,
+					responseTimeMs: Math.round(duration),
+					requestStartedAt,
+					requestCompletedAt,
+					status: lastError.message.includes('timeout') ? 'timeout' : 'failure',
+					errorMessage: lastError.message,
+					temperature: options.temperature,
+					maxTokens: 8192,
+					profile,
+					streaming: false,
+					projectId: options.projectId,
+					brainDumpId: options.brainDumpId,
+					taskId: options.taskId,
+					briefId: options.briefId,
+					chatSessionId: options.chatSessionId,
+					agentSessionId: options.agentSessionId,
+					agentPlanId: options.agentPlanId,
+					agentExecutionId: options.agentExecutionId,
+					metadata: {
+						complexity,
+						preferredModels,
+						attempts: modelsAttempted.length,
+						modelsAttempted,
+						lastRequestedModel,
+						lastModel,
+						openrouterRequestId: lastResponse?.id,
+						openrouterProvider: lastResponse?.provider,
+						openrouterErrorDetails: openrouterErrorDetails ?? null,
+						emptyContentDetails: emptyContentDetails ?? null
+					}
+				})
+				.catch((err) => console.error('Failed to log error:', err));
 
 			throw new Error(`Failed to generate valid JSON: ${lastError?.message}`);
 		}
@@ -1524,11 +536,11 @@ export class SmartLLMService {
 		let overrideModel: string | null = null;
 
 		// Estimate response length
-		const estimatedLength = this.estimateResponseLength(options.prompt);
+		const estimatedLength = estimateResponseLength(options.prompt);
 
 		// Select models based on profile and requirements
-		const preferredModels = this.ensureMinimumTextModels(
-			this.selectTextModels(profile, estimatedLength, options.requirements)
+		const preferredModels = ensureMinimumTextModels(
+			selectTextModels(profile, estimatedLength, options.requirements)
 		);
 
 		// Make the OpenRouter API call with model routing
@@ -1559,7 +571,7 @@ export class SmartLLMService {
 					const systemPrompt = forceFinalAnswerOnly
 						? `${baseSystemPrompt}\n\n${EMPTY_CONTENT_RETRY_INSTRUCTION}`
 						: baseSystemPrompt;
-					attemptResponse = await this.callOpenRouter({
+					attemptResponse = await this.openRouterClient.callOpenRouter({
 						model: requestedModel, // Primary model with fallback
 						models: routingModels.length > 0 ? routingModels : [requestedModel],
 						messages: [
@@ -1584,9 +596,9 @@ export class SmartLLMService {
 					}
 
 					const choice = attemptResponse.choices[0];
-					const content = this.extractTextFromChoice(choice);
+					const content = extractTextFromChoice(choice);
 					if (!content || content.trim().length === 0) {
-						throw this.buildOpenRouterEmptyContentError({
+						throw buildOpenRouterEmptyContentError({
 							operation: 'generateText',
 							requestedModel,
 							response: attemptResponse,
@@ -1625,50 +637,52 @@ export class SmartLLMService {
 					// Log to database (async, non-blocking)
 					const cachedTokens =
 						attemptResponse.usage?.prompt_tokens_details?.cached_tokens || 0;
-					this.logUsageToDatabase({
-						userId: options.userId,
-						operationType: options.operationType || 'other',
-						modelRequested: baseModel,
-						modelUsed: actualModel,
-						provider: attemptResponse.provider || modelConfig?.provider,
-						promptTokens: attemptResponse.usage?.prompt_tokens || 0,
-						completionTokens: attemptResponse.usage?.completion_tokens || 0,
-						totalTokens: attemptResponse.usage?.total_tokens || 0,
-						inputCost,
-						outputCost,
-						totalCost: inputCost + outputCost,
-						responseTimeMs: Math.round(duration),
-						requestStartedAt,
-						requestCompletedAt,
-						status: 'success',
-						temperature: options.temperature,
-						maxTokens: options.maxTokens,
-						profile,
-						streaming: options.streaming,
-						projectId: options.projectId,
-						brainDumpId: options.brainDumpId,
-						taskId: options.taskId,
-						briefId: options.briefId,
-						chatSessionId: options.chatSessionId,
-						agentSessionId: options.agentSessionId,
-						agentPlanId: options.agentPlanId,
-						agentExecutionId: options.agentExecutionId,
-						openrouterRequestId: attemptResponse.id,
-						openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
-						metadata: {
-							estimatedLength,
-							preferredModels,
-							contentLength: content.length,
-							cachedTokens,
-							attempts: attempt + 1,
-							modelsAttempted,
-							finishReason: attemptResponse.choices?.[0]?.finish_reason ?? null,
-							reasoningTokens:
-								attemptResponse.usage?.completion_tokens_details
-									?.reasoning_tokens || 0,
-							systemFingerprint: attemptResponse.system_fingerprint
-						}
-					}).catch((err) => console.error('Failed to log usage:', err));
+					this.usageLogger
+						.logUsageToDatabase({
+							userId: options.userId,
+							operationType: options.operationType || 'other',
+							modelRequested: baseModel,
+							modelUsed: actualModel,
+							provider: attemptResponse.provider || modelConfig?.provider,
+							promptTokens: attemptResponse.usage?.prompt_tokens || 0,
+							completionTokens: attemptResponse.usage?.completion_tokens || 0,
+							totalTokens: attemptResponse.usage?.total_tokens || 0,
+							inputCost,
+							outputCost,
+							totalCost: inputCost + outputCost,
+							responseTimeMs: Math.round(duration),
+							requestStartedAt,
+							requestCompletedAt,
+							status: 'success',
+							temperature: options.temperature,
+							maxTokens: options.maxTokens,
+							profile,
+							streaming: options.streaming,
+							projectId: options.projectId,
+							brainDumpId: options.brainDumpId,
+							taskId: options.taskId,
+							briefId: options.briefId,
+							chatSessionId: options.chatSessionId,
+							agentSessionId: options.agentSessionId,
+							agentPlanId: options.agentPlanId,
+							agentExecutionId: options.agentExecutionId,
+							openrouterRequestId: attemptResponse.id,
+							openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
+							metadata: {
+								estimatedLength,
+								preferredModels,
+								contentLength: content.length,
+								cachedTokens,
+								attempts: attempt + 1,
+								modelsAttempted,
+								finishReason: attemptResponse.choices?.[0]?.finish_reason ?? null,
+								reasoningTokens:
+									attemptResponse.usage?.completion_tokens_details
+										?.reasoning_tokens || 0,
+								systemFingerprint: attemptResponse.system_fingerprint
+							}
+						})
+						.catch((err) => console.error('Failed to log usage:', err));
 
 					const usage: TextGenerationUsage | undefined = attemptResponse.usage
 						? {
@@ -1691,7 +705,13 @@ export class SmartLLMService {
 					}
 					const failedModel = attemptResponse?.model || requestedModel;
 					const emptyContentDetails =
-						error instanceof OpenRouterEmptyContentError ? error.details : undefined;
+						error instanceof OpenRouterEmptyContentError
+							? (error.details as {
+									inferredCause?: string;
+									finishReason?: string;
+									usage?: { reasoning_tokens?: number };
+								})
+							: undefined;
 					const inferredCause =
 						typeof emptyContentDetails?.inferredCause === 'string'
 							? emptyContentDetails.inferredCause
@@ -1721,7 +741,7 @@ export class SmartLLMService {
 							maxTokensOverride = targetMaxTokens;
 						}
 						if (!overrideModel || attemptedModels.has(overrideModel)) {
-							overrideModel = this.pickEmergencyTextModel(
+							overrideModel = pickEmergencyTextModel(
 								preferredModels,
 								attemptedModels
 							);
@@ -1790,506 +810,53 @@ export class SmartLLMService {
 			}
 
 			// Log failure to database
-			this.logUsageToDatabase({
-				userId: options.userId,
-				operationType: options.operationType || 'other',
-				modelRequested: baseModel,
-				modelUsed: lastModel,
-				promptTokens: 0,
-				completionTokens: 0,
-				totalTokens: 0,
-				inputCost: 0,
-				outputCost: 0,
-				totalCost: 0,
-				responseTimeMs: Math.round(duration),
-				requestStartedAt,
-				requestCompletedAt,
-				status: (error as Error).message.includes('timeout') ? 'timeout' : 'failure',
-				errorMessage: (error as Error).message,
-				temperature: options.temperature,
-				maxTokens: options.maxTokens,
-				profile,
-				streaming: options.streaming,
-				projectId: options.projectId,
-				brainDumpId: options.brainDumpId,
-				taskId: options.taskId,
-				briefId: options.briefId,
-				chatSessionId: options.chatSessionId,
-				agentSessionId: options.agentSessionId,
-				agentPlanId: options.agentPlanId,
-				agentExecutionId: options.agentExecutionId,
-				metadata: {
-					estimatedLength,
-					preferredModels,
-					attempts: modelsAttempted.length,
-					modelsAttempted,
-					lastFinishReason,
-					openrouterRequestId: lastResponse?.id,
-					openrouterProvider: lastResponse?.provider,
-					openrouterNativeFinishReason:
-						lastResponse?.choices?.[0]?.native_finish_reason ?? null,
-					openrouterResponseError: lastResponse?.error ?? null,
-					openrouterErrorDetails: openrouterErrorDetails ?? null,
-					emptyContentDetails: emptyContentDetails ?? null
-				}
-			}).catch((err) => console.error('Failed to log error:', err));
+			this.usageLogger
+				.logUsageToDatabase({
+					userId: options.userId,
+					operationType: options.operationType || 'other',
+					modelRequested: baseModel,
+					modelUsed: lastModel,
+					promptTokens: 0,
+					completionTokens: 0,
+					totalTokens: 0,
+					inputCost: 0,
+					outputCost: 0,
+					totalCost: 0,
+					responseTimeMs: Math.round(duration),
+					requestStartedAt,
+					requestCompletedAt,
+					status: (error as Error).message.includes('timeout') ? 'timeout' : 'failure',
+					errorMessage: (error as Error).message,
+					temperature: options.temperature,
+					maxTokens: options.maxTokens,
+					profile,
+					streaming: options.streaming,
+					projectId: options.projectId,
+					brainDumpId: options.brainDumpId,
+					taskId: options.taskId,
+					briefId: options.briefId,
+					chatSessionId: options.chatSessionId,
+					agentSessionId: options.agentSessionId,
+					agentPlanId: options.agentPlanId,
+					agentExecutionId: options.agentExecutionId,
+					metadata: {
+						estimatedLength,
+						preferredModels,
+						attempts: modelsAttempted.length,
+						modelsAttempted,
+						lastFinishReason,
+						openrouterRequestId: lastResponse?.id,
+						openrouterProvider: lastResponse?.provider,
+						openrouterNativeFinishReason:
+							lastResponse?.choices?.[0]?.native_finish_reason ?? null,
+						openrouterResponseError: lastResponse?.error ?? null,
+						openrouterErrorDetails: openrouterErrorDetails ?? null,
+						emptyContentDetails: emptyContentDetails ?? null
+					}
+				})
+				.catch((err) => console.error('Failed to log error:', err));
 
 			throw new Error('Failed to generate text');
-		}
-	}
-
-	private coerceContentToString(content: unknown): string | null {
-		if (typeof content === 'string') {
-			return content;
-		}
-
-		if (Array.isArray(content)) {
-			const parts: string[] = [];
-
-			for (const part of content) {
-				if (typeof part === 'string') {
-					parts.push(part);
-					continue;
-				}
-
-				if (!part || typeof part !== 'object') {
-					continue;
-				}
-
-				const partValue = part as {
-					type?: string;
-					text?: string | { value?: string };
-					value?: string;
-					content?: string;
-				};
-				const partType =
-					typeof partValue.type === 'string' ? partValue.type.toLowerCase() : '';
-				if (
-					partType &&
-					['reasoning', 'analysis', 'thinking', 'system'].includes(partType)
-				) {
-					continue;
-				}
-
-				if (typeof partValue.text === 'string') {
-					parts.push(partValue.text);
-				} else if (partValue.text && typeof partValue.text.value === 'string') {
-					parts.push(partValue.text.value);
-				} else if (typeof partValue.value === 'string') {
-					parts.push(partValue.value);
-				} else if (typeof partValue.content === 'string') {
-					parts.push(partValue.content);
-				}
-			}
-
-			return parts.join('');
-		}
-
-		if (content && typeof content === 'object') {
-			const partValue = content as {
-				text?: string | { value?: string };
-				value?: string;
-				content?: string;
-			};
-
-			if (typeof partValue.text === 'string') {
-				return partValue.text;
-			}
-			if (partValue.text && typeof partValue.text.value === 'string') {
-				return partValue.text.value;
-			}
-			if (typeof partValue.value === 'string') {
-				return partValue.value;
-			}
-			if (typeof partValue.content === 'string') {
-				return partValue.content;
-			}
-		}
-
-		return null;
-	}
-
-	private extractTextFromChoice(choice?: OpenRouterResponse['choices'][0]): string | null {
-		if (!choice) {
-			return null;
-		}
-
-		const messageContent = this.coerceContentToString(choice.message?.content);
-		if (messageContent !== null && messageContent.trim().length > 0) {
-			return messageContent;
-		}
-
-		const choiceText = typeof choice.text === 'string' ? choice.text : null;
-		if (choiceText !== null) {
-			return choiceText;
-		}
-
-		return messageContent;
-	}
-
-	private pickEmergencyTextModel(
-		preferredModels: string[],
-		attemptedModels: Set<string>
-	): string | null {
-		for (const model of EMERGENCY_TEXT_FALLBACKS) {
-			if (!attemptedModels.has(model) && TEXT_MODELS[model]) {
-				return model;
-			}
-		}
-
-		for (const model of preferredModels) {
-			if (!attemptedModels.has(model)) {
-				return model;
-			}
-		}
-
-		return null;
-	}
-
-	private ensureMinimumTextModels(models: string[], minModels = 3): string[] {
-		const result = [...models];
-
-		for (const fallback of EMERGENCY_TEXT_FALLBACKS) {
-			if (result.length >= minModels) break;
-			if (!result.includes(fallback)) {
-				result.push(fallback);
-			}
-		}
-
-		return result;
-	}
-
-	private summarizeOpenRouterMessageContent(content: unknown): OpenRouterMessageContentSummary {
-		const contentType =
-			content === undefined
-				? 'undefined'
-				: content === null
-					? 'null'
-					: Array.isArray(content)
-						? 'array'
-						: (typeof content as OpenRouterMessageContentSummary['contentType']);
-
-		if (contentType === 'string') {
-			const value = content as string;
-			return {
-				contentType,
-				stringLength: value.length,
-				trimmedStringLength: value.trim().length
-			};
-		}
-
-		if (contentType === 'object') {
-			const keys = Object.keys(content as Record<string, unknown>);
-			return {
-				contentType,
-				objectKeys: keys.slice(0, 25)
-			};
-		}
-
-		if (contentType !== 'array') {
-			return { contentType };
-		}
-
-		const partTypeCounts: Record<string, number> = {};
-		const textLengthByType: Record<string, number> = {};
-		let reasoningTextLength = 0;
-		let nonReasoningTextLength = 0;
-
-		const reasoningTypes = new Set(['reasoning', 'analysis', 'thinking', 'system']);
-		const parts = content as unknown[];
-
-		for (const part of parts) {
-			let partType = 'unknown';
-			let partTextLength = 0;
-
-			if (typeof part === 'string') {
-				partType = 'string';
-				partTextLength = part.length;
-			} else if (part && typeof part === 'object') {
-				const partValue = part as {
-					type?: string;
-					text?: string | { value?: string };
-					value?: string;
-					content?: string;
-				};
-				if (typeof partValue.type === 'string' && partValue.type.trim().length > 0) {
-					partType = partValue.type.trim().toLowerCase();
-				}
-				if (typeof partValue.text === 'string') {
-					partTextLength = partValue.text.length;
-				} else if (partValue.text && typeof partValue.text.value === 'string') {
-					partTextLength = partValue.text.value.length;
-				} else if (typeof partValue.value === 'string') {
-					partTextLength = partValue.value.length;
-				} else if (typeof partValue.content === 'string') {
-					partTextLength = partValue.content.length;
-				}
-			}
-
-			partTypeCounts[partType] = (partTypeCounts[partType] || 0) + 1;
-			textLengthByType[partType] = (textLengthByType[partType] || 0) + partTextLength;
-
-			if (reasoningTypes.has(partType)) {
-				reasoningTextLength += partTextLength;
-			} else {
-				nonReasoningTextLength += partTextLength;
-			}
-		}
-
-		return {
-			contentType,
-			partCount: parts.length,
-			partTypeCounts,
-			textLengthByType,
-			reasoningTextLength,
-			nonReasoningTextLength
-		};
-	}
-
-	private buildOpenRouterEmptyContentError(params: {
-		operation: string;
-		requestedModel: string;
-		response: OpenRouterResponse;
-		choice: OpenRouterResponse['choices'][0];
-		extractedText: string | null;
-	}): OpenRouterEmptyContentError {
-		const { operation, requestedModel, response, choice, extractedText } = params;
-		const actualModel = response.model || requestedModel;
-
-		const toolCalls = Array.isArray(choice.message?.tool_calls)
-			? choice.message.tool_calls
-			: [];
-		const toolCallNames = toolCalls
-			.map((call) => call?.function?.name)
-			.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
-			.slice(0, 10);
-
-		const contentSummary = this.summarizeOpenRouterMessageContent(choice.message?.content);
-		const finishReason = choice.finish_reason;
-		const nativeFinishReason = choice.native_finish_reason;
-
-		let inferredCause: string = 'unknown';
-		if (toolCalls.length > 0) {
-			inferredCause = 'tool_calls_without_text';
-		} else if (
-			contentSummary.contentType === 'null' ||
-			contentSummary.contentType === 'undefined'
-		) {
-			inferredCause = 'null_content';
-		} else if (
-			contentSummary.contentType === 'string' &&
-			(contentSummary.trimmedStringLength ?? 0) === 0
-		) {
-			inferredCause = 'empty_string';
-		} else if (
-			contentSummary.contentType === 'array' &&
-			(contentSummary.nonReasoningTextLength ?? 0) === 0 &&
-			(contentSummary.reasoningTextLength ?? 0) > 0
-		) {
-			inferredCause = 'reasoning_only';
-		} else if (finishReason === 'length') {
-			inferredCause = 'length_without_text';
-		}
-
-		const details: Record<string, unknown> = {
-			operation,
-			inferredCause,
-			requestedModel,
-			actualModel,
-			openrouterProvider: response.provider ?? null,
-			openrouterRequestId: response.id,
-			finishReason: finishReason ?? null,
-			nativeFinishReason: nativeFinishReason ?? null,
-			systemFingerprint: response.system_fingerprint ?? null,
-			messageRole: choice.message?.role ?? null,
-			toolCallCount: toolCalls.length,
-			toolCallNames,
-			contentSummary,
-			extractedTextLength: typeof extractedText === 'string' ? extractedText.length : null,
-			choiceTextLength: typeof choice.text === 'string' ? choice.text.length : null,
-			usage: response.usage
-				? {
-						prompt_tokens: response.usage.prompt_tokens ?? null,
-						completion_tokens: response.usage.completion_tokens ?? null,
-						total_tokens: response.usage.total_tokens ?? null,
-						reasoning_tokens:
-							response.usage.completion_tokens_details?.reasoning_tokens ?? null
-					}
-				: null,
-			openrouterError: response.error ?? null
-		};
-
-		const message = `OpenRouter returned empty content (cause=${inferredCause}, finish_reason=${finishReason ?? 'unknown'}, model=${actualModel}, provider=${response.provider ?? 'unknown'}, requestId=${response.id})`;
-		return new OpenRouterEmptyContentError(message, details);
-	}
-
-	// ============================================
-	// OPENROUTER API CALL WITH ROUTING
-	// ============================================
-
-	private async callOpenRouter(params: {
-		model: string;
-		models?: string[]; // Additional models for fallback (OpenRouter extension)
-		messages: Array<{ role: string; content: string }>;
-		temperature?: number;
-		max_tokens?: number;
-		timeoutMs?: number;
-		response_format?: { type: string };
-		stream?: boolean;
-		route?: 'fallback'; // NOTE: Not used - kept for backwards compatibility
-		provider?: any; // NOTE: Not used - kept for backwards compatibility
-	}): Promise<OpenRouterResponse> {
-		const headers = {
-			Authorization: `Bearer ${this.apiKey}`,
-			'Content-Type': 'application/json',
-			'HTTP-Referer': this.httpReferer,
-			'X-Title': this.appName
-		};
-
-		// Build request body following OpenRouter API v1 spec
-		// See: https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request
-		const body: any = {
-			model: params.model,
-			messages: params.messages,
-			temperature: params.temperature,
-			max_tokens: params.max_tokens,
-			stream: params.stream || false
-		};
-
-		// Add response format if supported (e.g., json_object for compatible models)
-		if (params.response_format) {
-			body.response_format = params.response_format;
-		}
-
-		// Add fallback models using extra_body (OpenRouter convention)
-		// The primary model is in 'model', fallbacks go in extra_body.models
-		if (params.models && params.models.length > 1) {
-			body.extra_body = {
-				models: params.models.slice(1) // All models except the first (primary)
-			};
-		}
-
-		try {
-			const timeoutMs = params.timeoutMs ?? 120000;
-			const response = await fetch(this.apiUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(timeoutMs)
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				let parsed: any = null;
-				try {
-					parsed = JSON.parse(errorText);
-				} catch {
-					parsed = null;
-				}
-
-				const errorObject =
-					parsed?.error && typeof parsed.error === 'object' ? parsed.error : parsed;
-				const providerMessage =
-					typeof errorObject?.message === 'string'
-						? errorObject.message
-						: typeof errorText === 'string'
-							? errorText
-							: 'Unknown error';
-				const trimmedMessage =
-					providerMessage.length > 4000
-						? `${providerMessage.slice(0, 4000)}…`
-						: providerMessage;
-				const requestIdHeader =
-					response.headers.get('x-request-id') ||
-					response.headers.get('x-openrouter-request-id') ||
-					response.headers.get('openrouter-request-id');
-				const errorMetadata =
-					errorObject?.metadata && typeof errorObject.metadata === 'object'
-						? (errorObject.metadata as Record<string, unknown>)
-						: null;
-				const providerName =
-					typeof errorMetadata?.provider_name === 'string'
-						? errorMetadata.provider_name
-						: null;
-
-				const enrichedError = new Error(
-					`OpenRouter API error: ${response.status} - ${trimmedMessage}`
-				) as Error & {
-					status?: number;
-					openrouter?: Record<string, unknown>;
-				};
-				enrichedError.status = response.status;
-				enrichedError.openrouter = {
-					httpStatus: response.status,
-					requestId: requestIdHeader ?? null,
-					errorType: errorObject?.type ?? null,
-					errorCode: errorObject?.code ?? null,
-					errorParam: errorObject?.param ?? null,
-					error: errorObject ?? null,
-					metadata: errorMetadata,
-					providerName
-				};
-				throw enrichedError;
-			}
-
-			const data = (await response.json()) as OpenRouterResponse;
-			if (data.error && typeof data.error.message === 'string' && data.error.message.trim()) {
-				const errorMetadata =
-					data.error.metadata && typeof data.error.metadata === 'object'
-						? (data.error.metadata as Record<string, unknown>)
-						: null;
-				const providerName =
-					typeof errorMetadata?.provider_name === 'string'
-						? errorMetadata.provider_name
-						: null;
-				const enrichedError = new Error(
-					`OpenRouter API error: ${data.error.message}`
-				) as Error & {
-					openrouter?: Record<string, unknown>;
-				};
-				enrichedError.openrouter = {
-					error: data.error,
-					metadata: errorMetadata,
-					providerName
-				};
-				throw enrichedError;
-			}
-
-			// Log OpenRouter routing result with all available metadata
-			const cachedTokens = data.usage?.prompt_tokens_details?.cached_tokens || 0;
-			const cacheHitRate = data.usage?.prompt_tokens
-				? ((cachedTokens / data.usage.prompt_tokens) * 100).toFixed(1)
-				: '0.0';
-
-			console.debug('OpenRouter routing result:', {
-				model: data.model || params.model,
-				provider: data.provider || 'Unknown',
-				cacheStatus:
-					cachedTokens > 0
-						? `${cacheHitRate}% cached (${cachedTokens} tokens)`
-						: 'no cache',
-				requestId: data.id,
-				systemFingerprint: data.system_fingerprint,
-				reasoningTokens: data.usage?.completion_tokens_details?.reasoning_tokens || 0
-			});
-
-			return data;
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') {
-				if (this.errorLogger) {
-					await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', undefined, {
-						operation: 'callOpenRouter_timeout',
-						errorType: 'llm_api_timeout',
-						modelRequested: params.model,
-						alternativeModels: params.models?.join(', ') || 'none',
-						timeoutMs: params.timeoutMs ?? 120000,
-						temperature: params.temperature,
-						maxTokens: params.max_tokens
-					});
-				}
-				throw new Error(`Request timeout for model ${params.model}`);
-			}
-			throw error;
 		}
 	}
 
@@ -2440,232 +1007,6 @@ export class SmartLLMService {
 		return enriched;
 	}
 
-	private ensureToolCompatibleModels(models: string[]): string[] {
-		const toolReadyModels = models.filter((model) => TOOL_CALLING_MODEL_SET.has(model));
-
-		if (toolReadyModels.length > 0) {
-			return toolReadyModels;
-		}
-
-		console.warn(
-			'No tool-capable models found in preferred list. Falling back to default tool-calling models.',
-			{ requestedModels: models }
-		);
-
-		// Use fallback order while keeping values unique
-		return Array.from(
-			new Set<string>([
-				...models.filter((model) => TOOL_CALLING_MODEL_SET.has(model)),
-				...TOOL_CALLING_MODEL_ORDER
-			])
-		);
-	}
-
-	// ============================================
-	// HELPER METHODS
-	// ============================================
-
-	private analyzeComplexity(text: string): 'simple' | 'moderate' | 'complex' {
-		const length = text.length;
-		const hasNestedStructure = /\[\{|\{\[|":\s*\{|":\s*\[/.test(text);
-		const hasComplexLogic = /if|when|decision|analyze|evaluate|extract/i.test(text);
-		const hasMultipleSteps = /step \d|first.*then|phase|stage/i.test(text);
-
-		if (length > 8000 || (hasNestedStructure && hasComplexLogic)) return 'complex';
-		if (length > 3000 || hasComplexLogic || hasMultipleSteps) return 'moderate';
-		return 'simple';
-	}
-
-	private selectJSONModels(
-		profile: JSONProfile,
-		complexity: string,
-		requirements?: any
-	): string[] {
-		// If custom requirements, calculate best models
-		if (profile === 'custom' && requirements) {
-			return this.selectModelsByRequirements(JSON_MODELS, requirements, 'json');
-		}
-
-		// Validate profile and provide fallback
-		const profileModels = JSON_PROFILE_MODELS[profile];
-		if (!profileModels || !Array.isArray(profileModels)) {
-			console.warn(`Invalid JSON profile: ${profile}, falling back to balanced`);
-			return [...JSON_PROFILE_MODELS.balanced];
-		}
-
-		// Get base models for profile
-		let models = [...profileModels];
-
-		// Adjust based on complexity
-		if (complexity === 'complex' && profile === 'fast') {
-			// Upgrade to balanced for complex tasks
-			models = [...JSON_PROFILE_MODELS.balanced];
-		} else if (complexity === 'simple' && profile === 'powerful') {
-			// Can use faster models for simple tasks
-			models = ['deepseek/deepseek-chat', ...models];
-		}
-
-		return models;
-	}
-
-	private selectTextModels(
-		profile: TextProfile,
-		estimatedLength: number,
-		requirements?: any
-	): string[] {
-		// If custom requirements, calculate best models
-		if (profile === 'custom' && requirements) {
-			return this.selectModelsByRequirements(TEXT_MODELS, requirements, 'text');
-		}
-
-		// Validate profile and provide fallback
-		const profileModels = TEXT_PROFILE_MODELS[profile];
-		if (!profileModels || !Array.isArray(profileModels)) {
-			console.warn(`Invalid text profile: ${profile}, falling back to balanced`);
-			return [...TEXT_PROFILE_MODELS.balanced];
-		}
-
-		// Get base models for profile
-		let models = [...profileModels];
-
-		// Adjust based on length
-		if (estimatedLength > 3000 && profile === 'speed') {
-			// Need more capable models for long content
-			models = [...TEXT_PROFILE_MODELS.balanced];
-		} else if (estimatedLength < 500 && profile === 'quality') {
-			// Can use faster models for short content
-			models = ['deepseek/deepseek-chat', ...models];
-		}
-
-		return models;
-	}
-
-	private selectModelsByRequirements(
-		modelPool: Record<string, ModelProfile>,
-		requirements: any,
-		type: 'json' | 'text'
-	): string[] {
-		const models = Object.values(modelPool);
-
-		// Filter by requirements
-		let eligible = models.filter((model) => {
-			if (requirements.maxCost && model.cost > requirements.maxCost) return false;
-			if (requirements.minAccuracy && model.smartness < requirements.minAccuracy)
-				return false;
-			if (requirements.minQuality && model.smartness < requirements.minQuality) return false;
-			return true;
-		});
-
-		// Calculate value score for each model
-		const scored = eligible.map((model) => {
-			let score: number;
-
-			if (type === 'json') {
-				// For JSON: prioritize accuracy and speed
-				score = (model.smartness * 2 + model.speed) / model.cost;
-			} else {
-				// For text: balance all factors
-				const creativity = model.creativity || model.smartness;
-				score = (model.smartness + model.speed + creativity) / model.cost;
-			}
-
-			return { model, score };
-		});
-
-		// Sort by score and return top 3
-		scored.sort((a, b) => b.score - a.score);
-		return scored.slice(0, 3).map((s) => s.model.id);
-	}
-
-	private supportsJsonMode(modelId: string): boolean {
-		// Models that support native JSON mode (response_format: { type: 'json_object' })
-		// Updated 2025-12-23 with latest model support
-		const jsonModeModels = [
-			// OpenAI models - excellent JSON mode support
-			'openai/gpt-4o',
-			'openai/gpt-4o-mini',
-			'openai/gpt-4.1-nano', // Native JSON schema support
-			// DeepSeek models
-			'deepseek/deepseek-chat',
-			'deepseek/deepseek-r1',
-			// Qwen models
-			'qwen/qwen3-32b', // Excellent structured output
-			// Google Gemini models
-			'google/gemini-2.5-flash', // Hybrid reasoning with JSON support
-			'google/gemini-2.5-flash-lite',
-			'google/gemini-2.0-flash-001',
-			// xAI Grok models
-			'x-ai/grok-4-fast',
-			'x-ai/grok-4-fast:free',
-			'x-ai/grok-4.1-fast', // Tool-calling optimized
-			'x-ai/grok-code-fast-1',
-			// Other models
-			'z-ai/glm-4.6', // Good structured output
-			'minimax/minimax-m2.1', // Supports structured outputs
-			'moonshotai/kimi-k2-thinking' // Supports structured outputs (reasoning tokens separate)
-			// Note: Anthropic Claude models do NOT support native JSON mode
-			// They require prompt-based JSON instructions
-		];
-
-		return jsonModeModels.includes(modelId);
-	}
-
-	private enhanceSystemPromptForJSON(originalPrompt: string): string {
-		const jsonInstructions = `
-You must respond with valid JSON only. Follow these rules:
-1. Output ONLY valid JSON - no text before or after
-2. Ensure all strings are properly escaped
-3. Use null for missing values, not undefined
-4. Numbers should not be quoted unless they're meant to be strings
-5. Boolean values should be true/false (lowercase, not quoted)
-6. CRITICAL: NO trailing commas after the last item in objects or arrays
-
-`;
-		return jsonInstructions + originalPrompt;
-	}
-
-	private cleanJSONResponse(raw: string): string {
-		// Remove markdown code blocks if present
-		let cleaned = raw.trim();
-		if (cleaned.startsWith('```json')) {
-			cleaned = cleaned.slice(7);
-		}
-		if (cleaned.startsWith('```')) {
-			cleaned = cleaned.slice(3);
-		}
-		if (cleaned.endsWith('```')) {
-			cleaned = cleaned.slice(0, -3);
-		}
-
-		// Remove any non-JSON prefix
-		const jsonStart = cleaned.indexOf('{');
-		if (jsonStart > 0) {
-			cleaned = cleaned.slice(jsonStart);
-		}
-
-		// Remove any non-JSON suffix
-		const jsonEnd = cleaned.lastIndexOf('}');
-		if (jsonEnd > -1 && jsonEnd < cleaned.length - 1) {
-			cleaned = cleaned.slice(0, jsonEnd + 1);
-		}
-
-		// Fix common LLM JSON errors
-		// Remove trailing commas before closing braces/brackets (e.g., {key: "value",} -> {key: "value"})
-		cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
-
-		return cleaned.trim();
-	}
-
-	private estimateResponseLength(prompt: string): number {
-		// Simple heuristic based on prompt length
-		const promptLength = prompt.length;
-
-		if (promptLength < 200) return 500;
-		if (promptLength < 1000) return 1500;
-		if (promptLength < 5000) return 3000;
-		return 5000;
-	}
-
 	private trackPerformance(model: string, duration: number): void {
 		const history = this.performanceMetrics.get(model) || [];
 		history.push(duration);
@@ -2748,128 +1089,6 @@ You must respond with valid JSON only. Follow these rules:
 	// TRANSCRIPTION METHODS (OPENROUTER AUDIO INPUT)
 	// ============================================
 
-	private buildTranscriptionVocabulary(customTerms?: string): string {
-		const baseVocabulary = 'BuildOS, brain dump, ontology, daily brief, phase, project context';
-		return customTerms ? `${baseVocabulary}, ${customTerms}` : baseVocabulary;
-	}
-
-	private getAudioFormat(mimeType?: string, filename?: string): string {
-		const cleaned = mimeType?.split(';')[0]?.trim().toLowerCase();
-		const mapping: Record<string, string> = {
-			'audio/webm': 'webm',
-			'audio/ogg': 'ogg',
-			'audio/wav': 'wav',
-			'audio/mp4': 'm4a',
-			'audio/mpeg': 'mp3',
-			'audio/mp3': 'mp3',
-			'audio/flac': 'flac',
-			'audio/x-flac': 'flac',
-			'audio/aac': 'm4a'
-		};
-
-		if (cleaned && mapping[cleaned]) {
-			return mapping[cleaned];
-		}
-
-		if (filename && filename.includes('.')) {
-			const ext = filename.split('.').pop()?.toLowerCase();
-			if (ext) {
-				return ext === 'mp4' ? 'm4a' : ext;
-			}
-		}
-
-		return 'webm';
-	}
-
-	private async encodeAudioToBase64(audioFile: File): Promise<string> {
-		const buffer = Buffer.from(await audioFile.arrayBuffer());
-		return buffer.toString('base64');
-	}
-
-	private isRetryableTranscriptionError(error: any): boolean {
-		if (error?.name === 'TranscriptionTimeoutError') {
-			return true;
-		}
-
-		if (
-			error?.code === 'ENOTFOUND' ||
-			error?.code === 'ETIMEDOUT' ||
-			error?.code === 'ECONNRESET'
-		) {
-			return true;
-		}
-
-		const status = error?.status;
-		if (status === 429) return true;
-		if (status && status >= 500 && status < 600) return true;
-
-		return false;
-	}
-
-	private async sleep(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
-	}
-
-	private async callOpenRouterAudio(params: {
-		model: string;
-		messages: Array<{
-			role: string;
-			content:
-				| string
-				| Array<
-						| { type: 'text'; text: string }
-						| { type: 'input_audio'; input_audio: { data: string; format: string } }
-				  >;
-		}>;
-		temperature?: number;
-		max_tokens?: number;
-		timeoutMs: number;
-	}): Promise<OpenRouterResponse> {
-		const headers = {
-			Authorization: `Bearer ${this.apiKey}`,
-			'Content-Type': 'application/json',
-			'HTTP-Referer': this.httpReferer,
-			'X-Title': this.appName
-		};
-
-		const body = {
-			model: params.model,
-			messages: params.messages,
-			temperature: params.temperature,
-			max_tokens: params.max_tokens,
-			stream: false
-		};
-
-		try {
-			const response = await fetch(this.apiUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(params.timeoutMs)
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				const error = new Error(
-					`OpenRouter API error: ${response.status} - ${errorText}`
-				) as Error & { status?: number };
-				error.status = response.status;
-				throw error;
-			}
-
-			return (await response.json()) as OpenRouterResponse;
-		} catch (error) {
-			if (error instanceof Error && error.name === 'AbortError') {
-				const timeoutError = new Error(
-					`Transcription request timed out after ${params.timeoutMs}ms`
-				) as Error & { name: string };
-				timeoutError.name = 'TranscriptionTimeoutError';
-				throw timeoutError;
-			}
-			throw error;
-		}
-	}
-
 	async transcribeAudio(options: TranscriptionOptions): Promise<TranscriptionResult> {
 		const requestStartedAt = new Date();
 		const startTime = performance.now();
@@ -2885,9 +1104,9 @@ You must respond with valid JSON only. Follow these rules:
 			throw new Error('OpenRouter transcription models not configured');
 		}
 
-		const vocabularyPrompt = this.buildTranscriptionVocabulary(options.vocabularyTerms);
-		const audioFormat = this.getAudioFormat(options.audioFile.type, options.audioFile.name);
-		const base64Audio = await this.encodeAudioToBase64(options.audioFile);
+		const vocabularyPrompt = buildTranscriptionVocabulary(options.vocabularyTerms);
+		const audioFormat = getAudioFormat(options.audioFile.type, options.audioFile.name);
+		const base64Audio = await encodeAudioToBase64(options.audioFile);
 
 		const systemPrompt =
 			'You are a transcription engine. Return only the transcript text. Do not add labels, timestamps, or commentary.';
@@ -2900,10 +1119,10 @@ You must respond with valid JSON only. Follow these rules:
 				try {
 					if (attempt > 0) {
 						const delay = initialRetryDelayMs * Math.pow(2, attempt - 1);
-						await this.sleep(delay);
+						await sleep(delay);
 					}
 
-					const response = await this.callOpenRouterAudio({
+					const response = await this.openRouterClient.callOpenRouterAudio({
 						model,
 						messages: [
 							{ role: 'system', content: systemPrompt },
@@ -2931,9 +1150,9 @@ You must respond with valid JSON only. Follow these rules:
 					}
 
 					const choice = response.choices[0];
-					const content = this.extractTextFromChoice(choice);
+					const content = extractTextFromChoice(choice);
 					if (!content || content.trim().length === 0) {
-						throw this.buildOpenRouterEmptyContentError({
+						throw buildOpenRouterEmptyContentError({
 							operation: 'transcribeAudio',
 							requestedModel: model,
 							response,
@@ -2958,7 +1177,7 @@ You must respond with valid JSON only. Follow these rules:
 				} catch (error) {
 					lastError = error as Error;
 
-					if (!this.isRetryableTranscriptionError(error) || attempt === maxRetries) {
+					if (!isRetryableTranscriptionError(error) || attempt === maxRetries) {
 						break;
 					}
 				}
@@ -3100,6 +1319,7 @@ You must respond with valid JSON only. Follow these rules:
 			content: string;
 			tool_calls?: any[];
 			tool_call_id?: string;
+			reasoning_content?: string;
 		}>;
 		tools?: any[];
 		tool_choice?: 'auto' | 'none' | 'required';
@@ -3137,19 +1357,19 @@ You must respond with valid JSON only. Follow these rules:
 			(sum, msg) => sum + (msg.content?.length || 0),
 			0
 		);
-		const estimatedLength = this.estimateResponseLength(
+		const estimatedLength = estimateResponseLength(
 			totalInputLength > 0 ? 'x'.repeat(totalInputLength) : 'default chat message'
 		);
 
 		// Select models optimized for chat streaming
-		let preferredModels = this.selectTextModels(
+		let preferredModels = selectTextModels(
 			profile,
 			estimatedLength,
 			{ maxLatency: 2000 } // Fast response for chat
 		);
 
 		if (needsToolSupport) {
-			preferredModels = this.ensureToolCompatibleModels(preferredModels);
+			preferredModels = ensureToolCompatibleModels(preferredModels);
 		}
 		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
 		let resolvedModel = baseModel;
@@ -3181,9 +1401,13 @@ You must respond with valid JSON only. Follow these rules:
 					...remainingModels.filter((model) => model !== requestedModel)
 				];
 
+				const messagesForRequest = this.prepareMessagesForModel(
+					options.messages,
+					routingModels
+				);
 				const body: any = {
 					model: requestedModel,
-					messages: options.messages,
+					messages: messagesForRequest,
 					temperature: options.temperature ?? 0.7,
 					max_tokens: options.maxTokens ?? 2000,
 					stream: true
@@ -3198,7 +1422,7 @@ You must respond with valid JSON only. Follow these rules:
 
 				// Add tools if provided
 				if (needsToolSupport) {
-					body.tools = options.tools;
+					body.tools = this.normalizeToolsForRequest(options.tools);
 					body.tool_choice = options.tool_choice || 'auto';
 				}
 
@@ -3212,10 +1436,7 @@ You must respond with valid JSON only. Follow these rules:
 				} catch (error) {
 					lastError = error as Error;
 					attemptedModels.add(requestedModel);
-					if (
-						attempt < maxAttempts - 1 &&
-						this.isRetryableOpenRouterError(error)
-					) {
+					if (attempt < maxAttempts - 1 && isRetryableOpenRouterError(error)) {
 						console.warn('OpenRouter stream retrying after fetch error', {
 							attempt: attempt + 1,
 							maxAttempts,
@@ -3244,7 +1465,7 @@ You must respond with valid JSON only. Follow these rules:
 				lastErrorText = errorText;
 				attemptedModels.add(requestedModel);
 
-				if (attempt < maxAttempts - 1 && this.isRetryableOpenRouterError(statusError)) {
+				if (attempt < maxAttempts - 1 && isRetryableOpenRouterError(statusError)) {
 					console.warn('OpenRouter stream retrying after failure', {
 						attempt: attempt + 1,
 						maxAttempts,
@@ -3357,41 +1578,43 @@ You must respond with valid JSON only. Follow these rules:
 								options.contextType
 							);
 
-							this.logUsageToDatabase({
-								userId: options.userId,
-								operationType,
-								modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-								modelUsed: actualModel,
-								provider,
-								promptTokens: usage.prompt_tokens || 0,
-								completionTokens: usage.completion_tokens || 0,
-								totalTokens: usage.total_tokens || 0,
-								inputCost,
-								outputCost,
-								totalCost: inputCost + outputCost,
-								responseTimeMs: Math.round(duration),
-								requestStartedAt,
-								requestCompletedAt,
-								status: 'success',
-								temperature: options.temperature,
-								maxTokens: options.maxTokens,
-								profile,
-								streaming: true,
-								projectId: options.projectId,
-								chatSessionId: options.chatSessionId || options.sessionId,
-								agentSessionId: options.agentSessionId,
-								agentPlanId: options.agentPlanId,
-								agentExecutionId: options.agentExecutionId,
-								metadata: {
-									sessionId: options.sessionId,
-									messageId: options.messageId,
-									hasTools: !!options.tools,
-									contextType: options.contextType,
-									entityId: options.entityId,
-									modelResolvedFromStream,
-									providerResolvedFromStream
-								}
-							}).catch((err) => console.error('Failed to log usage:', err));
+							this.usageLogger
+								.logUsageToDatabase({
+									userId: options.userId,
+									operationType,
+									modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+									modelUsed: actualModel,
+									provider,
+									promptTokens: usage.prompt_tokens || 0,
+									completionTokens: usage.completion_tokens || 0,
+									totalTokens: usage.total_tokens || 0,
+									inputCost,
+									outputCost,
+									totalCost: inputCost + outputCost,
+									responseTimeMs: Math.round(duration),
+									requestStartedAt,
+									requestCompletedAt,
+									status: 'success',
+									temperature: options.temperature,
+									maxTokens: options.maxTokens,
+									profile,
+									streaming: true,
+									projectId: options.projectId,
+									chatSessionId: options.chatSessionId || options.sessionId,
+									agentSessionId: options.agentSessionId,
+									agentPlanId: options.agentPlanId,
+									agentExecutionId: options.agentExecutionId,
+									metadata: {
+										sessionId: options.sessionId,
+										messageId: options.messageId,
+										hasTools: !!options.tools,
+										contextType: options.contextType,
+										entityId: options.entityId,
+										modelResolvedFromStream,
+										providerResolvedFromStream
+									}
+								})
+								.catch((err) => console.error('Failed to log usage:', err));
 						}
 
 						yield {
@@ -3429,7 +1652,7 @@ You must respond with valid JSON only. Follow these rules:
 								const {
 									text: filteredContent,
 									inThinkingBlock: nextThinkingState
-								} = this.normalizeStreamingContent(delta.content, inThinkingBlock);
+								} = normalizeStreamingContent(delta.content, inThinkingBlock);
 
 								inThinkingBlock = nextThinkingState;
 
@@ -3511,162 +1734,48 @@ You must respond with valid JSON only. Follow these rules:
 			// Log failure with context-aware operation type
 			const operationType = this.buildChatStreamOperationType(options.contextType);
 
-			this.logUsageToDatabase({
-				userId: options.userId,
-				operationType,
-				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-				modelUsed: resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini',
-				promptTokens: 0,
-				completionTokens: 0,
-				totalTokens: 0,
-				inputCost: 0,
-				outputCost: 0,
-				totalCost: 0,
-				responseTimeMs: Math.round(duration),
-				requestStartedAt,
-				requestCompletedAt,
-				status: 'failure',
-				errorMessage: (error as Error).message,
-				temperature: options.temperature,
-				maxTokens: options.maxTokens,
-				profile,
-				streaming: true,
-				projectId: options.projectId || options.entityId,
-				chatSessionId: options.chatSessionId || options.sessionId,
-				agentSessionId: options.agentSessionId,
-				agentPlanId: options.agentPlanId,
-				agentExecutionId: options.agentExecutionId,
-				metadata: {
-					sessionId: options.sessionId,
-					messageId: options.messageId,
-					contextType: options.contextType,
-					entityId: options.entityId,
-					modelResolvedFromStream,
-					providerResolvedFromStream
-				}
-			}).catch((err) => console.error('Failed to log error:', err));
+			this.usageLogger
+				.logUsageToDatabase({
+					userId: options.userId,
+					operationType,
+					modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+					modelUsed: resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini',
+					promptTokens: 0,
+					completionTokens: 0,
+					totalTokens: 0,
+					inputCost: 0,
+					outputCost: 0,
+					totalCost: 0,
+					responseTimeMs: Math.round(duration),
+					requestStartedAt,
+					requestCompletedAt,
+					status: 'failure',
+					errorMessage: (error as Error).message,
+					temperature: options.temperature,
+					maxTokens: options.maxTokens,
+					profile,
+					streaming: true,
+					projectId: options.projectId || options.entityId,
+					chatSessionId: options.chatSessionId || options.sessionId,
+					agentSessionId: options.agentSessionId,
+					agentPlanId: options.agentPlanId,
+					agentExecutionId: options.agentExecutionId,
+					metadata: {
+						sessionId: options.sessionId,
+						messageId: options.messageId,
+						contextType: options.contextType,
+						entityId: options.entityId,
+						modelResolvedFromStream,
+						providerResolvedFromStream
+					}
+				})
+				.catch((err) => console.error('Failed to log error:', err));
 
 			yield {
 				type: 'error',
 				error: `Stream failed: ${(error as Error).message}`
 			};
 		}
-	}
-
-	private normalizeStreamingContent(
-		content: unknown,
-		inThinkingBlock: boolean
-	): { text: string; inThinkingBlock: boolean } {
-		const textParts: string[] = [];
-
-		const pushText = (value?: string) => {
-			if (value) {
-				textParts.push(value);
-			}
-		};
-
-		const handleContentPart = (part: any) => {
-			if (!part) return;
-
-			if (typeof part === 'string') {
-				pushText(part);
-				return;
-			}
-
-			if (typeof part === 'object') {
-				const type = typeof part.type === 'string' ? part.type.toLowerCase() : '';
-				if (type && ['reasoning', 'analysis', 'thinking', 'system'].includes(type)) {
-					return;
-				}
-
-				if (typeof part.text === 'string') {
-					pushText(part.text);
-				} else if (part.text && typeof part.text.value === 'string') {
-					pushText(part.text.value);
-				} else if (typeof part.value === 'string') {
-					pushText(part.value);
-				}
-			}
-		};
-
-		if (Array.isArray(content)) {
-			content.forEach(handleContentPart);
-		} else if (typeof content === 'string') {
-			pushText(content);
-		} else if (typeof content === 'object' && content !== null) {
-			handleContentPart(content);
-		}
-
-		if (textParts.length === 0) {
-			return { text: '', inThinkingBlock };
-		}
-
-		let combined = textParts.join('');
-
-		// Strip invisible padding and normalize whitespace without collapsing intentional spacing
-		combined = combined.replace(/[\u3164\u200B\uFEFF]/g, '');
-		combined = combined.replace(/\u00A0/g, ' ');
-		combined = combined.replace(/\r\n?/g, '\n');
-
-		const { text, inThinkingBlock: thinkingState } = this.filterThinkingTokens(
-			combined,
-			inThinkingBlock
-		);
-
-		const trimmed = text.trim();
-		// Skip obvious filler punctuation bursts often used for "thinking" animations
-		if (trimmed && /^[.,;·•…]+$/.test(trimmed) && trimmed.length >= 6) {
-			return { text: '', inThinkingBlock: thinkingState };
-		}
-
-		return { text, inThinkingBlock: thinkingState };
-	}
-
-	private filterThinkingTokens(
-		text: string,
-		inThinkingBlock: boolean
-	): { text: string; inThinkingBlock: boolean } {
-		let output = text;
-		let thinking = inThinkingBlock;
-
-		const startRegex = /<\s*(think|thinking|analysis|reasoning)\s*>/i;
-		const endRegex = /<\s*\/\s*(think|thinking|analysis|reasoning)\s*>/i;
-
-		// If already inside a thinking block, drop content until a closing tag appears
-		if (thinking) {
-			const endMatch = output.match(endRegex);
-			if (endMatch?.index !== undefined) {
-				output = output.slice(endMatch.index + endMatch[0].length);
-				thinking = false;
-			} else {
-				return { text: '', inThinkingBlock: true };
-			}
-		}
-
-		// Remove any complete thinking blocks inside this chunk
-		while (true) {
-			const startMatch = output.match(startRegex);
-			if (!startMatch || startMatch.index === undefined) break;
-
-			const afterStart = output.slice(startMatch.index + startMatch[0].length);
-			const endMatch = afterStart.match(endRegex);
-
-			if (endMatch?.index !== undefined) {
-				output =
-					output.slice(0, startMatch.index) +
-					afterStart.slice(endMatch.index + endMatch[0].length);
-			} else {
-				// Start marker without an end - drop trailing content and keep state
-				output = output.slice(0, startMatch.index);
-				thinking = true;
-				break;
-			}
-		}
-
-		// Remove bracket-based markers that can leak thinking output
-		output = output.replace(/【\s*(thinking|reasoning|analysis)\s*】/gi, '');
-
-		return { text: output, inThinkingBlock: thinking };
 	}
 
 	private isAbortError(error: unknown): boolean {
@@ -3679,6 +1788,115 @@ You must respond with valid JSON only. Follow these rules:
 			(typeof maybeError.message === 'string' &&
 				maybeError.message.toLowerCase().includes('aborted'))
 		);
+	}
+
+	private prepareMessagesForModel(
+		messages: Array<{
+			role: string;
+			content: string;
+			tool_calls?: any[];
+			tool_call_id?: string;
+			reasoning_content?: string;
+		}>,
+		models: string[]
+	): Array<{
+		role: string;
+		content: string;
+		tool_calls?: any[];
+		tool_call_id?: string;
+		reasoning_content?: string;
+	}> {
+		if (!this.requiresToolCallReasoningContent(models)) {
+			return messages;
+		}
+
+		let mutated = false;
+		const updated = messages.map((message) => {
+			if (
+				message.role === 'assistant' &&
+				Array.isArray(message.tool_calls) &&
+				message.tool_calls.length > 0
+			) {
+				if (typeof message.reasoning_content !== 'string') {
+					mutated = true;
+					return {
+						...message,
+						reasoning_content: ''
+					};
+				}
+			}
+			return message;
+		});
+
+		return mutated ? updated : messages;
+	}
+
+	private requiresToolCallReasoningContent(models: string[]): boolean {
+		return models.some(
+			(model) => model === 'moonshotai/kimi-k2.5' || model === 'moonshotai/kimi-k2-thinking'
+		);
+	}
+
+	private normalizeToolsForRequest(tools: any[] | undefined): any[] {
+		if (!Array.isArray(tools) || tools.length === 0) {
+			return [];
+		}
+
+		const normalized = tools
+			.map((tool) => {
+				if (!tool || typeof tool !== 'object') {
+					return null;
+				}
+
+				if (tool.type === 'function' && tool.function?.name) {
+					return {
+						type: 'function',
+						function: {
+							name: tool.function.name,
+							description: tool.function.description ?? '',
+							parameters: tool.function.parameters ?? {
+								type: 'object',
+								properties: {}
+							}
+						}
+					};
+				}
+
+				const name =
+					typeof tool.name === 'string'
+						? tool.name
+						: typeof tool.function?.name === 'string'
+							? tool.function.name
+							: '';
+				if (!name) {
+					return null;
+				}
+
+				const description =
+					typeof tool.description === 'string'
+						? tool.description
+						: typeof tool.function?.description === 'string'
+							? tool.function.description
+							: '';
+				const parameters =
+					tool.parameters && typeof tool.parameters === 'object'
+						? tool.parameters
+						: tool.function?.parameters && typeof tool.function.parameters === 'object'
+							? tool.function.parameters
+							: { type: 'object', properties: {} };
+
+				return {
+					type: 'function',
+					function: {
+						name,
+						description,
+						parameters
+					}
+				};
+			})
+			.filter(Boolean);
+
+		return normalized.length > 0 ? (normalized as any[]) : tools;
 	}
 
 	/**

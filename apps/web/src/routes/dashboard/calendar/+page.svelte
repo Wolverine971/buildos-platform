@@ -283,14 +283,14 @@
 		void loadCalendarItems({ force: true });
 	}
 
-	function handleDateChange(event: CustomEvent<{ date: Date }>) {
-		currentDate = event.detail.date;
+	function handleDateChange(date: Date) {
+		currentDate = date;
 		saveLocalState();
 		void loadCalendarItems();
 	}
 
-	function handleViewModeChange(event: CustomEvent<{ mode: ViewMode }>) {
-		viewMode = event.detail.mode;
+	function handleViewModeChange(mode: ViewMode) {
+		viewMode = mode;
 		saveLocalState();
 		void loadCalendarItems();
 	}
@@ -348,8 +348,14 @@
 		}
 	}
 
-	async function handleEventClick(event: CustomEvent<{ event: any }>) {
-		const item = resolveCalendarItem(event.detail.event);
+	async function handleEventClick(event: any) {
+		const item = resolveCalendarItem(event);
+		console.log('[DashboardCalendar] Event clicked:', {
+			event,
+			resolvedItem: item,
+			hasTaskId: !!item?.task_id,
+			hasProjectId: !!item?.project_id
+		});
 		if (!item) return;
 		selectedItem = item;
 		showDetailDrawer = true;
@@ -382,7 +388,18 @@
 	}
 
 	async function openTaskEditor() {
-		if (!selectedItem?.task_id || !selectedItem.project_id) return;
+		console.log('[DashboardCalendar] openTaskEditor called:', {
+			selectedItem,
+			hasTaskId: !!selectedItem?.task_id,
+			hasProjectId: !!selectedItem?.project_id
+		});
+		if (!selectedItem?.task_id || !selectedItem.project_id) {
+			console.warn('[DashboardCalendar] Missing task_id or project_id', {
+				task_id: selectedItem?.task_id,
+				project_id: selectedItem?.project_id
+			});
+			return;
+		}
 		await loadTaskEditModal();
 		editTaskId = selectedItem.task_id;
 		editProjectId = selectedItem.project_id;
@@ -676,24 +693,28 @@
 	</CalendarItemDrawer>
 {/if}
 
-{#if showTaskModal && TaskEditModalComponent && editTaskId && editProjectId}
-	{@const TaskModal = TaskEditModalComponent}
-	<TaskModal
-		taskId={editTaskId}
-		projectId={editProjectId}
-		onClose={handleEditorClosed}
-		onUpdated={handleEditorClosed}
-		onDeleted={handleEditorClosed}
-	/>
+{#if showTaskModal && editTaskId && editProjectId}
+	{#await loadTaskEditModal() then TaskModal}
+		<svelte:component
+			this={TaskModal}
+			taskId={editTaskId}
+			projectId={editProjectId}
+			onClose={handleEditorClosed}
+			onUpdated={handleEditorClosed}
+			onDeleted={handleEditorClosed}
+		/>
+	{/await}
 {/if}
 
-{#if showEventModal && EventEditModalComponent && editEventId && editProjectId}
-	{@const EventModal = EventEditModalComponent}
-	<EventModal
-		eventId={editEventId}
-		projectId={editProjectId}
-		onClose={handleEditorClosed}
-		onUpdated={handleEditorClosed}
-		onDeleted={handleEditorClosed}
-	/>
+{#if showEventModal && editEventId && editProjectId}
+	{#await loadEventEditModal() then EventModal}
+		<svelte:component
+			this={EventModal}
+			eventId={editEventId}
+			projectId={editProjectId}
+			onClose={handleEditorClosed}
+			onUpdated={handleEditorClosed}
+			onDeleted={handleEditorClosed}
+		/>
+	{/await}
 {/if}
