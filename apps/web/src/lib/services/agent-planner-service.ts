@@ -604,6 +604,7 @@ Respond with JSON in this exact format:
 				sessionId: context.metadata.sessionId,
 				chatSessionId: context.metadata.sessionId,
 				agentPlanId: context.metadata.planId,
+				operationType: 'planner_stream',
 				// Context for usage tracking (pass through planner's context type)
 				contextType: context.metadata.contextType,
 				entityId: context.metadata.entityId,
@@ -1294,6 +1295,7 @@ Synthesized response:`;
 				sessionId: plan.sessionId,
 				chatSessionId: plan.sessionId,
 				agentPlanId: plan.id,
+				operationType: 'streaming_response_synthesis',
 				// Context for usage tracking
 				contextType: 'planner_synthesis'
 			})) {

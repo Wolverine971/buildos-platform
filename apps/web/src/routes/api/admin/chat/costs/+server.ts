@@ -67,7 +67,11 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			'operation_type.ilike.plan_%',
 			'operation_type.ilike.strategy_%',
 			'operation_type.ilike.response_%',
-			'operation_type.ilike.clarifying_%'
+			'operation_type.ilike.simple_response_%',
+			'operation_type.ilike.complex_response_%',
+			'operation_type.ilike.streaming_response_%',
+			'operation_type.ilike.clarifying_%',
+			'operation_type.ilike.project_creation_%'
 		].join(',');
 
 		const { data: usageLogs, error: usageError } = await supabase

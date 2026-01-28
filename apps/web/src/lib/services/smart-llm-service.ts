@@ -1334,6 +1334,7 @@ export class SmartLLMService {
 		agentPlanId?: string;
 		agentExecutionId?: string;
 		signal?: AbortSignal;
+		operationType?: string;
 		// Context tracking for usage logging
 		contextType?: string; // e.g., 'project', 'general', 'project_create', 'ontology'
 		entityId?: string; // Optional entity ID for additional tracking
@@ -1488,6 +1489,68 @@ export class SmartLLMService {
 					(lastErrorText
 						? `OpenRouter API error: ${lastErrorText}`
 						: 'OpenRouter stream request failed');
+				const operationType =
+					options.operationType ||
+					this.buildChatStreamOperationType(options.contextType);
+
+				if (this.errorLogger) {
+					await this.errorLogger.logAPIError(
+						lastError ?? message,
+						this.apiUrl,
+						'POST',
+						options.userId,
+						{
+							operation: 'streamText',
+							errorType: 'llm_streaming_failure',
+							sessionId: options.sessionId,
+							messageId: options.messageId,
+							statusCode: (lastError as any)?.status ?? response?.status,
+							errorText: lastErrorText ?? null
+						}
+					);
+				}
+
+				this.usageLogger
+					.logUsageToDatabase({
+						userId: options.userId,
+						operationType,
+						modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+						modelUsed: resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini',
+						promptTokens: 0,
+						completionTokens: 0,
+						totalTokens: 0,
+						inputCost: 0,
+						outputCost: 0,
+						totalCost: 0,
+						responseTimeMs: Math.round(performance.now() - startTime),
+						requestStartedAt,
+						requestCompletedAt: new Date(),
+						status: (lastError as Error)?.message?.includes('timeout')
+							? 'timeout'
+							: 'failure',
+						errorMessage: message,
+						temperature: options.temperature,
+						maxTokens: options.maxTokens,
+						profile,
+						streaming: true,
+						projectId: options.projectId || options.entityId,
+						chatSessionId: options.chatSessionId || options.sessionId,
+						agentSessionId: options.agentSessionId,
+						agentPlanId: options.agentPlanId,
+						agentExecutionId: options.agentExecutionId,
+						metadata: {
+							sessionId: options.sessionId,
+							messageId: options.messageId,
+							contextType: options.contextType,
+							entityId: options.entityId,
+							modelResolvedFromStream,
+							providerResolvedFromStream,
+							statusCode: (lastError as any)?.status ?? response?.status,
+							errorText: lastErrorText ?? null
+						}
+					})
+					.catch((err) => console.error('Failed to log error:', err));
+
 				yield {
 					type: 'error',
 					error: message
@@ -1498,6 +1561,62 @@ export class SmartLLMService {
 			// Process SSE stream
 			const reader = response.body?.getReader();
 			if (!reader) {
+				const operationType =
+					options.operationType ||
+					this.buildChatStreamOperationType(options.contextType);
+
+				if (this.errorLogger) {
+					await this.errorLogger.logAPIError(
+						'No response stream available',
+						this.apiUrl,
+						'POST',
+						options.userId,
+						{
+							operation: 'streamText',
+							errorType: 'llm_streaming_failure',
+							sessionId: options.sessionId,
+							messageId: options.messageId
+						}
+					);
+				}
+
+				this.usageLogger
+					.logUsageToDatabase({
+						userId: options.userId,
+						operationType,
+						modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+						modelUsed: resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini',
+						promptTokens: 0,
+						completionTokens: 0,
+						totalTokens: 0,
+						inputCost: 0,
+						outputCost: 0,
+						totalCost: 0,
+						responseTimeMs: Math.round(performance.now() - startTime),
+						requestStartedAt,
+						requestCompletedAt: new Date(),
+						status: 'failure',
+						errorMessage: 'No response stream available',
+						temperature: options.temperature,
+						maxTokens: options.maxTokens,
+						profile,
+						streaming: true,
+						projectId: options.projectId || options.entityId,
+						chatSessionId: options.chatSessionId || options.sessionId,
+						agentSessionId: options.agentSessionId,
+						agentPlanId: options.agentPlanId,
+						agentExecutionId: options.agentExecutionId,
+						metadata: {
+							sessionId: options.sessionId,
+							messageId: options.messageId,
+							contextType: options.contextType,
+							entityId: options.entityId,
+							modelResolvedFromStream,
+							providerResolvedFromStream
+						}
+					})
+					.catch((err) => console.error('Failed to log error:', err));
+
 				yield {
 					type: 'error',
 					error: 'No response stream available'
@@ -1574,9 +1693,9 @@ export class SmartLLMService {
 
 							// Log to database (async, non-blocking)
 							// Build operation type with context: chat_stream_${contextType}
-							const operationType = this.buildChatStreamOperationType(
-								options.contextType
-							);
+							const operationType =
+								options.operationType ||
+								this.buildChatStreamOperationType(options.contextType);
 
 							this.usageLogger
 								.logUsageToDatabase({
@@ -1732,7 +1851,8 @@ export class SmartLLMService {
 			}
 
 			// Log failure with context-aware operation type
-			const operationType = this.buildChatStreamOperationType(options.contextType);
+			const operationType =
+				options.operationType || this.buildChatStreamOperationType(options.contextType);
 
 			this.usageLogger
 				.logUsageToDatabase({

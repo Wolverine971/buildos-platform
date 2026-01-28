@@ -147,6 +147,7 @@ export class EnhancedLLMWrapper {
 			profile,
 			temperature,
 			maxTokens,
+			operationType,
 			chatSessionId: options.chatSessionId || options.sessionId,
 			agentSessionId: options.agentSessionId,
 			agentPlanId: options.agentPlanId,
