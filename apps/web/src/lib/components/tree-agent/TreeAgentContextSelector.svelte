@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/tree-agent/TreeAgentContextSelector.svelte -->
 <script lang="ts">
-
 	interface Project {
 		id: string;
 		name: string;

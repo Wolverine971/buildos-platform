@@ -168,7 +168,9 @@
 			</div>
 
 			<aside class="space-y-3 sp-block">
-				<div class="border border-border rounded-xl bg-card tx tx-frame tx-weak shadow-ink overflow-hidden flex flex-col">
+				<div
+					class="border border-border rounded-xl bg-card tx tx-frame tx-weak shadow-ink overflow-hidden flex flex-col"
+				>
 					<div class="px-3 py-2 border-b border-border bg-muted/30">
 						<div class="text-xs font-semibold text-foreground uppercase tracking-wider">
 							Recent Events

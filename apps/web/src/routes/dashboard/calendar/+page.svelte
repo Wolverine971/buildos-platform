@@ -589,12 +589,16 @@
 				{#if selectedItem.item_type === 'task'}
 					<span class="text-lg">{getTaskMarkerIcon(selectedItem.item_kind)}</span>
 					<div>
-						<div class="text-xs uppercase tracking-wide font-semibold text-muted-foreground">
+						<div
+							class="text-xs uppercase tracking-wide font-semibold text-muted-foreground"
+						>
 							Task · {getTaskMarkerLabel(selectedItem.item_kind)}
 						</div>
 					</div>
 				{:else}
-					<div class="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
+					<div
+						class="text-xs uppercase tracking-wide text-muted-foreground font-semibold"
+					>
 						Event
 					</div>
 				{/if}

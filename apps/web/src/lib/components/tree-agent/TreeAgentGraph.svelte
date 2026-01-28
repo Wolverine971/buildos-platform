@@ -264,18 +264,24 @@
 <div class="flex flex-col w-full h-full bg-background">
 	<!-- Context Indicator Banner -->
 	{#if contextType === 'project' && projectName}
-		<div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 tx tx-frame tx-weak wt-paper">
+		<div
+			class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 tx tx-frame tx-weak wt-paper"
+		>
 			<span class="text-lg">📁</span>
 			<span class="text-sm font-medium text-foreground">Project-Scoped Context:</span>
 			<span class="text-sm font-semibold text-foreground">{projectName}</span>
 		</div>
 	{:else if contextType === 'project'}
-		<div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 tx tx-frame tx-weak wt-paper">
+		<div
+			class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 tx tx-frame tx-weak wt-paper"
+		>
 			<span class="text-lg">📁</span>
 			<span class="text-sm font-medium text-foreground">Project-Scoped Context</span>
 		</div>
 	{:else if contextType === 'global'}
-		<div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 tx tx-frame tx-weak wt-paper">
+		<div
+			class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30 tx tx-frame tx-weak wt-paper"
+		>
 			<span class="text-lg">🌐</span>
 			<span class="text-sm font-medium text-foreground">Global Context</span>
 		</div>

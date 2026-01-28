@@ -335,16 +335,12 @@
 			</div>
 		{:else if viewMode === 'week'}
 			<!-- Week View - Desktop: Grid, Mobile: Card-based list -->
-			<div
-				class="hidden md:grid grid-cols-8 gap-px bg-border rounded-lg overflow-hidden"
-			>
+			<div class="hidden md:grid grid-cols-8 gap-px bg-border rounded-lg overflow-hidden">
 				<!-- Time column -->
 				<div class="bg-muted">
 					<div class="h-12 border-b border-border"></div>
 					{#each Array(parseInt(workingHours.work_end_time.split(':')[0]) - parseInt(workingHours.work_start_time.split(':')[0])) as _, i}
-						<div
-							class="h-20 p-2 text-xs text-muted-foreground border-b border-border"
-						>
+						<div class="h-20 p-2 text-xs text-muted-foreground border-b border-border">
 							{parseInt(workingHours.work_start_time.split(':')[0]) + i}:00
 						</div>
 					{/each}
@@ -354,9 +350,7 @@
 				{#each getWeekDates(internalDate) as date, i}
 					{@const dayEvents = getEventsForDay(date)}
 					<div class="bg-card">
-						<div
-							class="h-12 p-2 border-b border-border text-center"
-						>
+						<div class="h-12 p-2 border-b border-border text-center">
 							<div class="text-xs text-muted-foreground">
 								{dayNames[date.getDay()]}
 							</div>
@@ -410,12 +404,18 @@
 								<div class="text-xs font-semibold text-muted-foreground uppercase">
 									{dayNames[date.getDay()]}
 								</div>
-								<div class="text-lg font-bold {isToday ? 'text-primary-600' : 'text-foreground'}">
+								<div
+									class="text-lg font-bold {isToday
+										? 'text-primary-600'
+										: 'text-foreground'}"
+								>
 									{date.getDate()}
 								</div>
 							</div>
 							{#if isToday}
-								<span class="inline-block rounded-full bg-primary-500 px-2 py-0.5 text-xs font-bold text-white">
+								<span
+									class="inline-block rounded-full bg-primary-500 px-2 py-0.5 text-xs font-bold text-white"
+								>
 									Today
 								</span>
 							{/if}
@@ -428,7 +428,9 @@
 										class="flex w-full items-center gap-2 rounded-md p-2 text-left transition-colors hover:bg-muted {event.color}"
 									>
 										<div class="flex-1 min-w-0">
-											<div class="text-sm font-medium text-foreground truncate">
+											<div
+												class="text-sm font-medium text-foreground truncate"
+											>
 												{event.title}
 											</div>
 											<div class="text-xs text-muted-foreground">
@@ -442,7 +444,9 @@
 								{/each}
 							</div>
 						{:else}
-							<div class="border-t border-border pt-2 text-center text-xs text-muted-foreground">
+							<div
+								class="border-t border-border pt-2 text-center text-xs text-muted-foreground"
+							>
 								No events
 							</div>
 						{/if}
@@ -451,13 +455,9 @@
 			</div>
 		{:else}
 			<!-- Month View - Desktop: Grid, Mobile: List -->
-			<div
-				class="hidden md:grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden"
-			>
+			<div class="hidden md:grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
 				{#each dayNames as day}
-					<div
-						class="bg-muted p-2 text-center text-sm font-medium text-muted-foreground"
-					>
+					<div class="bg-muted p-2 text-center text-sm font-medium text-muted-foreground">
 						{day}
 					</div>
 				{/each}
@@ -510,12 +510,18 @@
 									<div class="text-xs font-bold text-muted-foreground uppercase">
 										{dayNames[date.getDay()]}
 									</div>
-									<div class="text-lg font-bold {isToday ? 'text-primary-600' : 'text-foreground'}">
+									<div
+										class="text-lg font-bold {isToday
+											? 'text-primary-600'
+											: 'text-foreground'}"
+									>
 										{date.getDate()}
 									</div>
 								</div>
 								{#if isToday}
-									<span class="inline-block rounded-full bg-primary-500 px-2 py-0.5 text-xs font-bold text-white">
+									<span
+										class="inline-block rounded-full bg-primary-500 px-2 py-0.5 text-xs font-bold text-white"
+									>
 										Today
 									</span>
 								{/if}
@@ -526,7 +532,9 @@
 										onclick={() => handleEventClick(event)}
 										class="flex w-full items-center gap-2 rounded-md p-1.5 text-left text-xs transition-colors hover:bg-muted {event.color}"
 									>
-										<div class="flex-1 min-w-0 truncate text-foreground font-medium">
+										<div
+											class="flex-1 min-w-0 truncate text-foreground font-medium"
+										>
 											{event.title}
 										</div>
 									</button>

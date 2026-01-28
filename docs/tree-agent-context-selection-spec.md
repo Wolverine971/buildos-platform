@@ -235,13 +235,13 @@ Add context selector display and button:
 <!-- Existing events panel already renders from events list -->
 
 <!-- Context Selector Modal -->
-	<TreeAgentContextSelector
-		currentContextType
-		currentProjectId
-		onContextChange={handleContextChange}
-		onClose={() => (contextSelectorOpen = false)}
-		isOpen={contextSelectorOpen}
-	/>
+<TreeAgentContextSelector
+	currentContextType
+	currentProjectId
+	onContextChange={handleContextChange}
+	onClose={() => (contextSelectorOpen = false)}
+	isOpen={contextSelectorOpen}
+/>
 ```
 
 **Server data**: `/apps/web/src/routes/tree-agent/runs/[id]/+page.server.ts` should resolve the
