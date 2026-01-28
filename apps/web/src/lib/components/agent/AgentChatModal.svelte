@@ -296,6 +296,10 @@
 		string,
 		{ status: 'completed' | 'failed'; errorMessage?: string }
 	>(); // Tool results that arrive before tool_call
+
+	// Track setTimeout IDs for cleanup to prevent memory leaks
+	const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
+
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
 	let composerContainer = $state<HTMLElement | undefined>(undefined);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
@@ -431,6 +435,19 @@
 			// From regular chat view → back to context selection
 			changeContext();
 		}
+	}
+
+	/**
+	 * Helper function to create tracked timeouts that are automatically cleaned up on unmount.
+	 * Prevents memory leaks when component unmounts with pending timeouts.
+	 */
+	function setTrackedTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+		const id = setTimeout(() => {
+			pendingTimeouts.delete(id);
+			callback();
+		}, delay);
+		pendingTimeouts.add(id);
+		return id;
 	}
 
 	function handleContextSelectionNavChange(view: 'primary' | 'projectHub' | 'project-selection') {
@@ -630,8 +647,8 @@
 		inputValue = pendingBraindumpContent;
 		pendingBraindumpContent = '';
 
-		// Use setTimeout to ensure state updates before sending
-		setTimeout(() => {
+		// Use setTrackedTimeout to ensure state updates before sending
+		setTrackedTimeout(() => {
 			sendMessage();
 		}, 0);
 	}
@@ -1121,8 +1138,8 @@
 		// Set the input to the braindump content and send it as the first message
 		inputValue = initialBraindump.content;
 
-		// Use setTimeout to ensure state updates before sending
-		setTimeout(() => {
+		// Use setTrackedTimeout to ensure state updates before sending
+		setTrackedTimeout(() => {
 			sendMessage();
 		}, 0);
 	});
@@ -1417,7 +1434,7 @@
 				// When keyboard appears, scroll messages to bottom to keep input visible
 				if (isVisible && messagesContainer) {
 					// Small delay to let layout settle
-					setTimeout(() => {
+					setTrackedTimeout(() => {
 						messagesContainer?.scrollTo({
 							top: messagesContainer.scrollHeight,
 							behavior: 'smooth'
@@ -3231,6 +3248,10 @@
 	}
 
 	onDestroy(() => {
+		// Clear all pending timeouts to prevent memory leaks
+		pendingTimeouts.forEach((id) => clearTimeout(id));
+		pendingTimeouts.clear();
+
 		if (sessionLoadController) {
 			sessionLoadController.abort();
 			sessionLoadController = null;

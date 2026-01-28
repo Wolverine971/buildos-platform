@@ -1,31 +1,31 @@
-<!-- apps/web/docs/prompts/agent/executor/task-result-summary.md -->
-
 # Prompt Audit: agent-executor-result
 
-**Generated at:** 2026-01-28T05:32:51.405Z
+**Generated at:** 2026-01-28T18:33:05.619Z
 **Environment:** Development
+
 
 ## Metadata
 
 ```json
 {
-	"executorId": "2bdcaf5a-7483-470a-960d-d2dbf2e1e063",
-	"planId": "eb909db3-a57c-4122-be9c-6d179dac829d",
-	"sessionId": "600857a2-9fe1-45ae-ace1-3d8cd471e1bd",
-	"taskId": "eb909db3-a57c-4122-be9c-6d179dac829d-step-2-b993617d-6c30-42d8-ba71-c2467368479e",
-	"toolCalls": 2,
-	"tokensUsed": 21528,
-	"timestamp": "2026-01-28T05:32:51.405Z"
+  "executorId": "0b542e14-96a5-427c-90a2-184d2209529a",
+  "planId": "c4648730-2a23-45b5-aa01-692b879607f7",
+  "sessionId": "2bc18e02-32c4-489f-a732-61abf29e58ef",
+  "taskId": "c4648730-2a23-45b5-aa01-692b879607f7-step-2-f5ffe101-3914-4099-b869-8f27c83ed1f7",
+  "toolCalls": 0,
+  "tokensUsed": 51645,
+  "timestamp": "2026-01-28T18:33:05.619Z"
 }
 ```
+
 
 ## System Prompt
 
 ```
 Executor Result Summary
-Executor ID: 2bdcaf5a-7483-470a-960d-d2dbf2e1e063
-Plan ID: eb909db3-a57c-4122-be9c-6d179dac829d
-Session ID: 600857a2-9fe1-45ae-ace1-3d8cd471e1bd
+Executor ID: 0b542e14-96a5-427c-90a2-184d2209529a
+Plan ID: c4648730-2a23-45b5-aa01-692b879607f7
+Session ID: 2bc18e02-32c4-489f-a732-61abf29e58ef
 ```
 
 ## User Prompt
@@ -33,1508 +33,305 @@ Session ID: 600857a2-9fe1-45ae-ace1-3d8cd471e1bd
 ```
 {
   "task": {
-    "id": "eb909db3-a57c-4122-be9c-6d179dac829d-step-2-b993617d-6c30-42d8-ba71-c2467368479e",
-    "description": "Fetch todo and in_progress tasks for retrieved projects to identify top priority items",
+    "id": "c4648730-2a23-45b5-aa01-692b879607f7-step-2-f5ffe101-3914-4099-b869-8f27c83ed1f7",
+    "description": "Analyze document contents to extract key requirements, identify dependencies between plans, flag conflicts or gaps, and prioritize actionable next steps",
     "goal": "Complete plan step 2 for strategy planner_stream",
     "constraints": [
       "Incorporate outputs from plan steps 1",
-      "Use only the assigned tools: `list_onto_tasks`",
+      "Use reasoning and summarization without additional tools",
       "Return structured JSON data that can be used by subsequent plan steps"
     ],
     "contextData": {
       "1": {
-        "projects": [
+        "documents": [
           {
-            "id": "aed40b38-5d42-439e-8b25-1b943256de0c",
-            "name": "AVI meetings teaching claude code",
-            "description": "Develop and implement an automated system for processing transcripts using Claude code agents, focusing on efficiency and accuracy.",
-            "type_key": "project.base",
-            "state_key": "active",
+            "id": "61be5556-0dad-47a0-ab8d-e98f39691202",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Visual Brand Development Process",
+            "type_key": "document.spec.design",
+            "state_key": "draft",
+            "content": "# Visual Brand Development Process\n\n> **Purpose:** A systematic process for defining a visual identity that moves beyond vague adjectives (\"clean,\" \"modern\") to specific, implementable design decisions.\n\n---\n\n## The Problem with Vague Visual Direction\n\n\"Clean and modern\" means nothing. It's subjective and unactionable.\n\n**What you need instead:**\n\n- Specific reference sites with callouts of WHAT you like about them\n- Defined color palette with usage rules\n- Typography choices with hierarchy rules\n- Spacing and layout conventions\n- Interaction patterns (hover states, animations)\n- Detail philosophy (what earns a spot, what doesn't)\n\n---\n\n## The Visual Brand Development Phases\n\n### Phase 1: Aesthetic Philosophy (Why)\n\nDefine the principles behind design choices\n\n### Phase 2: Reference Analysis (What Others Do)\n\nStudy sites you admire, extract specific patterns\n\n### Phase 3: Design Tokens (The Specifics)\n\nColors, typography, spacing, shadows, radii\n\n### Phase 4: Component Patterns (How Things Look)\n\nButtons, cards, sections, navigation, forms\n\n### Phase 5: Interaction Details (How Things Move)\n\nHover states, transitions, micro-interactions\n\n### Phase 6: Documentation (The System)\n\nWrite it down so it's consistent and reproducible\n\n---\n\n# Phase 1: Aesthetic Philosophy\n\n## 1.1 Core Tension\n\nEvery interesting visual brand balances a tension. What's yours?\n\n| Tension A   | vs. | Tension B  |\n| ----------- | --- | ---------- |\n| Minimal     | ↔   | Detailed   |\n| Serious     | ↔   | Playful    |\n| Corporate   | ↔   | Personal   |\n| Traditional | ↔   | Innovative |\n| Quiet       | ↔   | Bold       |\n| Functional  | ↔   | Decorative |\n\n**My tension:** **\\*\\***\\_**\\*\\*** AND **\\*\\***\\_**\\*\\***\n\nExample: \"Simplicity AND detail\" — clean at first glance, but rewards closer inspection with thoughtful details.\n\n---\n\n## 1.2 Design Principles\n\nWrite 3-5 principles that guide every design decision.\n\n**Template:**\n\n> [PRINCIPLE NAME]: [What it means] — [How it shows up]\n\n**Example principles:**\n\n1. **Earned Details**: Every decorative element must serve a purpose or reinforce the brand. No decoration for decoration's sake.\n\n2. **Quiet Confidence**: The design doesn't shout. Quality speaks through craft, not flash.\n\n3. **Rewarding Attention**: First impression is clean and clear. Closer inspection reveals thoughtfulness.\n\n4. **Functional Beauty**: If it's beautiful but doesn't work, cut it. If it works but isn't beautiful, refine it.\n\n5. **Precision Over Perfection**: Every pixel considered, but ship over polish.\n\n**Your principles:**\n\n1.\n2.\n3.\n4.\n5.\n\n---\n\n## 1.3 What This Is / What This Isn't\n\n| This IS | This ISN'T |\n| ------- | ---------- |\n|         |            |\n|         |            |\n|         |            |\n|         |            |\n|         |            |\n\n**Example:**\n| This IS | This ISN'T |\n|---------|------------|\n| Understated elegance | Flashy or trendy |\n| Dark and confident | Cold or intimidating |\n| Detailed and considered | Busy or cluttered |\n| Technical credibility | Developer-only aesthetic |\n| Premium feel | Luxury/expensive signaling |\n\n---\n\n# Phase 2: Reference Analysis\n\n## 2.1 Reference Sites (3-5)\n\nFor each reference, extract SPECIFIC elements you want to learn from.\n\n### Reference 1: **\\*\\***\\_\\_\\_**\\*\\***\n\n**URL:**\n\n**Overall impression:**\n\n**Specific elements to extract:**\n\n| Element        | What I Like | How to Adapt |\n| -------------- | ----------- | ------------ |\n| Typography     |             |              |\n| Colors         |             |              |\n| Spacing        |             |              |\n| Navigation     |             |              |\n| Hero section   |             |              |\n| Cards          |             |              |\n| Buttons        |             |              |\n| Hover states   |             |              |\n| Animations     |             |              |\n| Unique details |             |              |\n\n**Screenshot/notes:**\n\n---\n\n### Reference 2: **\\*\\***\\_\\_\\_**\\*\\***\n\n**URL:**\n\n**Specific elements to extract:**\n\n| Element | What I Like | How to Adapt |\n| ------- | ----------- | ------------ |\n|         |             |              |\n\n---\n\n### Reference 3: **\\*\\***\\_\\_\\_**\\*\\***\n\n**URL:**\n\n**Specific elements to extract:**\n\n| Element | What I Like | How to Adapt |\n| ------- | ----------- | ------------ |\n|         |             |              |\n\n---\n\n## 2.2 Anti-References (What to Avoid)\n\nSites that represent what you DON'T want:\n\n| Site/Pattern | What to Avoid | Why |\n| ------------ | ------------- | --- |\n|              |               |     |\n|              |               |     |\n|              |               |     |\n\n---\n\n## 2.3 Pattern Synthesis\n\nAfter analyzing references, identify the common patterns:\n\n**Typography patterns:**\n\n**Color patterns:**\n\n**Spacing patterns:**\n\n**Interaction patterns:**\n\n**Detail patterns (what makes them feel premium):**\n\n---\n\n# Phase 3: Design Tokens\n\n## 3.1 Color Palette\n\n### Base Colors\n\n| Role                   | Color | Hex | Usage                           |\n| ---------------------- | ----- | --- | ------------------------------- |\n| Background (primary)   |       |     | Main page background            |\n| Background (secondary) |       |     | Cards, sections                 |\n| Background (elevated)  |       |     | Modals, dropdowns               |\n| Foreground (primary)   |       |     | Body text                       |\n| Foreground (secondary) |       |     | Muted text, captions            |\n| Foreground (tertiary)  |       |     | Placeholders, disabled          |\n| Border                 |       |     | Dividers, card borders          |\n| Accent (primary)       |       |     | CTAs, links, highlights         |\n| Accent (secondary)     |       |     | Hover states, secondary actions |\n\n### Semantic Colors\n\n| Role    | Color | Hex |\n| ------- | ----- | --- |\n| Success |       |     |\n| Warning |       |     |\n| Error   |       |     |\n| Info    |       |     |\n\n### Color Usage Rules\n\n1.\n2.\n3.\n\n---\n\n## 3.2 Typography\n\n### Font Stack\n\n| Role      | Font Family | Fallback |\n| --------- | ----------- | -------- |\n| Headings  |             |          |\n| Body      |             |          |\n| Mono/Code |             |          |\n\n### Type Scale\n\n| Name       | Size | Line Height | Weight | Usage             |\n| ---------- | ---- | ----------- | ------ | ----------------- |\n| Display    |      |             |        | Hero headlines    |\n| H1         |      |             |        | Page titles       |\n| H2         |      |             |        | Section titles    |\n| H3         |      |             |        | Subsection titles |\n| H4         |      |             |        | Card titles       |\n| Body Large |      |             |        | Lead paragraphs   |\n| Body       |      |             |        | Default text      |\n| Body Small |      |             |        | Captions, meta    |\n| Micro      |      |             |        | Labels, badges    |\n\n### Typography Rules\n\n1.\n2.\n3.\n\n---\n\n## 3.3 Spacing\n\n### Spacing Scale\n\n| Token    | Value | Usage                |\n| -------- | ----- | -------------------- |\n| space-1  | 4px   | Tight gaps           |\n| space-2  | 8px   | Related elements     |\n| space-3  | 12px  | Default gap          |\n| space-4  | 16px  | Card padding         |\n| space-5  | 24px  | Section gaps         |\n| space-6  | 32px  | Component separation |\n| space-7  | 48px  | Section padding      |\n| space-8  | 64px  | Major sections       |\n| space-9  | 96px  | Page sections        |\n| space-10 | 128px | Hero spacing         |\n\n### Layout Rules\n\n- Max content width:\n- Default padding:\n- Section vertical spacing:\n- Card internal padding:\n\n---\n\n## 3.4 Effects\n\n### Border Radius\n\n| Token       | Value | Usage                  |\n| ----------- | ----- | ---------------------- |\n| radius-sm   |       | Buttons, inputs        |\n| radius-md   |       | Cards                  |\n| radius-lg   |       | Modals, large elements |\n| radius-full |       | Pills, avatars         |\n\n### Shadows\n\n| Token       | Value | Usage             |\n| ----------- | ----- | ----------------- |\n| shadow-sm   |       | Subtle elevation  |\n| shadow-md   |       | Cards             |\n| shadow-lg   |       | Modals, dropdowns |\n| shadow-glow |       | Accent highlights |\n\n### Borders\n\n| Token          | Value | Usage                |\n| -------------- | ----- | -------------------- |\n| border-default |       | Standard borders     |\n| border-subtle  |       | Dividers             |\n| border-accent  |       | Highlighted elements |\n\n---\n\n# Phase 4: Component Patterns\n\n## 4.1 Buttons\n\n### Primary Button\n\n- Background:\n- Text:\n- Hover state:\n- Active state:\n- Disabled state:\n- Border radius:\n- Padding:\n\n### Secondary Button\n\n- Background:\n- Text:\n- Border:\n- Hover state:\n\n### Ghost Button\n\n- Background:\n- Text:\n- Hover state:\n\n### Button Micro-interactions\n\n- Hover transition:\n- Click feedback:\n- Focus state:\n\n---\n\n## 4.2 Cards\n\n### Default Card\n\n- Background:\n- Border:\n- Shadow:\n- Radius:\n- Padding:\n- Hover state:\n\n### Card Variations\n\n- Elevated:\n- Outlined:\n- Interactive:\n\n---\n\n## 4.3 Navigation\n\n### Header\n\n- Background:\n- Height:\n- Sticky behavior:\n- Mobile breakpoint:\n\n### Nav Links\n\n- Default:\n- Hover:\n- Active:\n\n### Mobile Menu\n\n- Trigger:\n- Animation:\n- Overlay:\n\n---\n\n## 4.4 Forms\n\n### Input Fields\n\n- Background:\n- Border:\n- Focus state:\n- Error state:\n- Label style:\n- Placeholder style:\n\n### Buttons in Forms\n\n- Submit button:\n- Reset/cancel:\n\n---\n\n# Phase 5: Interaction Details\n\n## 5.1 Transition Defaults\n\n| Property      | Duration | Easing |\n| ------------- | -------- | ------ |\n| Color/opacity |          |        |\n| Transform     |          |        |\n| Layout        |          |        |\n\n---\n\n## 5.2 Hover Patterns\n\n| Element   | Hover Effect |\n| --------- | ------------ |\n| Links     |              |\n| Buttons   |              |\n| Cards     |              |\n| Images    |              |\n| Nav items |              |\n\n---\n\n## 5.3 Special Interactions\n\n**Scroll-based:**\n\n**Click feedback:**\n\n**Loading states:**\n\n**Page transitions:**\n\n---\n\n## 5.4 Detail Elements\n\n> These are the \"unnecessary but memorable\" elements that signal craft.\n\n**Examples from references:**\n\n- Animated corner accents on hover\n- Subtle noise texture overlays\n- Custom cursor states\n- Gradient borders\n- Animated dividers\n\n**Details to implement:**\n\n| Detail | Where | Purpose |\n| ------ | ----- | ------- |\n|        |       |         |\n|        |       |         |\n|        |       |         |\n\n---\n\n# Phase 6: Documentation\n\n## 6.1 Design System File Structure\n\n```\nsrc/\n  lib/\n    styles/\n      tokens.css         # CSS variables\n      typography.css     # Type system\n      utilities.css      # Helper classes\n    components/\n      Button.svelte\n      Card.svelte\n      ...\ndocs/\n  design-system.md       # This document, filled out\n  visual-reference.md    # Screenshots and examples\n```\n\n## 6.2 Token Implementation\n\n**CSS Variables approach:**\n\n```css\n:root {\n  /* Colors */\n  --bg: #...;\n  --fg: #...;\n  --accent: #...;\n\n  /* Typography */\n  --font-heading: '...', sans-serif;\n  --font-body: '...', sans-serif;\n\n  /* Spacing */\n  --space-1: 4px;\n  ...\n\n  /* Effects */\n  --radius-md: ...;\n  --shadow-card: ...;\n}\n```\n\n## 6.3 Component Documentation\n\nFor each component, document:\n\n- Visual variations\n- Props/options\n- Usage guidelines\n- Code examples\n\n---\n\n## Checklist\n\n### Phase 1: Aesthetic Philosophy\n\n- [ ] Core tension defined\n- [ ] 3-5 design principles written\n- [ ] \"Is/Isn't\" table complete\n\n### Phase 2: Reference Analysis\n\n- [ ] 3-5 reference sites analyzed\n- [ ] Specific elements extracted\n- [ ] Anti-references documented\n- [ ] Patterns synthesized\n\n### Phase 3: Design Tokens\n\n- [ ] Color palette defined\n- [ ] Typography system defined\n- [ ] Spacing scale defined\n- [ ] Effects (radius, shadows, borders) defined\n\n### Phase 4: Component Patterns\n\n- [ ] Button styles documented\n- [ ] Card styles documented\n- [ ] Navigation documented\n- [ ] Form styles documented\n\n### Phase 5: Interaction Details\n\n- [ ] Transition defaults set\n- [ ] Hover patterns defined\n- [ ] Special interactions documented\n- [ ] Detail elements identified\n\n### Phase 6: Documentation\n\n- [ ] Tokens implemented in CSS\n- [ ] Components documented\n- [ ] System is reproducible\n\n",
+            "description": null,
             "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "execution",
-                "context": "commercial"
-              }
-            },
-            "facet_context": "commercial",
-            "facet_scale": "small",
-            "facet_stage": "execution",
-            "created_at": "2025-12-17T05:17:46.30103+00:00",
-            "updated_at": "2026-01-27T15:58:48.853823+00:00"
-          },
-          {
-            "id": "bca951b5-5cdb-42fa-a570-8c7c2b3607dd",
-            "name": "AI Taste Buds",
-            "description": "A project to develop an AI system that acts as feelers to gather and analyze information.",
-            "type_key": "project.base",
-            "state_key": "active",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "execution",
-                "context": "personal"
-              }
-            },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "execution",
-            "created_at": "2025-12-17T05:17:46.318536+00:00",
-            "updated_at": "2026-01-27T15:58:47.195527+00:00"
-          },
-          {
-            "id": "be5a3d9d-7633-44e5-9562-efb720ca7d04",
-            "name": "LinkedIn Posting Project",
-            "description": "A project aimed at creating engaging content for LinkedIn based on structured outlines and a brand guide.",
-            "type_key": "project.base",
-            "state_key": "active",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "execution",
-                "context": "commercial"
-              }
-            },
-            "facet_context": "commercial",
-            "facet_scale": "small",
-            "facet_stage": "execution",
-            "created_at": "2025-12-17T05:19:47.953892+00:00",
-            "updated_at": "2026-01-27T15:58:45.736921+00:00"
-          },
-          {
-            "id": "85c372ae-baeb-4fa5-afdb-62e4a9a155b2",
-            "name": "Levi the Baby",
-            "description": "Organizing preparations for the arrival of our baby, Levi.",
-            "type_key": "project.base",
-            "state_key": "active",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "execution",
-                "context": "personal"
-              }
-            },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "execution",
-            "created_at": "2025-12-17T05:23:34.394428+00:00",
-            "updated_at": "2026-01-27T15:58:43.915576+00:00"
-          },
-          {
-            "id": "67df890f-635c-4b3e-ada7-845709236a52",
-            "name": "Baby support",
-            "description": "A project to help my wife and baby, focusing on recovery, nutrition, and emotional support.",
-            "type_key": "project.base",
-            "state_key": "active",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "execution",
-                "context": "personal"
-              }
-            },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "execution",
-            "created_at": "2025-12-17T05:23:41.638134+00:00",
-            "updated_at": "2026-01-27T15:58:41.90266+00:00"
-          },
-          {
-            "id": "2555dbb2-6c98-4a32-b658-bddcda7fc53d",
-            "name": "Kids History Project",
-            "description": "A project to document funny moments and memories of my kids.",
-            "type_key": "project.base",
-            "state_key": "active",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "execution",
-                "context": "personal"
-              }
-            },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "execution",
-            "created_at": "2025-12-17T05:24:55.648834+00:00",
-            "updated_at": "2026-01-27T15:58:39.573749+00:00"
-          },
-          {
-            "id": "71933797-3657-42be-b7c5-a86346e536a6",
-            "name": "Fitness Social App",
-            "description": "A fitness app that combines social networking features with performance tracking, allowing users to share stats and progress.",
-            "type_key": "project.base",
-            "state_key": "planning",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "discovery",
-                "context": "commercial"
-              }
-            },
-            "facet_context": "commercial",
-            "facet_scale": "small",
-            "facet_stage": "discovery",
-            "created_at": "2025-12-17T05:25:03.455159+00:00",
-            "updated_at": "2026-01-27T15:58:37.883619+00:00"
-          },
-          {
-            "id": "11e8ce46-4103-4ce4-8fbb-e91dc314739a",
-            "name": "DJ The Musician",
-            "description": "A project focused on creating new songs, exploring the persona of a dad rapper.",
-            "type_key": "project.base",
-            "state_key": "active",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "execution",
-                "context": "personal"
-              }
-            },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "execution",
-            "created_at": "2025-12-17T05:25:03.459289+00:00",
-            "updated_at": "2026-01-27T15:58:35.918861+00:00"
-          },
-          {
-            "id": "3c7f37b6-226f-4584-bc3b-af80b77c3c6b",
-            "name": "Dad Creator Channel",
-            "description": "Create a TikTok and youtube channel with raw, unedited content inspired by Dirtbag and Kyanfit creators.",
-            "type_key": "project.base",
-            "state_key": "planning",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "discovery",
-                "context": "commercial"
-              }
-            },
-            "facet_context": "commercial",
-            "facet_scale": "small",
-            "facet_stage": "discovery",
-            "created_at": "2025-12-17T05:25:03.460425+00:00",
-            "updated_at": "2026-01-27T15:58:34.311186+00:00"
-          },
-          {
-            "id": "e98b91f6-65c5-46ea-8d9f-fa8193341c55",
-            "name": "Military Insights LinkedIn Article",
-            "description": "A LinkedIn article exploring military service insights from a Marine Corps veteran perspective, focusing on the importance of attention to detail and error prevention in military operations.",
-            "type_key": "project.writer.article",
-            "state_key": "planning",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "discovery",
-                "context": "personal"
-              },
-              "platform": "LinkedIn",
-              "topic_tags": [
-                "military",
-                "leadership",
-                "Marine Corps",
-                "organizational excellence"
+              "tags": [
+                "visual-branding",
+                "design-system",
+                "brand-guidelines",
+                "design-tokens",
+                "brand-development"
               ],
-              "article_type": "professional_insight"
-            },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "discovery",
-            "created_at": "2025-12-03T17:19:53.657814+00:00",
-            "updated_at": "2026-01-27T15:58:32.960098+00:00"
-          },
-          {
-            "id": "5e2e5e0b-a85a-4048-a86a-609b2b949abf",
-            "name": "Comfort & Nourishment Newsletter Article",
-            "description": "Newsletter article exploring comfort themes through red onion health benefits and nesting for new parents, focusing on nourishment for body and soul.",
-            "type_key": "project.writer.article",
-            "state_key": "planning",
-            "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "discovery",
-                "context": "personal"
+              "body_markdown": "# Visual Brand Development Process\n\n> **Purpose:** A systematic process for defining a visual identity that moves beyond vague adjectives (\"clean,\" \"modern\") to specific, implementable design decisions.\n\n---\n\n## The Problem with Vague Visual Direction\n\n\"Clean and modern\" means nothing. It's subjective and unactionable.\n\n**What you need instead:**\n\n- Specific reference sites with callouts of WHAT you like about them\n- Defined color palette with usage rules\n- Typography choices with hierarchy rules\n- Spacing and layout conventions\n- Interaction patterns (hover states, animations)\n- Detail philosophy (what earns a spot, what doesn't)\n\n---\n\n## The Visual Brand Development Phases\n\n### Phase 1: Aesthetic Philosophy (Why)\n\nDefine the principles behind design choices\n\n### Phase 2: Reference Analysis (What Others Do)\n\nStudy sites you admire, extract specific patterns\n\n### Phase 3: Design Tokens (The Specifics)\n\nColors, typography, spacing, shadows, radii\n\n### Phase 4: Component Patterns (How Things Look)\n\nButtons, cards, sections, navigation, forms\n\n### Phase 5: Interaction Details (How Things Move)\n\nHover states, transitions, micro-interactions\n\n### Phase 6: Documentation (The System)\n\nWrite it down so it's consistent and reproducible\n\n---\n\n# Phase 1: Aesthetic Philosophy\n\n## 1.1 Core Tension\n\nEvery interesting visual brand balances a tension. What's yours?\n\n| Tension A   | vs. | Tension B  |\n| ----------- | --- | ---------- |\n| Minimal     | ↔   | Detailed   |\n| Serious     | ↔   | Playful    |\n| Corporate   | ↔   | Personal   |\n| Traditional | ↔   | Innovative |\n| Quiet       | ↔   | Bold       |\n| Functional  | ↔   | Decorative |\n\n**My tension:** **\\*\\***\\_**\\*\\*** AND **\\*\\***\\_**\\*\\***\n\nExample: \"Simplicity AND detail\" — clean at first glance, but rewards closer inspection with thoughtful details.\n\n---\n\n## 1.2 Design Principles\n\nWrite 3-5 principles that guide every design decision.\n\n**Template:**\n\n> [PRINCIPLE NAME]: [What it means] — [How it shows up]\n\n**Example principles:**\n\n1. **Earned Details**: Every decorative element must serve a purpose or reinforce the brand. No decoration for decoration's sake.\n\n2. **Quiet Confidence**: The design doesn't shout. Quality speaks through craft, not flash.\n\n3. **Rewarding Attention**: First impression is clean and clear. Closer inspection reveals thoughtfulness.\n\n4. **Functional Beauty**: If it's beautiful but doesn't work, cut it. If it works but isn't beautiful, refine it.\n\n5. **Precision Over Perfection**: Every pixel considered, but ship over polish.\n\n**Your principles:**\n\n1.\n2.\n3.\n4.\n5.\n\n---\n\n## 1.3 What This Is / What This Isn't\n\n| This IS | This ISN'T |\n| ------- | ---------- |\n|         |            |\n|         |            |\n|         |            |\n|         |            |\n|         |            |\n\n**Example:**\n| This IS | This ISN'T |\n|---------|------------|\n| Understated elegance | Flashy or trendy |\n| Dark and confident | Cold or intimidating |\n| Detailed and considered | Busy or cluttered |\n| Technical credibility | Developer-only aesthetic |\n| Premium feel | Luxury/expensive signaling |\n\n---\n\n# Phase 2: Reference Analysis\n\n## 2.1 Reference Sites (3-5)\n\nFor each reference, extract SPECIFIC elements you want to learn from.\n\n### Reference 1: **\\*\\***\\_\\_\\_**\\*\\***\n\n**URL:**\n\n**Overall impression:**\n\n**Specific elements to extract:**\n\n| Element        | What I Like | How to Adapt |\n| -------------- | ----------- | ------------ |\n| Typography     |             |              |\n| Colors         |             |              |\n| Spacing        |             |              |\n| Navigation     |             |              |\n| Hero section   |             |              |\n| Cards          |             |              |\n| Buttons        |             |              |\n| Hover states   |             |              |\n| Animations     |             |              |\n| Unique details |             |              |\n\n**Screenshot/notes:**\n\n---\n\n### Reference 2: **\\*\\***\\_\\_\\_**\\*\\***\n\n**URL:**\n\n**Specific elements to extract:**\n\n| Element | What I Like | How to Adapt |\n| ------- | ----------- | ------------ |\n|         |             |              |\n\n---\n\n### Reference 3: **\\*\\***\\_\\_\\_**\\*\\***\n\n**URL:**\n\n**Specific elements to extract:**\n\n| Element | What I Like | How to Adapt |\n| ------- | ----------- | ------------ |\n|         |             |              |\n\n---\n\n## 2.2 Anti-References (What to Avoid)\n\nSites that represent what you DON'T want:\n\n| Site/Pattern | What to Avoid | Why |\n| ------------ | ------------- | --- |\n|              |               |     |\n|              |               |     |\n|              |               |     |\n\n---\n\n## 2.3 Pattern Synthesis\n\nAfter analyzing references, identify the common patterns:\n\n**Typography patterns:**\n\n**Color patterns:**\n\n**Spacing patterns:**\n\n**Interaction patterns:**\n\n**Detail patterns (what makes them feel premium):**\n\n---\n\n# Phase 3: Design Tokens\n\n## 3.1 Color Palette\n\n### Base Colors\n\n| Role                   | Color | Hex | Usage                           |\n| ---------------------- | ----- | --- | ------------------------------- |\n| Background (primary)   |       |     | Main page background            |\n| Background (secondary) |       |     | Cards, sections                 |\n| Background (elevated)  |       |     | Modals, dropdowns               |\n| Foreground (primary)   |       |     | Body text                       |\n| Foreground (secondary) |       |     | Muted text, captions            |\n| Foreground (tertiary)  |       |     | Placeholders, disabled          |\n| Border                 |       |     | Dividers, card borders          |\n| Accent (primary)       |       |     | CTAs, links, highlights         |\n| Accent (secondary)     |       |     | Hover states, secondary actions |\n\n### Semantic Colors\n\n| Role    | Color | Hex |\n| ------- | ----- | --- |\n| Success |       |     |\n| Warning |       |     |\n| Error   |       |     |\n| Info    |       |     |\n\n### Color Usage Rules\n\n1.\n2.\n3.\n\n---\n\n## 3.2 Typography\n\n### Font Stack\n\n| Role      | Font Family | Fallback |\n| --------- | ----------- | -------- |\n| Headings  |             |          |\n| Body      |             |          |\n| Mono/Code |             |          |\n\n### Type Scale\n\n| Name       | Size | Line Height | Weight | Usage             |\n| ---------- | ---- | ----------- | ------ | ----------------- |\n| Display    |      |             |        | Hero headlines    |\n| H1         |      |             |        | Page titles       |\n| H2         |      |             |        | Section titles    |\n| H3         |      |             |        | Subsection titles |\n| H4         |      |             |        | Card titles       |\n| Body Large |      |             |        | Lead paragraphs   |\n| Body       |      |             |        | Default text      |\n| Body Small |      |             |        | Captions, meta    |\n| Micro      |      |             |        | Labels, badges    |\n\n### Typography Rules\n\n1.\n2.\n3.\n\n---\n\n## 3.3 Spacing\n\n### Spacing Scale\n\n| Token    | Value | Usage                |\n| -------- | ----- | -------------------- |\n| space-1  | 4px   | Tight gaps           |\n| space-2  | 8px   | Related elements     |\n| space-3  | 12px  | Default gap          |\n| space-4  | 16px  | Card padding         |\n| space-5  | 24px  | Section gaps         |\n| space-6  | 32px  | Component separation |\n| space-7  | 48px  | Section padding      |\n| space-8  | 64px  | Major sections       |\n| space-9  | 96px  | Page sections        |\n| space-10 | 128px | Hero spacing         |\n\n### Layout Rules\n\n- Max content width:\n- Default padding:\n- Section vertical spacing:\n- Card internal padding:\n\n---\n\n## 3.4 Effects\n\n### Border Radius\n\n| Token       | Value | Usage                  |\n| ----------- | ----- | ---------------------- |\n| radius-sm   |       | Buttons, inputs        |\n| radius-md   |       | Cards                  |\n| radius-lg   |       | Modals, large elements |\n| radius-full |       | Pills, avatars         |\n\n### Shadows\n\n| Token       | Value | Usage             |\n| ----------- | ----- | ----------------- |\n| shadow-sm   |       | Subtle elevation  |\n| shadow-md   |       | Cards             |\n| shadow-lg   |       | Modals, dropdowns |\n| shadow-glow |       | Accent highlights |\n\n### Borders\n\n| Token          | Value | Usage                |\n| -------------- | ----- | -------------------- |\n| border-default |       | Standard borders     |\n| border-subtle  |       | Dividers             |\n| border-accent  |       | Highlighted elements |\n\n---\n\n# Phase 4: Component Patterns\n\n## 4.1 Buttons\n\n### Primary Button\n\n- Background:\n- Text:\n- Hover state:\n- Active state:\n- Disabled state:\n- Border radius:\n- Padding:\n\n### Secondary Button\n\n- Background:\n- Text:\n- Border:\n- Hover state:\n\n### Ghost Button\n\n- Background:\n- Text:\n- Hover state:\n\n### Button Micro-interactions\n\n- Hover transition:\n- Click feedback:\n- Focus state:\n\n---\n\n## 4.2 Cards\n\n### Default Card\n\n- Background:\n- Border:\n- Shadow:\n- Radius:\n- Padding:\n- Hover state:\n\n### Card Variations\n\n- Elevated:\n- Outlined:\n- Interactive:\n\n---\n\n## 4.3 Navigation\n\n### Header\n\n- Background:\n- Height:\n- Sticky behavior:\n- Mobile breakpoint:\n\n### Nav Links\n\n- Default:\n- Hover:\n- Active:\n\n### Mobile Menu\n\n- Trigger:\n- Animation:\n- Overlay:\n\n---\n\n## 4.4 Forms\n\n### Input Fields\n\n- Background:\n- Border:\n- Focus state:\n- Error state:\n- Label style:\n- Placeholder style:\n\n### Buttons in Forms\n\n- Submit button:\n- Reset/cancel:\n\n---\n\n# Phase 5: Interaction Details\n\n## 5.1 Transition Defaults\n\n| Property      | Duration | Easing |\n| ------------- | -------- | ------ |\n| Color/opacity |          |        |\n| Transform     |          |        |\n| Layout        |          |        |\n\n---\n\n## 5.2 Hover Patterns\n\n| Element   | Hover Effect |\n| --------- | ------------ |\n| Links     |              |\n| Buttons   |              |\n| Cards     |              |\n| Images    |              |\n| Nav items |              |\n\n---\n\n## 5.3 Special Interactions\n\n**Scroll-based:**\n\n**Click feedback:**\n\n**Loading states:**\n\n**Page transitions:**\n\n---\n\n## 5.4 Detail Elements\n\n> These are the \"unnecessary but memorable\" elements that signal craft.\n\n**Examples from references:**\n\n- Animated corner accents on hover\n- Subtle noise texture overlays\n- Custom cursor states\n- Gradient borders\n- Animated dividers\n\n**Details to implement:**\n\n| Detail | Where | Purpose |\n| ------ | ----- | ------- |\n|        |       |         |\n|        |       |         |\n|        |       |         |\n\n---\n\n# Phase 6: Documentation\n\n## 6.1 Design System File Structure\n\n```\nsrc/\n  lib/\n    styles/\n      tokens.css         # CSS variables\n      typography.css     # Type system\n      utilities.css      # Helper classes\n    components/\n      Button.svelte\n      Card.svelte\n      ...\ndocs/\n  design-system.md       # This document, filled out\n  visual-reference.md    # Screenshots and examples\n```\n\n## 6.2 Token Implementation\n\n**CSS Variables approach:**\n\n```css\n:root {\n  /* Colors */\n  --bg: #...;\n  --fg: #...;\n  --accent: #...;\n\n  /* Typography */\n  --font-heading: '...', sans-serif;\n  --font-body: '...', sans-serif;\n\n  /* Spacing */\n  --space-1: 4px;\n  ...\n\n  /* Effects */\n  --radius-md: ...;\n  --shadow-card: ...;\n}\n```\n\n## 6.3 Component Documentation\n\nFor each component, document:\n\n- Visual variations\n- Props/options\n- Usage guidelines\n- Code examples\n\n---\n\n## Checklist\n\n### Phase 1: Aesthetic Philosophy\n\n- [ ] Core tension defined\n- [ ] 3-5 design principles written\n- [ ] \"Is/Isn't\" table complete\n\n### Phase 2: Reference Analysis\n\n- [ ] 3-5 reference sites analyzed\n- [ ] Specific elements extracted\n- [ ] Anti-references documented\n- [ ] Patterns synthesized\n\n### Phase 3: Design Tokens\n\n- [ ] Color palette defined\n- [ ] Typography system defined\n- [ ] Spacing scale defined\n- [ ] Effects (radius, shadows, borders) defined\n\n### Phase 4: Component Patterns\n\n- [ ] Button styles documented\n- [ ] Card styles documented\n- [ ] Navigation documented\n- [ ] Form styles documented\n\n### Phase 5: Interaction Details\n\n- [ ] Transition defaults set\n- [ ] Hover patterns defined\n- [ ] Special interactions documented\n- [ ] Detail elements identified\n\n### Phase 6: Documentation\n\n- [ ] Tokens implemented in CSS\n- [ ] Components documented\n- [ ] System is reproducible\n\n",
+              "_classification": {
+                "confidence": 0.95,
+                "model_used": "openrouter",
+                "classified_at": "2026-01-28T18:10:16.340Z",
+                "previous_type_key": "document.default"
               }
             },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "discovery",
-            "created_at": "2025-11-21T02:18:52.929516+00:00",
-            "updated_at": "2026-01-27T15:58:30.816169+00:00"
+            "created_at": "2026-01-28T18:10:12.731827+00:00",
+            "updated_at": "2026-01-28T18:10:16.401275+00:00"
           },
           {
-            "id": "978ce115-f5fc-4af4-aa10-422b5115d6c4",
-            "name": "Conversations with Mom: Faith & Family Alignment",
-            "description": "Initiative to hold structured conversations with Mom to bridge disconnects around faith/God approach, church hurts (esp. Anna), kid-level explanations, and family updates (Dad's passing, remarriage, my kids). Key: 'Listen first, understand fully before responding' rule.",
-            "type_key": "project.personal.family_dialogues",
-            "state_key": "planning",
+            "id": "ca7aee91-9807-45ba-a95f-32f4bf500b78",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Anne Arundel Biz Expo 2026 - Live Notes and Strategic Opportunities",
+            "type_key": "document.default",
+            "state_key": "draft",
+            "content": "# Anne Arundel Biz Expo 2026 - Live Notes\n\n**Live notes from DJ Wayne at the expo.**\n\n## Quick Contacts Met Today\n- **Rebecca Murphy** from iCode: Teaches kids STEM skills. Said to hit her up.\n- **Jinal (Contractor)** from Comptroller’s Office: Can help with emma.maryland.gov registration issues as a small business. Need to email her about problems with emma.maryland.gov and registering as small business.\n\n## Full Executive Summary (from additional analysis)\n\n&lt;!-- Anne Arundel Business Expo 2026 - Executive Summary --&gt;\n\n<!-- Anne Arundel Business Expo 2026 - Executive Summary -->\n\n# Anne Arundel Business Expo 2026: Executive Summary\n\n**Date:** January 28, 2026\n**Location:** The Hotel at Arundel Preserve\n**Attendee:** DJ (Tacemus Founder)\n\n---\n\n## 🎯 Expo Objectives (Achieved)\n\n1. **Glen Burnie Revitalization:** Recruit 5+ Steering Committee prospects\n2. **Tacemus Business Development:** Generate 3-5 qualified leads for web/AI services\n3. **Strategic Partnerships:** Identify partnership opportunities with AAEDC, Visit Annapolis\n\n**Status:** ✅ Successfully registered and attended. Multiple strategic opportunities identified.\n\n---\n\n## 🔥 Top Strategic Opportunities Uncovered\n\n### 1. Visit Annapolis Partnership (CRITICAL)\n\n**Organization:** Visit Annapolis & Anne Arundel County (VAAAC)\n- **Location:** 26 West Street, Annapolis, MD 21401\n- **Website:** vaaac.org\n- **Mission:** Destination marketing for Anne Arundel County hospitality/tourism\n\n**Key Insights from Expo:**\n\n#### A. BWI Welcome Center (URGENT - Time-Sensitive)\n- Visit Annapolis is opening a **Welcome Center at BWI Airport**\n- BWI = **27 million passengers annually** (massive captive audience)\n- **Tacemus opportunity:** Provide digital infrastructure (kiosks, QR codes, visitor data platform)\n- **Glen Burnie angle:** GB is 5 minutes from BWI = position as \"BWI tourism corridor\"\n- **Action required:** Contact Visit Annapolis THIS WEEK to pitch digital infrastructure partnership\n\n#### B. Short-Term Rental Crisis (Silent Housing Problem)\n- Visit Annapolis mentioned: \"People renting their homes in Annapolis just to afford staying in their homes\"\n- **What this means:** Housing affordability crisis forcing residents into gig economy\n- **Tacemus opportunity:** Help STR hosts optimize listings (better web presence = higher rates = they stay in homes)\n- **Market size:** 100-300+ STR hosts in Anne Arundel County\n- **Revenue potential:** $50K-300K (listing optimization at $1K-3K per host)\n\n#### C. International Tourism Crisis\n- \"Travel coming to the US is terrible\"\n- **Canadians aren't coming** (major visitor segment lost)\n- Dollar decline = fragile customer confidence\n- **Opportunity:** Help businesses become international visitor ready (multilingual sites, currency tools)\n- **Major events coming:** FIFA World Cup, Summer Olympics, Winter Olympics\n- **Urgency:** Businesses need to prepare NOW to capture international surge\n\n#### D. Workforce Shortage\n- Hospitality businesses can't find/retain staff\n- **Tacemus opportunity:** Build recruiting/careers sites for hospitality businesses\n- **Partnership angle:** Tacemus + Visit Annapolis + AACC hospitality program\n\n**Partnership Models:**\n1. Preferred vendor program for Visit Annapolis members (100-200+ businesses)\n2. \"Digital Destination Readiness\" initiative (audit + improve member sites)\n3. BWI Welcome Center digital infrastructure (URGENT)\n4. STR host support program (help residents afford homes)\n5. International visitor readiness (multilingual sites for World Cup/Olympics)\n6. Workforce solutions partnership (recruiting sites)\n\n**Revenue Potential (Year 1):** $130K-628K depending on partnership depth\n\n**Next Steps:**\n- Research Visit Annapolis leadership contacts\n- Draft BWI Welcome Center digital infrastructure proposal\n- Schedule intro meeting (reference trends discussed at expo)\n\n**Documents Created:**\n- `visit-annapolis-partnership-opportunity.md` (comprehensive partnership strategy)\n\n---\n\n### 2. AAEDC AI Partnership (CRITICAL)\n\n**Contact:** Victoria Zelefsky - Marketing, Anne Arundel Economic Development Corporation\n\n**Panel:** \"Approachable AI\" - AI's Impact for Small Business\n- Victoria moderated = **AAEDC is actively promoting AI adoption for small businesses**\n- Panel included: Tom Popomaronis (Phantom IQ), Sabrina Amjad (Vanbri Consulting), Will Mapp (Qlarant CTO), Kenny Clash (mobile app dev)\n\n**Key Insights from Panel:**\n\n#### A. Process Development First\n- **\"People don't have their processes lined up\"**\n- You can't use AI effectively without defined processes\n- AI amplifies existing processes—if broken, AI makes them worse\n- **Implication:** Tacemus must help businesses document/develop processes BEFORE implementing AI\n\n#### B. Internal Operations First, External Second\n- Use AI for internal operations BEFORE customer-facing deployment\n- Lower risk, build confidence, develop expertise internally\n- Once internal smooth, THEN deploy for customers\n- **Implication:** This is our positioning—\"We help you get your house in order first\"\n\n#### C. Stack Thinking\n- **Don't use just one LLM** (ChatGPT, Claude, Gemini, Perplexity)\n- Use multiple tools for different tasks\n- Different LLMs have different strengths\n\n#### D. Voice is a Game Changer\n- Voice-first workflows = **3x faster than typing**\n- Massive efficiency gains\n- Tools: Whisper, Granola.ai, Otter.ai\n\n#### E. AI Mentorship Model\n- \"This is what I know, this is what I don't know, mentor me\"\n- Show people HOW you use AI (not just what it can do)\n- Modeling behavior more effective than abstract teaching\n\n#### F. Click (Data Analytics)\n- Rivaling Excel for data analytics\n- AI-powered data analysis tool\n\n**Partnership Opportunity:**\n- AAEDC has **1,000+ member businesses** in Anne Arundel County\n- AAEDC is creating demand for AI adoption\n- **Tacemus becomes AAEDC's preferred AI implementation partner**\n- They educate, we implement\n\n**Revenue Potential (Year 1):**\n- 5% of members adopt AI = 50 businesses\n- $5K-15K per project = **$250K-750K**\n- Recurring: $300-1K/month per client = **$300K/year**\n\n**Strategic Value:**\n- AAEDC endorsement = credibility with ALL Anne Arundel County businesses\n- Ties directly to Glen Burnie revitalization (AAEDC is implementation partner)\n- Positions Tacemus as \"official AI partner\" for county economic development\n\n**Next Steps:**\n- Approach Victoria Zelefsky after panel (TODAY)\n- Get contact info\n- Email partnership proposal this week\n- Offer: \"Tacemus helps AAEDC members implement AI\"\n- Suggest co-hosting workshop: \"AI Implementation for Small Businesses\"\n\n**Documents Created:**\n- `aaedc-approachable-ai-panel-notes.md` (live panel capture + partnership strategy)\n\n---\n\n## 📋 Tacemus AI Integration Framework (Refined at Expo)\n\nBased on panel insights, we now have a proven 3-phase approach:\n\n### Phase 1: Process Development & Documentation ($2K-5K)\n- Document current workflows BEFORE adding AI\n- \"You can't automate chaos\"\n- Deliverable: Process maps, bottleneck analysis, AI readiness assessment\n- Timeline: 1-2 weeks\n\n### Phase 2: Internal Operations AI ($3K-10K)\n- Implement AI for team/admin operations first (low risk)\n- Build confidence internally before customer deployment\n- Test, iterate, refine\n- Timeline: 2-4 weeks\n\n### Phase 3: External Operations AI ($5K-20K)\n- Deploy customer-facing AI once internal operations smooth\n- Website chatbots, scheduling, customer service\n- Higher confidence because tested internally first\n- Timeline: 4-8 weeks\n\n### 12 Specific Use Cases (with ROI):\n\n**Internal Operations (Phase 2):**\n1. Email management & response drafting - Save 10-15 hrs/week, ROI $52K-78K/year\n2. Meeting notes & action item extraction - Save 3-5 hrs/week\n3. Document generation (proposals, invoices) - Save 5-10 hrs/week, ROI $39K/year\n4. Internal knowledge base (training assistant) - Save 5-8 hrs/week\n5. Data entry & CRM updates - Save 3-6 hrs/week per person, ROI $31K/year\n6. Scheduling & calendar management - Save 2-4 hrs/week\n7. Expense tracking & categorization - Save 3-5 hrs/month\n\n**External Operations (Phase 3):**\n8. Website chatbot - Save 5-10 hrs/week, 20-30% more leads\n9. Appointment scheduling & reminders - Save 3-5 hrs/week, reduce no-shows 30-50% ($10K-30K saved)\n10. Customer service email automation - Save 10-15 hrs/week\n11. Review & feedback collection - Save 2-3 hrs/week, better SEO\n12. Lead qualification & follow-up - Save 3-5 hrs/week, 30-50% higher conversion\n\n**Key Differentiators:**\n- Process development first (addresses panel concern)\n- Internal operations first (best practice from panel)\n- AI mentorship approach (we show you HOW to use AI, not just what it does)\n- Voice-first workflows (3x faster than typing)\n- Stack thinking (multiple LLMs for different tasks)\n\n**Documents Created:**\n- `tacemus-ai-integration-service-positioning.md` (complete service offering with 12 use cases)\n\n---\n\n## 🤝 Affiliate Partnership: Dub.co (Whisper)\n\n**Program:** https://partners.dub.co/programs\n**Status:** ✅ Signed up January 28, 2026\n**Product:** Whisper voice transcription + link management\n\n**How We'll Use It:**\n\n**For Tacemus (Client Services):**\n- Voice transcription for client discovery calls\n- Voice-to-text for email responses\n- Meeting transcription\n- Voice notes for project documentation\n\n**For BuildOS (Internal Operations):**\n- Voice-first workflows (dictate tasks, notes, ideas)\n- \"Move faster, work more fluidly with AI\"\n\n**Affiliate Strategy:**\n- Recommend Whisper to clients in proposals\n- Bundle with AI integration services\n- \"Voice-first workflow\" consulting\n- Target: 10-20 referrals/month\n\n**Positioning:**\n> \"Voice is a game changer for efficiency. Most business owners spend 10-15 hours a week typing. With voice transcription, you can cut that in half. I use Whisper for everything—emails, notes, documentation. It's 3x faster. I'll show you how to set it up.\"\n\n**Revenue Potential:**\n- Q1 2026: $500-1,000 affiliate revenue\n- Year 1: $3,000-5,000/month (once scaled to 5+ partnerships)\n\n**Documents Created:**\n- `tacemus-affiliate-partnerships.md` (complete affiliate tracking system)\n\n---\n\n## 📊 Key Contacts from Expo\n\n### Priority 1: Victoria Zelefsky (AAEDC)\n- **Role:** Marketing, Anne Arundel Economic Development Corporation\n- **Why critical:** Moderated AI panel = AAEDC actively promoting AI adoption\n- **Opportunity:** Tacemus becomes AAEDC's preferred AI implementation partner (1,000+ member businesses)\n- **Next step:** Approach after panel TODAY, schedule coffee this week\n- **Revenue potential:** $250K-750K Year 1\n\n### Priority 2: Visit Annapolis Leadership (TBD)\n- **Organization:** Visit Annapolis & Anne Arundel County (vaaac.org)\n- **Opportunity:** BWI Welcome Center partnership, STR host support, tourism business web optimization\n- **Next step:** Research leadership contacts, schedule intro meeting\n- **Revenue potential:** $130K-628K Year 1\n\n### Supporting Contacts:\n- **Tom Popomaronis** (Phantom IQ) - Workflow automation, potential referral partner\n- **Sabrina Amjad** (Vanbri Consulting) - AI strategy consulting, referral partner (she does strategy, we do implementation)\n- **Will Mapp** (Qlarant CTO) - Healthcare data analytics, relevant to UM BWMC opportunity\n- **Kenny Clash** (Mobile app dev, Bethesda) - Cross-referral opportunities\n\n---\n\n## 📁 Documents Created at Expo\n\n### Core Strategy Docs:\n1. **`visit-annapolis-partnership-opportunity.md`** - Complete partnership strategy with 8 partnership models, revenue projections, pitch scripts\n2. **`aaedc-approachable-ai-panel-notes.md`** - Panel insights, Victoria Zelefsky contact strategy, partnership framework\n3. **`tacemus-ai-integration-service-positioning.md`** - 3-phase framework, 12 use cases with ROI, pricing, pitch scripts\n4. **`tacemus-affiliate-partnerships.md`** - Dub.co/Whisper affiliate tracking, revenue strategy\n\n### Follow-Up & Tracking:\n5. **`arundel-biz-expo-follow-up-notes.md`** - Lead tracking tables, email templates, week 1 follow-up schedule\n6. **`arundel-biz-expo-cheat-sheet.md`** - Pre-event attendance guide (already existed)\n7. **`arundel-biz-expo-access-request.md`** - Updated to ✅ COMPLETED status\n\n### Main Index:\n8. **Updated `README.md`** - Added recent updates section with expo success\n9. **Updated `glen-burnie-document-index.md`** - Added new documents to master index\n\n---\n\n## 🎯 Immediate Action Items (Next 7 Days)\n\n### Priority 1 (CRITICAL - This Week):\n- [ ] **Approach Victoria Zelefsky (AAEDC)** after panel TODAY\n  - Get contact info\n  - Brief intro: \"Tacemus helps small businesses implement AI\"\n  - Ask: \"Does AAEDC have AI adoption program for members?\"\n\n- [ ] **Email Victoria Zelefsky** by Friday (Feb 2)\n  - Reference AI panel\n  - Partnership proposal: Tacemus as AAEDC's AI implementation partner\n  - Suggest workshop: \"AI Implementation for Small Businesses\"\n\n- [ ] **Research Visit Annapolis leadership**\n  - Find CEO/Executive Director name\n  - Find Director of Marketing name\n  - Get direct contact info\n\n- [ ] **Draft BWI Welcome Center proposal** (URGENT)\n  - Digital infrastructure for Welcome Center\n  - Position Glen Burnie as \"BWI tourism corridor\"\n  - 1-page proposal + pitch deck\n\n### Priority 2 (This Week):\n- [ ] **Confirm Dub.co affiliate status**\n  - Get affiliate links\n  - Add to email signature\n  - Create proposal template with affiliate recommendations\n\n- [ ] **Research new tools mentioned:**\n  - Granola.ai (meeting notes)\n  - Click (data analytics)\n  - Evaluate for client recommendations\n\n- [ ] **Transfer all expo notes** to master spreadsheet\n  - All business contacts\n  - Steering Committee prospects\n  - Tacemus leads\n  - Strategic partnerships\n\n### Priority 3 (Next Week):\n- [ ] **Coffee meeting with Victoria Zelefsky** (schedule this week, hold next week)\n- [ ] **Intro meeting with Visit Annapolis leadership** (schedule this week, hold next week)\n- [ ] **Follow up with top 5 Steering Committee prospects** (calls Monday)\n- [ ] **Follow up with 3-5 Tacemus hot leads** (custom emails Tuesday)\n\n---\n\n## 💰 Revenue Opportunity Summary\n\n### AAEDC AI Partnership:\n- **Conservative (Year 1):** $130K (10 projects + ongoing)\n- **Moderate (Year 1):** $312K (15 projects + ongoing + certification)\n- **Optimistic (Year 1):** $628K (25 projects + ongoing + certification)\n\n### Visit Annapolis Partnership:\n- **Conservative (Year 1):** $130K (10 projects + ongoing)\n- **Moderate (Year 1):** $312K (15 projects + ongoing + certification)\n- **Optimistic (Year 1):** $628K (25 projects + ongoing + certification)\n\n### Affiliate Revenue:\n- **Q1 2026:** $500-1,000\n- **Year 1:** $3,000-5,000/month (once scaled)\n\n### Total Potential (Year 1):\n- **Conservative:** $260K-300K\n- **Moderate:** $624K-700K\n- **Optimistic:** $1.2M-1.4M\n\n---\n\n## 🧠 Strategic Insights\n\n### What We Learned:\n\n1. **AAEDC is actively promoting AI adoption** = creates demand for exactly what Tacemus does\n2. **Visit Annapolis faces real challenges** (STR crisis, international tourism decline, workforce) = multiple partnership angles\n3. **BWI Welcome Center is time-sensitive opportunity** = must act THIS WEEK\n4. **Process development is critical** = businesses need help getting organized before AI implementation\n5. **Internal operations first** = best practice, reduces risk, builds confidence\n6. **Voice-first workflows are game changer** = 3x faster than typing, massive efficiency\n7. **AI mentorship approach resonates** = showing HOW to use AI more valuable than talking about what it can do\n8. **Stack thinking is industry standard** = use multiple LLMs, not just one\n\n### How This Changes Tacemus Positioning:\n\n**Old positioning:** \"We build websites and integrate AI\"\n**New positioning:** \"We help small businesses implement AI using a proven 3-phase framework: process development first, internal operations first, external deployment second. We show you HOW to use AI, not just what it can do.\"\n\n**New service lines unlocked:**\n- Process development consulting ($2K-5K per project)\n- Internal operations AI (lower risk entry point for clients)\n- Voice-first workflow consulting (3x efficiency gains)\n- AI mentorship (ongoing relationship, not just project)\n\n**New market segments:**\n- AAEDC member businesses (1,000+)\n- Visit Annapolis member businesses (200-400+)\n- STR hosts (100-300+)\n- Hospitality/tourism (hotels, restaurants, attractions)\n\n---\n\n## 🔗 Glen Burnie Revitalization Connection\n\n### How These Partnerships Advance Revitalization:\n\n**AAEDC Partnership:**\n- AAEDC is implementation partner for Glen Burnie revitalization\n- Tacemus as AAEDC's AI partner = direct pipeline to revitalization efforts\n- Positions Glen Burnie as \"AI-forward\" community\n\n**Visit Annapolis Partnership:**\n- BWI Welcome Center + Glen Burnie proximity = tourism corridor opportunity\n- Positions Glen Burnie businesses for airport visitor overflow\n- Economic development through tourism\n\n**Combined Impact:**\n- Tacemus grows (revenue increase)\n- Glen Burnie businesses adopt AI (competitive advantage)\n- Economic development (jobs, revenue, investment)\n- Proof of concept for revitalization model\n\n---\n\n## 📅 Timeline\n\n**Week 1 (Jan 28 - Feb 3):**\n- Approach Victoria Zelefsky (TODAY)\n- Research Visit Annapolis contacts\n- Draft BWI proposal\n- Email Victoria by Friday\n\n**Week 2 (Feb 4-10):**\n- Coffee with Victoria Zelefsky\n- Intro meeting with Visit Annapolis\n- Follow up with expo leads\n- Finalize partnership proposals\n\n**Month 1 (Feb):**\n- Formalize AAEDC partnership\n- Pilot with 2-3 AAEDC members\n- Visit Annapolis MOU signed\n- BWI Welcome Center proposal submitted\n\n**Q1 2026 (Jan-Mar):**\n- $500-1,000 affiliate revenue\n- 5-10 AI implementation projects closed\n- 2-3 active partnerships formalized\n- Glen Burnie Steering Committee formed (5+ members recruited at expo)\n\n**Year 1 (2026):**\n- $260K-1.4M revenue (depending on partnership depth)\n- 25-50 AI implementation projects\n- 10+ active partnerships\n- Glen Burnie revitalization Phase 1 launched\n\n---\n\n## 🎯 Success Metrics\n\n**Expo Attendance (Today):**\n- [ ] 40+ business contacts collected\n- [ ] 5+ Steering Committee prospects identified\n- [ ] 3-5 Tacemus hot leads captured\n- [ ] 2+ strategic partnerships identified (AAEDC, Visit Annapolis)\n\n**Week 1 Follow-Up:**\n- [ ] Victoria Zelefsky meeting scheduled\n- [ ] Visit Annapolis contact identified and meeting scheduled\n- [ ] 100% of high-priority contacts receive follow-up\n- [ ] BWI Welcome Center proposal drafted\n\n**Month 1:**\n- [ ] 2+ partnership MOUs signed\n- [ ] 3-5 AI implementation projects closed\n- [ ] $10K-30K revenue generated\n- [ ] 5+ Steering Committee members committed\n\n**Q1 2026:**\n- [ ] $50K-150K revenue\n- [ ] 10-15 projects closed\n- [ ] 3+ active partnerships\n- [ ] Glen Burnie Steering Committee operational\n\n---\n\n**Last Updated:** January 28, 2026 (Live at event)\n**Status:** Active intelligence gathering + immediate follow-up required\n**Priority:** 🔥 CRITICAL - Time-sensitive opportunities (BWI Welcome Center, Victoria Zelefsky contact)\n**Owner:** DJ (Tacemus Founder)\n\n---\n\n## 📌 Key Takeaway\n\nToday's expo was not just about collecting business cards—it uncovered **two strategic partnerships** (AAEDC + Visit Annapolis) that could generate **$260K-1.4M in Year 1 revenue** while directly advancing Glen Burnie revitalization efforts. The AAEDC AI panel validated our positioning and gave us a clear framework (process first, internal first, voice-first, mentorship). The Visit Annapolis BWI Welcome Center opportunity is time-sensitive and must be acted on THIS WEEK.\n\n**Next 48 hours = critical window for capitalizing on these opportunities.**\n\n\n## Additional Notes\n- Expo objectives achieved: registered, attended, leads generated.\n- Focus on Visit Annapolis and AAEDC partnerships.\n- Updated with live contacts.\n\n**Next:** Review for tasks and follow-ups.",
+            "description": null,
             "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "discovery",
-                "context": "personal"
+              "body_markdown": "# Anne Arundel Biz Expo 2026 - Live Notes\n\n**Live notes from DJ Wayne at the expo.**\n\n## Quick Contacts Met Today\n- **Rebecca Murphy** from iCode: Teaches kids STEM skills. Said to hit her up.\n- **Jinal (Contractor)** from Comptroller’s Office: Can help with emma.maryland.gov registration issues as a small business. Need to email her about problems with emma.maryland.gov and registering as small business.\n\n## Full Executive Summary (from additional analysis)\n\n&lt;!-- Anne Arundel Business Expo 2026 - Executive Summary --&gt;\n\n<!-- Anne Arundel Business Expo 2026 - Executive Summary -->\n\n# Anne Arundel Business Expo 2026: Executive Summary\n\n**Date:** January 28, 2026\n**Location:** The Hotel at Arundel Preserve\n**Attendee:** DJ (Tacemus Founder)\n\n---\n\n## 🎯 Expo Objectives (Achieved)\n\n1. **Glen Burnie Revitalization:** Recruit 5+ Steering Committee prospects\n2. **Tacemus Business Development:** Generate 3-5 qualified leads for web/AI services\n3. **Strategic Partnerships:** Identify partnership opportunities with AAEDC, Visit Annapolis\n\n**Status:** ✅ Successfully registered and attended. Multiple strategic opportunities identified.\n\n---\n\n## 🔥 Top Strategic Opportunities Uncovered\n\n### 1. Visit Annapolis Partnership (CRITICAL)\n\n**Organization:** Visit Annapolis & Anne Arundel County (VAAAC)\n- **Location:** 26 West Street, Annapolis, MD 21401\n- **Website:** vaaac.org\n- **Mission:** Destination marketing for Anne Arundel County hospitality/tourism\n\n**Key Insights from Expo:**\n\n#### A. BWI Welcome Center (URGENT - Time-Sensitive)\n- Visit Annapolis is opening a **Welcome Center at BWI Airport**\n- BWI = **27 million passengers annually** (massive captive audience)\n- **Tacemus opportunity:** Provide digital infrastructure (kiosks, QR codes, visitor data platform)\n- **Glen Burnie angle:** GB is 5 minutes from BWI = position as \"BWI tourism corridor\"\n- **Action required:** Contact Visit Annapolis THIS WEEK to pitch digital infrastructure partnership\n\n#### B. Short-Term Rental Crisis (Silent Housing Problem)\n- Visit Annapolis mentioned: \"People renting their homes in Annapolis just to afford staying in their homes\"\n- **What this means:** Housing affordability crisis forcing residents into gig economy\n- **Tacemus opportunity:** Help STR hosts optimize listings (better web presence = higher rates = they stay in homes)\n- **Market size:** 100-300+ STR hosts in Anne Arundel County\n- **Revenue potential:** $50K-300K (listing optimization at $1K-3K per host)\n\n#### C. International Tourism Crisis\n- \"Travel coming to the US is terrible\"\n- **Canadians aren't coming** (major visitor segment lost)\n- Dollar decline = fragile customer confidence\n- **Opportunity:** Help businesses become international visitor ready (multilingual sites, currency tools)\n- **Major events coming:** FIFA World Cup, Summer Olympics, Winter Olympics\n- **Urgency:** Businesses need to prepare NOW to capture international surge\n\n#### D. Workforce Shortage\n- Hospitality businesses can't find/retain staff\n- **Tacemus opportunity:** Build recruiting/careers sites for hospitality businesses\n- **Partnership angle:** Tacemus + Visit Annapolis + AACC hospitality program\n\n**Partnership Models:**\n1. Preferred vendor program for Visit Annapolis members (100-200+ businesses)\n2. \"Digital Destination Readiness\" initiative (audit + improve member sites)\n3. BWI Welcome Center digital infrastructure (URGENT)\n4. STR host support program (help residents afford homes)\n5. International visitor readiness (multilingual sites for World Cup/Olympics)\n6. Workforce solutions partnership (recruiting sites)\n\n**Revenue Potential (Year 1):** $130K-628K depending on partnership depth\n\n**Next Steps:**\n- Research Visit Annapolis leadership contacts\n- Draft BWI Welcome Center digital infrastructure proposal\n- Schedule intro meeting (reference trends discussed at expo)\n\n**Documents Created:**\n- `visit-annapolis-partnership-opportunity.md` (comprehensive partnership strategy)\n\n---\n\n### 2. AAEDC AI Partnership (CRITICAL)\n\n**Contact:** Victoria Zelefsky - Marketing, Anne Arundel Economic Development Corporation\n\n**Panel:** \"Approachable AI\" - AI's Impact for Small Business\n- Victoria moderated = **AAEDC is actively promoting AI adoption for small businesses**\n- Panel included: Tom Popomaronis (Phantom IQ), Sabrina Amjad (Vanbri Consulting), Will Mapp (Qlarant CTO), Kenny Clash (mobile app dev)\n\n**Key Insights from Panel:**\n\n#### A. Process Development First\n- **\"People don't have their processes lined up\"**\n- You can't use AI effectively without defined processes\n- AI amplifies existing processes—if broken, AI makes them worse\n- **Implication:** Tacemus must help businesses document/develop processes BEFORE implementing AI\n\n#### B. Internal Operations First, External Second\n- Use AI for internal operations BEFORE customer-facing deployment\n- Lower risk, build confidence, develop expertise internally\n- Once internal smooth, THEN deploy for customers\n- **Implication:** This is our positioning—\"We help you get your house in order first\"\n\n#### C. Stack Thinking\n- **Don't use just one LLM** (ChatGPT, Claude, Gemini, Perplexity)\n- Use multiple tools for different tasks\n- Different LLMs have different strengths\n\n#### D. Voice is a Game Changer\n- Voice-first workflows = **3x faster than typing**\n- Massive efficiency gains\n- Tools: Whisper, Granola.ai, Otter.ai\n\n#### E. AI Mentorship Model\n- \"This is what I know, this is what I don't know, mentor me\"\n- Show people HOW you use AI (not just what it can do)\n- Modeling behavior more effective than abstract teaching\n\n#### F. Click (Data Analytics)\n- Rivaling Excel for data analytics\n- AI-powered data analysis tool\n\n**Partnership Opportunity:**\n- AAEDC has **1,000+ member businesses** in Anne Arundel County\n- AAEDC is creating demand for AI adoption\n- **Tacemus becomes AAEDC's preferred AI implementation partner**\n- They educate, we implement\n\n**Revenue Potential (Year 1):**\n- 5% of members adopt AI = 50 businesses\n- $5K-15K per project = **$250K-750K**\n- Recurring: $300-1K/month per client = **$300K/year**\n\n**Strategic Value:**\n- AAEDC endorsement = credibility with ALL Anne Arundel County businesses\n- Ties directly to Glen Burnie revitalization (AAEDC is implementation partner)\n- Positions Tacemus as \"official AI partner\" for county economic development\n\n**Next Steps:**\n- Approach Victoria Zelefsky after panel (TODAY)\n- Get contact info\n- Email partnership proposal this week\n- Offer: \"Tacemus helps AAEDC members implement AI\"\n- Suggest co-hosting workshop: \"AI Implementation for Small Businesses\"\n\n**Documents Created:**\n- `aaedc-approachable-ai-panel-notes.md` (live panel capture + partnership strategy)\n\n---\n\n## 📋 Tacemus AI Integration Framework (Refined at Expo)\n\nBased on panel insights, we now have a proven 3-phase approach:\n\n### Phase 1: Process Development & Documentation ($2K-5K)\n- Document current workflows BEFORE adding AI\n- \"You can't automate chaos\"\n- Deliverable: Process maps, bottleneck analysis, AI readiness assessment\n- Timeline: 1-2 weeks\n\n### Phase 2: Internal Operations AI ($3K-10K)\n- Implement AI for team/admin operations first (low risk)\n- Build confidence internally before customer deployment\n- Test, iterate, refine\n- Timeline: 2-4 weeks\n\n### Phase 3: External Operations AI ($5K-20K)\n- Deploy customer-facing AI once internal operations smooth\n- Website chatbots, scheduling, customer service\n- Higher confidence because tested internally first\n- Timeline: 4-8 weeks\n\n### 12 Specific Use Cases (with ROI):\n\n**Internal Operations (Phase 2):**\n1. Email management & response drafting - Save 10-15 hrs/week, ROI $52K-78K/year\n2. Meeting notes & action item extraction - Save 3-5 hrs/week\n3. Document generation (proposals, invoices) - Save 5-10 hrs/week, ROI $39K/year\n4. Internal knowledge base (training assistant) - Save 5-8 hrs/week\n5. Data entry & CRM updates - Save 3-6 hrs/week per person, ROI $31K/year\n6. Scheduling & calendar management - Save 2-4 hrs/week\n7. Expense tracking & categorization - Save 3-5 hrs/month\n\n**External Operations (Phase 3):**\n8. Website chatbot - Save 5-10 hrs/week, 20-30% more leads\n9. Appointment scheduling & reminders - Save 3-5 hrs/week, reduce no-shows 30-50% ($10K-30K saved)\n10. Customer service email automation - Save 10-15 hrs/week\n11. Review & feedback collection - Save 2-3 hrs/week, better SEO\n12. Lead qualification & follow-up - Save 3-5 hrs/week, 30-50% higher conversion\n\n**Key Differentiators:**\n- Process development first (addresses panel concern)\n- Internal operations first (best practice from panel)\n- AI mentorship approach (we show you HOW to use AI, not just what it does)\n- Voice-first workflows (3x faster than typing)\n- Stack thinking (multiple LLMs for different tasks)\n\n**Documents Created:**\n- `tacemus-ai-integration-service-positioning.md` (complete service offering with 12 use cases)\n\n---\n\n## 🤝 Affiliate Partnership: Dub.co (Whisper)\n\n**Program:** https://partners.dub.co/programs\n**Status:** ✅ Signed up January 28, 2026\n**Product:** Whisper voice transcription + link management\n\n**How We'll Use It:**\n\n**For Tacemus (Client Services):**\n- Voice transcription for client discovery calls\n- Voice-to-text for email responses\n- Meeting transcription\n- Voice notes for project documentation\n\n**For BuildOS (Internal Operations):**\n- Voice-first workflows (dictate tasks, notes, ideas)\n- \"Move faster, work more fluidly with AI\"\n\n**Affiliate Strategy:**\n- Recommend Whisper to clients in proposals\n- Bundle with AI integration services\n- \"Voice-first workflow\" consulting\n- Target: 10-20 referrals/month\n\n**Positioning:**\n> \"Voice is a game changer for efficiency. Most business owners spend 10-15 hours a week typing. With voice transcription, you can cut that in half. I use Whisper for everything—emails, notes, documentation. It's 3x faster. I'll show you how to set it up.\"\n\n**Revenue Potential:**\n- Q1 2026: $500-1,000 affiliate revenue\n- Year 1: $3,000-5,000/month (once scaled to 5+ partnerships)\n\n**Documents Created:**\n- `tacemus-affiliate-partnerships.md` (complete affiliate tracking system)\n\n---\n\n## 📊 Key Contacts from Expo\n\n### Priority 1: Victoria Zelefsky (AAEDC)\n- **Role:** Marketing, Anne Arundel Economic Development Corporation\n- **Why critical:** Moderated AI panel = AAEDC actively promoting AI adoption\n- **Opportunity:** Tacemus becomes AAEDC's preferred AI implementation partner (1,000+ member businesses)\n- **Next step:** Approach after panel TODAY, schedule coffee this week\n- **Revenue potential:** $250K-750K Year 1\n\n### Priority 2: Visit Annapolis Leadership (TBD)\n- **Organization:** Visit Annapolis & Anne Arundel County (vaaac.org)\n- **Opportunity:** BWI Welcome Center partnership, STR host support, tourism business web optimization\n- **Next step:** Research leadership contacts, schedule intro meeting\n- **Revenue potential:** $130K-628K Year 1\n\n### Supporting Contacts:\n- **Tom Popomaronis** (Phantom IQ) - Workflow automation, potential referral partner\n- **Sabrina Amjad** (Vanbri Consulting) - AI strategy consulting, referral partner (she does strategy, we do implementation)\n- **Will Mapp** (Qlarant CTO) - Healthcare data analytics, relevant to UM BWMC opportunity\n- **Kenny Clash** (Mobile app dev, Bethesda) - Cross-referral opportunities\n\n---\n\n## 📁 Documents Created at Expo\n\n### Core Strategy Docs:\n1. **`visit-annapolis-partnership-opportunity.md`** - Complete partnership strategy with 8 partnership models, revenue projections, pitch scripts\n2. **`aaedc-approachable-ai-panel-notes.md`** - Panel insights, Victoria Zelefsky contact strategy, partnership framework\n3. **`tacemus-ai-integration-service-positioning.md`** - 3-phase framework, 12 use cases with ROI, pricing, pitch scripts\n4. **`tacemus-affiliate-partnerships.md`** - Dub.co/Whisper affiliate tracking, revenue strategy\n\n### Follow-Up & Tracking:\n5. **`arundel-biz-expo-follow-up-notes.md`** - Lead tracking tables, email templates, week 1 follow-up schedule\n6. **`arundel-biz-expo-cheat-sheet.md`** - Pre-event attendance guide (already existed)\n7. **`arundel-biz-expo-access-request.md`** - Updated to ✅ COMPLETED status\n\n### Main Index:\n8. **Updated `README.md`** - Added recent updates section with expo success\n9. **Updated `glen-burnie-document-index.md`** - Added new documents to master index\n\n---\n\n## 🎯 Immediate Action Items (Next 7 Days)\n\n### Priority 1 (CRITICAL - This Week):\n- [ ] **Approach Victoria Zelefsky (AAEDC)** after panel TODAY\n  - Get contact info\n  - Brief intro: \"Tacemus helps small businesses implement AI\"\n  - Ask: \"Does AAEDC have AI adoption program for members?\"\n\n- [ ] **Email Victoria Zelefsky** by Friday (Feb 2)\n  - Reference AI panel\n  - Partnership proposal: Tacemus as AAEDC's AI implementation partner\n  - Suggest workshop: \"AI Implementation for Small Businesses\"\n\n- [ ] **Research Visit Annapolis leadership**\n  - Find CEO/Executive Director name\n  - Find Director of Marketing name\n  - Get direct contact info\n\n- [ ] **Draft BWI Welcome Center proposal** (URGENT)\n  - Digital infrastructure for Welcome Center\n  - Position Glen Burnie as \"BWI tourism corridor\"\n  - 1-page proposal + pitch deck\n\n### Priority 2 (This Week):\n- [ ] **Confirm Dub.co affiliate status**\n  - Get affiliate links\n  - Add to email signature\n  - Create proposal template with affiliate recommendations\n\n- [ ] **Research new tools mentioned:**\n  - Granola.ai (meeting notes)\n  - Click (data analytics)\n  - Evaluate for client recommendations\n\n- [ ] **Transfer all expo notes** to master spreadsheet\n  - All business contacts\n  - Steering Committee prospects\n  - Tacemus leads\n  - Strategic partnerships\n\n### Priority 3 (Next Week):\n- [ ] **Coffee meeting with Victoria Zelefsky** (schedule this week, hold next week)\n- [ ] **Intro meeting with Visit Annapolis leadership** (schedule this week, hold next week)\n- [ ] **Follow up with top 5 Steering Committee prospects** (calls Monday)\n- [ ] **Follow up with 3-5 Tacemus hot leads** (custom emails Tuesday)\n\n---\n\n## 💰 Revenue Opportunity Summary\n\n### AAEDC AI Partnership:\n- **Conservative (Year 1):** $130K (10 projects + ongoing)\n- **Moderate (Year 1):** $312K (15 projects + ongoing + certification)\n- **Optimistic (Year 1):** $628K (25 projects + ongoing + certification)\n\n### Visit Annapolis Partnership:\n- **Conservative (Year 1):** $130K (10 projects + ongoing)\n- **Moderate (Year 1):** $312K (15 projects + ongoing + certification)\n- **Optimistic (Year 1):** $628K (25 projects + ongoing + certification)\n\n### Affiliate Revenue:\n- **Q1 2026:** $500-1,000\n- **Year 1:** $3,000-5,000/month (once scaled)\n\n### Total Potential (Year 1):\n- **Conservative:** $260K-300K\n- **Moderate:** $624K-700K\n- **Optimistic:** $1.2M-1.4M\n\n---\n\n## 🧠 Strategic Insights\n\n### What We Learned:\n\n1. **AAEDC is actively promoting AI adoption** = creates demand for exactly what Tacemus does\n2. **Visit Annapolis faces real challenges** (STR crisis, international tourism decline, workforce) = multiple partnership angles\n3. **BWI Welcome Center is time-sensitive opportunity** = must act THIS WEEK\n4. **Process development is critical** = businesses need help getting organized before AI implementation\n5. **Internal operations first** = best practice, reduces risk, builds confidence\n6. **Voice-first workflows are game changer** = 3x faster than typing, massive efficiency\n7. **AI mentorship approach resonates** = showing HOW to use AI more valuable than talking about what it can do\n8. **Stack thinking is industry standard** = use multiple LLMs, not just one\n\n### How This Changes Tacemus Positioning:\n\n**Old positioning:** \"We build websites and integrate AI\"\n**New positioning:** \"We help small businesses implement AI using a proven 3-phase framework: process development first, internal operations first, external deployment second. We show you HOW to use AI, not just what it can do.\"\n\n**New service lines unlocked:**\n- Process development consulting ($2K-5K per project)\n- Internal operations AI (lower risk entry point for clients)\n- Voice-first workflow consulting (3x efficiency gains)\n- AI mentorship (ongoing relationship, not just project)\n\n**New market segments:**\n- AAEDC member businesses (1,000+)\n- Visit Annapolis member businesses (200-400+)\n- STR hosts (100-300+)\n- Hospitality/tourism (hotels, restaurants, attractions)\n\n---\n\n## 🔗 Glen Burnie Revitalization Connection\n\n### How These Partnerships Advance Revitalization:\n\n**AAEDC Partnership:**\n- AAEDC is implementation partner for Glen Burnie revitalization\n- Tacemus as AAEDC's AI partner = direct pipeline to revitalization efforts\n- Positions Glen Burnie as \"AI-forward\" community\n\n**Visit Annapolis Partnership:**\n- BWI Welcome Center + Glen Burnie proximity = tourism corridor opportunity\n- Positions Glen Burnie businesses for airport visitor overflow\n- Economic development through tourism\n\n**Combined Impact:**\n- Tacemus grows (revenue increase)\n- Glen Burnie businesses adopt AI (competitive advantage)\n- Economic development (jobs, revenue, investment)\n- Proof of concept for revitalization model\n\n---\n\n## 📅 Timeline\n\n**Week 1 (Jan 28 - Feb 3):**\n- Approach Victoria Zelefsky (TODAY)\n- Research Visit Annapolis contacts\n- Draft BWI proposal\n- Email Victoria by Friday\n\n**Week 2 (Feb 4-10):**\n- Coffee with Victoria Zelefsky\n- Intro meeting with Visit Annapolis\n- Follow up with expo leads\n- Finalize partnership proposals\n\n**Month 1 (Feb):**\n- Formalize AAEDC partnership\n- Pilot with 2-3 AAEDC members\n- Visit Annapolis MOU signed\n- BWI Welcome Center proposal submitted\n\n**Q1 2026 (Jan-Mar):**\n- $500-1,000 affiliate revenue\n- 5-10 AI implementation projects closed\n- 2-3 active partnerships formalized\n- Glen Burnie Steering Committee formed (5+ members recruited at expo)\n\n**Year 1 (2026):**\n- $260K-1.4M revenue (depending on partnership depth)\n- 25-50 AI implementation projects\n- 10+ active partnerships\n- Glen Burnie revitalization Phase 1 launched\n\n---\n\n## 🎯 Success Metrics\n\n**Expo Attendance (Today):**\n- [ ] 40+ business contacts collected\n- [ ] 5+ Steering Committee prospects identified\n- [ ] 3-5 Tacemus hot leads captured\n- [ ] 2+ strategic partnerships identified (AAEDC, Visit Annapolis)\n\n**Week 1 Follow-Up:**\n- [ ] Victoria Zelefsky meeting scheduled\n- [ ] Visit Annapolis contact identified and meeting scheduled\n- [ ] 100% of high-priority contacts receive follow-up\n- [ ] BWI Welcome Center proposal drafted\n\n**Month 1:**\n- [ ] 2+ partnership MOUs signed\n- [ ] 3-5 AI implementation projects closed\n- [ ] $10K-30K revenue generated\n- [ ] 5+ Steering Committee members committed\n\n**Q1 2026:**\n- [ ] $50K-150K revenue\n- [ ] 10-15 projects closed\n- [ ] 3+ active partnerships\n- [ ] Glen Burnie Steering Committee operational\n\n---\n\n**Last Updated:** January 28, 2026 (Live at event)\n**Status:** Active intelligence gathering + immediate follow-up required\n**Priority:** 🔥 CRITICAL - Time-sensitive opportunities (BWI Welcome Center, Victoria Zelefsky contact)\n**Owner:** DJ (Tacemus Founder)\n\n---\n\n## 📌 Key Takeaway\n\nToday's expo was not just about collecting business cards—it uncovered **two strategic partnerships** (AAEDC + Visit Annapolis) that could generate **$260K-1.4M in Year 1 revenue** while directly advancing Glen Burnie revitalization efforts. The AAEDC AI panel validated our positioning and gave us a clear framework (process first, internal first, voice-first, mentorship). The Visit Annapolis BWI Welcome Center opportunity is time-sensitive and must be acted on THIS WEEK.\n\n**Next 48 hours = critical window for capitalizing on these opportunities.**\n\n\n## Additional Notes\n- Expo objectives achieved: registered, attended, leads generated.\n- Focus on Visit Annapolis and AAEDC partnerships.\n- Updated with live contacts.\n\n**Next:** Review for tasks and follow-ups."
+            },
+            "created_at": "2026-01-28T17:46:56.30783+00:00",
+            "updated_at": "2026-01-28T18:00:09.095487+00:00"
+          },
+          {
+            "id": "7a17f40b-a43c-4de0-ad43-e9cfbdf53838",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Homework Scratchpad",
+            "type_key": "document.homework.scratchpad",
+            "state_key": "draft",
+            "content": "# Scratchpad\n\nRun: 77b3b395-94b8-4804-8480-40aeb02b7e39\nObjective: What do my top priorities for this project be?\n\n\n---\n## Iteration 1 — 2026-01-26T18:16:56.417Z\n\nIdentifying top priorities for the project\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 2 — 2026-01-26T18:17:18.998Z\n\nIdentified remaining work: list project details, list project tasks, determine top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (3 tool calls)\n\n\n---\n## Iteration 3 — 2026-01-26T18:17:40.588Z\n\nIdentified remaining work: list project details, list project tasks, determine top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 4 — 2026-01-26T18:18:00.870Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 5 — 2026-01-26T18:18:21.721Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 6 — 2026-01-26T18:18:40.623Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 7 — 2026-01-26T18:19:02.209Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 8 — 2026-01-26T18:19:22.827Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 9 — 2026-01-26T18:19:44.428Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 10 — 2026-01-26T18:20:05.055Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 11 — 2026-01-26T18:20:25.287Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 12 — 2026-01-26T18:20:43.748Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 13 — 2026-01-26T18:21:04.337Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 14 — 2026-01-26T18:21:21.182Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 15 — 2026-01-26T19:07:44.251Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 16 — 2026-01-26T19:08:09.785Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 17 — 2026-01-26T19:08:29.618Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 18 — 2026-01-26T19:08:54.783Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (4 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 19 — 2026-01-26T19:09:17.774Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 20 — 2026-01-26T19:09:38.413Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n\n\n---\n## Iteration 21 — 2026-01-26T19:34:27.937Z\n\nGathering project details and tasks to identify top priorities\n\n### Remaining Work\n- List project details\n- List project tasks\n- Determine top priorities\n\n### Questions\n- (none)\n\n### Tool Calls\n- get_onto_project_details (ok) — Get project details to understand scope and objectives\n- list_onto_tasks (ok) — List project tasks to identify priorities\n\n### Executor Tasks\n- Analyze Project Details (1 tool calls)\n- Review Project Tasks (1 tool calls)\n",
+            "description": null,
+            "props": {
+              "doc_role": "scratchpad",
+              "homework_run_id": "77b3b395-94b8-4804-8480-40aeb02b7e39"
+            },
+            "created_at": "2026-01-26T18:16:40.719378+00:00",
+            "updated_at": "2026-01-26T19:34:28.008969+00:00"
+          },
+          {
+            "id": "00c1607b-59a5-4ef4-9a6f-18dd8fb5c54d",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Homework Workspace: What do my top priorities for this project be?",
+            "type_key": "document.homework.workspace",
+            "state_key": "draft",
+            "content": null,
+            "description": null,
+            "props": {
+              "scope": "project",
+              "doc_role": "workspace",
+              "homework_run_id": "77b3b395-94b8-4804-8480-40aeb02b7e39"
+            },
+            "created_at": "2026-01-26T18:16:40.446145+00:00",
+            "updated_at": "2026-01-26T18:16:40.446145+00:00"
+          },
+          {
+            "id": "a8e2b99a-5201-46cd-bfe1-bbec52273210",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Anne Arundel Biz Expo and County Accessibility Outreach",
+            "type_key": "document.default",
+            "state_key": "draft",
+            "content": "# Anne Arundel Biz Expo & County Website Accessibility Contracts\n\n## Biz Expo Details (Jan 28, 2026)\n- **Event**: Arundel Biz Expo (presented by AAEDC)\n- **Date/Time**: Wednesday, January 28, 2026, 8:30 AM–3:30 PM\n- **Location**: The Hotel at Arundel Preserve (not Anne Arundel Mills Mall)\n- **Status**: Appears sold out—need waitlist/last-minute spot\n- **Goal**: Get booth/table to pass out Tacemus business cards, network for website projects (esp. accessibility compliance)\n- **Links**:\n  - Main: https://members.annearundelchamber.org/events/details/arundel-biz-expo-sold-out-4965\n  - Facebook: https://www.facebook.com/events/824959383721980/\n  - County: https://www.aacounty.org/central-services/purchasing/procurement-access-and-vendor-equity-pave/event-calendar/arundel-biz\n\n## County Accessibility Compliance Opportunity\n- **Hook**: All county websites must be WCAG 2.1 AA compliant (per library/ADA office policies)\n- **Offer**: Free/no-cost accessibility audit via Tacemus to demo value, then propose full remediation contracts\n- **Target**: Win contracts for Tacemus website services\n\n## Key Contacts\n### Purchasing/Procurement\n- **Division**: (410) 222-7620 | Register on P.O.R.T. eProcurement: aacounty.org/central-services/purchasing\n| Buyer | Departments | Email/Phone |\n|-------|-------------|-------------|\n| Zoraida Rodriguez-Keeton | County Executive's Office, County Council | phrodr25@aacounty.org / (410) 222-4544 |\n| Lindsay Unitas | OIT (tech) | phunit24@aacounty.org / (410) 222-4246 |\n\n### Executive\n- **Steuart L. Pittman, Jr. (County Executive)**: (410) 222-1821\n\n## Pitch Framework\n- Lead with free audit: \\\"Tacemus can audit your sites for WCAG compliance at no cost to identify gaps.\\\"\n- Tie to expo: \\\"Let's connect at Biz Expo or follow up post-event.\\\"\n- Niche: Local MD expert for compliant, branded sites (e.g., like Rob Chamberlin project).\n\n**Next**: Call AAEDC Monday for expo spot; outreach to purchasing.",
+            "description": null,
+            "props": {
+              "body_markdown": "# Anne Arundel Biz Expo & County Website Accessibility Contracts\n\n## Biz Expo Details (Jan 28, 2026)\n- **Event**: Arundel Biz Expo (presented by AAEDC)\n- **Date/Time**: Wednesday, January 28, 2026, 8:30 AM–3:30 PM\n- **Location**: The Hotel at Arundel Preserve (not Anne Arundel Mills Mall)\n- **Status**: Appears sold out—need waitlist/last-minute spot\n- **Goal**: Get booth/table to pass out Tacemus business cards, network for website projects (esp. accessibility compliance)\n- **Links**:\n  - Main: https://members.annearundelchamber.org/events/details/arundel-biz-expo-sold-out-4965\n  - Facebook: https://www.facebook.com/events/824959383721980/\n  - County: https://www.aacounty.org/central-services/purchasing/procurement-access-and-vendor-equity-pave/event-calendar/arundel-biz\n\n## County Accessibility Compliance Opportunity\n- **Hook**: All county websites must be WCAG 2.1 AA compliant (per library/ADA office policies)\n- **Offer**: Free/no-cost accessibility audit via Tacemus to demo value, then propose full remediation contracts\n- **Target**: Win contracts for Tacemus website services\n\n## Key Contacts\n### Purchasing/Procurement\n- **Division**: (410) 222-7620 | Register on P.O.R.T. eProcurement: aacounty.org/central-services/purchasing\n| Buyer | Departments | Email/Phone |\n|-------|-------------|-------------|\n| Zoraida Rodriguez-Keeton | County Executive's Office, County Council | phrodr25@aacounty.org / (410) 222-4544 |\n| Lindsay Unitas | OIT (tech) | phunit24@aacounty.org / (410) 222-4246 |\n\n### Executive\n- **Steuart L. Pittman, Jr. (County Executive)**: (410) 222-1821\n\n## Pitch Framework\n- Lead with free audit: \\\"Tacemus can audit your sites for WCAG compliance at no cost to identify gaps.\\\"\n- Tie to expo: \\\"Let's connect at Biz Expo or follow up post-event.\\\"\n- Niche: Local MD expert for compliant, branded sites (e.g., like Rob Chamberlin project).\n\n**Next**: Call AAEDC Monday for expo spot; outreach to purchasing."
+            },
+            "created_at": "2026-01-25T03:40:26.728544+00:00",
+            "updated_at": "2026-01-25T03:40:26.728544+00:00"
+          },
+          {
+            "id": "4719ee90-e82e-428f-aa9d-fa7287533330",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Tacemus Positioning document",
+            "type_key": "document.context.positioning",
+            "state_key": "in_review",
+            "content": "<!-- docs/positioning-depth-questions.md -->\n\n# Positioning Depth Questions — \"With or Without You\" Energy\n\n> **Purpose:** Interview questions to understand what DJ means by the positioning shift from \"pick me\" to \"with or without you\" energy. Answer these to inform copy and design decisions.\n>\n> **Last Modified:** 2026-01-11\n>\n> **Related Docs:**\n>\n> - [Positioning Principles](./positioning-principles.md) — Current draft based on initial conversation\n> - [Brand Depth Questions](./brand-depth-questions.md) — Original brand interview\n> - [Brand Synthesis](./brand-synthesis.md) — Previous synthesis\n> - [INDEX](./INDEX.md) — All docs\n\n---\n\n## What We Have So Far\n\nYou said:\n\n- The current energy feels like \"pick me\" energy\n- You want \"with or without you\" / \"law of attraction\" energy\n- You want to state what you're about and project selectivity\n- You referenced Peter Thiel's investment firm — sparse, mysterious, the work speaks\n- You want subtle qualification, not outright rejection language\n- You want what you've built to speak for itself\n\n**But I need to go deeper to get this right.**\n\n---\n\n## Part 1: Understanding the Energy\n\n### 1.1 Where does the \"pick me\" feeling come from?\n\nWhen you read the current copy, what specifically makes you cringe or feel like it's too eager?\n\n**Give me examples of specific lines or sections that feel wrong.**\n\n**Your answer:**\n\nWhen I read the current copy, this is what makes me cringe. First, it says, Your Ghost Builder? Uh, I'm not your ghost builder. I'm a ghost builder. That makes me cringe. And then, Tacemus, Latin for We the Silent. I like that, but it needs a little bit of explaining. Maybe say it towards the bottom, or after the main header thing, to explain Tacemus. And the Tacemus thing is, yeah, Latin for Read the Silent. It says, I build websites to help silent builders out there. The people who have been climbing mountains and building behind the scenes who need a public-facing space. That's the kind of thing I want to do with the Tacemus thing. Um, so maybe say Tacemus, Latin for Read the Silent, and then explain it a little bit more in like a sentence or two.\nAnd instead of, I build websites that make your work visible, just say, I make the invisible visible. And then say, I work with people to capture their voice, flesh out their brand, cater, flesh out the people they serve, and I help them grow. And then it says, while I stay behind the scenes. It's just, I don't, don't say that. It sounds too corny and cringy. Just say, I know what it's like, say it like this. I know what it's like to be building in silence and work really hard on something. And I like to help people grow and be visible. By helping them establish a website that shows them off. And then, yeah, the copy automation, email automation and conversion system included. That's all good. But yeah. Would I build more than pages? Yeah, it's okay. All this is okay. What's your name? On the homepage at least. Clear options, no surprises. Don't say clear options, no surprises. Just say, say something else. I don't want to say clear options, no surprises. Just say like, my process. And then go into the website design, website digital presence and all this stuff. I love the, what you have under there, what you get section. But yeah.\n\n\nThen on the services page, again, your ghost builder for the web. I like just saying, yeah, we have to say something else. One thing I say is like I'm an internet guy, so like I know the internet and I can help you have a presence on the internet. I research your industry, capture your voice, build your complete digital presence. Yeah, oh, that's good. Why this works, not just another website builder. I want to contrast it to like it's easy to throw something on the web. It's easy to just throw something up. It's not easy to build a brand and capture your world view and your positioning, and that's what I love doing. And yeah, the ghost builder approach is all good. This is okay. Yeah, this is all good. This is all good. That's basically it for the services page.\n\nFor on the About Us page, it's good, but on the How I Work, don't say Heavy Recon Upfront, just say Heavy Upfront Research, where I do do a bunch of research and I use AI to help me research. Fast Iteration, yes. Say with that, um, anything that doesn't sound like you is up for change. Um, like I will match your vibe. Um, more than just pages. For that part, just say like, um, you know, I want to say something about how your website is your brand. It's a credibility thing. And it should drive users to connect with you or know about you or it should just basically set you up to have customers come to you. And I want to help your website serve its purpose, however you want that purpose to be. There's different flavors to it. But yeah, most people just want to grow or want some form of growth.\n---\n\n### 1.2 Who has the energy you want?\n\nThink of people, brands, or websites that project the \"with or without you\" vibe.\n\n**Questions:**\n\n- Who do you know (personally or publicly) that has this energy? What do they do differently?\n- What websites or brands project this vibe? (Beyond Peter Thiel's site)\n- What's a specific example of someone saying \"no\" or being selective in a way that made you want them MORE?\n\n**Your answer:**\n\nWho do I know that has the energy with without you energy? Yeah, like I said, Peter Thiel in all of his stuff is with or without you energy, in that he has an aura about him.But yeah, the thing I like Peter Thiel is like he doesn't like mark and say, oh I'm so great and all my people are so great. It's like, it's subtle, like he's just cool and like he draws people to him. That's the kind of with or without you energy. He's not, you know, if you're, if you're, if you're thinking about law of attraction, you're not saying please be with me, please be with me. You're just projecting good energy that like people naturally come to. That's what I mean by that with or without you energy. Yeah, they're not overly needy or salesy, and I, that's, I don't want to be needy or salesy. Yeah, what's a specific example of someone saying no or being selective in a way that you made them want more? Okay, one specific example of someone saying no or being selective and makes me want them more was me joining the Marine Corps, where I, the Marine Corps basically didn't want me's per se, like that's their reverse psychology. It's like, like say, they basically say, are you good enough to be in the Marine Corps? And that's different from the other services, and I kind of like that vibe. Not to say that I want to explicitly exclude people, but I just want to remove every trace of like me begging for clients. That's the kind of vibe I'm going for.\n\n---\n\n### 1.3 What does \"with or without you\" feel like from the inside?\n\nForget the website for a second. Imagine you're at a networking event or on a sales call.\n\n**Questions:**\n\n- What would you say (or not say) if you had this energy?\n- How would you carry yourself differently?\n- What questions would you ask vs. answer?\n- When have you naturally had this energy in the past? What was different about that situation?\n\n**Your answer:**\n\nWhat would I say or not say if I had this energy? I would just say, yeah, I felt like I basically helped some friends in the past who were already working on stuff. And I was like, hey, I can help you grow and get more users. So I reached out to them from a genuine place of wanting to help. And I've been working on the cadre with Phil Velajo, helping him, because I wanted to help him. And he's someone I knew in the past, and I loved working with him and helping him out. And because of that, I put so much effort into it, I'm now getting referrals. And so now I'm selectively working with other people. I'm putting myself up to this. That's why I started Tacemus. How would you carry yourself differently? I'd say if you have a website or you need a website, talk to me and I'll see what exactly you need and see if what I offer could help you. And it would be kind of nonchalant. I wouldn't just ask, do you need a website? I'd say, what is this website supposed to do for you? And what problems are you trying to solve? Are you trying to get more users, more recognition, more whatever? One of the main things with a website, it's a credibility statement. It's a thing for people to look you up. And it's just a really good thing in many domains where it's just like, hey, check my website. Because people can research you and know about you, and you can take a mind share. If you have a website. When have you naturally had this energy in the past? What was different about that situation? In the investment world, in the founder world, when you're talking to VCs, you need to have that with or without your energy of like, I'm building something big. I don't need your money, but if you want to invest, I have room on my cap table. That kind of energy is what I'm going for.\n\n---\n\n### 1.4 What are you afraid of losing?\n\nShifting to \"with or without you\" energy often feels risky. What's the fear?\n\n**Questions:**\n\n- Are you worried fewer people will reach out if you seem less available?\n- Are you worried about seeming arrogant or cold?\n- What's the worst case scenario if this positioning change doesn't work?\n- What would you have to believe about yourself and your work to fully embody this energy?\n\n**Your answer:**\n\nam I worried few people reach out to you if you seem less available not really are you worried about seeing arrogant or cold  not really because I think what I've built speaks for itself and  I am busy  what's the worst case scenario of this positioning change doesn't work  it's not bad because I'm going to reach out to people directly as well  what would you have to believe about yourself and your work to fully embody this energy  I just think I need a little momentum and I just got momentum because I got  my first client and so I'm just ready to execute and do great work.\n\n---\n\n## Part 2: The Selectivity Question\n\n### 2.1 Are you actually selective?\n\nReal \"with or without you\" energy comes from actual abundance and actual standards. Let's be honest.\n\n**Questions:**\n\n- If someone reached out tomorrow wanting a website, what would make you say no?\n- Have you ever turned down work? Why?\n- What's your actual capacity right now — how many clients could you take?\n- If you had 10 people wanting to work with you right now, how would you choose?\n\n**Your answer:**\n\nfor someone reached out tomorrow morning website would you say now  if they wanted me to do like a Wix website or  Squarespace weather face up a template thing or WordPress website those would all not be great and also  if it was a  call it  any Commerce store I'm not that great I just haven't explored the  stripe integration stuff and the  payment stuff so I like  to not go into that right now my strengths are just general website design and design flow and The Branding exercises and crafting email sequences and maybe that matches the person's vibe  have I ever turned on work  yes if  it's some small project that's not going to go anywhere  like  one thing I  want to keep in mind is I want to high quality clients  because it's way more bang for the buck that's kind of my what I'm thinking of what's you're actually capacity right now how many clients could you take I could probably take three or four right now I think  but I'm not sure I'm kind of kind of trial and error this. if I attend people that wanted to work with me how would I choose I would  see which products I'm excited about  mixed with the people I want to help.\n\n---\n\n### 2.2 What do you actually want to be selective about?\n\nNot all selectivity is about the client. Sometimes it's about the project type, the vibe, the way they treat you.\n\n**Questions:**\n\n- What kind of project would you turn down even if the person was great?\n- What kind of behavior would make you walk away from a paying client?\n- What does a dream client look like? Not just industry — how do they communicate, what do they value, how do they treat you?\n- What does a nightmare client look like?\n\n**Your answer:**\n\nI would turn down a project if it's really outside my domain of expertise  or it's any Commerce site  those things aren't that great  what kind of behavior would you do anyway something client if they were just terrible  hard work  what does a dream come look like I love someone in the military  or  or a Creator or someone who gives me energy is already doing creative things that's great  nightmare client is someone  it's just really hard to work with and has a Brazilian requirements  and isn't listening to me as much as they're just talking at me\n\n---\n\n### 2.3 How do you want people to feel when they reach out?\n\nRight now, the site probably makes people feel like \"great, I can hire this person.\"\n\n**Questions:**\n\n- Do you want people to feel like they need to impress YOU a little?\n- Do you want people to wonder if they're a good fit before they reach out?\n- Do you want the intake form to feel like an application?\n- What's the right balance between welcoming and qualifying?\n\n**Your answer:**\n\nI don't necessarily want people to feel like they need to impress me  yes I do want people to wonder if they're good fit for the reach out but also I just want them to do this be intrigued by the work that I've got in the past do you want the intake form to feel like an application  no I just want them to be explaining me that problem  and what they're hoping to  achieve that way I can quickly filter them out what's the right balance between welcoming and qualifying  I want to leave more heavily towards the welcoming\n\n---\n\n## Part 3: The Mystery Question\n\n### 3.1 What should be visible vs. hidden?\n\nYou mentioned Peter Thiel's site — sparse, mysterious. Let's define what that means for Tacemus.\n\n**Questions:**\n\n- What should someone be able to learn from your site in 10 seconds?\n- What should remain a mystery until they talk to you?\n- What do you currently show that you could hide?\n- What's the minimum someone needs to see to want to reach out?\n\n**Your answer:**\n\nthey should learn that I do Taylor custom work and I love my craft and I take  a lot of time and helping people craft their brand  and messaging  and  I want them to know that the bridge that I've worked with them  grow  what should remain a mystery  the exact process for Branding that I go through  cuz I do a ton of research and I leverage all the AI tools to help me out  which I currently show that I could hide I don't know what's the minimum someone needs  to see  to want to reach out  they just  should be intrigued at the idea of like  how could help them grow and  flush more about their brand like I think people are frustrated sometimes when they websites out first present them in the way they wanted to be presented and I can help crap that so that they can really be presented in the light that they want to be presented\n\n---\n\n### 3.2 What creates intrigue vs. confusion?\n\nThere's a line between \"mysterious and compelling\" and \"unclear and frustrating.\"\n\n**Questions:**\n\n- What makes you curious about someone or a brand? What pulls you in?\n- When has mystery or sparseness turned you OFF? What made it feel like hiding vs. confidence?\n- How do you know if someone has substance behind the restraint vs. just doesn't have much to say?\n\n**Your answer:**\n\nwhat makes me curious about someone's brand  what they're doing something interesting and unique and I'm like wondering how did they get the results they've gotten  when has mystery or sparson's turned you off  do much like I have a magic process among the best  numbers  a hard question to answer  I think if someone's really obsessed with themselves it comes off  as they're just self-absorbed and wrapped in their own lore  versus  their secretive to like I have a secret process and I've really help people look at the people I've helped I think that comes off of doing a good way when you do it that\n\n---\n\n### 3.3 What does your work prove on its own?\n\nThe more your work speaks, the less your copy needs to.\n\n**Questions:**\n\n- If someone looked at your portfolio projects, what would they already understand without you explaining?\n- What's NOT obvious from looking at your work that you'd need to say?\n- Is your portfolio strong enough right now to carry the weight, or does it need more projects first?\n\n**Your answer:**\n\nthey should resonate with the idea of the same as where I've been building I know it's like to be building in silence and quietly without putting myself out there and  I want them to think about how if someone would just understood them  where they're coming from they would really  appreciate the work they've done and then appreciate the value they bring to the table  I want them to think about that and recognize that I know whether  what it's like to be in that situation and  I can help people get out of that situation and be perceived in a better life and how they really need to be received what's not obvious from looking at your own work that you need to say  I want them to realize that I work quickly and that  in  deep what they  want a personality in psychology  and I really want to get at  their unique superpowers and their unique offerings and really flush that out  is your portfolio strong enough right now to carry the weight or does it need  some  I think one unique thing about me is that I come from a tech background so  I like coming up with the creative things to do to flush out their brand you know it's it's base  stuff to create a landing page and a Blog  instead of email stuff but having that all work together seamlessly  is unique and I can also do a bunch of custom stuff for them as well so I think  I have the flexibility to work with really good clients\n\n---\n\n## Part 4: The Confidence Question\n\n### 4.1 Where does your confidence come from?\n\n\"With or without you\" energy comes from somewhere. Let's find it.\n\n**Questions:**\n\n- What do you know you're good at? Not hope — know.\n- What have you done that proves it?\n- What would someone who's worked with you say about why you're worth it?\n- What do you bring that someone can't get from a cheaper alternative?\n\n**Your answer:**\n\n---\n\n### 4.2 What would make you feel like you've \"arrived\"?\n\nSometimes we project \"pick me\" energy because we don't feel like we've earned the confident energy yet.\n\n**Questions:**\n\n- How many clients or projects would you need to feel like you're not just starting out?\n- What kind of recognition or results would make you feel like you've proven yourself?\n- Is there a version of you 2 years from now that would naturally have this energy? What's different about that version?\n\n**Your answer:**\n\n---\n\n### 4.3 What's the honest state of things?\n\nLet's ground this in reality so the positioning doesn't feel like performance.\n\n**Questions:**\n\n- How many paying website clients have you had?\n- What's your track record? (Ship rate, client satisfaction, repeat clients)\n- What can you honestly point to and say \"this is proof\"?\n- Where are the gaps you're still building toward?\n\n**Your answer:**\n\n---\n\n## Part 5: The Attraction Question\n\n### 5.1 What attracts you to other people/brands?\n\n\"Law of attraction\" energy means being compelling, not chasing. What compels you?\n\n**Questions:**\n\n- When you've wanted to work with someone, what made you want them?\n- What's the difference between someone you'd hire and someone you'd ignore?\n- What signals \"this person is legit\" vs. \"this person is trying to look legit\"?\n\n**Your answer:**\n\n---\n\n### 5.2 What should Tacemus attract?\n\nNot just who — but what energy, what situations, what kind of conversations.\n\n**Questions:**\n\n- What kind of inquiry email would make you excited to respond?\n- What kind of project would make you think \"hell yes\"?\n- What kind of person do you want finding you?\n- What do you want them to already believe before they reach out?\n\n**Your answer:**\n\n---\n\n### 5.3 What should Tacemus repel?\n\nMagnetic positioning attracts the right people by repelling the wrong ones.\n\n**Questions:**\n\n- Who do you NOT want reaching out?\n- What kind of inquiry would make you immediately not want to work with them?\n- What should the site subtly communicate to filter these people out?\n\n**Your answer:**\n\n---\n\n## Part 6: The Copy Question\n\n### 6.1 What words feel right vs. wrong?\n\nLet's get specific about language.\n\n**Words/phrases that feel like \"pick me\" energy (avoid):**\n\n**Words/phrases that feel like \"with or without you\" energy (use):**\n\n**Your answer:**\n\n---\n\n### 6.2 How much should the site talk?\n\nSparse can mean different things.\n\n**Questions:**\n\n- Should the homepage have 3 sections or 8?\n- Should there be detailed explanations of your process, or just the steps?\n- Should there be a long FAQ or just a few essential questions?\n- How much should someone have to scroll to get the picture?\n\n**Your answer:**\n\n---\n\n### 6.3 What's the one thing?\n\nIf someone remembers ONE thing after visiting your site, what should it be?\n\n**Your answer:**\n\n---\n\n## Part 7: Synthesis Check\n\n### 7.1 Did I get it right?\n\nRead the [Positioning Principles](./positioning-principles.md) doc I created.\n\n**Questions:**\n\n- What did I get right?\n- What did I get wrong or miss?\n- What needs to be added or changed?\n- Does it feel like YOU, or does it feel like my interpretation of you?\n\n**Your answer:**\n\n---\n\n### 7.2 Final question\n\nIf the Tacemus website perfectly embodied \"with or without you\" energy, how would you describe the feeling someone gets when they land on it?\n\n**Complete this sentence:**\n\n\"When someone lands on the Tacemus site, they should feel like ******\\_\\_\\_******.\"\n\n**Your answer:**\n\n---\n\n## What Happens Next\n\nOnce you've answered these questions, I'll:\n\n1. Revise the [Positioning Principles](./positioning-principles.md) doc based on your answers\n2. Create specific copy revisions that embody this energy\n3. Identify what to strip vs. keep on the site\n\n**The goal:** A site that feels like Peter Thiel's firm — sparse, confident, the work speaks — but authentically yours.\n\n---\n\n_Document created: 2026-01-11_\n_Status: Awaiting DJ's answers_\n",
+            "description": null,
+            "props": {
+              "tags": [
+                "branding",
+                "positioning",
+                "copywriting",
+                "user-research",
+                "website-design"
+              ],
+              "body_markdown": "<!-- docs/positioning-depth-questions.md -->\n\n# Positioning Depth Questions — \"With or Without You\" Energy\n\n> **Purpose:** Interview questions to understand what DJ means by the positioning shift from \"pick me\" to \"with or without you\" energy. Answer these to inform copy and design decisions.\n>\n> **Last Modified:** 2026-01-11\n>\n> **Related Docs:**\n>\n> - [Positioning Principles](./positioning-principles.md) — Current draft based on initial conversation\n> - [Brand Depth Questions](./brand-depth-questions.md) — Original brand interview\n> - [Brand Synthesis](./brand-synthesis.md) — Previous synthesis\n> - [INDEX](./INDEX.md) — All docs\n\n---\n\n## What We Have So Far\n\nYou said:\n\n- The current energy feels like \"pick me\" energy\n- You want \"with or without you\" / \"law of attraction\" energy\n- You want to state what you're about and project selectivity\n- You referenced Peter Thiel's investment firm — sparse, mysterious, the work speaks\n- You want subtle qualification, not outright rejection language\n- You want what you've built to speak for itself\n\n**But I need to go deeper to get this right.**\n\n---\n\n## Part 1: Understanding the Energy\n\n### 1.1 Where does the \"pick me\" feeling come from?\n\nWhen you read the current copy, what specifically makes you cringe or feel like it's too eager?\n\n**Give me examples of specific lines or sections that feel wrong.**\n\n**Your answer:**\n\nWhen I read the current copy, this is what makes me cringe. First, it says, Your Ghost Builder? Uh, I'm not your ghost builder. I'm a ghost builder. That makes me cringe. And then, Tacemus, Latin for We the Silent. I like that, but it needs a little bit of explaining. Maybe say it towards the bottom, or after the main header thing, to explain Tacemus. And the Tacemus thing is, yeah, Latin for Read the Silent. It says, I build websites to help silent builders out there. The people who have been climbing mountains and building behind the scenes who need a public-facing space. That's the kind of thing I want to do with the Tacemus thing. Um, so maybe say Tacemus, Latin for Read the Silent, and then explain it a little bit more in like a sentence or two.\nAnd instead of, I build websites that make your work visible, just say, I make the invisible visible. And then say, I work with people to capture their voice, flesh out their brand, cater, flesh out the people they serve, and I help them grow. And then it says, while I stay behind the scenes. It's just, I don't, don't say that. It sounds too corny and cringy. Just say, I know what it's like, say it like this. I know what it's like to be building in silence and work really hard on something. And I like to help people grow and be visible. By helping them establish a website that shows them off. And then, yeah, the copy automation, email automation and conversion system included. That's all good. But yeah. Would I build more than pages? Yeah, it's okay. All this is okay. What's your name? On the homepage at least. Clear options, no surprises. Don't say clear options, no surprises. Just say, say something else. I don't want to say clear options, no surprises. Just say like, my process. And then go into the website design, website digital presence and all this stuff. I love the, what you have under there, what you get section. But yeah.\n\n\nThen on the services page, again, your ghost builder for the web. I like just saying, yeah, we have to say something else. One thing I say is like I'm an internet guy, so like I know the internet and I can help you have a presence on the internet. I research your industry, capture your voice, build your complete digital presence. Yeah, oh, that's good. Why this works, not just another website builder. I want to contrast it to like it's easy to throw something on the web. It's easy to just throw something up. It's not easy to build a brand and capture your world view and your positioning, and that's what I love doing. And yeah, the ghost builder approach is all good. This is okay. Yeah, this is all good. This is all good. That's basically it for the services page.\n\nFor on the About Us page, it's good, but on the How I Work, don't say Heavy Recon Upfront, just say Heavy Upfront Research, where I do do a bunch of research and I use AI to help me research. Fast Iteration, yes. Say with that, um, anything that doesn't sound like you is up for change. Um, like I will match your vibe. Um, more than just pages. For that part, just say like, um, you know, I want to say something about how your website is your brand. It's a credibility thing. And it should drive users to connect with you or know about you or it should just basically set you up to have customers come to you. And I want to help your website serve its purpose, however you want that purpose to be. There's different flavors to it. But yeah, most people just want to grow or want some form of growth.\n---\n\n### 1.2 Who has the energy you want?\n\nThink of people, brands, or websites that project the \"with or without you\" vibe.\n\n**Questions:**\n\n- Who do you know (personally or publicly) that has this energy? What do they do differently?\n- What websites or brands project this vibe? (Beyond Peter Thiel's site)\n- What's a specific example of someone saying \"no\" or being selective in a way that made you want them MORE?\n\n**Your answer:**\n\nWho do I know that has the energy with without you energy? Yeah, like I said, Peter Thiel in all of his stuff is with or without you energy, in that he has an aura about him.But yeah, the thing I like Peter Thiel is like he doesn't like mark and say, oh I'm so great and all my people are so great. It's like, it's subtle, like he's just cool and like he draws people to him. That's the kind of with or without you energy. He's not, you know, if you're, if you're, if you're thinking about law of attraction, you're not saying please be with me, please be with me. You're just projecting good energy that like people naturally come to. That's what I mean by that with or without you energy. Yeah, they're not overly needy or salesy, and I, that's, I don't want to be needy or salesy. Yeah, what's a specific example of someone saying no or being selective in a way that you made them want more? Okay, one specific example of someone saying no or being selective and makes me want them more was me joining the Marine Corps, where I, the Marine Corps basically didn't want me's per se, like that's their reverse psychology. It's like, like say, they basically say, are you good enough to be in the Marine Corps? And that's different from the other services, and I kind of like that vibe. Not to say that I want to explicitly exclude people, but I just want to remove every trace of like me begging for clients. That's the kind of vibe I'm going for.\n\n---\n\n### 1.3 What does \"with or without you\" feel like from the inside?\n\nForget the website for a second. Imagine you're at a networking event or on a sales call.\n\n**Questions:**\n\n- What would you say (or not say) if you had this energy?\n- How would you carry yourself differently?\n- What questions would you ask vs. answer?\n- When have you naturally had this energy in the past? What was different about that situation?\n\n**Your answer:**\n\nWhat would I say or not say if I had this energy? I would just say, yeah, I felt like I basically helped some friends in the past who were already working on stuff. And I was like, hey, I can help you grow and get more users. So I reached out to them from a genuine place of wanting to help. And I've been working on the cadre with Phil Velajo, helping him, because I wanted to help him. And he's someone I knew in the past, and I loved working with him and helping him out. And because of that, I put so much effort into it, I'm now getting referrals. And so now I'm selectively working with other people. I'm putting myself up to this. That's why I started Tacemus. How would you carry yourself differently? I'd say if you have a website or you need a website, talk to me and I'll see what exactly you need and see if what I offer could help you. And it would be kind of nonchalant. I wouldn't just ask, do you need a website? I'd say, what is this website supposed to do for you? And what problems are you trying to solve? Are you trying to get more users, more recognition, more whatever? One of the main things with a website, it's a credibility statement. It's a thing for people to look you up. And it's just a really good thing in many domains where it's just like, hey, check my website. Because people can research you and know about you, and you can take a mind share. If you have a website. When have you naturally had this energy in the past? What was different about that situation? In the investment world, in the founder world, when you're talking to VCs, you need to have that with or without your energy of like, I'm building something big. I don't need your money, but if you want to invest, I have room on my cap table. That kind of energy is what I'm going for.\n\n---\n\n### 1.4 What are you afraid of losing?\n\nShifting to \"with or without you\" energy often feels risky. What's the fear?\n\n**Questions:**\n\n- Are you worried fewer people will reach out if you seem less available?\n- Are you worried about seeming arrogant or cold?\n- What's the worst case scenario if this positioning change doesn't work?\n- What would you have to believe about yourself and your work to fully embody this energy?\n\n**Your answer:**\n\nam I worried few people reach out to you if you seem less available not really are you worried about seeing arrogant or cold  not really because I think what I've built speaks for itself and  I am busy  what's the worst case scenario of this positioning change doesn't work  it's not bad because I'm going to reach out to people directly as well  what would you have to believe about yourself and your work to fully embody this energy  I just think I need a little momentum and I just got momentum because I got  my first client and so I'm just ready to execute and do great work.\n\n---\n\n## Part 2: The Selectivity Question\n\n### 2.1 Are you actually selective?\n\nReal \"with or without you\" energy comes from actual abundance and actual standards. Let's be honest.\n\n**Questions:**\n\n- If someone reached out tomorrow wanting a website, what would make you say no?\n- Have you ever turned down work? Why?\n- What's your actual capacity right now — how many clients could you take?\n- If you had 10 people wanting to work with you right now, how would you choose?\n\n**Your answer:**\n\nfor someone reached out tomorrow morning website would you say now  if they wanted me to do like a Wix website or  Squarespace weather face up a template thing or WordPress website those would all not be great and also  if it was a  call it  any Commerce store I'm not that great I just haven't explored the  stripe integration stuff and the  payment stuff so I like  to not go into that right now my strengths are just general website design and design flow and The Branding exercises and crafting email sequences and maybe that matches the person's vibe  have I ever turned on work  yes if  it's some small project that's not going to go anywhere  like  one thing I  want to keep in mind is I want to high quality clients  because it's way more bang for the buck that's kind of my what I'm thinking of what's you're actually capacity right now how many clients could you take I could probably take three or four right now I think  but I'm not sure I'm kind of kind of trial and error this. if I attend people that wanted to work with me how would I choose I would  see which products I'm excited about  mixed with the people I want to help.\n\n---\n\n### 2.2 What do you actually want to be selective about?\n\nNot all selectivity is about the client. Sometimes it's about the project type, the vibe, the way they treat you.\n\n**Questions:**\n\n- What kind of project would you turn down even if the person was great?\n- What kind of behavior would make you walk away from a paying client?\n- What does a dream client look like? Not just industry — how do they communicate, what do they value, how do they treat you?\n- What does a nightmare client look like?\n\n**Your answer:**\n\nI would turn down a project if it's really outside my domain of expertise  or it's any Commerce site  those things aren't that great  what kind of behavior would you do anyway something client if they were just terrible  hard work  what does a dream come look like I love someone in the military  or  or a Creator or someone who gives me energy is already doing creative things that's great  nightmare client is someone  it's just really hard to work with and has a Brazilian requirements  and isn't listening to me as much as they're just talking at me\n\n---\n\n### 2.3 How do you want people to feel when they reach out?\n\nRight now, the site probably makes people feel like \"great, I can hire this person.\"\n\n**Questions:**\n\n- Do you want people to feel like they need to impress YOU a little?\n- Do you want people to wonder if they're a good fit before they reach out?\n- Do you want the intake form to feel like an application?\n- What's the right balance between welcoming and qualifying?\n\n**Your answer:**\n\nI don't necessarily want people to feel like they need to impress me  yes I do want people to wonder if they're good fit for the reach out but also I just want them to do this be intrigued by the work that I've got in the past do you want the intake form to feel like an application  no I just want them to be explaining me that problem  and what they're hoping to  achieve that way I can quickly filter them out what's the right balance between welcoming and qualifying  I want to leave more heavily towards the welcoming\n\n---\n\n## Part 3: The Mystery Question\n\n### 3.1 What should be visible vs. hidden?\n\nYou mentioned Peter Thiel's site — sparse, mysterious. Let's define what that means for Tacemus.\n\n**Questions:**\n\n- What should someone be able to learn from your site in 10 seconds?\n- What should remain a mystery until they talk to you?\n- What do you currently show that you could hide?\n- What's the minimum someone needs to see to want to reach out?\n\n**Your answer:**\n\nthey should learn that I do Taylor custom work and I love my craft and I take  a lot of time and helping people craft their brand  and messaging  and  I want them to know that the bridge that I've worked with them  grow  what should remain a mystery  the exact process for Branding that I go through  cuz I do a ton of research and I leverage all the AI tools to help me out  which I currently show that I could hide I don't know what's the minimum someone needs  to see  to want to reach out  they just  should be intrigued at the idea of like  how could help them grow and  flush more about their brand like I think people are frustrated sometimes when they websites out first present them in the way they wanted to be presented and I can help crap that so that they can really be presented in the light that they want to be presented\n\n---\n\n### 3.2 What creates intrigue vs. confusion?\n\nThere's a line between \"mysterious and compelling\" and \"unclear and frustrating.\"\n\n**Questions:**\n\n- What makes you curious about someone or a brand? What pulls you in?\n- When has mystery or sparseness turned you OFF? What made it feel like hiding vs. confidence?\n- How do you know if someone has substance behind the restraint vs. just doesn't have much to say?\n\n**Your answer:**\n\nwhat makes me curious about someone's brand  what they're doing something interesting and unique and I'm like wondering how did they get the results they've gotten  when has mystery or sparson's turned you off  do much like I have a magic process among the best  numbers  a hard question to answer  I think if someone's really obsessed with themselves it comes off  as they're just self-absorbed and wrapped in their own lore  versus  their secretive to like I have a secret process and I've really help people look at the people I've helped I think that comes off of doing a good way when you do it that\n\n---\n\n### 3.3 What does your work prove on its own?\n\nThe more your work speaks, the less your copy needs to.\n\n**Questions:**\n\n- If someone looked at your portfolio projects, what would they already understand without you explaining?\n- What's NOT obvious from looking at your work that you'd need to say?\n- Is your portfolio strong enough right now to carry the weight, or does it need more projects first?\n\n**Your answer:**\n\nthey should resonate with the idea of the same as where I've been building I know it's like to be building in silence and quietly without putting myself out there and  I want them to think about how if someone would just understood them  where they're coming from they would really  appreciate the work they've done and then appreciate the value they bring to the table  I want them to think about that and recognize that I know whether  what it's like to be in that situation and  I can help people get out of that situation and be perceived in a better life and how they really need to be received what's not obvious from looking at your own work that you need to say  I want them to realize that I work quickly and that  in  deep what they  want a personality in psychology  and I really want to get at  their unique superpowers and their unique offerings and really flush that out  is your portfolio strong enough right now to carry the weight or does it need  some  I think one unique thing about me is that I come from a tech background so  I like coming up with the creative things to do to flush out their brand you know it's it's base  stuff to create a landing page and a Blog  instead of email stuff but having that all work together seamlessly  is unique and I can also do a bunch of custom stuff for them as well so I think  I have the flexibility to work with really good clients\n\n---\n\n## Part 4: The Confidence Question\n\n### 4.1 Where does your confidence come from?\n\n\"With or without you\" energy comes from somewhere. Let's find it.\n\n**Questions:**\n\n- What do you know you're good at? Not hope — know.\n- What have you done that proves it?\n- What would someone who's worked with you say about why you're worth it?\n- What do you bring that someone can't get from a cheaper alternative?\n\n**Your answer:**\n\n---\n\n### 4.2 What would make you feel like you've \"arrived\"?\n\nSometimes we project \"pick me\" energy because we don't feel like we've earned the confident energy yet.\n\n**Questions:**\n\n- How many clients or projects would you need to feel like you're not just starting out?\n- What kind of recognition or results would make you feel like you've proven yourself?\n- Is there a version of you 2 years from now that would naturally have this energy? What's different about that version?\n\n**Your answer:**\n\n---\n\n### 4.3 What's the honest state of things?\n\nLet's ground this in reality so the positioning doesn't feel like performance.\n\n**Questions:**\n\n- How many paying website clients have you had?\n- What's your track record? (Ship rate, client satisfaction, repeat clients)\n- What can you honestly point to and say \"this is proof\"?\n- Where are the gaps you're still building toward?\n\n**Your answer:**\n\n---\n\n## Part 5: The Attraction Question\n\n### 5.1 What attracts you to other people/brands?\n\n\"Law of attraction\" energy means being compelling, not chasing. What compels you?\n\n**Questions:**\n\n- When you've wanted to work with someone, what made you want them?\n- What's the difference between someone you'd hire and someone you'd ignore?\n- What signals \"this person is legit\" vs. \"this person is trying to look legit\"?\n\n**Your answer:**\n\n---\n\n### 5.2 What should Tacemus attract?\n\nNot just who — but what energy, what situations, what kind of conversations.\n\n**Questions:**\n\n- What kind of inquiry email would make you excited to respond?\n- What kind of project would make you think \"hell yes\"?\n- What kind of person do you want finding you?\n- What do you want them to already believe before they reach out?\n\n**Your answer:**\n\n---\n\n### 5.3 What should Tacemus repel?\n\nMagnetic positioning attracts the right people by repelling the wrong ones.\n\n**Questions:**\n\n- Who do you NOT want reaching out?\n- What kind of inquiry would make you immediately not want to work with them?\n- What should the site subtly communicate to filter these people out?\n\n**Your answer:**\n\n---\n\n## Part 6: The Copy Question\n\n### 6.1 What words feel right vs. wrong?\n\nLet's get specific about language.\n\n**Words/phrases that feel like \"pick me\" energy (avoid):**\n\n**Words/phrases that feel like \"with or without you\" energy (use):**\n\n**Your answer:**\n\n---\n\n### 6.2 How much should the site talk?\n\nSparse can mean different things.\n\n**Questions:**\n\n- Should the homepage have 3 sections or 8?\n- Should there be detailed explanations of your process, or just the steps?\n- Should there be a long FAQ or just a few essential questions?\n- How much should someone have to scroll to get the picture?\n\n**Your answer:**\n\n---\n\n### 6.3 What's the one thing?\n\nIf someone remembers ONE thing after visiting your site, what should it be?\n\n**Your answer:**\n\n---\n\n## Part 7: Synthesis Check\n\n### 7.1 Did I get it right?\n\nRead the [Positioning Principles](./positioning-principles.md) doc I created.\n\n**Questions:**\n\n- What did I get right?\n- What did I get wrong or miss?\n- What needs to be added or changed?\n- Does it feel like YOU, or does it feel like my interpretation of you?\n\n**Your answer:**\n\n---\n\n### 7.2 Final question\n\nIf the Tacemus website perfectly embodied \"with or without you\" energy, how would you describe the feeling someone gets when they land on it?\n\n**Complete this sentence:**\n\n\"When someone lands on the Tacemus site, they should feel like ******\\_\\_\\_******.\"\n\n**Your answer:**\n\n---\n\n## What Happens Next\n\nOnce you've answered these questions, I'll:\n\n1. Revise the [Positioning Principles](./positioning-principles.md) doc based on your answers\n2. Create specific copy revisions that embody this energy\n3. Identify what to strip vs. keep on the site\n\n**The goal:** A site that feels like Peter Thiel's firm — sparse, confident, the work speaks — but authentically yours.\n\n---\n\n_Document created: 2026-01-11_\n_Status: Awaiting DJ's answers_\n",
+              "_classification": {
+                "confidence": 0.9,
+                "model_used": "openrouter",
+                "classified_at": "2026-01-12T21:05:25.940Z",
+                "previous_type_key": "document.default"
               }
             },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "discovery",
-            "created_at": "2025-12-30T18:32:27.001595+00:00",
-            "updated_at": "2026-01-27T15:58:28.594475+00:00"
+            "created_at": "2026-01-12T21:05:21.727327+00:00",
+            "updated_at": "2026-01-15T18:52:32.702416+00:00"
           },
           {
-            "id": "4e8889c5-4c93-4c9d-99ae-1158ef03a944",
-            "name": "Lily and Walter Reading Acceleration Plan",
-            "description": "Supplement school learning to help Lily (kindergarten to first grade) and Walter (4 years old) master letters quickly and accelerate their reading skills.",
-            "type_key": "project.personal.reading_plan",
-            "state_key": "planning",
+            "id": "9115924c-b2ac-408d-a170-360092dac147",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Client Intake Template: Ian Miner",
+            "type_key": "document.intake.client",
+            "state_key": "draft",
+            "content": "<!-- docs/client-initial-intake-template.md -->\n\n# Client Initial Intake Template\n\n> **Purpose:** Capture first impressions, gut feelings, and early direction ideas before formal discovery or competitive research. This is a brain dump—rough, quick, and intentionally provisional. Everything here is subject to change.\n>\n> **When to use:** Before or immediately after first client contact. Before domain research. Before structured discovery.\n>\n> **Time:** 15-30 minutes (don't overthink it)\n>\n> **Last Modified:** 2026-01-15\n>\n> **Related Docs:**\n>\n> - [Domain Research Template](./client-domain-research-template.md) — Do this research AFTER initial intake\n> - [Branding Template](./client-branding-template.md) — Use during formal discovery sessions\n> - [Playbook](./playbook.md) — Overall process flow\n> - [INDEX](./INDEX.md) — All docs\n\n---\n\n## How to Use This Template\n\n1. **Fill this out fast** — Don't second-guess yourself. Capture what's in your head.\n2. **It's okay to leave things blank** — You don't have answers yet. That's the point.\n3. **Write down questions as they come up** — These become your agenda for client meetings.\n4. **Everything is provisional** — Mark things you're uncertain about with `[?]`.\n5. **Come back and update** — After research and discovery, revisit and see what changed.\n\n---\n\n# Initial Intake\n\n## Client Info\n\n| Field                     | Value |\n| ------------------------- | ----- |\n| **Client Name**           |       |\n| **Business Name**         |       |\n| **Industry/Niche**        |       |\n| **How they found me**     |       |\n| **Date of first contact** |       |\n| **Initial call date**     |       |\n\n---\n\n## Part 1: Current State\n\n> What do they have now? Where are they starting from?\n\n### 1.1 Existing Presence\n\n**Current website (if any):**\n\n- URL:\n- What's working:\n- What's not working:\n- Why are they changing?\n\n**Social presence:**\n\n**Other digital touchpoints:**\n\n---\n\n### 1.2 Business Snapshot\n\n**What do they do? (My understanding so far)**\n\n**Who do they serve? (As I understand it)**\n\n**How long have they been doing this?**\n\n**Size/stage of business:**\n\n- [ ] Just starting out\n- [ ] Established but small (1-5 people)\n- [ ] Growing (5-20 people)\n- [ ] Larger operation (20+)\n\n**Current lead sources:**\n\n---\n\n### 1.3 What Prompted This?\n\n> Why now? What's the trigger for reaching out?\n\n**Immediate trigger:**\n\n**Underlying motivation (what I think is really going on):**\n\n---\n\n## Part 2: Initial Impressions\n\n> First gut reactions. Don't filter.\n\n### 2.1 My Immediate Read\n\n**First impression of the person:**\n\n**First impression of their business:**\n\n**Energy/vibe I'm picking up:**\n\n**What excites me about this project:**\n\n**What concerns me:**\n\n---\n\n### 2.2 What They Seem to Want\n\n**Stated goal (what they said):**\n\n**Actual goal (what I think they need):**\n\n**Are these aligned?** [ ] Yes [ ] No [ ] Unclear\n\n---\n\n### 2.3 Early Gut Feelings\n\n**This feels like a good fit because:**\n\n**Potential challenges I'm sensing:**\n\n**Things I should pay attention to:**\n\n---\n\n## Part 3: Early Direction Ideas\n\n> High-level direction before research confirms or changes it.\n\n### 3.1 Brand Direction Sparks\n\n**Words/feelings that come to mind:**\n\n**Personality vibe I'm imagining:**\n\n- [ ] Professional/corporate\n- [ ] Friendly/approachable\n- [ ] Bold/edgy\n- [ ] Minimal/clean\n- [ ] Warm/personal\n- [ ] Technical/expert\n- [ ] Creative/artistic\n- [ ] Luxurious/premium\n- [ ] Other: ___\n\n**Tone direction (early guess):**\n\n---\n\n### 3.2 Visual Sparks\n\n> Colors, imagery, feelings that come to mind. Don't need to justify these yet.\n\n**Colors that came to mind:**\n\n| Color idea | Why it feels right (or just gut) |\n| ---------- | -------------------------------- |\n|            |                                  |\n|            |                                  |\n|            |                                  |\n\n**Colors to probably avoid:**\n\n**Visual mood (3-5 words):**\n\n**Imagery direction (photos, illustrations, abstract, etc.):**\n\n**Any reference sites that popped into my head:**\n\n---\n\n### 3.3 Positioning Hypothesis\n\n> Early guess at how to position them. Will validate/change after research.\n\n**What makes them different (my early read):**\n\n**Who they're really for:**\n\n**The transformation they provide:**\n\n**Angle that might work:**\n\n---\n\n## Part 4: Goals & Outcomes\n\n> What are we trying to achieve?\n\n### 4.1 Website Goals (As Currently Understood)\n\n**Primary goal:**\n\n- [ ] Generate leads (calls/forms)\n- [ ] Build credibility/trust\n- [ ] Showcase work/portfolio\n- [ ] Sell products/services directly\n- [ ] Educate/inform\n- [ ] Other: ___\n\n**What does success look like for them?**\n\n**What does success look like for me?**\n\n---\n\n### 4.2 Specific Outcomes They Mentioned\n\n**Quantitative (if any):**\n\n**Qualitative:**\n\n**Timeline expectations:**\n\n---\n\n### 4.3 Constraints & Realities\n\n**Budget range (if discussed):**\n\n**Timeline:**\n\n**Technical constraints:**\n\n**Content constraints (do they have copy, photos, etc.?):**\n\n**Other limitations:**\n\n---\n\n## Part 5: Rough Requirements\n\n> What might this project need? All subject to change.\n\n### 5.1 Pages (Initial Guess)\n\n- [ ] Home\n- [ ] About\n- [ ] Services\n- [ ] Work/Portfolio\n- [ ] Contact\n- [ ] Blog\n- [ ] Testimonials\n- [ ] FAQ\n- [ ] Pricing\n- [ ] Other: ___\n- [ ] Other: ___\n\n**Pages I think they need but didn't mention:**\n\n**Pages they mentioned that might not be necessary:**\n\n---\n\n### 5.2 Features & Functionality\n\n**Must-have (from what they said):**\n\n**Might need (my intuition):**\n\n**Probably overkill (things to push back on):**\n\n---\n\n### 5.3 Integrations & Technical\n\n**Booking/scheduling:**\n\n**Email marketing:**\n\n**CRM/lead capture:**\n\n**Payment processing:**\n\n**Other tools they use:**\n\n---\n\n## Part 6: Questions for Client\n\n> Things I need to ask in future meetings. Add to this throughout.\n\n### 6.1 Business Clarification\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.2 Audience/Customer Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.3 Goals/Success Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.4 Brand/Visual Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.5 Content/Asset Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.6 Technical/Logistics Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n---\n\n## Part 7: Next Steps\n\n### What I Need to Do\n\n- [ ] Domain research (competitor analysis, industry landscape)\n- [ ] Schedule discovery call\n- [ ] Send proposal/offer sheet\n- [ ] Review any materials they sent\n- [ ] Other: ___\n\n### What They Need to Do\n\n- [ ] Send existing assets (logo, photos, etc.)\n- [ ] Send competitor examples they like\n- [ ] Fill out intake questionnaire\n- [ ] Schedule call\n- [ ] Other: ___\n\n### Key Dates\n\n| What            | Date |\n| --------------- | ---- |\n| Next call       |      |\n| Proposal due    |      |\n| Project start   |      |\n| Target delivery |      |\n\n---\n\n## Part 8: Post-Research Reflection\n\n> Come back here after domain research and discovery. What changed?\n\n**Initial assumptions that were confirmed:**\n\n**Initial assumptions that were wrong:**\n\n**New directions that emerged:**\n\n**Questions that got answered:**\n\n**New questions that came up:**\n\n---\n\n## Quick Reference\n\n### Red Flags to Watch For\n\n- [ ] Unclear on what they actually do\n- [ ] No budget conversation\n- [ ] Unrealistic timeline\n- [ ] \"Just make it pretty\" mentality\n- [ ] Too many decision-makers\n- [ ] Scope creep indicators\n- [ ] Communication red flags\n\n### Green Lights\n\n- [ ] Clear business model\n- [ ] Knows their audience\n- [ ] Realistic expectations\n- [ ] Good communicator\n- [ ] Values the work\n- [ ] Has content/assets ready (or realistic about creating them)\n\n---\n\n_Template version: 1.0_\n_Created: 2026-01-15_\n",
+            "description": null,
             "props": {
-              "facets": {
-                "scale": "small",
-                "stage": "discovery",
-                "context": "personal"
+              "tags": [
+                "client-intake",
+                "initial-assessment",
+                "project-planning",
+                "discovery-phase",
+                "client-onboarding"
+              ],
+              "body_markdown": "<!-- docs/client-initial-intake-template.md -->\n\n# Client Initial Intake Template\n\n> **Purpose:** Capture first impressions, gut feelings, and early direction ideas before formal discovery or competitive research. This is a brain dump—rough, quick, and intentionally provisional. Everything here is subject to change.\n>\n> **When to use:** Before or immediately after first client contact. Before domain research. Before structured discovery.\n>\n> **Time:** 15-30 minutes (don't overthink it)\n>\n> **Last Modified:** 2026-01-15\n>\n> **Related Docs:**\n>\n> - [Domain Research Template](./client-domain-research-template.md) — Do this research AFTER initial intake\n> - [Branding Template](./client-branding-template.md) — Use during formal discovery sessions\n> - [Playbook](./playbook.md) — Overall process flow\n> - [INDEX](./INDEX.md) — All docs\n\n---\n\n## How to Use This Template\n\n1. **Fill this out fast** — Don't second-guess yourself. Capture what's in your head.\n2. **It's okay to leave things blank** — You don't have answers yet. That's the point.\n3. **Write down questions as they come up** — These become your agenda for client meetings.\n4. **Everything is provisional** — Mark things you're uncertain about with `[?]`.\n5. **Come back and update** — After research and discovery, revisit and see what changed.\n\n---\n\n# Initial Intake\n\n## Client Info\n\n| Field                     | Value |\n| ------------------------- | ----- |\n| **Client Name**           |       |\n| **Business Name**         |       |\n| **Industry/Niche**        |       |\n| **How they found me**     |       |\n| **Date of first contact** |       |\n| **Initial call date**     |       |\n\n---\n\n## Part 1: Current State\n\n> What do they have now? Where are they starting from?\n\n### 1.1 Existing Presence\n\n**Current website (if any):**\n\n- URL:\n- What's working:\n- What's not working:\n- Why are they changing?\n\n**Social presence:**\n\n**Other digital touchpoints:**\n\n---\n\n### 1.2 Business Snapshot\n\n**What do they do? (My understanding so far)**\n\n**Who do they serve? (As I understand it)**\n\n**How long have they been doing this?**\n\n**Size/stage of business:**\n\n- [ ] Just starting out\n- [ ] Established but small (1-5 people)\n- [ ] Growing (5-20 people)\n- [ ] Larger operation (20+)\n\n**Current lead sources:**\n\n---\n\n### 1.3 What Prompted This?\n\n> Why now? What's the trigger for reaching out?\n\n**Immediate trigger:**\n\n**Underlying motivation (what I think is really going on):**\n\n---\n\n## Part 2: Initial Impressions\n\n> First gut reactions. Don't filter.\n\n### 2.1 My Immediate Read\n\n**First impression of the person:**\n\n**First impression of their business:**\n\n**Energy/vibe I'm picking up:**\n\n**What excites me about this project:**\n\n**What concerns me:**\n\n---\n\n### 2.2 What They Seem to Want\n\n**Stated goal (what they said):**\n\n**Actual goal (what I think they need):**\n\n**Are these aligned?** [ ] Yes [ ] No [ ] Unclear\n\n---\n\n### 2.3 Early Gut Feelings\n\n**This feels like a good fit because:**\n\n**Potential challenges I'm sensing:**\n\n**Things I should pay attention to:**\n\n---\n\n## Part 3: Early Direction Ideas\n\n> High-level direction before research confirms or changes it.\n\n### 3.1 Brand Direction Sparks\n\n**Words/feelings that come to mind:**\n\n**Personality vibe I'm imagining:**\n\n- [ ] Professional/corporate\n- [ ] Friendly/approachable\n- [ ] Bold/edgy\n- [ ] Minimal/clean\n- [ ] Warm/personal\n- [ ] Technical/expert\n- [ ] Creative/artistic\n- [ ] Luxurious/premium\n- [ ] Other: ___\n\n**Tone direction (early guess):**\n\n---\n\n### 3.2 Visual Sparks\n\n> Colors, imagery, feelings that come to mind. Don't need to justify these yet.\n\n**Colors that came to mind:**\n\n| Color idea | Why it feels right (or just gut) |\n| ---------- | -------------------------------- |\n|            |                                  |\n|            |                                  |\n|            |                                  |\n\n**Colors to probably avoid:**\n\n**Visual mood (3-5 words):**\n\n**Imagery direction (photos, illustrations, abstract, etc.):**\n\n**Any reference sites that popped into my head:**\n\n---\n\n### 3.3 Positioning Hypothesis\n\n> Early guess at how to position them. Will validate/change after research.\n\n**What makes them different (my early read):**\n\n**Who they're really for:**\n\n**The transformation they provide:**\n\n**Angle that might work:**\n\n---\n\n## Part 4: Goals & Outcomes\n\n> What are we trying to achieve?\n\n### 4.1 Website Goals (As Currently Understood)\n\n**Primary goal:**\n\n- [ ] Generate leads (calls/forms)\n- [ ] Build credibility/trust\n- [ ] Showcase work/portfolio\n- [ ] Sell products/services directly\n- [ ] Educate/inform\n- [ ] Other: ___\n\n**What does success look like for them?**\n\n**What does success look like for me?**\n\n---\n\n### 4.2 Specific Outcomes They Mentioned\n\n**Quantitative (if any):**\n\n**Qualitative:**\n\n**Timeline expectations:**\n\n---\n\n### 4.3 Constraints & Realities\n\n**Budget range (if discussed):**\n\n**Timeline:**\n\n**Technical constraints:**\n\n**Content constraints (do they have copy, photos, etc.?):**\n\n**Other limitations:**\n\n---\n\n## Part 5: Rough Requirements\n\n> What might this project need? All subject to change.\n\n### 5.1 Pages (Initial Guess)\n\n- [ ] Home\n- [ ] About\n- [ ] Services\n- [ ] Work/Portfolio\n- [ ] Contact\n- [ ] Blog\n- [ ] Testimonials\n- [ ] FAQ\n- [ ] Pricing\n- [ ] Other: ___\n- [ ] Other: ___\n\n**Pages I think they need but didn't mention:**\n\n**Pages they mentioned that might not be necessary:**\n\n---\n\n### 5.2 Features & Functionality\n\n**Must-have (from what they said):**\n\n**Might need (my intuition):**\n\n**Probably overkill (things to push back on):**\n\n---\n\n### 5.3 Integrations & Technical\n\n**Booking/scheduling:**\n\n**Email marketing:**\n\n**CRM/lead capture:**\n\n**Payment processing:**\n\n**Other tools they use:**\n\n---\n\n## Part 6: Questions for Client\n\n> Things I need to ask in future meetings. Add to this throughout.\n\n### 6.1 Business Clarification\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.2 Audience/Customer Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.3 Goals/Success Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.4 Brand/Visual Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.5 Content/Asset Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.6 Technical/Logistics Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n---\n\n## Part 7: Next Steps\n\n### What I Need to Do\n\n- [ ] Domain research (competitor analysis, industry landscape)\n- [ ] Schedule discovery call\n- [ ] Send proposal/offer sheet\n- [ ] Review any materials they sent\n- [ ] Other: ___\n\n### What They Need to Do\n\n- [ ] Send existing assets (logo, photos, etc.)\n- [ ] Send competitor examples they like\n- [ ] Fill out intake questionnaire\n- [ ] Schedule call\n- [ ] Other: ___\n\n### Key Dates\n\n| What            | Date |\n| --------------- | ---- |\n| Next call       |      |\n| Proposal due    |      |\n| Project start   |      |\n| Target delivery |      |\n\n---\n\n## Part 8: Post-Research Reflection\n\n> Come back here after domain research and discovery. What changed?\n\n**Initial assumptions that were confirmed:**\n\n**Initial assumptions that were wrong:**\n\n**New directions that emerged:**\n\n**Questions that got answered:**\n\n**New questions that came up:**\n\n---\n\n## Quick Reference\n\n### Red Flags to Watch For\n\n- [ ] Unclear on what they actually do\n- [ ] No budget conversation\n- [ ] Unrealistic timeline\n- [ ] \"Just make it pretty\" mentality\n- [ ] Too many decision-makers\n- [ ] Scope creep indicators\n- [ ] Communication red flags\n\n### Green Lights\n\n- [ ] Clear business model\n- [ ] Knows their audience\n- [ ] Realistic expectations\n- [ ] Good communicator\n- [ ] Values the work\n- [ ] Has content/assets ready (or realistic about creating them)\n\n---\n\n_Template version: 1.0_\n_Created: 2026-01-15_\n",
+              "_classification": {
+                "confidence": 0.95,
+                "model_used": "openrouter",
+                "classified_at": "2026-01-15T16:41:51.132Z",
+                "previous_type_key": "document.default"
               }
             },
-            "facet_context": "personal",
-            "facet_scale": "small",
-            "facet_stage": "discovery",
-            "created_at": "2026-01-04T03:16:00.59803+00:00",
-            "updated_at": "2026-01-27T15:58:27.061547+00:00"
+            "created_at": "2026-01-15T16:41:45.549067+00:00",
+            "updated_at": "2026-01-15T16:41:51.189911+00:00"
           },
           {
-            "id": "5fc9b7d9-5020-43bf-a746-08d9aa8dfda4",
-            "name": "Interesting People Research Project",
-            "description": "A research project focused on documenting and analyzing the lives, achievements, and impacts of notable interesting people.",
-            "type_key": "project.writer.article",
-            "state_key": "planning",
+            "id": "0cec7263-5dcf-4c40-ab43-9966b226dacd",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Tacemus Context",
+            "type_key": "document.context.project",
+            "state_key": "draft",
+            "content": "# Project Vision\n\n**Why this project?** Incoming referrals for custom websites like BuildOS, 9Takes, and TheCadreTraining.com. Need a system to track work, deliver value, and scale the service.\n\n**Who benefits?** Clients get pro websites; you get organized referrals and steady gigs.\n\n## Success Looks Like\n- All client projects tracked in BuildOS with clear status.\n- Sites shipped on time, matching portfolio quality.\n- Referrals turning into repeatable business.\n\n**Non-negotiables:** Reliable delivery, no scope creep without tracking.\n\n## Strategy & Approach\n- Finish own site polish as showcase.\n- Sequence: Meet clients → Scope → Build → Launch.\n- Leverage BuildOS for all tracking (goals, tasks, risks).\n\n**Scope:** Client websites only; in/out of country ops.\n\n## Operating Context\n- **Timeline:** Start now; first client Monday 12pm.\n- **Resources:** You as lead builder; remote setup.\n- **Stakeholders:** Referral clients.\n\n## Key Assumptions\n- Referrals continue; own site closes sales.\n\n## Risks to Monitor\n- Client scope changes—log as requirements.\n- Timezone/client sync for remote work.\n\n## Next Strategic Moves\n- Prep Monday meeting notes.\n- Template future builds from portfolio sites.\n\n**[2026-01-11] Initial setup from braindump.**",
+            "description": null,
             "props": {
-              "facets": {
-                "scale": "medium",
-                "stage": "discovery",
-                "context": "personal"
-              },
-              "subject_area": "people_of_interest",
-              "research_focus": "biographical"
+              "body_markdown": "# Project Vision\n\n**Why this project?** Incoming referrals for custom websites like BuildOS, 9Takes, and TheCadreTraining.com. Need a system to track work, deliver value, and scale the service.\n\n**Who benefits?** Clients get pro websites; you get organized referrals and steady gigs.\n\n## Success Looks Like\n- All client projects tracked in BuildOS with clear status.\n- Sites shipped on time, matching portfolio quality.\n- Referrals turning into repeatable business.\n\n**Non-negotiables:** Reliable delivery, no scope creep without tracking.\n\n## Strategy & Approach\n- Finish own site polish as showcase.\n- Sequence: Meet clients → Scope → Build → Launch.\n- Leverage BuildOS for all tracking (goals, tasks, risks).\n\n**Scope:** Client websites only; in/out of country ops.\n\n## Operating Context\n- **Timeline:** Start now; first client Monday 12pm.\n- **Resources:** You as lead builder; remote setup.\n- **Stakeholders:** Referral clients.\n\n## Key Assumptions\n- Referrals continue; own site closes sales.\n\n## Risks to Monitor\n- Client scope changes—log as requirements.\n- Timezone/client sync for remote work.\n\n## Next Strategic Moves\n- Prep Monday meeting notes.\n- Template future builds from portfolio sites.\n\n**[2026-01-11] Initial setup from braindump.**"
             },
-            "facet_context": "personal",
-            "facet_scale": "medium",
-            "facet_stage": "discovery",
-            "created_at": "2025-11-25T05:44:10.148168+00:00",
-            "updated_at": "2026-01-27T15:58:25.789115+00:00"
+            "created_at": "2026-01-11T06:43:26.636575+00:00",
+            "updated_at": "2026-01-15T16:41:09.219577+00:00"
           },
           {
-            "id": "9fe57310-5059-4c5d-8068-40d1d31271cb",
-            "name": "AI Chat Evaluation Framework",
-            "description": "Development of a comprehensive evaluation framework for testing AI chat system performance across different scenarios and task types. Repository for storing, developing, and running different evaluations and benchmarks.",
-            "type_key": "project.technical.framework",
-            "state_key": "planning",
+            "id": "449705f8-bd99-4254-9842-3645abbbed63",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Client Intake Template",
+            "type_key": "document.intake.client",
+            "state_key": "draft",
+            "content": "<!-- docs/client-initial-intake-template.md -->\n\n# Client Initial Intake Template\n\n> **Purpose:** Capture first impressions, gut feelings, and early direction ideas before formal discovery or competitive research. This is a brain dump—rough, quick, and intentionally provisional. Everything here is subject to change.\n>\n> **When to use:** Before or immediately after first client contact. Before domain research. Before structured discovery.\n>\n> **Time:** 15-30 minutes (don't overthink it)\n>\n> **Last Modified:** 2026-01-15\n>\n> **Related Docs:**\n>\n> - [Domain Research Template](./client-domain-research-template.md) — Do this research AFTER initial intake\n> - [Branding Template](./client-branding-template.md) — Use during formal discovery sessions\n> - [Playbook](./playbook.md) — Overall process flow\n> - [INDEX](./INDEX.md) — All docs\n\n---\n\n## How to Use This Template\n\n1. **Fill this out fast** — Don't second-guess yourself. Capture what's in your head.\n2. **It's okay to leave things blank** — You don't have answers yet. That's the point.\n3. **Write down questions as they come up** — These become your agenda for client meetings.\n4. **Everything is provisional** — Mark things you're uncertain about with `[?]`.\n5. **Come back and update** — After research and discovery, revisit and see what changed.\n\n---\n\n# Initial Intake\n\n## Client Info\n\n| Field                     | Value |\n| ------------------------- | ----- |\n| **Client Name**           |       |\n| **Business Name**         |       |\n| **Industry/Niche**        |       |\n| **How they found me**     |       |\n| **Date of first contact** |       |\n| **Initial call date**     |       |\n\n---\n\n## Part 1: Current State\n\n> What do they have now? Where are they starting from?\n\n### 1.1 Existing Presence\n\n**Current website (if any):**\n\n- URL:\n- What's working:\n- What's not working:\n- Why are they changing?\n\n**Social presence:**\n\n**Other digital touchpoints:**\n\n---\n\n### 1.2 Business Snapshot\n\n**What do they do? (My understanding so far)**\n\n**Who do they serve? (As I understand it)**\n\n**How long have they been doing this?**\n\n**Size/stage of business:**\n\n- [ ] Just starting out\n- [ ] Established but small (1-5 people)\n- [ ] Growing (5-20 people)\n- [ ] Larger operation (20+)\n\n**Current lead sources:**\n\n---\n\n### 1.3 What Prompted This?\n\n> Why now? What's the trigger for reaching out?\n\n**Immediate trigger:**\n\n**Underlying motivation (what I think is really going on):**\n\n---\n\n## Part 2: Initial Impressions\n\n> First gut reactions. Don't filter.\n\n### 2.1 My Immediate Read\n\n**First impression of the person:**\n\n**First impression of their business:**\n\n**Energy/vibe I'm picking up:**\n\n**What excites me about this project:**\n\n**What concerns me:**\n\n---\n\n### 2.2 What They Seem to Want\n\n**Stated goal (what they said):**\n\n**Actual goal (what I think they need):**\n\n**Are these aligned?** [ ] Yes [ ] No [ ] Unclear\n\n---\n\n### 2.3 Early Gut Feelings\n\n**This feels like a good fit because:**\n\n**Potential challenges I'm sensing:**\n\n**Things I should pay attention to:**\n\n---\n\n## Part 3: Early Direction Ideas\n\n> High-level direction before research confirms or changes it.\n\n### 3.1 Brand Direction Sparks\n\n**Words/feelings that come to mind:**\n\n**Personality vibe I'm imagining:**\n\n- [ ] Professional/corporate\n- [ ] Friendly/approachable\n- [ ] Bold/edgy\n- [ ] Minimal/clean\n- [ ] Warm/personal\n- [ ] Technical/expert\n- [ ] Creative/artistic\n- [ ] Luxurious/premium\n- [ ] Other: ___\n\n**Tone direction (early guess):**\n\n---\n\n### 3.2 Visual Sparks\n\n> Colors, imagery, feelings that come to mind. Don't need to justify these yet.\n\n**Colors that came to mind:**\n\n| Color idea | Why it feels right (or just gut) |\n| ---------- | -------------------------------- |\n|            |                                  |\n|            |                                  |\n|            |                                  |\n\n**Colors to probably avoid:**\n\n**Visual mood (3-5 words):**\n\n**Imagery direction (photos, illustrations, abstract, etc.):**\n\n**Any reference sites that popped into my head:**\n\n---\n\n### 3.3 Positioning Hypothesis\n\n> Early guess at how to position them. Will validate/change after research.\n\n**What makes them different (my early read):**\n\n**Who they're really for:**\n\n**The transformation they provide:**\n\n**Angle that might work:**\n\n---\n\n## Part 4: Goals & Outcomes\n\n> What are we trying to achieve?\n\n### 4.1 Website Goals (As Currently Understood)\n\n**Primary goal:**\n\n- [ ] Generate leads (calls/forms)\n- [ ] Build credibility/trust\n- [ ] Showcase work/portfolio\n- [ ] Sell products/services directly\n- [ ] Educate/inform\n- [ ] Other: ___\n\n**What does success look like for them?**\n\n**What does success look like for me?**\n\n---\n\n### 4.2 Specific Outcomes They Mentioned\n\n**Quantitative (if any):**\n\n**Qualitative:**\n\n**Timeline expectations:**\n\n---\n\n### 4.3 Constraints & Realities\n\n**Budget range (if discussed):**\n\n**Timeline:**\n\n**Technical constraints:**\n\n**Content constraints (do they have copy, photos, etc.?):**\n\n**Other limitations:**\n\n---\n\n## Part 5: Rough Requirements\n\n> What might this project need? All subject to change.\n\n### 5.1 Pages (Initial Guess)\n\n- [ ] Home\n- [ ] About\n- [ ] Services\n- [ ] Work/Portfolio\n- [ ] Contact\n- [ ] Blog\n- [ ] Testimonials\n- [ ] FAQ\n- [ ] Pricing\n- [ ] Other: ___\n- [ ] Other: ___\n\n**Pages I think they need but didn't mention:**\n\n**Pages they mentioned that might not be necessary:**\n\n---\n\n### 5.2 Features & Functionality\n\n**Must-have (from what they said):**\n\n**Might need (my intuition):**\n\n**Probably overkill (things to push back on):**\n\n---\n\n### 5.3 Integrations & Technical\n\n**Booking/scheduling:**\n\n**Email marketing:**\n\n**CRM/lead capture:**\n\n**Payment processing:**\n\n**Other tools they use:**\n\n---\n\n## Part 6: Questions for Client\n\n> Things I need to ask in future meetings. Add to this throughout.\n\n### 6.1 Business Clarification\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.2 Audience/Customer Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.3 Goals/Success Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.4 Brand/Visual Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.5 Content/Asset Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.6 Technical/Logistics Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n---\n\n## Part 7: Next Steps\n\n### What I Need to Do\n\n- [ ] Domain research (competitor analysis, industry landscape)\n- [ ] Schedule discovery call\n- [ ] Send proposal/offer sheet\n- [ ] Review any materials they sent\n- [ ] Other: ___\n\n### What They Need to Do\n\n- [ ] Send existing assets (logo, photos, etc.)\n- [ ] Send competitor examples they like\n- [ ] Fill out intake questionnaire\n- [ ] Schedule call\n- [ ] Other: ___\n\n### Key Dates\n\n| What            | Date |\n| --------------- | ---- |\n| Next call       |      |\n| Proposal due    |      |\n| Project start   |      |\n| Target delivery |      |\n\n---\n\n## Part 8: Post-Research Reflection\n\n> Come back here after domain research and discovery. What changed?\n\n**Initial assumptions that were confirmed:**\n\n**Initial assumptions that were wrong:**\n\n**New directions that emerged:**\n\n**Questions that got answered:**\n\n**New questions that came up:**\n\n---\n\n## Quick Reference\n\n### Red Flags to Watch For\n\n- [ ] Unclear on what they actually do\n- [ ] No budget conversation\n- [ ] Unrealistic timeline\n- [ ] \"Just make it pretty\" mentality\n- [ ] Too many decision-makers\n- [ ] Scope creep indicators\n- [ ] Communication red flags\n\n### Green Lights\n\n- [ ] Clear business model\n- [ ] Knows their audience\n- [ ] Realistic expectations\n- [ ] Good communicator\n- [ ] Values the work\n- [ ] Has content/assets ready (or realistic about creating them)\n\n---\n\n_Template version: 1.0_\n_Created: 2026-01-15_\n",
+            "description": null,
             "props": {
-              "facets": {
-                "scale": "medium",
-                "stage": "planning",
-                "context": "internal"
-              },
-              "is_repo_based": true,
-              "target_system": "ai_chat",
-              "framework_type": "evaluation",
-              "primary_purpose": "benchmark_storage_and_development",
-              "evaluation_categories": [
-                "task_completion",
-                "response_quality",
-                "complex_scenarios"
-              ]
+              "tags": [
+                "client-intake",
+                "initial-assessment",
+                "brainstorming",
+                "project-planning",
+                "client-onboarding"
+              ],
+              "body_markdown": "<!-- docs/client-initial-intake-template.md -->\n\n# Client Initial Intake Template\n\n> **Purpose:** Capture first impressions, gut feelings, and early direction ideas before formal discovery or competitive research. This is a brain dump—rough, quick, and intentionally provisional. Everything here is subject to change.\n>\n> **When to use:** Before or immediately after first client contact. Before domain research. Before structured discovery.\n>\n> **Time:** 15-30 minutes (don't overthink it)\n>\n> **Last Modified:** 2026-01-15\n>\n> **Related Docs:**\n>\n> - [Domain Research Template](./client-domain-research-template.md) — Do this research AFTER initial intake\n> - [Branding Template](./client-branding-template.md) — Use during formal discovery sessions\n> - [Playbook](./playbook.md) — Overall process flow\n> - [INDEX](./INDEX.md) — All docs\n\n---\n\n## How to Use This Template\n\n1. **Fill this out fast** — Don't second-guess yourself. Capture what's in your head.\n2. **It's okay to leave things blank** — You don't have answers yet. That's the point.\n3. **Write down questions as they come up** — These become your agenda for client meetings.\n4. **Everything is provisional** — Mark things you're uncertain about with `[?]`.\n5. **Come back and update** — After research and discovery, revisit and see what changed.\n\n---\n\n# Initial Intake\n\n## Client Info\n\n| Field                     | Value |\n| ------------------------- | ----- |\n| **Client Name**           |       |\n| **Business Name**         |       |\n| **Industry/Niche**        |       |\n| **How they found me**     |       |\n| **Date of first contact** |       |\n| **Initial call date**     |       |\n\n---\n\n## Part 1: Current State\n\n> What do they have now? Where are they starting from?\n\n### 1.1 Existing Presence\n\n**Current website (if any):**\n\n- URL:\n- What's working:\n- What's not working:\n- Why are they changing?\n\n**Social presence:**\n\n**Other digital touchpoints:**\n\n---\n\n### 1.2 Business Snapshot\n\n**What do they do? (My understanding so far)**\n\n**Who do they serve? (As I understand it)**\n\n**How long have they been doing this?**\n\n**Size/stage of business:**\n\n- [ ] Just starting out\n- [ ] Established but small (1-5 people)\n- [ ] Growing (5-20 people)\n- [ ] Larger operation (20+)\n\n**Current lead sources:**\n\n---\n\n### 1.3 What Prompted This?\n\n> Why now? What's the trigger for reaching out?\n\n**Immediate trigger:**\n\n**Underlying motivation (what I think is really going on):**\n\n---\n\n## Part 2: Initial Impressions\n\n> First gut reactions. Don't filter.\n\n### 2.1 My Immediate Read\n\n**First impression of the person:**\n\n**First impression of their business:**\n\n**Energy/vibe I'm picking up:**\n\n**What excites me about this project:**\n\n**What concerns me:**\n\n---\n\n### 2.2 What They Seem to Want\n\n**Stated goal (what they said):**\n\n**Actual goal (what I think they need):**\n\n**Are these aligned?** [ ] Yes [ ] No [ ] Unclear\n\n---\n\n### 2.3 Early Gut Feelings\n\n**This feels like a good fit because:**\n\n**Potential challenges I'm sensing:**\n\n**Things I should pay attention to:**\n\n---\n\n## Part 3: Early Direction Ideas\n\n> High-level direction before research confirms or changes it.\n\n### 3.1 Brand Direction Sparks\n\n**Words/feelings that come to mind:**\n\n**Personality vibe I'm imagining:**\n\n- [ ] Professional/corporate\n- [ ] Friendly/approachable\n- [ ] Bold/edgy\n- [ ] Minimal/clean\n- [ ] Warm/personal\n- [ ] Technical/expert\n- [ ] Creative/artistic\n- [ ] Luxurious/premium\n- [ ] Other: ___\n\n**Tone direction (early guess):**\n\n---\n\n### 3.2 Visual Sparks\n\n> Colors, imagery, feelings that come to mind. Don't need to justify these yet.\n\n**Colors that came to mind:**\n\n| Color idea | Why it feels right (or just gut) |\n| ---------- | -------------------------------- |\n|            |                                  |\n|            |                                  |\n|            |                                  |\n\n**Colors to probably avoid:**\n\n**Visual mood (3-5 words):**\n\n**Imagery direction (photos, illustrations, abstract, etc.):**\n\n**Any reference sites that popped into my head:**\n\n---\n\n### 3.3 Positioning Hypothesis\n\n> Early guess at how to position them. Will validate/change after research.\n\n**What makes them different (my early read):**\n\n**Who they're really for:**\n\n**The transformation they provide:**\n\n**Angle that might work:**\n\n---\n\n## Part 4: Goals & Outcomes\n\n> What are we trying to achieve?\n\n### 4.1 Website Goals (As Currently Understood)\n\n**Primary goal:**\n\n- [ ] Generate leads (calls/forms)\n- [ ] Build credibility/trust\n- [ ] Showcase work/portfolio\n- [ ] Sell products/services directly\n- [ ] Educate/inform\n- [ ] Other: ___\n\n**What does success look like for them?**\n\n**What does success look like for me?**\n\n---\n\n### 4.2 Specific Outcomes They Mentioned\n\n**Quantitative (if any):**\n\n**Qualitative:**\n\n**Timeline expectations:**\n\n---\n\n### 4.3 Constraints & Realities\n\n**Budget range (if discussed):**\n\n**Timeline:**\n\n**Technical constraints:**\n\n**Content constraints (do they have copy, photos, etc.?):**\n\n**Other limitations:**\n\n---\n\n## Part 5: Rough Requirements\n\n> What might this project need? All subject to change.\n\n### 5.1 Pages (Initial Guess)\n\n- [ ] Home\n- [ ] About\n- [ ] Services\n- [ ] Work/Portfolio\n- [ ] Contact\n- [ ] Blog\n- [ ] Testimonials\n- [ ] FAQ\n- [ ] Pricing\n- [ ] Other: ___\n- [ ] Other: ___\n\n**Pages I think they need but didn't mention:**\n\n**Pages they mentioned that might not be necessary:**\n\n---\n\n### 5.2 Features & Functionality\n\n**Must-have (from what they said):**\n\n**Might need (my intuition):**\n\n**Probably overkill (things to push back on):**\n\n---\n\n### 5.3 Integrations & Technical\n\n**Booking/scheduling:**\n\n**Email marketing:**\n\n**CRM/lead capture:**\n\n**Payment processing:**\n\n**Other tools they use:**\n\n---\n\n## Part 6: Questions for Client\n\n> Things I need to ask in future meetings. Add to this throughout.\n\n### 6.1 Business Clarification\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.2 Audience/Customer Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.3 Goals/Success Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.4 Brand/Visual Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.5 Content/Asset Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n### 6.6 Technical/Logistics Questions\n\n- [ ]\n- [ ]\n- [ ]\n\n---\n\n## Part 7: Next Steps\n\n### What I Need to Do\n\n- [ ] Domain research (competitor analysis, industry landscape)\n- [ ] Schedule discovery call\n- [ ] Send proposal/offer sheet\n- [ ] Review any materials they sent\n- [ ] Other: ___\n\n### What They Need to Do\n\n- [ ] Send existing assets (logo, photos, etc.)\n- [ ] Send competitor examples they like\n- [ ] Fill out intake questionnaire\n- [ ] Schedule call\n- [ ] Other: ___\n\n### Key Dates\n\n| What            | Date |\n| --------------- | ---- |\n| Next call       |      |\n| Proposal due    |      |\n| Project start   |      |\n| Target delivery |      |\n\n---\n\n## Part 8: Post-Research Reflection\n\n> Come back here after domain research and discovery. What changed?\n\n**Initial assumptions that were confirmed:**\n\n**Initial assumptions that were wrong:**\n\n**New directions that emerged:**\n\n**Questions that got answered:**\n\n**New questions that came up:**\n\n---\n\n## Quick Reference\n\n### Red Flags to Watch For\n\n- [ ] Unclear on what they actually do\n- [ ] No budget conversation\n- [ ] Unrealistic timeline\n- [ ] \"Just make it pretty\" mentality\n- [ ] Too many decision-makers\n- [ ] Scope creep indicators\n- [ ] Communication red flags\n\n### Green Lights\n\n- [ ] Clear business model\n- [ ] Knows their audience\n- [ ] Realistic expectations\n- [ ] Good communicator\n- [ ] Values the work\n- [ ] Has content/assets ready (or realistic about creating them)\n\n---\n\n_Template version: 1.0_\n_Created: 2026-01-15_\n",
+              "_classification": {
+                "confidence": 0.95,
+                "model_used": "openrouter",
+                "classified_at": "2026-01-15T16:40:46.778Z",
+                "previous_type_key": "document.default"
+              }
             },
-            "facet_context": "internal",
-            "facet_scale": "medium",
-            "facet_stage": "planning",
-            "created_at": "2025-12-24T07:04:50.37841+00:00",
-            "updated_at": "2026-01-27T15:58:23.026495+00:00"
+            "created_at": "2026-01-15T16:40:42.904099+00:00",
+            "updated_at": "2026-01-15T16:40:46.836513+00:00"
+          },
+          {
+            "id": "40c72d1e-1a63-4f4b-a620-77b4910e6903",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Rob Website - Deployment Plan",
+            "type_key": "document.default",
+            "state_key": "draft",
+            "content": "# Phase 3: Deploy & Launch\n- Domains: Ionos (magnumwealthmanagement.com, beyondexitplanning.com).\n- Test admin portal flow.\n- Demo Jan 20, launch post-approval.\n\n## Steps\n1. Build prototype.\n2. Deploy/test.\n3. Invoice & close.\n\nTarget: Jan 20/25",
+            "description": null,
+            "props": {
+              "body_markdown": "# Phase 3: Deploy & Launch\n- Domains: Ionos (magnumwealthmanagement.com, beyondexitplanning.com).\n- Test admin portal flow.\n- Demo Jan 20, launch post-approval.\n\n## Steps\n1. Build prototype.\n2. Deploy/test.\n3. Invoice & close.\n\nTarget: Jan 20/25"
+            },
+            "created_at": "2026-01-13T21:15:17.346988+00:00",
+            "updated_at": "2026-01-13T21:15:17.346988+00:00"
+          },
+          {
+            "id": "64f2aa85-9fa8-47b9-9de7-f51295c2823a",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Rob Website - Compliance & Content Plan",
+            "type_key": "document.default",
+            "state_key": "draft",
+            "content": "# Phase 2: Compliance & Content\n- PDF exports for approval.\n- Content: Newsletter signup, whitepaper download, events gallery.\n- Emails: Snappy Kraken + LPL/Outlook.\n\n## Steps\n1. Draft content.\n2. PDF all pages.\n3. Send for review.\n\nTarget: Jan 17",
+            "description": null,
+            "props": {
+              "body_markdown": "# Phase 2: Compliance & Content\n- PDF exports for approval.\n- Content: Newsletter signup, whitepaper download, events gallery.\n- Emails: Snappy Kraken + LPL/Outlook.\n\n## Steps\n1. Draft content.\n2. PDF all pages.\n3. Send for review.\n\nTarget: Jan 17"
+            },
+            "created_at": "2026-01-13T21:15:16.184025+00:00",
+            "updated_at": "2026-01-13T21:15:16.184025+00:00"
+          },
+          {
+            "id": "f7e08b3f-540f-4839-9263-75978cdb9100",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Rob Website - Design & Branding Plan",
+            "type_key": "document.default",
+            "state_key": "draft",
+            "content": "# Phase 1: Design & Branding\n- Define colors, fonts, common look for both domains.\n- Ideal client: Business owner, $5M+ assets, family-oriented, philanthropic, conservative.\n- USP: Compassionate firm, perfect 34yr record, 99% retention, deep relationships.\n\n## Steps\n1. Moodboard from examples.\n2. Wireframes (Figma?).\n3. Mockups.\n\nTarget: Jan 15",
+            "description": null,
+            "props": {
+              "body_markdown": "# Phase 1: Design & Branding\n- Define colors, fonts, common look for both domains.\n- Ideal client: Business owner, $5M+ assets, family-oriented, philanthropic, conservative.\n- USP: Compassionate firm, perfect 34yr record, 99% retention, deep relationships.\n\n## Steps\n1. Moodboard from examples.\n2. Wireframes (Figma?).\n3. Mockups.\n\nTarget: Jan 15"
+            },
+            "created_at": "2026-01-13T21:15:15.08311+00:00",
+            "updated_at": "2026-01-13T21:15:15.08311+00:00"
+          },
+          {
+            "id": "5d3abbeb-2734-47db-9717-e3c0b5a8fd5a",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Rob meeting notes Jan 12",
+            "type_key": "document.knowledge.industry",
+            "state_key": "ready",
+            "content": "Rob\n\n\nHe is in the Wealth management industry.\nThe wealth management industry is the most regulated industry in the world. - Rob's words\n\nCurrently his site is using an industry offering. \n\nEvery change on his website goes through a legal and compliance process. But we can work around it by just sending over pdfs of the pages for approval.\n\nHe currently has an admin portal where the admin saves and the changes go through an approval process and then they go live.\n\nCompliance is a big issue.\n\nHe also uses Snappy kraken for email automation.\n\nHe trades through LPL financial- which is a broker dealer.\n\nHe has a mailer newsletter.\n\nHe has a white paper.\n\nHe has client events with pictures.\n\nHe has 2 primary domains.\n- magnum wealth management\n- beyond exit planning- rob's book beyondexitplanning.com\n\nRob wants a common look and feel\n- colors\n- branding \n\nHe wants to narrow his niche.\nHe wants to find the avatar of person he wants to work with.\nHe want the website to represent him well. It is about Credibility.\n\n\nIonos is the- domain registrar\n\nEmails are going to be tough, they go through LPL servers.\n\n\nHe uses Outlook 365.\n\n- rod@magnumoc.com\n\n—————\n\n\nThis is a follow up email that he sent me after the meeting:\n\nHey DJ,\n\nThanks again for your time today.\n\nHere are some examples.\n\nhttps://wealthlegacygroup.com/  RJ’s site has a very outdated feel, but he does a good job of articulating his process and showcasing his accolades and background.  He has some good, informative content, but I think the website is a bit too busy.  Too much stuff.  I would want something that is more simplified and cleaner.\n\nhttps://wealthwisefinancial.com/  Loreen is a friend that specializes in working with divorced women and women business owners.  Similar comments as above, but not as outdated.\n\nhttps://lionsmarkcapital.com/client  Darren’s site has very different content than my business, however he has a more updated look.  Daren is a great marketer.  I really need to produce video for my site.\n\nSome of the things that set me apart from my competition.\n\nI often say that “we are a compassionate firm”.  Meaning that we exist because not everyone is a financial expert.  We strive to make clients comfortable and remove any intimidation around the process.\n\nIn 34+ years in the business, I have a perfect record with no complaint or disciplinary action.  This is ultra rare.\n\nIt is the quality and depth of our relationships that virtually eliminates our competition.\n\nMy client retention is more than 99%.\n\nMy ideal client is a business owner/entrepreneur with  investable assets of $5,000,000 or more.  Family oriented, philanthropic, conservative.\n\nLooking forward to circling back on the 20th.\n\nTake care,\nRod Chamberlin\n",
+            "description": null,
+            "props": {
+              "tags": [
+                "wealth-management",
+                "compliance",
+                "broker-dealer",
+                "client-events",
+                "domain-management"
+              ],
+              "body_markdown": "Rob\n\n\nHe is in the Wealth management industry.\nThe wealth management industry is the most regulated industry in the world. - Rob's words\n\nCurrently his site is using an industry offering. \n\nEvery change on his website goes through a legal and compliance process. But we can work around it by just sending over pdfs of the pages for approval.\n\nHe currently has an admin portal where the admin saves and the changes go through an approval process and then they go live.\n\nCompliance is a big issue.\n\nHe also uses Snappy kraken for email automation.\n\nHe trades through LPL financial- which is a broker dealer.\n\nHe has a mailer newsletter.\n\nHe has a white paper.\n\nHe has client events with pictures.\n\nHe has 2 primary domains.\n- magnum wealth management\n- beyond exit planning- rob's book beyondexitplanning.com\n\nRob wants a common look and feel\n- colors\n- branding \n\nHe wants to narrow his niche.\nHe wants to find the avatar of person he wants to work with.\nHe want the website to represent him well. It is about Credibility.\n\n\nIonos is the- domain registrar\n\nEmails are going to be tough, they go through LPL servers.\n\n\nHe uses Outlook 365.\n\n- rod@magnumoc.com\n\n—————\n\n\nThis is a follow up email that he sent me after the meeting:\n\nHey DJ,\n\nThanks again for your time today.\n\nHere are some examples.\n\nhttps://wealthlegacygroup.com/  RJ’s site has a very outdated feel, but he does a good job of articulating his process and showcasing his accolades and background.  He has some good, informative content, but I think the website is a bit too busy.  Too much stuff.  I would want something that is more simplified and cleaner.\n\nhttps://wealthwisefinancial.com/  Loreen is a friend that specializes in working with divorced women and women business owners.  Similar comments as above, but not as outdated.\n\nhttps://lionsmarkcapital.com/client  Darren’s site has very different content than my business, however he has a more updated look.  Daren is a great marketer.  I really need to produce video for my site.\n\nSome of the things that set me apart from my competition.\n\nI often say that “we are a compassionate firm”.  Meaning that we exist because not everyone is a financial expert.  We strive to make clients comfortable and remove any intimidation around the process.\n\nIn 34+ years in the business, I have a perfect record with no complaint or disciplinary action.  This is ultra rare.\n\nIt is the quality and depth of our relationships that virtually eliminates our competition.\n\nMy client retention is more than 99%.\n\nMy ideal client is a business owner/entrepreneur with  investable assets of $5,000,000 or more.  Family oriented, philanthropic, conservative.\n\nLooking forward to circling back on the 20th.\n\nTake care,\nRod Chamberlin\n",
+              "_classification": {
+                "confidence": 0.95,
+                "model_used": "openrouter",
+                "classified_at": "2026-01-12T17:26:55.229Z",
+                "previous_type_key": "document.default"
+              }
+            },
+            "created_at": "2026-01-12T17:26:51.853151+00:00",
+            "updated_at": "2026-01-13T18:39:46.95291+00:00"
+          },
+          {
+            "id": "adb6bf06-2119-4765-bba4-7e96c9a01069",
+            "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
+            "title": "Rod (Bob/Rob) Chamberlin - Magnum Wealth Management Client Intake",
+            "type_key": "document.default",
+            "state_key": "draft",
+            "content": "# Rod (Rob/Bob) Chamberlin - Magnum Wealth Management Client Intake\n\n## Referral & Background\n- **Referred by**: Phil Velayo (impressed by [thecadretraining.com](https://thecadretraining.com) work)\n- **Prospect Status**: Kickoff meeting scheduled for Monday (link to existing calendar event/task: [Client kickoff meeting](https://buildos.ai/app/project/f85b6c5f-59fb-4e4c-8654-748f793d8f4b/task/304bd145-930d-4b23-9c21-b8641fc422b0))\n- **Location Note**: Firm in Irvine, CA (9070 Irvine Center Drive, Suite 100); Tacemus in MD—confirm if remote meeting\n- **Current Website**: [https://www.magnumwealthmanagement.com/](https://www.magnumwealthmanagement.com/) (outdated, static Drupal 10 site)\n\n## Client Profile: Rod Chamberlin\n![Rod Chamberlin](https://www.magnumwealthmanagement.com/sites/rodchamberlin.us1.advisor.ws/files/styles/portrait_500x600/public/images/rod_0.png?h=961dc88a&itok=vYbv1uLJ)\n\n- **Role**: Wealth Manager / Principal\n- **Credentials**: \n  - MSFS (Master of Science in Financial Services)\n  - CEPA (Certified Exit Planning Advisor)\n  - California Insurance License #0819071\n  - Registered Representative: LPL Financial (Member FINRA/SIPC)\n  - Series 7 & 66 licenses\n- **Bio** (from site): California native raised with mid-west values (honesty, integrity, strong work ethic, community). Grew up in Long Beach, CA; 25+ years in South Orange County. Married to Lora; daughters Sara & Rachel (Rachel works at firm). Dad's wisdom: “A few hours of free labor is worth more than thousands in advertising”; “Conduct business so you can look everyone in the eye.”\n- **Contact**:\n  | Type | Details |\n  |------|---------|\n  | Phone | [949-888-9440](tel:949-888-9440) |\n  | Email | [Rod@MagnumOC.com](mailto:Rod@MagnumOC.com), [Team@MagnumOC.com](mailto:Team@MagnumOC.com) |\n  | Office | 9070 Irvine Center Drive, Suite 100, Irvine, CA 92618 \\| Fax: 949-860-7125 |\n  | LinkedIn | [linkedin.com/in/rodchamberlin](https://www.linkedin.com/in/rodchamberlin/) |\n- **Awards**: Five Star Professional (client satisfaction)\n- **Content**: Shares \\\"Rod's Notes\\\" PDFs (e.g., June 2025 edition) emphasizing conservative planning, personalized strategies, exceptional service.\n\n## Firm Overview: Magnum Wealth Management\n- **Focus**: Conservative financial planning for individuals & families. Services: Investment management, insurance, retirement/estate planning, wealth preservation. Educates via newsletters on markets, insurance basics.\n- **Vibe**: Boutique advisor firm (LPL Financial-backed for compliance/tools). Client-centric, low-key professional—no hype.\n- **Target Clients**: High-net-worth individuals/families (inferred; CA-focused).\n- **Online Presence**: Site-focused; minimal social. PDFs for updates (not dynamic blog).\n\n## Team\n| Name | Role | Highlights |\n|------|------|------------|\n| [Rod Chamberlin](https://www.magnumwealthmanagement.com/team/rod-chamberlin) | Wealth Manager | Lead, family values, 25+ yrs exp. |\n| [Derek A. Bergfeld](https://www.magnumwealthmanagement.com/team/derek-bergfeld) | Wealth Manager | OC native, Finance/Econ degree, Series 7/66. Married (Chelsea), new dad. Hobbies: mountain biking, scuba, travel. [LinkedIn](https://www.linkedin.com/in/derek-bergfeld-aaa74b58/) |\n| Rachel Palmisano | (Admin/Ops?) | Rod's daughter; family-oriented. |\n| Ashley Cader | Team Member | Limited details. |\n\n## Current Website Layout & Audit\n**Platform**: Drupal 10. Static, dated (early 2010s feel). Loads OK desktop; poor mobile (squished nav). Heavy PDFs/images, light interactivity. Compliant (FINRA/SIPC disclaimers everywhere).\n\n**Navigation/Menu** (top nav + footer):\n```\nHome\n├── Team (/team) — Bios w/ photos (Rod, Derek, etc.)\n├── Newsletters & Updates — PDFs (Derek’s Market Update Aug/May 2025, Rod's Notes June 2025, OBBBA Guide). Note: /newsletters-updates/ returns 404.\n├── Forms (/client-information-form) — Intake + disclaimers\n├── Contact\n└── Others: Events, LPL Account View, Tell a Friend, Zoom Scheduler\n```\n\n**Key Pages**:\n- **Home**: Hero (Rod photo), welcome text (\\\"Educate on financial concepts... proactive approach\\\"), market links, services overview (insurance/investing/retirement). No testimonials/CTAs.\n- **Team**: Individual bios (personal stories, contacts).\n- **Newsletters**: PDF downloads (their \\\"blog\\\"—not SEO-friendly).\n- **Footer**: Social (LinkedIn/FB/X/Email), address, privacy.\n\n**Strengths**:\n- Trust signals: Credentials, LPL, family bios.\n- Compliant: Disclaimers, HTTPS.\n\n**Weaknesses** (Opportunities):\n- Dated design (bland, non-responsive).\n- Stale content (PDFs not Google-indexed).\n- Weak lead gen (basic forms, no popups/emails/booking).\n- No: Services deep-dive, dynamic blog, testimonials, client portal, SEO.\n- Low traffic potential.\n\n**Site Snapshots** (stored via BuildOS web tools):\n- [Home](https://www.magnumwealthmanagement.com/) — Rod hero, services intro.\n- [Rod's Bio](https://www.magnumwealthmanagement.com/team/rod-chamberlin) — Full personal story.\n- [Team](https://www.magnumwealthmanagement.com/team/) — Full team bios.\n\n## Meeting Prep Checklist\n1. **Goals & Why Now?** Top 2-3 outcomes? What's broken on current site?\n2. **Features/Content**: Must-haves (services, bios, testimonials, blog, portal)? Compliance needs? Assets ready?\n3. **Design/Tech**: Branding refresh? Mobile/fast? Integrations (CRM, analytics)?\n4. **Budget/Timeline**: Refresh vs. full custom (like thecadretraining.com)?\n5. **Close**: Examples loved? Mockup/proposal post-meeting?\n\n**Proposal Tiers**:\n- **Refresh** (low $): Mobile, content update, basic CTAs.\n- **Enhance** (med $): Dynamic blog, lead forms, SEO.\n- **Full Build** (high $): Tacemus-style custom w/ integrations.\n\n## Post-Meeting Notes\n- Goals/Needs:\n- Scope/Budget/Timeline:\n- Next Steps:\n- Assets/Decisions:\n\n**Updated**: 2026-01-11 (pre-meeting research). Ready for your notes! 🚀",
+            "description": null,
+            "props": {
+              "body_markdown": "# Rod (Rob/Bob) Chamberlin - Magnum Wealth Management Client Intake\n\n## Referral & Background\n- **Referred by**: Phil Velayo (impressed by [thecadretraining.com](https://thecadretraining.com) work)\n- **Prospect Status**: Kickoff meeting scheduled for Monday (link to existing calendar event/task: [Client kickoff meeting](https://buildos.ai/app/project/f85b6c5f-59fb-4e4c-8654-748f793d8f4b/task/304bd145-930d-4b23-9c21-b8641fc422b0))\n- **Location Note**: Firm in Irvine, CA (9070 Irvine Center Drive, Suite 100); Tacemus in MD—confirm if remote meeting\n- **Current Website**: [https://www.magnumwealthmanagement.com/](https://www.magnumwealthmanagement.com/) (outdated, static Drupal 10 site)\n\n## Client Profile: Rod Chamberlin\n![Rod Chamberlin](https://www.magnumwealthmanagement.com/sites/rodchamberlin.us1.advisor.ws/files/styles/portrait_500x600/public/images/rod_0.png?h=961dc88a&itok=vYbv1uLJ)\n\n- **Role**: Wealth Manager / Principal\n- **Credentials**: \n  - MSFS (Master of Science in Financial Services)\n  - CEPA (Certified Exit Planning Advisor)\n  - California Insurance License #0819071\n  - Registered Representative: LPL Financial (Member FINRA/SIPC)\n  - Series 7 & 66 licenses\n- **Bio** (from site): California native raised with mid-west values (honesty, integrity, strong work ethic, community). Grew up in Long Beach, CA; 25+ years in South Orange County. Married to Lora; daughters Sara & Rachel (Rachel works at firm). Dad's wisdom: “A few hours of free labor is worth more than thousands in advertising”; “Conduct business so you can look everyone in the eye.”\n- **Contact**:\n  | Type | Details |\n  |------|---------|\n  | Phone | [949-888-9440](tel:949-888-9440) |\n  | Email | [Rod@MagnumOC.com](mailto:Rod@MagnumOC.com), [Team@MagnumOC.com](mailto:Team@MagnumOC.com) |\n  | Office | 9070 Irvine Center Drive, Suite 100, Irvine, CA 92618 \\| Fax: 949-860-7125 |\n  | LinkedIn | [linkedin.com/in/rodchamberlin](https://www.linkedin.com/in/rodchamberlin/) |\n- **Awards**: Five Star Professional (client satisfaction)\n- **Content**: Shares \\\"Rod's Notes\\\" PDFs (e.g., June 2025 edition) emphasizing conservative planning, personalized strategies, exceptional service.\n\n## Firm Overview: Magnum Wealth Management\n- **Focus**: Conservative financial planning for individuals & families. Services: Investment management, insurance, retirement/estate planning, wealth preservation. Educates via newsletters on markets, insurance basics.\n- **Vibe**: Boutique advisor firm (LPL Financial-backed for compliance/tools). Client-centric, low-key professional—no hype.\n- **Target Clients**: High-net-worth individuals/families (inferred; CA-focused).\n- **Online Presence**: Site-focused; minimal social. PDFs for updates (not dynamic blog).\n\n## Team\n| Name | Role | Highlights |\n|------|------|------------|\n| [Rod Chamberlin](https://www.magnumwealthmanagement.com/team/rod-chamberlin) | Wealth Manager | Lead, family values, 25+ yrs exp. |\n| [Derek A. Bergfeld](https://www.magnumwealthmanagement.com/team/derek-bergfeld) | Wealth Manager | OC native, Finance/Econ degree, Series 7/66. Married (Chelsea), new dad. Hobbies: mountain biking, scuba, travel. [LinkedIn](https://www.linkedin.com/in/derek-bergfeld-aaa74b58/) |\n| Rachel Palmisano | (Admin/Ops?) | Rod's daughter; family-oriented. |\n| Ashley Cader | Team Member | Limited details. |\n\n## Current Website Layout & Audit\n**Platform**: Drupal 10. Static, dated (early 2010s feel). Loads OK desktop; poor mobile (squished nav). Heavy PDFs/images, light interactivity. Compliant (FINRA/SIPC disclaimers everywhere).\n\n**Navigation/Menu** (top nav + footer):\n```\nHome\n├── Team (/team) — Bios w/ photos (Rod, Derek, etc.)\n├── Newsletters & Updates — PDFs (Derek’s Market Update Aug/May 2025, Rod's Notes June 2025, OBBBA Guide). Note: /newsletters-updates/ returns 404.\n├── Forms (/client-information-form) — Intake + disclaimers\n├── Contact\n└── Others: Events, LPL Account View, Tell a Friend, Zoom Scheduler\n```\n\n**Key Pages**:\n- **Home**: Hero (Rod photo), welcome text (\\\"Educate on financial concepts... proactive approach\\\"), market links, services overview (insurance/investing/retirement). No testimonials/CTAs.\n- **Team**: Individual bios (personal stories, contacts).\n- **Newsletters**: PDF downloads (their \\\"blog\\\"—not SEO-friendly).\n- **Footer**: Social (LinkedIn/FB/X/Email), address, privacy.\n\n**Strengths**:\n- Trust signals: Credentials, LPL, family bios.\n- Compliant: Disclaimers, HTTPS.\n\n**Weaknesses** (Opportunities):\n- Dated design (bland, non-responsive).\n- Stale content (PDFs not Google-indexed).\n- Weak lead gen (basic forms, no popups/emails/booking).\n- No: Services deep-dive, dynamic blog, testimonials, client portal, SEO.\n- Low traffic potential.\n\n**Site Snapshots** (stored via BuildOS web tools):\n- [Home](https://www.magnumwealthmanagement.com/) — Rod hero, services intro.\n- [Rod's Bio](https://www.magnumwealthmanagement.com/team/rod-chamberlin) — Full personal story.\n- [Team](https://www.magnumwealthmanagement.com/team/) — Full team bios.\n\n## Meeting Prep Checklist\n1. **Goals & Why Now?** Top 2-3 outcomes? What's broken on current site?\n2. **Features/Content**: Must-haves (services, bios, testimonials, blog, portal)? Compliance needs? Assets ready?\n3. **Design/Tech**: Branding refresh? Mobile/fast? Integrations (CRM, analytics)?\n4. **Budget/Timeline**: Refresh vs. full custom (like thecadretraining.com)?\n5. **Close**: Examples loved? Mockup/proposal post-meeting?\n\n**Proposal Tiers**:\n- **Refresh** (low $): Mobile, content update, basic CTAs.\n- **Enhance** (med $): Dynamic blog, lead forms, SEO.\n- **Full Build** (high $): Tacemus-style custom w/ integrations.\n\n## Post-Meeting Notes\n- Goals/Needs:\n- Scope/Budget/Timeline:\n- Next Steps:\n- Assets/Decisions:\n\n**Updated**: 2026-01-11 (pre-meeting research). Ready for your notes! 🚀"
+            },
+            "created_at": "2026-01-11T16:51:17.859617+00:00",
+            "updated_at": "2026-01-11T16:51:17.859617+00:00"
           }
         ],
-        "total": 30,
-        "message": "Found 15 ontology projects. Use get_onto_project_details for full context."
+        "total": 14,
+        "message": "Found 14 ontology documents."
       },
-      "planId": "eb909db3-a57c-4122-be9c-6d179dac829d",
+      "planId": "c4648730-2a23-45b5-aa01-692b879607f7",
       "stepNumber": 2,
-      "contextType": "global"
+      "contextType": "project",
+      "entityId": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b"
     }
   },
   "result": {
-    "success": true,
-    "summary": "Fetched all todo (top 50/236) and in_progress (16) tasks globally using list_onto_tasks. Filtered to the 15 retrieved projects from step 1; identified 0 todo tasks and 3 in_progress tasks matching those projects.",
-    "data": {
-      "retrieved_projects_task_count": {
-        "todo": 0,
-        "in_progress": 3
-      },
-      "todo_tasks": [],
-      "in_progress_tasks": [
-        {
-          "id": "2a614e7a-b55e-495d-9c4d-66d3ea1828a2",
-          "project_id": "be5a3d9d-7633-44e5-9562-efb720ca7d04",
-          "project_name": "LinkedIn Posting Project",
-          "title": "Draft First LinkedIn Post",
-          "state_key": "in_progress"
-        },
-        {
-          "id": "66da78af-4e0b-4905-966e-638759f6e29d",
-          "project_id": "85c372ae-baeb-4fa5-afdb-62e4a9a155b2",
-          "project_name": "Levi the Baby",
-          "title": "Ensure well-being of mother and baby",
-          "state_key": "in_progress"
-        },
-        {
-          "id": "e2d74cdb-79e6-4cf4-abbc-6c66054cb85c",
-          "project_id": "5e2e5e0b-a85a-4048-a86a-609b2b949abf",
-          "project_name": "Comfort & Nourishment Newsletter Article",
-          "title": "Research nesting practices and psychology",
-          "state_key": "in_progress"
-        }
-      ],
-      "top_priority_items": [
-        "e2d74cdb-79e6-4cf4-abbc-6c66054cb85c (priority 1: Research nesting practices and psychology)",
-        "2a614e7a-b55e-495d-9c4d-66d3ea1828a2 (Draft First LinkedIn Post)",
-        "66da78af-4e0b-4905-966e-638759f6e29d (Ensure well-being of mother and baby)"
-      ]
-    },
-    "entities_accessed": [
-      "list_onto_tasks_todo",
-      "list_onto_tasks_in_progress",
-      "aed40b38-5d42-439e-8b25-1b943256de0c",
-      "bca951b5-5cdb-42fa-a570-8c7c2b3607dd",
-      "be5a3d9d-7633-44e5-9562-efb720ca7d04",
-      "85c372ae-baeb-4fa5-afdb-62e4a9a155b2",
-      "67df890f-635c-4b3e-ada7-845709236a52",
-      "2555dbb2-6c98-4a32-b658-bddcda7fc53d",
-      "71933797-3657-42be-b7c5-a86346e536a6",
-      "11e8ce46-4103-4ce4-8fbb-e91dc314739a",
-      "3c7f37b6-226f-4584-bc3b-af80b77c3c6b",
-      "e98b91f6-65c5-46ea-8d9f-fa8193341c55",
-      "5e2e5e0b-a85a-4048-a86a-609b2b949abf",
-      "978ce115-f5fc-4af4-aa10-422b5115d6c4",
-      "4e8889c5-4c93-4c9d-99ae-1158ef03a944",
-      "5fc9b7d9-5020-43bf-a746-08d9aa8dfda4",
-      "9fe57310-5059-4c5d-8068-40d1d31271cb"
-    ],
-    "error": null,
-    "next_step": null,
-    "toolResults": [
-      {
-        "tool": "list_onto_tasks",
-        "result": {
-          "tasks": [
-            {
-              "id": "c779cad4-de89-4324-b5b3-2344ef50e466",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Call AAEDC Monday about Biz Expo waitlist/spot",
-              "description": "Contact Anne Arundel Economic Development Corp re: getting into sold-out Jan 28 expo to network/pass Tacemus cards. Check: (410) 222-7776 or event link contacts.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 4,
-              "start_at": null,
-              "due_at": "2026-01-28T00:00:00+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "76915161-63df-4a48-9ba7-e2035f90799b",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Prepare materials for Biz Expo (business cards, pitch deck, one-pager)",
-              "description": "Print/order Tacemus cards highlighting accessibility/WCAG expertise. Prep elevator pitch for county contracts. Confirm spot first.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "8a690e65-815c-4ee2-a180-77fad4f56d50",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Outreach to Anne Arundel Purchasing Division re: free accessibility audit",
-              "description": "Email/call buyers (Zoraida Rodriguez-Keeton phrodr25@aacounty.org / Lindsay Unitas phunit24@aacounty.org) offering free WCAG audit via Tacemus for county sites. Register on P.O.R.T. if needed. Pitch for contracts.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-27T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "8fda31d1-9f78-4fa0-b7a2-9719fcc8e91c",
-              "project_id": "a4abb62e-e689-4b1a-9d91-57134bf1a947",
-              "title": "Design the prophecy that drives the plot",
-              "description": "Wording, origins, interpretation, and how it ties to blacksmith and dragon.",
-              "type_key": "task.create",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "Wording, origins, interpretation, and how it ties to blacksmith and dragon."
-              },
-              "project_name": "The Last Ember"
-            },
-            {
-              "id": "9ac8dd29-4e35-497e-b34c-8391b2e74237",
-              "project_id": "a4abb62e-e689-4b1a-9d91-57134bf1a947",
-              "title": "Research medieval blacksmithing techniques",
-              "description": "Historical accuracy for forging, tools, processes to inform magic system.",
-              "type_key": "task.research",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "Historical accuracy for forging, tools, processes to inform magic system."
-              },
-              "project_name": "The Last Ember"
-            },
-            {
-              "id": "3433ae1f-1a4e-4460-9182-9f11d28ba7b9",
-              "project_id": "a4abb62e-e689-4b1a-9d91-57134bf1a947",
-              "title": "Outline first three chapters",
-              "description": "High-level beats, key events, character arcs for opening.",
-              "type_key": "task.create.outline",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "High-level beats, key events, character arcs for opening."
-              },
-              "project_name": "The Last Ember"
-            },
-            {
-              "id": "fb8af40c-e69f-4234-86e0-b880f833fbd9",
-              "project_id": "a4abb62e-e689-4b1a-9d91-57134bf1a947",
-              "title": "Write character profiles for the antagonist (The Shadow King)",
-              "description": "Motivations, powers, backstory, and role in the plot.",
-              "type_key": "task.create",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "Motivations, powers, backstory, and role in the plot."
-              },
-              "project_name": "The Last Ember"
-            },
-            {
-              "id": "6905d7a5-334f-40c7-ad66-3a93af120e6c",
-              "project_id": "a4abb62e-e689-4b1a-9d91-57134bf1a947",
-              "title": "Map out the kingdom of Aethermoor",
-              "description": "Geography, key locations, culture, and political structure.",
-              "type_key": "task.create.worldbuilding",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "Geography, key locations, culture, and political structure."
-              },
-              "project_name": "The Last Ember"
-            },
-            {
-              "id": "89fa8d3b-6bb5-436d-a286-4a337c5e7e62",
-              "project_id": "a4abb62e-e689-4b1a-9d91-57134bf1a947",
-              "title": "Create magic system based on metal and fire",
-              "description": "Define rules, limitations, and integration with blacksmithing.",
-              "type_key": "task.create",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "Define rules, limitations, and integration with blacksmithing."
-              },
-              "project_name": "The Last Ember"
-            },
-            {
-              "id": "b826d7ff-893e-4031-b302-26d321f3c9c4",
-              "project_id": "a4abb62e-e689-4b1a-9d91-57134bf1a947",
-              "title": "Develop main character backstory",
-              "description": "Orphan raised by master blacksmith; expand into full profile.",
-              "type_key": "task.create",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "Orphan raised by master blacksmith; expand into full profile."
-              },
-              "project_name": "The Last Ember"
-            },
-            {
-              "id": "89300eef-61f8-4631-a822-bc107a058794",
-              "project_id": "05087b15-f725-4e83-860b-10e14e736e67",
-              "title": "Ian approves and tweaks email sequence",
-              "description": "Review and adjust email sequence post-setup.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-29T23:59:59+00:00",
-              "completed_at": null,
-              "props": {
-                "goal_id": "917d06bb-0748-4666-92ec-d5ed5c5bee36"
-              },
-              "project_name": "UXM Training Website"
-            },
-            {
-              "id": "114678ca-8b3b-464e-8197-7d0ce7084b0a",
-              "project_id": "05087b15-f725-4e83-860b-10e14e736e67",
-              "title": "Set up email sequence",
-              "description": "Implement email sequence for UXM site, then get Ian to approve/tweak.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-29T23:59:59+00:00",
-              "completed_at": null,
-              "props": {
-                "goal_id": "917d06bb-0748-4666-92ec-d5ed5c5bee36"
-              },
-              "project_name": "UXM Training Website"
-            },
-            {
-              "id": "c5377c22-625b-459e-aef1-abaea30496ca",
-              "project_id": "05087b15-f725-4e83-860b-10e14e736e67",
-              "title": "Hook up domain UXMtraining.com",
-              "description": "Configure and point domain UXMtraining.com to the site for go-live.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-29T23:59:59+00:00",
-              "completed_at": null,
-              "props": {
-                "goal_id": "917d06bb-0748-4666-92ec-d5ed5c5bee36"
-              },
-              "project_name": "UXM Training Website"
-            },
-            {
-              "id": "09b293f0-71b7-4f40-a905-0796fdeb1823",
-              "project_id": "05087b15-f725-4e83-860b-10e14e736e67",
-              "title": "Refine and finalize homepage based on Jan 22 meeting notes",
-              "description": "Polish homepage using feedback from Ian meeting: site mostly finalized, integrate any remaining notes for launch readiness.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-29T23:59:59+00:00",
-              "completed_at": null,
-              "props": {
-                "goal_id": "917d06bb-0748-4666-92ec-d5ed5c5bee36"
-              },
-              "project_name": "UXM Training Website"
-            },
-            {
-              "id": "1f50ec48-fcd8-4eca-9b11-022d54ab5c03",
-              "project_id": "05087b15-f725-4e83-860b-10e14e736e67",
-              "title": "Ian Creates and finalizes schedule",
-              "description": null,
-              "type_key": "task.create",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "tags": [
-                  "schedule-planning",
-                  "time-management",
-                  "organization",
-                  "calendar",
-                  "task-coordination"
-                ],
-                "_classification": {
-                  "confidence": 0.9,
-                  "model_used": "openrouter",
-                  "classified_at": "2026-01-22T21:53:42.900Z",
-                  "previous_type_key": "task.default"
-                }
-              },
-              "project_name": "UXM Training Website"
-            },
-            {
-              "id": "32854535-75b2-43ca-b01c-fee6804bc012",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Send BuildOS demo to Sudip",
-              "description": "Share BuildOS access/invite link, demo key features, and capture their first project to onboard as early user. Link to Influencer Outreach Targets doc if relevant.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "goal_id": "88a42790-6f36-408f-bb91-88a113ef5be1"
-              },
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "1016819e-495c-4b47-90fc-acb184789b6b",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Outreach to Sabio contacts with BuildOS demo",
-              "description": "Identify key people from Sabio (add names/emails here), send BuildOS invites/demos, follow up to onboard by capturing projects. Reference Local High School Outreach playbook if similar.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "goal_id": "88a42790-6f36-408f-bb91-88a113ef5be1"
-              },
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "769536c0-55a1-46a2-9f62-9bb40627a53f",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Reach out to Alex (Asia's boyfriend) with BuildOS intro",
-              "description": "Send personalized intro to BuildOS, share demo access, highlight benefits for his use case, and aim to capture a project from him.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "goal_id": "88a42790-6f36-408f-bb91-88a113ef5be1"
-              },
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "9e827b1a-84a3-47aa-b5f9-e135bf756ae3",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Connect task to event in ui",
-              "description": "Should be able to schedule a task which creates a calendar event",
-              "type_key": "task.create",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "tags": [
-                  "ui-integration",
-                  "calendar-sync",
-                  "task-scheduling",
-                  "event-creation",
-                  "user-interface"
-                ],
-                "_classification": {
-                  "confidence": 0.9,
-                  "model_used": "openrouter",
-                  "classified_at": "2026-01-15T13:47:48.441Z",
-                  "previous_type_key": "task.default"
-                }
-              },
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "b64360d5-e870-4ace-a468-a2ae9fc7ff61",
-              "project_id": "461755ce-8e61-485d-8a9c-b89de03c3925",
-              "title": "Help Lily with her sight words",
-              "description": "Practice sight words with Lily.",
-              "type_key": "task.execute.homework",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "Practice sight words with Lily."
-              },
-              "project_name": "Today's Family Tasks"
-            },
-            {
-              "id": "f1ee718a-9380-4182-a0f0-0e2180f9856f",
-              "project_id": "461755ce-8e61-485d-8a9c-b89de03c3925",
-              "title": "Help Lily with her math homework",
-              "description": "Assist Lily with math homework.",
-              "type_key": "task.execute.homework",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": "Assist Lily with math homework."
-              },
-              "project_name": "Today's Family Tasks"
-            },
-            {
-              "id": "7330c12f-2b4a-4dd4-875f-d784f00a7fe1",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Risk Review: Email/domain integration issues",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-18T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "0812f711-aac8-4820-bdd7-69ce9349e21e",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Risk Review: Monitor compliance delays",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-16T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "2756e2f3-c5be-4f90-b97d-b3cef3709364",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Test site across domains and prep demo for Jan 20 meeting",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-20T10:00:00+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "8830fadf-3165-4726-b577-47142e132fea",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Build and deploy prototype site",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-19T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "6fd2e0dd-7790-41e1-ba9d-2d8404032ebe",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Verify domains, emails, and integrations (Ionos, Snappy Kraken, LPL)",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-18T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "6a23b803-3ccc-42c4-9a8c-d40286d0cf3b",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Prepare and send PDF pages for compliance approval",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-17T12:00:00+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "ab989c5e-71c8-4192-bd8e-cab6b1f2199f",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Draft content for credibility/niche sections",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-16T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "de692528-77df-4c16-a698-3f3bdcc35e25",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Create wireframes and mockups for key pages",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-15T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "d6bb319a-0520-4043-84e0-4ae3e63c52e0",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Research example sites and define brand guidelines",
-              "description": null,
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-14T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "9edc3a20-78f8-4c34-8d79-fa0a5a09e126",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "M6: Full Launch & Paid",
-              "description": "Go live post-meeting, collect payment.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-25T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "286e22cf-2641-42ff-a9d2-efb0e0d3f8dc",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "M5: Site Deployed & Tested (Demo Ready for Jan 20 Meeting)",
-              "description": "Deploy prototype, test across magnumwealthmanagement.com & beyondexitplanning.com (Ionos registrar). Invoice prep.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-20T14:00:00+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "ea133787-0961-4f3e-8140-7e228a3046c0",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "M4: Content & Integrations Ready",
-              "description": "Add newsletter, whitepaper, client events (photos). Check Snappy Kraken email automation, LPL servers, Outlook365 (rod@magnumoc.com).",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-18T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "49d3fc60-76df-4cfe-bc7a-38f83b29895d",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "M3: Compliance PDFs Approved",
-              "description": "Export pages as PDFs for legal/compliance review (workaround for admin portal). Confirm no changes needed.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-17T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "7e637ea9-a501-45eb-9f10-b4e54af5a33b",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "M2: Branding & Design Approved",
-              "description": "Create brand guidelines (colors, look/feel consistency across domains). Wireframes for home, about, services, niche positioning, credibility sections.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-15T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "32faa4b2-844d-4b6b-ad20-b7eaf184c3cb",
-              "project_id": "7462044b-2f69-46bd-b98e-7fc34c63c55f",
-              "title": "Request referral from Louis for other site work opportunity",
-              "description": null,
-              "type_key": "task.coordinate",
-              "state_key": "todo",
-              "priority": 4,
-              "start_at": null,
-              "due_at": "2025-01-07T23:59:00+00:00",
-              "completed_at": null,
-              "props": {
-                "client": "Lewis",
-                "goal_id": null,
-                "referral": "other person for site work",
-                "supporting_milestone_id": null
-              },
-              "project_name": "Quick Monetization Wins"
-            },
-            {
-              "id": "a56c0223-2cf9-4bcb-aabf-f3fa3991338b",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Integrate textures",
-              "description": "https://transparenttextures.com/\nhttps://texturelabs.org/?ct=675\nhttps://texturefabrik.com/category/paper/",
-              "type_key": "task.execute",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "tags": [
-                  "texture-integration",
-                  "design-assets",
-                  "web-development",
-                  "visual-design",
-                  "asset-implementation"
-                ],
-                "_classification": {
-                  "confidence": 0.9,
-                  "model_used": "openrouter",
-                  "classified_at": "2026-01-12T05:55:12.621Z",
-                  "previous_type_key": "task.default"
-                }
-              },
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "a45e7c98-6b8b-42e7-aca5-6a4691c03588",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Use tools for image alterations",
-              "description": "https://www.tooooools.app/",
-              "type_key": "task.execute",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "tags": [
-                  "image-editing",
-                  "tool-usage",
-                  "media-processing",
-                  "digital-content",
-                  "image-alteration"
-                ],
-                "_classification": {
-                  "confidence": 0.9,
-                  "model_used": "openrouter",
-                  "classified_at": "2026-01-12T06:13:23.951Z",
-                  "previous_type_key": "task.default"
-                }
-              },
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "304bd145-930d-4b23-9c21-b8641fc422b0",
-              "project_id": "f85b6c5f-59fb-4e4c-8654-748f793d8f4b",
-              "title": "Client kickoff meeting",
-              "description": "**Updated for Rod (Bob/Rob) Chamberlin - Magnum Wealth Management kickoff.**\n\n- Referral: Phil Velayo (thecadretraining.com)\n- Research complete: See linked [Client Intake Doc](NEW_DOC_LINK) with full profile, firm details, site audit, prep checklist.\n- Meeting Monday—review doc, print questions.\n",
-              "type_key": "task.coordinate.meeting",
-              "state_key": "todo",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "description": null
-              },
-              "project_name": "Tacemus Website Design"
-            },
-            {
-              "id": "94bbd61e-0a77-4232-b6ab-3d97db850f8c",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Improve ontology props to better handle relationships",
-              "description": "Update the props storing ontology data so it separately understands and works with relationship structures.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 4,
-              "start_at": null,
-              "due_at": "2026-01-08T23:59:59+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "69d3f030-9943-44e3-a727-dfa3599d7c38",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Street Smarts Mini Course Specification",
-              "description": "Course spec document based on outline task (bbde523d-4969-4bc4-91d4-b34343cb29b6): core principles (observation, safety, voice, navigation, reflection), games, activities, and bedtime integrations for kids street smarts.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "a8e99b87-4c04-4d5d-bc83-5fe271a13d20",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Goal: Overall Street Smarts Proficiency",
-              "description": "Integrate all skills for comprehensive street safety awareness, assessed via weekly reflections.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "d6716b39-5f01-40fe-b218-b6650439fc9b",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Goal: Effective Self-Reflection",
-              "description": "Children reflect on daily observations and learnings, reinforcing street smarts.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "2b330e0d-945d-44bf-b766-68a3d6dc6c99",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Goal: Location and Direction Awareness",
-              "description": "Kids know safe meeting spots, directions home, and navigation basics.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "e9766031-078a-44e9-ac11-f301d3220f25",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Goal: Confident Communication Skills",
-              "description": "Children use strong voice and assert boundaries confidently in simulations.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "f480708e-4989-42b0-8629-a278d8e24643",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Goal: Develop Safety Intuition",
-              "description": "Kids can identify safe/unsafe scenarios and appropriate responses, via role plays and safe spot games.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "63f830ef-3877-4f39-937d-67a9d8fd8184",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Goal: Master Environmental Observation",
-              "description": "Achieve outcome where kids notice changes, people, and sounds effectively, measured by game performances from observation phase.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "e61ffba9-889c-48b3-9372-4e5236deb58f",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Follow-up calls and log responses for high school outreach",
-              "description": "48 hours after emails, call non-responders. Update 'Local High School Outreach' doc and this focus task with wins/losses/next steps.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "cee178c0-92f1-42df-9806-3191d221d2ff",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Send outreach email to Annapolis Area Christian School (Principal/Activities Dir)",
-              "description": "Use the email draft from 'Local High School Outreach' doc. Pitch AI workshop + BuildOS demo. Start with info@aacs.org. Phone: 410-266-8251. Log response here.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "f3b2e4ba-4fba-412d-9a4a-e507f39bd1af",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Send outreach email to Archbishop Spalding HS (VP Student Life/Admissions)",
-              "description": "Use the email draft from 'Local High School Outreach' doc. Pitch AI workshop + BuildOS demo. Start with info@spaldinghs.org. Phone: 410-969-9105. Log response here.",
-              "type_key": "task.default",
-              "state_key": "todo",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "BuildOS"
-            }
-          ],
-          "total": 236,
-          "message": "Found 50 ontology tasks. Use get_onto_task_details for full information."
-        },
-        "success": true
-      },
-      {
-        "tool": "list_onto_tasks",
-        "result": {
-          "tasks": [
-            {
-              "id": "a397f2b8-0f0f-4385-94af-db6e17bd614f",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Street Smarts Observation Phase Plan",
-              "description": "Phase 1: Build observation skills through games like “What Changed?” (3d2f27ec-e78c-4ed1-8b7b-3a1e1ed8d0a9), “I Spy with Safety Eyes” (3d6cc026-7081-474e-b97f-79ece1585702), “What’s That Sound?” (0bb69306-8586-44e9-978e-302b071cebd4) and related reflections. Incorporates outputs from course outline.",
-              "type_key": "task.default",
-              "state_key": "in_progress",
-              "priority": 3,
-              "start_at": null,
-              "due_at": "2026-01-14T00:00:00+00:00",
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "30bae4c5-e13c-4f0f-b20b-7e61a0de5735",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Street Smarts Reflection and Integration Phase Plan",
-              "description": "Phase 5: Weekly reflections and integration like “Weekly Reflection” (ffa20716-f6ab-48db-80e1-d1cbcd43ef65), daily reflections across activities. Synthesizes all course elements from outline.",
-              "type_key": "task.default",
-              "state_key": "in_progress",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "bf096d94-4445-4b08-878c-e5206d18c574",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Street Smarts Navigation Phase Plan",
-              "description": "Phase 4: Develop directional and location awareness using “Which Way?” and “Find the Safe Spot” activities, with safe places reflection (7e16f470-bff5-4c2d-8f1e-a4b7823ae435). Integrates step 1 outputs.",
-              "type_key": "task.default",
-              "state_key": "in_progress",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "c6bfbc80-3def-4317-8f7c-40212bc30ff4",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Street Smarts Strong Voice Phase Plan",
-              "description": "Phase 3: Practice confident communication with “Say It Strong” (d32738bf-9835-4223-86c9-59de8d229e50) and story reflections (812ea5ee-2f19-4af9-89e4-27efcd63892b). From course outline tasks.",
-              "type_key": "task.default",
-              "state_key": "in_progress",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "4d99241c-4c90-46ee-a21f-5476f9e1c83c",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Street Smarts Safety Intuition Phase Plan",
-              "description": "Phase 2: Teach safe/unsafe recognition with “Safe or Unsafe Role Play” (9eb603a3-fe76-4eb7-a3c6-b420f8f8f519), “Find the Safe Spot” (69a3166a-14e1-4897-a79c-1e1126370f9f), “Which Way?” (81756696-11a6-4cb6-af2a-8a43a9e6daeb) and reflections. Builds on outlined activities.",
-              "type_key": "task.default",
-              "state_key": "in_progress",
-              "priority": 3,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "f5b4add2-e1b0-4d4a-aa98-78599dc2d6ce",
-              "project_id": "7462044b-2f69-46bd-b98e-7fc34c63c55f",
-              "title": "Follow up with Lewis to finish construction site work",
-              "description": null,
-              "type_key": "task.execute",
-              "state_key": "in_progress",
-              "priority": 4,
-              "start_at": null,
-              "due_at": "2025-01-07T23:59:00+00:00",
-              "completed_at": null,
-              "props": {
-                "client": "Lewis",
-                "related": "construction site gig"
-              },
-              "project_name": "Quick Monetization Wins"
-            },
-            {
-              "id": "04e3998b-e1a1-411f-8699-d177fdf1b14c",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Finish Project War Room feature (including spec)",
-              "description": "Complete the specification for the Project War Room feature and finish the overall development of the feature itself. Originally split across two tasks; now merged for focus.",
-              "type_key": "task.execute",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "title": "Finish Project War Room feature",
-                "facets": {
-                  "scale": "micro"
-                },
-                "type_key": "task.execute",
-                "description": "Complete the development of the Project War Room feature."
-              },
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "66da78af-4e0b-4905-966e-638759f6e29d",
-              "project_id": "85c372ae-baeb-4fa5-afdb-62e4a9a155b2",
-              "title": "Ensure well-being of mother and baby",
-              "description": "Monitor and support the health and well-being of both mother and baby.",
-              "type_key": "task.execute",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "title": "Ensure well-being of mother and baby",
-                "facets": {
-                  "scale": "micro"
-                },
-                "type_key": "task.execute",
-                "description": "Monitor and support the health and well-being of both mother and baby."
-              },
-              "project_name": "Levi the Baby"
-            },
-            {
-              "id": "2d454188-0cc5-4511-bd8c-c2b1496f5fdf",
-              "project_id": "153dea7b-1fc7-4f68-b014-cd2b00c572ec",
-              "title": "Draft thank you email for alaska",
-              "description": "Includes discount codes\n\nhttps://docs.google.com/document/d/1LaLCtsqlomvjYdDyYedMSFSfWLFRsLbZOlMMRjuX448/edit?tab=t.0#heading=h.m6dbusi4uduu",
-              "type_key": "task.create",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "title": "Draft thank you email for alaska",
-                "facets": {
-                  "scale": "small"
-                },
-                "type_key": "task.create",
-                "description": "Includes discount codes\n\nhttps://docs.google.com/document/d/1LaLCtsqlomvjYdDyYedMSFSfWLFRsLbZOlMMRjuX448/edit?tab=t.0#heading=h.m6dbusi4uduu"
-              },
-              "project_name": "The Cadre"
-            },
-            {
-              "id": "2a614e7a-b55e-495d-9c4d-66d3ea1828a2",
-              "project_id": "be5a3d9d-7633-44e5-9562-efb720ca7d04",
-              "title": "Draft First LinkedIn Post",
-              "description": "Create the first LinkedIn post as per the content creation guide.",
-              "type_key": "task.create",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "title": "Draft First LinkedIn Post",
-                "facets": {
-                  "scale": "micro"
-                },
-                "type_key": "task.create",
-                "description": "Create the first LinkedIn post as per the content creation guide."
-              },
-              "project_name": "LinkedIn Posting Project"
-            },
-            {
-              "id": "1ed7eb6b-bd2e-4f7f-a07a-521e7041d498",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Work on reactivation emails",
-              "description": "Create reactivation email strategy.",
-              "type_key": "task.create.marketing",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": "2025-10-28T01:50:00+00:00",
-              "completed_at": null,
-              "props": {
-                "title": "Work on reactivation emails",
-                "facets": {
-                  "scale": "micro"
-                },
-                "type_key": "task.create.marketing",
-                "description": "Create reactivation email strategy."
-              },
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "56d3f0ff-86d3-4f87-b419-b4e451940442",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Develop Education Hub for BuildOS",
-              "description": "Create an educational hub to provide users with resources and tutorials on how to effectively use BuildOS.",
-              "type_key": "task.create.education",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "title": "Develop Education Hub for BuildOS",
-                "facets": {
-                  "scale": "small"
-                },
-                "type_key": "task.create.education",
-                "description": "Create an educational hub to provide users with resources and tutorials on how to effectively use BuildOS."
-              },
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "82dfb1b6-e39d-48cb-8c32-d13c3e620daa",
-              "project_id": "f7824d94-0de0-460c-80dd-67bf11f6445a",
-              "title": "Create detailed BuildOS guides for Developers",
-              "description": "Draft comprehensive guides on how different user types can use BuildOS, covering Developer workflows and integrations.",
-              "type_key": "task.create.documentation",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "title": "Create detailed BuildOS guides for Developers",
-                "facets": {
-                  "scale": "small"
-                },
-                "type_key": "task.create.documentation",
-                "description": "Draft comprehensive guides on how different user types can use BuildOS, covering Developer workflows and integrations."
-              },
-              "project_name": "BuildOS"
-            },
-            {
-              "id": "7e16f470-bff5-4c2d-8f1e-a4b7823ae435",
-              "project_id": "9e5cf915-48cc-4827-ac05-366c63ced2f1",
-              "title": "Street Smarts Reflection – Safe Places",
-              "description": "Reflection: – Ask: “What places feel safest to you at home or outside?”",
-              "type_key": "task.execute",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "title": "Street Smarts Reflection – Safe Places",
-                "facets": {
-                  "scale": "micro"
-                },
-                "type_key": "task.execute",
-                "description": "Reflection: – Ask: “What places feel safest to you at home or outside?”"
-              },
-              "project_name": "Mini Course for Kids: Street Smart"
-            },
-            {
-              "id": "f1a7cfc5-1b2f-4d08-b884-ba9ab72801a6",
-              "project_id": "153dea7b-1fc7-4f68-b014-cd2b00c572ec",
-              "title": "Create Educational Content Schedule",
-              "description": null,
-              "type_key": "task.plan",
-              "state_key": "in_progress",
-              "priority": null,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {
-                "title": "Create Educational Content Schedule",
-                "facets": {
-                  "scale": "micro"
-                },
-                "type_key": "task.plan",
-                "description": ""
-              },
-              "project_name": "The Cadre"
-            },
-            {
-              "id": "e2d74cdb-79e6-4cf4-abbc-6c66054cb85c",
-              "project_id": "5e2e5e0b-a85a-4048-a86a-609b2b949abf",
-              "title": "Research nesting practices and psychology",
-              "description": null,
-              "type_key": "task.execute",
-              "state_key": "in_progress",
-              "priority": 1,
-              "start_at": null,
-              "due_at": null,
-              "completed_at": null,
-              "props": {},
-              "project_name": "Comfort & Nourishment Newsletter Article"
-            }
-          ],
-          "total": 16,
-          "message": "Found 16 ontology tasks. Use get_onto_task_details for full information."
-        },
-        "success": true
-      }
-    ]
+    "response": "{\"success\": true, \"summary\": \"Analyzed 14 documents across strategic partnerships (AAEDC/Visit Annapolis), active client projects (Rob Chamberlin wealth management), and internal processes (brand development, positioning). Identified critical time-sensitive dependencies: BWI Welcome Center proposal and Victoria Zelefsky contact (48-hour window), compliance-heavy client work with Jan 20 demo deadline, and county accessibility contract opportunities. Flagged gaps in concurrent project management structure and brand system implementation.\", \"data\": {\"key_requirements\": {\"strategic_partnerships\": [{\"partner\": \"AAEDC\", \"contact\": \"Victoria Zelefsky\", \"opportunity\": \"Preferred AI implementation partner for 1000+ member businesses\", \"revenue_potential\": \"$250K-750K Year 1\", \"urgency\": \"CRITICAL\", \"deadline\": \"This week - contact post-panel\", \"action\": \"Email partnership proposal, suggest AI workshop\"}, {\"partner\": \"Visit Annapolis\", \"opportunity\": \"BWI Welcome Center digital infrastructure\", \"revenue_potential\": \"$130K-628K Year 1\", \"urgency\": \"CRITICAL\", \"deadline\": \"This week - time sensitive\", \"action\": \"Draft digital infrastructure proposal, position Glen Burnie as BWI tourism corridor\"}, {\"partner\": \"Anne Arundel County\", \"opportunity\": \"WCAG 2.1 AA accessibility compliance contracts\", \"approach\": \"Free audit to demonstrate value\", \"contacts\": [\"Zoraida Rodriguez-Keeton\", \"Lindsay Unitas\"], \"urgency\": \"HIGH\"}], \"active_client_projects\": [{\"client\": \"Rod Chamberlin / Magnum Wealth Management\", \"industry\": \"Wealth management (LPL Financial)\", \"compliance_requirements\": [\"FINRA/SIPC disclaimers\", \"Legal/compliance approval process\", \"PDF export workflow for approvals\"], \"domains\": [\"magnumwealthmanagement.com\", \"beyondexitplanning.com\"], \"phases\": [{\"phase\": 1, \"focus\": \"Design & Branding\", \"target\": \"Jan 15\", \"status\": \"In progress\"}, {\"phase\": 2, \"focus\": \"Compliance & Content\", \"target\": \"Jan 17\", \"status\": \"Pending\"}, {\"phase\": 3, \"focus\": \"Deploy & Launch\", \"target\": \"Jan 20/25\", \"status\": \"Pending demo\"}], \"risks\": [\"Strict compliance process\", \"Email through LPL servers\", \"Two domains with common branding\"]}], \"internal_processes\": [{\"type\": \"Brand Development\", \"document\": \"Visual Brand Development Process\", \"gaps\": [\"Phase 1-6 templates incomplete\", \"No design tokens defined\", \"Missing component patterns\"]}, {\"type\": \"Positioning\", \"document\": \"Tacemus Positioning\", \"shift\": \"From 'pick me' to 'with or without you' energy\", \"status\": \"Interview answers captured, needs synthesis\"}, {\"type\": \"Client Intake\", \"templates\": [\"Client Intake Template\", \"Intake Template: Ian Miner\"], \"status\": \"Templates ready, process not activated for expo leads\"}]}, \"dependencies\": [{\"from\": \"AAEDC Partnership\", \"to\": \"Glen Burnie Revitalization\", \"relationship\": \"AAEDC is implementation partner - Tacemus AI partnership feeds directly into revitalization efforts\"}, {\"from\": \"Visit Annapolis Partnership\", \"to\": \"Glen Burnie Revitalization\", \"relationship\": \"BWI Welcome Center + Glen Burnie proximity = tourism corridor opportunity\"}, {\"from\": \"Rob Chamberlin Website\", \"to\": \"Compliance Approval\", \"relationship\": \"All changes require legal/compliance PDF review before deployment\"}, {\"from"
   },
-  "toolCallsMade": 2,
-  "tokensUsed": 21528
+  "toolCallsMade": 0,
+  "tokensUsed": 51645
 }
 ```
 
 ## Token Estimates
 
 - **System Prompt:** ~42 tokens
-- **User Prompt:** ~16523 tokens
-- **Total Estimate:** ~16565 tokens
+- **User Prompt:** ~48804 tokens
+- **Total Estimate:** ~48846 tokens
+
 
 ---
-
-_This file is automatically generated in development mode for prompt auditing purposes._
+*This file is automatically generated in development mode for prompt auditing purposes.*

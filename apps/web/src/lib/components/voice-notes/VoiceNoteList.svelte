@@ -6,20 +6,29 @@
 	import VoiceNotePlayer from './VoiceNotePlayer.svelte';
 	import type { VoiceNote } from '$lib/types/voice-notes';
 
+	type TimestampMode = 'relative' | 'absolute' | 'both';
+
 	interface Props {
 		voiceNotes: VoiceNote[];
 		showTranscript?: boolean;
 		onDelete?: (id: string) => void;
 		/** Compact mode for embedded use */
 		compact?: boolean;
+		timestampMode?: TimestampMode;
 	}
 
-	let { voiceNotes, showTranscript = true, onDelete, compact = false }: Props = $props();
+	let {
+		voiceNotes,
+		showTranscript = true,
+		onDelete,
+		compact = false,
+		timestampMode = 'relative'
+	}: Props = $props();
 	let deleteTarget = $state<VoiceNote | null>(null);
 	let deleteLoading = $state(false);
 	let deleteError = $state('');
 
-	function formatDate(value: string): string {
+	function formatRelative(value: string): string {
 		try {
 			const date = new Date(value);
 			const now = new Date();
@@ -36,6 +45,37 @@
 		} catch {
 			return value;
 		}
+	}
+
+	function formatAbsolute(value: string): string {
+		try {
+			const date = new Date(value);
+			const now = new Date();
+			const includeYear = now.getFullYear() !== date.getFullYear();
+			return date.toLocaleString(undefined, {
+				month: 'short',
+				day: 'numeric',
+				...(includeYear ? { year: 'numeric' } : {}),
+				hour: 'numeric',
+				minute: '2-digit'
+			});
+		} catch {
+			return value;
+		}
+	}
+
+	function formatTimestamp(value: string): string {
+		if (timestampMode === 'absolute') {
+			return formatAbsolute(value);
+		}
+		if (timestampMode === 'both') {
+			return `${formatAbsolute(value)} · ${formatRelative(value)}`;
+		}
+		return formatRelative(value);
+	}
+
+	function getTimestampValue(voiceNote: VoiceNote): string {
+		return voiceNote.recorded_at ?? voiceNote.created_at;
 	}
 
 	function formatDuration(seconds: number | null): string {
@@ -84,7 +124,7 @@
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2 text-[0.6rem] text-muted-foreground">
 						<span class="font-medium uppercase tracking-wide">
-							{formatDate(voiceNote.created_at)}
+							{formatTimestamp(getTimestampValue(voiceNote))}
 						</span>
 						<span class="text-border">·</span>
 						<span class="tabular-nums"

@@ -146,11 +146,11 @@ export class ToolSelectionService {
 		// STEP 1: Compute default pool from context type (canonical source)
 		const contextDefaultTools = this.getDefaultToolPool(normalizedContextType);
 
-		// STEP 2: Apply focus filtering
-		const focusFilteredTools = this.filterToolsForFocus(
-			contextDefaultTools,
-			analysisContext.projectFocus
-		);
+		// STEP 2: Apply focus filtering (skip when tool selection is preselected)
+		const applyFocusFilter = !llmSelectionDisabled;
+		const focusFilteredTools = applyFocusFilter
+			? this.filterToolsForFocus(contextDefaultTools, analysisContext.projectFocus)
+			: contextDefaultTools;
 
 		// STEP 3: Extract names for comparison
 		const defaultToolNames = extractToolNamesFromDefinitions(focusFilteredTools);

@@ -7,7 +7,15 @@
 	- RichMarkdownEditor for Markdown content
 	- Linked entities and tags management
 	- High information density layout
-	- Inkprint design language
+	- Svelte 5 runes and modern patterns
+	- Inkprint design language with semantic textures
+
+	Inkprint Patterns:
+	- Header: strip texture (wt-paper) - separation band
+	- Footer: grain texture (wt-paper) - action surface
+	- Error states: static texture (wt-card) - blocker emphasis
+	- Buttons: grain texture + pressable + appropriate weight
+	- Metadata: micro-label pattern for compact, scannable info
 
 	Documentation: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 -->
@@ -29,6 +37,7 @@
 	import DocumentVersionHistoryPanel from './DocumentVersionHistoryPanel.svelte';
 	import DocumentVersionDiffDrawer from './DocumentVersionDiffDrawer.svelte';
 	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
+	import DocumentVoiceNotesPanel from './DocumentVoiceNotesPanel.svelte';
 	import type { VersionListItem } from './DocumentVersionHistoryPanel.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import TaskEditModal from './TaskEditModal.svelte';
@@ -36,6 +45,7 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
 	import { DOCUMENT_STATES } from '$lib/types/onto';
+	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import {
@@ -173,6 +183,12 @@
 	let latestVersionNumber = $state(0);
 	let versionHistoryPanelRef = $state<{ refresh: () => void } | null>(null);
 	let isAdminUser = $state(false);
+	type VoiceNotesPanelRef = {
+		refresh: () => void;
+		upsertVoiceNote: (note: VoiceNote) => void;
+	};
+	let voiceNotesPanelRef = $state<VoiceNotesPanelRef | null>(null);
+	let voiceNotesPanelMobileRef = $state<VoiceNotesPanelRef | null>(null);
 
 	// Build focus for chat about this document
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -526,6 +542,17 @@
 		onSaved?.();
 	}
 
+	function handleVoiceNoteSegmentSaved(note: VoiceNote) {
+		voiceNotesPanelRef?.upsertVoiceNote(note);
+		voiceNotesPanelMobileRef?.upsertVoiceNote(note);
+	}
+
+	function handleVoiceNoteSegmentError(message: string) {
+		if (message) {
+			toastService.error(message);
+		}
+	}
+
 	// Check admin access for restore permission
 	// Since we don't have a dedicated access check endpoint, we'll be optimistic
 	// and show the restore button. The API will enforce permissions anyway.
@@ -569,9 +596,9 @@
 	customClasses="lg:!max-w-6xl xl:!max-w-7xl"
 >
 	{#snippet header()}
-		<!-- Compact Inkprint header -->
+		<!-- Compact Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -594,12 +621,13 @@
 							</Badge>
 						{/if}
 					</div>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{#if createdAt}Created {new Date(createdAt).toLocaleDateString(undefined, {
+					<!-- Use micro-label pattern for metadata -->
+					<p class="micro-label text-muted-foreground/70 mt-0.5">
+						{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(undefined, {
 								month: 'short',
 								day: 'numeric'
 							})}{/if}{#if updatedAt && updatedAt !== createdAt}
-							· Updated {new Date(updatedAt).toLocaleDateString(undefined, {
+							· UPDATED {new Date(updatedAt).toLocaleDateString(undefined, {
 								month: 'short',
 								day: 'numeric'
 							})}{/if}
@@ -613,7 +641,7 @@
 						type="button"
 						onclick={openChatAbout}
 						disabled={loading || saving}
-						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 						title="Chat about this document"
 					>
 						<img
@@ -628,7 +656,7 @@
 					type="button"
 					onclick={closeModal}
 					disabled={saving}
-					class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+					class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />
@@ -726,30 +754,28 @@
 									</div>
 								{/if}
 
-								<!-- Metadata (Activity Log moved to right rail) -->
+								<!-- Metadata with micro-labels -->
 								{#if isEditing}
-									<div
-										class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground"
-									>
-										<div class="flex items-center justify-between">
-											<span>Created</span>
-											<span class="font-mono"
+									<div class="pt-2 border-t border-border space-y-1">
+										<div class="flex items-center justify-between gap-2">
+											<span class="micro-label text-muted-foreground/70">CREATED</span>
+											<span class="text-xs font-mono text-foreground"
 												>{createdAt
 													? new Date(createdAt).toLocaleDateString()
 													: '—'}</span
 											>
 										</div>
-										<div class="flex items-center justify-between">
-											<span>Updated</span>
-											<span class="font-mono"
+										<div class="flex items-center justify-between gap-2">
+											<span class="micro-label text-muted-foreground/70">UPDATED</span>
+											<span class="text-xs font-mono text-foreground"
 												>{updatedAt
 													? new Date(updatedAt).toLocaleDateString()
 													: '—'}</span
 											>
 										</div>
 										<div class="flex items-start justify-between gap-2">
-											<span class="shrink-0">ID</span>
-											<span class="font-mono truncate text-right"
+											<span class="micro-label text-muted-foreground/70 shrink-0">ID</span>
+											<span class="text-xs font-mono text-foreground truncate text-right"
 												>{activeDocumentId}</span
 											>
 										</div>
@@ -776,13 +802,9 @@
 							<!-- Content editor - the main focus -->
 							<div class="p-3 flex-1 flex flex-col min-h-0">
 								<div class="flex items-center justify-between gap-2 mb-2 shrink-0">
-									<h4
-										class="text-xs font-semibold text-foreground uppercase tracking-wide"
-									>
-										Content
-									</h4>
-									<span class="text-[10px] text-muted-foreground hidden sm:inline"
-										>Markdown supported</span
+									<h4 class="micro-label text-foreground">CONTENT</h4>
+									<span class="micro-label text-muted-foreground/70 hidden sm:inline"
+										>MARKDOWN</span
 									>
 								</div>
 								<div class="flex-1 min-h-0">
@@ -791,24 +813,29 @@
 										maxLength={50000}
 										helpText=""
 										fillHeight={true}
+										voiceNoteSource="document-modal"
+										voiceNoteLinkedEntityType={activeDocumentId ? 'document' : ''}
+										voiceNoteLinkedEntityId={activeDocumentId ?? ''}
+										onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+										onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
 									/>
 								</div>
 							</div>
 
 							<!-- Mobile: Collapsible metadata section at bottom -->
-							<div class="lg:hidden border-t border-border bg-muted">
+							<div class="lg:hidden border-t border-border bg-muted tx tx-strip tx-weak wt-paper">
 								<!-- Toggle button -->
 								<button
 									type="button"
 									onclick={() => (showMobileMetadata = !showMobileMetadata)}
-									class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+									class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted/80 transition-colors pressable"
 								>
 									<span class="flex items-center gap-2">
 										<Settings2 class="w-4 h-4 text-muted-foreground" />
-										Document Settings
+										<span class="micro-label text-foreground">SETTINGS</span>
 										{#if linkedCount > 0 || tagCount > 0}
 											<span
-												class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full"
+												class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-background text-foreground rounded-full"
 											>
 												{linkedCount + tagCount}
 											</span>
@@ -881,6 +908,18 @@
 											</div>
 										{/if}
 
+										<!-- Voice Recordings -->
+										{#if isEditing && activeDocumentId}
+											<div class="pt-2 border-t border-border">
+												<DocumentVoiceNotesPanel
+													bind:this={voiceNotesPanelMobileRef}
+													documentId={activeDocumentId}
+													{projectId}
+													limit={10}
+												/>
+											</div>
+										{/if}
+
 										<!-- Activity Log -->
 										{#if isEditing && activeDocumentId}
 											<div class="pt-2 border-t border-border">
@@ -892,14 +931,12 @@
 											</div>
 										{/if}
 
-										<!-- Metadata -->
+										<!-- Metadata with micro-labels -->
 										{#if isEditing}
-											<div
-												class="pt-2 border-t border-border space-y-1 text-[10px] text-muted-foreground"
-											>
-												<div class="flex items-center justify-between">
-													<span>Created</span>
-													<span class="font-mono"
+											<div class="pt-2 border-t border-border space-y-1">
+												<div class="flex items-center justify-between gap-2">
+													<span class="micro-label text-muted-foreground/70">CREATED</span>
+													<span class="text-xs font-mono text-foreground"
 														>{createdAt
 															? new Date(
 																	createdAt
@@ -907,9 +944,9 @@
 															: '—'}</span
 													>
 												</div>
-												<div class="flex items-center justify-between">
-													<span>Updated</span>
-													<span class="font-mono"
+												<div class="flex items-center justify-between gap-2">
+													<span class="micro-label text-muted-foreground/70">UPDATED</span>
+													<span class="text-xs font-mono text-foreground"
 														>{updatedAt
 															? new Date(
 																	updatedAt
@@ -918,8 +955,10 @@
 													>
 												</div>
 												<div class="flex items-start justify-between gap-2">
-													<span class="shrink-0">ID</span>
-													<span class="font-mono truncate text-right"
+													<span class="micro-label text-muted-foreground/70 shrink-0"
+														>ID</span
+													>
+													<span class="text-xs font-mono text-foreground truncate text-right"
 														>{activeDocumentId}</span
 													>
 												</div>
@@ -946,6 +985,14 @@
 										onRestoreRequested={handleRestoreRequested}
 									/>
 
+									<!-- Voice Recordings -->
+									<DocumentVoiceNotesPanel
+										bind:this={voiceNotesPanelRef}
+										documentId={activeDocumentId}
+										{projectId}
+										limit={20}
+									/>
+
 									<!-- Activity Log -->
 									<EntityActivityLog
 										entityType="document"
@@ -959,7 +1006,7 @@
 
 					{#if globalFormError}
 						<div
-							class="mx-3 mb-3 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+							class="mx-3 mb-3 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak wt-card"
 						>
 							<span class="text-sm text-destructive">{globalFormError}</span>
 						</div>
@@ -978,7 +1025,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
+			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak wt-paper"
 		>
 			{#if activeDocumentId}
 				<Button
@@ -986,7 +1033,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={() => (deleteModalOpen = true)}
-					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8"
+					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
 				>
 					<Trash2 class="w-3.5 h-3.5" />
 					<span class="hidden sm:inline ml-1">Delete</span>
@@ -1001,7 +1048,7 @@
 					size="sm"
 					onclick={closeModal}
 					disabled={saving}
-					class="text-xs h-8"
+					class="text-xs h-8 pressable"
 				>
 					Cancel
 				</Button>
@@ -1012,7 +1059,7 @@
 					size="sm"
 					loading={saving}
 					disabled={saving || !title.trim()}
-					class="text-xs h-8 pressable"
+					class="text-xs h-8 pressable tx tx-grain tx-weak wt-card"
 				>
 					<Save class="w-3.5 h-3.5" />
 					<span class="ml-1">{isEditing ? 'Save' : 'Create'}</span>

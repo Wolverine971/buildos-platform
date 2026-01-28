@@ -68,6 +68,8 @@
 		vocabularyTerms?: string;
 		// Voice note storage props
 		voiceNoteSource?: string;
+		voiceNoteLinkedEntityType?: string;
+		voiceNoteLinkedEntityId?: string;
 		voiceNoteGroupId?: string | null;
 		onVoiceNoteGroupReady?: (groupId: string) => void;
 		onVoiceNoteSegmentSaved?: (voiceNote: VoiceNote) => void;
@@ -101,6 +103,8 @@
 		vocabularyTerms = '',
 		// Voice note storage
 		voiceNoteSource = '',
+		voiceNoteLinkedEntityType = '',
+		voiceNoteLinkedEntityId = '',
 		voiceNoteGroupId = $bindable(null),
 		onVoiceNoteGroupReady,
 		onVoiceNoteSegmentSaved,
@@ -729,7 +733,12 @@
 		const existing = groupCreatePromises.get(groupId);
 		if (existing) return existing;
 
-		const promise = createVoiceNoteGroup({ id: groupId, metadata: buildGroupMetadata() })
+		const promise = createVoiceNoteGroup({
+			id: groupId,
+			metadata: buildGroupMetadata(),
+			linkedEntityType: voiceNoteLinkedEntityType || undefined,
+			linkedEntityId: voiceNoteLinkedEntityId || undefined
+		})
 			.then(() => groupId)
 			.catch((error) => {
 				groupCreatePromises.delete(groupId);
@@ -869,6 +878,8 @@
 				groupId,
 				segmentIndex,
 				recordedAt,
+				linkedEntityType: voiceNoteLinkedEntityType || undefined,
+				linkedEntityId: voiceNoteLinkedEntityId || undefined,
 				transcript: transcript ?? null,
 				transcriptionStatus: transcriptionStatus ?? null,
 				transcriptionSource: transcriptionSource ?? null,

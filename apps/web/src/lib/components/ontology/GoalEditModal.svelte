@@ -384,9 +384,9 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Header: Strip texture (semantic band) + Plate weight (system authority) -->
+		<!-- Header: Frame texture (structural authority) + Plate weight (system authority) -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-4 py-2.5 flex items-center justify-between gap-2.5 tx tx-strip tx-weak wt-plate"
+			class="flex-shrink-0 bg-muted border-b border-border px-4 py-2.5 flex items-center justify-between gap-2.5 tx tx-frame tx-weak wt-plate sp-block"
 		>
 			<div class="flex items-center gap-2.5 min-w-0 flex-1">
 				<div
@@ -398,15 +398,15 @@
 					<h2 class="text-base font-semibold leading-none truncate text-foreground">
 						{name || goal?.name || 'Goal'}
 					</h2>
-					<p class="text-[10px] text-muted-foreground mt-1 leading-none">
-						{#if goal?.created_at}Created {new Date(goal.created_at).toLocaleDateString(
-								undefined,
+					<p class="text-[10px] text-muted-foreground mt-1 leading-none uppercase tracking-wide">
+						{#if goal?.created_at}CREATED: {new Date(goal.created_at).toLocaleDateString(
+								'en-US',
 								{ month: 'short', day: 'numeric' }
-							)}{/if}{#if goal?.updated_at && goal.updated_at !== goal.created_at}
-							· Updated {new Date(goal.updated_at).toLocaleDateString(undefined, {
+							).toUpperCase()}{/if}{#if goal?.updated_at && goal.updated_at !== goal.created_at}
+							· UPDATED: {new Date(goal.updated_at).toLocaleDateString('en-US', {
 								month: 'short',
 								day: 'numeric'
-							})}{/if}
+							}).toUpperCase()}{/if}
 					</p>
 				</div>
 			</div>
@@ -436,30 +436,30 @@
 	{/snippet}
 
 	{#snippet children()}
-		<!-- Main content: Maximum information density on 8px grid -->
-		<div class="px-4 py-3">
+		<!-- Main content: Maximum information density (Mode A: tight spacing) -->
+		<div class="px-3 py-2.5 tx tx-grain tx-weak">
 			{#if isLoading}
 				<div
-					class="flex items-center justify-center py-12 rounded-lg bg-muted/30 tx tx-pulse tx-weak"
+					class="flex items-center justify-center py-12 rounded-lg bg-muted/30 tx tx-pulse tx-weak sp-block"
 				>
 					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
 				</div>
 			{:else if !goal}
 				<div
-					class="flex items-center justify-center py-8 rounded-lg border-2 border-dashed border-destructive/30 bg-destructive/5 tx tx-static tx-weak"
+					class="flex items-center justify-center py-8 rounded-lg border-2 border-dashed border-destructive/30 bg-destructive/5 tx tx-static tx-weak sp-block"
 				>
 					<p class="text-xs font-semibold text-destructive">Goal not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
 					<!-- Main Form: Paper weight for standard working state -->
-					<div class="lg:col-span-2 wt-paper">
+					<div class="lg:col-span-2 wt-paper sp-block p-2">
 						<form
 							onsubmit={(e) => {
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-3"
+							class="space-y-2"
 						>
 							<FormField
 								label="Goal Name"
@@ -601,7 +601,7 @@
 					</div>
 
 					<!-- Sidebar: Card weight (important elevation) -->
-					<div class="space-y-3 wt-card">
+					<div class="space-y-2 wt-card sp-block">
 						<!-- Linked Entities (Thread texture for relationships) -->
 						<LinkedEntities
 							sourceId={goalId}
@@ -629,9 +629,7 @@
 						{#if goal?.props?.tags?.length}
 							<Card variant="elevated" texture="frame" weight="card">
 								<CardHeader variant="compact">
-									<h3
-										class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"
-									>
+									<h3 class="micro-label font-semibold flex items-center gap-1.5">
 										<span class="w-1 h-1 bg-accent rounded-full"></span>
 										Tags
 									</h3>
@@ -645,19 +643,15 @@
 						<!-- Metadata (Frame + Card) -->
 						<Card variant="elevated" texture="frame" weight="card">
 							<CardHeader variant="compact">
-								<h3
-									class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"
-								>
+								<h3 class="micro-label font-semibold flex items-center gap-1.5">
 									<span class="w-1 h-1 bg-accent rounded-full"></span>
 									Metadata
 								</h3>
 							</CardHeader>
 							<CardBody padding="sm">
-								<dl class="space-y-1">
+								<dl class="space-y-0.5">
 									<div class="flex justify-between gap-2 items-start">
-										<dt class="text-[10px] text-muted-foreground shrink-0">
-											ID
-										</dt>
+										<dt class="micro-label shrink-0">ID</dt>
 										<dd
 											class="font-mono text-[9px] text-muted-foreground break-all text-right leading-tight"
 										>
@@ -667,9 +661,7 @@
 
 									{#if goal.created_at}
 										<div class="flex justify-between gap-2">
-											<dt class="text-[10px] text-muted-foreground">
-												Created
-											</dt>
+											<dt class="micro-label">Created</dt>
 											<dd class="text-[10px] text-foreground">
 												{new Date(goal.created_at).toLocaleDateString(
 													undefined,
@@ -685,9 +677,7 @@
 
 									{#if goal.updated_at}
 										<div class="flex justify-between gap-2">
-											<dt class="text-[10px] text-muted-foreground">
-												Updated
-											</dt>
+											<dt class="micro-label">Updated</dt>
 											<dd class="text-[10px] text-foreground">
 												{new Date(goal.updated_at).toLocaleDateString(
 													undefined,
@@ -714,7 +704,7 @@
 				</div>
 
 				<!-- Comments (Thread texture for collaboration) -->
-				<div class="mt-4 pt-4 border-t border-border/80 tx tx-thread tx-weak">
+				<div class="mt-3 pt-3 border-t border-border/80 tx tx-thread tx-weak sp-block">
 					<EntityCommentsSection {projectId} entityType="goal" entityId={goalId} />
 				</div>
 			{/if}
@@ -725,7 +715,7 @@
 	{#snippet footer()}
 		{#if !isLoading && goal}
 			<div
-				class="flex items-center justify-between gap-2.5 px-4 py-2.5 border-t border-border bg-muted tx tx-grain tx-weak wt-plate"
+				class="flex items-center justify-between gap-2.5 px-4 py-2.5 border-t border-border bg-muted tx tx-grain tx-weak wt-plate sp-block"
 			>
 				<!-- Delete button on left -->
 				<Button

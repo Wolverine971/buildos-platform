@@ -361,31 +361,29 @@
 	showCloseButton={false}
 >
 	{#snippet header()}
-		<!-- Compact Inkprint header -->
+		<!-- Dense Inkprint header (Mode A) -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
+			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper sp-block"
 		>
-			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+			<div class="flex items-center gap-2 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
+					class="flex h-8 w-8 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
-					<Clock class="w-5 h-5" />
+					<Clock class="w-4 h-4" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<h2
-						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
-					>
+					<h2 class="text-sm font-semibold leading-tight truncate text-foreground">
 						{name || plan?.name || 'Plan'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-						{#if plan?.created_at}Created {new Date(plan.created_at).toLocaleDateString(
+					<p class="micro-label mt-0.5">
+						{#if plan?.created_at}CREATED {new Date(plan.created_at).toLocaleDateString(
 								undefined,
 								{ month: 'short', day: 'numeric' }
-							)}{/if}{#if plan?.updated_at && plan.updated_at !== plan.created_at}
-							· Updated {new Date(plan.updated_at).toLocaleDateString(undefined, {
+							).toUpperCase()}{/if}{#if plan?.updated_at && plan.updated_at !== plan.created_at}
+							· UPDATED {new Date(plan.updated_at).toLocaleDateString(undefined, {
 								month: 'short',
 								day: 'numeric'
-							})}{/if}
+							}).toUpperCase()}{/if}
 					</p>
 				</div>
 			</div>
@@ -395,13 +393,13 @@
 					type="button"
 					onclick={openChatAbout}
 					disabled={isLoading || isSaving || !plan}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 					title="Chat about this plan"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this plan"
-						class="w-5 h-5 rounded object-cover"
+						class="w-4 h-4 rounded object-cover"
 					/>
 				</button>
 				<!-- Close button -->
@@ -409,49 +407,42 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper dark:hover:border-red-400/50 dark:hover:text-red-400"
 					aria-label="Close modal"
 				>
-					<X class="w-5 h-5" />
+					<X class="w-4 h-4" />
 				</button>
 			</div>
 		</div>
 	{/snippet}
 
 	{#snippet children()}
-		<!-- Main content - minimal padding on mobile -->
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<!-- Main content - Dense Mode A spacing -->
+		<div class="p-3">
 			{#if isLoading}
-				<div class="flex items-center justify-center py-16">
-					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
+				<div class="flex items-center justify-center py-12">
+					<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
 				</div>
 			{:else if !plan}
-				<div class="text-center py-16">
-					<p class="text-destructive">Plan not found</p>
+				<div class="text-center py-12">
+					<p class="text-sm text-destructive">Plan not found</p>
 				</div>
 			{:else}
-				<div class="grid gap-6 lg:grid-cols-3">
-					<section class="space-y-6 lg:col-span-2">
-						<Card class="shadow-ink">
-							<CardHeader
-								variant="default"
-								class="flex items-center justify-between tx tx-frame tx-weak"
-							>
+				<div class="grid gap-3 lg:grid-cols-3">
+					<section class="space-y-3 lg:col-span-2">
+						<Card class="shadow-ink tx tx-frame tx-weak wt-paper sp-block">
+							<CardHeader variant="default" class="flex items-center justify-between">
 								<div>
-									<p
-										class="text-xs font-semibold uppercase tracking-[0.3em] text-accent"
-									>
-										Plan details
-									</p>
+									<p class="micro-label text-accent">PLAN DETAILS</p>
 								</div>
 							</CardHeader>
-							<CardBody class="space-y-5">
+							<CardBody class="space-y-3">
 								<form
 									onsubmit={(event) => {
 										event.preventDefault();
 										handleSave();
 									}}
-									class="space-y-3 sm:space-y-4"
+									class="space-y-2"
 								>
 									<FormField label="Plan name" labelFor="plan-name" required>
 										<TextInput
@@ -496,7 +487,7 @@
 										/>
 									</FormField>
 
-									<div class="grid gap-4 sm:grid-cols-2">
+									<div class="grid gap-2 sm:grid-cols-2">
 										<FormField
 											label="Start date"
 											labelFor="plan-start"
@@ -555,7 +546,7 @@
 
 									{#if error}
 										<div
-											class="rounded border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive tx tx-static tx-weak"
+											class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive tx tx-static tx-weak wt-card sp-block"
 										>
 											{error}
 										</div>
@@ -565,35 +556,27 @@
 						</Card>
 					</section>
 
-					<div class="space-y-4">
-						<Card class="shadow-ink">
+					<div class="space-y-3">
+						<Card class="shadow-ink tx tx-frame tx-weak wt-paper sp-block">
 							<CardHeader class="flex items-center gap-2">
 								<Clock class="w-4 h-4 text-accent" />
-								<h4
-									class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-								>
-									Timeline insight
-								</h4>
+								<h4 class="micro-label text-muted-foreground">TIMELINE INSIGHT</h4>
 							</CardHeader>
-							<CardBody class="space-y-3">
-								<div class="grid grid-cols-2 gap-3 text-sm">
-									<div class="rounded bg-muted p-3 border border-border">
-										<p
-											class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
-										>
-											Start
-										</p>
-										<p class="font-semibold text-foreground">
+							<CardBody class="space-y-2">
+								<div class="grid grid-cols-2 gap-2 text-sm">
+									<div
+										class="rounded-lg bg-muted p-2 border border-border tx tx-grain tx-weak wt-paper sp-inline"
+									>
+										<p class="micro-label">START</p>
+										<p class="font-semibold text-foreground text-xs">
 											{startLabel}
 										</p>
 									</div>
-									<div class="rounded bg-muted p-3 border border-border">
-										<p
-											class="text-xs uppercase tracking-[0.3em] text-muted-foreground"
-										>
-											End
-										</p>
-										<p class="font-semibold text-foreground">
+									<div
+										class="rounded-lg bg-muted p-2 border border-border tx tx-grain tx-weak wt-paper sp-inline"
+									>
+										<p class="micro-label">END</p>
+										<p class="font-semibold text-foreground text-xs">
 											{endLabel}
 										</p>
 									</div>
@@ -613,13 +596,9 @@
 
 						<!-- Tags (from classification) -->
 						{#if plan?.props?.tags?.length}
-							<Card class="shadow-ink">
+							<Card class="shadow-ink tx tx-frame tx-weak wt-paper sp-block">
 								<CardHeader class="flex items-center gap-2">
-									<h4
-										class="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground"
-									>
-										Tags
-									</h4>
+									<h4 class="micro-label text-muted-foreground">TAGS</h4>
 								</CardHeader>
 								<CardBody>
 									<TagsDisplay props={plan.props} size="sm" compact={true} />
@@ -641,21 +620,21 @@
 		</div>
 	{/snippet}
 
-	<!-- Footer Actions - delete on left, cancel/save on right -->
+	<!-- Footer Actions - Dense Mode A -->
 	{#snippet footer()}
 		{#if !isLoading && plan}
 			<div
-				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
+				class="flex flex-row items-center justify-between gap-2 px-3 py-2 border-t border-border bg-muted tx tx-grain tx-weak wt-paper sp-block"
 			>
 				<!-- Delete button on left -->
-				<div class="flex items-center gap-1.5 sm:gap-2">
+				<div class="flex items-center gap-1.5">
 					<Button
 						type="button"
 						variant="danger"
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 tx tx-grain tx-weak"
+						class="text-xs px-2 py-1.5"
 						icon={Trash2}
 					>
 						<span class="hidden sm:inline">Delete</span>
@@ -670,7 +649,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+						class="text-xs px-3"
 					>
 						Cancel
 					</Button>
@@ -680,9 +659,9 @@
 						onclick={handleSave}
 						loading={isSaving}
 						disabled={formDisabled || !name.trim()}
-						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+						class="text-xs px-3"
 					>
-						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
+						<Save class="w-3.5 h-3.5" />
 						<span class="hidden sm:inline">Save changes</span>
 						<span class="sm:hidden">Save</span>
 					</Button>

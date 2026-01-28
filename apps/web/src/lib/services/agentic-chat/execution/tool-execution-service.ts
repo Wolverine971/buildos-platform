@@ -29,12 +29,13 @@ import type {
 	ToolExecutorResponse
 } from '../shared/types';
 import { normalizeToolError } from '../shared/error-utils';
-import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
+import type { ChatMessage, ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import { TOOL_METADATA } from '../tools/core/definitions';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const logger = createLogger('ToolExecutionService');
 
@@ -188,6 +189,9 @@ export class ToolExecutionService implements BaseService {
 			});
 		}
 
+		args = this.applySchemaDefaults(toolName, args, availableTools);
+		args = this.applyContextDefaults(toolName, args, context, availableTools);
+
 		if (options.abortSignal?.aborted) {
 			return finalizeResult({
 				success: false,
@@ -248,12 +252,12 @@ export class ToolExecutionService implements BaseService {
 			// Execute with timeout if specified or configured per tool
 			const timeout = this.resolveTimeoutMs(toolName, options.timeout);
 			resolvedTimeoutMs = timeout;
-			const execPromise = this.executeWithTimeout(
+			const execPromise = this.executeWithTimeout<ToolExecutorResponse>(
 				() => this.toolExecutor(toolName, args, context),
 				timeout
 			);
 
-			let execution: Awaited<ReturnType<typeof this.executeWithTimeout>>;
+			let execution: ToolExecutorResponse;
 			if (options.abortSignal) {
 				execution = await Promise.race([
 					execPromise,
@@ -840,5 +844,126 @@ export class ToolExecutionService implements BaseService {
 		_args: Record<string, any>
 	): string {
 		return normalizeToolError(error, toolName);
+	}
+
+	private applySchemaDefaults(
+		toolName: string,
+		args: Record<string, any>,
+		availableTools: ChatToolDefinition[]
+	): Record<string, any> {
+		const toolDef = this.getToolDefinition(toolName, availableTools);
+		const paramSchema = (toolDef as any)?.function?.parameters || (toolDef as any)?.parameters;
+		if (!paramSchema || typeof paramSchema !== 'object') {
+			return args;
+		}
+
+		const properties = paramSchema.properties ?? {};
+		const resolved = { ...args };
+
+		for (const [key, def] of Object.entries(properties)) {
+			if (resolved[key] !== undefined && resolved[key] !== null) continue;
+			if (!def || typeof def !== 'object' || !('default' in def)) continue;
+
+			const defaultValue = (def as Record<string, any>).default;
+			if (Array.isArray(defaultValue)) {
+				resolved[key] = [...defaultValue];
+			} else if (defaultValue && typeof defaultValue === 'object') {
+				resolved[key] = { ...defaultValue };
+			} else if (defaultValue !== undefined) {
+				resolved[key] = defaultValue;
+			}
+		}
+
+		return resolved;
+	}
+
+	private applyContextDefaults(
+		toolName: string,
+		args: Record<string, any>,
+		context: ServiceContext,
+		availableTools: ChatToolDefinition[]
+	): Record<string, any> {
+		const resolved = { ...args };
+
+		if (this.toolSupportsProjectId(toolName, availableTools) && !resolved.project_id) {
+			const projectId = this.resolveProjectIdFromContext(context);
+			if (projectId) {
+				resolved.project_id = projectId;
+			}
+		}
+
+		if (toolName === 'create_onto_document') {
+			if (!resolved.type_key) {
+				resolved.type_key = 'document.default';
+			}
+			if (!resolved.title) {
+				const inferred = this.inferDocumentTitle(context.conversationHistory);
+				if (inferred) {
+					resolved.title = inferred;
+				}
+			}
+		}
+
+		return resolved;
+	}
+
+	private toolSupportsProjectId(
+		toolName: string,
+		availableTools: ChatToolDefinition[]
+	): boolean {
+		const toolDef = this.getToolDefinition(toolName, availableTools);
+		const paramSchema = (toolDef as any)?.function?.parameters || (toolDef as any)?.parameters;
+		if (!paramSchema || typeof paramSchema !== 'object') {
+			return false;
+		}
+
+		const required = Array.isArray(paramSchema.required) ? paramSchema.required : [];
+		const properties = paramSchema.properties ?? {};
+		return 'project_id' in properties || required.includes('project_id');
+	}
+
+	private resolveProjectIdFromContext(context: ServiceContext): string | undefined {
+		const scoped = context.contextScope?.projectId;
+		if (typeof scoped === 'string' && isValidUUID(scoped)) {
+			return scoped;
+		}
+
+		if (context.contextType?.startsWith('project') && typeof context.entityId === 'string') {
+			if (isValidUUID(context.entityId)) {
+				return context.entityId;
+			}
+		}
+
+		const focusProjectId = context.projectFocus?.projectId;
+		if (typeof focusProjectId === 'string' && isValidUUID(focusProjectId)) {
+			return focusProjectId;
+		}
+
+		return undefined;
+	}
+
+	private inferDocumentTitle(history: ChatMessage[]): string | undefined {
+		if (!Array.isArray(history) || history.length === 0) return undefined;
+		const lastUser = [...history].reverse().find((msg) => msg.role === 'user');
+		if (!lastUser || typeof lastUser.content !== 'string') return undefined;
+
+		const text = lastUser.content;
+		const patterns = [
+			/document\s+(?:named|called|titled)?\s*['"]([^'"]+)['"]/i,
+			/['"]([^'"]+)['"]\s+document/i,
+			/doc\s+(?:named|called|titled)?\s*['"]([^'"]+)['"]/i
+		];
+
+		for (const pattern of patterns) {
+			const match = text.match(pattern);
+			if (match?.[1]) {
+				const title = match[1].trim();
+				if (title) {
+					return title.length > 160 ? `${title.slice(0, 157)}...` : title;
+				}
+			}
+		}
+
+		return undefined;
 	}
 }

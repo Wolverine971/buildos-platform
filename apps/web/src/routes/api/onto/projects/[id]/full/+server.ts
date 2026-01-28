@@ -17,6 +17,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -36,6 +37,32 @@ interface ProjectFullData {
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 
+const extractErrorMessage = (error: unknown): string => {
+	if (!error) return 'Unknown error';
+	if (error instanceof Error) return error.message;
+	if (typeof error === 'string') return error;
+	if (typeof error === 'object') {
+		const err = error as Record<string, unknown>;
+		const message = typeof err.message === 'string' ? err.message : null;
+		if (message) return message;
+		const errorDescription =
+			typeof err.error_description === 'string' ? err.error_description : null;
+		if (errorDescription) return errorDescription;
+		const errorMessage = typeof err.error === 'string' ? err.error : null;
+		if (errorMessage) return errorMessage;
+		const details = typeof err.details === 'string' ? err.details : null;
+		if (details) return details;
+		const hint = typeof err.hint === 'string' ? err.hint : null;
+		if (hint) return hint;
+		try {
+			return JSON.stringify(err);
+		} catch {
+			return String(error);
+		}
+	}
+	return String(error);
+};
+
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
 		const { user } = await locals.safeGetSession();
@@ -44,6 +71,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (!id) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(id)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		const supabase = locals.supabase;
@@ -80,7 +110,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Note: actorId can be null for anonymous access to public projects
 		const { data, error } = (await supabase.rpc('get_project_full', {
 			p_project_id: id,
-			p_actor_id: actorId as string
+			p_actor_id: actorId
 		})) as { data: ProjectFullData | null; error: unknown };
 
 		if (error) {
@@ -95,7 +125,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				entityType: 'project',
 				operation: 'project_full_get'
 			});
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage = extractErrorMessage(error);
 			return ApiResponse.error(`Failed to fetch project: ${errorMessage}`, 500);
 		}
 

@@ -514,6 +514,7 @@
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
 	showCloseButton={false}
+	customClasses="wt-plate"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
@@ -550,7 +551,7 @@
 					type="button"
 					onclick={openChatAbout}
 					disabled={isLoading || isSaving || !task}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					title="Chat about this task"
 				>
 					<img
@@ -564,7 +565,7 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />
@@ -575,7 +576,7 @@
 
 	{#snippet children()}
 		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<div class="px-2 py-2 sm:px-4 sm:py-3">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
@@ -585,7 +586,7 @@
 					<p class="text-destructive">Task not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 					<!-- Main Form (Left 2 columns) -->
 					<div class="lg:col-span-2">
 						<form
@@ -593,7 +594,7 @@
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-3 sm:space-y-4"
+							class="space-y-3 sm:space-y-4 tx tx-frame tx-weak wt-paper p-2"
 						>
 							<FormField
 								label="Task Title"
@@ -683,7 +684,7 @@
 
 							{#if error}
 								<div
-									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
+									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak wt-paper"
 								>
 									<p class="text-sm text-destructive">{error}</p>
 								</div>
@@ -692,7 +693,7 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div class="space-y-4">
+					<div class="space-y-3">
 						<!-- Linked Entities -->
 						<LinkedEntities
 							sourceId={taskId}
@@ -704,7 +705,7 @@
 
 						<!-- Tags (from classification) -->
 						{#if task?.props?.tags?.length}
-							<Card variant="elevated">
+							<Card variant="elevated" class="wt-paper">
 								<CardHeader variant="default">
 									<h3
 										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
@@ -720,7 +721,7 @@
 						{/if}
 
 						<!-- Schedule -->
-						<Card variant="elevated">
+						<Card variant="elevated" class="wt-paper">
 							<CardHeader variant="accent">
 								<h3
 									class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
@@ -732,7 +733,7 @@
 								</h3>
 							</CardHeader>
 							<CardBody padding="sm">
-								<div class="space-y-3">
+								<div class="space-y-2">
 									<div>
 										<label
 											for="sidebar-start-date"
@@ -751,7 +752,7 @@
 											class="border-border bg-card focus:ring-2 focus:ring-accent w-full"
 										/>
 										{#if startAt}
-											<p class="mt-1.5 text-xs text-muted-foreground">
+											<p class="mt-1 text-xs text-muted-foreground">
 												{new Date(startAt).toLocaleString('en-US', {
 													weekday: 'short',
 													month: 'short',
@@ -761,7 +762,7 @@
 												})}
 											</p>
 										{:else}
-											<p class="mt-1.5 text-xs text-muted-foreground italic">
+											<p class="mt-1 text-xs text-muted-foreground italic">
 												No start date set
 											</p>
 										{/if}
@@ -784,7 +785,7 @@
 											class="border-border bg-card focus:ring-2 focus:ring-accent w-full"
 										/>
 										{#if dueAt}
-											<p class="mt-1.5 text-xs text-muted-foreground">
+											<p class="mt-1 text-xs text-muted-foreground">
 												{new Date(dueAt).toLocaleString('en-US', {
 													weekday: 'short',
 													month: 'short',
@@ -794,7 +795,7 @@
 												})}
 											</p>
 										{:else}
-											<p class="mt-1.5 text-xs text-muted-foreground italic">
+											<p class="mt-1 text-xs text-muted-foreground italic">
 												No deadline set
 											</p>
 										{/if}
@@ -804,7 +805,7 @@
 						</Card>
 
 						<!-- Recurrence -->
-						<Card variant="elevated">
+						<Card variant="elevated" class="wt-paper">
 							<CardHeader variant="accent">
 								<h3
 									class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
@@ -959,7 +960,7 @@
 	{#snippet footer()}
 		{#if !isLoading && task}
 			<div
-				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
+				class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-frame tx-weak"
 			>
 				<!-- Delete button on left -->
 				<div class="flex items-center gap-1.5 sm:gap-2">
@@ -969,7 +970,7 @@
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5 tx tx-grain tx-weak"
+						class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
 						icon={Trash2}
 					>
 						<span class="hidden sm:inline">Delete</span>
@@ -985,7 +986,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+						class="text-xs sm:text-sm px-2 sm:px-4"
 					>
 						Cancel
 					</Button>
@@ -996,7 +997,7 @@
 						onclick={handleSave}
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
-						class="text-xs sm:text-sm px-2 sm:px-4 tx tx-grain tx-weak"
+						class="text-xs sm:text-sm px-2 sm:px-4"
 					>
 						<Save class="w-3 h-3 sm:w-4 sm:h-4" />
 						<span class="hidden sm:inline">Save Changes</span>
