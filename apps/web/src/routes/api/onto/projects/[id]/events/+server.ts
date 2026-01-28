@@ -4,6 +4,7 @@ import type { Json } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 type ProjectAccessResult =
 	| {
@@ -24,6 +25,13 @@ async function requireProjectAccess(
 ): Promise<ProjectAccessResult> {
 	const { user } = await locals.safeGetSession();
 	const supabase = locals.supabase;
+	const buildLogMetadata = (projectExists: boolean, metadata?: Record<string, unknown>) =>
+		projectExists
+			? metadata
+			: {
+					requested_project_id: projectId,
+					...metadata
+				};
 
 	if (!user) {
 		if (requiredAccess !== 'read') {
@@ -42,6 +50,7 @@ async function requireProjectAccess(
 				.is('deleted_at', null)
 				.maybeSingle()
 		]);
+		const projectExists = Boolean(projectResult.data);
 
 		if (accessResult.error) {
 			console.error(
@@ -53,9 +62,10 @@ async function requireProjectAccess(
 				error: accessResult.error,
 				endpoint: `/api/onto/projects/${projectId}/events`,
 				method,
-				projectId,
+				projectId: projectExists ? projectId : undefined,
 				entityType: 'event',
-				operation: 'project_events_access'
+				operation: 'project_events_access',
+				metadata: buildLogMetadata(projectExists)
 			});
 			return {
 				ok: false,
@@ -77,10 +87,11 @@ async function requireProjectAccess(
 				error: projectResult.error,
 				endpoint: `/api/onto/projects/${projectId}/events`,
 				method,
-				projectId,
+				projectId: projectExists ? projectId : undefined,
 				entityType: 'project',
 				operation: 'project_events_access',
-				tableName: 'onto_projects'
+				tableName: 'onto_projects',
+				metadata: buildLogMetadata(projectExists)
 			});
 			return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
 		}
@@ -105,6 +116,7 @@ async function requireProjectAccess(
 			.is('deleted_at', null)
 			.maybeSingle()
 	]);
+	const projectExists = Boolean(projectResult.data);
 
 	if (actorResult.error || !actorResult.data) {
 		console.error('[Project Events API] Failed to resolve actor:', actorResult.error);
@@ -114,9 +126,10 @@ async function requireProjectAccess(
 			endpoint: `/api/onto/projects/${projectId}/events`,
 			method,
 			userId: user.id,
-			projectId,
+			projectId: projectExists ? projectId : undefined,
 			entityType: 'event',
-			operation: 'project_events_access'
+			operation: 'project_events_access',
+			metadata: buildLogMetadata(projectExists)
 		});
 		return {
 			ok: false,
@@ -135,9 +148,10 @@ async function requireProjectAccess(
 			endpoint: `/api/onto/projects/${projectId}/events`,
 			method,
 			userId: user.id,
-			projectId,
+			projectId: projectExists ? projectId : undefined,
 			entityType: 'event',
-			operation: 'project_events_access'
+			operation: 'project_events_access',
+			metadata: buildLogMetadata(projectExists)
 		});
 		return {
 			ok: false,
@@ -160,10 +174,11 @@ async function requireProjectAccess(
 			endpoint: `/api/onto/projects/${projectId}/events`,
 			method,
 			userId: user.id,
-			projectId,
+			projectId: projectExists ? projectId : undefined,
 			entityType: 'project',
 			operation: 'project_events_access',
-			tableName: 'onto_projects'
+			tableName: 'onto_projects',
+			metadata: buildLogMetadata(projectExists)
 		});
 		return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
 	}
@@ -179,6 +194,9 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 	const projectId = params.id;
 	if (!projectId) {
 		return ApiResponse.badRequest('Project ID required');
+	}
+	if (!isValidUUID(projectId)) {
+		return ApiResponse.badRequest('Invalid project ID');
 	}
 
 	const access = await requireProjectAccess(locals, projectId, 'GET', 'read');
@@ -224,6 +242,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const projectId = params.id;
 	if (!projectId) {
 		return ApiResponse.badRequest('Project ID required');
+	}
+	if (!isValidUUID(projectId)) {
+		return ApiResponse.badRequest('Invalid project ID');
 	}
 
 	const access = await requireProjectAccess(locals, projectId, 'POST', 'write');

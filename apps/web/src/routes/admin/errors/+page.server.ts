@@ -2,6 +2,7 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -21,8 +22,10 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
 		throw redirect(303, '/');
 	}
 
+	const adminSupabase = createAdminSupabaseClient();
+
 	// Get error logger instance
-	const errorLogger = ErrorLoggerService.getInstance(supabase);
+	const errorLogger = ErrorLoggerService.getInstance(adminSupabase);
 
 	// Load recent unresolved errors and summary by default
 	const [errors, summary] = await Promise.all([

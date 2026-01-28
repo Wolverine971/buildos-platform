@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { ErrorType, ErrorSeverity } from '$lib/types/error-logging';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
@@ -21,6 +22,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		return ApiResponse.forbidden('Admin access required');
 	}
 
+	const adminSupabase = createAdminSupabaseClient();
+
 	// Parse query parameters
 	const severity = url.searchParams.get('severity') as ErrorSeverity | null;
 	const errorType = url.searchParams.get('type') as ErrorType | null;
@@ -29,9 +32,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const projectId = url.searchParams.get('projectId');
 	const page = parseInt(url.searchParams.get('page') || '1');
 	const limit = parseInt(url.searchParams.get('limit') || '50');
-
-	// Get error logger
-	const errorLogger = ErrorLoggerService.getInstance(supabase);
 
 	// Build filters
 	const filters: any = {};
@@ -42,6 +42,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	if (projectId) filters.projectId = projectId;
 
 	// Fetch errors and summary
+	const errorLogger = ErrorLoggerService.getInstance(adminSupabase);
 	const [errors, summary] = await Promise.all([
 		errorLogger.getRecentErrors(limit, filters),
 		errorLogger.getErrorSummary()
