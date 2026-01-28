@@ -359,6 +359,26 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		bestFor: ['complex-reasoning', 'math', 'coding', 'tool-calling', 'best-reasoning-value'],
 		limitations: ['slower-than-chat', 'verbose-output']
 	},
+	'moonshotai/kimi-k2.5': {
+		id: 'moonshotai/kimi-k2.5',
+		name: 'Kimi K2.5',
+		speed: 3.5,
+		smartness: 4.9,
+		cost: 0.6,
+		outputCost: 0.3,
+		provider: 'moonshotai',
+		bestFor: [
+			'agentic-workflows',
+			'visual-coding',
+			'multimodal',
+			'agent-swarm-100-agents',
+			'1500-parallel-tool-calls',
+			'office-productivity',
+			'262k-context',
+			'cost-effective-reasoning'
+		],
+		limitations: []
+	},
 	'moonshotai/kimi-k2-thinking': {
 		id: 'moonshotai/kimi-k2-thinking',
 		name: 'Kimi K2 Thinking',
@@ -378,7 +398,8 @@ const JSON_MODELS: Record<string, ModelProfile> = {
 		limitations: [
 			'mandatory-reasoning-tokens',
 			'verbose-2.5x-tokens',
-			'slower-for-simple-tasks'
+			'slower-for-simple-tasks',
+			'deprecated-replaced-by-k2.5'
 		]
 	},
 	'openai/gpt-4o': {
@@ -573,6 +594,28 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		provider: 'deepseek',
 		bestFor: ['reasoning', 'analysis', 'technical-writing', 'complex-content', 'coding']
 	},
+	'moonshotai/kimi-k2.5': {
+		id: 'moonshotai/kimi-k2.5',
+		name: 'Kimi K2.5',
+		speed: 3.5,
+		smartness: 4.9,
+		creativity: 4.6,
+		cost: 0.6,
+		outputCost: 0.3,
+		provider: 'moonshotai',
+		bestFor: [
+			'agentic-workflows',
+			'visual-coding',
+			'multimodal',
+			'agent-swarm-100-agents',
+			'office-productivity',
+			'research-workflows',
+			'1500-parallel-tool-calls',
+			'262k-context',
+			'cost-effective-reasoning'
+		],
+		limitations: []
+	},
 	'moonshotai/kimi-k2-thinking': {
 		id: 'moonshotai/kimi-k2-thinking',
 		name: 'Kimi K2 Thinking',
@@ -593,7 +636,8 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 		limitations: [
 			'mandatory-reasoning-tokens',
 			'verbose-2.5x-tokens',
-			'slower-for-simple-tasks'
+			'slower-for-simple-tasks',
+			'deprecated-replaced-by-k2.5'
 		]
 	},
 	'openai/gpt-4o': {
@@ -653,7 +697,8 @@ const TEXT_MODELS: Record<string, ModelProfile> = {
 // Priority: Highest reliability first, then cost-effectiveness as tiebreaker
 const TOOL_CALLING_MODEL_ORDER = [
 	'x-ai/grok-4.1-fast', // Best τ²-Bench: 100% (xAI claim), 2M context, optimized for agents: $0.20/$0.50
-	'moonshotai/kimi-k2-thinking', // τ²-Bench: 93% (best independently verified), 256K ctx, 200-300 tool calls: $0.57/$2.42
+	'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, 1500 parallel tools, 262K ctx, multimodal: $0.60/$0.30
+	'moonshotai/kimi-k2-thinking', // τ²-Bench: 93% (legacy), 256K ctx, 200-300 tool calls: $0.57/$2.42
 	'anthropic/claude-opus-4.5', // Best coding: 80.9% SWE-bench, agents, computer-use: $5/$25
 	'anthropic/claude-haiku-4.5', // Fast + reliable: parallel tool calls, extended thinking: $1/$5
 	'openai/gpt-4o-mini', // Very good: 88% success rate, fast + cheap: $0.15/$0.60
@@ -691,6 +736,7 @@ const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 		'deepseek/deepseek-chat' // Native JSON mode + good value: $0.27/$1.10
 	],
 	balanced: [
+		'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, 1500 tools, multimodal: $0.60/$0.30
 		'qwen/qwen3-32b', // Best value + native JSON: $0.08/$0.24
 		'x-ai/grok-4.1-fast', // Best tool-calling + fast: $0.20/$0.50
 		'minimax/minimax-m2.1', // Strong agentic + structured output: 87% τ²-Bench: $0.27/$1.12
@@ -699,16 +745,17 @@ const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 		'google/gemini-2.5-flash' // Hybrid reasoning model: $0.30/$2.50
 	],
 	powerful: [
-		'moonshotai/kimi-k2-thinking', // Best agentic: 93% τ²-Bench, 256K ctx: $0.57/$2.42
+		'moonshotai/kimi-k2.5', // Best agentic: agent swarm, 262K ctx, multimodal: $0.60/$0.30
 		'deepseek/deepseek-r1', // Native JSON + good reasoning: $0.55/$1.68
 		'minimax/minimax-m2.1', // Strong agentic: 87% τ²-Bench, 72.5% SWE-bench-multilingual
 		'openai/gpt-4o', // Strong general purpose + native JSON: $2.50/$10
 		'z-ai/glm-4.7', // Strong coding + native JSON, terminal-bench 90%+: $0.40/$1.50
+		'moonshotai/kimi-k2-thinking', // Best agentic (legacy): 93% τ²-Bench, 256K ctx: $0.57/$2.42
 		'anthropic/claude-sonnet-4' // Best tool calling ~92%: $3/$15
 	],
 	maximum: [
 		'anthropic/claude-opus-4.5', // Best coding: 80.9% SWE-bench: $5/$25
-		'moonshotai/kimi-k2-thinking', // Best agentic: 93% τ²-Bench, Intelligence Index 67: $0.57/$2.42
+		'moonshotai/kimi-k2.5', // Best agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
 		'anthropic/claude-sonnet-4.5', // Best overall: 61.4% OSWorld, extended thinking: $3/$15
 		'deepseek/deepseek-r1', // Native JSON + good for pure reasoning: $0.55/$1.68
 		'openai/gpt-4o' // Reliable fallback with native JSON: $2.50/$10
@@ -725,6 +772,7 @@ const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 		'anthropic/claude-haiku-4.5' // Fast with extended thinking: $1/$5
 	],
 	balanced: [
+		'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, multimodal, 262K ctx: $0.60/$0.30
 		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
 		'qwen/qwen3-32b', // Best value: $0.08/$0.24, smartness 4.5
 		'deepseek/deepseek-chat', // Good value: $0.27/$1.10, smartness 4.5
@@ -733,8 +781,8 @@ const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 		'openai/gpt-4o-mini' // Reliable fallback: $0.15/$0.60
 	],
 	quality: [
+		'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
 		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
-		'moonshotai/kimi-k2-thinking', // 93% τ²-Bench, Intelligence Index 67, 256K ctx: $0.57/$2.42
 		'deepseek/deepseek-r1', // Good reasoning, excellent for technical content: $0.55/$1.68
 		'anthropic/claude-haiku-4.5', // Excellent tool-calling, parallel tools: $1/$5
 		'minimax/minimax-m2.1', // 87% τ²-Bench, excellent coding: $0.27/$1.12
@@ -960,6 +1008,102 @@ export class SmartLLMService {
 		return uuidRegex.test(value);
 	}
 
+	private getOpenRouterErrorMetadata(error: unknown): {
+		status?: number;
+		message?: string;
+		error?: Record<string, unknown> | null;
+		metadata?: Record<string, unknown> | null;
+		providerName?: string | null;
+	} {
+		if (!error || typeof error !== 'object') {
+			return {};
+		}
+
+		const maybeError = error as {
+			status?: number;
+			message?: string;
+			openrouter?: Record<string, unknown>;
+		};
+		const openrouter =
+			maybeError.openrouter && typeof maybeError.openrouter === 'object'
+				? maybeError.openrouter
+				: null;
+		const errorObject =
+			openrouter?.error && typeof openrouter.error === 'object' ? openrouter.error : null;
+		const metadata =
+			errorObject?.metadata && typeof errorObject.metadata === 'object'
+				? (errorObject.metadata as Record<string, unknown>)
+				: openrouter?.metadata && typeof openrouter.metadata === 'object'
+					? (openrouter.metadata as Record<string, unknown>)
+					: null;
+		const providerName =
+			typeof metadata?.provider_name === 'string'
+				? metadata.provider_name
+				: typeof openrouter?.providerName === 'string'
+					? openrouter.providerName
+					: typeof (openrouter as Record<string, unknown> | null)?.provider_name ===
+							'string'
+						? ((openrouter as Record<string, unknown>).provider_name as string)
+						: null;
+		const message =
+			typeof errorObject?.message === 'string'
+				? errorObject.message
+				: typeof maybeError.message === 'string'
+					? maybeError.message
+					: undefined;
+
+		return {
+			status: maybeError.status,
+			message,
+			error: errorObject,
+			metadata,
+			providerName
+		};
+	}
+
+	private isOpenRouterProviderError(error: unknown): boolean {
+		const metadata = this.getOpenRouterErrorMetadata(error);
+		const message =
+			typeof metadata.message === 'string' ? metadata.message.toLowerCase() : '';
+
+		if (message.includes('provider returned error')) {
+			return true;
+		}
+
+		return Boolean(metadata.providerName);
+	}
+
+	private isRetryableOpenRouterError(error: unknown): boolean {
+		if (!error || typeof error !== 'object') {
+			return false;
+		}
+
+		const maybeError = error as { status?: number; message?: string };
+		const status = maybeError.status;
+
+		if (status === 408 || status === 409 || status === 429) {
+			return true;
+		}
+
+		if (status && status >= 500 && status < 600) {
+			return true;
+		}
+
+		const message =
+			typeof maybeError.message === 'string' ? maybeError.message.toLowerCase() : '';
+		if (message.includes('timeout') || message.includes('timed out')) {
+			return true;
+		}
+		if (message.includes('rate limit')) {
+			return true;
+		}
+		if (message.includes('provider returned error')) {
+			return true;
+		}
+
+		return this.isOpenRouterProviderError(error);
+	}
+
 	// ============================================
 	// JSON RESPONSE METHOD
 	// ============================================
@@ -981,233 +1125,308 @@ export class SmartLLMService {
 		let lastError: Error | null = null;
 		let retryCount = 0;
 		const maxRetries = options.validation?.maxRetries || 2;
+		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
+		const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 4);
+		const attemptedModels = new Set<string>();
+		let lastResponse: OpenRouterResponse | null = null;
+		let lastRequestedModel = baseModel;
 
-		// Make the OpenRouter API call with model routing
-		// Primary model is first in preferredModels, others are fallbacks
+		// Make the OpenRouter API call with model routing + local fallbacks
 		try {
-			const response = await this.callOpenRouter({
-				model: preferredModels[0] || 'openai/gpt-4o-mini', // Primary model with fallback
-				models: preferredModels, // All models for fallback routing (via extra_body)
-				messages: [
-					{ role: 'system', content: enhancedSystemPrompt },
-					{ role: 'user', content: options.userPrompt }
-				],
-				temperature: options.temperature || 0.2,
-				response_format: this.supportsJsonMode(preferredModels[0] || 'openai/gpt-4o-mini')
-					? { type: 'json_object' }
-					: undefined,
-				max_tokens: 8192
-			});
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				const remainingModels = preferredModels.filter(
+					(model) => !attemptedModels.has(model)
+				);
+				const requestedModel = remainingModels[0] || baseModel;
+				lastRequestedModel = requestedModel;
 
-			// Guard against malformed response
-			if (!response.choices || response.choices.length === 0) {
-				throw new Error('OpenRouter returned empty choices array');
-			}
+				const routingCandidates = [
+					requestedModel,
+					...remainingModels.filter((model) => model !== requestedModel)
+				];
+				const useJsonMode = this.supportsJsonMode(requestedModel);
+				const routingModels = useJsonMode
+					? routingCandidates.filter((model) => this.supportsJsonMode(model))
+					: routingCandidates;
+				const modelsForRequest =
+					routingModels.length > 0 ? routingModels : [requestedModel];
 
-			const choice = response.choices[0];
-			const content = this.extractTextFromChoice(choice);
-			if (!content || content.trim().length === 0) {
-				throw this.buildOpenRouterEmptyContentError({
-					operation: 'getJSONResponse',
-					requestedModel: preferredModels[0] || 'openai/gpt-4o-mini',
-					response,
-					choice,
-					extractedText: content
-				});
-			}
+				try {
+					const response = await this.callOpenRouter({
+						model: requestedModel, // Primary model with fallback
+						models: modelsForRequest, // Filtered models for fallback routing
+						messages: [
+							{ role: 'system', content: enhancedSystemPrompt },
+							{ role: 'user', content: options.userPrompt }
+						],
+						temperature: options.temperature || 0.2,
+						response_format: useJsonMode ? { type: 'json_object' } : undefined,
+						max_tokens: 8192
+					});
 
-			// Parse the response
-			let result: T;
-			let cleaned = ''; // Declare outside try block for error logging
+					lastResponse = response;
 
-			try {
-				// Clean and parse JSON
-				cleaned = this.cleanJSONResponse(content);
-				result = JSON.parse(cleaned) as T;
-			} catch (parseError) {
-				// Log which model actually responded
-				const actualModel = response.model || preferredModels[0] || 'unknown';
-				console.error(`JSON parse error with ${actualModel}:`, parseError);
-
-				// Enhanced error logging with context
-				if (parseError instanceof SyntaxError && parseError.message.includes('position')) {
-					// Extract position from error message (e.g., "at position 1618")
-					const posMatch = parseError.message.match(/position (\d+)/);
-					if (posMatch && posMatch[1]) {
-						const errorPos = parseInt(posMatch[1], 10);
-						const contextStart = Math.max(0, errorPos - 100);
-						const contextEnd = Math.min(cleaned.length, errorPos + 100);
-						console.error(
-							`Context around error position ${errorPos}:`,
-							'\n' + cleaned.substring(contextStart, contextEnd)
-						);
-						console.error(
-							`Full response length: ${cleaned.length} characters, Error at: ${errorPos}`
-						);
+					// Guard against malformed response
+					if (!response.choices || response.choices.length === 0) {
+						throw new Error('OpenRouter returned empty choices array');
 					}
-				}
 
-				// If validation is enabled and parse failed, we can retry with a more powerful model
-				if (options.validation?.retryOnParseError && retryCount < maxRetries) {
-					retryCount++;
-					console.log(
-						`Retrying with powerful model (attempt ${retryCount}/${maxRetries})`
-					);
-
-					let cleanedRetry = ''; // Declare outside try block for error logging
-					try {
-						// Try again with powerful profile
-						const retryResponse = await this.callOpenRouter({
-							model: 'anthropic/claude-sonnet-4',
-							models: ['anthropic/claude-sonnet-4', 'openai/gpt-4o'],
-							messages: [
-								{ role: 'system', content: enhancedSystemPrompt },
-								{ role: 'user', content: options.userPrompt }
-							],
-							temperature: 0.1, // Lower temperature for retry
-							response_format: { type: 'json_object' },
-							max_tokens: 8192
+					const choice = response.choices[0];
+					const content = this.extractTextFromChoice(choice);
+					if (!content || content.trim().length === 0) {
+						throw this.buildOpenRouterEmptyContentError({
+							operation: 'getJSONResponse',
+							requestedModel,
+							response,
+							choice,
+							extractedText: content
 						});
-
-						// Guard against malformed retry response
-						if (!retryResponse.choices || retryResponse.choices.length === 0) {
-							throw new Error('Retry: OpenRouter returned empty choices array');
-						}
-
-						const retryChoice = retryResponse.choices[0];
-						const retryContent = this.extractTextFromChoice(retryChoice);
-						if (!retryContent || retryContent.trim().length === 0) {
-							throw this.buildOpenRouterEmptyContentError({
-								operation: 'getJSONResponse_retry',
-								requestedModel: 'anthropic/claude-sonnet-4',
-								response: retryResponse,
-								choice: retryChoice,
-								extractedText: retryContent
-							});
-						}
-
-						cleanedRetry = this.cleanJSONResponse(retryContent);
-						result = JSON.parse(cleanedRetry) as T;
-					} catch (retryError) {
-						// If retry also fails, throw original error with context
-						console.error(
-							`Retry also failed after ${retryCount} attempts:`,
-							retryError
-						);
-						// Log critical parse failure
-						if (this.errorLogger) {
-							await this.errorLogger.logAPIError(
-								retryError,
-								this.apiUrl,
-								'POST',
-								options.userId,
-								{
-									operation: 'getJSONResponse_retry_parse_failure',
-									errorType: 'llm_json_parse_failure_after_retry',
-									modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-									retryModel: 'anthropic/claude-sonnet-4',
-									retryAttempt: retryCount,
-									maxRetries,
-									responseLength: cleanedRetry.length || 0
-								}
-							);
-						}
-						throw new Error(
-							`Failed to parse JSON after ${retryCount} retries. Original error: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`
-						);
 					}
-				} else {
-					// Log parse failure without retry
-					if (this.errorLogger) {
-						await this.errorLogger.logAPIError(
-							parseError,
-							this.apiUrl,
-							'POST',
-							options.userId,
-							{
-								operation: 'getJSONResponse_parse_failure',
-								errorType: 'llm_json_parse_failure',
-								modelUsed: actualModel,
-								responseLength: cleaned.length,
-								retryDisabled: !options.validation?.retryOnParseError
+
+					// Parse the response
+					let result: T;
+					let cleaned = ''; // Declare outside try block for error logging
+					let responseForLogging = response;
+					let actualModel = response.model || requestedModel;
+					let retryModelUsed: string | null = null;
+
+					try {
+						// Clean and parse JSON
+						cleaned = this.cleanJSONResponse(content);
+						result = JSON.parse(cleaned) as T;
+					} catch (parseError) {
+						// Log which model actually responded
+						const actualModelForError = response.model || requestedModel || 'unknown';
+						console.error(`JSON parse error with ${actualModelForError}:`, parseError);
+
+						// Enhanced error logging with context
+						if (
+							parseError instanceof SyntaxError &&
+							parseError.message.includes('position')
+						) {
+							// Extract position from error message (e.g., "at position 1618")
+							const posMatch = parseError.message.match(/position (\d+)/);
+							if (posMatch && posMatch[1]) {
+								const errorPos = parseInt(posMatch[1], 10);
+								const contextStart = Math.max(0, errorPos - 100);
+								const contextEnd = Math.min(cleaned.length, errorPos + 100);
+								console.error(
+									`Context around error position ${errorPos}:`,
+									'\n' + cleaned.substring(contextStart, contextEnd)
+								);
+								console.error(
+									`Full response length: ${cleaned.length} characters, Error at: ${errorPos}`
+								);
 							}
-						);
+						}
+
+						// If validation is enabled and parse failed, we can retry with a more powerful model
+						if (options.validation?.retryOnParseError && retryCount < maxRetries) {
+							retryCount++;
+							console.log(
+								`Retrying with powerful model (attempt ${retryCount}/${maxRetries})`
+							);
+
+							let cleanedRetry = ''; // Declare outside try block for error logging
+							try {
+								// Try again with powerful profile
+								const retryModel = 'anthropic/claude-sonnet-4';
+								const retryModels = ['anthropic/claude-sonnet-4', 'openai/gpt-4o'];
+								const retryResponse = await this.callOpenRouter({
+									model: retryModel,
+									models: retryModels,
+									messages: [
+										{ role: 'system', content: enhancedSystemPrompt },
+										{ role: 'user', content: options.userPrompt }
+									],
+									temperature: 0.1, // Lower temperature for retry
+									response_format: this.supportsJsonMode(retryModel)
+										? { type: 'json_object' }
+										: undefined,
+									max_tokens: 8192
+								});
+
+								// Guard against malformed retry response
+								if (!retryResponse.choices || retryResponse.choices.length === 0) {
+									throw new Error('Retry: OpenRouter returned empty choices array');
+								}
+
+								const retryChoice = retryResponse.choices[0];
+								const retryContent = this.extractTextFromChoice(retryChoice);
+								if (!retryContent || retryContent.trim().length === 0) {
+									throw this.buildOpenRouterEmptyContentError({
+										operation: 'getJSONResponse_retry',
+										requestedModel: retryModel,
+										response: retryResponse,
+										choice: retryChoice,
+										extractedText: retryContent
+									});
+								}
+
+								cleanedRetry = this.cleanJSONResponse(retryContent);
+								result = JSON.parse(cleanedRetry) as T;
+								responseForLogging = retryResponse;
+								actualModel = retryResponse.model || retryModel;
+								retryModelUsed = retryModel;
+							} catch (retryError) {
+								// If retry also fails, throw original error with context
+								console.error(
+									`Retry also failed after ${retryCount} attempts:`,
+									retryError
+								);
+								// Log critical parse failure
+								if (this.errorLogger) {
+									await this.errorLogger.logAPIError(
+										retryError,
+										this.apiUrl,
+										'POST',
+										options.userId,
+										{
+											operation: 'getJSONResponse_retry_parse_failure',
+											errorType: 'llm_json_parse_failure_after_retry',
+											modelRequested: baseModel,
+											retryModel,
+											retryAttempt: retryCount,
+											maxRetries,
+											responseLength: cleanedRetry.length || 0
+										}
+									);
+								}
+								throw parseError;
+							}
+						} else {
+							// Log parse failure without retry
+							if (this.errorLogger) {
+								await this.errorLogger.logAPIError(
+									parseError,
+									this.apiUrl,
+									'POST',
+									options.userId,
+									{
+										operation: 'getJSONResponse_parse_failure',
+										errorType: 'llm_json_parse_failure',
+										modelUsed: actualModelForError,
+										responseLength: cleaned.length,
+										retryDisabled: !options.validation?.retryOnParseError
+									}
+								);
+							}
+							throw parseError;
+						}
 					}
-					throw parseError;
-				}
-			}
 
-			// Track metrics
-			const duration = performance.now() - startTime;
-			const requestCompletedAt = new Date();
-			const actualModel = response.model || preferredModels[0] || 'openai/gpt-4o-mini';
-			this.trackPerformance(actualModel, duration);
-			this.trackCost(actualModel, response.usage);
+					// Track metrics
+					const duration = performance.now() - startTime;
+					const requestCompletedAt = new Date();
+					this.trackPerformance(actualModel, duration);
+					this.trackCost(actualModel, responseForLogging.usage);
 
-			// Calculate costs
-			const modelConfig = JSON_MODELS[actualModel];
-			const inputCost = modelConfig
-				? ((response.usage?.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
-				: 0;
-			const outputCost = modelConfig
-				? ((response.usage?.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
-				: 0;
+					// Calculate costs
+					const modelConfig = JSON_MODELS[actualModel];
+					const inputCost = modelConfig
+						? ((responseForLogging.usage?.prompt_tokens || 0) / 1_000_000) *
+							modelConfig.cost
+						: 0;
+					const outputCost = modelConfig
+						? ((responseForLogging.usage?.completion_tokens || 0) / 1_000_000) *
+							modelConfig.outputCost
+						: 0;
 
-			console.log(`JSON Response Success:
+					console.log(`JSON Response Success:
 				Model: ${actualModel}
 				Duration: ${duration.toFixed(0)}ms
-				Tokens: ${response.usage?.total_tokens || 'unknown'}
-				Cost: ${this.calculateCost(actualModel, response.usage)}
+				Tokens: ${responseForLogging.usage?.total_tokens || 'unknown'}
+				Cost: ${this.calculateCost(actualModel, responseForLogging.usage)}
 			`);
 
-			// Log to database (async, non-blocking)
-			const cachedTokens = response.usage?.prompt_tokens_details?.cached_tokens || 0;
-			this.logUsageToDatabase({
-				userId: options.userId,
-				operationType: options.operationType || 'other',
-				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-				modelUsed: actualModel,
-				provider: response.provider || modelConfig?.provider,
-				promptTokens: response.usage?.prompt_tokens || 0,
-				completionTokens: response.usage?.completion_tokens || 0,
-				totalTokens: response.usage?.total_tokens || 0,
-				inputCost,
-				outputCost,
-				totalCost: inputCost + outputCost,
-				responseTimeMs: Math.round(duration),
-				requestStartedAt,
-				requestCompletedAt,
-				status: 'success',
-				temperature: options.temperature,
-				maxTokens: 8192,
-				profile,
-				streaming: false,
-				projectId: options.projectId,
-				brainDumpId: options.brainDumpId,
-				taskId: options.taskId,
-				briefId: options.briefId,
-				chatSessionId: options.chatSessionId,
-				agentSessionId: options.agentSessionId,
-				agentPlanId: options.agentPlanId,
-				agentExecutionId: options.agentExecutionId,
-				openrouterRequestId: response.id,
-				openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
-				metadata: {
-					complexity,
-					retryCount,
-					preferredModels,
-					cachedTokens,
-					reasoningTokens:
-						response.usage?.completion_tokens_details?.reasoning_tokens || 0,
-					systemFingerprint: response.system_fingerprint
-				}
-			}).catch((err) => console.error('Failed to log usage:', err));
+					// Log to database (async, non-blocking)
+					const cachedTokens =
+						responseForLogging.usage?.prompt_tokens_details?.cached_tokens || 0;
+					const modelsAttempted = Array.from(
+						new Set<string>([
+							...attemptedModels,
+							requestedModel,
+							actualModel,
+							...(retryModelUsed ? [retryModelUsed] : [])
+						])
+					);
+					this.logUsageToDatabase({
+						userId: options.userId,
+						operationType: options.operationType || 'other',
+						modelRequested: baseModel,
+						modelUsed: actualModel,
+						provider: responseForLogging.provider || modelConfig?.provider,
+						promptTokens: responseForLogging.usage?.prompt_tokens || 0,
+						completionTokens: responseForLogging.usage?.completion_tokens || 0,
+						totalTokens: responseForLogging.usage?.total_tokens || 0,
+						inputCost,
+						outputCost,
+						totalCost: inputCost + outputCost,
+						responseTimeMs: Math.round(duration),
+						requestStartedAt,
+						requestCompletedAt,
+						status: 'success',
+						temperature: options.temperature,
+						maxTokens: 8192,
+						profile,
+						streaming: false,
+						projectId: options.projectId,
+						brainDumpId: options.brainDumpId,
+						taskId: options.taskId,
+						briefId: options.briefId,
+						chatSessionId: options.chatSessionId,
+						agentSessionId: options.agentSessionId,
+						agentPlanId: options.agentPlanId,
+						agentExecutionId: options.agentExecutionId,
+						openrouterRequestId: responseForLogging.id,
+						openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
+						metadata: {
+							complexity,
+							retryCount,
+							preferredModels,
+							requestedModel,
+							modelsAttempted,
+							attempts: attempt + 1,
+							retryModelUsed,
+							cachedTokens,
+							reasoningTokens:
+								responseForLogging.usage?.completion_tokens_details
+									?.reasoning_tokens || 0,
+							systemFingerprint: responseForLogging.system_fingerprint
+						}
+					}).catch((err) => console.error('Failed to log usage:', err));
 
-			return result;
+					return result;
+				} catch (error) {
+					lastError = error as Error;
+					attemptedModels.add(requestedModel);
+					const shouldRetry =
+						error instanceof OpenRouterEmptyContentError ||
+						error instanceof SyntaxError ||
+						this.isRetryableOpenRouterError(error);
+
+					if (attempt < maxAttempts - 1 && shouldRetry) {
+						console.warn('OpenRouter JSON response retrying after failure', {
+							attempt: attempt + 1,
+							maxAttempts,
+							model: requestedModel,
+							error: lastError.message
+						});
+						continue;
+					}
+
+					throw error;
+				}
+			}
+
+			throw lastError ?? new Error('OpenRouter JSON response failed');
 		} catch (error) {
 			lastError = error as Error;
 			const duration = performance.now() - startTime;
 			const requestCompletedAt = new Date();
+			const modelsAttempted = Array.from(attemptedModels);
+			const lastModel =
+				lastResponse?.model || lastRequestedModel || baseModel;
 			const emptyContentDetails =
 				error instanceof OpenRouterEmptyContentError ? error.details : undefined;
 			const openrouterErrorDetails =
@@ -1222,13 +1441,19 @@ export class SmartLLMService {
 				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
 					operation: 'getJSONResponse',
 					errorType: 'llm_api_request_failure',
-					modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+					modelRequested: baseModel,
 					profile,
 					complexity,
 					isTimeout: lastError.message.includes('timeout'),
 					projectId: options.projectId,
 					brainDumpId: options.brainDumpId,
 					taskId: options.taskId,
+					attempts: modelsAttempted.length,
+					modelsAttempted,
+					lastRequestedModel,
+					lastModel,
+					openrouterRequestId: lastResponse?.id,
+					openrouterProvider: lastResponse?.provider,
 					openrouterErrorDetails: openrouterErrorDetails ?? null,
 					emptyContentDetails: emptyContentDetails ?? null
 				});
@@ -1238,8 +1463,8 @@ export class SmartLLMService {
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'other',
-				modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-				modelUsed: preferredModels[0] || 'openai/gpt-4o-mini',
+				modelRequested: baseModel,
+				modelUsed: lastModel,
 				promptTokens: 0,
 				completionTokens: 0,
 				totalTokens: 0,
@@ -1265,7 +1490,15 @@ export class SmartLLMService {
 				agentExecutionId: options.agentExecutionId,
 				metadata: {
 					complexity,
-					preferredModels
+					preferredModels,
+					attempts: modelsAttempted.length,
+					modelsAttempted,
+					lastRequestedModel,
+					lastModel,
+					openrouterRequestId: lastResponse?.id,
+					openrouterProvider: lastResponse?.provider,
+					openrouterErrorDetails: openrouterErrorDetails ?? null,
+					emptyContentDetails: emptyContentDetails ?? null
 				}
 			}).catch((err) => console.error('Failed to log error:', err));
 
@@ -1970,6 +2203,14 @@ export class SmartLLMService {
 					response.headers.get('x-request-id') ||
 					response.headers.get('x-openrouter-request-id') ||
 					response.headers.get('openrouter-request-id');
+				const errorMetadata =
+					errorObject?.metadata && typeof errorObject.metadata === 'object'
+						? (errorObject.metadata as Record<string, unknown>)
+						: null;
+				const providerName =
+					typeof errorMetadata?.provider_name === 'string'
+						? errorMetadata.provider_name
+						: null;
 
 				const enrichedError = new Error(
 					`OpenRouter API error: ${response.status} - ${trimmedMessage}`
@@ -1983,19 +2224,34 @@ export class SmartLLMService {
 					requestId: requestIdHeader ?? null,
 					errorType: errorObject?.type ?? null,
 					errorCode: errorObject?.code ?? null,
-					errorParam: errorObject?.param ?? null
+					errorParam: errorObject?.param ?? null,
+					error: errorObject ?? null,
+					metadata: errorMetadata,
+					providerName
 				};
 				throw enrichedError;
 			}
 
 			const data = (await response.json()) as OpenRouterResponse;
 			if (data.error && typeof data.error.message === 'string' && data.error.message.trim()) {
+				const errorMetadata =
+					data.error.metadata && typeof data.error.metadata === 'object'
+						? (data.error.metadata as Record<string, unknown>)
+						: null;
+				const providerName =
+					typeof errorMetadata?.provider_name === 'string'
+						? errorMetadata.provider_name
+						: null;
 				const enrichedError = new Error(
 					`OpenRouter API error: ${data.error.message}`
 				) as Error & {
 					openrouter?: Record<string, unknown>;
 				};
-				enrichedError.openrouter = { error: data.error };
+				enrichedError.openrouter = {
+					error: data.error,
+					metadata: errorMetadata,
+					providerName
+				};
 				throw enrichedError;
 			}
 
@@ -2895,13 +3151,13 @@ You must respond with valid JSON only. Follow these rules:
 		if (needsToolSupport) {
 			preferredModels = this.ensureToolCompatibleModels(preferredModels);
 		}
-		let resolvedModel = preferredModels[0] || 'openai/gpt-4o-mini';
+		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
+		let resolvedModel = baseModel;
 		let modelResolvedFromStream = false;
 		let resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
 		let providerResolvedFromStream = false;
 
 		try {
-			// Build request with streaming enabled following OpenRouter API v1 spec
 			const headers = {
 				Authorization: `Bearer ${this.apiKey}`,
 				'Content-Type': 'application/json',
@@ -2909,40 +3165,111 @@ You must respond with valid JSON only. Follow these rules:
 				'X-Title': this.appName
 			};
 
-			const body: any = {
-				model: preferredModels[0],
-				messages: options.messages,
-				temperature: options.temperature ?? 0.7,
-				max_tokens: options.maxTokens ?? 2000,
-				stream: true
-			};
+			const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 3);
+			const attemptedModels = new Set<string>();
+			let response: Response | null = null;
+			let lastError: Error | null = null;
+			let lastErrorText: string | null = null;
 
-			// Add fallback models using extra_body if we have multiple models
-			if (preferredModels.length > 1) {
-				body.extra_body = {
-					models: preferredModels.slice(1)
+			for (let attempt = 0; attempt < maxAttempts; attempt++) {
+				const remainingModels = preferredModels.filter(
+					(model) => !attemptedModels.has(model)
+				);
+				const requestedModel = remainingModels[0] || baseModel;
+				const routingModels = [
+					requestedModel,
+					...remainingModels.filter((model) => model !== requestedModel)
+				];
+
+				const body: any = {
+					model: requestedModel,
+					messages: options.messages,
+					temperature: options.temperature ?? 0.7,
+					max_tokens: options.maxTokens ?? 2000,
+					stream: true
 				};
-			}
 
-			// Add tools if provided
-			if (needsToolSupport) {
-				body.tools = options.tools;
-				body.tool_choice = options.tool_choice || 'auto';
-			}
+				// Add fallback models using extra_body if we have multiple models
+				if (routingModels.length > 1) {
+					body.extra_body = {
+						models: routingModels.slice(1)
+					};
+				}
 
-			// Make streaming request
-			const response = await fetch(this.apiUrl, {
-				method: 'POST',
-				headers,
-				body: JSON.stringify(body),
-				signal: options.signal
-			});
+				// Add tools if provided
+				if (needsToolSupport) {
+					body.tools = options.tools;
+					body.tool_choice = options.tool_choice || 'auto';
+				}
 
-			if (!response.ok) {
-				const error = await response.text();
+				try {
+					response = await fetch(this.apiUrl, {
+						method: 'POST',
+						headers,
+						body: JSON.stringify(body),
+						signal: options.signal
+					});
+				} catch (error) {
+					lastError = error as Error;
+					attemptedModels.add(requestedModel);
+					if (
+						attempt < maxAttempts - 1 &&
+						this.isRetryableOpenRouterError(error)
+					) {
+						console.warn('OpenRouter stream retrying after fetch error', {
+							attempt: attempt + 1,
+							maxAttempts,
+							model: requestedModel,
+							error: lastError.message
+						});
+						continue;
+					}
+					throw error;
+				}
+
+				if (response.ok) {
+					resolvedModel = requestedModel;
+					resolvedProvider = TEXT_MODELS[requestedModel]?.provider;
+					modelResolvedFromStream = false;
+					providerResolvedFromStream = false;
+					break;
+				}
+
+				const errorText = await response.text();
+				const statusError = new Error(
+					`OpenRouter API error: ${response.status} - ${errorText}`
+				) as Error & { status?: number };
+				statusError.status = response.status;
+				lastError = statusError;
+				lastErrorText = errorText;
+				attemptedModels.add(requestedModel);
+
+				if (attempt < maxAttempts - 1 && this.isRetryableOpenRouterError(statusError)) {
+					console.warn('OpenRouter stream retrying after failure', {
+						attempt: attempt + 1,
+						maxAttempts,
+						model: requestedModel,
+						error: statusError.message
+					});
+					continue;
+				}
+
 				yield {
 					type: 'error',
-					error: `OpenRouter API error: ${response.status} - ${error}`
+					error: statusError.message
+				};
+				return;
+			}
+
+			if (!response || !response.ok) {
+				const message =
+					lastError?.message ||
+					(lastErrorText
+						? `OpenRouter API error: ${lastErrorText}`
+						: 'OpenRouter stream request failed');
+				yield {
+					type: 'error',
+					error: message
 				};
 				return;
 			}
