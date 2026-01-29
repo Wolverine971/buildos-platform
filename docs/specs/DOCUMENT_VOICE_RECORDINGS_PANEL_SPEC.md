@@ -8,12 +8,12 @@ Add a compact voice recordings section to the document edit modal that lists rec
 
 ## Status
 
-| Attribute | Value |
-| --- | --- |
-| Status | Draft -> Implemented |
-| Created | 2026-01-28 |
-| Owner | Web app |
-| Related | `apps/web/src/lib/components/ontology/DocumentModal.svelte` |
+| Attribute | Value                                                       |
+| --------- | ----------------------------------------------------------- |
+| Status    | Draft -> Implemented                                        |
+| Created   | 2026-01-28                                                  |
+| Owner     | Web app                                                     |
+| Related   | `apps/web/src/lib/components/ontology/DocumentModal.svelte` |
 
 ## Problem Statement
 
@@ -45,9 +45,9 @@ Document voice recordings are currently captured via the editor, but they are no
 - Body: Compact list of recordings, newest first.
 - Empty state: "No recordings yet."
 - Each item shows:
-  - Timestamp (absolute date + time)
-  - Duration
-  - Playback controls (existing compact player)
+    - Timestamp (absolute date + time)
+    - Duration
+    - Playback controls (existing compact player)
 
 ## Data & API
 
@@ -73,9 +73,9 @@ GET /api/voice-notes?linkedEntityType=document&linkedEntityId=<document id>
 1. Extend `RichMarkdownEditor` with optional props for `voiceNoteLinkedEntityType` and `voiceNoteLinkedEntityId`.
 2. Pass the document linkage props from `DocumentModal`.
 3. Create a `DocumentVoiceNotesPanel` component:
-   - Loads voice notes via `listVoiceNotes`.
-   - Renders a compact `VoiceNoteList`.
-   - Exposes `refresh()` and `upsertVoiceNote()` for live updates.
+    - Loads voice notes via `listVoiceNotes`.
+    - Renders a compact `VoiceNoteList`.
+    - Exposes `refresh()` and `upsertVoiceNote()` for live updates.
 4. Add timestamp modes to `VoiceNoteList` (relative vs absolute).
 5. Wire the editor callbacks to update the panel on new recordings.
 

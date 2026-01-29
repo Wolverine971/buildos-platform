@@ -907,10 +907,7 @@ export class ToolExecutionService implements BaseService {
 		return resolved;
 	}
 
-	private toolSupportsProjectId(
-		toolName: string,
-		availableTools: ChatToolDefinition[]
-	): boolean {
+	private toolSupportsProjectId(toolName: string, availableTools: ChatToolDefinition[]): boolean {
 		const toolDef = this.getToolDefinition(toolName, availableTools);
 		const paramSchema = (toolDef as any)?.function?.parameters || (toolDef as any)?.parameters;
 		if (!paramSchema || typeof paramSchema !== 'object') {

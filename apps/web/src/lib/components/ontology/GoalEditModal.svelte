@@ -398,15 +398,18 @@
 					<h2 class="text-base font-semibold leading-none truncate text-foreground">
 						{name || goal?.name || 'Goal'}
 					</h2>
-					<p class="text-[10px] text-muted-foreground mt-1 leading-none uppercase tracking-wide">
-						{#if goal?.created_at}CREATED: {new Date(goal.created_at).toLocaleDateString(
-								'en-US',
-								{ month: 'short', day: 'numeric' }
-							).toUpperCase()}{/if}{#if goal?.updated_at && goal.updated_at !== goal.created_at}
-							· UPDATED: {new Date(goal.updated_at).toLocaleDateString('en-US', {
-								month: 'short',
-								day: 'numeric'
-							}).toUpperCase()}{/if}
+					<p
+						class="text-[10px] text-muted-foreground mt-1 leading-none uppercase tracking-wide"
+					>
+						{#if goal?.created_at}CREATED: {new Date(goal.created_at)
+								.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+								.toUpperCase()}{/if}{#if goal?.updated_at && goal.updated_at !== goal.created_at}
+							· UPDATED: {new Date(goal.updated_at)
+								.toLocaleDateString('en-US', {
+									month: 'short',
+									day: 'numeric'
+								})
+								.toUpperCase()}{/if}
 					</p>
 				</div>
 			</div>

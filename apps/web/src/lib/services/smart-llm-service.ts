@@ -1490,8 +1490,7 @@ export class SmartLLMService {
 						? `OpenRouter API error: ${lastErrorText}`
 						: 'OpenRouter stream request failed');
 				const operationType =
-					options.operationType ||
-					this.buildChatStreamOperationType(options.contextType);
+					options.operationType || this.buildChatStreamOperationType(options.contextType);
 
 				if (this.errorLogger) {
 					await this.errorLogger.logAPIError(
@@ -1562,8 +1561,7 @@ export class SmartLLMService {
 			const reader = response.body?.getReader();
 			if (!reader) {
 				const operationType =
-					options.operationType ||
-					this.buildChatStreamOperationType(options.contextType);
+					options.operationType || this.buildChatStreamOperationType(options.contextType);
 
 				if (this.errorLogger) {
 					await this.errorLogger.logAPIError(

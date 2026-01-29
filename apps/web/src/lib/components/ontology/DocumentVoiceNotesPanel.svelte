@@ -39,12 +39,7 @@
 		showTranscript?: boolean;
 	}
 
-	let {
-		documentId,
-		projectId,
-		limit = 25,
-		showTranscript = false
-	}: Props = $props();
+	let { documentId, projectId, limit = 25, showTranscript = false }: Props = $props();
 
 	let voiceNotes = $state<VoiceNote[]>([]);
 	let isLoading = $state(false);
@@ -93,8 +88,7 @@
 			await deleteVoiceNote(id);
 			voiceNotes = voiceNotes.filter((note) => note.id !== id);
 		} catch (error) {
-			errorMessage =
-				error instanceof Error ? error.message : 'Failed to delete voice note';
+			errorMessage = error instanceof Error ? error.message : 'Failed to delete voice note';
 		}
 	}
 

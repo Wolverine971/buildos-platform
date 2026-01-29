@@ -376,14 +376,15 @@
 						{name || plan?.name || 'Plan'}
 					</h2>
 					<p class="micro-label mt-0.5">
-						{#if plan?.created_at}CREATED {new Date(plan.created_at).toLocaleDateString(
-								undefined,
-								{ month: 'short', day: 'numeric' }
-							).toUpperCase()}{/if}{#if plan?.updated_at && plan.updated_at !== plan.created_at}
-							· UPDATED {new Date(plan.updated_at).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							}).toUpperCase()}{/if}
+						{#if plan?.created_at}CREATED {new Date(plan.created_at)
+								.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+								.toUpperCase()}{/if}{#if plan?.updated_at && plan.updated_at !== plan.created_at}
+							· UPDATED {new Date(plan.updated_at)
+								.toLocaleDateString(undefined, {
+									month: 'short',
+									day: 'numeric'
+								})
+								.toUpperCase()}{/if}
 					</p>
 				</div>
 			</div>

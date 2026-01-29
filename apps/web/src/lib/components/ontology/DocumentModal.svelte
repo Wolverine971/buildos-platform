@@ -758,7 +758,9 @@
 								{#if isEditing}
 									<div class="pt-2 border-t border-border space-y-1">
 										<div class="flex items-center justify-between gap-2">
-											<span class="micro-label text-muted-foreground/70">CREATED</span>
+											<span class="micro-label text-muted-foreground/70"
+												>CREATED</span
+											>
 											<span class="text-xs font-mono text-foreground"
 												>{createdAt
 													? new Date(createdAt).toLocaleDateString()
@@ -766,7 +768,9 @@
 											>
 										</div>
 										<div class="flex items-center justify-between gap-2">
-											<span class="micro-label text-muted-foreground/70">UPDATED</span>
+											<span class="micro-label text-muted-foreground/70"
+												>UPDATED</span
+											>
 											<span class="text-xs font-mono text-foreground"
 												>{updatedAt
 													? new Date(updatedAt).toLocaleDateString()
@@ -774,8 +778,12 @@
 											>
 										</div>
 										<div class="flex items-start justify-between gap-2">
-											<span class="micro-label text-muted-foreground/70 shrink-0">ID</span>
-											<span class="text-xs font-mono text-foreground truncate text-right"
+											<span
+												class="micro-label text-muted-foreground/70 shrink-0"
+												>ID</span
+											>
+											<span
+												class="text-xs font-mono text-foreground truncate text-right"
 												>{activeDocumentId}</span
 											>
 										</div>
@@ -803,7 +811,8 @@
 							<div class="p-3 flex-1 flex flex-col min-h-0">
 								<div class="flex items-center justify-between gap-2 mb-2 shrink-0">
 									<h4 class="micro-label text-foreground">CONTENT</h4>
-									<span class="micro-label text-muted-foreground/70 hidden sm:inline"
+									<span
+										class="micro-label text-muted-foreground/70 hidden sm:inline"
 										>MARKDOWN</span
 									>
 								</div>
@@ -814,7 +823,9 @@
 										helpText=""
 										fillHeight={true}
 										voiceNoteSource="document-modal"
-										voiceNoteLinkedEntityType={activeDocumentId ? 'document' : ''}
+										voiceNoteLinkedEntityType={activeDocumentId
+											? 'document'
+											: ''}
 										voiceNoteLinkedEntityId={activeDocumentId ?? ''}
 										onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
 										onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
@@ -823,7 +834,9 @@
 							</div>
 
 							<!-- Mobile: Collapsible metadata section at bottom -->
-							<div class="lg:hidden border-t border-border bg-muted tx tx-strip tx-weak wt-paper">
+							<div
+								class="lg:hidden border-t border-border bg-muted tx tx-strip tx-weak wt-paper"
+							>
 								<!-- Toggle button -->
 								<button
 									type="button"
@@ -934,8 +947,13 @@
 										<!-- Metadata with micro-labels -->
 										{#if isEditing}
 											<div class="pt-2 border-t border-border space-y-1">
-												<div class="flex items-center justify-between gap-2">
-													<span class="micro-label text-muted-foreground/70">CREATED</span>
+												<div
+													class="flex items-center justify-between gap-2"
+												>
+													<span
+														class="micro-label text-muted-foreground/70"
+														>CREATED</span
+													>
 													<span class="text-xs font-mono text-foreground"
 														>{createdAt
 															? new Date(
@@ -944,8 +962,13 @@
 															: '—'}</span
 													>
 												</div>
-												<div class="flex items-center justify-between gap-2">
-													<span class="micro-label text-muted-foreground/70">UPDATED</span>
+												<div
+													class="flex items-center justify-between gap-2"
+												>
+													<span
+														class="micro-label text-muted-foreground/70"
+														>UPDATED</span
+													>
 													<span class="text-xs font-mono text-foreground"
 														>{updatedAt
 															? new Date(
@@ -955,10 +978,12 @@
 													>
 												</div>
 												<div class="flex items-start justify-between gap-2">
-													<span class="micro-label text-muted-foreground/70 shrink-0"
+													<span
+														class="micro-label text-muted-foreground/70 shrink-0"
 														>ID</span
 													>
-													<span class="text-xs font-mono text-foreground truncate text-right"
+													<span
+														class="text-xs font-mono text-foreground truncate text-right"
 														>{activeDocumentId}</span
 													>
 												</div>

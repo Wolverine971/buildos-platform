@@ -1,4 +1,7 @@
+<!-- apps/web/docs/features/agentic-chat/AGENT_CHAT_MODAL_AUDIT_2025-01-28.md -->
+
 # AgentChatModal Audit Report
+
 **Date:** 2025-01-28
 **Component:** `apps/web/src/lib/components/agent/AgentChatModal.svelte`
 **Auditor:** Claude Code
@@ -18,11 +21,13 @@ The AgentChatModal component and its sub-components are generally **well-structu
 **Issue:** The component uses `setTimeout()` calls that are not tracked or cleaned up in `onDestroy()`. If the component unmounts while these timers are pending, they will still execute and attempt to access component state, potentially causing errors or memory leaks.
 
 **Affected Lines:**
+
 - Line 634: `setTimeout(() => { sendMessage(); }, 0);` (in `handleProceedToChatAfterOptions`)
 - Line 1125: `setTimeout(() => { sendMessage(); }, 0);` (in `$effect` for `initialBraindump`)
 - Line 1420: `setTimeout(() => { messagesContainer?.scrollTo(...) }, 100);` (in keyboard avoiding effect)
 
 **Risk:** Medium-High
+
 - Component state access after unmount
 - Potential errors in console
 - Memory not properly released
@@ -46,7 +51,7 @@ function setTrackedTimeout(callback: () => void, delay: number) {
 // Update onDestroy to clear all timeouts
 onDestroy(() => {
 	// Clear all pending timeouts
-	timeoutIds.forEach(id => clearTimeout(id));
+	timeoutIds.forEach((id) => clearTimeout(id));
 	timeoutIds.clear();
 
 	// ... existing cleanup code
@@ -60,30 +65,30 @@ Then replace all `setTimeout` calls with `setTrackedTimeout`.
 ### ✅ Strengths Identified
 
 1. **Proper Svelte 5 Usage**
-   - Correct use of `$state`, `$derived`, `$props`, `$bindable`
-   - No usage of deprecated reactive syntax (`$:`)
-   - Proper spread operators for array mutations to ensure reactivity
+    - Correct use of `$state`, `$derived`, `$props`, `$bindable`
+    - No usage of deprecated reactive syntax (`$:`)
+    - Proper spread operators for array mutations to ensure reactivity
 
 2. **Good AbortController Handling**
-   - Proper cleanup of `currentStreamController` in onDestroy
-   - Proper cleanup of `sessionLoadController` in onDestroy
-   - Good race condition prevention with `runId` guards
+    - Proper cleanup of `currentStreamController` in onDestroy
+    - Proper cleanup of `sessionLoadController` in onDestroy
+    - Good race condition prevention with `runId` guards
 
 3. **Comprehensive Cleanup**
-   - Voice input cleanup
-   - Session finalization
-   - Keyboard avoiding cleanup with proper return function
-   - pendingToolResults Map cleared appropriately
+    - Voice input cleanup
+    - Session finalization
+    - Keyboard avoiding cleanup with proper return function
+    - pendingToolResults Map cleared appropriately
 
 4. **Race Condition Prevention**
-   - `activeStreamRunId` increments prevent stale stream handling
-   - `sessionLoadRequestId` prevents stale session loads
-   - Proper guards in SSE callbacks: `if (runId !== activeStreamRunId) return;`
+    - `activeStreamRunId` increments prevent stale stream handling
+    - `sessionLoadRequestId` prevents stale session loads
+    - Proper guards in SSE callbacks: `if (runId !== activeStreamRunId) return;`
 
 5. **Error Handling**
-   - Try-catch blocks around critical async operations
-   - Proper error state management
-   - User-friendly error messages
+    - Try-catch blocks around critical async operations
+    - Proper error state management
+    - User-friendly error messages
 
 ---
 
@@ -92,36 +97,43 @@ Then replace all `setTimeout` calls with `setTrackedTimeout`.
 All sub-components were reviewed and found to be **clean and well-implemented**:
 
 ### ✅ AgentChatHeader.svelte
+
 - Proper Svelte 5 props usage
 - Good responsive design with mobile/desktop variants
 - Proper use of INKPRINT design system tokens
 
 ### ✅ AgentComposer.svelte
+
 - Proper $bindable usage for two-way binding
 - Good callback prop patterns
 - Clean TextareaWithVoice integration
 
 ### ✅ AgentMessageList.svelte
+
 - Proper message rendering with markdown support
 - Good scroll handling
 - Clean voice note integration
 
 ### ✅ ThinkingBlock.svelte
+
 - Proper state management with Map for collapse states
 - Good activity logging
 - Clean plan visualization integration
 
 ### ✅ ProjectFocusSelector.svelte
+
 - Proper AbortController usage for fetch cancellation
 - Good race condition prevention
 - Clean error handling
 
 ### ✅ ProjectActionSelector.svelte
+
 - Simple, stateless component
 - Good responsive design
 - Proper INKPRINT patterns
 
 ### ✅ Other Components
+
 - **PlanVisualization.svelte** - Not audited in detail but appears clean
 - **OperationsLog.svelte** - Not audited in detail but appears clean
 - **OperationsQueue.svelte** - Not audited in detail but appears clean
@@ -147,15 +159,15 @@ All sub-components were reviewed and found to be **clean and well-implemented**:
 
 ## Code Quality Metrics
 
-| Metric | Rating | Notes |
-|--------|--------|-------|
-| **Svelte 5 Compliance** | ⭐⭐⭐⭐⭐ | Perfect use of new runes syntax |
-| **Memory Management** | ⭐⭐⭐⭐ | Good overall, one timeout leak issue |
-| **Error Handling** | ⭐⭐⭐⭐⭐ | Comprehensive try-catch and error states |
-| **Race Condition Prevention** | ⭐⭐⭐⭐⭐ | Excellent use of request IDs and guards |
-| **Code Organization** | ⭐⭐⭐⭐ | Well-structured, could benefit from more extraction |
-| **Responsive Design** | ⭐⭐⭐⭐⭐ | Proper mobile/desktop handling |
-| **Accessibility** | ⭐⭐⭐⭐ | Good aria labels and semantic HTML |
+| Metric                        | Rating     | Notes                                               |
+| ----------------------------- | ---------- | --------------------------------------------------- |
+| **Svelte 5 Compliance**       | ⭐⭐⭐⭐⭐ | Perfect use of new runes syntax                     |
+| **Memory Management**         | ⭐⭐⭐⭐   | Good overall, one timeout leak issue                |
+| **Error Handling**            | ⭐⭐⭐⭐⭐ | Comprehensive try-catch and error states            |
+| **Race Condition Prevention** | ⭐⭐⭐⭐⭐ | Excellent use of request IDs and guards             |
+| **Code Organization**         | ⭐⭐⭐⭐   | Well-structured, could benefit from more extraction |
+| **Responsive Design**         | ⭐⭐⭐⭐⭐ | Proper mobile/desktop handling                      |
+| **Accessibility**             | ⭐⭐⭐⭐   | Good aria labels and semantic HTML                  |
 
 ---
 

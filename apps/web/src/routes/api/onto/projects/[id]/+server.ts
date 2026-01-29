@@ -418,23 +418,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				typeof state_key === 'string' ? state_key : existingProject.state_key;
 		}
 
-		if (facet_context !== undefined) {
-			updateData.facet_context =
-				typeof facet_context === 'string' && facet_context.length > 0
-					? facet_context
-					: null;
-		}
-
-		if (facet_scale !== undefined) {
-			updateData.facet_scale =
-				typeof facet_scale === 'string' && facet_scale.length > 0 ? facet_scale : null;
-		}
-
-		if (facet_stage !== undefined) {
-			updateData.facet_stage =
-				typeof facet_stage === 'string' && facet_stage.length > 0 ? facet_stage : null;
-		}
-
 		if (start_at !== undefined) {
 			updateData.start_at = normalizeDateInput(start_at, existingProject.start_at);
 		}
@@ -443,16 +426,52 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.end_at = normalizeDateInput(end_at, existingProject.end_at);
 		}
 
-		if (props !== undefined) {
+		// facet_* columns are generated from props.facets.*; update props to change them.
+		const shouldUpdateFacets =
+			facet_context !== undefined || facet_scale !== undefined || facet_stage !== undefined;
+
+		if (props !== undefined || shouldUpdateFacets) {
 			const currentProps = (existingProject.props as Record<string, unknown>) ?? {};
+			const mergedProps: Record<string, unknown> = { ...currentProps };
+
 			if (props && typeof props === 'object' && !Array.isArray(props)) {
-				updateData.props = {
-					...currentProps,
-					...props
-				};
-			} else {
-				updateData.props = currentProps;
+				Object.assign(mergedProps, props);
 			}
+
+			if (shouldUpdateFacets) {
+				const existingFacets =
+					mergedProps.facets &&
+					typeof mergedProps.facets === 'object' &&
+					!Array.isArray(mergedProps.facets)
+						? (mergedProps.facets as Record<string, unknown>)
+						: {};
+				const nextFacets: Record<string, unknown> = { ...existingFacets };
+
+				if (facet_context !== undefined) {
+					nextFacets.context =
+						typeof facet_context === 'string' && facet_context.length > 0
+							? facet_context
+							: null;
+				}
+
+				if (facet_scale !== undefined) {
+					nextFacets.scale =
+						typeof facet_scale === 'string' && facet_scale.length > 0
+							? facet_scale
+							: null;
+				}
+
+				if (facet_stage !== undefined) {
+					nextFacets.stage =
+						typeof facet_stage === 'string' && facet_stage.length > 0
+							? facet_stage
+							: null;
+				}
+
+				mergedProps.facets = nextFacets;
+			}
+
+			updateData.props = mergedProps;
 		}
 
 		// Handle next_step fields - user can manually set/edit these
