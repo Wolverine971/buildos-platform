@@ -1,4 +1,4 @@
--- supabase/migrations/20260129000001_add_doc_structure.sql
+-- supabase/migrations/applied_backup/20260129_hierarchical_documents/20260129000001_add_doc_structure.sql
 -- Migration: Add doc_structure column to onto_projects
 -- Purpose: Enable hierarchical document organization within projects
 -- Date: 2026-01-29

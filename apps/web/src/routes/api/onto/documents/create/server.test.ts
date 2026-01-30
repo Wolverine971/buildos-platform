@@ -111,8 +111,7 @@ function createSupabaseMock() {
 			}
 			return { data: null, error: null };
 		}),
-		from: (table: string) =>
-			new QueryBuilderMock(table, { project: { id: 'project-1' } })
+		from: (table: string) => new QueryBuilderMock(table, { project: { id: 'project-1' } })
 	};
 }
 

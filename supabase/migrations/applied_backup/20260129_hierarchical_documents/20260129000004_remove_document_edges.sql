@@ -1,4 +1,4 @@
--- supabase/migrations/20260129000004_remove_document_edges.sql
+-- supabase/migrations/applied_backup/20260129_hierarchical_documents/20260129000004_remove_document_edges.sql
 -- Migration: Convert document containment edges to doc_structure, then remove edges
 -- Purpose: Preserve document hierarchy while moving to doc_structure storage
 -- Date: 2026-01-29

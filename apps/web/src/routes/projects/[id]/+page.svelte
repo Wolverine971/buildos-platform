@@ -74,7 +74,17 @@
 		GitBranch,
 		UserPlus
 	} from 'lucide-svelte';
-	import type { Project, Task, Document, Plan, OntoEvent, Goal, Milestone, Risk } from '$lib/types/onto';
+	import type {
+		Project,
+		Task,
+		Document,
+		Plan,
+		OntoEvent,
+		Goal,
+		Milestone,
+		Risk,
+		MilestoneState
+	} from '$lib/types/onto';
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
@@ -612,7 +622,12 @@
 			if (!map.has(goalId)) {
 				map.set(goalId, []);
 			}
-			map.get(goalId)!.push(milestone);
+			// Normalize due_at to ensure it's never undefined
+			const normalizedMilestone: Milestone = {
+				...milestone,
+				due_at: milestone.due_at ?? null
+			};
+			map.get(goalId)!.push(normalizedMilestone);
 		}
 
 		return map;
@@ -1277,7 +1292,7 @@
 	 * Toggles between 'pending'/'in_progress' and 'completed'.
 	 */
 	async function handleToggleMilestoneComplete(milestoneId: string, currentState: string) {
-		const newState = currentState === 'completed' ? 'pending' : 'completed';
+		const newState: MilestoneState = currentState === 'completed' ? 'pending' : 'completed';
 
 		try {
 			const response = await fetch(`/api/onto/milestones/${milestoneId}`, {
@@ -1294,9 +1309,18 @@
 			// Optimistic update
 			milestones = milestones.map((m) => {
 				if (m.id !== milestoneId) return m;
-				const updated = { ...m, state_key: newState };
+				const updated: Milestone = {
+					...m,
+					state_key: newState,
+					due_at: m.due_at ?? null
+				};
 				const { state, isMissed } = resolveMilestoneState(updated);
-				return { ...updated, effective_state_key: state, is_missed: isMissed };
+				return {
+					...updated,
+					effective_state_key: state,
+					is_missed: isMissed,
+					due_at: updated.due_at
+				};
 			});
 
 			toastService.success(

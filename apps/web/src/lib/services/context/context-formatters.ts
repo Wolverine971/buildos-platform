@@ -508,10 +508,12 @@ function formatElementContext(ontology: OntologyContext): string {
 - Name: ${getEntityName(elem)}
 - Status: ${elem?.status || elem?.state_key || 'Unknown'}`);
 
-	sections.push(`### Element Details
+	sections.push(
+		`### Element Details
 ${detailLines.length > 0 ? detailLines.join('\n') : '- No additional details'}
 - Description: ${descriptionSnippet || 'None'}
-${propsLine}`.trim());
+${propsLine}`.trim()
+	);
 
 	sections.push(`### Parent Project
 ${

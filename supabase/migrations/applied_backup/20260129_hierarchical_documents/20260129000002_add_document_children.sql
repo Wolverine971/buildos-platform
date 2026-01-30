@@ -1,4 +1,4 @@
--- supabase/migrations/20260129000002_add_document_children.sql
+-- supabase/migrations/applied_backup/20260129_hierarchical_documents/20260129000002_add_document_children.sql
 -- Migration: Add children column to onto_documents
 -- Purpose: Enable documents to know their immediate children for efficient queries
 -- Date: 2026-01-29

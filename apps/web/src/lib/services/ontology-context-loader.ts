@@ -1255,17 +1255,21 @@ export class OntologyContextLoader {
 
 			if (includeDocumentTree) {
 				try {
-					const { docStructure, documentTree } = await this.loadProjectDocumentTreeContext(
-						parentProject.id,
-						rawStructure ?? null
-					);
+					const { docStructure, documentTree } =
+						await this.loadProjectDocumentTreeContext(
+							parentProject.id,
+							rawStructure ?? null
+						);
 					metadata.doc_structure = docStructure;
 					metadata.document_tree = documentTree;
 				} catch (error) {
-					console.warn('[OntologyLoader] Failed to load document tree for element context', {
-						projectId: parentProject.id,
-						error: error instanceof Error ? error.message : String(error)
-					});
+					console.warn(
+						'[OntologyLoader] Failed to load document tree for element context',
+						{
+							projectId: parentProject.id,
+							error: error instanceof Error ? error.message : String(error)
+						}
+					);
 					metadata.doc_structure = this.normalizeDocStructure(rawStructure);
 				}
 			} else {

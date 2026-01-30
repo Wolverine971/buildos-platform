@@ -15,3 +15,14 @@ export { default as DocTreeUpdateNotification } from './DocTreeUpdateNotificatio
 export { default as UnlinkedDocuments } from './UnlinkedDocuments.svelte';
 export { default as DocMoveModal } from './DocMoveModal.svelte';
 export { default as DocDeleteConfirmModal } from './DocDeleteConfirmModal.svelte';
+export { default as DocTreeDragLayer } from './DocTreeDragLayer.svelte';
+
+// Drag-drop state and types
+export {
+	createDragDropState,
+	type DragState,
+	type DropZone,
+	type DropZoneType,
+	type DragDropOptions,
+	type DragDropState
+} from './useDragDrop.svelte';

@@ -194,20 +194,41 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 	const projectName = project.project.name;
 	let brief = `## [${projectName}](/projects/${projectId})\n\n`;
 
-	// Goal Progress Section - only show if there are active goals
+	// Project Status One-Liner - health indicator at a glance
 	const activeGoals = project.goals.filter(
 		(g) => g.goal.state_key !== 'achieved' && g.goal.state_key !== 'abandoned'
 	);
+	const goalsAtRisk = activeGoals.filter((g) => g.status === 'at_risk' || g.status === 'behind');
+	const todayCount = project.todaysTasks.length;
+	const blockedCount = project.blockedTasks.length;
+
+	let statusLine = '';
+	if (blockedCount > 0 && goalsAtRisk.length > 0) {
+		statusLine = `🔴 **Needs attention** — ${blockedCount} blocked, ${goalsAtRisk.length} goal${goalsAtRisk.length > 1 ? 's' : ''} at risk`;
+	} else if (blockedCount > 0) {
+		statusLine = `⚠️ **${blockedCount} blocked task${blockedCount > 1 ? 's' : ''}** — resolve to keep momentum`;
+	} else if (goalsAtRisk.length > 0) {
+		statusLine = `⚠️ **${goalsAtRisk.length} goal${goalsAtRisk.length > 1 ? 's' : ''} at risk** — check progress`;
+	} else if (todayCount > 0) {
+		statusLine = `✅ **On track** — ${todayCount} task${todayCount > 1 ? 's' : ''} today`;
+	} else if (project.thisWeekTasks.length > 0) {
+		statusLine = `📅 **${project.thisWeekTasks.length} tasks this week** — nothing urgent today`;
+	} else {
+		statusLine = `📭 **No active tasks** — project may need planning`;
+	}
+	brief += `${statusLine}\n\n`;
+
+	// Goal Progress Section - only show if there are active goals
 	if (activeGoals.length > 0) {
 		brief += `### Goal Progress\n`;
 		for (const goal of activeGoals) {
 			const targetSummary = formatGoalTargetSummary(goal);
 			const statusEmoji =
-				targetSummary && goal.status === 'on_track'
+				goal.status === 'on_track'
 					? '✅'
-					: targetSummary && goal.status === 'at_risk'
+					: goal.status === 'at_risk'
 						? '⚠️'
-						: targetSummary && goal.status === 'behind'
+						: goal.status === 'behind'
 							? '🔴'
 							: '';
 			const statusPrefix = statusEmoji ? `${statusEmoji} ` : '';
@@ -217,27 +238,9 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 		brief += '\n';
 	}
 
-	// Requirements - only show if there are requirements
-	if (project.requirements.length > 0) {
-		brief += `### Requirements\n`;
-		for (const requirement of project.requirements.slice(0, 3)) {
-			brief += `- ${requirement.text}\n`;
-		}
-		brief += '\n';
-	}
-
-	// Recent Activity - only show if there are logs
-	if (project.activityLogs.length > 0) {
-		brief += `### Recent Activity (Last 24h)\n`;
-		for (const entry of project.activityLogs.slice(0, 3)) {
-			brief += `- ${formatActivityEntry(entry)}\n`;
-		}
-		brief += '\n';
-	}
-
 	// Today's Tasks - only show if there are tasks for today
 	if (project.todaysTasks.length > 0) {
-		brief += `### Starting Today\n`;
+		brief += `### Today's Work\n`;
 		for (const task of project.todaysTasks) {
 			const icon = getTaskStatusIcon(task);
 			const workMode = getWorkMode(task.type_key);
@@ -247,26 +250,39 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 		brief += '\n';
 	}
 
-	// Blocked Tasks - only show if there are blocked tasks
+	// Blocked Tasks with context - explain why they matter
 	if (project.blockedTasks.length > 0) {
-		brief += `### Blocked Tasks\n`;
+		brief += `### 🚫 Blocked (${project.blockedTasks.length})\n`;
 		for (const task of project.blockedTasks.slice(0, 3)) {
-			brief += `- [${task.title}](/projects/${projectId}/tasks/${task.id})\n`;
+			// Check if this blocked task is blocking others
+			const isBlockingOthers = project.unblockingTasks.some((ut) => ut.id === task.id);
+			const context = isBlockingOthers ? ' — *blocking other work*' : '';
+			brief += `- [${task.title}](/projects/${projectId}/tasks/${task.id})${context}\n`;
+		}
+		if (project.blockedTasks.length > 3) {
+			brief += `- ... and ${project.blockedTasks.length - 3} more\n`;
 		}
 		brief += '\n';
 	}
 
-	// Unblocking Tasks - only show if there are unblocking tasks
+	// Unblocking Tasks - high-impact work
 	if (project.unblockingTasks.length > 0) {
-		brief += `### Unblocking Work\n`;
-		brief += `*These tasks, when completed, will unblock other work:*\n`;
+		const unblockedCount = project.unblockingTasks.length;
+		brief += `### ⚡ Unblocking Work (${unblockedCount})\n`;
+		brief += `*Completing these unblocks other tasks:*\n`;
 		for (const task of project.unblockingTasks.slice(0, 3)) {
 			brief += `- [${task.title}](/projects/${projectId}/tasks/${task.id})\n`;
 		}
 		brief += '\n';
 	}
 
-	// Next Steps - only show if there are next steps
+	// Next Milestone - important for deadline awareness
+	if (project.nextMilestone) {
+		brief += `### 🎯 Next Milestone\n`;
+		brief += `${project.nextMilestone}\n\n`;
+	}
+
+	// Next Steps - only if there are any
 	if (project.nextSteps.length > 0) {
 		brief += `### Next Steps\n`;
 		for (const step of project.nextSteps) {
@@ -275,10 +291,12 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 		brief += '\n';
 	}
 
-	// Next Milestone - only show if there is a milestone
-	if (project.nextMilestone) {
-		brief += `### Upcoming Milestone\n`;
-		brief += `${project.nextMilestone}\n`;
+	// Recent Activity - condensed, only if meaningful
+	if (project.activityLogs.length > 0) {
+		brief += `### Recent Activity\n`;
+		for (const entry of project.activityLogs.slice(0, 2)) {
+			brief += `- ${formatActivityEntry(entry)}\n`;
+		}
 		brief += '\n';
 	}
 
@@ -506,23 +524,38 @@ function generateMainBriefMarkdown(
 		}
 	}
 
-	// Recent Updates Summary
+	// Recent Wins - Momentum Section (completed tasks)
+	const completedTasks = briefData.recentUpdates.tasks.filter((t) => t.state_key === 'done');
+	const activityEntries = briefData.projects.flatMap((project) => project.activityLogs);
+	const completedActivityEntries = activityEntries.filter((e) => e.action === 'completed');
+
+	if (completedTasks.length > 0 || completedActivityEntries.length > 0) {
+		mainBrief += `## ✅ Recent Wins\n\n`;
+
+		if (completedTasks.length > 0) {
+			mainBrief += `**${completedTasks.length} task${completedTasks.length > 1 ? 's' : ''} completed** in the last 24h:\n`;
+			for (const task of completedTasks.slice(0, 5)) {
+				const projectName = projectNameMap.get(task.project_id) || 'Unknown';
+				mainBrief += `- ✅ [${task.title}](/projects/${task.project_id}/tasks/${task.id}) — [${projectName}](/projects/${task.project_id})\n`;
+			}
+			if (completedTasks.length > 5) {
+				mainBrief += `- ... and ${completedTasks.length - 5} more\n`;
+			}
+			mainBrief += '\n';
+		}
+	}
+
+	// Other Activity (non-completion updates)
 	const totalUpdates =
 		briefData.recentUpdates.tasks.length +
 		briefData.recentUpdates.goals.length +
 		briefData.recentUpdates.documents.length;
 
-	const activityEntries = briefData.projects.flatMap((project) => project.activityLogs);
 	const hasSharedProjects = briefData.projects.some((project) => project.isShared);
+	const nonCompletionEntries = activityEntries.filter((e) => e.action !== 'completed');
 
-	if (totalUpdates > 0 || activityEntries.length > 0) {
-		mainBrief += `## Recent Activity (Last 24h)\n\n`;
-
-		if (totalUpdates > 0) {
-			mainBrief += `- **${briefData.recentUpdates.tasks.length}** tasks updated\n`;
-			mainBrief += `- **${briefData.recentUpdates.goals.length}** goals with activity\n`;
-			mainBrief += `- **${briefData.recentUpdates.documents.length}** documents updated\n\n`;
-		}
+	if (nonCompletionEntries.length > 0 && totalUpdates > 3) {
+		mainBrief += `## Recent Activity\n\n`;
 
 		const appendActivityEntries = (entries: ProjectActivityEntry[], headingPrefix: string) => {
 			if (entries.length === 0) return;
@@ -533,7 +566,7 @@ function generateMainBriefMarkdown(
 			const grouped = new Map<string, ProjectActivityEntry[]>();
 			for (const entry of sorted) {
 				const list = grouped.get(entry.projectId) ?? [];
-				if (list.length >= 3) continue;
+				if (list.length >= 2) continue;
 				list.push(entry);
 				grouped.set(entry.projectId, list);
 			}
@@ -543,7 +576,7 @@ function generateMainBriefMarkdown(
 					(a, b) =>
 						parseISO(b[0].createdAt).getTime() - parseISO(a[0].createdAt).getTime()
 				)
-				.slice(0, 5);
+				.slice(0, 3);
 
 			for (const entriesForProject of groupedEntries) {
 				const { projectId, projectName } = entriesForProject[0];
@@ -555,23 +588,20 @@ function generateMainBriefMarkdown(
 			}
 		};
 
-		if (activityEntries.length > 0) {
-			const sharedEntries = activityEntries.filter((entry) => entry.isShared);
-			const ownedEntries = activityEntries.filter((entry) => !entry.isShared);
+		const sharedEntries = nonCompletionEntries.filter((entry) => entry.isShared);
+		const ownedEntries = nonCompletionEntries.filter((entry) => !entry.isShared);
 
-			if (hasSharedProjects && sharedEntries.length > 0) {
-				if (ownedEntries.length > 0) {
-					mainBrief += `### Your Projects\n\n`;
-					appendActivityEntries(ownedEntries, '####');
-				}
-				mainBrief += `### Shared Project Activity\n\n`;
-				appendActivityEntries(sharedEntries, '####');
-			} else {
-				appendActivityEntries(
-					ownedEntries.length > 0 ? ownedEntries : activityEntries,
-					'###'
-				);
+		if (hasSharedProjects && sharedEntries.length > 0) {
+			if (ownedEntries.length > 0) {
+				appendActivityEntries(ownedEntries, '###');
 			}
+			mainBrief += `### Shared Projects\n\n`;
+			appendActivityEntries(sharedEntries, '####');
+		} else {
+			appendActivityEntries(
+				ownedEntries.length > 0 ? ownedEntries : nonCompletionEntries,
+				'###'
+			);
 		}
 	}
 

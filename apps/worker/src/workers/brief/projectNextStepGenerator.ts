@@ -278,7 +278,14 @@ export async function generateProjectNextStepsForBrief(
 	const results: NextStepResult[] = [];
 	let failed = 0;
 
-	for (const project of projects) {
+	// Sort projects from oldest to newest so the most recent project is updated last
+	const sortedProjects = [...projects].sort((a, b) => {
+		const aCreated = a.project.created_at ? parseISO(a.project.created_at).getTime() : 0;
+		const bCreated = b.project.created_at ? parseISO(b.project.created_at).getTime() : 0;
+		return aCreated - bCreated; // Ascending order: oldest first
+	});
+
+	for (const project of sortedProjects) {
 		const goals = Array.from(project.goalProgress.values());
 		const result = await generateNextStepForProject(project, goals, options);
 		if (result) {

@@ -591,23 +591,23 @@ Use when you need the full requirement record before updating it.`,
 			description: `Get the hierarchical document tree structure for a project.
 Returns the full tree with document metadata, useful for understanding how documents are organized.
 Documents are organized in a wiki-like tree structure with folders (documents that have children) and leaf documents.`,
-				parameters: {
-					type: 'object',
-					properties: {
-						project_id: {
-							type: 'string',
-							description: 'Project ID to get the document tree for (required)'
-						},
-						include_content: {
-							type: 'boolean',
-							default: false,
-							description:
-								'Include full document content bodies. Defaults to false to return metadata only.'
-						}
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project ID to get the document tree for (required)'
 					},
-					required: ['project_id']
-				}
+					include_content: {
+						type: 'boolean',
+						default: false,
+						description:
+							'Include full document content bodies. Defaults to false to return metadata only.'
+					}
+				},
+				required: ['project_id']
 			}
+		}
 	},
 
 	{

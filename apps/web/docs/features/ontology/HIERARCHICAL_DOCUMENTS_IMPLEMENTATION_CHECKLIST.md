@@ -2,9 +2,11 @@
 
 # Hierarchical Documents - Implementation Checklist
 
-**Status:** Phase 7 Complete (Tests + Cleanup)
+**Status:** Phase 5 Core Complete (Drag-and-Drop)
 **Date:** 2026-01-30
 **Last Updated:** 2026-01-30
+
+> **Latest:** Phase 5.1 (Drag-and-Drop Core) completed. Created `useDragDrop.svelte.ts` state module with hover-to-convert behavior, `DocTreeDragLayer.svelte` for ghost elements, and integrated into `DocTreeNode.svelte` and `DocTreeView.svelte`. Remaining: keyboard shortcuts, mobile polish, animations.
 
 This document tracks all code changes needed to implement the hierarchical document tree system.
 
@@ -226,19 +228,72 @@ Based on codebase research and decisions made, we need to update:
 
 ## Phase 5: Drag-and-Drop (Enhancement)
 
-- [ ] **Add drag-drop to `DocTreeNode.svelte`**
-    - Draggable attribute on nodes
-    - Drop zones between siblings
-    - Drop zone on folder nodes (to add as child)
-    - Visual feedback during drag
+### 5.1 Core Implementation (Complete)
 
-- [ ] **Reorder API integration**
-    - Call `PATCH /api/onto/projects/[id]/doc-tree` on drop
-    - Optimistic UI update
+- [x] **Create `/apps/web/src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts`**
+    - State management with `$state<DragState>()`
+    - Mouse/touch event handlers
+    - Drop zone detection (before/after/inside)
+    - Cycle detection validation
+    - Hover-to-convert timer (400ms) for plain documents
+    - Touch support with long-press (500ms) initiation
 
-- [ ] **Mobile touch support**
-    - Long-press to initiate drag
-    - Or use "Move to..." modal instead
+- [x] **Create `/apps/web/src/lib/components/ontology/doc-tree/DocTreeDragLayer.svelte`**
+    - Ghost element following cursor during drag
+    - Drop feedback hints for valid/invalid drops
+    - CSS for ghost styling with rotation effect
+    - Global `doc-tree-dragging` body class
+
+- [x] **Update `DocTreeNode.svelte` with drag support**
+    - Added drag-related props: `dragState`, `onDragStart`, `onDragOver`, `onTouchStart`, `canDrag`
+    - Derived states for visual feedback: `isDragging`, `isDropTarget`, `isDropBefore`, `isDropAfter`, `isConverting`, `isInvalidTarget`
+    - Insertion line indicators between nodes
+    - Cursor changes during drag operations
+
+- [x] **Update `DocTreeView.svelte` with drag integration**
+    - Added `enableDragDrop` prop (default true)
+    - Node lookup maps for validation (`nodeMap`, `parentMap`, `indexMap`)
+    - Integrated `createDragDropState()` with API callbacks
+    - `handleDragMove()` calls API and updates local state
+    - Global event listeners for mouse/touch tracking
+    - Cleanup on component destroy
+
+- [x] **Update `index.ts` with new exports**
+    - Export `DocTreeDragLayer` component
+    - Export `createDragDropState`, `DragState`, `DropZone`, `DropZoneType`, `DragDropOptions`, `DragDropState`
+
+- [x] **API integration**
+    - Uses existing `POST /api/onto/projects/[id]/doc-tree/move` endpoint
+    - Optimistic UI updates with version tracking
+    - Conflict detection (409 response triggers update notification)
+
+### 5.2 Keyboard Alternative (Deferred)
+
+- [ ] **Add keyboard shortcuts for move operations**
+    - Ctrl+X/V (Cmd on Mac) for cut/paste
+    - Alternative to drag-drop for accessibility
+
+### 5.3 Mobile Polish (Deferred)
+
+- [ ] **Enhance mobile touch experience**
+    - Auto-scroll when dragging near edges
+    - Haptic feedback on drag start (if available)
+    - Testing on various mobile devices
+
+### 5.4 Additional Enhancements (Deferred)
+
+- [ ] **Animations and polish**
+    - Smooth animations for tree reordering
+    - Undo support (Cmd+Z after move)
+    - Performance optimization for large trees
+    - Drag from unlinked documents section
+
+### Specification Document
+
+- [x] **Created `/apps/web/docs/features/ontology/DRAG_DROP_SPEC.md`**
+    - Comprehensive specification covering interactions, visual feedback, drop zones
+    - Decided behavior: Hybrid hover-to-convert approach
+    - Documents edge cases, error handling, accessibility
 
 ---
 
@@ -327,28 +382,31 @@ Based on codebase research and decisions made, we need to update:
 
 ## File Change Summary
 
-### New Files (16)
+### New Files (18)
 
-| File                                                                     | Purpose                        |
-| ------------------------------------------------------------------------ | ------------------------------ |
-| `/supabase/migrations/YYYYMMDD_add_doc_structure.sql`                    | DB migration - doc_structure   |
-| `/supabase/migrations/YYYYMMDD_add_document_children.sql`                | DB migration - children column |
-| `/supabase/migrations/YYYYMMDD_add_structure_history.sql`                | DB migration - history table   |
-| `/supabase/migrations/YYYYMMDD_remove_document_edges.sql`                | DB migration - cleanup edges   |
-| `/apps/web/src/lib/services/ontology/doc-structure.service.ts`           | Tree management                |
-| `/apps/web/src/lib/services/ontology/doc-structure-history.service.ts`   | History/undo management        |
-| `/apps/web/src/routes/api/onto/projects/[id]/doc-tree/+server.ts`        | GET/PATCH tree                 |
-| `/apps/web/src/routes/api/onto/projects/[id]/doc-tree/move/+server.ts`   | Move document                  |
-| `/apps/web/src/lib/components/ontology/DocTreeView.svelte`               | Tree container (desktop)       |
-| `/apps/web/src/lib/components/ontology/DocTreeMobile.svelte`             | Phone book style (mobile)      |
-| `/apps/web/src/lib/components/ontology/DocTreeNode.svelte`               | Tree node                      |
-| `/apps/web/src/lib/components/ontology/UnlinkedDocuments.svelte`         | Orphaned docs section          |
-| `/apps/web/src/lib/components/ontology/DocTreeContextMenu.svelte`        | Context menu                   |
-| `/apps/web/src/lib/components/ontology/DocMoveModal.svelte`              | Move picker                    |
-| `/apps/web/src/lib/components/ontology/DocDeleteConfirmModal.svelte`     | Folder delete confirmation     |
-| `/apps/web/src/lib/components/ontology/DocTreeUpdateNotification.svelte` | Real-time update toast         |
-| `/apps/web/src/lib/components/ontology/DocTreeSkeleton.svelte`           | Loading state                  |
-| `/apps/web/src/lib/services/ontology/doc-structure.service.test.ts`      | Tests                          |
+| File                                                                              | Purpose                        |
+| --------------------------------------------------------------------------------- | ------------------------------ |
+| `/supabase/migrations/YYYYMMDD_add_doc_structure.sql`                             | DB migration - doc_structure   |
+| `/supabase/migrations/YYYYMMDD_add_document_children.sql`                         | DB migration - children column |
+| `/supabase/migrations/YYYYMMDD_add_structure_history.sql`                         | DB migration - history table   |
+| `/supabase/migrations/YYYYMMDD_remove_document_edges.sql`                         | DB migration - cleanup edges   |
+| `/apps/web/src/lib/services/ontology/doc-structure.service.ts`                    | Tree management                |
+| `/apps/web/src/lib/services/ontology/doc-structure-history.service.ts`            | History/undo management        |
+| `/apps/web/src/routes/api/onto/projects/[id]/doc-tree/+server.ts`                 | GET/PATCH tree                 |
+| `/apps/web/src/routes/api/onto/projects/[id]/doc-tree/move/+server.ts`            | Move document                  |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocTreeView.svelte`               | Tree container (desktop)       |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocTreeMobile.svelte`             | Phone book style (mobile)      |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocTreeNode.svelte`               | Tree node                      |
+| `/apps/web/src/lib/components/ontology/doc-tree/UnlinkedDocuments.svelte`         | Orphaned docs section          |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocTreeContextMenu.svelte`        | Context menu                   |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocMoveModal.svelte`              | Move picker                    |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocDeleteConfirmModal.svelte`     | Folder delete confirmation     |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocTreeUpdateNotification.svelte` | Real-time update toast         |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocTreeSkeleton.svelte`           | Loading state                  |
+| `/apps/web/src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts`            | Drag-drop state management     |
+| `/apps/web/src/lib/components/ontology/doc-tree/DocTreeDragLayer.svelte`          | Drag ghost and drop feedback   |
+| `/apps/web/src/lib/services/ontology/doc-structure.service.test.ts`               | Tests                          |
+| `/apps/web/docs/features/ontology/DRAG_DROP_SPEC.md`                              | Drag-drop specification        |
 
 ### Modified Files (15+)
 
@@ -435,6 +493,7 @@ These are noted for future implementation:
 
 - [HIERARCHICAL_DOCUMENTS_HANDOFF.md](./HIERARCHICAL_DOCUMENTS_HANDOFF.md) - **Agent handoff doc (start here if picking up work)**
 - [HIERARCHICAL_DOCUMENT_TREE_SPEC.md](./HIERARCHICAL_DOCUMENT_TREE_SPEC.md) - Full specification
+- [DRAG_DROP_SPEC.md](./DRAG_DROP_SPEC.md) - **Drag-and-drop specification (Phase 5)**
 - [HIERARCHICAL_DOCUMENTS_OPEN_QUESTIONS.md](./HIERARCHICAL_DOCUMENTS_OPEN_QUESTIONS.md) - All decisions made
 - [DOCUMENTS_VS_ENTITIES_ARCHITECTURE.md](./DOCUMENTS_VS_ENTITIES_ARCHITECTURE.md) - Architecture decisions
 - [DATA_MODELS.md](./DATA_MODELS.md) - Current database schema

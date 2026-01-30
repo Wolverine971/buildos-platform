@@ -2,9 +2,11 @@
 
 # Document Tree Drag-and-Drop Specification
 
-**Status:** Draft for Review
+**Status:** Implemented (Core)
 **Date:** 2026-01-30
 **Author:** Claude (Agentic Assistant)
+
+> **Implementation Note:** Core drag-and-drop implemented in Phase 5.1. See `useDragDrop.svelte.ts` for state management, `DocTreeDragLayer.svelte` for visual feedback, and `DocTreeNode.svelte` / `DocTreeView.svelte` for integration.
 
 ---
 
@@ -26,24 +28,24 @@ This spec defines the drag-and-drop (DnD) interaction for reorganizing documents
 
 ### Desktop (Mouse)
 
-| Action | Trigger | Result |
-|--------|---------|--------|
-| Start drag | Mouse down + move (>5px) on document row | Ghost element follows cursor |
-| Drag over folder | Hover over folder node | Folder highlights as drop target |
-| Drag between items | Hover between two items | Insertion line appears |
-| Drop on folder | Release over highlighted folder | Document becomes child of folder |
-| Drop between items | Release on insertion line | Document inserted at position |
-| Cancel drag | Press Escape or drag outside tree | Return to original position |
+| Action             | Trigger                                  | Result                           |
+| ------------------ | ---------------------------------------- | -------------------------------- |
+| Start drag         | Mouse down + move (>5px) on document row | Ghost element follows cursor     |
+| Drag over folder   | Hover over folder node                   | Folder highlights as drop target |
+| Drag between items | Hover between two items                  | Insertion line appears           |
+| Drop on folder     | Release over highlighted folder          | Document becomes child of folder |
+| Drop between items | Release on insertion line                | Document inserted at position    |
+| Cancel drag        | Press Escape or drag outside tree        | Return to original position      |
 
 ### Mobile (Touch)
 
-| Action | Trigger | Result |
-|--------|---------|--------|
-| Start drag | Long press (500ms) on document row | Haptic feedback + ghost element |
-| Drag | Move finger while holding | Ghost follows finger |
-| Auto-scroll | Drag near top/bottom edge | Tree scrolls in that direction |
-| Drop | Release finger | Same as desktop |
-| Cancel | Lift finger outside tree area | Return to original position |
+| Action      | Trigger                            | Result                          |
+| ----------- | ---------------------------------- | ------------------------------- |
+| Start drag  | Long press (500ms) on document row | Haptic feedback + ghost element |
+| Drag        | Move finger while holding          | Ghost follows finger            |
+| Auto-scroll | Drag near top/bottom edge          | Tree scrolls in that direction  |
+| Drop        | Release finger                     | Same as desktop                 |
+| Cancel      | Lift finger outside tree area      | Return to original position     |
 
 **Alternative for Mobile:** Instead of touch DnD (which can be finicky), mobile users can use the existing "Move to..." modal accessed via context menu or swipe actions.
 
@@ -106,57 +108,57 @@ This spec defines the drag-and-drop (DnD) interaction for reorganizing documents
 ```css
 /* Source item being dragged */
 .doc-tree-node--dragging {
-  opacity: 0.4;
-  pointer-events: none;
+	opacity: 0.4;
+	pointer-events: none;
 }
 
 /* Ghost element following cursor */
 .doc-tree-ghost {
-  position: fixed;
-  pointer-events: none;
-  z-index: 1000;
-  padding: 8px 12px;
-  background: var(--color-card);
-  border: 1px solid var(--color-accent);
-  border-radius: 6px;
-  box-shadow: var(--shadow-ink-strong);
-  transform: translate(-50%, -50%);
-  max-width: 200px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+	position: fixed;
+	pointer-events: none;
+	z-index: 1000;
+	padding: 8px 12px;
+	background: var(--color-card);
+	border: 1px solid var(--color-accent);
+	border-radius: 6px;
+	box-shadow: var(--shadow-ink-strong);
+	transform: translate(-50%, -50%);
+	max-width: 200px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* Valid drop target (folder) */
 .doc-tree-node--drop-target {
-  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-  outline: 2px dashed var(--color-accent);
-  outline-offset: -2px;
+	background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+	outline: 2px dashed var(--color-accent);
+	outline-offset: -2px;
 }
 
 /* Invalid drop target (self, descendant, or non-folder when nesting) */
 .doc-tree-node--drop-invalid {
-  opacity: 0.5;
-  cursor: not-allowed;
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 /* Insertion line between items */
 .doc-tree-insertion-line {
-  height: 2px;
-  background: var(--color-accent);
-  margin: -1px 0;
-  border-radius: 1px;
-  box-shadow: 0 0 4px var(--color-accent);
+	height: 2px;
+	background: var(--color-accent);
+	margin: -1px 0;
+	border-radius: 1px;
+	box-shadow: 0 0 4px var(--color-accent);
 }
 
 /* Auto-scroll zones */
 .doc-tree-scroll-zone-top,
 .doc-tree-scroll-zone-bottom {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 40px;
-  pointer-events: none;
+	position: absolute;
+	left: 0;
+	right: 0;
+	height: 40px;
+	pointer-events: none;
 }
 ```
 
@@ -174,58 +176,54 @@ This spec defines the drag-and-drop (DnD) interaction for reorganizing documents
 
 ```typescript
 interface DropZone {
-  type: 'folder' | 'between' | 'root';
-  targetId: string | null;      // null for root
-  parentId: string | null;      // parent of insertion point
-  position: number;             // 0-indexed position in parent
+	type: 'folder' | 'between' | 'root';
+	targetId: string | null; // null for root
+	parentId: string | null; // parent of insertion point
+	position: number; // 0-indexed position in parent
 }
 
-function detectDropZone(
-  mouseY: number,
-  nodeElement: HTMLElement,
-  node: DocTreeNode
-): DropZone {
-  const rect = nodeElement.getBoundingClientRect();
-  const relativeY = mouseY - rect.top;
-  const nodeHeight = rect.height;
+function detectDropZone(mouseY: number, nodeElement: HTMLElement, node: DocTreeNode): DropZone {
+	const rect = nodeElement.getBoundingClientRect();
+	const relativeY = mouseY - rect.top;
+	const nodeHeight = rect.height;
 
-  // Top 25% = insert before
-  if (relativeY < nodeHeight * 0.25) {
-    return {
-      type: 'between',
-      targetId: node.id,
-      parentId: getParentId(node),
-      position: getNodeIndex(node)
-    };
-  }
+	// Top 25% = insert before
+	if (relativeY < nodeHeight * 0.25) {
+		return {
+			type: 'between',
+			targetId: node.id,
+			parentId: getParentId(node),
+			position: getNodeIndex(node)
+		};
+	}
 
-  // Bottom 25% = insert after
-  if (relativeY > nodeHeight * 0.75) {
-    return {
-      type: 'between',
-      targetId: node.id,
-      parentId: getParentId(node),
-      position: getNodeIndex(node) + 1
-    };
-  }
+	// Bottom 25% = insert after
+	if (relativeY > nodeHeight * 0.75) {
+		return {
+			type: 'between',
+			targetId: node.id,
+			parentId: getParentId(node),
+			position: getNodeIndex(node) + 1
+		};
+	}
 
-  // Middle 50% = drop into (if folder) or insert after (if doc)
-  if (node.children && node.children.length > 0) {
-    return {
-      type: 'folder',
-      targetId: node.id,
-      parentId: node.id,
-      position: node.children.length  // append as last child
-    };
-  }
+	// Middle 50% = drop into (if folder) or insert after (if doc)
+	if (node.children && node.children.length > 0) {
+		return {
+			type: 'folder',
+			targetId: node.id,
+			parentId: node.id,
+			position: node.children.length // append as last child
+		};
+	}
 
-  // Plain document - treat as insert after
-  return {
-    type: 'between',
-    targetId: node.id,
-    parentId: getParentId(node),
-    position: getNodeIndex(node) + 1
-  };
+	// Plain document - treat as insert after
+	return {
+		type: 'between',
+		targetId: node.id,
+		parentId: getParentId(node),
+		position: getNodeIndex(node) + 1
+	};
 }
 ```
 
@@ -233,27 +231,27 @@ function detectDropZone(
 
 ```typescript
 function isValidDropTarget(
-  draggedNode: DocTreeNode,
-  dropZone: DropZone,
-  treeRoot: DocTreeNode[]
+	draggedNode: DocTreeNode,
+	dropZone: DropZone,
+	treeRoot: DocTreeNode[]
 ): { valid: boolean; reason?: string } {
-  // Rule 1: Cannot drop onto self
-  if (dropZone.targetId === draggedNode.id) {
-    return { valid: false, reason: 'Cannot drop item onto itself' };
-  }
+	// Rule 1: Cannot drop onto self
+	if (dropZone.targetId === draggedNode.id) {
+		return { valid: false, reason: 'Cannot drop item onto itself' };
+	}
 
-  // Rule 2: Cannot drop into own descendants (would create cycle)
-  const descendants = collectDescendantIds(draggedNode);
-  if (dropZone.parentId && descendants.has(dropZone.parentId)) {
-    return { valid: false, reason: 'Cannot move folder into its own contents' };
-  }
+	// Rule 2: Cannot drop into own descendants (would create cycle)
+	const descendants = collectDescendantIds(draggedNode);
+	if (dropZone.parentId && descendants.has(dropZone.parentId)) {
+		return { valid: false, reason: 'Cannot move folder into its own contents' };
+	}
 
-  // Rule 3: Position must be valid
-  if (dropZone.position < 0) {
-    return { valid: false, reason: 'Invalid position' };
-  }
+	// Rule 3: Position must be valid
+	if (dropZone.position < 0) {
+		return { valid: false, reason: 'Invalid position' };
+	}
 
-  return { valid: true };
+	return { valid: true };
 }
 ```
 
@@ -265,36 +263,36 @@ function isValidDropTarget(
 
 ```typescript
 interface DragState {
-  isDragging: boolean;
-  draggedNode: DocTreeNode | null;
-  draggedElement: HTMLElement | null;
-  ghostElement: HTMLElement | null;
+	isDragging: boolean;
+	draggedNode: DocTreeNode | null;
+	draggedElement: HTMLElement | null;
+	ghostElement: HTMLElement | null;
 
-  // Current drop target
-  dropZone: DropZone | null;
-  isValidDrop: boolean;
+	// Current drop target
+	dropZone: DropZone | null;
+	isValidDrop: boolean;
 
-  // For touch
-  touchStartTime: number;
-  touchStartPos: { x: number; y: number };
+	// For touch
+	touchStartTime: number;
+	touchStartPos: { x: number; y: number };
 
-  // Original position (for rollback)
-  originalParentId: string | null;
-  originalPosition: number;
+	// Original position (for rollback)
+	originalParentId: string | null;
+	originalPosition: number;
 }
 
 // Svelte 5 state
 let dragState = $state<DragState>({
-  isDragging: false,
-  draggedNode: null,
-  draggedElement: null,
-  ghostElement: null,
-  dropZone: null,
-  isValidDrop: false,
-  touchStartTime: 0,
-  touchStartPos: { x: 0, y: 0 },
-  originalParentId: null,
-  originalPosition: 0
+	isDragging: false,
+	draggedNode: null,
+	draggedElement: null,
+	ghostElement: null,
+	dropZone: null,
+	isValidDrop: false,
+	touchStartTime: 0,
+	touchStartPos: { x: 0, y: 0 },
+	originalParentId: null,
+	originalPosition: 0
 });
 ```
 
@@ -302,26 +300,26 @@ let dragState = $state<DragState>({
 
 ```typescript
 async function handleDrop(dropZone: DropZone) {
-  if (!dragState.draggedNode || !dragState.isValidDrop) return;
+	if (!dragState.draggedNode || !dragState.isValidDrop) return;
 
-  const nodeId = dragState.draggedNode.id;
-  const { originalParentId, originalPosition } = dragState;
+	const nodeId = dragState.draggedNode.id;
+	const { originalParentId, originalPosition } = dragState;
 
-  // 1. Optimistically update UI
-  moveNodeInTree(nodeId, dropZone.parentId, dropZone.position);
+	// 1. Optimistically update UI
+	moveNodeInTree(nodeId, dropZone.parentId, dropZone.position);
 
-  // 2. Clear drag state
-  resetDragState();
+	// 2. Clear drag state
+	resetDragState();
 
-  // 3. Call API
-  try {
-    await moveDocument(nodeId, dropZone.parentId, dropZone.position);
-    // Success - tree already updated
-  } catch (error) {
-    // 4. Rollback on failure
-    moveNodeInTree(nodeId, originalParentId, originalPosition);
-    showError('Failed to move document. Please try again.');
-  }
+	// 3. Call API
+	try {
+		await moveDocument(nodeId, dropZone.parentId, dropZone.position);
+		// Success - tree already updated
+	} catch (error) {
+		// 4. Rollback on failure
+		moveNodeInTree(nodeId, originalParentId, originalPosition);
+		showError('Failed to move document. Please try again.');
+	}
 }
 ```
 
@@ -334,14 +332,14 @@ async function handleDrop(dropZone: DropZone) {
 ```typescript
 // POST /api/onto/projects/[id]/doc-tree/move
 interface MoveRequest {
-  document_id: string;
-  new_parent_id: string | null;  // null = root level
-  new_position: number;          // 0-indexed
+	document_id: string;
+	new_parent_id: string | null; // null = root level
+	new_position: number; // 0-indexed
 }
 
 interface MoveResponse {
-  structure: DocStructure;       // Updated tree
-  message: string;
+	structure: DocStructure; // Updated tree
+	message: string;
 }
 ```
 
@@ -359,34 +357,31 @@ If the tree has been modified by another user/session:
 
 ### Keyboard Support
 
-| Key | Action |
-|-----|--------|
-| Space/Enter | Toggle selection for move |
-| Arrow Up/Down | Navigate tree (existing) |
-| Ctrl+X | Cut (mark for move) |
-| Ctrl+V | Paste (move to current location) |
-| Escape | Cancel cut/move operation |
+| Key           | Action                           |
+| ------------- | -------------------------------- |
+| Space/Enter   | Toggle selection for move        |
+| Arrow Up/Down | Navigate tree (existing)         |
+| Ctrl+X        | Cut (mark for move)              |
+| Ctrl+V        | Paste (move to current location) |
+| Escape        | Cancel cut/move operation        |
 
 ### Screen Reader Announcements
 
 ```typescript
 const announcements = {
-  dragStart: (title: string) =>
-    `Started dragging ${title}. Use arrow keys to navigate, Enter to drop, Escape to cancel.`,
+	dragStart: (title: string) =>
+		`Started dragging ${title}. Use arrow keys to navigate, Enter to drop, Escape to cancel.`,
 
-  dragOver: (title: string, isFolder: boolean) =>
-    isFolder
-      ? `Over folder ${title}. Press Enter to move here.`
-      : `Over document ${title}. Press Enter to insert after.`,
+	dragOver: (title: string, isFolder: boolean) =>
+		isFolder
+			? `Over folder ${title}. Press Enter to move here.`
+			: `Over document ${title}. Press Enter to insert after.`,
 
-  dropSuccess: (title: string, destination: string) =>
-    `Moved ${title} to ${destination}.`,
+	dropSuccess: (title: string, destination: string) => `Moved ${title} to ${destination}.`,
 
-  dropCancel: () =>
-    `Move cancelled.`,
+	dropCancel: () => `Move cancelled.`,
 
-  dropInvalid: (reason: string) =>
-    `Cannot drop here: ${reason}`
+	dropInvalid: (reason: string) => `Cannot drop here: ${reason}`
 };
 ```
 
@@ -430,45 +425,45 @@ const announcements = {
 
 ```typescript
 function handleTouchStart(e: TouchEvent, node: DocTreeNode) {
-  dragState.touchStartTime = Date.now();
-  dragState.touchStartPos = {
-    x: e.touches[0].clientX,
-    y: e.touches[0].clientY
-  };
+	dragState.touchStartTime = Date.now();
+	dragState.touchStartPos = {
+		x: e.touches[0].clientX,
+		y: e.touches[0].clientY
+	};
 
-  // Start long-press timer
-  longPressTimer = setTimeout(() => {
-    if (navigator.vibrate) navigator.vibrate(50);
-    startDrag(node, e.touches[0]);
-  }, 500);
+	// Start long-press timer
+	longPressTimer = setTimeout(() => {
+		if (navigator.vibrate) navigator.vibrate(50);
+		startDrag(node, e.touches[0]);
+	}, 500);
 }
 
 function handleTouchMove(e: TouchEvent) {
-  const touch = e.touches[0];
-  const moved = Math.hypot(
-    touch.clientX - dragState.touchStartPos.x,
-    touch.clientY - dragState.touchStartPos.y
-  );
+	const touch = e.touches[0];
+	const moved = Math.hypot(
+		touch.clientX - dragState.touchStartPos.x,
+		touch.clientY - dragState.touchStartPos.y
+	);
 
-  // Cancel long-press if moved too much
-  if (!dragState.isDragging && moved > 10) {
-    clearTimeout(longPressTimer);
-    return;
-  }
+	// Cancel long-press if moved too much
+	if (!dragState.isDragging && moved > 10) {
+		clearTimeout(longPressTimer);
+		return;
+	}
 
-  if (dragState.isDragging) {
-    e.preventDefault(); // Prevent scroll while dragging
-    updateDragPosition(touch.clientX, touch.clientY);
-    updateDropZone(touch.clientX, touch.clientY);
-  }
+	if (dragState.isDragging) {
+		e.preventDefault(); // Prevent scroll while dragging
+		updateDragPosition(touch.clientX, touch.clientY);
+		updateDropZone(touch.clientX, touch.clientY);
+	}
 }
 
 function handleTouchEnd(e: TouchEvent) {
-  clearTimeout(longPressTimer);
+	clearTimeout(longPressTimer);
 
-  if (dragState.isDragging) {
-    handleDrop(dragState.dropZone);
-  }
+	if (dragState.isDragging) {
+		handleDrop(dragState.dropZone);
+	}
 }
 ```
 
@@ -479,23 +474,23 @@ function handleTouchEnd(e: TouchEvent) {
 When dragging near the edges of a scrollable tree container:
 
 ```typescript
-const SCROLL_ZONE_SIZE = 40;  // pixels from edge
-const SCROLL_SPEED = 8;       // pixels per frame
+const SCROLL_ZONE_SIZE = 40; // pixels from edge
+const SCROLL_SPEED = 8; // pixels per frame
 
 function updateAutoScroll(mouseY: number, container: HTMLElement) {
-  const rect = container.getBoundingClientRect();
-  const topZone = rect.top + SCROLL_ZONE_SIZE;
-  const bottomZone = rect.bottom - SCROLL_ZONE_SIZE;
+	const rect = container.getBoundingClientRect();
+	const topZone = rect.top + SCROLL_ZONE_SIZE;
+	const bottomZone = rect.bottom - SCROLL_ZONE_SIZE;
 
-  if (mouseY < topZone) {
-    // Scroll up
-    const intensity = 1 - (mouseY - rect.top) / SCROLL_ZONE_SIZE;
-    container.scrollTop -= SCROLL_SPEED * intensity;
-  } else if (mouseY > bottomZone) {
-    // Scroll down
-    const intensity = (mouseY - bottomZone) / SCROLL_ZONE_SIZE;
-    container.scrollTop += SCROLL_SPEED * intensity;
-  }
+	if (mouseY < topZone) {
+		// Scroll up
+		const intensity = 1 - (mouseY - rect.top) / SCROLL_ZONE_SIZE;
+		container.scrollTop -= SCROLL_SPEED * intensity;
+	} else if (mouseY > bottomZone) {
+		// Scroll down
+		const intensity = (mouseY - bottomZone) / SCROLL_ZONE_SIZE;
+		container.scrollTop += SCROLL_SPEED * intensity;
+	}
 }
 ```
 
@@ -520,23 +515,35 @@ src/lib/components/ontology/doc-tree/
 ```typescript
 // useDragDrop.svelte.ts
 export function createDragDropState(options: {
-  treeRef: HTMLElement;
-  onMove: (nodeId: string, newParentId: string | null, position: number) => Promise<void>;
+	treeRef: HTMLElement;
+	onMove: (nodeId: string, newParentId: string | null, position: number) => Promise<void>;
 }) {
-  let state = $state<DragState>({ /* ... */ });
+	let state = $state<DragState>({
+		/* ... */
+	});
 
-  function startDrag(node: DocTreeNode, event: MouseEvent | Touch) { /* ... */ }
-  function updateDrag(x: number, y: number) { /* ... */ }
-  function endDrag() { /* ... */ }
-  function cancelDrag() { /* ... */ }
+	function startDrag(node: DocTreeNode, event: MouseEvent | Touch) {
+		/* ... */
+	}
+	function updateDrag(x: number, y: number) {
+		/* ... */
+	}
+	function endDrag() {
+		/* ... */
+	}
+	function cancelDrag() {
+		/* ... */
+	}
 
-  return {
-    get state() { return state; },
-    startDrag,
-    updateDrag,
-    endDrag,
-    cancelDrag
-  };
+	return {
+		get state() {
+			return state;
+		},
+		startDrag,
+		updateDrag,
+		endDrag,
+		cancelDrag
+	};
 }
 ```
 
@@ -611,11 +618,11 @@ export function createDragDropState(options: {
 2. **Cross-Project Drag?** - No. Use copy/move modal for cross-project operations.
 
 3. **Folder Creation on Drop?** - Hybrid approach:
-   - **Existing folders** (documents with children): Accept drops immediately in middle zone
-   - **Plain documents**: Require 400ms hover to "convert" to drop target
-     - Visual feedback: pulsing border, icon morphs to folder
-     - If user moves away before 400ms, no conversion
-   - **Fallback**: "Create Child" always available from context menu
+    - **Existing folders** (documents with children): Accept drops immediately in middle zone
+    - **Plain documents**: Require 400ms hover to "convert" to drop target
+        - Visual feedback: pulsing border, icon morphs to folder
+        - If user moves away before 400ms, no conversion
+    - **Fallback**: "Create Child" always available from context menu
 
 4. **Animation Duration?** - 150ms for insert line, 200ms for node repositioning.
 

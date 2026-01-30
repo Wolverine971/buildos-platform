@@ -1,4 +1,4 @@
--- supabase/migrations/20260129000003_add_structure_history.sql
+-- supabase/migrations/applied_backup/20260129_hierarchical_documents/20260129000003_add_structure_history.sql
 -- Migration: Add onto_project_structure_history table
 -- Purpose: Enable undo/redo and audit trail for document tree structure changes
 -- Date: 2026-01-29

@@ -52,7 +52,11 @@ function createSupabaseMock() {
 describe('GET /api/onto/projects/[id]/doc-tree', () => {
 	beforeEach(() => {
 		getDocTreeMock.mockReset();
-		getDocTreeMock.mockResolvedValue({ structure: { version: 1, root: [] }, documents: {}, unlinked: [] });
+		getDocTreeMock.mockResolvedValue({
+			structure: { version: 1, root: [] },
+			documents: {},
+			unlinked: []
+		});
 	});
 
 	it('defaults include_content to true when param missing', async () => {
@@ -70,7 +74,9 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 
 		await GET(requestEvent);
 
-		expect(getDocTreeMock).toHaveBeenCalledWith(supabase, 'project-1', { includeContent: true });
+		expect(getDocTreeMock).toHaveBeenCalledWith(supabase, 'project-1', {
+			includeContent: true
+		});
 	});
 
 	it('passes include_content=false when param set', async () => {
@@ -88,7 +94,9 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 
 		await GET(requestEvent);
 
-		expect(getDocTreeMock).toHaveBeenCalledWith(supabase, 'project-1', { includeContent: false });
+		expect(getDocTreeMock).toHaveBeenCalledWith(supabase, 'project-1', {
+			includeContent: false
+		});
 	});
 });
 

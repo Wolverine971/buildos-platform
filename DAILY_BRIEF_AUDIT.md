@@ -677,51 +677,56 @@ static getSystemPrompt(): string {
 
 ## PART 6: IMPLEMENTATION CHECKLIST
 
-### Phase 1: Executive Summary Prompt Rewrite (HIGH PRIORITY)
+### Phase 1: Executive Summary Prompt Rewrite (HIGH PRIORITY) ✅ DONE
 
 **File:** `apps/worker/src/workers/brief/ontologyPrompts.ts`
 
-- [ ] Rewrite `OntologyExecutiveSummaryPrompt.getSystemPrompt()`:
-  - Add voice/persona directive at top ("You are a confident productivity coach...")
-  - Add "answer in 30 seconds" directive
-  - Add scannability guidance (emojis, bullets, bold for key items)
-  - Request "one clear first action" in the summary
-  - Reduce word count from 200 to 150 (tighter = better)
+- [x] Rewrite `OntologyExecutiveSummaryPrompt.getSystemPrompt()`:
+    - Added voice/persona directive ("You are a confident productivity coach...")
+    - Added "answer in 30 seconds" directive
+    - Added scannability guidance (emojis, bullets, bold for key items)
+    - Request "one clear first action" via "Start Here" section
+    - Reduced word count from 200 to 150
 
-### Phase 2: Brief Structure Refactor (HIGH PRIORITY)
+### Phase 2: Brief Structure Refactor (HIGH PRIORITY) ✅ DONE
 
 **File:** `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`
 
-- [ ] Add "Day Type Hook" at top of brief (before executive summary):
-  - One-liner: "🎯 **Loaded day**: 12 tasks across 5 projects, 3 need attention"
-  - Sets expectations immediately
+- [x] Add "Day Type Hook" at top of brief (before executive summary):
+    - Dynamic one-liner based on task count, blockers, projects
+    - Examples: "🔴 **3 items need attention**" / "✨ **Light day**"
 
-- [ ] Add "Priority Actions" section after hook (render what `extractPriorityActions` computes):
-  - Currently computed (line 558) but NOT rendered in the brief
-  - Should be 3-5 bullets with "Start here" framing
+- [x] Add "Priority Actions" section after hook:
+    - Now renders "## Start Here" with top 3 priority actions (bold)
+    - Moved `extractPriorityActions` call BEFORE markdown generation
 
-- [ ] Reorder sections:
-  - Current: Date → Executive Summary → Strategic Alignment → Attention Required → Today's Focus → Recent Activity → Project Details
-  - New: Date → Day Hook → Priority Actions → Executive Summary → Attention Required → Today's Focus → Recent Wins → Project Details
+- [x] Reordered sections:
+    - New: Date → Day Hook → Start Here (Priority Actions) → Executive Summary → ...
 
-### Phase 3: Analysis Prompt Simplification (MEDIUM PRIORITY)
+### Phase 3: Analysis Prompt Simplification (MEDIUM PRIORITY) ✅ DONE
 
 **File:** `apps/worker/src/workers/brief/ontologyPrompts.ts`
 
-- [ ] Simplify `OntologyAnalysisPrompt.getSystemPrompt()`:
-  - Reduce from 5 sections to 3 sections
-  - Focus on: (1) Real bottleneck, (2) Hidden wins, (3) One recommendation
-  - Add "editorial" guidance: "Not everything deserves mention—focus on the meaningful 20%"
-  - Reduce output to 3-4 paragraphs max
+- [x] Simplified `OntologyAnalysisPrompt.getSystemPrompt()`:
+    - Reduced from 5 sections to 3 focused sections
+    - New structure: (1) The Real Picture, (2) What Matters Most, (3) One Clear Recommendation
+    - Added "editorial" guidance: "Focus on the meaningful 20%"
+    - Reduced to 250 words max
 
-### Phase 4: Project Brief Narrative (MEDIUM PRIORITY)
+### Phase 4: Project Brief Narrative (MEDIUM PRIORITY) ✅ DONE
 
 **File:** `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`
 
-- [ ] Update `formatOntologyProjectBrief()`:
-  - Add "Project Status" one-liner at top (health indicator)
-  - Add "why" context to blocked tasks (e.g., "blocking 3 downstream tasks")
-  - Remove empty section headers (already partially done)
+- [x] Update `formatOntologyProjectBrief()`:
+    - Added "Project Status" one-liner at top with dynamic health indicator
+    - Added "why" context to blocked tasks (shows "blocking other work" when applicable)
+    - Reordered sections: Status → Goals → Today's Work → Blocked → Unblocking → Milestone → Next Steps → Activity
+    - Reduced activity log items from 3 to 2 (less noise)
+
+- [x] Added "Recent Wins" momentum section to main brief:
+    - Shows completed tasks from last 24h with ✅ prefix
+    - Separated from general activity (completions get their own section)
+    - Builds positive momentum at the end of the brief
 
 ### Phase 5: Data Optimizations (LOW PRIORITY - DEFER)
 
@@ -803,9 +808,17 @@ Every statement should enable a **decision or action**. If it doesn't, cut it.
 
 ## Conclusion
 
-The Daily Brief system is a **solid technical foundation** with room to shine. The prompts are currently "good" but can be **great** with narrative restructuring, voice clarity, and actionability focus.
+The Daily Brief system is a **solid technical foundation** that has been significantly improved.
 
-**Next Step**: Implement Phase 1 (quick wins), test with 10 sample briefs, then iterate based on user feedback.
+### What Was Implemented
+
+1. **Executive Summary Prompt** - New voice directive, 150-word limit, "Start Here" focus
+2. **Brief Structure** - Day Hook + Priority Actions at top, better section ordering
+3. **Analysis Prompt** - Simplified to 3 sections, editorial mindset, 250-word max
+4. **Project Briefs** - Status one-liner, "why" context on blocked tasks
+5. **Momentum Section** - "Recent Wins" highlighting completed work
+
+**Next Step**: Test with real briefs and iterate based on user feedback. Data optimizations (Phase 5) can be done later if performance becomes an issue.
 
 **Key Takeaway**: A brief isn't beautiful because it's complete—it's beautiful because it's _clear_ about what matters and what to do about it.
 
@@ -813,4 +826,5 @@ The Daily Brief system is a **solid technical foundation** with room to shine. T
 
 **Prepared by**: Claude Code
 **Review Date**: January 27, 2026
-**Status**: Ready for implementation
+**Implementation Date**: January 30, 2026
+**Status**: ✅ Phases 1-4 Complete, Phase 5-6 Remaining

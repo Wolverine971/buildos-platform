@@ -109,7 +109,13 @@ export function createDragDropState(options: DragDropOptions) {
 	// DRAG START
 	// ============================================
 
-	function startDrag(node: EnrichedDocTreeNode, element: HTMLElement, x: number, y: number, isTouch = false) {
+	function startDrag(
+		node: EnrichedDocTreeNode,
+		element: HTMLElement,
+		x: number,
+		y: number,
+		isTouch = false
+	) {
 		// Store original position for rollback
 		const parentId = options.getParentId(node.id);
 		const position = options.getNodeIndex(node.id);
@@ -148,7 +154,11 @@ export function createDragDropState(options: DragDropOptions) {
 		state.ghostY = y;
 	}
 
-	function updateDropZone(targetNode: EnrichedDocTreeNode | null, mouseY: number, elementRect: DOMRect | null) {
+	function updateDropZone(
+		targetNode: EnrichedDocTreeNode | null,
+		mouseY: number,
+		elementRect: DOMRect | null
+	) {
 		if (!state.isDragging || !state.draggedNode) return;
 
 		// Clear previous hover timer if target changed
@@ -213,7 +223,11 @@ export function createDragDropState(options: DragDropOptions) {
 		state.invalidReason = validation.reason ?? null;
 	}
 
-	function detectZoneType(relativeY: number, nodeHeight: number, node: EnrichedDocTreeNode): DropZoneType {
+	function detectZoneType(
+		relativeY: number,
+		nodeHeight: number,
+		node: EnrichedDocTreeNode
+	): DropZoneType {
 		const beforeThreshold = nodeHeight * ZONE_BEFORE_PERCENT;
 		const afterThreshold = nodeHeight * ZONE_AFTER_PERCENT;
 
@@ -323,7 +337,11 @@ export function createDragDropState(options: DragDropOptions) {
 
 		// Call the move handler
 		try {
-			const result = await options.onMove(draggedNode.id, dropZone.parentId, effectivePosition);
+			const result = await options.onMove(
+				draggedNode.id,
+				dropZone.parentId,
+				effectivePosition
+			);
 			return result;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Move failed';

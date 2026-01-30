@@ -24,7 +24,13 @@
 	import DocTreeContextMenu from './DocTreeContextMenu.svelte';
 	import UnlinkedDocuments from './UnlinkedDocuments.svelte';
 	import DocTreeUpdateNotification from './DocTreeUpdateNotification.svelte';
-	import { enrichTreeNodes } from '$lib/services/ontology/doc-structure.service';
+	import DocTreeDragLayer from './DocTreeDragLayer.svelte';
+	import { createDragDropState, type DragDropState } from './useDragDrop.svelte';
+	import {
+		enrichTreeNodes,
+		findNodeById,
+		collectDocIds
+	} from '$lib/services/ontology/doc-structure.service';
 	import type {
 		DocStructure,
 		OntoDocument,
@@ -41,6 +47,7 @@
 		selectedDocumentId?: string | null;
 		maxInitialDepth?: number;
 		pollInterval?: number;
+		enableDragDrop?: boolean;
 	}
 
 	let {
@@ -51,7 +58,8 @@
 		onDeleteDocument,
 		selectedDocumentId = null,
 		maxInitialDepth = 3,
-		pollInterval = 30000
+		pollInterval = 30000,
+		enableDragDrop = true
 	}: Props = $props();
 
 	// State
@@ -68,6 +76,152 @@
 	let contextMenuOpen = $state(false);
 	let contextMenuPosition = $state({ x: 0, y: 0 });
 	let contextMenuNode = $state<EnrichedDocTreeNode | null>(null);
+
+	// Tree container ref
+	let treeContainerRef: HTMLElement | null = $state(null);
+
+	// Build node lookup maps for drag-drop
+	const nodeMap = $derived.by(() => {
+		const map = new Map<string, EnrichedDocTreeNode>();
+		function traverse(nodes: EnrichedDocTreeNode[]) {
+			for (const node of nodes) {
+				map.set(node.id, node);
+				if (node.children) traverse(node.children);
+			}
+		}
+		traverse(enrichedTree);
+		return map;
+	});
+
+	const parentMap = $derived.by(() => {
+		const map = new Map<string, string | null>();
+		function traverse(nodes: EnrichedDocTreeNode[], parentId: string | null) {
+			for (const node of nodes) {
+				map.set(node.id, parentId);
+				if (node.children) traverse(node.children, node.id);
+			}
+		}
+		traverse(enrichedTree, null);
+		return map;
+	});
+
+	const indexMap = $derived.by(() => {
+		const map = new Map<string, number>();
+		function traverse(nodes: EnrichedDocTreeNode[]) {
+			nodes.forEach((node, index) => {
+				map.set(node.id, index);
+				if (node.children) traverse(node.children);
+			});
+		}
+		traverse(enrichedTree);
+		return map;
+	});
+
+	// Drag-drop state
+	const dragDrop = $derived.by(() => {
+		if (!enableDragDrop) return null;
+
+		return createDragDropState({
+			onMove: handleDragMove,
+			getNodeElement: (nodeId) => {
+				if (!treeContainerRef) return null;
+				return treeContainerRef.querySelector(
+					`[data-node-id="${nodeId}"]`
+				) as HTMLElement | null;
+			},
+			getNodeById: (nodeId) => nodeMap.get(nodeId) ?? null,
+			getParentId: (nodeId) => parentMap.get(nodeId) ?? null,
+			getNodeIndex: (nodeId) => indexMap.get(nodeId) ?? 0,
+			getDescendantIds: (nodeId) => {
+				const node = nodeMap.get(nodeId);
+				if (!node?.children) return new Set<string>();
+				return collectDocIds(node.children);
+			}
+		});
+	});
+
+	// Handle drag move - calls API and refreshes tree
+	async function handleDragMove(
+		documentId: string,
+		newParentId: string | null,
+		position: number
+	): Promise<{ success: boolean; error?: string }> {
+		try {
+			const res = await fetch(`/api/onto/projects/${projectId}/doc-tree/move`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					document_id: documentId,
+					new_parent_id: newParentId,
+					new_position: position
+				})
+			});
+
+			if (!res.ok) {
+				const data = await res.json().catch(() => ({}));
+				if (res.status === 409) {
+					// Conflict - tree was modified
+					hasUpdate = true;
+					return { success: false, error: 'Tree was modified. Please refresh.' };
+				}
+				return { success: false, error: data.error || 'Failed to move document' };
+			}
+
+			const data = await res.json();
+			// Update local state with new structure
+			structure = data.data.structure;
+			currentVersion = data.data.structure.version;
+
+			// Ensure parent is expanded so moved item is visible
+			if (newParentId) {
+				const newSet = new Set(expandedIds);
+				newSet.add(newParentId);
+				expandedIds = newSet;
+				saveExpandedState();
+			}
+
+			return { success: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to move document';
+			return { success: false, error: message };
+		}
+	}
+
+	// Drag event handlers
+	function handleDragStart(e: MouseEvent, node: EnrichedDocTreeNode, element: HTMLElement) {
+		dragDrop?.handleMouseDown(e, node, element);
+	}
+
+	function handleDragOver(e: MouseEvent, node: EnrichedDocTreeNode, element: HTMLElement) {
+		if (!dragDrop?.state.isDragging) return;
+		const rect = element.getBoundingClientRect();
+		dragDrop.updateDropZone(node, e.clientY, rect);
+	}
+
+	function handleTouchStart(e: TouchEvent, node: EnrichedDocTreeNode, element: HTMLElement) {
+		dragDrop?.handleTouchStart(e, node, element);
+	}
+
+	// Global mouse/touch handlers for drag
+	function handleGlobalMouseMove(e: MouseEvent) {
+		dragDrop?.handleMouseMove(e);
+	}
+
+	function handleGlobalMouseUp(e: MouseEvent) {
+		dragDrop?.handleMouseUp(e);
+	}
+
+	function handleGlobalTouchMove(e: TouchEvent) {
+		dragDrop?.handleTouchMove(e);
+	}
+
+	function handleGlobalTouchEnd(e: TouchEvent) {
+		dragDrop?.handleTouchEnd(e);
+	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		dragDrop?.handleKeyDown(e);
+	}
 
 	// Derived enriched tree
 	const enrichedTree = $derived.by(() => {
@@ -246,10 +400,30 @@
 		if (pollInterval > 0) {
 			startPolling();
 		}
+
+		// Add global event listeners for drag
+		if (browser && enableDragDrop) {
+			document.addEventListener('mousemove', handleGlobalMouseMove);
+			document.addEventListener('mouseup', handleGlobalMouseUp);
+			document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+			document.addEventListener('touchend', handleGlobalTouchEnd);
+			document.addEventListener('touchcancel', () => dragDrop?.handleTouchCancel());
+			document.addEventListener('keydown', handleKeyDown);
+		}
 	});
 
 	onDestroy(() => {
 		stopPolling();
+		dragDrop?.cleanup();
+
+		// Remove global event listeners
+		if (browser && enableDragDrop) {
+			document.removeEventListener('mousemove', handleGlobalMouseMove);
+			document.removeEventListener('mouseup', handleGlobalMouseUp);
+			document.removeEventListener('touchmove', handleGlobalTouchMove);
+			document.removeEventListener('touchend', handleGlobalTouchEnd);
+			document.removeEventListener('keydown', handleKeyDown);
+		}
 	});
 
 	// Expose refresh for parent components
@@ -259,7 +433,12 @@
 	}
 </script>
 
-<div class="doc-tree-container">
+<div class="doc-tree-container" bind:this={treeContainerRef}>
+	<!-- Drag layer (ghost element, insertion lines) -->
+	{#if enableDragDrop && dragDrop}
+		<DocTreeDragLayer state={dragDrop.state} />
+	{/if}
+
 	<!-- Update notification -->
 	{#if hasUpdate}
 		<DocTreeUpdateNotification onRefresh={handleRefresh} onDismiss={dismissUpdate} />
@@ -314,6 +493,11 @@
 					{onOpenDocument}
 					onContextMenu={handleContextMenu}
 					selectedId={selectedDocumentId}
+					dragState={dragDrop?.state ?? null}
+					onDragStart={enableDragDrop ? handleDragStart : undefined}
+					onDragOver={enableDragDrop ? handleDragOver : undefined}
+					onTouchStart={enableDragDrop ? handleTouchStart : undefined}
+					canDrag={enableDragDrop}
 				/>
 			{/each}
 		</div>

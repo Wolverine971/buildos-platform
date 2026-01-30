@@ -901,13 +901,13 @@ export class ToolExecutionService implements BaseService {
 				resolved.type_key = trimmedTypeKey;
 			}
 
-			const trimmedTitle =
-				typeof resolved.title === 'string' ? resolved.title.trim() : '';
+			const trimmedTitle = typeof resolved.title === 'string' ? resolved.title.trim() : '';
 			if (trimmedTitle) {
 				resolved.title = trimmedTitle;
 			} else {
 				const inferred = this.inferDocumentTitle(context.conversationHistory);
-				resolved.title = inferred && inferred.trim() ? inferred.trim() : 'Untitled Document';
+				resolved.title =
+					inferred && inferred.trim() ? inferred.trim() : 'Untitled Document';
 			}
 		}
 

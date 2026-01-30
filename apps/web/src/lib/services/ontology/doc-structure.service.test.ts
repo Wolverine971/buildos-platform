@@ -116,9 +116,7 @@ describe('enrichTreeNodes', () => {
 			b: doc('b', 'Beta')
 		};
 
-		const nodes: DocTreeNode[] = [
-			{ id: 'a', order: 0, children: [{ id: 'b', order: 0 }] }
-		];
+		const nodes: DocTreeNode[] = [{ id: 'a', order: 0, children: [{ id: 'b', order: 0 }] }];
 
 		const enriched = enrichTreeNodes(nodes, documents);
 		expect(enriched[0].type).toBe('folder');
