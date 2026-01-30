@@ -68,6 +68,7 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 		highlights: [
 			'When creating a project, always set the type_key (e.g., project.creative.book or project.technical.app) and infer the three facets (context, scale, stage) to keep the graph queryable.',
 			'Context documents capture the narrative story of a project—why it matters, what success looks like, and the history of key updates. These come from brain dumps and persist as the project evolves.',
+			'Project documents live in a hierarchical tree stored on the project (`doc_structure`); place new docs with parent_id/position and use document tree tools for navigation.',
 			'The ontology creates relationships: tasks belong to plans, plans support goals, everything connects to project context. This web of connections helps agents understand dependencies and the bigger picture.',
 			'Props live in JSONB—populate them with concrete facts from the conversation (tech_stack, audience, budget, timelines).',
 			'When the agent references context documents during planning, it has access to the full narrative story, not just task lists. This produces better, more aligned suggestions.'

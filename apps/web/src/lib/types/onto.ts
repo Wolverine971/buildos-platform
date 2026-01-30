@@ -464,6 +464,55 @@ export const FSMTransitionRequestSchema = z.object({
 export type FSMTransitionRequest = z.infer<typeof FSMTransitionRequestSchema>;
 
 // ============================================
+// DOCUMENT TREE STRUCTURE SCHEMAS
+// ============================================
+
+/**
+ * A node in the document tree structure
+ */
+export const DocTreeNodeSchema: z.ZodType<DocTreeNode> = z.lazy(() =>
+	z.object({
+		id: z.string().uuid(),
+		// Type is derived from children at render time; stored value is optional.
+		type: z.enum(['folder', 'doc']).optional(),
+		order: z.number().int().min(0),
+		children: z.array(DocTreeNodeSchema).optional()
+	})
+);
+
+export type DocTreeNode = {
+	id: string;
+	/** Optional hint; UI computes folder/doc from children. */
+	type?: 'folder' | 'doc';
+	order: number;
+	children?: DocTreeNode[];
+};
+
+/**
+ * Root document structure stored on onto_projects.doc_structure
+ */
+export const DocStructureSchema = z.object({
+	version: z.number().int().min(1),
+	root: z.array(DocTreeNodeSchema)
+});
+
+export type DocStructure = z.infer<typeof DocStructureSchema>;
+
+/**
+ * Children structure stored on onto_documents.children
+ */
+export const DocumentChildrenSchema = z.object({
+	children: z.array(
+		z.object({
+			id: z.string().uuid(),
+			order: z.number().int().min(0)
+		})
+	)
+});
+
+export type DocumentChildren = z.infer<typeof DocumentChildrenSchema>;
+
+// ============================================
 // ENTITY TYPES (database records)
 // ============================================
 
@@ -485,6 +534,8 @@ export const ProjectSchema = z.object({
 	next_step_long: z.string().nullable().optional(),
 	next_step_updated_at: z.string().datetime().nullable().optional(),
 	next_step_source: z.enum(['ai', 'user']).nullable().optional(),
+	// Hierarchical document tree structure
+	doc_structure: DocStructureSchema.nullable().optional(),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),
 	updated_at: z.string().datetime()
@@ -542,6 +593,8 @@ export const DocumentSchema = z.object({
 	content: z.string().nullable().optional(),
 	description: z.string().nullable().optional(),
 	deleted_at: z.string().datetime().nullable().optional(),
+	// Immediate child documents for hierarchy
+	children: DocumentChildrenSchema.nullable().optional(),
 	props: z.record(z.unknown()),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),
@@ -586,7 +639,7 @@ export const MilestoneSchema = z
 		state_key: MilestoneStateSchema,
 		milestone: z.string().nullable().optional(),
 		description: z.string().nullable().optional(),
-		due_at: z.string().datetime().nullable().optional(),
+		due_at: z.string().datetime().nullable(),
 		completed_at: z.string().datetime().nullable().optional(),
 		deleted_at: z.string().datetime().nullable().optional(),
 		props: z.record(z.unknown()),

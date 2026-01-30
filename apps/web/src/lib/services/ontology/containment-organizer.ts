@@ -47,7 +47,9 @@ export const ALLOWED_PARENTS: Record<EntityKind, EntityKind[]> = {
 	milestone: ['goal'],
 	plan: ['milestone', 'goal', 'project'],
 	task: ['plan', 'milestone', 'goal', 'project'],
-	document: ['document', 'project'],
+	// Documents now use doc_structure column for hierarchy, not edges
+	// See: /apps/web/docs/features/ontology/HIERARCHICAL_DOCUMENT_TREE_SPEC.md
+	document: [],
 	risk: ['task', 'plan', 'milestone', 'goal', 'project'],
 	requirement: ['milestone', 'goal', 'project'],
 	metric: ['task', 'plan', 'milestone', 'goal', 'risk', 'project'],
@@ -99,7 +101,8 @@ export function resolveContainmentRel(
 		['project', 'goal', 'milestone', 'plan', 'task', 'risk'].includes(parentKind)
 	)
 		return 'has_metric';
-	if (childKind === 'document' && parentKind === 'document') return 'has_part';
+	// Documents no longer use edges for containment - they use doc_structure column
+	// See: /apps/web/docs/features/ontology/HIERARCHICAL_DOCUMENT_TREE_SPEC.md
 	if (childKind === 'event' && parentKind === 'task') return 'has_event';
 	return null;
 }

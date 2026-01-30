@@ -21,6 +21,7 @@ import type {
 	Database
 } from '@buildos/shared-types';
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
+import type { DocStructure } from '$lib/types/onto-api';
 
 export type {
 	TemplateCreationEvent,
@@ -247,6 +248,23 @@ export interface GraphSnapshot {
 	coverage: Record<string, GraphSnapshotCoverageEntry>;
 }
 
+export interface DocumentTreeContextNode {
+	id: string;
+	title: string;
+	description?: string | null;
+	order?: number | null;
+	children?: DocumentTreeContextNode[];
+}
+
+export interface DocumentTreeContext {
+	version: number;
+	root: DocumentTreeContextNode[];
+	total_nodes: number;
+	truncated?: boolean;
+	unlinked_count?: number;
+	unlinked?: Array<{ id: string; title: string }>;
+}
+
 export interface OntologyContextScope {
 	projectId?: string;
 	projectName?: string;
@@ -283,6 +301,8 @@ export interface OntologyContext {
 		recent_project_ids?: string[];
 		project_highlights?: ProjectHighlights;
 		graph_snapshot?: GraphSnapshot;
+		document_tree?: DocumentTreeContext;
+		doc_structure?: DocStructure;
 	};
 
 	// Current scope/focus for this context (project + optional focused entity)

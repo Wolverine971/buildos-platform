@@ -171,6 +171,26 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
+	get_document_tree: {
+		summary: 'Get the hierarchical document tree structure for a project.',
+		capabilities: [
+			'Returns full tree with parent-child relationships',
+			'Includes document metadata',
+			'Identifies unlinked documents',
+			'Supports metadata-only mode (omit document bodies)'
+		],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_document_path: {
+		summary: 'Get the hierarchical path (breadcrumb) for a document in the tree.',
+		capabilities: [
+			'Returns ancestor chain with titles',
+			'Identifies document location in tree'
+		],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
 
 	// ============================================
 	// CALENDAR TOOLS
@@ -250,7 +270,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	create_onto_document: {
 		summary: 'Create a document linked to a project (brief/spec/context).',
-		capabilities: ['Validates ownership', 'Stores body markdown/props'],
+		capabilities: [
+			'Validates ownership',
+			'Stores body markdown/props',
+			'Supports tree placement via parent_id/position'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
@@ -375,6 +399,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	delete_onto_plan: {
 		summary: 'Delete a plan container while leaving tasks untouched.',
 		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	move_document: {
+		summary: 'Move a document to a new location in the hierarchical document tree.',
+		capabilities: [
+			'Moves to root or under another document',
+			'Validates ownership and cycle prevention',
+			'Supports position specification'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},

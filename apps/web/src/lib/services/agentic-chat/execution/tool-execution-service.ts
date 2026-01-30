@@ -893,14 +893,21 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		if (toolName === 'create_onto_document') {
-			if (!resolved.type_key) {
+			const trimmedTypeKey =
+				typeof resolved.type_key === 'string' ? resolved.type_key.trim() : '';
+			if (!trimmedTypeKey) {
 				resolved.type_key = 'document.default';
+			} else if (trimmedTypeKey !== resolved.type_key) {
+				resolved.type_key = trimmedTypeKey;
 			}
-			if (!resolved.title) {
+
+			const trimmedTitle =
+				typeof resolved.title === 'string' ? resolved.title.trim() : '';
+			if (trimmedTitle) {
+				resolved.title = trimmedTitle;
+			} else {
 				const inferred = this.inferDocumentTitle(context.conversationHistory);
-				if (inferred) {
-					resolved.title = inferred;
-				}
+				resolved.title = inferred && inferred.trim() ? inferred.trim() : 'Untitled Document';
 			}
 		}
 

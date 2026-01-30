@@ -26,9 +26,10 @@ import {
 	assertEntityRefsInProject,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
+import { addDocumentToTree } from '$lib/services/ontology/doc-structure.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
-import type { DocumentState } from '$lib/types/onto';
+import type { DocumentState, DocStructure } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -50,6 +51,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			body_markdown,
 			content,
 			description,
+			parent_id,
+			position,
 			parent,
 			parents,
 			connections
@@ -183,6 +186,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const normalizedContent = normalizeMarkdownInput(rawContent);
 
 		const normalizedDescription = typeof description === 'string' ? description : null;
+		const parentId =
+			typeof parent_id === 'string' && parent_id.trim().length > 0 ? parent_id : null;
+		const positionValue =
+			typeof position === 'number' && Number.isInteger(position) && position >= 0
+				? position
+				: undefined;
 
 		// Store body_markdown in props for backwards compatibility during migration
 		const documentProps = {
@@ -272,6 +281,33 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		});
 
+		let structure: DocStructure | null = null;
+		let structureError: string | null = null;
+		try {
+			structure = await addDocumentToTree(
+				supabase,
+				project_id as string,
+				document.id,
+				{ parentId, position: positionValue },
+				actorId
+			);
+		} catch (treeError) {
+			structureError = treeError instanceof Error ? treeError.message : String(treeError);
+			console.error('[Document API] Failed to add document to tree:', treeError);
+			await logOntologyApiError({
+				supabase,
+				error: treeError,
+				endpoint: '/api/onto/documents/create',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id as string,
+				entityType: 'project',
+				entityId: document.id,
+				operation: 'doc_tree_add',
+				metadata: { nonFatal: true }
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logCreateAsync(
 			supabase,
@@ -295,7 +331,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
-		return ApiResponse.success({ document, version });
+		return ApiResponse.success({
+			document,
+			version,
+			structure,
+			structure_error: structureError
+		});
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

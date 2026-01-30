@@ -142,6 +142,21 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			milestones
 		);
 
+		// Fetch doc_structure separately (RPC may not include it)
+		const { data: projectRow, error: projectError } = await supabase
+			.from('onto_projects')
+			.select('doc_structure')
+			.eq('id', id)
+			.maybeSingle();
+
+		if (projectError) {
+			console.error('[Project Full API] Failed to fetch doc_structure:', projectError);
+		}
+		if (projectRow && data.project && typeof data.project === 'object') {
+			(data.project as Record<string, unknown>).doc_structure =
+				projectRow.doc_structure ?? null;
+		}
+
 		return ApiResponse.success({
 			project: data.project,
 			goals,

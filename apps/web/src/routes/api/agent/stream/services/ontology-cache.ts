@@ -63,9 +63,14 @@ export class OntologyCacheService {
 	): Promise<OntologyLoadResult> {
 		const contextType = normalizeContextType(request.context_type);
 		const resolvedFocus = metadata.focus ?? request.project_focus ?? null;
+		const useProjectFocus = this.shouldUseProjectFocus(contextType, request);
 
 		// Generate cache key
-		const cacheKey = generateOntologyCacheKey(resolvedFocus, contextType, request.entity_id);
+		const cacheKey = generateOntologyCacheKey(
+			useProjectFocus ? resolvedFocus : null,
+			contextType,
+			request.entity_id
+		);
 
 		// Check session-level cache
 		const cached = metadata.ontologyCache;
@@ -144,11 +149,11 @@ export class OntologyCacheService {
 			}
 		}
 
-		// Check if this is a project-related context type
-		const isProjectContext = (PROJECT_CONTEXT_TYPES as readonly string[]).includes(contextType);
+		// Check if this is a project-related context type or explicitly focused
+		const useProjectFocus = this.shouldUseProjectFocus(contextType, request);
 
 		// Load based on context type and focus
-		if (resolvedFocus?.projectId && isProjectContext) {
+		if (resolvedFocus?.projectId && useProjectFocus) {
 			// Project-focused loading
 			if (resolvedFocus.focusType !== 'project-wide' && resolvedFocus.focusEntityId) {
 				// Load combined project + element context
@@ -241,6 +246,12 @@ export class OntologyCacheService {
 			logger.error('Failed to load ontology context', { error, contextType, entityId });
 			throw error;
 		}
+	}
+
+	private shouldUseProjectFocus(contextType: ChatContextType, request: StreamRequest): boolean {
+		const isProjectContext = (PROJECT_CONTEXT_TYPES as readonly string[]).includes(contextType);
+		const focusExplicit = request.project_focus !== undefined;
+		return isProjectContext || focusExplicit;
 	}
 
 	/**

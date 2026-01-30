@@ -52,6 +52,7 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 			'Work management is modeled as an ontology—a knowledge graph where projects, tasks, plans, goals, milestones, documents, risks, requirements, metrics, and sources form interconnected webs of meaning instead of flat lists.',
 		highlights: [
 			'Classification uses `type_key` strings (e.g., project.creative.book, task.execute, document.spec) plus three facets (context, scale, stage) to route UI and filtering.',
+			'Documents are organized in a hierarchical tree stored on each project (`doc_structure`); document containment is not modeled with edges.',
 			'Context documents capture the narrative "why" of a project—the story from brain dumps that persists as work evolves, giving AI agents rich background when planning.',
 			'The graph structure creates relationships: tasks belong to plans, plans support goals, everything ties to project context. This web lets agents understand dependencies, priorities, and the bigger picture.',
 			'Props live in JSONB and are inferred from conversation; the schema is flexible and grows with the project. State machines are handled in the app layer.',

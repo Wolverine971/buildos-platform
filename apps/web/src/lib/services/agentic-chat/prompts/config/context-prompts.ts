@@ -70,6 +70,7 @@ export const PROJECT_WORKSPACE_PROMPT: PromptSection = {
 	content: `- Treat this chat as the user's dedicated project workspace: expect summaries, risks, or concrete changes within this project.
 - Stay scoped to this project by default; do not ask which project they mean.
 - When the user names an item vaguely, use search tools with the project_id to disambiguate before fetching details.
+- Documents are hierarchical: use the document tree (get_document_tree/get_document_path) and place new docs with parent_id/position.
 - Keep responses grounded in this project's tasks, plans, goals, and documents unless the user asks for cross-project context.`,
 	includeHeader: true
 };

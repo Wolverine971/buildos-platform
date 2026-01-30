@@ -100,7 +100,9 @@ export const TOOL_CATEGORIES = {
 			'get_onto_requirement_details',
 			'list_task_documents',
 			'get_entity_relationships',
-			'get_linked_entities'
+			'get_linked_entities',
+			'get_document_tree',
+			'get_document_path'
 		],
 		averageTokens: 350,
 		costTier: 'medium'
@@ -127,7 +129,8 @@ export const TOOL_CATEGORIES = {
 			'delete_onto_task',
 			'delete_onto_goal',
 			'delete_onto_plan',
-			'delete_onto_document'
+			'delete_onto_document',
+			'move_document'
 		],
 		averageTokens: 400,
 		costTier: 'medium'
@@ -219,6 +222,8 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'get_onto_requirement_details',
 		'search_onto_documents',
 		'list_task_documents',
+		'get_document_tree',
+		'get_document_path',
 		'create_onto_task',
 		'create_onto_goal',
 		'create_onto_plan',
@@ -239,6 +244,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'delete_onto_goal',
 		'delete_onto_plan',
 		'delete_onto_document',
+		'move_document',
 		'list_calendar_events',
 		'get_calendar_event_details',
 		'create_calendar_event',
@@ -342,6 +348,8 @@ export const ONTOLOGY_TOOLS = extractTools([
 	'get_onto_risk_details',
 	'get_onto_requirement_details',
 	'get_entity_relationships',
+	'get_document_tree',
+	'get_document_path',
 	'create_onto_project',
 	'create_onto_task',
 	'create_onto_goal',
@@ -362,7 +370,8 @@ export const ONTOLOGY_TOOLS = extractTools([
 	'delete_onto_task',
 	'delete_onto_goal',
 	'delete_onto_plan',
-	'delete_onto_document'
+	'delete_onto_document',
+	'move_document'
 ]);
 
 export const UTILITY_TOOLS = extractTools([

@@ -9,7 +9,8 @@ import type {
 	OntologyContext,
 	ProjectFocus,
 	OntologyEntityType,
-	ProjectHighlights
+	ProjectHighlights,
+	DocumentTreeContext
 } from '$lib/types/agent-chat-enhancement';
 import type { FormattedContextResult } from './types';
 
@@ -24,6 +25,67 @@ const formatDateShort = (value?: string | null): string | null => {
 	if (!value) return null;
 	return value.split('T')[0] || value;
 };
+
+type DocumentTreeNode = DocumentTreeContext['root'][number];
+
+function findDocumentNodeWithPath(
+	nodes: DocumentTreeNode[],
+	targetId: string,
+	path: DocumentTreeNode[] = []
+): { node: DocumentTreeNode; path: DocumentTreeNode[] } | null {
+	for (const node of nodes) {
+		if (node.id === targetId) {
+			return { node, path };
+		}
+		if (node.children && node.children.length > 0) {
+			const found = findDocumentNodeWithPath(node.children, targetId, [...path, node]);
+			if (found) return found;
+		}
+	}
+	return null;
+}
+
+function formatDocumentFocusDetails(
+	tree: DocumentTreeContext | undefined,
+	documentId?: string | null
+): string {
+	if (!documentId) return '';
+	if (!tree) {
+		return `### Document Tree Focus
+- Document tree not loaded. Use get_document_tree or get_document_path for hierarchy.`;
+	}
+
+	const found = findDocumentNodeWithPath(tree.root, documentId);
+	if (!found) {
+		return `### Document Tree Focus
+- Document not found in the current tree preview.
+- Use get_document_path or get_document_tree for the complete structure.`;
+	}
+
+	const pathTitles = [...found.path, found.node].map((node) => node.title).filter(Boolean);
+	const lines: string[] = [];
+	lines.push('### Document Tree Focus');
+	lines.push(`- Path: ${pathTitles.join(' > ') || 'Unknown path'}`);
+
+	if (found.node.children && found.node.children.length > 0) {
+		const preview = found.node.children.slice(0, 6);
+		lines.push(`- Children (preview): ${preview.length}`);
+		preview.forEach((child) => {
+			lines.push(`- ${child.title} [${child.id}]`);
+		});
+		if (found.node.children.length > preview.length) {
+			lines.push(`- ...and ${found.node.children.length - preview.length} more`);
+		}
+	} else {
+		lines.push('- Children: none');
+	}
+
+	if (tree.truncated) {
+		lines.push('- Note: Tree preview truncated. Use get_document_tree for full child list.');
+	}
+
+	return lines.join('\n');
+}
 
 /**
  * Format ontology context for inclusion in prompt
@@ -141,6 +203,19 @@ ${propKeys.map((key) => `- ${key}: ${JSON.stringify(elementProps[key])}`).join('
 				2
 			)}\n\`\`\``
 		);
+	}
+
+	const focusDocDetails =
+		focus.focusType === 'document'
+			? formatDocumentFocusDetails(ontology.metadata?.document_tree, focus.focusEntityId)
+			: '';
+	if (focusDocDetails) {
+		sections.push(focusDocDetails);
+	}
+
+	const documentTree = formatDocumentTreePreview(ontology.metadata?.document_tree);
+	if (documentTree) {
+		sections.push(documentTree);
 	}
 
 	sections.push(
@@ -377,6 +452,11 @@ function formatProjectContext(ontology: OntologyContext): string {
 		);
 	}
 
+	const documentTree = formatDocumentTreePreview(ontology.metadata?.document_tree);
+	if (documentTree) {
+		sections.push(documentTree);
+	}
+
 	sections.push(`### Entity Summary
 ${
 	ontology.metadata?.graph_snapshot?.coverage
@@ -420,27 +500,28 @@ function formatElementContext(ontology: OntologyContext): string {
 		propsKeys.length > 0
 			? `- Props: ${propsKeys.slice(0, 5).join(', ')}${propsKeys.length > 5 ? ' ...' : ''}`
 			: '';
+	const sections: string[] = [];
 
-	return `### Element Information
+	sections.push(`### Element Information
 - Type: ${elementType || 'element'}
 - ID: ${elem?.id ?? 'unknown'}
 - Name: ${getEntityName(elem)}
-- Status: ${elem?.status || elem?.state_key || 'Unknown'}
+- Status: ${elem?.status || elem?.state_key || 'Unknown'}`);
 
-### Element Details
+	sections.push(`### Element Details
 ${detailLines.length > 0 ? detailLines.join('\n') : '- No additional details'}
 - Description: ${descriptionSnippet || 'None'}
-${propsLine}
+${propsLine}`.trim());
 
-### Parent Project
+	sections.push(`### Parent Project
 ${
 	parentProject
 		? `- ${parentProject.name} (${parentProject.id})
 - Project State: ${parentProject.state_key}`
 		: '- No parent project found (orphaned element)'
-}
+}`);
 
-### Relationships
+	sections.push(`### Relationships
 ${
 	ontology.relationships?.edges
 		?.map(
@@ -448,12 +529,28 @@ ${
 				`- ${e.relation} ${e.relation.startsWith('inverse_') ? 'from' : 'to'} ${e.target_kind} (${e.target_id})`
 		)
 		.join('\n') || 'No relationships loaded'
-}
+}`);
 
-### Hints
+	const focusDocDetails =
+		elementType === 'document'
+			? formatDocumentFocusDetails(ontology.metadata?.document_tree, elem?.id ?? null)
+			: '';
+	if (focusDocDetails) {
+		sections.push(focusDocDetails);
+	}
+
+	const documentTree = formatDocumentTreePreview(ontology.metadata?.document_tree);
+	if (documentTree) {
+		sections.push(documentTree);
+	}
+
+	sections.push(`### Hints
 - Use the appropriate onto detail tool (e.g., get_onto_task_details) for complete information
 - Use get_onto_project_details for full project context
-- Use get_entity_relationships for connected items`;
+- Use get_entity_relationships for connected items
+- Use get_document_tree/get_document_path to navigate document hierarchy when relevant`);
+
+	return sections.join('\n\n');
 }
 
 function formatGlobalContext(ontology: OntologyContext): string {
@@ -491,6 +588,47 @@ ${
 ### Hints
 - Use list_onto_projects to find specific projects
 - Use create_onto_project to start new projects`;
+}
+
+function formatDocumentTreePreview(tree?: DocumentTreeContext): string {
+	if (!tree) return '';
+
+	const lines: string[] = [];
+	lines.push('### Document Tree (Preview)');
+	lines.push(`- Nodes in tree: ${tree.total_nodes}`);
+	if (tree.unlinked_count && tree.unlinked_count > 0) {
+		lines.push(`- Unlinked documents: ${tree.unlinked_count}`);
+	}
+
+	const renderNode = (node: DocumentTreeContext['root'][number], depth: number) => {
+		const indent = '  '.repeat(depth);
+		const description = node.description ? `: ${node.description}` : '';
+		lines.push(`- ${indent}${node.title} [${node.id}]${description}`);
+		if (node.children && node.children.length > 0) {
+			node.children.forEach((child) => renderNode(child, depth + 1));
+		}
+	};
+
+	if (tree.root.length > 0) {
+		lines.push('');
+		tree.root.forEach((node) => renderNode(node, 0));
+	} else {
+		lines.push('- (No documents in the tree yet)');
+	}
+
+	if (tree.unlinked && tree.unlinked.length > 0) {
+		lines.push('');
+		lines.push(
+			`Unlinked preview: ${tree.unlinked.map((doc) => `${doc.title} [${doc.id}]`).join(', ')}`
+		);
+	}
+
+	if (tree.truncated) {
+		lines.push('');
+		lines.push('Note: Tree preview truncated. Use get_document_tree for full structure.');
+	}
+
+	return lines.join('\n');
 }
 
 function formatProjectHighlights(highlights?: ProjectHighlights): string {

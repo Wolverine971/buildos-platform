@@ -370,6 +370,12 @@ export class ChatToolExecutor {
 			case 'list_task_documents':
 				return this.readExecutor.listTaskDocuments(args);
 
+			case 'get_document_tree':
+				return this.readExecutor.getDocumentTree(args);
+
+			case 'get_document_path':
+				return this.readExecutor.getDocumentPath(args);
+
 			// ==================
 			// ONTOLOGY WRITE TOOLS
 			// ==================
@@ -443,6 +449,9 @@ export class ChatToolExecutor {
 
 			case 'delete_onto_document':
 				return this.writeExecutor.deleteOntoDocument(args);
+
+			case 'move_document':
+				return this.writeExecutor.moveDocument(args);
 
 			// ==================
 			// UNKNOWN

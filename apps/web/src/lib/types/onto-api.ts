@@ -68,6 +68,8 @@ export interface OntoProject {
 	facet_context?: string | null;
 	facet_scale?: string | null;
 	facet_stage?: string | null;
+	/** Hierarchical document tree structure */
+	doc_structure?: DocStructure | null;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
@@ -164,10 +166,22 @@ export interface OntoDocument {
 	content?: string | null;
 	description?: string | null;
 	props: Record<string, unknown> | null;
+	/** Immediate child documents for hierarchy */
+	children?: DocumentChildren | null;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
 	deleted_at?: string | null;
+}
+
+/**
+ * Children structure stored on onto_documents.children column
+ */
+export interface DocumentChildren {
+	children: Array<{
+		id: string;
+		order: number;
+	}>;
 }
 
 /**
@@ -247,6 +261,100 @@ export interface OntoSource {
 	uri?: string | null;
 	props: Record<string, unknown> | null;
 	created_at: string;
+}
+
+// ============================================
+// DOCUMENT TREE TYPES
+// ============================================
+
+/**
+ * A node in the document tree structure
+ * Stored in onto_projects.doc_structure
+ */
+export interface DocTreeNode {
+	/** Document ID (UUID) from onto_documents */
+	id: string;
+	/** Optional hint; UI derives folder/doc from children at render time. */
+	type?: 'folder' | 'doc';
+	/** Order among siblings (0-indexed) */
+	order: number;
+	/** Child nodes (optional) */
+	children?: DocTreeNode[];
+}
+
+/**
+ * The root document structure stored on onto_projects.doc_structure
+ */
+export interface DocStructure {
+	/** Schema version for future migrations */
+	version: number;
+	/** Top-level nodes in the tree */
+	root: DocTreeNode[];
+}
+
+/**
+ * Enriched tree node with full document metadata for UI rendering
+ * Created by joining DocTreeNode with onto_documents
+ */
+export interface EnrichedDocTreeNode {
+	// From JSON structure
+	id: string;
+	type: 'folder' | 'doc';
+	order: number;
+	children?: EnrichedDocTreeNode[];
+
+	// From onto_documents JOIN
+	title: string;
+	description: string | null;
+	state_key: string;
+	type_key: string;
+	/** Whether document has non-empty content */
+	has_content: boolean;
+	created_at: string;
+	updated_at: string;
+
+	// Computed for UI
+	/** Icon derived from type_key or props */
+	icon?: string;
+	/** Tree depth for indentation */
+	depth: number;
+	/** Full path from root */
+	path: string[];
+}
+
+/**
+ * Structure history entry for undo/redo
+ */
+export interface DocStructureHistoryEntry {
+	id: string;
+	project_id: string;
+	doc_structure: DocStructure;
+	version: number;
+	changed_by: string | null;
+	changed_at: string;
+	change_type: 'create' | 'move' | 'delete' | 'reorder' | 'reorganize';
+}
+
+/**
+ * Response from GET /api/onto/projects/[id]/doc-tree
+ */
+export interface GetDocTreeResponse {
+	structure: DocStructure;
+	/** Documents keyed by ID for O(1) lookup */
+	documents: Record<string, OntoDocument>;
+	/** Orphaned documents not in the tree structure */
+	unlinked: OntoDocument[];
+}
+
+/**
+ * Request to move a document in the tree
+ */
+export interface MoveDocumentRequest {
+	document_id: string;
+	/** New parent document ID, or null for root level */
+	new_parent_id: string | null;
+	/** Position among siblings (0-indexed) */
+	new_position: number;
 }
 
 // ============================================

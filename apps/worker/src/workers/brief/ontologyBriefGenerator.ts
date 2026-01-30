@@ -330,7 +330,8 @@ function generateMainBriefMarkdown(
 	briefData: OntologyBriefData,
 	projectBriefContents: string[],
 	executiveSummary: string,
-	holidays: string[] | null
+	holidays: string[] | null,
+	priorityActions: string[]
 ): string {
 	// Build a map of project_id -> project name for task linking
 	const projectNameMap = new Map<string, string>();
@@ -349,7 +350,37 @@ function generateMainBriefMarkdown(
 
 	// Holiday notice
 	if (holidays && holidays.length > 0) {
-		mainBrief += `## Today is ${holidays.join(' and ')}\n\n`;
+		mainBrief += `🎉 **Today is ${holidays.join(' and ')}**\n\n`;
+	}
+
+	// Day Hook - one-liner that sets expectations
+	const taskCount = briefData.todaysTasks.length;
+	const projectCount = briefData.projects.length;
+	const blockedCount = briefData.blockedTasks.length;
+	const overdueCount = briefData.overdueTasks.length;
+	const attentionCount = blockedCount + overdueCount;
+
+	let dayType = '';
+	if (taskCount === 0) {
+		dayType = '📭 **Clear day** — no tasks scheduled';
+	} else if (attentionCount >= 3) {
+		dayType = `🔴 **${attentionCount} items need attention** — ${taskCount} tasks across ${projectCount} projects`;
+	} else if (taskCount >= 10) {
+		dayType = `📋 **Full day** — ${taskCount} tasks across ${projectCount} projects`;
+	} else if (taskCount >= 5) {
+		dayType = `🎯 **Solid workload** — ${taskCount} tasks across ${projectCount} projects`;
+	} else {
+		dayType = `✨ **Light day** — ${taskCount} tasks, good for deep work`;
+	}
+	mainBrief += `${dayType}\n\n`;
+
+	// Priority Actions - what to do first
+	if (priorityActions.length > 0) {
+		mainBrief += `## Start Here\n\n`;
+		for (const action of priorityActions.slice(0, 3)) {
+			mainBrief += `- **${action}**\n`;
+		}
+		mainBrief += '\n';
 	}
 
 	// Executive Summary
@@ -942,14 +973,16 @@ export async function generateOntologyDailyBrief(
 		// Step 7: Generate main brief markdown
 		await updateProgress(dailyBrief.id, { step: 'finalizing', progress: 90 }, jobId);
 
+		// Extract priority actions first so we can include them in the brief
+		const priorityActions = extractPriorityActions(briefData);
+
 		const mainBriefContent = generateMainBriefMarkdown(
 			briefData,
 			allProjectBriefContents,
 			executiveSummary,
-			holidays
+			holidays,
+			priorityActions
 		);
-
-		const priorityActions = extractPriorityActions(briefData);
 
 		// Step 8: Update the daily brief with final content
 		const finalMetadata: OntologyBriefMetadata = {

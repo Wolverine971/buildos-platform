@@ -34,7 +34,9 @@ import type {
 	GetOntoMilestoneDetailsArgs,
 	GetOntoRiskDetailsArgs,
 	GetOntoRequirementDetailsArgs,
-	ListTaskDocumentsArgs
+	ListTaskDocumentsArgs,
+	GetDocumentTreeArgs,
+	GetDocumentPathArgs
 } from './types';
 
 /**
@@ -742,6 +744,125 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			...details,
 			message: 'Complete ontology requirement details loaded.'
+		};
+	}
+
+	// ============================================
+	// DOCUMENT TREE OPERATIONS
+	// ============================================
+
+	async getDocumentTree(args: GetDocumentTreeArgs): Promise<{
+		structure: any;
+		documents: Record<string, any>;
+		unlinked: string[];
+		message: string;
+	}> {
+		if (!args.project_id) {
+			throw new Error('project_id is required for get_document_tree');
+		}
+
+		const actorId = await this.getActorId();
+		await this.assertProjectOwnership(args.project_id, actorId);
+
+		const includeContent = args.include_content === true;
+		const query = `?include_content=${includeContent ? 'true' : 'false'}`;
+		const data = await this.apiRequest(
+			`/api/onto/projects/${args.project_id}/doc-tree${query}`,
+			{
+				method: 'GET'
+			}
+		);
+
+		const docCount = Object.keys(data.documents || {}).length;
+		const unlinkedCount = (data.unlinked || []).length;
+
+		return {
+			structure: data.structure,
+			documents: data.documents || {},
+			unlinked: data.unlinked || [],
+			message: `Document tree loaded with ${docCount} documents. ${unlinkedCount > 0 ? `${unlinkedCount} documents are not in the tree structure.` : 'All documents are organized in the tree.'}`
+		};
+	}
+
+	async getDocumentPath(args: GetDocumentPathArgs): Promise<{
+		path: Array<{ id: string; title: string }>;
+		document_id: string;
+		project_id: string;
+		message: string;
+	}> {
+		if (!args.document_id) {
+			throw new Error('document_id is required for get_document_path');
+		}
+
+		const actorId = await this.getActorId();
+		let projectId = args.project_id;
+		let fallbackTitle: string | undefined;
+
+		if (!projectId) {
+			// First get the document to find its project_id
+			const docDetails = await this.apiRequest(`/api/onto/documents/${args.document_id}`);
+			if (!docDetails?.document) {
+				throw new Error('Document not found');
+			}
+			projectId = docDetails.document.project_id;
+			fallbackTitle = docDetails.document.title ?? undefined;
+		}
+
+		if (!projectId) {
+			throw new Error('Document has no project association');
+		}
+
+		await this.assertProjectOwnership(projectId, actorId);
+
+		// Get the document tree
+		const treeData = await this.apiRequest(`/api/onto/projects/${projectId}/doc-tree`, {
+			method: 'GET'
+		});
+
+		// Build path from tree structure
+		const path: Array<{ id: string; title: string }> = [];
+		const documents = treeData.documents || {};
+		const documentEntry = documents[args.document_id];
+		const resolvedTitle = documentEntry?.title || fallbackTitle || 'Untitled';
+
+		function findPath(
+			nodes: any[],
+			targetId: string,
+			currentPath: Array<{ id: string; title: string }>
+		): boolean {
+			for (const node of nodes) {
+				const doc = documents[node.id];
+				const nodeInfo = { id: node.id, title: doc?.title || 'Untitled' };
+
+				if (node.id === targetId) {
+					path.push(...currentPath, nodeInfo);
+					return true;
+				}
+
+				if (node.children && node.children.length > 0) {
+					if (findPath(node.children, targetId, [...currentPath, nodeInfo])) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		const found = findPath(treeData.structure?.root || [], args.document_id, []);
+
+		const pathStr = path.length > 0 ? path.map((p) => p.title).join(' > ') : 'Root level';
+		let message = `Document path: ${pathStr}`;
+		if (!documentEntry) {
+			message = `Document "${resolvedTitle}" not found in project ${projectId}.`;
+		} else if (!found) {
+			message = `Document "${resolvedTitle}" is not placed in the tree (unlinked).`;
+		}
+
+		return {
+			path,
+			document_id: args.document_id,
+			project_id: projectId,
+			message
 		};
 	}
 }

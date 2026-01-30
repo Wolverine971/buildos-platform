@@ -21,8 +21,10 @@ import type {
 	ProjectHighlightSignal,
 	ProjectHighlightInsight,
 	ProjectHighlightTask,
-	GraphSnapshot
+	GraphSnapshot,
+	DocumentTreeContext
 } from '$lib/types/agent-chat-enhancement';
+import type { DocStructure, DocTreeNode } from '$lib/types/onto-api';
 import type {
 	EntityLinkedContext,
 	LinkedEntityContext,
@@ -122,6 +124,14 @@ const GRAPH_SNAPSHOT_LIMITS = {
 	maxNodes: 60,
 	maxEdges: 80,
 	maxNodesPerKind: 10
+} as const;
+
+const DOCUMENT_TREE_LIMITS = {
+	maxDepth: 4,
+	maxNodes: 60,
+	maxChildrenPerNode: 6,
+	maxUnlinked: 8,
+	descriptionPreview: 140
 } as const;
 
 export class OntologyContextLoader {
@@ -894,6 +904,185 @@ export class OntologyContextLoader {
 		};
 	}
 
+	private normalizeDocStructure(structure: DocStructure | null | undefined): DocStructure {
+		const version = typeof structure?.version === 'number' ? structure.version : 1;
+		const root = Array.isArray(structure?.root) ? structure.root : [];
+		return { version, root };
+	}
+
+	private collectDocIds(
+		nodes: DocTreeNode[],
+		visited: Set<string> = new Set<string>()
+	): Set<string> {
+		for (const node of nodes) {
+			if (!node || typeof node.id !== 'string') continue;
+			if (visited.has(node.id)) continue;
+			visited.add(node.id);
+			if (Array.isArray(node.children) && node.children.length > 0) {
+				this.collectDocIds(node.children, visited);
+			}
+		}
+		return visited;
+	}
+
+	private sortTreeNodes(nodes: DocTreeNode[]): DocTreeNode[] {
+		return [...nodes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+	}
+
+	private buildDocumentTreeContext(
+		structure: DocStructure,
+		documents: ProjectGraphDataLight['documents']
+	): DocumentTreeContext {
+		const normalized = this.normalizeDocStructure(structure);
+		const docIndex = new Map(documents.map((doc) => [doc.id, doc]));
+		const docIdsInTree = this.collectDocIds(normalized.root);
+		const totalNodes = docIdsInTree.size;
+		const unlinkedDocs = documents.filter((doc) => !docIdsInTree.has(doc.id));
+		const unlinkedPreview = unlinkedDocs
+			.slice(0, DOCUMENT_TREE_LIMITS.maxUnlinked)
+			.map((doc) => ({
+				id: doc.id,
+				title: doc.title || 'Untitled'
+			}));
+
+		let nodesRendered = 0;
+		let truncated = false;
+		const renderedIds = new Set<string>();
+
+		const buildNode = (
+			node: DocTreeNode,
+			depth: number
+		): DocumentTreeContext['root'][number] | null => {
+			if (!node || typeof node.id !== 'string') return null;
+			if (renderedIds.has(node.id)) {
+				truncated = true;
+				return null;
+			}
+			if (nodesRendered >= DOCUMENT_TREE_LIMITS.maxNodes) {
+				truncated = true;
+				return null;
+			}
+
+			nodesRendered += 1;
+			renderedIds.add(node.id);
+
+			const doc = docIndex.get(node.id);
+			const contextNode: DocumentTreeContext['root'][number] = {
+				id: node.id,
+				title: doc?.title || 'Untitled',
+				description: this.truncateText(
+					doc?.description ?? null,
+					DOCUMENT_TREE_LIMITS.descriptionPreview
+				),
+				order: typeof node.order === 'number' ? node.order : null
+			};
+
+			if (Array.isArray(node.children) && node.children.length > 0) {
+				if (depth >= DOCUMENT_TREE_LIMITS.maxDepth) {
+					truncated = true;
+				} else {
+					const childNodes: DocumentTreeContext['root'] = [];
+					const sortedChildren = this.sortTreeNodes(node.children);
+					const visibleChildren = sortedChildren.slice(
+						0,
+						DOCUMENT_TREE_LIMITS.maxChildrenPerNode
+					);
+					if (sortedChildren.length > visibleChildren.length) {
+						truncated = true;
+					}
+					for (const child of visibleChildren) {
+						const built = buildNode(child, depth + 1);
+						if (built) {
+							childNodes.push(built);
+						}
+						if (nodesRendered >= DOCUMENT_TREE_LIMITS.maxNodes) {
+							truncated = true;
+							break;
+						}
+					}
+					if (childNodes.length > 0) {
+						contextNode.children = childNodes;
+					}
+					if (node.children.length > childNodes.length) {
+						truncated = true;
+					}
+				}
+			}
+
+			return contextNode;
+		};
+
+		const rootNodes: DocumentTreeContext['root'] = [];
+		for (const node of this.sortTreeNodes(normalized.root)) {
+			const built = buildNode(node, 0);
+			if (built) {
+				rootNodes.push(built);
+			}
+			if (nodesRendered >= DOCUMENT_TREE_LIMITS.maxNodes) {
+				truncated = true;
+				break;
+			}
+		}
+
+		const needsTruncation =
+			truncated || unlinkedDocs.length > unlinkedPreview.length || nodesRendered < totalNodes;
+
+		return {
+			version: normalized.version,
+			root: rootNodes,
+			total_nodes: totalNodes,
+			truncated: needsTruncation || undefined,
+			unlinked_count: unlinkedDocs.length,
+			unlinked: unlinkedPreview.length > 0 ? unlinkedPreview : undefined
+		};
+	}
+
+	private async loadProjectDocStructure(projectId: string): Promise<DocStructure> {
+		const { data, error } = await this.supabase
+			.from('onto_projects')
+			.select('doc_structure')
+			.eq('id', projectId)
+			.maybeSingle();
+
+		if (error) {
+			throw error;
+		}
+
+		const structure = data?.doc_structure as DocStructure | null | undefined;
+		return this.normalizeDocStructure(structure);
+	}
+
+	private async loadProjectDocumentsForTree(
+		projectId: string
+	): Promise<ProjectGraphDataLight['documents']> {
+		const { data, error } = await this.supabase
+			.from('onto_documents')
+			.select('id, title, description')
+			.eq('project_id', projectId)
+			.is('deleted_at', null);
+
+		if (error) {
+			throw error;
+		}
+
+		return (data ?? []) as ProjectGraphDataLight['documents'];
+	}
+
+	private async loadProjectDocumentTreeContext(
+		projectId: string,
+		structure?: DocStructure | null
+	): Promise<{ docStructure: DocStructure; documentTree: DocumentTreeContext }> {
+		const docStructure = structure
+			? this.normalizeDocStructure(structure)
+			: await this.loadProjectDocStructure(projectId);
+		const documents = await this.loadProjectDocumentsForTree(projectId);
+
+		return {
+			docStructure,
+			documentTree: this.buildDocumentTreeContext(docStructure, documents)
+		};
+	}
+
 	/**
 	 * Load global context - overview of all projects
 	 */
@@ -982,6 +1171,8 @@ export class OntologyContextLoader {
 		const entityCounts = this.getProjectEntityCountsFromGraph(graphData);
 		const projectHighlights = this.buildProjectHighlightsFromGraph(graphData, directEdgeIds);
 		const graphSnapshot = this.buildGraphSnapshot(projectId, graphData, directEdgeIds);
+		const docStructure = await this.loadProjectDocStructure(projectId);
+		const documentTree = this.buildDocumentTreeContext(docStructure, graphData.documents);
 
 		const facets = {
 			context: graphData.project.facet_context ?? null,
@@ -1002,7 +1193,9 @@ export class OntologyContextLoader {
 				facets: facets,
 				last_updated: new Date().toISOString(),
 				project_highlights: projectHighlights,
-				graph_snapshot: graphSnapshot
+				graph_snapshot: graphSnapshot,
+				document_tree: documentTree,
+				doc_structure: docStructure
 			},
 			scope: {
 				projectId: graphData.project.id,
@@ -1021,7 +1214,8 @@ export class OntologyContextLoader {
 	 */
 	async loadElementContext(
 		elementType: ElementType,
-		elementId: string
+		elementId: string,
+		options: { includeDocumentTree?: boolean } = {}
 	): Promise<OntologyContext> {
 		await this.assertEntityOwnership(elementId);
 		console.log('[OntologyLoader] Loading element context:', elementType, elementId);
@@ -1035,6 +1229,7 @@ export class OntologyContextLoader {
 
 		// Find parent project
 		const parentProject = await this.findParentProject(elementId);
+		const includeDocumentTree = options.includeDocumentTree ?? true;
 
 		// Load element relationships
 		const relationships = await this.loadElementRelationships(elementId);
@@ -1047,14 +1242,42 @@ export class OntologyContextLoader {
 			singularEntities.project = parentProject;
 		}
 
+		const metadata: OntologyContext['metadata'] = {
+			hierarchy_level: await this.getHierarchyLevel(elementId),
+			last_updated: new Date().toISOString()
+		};
+
+		if (parentProject) {
+			const rawStructure = (parentProject as any)?.doc_structure as
+				| DocStructure
+				| null
+				| undefined;
+
+			if (includeDocumentTree) {
+				try {
+					const { docStructure, documentTree } = await this.loadProjectDocumentTreeContext(
+						parentProject.id,
+						rawStructure ?? null
+					);
+					metadata.doc_structure = docStructure;
+					metadata.document_tree = documentTree;
+				} catch (error) {
+					console.warn('[OntologyLoader] Failed to load document tree for element context', {
+						projectId: parentProject.id,
+						error: error instanceof Error ? error.message : String(error)
+					});
+					metadata.doc_structure = this.normalizeDocStructure(rawStructure);
+				}
+			} else {
+				metadata.doc_structure = this.normalizeDocStructure(rawStructure);
+			}
+		}
+
 		return {
 			type: 'element',
 			entities,
 			relationships,
-			metadata: {
-				hierarchy_level: await this.getHierarchyLevel(elementId),
-				last_updated: new Date().toISOString()
-			},
+			metadata,
 			scope: {
 				projectId: parentProject?.id,
 				projectName: parentProject?.name,
@@ -1085,7 +1308,7 @@ export class OntologyContextLoader {
 
 		const [projectContext, elementContext] = await Promise.all([
 			this.loadProjectContext(projectId),
-			this.loadElementContext(elementType, elementId)
+			this.loadElementContext(elementType, elementId, { includeDocumentTree: false })
 		]);
 
 		if (elementContext.scope?.projectId && elementContext.scope.projectId !== projectId) {

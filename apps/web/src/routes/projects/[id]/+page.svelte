@@ -74,7 +74,7 @@
 		GitBranch,
 		UserPlus
 	} from 'lucide-svelte';
-	import type { Project, Task, Document, Plan, OntoEvent } from '$lib/types/onto';
+	import type { Project, Task, Document, Plan, OntoEvent, Goal, Milestone, Risk } from '$lib/types/onto';
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
@@ -85,6 +85,12 @@
 	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
 	import ProjectShareModal from '$lib/components/project/ProjectShareModal.svelte';
 	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
+	import {
+		DocTreeView,
+		DocMoveModal,
+		DocDeleteConfirmModal
+	} from '$lib/components/ontology/doc-tree';
+	import type { DocStructure, OntoDocument, GetDocTreeResponse } from '$lib/types/onto-api';
 	import type { Database, EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 	import {
@@ -106,32 +112,6 @@
 	// ============================================================
 	// TYPES
 	// ============================================================
-	interface Goal {
-		id: string;
-		name: string;
-		type_key?: string | null;
-		state_key: string;
-		props?: Record<string, unknown>;
-	}
-
-	interface Milestone {
-		id: string;
-		title: string;
-		due_at: string | null;
-		state_key?: string | null;
-		props?: Record<string, unknown> | null;
-		goal_id?: string | null;
-		effective_state_key?: string | null;
-		is_missed?: boolean | null;
-	}
-
-	interface Risk {
-		id: string;
-		title: string;
-		impact?: string | null;
-		state_key?: string | null;
-		props?: Record<string, unknown> | null;
-	}
 
 	type OntoEventWithSync = OntoEvent & {
 		onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];
@@ -247,6 +227,20 @@
 	let editingMilestoneId = $state<string | null>(null);
 	let showEventCreateModal = $state(false);
 	let editingEventId = $state<string | null>(null);
+
+	// Document Tree State
+	let parentDocumentId = $state<string | null>(null);
+	let docTreeStructure = $state<DocStructure | null>(null);
+	let docTreeDocuments = $state<Record<string, OntoDocument>>({});
+	let showMoveDocModal = $state(false);
+	let moveDocumentId = $state<string | null>(null);
+	let moveDocumentTitle = $state('');
+	let showDeleteDocConfirmModal = $state(false);
+	let deleteDocumentId = $state<string | null>(null);
+	let deleteDocumentTitle = $state('');
+	let deleteDocumentHasChildren = $state(false);
+	let deleteDocumentChildCount = $state(0);
+	let docTreeViewRef = $state<{ refresh: () => void } | null>(null);
 
 	// UI State
 	let dataRefreshing = $state(false);
@@ -1053,12 +1047,129 @@
 	async function handleDocumentSaved() {
 		// Refresh data but keep modal open - user can close manually when done editing
 		await refreshData();
+		docTreeViewRef?.refresh();
 	}
 
 	async function handleDocumentDeleted() {
 		await refreshData();
+		docTreeViewRef?.refresh();
 		showDocumentModal = false;
 		activeDocumentId = null;
+		parentDocumentId = null;
+	}
+
+	// Document Tree Handlers
+	function handleOpenDocument(docId: string) {
+		activeDocumentId = docId;
+		showDocumentModal = true;
+	}
+
+	function handleCreateDocument(parentId?: string | null) {
+		parentDocumentId = parentId ?? null;
+		activeDocumentId = null;
+		showDocumentModal = true;
+	}
+
+	function handleMoveDocument(docId: string) {
+		const doc = docTreeDocuments[docId];
+		moveDocumentId = docId;
+		moveDocumentTitle = doc?.title || 'Document';
+		showMoveDocModal = true;
+	}
+
+	function handleDeleteDocument(docId: string, hasChildren: boolean) {
+		const doc = docTreeDocuments[docId];
+		deleteDocumentId = docId;
+		deleteDocumentTitle = doc?.title || 'Document';
+		deleteDocumentHasChildren = hasChildren;
+		// Count children if it's a folder - rough estimate
+		if (hasChildren && docTreeStructure) {
+			const countChildren = (nodes: { id: string; children?: any[] }[]): number => {
+				let count = 0;
+				for (const node of nodes) {
+					if (node.id === docId && node.children) {
+						count = node.children.length;
+						break;
+					}
+					if (node.children) {
+						const childCount = countChildren(node.children);
+						if (childCount > 0) count = childCount;
+					}
+				}
+				return count;
+			};
+			deleteDocumentChildCount = countChildren(docTreeStructure.root);
+		} else {
+			deleteDocumentChildCount = 0;
+		}
+		showDeleteDocConfirmModal = true;
+	}
+
+	async function handleMoveDocumentConfirm(newParentId: string | null) {
+		if (!moveDocumentId || !project?.id) return;
+
+		try {
+			const res = await fetch(`/api/onto/projects/${project.id}/doc-tree/move`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					document_id: moveDocumentId,
+					new_parent_id: newParentId,
+					new_position: 0
+				})
+			});
+
+			if (!res.ok) {
+				const data = await res.json().catch(() => ({}));
+				throw new Error(data.error || 'Failed to move document');
+			}
+
+			toastService.success('Document moved');
+			docTreeViewRef?.refresh();
+		} catch (error) {
+			console.error('[Project] Failed to move document:', error);
+			toastService.error(error instanceof Error ? error.message : 'Failed to move document');
+		} finally {
+			showMoveDocModal = false;
+			moveDocumentId = null;
+		}
+	}
+
+	async function handleDeleteDocumentConfirm(mode: 'cascade' | 'promote') {
+		if (!deleteDocumentId || !project?.id) return;
+
+		try {
+			const res = await fetch(`/api/onto/documents/${deleteDocumentId}`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ mode })
+			});
+
+			if (!res.ok) {
+				const data = await res.json().catch(() => ({}));
+				throw new Error(data.error || 'Failed to delete document');
+			}
+
+			toastService.success('Document deleted');
+			await refreshData();
+			docTreeViewRef?.refresh();
+		} catch (error) {
+			console.error('[Project] Failed to delete document:', error);
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to delete document'
+			);
+		} finally {
+			showDeleteDocConfirmModal = false;
+			deleteDocumentId = null;
+		}
+	}
+
+	function handleDocTreeDataLoaded(data: {
+		structure: DocStructure;
+		documents: Record<string, OntoDocument>;
+	}) {
+		docTreeStructure = data.structure;
+		docTreeDocuments = data.documents;
 	}
 
 	function handleTaskCreated(taskId: string) {
@@ -1670,10 +1781,7 @@
 							<div class="flex items-center gap-1 sm:gap-2">
 								{#if canEdit}
 									<button
-										onclick={() => {
-											activeDocumentId = null;
-											showDocumentModal = true;
-										}}
+										onclick={() => handleCreateDocument(null)}
 										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
 										aria-label="Add document"
 									>
@@ -1703,67 +1811,15 @@
 								class="border-t border-border"
 								transition:slide={{ duration: 120 }}
 							>
-								{#if documents.length === 0}
-									<div
-										class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 bg-muted/30 tx tx-bloom tx-weak"
-									>
-										<div
-											class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
-										>
-											<FileText class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
-										</div>
-										<div>
-											<p class="text-xs sm:text-sm text-foreground">
-												No documents yet
-											</p>
-											<p class="text-[10px] sm:text-xs text-muted-foreground">
-												Add notes, research, or drafts
-											</p>
-										</div>
-									</div>
-								{:else}
-									<ul class="divide-y divide-border/80">
-										{#each documents as doc}
-											<li>
-												<button
-													type="button"
-													onclick={() => {
-														activeDocumentId = doc.id;
-														showDocumentModal = true;
-													}}
-													class="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-accent/5 transition-colors pressable"
-												>
-													<div
-														class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0"
-													>
-														<FileText
-															class="w-3 h-3 sm:w-4 sm:h-4 text-accent"
-														/>
-													</div>
-													<div class="min-w-0 flex-1">
-														<p
-															class="text-xs sm:text-sm text-foreground truncate"
-														>
-															{doc.title}
-														</p>
-														<p
-															class="text-[10px] sm:text-xs text-muted-foreground hidden sm:block"
-														>
-															Modified {formatLastModified(
-																doc.updated_at
-															)}
-														</p>
-													</div>
-													<span
-														class="flex-shrink-0 text-[9px] sm:text-[11px] text-muted-foreground"
-													>
-														{formatLastModified(doc.updated_at)}
-													</span>
-												</button>
-											</li>
-										{/each}
-									</ul>
-								{/if}
+								<DocTreeView
+									bind:this={docTreeViewRef}
+									projectId={project.id}
+									onOpenDocument={handleOpenDocument}
+									onCreateDocument={handleCreateDocument}
+									onMoveDocument={canEdit ? handleMoveDocument : undefined}
+									onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
+									selectedDocumentId={activeDocumentId}
+								/>
 							</div>
 						{/if}
 					</section>
@@ -2224,6 +2280,38 @@
 			onDeleted={handleDocumentDeleted}
 		/>
 	{/await}
+{/if}
+
+<!-- Document Move Modal -->
+{#if showMoveDocModal && moveDocumentId}
+	<DocMoveModal
+		bind:isOpen={showMoveDocModal}
+		projectId={project.id}
+		documentId={moveDocumentId}
+		documentTitle={moveDocumentTitle}
+		structure={docTreeStructure}
+		documents={docTreeDocuments}
+		onClose={() => {
+			showMoveDocModal = false;
+			moveDocumentId = null;
+		}}
+		onMove={handleMoveDocumentConfirm}
+	/>
+{/if}
+
+<!-- Document Delete Confirm Modal -->
+{#if showDeleteDocConfirmModal && deleteDocumentId}
+	<DocDeleteConfirmModal
+		bind:isOpen={showDeleteDocConfirmModal}
+		documentTitle={deleteDocumentTitle}
+		hasChildren={deleteDocumentHasChildren}
+		childCount={deleteDocumentChildCount}
+		onClose={() => {
+			showDeleteDocConfirmModal = false;
+			deleteDocumentId = null;
+		}}
+		onDelete={handleDeleteDocumentConfirm}
+	/>
 {/if}
 
 <!-- Task Create Modal -->

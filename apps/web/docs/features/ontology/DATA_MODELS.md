@@ -2,61 +2,81 @@
 
 # Ontology Data Models & Database Schema
 
-**Last Updated**: December 20, 2025
-**Status**: Production Ready
+**Last Updated**: January 29, 2026
+**Status**: Active (production schema + in-flight migrations)
 **Category**: Feature Documentation
 **Location**: `/apps/web/docs/features/ontology/`
 
-> **Recent Updates (2024-12-20)**: Schema migration complete. All ontology tables now have dedicated columns for `description`, `deleted_at` (soft deletes), and entity-specific fields. See [ONTOLOGY_SCHEMA_MIGRATION_PLAN.md](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) for details.
+> **Recent Updates (2026-01-29)**:
+>
+> - Added hierarchical document tree storage: `onto_projects.doc_structure`, `onto_documents.children`, and `onto_project_structure_history`.
+> - Document containment now lives in `doc_structure` (document->document `has_part` edges removed).
+> - `document_state` enum extended with `in_review`, `ready`, `archived` (legacy `review` still supported).
+> - Search vectors and soft-delete filtering are now standard in ontology search (`onto_search_entities`).
+> - Note: doc-tree migrations were just added; apply them and regenerate `packages/shared-types/src/database.types.ts`.
 
 ## Overview
 
-Comprehensive analysis of the BuildOS ontology system architecture, including database schema, entity relationships, state management, and props-based flexibility.
+Comprehensive reference for the BuildOS ontology system architecture, including database schema, entity relationships, state management, and props-based flexibility.
+
+> **Schema coverage**: This document reflects the latest migrations in `/supabase/migrations`. Some tables (for example, project sharing and comments) are introduced in future-dated migrations (2026-03-20+). If your database has not applied those migrations yet, those tables or columns will be absent.
 
 ## Executive Summary
 
-The BuildOS ontology system is a **props-based, graph-connected data model** that enables flexible project management, task tracking, and output creation across multiple use cases (writers, coaches, developers, founders, marketers, students, etc.). It uses PostgreSQL with JSON/JSONB for flexible property storage, application-layer state management, and facet-based tagging for multi-dimensional classification.
+The ontology system is a **props-based, graph-connected data model** that supports flexible project management, task tracking, and output creation across multiple user types. It uses PostgreSQL with JSONB for flexible properties, generated columns for facets, soft-delete patterns, and full-text search.
 
-**Key Characteristics:**
+**Key characteristics:**
 
-- **15 core entity types** (projects, tasks, plans, outputs, documents, goals, requirements, etc.)
-- **3-facet taxonomy system** (context, scale, stage) for dimensional classification
-- **Graph-based relationships** via `onto_edges` table for flexible entity connections
-- **Role-based access control** via actors, assignments, and permissions tables
-- **Application-layer state management** for entity lifecycle
-- **Flexible props (JSONB)** for AI-inferred entity properties
+- **Core entities**: projects, tasks, plans, documents, outputs, goals, requirements, milestones, risks, decisions, metrics, sources, signals, insights, and events
+- **Graph relationships** via `onto_edges` (project-scoped) for semantic links and dependencies
+- **Hierarchical documents** stored in `onto_projects.doc_structure` (not edges)
+- **Facet system** (context, scale, stage) via `props.facets` + generated columns
+- **Soft deletes + search vectors** on primary entities
+- **Access control** via actors + project memberships/invites (RLS-backed when sharing migrations are applied)
 
 ---
 
 ## 1. DATABASE SCHEMA OVERVIEW
 
-### 1.1 Core Tables (Onto\_ Prefix)
+### 1.1 Core Entity Tables
 
-All ontology tables use the `onto_` prefix in the public schema. Key tables are:
+| Table                | Purpose             | Key Columns                                                             |
+| -------------------- | ------------------- | ----------------------------------------------------------------------- |
+| `onto_projects`      | Root work units     | id, name, type_key, state_key, props, facets, doc_structure, deleted_at |
+| `onto_tasks`         | Actionable items    | id, project_id, title, type_key, state_key, priority, due_at, props     |
+| `onto_plans`         | Task groupings      | id, project_id, name, type_key, state_key, plan, props                  |
+| `onto_documents`     | Project docs        | id, project_id, title, content, type_key, state_key, children           |
+| `onto_outputs`       | Deliverables        | id, project_id, name, type_key, state_key, source_document_id           |
+| `onto_goals`         | Objectives          | id, project_id, name, goal, state_key, target_date                      |
+| `onto_requirements`  | Requirements        | id, project_id, text, type_key, priority                                |
+| `onto_milestones`    | Checkpoints         | id, project_id, title, state_key, due_at                                |
+| `onto_risks`         | Risk tracking       | id, project_id, title, impact, probability, state_key                   |
+| `onto_decisions`     | Decision records    | id, project_id, title, rationale, outcome, decision_at                  |
+| `onto_metrics`       | Metrics             | id, project_id, name, unit, definition                                  |
+| `onto_metric_points` | Metric datapoints   | id, metric_id, ts, numeric_value                                        |
+| `onto_sources`       | External references | id, project_id, uri, snapshot_uri                                       |
+| `onto_signals`       | Signals             | id, project_id, ts, channel, payload                                    |
+| `onto_insights`      | Derived insights    | id, project_id, title, derived_from_signal_id                           |
+| `onto_events`        | Calendar events     | id, project_id, owner_entity_type/id, start_at, end_at                  |
+| `onto_event_sync`    | Calendar sync       | id, calendar_id, event_id, provider, external_event_id                  |
 
-| Table                | Purpose                      | Key Columns                                                                   |
-| -------------------- | ---------------------------- | ----------------------------------------------------------------------------- |
-| `onto_projects`      | Root projects/work units     | id, name, type_key, state_key, props, facet_context, facet_scale, facet_stage |
-| `onto_tasks`         | Actionable items             | id, project_id, type_key, title, state_key, priority, due_at, props           |
-| `onto_plans`         | Logical groupings of tasks   | id, project_id, name, type_key, state_key, props                              |
-| `onto_documents`     | Project documents            | id, project_id, title, type_key, props, state_key                             |
-| `onto_goals`         | Project goals                | id, project_id, name, type_key, props                                         |
-| `onto_requirements`  | Project requirements         | id, project_id, text, type_key, props                                         |
-| `onto_milestones`    | Project milestones           | id, project_id, title, due_at, type_key, props                                |
-| `onto_risks`         | Risk tracking                | id, project_id, title, impact, probability, state_key, type_key, props        |
-| `onto_metrics`       | Performance metrics          | id, project_id, name, unit, type_key, props                                   |
-| `onto_metric_points` | Metric data points           | id, metric_id, ts, numeric_value, props                                       |
-| `onto_sources`       | External information sources | id, project_id, uri, snapshot_uri, props                                      |
-| `onto_signals`       | Real-time project signals    | id, project_id, ts, channel, payload                                          |
-| `onto_insights`      | Derived insights             | id, project_id, title, derived_from_signal_id, props                          |
+### 1.2 Supporting Tables
+
+- **Graph**: `onto_edges` (project-scoped relationships)
+- **Versioning**: `onto_document_versions`, `onto_output_versions`
+- **Facets**: `onto_facet_definitions`, `onto_facet_values`
+- **Templates**: `onto_templates`, `onto_tools`
+- **Access**: `onto_actors`, `onto_project_members`, `onto_project_invites`, `onto_assignments`, `onto_permissions`
+- **Collaboration**: `onto_comments`, `onto_comment_mentions`, `onto_comment_read_states`
+- **Audit/AI**: `onto_project_logs`, `onto_braindumps`, `onto_project_structure_history`
 
 ---
 
-## 2. ENTITY DATA MODELS
+## 2. CORE ENTITY DATA MODELS
 
 ### 2.1 ONTO_PROJECTS
 
-**Primary entity representing work units/projects.**
+**Primary entity representing a project/workspace.**
 
 ```typescript
 interface OntoProject {
@@ -65,18 +85,23 @@ interface OntoProject {
 	name: text;
 	description: text | null;
 	type_key: text; // Classification: 'project.creative.book', 'project.technical.app'
-	state_key: text; // 'planning', 'active', 'completed', 'cancelled'
-	props: jsonb; // AI-inferred properties
-	is_public: boolean | null; // Whether project is publicly visible
+	state_key: project_state; // 'planning', 'active', 'completed', 'cancelled'
+	props: jsonb; // Flexible properties + facets
 
 	// Generated facet columns (from props->'facets')
-	facet_context: text | null; // 'personal', 'client', 'commercial', etc.
-	facet_scale: text | null; // 'micro', 'small', 'medium', 'large', 'epic'
-	facet_stage: text | null; // 'discovery', 'planning', 'execution', 'launch', etc.
+	facet_context: text | null;
+	facet_scale: text | null;
+	facet_stage: text | null;
+
+	// Visibility
+	is_public: boolean | null;
 
 	// Project timeline
 	start_at: timestamptz | null;
 	end_at: timestamptz | null;
+
+	// Hierarchical document tree (new)
+	doc_structure: jsonb; // { version: number, root: DocTreeNode[] }
 
 	// Next step tracking (AI-generated)
 	next_step_short: text | null;
@@ -84,18 +109,20 @@ interface OntoProject {
 	next_step_source: text | null;
 	next_step_updated_at: timestamptz | null;
 
+	// Lifecycle
+	deleted_at: timestamptz | null; // Soft delete
+
 	created_by: uuid; // FK to onto_actors
 	created_at: timestamptz;
 	updated_at: timestamptz;
 }
 ```
 
-**Key Characteristics:**
+**Notes:**
 
-- `type_key` is a classification string (no schema enforcement)
-- Facets stored in `props.facets` as generated columns for efficient querying
-- Props are AI-inferred, flexible JSONB
-- `next_step_*` columns track AI-suggested next actions
+- `doc_structure` is the master document tree (see Section 3).
+- The canonical project context document links via `onto_edges` (`has_context_document`).
+- `deleted_at` is used for soft deletes; queries should filter `WHERE deleted_at IS NULL`.
 
 ---
 
@@ -103,30 +130,30 @@ interface OntoProject {
 
 **Atomic actionable items with work mode taxonomy.**
 
-> **Schema Reference**: See [TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md#onto_tasks) for complete task type_key documentation.
+> **Schema Reference**: See [TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md#onto_tasks) for canonical task type keys.
 
 ```typescript
 interface OntoTask {
 	id: uuid;
 	project_id: uuid; // FK to onto_projects
-	type_key: text; // Work mode taxonomy (required, default: 'task.execute')
+	type_key: text; // Work mode taxonomy (default: 'task.execute')
 	title: text;
-	description: text | null; // Task description (migrated from props.description)
-	state_key: text; // 'todo', 'in_progress', 'blocked', 'done'
-	priority: int | null; // Numeric priority (1-5)
-	props: jsonb; // Flexible task properties
+	description: text | null;
+	state_key: task_state; // 'todo', 'in_progress', 'blocked', 'done'
+	priority: int | null; // 1-5
+	props: jsonb;
 	search_vector: tsvector; // Full-text search
 
 	// Scheduling
-	start_at: timestamptz | null; // When task should start
-	due_at: timestamptz | null; // When task is due
+	start_at: timestamptz | null;
+	due_at: timestamptz | null;
 
 	// Lifecycle
-	completed_at: timestamptz | null; // When task was completed (auto-set on done)
-	deleted_at: timestamptz | null; // Soft delete timestamp
+	completed_at: timestamptz | null; // Set when state_key = 'done'
+	deleted_at: timestamptz | null; // Soft delete
 
 	// Generated facet column
-	facet_scale: text | null; // Task size/effort
+	facet_scale: text | null;
 
 	created_by: uuid;
 	created_at: timestamptz;
@@ -134,47 +161,22 @@ interface OntoTask {
 }
 ```
 
-**New Columns (2024-12-20 Migration):**
+**Plan Relationships** (edges, not a direct column):
 
-- `description`: Dedicated text column (migrated from `props.description`)
-- `start_at`: Task start date for scheduling
-- `completed_at`: Auto-set when `state_key` becomes `done`
-- `deleted_at`: Soft delete support (all queries should filter `WHERE deleted_at IS NULL`)
-
-**type_key Work Mode Taxonomy**
-
-Format: `task.{work_mode}[.{specialization}]`
-
-| Work Mode         | Description             | Example                       |
-| ----------------- | ----------------------- | ----------------------------- |
-| `task.execute`    | Action tasks (default)  | Call vendor, send email       |
-| `task.create`     | Produce new artifacts   | Write proposal, design mockup |
-| `task.refine`     | Improve existing work   | Edit document, polish copy    |
-| `task.research`   | Investigate/gather info | Research competitors          |
-| `task.review`     | Evaluate and feedback   | Review PR, audit report       |
-| `task.coordinate` | Sync with others        | Schedule meeting              |
-| `task.admin`      | Administrative tasks    | Update spreadsheet            |
-| `task.plan`       | Strategic planning      | Roadmap planning              |
-
-**Specializations**: `task.coordinate.meeting`, `task.coordinate.standup`, `task.execute.deploy`, `task.execute.checklist`
-
-**Plan Relationships**
-
-Tasks relate to plans via `onto_edges` (not a direct column):
-
-- Edge relation `belongs_to_plan`: task → plan
-- Edge relation `has_task`: plan → task
+- `belongs_to_plan`: task -> plan
+- `has_task`: plan -> task
 
 ```sql
 -- Find tasks for a plan
-SELECT t.* FROM onto_tasks t
+SELECT t.*
+FROM onto_tasks t
 JOIN onto_edges e ON e.src_id = t.id
-WHERE e.rel = 'belongs_to_plan' AND e.dst_id = 'plan-uuid';
+WHERE e.project_id = t.project_id
+  AND e.rel = 'belongs_to_plan'
+  AND e.dst_id = 'plan-uuid';
 ```
 
-**Recurring series props**
-
-Tasks can act as series masters or instances. Metadata stored in `props`:
+**Recurring series props** (stored in `props`):
 
 ```json
 {
@@ -194,19 +196,17 @@ Tasks can act as series masters or instances. Metadata stored in `props`:
 
 ### 2.3 ONTO_PLANS
 
-**Logical groupings of tasks within a project.**
-
 ```typescript
 interface OntoPlan {
 	id: uuid;
-	project_id: uuid; // FK to onto_projects
+	project_id: uuid;
 	name: text;
 	plan: text | null; // Plan content/details
-	description: text | null; // Plan description (migrated from props.description)
-	type_key: text; // e.g., 'plan.timebox.sprint', 'plan.phase.project', 'plan.roadmap.strategy'
-	state_key: text; // 'draft', 'active', 'completed'
+	description: text | null;
+	type_key: text; // e.g., 'plan.timebox.sprint', 'plan.phase.project'
+	state_key: plan_state; // 'draft', 'active', 'completed'
 	props: jsonb;
-	search_vector: tsvector; // Full-text search
+	search_vector: tsvector;
 
 	// Generated facet columns
 	facet_context: text | null;
@@ -214,7 +214,7 @@ interface OntoPlan {
 	facet_stage: text | null;
 
 	// Lifecycle
-	deleted_at: timestamptz | null; // Soft delete timestamp
+	deleted_at: timestamptz | null;
 
 	created_by: uuid;
 	created_at: timestamptz;
@@ -222,32 +222,27 @@ interface OntoPlan {
 }
 ```
 
-**New Columns (2024-12-20 Migration):**
-
-- `plan`: Dedicated text column for plan content
-- `description`: Dedicated text column (migrated from `props.description`)
-- `deleted_at`: Soft delete support
-
 ---
 
-### 2.5 ONTO_DOCUMENTS
-
-**Project documentation and reference materials.**
+### 2.4 ONTO_DOCUMENTS
 
 ```typescript
 interface OntoDocument {
 	id: uuid;
 	project_id: uuid;
 	title: text;
-	content: text | null; // Document content (migrated from props.body_markdown)
-	description: text | null; // Document description
-	type_key: text; // e.g., 'document.context.project', 'document.spec.product', 'document.knowledge.research'
-	state_key: text; // 'draft', 'review', 'published'
+	content: text | null; // Canonical body (migrated from props.body_markdown)
+	description: text | null;
+	type_key: text; // e.g., 'document.context.project', 'document.spec.product'
+	state_key: document_state; // 'draft', 'in_review', 'ready', 'published', 'archived' (legacy: 'review')
 	props: jsonb;
-	search_vector: tsvector; // Full-text search
+	search_vector: tsvector;
+
+	// Hierarchy (new)
+	children: jsonb; // { children: [{ id: string, order: number }] }
 
 	// Lifecycle
-	deleted_at: timestamptz | null; // Soft delete timestamp
+	deleted_at: timestamptz | null;
 
 	created_by: uuid;
 	created_at: timestamptz;
@@ -255,26 +250,65 @@ interface OntoDocument {
 }
 ```
 
-**New Columns (2024-12-20 Migration):**
+**Backwards Compatibility**: During transition, both `content` and `props.body_markdown` are maintained. Read operations prefer `content` with fallback to `props.body_markdown`.
 
-- `content`: Dedicated text column for document body (migrated from `props.body_markdown`)
-- `description`: Dedicated text column for document description
-- `deleted_at`: Soft delete support
-
-**Backwards Compatibility:** During transition, both `content` column and `props.body_markdown` are maintained. New documents store content in both locations. Read operations prefer `content` column with fallback to `props.body_markdown`.
-
-**Version Tracking:**
+**Versioning**:
 
 ```typescript
 interface OntoDocumentVersion {
-  id: uuid;
-  document_id: uuid;
-  number: int;
-  storage_uri: text;
-  embedding: vector(1536) | null;  // For semantic search
-  props: jsonb;
-  created_by: uuid;
-  created_at: timestamptz;
+	id: uuid;
+	document_id: uuid;
+	number: int;
+	storage_uri: text;
+	embedding: vector(1536) | null;
+	props: jsonb;
+	created_by: uuid;
+	created_at: timestamptz;
+}
+```
+
+---
+
+### 2.5 ONTO_OUTPUTS
+
+```typescript
+interface OntoOutput {
+	id: uuid;
+	project_id: uuid;
+	name: text;
+	description: text | null;
+	type_key: text; // e.g., 'output.document', 'output.asset'
+	state_key: output_state; // 'draft', 'in_progress', 'review', 'published'
+	props: jsonb;
+	search_vector: tsvector;
+
+	// Optional provenance
+	source_document_id: uuid | null; // FK to onto_documents
+	source_event_id: uuid | null; // FK to onto_events
+
+	// Facet
+	facet_stage: text | null;
+
+	// Lifecycle
+	deleted_at: timestamptz | null;
+
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz;
+}
+```
+
+**Output versions**:
+
+```typescript
+interface OntoOutputVersion {
+	id: uuid;
+	output_id: uuid;
+	number: int;
+	storage_uri: text;
+	props: jsonb;
+	created_by: uuid;
+	created_at: timestamptz;
 }
 ```
 
@@ -282,26 +316,24 @@ interface OntoDocumentVersion {
 
 ### 2.6 ONTO_GOALS
 
-**Project objectives and strategic goals.**
-
 ```typescript
 interface OntoGoal {
 	id: uuid;
 	project_id: uuid;
 	name: text;
-	goal: text | null; // Goal content
-	description: text | null; // Goal description (migrated from props.description)
-	type_key: text | null; // e.g., 'goal.outcome.milestone', 'goal.metric.target'
-	state_key: text; // 'draft', 'active', 'achieved', 'abandoned'
+	goal: text | null;
+	description: text | null;
+	type_key: text | null;
+	state_key: goal_state; // 'draft', 'active', 'achieved', 'abandoned'
 	props: jsonb;
 	search_vector: tsvector;
 
 	// Timeline
-	target_date: timestamptz | null; // Target completion date (migrated from props.target_date)
+	target_date: timestamptz | null;
 
 	// Lifecycle
-	completed_at: timestamptz | null; // When goal was achieved
-	deleted_at: timestamptz | null; // Soft delete timestamp
+	completed_at: timestamptz | null;
+	deleted_at: timestamptz | null;
 
 	created_by: uuid;
 	created_at: timestamptz;
@@ -309,26 +341,49 @@ interface OntoGoal {
 }
 ```
 
-### 2.7 ONTO_MILESTONES
+---
 
-**Key project milestones and checkpoints.**
+### 2.7 ONTO_REQUIREMENTS
+
+```typescript
+interface OntoRequirement {
+	id: uuid;
+	project_id: uuid;
+	text: text;
+	type_key: text;
+	priority: int | null;
+	props: jsonb;
+	search_vector: tsvector;
+
+	// Lifecycle
+	deleted_at: timestamptz | null;
+
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz | null;
+}
+```
+
+---
+
+### 2.8 ONTO_MILESTONES
 
 ```typescript
 interface OntoMilestone {
 	id: uuid;
 	project_id: uuid;
 	title: text;
-	milestone: text | null; // Milestone content
-	description: text | null; // Milestone description (migrated from props.description)
+	milestone: text | null;
+	description: text | null;
 	type_key: text | null;
-	state_key: text; // 'pending', 'in_progress', 'completed', 'missed'
-	due_at: timestamptz;
+	state_key: milestone_state; // 'pending', 'in_progress', 'completed', 'missed'
+	due_at: timestamptz | null;
 	props: jsonb;
 	search_vector: tsvector;
 
 	// Lifecycle
-	completed_at: timestamptz | null; // When milestone was completed
-	deleted_at: timestamptz | null; // Soft delete timestamp
+	completed_at: timestamptz | null;
+	deleted_at: timestamptz | null;
 
 	created_by: uuid;
 	created_at: timestamptz;
@@ -336,78 +391,202 @@ interface OntoMilestone {
 }
 ```
 
-### 2.8 ONTO_RISKS
+---
 
-**Risk tracking and mitigation.**
+### 2.9 ONTO_RISKS
 
 ```typescript
 interface OntoRisk {
 	id: uuid;
 	project_id: uuid;
 	title: text;
-	content: text | null; // Risk content/description
+	content: text | null;
 	type_key: text | null;
-	state_key: text; // 'identified', 'mitigated', 'occurred', 'closed'
+	state_key: risk_state; // 'identified', 'mitigated', 'occurred', 'closed'
 	impact: text; // 'low', 'medium', 'high', 'critical'
 	probability: number | null; // 0-1
 	props: jsonb;
 	search_vector: tsvector;
 
 	// Lifecycle
-	mitigated_at: timestamptz | null; // When risk was mitigated
-	deleted_at: timestamptz | null; // Soft delete timestamp
+	mitigated_at: timestamptz | null;
+	deleted_at: timestamptz | null;
 
 	created_by: uuid;
 	created_at: timestamptz;
 	updated_at: timestamptz | null;
 }
 ```
-
-### 2.9 ONTO_REQUIREMENTS
-
-**Project requirements and specifications.**
-
-```typescript
-interface OntoRequirement {
-	id: uuid;
-	project_id: uuid;
-	text: text; // Requirement text
-	type_key: text;
-	priority: int | null; // Requirement priority
-	props: jsonb;
-	search_vector: tsvector;
-
-	// Lifecycle
-	deleted_at: timestamptz | null; // Soft delete timestamp
-
-	created_by: uuid;
-	created_at: timestamptz;
-	updated_at: timestamptz | null;
-}
-```
-
-### 2.10 - 2.12 Other Entities
-
-See the database schema for:
-
-- `OntoMetric` / `OntoMetricPoint` - Performance metrics
-- `OntoSource` - External references
-- `OntoSignal` / `OntoInsight` - Real-time signals
 
 ---
 
-## 3. GRAPH AND RELATIONSHIPS
+### 2.10 METRICS & METRIC POINTS
 
-### 3.1 ONTO_EDGES - Entity Relationship Graph
+```typescript
+interface OntoMetric {
+	id: uuid;
+	project_id: uuid;
+	name: text;
+	unit: text;
+	definition: text | null;
+	type_key: text | null;
+	props: jsonb;
+	created_by: uuid;
+	created_at: timestamptz;
+}
 
-**Flexible graph structure for any entity-to-entity relationships.**
+interface OntoMetricPoint {
+	id: uuid;
+	metric_id: uuid;
+	ts: timestamptz;
+	numeric_value: numeric;
+	props: jsonb;
+	created_at: timestamptz;
+}
+```
+
+---
+
+### 2.11 ONTO_DECISIONS
+
+```typescript
+interface OntoDecision {
+	id: uuid;
+	project_id: uuid;
+	title: text;
+	description: text | null;
+	rationale: text | null;
+	outcome: text | null;
+	decision_at: timestamptz | null;
+	state_key: text; // Free-form (common: pending, made, deferred, reversed)
+	type_key: text; // Classification (default: 'decision.default')
+	props: jsonb;
+	search_vector: tsvector;
+
+	deleted_at: timestamptz | null;
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz | null;
+}
+```
+
+---
+
+### 2.12 ONTO_EVENTS & EVENT SYNC
+
+```typescript
+interface OntoEvent {
+	id: uuid;
+	project_id: uuid | null;
+	org_id: uuid | null;
+	owner_entity_type: text; // project|task|plan|goal|output|actor|standalone
+	owner_entity_id: uuid | null;
+	title: text;
+	description: text | null;
+	type_key: text; // e.g., 'event.meeting'
+	state_key: text; // Free-form (calendar state)
+	start_at: timestamptz;
+	end_at: timestamptz | null;
+	all_day: boolean;
+	timezone: text | null;
+	location: text | null;
+	external_link: text | null;
+	recurrence: jsonb;
+	props: jsonb;
+
+	// Facets
+	facet_context: text | null;
+	facet_scale: text | null;
+	facet_stage: text | null;
+
+	// Sync status
+	sync_status: text;
+	sync_error: text | null;
+	last_synced_at: timestamptz | null;
+
+	deleted_at: timestamptz | null;
+	created_by: uuid;
+	created_at: timestamptz;
+	updated_at: timestamptz;
+}
+
+interface OntoEventSync {
+	id: uuid;
+	calendar_id: uuid; // FK to project_calendars
+	event_id: uuid; // FK to onto_events
+	external_event_id: text;
+	provider: text;
+	sync_status: text;
+	sync_token: text | null;
+	sync_error: text | null;
+	last_synced_at: timestamptz | null;
+	created_at: timestamptz;
+	updated_at: timestamptz;
+}
+```
+
+---
+
+### 2.13 SOURCES, SIGNALS, INSIGHTS
+
+- `onto_sources`: external references (URI, snapshot, captured_at)
+- `onto_signals`: real-time events (channel + payload)
+- `onto_insights`: derived insights linked to signals
+
+---
+
+## 3. HIERARCHICAL DOCUMENT STRUCTURE
+
+Document containment is stored on the project, not in edges.
+
+### 3.1 `onto_projects.doc_structure`
+
+```json
+{
+	"version": 1,
+	"root": [
+		{ "id": "uuid", "type": "doc", "order": 0 },
+		{
+			"id": "uuid",
+			"type": "folder",
+			"order": 1,
+			"children": [{ "id": "uuid", "type": "doc", "order": 0 }]
+		}
+	]
+}
+```
+
+### 3.2 `onto_documents.children`
+
+```json
+{
+	"children": [
+		{ "id": "uuid", "order": 0 },
+		{ "id": "uuid", "order": 1 }
+	]
+}
+```
+
+### 3.3 Structure History
+
+`onto_project_structure_history` stores every change for undo/audit:
+
+- `project_id`, `doc_structure`, `version`, `changed_by`, `changed_at`, `change_type`
+- Retention helper: `cleanup_structure_history()` keeps last 50 or 90 days
+
+---
+
+## 4. GRAPH AND RELATIONSHIPS
+
+### 4.1 ONTO_EDGES - Entity Relationship Graph
 
 ```typescript
 interface OntoEdge {
 	id: uuid;
+	project_id: uuid; // Scope for RLS and graph queries
 
 	// Source
-	src_kind: text; // e.g., 'project', 'task', 'goal'
+	src_kind: text; // 'project', 'task', 'goal', 'document', etc.
 	src_id: uuid;
 
 	// Relationship
@@ -417,7 +596,7 @@ interface OntoEdge {
 	dst_kind: text;
 	dst_id: uuid;
 
-	props: jsonb; // Additional edge metadata
+	props: jsonb;
 	created_at: timestamptz;
 }
 ```
@@ -429,164 +608,146 @@ interface OntoEdge {
 - `project` -[has_task]-> `task`
 - `task` -[belongs_to_plan]-> `plan`
 - `task` -[depends_on]-> `task`
-- `plan` -[has_task]-> `task`
+- `project` -[has_context_document]-> `document`
+
+**Note:** Document containment is not stored in edges (see Section 3).
 
 ---
 
-## 4. FACET SYSTEM - Multi-dimensional Classification
+## 5. FACET SYSTEM - Multi-dimensional Classification
 
-### 4.1 The Three Facets
+Facets are data-driven via `onto_facet_definitions` and `onto_facet_values` and stored in `props.facets`. Generated columns are used for filtering.
 
-#### **Facet 1: Context** (Work organizational setting)
+**Facet columns by entity:**
 
-- `personal` - Personal projects
-- `client` - Client work/consulting
-- `commercial` - For-profit products
-- `internal` - Internal company projects
-- `open_source` - Open source work
-- `academic` - Educational/research
+- Projects: `facet_context`, `facet_scale`, `facet_stage`
+- Plans: `facet_context`, `facet_scale`, `facet_stage`
+- Tasks: `facet_scale`
+- Outputs: `facet_stage`
+- Events: `facet_context`, `facet_scale`, `facet_stage`
 
-#### **Facet 2: Scale** (Effort/complexity)
+**Common facet values (examples, not exhaustive):**
 
-- `micro` - < 1 week
-- `small` - 1-4 weeks
-- `medium` - 1-3 months
-- `large` - 3-12 months
-- `epic` - > 1 year
-
-#### **Facet 3: Stage** (Project lifecycle phase)
-
-- `discovery` - Research/exploration
-- `planning` - Design/architecture
-- `execution` - Active development
-- `launch` - Go-live preparation
-- `maintenance` - Operations/support
-- `complete` - Finished
+- Context: personal, client, commercial, internal, open_source, academic
+- Scale: micro, small, medium, large, epic
+- Stage: discovery, planning, execution, launch, maintenance, complete
 
 ---
 
-## 5. STATE MANAGEMENT (Application Layer)
+## 6. STATE MANAGEMENT
 
-> **Note**: State transitions are now handled at the application layer, not via database FSMs.
-> See `src/lib/server/ontology/state-transitions.ts`
+State transitions are validated in API endpoints. FSM definitions in templates are deprecated.
 
-### 5.1 Standard States by Entity Type
+### 6.1 Standard States by Entity Type
 
-| Entity        | States                                          | Initial      | Terminal                 |
-| ------------- | ----------------------------------------------- | ------------ | ------------------------ |
-| **Project**   | `planning`, `active`, `completed`, `cancelled`  | `planning`   | `completed`, `cancelled` |
-| **Task**      | `todo`, `in_progress`, `blocked`, `done`        | `todo`       | `done`                   |
-| **Plan**      | `draft`, `active`, `completed`                  | `draft`      | `completed`              |
-| **Output**    | `draft`, `in_progress`, `review`, `published`   | `draft`      | `published`              |
-| **Document**  | `draft`, `review`, `published`                  | `draft`      | `published`              |
-| **Goal**      | `draft`, `active`, `achieved`, `abandoned`      | `draft`      | `achieved`, `abandoned`  |
-| **Milestone** | `pending`, `in_progress`, `completed`, `missed` | `pending`    | `completed`, `missed`    |
-| **Risk**      | `identified`, `mitigated`, `occurred`, `closed` | `identified` | `closed`                 |
-| **Decision**  | `pending`, `made`, `deferred`, `reversed`       | `pending`    | `made`, `reversed`       |
-
-### 5.2 Transition Validation
-
-```typescript
-// In state-transitions.ts
-export function canTransition(
-	entityType: EntityType,
-	currentState: string,
-	targetState: string
-): boolean {
-	return STATE_TRANSITIONS[entityType]?.[currentState]?.includes(targetState) ?? false;
-}
-```
+| Entity        | States                                                        | Initial    | Terminal             |
+| ------------- | ------------------------------------------------------------- | ---------- | -------------------- |
+| **Project**   | planning, active, completed, cancelled                        | planning   | completed, cancelled |
+| **Task**      | todo, in_progress, blocked, done                              | todo       | done                 |
+| **Plan**      | draft, active, completed                                      | draft      | completed            |
+| **Output**    | draft, in_progress, review, published                         | draft      | published            |
+| **Document**  | draft, in_review, ready, published, archived (legacy: review) | draft      | published, archived  |
+| **Goal**      | draft, active, achieved, abandoned                            | draft      | achieved, abandoned  |
+| **Milestone** | pending, in_progress, completed, missed                       | pending    | completed, missed    |
+| **Risk**      | identified, mitigated, occurred, closed                       | identified | closed               |
+| **Decision**  | free-form string (common: pending, made, deferred, reversed)  | pending    | made, reversed       |
+| **Event**     | free-form string (calendar states)                            | varies     | varies               |
 
 ---
 
-## 6. ACCESS CONTROL
+## 7. ACCESS CONTROL & SHARING
 
-### 6.1 ONTO_ACTORS - Users and Agents
+### 7.1 ONTO_ACTORS
 
-```typescript
-interface OntoActor {
-	id: uuid;
-	kind: 'human' | 'agent';
-	name: text;
-	email: text | null;
-	user_id: uuid | null; // FK to public.users (only for humans)
-	org_id: uuid | null;
-	metadata: jsonb;
-	created_at: timestamptz;
-}
-```
+Users and AI agents are stored in `onto_actors` (kind: human/agent) and used for attribution and RLS.
 
-### 6.2 ONTO_ASSIGNMENTS - Role Assignment
+### 7.2 Project Memberships
 
-```typescript
-interface OntoAssignment {
-	id: uuid;
-	actor_id: uuid;
-	object_kind: text; // e.g., 'project', 'task'
-	object_id: uuid;
-	role_key: text; // e.g., 'owner', 'editor', 'viewer'
-	created_at: timestamptz;
-}
-```
+`onto_project_members` and `onto_project_invites` are the primary access model once the 2026-03-20 sharing migrations are applied:
+
+- `role_key`: owner, editor, viewer
+- `access`: read, write, admin
+- Invites include status, token_hash, expiration, and acceptance metadata
+
+### 7.3 Legacy Access Tables
+
+`onto_assignments` and `onto_permissions` still exist for object-level roles, but most RLS policies now reference project memberships.
 
 ---
 
-## 7. TYPE KEY CONVENTIONS
+## 8. COMMENTS & COLLABORATION
 
-Type keys are classification strings following the pattern:
+Comments are introduced in the 2026-03-28 migration set (future-dated relative to this document). Once applied:
 
-```
-{scope}.{realm}.{deliverable}[.{variant}]
-```
-
-### Project Types
-
-| Type Key                    | Description             |
-| --------------------------- | ----------------------- |
-| `project.creative.book`     | Writing a book          |
-| `project.creative.article`  | Article/essay/blog      |
-| `project.technical.app`     | Building an application |
-| `project.technical.feature` | Feature development     |
-| `project.business.startup`  | Starting a company      |
-| `project.service.coaching`  | Coaching engagement     |
-| `project.education.course`  | Taking a course         |
-| `project.personal.habit`    | Building a habit        |
-
-### Task Types (Work Modes)
-
-| Type Key          | Description              |
-| ----------------- | ------------------------ |
-| `task.execute`    | Action/do task (default) |
-| `task.create`     | Produce new artifact     |
-| `task.refine`     | Improve existing work    |
-| `task.research`   | Investigate/gather info  |
-| `task.review`     | Evaluate and feedback    |
-| `task.coordinate` | Sync with others         |
-| `task.admin`      | Administrative work      |
-| `task.plan`       | Strategic planning       |
-
-### Document Types
-
-| Type Key                      | Description              |
-| ----------------------------- | ------------------------ |
-| `document.context.project`    | Project context/brief    |
-| `document.knowledge.research` | Research notes, findings |
-| `document.spec.product`       | Technical specification  |
-| `document.reference.handbook` | Handbook, SOP, checklist |
+- `onto_comments`: threaded comments scoped to an entity and project
+- `onto_comment_mentions`: user mentions + notification linkage
+- `onto_comment_read_states`: per-actor read tracking
 
 ---
 
-## 8. DATA RELATIONSHIPS DIAGRAM
+## 9. AUDIT & AI SUPPORT TABLES
+
+- `onto_project_logs`: audit trail of entity changes (before/after payloads)
+- `onto_braindumps`: captured freeform notes used for ontology creation
+- `onto_project_structure_history`: audit/undo log for document tree changes
+
+---
+
+## 10. SEARCH & INDEXING
+
+Key indexing patterns (see migrations for full list):
+
+- `search_vector` columns (GIN) on tasks, plans, goals, milestones, documents, requirements, risks, outputs, decisions
+- Trigram indexes on title/name/text fields for fuzzy search
+- Partial indexes on `deleted_at IS NULL` for active-row scans
+- `doc_structure` and `children` JSONB indexes for tree queries
+- `onto_edges(project_id)` and `(src_kind, src_id)` / `(dst_kind, dst_id)` for graph lookups
+- JSONB GIN indexes on `props`
+
+`onto_search_entities` is the primary cross-entity search RPC and filters soft-deleted rows.
+
+---
+
+## 11. SERVICE LAYER & RPCS
+
+**Core services:**
+
+- `apps/web/src/lib/services/ontology/instantiation.service.ts` - `instantiateProject()` creates full project graphs from specs.
+- `apps/web/src/lib/services/ontology/doc-structure.service.ts` - document tree operations (add/move/remove/recompute).
+- `apps/web/src/lib/services/ontology/onto-event.service.ts` + `onto-event-sync.service.ts` - calendar event lifecycle and sync.
+
+**Key RPCs:**
+
+- `load_project_graph_context(project_id)` - fast graph snapshot for chat/context
+- `onto_search_entities(...)` - cross-entity search
+- `get_project_full(...)` - full project payload (soft-delete aware)
+
+---
+
+## 12. API ENDPOINTS
+
+See **`apps/web/docs/features/ontology/API_ENDPOINTS.md`** for the canonical list. Primary route groups:
+
+- `/api/onto/projects`, `/api/onto/tasks`, `/api/onto/plans`, `/api/onto/documents`
+- `/api/onto/goals`, `/api/onto/requirements`, `/api/onto/milestones`, `/api/onto/risks`
+- `/api/onto/edges`, `/api/onto/graph`, `/api/onto/search`
+- `/api/onto/comments`, `/api/onto/events`, `/api/onto/invites`, `/api/onto/braindumps`
+
+---
+
+## 13. DATA RELATIONSHIPS DIAGRAM
 
 ```
 onto_projects
   ├→ onto_goals
   ├→ onto_requirements
   ├→ onto_plans
-  │   └→ onto_tasks (via edges)
   ├→ onto_tasks
   ├→ onto_documents
   │   └→ onto_document_versions
+  ├→ onto_outputs
+  │   └→ onto_output_versions
+  ├→ onto_decisions
   ├→ onto_milestones
   ├→ onto_risks
   ├→ onto_metrics
@@ -594,14 +755,19 @@ onto_projects
   ├→ onto_sources
   ├→ onto_signals
   │   └→ onto_insights
+  ├→ onto_events
+  │   └→ onto_event_sync
+  ├→ onto_comments (via entity_id/entity_type)
+  ├→ onto_project_members / onto_project_invites / onto_project_logs
+  └→ doc_structure (embedded tree)
 
-onto_edges (flexible graph relations)
+onto_edges (project-scoped graph)
   ├─ src_kind: text, src_id: uuid
   └─ dst_kind: text, dst_id: uuid
 
 onto_actors
-  ├→ onto_assignments (role assignment)
-  └→ onto_permissions (fine-grained access)
+  ├→ onto_project_members (sharing)
+  └→ onto_assignments / onto_permissions (legacy ACL)
 
 onto_facet_definitions
   └→ onto_facet_values
@@ -609,100 +775,7 @@ onto_facet_definitions
 
 ---
 
-## 9. KEY DESIGN PATTERNS
-
-### 9.1 Props-Based Flexibility
-
-- Core fields for querying (`state_key`, `type_key`, etc.)
-- Flexible `props: jsonb` for AI-inferred properties
-- Facets stored in `props.facets` but exposed as generated columns
-
-### 9.2 Graph Pattern
-
-- `onto_edges` table for any-to-any relationships
-- Supports flexible entity connections
-- Props on edges for metadata
-
-### 9.3 Application-Layer State Management
-
-- State transitions validated in TypeScript
-- Simple transition rules per entity type
-- No database-level FSM complexity
-
-### 9.4 Versioning Pattern
-
-- `onto_document_versions`
-- Sequential version numbers
-- Storage URIs for external persistence
-
----
-
-## 10. INDEXING STRATEGY
-
-```sql
--- Facet columns (generated, indexed for quick filtering)
-idx_onto_projects_facet_context (facet_context)
-idx_onto_projects_facet_scale (facet_scale)
-idx_onto_projects_facet_stage (facet_stage)
-
--- Foreign keys
-idx_onto_projects_org (org_id)
-idx_onto_tasks_project (project_id)
-idx_onto_tasks_type_key (type_key)
-
--- State and type queries
-idx_onto_projects_state (state_key)
-idx_onto_projects_type_key (type_key)
-idx_onto_tasks_state (state_key)
-
--- Graph queries
-idx_onto_edges_src (src_kind, src_id)
-idx_onto_edges_dst (dst_kind, dst_id)
-
--- JSON/JSONB queries
-idx_onto_projects_props (props jsonb_path_ops)
-```
-
----
-
-## 11. SERVICE LAYER
-
-### 11.1 OntologyInstantiationService
-
-**TypeScript service for creating complete project graphs from specs.**
-
-```typescript
-instantiateProject(
-  client: TypedSupabaseClient,
-  spec: ProjectSpec,
-  userId: string
-): Promise<{ project_id: string; counts: InstantiationCounts }>
-```
-
-### 11.2 State Transition Service
-
-**Application-layer state management.**
-
-```typescript
-// src/lib/server/ontology/state-transitions.ts
-export function canTransition(entityType, currentState, targetState): boolean;
-export function getAllowedTransitions(entityType, currentState): string[];
-export function validateTransition(entityType, currentState, targetState): ValidationResult;
-```
-
----
-
-## 12. API ENDPOINTS
-
-- `/api/onto/projects/+server.ts` - Project CRUD
-- `/api/onto/projects/instantiate/+server.ts` - Create from spec
-- `/api/onto/tasks/+server.ts` - Task management
-- `/api/onto/plans/+server.ts` - Plan management
-- `/api/onto/fsm/transition/+server.ts` - State transitions
-
----
-
 **End of Analysis**
 
-Generated: December 12, 2025
-Scope: Complete ontology data models for props-based architecture
+Generated: January 29, 2026
+Scope: Ontology data models and database schema

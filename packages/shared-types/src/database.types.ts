@@ -4516,6 +4516,7 @@ export type Database = {
       }
       onto_documents: {
         Row: {
+          children: Json | null
           content: string | null
           created_at: string
           created_by: string
@@ -4531,6 +4532,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          children?: Json | null
           content?: string | null
           created_at?: string
           created_by: string
@@ -4546,6 +4548,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          children?: Json | null
           content?: string | null
           created_at?: string
           created_by?: string
@@ -5101,127 +5104,6 @@ export type Database = {
           },
         ]
       }
-      onto_output_versions: {
-        Row: {
-          created_at: string
-          created_by: string
-          id: string
-          number: number
-          output_id: string
-          props: Json
-          storage_uri: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          id?: string
-          number: number
-          output_id: string
-          props?: Json
-          storage_uri: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          id?: string
-          number?: number
-          output_id?: string
-          props?: Json
-          storage_uri?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "onto_output_versions_output_id_fkey"
-            columns: ["output_id"]
-            isOneToOne: false
-            referencedRelation: "onto_outputs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      onto_outputs: {
-        Row: {
-          created_at: string
-          created_by: string
-          deleted_at: string | null
-          description: string | null
-          facet_stage: string | null
-          id: string
-          name: string
-          project_id: string
-          props: Json
-          search_vector: unknown
-          source_document_id: string | null
-          source_event_id: string | null
-          state_key: Database["public"]["Enums"]["output_state"]
-          type_key: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by: string
-          deleted_at?: string | null
-          description?: string | null
-          facet_stage?: string | null
-          id?: string
-          name: string
-          project_id: string
-          props?: Json
-          search_vector?: unknown
-          source_document_id?: string | null
-          source_event_id?: string | null
-          state_key?: Database["public"]["Enums"]["output_state"]
-          type_key: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string
-          deleted_at?: string | null
-          description?: string | null
-          facet_stage?: string | null
-          id?: string
-          name?: string
-          project_id?: string
-          props?: Json
-          search_vector?: unknown
-          source_document_id?: string | null
-          source_event_id?: string | null
-          state_key?: Database["public"]["Enums"]["output_state"]
-          type_key?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "onto_outputs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "onto_projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "onto_outputs_source_document_id_fkey"
-            columns: ["source_document_id"]
-            isOneToOne: false
-            referencedRelation: "onto_documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "onto_outputs_source_document_id_fkey"
-            columns: ["source_document_id"]
-            isOneToOne: false
-            referencedRelation: "task_documents"
-            referencedColumns: ["document_id"]
-          },
-          {
-            foreignKeyName: "onto_outputs_source_event_id_fkey"
-            columns: ["source_event_id"]
-            isOneToOne: false
-            referencedRelation: "onto_events"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       onto_permissions: {
         Row: {
           access: string
@@ -5523,12 +5405,58 @@ export type Database = {
           },
         ]
       }
+      onto_project_structure_history: {
+        Row: {
+          change_type: string
+          changed_at: string | null
+          changed_by: string | null
+          doc_structure: Json
+          id: string
+          project_id: string
+          version: number
+        }
+        Insert: {
+          change_type: string
+          changed_at?: string | null
+          changed_by?: string | null
+          doc_structure: Json
+          id?: string
+          project_id: string
+          version: number
+        }
+        Update: {
+          change_type?: string
+          changed_at?: string | null
+          changed_by?: string | null
+          doc_structure?: Json
+          id?: string
+          project_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_project_structure_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_structure_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_projects: {
         Row: {
           created_at: string
           created_by: string
           deleted_at: string | null
           description: string | null
+          doc_structure: Json | null
           end_at: string | null
           facet_context: string | null
           facet_scale: string | null
@@ -5552,6 +5480,7 @@ export type Database = {
           created_by: string
           deleted_at?: string | null
           description?: string | null
+          doc_structure?: Json | null
           end_at?: string | null
           facet_context?: string | null
           facet_scale?: string | null
@@ -5575,6 +5504,7 @@ export type Database = {
           created_by?: string
           deleted_at?: string | null
           description?: string | null
+          doc_structure?: Json | null
           end_at?: string | null
           facet_context?: string | null
           facet_scale?: string | null
@@ -9807,6 +9737,7 @@ export type Database = {
           id: string
         }[]
       }
+      cleanup_structure_history: { Args: never; Returns: undefined }
       complete_queue_job: {
         Args: { p_job_id: string; p_result?: Json }
         Returns: boolean

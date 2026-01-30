@@ -677,32 +677,64 @@ static getSystemPrompt(): string {
 
 ## PART 6: IMPLEMENTATION CHECKLIST
 
-### Phase 1: Quick Wins (1-2 hours)
+### Phase 1: Executive Summary Prompt Rewrite (HIGH PRIORITY)
 
-- [ ] Update `ExecutiveSummaryPrompt.getSystemPrompt()` with new voice + beauty guidance
-- [ ] Add impact scoring to task rendering (task impact = priority + unblocks + deadline)
-- [ ] Add one-line "wins today" summary after executive summary
-- [ ] Simplify `DailyBriefAnalysisPrompt` to focus on blockers + connections
+**File:** `apps/worker/src/workers/brief/ontologyPrompts.ts`
 
-### Phase 2: Narrative Improvements (2-3 hours)
+- [ ] Rewrite `OntologyExecutiveSummaryPrompt.getSystemPrompt()`:
+  - Add voice/persona directive at top ("You are a confident productivity coach...")
+  - Add "answer in 30 seconds" directive
+  - Add scannability guidance (emojis, bullets, bold for key items)
+  - Request "one clear first action" in the summary
+  - Reduce word count from 200 to 150 (tighter = better)
 
-- [ ] Restructure main brief markdown: weather → plan → landscape → risks → wins
-- [ ] Add "why?" explanations to blocked/overdue sections
-- [ ] Implement project "story" (status + today's work + risk + next step)
-- [ ] Add momentum callout (recent wins from last 24h)
+### Phase 2: Brief Structure Refactor (HIGH PRIORITY)
 
-### Phase 3: Filtering Optimizations (1 hour)
+**File:** `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`
 
-- [ ] Pre-filter activity logs by action type (created, completed, blocked, updated_status)
-- [ ] Add project "interest score" for smarter brief content selection
+- [ ] Add "Day Type Hook" at top of brief (before executive summary):
+  - One-liner: "🎯 **Loaded day**: 12 tasks across 5 projects, 3 need attention"
+  - Sets expectations immediately
+
+- [ ] Add "Priority Actions" section after hook (render what `extractPriorityActions` computes):
+  - Currently computed (line 558) but NOT rendered in the brief
+  - Should be 3-5 bullets with "Start here" framing
+
+- [ ] Reorder sections:
+  - Current: Date → Executive Summary → Strategic Alignment → Attention Required → Today's Focus → Recent Activity → Project Details
+  - New: Date → Day Hook → Priority Actions → Executive Summary → Attention Required → Today's Focus → Recent Wins → Project Details
+
+### Phase 3: Analysis Prompt Simplification (MEDIUM PRIORITY)
+
+**File:** `apps/worker/src/workers/brief/ontologyPrompts.ts`
+
+- [ ] Simplify `OntologyAnalysisPrompt.getSystemPrompt()`:
+  - Reduce from 5 sections to 3 sections
+  - Focus on: (1) Real bottleneck, (2) Hidden wins, (3) One recommendation
+  - Add "editorial" guidance: "Not everything deserves mention—focus on the meaningful 20%"
+  - Reduce output to 3-4 paragraphs max
+
+### Phase 4: Project Brief Narrative (MEDIUM PRIORITY)
+
+**File:** `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`
+
+- [ ] Update `formatOntologyProjectBrief()`:
+  - Add "Project Status" one-liner at top (health indicator)
+  - Add "why" context to blocked tasks (e.g., "blocking 3 downstream tasks")
+  - Remove empty section headers (already partially done)
+
+### Phase 5: Data Optimizations (LOW PRIORITY - DEFER)
+
+- [ ] Pre-filter activity logs by action type in `ontologyBriefDataLoader.ts`
 - [ ] Optimize milestone query with database-level filtering
+- [ ] (Already implemented: project interest scoring for LLM context)
 
-### Phase 4: Testing & Polish (1-2 hours)
+### Phase 6: Testing & Validation
 
-- [ ] Generate 10 sample briefs with new prompts
-- [ ] Verify briefs are 30-60 seconds to read (executive summary)
-- [ ] Confirm "wins today" are actually actionable
-- [ ] Check mobile readability (emoji use, line breaks, etc.)
+- [ ] Generate sample briefs with new prompts
+- [ ] Verify executive summary is scannable in 30 seconds
+- [ ] Confirm priority actions are actually actionable
+- [ ] Test on mobile (line breaks, emoji rendering)
 
 ---
 

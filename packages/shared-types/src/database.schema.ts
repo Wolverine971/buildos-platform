@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-01-29T18:24:12.469Z
+// Generated on: 2026-01-30T04:58:32.622Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1073,6 +1073,7 @@ export type DatabaseSchema = {
 		storage_uri: string;
 	};
 	onto_documents: {
+		children: Json | null;
 		content: string | null;
 		created_at: string;
 		created_by: string;
@@ -1223,32 +1224,6 @@ export type DatabaseSchema = {
 		type_key: string | null;
 		updated_at: string | null;
 	};
-	onto_output_versions: {
-		created_at: string;
-		created_by: string;
-		id: string;
-		number: number;
-		output_id: string;
-		props: Json;
-		storage_uri: string;
-	};
-	onto_outputs: {
-		created_at: string;
-		created_by: string;
-		deleted_at: string | null;
-		description: string | null;
-		facet_stage: string | null;
-		id: string;
-		name: string;
-		project_id: string;
-		props: Json;
-		search_vector: unknown;
-		source_document_id: string | null;
-		source_event_id: string | null;
-		state_key: string;
-		type_key: string;
-		updated_at: string;
-	};
 	onto_permissions: {
 		access: string;
 		actor_id: string | null;
@@ -1315,11 +1290,21 @@ export type DatabaseSchema = {
 		removed_by_actor_id: string | null;
 		role_key: string;
 	};
+	onto_project_structure_history: {
+		change_type: string;
+		changed_at: string | null;
+		changed_by: string | null;
+		doc_structure: Json;
+		id: string;
+		project_id: string;
+		version: number;
+	};
 	onto_projects: {
 		created_at: string;
 		created_by: string;
 		deleted_at: string | null;
 		description: string | null;
+		doc_structure: Json | null;
 		end_at: string | null;
 		facet_context: string | null;
 		facet_scale: string | null;
@@ -2376,13 +2361,12 @@ export const tableNames = [
 	'onto_metric_points',
 	'onto_metrics',
 	'onto_milestones',
-	'onto_output_versions',
-	'onto_outputs',
 	'onto_permissions',
 	'onto_plans',
 	'onto_project_invites',
 	'onto_project_logs',
 	'onto_project_members',
+	'onto_project_structure_history',
 	'onto_projects',
 	'onto_requirements',
 	'onto_risks',

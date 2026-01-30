@@ -258,7 +258,8 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 		function: {
 			name: 'create_onto_document',
 			description: `Create a new document in the ontology system.
-Use for briefs, specs, context docs, or research artifacts linked to a project.`,
+Use for briefs, specs, context docs, or research artifacts linked to a project.
+Documents are organized in a hierarchical tree structure. Use parent_id to place the document under a parent folder.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -291,9 +292,18 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 						type: 'object',
 						description: 'Additional properties/metadata'
 					},
+					parent_id: {
+						type: 'string',
+						description:
+							'Parent document ID to place this document under in the tree hierarchy. Null or omitted places at root level.'
+					},
+					position: {
+						type: 'number',
+						description: 'Position among siblings (0-indexed). Omit to place at end.'
+					},
 					parent: {
 						type: 'object',
-						description: 'Optional parent reference for semantic linking',
+						description: 'Optional parent reference for semantic linking (legacy)',
 						properties: {
 							kind: { type: 'string' },
 							id: { type: 'string' },
@@ -302,7 +312,7 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 					},
 					parents: {
 						type: 'array',
-						description: 'Optional multiple semantic parents',
+						description: 'Optional multiple semantic parents (legacy)',
 						items: {
 							type: 'object',
 							properties: {
@@ -427,6 +437,39 @@ Avoid creating project edges unless the entity is truly a root-level item.`,
 			}
 		}
 	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'move_document',
+			description: `Move a document to a new location in the hierarchical document tree.
+Use to reorganize document structure, moving documents between folders or to root level.
+Cannot move a folder into its own descendant (would create a cycle).`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project ID (optional; inferred from context if omitted)'
+					},
+					document_id: {
+						type: 'string',
+						description: 'Document ID to move (required)'
+					},
+					new_parent_id: {
+						anyOf: [{ type: 'string' }, { type: 'null' }],
+						description: 'New parent document ID, or null to move to root level'
+					},
+					position: {
+						type: 'number',
+						description: 'Position among siblings (0-indexed, default: 0)'
+					}
+				},
+				required: ['document_id', 'new_parent_id']
+			}
+		}
+	},
+
 	{
 		type: 'function',
 		function: {

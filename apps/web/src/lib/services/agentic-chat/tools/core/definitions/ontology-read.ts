@@ -581,6 +581,60 @@ Use when you need the full requirement record before updating it.`,
 	},
 
 	// ============================================
+	// DOCUMENT TREE TOOLS
+	// ============================================
+
+	{
+		type: 'function',
+		function: {
+			name: 'get_document_tree',
+			description: `Get the hierarchical document tree structure for a project.
+Returns the full tree with document metadata, useful for understanding how documents are organized.
+Documents are organized in a wiki-like tree structure with folders (documents that have children) and leaf documents.`,
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: {
+							type: 'string',
+							description: 'Project ID to get the document tree for (required)'
+						},
+						include_content: {
+							type: 'boolean',
+							default: false,
+							description:
+								'Include full document content bodies. Defaults to false to return metadata only.'
+						}
+					},
+					required: ['project_id']
+				}
+			}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'get_document_path',
+			description: `Get the breadcrumb path for a document in the tree structure.
+Returns an array of ancestor document IDs and titles from root to the specified document.
+Useful for showing where a document lives in the hierarchy.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project ID (optional; inferred from document if omitted)'
+					},
+					document_id: {
+						type: 'string',
+						description: 'Document ID to get the path for (required)'
+					}
+				},
+				required: ['document_id']
+			}
+		}
+	},
+
+	// ============================================
 	// RELATIONSHIP TOOLS
 	// ============================================
 

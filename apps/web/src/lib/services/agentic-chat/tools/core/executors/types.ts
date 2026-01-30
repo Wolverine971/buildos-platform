@@ -157,6 +157,18 @@ export interface ListTaskDocumentsArgs {
 	task_id: string;
 }
 
+export interface GetDocumentTreeArgs {
+	project_id: string;
+	/** Include document content bodies in response (default: false for metadata-only) */
+	include_content?: boolean;
+}
+
+export interface GetDocumentPathArgs {
+	document_id: string;
+	/** Optional project ID to avoid extra lookup */
+	project_id?: string;
+}
+
 // ============================================
 // ONTOLOGY WRITE ARGS
 // ============================================
@@ -217,6 +229,10 @@ export interface CreateOntoDocumentArgs {
 	props?: Record<string, unknown>;
 	parent?: { kind: string; id: string; is_primary?: boolean };
 	parents?: Array<{ kind: string; id: string; is_primary?: boolean }>;
+	/** Parent document ID for hierarchical tree placement */
+	parent_id?: string | null;
+	/** Position within parent's children (0-indexed). If omitted, appends to end. */
+	position?: number;
 }
 
 export interface CreateTaskDocumentArgs {
@@ -418,6 +434,16 @@ export interface DeleteOntoPlanArgs {
 
 export interface DeleteOntoDocumentArgs {
 	document_id: string;
+}
+
+export interface MoveDocumentArgs {
+	/** Optional project ID to avoid extra lookup */
+	project_id?: string;
+	document_id: string;
+	/** New parent document ID, or null to move to root level */
+	new_parent_id: string | null;
+	/** Position within new parent's children (0-indexed). If omitted, appends to end. */
+	position?: number;
 }
 
 // ============================================

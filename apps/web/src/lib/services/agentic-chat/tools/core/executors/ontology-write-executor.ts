@@ -34,7 +34,8 @@ import type {
 	DeleteOntoTaskArgs,
 	DeleteOntoGoalArgs,
 	DeleteOntoPlanArgs,
-	DeleteOntoDocumentArgs
+	DeleteOntoDocumentArgs,
+	MoveDocumentArgs
 } from './types';
 import { createLogger } from '$lib/utils/logger';
 
@@ -474,6 +475,8 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			content: documentContent,
 			body_markdown: documentContent ?? '',
 			props: args.props ?? {},
+			parent_id: args.parent_id ?? null,
+			position: args.position,
 			parent: args.parent,
 			parents: args.parents
 		};
@@ -985,6 +988,59 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			success: true,
 			message: data.message ?? 'Ontology document deleted successfully'
+		};
+	}
+
+	// ============================================
+	// DOCUMENT TREE OPERATIONS
+	// ============================================
+
+	async moveDocument(args: MoveDocumentArgs): Promise<{
+		structure: any;
+		message: string;
+	}> {
+		if (!args.document_id) {
+			throw new Error('document_id is required for move_document');
+		}
+
+		const actorId = await this.getActorId();
+		let projectId = args.project_id;
+		let documentTitle = 'Document';
+
+		if (!projectId) {
+			// First get the document to find its project_id
+			const docDetails = await this.apiRequest(`/api/onto/documents/${args.document_id}`);
+			if (!docDetails?.document) {
+				throw new Error('Document not found');
+			}
+
+			projectId = docDetails.document.project_id;
+			documentTitle = docDetails.document.title ?? documentTitle;
+		}
+
+		if (!projectId) {
+			throw new Error('Document has no project association');
+		}
+
+		// Verify ownership/access
+		await this.assertProjectOwnership(projectId, actorId);
+
+		// Call the move endpoint
+		const data = await this.apiRequest(`/api/onto/projects/${projectId}/doc-tree/move`, {
+			method: 'POST',
+			body: JSON.stringify({
+				document_id: args.document_id,
+				new_parent_id: args.new_parent_id,
+				new_position: args.position ?? 0
+			})
+		});
+
+		const destDescription =
+			args.new_parent_id === null ? 'root level' : `under document ${args.new_parent_id}`;
+
+		return {
+			structure: data.structure,
+			message: `Moved document "${documentTitle}" to ${destDescription}`
 		};
 	}
 

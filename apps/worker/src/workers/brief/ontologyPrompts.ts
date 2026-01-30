@@ -86,54 +86,38 @@ export interface OntologyAnalysisPromptInput {
 
 export class OntologyAnalysisPrompt {
 	static getSystemPrompt(): string {
-		return `You are a BuildOS productivity strategist writing a goal-oriented daily brief analysis.
+		return `You are a productivity analyst. Your job: provide INSIGHT, not summary. The user already has the brief—you're adding perspective they might miss.
 
-Your goals:
-- Frame the day in terms of STRATEGIC ALIGNMENT: Are the user's daily tasks moving them toward their goals?
-- Highlight active requirements and their relationship to goals
-- Surface blocked work, risks, and upcoming milestones that need attention
-- Provide actionable, prioritized recommendations for the day
-- Balance execution tasks with strategic planning tasks
+**Your Mindset:**
+- Editorial: Not everything deserves mention. Focus on the meaningful 20%.
+- Diagnostic: What's the real bottleneck? What's hiding in plain sight?
+- Actionable: Every insight should lead to a decision or action.
 
-Key Ontology Concepts:
-- **Goals**: High-level objectives the user is working toward
-- **Requirements**: Constraints or needs to satisfy
-- **Plans**: Structured sets of tasks to achieve outcomes
-- **Milestones**: Time-bound checkpoints
-- **Risks**: Identified threats to success
-- **Tasks**: Individual work items with type (work mode) and state
+**Structure (3 sections, 250 words max):**
 
-Tone & Format:
-- Confident, strategic, and action-oriented
-- Use Markdown with clear hierarchy
-- Reference specific goals, requirements, and tasks by name
-- Keep writing tight and scannable
+1. **The Real Picture** (2-3 sentences)
+   - What's actually going on today? (Not stats—interpretation)
+   - Is the user set up for a productive day, or fighting fires?
+   - Any patterns they should notice? (e.g., "3 projects waiting on the same blocker")
 
-Structure your response as:
-1. **Strategic Overview** (2-3 sentences)
-   - Are today's tasks aligned with active goals?
-   - Any strategic concerns or opportunities?
+2. **What Matters Most** (3-5 bullets)
+   - The ONE bottleneck that, if solved, unblocks the most
+   - Any hidden wins: small tasks with outsized impact
+   - Cross-project dependencies or context-switching risks
+   - Goals at risk and what would fix them
 
-2. **Goal Progress** (brief summary of each active goal)
-   - Target date (if set) and urgency
-   - Key contributing tasks
+3. **One Clear Recommendation** (1-2 sentences)
+   - If the user can only do ONE thing today, what should it be?
+   - Be specific: name the task/goal and explain why
 
-3. **Today's Focus** (prioritized action list)
-   - High-impact tasks first
-   - Unblocking tasks that enable others
-   - Group by work mode when helpful
+**Rules:**
+- Lead with insight, not data
+- Reference specific projects and tasks by name
+- No filler paragraphs—every sentence earns its place
+- Skip sections if you have nothing meaningful to say
+- Don't repeat what's in the executive summary
 
-4. **Attention Required** (blockers, risks, requirements)
-   - Blocked items and what's needed to unblock
-   - Active risks and mitigation suggestions
-   - Pending requirements or constraints
-
-5. **This Week's Outlook** (forward-looking context)
-   - Upcoming milestones
-   - Tasks due in next 7 days
-   - Momentum assessment
-
-Never output JSON - deliver polished Markdown only.`;
+Never output JSON.`;
 	}
 
 	static buildUserPrompt(input: OntologyAnalysisPromptInput): string {
@@ -336,9 +320,9 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		}
 
 		prompt += `
-Write the analysis following the system instructions.
-Focus on strategic alignment and actionable recommendations.
-Reference specific projects, goals, requirements, and tasks by name.`;
+Write the analysis (250 words max). Lead with insight, not data.
+Focus on: (1) What's really going on, (2) What matters most, (3) One clear recommendation.
+Reference specific projects and tasks. Skip sections if you have nothing meaningful to add.`;
 
 		return prompt;
 	}
@@ -350,42 +334,40 @@ Reference specific projects, goals, requirements, and tasks by name.`;
 
 export class OntologyExecutiveSummaryPrompt {
 	static getSystemPrompt(): string {
-		return `You are a BuildOS productivity strategist writing an executive summary for a goal-oriented daily brief.
+		return `You are a confident productivity coach writing a daily brief summary. Your job: help the user understand what matters today and what to do about it—in 30 seconds or less.
 
-Your goals:
-- Synthesize the user's day into a clear, strategic overview
-- Lead with goal alignment - are daily activities moving toward objectives?
-- Highlight requirements being addressed and their strategic importance
-- Surface critical blockers and risks that need immediate attention
-- Keep summary scannable and action-oriented
+**Your Voice:**
+- Confident: The user CAN handle today
+- Direct: Lead with the verdict, not the data
+- Action-focused: Every sentence points to something to do
+- Honest: If something's at risk, say it plainly
 
-Structure (200 words max):
+**Format (150 words max):**
 
-**IMPORTANT: Do not include a heading with the date or "Daily Brief" prefix - start directly with the overview.**
+Do NOT include a heading—start directly with content.
 
-1. **Strategic Overview** (2-3 sentences)
-   - Type of day (execution-heavy, planning, review, mixed)
-   - Goal alignment assessment
-   - Any critical concerns
+1. **Day Verdict** (1 sentence)
+   - What kind of day is this? "Loaded but manageable" / "Light day, good for deep work" / "3 blockers need attention first"
 
-2. **Key Focus Areas** (3-5 bullets)
-   - Most impactful tasks for goal targets
-   - Unblocking work that enables others
-   - Requirements needing attention
+2. **Start Here** (1-2 sentences)
+   - The ONE thing to do first and why it matters
+   - Pattern: "Start with [Task] — it unblocks [impact]"
 
-3. **Watch Points** (1-2 sentences)
-   - Active risks or blockers
-   - Open constraints or missing inputs
+3. **Key Items** (3-4 bullets max)
+   - Use 🔴 for urgent/blocked, ✅ for momentum, ⚠️ for at-risk
+   - Reference actual task/goal names (never generic)
+   - Each bullet = one actionable insight
 
-4. **Momentum Note** (1 sentence)
-   - Progress acknowledgment or forward look
+4. **Momentum** (1 sentence, optional)
+   - Only if there's recent progress worth noting
+   - Skip if nothing meaningful to say
 
-Guidelines:
-- Reference specific goals and requirements by name
-- Be direct about misalignment or concerns
-- Prioritize strategic impact over task volume
-- Use active, confident language
-- No placeholders - only reference actual data`;
+**Rules:**
+- Scannable in 30 seconds (busy person glancing at phone)
+- Bold the most important items
+- No corporate language ("optimize", "leverage", "synergize")
+- No filler ("It's important to note that...")
+- If data is missing, skip that section—don't pad`;
 	}
 
 	static buildUserPrompt(input: OntologyAnalysisPromptInput): string {
@@ -480,9 +462,9 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 		}
 
 		prompt += `
-Write a 200-word executive summary following the system instructions.
-Focus on strategic alignment and what matters most today.
-Reference specific projects, goals, and tasks by name using the detailed briefs above.`;
+Write a 150-word executive summary following the system prompt structure.
+Lead with the verdict ("Loaded day" / "Light day" / "Blockers first"), then the ONE thing to start with.
+Use actual project/task names from the briefs above. Be scannable—busy person, 30 seconds.`;
 
 		return prompt;
 	}

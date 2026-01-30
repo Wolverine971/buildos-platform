@@ -21,6 +21,7 @@ import {
 	assertEntityRefsInProject,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
+import { removeDocumentFromTree } from '$lib/services/ontology/doc-structure.service';
 import {
 	createOrMergeDocumentVersion,
 	toDocumentSnapshot
@@ -28,6 +29,7 @@ import {
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
+import type { DocStructure } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
 
 type Locals = App.Locals;
@@ -450,7 +452,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 };
 
-export const DELETE: RequestHandler = async ({ params, request, locals }) => {
+export const DELETE: RequestHandler = async ({ params, request, locals, url }) => {
 	try {
 		const session = await locals.safeGetSession();
 		if (!session?.user) {
@@ -476,7 +478,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return accessResult.error;
 		}
 
-		const { document, actorId: _actorId } = accessResult;
+		const { document, actorId } = accessResult;
 		const projectId = document.project_id;
 		const documentDataForLog = {
 			title: document.title,
@@ -508,6 +510,40 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(deleteError);
 		}
 
+		let structure: DocStructure | null = null;
+		let structureError: string | null = null;
+		try {
+			const body = await request.json().catch(() => null);
+			const modeInput =
+				body && typeof body === 'object' && typeof (body as any).mode === 'string'
+					? String((body as any).mode).trim()
+					: url.searchParams.get('mode');
+			const mode = modeInput === 'promote' || modeInput === 'cascade' ? modeInput : 'cascade';
+
+			structure = await removeDocumentFromTree(
+				locals.supabase,
+				projectId,
+				documentId,
+				{ mode },
+				actorId
+			);
+		} catch (treeError) {
+			structureError = treeError instanceof Error ? treeError.message : String(treeError);
+			console.error('[Document API] Failed to remove document from tree:', treeError);
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: treeError,
+				endpoint: `/api/onto/documents/${documentId}`,
+				method: 'DELETE',
+				userId: session.user.id,
+				projectId,
+				entityType: 'project',
+				entityId: documentId,
+				operation: 'doc_tree_remove',
+				metadata: { nonFatal: true }
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logDeleteAsync(
 			locals.supabase,
@@ -520,7 +556,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		return ApiResponse.success({ deleted: true });
+		return ApiResponse.success({ deleted: true, structure, structure_error: structureError });
 	} catch (error) {
 		console.error('[Document API] Unexpected DELETE error:', error);
 		await logOntologyApiError({

@@ -214,6 +214,50 @@ describe('ToolExecutionService', () => {
 			});
 		});
 
+		it('should default document title when blank', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_doc',
+				name: 'create_onto_document',
+				arguments: {
+					project_id: 'proj_123',
+					title: '   ',
+					type_key: ' '
+				}
+			};
+
+			const toolDefs = [
+				...mockToolDefinitions,
+				{
+					name: 'create_onto_document',
+					description: 'Create a document',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							title: { type: 'string' },
+							type_key: { type: 'string' }
+						},
+						required: ['project_id', 'title', 'type_key']
+					}
+				}
+			];
+
+			mockToolExecutor.mockResolvedValueOnce({ document: { id: 'doc-1' } });
+
+			const result = await service.executeTool(toolCall, mockContext, toolDefs);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_document',
+				{
+					project_id: 'proj_123',
+					title: 'Untitled Document',
+					type_key: 'document.default'
+				},
+				mockContext
+			);
+		});
+
 		it('should emit telemetry data for each execution', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_telemetry',
