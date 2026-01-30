@@ -53,17 +53,14 @@ export class AgentPersistenceService implements PersistenceOperations {
 	 */
 	async createAgent(data: AgentInsert): Promise<string> {
 		try {
+			const agentId = data.id || uuidv4();
 			const agentData: AgentInsert = {
 				...data,
-				id: data.id || uuidv4(),
+				id: agentId,
 				created_at: data.created_at || new Date().toISOString()
 			};
 
-			const { data: agent, error } = await this.supabase
-				.from('agents')
-				.insert(agentData)
-				.select()
-				.single();
+			const { error } = await this.supabase.from('agents').insert(agentData);
 
 			if (error) {
 				throw new PersistenceError(
@@ -73,16 +70,8 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			if (!agent) {
-				throw new PersistenceError(
-					'Failed to create agent: No data returned',
-					'createAgent',
-					{ data }
-				);
-			}
-
-			logger.info('Created agent', { agentId: agent.id, agentType: agent.type });
-			return agent.id;
+			logger.info('Created agent', { agentId, agentType: agentData.type });
+			return agentId;
 		} catch (error) {
 			if (error instanceof PersistenceError) {
 				throw error;
@@ -112,12 +101,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 				updateData.completed_at = new Date().toISOString();
 			}
 
-			const { error } = await this.supabase
-				.from('agents')
-				.update(updateData)
-				.eq('id', id)
-				.select()
-				.single();
+			const { error } = await this.supabase.from('agents').update(updateData).eq('id', id);
 
 			if (error) {
 				throw new PersistenceError(
@@ -185,17 +169,14 @@ export class AgentPersistenceService implements PersistenceOperations {
 	 */
 	async createPlan(data: AgentPlanInsert): Promise<string> {
 		try {
+			const planId = data.id || uuidv4();
 			const planData: AgentPlanInsert = {
 				...data,
-				id: data.id || uuidv4(),
+				id: planId,
 				created_at: data.created_at || new Date().toISOString()
 			};
 
-			const { data: plan, error } = await this.supabase
-				.from('agent_plans')
-				.insert(planData)
-				.select()
-				.single();
+			const { error } = await this.supabase.from('agent_plans').insert(planData);
 
 			if (error) {
 				throw new PersistenceError(
@@ -205,16 +186,8 @@ export class AgentPersistenceService implements PersistenceOperations {
 				);
 			}
 
-			if (!plan) {
-				throw new PersistenceError(
-					'Failed to create plan: No data returned',
-					'createPlan',
-					{ data }
-				);
-			}
-
-			logger.info('Created plan', { planId: plan.id, strategy: plan.strategy });
-			return plan.id;
+			logger.info('Created plan', { planId, strategy: planData.strategy });
+			return planId;
 		} catch (error) {
 			if (error instanceof PersistenceError) {
 				throw error;
@@ -245,9 +218,7 @@ export class AgentPersistenceService implements PersistenceOperations {
 			const { error } = await this.supabase
 				.from('agent_plans')
 				.update(updateData)
-				.eq('id', id)
-				.select()
-				.single();
+				.eq('id', id);
 
 			if (error) {
 				throw new PersistenceError(
@@ -279,6 +250,92 @@ export class AgentPersistenceService implements PersistenceOperations {
 		stepNumber: number,
 		stepUpdate: Record<string, any>,
 		maxRetries: number = 3
+	): Promise<void> {
+		// Filter out undefined values to prevent overwriting with undefined
+		const filteredUpdate = Object.fromEntries(
+			Object.entries(stepUpdate).filter(([_, v]) => v !== undefined)
+		);
+
+		// Prefer RPC-based update to avoid client-side read/modify/write contention
+		const rpcApplied = await this.tryUpdatePlanStepRpc(planId, stepNumber, filteredUpdate);
+		if (rpcApplied) {
+			return;
+		}
+
+		await this.updatePlanStepLegacy(planId, stepNumber, filteredUpdate, maxRetries);
+	}
+
+	private async tryUpdatePlanStepRpc(
+		planId: string,
+		stepNumber: number,
+		stepUpdate: Record<string, any>
+	): Promise<boolean> {
+		let rpcResult: { data: any; error: any } | undefined;
+
+		try {
+			const response = await this.supabase.rpc('update_agent_plan_step', {
+				p_plan_id: planId,
+				p_step_number: stepNumber,
+				p_step_update: stepUpdate
+			} as any);
+
+			if (!response || typeof response !== 'object') {
+				return false;
+			}
+
+			rpcResult = response as { data: any; error: any };
+		} catch (error) {
+			logger.warn('Plan step RPC update failed, falling back to legacy path', {
+				planId,
+				stepNumber,
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return false;
+		}
+
+		if (!rpcResult.error) {
+			logger.info('Updated plan step via RPC', {
+				planId,
+				stepNumber,
+				status: (stepUpdate as any).status
+			});
+			return true;
+		}
+
+		const error = rpcResult.error;
+		if (error?.code === '42883') {
+			// Function missing - fall back to legacy update
+			logger.warn('Plan step RPC not available, falling back to legacy update', {
+				planId,
+				stepNumber
+			});
+			return false;
+		}
+
+		if (error?.code === 'PGRST116') {
+			const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+			const notFoundMessage = message.includes('plan')
+				? `Plan ${planId} not found`
+				: `Step ${stepNumber} not found in plan`;
+			throw new PersistenceError(notFoundMessage, 'updatePlanStep', {
+				planId,
+				stepNumber,
+				error
+			});
+		}
+
+		throw new PersistenceError(
+			`Failed to update plan step: ${error?.message ?? 'Unknown error'}`,
+			'updatePlanStep',
+			{ error, planId, stepNumber }
+		);
+	}
+
+	private async updatePlanStepLegacy(
+		planId: string,
+		stepNumber: number,
+		stepUpdate: Record<string, any>,
+		maxRetries: number
 	): Promise<void> {
 		let lastError: Error | null = null;
 
@@ -320,15 +377,10 @@ export class AgentPersistenceService implements PersistenceOperations {
 					);
 				}
 
-				// Filter out undefined values to prevent overwriting with undefined
-				const filteredUpdate = Object.fromEntries(
-					Object.entries(stepUpdate).filter(([_, v]) => v !== undefined)
-				);
-
 				// Update the step
 				steps[stepIndex] = {
 					...steps[stepIndex],
-					...filteredUpdate
+					...stepUpdate
 				};
 
 				const nextUpdatedAt = new Date().toISOString();

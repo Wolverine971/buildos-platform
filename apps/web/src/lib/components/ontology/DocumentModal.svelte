@@ -746,9 +746,13 @@
 				<div class="min-w-0 flex-1">
 					<!-- Breadcrumb path for nested documents -->
 					{#if breadcrumbPath.length > 0}
-						<div class="flex items-center gap-1 text-xs text-muted-foreground mb-0.5 overflow-hidden">
+						<div
+							class="flex items-center gap-1 text-xs text-muted-foreground mb-0.5 overflow-hidden"
+						>
 							{#each breadcrumbPath as crumb, i}
-								<span class="truncate max-w-[100px]" title={crumb.title}>{crumb.title}</span>
+								<span class="truncate max-w-[100px]" title={crumb.title}
+									>{crumb.title}</span
+								>
 								{#if i < breadcrumbPath.length - 1}
 									<ChevronRight class="w-3 h-3 shrink-0" />
 								{/if}

@@ -943,6 +943,27 @@
 </script>
 
 <div class={`${containerClass} ${className}`.trim()}>
+	<!-- Live transcript preview: Positioned above textarea as floating box -->
+	{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
+		<div
+			class="mb-2 overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink"
+			aria-live="polite"
+			aria-atomic="true"
+		>
+			<div class="flex items-start gap-2 px-3 py-2">
+				<span
+					class="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent"
+				>
+					<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-accent"></span>
+					{liveTranscriptLabel}
+				</span>
+				<p class="m-0 line-clamp-3 flex-1 text-sm leading-relaxed text-foreground">
+					{liveTranscriptPreview}
+				</p>
+			</div>
+		</div>
+	{/if}
+
 	<div class="relative">
 		<!-- Textarea with optional live transcript preview overlay -->
 		<Textarea
@@ -965,23 +986,6 @@
 				restProps.onkeydown?.(e);
 			}}
 		/>
-
-		<!-- Live transcript preview: Full width now that buttons are in status row -->
-		{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
-			<div
-				class="pointer-events-none absolute bottom-2 left-2 right-2 z-0 max-h-24 overflow-hidden"
-				aria-live="polite"
-				aria-atomic="true"
-			>
-				<div
-					class="pointer-events-none select-none rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-1.5 text-sm text-accent shadow-ink backdrop-blur-sm dark:bg-accent/10"
-				>
-					<p class="m-0 line-clamp-4 whitespace-pre-wrap leading-snug">
-						{liveTranscriptPreview}
-					</p>
-				</div>
-			</div>
-		{/if}
 	</div>
 
 	<!-- Mobile action bar: Visible only on portrait phones (< 480px) -->

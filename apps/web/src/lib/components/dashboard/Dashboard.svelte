@@ -218,57 +218,65 @@
 
 <main class="min-h-screen bg-background transition-colors rounded-md">
 	<div class="container mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 max-w-7xl">
-		<!-- Header Section - Compact on mobile -->
-		<header class="mb-2 sm:mb-4">
-			<!-- Mobile: Compact single line with name and date -->
-			<div class="flex items-baseline justify-between gap-2 sm:block">
+		<!-- Header Section - Compact with date & calendar top-right -->
+		<header class="mb-2 sm:mb-3">
+			<div class="flex items-start justify-between gap-2">
+				<!-- Left: Greeting -->
 				<h1
-					class="text-lg sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight"
+					class="text-lg sm:text-2xl lg:text-3xl font-bold text-foreground tracking-tight"
 				>
 					Hi, {displayName}
 				</h1>
-				<p class="text-[10px] sm:text-base text-muted-foreground font-medium sm:mt-1">
-					<time datetime={new Date().toISOString()}>
+
+				<!-- Right: Date + Calendar -->
+				<div class="flex items-center gap-1.5 sm:gap-2">
+					<time
+						datetime={new Date().toISOString()}
+						class="text-[10px] sm:text-sm text-muted-foreground font-medium"
+					>
 						{formatFullDate(new Date())}
 					</time>
-				</p>
-			</div>
-			<div class="mt-2 flex flex-wrap items-center gap-2">
-				<Button variant="ghost" size="sm" onclick={handleOpenCalendar}>
-					<Calendar class="h-4 w-4 mr-1.5" />
-					Calendar
-				</Button>
+					<button
+						onclick={handleOpenCalendar}
+						class="flex items-center gap-1 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors pressable"
+						aria-label="Open calendar"
+					>
+						<Calendar class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+						<span class="hidden sm:inline text-xs font-medium">Calendar</span>
+					</button>
+				</div>
 			</div>
 		</header>
 
 		<!-- Daily Brief Widget -->
-		<section class="mb-2 sm:mb-4">
+		<section class="mb-2 sm:mb-3">
 			<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
 		</section>
 
 		<!-- Error State - card weight for important errors -->
 		{#if error}
-			<div class="mb-6 wt-card p-6 tx tx-static tx-weak">
-				<div class="text-center">
-					<AlertTriangle class="h-8 w-8 text-red-500 mx-auto mb-3" />
-					<p class="text-red-600 dark:text-red-400 mb-4">{error}</p>
+			<div class="mb-3 wt-card p-3 sm:p-4 tx tx-static tx-weak">
+				<div class="flex items-center gap-3 sm:flex-col sm:text-center">
+					<AlertTriangle class="h-5 w-5 sm:h-6 sm:w-6 text-red-500 shrink-0" />
+					<p class="text-sm text-red-600 dark:text-red-400 flex-1">{error}</p>
 					<Button
 						onclick={refreshProjects}
 						variant="primary"
 						size="sm"
 						disabled={isRefreshing}
+						class="shrink-0"
 					>
 						{#if isRefreshing}
-							<LoaderCircle class="h-4 w-4 mr-2 animate-spin" />
+							<LoaderCircle class="h-3.5 w-3.5 mr-1.5 animate-spin" />
 						{/if}
-						Try Again
+						Retry
 					</Button>
 				</div>
 			</div>
 		{/if}
 
 		<!-- Projects Grid - Always render structure, use skeletons or real cards -->
-		<section class="space-y-4">
+		<section class="space-y-3">
 			<!-- Mobile Create Button (compact) -->
 			{#if hasProjects}
 				<button
@@ -280,17 +288,15 @@
 				</button>
 			{/if}
 
-			<!-- Section Header - More compact on mobile -->
-			<div class="flex items-center gap-3">
-				<div
-					class="p-1 sm:p-2 bg-accent/10 rounded-md sm:rounded-lg border border-accent/20"
-				>
-					<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5 text-accent" />
+			<!-- Section Header - Compact -->
+			<div class="flex items-center gap-2">
+				<div class="p-1 sm:p-1.5 bg-accent/10 rounded-md border border-accent/20">
+					<FolderOpen class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
 				</div>
-				<h2 class="text-sm sm:text-xl font-bold text-foreground">Projects</h2>
+				<h2 class="text-sm sm:text-lg font-bold text-foreground">Projects</h2>
 				{#if isLoading}
 					<LoaderCircle
-						class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground animate-spin"
+						class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground animate-spin"
 					/>
 				{/if}
 			</div>
@@ -318,18 +324,18 @@
 					{/each}
 				</div>
 			{:else if !hasProjects && !isLoading}
-				<!-- Empty State - Compact on mobile, paper weight with bloom texture -->
-				<div class="wt-paper border-dashed p-6 sm:p-12 text-center tx tx-bloom tx-weak">
+				<!-- Empty State - Compact, paper weight with bloom texture -->
+				<div class="wt-paper border-dashed p-4 sm:p-6 text-center tx tx-bloom tx-weak">
 					<div
-						class="mx-auto mb-4 sm:mb-6 flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent"
+						class="mx-auto mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/20 bg-accent/10 text-accent"
 					>
-						<Sparkles class="h-6 w-6 sm:h-8 sm:w-8" />
+						<Sparkles class="h-5 w-5 sm:h-6 sm:w-6" />
 					</div>
-					<h3 class="text-base sm:text-xl font-bold text-foreground mb-1.5 sm:mb-2">
+					<h3 class="text-sm sm:text-base font-bold text-foreground mb-1 sm:mb-1.5">
 						Create Your First Project
 					</h3>
 					<p
-						class="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 max-w-md mx-auto"
+						class="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 max-w-sm mx-auto"
 					>
 						Tell our AI about your project - we'll help organize everything.
 					</p>
@@ -337,16 +343,18 @@
 						variant="primary"
 						size="sm"
 						onclick={handleCreateProject}
-						class="pressable sm:!py-2.5 sm:!px-5"
+						class="pressable"
 					>
-						<Plus class="h-4 w-4 mr-1.5" />
+						<Plus class="h-3.5 w-3.5 mr-1" />
 						Create Project
 					</Button>
 				</div>
 			{:else}
-				<div class="space-y-4">
-					<div class="space-y-3">
-						<h3 class="text-sm sm:text-base font-semibold text-foreground">
+				<div class="space-y-3">
+					<div class="space-y-2">
+						<h3
+							class="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide"
+						>
 							My Projects
 						</h3>
 						<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
@@ -527,13 +535,15 @@
 					</div>
 
 					{#if sharedProjects.length > 0}
-						<div class="space-y-2 sm:space-y-3">
-							<div class="flex items-center gap-2">
-								<h3 class="text-sm sm:text-base font-semibold text-foreground">
+						<div class="space-y-2">
+							<div class="flex items-center gap-1.5">
+								<h3
+									class="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide"
+								>
 									Shared with me
 								</h3>
-								<span class="text-xs text-muted-foreground">
-									{sharedProjects.length}
+								<span class="text-[10px] sm:text-xs text-muted-foreground/70">
+									({sharedProjects.length})
 								</span>
 							</div>
 							<div

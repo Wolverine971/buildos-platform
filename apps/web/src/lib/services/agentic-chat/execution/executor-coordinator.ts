@@ -92,6 +92,11 @@ export class ExecutorCoordinator {
 				context,
 				tools.map((tool) => this.getToolName(tool))
 			);
+		if (tools.length === 0) {
+			logger.info('Executor prompt preview (no tools)', {
+				preview: executorSystemPrompt.slice(0, 100)
+			});
+		}
 
 		const executorAgentId = await this.createExecutorAgentRecord(
 			params,

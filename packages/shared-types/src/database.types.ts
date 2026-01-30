@@ -10443,6 +10443,10 @@ export type Database = {
         Returns: undefined
       }
       unaccent: { Args: { "": string }; Returns: string }
+      update_agent_plan_step: {
+        Args: { p_plan_id: string; p_step_number: number; p_step_update: Json }
+        Returns: Json
+      }
       update_llm_usage_summary: {
         Args: { p_date: string; p_user_id: string }
         Returns: undefined

@@ -1459,6 +1459,17 @@
 	/**
 	 * Formats tool messages with meaningful context from arguments
 	 */
+	function buildEntityTarget(name?: string, id?: string): string | undefined {
+		const normalizedName = typeof name === 'string' ? name.trim() : '';
+		const normalizedId = typeof id === 'string' ? id.trim() : '';
+		if (normalizedName && normalizedId) {
+			return normalizedName === normalizedId
+				? normalizedName
+				: `${normalizedName} (${normalizedId})`;
+		}
+		return normalizedName || normalizedId || undefined;
+	}
+
 	const TOOL_DISPLAY_FORMATTERS: Record<
 		string,
 		(args: any) => { action: string; target?: string }
@@ -1485,7 +1496,7 @@
 		}),
 		update_onto_project: (args) => ({
 			action: 'Updating project',
-			target: args?.project_id || args?.project?.name
+			target: buildEntityTarget(args?.project_name ?? args?.name, args?.project_id)
 		}),
 		list_onto_tasks: (args) => ({
 			action: 'Listing tasks',
@@ -1505,7 +1516,7 @@
 		}),
 		update_onto_task: (args) => ({
 			action: 'Updating task',
-			target: args?.task_id || args?.title
+			target: buildEntityTarget(args?.task_title ?? args?.title, args?.task_id)
 		}),
 		delete_onto_task: (args) => ({
 			action: 'Deleting task',
@@ -1525,7 +1536,7 @@
 		}),
 		update_onto_goal: (args) => ({
 			action: 'Updating goal',
-			target: args?.goal_id || args?.name
+			target: buildEntityTarget(args?.goal_name ?? args?.name, args?.goal_id)
 		}),
 		delete_onto_goal: (args) => ({
 			action: 'Deleting goal',
@@ -1545,7 +1556,7 @@
 		}),
 		update_onto_plan: (args) => ({
 			action: 'Updating plan',
-			target: args?.plan_id || args?.name
+			target: buildEntityTarget(args?.plan_name ?? args?.name, args?.plan_id)
 		}),
 		delete_onto_plan: (args) => ({
 			action: 'Deleting plan',
@@ -1593,19 +1604,19 @@
 		}),
 		update_onto_document: (args) => ({
 			action: 'Updating document',
-			target: args?.document_id || args?.title
+			target: buildEntityTarget(args?.document_title ?? args?.title, args?.document_id)
 		}),
 		update_onto_milestone: (args) => ({
 			action: 'Updating milestone',
-			target: args?.milestone_id || args?.title
+			target: buildEntityTarget(args?.milestone_title ?? args?.title, args?.milestone_id)
 		}),
 		update_onto_risk: (args) => ({
 			action: 'Updating risk',
-			target: args?.risk_id || args?.title
+			target: buildEntityTarget(args?.risk_title ?? args?.title, args?.risk_id)
 		}),
 		update_onto_requirement: (args) => ({
 			action: 'Updating requirement',
-			target: args?.requirement_id || args?.text
+			target: buildEntityTarget(args?.requirement_text ?? args?.text, args?.requirement_id)
 		}),
 		delete_onto_document: (args) => ({
 			action: 'Deleting document',

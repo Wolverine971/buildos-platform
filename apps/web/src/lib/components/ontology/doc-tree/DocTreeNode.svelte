@@ -101,9 +101,8 @@
 			return;
 		}
 		e.stopPropagation();
-		if (isFolder) {
-			onToggleExpand(node.id);
-		}
+		// Note: Expand/collapse is handled separately by the chevron's handleChevronClick
+		// This only opens the document, allowing users to expand without opening
 		onOpenDocument(node.id);
 	}
 

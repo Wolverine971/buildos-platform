@@ -1034,7 +1034,28 @@
 </script>
 
 <div class={`space-y-1.5 ${className}`}>
-	<!-- Textarea with optional live transcript preview overlay -->
+	<!-- Live transcript preview: Positioned above textarea as floating box -->
+	{#if enableVoice && isLiveTranscribing}
+		<div
+			class="overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink"
+			aria-live="polite"
+			aria-atomic="true"
+		>
+			<div class="flex items-start gap-2 px-2.5 py-1.5">
+				<span
+					class="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-accent/15 px-1.5 py-0.5 text-[0.65rem] font-medium text-accent"
+				>
+					<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-accent"></span>
+					Live
+				</span>
+				<p class="m-0 line-clamp-2 flex-1 text-xs leading-relaxed text-foreground">
+					{liveTranscriptPreview}
+				</p>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Textarea -->
 	<div class="relative">
 		<Textarea
 			bind:this={textareaComponent}
@@ -1047,23 +1068,6 @@
 			oninput={handleTextareaInput}
 			onkeydown={handleTextareaKeyDown}
 		/>
-
-		<!-- Live transcript preview overlay -->
-		{#if enableVoice && isLiveTranscribing}
-			<div
-				class="pointer-events-none absolute bottom-2 left-2 right-2 z-0 max-h-16 overflow-hidden"
-				aria-live="polite"
-				aria-atomic="true"
-			>
-				<div
-					class="pointer-events-none select-none rounded-lg border border-accent/30 bg-accent/5 px-2.5 py-1.5 text-xs text-accent shadow-ink backdrop-blur-sm dark:bg-accent/10"
-				>
-					<p class="m-0 line-clamp-2 whitespace-pre-wrap leading-snug">
-						{liveTranscriptPreview}
-					</p>
-				</div>
-			</div>
-		{/if}
 	</div>
 
 	<!-- Footer: Status, hints, and action buttons -->

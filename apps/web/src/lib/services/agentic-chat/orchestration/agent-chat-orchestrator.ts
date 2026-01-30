@@ -41,7 +41,8 @@ import type {
 import { SmartLLMService } from '../../smart-llm-service';
 // import type { ErrorLoggerService } from '$lib/services/errorLogger.service';
 // import { ErrorLoggerService } from '$lib/services/errorLogger.service';
-import type { LastTurnContext } from '$lib/types/agent-chat-enhancement';
+import type { LastTurnContext, StrategyAnalysis } from '$lib/types/agent-chat-enhancement';
+import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import { createEnhancedLLMWrapper, type EnhancedLLMWrapper } from '../config/enhanced-llm-wrapper';
 import { AGENTIC_CHAT_LIMITS } from '../config/agentic-chat-limits';
 import {
@@ -54,6 +55,7 @@ import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/
 import { buildDebugContextInfo, isDebugModeEnabled } from '../observability';
 import { ErrorLoggerService } from '../../errorLogger.service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
+import { enrichOntologyUpdateArgs, isOntologyUpdateTool } from '../shared/tool-arg-enrichment';
 import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
@@ -305,7 +307,11 @@ export class AgentChatOrchestrator {
 
 			const messages = this.buildPlannerMessages(plannerContext, request.userMessage);
 
-			const tools = this.appendVirtualTools(plannerContext.availableTools);
+			const tools = this.appendVirtualTools({
+				plannerContext,
+				serviceContext,
+				request
+			});
 			const virtualHandlers = this.createVirtualToolHandlers({
 				request,
 				plannerContext,
@@ -532,16 +538,82 @@ export class AgentChatOrchestrator {
 		});
 	}
 
-	private appendVirtualTools(tools: ChatToolDefinition[]): ChatToolDefinition[] {
-		// ChatToolDefinition is well-typed with function.name property
-		// No need for 'as any' cast - tools array is already typed
+	private appendVirtualTools(params: {
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+		request: AgentChatRequest;
+	}): ChatToolDefinition[] {
+		const { plannerContext, serviceContext, request } = params;
+		const tools = plannerContext.availableTools;
 		const existingPlanTool = tools.find(
 			(tool) => tool?.function?.name === PLAN_TOOL_DEFINITION.function.name
 		);
 		if (existingPlanTool) {
 			return tools;
 		}
+
+		if (!this.shouldEnablePlanTool({ plannerContext, serviceContext, request })) {
+			return tools;
+		}
+
 		return [...tools, PLAN_TOOL_DEFINITION];
+	}
+
+	private shouldEnablePlanTool(params: {
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+		request: AgentChatRequest;
+	}): boolean {
+		const { plannerContext, serviceContext, request } = params;
+
+		if (serviceContext.contextType === 'project_create') {
+			return true;
+		}
+
+		const analysis = plannerContext.metadata?.strategyAnalysis as StrategyAnalysis | undefined;
+		if (analysis?.needs_clarification) {
+			return false;
+		}
+
+		if (analysis?.primary_strategy === ChatStrategy.PROJECT_CREATION) {
+			return true;
+		}
+
+		if (analysis) {
+			if (!analysis.can_complete_directly) {
+				return true;
+			}
+			if (analysis.estimated_steps >= 3) {
+				return true;
+			}
+			if ((analysis.required_tools?.length ?? 0) >= 3) {
+				return true;
+			}
+		}
+
+		const message = request.userMessage?.toLowerCase() ?? '';
+		if (message.length > 400) {
+			return true;
+		}
+		if (message.includes('\n')) {
+			return true;
+		}
+
+		const planKeywords = [
+			'plan',
+			'strategy',
+			'roadmap',
+			'audit',
+			'analyze',
+			'compare',
+			'synthesize',
+			'report',
+			'research',
+			'investigate',
+			'multi-step'
+		];
+
+		return planKeywords.some((keyword) => message.includes(keyword));
 	}
 
 	private createVirtualToolHandlers(params: {
@@ -598,7 +670,11 @@ export class AgentChatOrchestrator {
 
 			this.refreshPlannerMessages(messages, refreshedPlannerContext);
 
-			const refreshedTools = this.appendVirtualTools(refreshedPlannerContext.availableTools);
+			const refreshedTools = this.appendVirtualTools({
+				plannerContext: refreshedPlannerContext,
+				serviceContext,
+				request
+			});
 			const refreshedVirtualHandlers = this.createVirtualToolHandlers({
 				request,
 				plannerContext: refreshedPlannerContext,
@@ -711,8 +787,13 @@ export class AgentChatOrchestrator {
 						assistantBuffer += chunk.content;
 						yield { type: 'text', content: chunk.content };
 					} else if (chunk.type === 'tool_call' && chunk.tool_call) {
-						pendingToolCalls.push(chunk.tool_call);
-						yield { type: 'tool_call', toolCall: chunk.tool_call };
+						const enrichedToolCall = this.enrichToolCallArguments(
+							chunk.tool_call,
+							currentPlannerContext,
+							serviceContext
+						);
+						pendingToolCalls.push(enrichedToolCall);
+						yield { type: 'tool_call', toolCall: enrichedToolCall };
 					} else if (chunk.type === 'done') {
 						if (chunk.usage?.total_tokens) {
 							lastUsage = { total_tokens: chunk.usage.total_tokens };
@@ -889,7 +970,11 @@ export class AgentChatOrchestrator {
 
 		return {
 			plannerContext: expandedPlannerContext,
-			tools: this.appendVirtualTools(expandedPlannerContext.availableTools),
+			tools: this.appendVirtualTools({
+				plannerContext: expandedPlannerContext,
+				serviceContext,
+				request
+			}),
 			virtualHandlers: this.createVirtualToolHandlers({
 				request,
 				plannerContext: expandedPlannerContext,
@@ -1051,7 +1136,8 @@ export class AgentChatOrchestrator {
 				data: {
 					status: 'failed',
 					plan_id: plan.id,
-					summary: execution.summary
+					summary: execution.summary,
+					details: execution.details
 				},
 				streamEvents,
 				toolName: 'agent_create_plan',
@@ -1072,7 +1158,8 @@ export class AgentChatOrchestrator {
 			data: {
 				status: 'executed',
 				plan_id: plan.id,
-				summary: execution.summary
+				summary: execution.summary,
+				details: execution.details
 			},
 			streamEvents,
 			toolName: 'agent_create_plan',
@@ -1169,6 +1256,7 @@ export class AgentChatOrchestrator {
 						status: 'failed',
 						plan_id: plan.id,
 						summary: execution.summary,
+						details: execution.details,
 						review
 					},
 					streamEvents,
@@ -1191,6 +1279,7 @@ export class AgentChatOrchestrator {
 					status: 'executed',
 					plan_id: plan.id,
 					summary: execution.summary,
+					details: execution.details,
 					review
 				},
 				streamEvents,
@@ -1242,6 +1331,7 @@ export class AgentChatOrchestrator {
 		summary: string;
 		usage?: { total_tokens: number };
 		error?: string;
+		details?: Record<string, any>;
 	}> {
 		const events: StreamEvent[] = [];
 		const executorResults: ExecutorResult[] = [];
@@ -1292,6 +1382,21 @@ export class AgentChatOrchestrator {
 			executorResults.length > 0 || collectedToolResults.length > 0
 				? [...executorResults, ...collectedToolResults]
 				: [];
+
+		if (!this.shouldUsePlanSynthesisLLM()) {
+			const details = this.buildPlanExecutionDetails(plan);
+			const summary = this.buildPlanExecutionSummary(details);
+			return {
+				events,
+				summary,
+				details,
+				usage:
+					plan.metadata?.totalTokensUsed && plan.metadata.totalTokensUsed > 0
+						? { total_tokens: plan.metadata.totalTokensUsed }
+						: planUsage
+			};
+		}
+
 		const response = await this.deps.responseSynthesizer.synthesizeComplexResponse(
 			plan,
 			combinedResults,
@@ -1322,6 +1427,7 @@ export class AgentChatOrchestrator {
 		return {
 			events,
 			summary: response.text,
+			details: this.buildPlanExecutionDetails(plan),
 			usage:
 				combinedTokens > 0
 					? { total_tokens: combinedTokens }
@@ -1350,6 +1456,47 @@ export class AgentChatOrchestrator {
 			.map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
 			.filter(Boolean);
 		return normalized.length > 0 ? normalized : undefined;
+	}
+
+	private enrichToolCallArguments(
+		toolCall: ChatToolCall,
+		plannerContext: PlannerContext | undefined,
+		serviceContext: ServiceContext
+	): ChatToolCall {
+		const toolName = toolCall.function?.name;
+		const rawArgs = toolCall.function?.arguments;
+		if (!toolName || !rawArgs || !isOntologyUpdateTool(toolName)) {
+			return toolCall;
+		}
+
+		let args: Record<string, any>;
+		try {
+			args = JSON.parse(rawArgs);
+		} catch {
+			return toolCall;
+		}
+
+		if (!args || typeof args !== 'object') {
+			return toolCall;
+		}
+
+		const enrichedArgs = enrichOntologyUpdateArgs(toolName, args, {
+			ontologyContext: plannerContext?.ontologyContext ?? serviceContext.ontologyContext,
+			locationMetadata: plannerContext?.locationMetadata,
+			contextScope: plannerContext?.metadata?.scope ?? serviceContext.contextScope
+		});
+
+		if (enrichedArgs === args) {
+			return toolCall;
+		}
+
+		return {
+			...toolCall,
+			function: {
+				...toolCall.function,
+				arguments: JSON.stringify(enrichedArgs)
+			}
+		};
 	}
 
 	private summarizePlan(plan: AgentPlan): string {
@@ -1647,6 +1794,97 @@ export class AgentChatOrchestrator {
 			return undefined;
 		}
 		return { total_tokens: usage.totalTokens };
+	}
+
+	private shouldUsePlanSynthesisLLM(): boolean {
+		if (typeof process === 'undefined') {
+			return false;
+		}
+		const flag = String(process.env.AGENTIC_CHAT_ENABLE_PLAN_SYNTHESIS_LLM ?? '').toLowerCase();
+		return ['true', '1', 'yes'].includes(flag);
+	}
+
+	private buildPlanExecutionDetails(plan: AgentPlan): Record<string, any> {
+		const steps = plan.steps.map((step) => ({
+			stepNumber: step.stepNumber,
+			description: step.description,
+			status: step.status,
+			executorRequired: step.executorRequired,
+			result: this.compactStepResult(step.result)
+		}));
+
+		const completedSteps = steps.filter((step) => step.status === 'completed').length;
+		const failedSteps = steps.filter((step) => step.status === 'failed').length;
+
+		return {
+			plan_id: plan.id,
+			status: plan.status,
+			strategy: plan.strategy,
+			step_count: steps.length,
+			completed_steps: completedSteps,
+			failed_steps: failedSteps,
+			steps
+		};
+	}
+
+	private buildPlanExecutionSummary(details: Record<string, any>): string {
+		const status = details.status ?? 'unknown';
+		const stepCount = details.step_count ?? 0;
+		const completed = details.completed_steps ?? 0;
+		const failed = details.failed_steps ?? 0;
+		const lines = [
+			`Plan status: ${status}`,
+			`Steps: ${completed}/${stepCount} completed${failed ? `, ${failed} failed` : ''}`
+		];
+
+		if (Array.isArray(details.steps)) {
+			for (const step of details.steps) {
+				if (!step) continue;
+				const resultSuffix = step.result ? `: ${step.result}` : '';
+				lines.push(
+					`${step.stepNumber}. ${step.description} (${step.status})${resultSuffix}`
+				);
+			}
+		}
+
+		return lines.join('\n');
+	}
+
+	private compactStepResult(result: unknown): string | undefined {
+		if (result === null || result === undefined) {
+			return undefined;
+		}
+		if (typeof result === 'string') {
+			return this.truncateText(result, 160);
+		}
+		if (Array.isArray(result)) {
+			return `Result items: ${result.length}`;
+		}
+		if (typeof result === 'object') {
+			const record = result as Record<string, any>;
+			const candidates = [
+				record.summary,
+				record.message,
+				record.notes,
+				record.title,
+				record.status,
+				record.result,
+				record.data?.summary,
+				record.data?.message
+			];
+			const firstString = candidates.find((value) => typeof value === 'string');
+			if (typeof firstString === 'string') {
+				return this.truncateText(firstString, 160);
+			}
+		}
+		return undefined;
+	}
+
+	private truncateText(text: string, maxLength: number): string {
+		if (text.length <= maxLength) {
+			return text;
+		}
+		return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
 	}
 
 	private isAbortError(error: unknown): boolean {

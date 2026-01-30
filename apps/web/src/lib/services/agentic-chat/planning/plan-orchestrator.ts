@@ -46,6 +46,7 @@ import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
 import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { ToolExecutionService } from '../execution/tool-execution-service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
+import { enrichOntologyUpdateArgs } from '../shared/tool-arg-enrichment';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { JSONRequestOptions } from '$lib/services/smart-llm-service';
@@ -751,7 +752,7 @@ export class PlanOrchestrator implements BaseService {
 	/**
 	 * Generate plan using LLM
 	 */
-	private static readonly PLAN_GENERATION_ATTEMPTS = 2;
+	private static readonly PLAN_GENERATION_ATTEMPTS = 1;
 
 	private async generatePlanWithLLM(
 		intent: PlanIntent,
@@ -789,7 +790,7 @@ export class PlanOrchestrator implements BaseService {
 						userId: context.userId,
 						operationType: 'plan_generation',
 						chatSessionId: context.sessionId,
-						validation: { retryOnParseError: true }
+						validation: { retryOnParseError: false }
 					});
 					const parsed =
 						typeof jsonResponse === 'string'
@@ -1200,13 +1201,18 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 					step,
 					plannerContext
 				);
+				const enrichedArgs = enrichOntologyUpdateArgs(toolName, normalizedArgs, {
+					ontologyContext: plannerContext.ontologyContext ?? context.ontologyContext,
+					locationMetadata: plannerContext.locationMetadata,
+					contextScope: plannerContext.metadata?.scope ?? context.contextScope
+				});
 
 				const toolCall: ChatToolCall = {
 					id: uuidv4(),
 					type: 'function',
 					function: {
 						name: toolName,
-						arguments: JSON.stringify(normalizedArgs ?? {})
+						arguments: JSON.stringify(enrichedArgs ?? {})
 					}
 				};
 
