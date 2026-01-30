@@ -670,7 +670,7 @@ Unpublished blogs that need to be written/completed.
 ### Research Needed
 
 - [ ] Review `/apps/web/docs/features/ontology/DATA_MODELS.md`
-- [ ] Review `/apps/web/docs/features/agentic-chat/BACKEND_ARCHITECTURE_OVERVIEW.md`
+- [ ] Review `/apps/web/docs/features/agentic-chat/README.md`
 - [ ] Check current tech stack (models used, token optimization)
 - [ ] Verify technical claims are accurate
 
@@ -684,7 +684,7 @@ Unpublished blogs that need to be written/completed.
 ### Reference Docs
 
 - `/apps/web/docs/features/ontology/DATA_MODELS.md`
-- `/apps/web/docs/features/agentic-chat/BACKEND_ARCHITECTURE_OVERVIEW.md`
+- `/apps/web/docs/features/agentic-chat/README.md`
 - `/apps/web/CLAUDE.md` (Tech stack section)
 
 ---

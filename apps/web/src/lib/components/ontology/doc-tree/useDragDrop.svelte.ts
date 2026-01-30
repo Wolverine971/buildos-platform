@@ -8,6 +8,9 @@
  * - Validation (no cycles, no self-drop)
  * - Hover-to-convert for plain documents
  * - Optimistic updates with rollback
+ * - Keyboard cut/paste (Ctrl+X/V)
+ * - Auto-scroll during drag
+ * - Undo support
  */
 
 import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
@@ -51,6 +54,25 @@ export interface DragState {
 	// Touch state
 	isTouchDrag: boolean;
 	touchStartPos: { x: number; y: number } | null;
+
+	// Keyboard cut/paste state
+	cutNode: EnrichedDocTreeNode | null;
+	cutOriginalParentId: string | null;
+	cutOriginalPosition: number;
+
+	// Auto-scroll state
+	isAutoScrolling: boolean;
+	autoScrollDirection: 'up' | 'down' | null;
+}
+
+/** Undo history entry for move operations */
+export interface MoveHistoryEntry {
+	documentId: string;
+	fromParentId: string | null;
+	fromPosition: number;
+	toParentId: string | null;
+	toPosition: number;
+	timestamp: number;
 }
 
 export interface DragDropOptions {
@@ -64,6 +86,8 @@ export interface DragDropOptions {
 	getParentId: (nodeId: string) => string | null;
 	getNodeIndex: (nodeId: string) => number;
 	getDescendantIds: (nodeId: string) => Set<string>;
+	getTreeContainer?: () => HTMLElement | null;
+	onUndo?: (entry: MoveHistoryEntry) => void;
 }
 
 // ============================================
@@ -75,6 +99,9 @@ const HOVER_TO_CONVERT_DELAY = 400; // ms to hover before converting doc to fold
 const ZONE_BEFORE_PERCENT = 0.3; // top 30% = insert before
 const ZONE_AFTER_PERCENT = 0.7; // bottom 30% = insert after
 const LONG_PRESS_DELAY = 500; // ms for mobile long press
+const AUTO_SCROLL_ZONE = 60; // pixels from edge to trigger auto-scroll
+const AUTO_SCROLL_SPEED = 8; // pixels per frame
+const UNDO_HISTORY_MAX = 10; // max undo entries to keep
 
 // ============================================
 // STATE FACTORY
@@ -97,13 +124,22 @@ export function createDragDropState(options: DragDropOptions) {
 		originalParentId: null,
 		originalPosition: 0,
 		isTouchDrag: false,
-		touchStartPos: null
+		touchStartPos: null,
+		cutNode: null,
+		cutOriginalParentId: null,
+		cutOriginalPosition: 0,
+		isAutoScrolling: false,
+		autoScrollDirection: null
 	});
+
+	// Undo history
+	let undoHistory: MoveHistoryEntry[] = [];
 
 	// Timers
 	let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 	let animationFrame: number | null = null;
+	let autoScrollFrame: number | null = null;
 
 	// ============================================
 	// DRAG START
@@ -152,6 +188,86 @@ export function createDragDropState(options: DragDropOptions) {
 
 		state.ghostX = x;
 		state.ghostY = y;
+
+		// Trigger auto-scroll check
+		updateAutoScroll(y);
+	}
+
+	// ============================================
+	// AUTO-SCROLL
+	// ============================================
+
+	function updateAutoScroll(mouseY: number) {
+		const container = options.getTreeContainer?.();
+		if (!container) return;
+
+		const rect = container.getBoundingClientRect();
+		const topZone = rect.top + AUTO_SCROLL_ZONE;
+		const bottomZone = rect.bottom - AUTO_SCROLL_ZONE;
+
+		if (mouseY < topZone && mouseY > rect.top) {
+			// Scroll up
+			if (!state.isAutoScrolling || state.autoScrollDirection !== 'up') {
+				state.isAutoScrolling = true;
+				state.autoScrollDirection = 'up';
+				startAutoScroll(container, 'up', mouseY, rect.top);
+			}
+		} else if (mouseY > bottomZone && mouseY < rect.bottom) {
+			// Scroll down
+			if (!state.isAutoScrolling || state.autoScrollDirection !== 'down') {
+				state.isAutoScrolling = true;
+				state.autoScrollDirection = 'down';
+				startAutoScroll(container, 'down', mouseY, bottomZone);
+			}
+		} else {
+			// Stop auto-scroll
+			stopAutoScroll();
+		}
+	}
+
+	function startAutoScroll(
+		container: HTMLElement,
+		direction: 'up' | 'down',
+		mouseY: number,
+		edgeY: number
+	) {
+		if (autoScrollFrame) {
+			cancelAnimationFrame(autoScrollFrame);
+		}
+
+		const scroll = () => {
+			if (!state.isDragging || !state.isAutoScrolling) {
+				stopAutoScroll();
+				return;
+			}
+
+			// Calculate scroll intensity based on distance from edge
+			const distance = direction === 'up' ? edgeY - mouseY : mouseY - edgeY;
+			const intensity = Math.min(1, distance / AUTO_SCROLL_ZONE);
+			const scrollAmount = AUTO_SCROLL_SPEED * intensity;
+
+			if (direction === 'up') {
+				container.scrollTop = Math.max(0, container.scrollTop - scrollAmount);
+			} else {
+				container.scrollTop = Math.min(
+					container.scrollHeight - container.clientHeight,
+					container.scrollTop + scrollAmount
+				);
+			}
+
+			autoScrollFrame = requestAnimationFrame(scroll);
+		};
+
+		autoScrollFrame = requestAnimationFrame(scroll);
+	}
+
+	function stopAutoScroll() {
+		if (autoScrollFrame) {
+			cancelAnimationFrame(autoScrollFrame);
+			autoScrollFrame = null;
+		}
+		state.isAutoScrolling = false;
+		state.autoScrollDirection = null;
 	}
 
 	function updateDropZone(
@@ -342,6 +458,24 @@ export function createDragDropState(options: DragDropOptions) {
 				dropZone.parentId,
 				effectivePosition
 			);
+
+			if (result.success) {
+				// Add to undo history
+				addToUndoHistory({
+					documentId: draggedNode.id,
+					fromParentId: originalParentId,
+					fromPosition: originalPosition,
+					toParentId: dropZone.parentId,
+					toPosition: effectivePosition,
+					timestamp: Date.now()
+				});
+
+				// Haptic feedback on successful move (touch)
+				if (navigator.vibrate) {
+					navigator.vibrate([30, 50, 30]);
+				}
+			}
+
 			return result;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Move failed';
@@ -366,8 +500,12 @@ export function createDragDropState(options: DragDropOptions) {
 			cancelAnimationFrame(animationFrame);
 			animationFrame = null;
 		}
+		stopAutoScroll();
 
 		document.body.classList.remove('doc-tree-dragging');
+
+		// Preserve cut state across drag operations
+		const { cutNode, cutOriginalParentId, cutOriginalPosition } = state;
 
 		state = {
 			isDragging: false,
@@ -384,8 +522,167 @@ export function createDragDropState(options: DragDropOptions) {
 			originalParentId: null,
 			originalPosition: 0,
 			isTouchDrag: false,
-			touchStartPos: null
+			touchStartPos: null,
+			cutNode,
+			cutOriginalParentId,
+			cutOriginalPosition,
+			isAutoScrolling: false,
+			autoScrollDirection: null
 		};
+	}
+
+	// ============================================
+	// UNDO SUPPORT
+	// ============================================
+
+	function addToUndoHistory(entry: MoveHistoryEntry) {
+		undoHistory.push(entry);
+		// Keep history bounded
+		if (undoHistory.length > UNDO_HISTORY_MAX) {
+			undoHistory.shift();
+		}
+	}
+
+	async function undo(): Promise<{ success: boolean; error?: string }> {
+		const lastMove = undoHistory.pop();
+		if (!lastMove) {
+			return { success: false, error: 'Nothing to undo' };
+		}
+
+		// Move back to original position
+		try {
+			const result = await options.onMove(
+				lastMove.documentId,
+				lastMove.fromParentId,
+				lastMove.fromPosition
+			);
+
+			if (result.success) {
+				options.onUndo?.(lastMove);
+			} else {
+				// Put it back in history if undo failed
+				undoHistory.push(lastMove);
+			}
+
+			return result;
+		} catch (error) {
+			// Put it back in history if undo failed
+			undoHistory.push(lastMove);
+			const message = error instanceof Error ? error.message : 'Undo failed';
+			return { success: false, error: message };
+		}
+	}
+
+	function canUndo(): boolean {
+		return undoHistory.length > 0;
+	}
+
+	// ============================================
+	// KEYBOARD CUT/PASTE
+	// ============================================
+
+	function cutNode(node: EnrichedDocTreeNode) {
+		const parentId = options.getParentId(node.id);
+		const position = options.getNodeIndex(node.id);
+
+		state.cutNode = node;
+		state.cutOriginalParentId = parentId;
+		state.cutOriginalPosition = position;
+
+		// Haptic feedback on mobile
+		if (navigator.vibrate) {
+			navigator.vibrate(30);
+		}
+	}
+
+	function clearCut() {
+		state.cutNode = null;
+		state.cutOriginalParentId = null;
+		state.cutOriginalPosition = 0;
+	}
+
+	async function pasteNode(
+		targetNodeId: string | null,
+		position?: number
+	): Promise<{ success: boolean; error?: string }> {
+		if (!state.cutNode) {
+			return { success: false, error: 'Nothing to paste' };
+		}
+
+		const cutNodeData = state.cutNode;
+		const originalParentId = state.cutOriginalParentId;
+		const originalPosition = state.cutOriginalPosition;
+
+		// Determine target
+		let newParentId: string | null;
+		let newPosition: number;
+
+		if (targetNodeId) {
+			const targetNode = options.getNodeById(targetNodeId);
+			if (!targetNode) {
+				return { success: false, error: 'Target not found' };
+			}
+
+			// Validate: can't paste into self or descendants
+			if (targetNodeId === cutNodeData.id) {
+				return { success: false, error: 'Cannot paste into itself' };
+			}
+
+			const descendants = options.getDescendantIds(cutNodeData.id);
+			if (descendants.has(targetNodeId)) {
+				return { success: false, error: 'Cannot paste into its own contents' };
+			}
+
+			// Paste inside target (as last child) or after target
+			if (targetNode.type === 'folder' || targetNode.children?.length) {
+				newParentId = targetNodeId;
+				newPosition = position ?? targetNode.children?.length ?? 0;
+			} else {
+				// Paste after the target node
+				newParentId = options.getParentId(targetNodeId);
+				newPosition = position ?? options.getNodeIndex(targetNodeId) + 1;
+			}
+		} else {
+			// Paste at root level
+			newParentId = null;
+			newPosition = position ?? 0;
+		}
+
+		// Check if it's a no-op
+		if (newParentId === originalParentId && newPosition === originalPosition) {
+			clearCut();
+			return { success: true };
+		}
+
+		// Clear cut state before move
+		clearCut();
+
+		// Perform the move
+		try {
+			const result = await options.onMove(cutNodeData.id, newParentId, newPosition);
+
+			if (result.success) {
+				// Add to undo history
+				addToUndoHistory({
+					documentId: cutNodeData.id,
+					fromParentId: originalParentId,
+					fromPosition: originalPosition,
+					toParentId: newParentId,
+					toPosition: newPosition,
+					timestamp: Date.now()
+				});
+
+				// Haptic feedback
+				if (navigator.vibrate) {
+					navigator.vibrate([30, 50, 30]);
+				}
+			}
+
+			return result;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Paste failed';
+			return { success: false, error: message };
+		}
 	}
 
 	// ============================================
@@ -441,7 +738,11 @@ export function createDragDropState(options: DragDropOptions) {
 
 	function handleTouchStart(e: TouchEvent, node: EnrichedDocTreeNode, element: HTMLElement) {
 		const touch = e.touches[0];
-		state.touchStartPos = { x: touch.clientX, y: touch.clientY };
+		if (!touch) return;
+
+		const startX = touch.clientX;
+		const startY = touch.clientY;
+		state.touchStartPos = { x: startX, y: startY };
 
 		// Start long press timer
 		longPressTimer = setTimeout(() => {
@@ -450,18 +751,22 @@ export function createDragDropState(options: DragDropOptions) {
 				if (navigator.vibrate) {
 					navigator.vibrate(50);
 				}
-				startDrag(node, element, touch.clientX, touch.clientY, true);
+				startDrag(node, element, startX, startY, true);
 			}
 		}, LONG_PRESS_DELAY);
 	}
 
 	function handleTouchMove(e: TouchEvent) {
 		const touch = e.touches[0];
+		if (!touch) return;
+
+		const touchX = touch.clientX;
+		const touchY = touch.clientY;
 
 		// Cancel long press if moved too much before drag started
 		if (!state.isDragging && state.touchStartPos) {
-			const dx = touch.clientX - state.touchStartPos.x;
-			const dy = touch.clientY - state.touchStartPos.y;
+			const dx = touchX - state.touchStartPos.x;
+			const dy = touchY - state.touchStartPos.y;
 			const distance = Math.sqrt(dx * dx + dy * dy);
 
 			if (distance > 10) {
@@ -477,7 +782,7 @@ export function createDragDropState(options: DragDropOptions) {
 		// Update drag
 		if (state.isDragging) {
 			e.preventDefault(); // Prevent scroll while dragging
-			updateDrag(touch.clientX, touch.clientY);
+			updateDrag(touchX, touchY);
 		}
 	}
 
@@ -507,10 +812,53 @@ export function createDragDropState(options: DragDropOptions) {
 	// KEYBOARD HANDLERS
 	// ============================================
 
+	// Track focused/selected node for keyboard operations
+	let focusedNodeId: string | null = null;
+
+	function setFocusedNode(nodeId: string | null) {
+		focusedNodeId = nodeId;
+	}
+
 	function handleKeyDown(e: KeyboardEvent) {
-		if (state.isDragging && e.key === 'Escape') {
+		const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+		const modKey = isMac ? e.metaKey : e.ctrlKey;
+
+		// Escape - cancel drag or clear cut
+		if (e.key === 'Escape') {
+			if (state.isDragging) {
+				e.preventDefault();
+				cancelDrag();
+			} else if (state.cutNode) {
+				e.preventDefault();
+				clearCut();
+			}
+			return;
+		}
+
+		// Ctrl/Cmd+X - Cut
+		if (modKey && e.key === 'x' && focusedNodeId) {
 			e.preventDefault();
-			cancelDrag();
+			const node = options.getNodeById(focusedNodeId);
+			if (node) {
+				cutNode(node);
+			}
+			return;
+		}
+
+		// Ctrl/Cmd+V - Paste
+		if (modKey && e.key === 'v' && state.cutNode) {
+			e.preventDefault();
+			pasteNode(focusedNodeId);
+			return;
+		}
+
+		// Ctrl/Cmd+Z - Undo
+		if (modKey && e.key === 'z' && !e.shiftKey) {
+			if (canUndo()) {
+				e.preventDefault();
+				undo();
+			}
+			return;
 		}
 	}
 
@@ -531,7 +879,7 @@ export function createDragDropState(options: DragDropOptions) {
 			return state;
 		},
 
-		// Core operations
+		// Core drag operations
 		startDrag,
 		updateDrag,
 		updateDropZone,
@@ -547,6 +895,22 @@ export function createDragDropState(options: DragDropOptions) {
 		handleTouchEnd,
 		handleTouchCancel,
 		handleKeyDown,
+
+		// Keyboard cut/paste
+		cutNode,
+		clearCut,
+		pasteNode,
+		setFocusedNode,
+
+		// Undo
+		undo,
+		canUndo,
+		get undoHistory() {
+			return undoHistory;
+		},
+
+		// Auto-scroll
+		stopAutoScroll,
 
 		// Cleanup
 		cleanup

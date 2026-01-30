@@ -526,6 +526,22 @@ const ACTIVITY_WINDOW_HOURS = 24;
 const ACTIVITY_LOG_LIMIT = 200;
 const ACTIVITY_PER_PROJECT_LIMIT = 8;
 
+// Actions that are meaningful for the daily brief (reduces noise)
+const MEANINGFUL_ACTIONS = [
+	'created',
+	'completed',
+	'updated',
+	'blocked',
+	'unblocked',
+	'state_changed',
+	'priority_changed',
+	'assigned',
+	'unassigned',
+	'moved',
+	'archived',
+	'restored'
+] as const;
+
 function resolveActivityEntityLabel(log: {
 	before_data: unknown;
 	after_data: unknown;
@@ -635,6 +651,7 @@ export class OntologyBriefDataLoader {
 		const projectsById = new Map(projects.map((project) => [project.id, project]));
 
 		// Load recent project activity logs (last 24h)
+		// Filter to meaningful actions only to reduce noise in briefs
 		const activityCutoff = subHours(new Date(), ACTIVITY_WINDOW_HOURS).toISOString();
 		const { data: activityLogs, error: activityError } = await this.supabase
 			.from('onto_project_logs')
@@ -642,6 +659,7 @@ export class OntologyBriefDataLoader {
 				'id, project_id, entity_type, entity_id, action, before_data, after_data, created_at, changed_by_actor_id, changed_by'
 			)
 			.in('project_id', projectIds)
+			.in('action', MEANINGFUL_ACTIONS)
 			.gte('created_at', activityCutoff)
 			.order('created_at', { ascending: false })
 			.limit(ACTIVITY_LOG_LIMIT);
@@ -804,7 +822,8 @@ export class OntologyBriefDataLoader {
 				.from('onto_milestones')
 				.select('id, project_id, title, due_at, state_key, created_at')
 				.in('project_id', projectIds)
-				.is('deleted_at', null),
+				.is('deleted_at', null)
+				.not('state_key', 'in', '(completed,missed)'), // Only fetch active milestones
 			this.supabase
 				.from('onto_risks')
 				.select('id, project_id, title, impact, state_key, created_at')
@@ -1143,12 +1162,9 @@ export class OntologyBriefDataLoader {
 				nextSteps.push(data.project.next_step_long);
 			}
 
-			// Get next milestone
+			// Get next milestone (already pre-filtered to exclude completed/missed at DB level)
 			const nextMilestone = data.milestones
-				.filter(
-					(m) =>
-						m.state_key !== 'completed' && m.state_key !== 'missed' && m.due_at !== null
-				)
+				.filter((m) => m.due_at !== null)
 				.sort((a, b) => parseISO(a.due_at!).getTime() - parseISO(b.due_at!).getTime())[0];
 
 			const projectTodaysTasks = todaysTasksByProject.get(data.project.id) ?? [];
@@ -1222,9 +1238,9 @@ export class OntologyBriefDataLoader {
 		const allEdges = projectsData.flatMap((p) => p.edges);
 		const allGoalProgress = projectsData.flatMap((p) => Array.from(p.goalProgress.values()));
 
-		// Count milestones this week
+		// Count milestones this week (already pre-filtered to exclude completed/missed at DB level)
 		const milestonesThisWeek = allMilestones.filter((m) => {
-			if (m.state_key === 'completed' || m.state_key === 'missed' || !m.due_at) return false;
+			if (!m.due_at) return false;
 			const dueDateStr = formatInTimeZone(parseISO(m.due_at), timezone, 'yyyy-MM-dd');
 			return dueDateStr >= briefDate && dueDateStr <= weekEndStr;
 		}).length;

@@ -33,8 +33,8 @@ These sources emphasize nested graphs; this doc standardizes the linking policy 
 - [Project Graph Enhancements Spec](./PROJECT_GRAPH_ENHANCEMENTS_SPEC.md)
 - [Ontology API Reference](../api/ontology-endpoints.md)
 - [Ontology Endpoints Audit](../reports/ontology-endpoints-audit.md)
-- [Ontology Relationship Rules (Agentic Chat)](../../apps/web/docs/features/agentic-chat/ONTOLOGY_RELATIONSHIP_RULES_SPEC.md)
-- [Project Creation Flow Update Plan](../../apps/web/docs/features/agentic-chat/PROJECT_CREATION_FLOW_UPDATE_PLAN.md)
+- [Ontology Relationship Rules (Agentic Chat)](../../apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md#ontology-relationship-rules)
+- [Project Creation Flow (Agentic Chat)](../../apps/web/docs/features/agentic-chat/README.md#project-creation-flow)
 
 ## Implementation references
 

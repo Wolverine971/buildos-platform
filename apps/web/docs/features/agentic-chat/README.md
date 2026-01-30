@@ -1,858 +1,402 @@
 <!-- apps/web/docs/features/agentic-chat/README.md -->
 
-# Agentic Chat System - Architecture Documentation
+# Agentic Chat Flow (Canonical)
 
-> **Last Updated:** 2026-01-10
-> **Status:** Comprehensive Technical Reference (Post-Refactor)
-> **Maintainer:** BuildOS Platform Team
+> **Last updated:** 2026-01-30
+> **Scope:** End-to-end Agentic Chat flow (UI -> API -> orchestration -> tools -> persistence)
+> **Replaces:** All prior Agentic Chat flow docs in this folder and legacy audits.
 
-The BuildOS Agentic Chat System is a sophisticated multi-agent architecture that enables users to interact with the platform through natural language. It features a **planner-executor model**, **real-time SSE streaming**, and a **comprehensive tool system** for managing the ontology (projects, tasks, plans, goals, documents).
+This document is the single source of truth for the Agentic Chat flow. It traces:
 
----
-
-## Table of Contents
-
-1. [Quick Start](#quick-start)
-2. [Architecture Overview](#architecture-overview)
-3. [Complete Data Flow](#complete-data-flow)
-4. [Core Components](#core-components)
-5. [SSE Event System](#sse-event-system)
-6. [Tool System](#tool-system)
-7. [State Management](#state-management)
-8. [Known Issues & Improvements](#known-issues--improvements)
-9. [API Reference](#api-reference)
-10. [File Reference](#file-reference)
-11. [Development Guide](#development-guide)
+- API calls and streaming behavior
+- SSE event admission + client handling
+- Context types and how they shape prompts/tools
+- Planner vs executor interactions
+- Tool execution and external/internal APIs
+- Data models and persistence
+- Known gaps and improvement opportunities
 
 ---
 
-## Quick Start
+## 1. Entry Points (Code Map)
 
-### Key Entry Points
+| Layer         | Primary Entry                                                                     | Purpose                                  |
+| ------------- | --------------------------------------------------------------------------------- | ---------------------------------------- |
+| UI            | `apps/web/src/lib/components/agent/AgentChatModal.svelte`                         | Chat UI + SSE handling                   |
+| API           | `apps/web/src/routes/api/agent/stream/+server.ts`                                 | SSE stream endpoint                      |
+| Orchestration | `apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts` | Planner loop + tool + plan orchestration |
+| Tooling       | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts`   | Tool dispatch to executors               |
+| Persistence   | `apps/web/src/lib/services/agentic-chat/persistence/agent-persistence-service.ts` | Agent/plan/session persistence           |
 
-| Layer        | Primary File                                                             | Purpose                        |
-| ------------ | ------------------------------------------------------------------------ | ------------------------------ |
-| **Frontend** | `src/lib/components/agent/AgentChatModal.svelte`                         | Main chat interface (~2500 ln) |
-| **API**      | `src/routes/api/agent/stream/+server.ts`                                 | SSE endpoint orchestrator      |
-| **Backend**  | `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts` | Core orchestration logic       |
+Supporting services:
 
-### Backend Modular Structure
-
-```
-src/routes/api/agent/stream/
-├── +server.ts           # Main endpoint (~150 lines)
-├── types.ts             # Endpoint-specific types
-├── services/
-│   ├── session-manager.ts      # Session CRUD, focus resolution
-│   ├── stream-handler.ts       # SSE lifecycle management
-│   └── ontology-cache.ts       # Session-level caching
-└── utils/
-    ├── context-utils.ts        # Context type normalization
-    ├── event-mapper.ts         # StreamEvent → AgentSSEMessage
-    └── rate-limiter.ts         # Request throttling
-```
+- Context assembly: `apps/web/src/lib/services/agent-context-service.ts`
+- Session management: `apps/web/src/routes/api/agent/stream/services/session-manager.ts`
+- SSE lifecycle: `apps/web/src/routes/api/agent/stream/services/stream-handler.ts`
+- Tool execution: `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`
+- Plan execution: `apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts`
+- Executor runtime: `apps/web/src/lib/services/agent-executor-service.ts`
 
 ---
 
-## Architecture Overview
+## 2. API Calls (Client -> Server)
 
-### High-Level System Flow
+### 2.1 Primary endpoints
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              FRONTEND (SvelteKit + Svelte 5)                     │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  AgentChatModal.svelte                                                           │
-│  ├── Context Selection → ContextSelectionScreen.svelte                          │
-│  ├── Message Display → AgentMessageList.svelte                                  │
-│  ├── Input → AgentComposer.svelte (with voice support)                          │
-│  ├── Project Focus → ProjectFocusSelector, ProjectActionSelector                │
-│  ├── Thinking Blocks → Collapsible activity visualization                        │
-│  └── SSE Processing → SSEProcessor utility class                                │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                        SSE STREAM (POST /api/agent/stream)                       │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  API Endpoint Layer                                                              │
-│  ├── Authentication (locals.supabase → user)                                    │
-│  ├── SessionManager.resolveSession() → Create/fetch chat session                │
-│  ├── OntologyCacheService.loadWithSessionCache() → Context loading              │
-│  └── StreamHandler.createAgentStream() → SSE lifecycle                          │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                              ORCHESTRATION LAYER                                 │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  AgentChatOrchestrator                                                           │
-│  ├── AgentContextService.buildPlannerContext() → System prompt + tools          │
-│  ├── ProjectCreationAnalyzer → Clarification flow for project_create            │
-│  ├── EnhancedLLMWrapper.streamText() → LLM streaming with tool calls            │
-│  ├── ToolExecutionService.executeTool() → Tool dispatch and execution           │
-│  ├── PlanOrchestrator → Multi-step plan creation and execution                  │
-│  └── ResponseSynthesizer → Natural language response generation                 │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                              DATA LAYER                                          │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│  Supabase Database (onto_* tables)                                               │
-│  ├── onto_projects, onto_tasks, onto_plans, onto_goals                          │
-│  ├── onto_documents, onto_edges                                                 │
-│  └── chat_sessions, agent_agents, agent_plans                                    │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
+| Method | Endpoint                          | Who calls         | Purpose                                    |
+| ------ | --------------------------------- | ----------------- | ------------------------------------------ |
+| POST   | `/api/agent/stream`               | UI                | Starts SSE stream for a chat turn          |
+| GET    | `/api/agent/stream`               | UI                | Lists or fetches sessions                  |
+| POST   | `/api/agent/prewarm`              | UI                | Prewarm context caches for focus selection |
+| POST   | `/api/agentic-chat/agent-message` | UI / agent bridge | Agent-to-agent "message suggestion"        |
 
-### Service Factory Pattern
+### 2.2 Tool-driven internal endpoints
 
-Services are instantiated via `createAgentChatOrchestrator()` in `src/lib/services/agentic-chat/index.ts`:
+Tools call these internal APIs (via `BaseExecutor.apiRequest()`):
 
-```typescript
-export function createAgentChatOrchestrator(
-	supabase: SupabaseClient<Database>,
-	options: AgenticChatFactoryOptions = {}
-): AgentChatOrchestrator {
-	// Creates dependency graph:
-	// llmService → compressionService → contextService
-	// persistenceService, toolExecutionService
-	// executorService → executorCoordinator → planOrchestrator
-	// responseSynthesizer, errorLogger
-}
-```
+- `/api/onto/projects/instantiate`
+- `/api/onto/tasks/create`
+- `/api/onto/goals/create`
+- `/api/onto/plans/create`
+- `/api/onto/documents/create`
+- `/api/onto/edges/link`, `/api/onto/edges/unlink`
+- `/api/onto/projects/reorganize` (graph reorg)
+- `/api/onto/...` update / delete routes
 
-### Multi-Agent Model (Planner-Executor)
+These requests include `Authorization` and `X-Change-Source: chat` headers. See `apps/web/src/lib/services/agentic-chat/tools/core/executors/base-executor.ts`.
 
-| Agent Type   | Role                                                 | Token Budget | Trigger                 |
-| ------------ | ---------------------------------------------------- | ------------ | ----------------------- |
-| **Planner**  | Analyzes requests, creates plans, decides tool usage | ~5000 tokens | Every conversation turn |
-| **Executor** | Carries out specific plan steps with focused tools   | ~1500 tokens | When plan step requires |
-| **Reviewer** | Critiques plans before execution (optional)          | ~2000 tokens | `agent_review` mode     |
+### 2.3 External APIs
+
+| Tool           | Provider                                       | File                                                                               |
+| -------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `web_search`   | Tavily                                         | `apps/web/src/lib/services/agentic-chat/tools/websearch/`                          |
+| `web_visit`    | Direct HTTP + optional LLM markdown conversion | `apps/web/src/lib/services/agentic-chat/tools/webvisit/`                           |
+| Calendar tools | Google Calendar API                            | `apps/web/src/lib/services/agentic-chat/tools/core/executors/calendar-executor.ts` |
 
 ---
 
-## Complete Data Flow
+## 3. End-to-End Flow (UI -> Stream -> Orchestrator)
 
-### 1. Frontend → API Request
+### 3.1 Optional: Prewarm
 
-```typescript
-// AgentChatModal.svelte: sendMessage()
-const response = await fetch('/api/agent/stream', {
-	method: 'POST',
-	headers: { 'Content-Type': 'application/json' },
-	signal: streamController.signal,
-	body: JSON.stringify({
-		message: trimmed, // User input
-		session_id: currentSession?.id, // Existing session or undefined
-		context_type: selectedContextType, // 'global' | 'project' | 'project_create' | etc.
-		entity_id: selectedEntityId, // Project/task ID
-		conversation_history: conversationHistory,
-		ontologyEntityType: ontologyEntityType,
-		projectFocus: resolvedProjectFocus,
-		lastTurnContext: lastTurnContext // Previous turn's context snapshot
-	})
-});
+When the chat opens or focus changes, UI calls `/api/agent/prewarm`:
+
+1. Resolves or creates a `chat_sessions` record (if no session)
+2. Loads lightweight location + linked-entity context
+3. Stores caches in `chat_sessions.agent_metadata` (`locationContextCache`, `linkedEntitiesCache`)
+
+### 3.2 Chat turn (POST /api/agent/stream)
+
+High-level sequence:
+
+```
+UI (AgentChatModal)
+  -> POST /api/agent/stream
+    -> SessionManager.resolveSession()
+    -> OntologyCacheService.loadWithSessionCache()
+    -> MessagePersister.persistUserMessage()
+    -> StreamHandler.startAgentStream()
+      -> AgentChatOrchestrator.streamConversation()
+        -> AgentContextService.buildPlannerContext()
+        -> ToolSelectionService.selectTools()
+        -> EnhancedLLMWrapper.streamText()
+           -> tool calls -> ToolExecutionService -> ChatToolExecutor -> Executors
+        -> optional agent_create_plan -> PlanOrchestrator -> ExecutorCoordinator -> AgentExecutorService
+      -> StreamHandler persists assistant + tool results
 ```
 
-### 2. API Endpoint Processing
+### 3.2.1 Sequence diagram (Mermaid)
 
-```typescript
-// +server.ts: POST handler
-1. Authenticate user via locals.supabase
-2. Parse and validate request body → StreamRequest
-3. SessionManager.resolveSession()
-   - Create new session OR fetch existing
-   - Load session metadata (focus, ontologyCache)
-   - Load conversation history (last 50 messages)
-4. OntologyCacheService.loadWithSessionCache()
-   - Check session-level cache (5min TTL)
-   - Load ontology context based on context_type + focus
-   - Cache result in session metadata
-5. SessionManager.resolveProjectFocus()
-   - Resolve focus from request OR session metadata
-   - Persist focus changes to database
-6. StreamHandler.createAgentStream() → SSE Response
+```mermaid
+sequenceDiagram
+  participant U as User/UI
+  participant API as /api/agent/stream
+  participant SM as SessionManager
+  participant OC as OntologyCache
+  participant SH as StreamHandler
+  participant OR as Orchestrator
+  participant LLM as Planner LLM
+  participant TE as ToolExecutionService
+  participant CT as ChatToolExecutor
+  participant EX as Tool Executors
+  participant DB as Supabase
+
+  U->>API: POST message + context + history
+  API->>SM: resolveSession()
+  SM->>DB: chat_sessions / chat_messages
+  API->>OC: loadWithSessionCache()
+  OC->>DB: onto_* (if needed)
+  API->>DB: persist user message
+  API->>SH: startAgentStream()
+  SH->>OR: streamConversation()
+  OR->>LLM: streamText(messages, tools)
+  LLM-->>OR: text / tool_call / done
+  OR->>TE: executeTool(tool_call)
+  TE->>CT: dispatch tool
+  CT->>EX: ontology/calendar/utility/external
+  EX->>DB: read/write or external API
+  EX-->>CT: result (+ stream events)
+  CT-->>TE: ToolExecutionResult
+  TE-->>OR: tool_result
+  OR-->>SH: StreamEvent
+  SH-->>U: SSE events
+  SH->>DB: persist assistant + tool results
+  SH-->>U: done
 ```
 
-### 3. Stream Handler → Orchestrator
+### 3.3 StreamHandler responsibilities
 
-```typescript
-// stream-handler.ts: createAgentStream()
-1. Create SSE response stream
-2. Send initial events (session, focus_active)
-3. Create AgentChatOrchestrator via factory
-4. Iterate orchestrator.streamConversation()
-5. Map each StreamEvent → AgentSSEMessage via event-mapper
-6. Write to SSE stream
-7. Handle errors (emit error + done)
-8. Persist assistant message on completion
-```
+`apps/web/src/routes/api/agent/stream/services/stream-handler.ts`
 
-### 4. Orchestrator Processing
-
-```typescript
-// agent-chat-orchestrator.ts: streamConversation()
-1. Build PlannerContext
-   - System prompt with ontology awareness
-   - Compressed conversation history
-   - Location context (project/focus details)
-   - Available tools for context
-
-2. Create Planner Agent record in database
-
-3. Emit initial events:
-   - debug_context (if debug mode)
-   - session
-   - last_turn_context
-   - context_usage
-
-4. Project Creation Check (if context_type === 'project_create')
-   - ProjectCreationAnalyzer.analyzeIntent()
-   - If insufficient context → emit clarifying_questions, return
-   - Max 2 clarification rounds
-
-5. Run Planner Loop (runPlannerLoop)
-   ┌─────────────────────────────────────────────────┐
-   │  while (continueLoop) {                         │
-   │    a. Emit agent_state: 'thinking'              │
-   │    b. Stream LLM response with tools            │
-   │    c. Collect text chunks → emit 'text'         │
-   │    d. Collect tool_calls → emit 'tool_call'     │
-   │    e. If no tool calls:                         │
-   │       - Emit done, return                       │
-   │    f. For each tool call:                       │
-   │       - Execute via ToolExecutionService        │
-   │       - Emit 'tool_result'                      │
-   │       - Handle context_shift if present         │
-   │       - Emit stream events from tool            │
-   │       - Push tool result to messages            │
-   │    g. Check limits (15 tools, 90s timeout)      │
-   │  }                                              │
-   └─────────────────────────────────────────────────┘
-
-6. Virtual Tool Handler (agent_create_plan)
-   - Parse plan arguments
-   - Determine execution mode
-   - Create plan via PlanOrchestrator
-   - Execute or draft for review
-```
-
-### 5. Plan Execution Flow
-
-```typescript
-// plan-orchestrator.ts
-1. Create plan with steps from LLM
-2. Persist plan to database
-3. Emit plan_created OR plan_ready_for_review
-
-4. For each step (if auto_execute):
-   - Emit step_start
-   - Check dependencies resolved
-   - If executorRequired:
-     - Spawn executor via ExecutorCoordinator
-     - Emit executor_spawned
-     - Wait for result
-     - Emit executor_result
-   - Else:
-     - Execute tool directly
-   - Emit step_complete
-
-5. Synthesize final response via ResponseSynthesizer
-```
-
-### 6. Frontend SSE Processing
-
-```typescript
-// AgentChatModal.svelte: handleSSEMessage()
-switch (event.type) {
-  case 'session':           → Update currentSession, context labels
-  case 'last_turn_context': → Store for next request
-  case 'context_usage':     → Update contextUsage display
-  case 'focus_active':      → Update projectFocus
-  case 'focus_changed':     → Update projectFocus + log activity
-  case 'agent_state':       → Update agentState, currentActivity
-  case 'clarifying_questions': → Add clarification message
-  case 'plan_created':      → Store currentPlan, update thinking block
-  case 'plan_ready_for_review': → Store plan, wait for user approval
-  case 'step_start':        → Update plan step status
-  case 'step_complete':     → Update plan step status
-  case 'executor_spawned':  → Add to thinking block
-  case 'executor_result':   → Update thinking block
-  case 'plan_review':       → Log review verdict
-  case 'text':              → Append to assistant message
-  case 'tool_call':         → Add activity to thinking block
-  case 'tool_result':       → Update activity status
-  case 'context_shift':     → Update context type, entity, focus
-  case 'done':              → Finalize messages, clear streaming state
-  case 'error':             → Set error state
-}
-```
+- Sends initial `context_usage` snapshot (fast estimate)
+- Builds/refreshes `LastTurnContext`
+- Runs orchestrator and maps events to SSE
+- Guarantees event ordering: `error` (if any) then `done`
+- Persists assistant message + tool results at end
 
 ---
 
-## Core Components
+## 4. SSE Event Contract (What the Client Receives)
 
-### Frontend Components
+Events emitted by the orchestrator (and stream layer) are mapped to SSE via:
+`apps/web/src/routes/api/agent/stream/utils/event-mapper.ts`.
 
-#### AgentChatModal.svelte
+### 4.1 Primary SSE event types
 
-**Location:** `src/lib/components/agent/AgentChatModal.svelte`
-**Purpose:** Main chat interface container and orchestrator
+| Event                                  | Source                       | When emitted                                        |
+| -------------------------------------- | ---------------------------- | --------------------------------------------------- |
+| `session`                              | StreamHandler                | Session resolved / created                          |
+| `context_usage`                        | StreamHandler + Orchestrator | Quick estimate + compression-aware usage            |
+| `focus_active`                         | StreamHandler                | Focus resolved for session                          |
+| `last_turn_context`                    | Orchestrator + StreamHandler | Initial context + refreshed on completion           |
+| `agent_state`                          | Orchestrator                 | `thinking` -> `executing_plan` -> `waiting_on_user` |
+| `text`                                 | Planner loop                 | Streaming assistant text                            |
+| `tool_call`                            | Planner / Plan step          | LLM requested tool execution                        |
+| `tool_result`                          | ToolExecutionService         | Tool result (may include context shift)             |
+| `plan_created`                         | Plan tool                    | Planner created a plan                              |
+| `plan_ready_for_review`                | Plan tool                    | Drafted plan awaiting review                        |
+| `plan_review`                          | Plan tool                    | Reviewer verdict                                    |
+| `step_start` / `step_complete`         | Plan executor                | Plan step lifecycle                                 |
+| `executor_spawned` / `executor_result` | Executor coordinator         | Executor runs                                       |
+| `context_shift`                        | StreamHandler                | Tool-triggered context change                       |
+| `clarifying_questions`                 | Project creation analyzer    | When clarification is required                      |
+| `error`                                | StreamHandler / Orchestrator | Error occurred                                      |
+| `done`                                 | StreamHandler / Orchestrator | Always sent at end                                  |
 
-**Key State (Svelte 5 Runes):**
+### 4.2 SSE ordering guarantee
 
-```typescript
-// Core conversation state
-let messages = $state<UIMessage[]>([]);
-let currentSession = $state<ChatSession | null>(null);
-let isStreaming = $state(false);
-let error = $state<string | null>(null);
+The stream guarantees:
 
-// Agent state
-let agentState = $state<AgentLoopState | null>(null);
-let currentActivity = $state<string>('');
-let currentPlan = $state<any>(null);
-
-// Context state
-let selectedContextType = $state<ChatContextType | null>(null);
-let selectedEntityId = $state<string | undefined>(undefined);
-let projectFocus = $state<ProjectFocus | null>(null);
-let lastTurnContext = $state<LastTurnContext | null>(null);
-
-// Thinking block tracking
-let currentThinkingBlockId = $state<string | null>(null);
-let currentAssistantMessageId = $state<string | null>(null);
-```
-
-**Key Functions:**
-
-| Function                       | Purpose                                   |
-| ------------------------------ | ----------------------------------------- |
-| `sendMessage()`                | Initiates chat turn, creates SSE stream   |
-| `handleSSEMessage()`           | Routes SSE events to appropriate handlers |
-| `createThinkingBlock()`        | Creates new thinking block for activities |
-| `addActivityToThinkingBlock()` | Adds tool/step activity to current block  |
-| `updateActivityStatus()`       | Updates tool call completion status       |
-| `handleContextSelect()`        | Processes context selection               |
-| `handleClose()`                | Cleanup and classification trigger        |
-
-#### Supporting Components
-
-| Component                       | Purpose                                     |
-| ------------------------------- | ------------------------------------------- |
-| `AgentMessageList.svelte`       | Renders messages and thinking blocks        |
-| `AgentComposer.svelte`          | Input with voice support and send button    |
-| `AgentChatHeader.svelte`        | Header with context info and navigation     |
-| `ContextSelectionScreen.svelte` | Context/project selection UI                |
-| `ProjectFocusSelector.svelte`   | Focused element selection within project    |
-| `ProjectActionSelector.svelte`  | Action selection (workspace/audit/forecast) |
-
-### Backend Services
-
-#### AgentChatOrchestrator
-
-**Location:** `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts`
-
-**Dependencies:**
-
-```typescript
-interface AgentChatOrchestratorDependencies {
-	planOrchestrator: PlanOrchestrator;
-	toolExecutionService: ToolExecutionService;
-	responseSynthesizer: ResponseSynthesizer;
-	persistenceService: PersistenceOperations;
-	contextService: AgentContextService;
-	llmService: SmartLLMService;
-	errorLogger: ErrorLoggerService;
-}
-```
-
-**Key Methods:**
-
-| Method                                | Purpose                                    |
-| ------------------------------------- | ------------------------------------------ |
-| `streamConversation()`                | Main entry point, async generator          |
-| `runPlannerLoop()`                    | Core planner agent loop                    |
-| `handlePlanToolCall()`                | Processes `agent_create_plan` virtual tool |
-| `checkProjectCreationClarification()` | Handles clarification flow                 |
-| `buildPlannerMessages()`              | Constructs LLM message array               |
-| `ensureWithinLimits()`                | Enforces time and tool call limits         |
-
-**Limits:**
-
-```typescript
-const MAX_TOOL_CALLS_PER_TURN = 15;
-const MAX_SESSION_DURATION_MS = 90_000; // 90 seconds
-```
-
-#### Stream Handler Services
-
-**SessionManager** (`services/session-manager.ts`):
-
-- `resolveSession()` - Create or fetch existing session
-- `resolveProjectFocus()` - Handle focus changes with persistence
-- `updateSessionMetadata()` - Persist metadata changes
-
-**StreamHandler** (`services/stream-handler.ts`):
-
-- `createAgentStream()` - Main SSE stream creation
-- Event mapping via `mapPlannerEventToSSE()`
-- Error handling with error + done sequence
-- Message persistence on completion
-
-**OntologyCacheService** (`services/ontology-cache.ts`):
-
-- Session-level caching (5min TTL)
-- Cache key based on context + focus
-- Invalidation on focus change
+1. `error` is sent before `done` if any error occurs.
+2. `done` is always sent (success or failure).
+3. Stream is always closed in `finally`.
 
 ---
 
-## SSE Event System
+## 5. Context Types and Focus
 
-### Event Types (StreamEvent → AgentSSEMessage)
+### 5.1 ChatContextType values
 
-| Internal Event Type     | SSE Message Type        | Data                                   |
-| ----------------------- | ----------------------- | -------------------------------------- |
-| `session`               | `session`               | `{ session: ChatSession }`             |
-| `ontology_loaded`       | `ontology_loaded`       | `{ summary: string }`                  |
-| `last_turn_context`     | `last_turn_context`     | `{ context: LastTurnContext }`         |
-| `context_usage`         | `context_usage`         | `{ usage: ContextUsageSnapshot }`      |
-| `agent_state`           | `agent_state`           | `{ state, contextType, details? }`     |
-| `clarifying_questions`  | `clarifying_questions`  | `{ questions: string[] }`              |
-| `plan_created`          | `plan_created`          | `{ plan: AgentPlan }`                  |
-| `plan_ready_for_review` | `plan_ready_for_review` | `{ plan, summary?, recommendations? }` |
-| `step_start`            | `step_start`            | `{ step: PlanStep }`                   |
-| `step_complete`         | `step_complete`         | `{ step: PlanStep }`                   |
-| `executor_spawned`      | `executor_spawned`      | `{ executorId, task }`                 |
-| `executor_result`       | `executor_result`       | `{ executorId, result }`               |
-| `plan_review`           | `plan_review`           | `{ plan, verdict, notes?, reviewer? }` |
-| `text`                  | `text`                  | `{ content: string }`                  |
-| `tool_call`             | `tool_call`             | `{ tool_call: ChatToolCall }`          |
-| `tool_result`           | `tool_result`           | `{ result: ToolExecutionResult }`      |
-| `done`                  | `done`                  | `{ usage?: { total_tokens } }`         |
-| `error`                 | `error`                 | `{ error: string }`                    |
+Defined in `packages/shared-types/src/chat.types.ts`:
+
+```
+'global'
+'project'
+'calendar'
+'general'
+'project_create'
+'project_audit'
+'project_forecast'
+'daily_brief_update'
+'ontology'
+'brain_dump'
+```
 
 Notes:
 
-- Plan step failures surface `step.status = failed` plus `step.error` on `step_complete`, and the UI logs the error details in the thinking block and plan visualization.
-- Plan execution failures include the failed step context in the `error` message when available.
+- `general` is normalized to `global`.
+- `project_*` contexts use project-specific prompts and tools.
 
-### SSE-Only Events (Passthrough)
+### 5.2 Focus vs context
 
-These events bypass the mapper and are sent directly:
+**Context type** selects the mode (prompt + tools). **Project focus** adds a target project/entity.
 
-- `focus_active` - Current project focus
-- `focus_changed` - Focus changed during session
-- `context_shift` - Context changed by tool execution
+Focus is stored in `chat_sessions.agent_metadata.focus` and includes:
 
-### Event Mapping (`event-mapper.ts`)
+- `projectId`, `projectName`
+- Optional `focusType` (entity type) + `focusEntityId`
 
-```typescript
-// Data-driven mapping approach
-const EVENT_MAPPERS: Record<string, (event) => AgentSSEMessage | null> = {
-	session: (e) => ({ type: 'session', session: e.session }),
-	text: (e) => ({ type: 'text', content: e.content }),
-	tool_call: (e) => ({ type: 'tool_call', tool_call: e.toolCall })
-	// ... etc
-};
+### 5.3 LastTurnContext
 
-export function mapPlannerEventToSSE(event): AgentSSEMessage | null {
-	// Passthrough SSE-only types
-	if (['focus_active', 'focus_changed', 'context_shift'].includes(event.type)) {
-		return event;
-	}
-	// Look up mapper
-	const mapper = EVENT_MAPPERS[event.type];
-	return mapper ? mapper(event) : null;
-}
-```
+`LastTurnContext` provides continuity across turns, derived from:
+
+- Recent messages
+- Tool calls and tool results
+- Context shifts
+
+Generated by `generateLastTurnContext()` in:
+`apps/web/src/routes/api/agent/stream/utils/context-utils.ts`.
 
 ---
 
-## Tool System
+## 6. Planner <-> Executor Interactions
 
-### Tool Categories
+### 6.1 Planner loop
 
-**Total: 38 tools** across 5 categories
+Planner execution is streamed via `AgentChatOrchestrator.runPlannerLoop()`:
 
-| Category     | Count | Examples                                               |
-| ------------ | ----- | ------------------------------------------------------ |
-| **Search**   | 12    | `list_onto_tasks`, `search_ontology`, `search_onto_*`  |
-| **Read**     | 5     | `get_onto_project_details`, `get_onto_task_details`    |
-| **Write**    | 15    | `create_onto_task`, `update_onto_project`, `delete_*`  |
-| **Template** | 2     | `request_template_creation`, `suggest_template`        |
-| **Utility**  | 4     | `get_field_info`, `web_search`, `get_buildos_overview` |
+- Builds planner messages (system + context snapshot + history + user message)
+- Streams text from the LLM
+- Executes tool calls in sequence
+- Updates context on context shift
+- Emits `agent_state`, `text`, `tool_call`, `tool_result`, `done`
 
-### Virtual Tools
+### 6.2 Plan tool (`agent_create_plan`)
 
-| Tool                | Handler Location      | Purpose                    |
-| ------------------- | --------------------- | -------------------------- |
-| `agent_create_plan` | AgentChatOrchestrator | Generate and execute plans |
+Planner can call `agent_create_plan` (virtual tool):
 
-### Context-Aware Tool Selection
+- Creates `agent_plans` record
+- Emits `plan_created`
+- Executes plan automatically OR returns draft for review
 
-Tools are filtered based on context type via `getToolsForContextType()`:
+Execution modes:
 
-```typescript
-type ToolContextScope =
-	| 'base' // Always available
-	| 'global' // Cross-project context
-	| 'project_create' // Creating new projects
-	| 'project' // Working in project
-	| 'project_audit' // Audit mode
-	| 'project_forecast'; // Forecast mode
-```
+- `auto_execute` (default)
+- `draft_only` (return plan to user)
+- `agent_review` (reviewer LLM gate)
 
----
+### 6.3 Executor runtime
 
-## State Management
+When a plan step requires an executor:
 
-### UIMessage Types
+1. `ExecutorCoordinator.spawnExecutor()`
+2. `AgentExecutorService.executeTask()` runs a focused LLM loop
+3. Results are persisted in `agent_chat_sessions`, `agent_chat_messages`, `agent_executions`
+4. Orchestrator receives `executor_result` and continues plan execution
 
-```typescript
-interface UIMessage {
-	id: string;
-	type:
-		| 'user'
-		| 'assistant'
-		| 'activity'
-		| 'thinking_block'
-		| 'plan'
-		| 'step'
-		| 'executor'
-		| 'clarification'
-		| 'agent_peer';
-	content: string;
-	timestamp: Date;
-	role?: ChatRole;
-	data?: any;
-	tool_calls?: any;
-}
+<a name="project-creation-flow"></a>
+### 6.4 Project creation flow (project_create context)
 
-interface ThinkingBlockMessage extends UIMessage {
-	type: 'thinking_block';
-	activities: ActivityEntry[];
-	status: 'active' | 'completed';
-	agentState?: AgentLoopState;
-	isCollapsed?: boolean;
-}
-```
+The `project_create` context is a guided flow that emphasizes structure and completeness:
 
-### Activity Types
+1. **Clarification gate**: `ProjectCreationAnalyzer` may emit `clarifying_questions` before planning proceeds.
+2. **Plan/tool decision**: Planner decides whether to call `agent_create_plan` or to execute tools directly.
+3. **Project instantiation**: `create_onto_project` is expected to create the project plus its related entities and relationships (including `context_document` when available).
+4. **Context shift**: `create_onto_project` returns a `context_shift` to the new project, which the stream layer persists and sends to the client.
 
-```typescript
-type ActivityType =
-	| 'tool_call'
-	| 'tool_result'
-	| 'plan_created'
-	| 'plan_review'
-	| 'state_change'
-	| 'step_start'
-	| 'step_complete'
-	| 'executor_spawned'
-	| 'executor_result'
-	| 'context_shift'
-	| 'template_request'
-	| 'template_status'
-	| 'template_suggestion'
-	| 'ontology_loaded'
-	| 'clarification'
-	| 'general';
-```
-
-### Agent States
-
-```typescript
-type AgentLoopState = 'thinking' | 'executing_plan' | 'waiting_on_user';
-```
-
-### Voice Note Attachments
-
-Agentic chat supports per-message voice note groups. Each stop/start recording creates a segment
-stored in `voice_notes` with a shared `group_id`. When the message is sent, the group is attached
-to the persisted chat message and the message metadata includes `voice_note_group_id`.
-
-```typescript
-voiceNoteGroupId: string | null; // Active group for the pending user message
-voiceNotesByGroupId: Record<string, VoiceNote[]>; // Cached segments for playback panels
-```
+See the tool-to-API mapping doc for the detailed API payloads and relationship expectations:
+`apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md`.
 
 ---
 
-## Known Issues & Improvements
+## 7. Tool System (Selection + Execution)
 
-### Recent Updates (2026-01-10)
+### 7.1 Tool selection
 
-- Added voice note groups for agentic chat messages (grouped segments + async attachment).
-- Message metadata now includes `voice_note_group_id` to drive playback panels.
-- History/resume loads voice notes via `includeVoiceNotes=1` on chat session fetch.
+Tool selection is performed by `ToolSelectionService` and `StrategyAnalyzer`:
 
-### Recent Updates (2026-01-07)
+- Default tools are chosen from `tools.config.ts` based on context
+- Planner may call tools outside the selection; system expands tool pool on miss
 
-- Improved plan failure visibility: failed steps/tools now surface error details in the thinking log and plan visualization, and plan-level errors include step context. Docs: [Frontend Quick Reference](./FRONTEND_QUICK_REFERENCE.md), [Visual Guide](./VISUAL_GUIDE.md), [Backend Architecture Overview](./BACKEND_ARCHITECTURE_OVERVIEW.md), [Tool System README](./tool-system/README.md).
-- Allowed superseding active streams when sending a new message.
-- Expanded tool status/toast coverage for outputs, milestones, risks, decisions, and requirements.
-- Validated ontology access before persisting user messages; refined partial token estimates; reduced hot-path logging; optimized streaming message updates.
+### 7.2 Tool execution pipeline
 
-### Remediation Status (2025-12-17 Audit)
-
-| Issue                                      | Status          | Notes                                                                                       |
-| ------------------------------------------ | --------------- | ------------------------------------------------------------------------------------------- |
-| StreamEvent → AgentSSEMessage typing       | ✅ **Fixed**    | Uses `Extract<>` type guards + `normalizePlan()` helper for camelCase→snake_case conversion |
-| Drop unused `ontology_loaded` SSE emission | ✅ **Fixed**    | Event emission commented out in orchestrator; type still exists for backward compat         |
-| tool_result → tool_call matching           | ⚠️ **Deferred** | Warning still present in dev mode; no race condition observed—warning is diagnostic only    |
-| `normalizeContextType` consolidation       | ✅ **Fixed**    | Single canonical source at `utils/context-utils.ts`; all imports point there                |
-| `error` → `done` sequencing                | ✅ **Fixed**    | StreamHandler guarantees sequence; orchestrator tracks `doneEmitted` flag                   |
-
-### Resolved Issues
-
-#### 1. Type-Safe Event Mapper ✅
-
-**Location:** `src/routes/api/agent/stream/utils/event-mapper.ts`
-
-The event mapper now uses proper TypeScript patterns:
-
-```typescript
-// Uses Extract<> for type-safe narrowing instead of `as any`
-plan_created: (event) => {
-  const e = event as Extract<StreamEvent, { type: 'plan_created' }>;
-  return {
-    type: 'plan_created',
-    plan: normalizePlan(e.plan)  // Safe conversion camelCase → snake_case
-  };
-},
+```
+LLM tool_call
+  -> ToolExecutionService
+    -> ChatToolExecutor
+      -> Domain executor (ontology/calendar/utility/external)
+      -> Tool result + optional stream events
 ```
 
-The `normalizePlan()` helper handles the AgentPlan shape differences between internal (camelCase) and SSE (snake_case) formats.
+Tool execution is logged in `chat_tool_executions`.
 
-#### 2. Ontology Loaded Event Removed ✅
+### 7.3 Tool categories and underlying APIs
 
-**Location:** `agent-chat-orchestrator.ts:229-236`
+| Category       | Tools                                                               | Execution path          | Primary data/API                    |
+| -------------- | ------------------------------------------------------------------- | ----------------------- | ----------------------------------- |
+| Ontology read  | `list_onto_*`, `search_*`, `get_*`                                  | `OntologyReadExecutor`  | Supabase `onto_*` tables            |
+| Ontology write | `create_onto_*`, `update_onto_*`, `delete_onto_*`                   | `OntologyWriteExecutor` | Internal `/api/onto/*` endpoints    |
+| Utility        | `get_field_info`, `get_entity_relationships`, `get_linked_entities` | `UtilityExecutor`       | Supabase + OntologyContextLoader    |
+| Calendar       | `list_calendar_events`, `create_calendar_event`, etc                | `CalendarExecutor`      | Google Calendar API + `onto_events` |
+| External       | `web_search`, `web_visit`, `get_buildos_overview`                   | `ExternalExecutor`      | Tavily + HTTP fetch + LLM           |
 
-The `ontology_loaded` event emission is commented out. The event type remains in `StreamEvent` for backward compatibility but is never emitted. Frontend handler was already disabled.
+### 7.4 Tool-to-API mappings (detailed)
 
-#### 3. Context Normalization Consolidated ✅
-
-**Canonical Location:** `src/routes/api/agent/stream/utils/context-utils.ts`
-
-All usages now import from this single source:
-
-- `agent-chat-orchestrator.ts` → imports from `context-utils.ts`
-- `agent-context-service.ts` → imports from `context-utils.ts`
-- `executor-context-builder.ts` → imports from `context-utils.ts`
-- `stream-handler.ts` → imports via `../utils` barrel
-- `ontology-cache.ts` → imports via `../utils` barrel
-
-#### 4. Error→Done Sequence Guaranteed ✅
-
-**StreamHandler** (`stream-handler.ts:347-379`):
-
-```typescript
-catch (streamError) {
-  // CRITICAL: Send error event, then done event
-  await agentStream.sendMessage({ type: 'error', error: ... });
-
-  // Ensure done is sent even when errors occur
-  if (!state.completionSent) {
-    state.completionSent = true;
-    await agentStream.sendMessage({ type: 'done', ... });
-  }
-}
-```
-
-**Orchestrator** (`agent-chat-orchestrator.ts:161,275,299`):
-
-```typescript
-let doneEmitted = false;
-// ... tracked at clarification return and planner loop completion
-if (event.type === 'done') {
-	doneEmitted = true;
-}
-```
-
-### Remaining Items (Low Priority)
-
-#### Tool Result Warning in Dev Mode
-
-**Location:** `AgentChatModal.svelte:1584-1596`
-
-The warning remains as a **diagnostic aid** during development. Investigation confirmed:
-
-- Events are delivered in order (tool_call before tool_result)
-- Warning typically fires when thinking block state is stale or tool_call_id lookup fails
-- Does not affect production behavior
-
-**Recommendation:** Keep warning for debugging; consider adding retry logic or fuzzy matching if issues persist.
-
-**Test Coverage:** `stream-handler.test.ts` verifies error → done sequence.
-
-### Improvements Recommended
-
-#### 1. Add Missing Event Type Definitions
-
-Add `focus_active` and `focus_changed` to `StreamEvent` union type for type safety.
-
-#### 2. Improve Error Recovery
-
-Add retry logic for transient LLM failures in the planner loop.
-
-#### 3. Add Telemetry Events
-
-Add metrics for:
-
-- Plan execution duration
-- Tool call latency
-- Context loading time
-- Error rates by category
-
-#### 4. Consolidate Type Definitions
-
-Create single source of truth for SSE event types shared between frontend and backend.
+For a full mapping of each tool to its API endpoints, data tables, and context-shift behavior, see:
+`apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md`.
 
 ---
 
-## API Reference
+## 8. Data Models (Persistence)
 
-### POST /api/agent/stream
+Key tables used by the flow:
 
-**Request Body:**
-
-```typescript
-interface AgentStreamRequest {
-	message: string; // User message (required)
-	session_id?: string; // Existing session ID
-	context_type: ChatContextType; // 'global' | 'project' | etc.
-	entity_id?: string; // Project ID for project context (entity focus via projectFocus)
-	conversation_history?: ChatMessage[];
-	ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'output';
-	projectFocus?: ProjectFocus;
-	lastTurnContext?: LastTurnContext;
-	voiceNoteGroupId?: string; // Optional voice note group id for attachments
-}
-```
-
-**Response:** SSE stream with `AgentSSEMessage` events
-
-**Headers:**
-
-```
-Content-Type: text/event-stream
-Cache-Control: no-cache
-Connection: keep-alive
-```
-
-**Rate Limits:**
-
-- 20 requests/minute per user
-- 30,000 tokens/minute per user
+| Table                                                                            | Purpose                                                        |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `chat_sessions`                                                                  | User conversation sessions (context type, entity id, metadata) |
+| `chat_messages`                                                                  | User/assistant/tool messages for chat sessions                 |
+| `chat_tool_executions`                                                           | Tool usage logs for chat sessions                              |
+| `chat_compressions`                                                              | Compressed history snapshots                                   |
+| `chat_context_cache`                                                             | Cached context snippets                                        |
+| `agents`                                                                         | Planner + executor agent records                               |
+| `agent_plans`                                                                    | Multi-step plans from planner                                  |
+| `agent_chat_sessions`                                                            | Planner/executor sub-sessions                                  |
+| `agent_chat_messages`                                                            | Messages within agent sub-sessions                             |
+| `agent_executions`                                                               | Executor run metadata and results                              |
+| `onto_projects`, `onto_tasks`, `onto_goals`, `onto_plans`, `onto_documents`, ... | Ontology domain model                                          |
+| `onto_edges`                                                                     | Entity relationship graph                                      |
+| `onto_events`, `project_calendars`                                               | Calendar integration                                           |
 
 ---
 
-## File Reference
+## 9. Known Gaps, Bugs, and Opportunities
 
-### Frontend Files
+These are current issues observed directly in the codebase:
 
-| File                                                        | Purpose                     |
-| ----------------------------------------------------------- | --------------------------- |
-| `src/lib/components/agent/AgentChatModal.svelte`            | Main chat container         |
-| `src/lib/components/agent/AgentMessageList.svelte`          | Message list renderer       |
-| `src/lib/components/agent/AgentComposer.svelte`             | Input with voice support    |
-| `src/lib/components/voice-notes/VoiceNoteGroupPanel.svelte` | Message voice note playback |
-| `src/lib/components/agent/agent-chat.types.ts`              | UI type definitions         |
-| `src/lib/components/agent/agent-chat.constants.ts`          | Context descriptors         |
-| `src/lib/utils/sse-processor.ts`                            | SSE utilities (~305 lines)  |
+1. **Context type override can ignore user input**
+    - `StreamHandler` uses session context when `session.entity_id` is set, even if the request provides a new `context_type`.
+    - Impact: switching context in UI can be ignored during the same session.
+    - File: `apps/web/src/routes/api/agent/stream/services/stream-handler.ts`
 
-### Backend Files
+2. **`focus_changed` event is defined but never emitted**
+    - UI handles `focus_changed`, but server only sends `focus_active`.
+    - Opportunity: emit `focus_changed` when focus updates occur in `SessionManager.resolveProjectFocus()`.
+    - File: `apps/web/src/routes/api/agent/stream/services/session-manager.ts`
 
-| File                                                                     | Purpose                 |
-| ------------------------------------------------------------------------ | ----------------------- |
-| `src/routes/api/agent/stream/+server.ts`                                 | API endpoint            |
-| `src/routes/api/agent/stream/types.ts`                                   | Endpoint types          |
-| `src/routes/api/agent/stream/services/session-manager.ts`                | Session CRUD            |
-| `src/routes/api/agent/stream/services/stream-handler.ts`                 | SSE lifecycle           |
-| `src/routes/api/agent/stream/services/ontology-cache.ts`                 | Session caching         |
-| `src/routes/api/agent/stream/utils/event-mapper.ts`                      | Event mapping           |
-| `src/routes/api/agent/stream/utils/context-utils.ts`                     | Context normalization   |
-| `src/lib/services/agentic-chat/index.ts`                                 | Factory and exports     |
-| `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts` | Main orchestrator       |
-| `src/lib/services/agentic-chat/shared/types.ts`                          | Shared type definitions |
-| `src/lib/services/agent-context-service.ts`                              | Context building        |
-| `src/lib/services/agentic-chat/planning/plan-orchestrator.ts`            | Plan creation/execution |
-| `src/lib/services/agentic-chat/execution/tool-execution-service.ts`      | Tool execution          |
-| `src/lib/services/agentic-chat/execution/executor-coordinator.ts`        | Executor management     |
-| `src/lib/services/agentic-chat/synthesis/response-synthesizer.ts`        | Response generation     |
-| `src/lib/services/agentic-chat/persistence/agent-persistence-service.ts` | Database operations     |
-| `src/lib/services/agentic-chat/tools/core/tool-definitions.ts`           | Tool schemas (38 tools) |
-| `src/lib/services/agentic-chat/tools/core/tool-executor.ts`              | Tool implementations    |
-| `src/lib/services/agentic-chat/analysis/project-creation-analyzer.ts`    | Project creation intent |
-| `src/lib/services/agentic-chat/prompts/prompt-generation-service.ts`     | System prompt building  |
+3. **Telemetry/debug events are dropped on the floor**
+    - Orchestrator emits `telemetry` and `debug_context`, but `event-mapper` does not map them to SSE.
+    - If debug mode is intended to surface in UI, add SSE mappings or persist to logs.
+    - Files: `agent-chat-orchestrator.ts`, `event-mapper.ts`
+
+4. **Tool call attribution can blur planner vs plan-step tools**
+    - `StreamHandler` aggregates all `tool_call` events into one list and persists them on the assistant message.
+    - Plan-step tool calls may be attributed to the assistant turn, reducing audit clarity.
+    - File: `apps/web/src/routes/api/agent/stream/services/stream-handler.ts`
+
+5. **Context cache invalidation is time-based only**
+    - Prewarm caches are TTL-based; ontology changes during TTL can yield stale context.
+    - Opportunity: invalidate on ontology mutations or attach `last_updated_at` signals.
+    - Files: `agent/prewarm`, `AgentSessionMetadata` caches
 
 ---
 
-## Development Guide
+## 10. Suggested Next Improvements (Non-breaking)
 
-### Adding a New SSE Event
-
-1. **Define in shared types** (`shared/types.ts`):
-
-```typescript
-// Add to StreamEvent union
-| { type: 'my_new_event'; myData: SomeType }
-```
-
-2. **Add mapper** (`event-mapper.ts`):
-
-```typescript
-my_new_event: (event) => ({
-  type: 'my_new_event',
-  myData: (event as Extract<StreamEvent, { type: 'my_new_event' }>).myData
-}),
-```
-
-3. **Handle in frontend** (`AgentChatModal.svelte`):
-
-```typescript
-case 'my_new_event':
-  addActivityToThinkingBlock('Message', 'general', { data: event.myData });
-  break;
-```
-
-### Testing
-
-```bash
-# Run all agentic chat tests
-pnpm test src/lib/services/agentic-chat
-pnpm test src/routes/api/agent/stream
-
-# Run specific test file
-pnpm test src/routes/api/agent/stream/services/session-manager.test.ts
-
-# Run with coverage
-pnpm test:coverage -- src/lib/services/agentic-chat
-```
-
-### Debugging
-
-**Enable verbose logging:**
-
-```typescript
-if (dev) {
-	console.log('[AgentChat] Tool call:', { toolName, toolCallId });
-}
-```
-
-**Check SSE events:** Browser DevTools → Network → Filter `/api/agent/stream` → EventStream tab
-
-**Debug mode:** Set `AGENT_CHAT_DEBUG=true` to emit `debug_context` events with full prompt/context info.
+1. Emit `focus_changed` SSE event when focus metadata changes.
+2. Map `telemetry` and `debug_context` to SSE or persist them to a logging table.
+3. Track plan-step tool calls separately from planner tool calls in `chat_messages`.
+4. Add optional server-side cap on `conversation_history` length to protect throughput.
+5. Add cache invalidation hooks for ontology writes (invalidate session caches on write tools).
 
 ---
 
-## Related Documentation
+## 11. Appendix: Key Files by Concern
 
-| Document                                                               | Purpose                  |
-| ---------------------------------------------------------------------- | ------------------------ |
-| [tool-system/QUICK_REFERENCE.md](./tool-system/QUICK_REFERENCE.md)     | Quick tool lookup        |
-| [tool-system/DOCUMENTATION.md](./tool-system/DOCUMENTATION.md)         | Complete tool reference  |
-| [PERFORMANCE.md](./PERFORMANCE.md)                                     | Caching and optimization |
-| [FRONTEND_QUICK_REFERENCE.md](./FRONTEND_QUICK_REFERENCE.md)           | Frontend state/handlers  |
-| [BACKEND_ARCHITECTURE_OVERVIEW.md](./BACKEND_ARCHITECTURE_OVERVIEW.md) | Backend details          |
-| [Ontology System](../ontology/README.md)                               | Data model reference     |
-
----
-
-**Last Updated:** 2025-12-17
-**Status:** Post-refactor audit complete — 4/5 remediation items resolved
+- UI SSE handling: `apps/web/src/lib/components/agent/AgentChatModal.svelte`
+- SSE stream handler: `apps/web/src/routes/api/agent/stream/services/stream-handler.ts`
+- Orchestrator: `apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts`
+- Planner context: `apps/web/src/lib/services/agent-context-service.ts`
+- Plan executor: `apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts`
+- Tool executor: `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts`
+- Executor service: `apps/web/src/lib/services/agent-executor-service.ts`
+- Tool to API mapping: `apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md`

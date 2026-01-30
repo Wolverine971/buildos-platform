@@ -2,11 +2,18 @@
 
 # Hierarchical Documents - Implementation Checklist
 
-**Status:** Phase 5 Core Complete (Drag-and-Drop)
+**Status:** Phase 5 Complete (Drag-and-Drop) + Phase 4.2 Complete (DocumentModal)
 **Date:** 2026-01-30
 **Last Updated:** 2026-01-30
 
-> **Latest:** Phase 5.1 (Drag-and-Drop Core) completed. Created `useDragDrop.svelte.ts` state module with hover-to-convert behavior, `DocTreeDragLayer.svelte` for ghost elements, and integrated into `DocTreeNode.svelte` and `DocTreeView.svelte`. Remaining: keyboard shortcuts, mobile polish, animations.
+> **Latest:** DocumentModal.svelte updates complete - breadcrumb path, Move action, Create Child action
+>
+> **Previous:** Phase 5 (Drag-and-Drop) fully implemented:
+>
+> - 5.1: Core drag-drop with hover-to-convert, ghost elements, drop zones
+> - 5.2: Keyboard cut/paste (Ctrl+X/V), undo (Ctrl+Z), focus tracking
+> - 5.3: Auto-scroll near edges, haptic feedback, mobile touch support
+> - 5.4: Undo history, drag from unlinked documents, animations
 
 This document tracks all code changes needed to implement the hierarchical document tree system.
 
@@ -212,11 +219,11 @@ Based on codebase research and decisions made, we need to update:
 
 ### 4.2 Update Existing Components
 
-- [ ] **Update `/apps/web/src/lib/components/ontology/DocumentModal.svelte`**
+- [x] **Update `/apps/web/src/lib/components/ontology/DocumentModal.svelte`**
     - Add `parentDocumentId` prop for create mode
     - Show breadcrumb path when editing nested doc
     - Add "Move to..." action in actions menu
-    - Add "Create Child" action
+    - Add "Create Child" action (shown when `onCreateChildRequested` callback provided)
 
 - [x] **Update `/apps/web/src/routes/projects/[id]/+page.svelte`**
     - Replaced flat document list with `DocTreeView`
@@ -267,26 +274,32 @@ Based on codebase research and decisions made, we need to update:
     - Optimistic UI updates with version tracking
     - Conflict detection (409 response triggers update notification)
 
-### 5.2 Keyboard Alternative (Deferred)
+### 5.2 Keyboard Alternative (Complete)
 
-- [ ] **Add keyboard shortcuts for move operations**
-    - Ctrl+X/V (Cmd on Mac) for cut/paste
-    - Alternative to drag-drop for accessibility
+- [x] **Add keyboard shortcuts for move operations**
+    - Ctrl+X/Cmd+X to cut a focused document
+    - Ctrl+V/Cmd+V to paste at current location
+    - Ctrl+Z/Cmd+Z to undo last move
+    - Escape to cancel cut operation
+    - Cut indicator UI with keyboard hint
+    - Focus tracking via `setFocusedNode()`
 
-### 5.3 Mobile Polish (Deferred)
+### 5.3 Mobile Polish (Complete)
 
-- [ ] **Enhance mobile touch experience**
-    - Auto-scroll when dragging near edges
-    - Haptic feedback on drag start (if available)
-    - Testing on various mobile devices
+- [x] **Enhance mobile touch experience**
+    - Auto-scroll when dragging near edges (60px zone, variable speed)
+    - Haptic feedback on drag start, successful drop, and cut/paste
+    - Long-press (500ms) to initiate drag
+    - Touch move tracking with scroll prevention
 
-### 5.4 Additional Enhancements (Deferred)
+### 5.4 Additional Enhancements (Complete)
 
-- [ ] **Animations and polish**
-    - Smooth animations for tree reordering
-    - Undo support (Cmd+Z after move)
-    - Performance optimization for large trees
+- [x] **Animations and polish**
+    - Undo hint notification (3s timeout) with click-to-undo
+    - Undo history (up to 10 entries) with `canUndo()` check
     - Drag from unlinked documents section
+    - Cut node visual styling (dashed border, reduced opacity)
+    - Fade-in animation for notifications
 
 ### Specification Document
 

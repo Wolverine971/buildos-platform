@@ -58,6 +58,7 @@ buildos-platform/
 | Feature                 | Documentation Path                              |
 | ----------------------- | ----------------------------------------------- |
 | **Ontology System** ⭐  | `/apps/web/docs/features/ontology/`             |
+| **Agentic Chat** ⭐     | `/apps/web/docs/features/agentic-chat/`         |
 | Brain Dump System       | `/apps/web/docs/features/brain-dump/`           |
 | Calendar Integration    | `/apps/web/docs/features/calendar-integration/` |
 | Notification System     | `/apps/web/docs/features/notifications/`        |
@@ -234,6 +235,7 @@ For detailed patterns, see:
 
 | Feature/System           | Where to Learn More                                            |
 | ------------------------ | -------------------------------------------------------------- |
+| **Agentic Chat**         | `/apps/web/docs/features/agentic-chat/README.md`               |
 | **Brain Dump Flow**      | `/apps/web/docs/features/brain-dump/README.md`                 |
 | **Calendar Integration** | `/apps/web/docs/features/calendar-integration/README.md`       |
 | **Notification System**  | `/apps/web/docs/features/notifications/README.md`              |

@@ -38,8 +38,11 @@
 	import DocumentVersionDiffDrawer from './DocumentVersionDiffDrawer.svelte';
 	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
 	import DocumentVoiceNotesPanel from './DocumentVoiceNotesPanel.svelte';
+	import DocMoveModal from './doc-tree/DocMoveModal.svelte';
 	import type { VersionListItem } from './DocumentVersionHistoryPanel.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
+	import type { DocStructure, OntoDocument, GetDocTreeResponse } from '$lib/types/onto-api';
+	import { findNodeById, enrichTreeNodes } from '$lib/services/ontology/doc-structure.service';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
 	import GoalEditModal from './GoalEditModal.svelte';
@@ -56,7 +59,10 @@
 		X,
 		ChevronDown,
 		ChevronUp,
-		Settings2
+		ChevronRight,
+		Settings2,
+		FolderInput,
+		FilePlus
 	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { Component } from 'svelte';
@@ -78,22 +84,31 @@
 		projectId: string;
 		taskId?: string | null;
 		documentId?: string | null;
+		/** Parent document ID when creating a new child document */
+		parentDocumentId?: string | null;
 		isOpen?: boolean;
 		typeOptions?: string[];
 		onClose?: () => void;
 		onSaved?: () => void;
 		onDeleted?: () => void;
+		/** Called when user wants to move this document */
+		onMoveRequested?: () => void;
+		/** Called when user wants to create a child document */
+		onCreateChildRequested?: (parentId: string) => void;
 	}
 
 	let {
 		projectId,
 		taskId = null,
 		documentId = null,
+		parentDocumentId = null,
 		isOpen = $bindable(false),
 		typeOptions = [],
 		onClose,
 		onSaved,
-		onDeleted
+		onDeleted,
+		onMoveRequested,
+		onCreateChildRequested
 	}: Props = $props();
 
 	let loading = $state(false);
@@ -183,6 +198,12 @@
 	let latestVersionNumber = $state(0);
 	let versionHistoryPanelRef = $state<{ refresh: () => void } | null>(null);
 	let isAdminUser = $state(false);
+
+	// Document tree state for breadcrumb and move functionality
+	let docTreeStructure = $state<DocStructure | null>(null);
+	let docTreeDocuments = $state<Record<string, OntoDocument>>({});
+	let showMoveModal = $state(false);
+	let treeLoading = $state(false);
 	type VoiceNotesPanelRef = {
 		refresh: () => void;
 		upsertVoiceNote: (note: VoiceNote) => void;
@@ -356,6 +377,8 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						project_id: projectId,
+						// Include parent_id if creating as child of another document
+						...(parentDocumentId ? { parent_id: parentDocumentId } : {}),
 						...payload
 					})
 				});
@@ -584,6 +607,120 @@
 			checkAdminAccess();
 		}
 	});
+
+	// Load document tree for breadcrumb and move functionality
+	async function loadDocTree() {
+		if (!projectId || treeLoading) return;
+		try {
+			treeLoading = true;
+			const response = await fetch(
+				`/api/onto/projects/${projectId}/doc-tree?include_content=false`
+			);
+			const payload = await response.json().catch(() => null);
+
+			if (response.ok && payload?.data) {
+				const treeData = payload.data as GetDocTreeResponse;
+				docTreeStructure = treeData.structure;
+				docTreeDocuments = treeData.documents;
+			}
+		} catch (error) {
+			console.error('[DocumentModal] Failed to load doc tree:', error);
+		} finally {
+			treeLoading = false;
+		}
+	}
+
+	// Load tree when editing an existing document
+	$effect(() => {
+		if (isOpen && activeDocumentId && projectId) {
+			loadDocTree();
+		}
+	});
+
+	// Compute breadcrumb path from document tree
+	const breadcrumbPath = $derived.by(() => {
+		if (!activeDocumentId || !docTreeStructure?.root) return [];
+
+		const result = findNodeById(docTreeStructure.root, activeDocumentId);
+		if (!result) return [];
+
+		// Build path by traversing the enriched tree
+		const enriched = enrichTreeNodes(docTreeStructure.root, docTreeDocuments, 0, []);
+		const pathIds: string[] = [];
+
+		function findPath(nodes: typeof enriched, targetId: string): boolean {
+			for (const node of nodes) {
+				if (node.id === targetId) {
+					return true;
+				}
+				if (node.children) {
+					if (findPath(node.children, targetId)) {
+						pathIds.unshift(node.id);
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		findPath(enriched, activeDocumentId);
+
+		// Convert IDs to titles
+		return pathIds.map((id) => ({
+			id,
+			title: docTreeDocuments[id]?.title || 'Untitled'
+		}));
+	});
+
+	// Handle move modal
+	function openMoveModal() {
+		if (onMoveRequested) {
+			onMoveRequested();
+		} else {
+			showMoveModal = true;
+		}
+	}
+
+	async function handleMove(newParentId: string | null) {
+		if (!activeDocumentId || !docTreeStructure) return;
+
+		try {
+			// Move document in tree structure
+			const response = await fetch(`/api/onto/projects/${projectId}/doc-tree/move`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					document_id: activeDocumentId,
+					new_parent_id: newParentId,
+					new_position: 0
+				})
+			});
+
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to move document');
+			}
+
+			toastService.success('Document moved');
+			showMoveModal = false;
+			// Reload tree to get updated structure
+			await loadDocTree();
+			onSaved?.();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to move document';
+			toastService.error(message);
+		}
+	}
+
+	// Handle create child
+	function handleCreateChild() {
+		if (!activeDocumentId) return;
+
+		if (onCreateChildRequested) {
+			onCreateChildRequested(activeDocumentId);
+		}
+	}
 </script>
 
 <Modal
@@ -607,6 +744,18 @@
 					<FileText class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
+					<!-- Breadcrumb path for nested documents -->
+					{#if breadcrumbPath.length > 0}
+						<div class="flex items-center gap-1 text-xs text-muted-foreground mb-0.5 overflow-hidden">
+							{#each breadcrumbPath as crumb, i}
+								<span class="truncate max-w-[100px]" title={crumb.title}>{crumb.title}</span>
+								{#if i < breadcrumbPath.length - 1}
+									<ChevronRight class="w-3 h-3 shrink-0" />
+								{/if}
+							{/each}
+							<ChevronRight class="w-3 h-3 shrink-0" />
+						</div>
+					{/if}
 					<div class="flex items-center gap-2">
 						<h2 class="text-sm font-semibold leading-tight truncate text-foreground">
 							{title || (isEditing ? 'Document' : 'New Document')}
@@ -1052,20 +1201,50 @@
 		<div
 			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak wt-paper"
 		>
-			{#if activeDocumentId}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onclick={() => (deleteModalOpen = true)}
-					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
-				>
-					<Trash2 class="w-3.5 h-3.5" />
-					<span class="hidden sm:inline ml-1">Delete</span>
-				</Button>
-			{:else}
-				<div></div>
-			{/if}
+			<div class="flex items-center gap-1">
+				{#if activeDocumentId}
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={() => (deleteModalOpen = true)}
+						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+					>
+						<Trash2 class="w-3.5 h-3.5" />
+						<span class="hidden sm:inline ml-1">Delete</span>
+					</Button>
+					<!-- Move to... button -->
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={openMoveModal}
+						disabled={saving || treeLoading}
+						class="text-xs px-2 h-8 pressable"
+						title="Move to another location"
+					>
+						<FolderInput class="w-3.5 h-3.5" />
+						<span class="hidden sm:inline ml-1">Move</span>
+					</Button>
+					<!-- Create Child button -->
+					{#if onCreateChildRequested}
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onclick={handleCreateChild}
+							disabled={saving}
+							class="text-xs px-2 h-8 pressable"
+							title="Create child document"
+						>
+							<FilePlus class="w-3.5 h-3.5" />
+							<span class="hidden sm:inline ml-1">Add Child</span>
+						</Button>
+					{/if}
+				{:else}
+					<div></div>
+				{/if}
+			</div>
 			<div class="flex items-center gap-2">
 				<Button
 					type="button"
@@ -1196,4 +1375,18 @@
 {#if showChatModal && AgentChatModalComponent && entityFocus}
 	{@const ChatModal = AgentChatModalComponent}
 	<ChatModal isOpen={showChatModal} initialProjectFocus={entityFocus} onClose={handleChatClose} />
+{/if}
+
+<!-- Move Document Modal -->
+{#if showMoveModal && activeDocumentId && docTreeStructure}
+	<DocMoveModal
+		bind:isOpen={showMoveModal}
+		{projectId}
+		documentId={activeDocumentId}
+		documentTitle={title || 'Untitled'}
+		structure={docTreeStructure}
+		documents={docTreeDocuments}
+		onClose={() => (showMoveModal = false)}
+		onMove={handleMove}
+	/>
 {/if}

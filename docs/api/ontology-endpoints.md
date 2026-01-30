@@ -185,8 +185,8 @@ Relationships are directional: `[from, to]` is interpreted as "from connects to 
 - `400 INVALID_FACET_SCOPE` — Facet keys that do not apply to the entity scope (`validate_facet_values` now checks `applies_to`).
 - `400 INVALID_PROJECT_SPEC` — Missing `relationships`, empty relationships with multiple entities, or any legacy arrays present.
 
-See `apps/web/docs/features/agentic-chat/PROJECT_CREATION_FLOW_UPDATE_PLAN.md` for the
-agentic chat prompt/tool alignment checklist.
+See `apps/web/docs/features/agentic-chat/README.md#project-creation-flow` for the
+current agentic chat project-creation flow details.
 
 ---
 

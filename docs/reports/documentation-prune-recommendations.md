@@ -16,14 +16,14 @@ Scope: root docs, /docs, /packages, /delete
 
 ## Consolidate or supersede duplicates
 
-- Agent chat specs are split across overlapping documents: `docs/api/agent-chat-implementation.md` and `docs/technical/implementation/AGENT_CHAT_ONTOLOGY_INTEGRATION_SPEC*.md`. Pick a single canonical spec, link to it from the API doc, and archive the phase-specific duplicates.
+- Agent chat specs were split across overlapping documents (e.g., `docs/api/agent-chat-implementation.md`). These have been consolidated into the canonical flow doc: `/apps/web/docs/features/agentic-chat/README.md`. Keep future updates centralized there.
 - Design system notes are spread across `redesign-0.md`, `redesign-1.md`, `redesign-2.md`, and `redesign-3-bible.md`. If `redesign-3-bible.md` is the canonical version, move it under `apps/web/docs/design/` (or similar) and archive the earlier iterations.
 
 ## Time-bound material that can be archived
 
 - `docs/reports/` (audits, bug-fix summaries, handoffs) once findings are addressed.
 - `docs/technical/reviews/` (dated recent-changes reviews).
-- `docs/technical/agentic-chat-responsiveness-audit.md`, `docs/technical/agentic-chat-last-turn-context-assessment.md`, `docs/technical/agentic-chat-flow-followup.md` after fixes land.
+- Agentic chat audit followups are now removed; the canonical flow reference is `/apps/web/docs/features/agentic-chat/README.md`.
 - `docs/notification-audit.md` after the listed fixes are verified.
 - `docs/marketing/social-media/daily-engagement/` and `docs/marketing/social-media/2026-01-08_twitter-following-audit.md` (daily/dated warmups).
 - `docs/marketing/investors/outreach/` (campaign-specific outreach plans).

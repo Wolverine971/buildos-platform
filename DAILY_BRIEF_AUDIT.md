@@ -728,18 +728,36 @@ static getSystemPrompt(): string {
     - Separated from general activity (completions get their own section)
     - Builds positive momentum at the end of the brief
 
-### Phase 5: Data Optimizations (LOW PRIORITY - DEFER)
+### Phase 5: Data Optimizations ✅ DONE
 
-- [ ] Pre-filter activity logs by action type in `ontologyBriefDataLoader.ts`
-- [ ] Optimize milestone query with database-level filtering
-- [ ] (Already implemented: project interest scoring for LLM context)
+**File:** `apps/worker/src/workers/brief/ontologyBriefDataLoader.ts`
 
-### Phase 6: Testing & Validation
+- [x] Pre-filter activity logs by meaningful action types:
+    - Added `MEANINGFUL_ACTIONS` constant with: created, completed, updated, blocked, unblocked, state_changed, priority_changed, assigned, unassigned, moved, archived, restored
+    - Query now filters at database level with `.in('action', MEANINGFUL_ACTIONS)`
+    - Reduces noise from minor updates like field edits
 
-- [ ] Generate sample briefs with new prompts
+- [x] Optimize milestone query with database-level filtering:
+    - Added `.not('state_key', 'in', '(completed,missed)')` to milestone query
+    - Removes need for in-memory filtering of completed/missed milestones
+    - Simplified downstream filters since data is pre-filtered
+
+- [x] Document structure (`doc_structure`) assessment:
+    - **Not needed for daily briefs** - doc_structure is a wiki navigation feature
+    - Documents are already tracked via `recentUpdates.documents`
+    - Recent document activity is surfaced in the brief's "Recent Activity" section
+
+### Phase 6: Testing & Validation ✅ PARTIAL
+
+- [x] TypeScript compilation: All changes compile without errors
+- [x] Unit tests: Brief generator tests pass (5/5)
+- [x] Scheduler tests: All pass (57 tests)
+- [ ] Generate sample briefs with real data (requires running against live DB)
 - [ ] Verify executive summary is scannable in 30 seconds
 - [ ] Confirm priority actions are actually actionable
 - [ ] Test on mobile (line breaks, emoji rendering)
+
+**Note:** 2 pre-existing test failures in `ontologyBriefDataLoader.test.ts` for `getOutputStatus` function that no longer exists - unrelated to these changes.
 
 ---
 
@@ -817,8 +835,21 @@ The Daily Brief system is a **solid technical foundation** that has been signifi
 3. **Analysis Prompt** - Simplified to 3 sections, editorial mindset, 250-word max
 4. **Project Briefs** - Status one-liner, "why" context on blocked tasks
 5. **Momentum Section** - "Recent Wins" highlighting completed work
+6. **Data Optimizations** - Pre-filtered activity logs (meaningful actions only), database-level milestone filtering
 
-**Next Step**: Test with real briefs and iterate based on user feedback. Data optimizations (Phase 5) can be done later if performance becomes an issue.
+### Files Changed
+
+| File                                                       | Changes                                              |
+| ---------------------------------------------------------- | ---------------------------------------------------- |
+| `apps/worker/src/workers/brief/ontologyPrompts.ts`         | Executive summary + analysis prompt rewrites         |
+| `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`  | Brief structure, project briefs, momentum section    |
+| `apps/worker/src/workers/brief/ontologyBriefDataLoader.ts` | Activity log filtering, milestone query optimization |
+
+### Document Structure Note
+
+The new `doc_structure` column on `onto_projects` is for wiki-style document navigation, not daily briefs. Documents are already tracked via `recentUpdates.documents` in the brief data.
+
+**Next Step**: Test with real briefs and iterate based on user feedback.
 
 **Key Takeaway**: A brief isn't beautiful because it's complete—it's beautiful because it's _clear_ about what matters and what to do about it.
 
@@ -827,4 +858,4 @@ The Daily Brief system is a **solid technical foundation** that has been signifi
 **Prepared by**: Claude Code
 **Review Date**: January 27, 2026
 **Implementation Date**: January 30, 2026
-**Status**: ✅ Phases 1-4 Complete, Phase 5-6 Remaining
+**Status**: ✅ Phases 1-5 Complete, Phase 6 Partial (tests pass, need real-world testing)

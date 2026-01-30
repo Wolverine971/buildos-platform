@@ -117,6 +117,18 @@
 		return map;
 	});
 
+	// Undo notification state
+	let showUndoHint = $state(false);
+	let undoHintTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function showUndoNotification() {
+		showUndoHint = true;
+		if (undoHintTimeout) clearTimeout(undoHintTimeout);
+		undoHintTimeout = setTimeout(() => {
+			showUndoHint = false;
+		}, 3000);
+	}
+
 	// Drag-drop state
 	const dragDrop = $derived.by(() => {
 		if (!enableDragDrop) return null;
@@ -136,6 +148,11 @@
 				const node = nodeMap.get(nodeId);
 				if (!node?.children) return new Set<string>();
 				return collectDocIds(node.children);
+			},
+			getTreeContainer: () => treeContainerRef,
+			onUndo: () => {
+				// Refresh after undo
+				fetchTree(false);
 			}
 		});
 	});
@@ -179,6 +196,9 @@
 				expandedIds = newSet;
 				saveExpandedState();
 			}
+
+			// Show undo hint
+			showUndoNotification();
 
 			return { success: true };
 		} catch (err) {
@@ -498,6 +518,8 @@
 					onDragOver={enableDragDrop ? handleDragOver : undefined}
 					onTouchStart={enableDragDrop ? handleTouchStart : undefined}
 					canDrag={enableDragDrop}
+					cutNodeId={dragDrop?.state.cutNode?.id ?? null}
+					onFocus={(nodeId) => dragDrop?.setFocusedNode(nodeId)}
 				/>
 			{/each}
 		</div>
@@ -512,7 +534,48 @@
 					// TODO: Implement drag-to-link or move modal
 					onOpenDocument(id);
 				}}
+				enableDrag={enableDragDrop}
+				onDragStart={enableDragDrop ? handleDragStart : undefined}
+				onTouchStart={enableDragDrop ? handleTouchStart : undefined}
+				dragState={dragDrop?.state ?? null}
 			/>
+		{/if}
+
+		<!-- Cut indicator -->
+		{#if dragDrop?.state.cutNode}
+			<div
+				class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-card border border-border rounded-lg shadow-ink-strong text-sm flex items-center gap-2"
+			>
+				<span class="text-muted-foreground">Cut:</span>
+				<span class="font-medium text-foreground">{dragDrop.state.cutNode.title}</span>
+				<span class="text-xs text-muted-foreground ml-2">
+					{navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘V' : 'Ctrl+V'} to paste
+				</span>
+				<button
+					type="button"
+					onclick={() => dragDrop?.clearCut()}
+					class="ml-2 text-muted-foreground hover:text-foreground"
+					aria-label="Cancel cut"
+				>
+					✕
+				</button>
+			</div>
+		{/if}
+
+		<!-- Undo hint -->
+		{#if showUndoHint}
+			<div
+				class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-accent/10 border border-accent/30 rounded-lg text-sm text-accent flex items-center gap-2 animate-fade-in"
+			>
+				<span>Document moved.</span>
+				<button
+					type="button"
+					onclick={() => dragDrop?.undo()}
+					class="font-medium underline underline-offset-2 hover:text-accent/80"
+				>
+					Undo ({navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘Z' : 'Ctrl+Z'})
+				</button>
+			</div>
 		{/if}
 	{/if}
 
@@ -530,5 +593,20 @@
 <style>
 	.doc-tree-container {
 		position: relative;
+	}
+
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+			transform: translateX(-50%) translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
+	}
+
+	:global(.animate-fade-in) {
+		animation: fade-in 0.2s ease-out;
 	}
 </style>

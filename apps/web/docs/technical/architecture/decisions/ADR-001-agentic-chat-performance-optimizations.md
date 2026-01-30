@@ -192,7 +192,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 - **Implementation Plan**: `/docs/migrations/completed/2025-11-17-agentic-chat-optimizations.md`
 - **Logger Service Docs**: `/docs/technical/services/logger.md`
-- **Performance Docs**: `/docs/features/agentic-chat/PERFORMANCE.md`
+- **Agentic Chat Docs**: `/apps/web/docs/features/agentic-chat/README.md` (canonical reference)
 - **Code Location**: `/src/routes/api/agent/stream/+server.ts` (lines 1-900)
 
 ## Future Considerations
@@ -206,5 +206,5 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 ## References
 
 - Original improvement analysis: `/thoughts/shared/research/2025-11-17_improvement-opportunities.md`
-- Agentic chat architecture: `/docs/features/agentic-chat/BACKEND_ARCHITECTURE_OVERVIEW.md`
-- Tool execution service: `/src/lib/services/agentic-chat/tool-execution-service.ts`
+- Agentic chat architecture: `/apps/web/docs/features/agentic-chat/README.md`
+- Tool execution service: `/src/lib/services/agentic-chat/execution/tool-execution-service.ts`

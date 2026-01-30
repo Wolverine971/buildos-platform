@@ -14,7 +14,7 @@ This spec is the canonical source for relationship rules and resolution. For hig
 
 - [Project Ontology Linking Philosophy](./PROJECT_ONTOLOGY_LINKING_PHILOSOPHY.md)
 - [Ontology Auto-Organization Spec](./ONTOLOGY_AUTO_ORGANIZATION_SPEC.md)
-- [Ontology Relationship Rules (Agentic Chat)](../../apps/web/docs/features/agentic-chat/ONTOLOGY_RELATIONSHIP_RULES_SPEC.md)
+- [Ontology Relationship Rules (Agentic Chat)](../../apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md#ontology-relationship-rules)
 
 ## Goals
 

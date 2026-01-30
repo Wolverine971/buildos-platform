@@ -4,20 +4,60 @@
 
 	These documents exist in the database but aren't
 	linked into the hierarchical tree.
+
+	Supports dragging documents into the tree.
 -->
 <script lang="ts">
-	import { FileQuestion, Link2 } from 'lucide-svelte';
-	import type { OntoDocument } from '$lib/types/onto-api';
+	import { FileQuestion, Link2, GripVertical } from 'lucide-svelte';
+	import type { OntoDocument, EnrichedDocTreeNode } from '$lib/types/onto-api';
+	import type { DragState } from './useDragDrop.svelte';
 
 	interface Props {
 		documents: OntoDocument[];
 		onOpenDocument: (id: string) => void;
 		onLinkDocument: (id: string) => void;
+		// Drag support
+		enableDrag?: boolean;
+		onDragStart?: (e: MouseEvent, node: EnrichedDocTreeNode, element: HTMLElement) => void;
+		onTouchStart?: (e: TouchEvent, node: EnrichedDocTreeNode, element: HTMLElement) => void;
+		dragState?: DragState | null;
 	}
 
-	let { documents, onOpenDocument, onLinkDocument }: Props = $props();
+	let {
+		documents,
+		onOpenDocument,
+		onLinkDocument,
+		enableDrag = false,
+		onDragStart,
+		onTouchStart,
+		dragState = null
+	}: Props = $props();
 
 	let expanded = $state(false);
+
+	// Convert OntoDocument to EnrichedDocTreeNode for drag operations
+	function toEnrichedNode(doc: OntoDocument): EnrichedDocTreeNode {
+		return {
+			id: doc.id,
+			title: doc.title,
+			description: doc.description ?? null,
+			children: undefined,
+			type: 'doc',
+			order: 0,
+			depth: 0,
+			path: [],
+			has_content: !!doc.content,
+			state_key: doc.state_key ?? 'active',
+			type_key: doc.type_key ?? 'document',
+			created_at: doc.created_at ?? new Date().toISOString(),
+			updated_at: doc.updated_at ?? new Date().toISOString()
+		};
+	}
+
+	// Track which document is being dragged
+	const isDraggingUnlinked = $derived(
+		dragState?.isDragging && documents.some((doc) => doc.id === dragState?.draggedNode?.id)
+	);
 </script>
 
 {#if documents.length > 0}
@@ -41,7 +81,32 @@
 		{#if expanded}
 			<div class="mt-1 space-y-0.5 pl-2">
 				{#each documents as doc (doc.id)}
-					<div class="flex items-center gap-1">
+					{@const isBeingDragged = dragState?.draggedNode?.id === doc.id}
+					<div class="flex items-center gap-1 group" class:opacity-40={isBeingDragged}>
+						{#if enableDrag}
+							<button
+								type="button"
+								onmousedown={(e) => {
+									if (e.button !== 0) return;
+									const target = e.currentTarget as HTMLElement;
+									const parent = target.parentElement;
+									if (parent && onDragStart) {
+										onDragStart(e, toEnrichedNode(doc), parent);
+									}
+								}}
+								ontouchstart={(e) => {
+									const target = e.currentTarget as HTMLElement;
+									const parent = target.parentElement;
+									if (parent && onTouchStart) {
+										onTouchStart(e, toEnrichedNode(doc), parent);
+									}
+								}}
+								class="p-1 text-muted-foreground/50 hover:text-muted-foreground cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+								title="Drag to tree"
+							>
+								<GripVertical class="w-3.5 h-3.5" />
+							</button>
+						{/if}
 						<button
 							type="button"
 							onclick={() => onOpenDocument(doc.id)}

@@ -36,6 +36,9 @@
 		onDragOver?: (e: MouseEvent, node: EnrichedDocTreeNode, element: HTMLElement) => void;
 		onTouchStart?: (e: TouchEvent, node: EnrichedDocTreeNode, element: HTMLElement) => void;
 		canDrag?: boolean;
+		// Cut/paste props
+		cutNodeId?: string | null;
+		onFocus?: (nodeId: string) => void;
 	}
 
 	let {
@@ -50,7 +53,9 @@
 		onDragStart,
 		onDragOver,
 		onTouchStart,
-		canDrag = true
+		canDrag = true,
+		cutNodeId = null,
+		onFocus
 	}: Props = $props();
 
 	let nodeElement: HTMLElement | null = $state(null);
@@ -59,6 +64,7 @@
 	const isExpanded = $derived(expandedIds.has(node.id));
 	const isSelected = $derived(selectedId === node.id);
 	const indent = $derived(node.depth * indentPx);
+	const isCut = $derived(cutNodeId === node.id);
 
 	// Drag state derivations
 	const isDragging = $derived(dragState?.isDragging && dragState?.draggedNode?.id === node.id);
@@ -146,6 +152,7 @@
 	class:doc-tree-node--drop-target={isValidDropTarget}
 	class:doc-tree-node--drop-invalid={isInvalidTarget}
 	class:doc-tree-node--converting={isConverting}
+	class:doc-tree-node--cut={isCut}
 >
 	<!-- Insertion line (before) -->
 	{#if isDropBefore}
@@ -156,15 +163,18 @@
 	<button
 		bind:this={nodeElement}
 		type="button"
+		data-node-id={node.id}
 		onclick={handleClick}
 		oncontextmenu={handleContextMenu}
 		onmousedown={handleMouseDown}
 		onmouseenter={handleMouseEnter}
 		onmousemove={handleMouseMove}
 		ontouchstart={handleTouchStartEvent}
+		onfocus={() => onFocus?.(node.id)}
 		class="doc-tree-node-button w-full flex items-center gap-1.5 px-2 py-1.5 text-left rounded-md transition-colors
 			{isSelected ? 'bg-accent/15 text-foreground' : 'hover:bg-accent/5 text-foreground'}
 			{isDragging ? 'opacity-40' : ''}
+			{isCut ? 'opacity-50 border border-dashed border-muted-foreground' : ''}
 			{isValidDropTarget ? 'bg-accent/10 outline outline-2 outline-dashed outline-accent' : ''}
 			{isConverting ? 'bg-accent/20 outline-solid' : ''}
 			{canDrag && !dragState?.isDragging ? 'cursor-grab pressable' : ''}
@@ -250,6 +260,8 @@
 					{onDragOver}
 					{onTouchStart}
 					{canDrag}
+					{cutNodeId}
+					{onFocus}
 				/>
 			{/each}
 		</div>
@@ -267,6 +279,15 @@
 
 	.doc-tree-node--drop-invalid {
 		opacity: 0.6;
+	}
+
+	.doc-tree-node--cut {
+		opacity: 0.5;
+	}
+
+	.doc-tree-node--cut .doc-tree-node-button {
+		border: 1px dashed hsl(var(--muted-foreground));
+		background: hsl(var(--muted) / 0.3);
 	}
 
 	.doc-tree-node-button {

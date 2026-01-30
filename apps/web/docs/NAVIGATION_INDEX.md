@@ -2,7 +2,7 @@
 
 # BuildOS Web App Documentation Navigation Index
 
-**Last Updated**: January 7, 2026
+**Last Updated**: January 30, 2026
 **Purpose**: Quick navigation guide to all documentation in the web app
 **Location**: `/apps/web/docs/`
 
@@ -24,11 +24,13 @@
 
 ### Other Features
 
+- **Agentic Chat**: [`/features/agentic-chat/README.md`](./features/agentic-chat/README.md) - AI chat system with tool execution
+  - **Tool/API Mapping**: [`/features/agentic-chat/TOOL_API_MAPPING.md`](./features/agentic-chat/TOOL_API_MAPPING.md) - Tool to endpoint/data map
 - **Brain Dump**: [`/features/brain-dump/README.md`](./features/brain-dump/README.md) - AI processing system
 - **Calendar**: [`/features/calendar-integration/README.md`](./features/calendar-integration/README.md) - Google Calendar sync
 - **Notifications**: [`/features/notifications/README.md`](./features/notifications/README.md) - Notification system
 - **Onboarding**: [`/features/onboarding/README.md`](./features/onboarding/README.md) - User onboarding flow
-- **User Preferences**: [`/features/preferences/README.md`](./features/preferences/README.md) - AI behavior preferences (NEW)
+- **User Preferences**: [`/features/preferences/README.md`](./features/preferences/README.md) - AI behavior preferences
 
 ## 📁 Complete Directory Structure
 
@@ -39,6 +41,10 @@
 ├── NAVIGATION_INDEX.md                    # THIS FILE - Quick navigation
 │
 ├── /features/                             # Feature-specific documentation
+│   ├── /agentic-chat/                     # AI chat system with tool execution
+│   │   ├── README.md                      # Complete architecture & flow (canonical)
+│   │   └── TOOL_API_MAPPING.md            # Tool -> API and data mapping
+│   │
 │   ├── /brain-dump/                       # Brain dump processing system
 │   │   ├── README.md                      # Overview & architecture
 │   │   ├── IMPLEMENTATION_GUIDE.md        # How to implement
@@ -180,6 +186,16 @@ All documentation should include:
 
 ## 🆕 Recently Added Documentation
 
+### January 30, 2026
+
+- ✅ Consolidated agentic chat documentation into single canonical README
+    - Removed 15+ outdated docs, replaced with comprehensive flow guide
+    - Documents: API calls, SSE events, context types, tool system, data models
+    - See `/features/agentic-chat/README.md`
+- ✅ Added tool -> API mapping for agentic chat
+    - Documents tool endpoints, data sources, and context-shift behavior
+    - See `/features/agentic-chat/TOOL_API_MAPPING.md`
+
 ### January 7, 2026
 
 - ✅ Created user preferences documentation in `/features/preferences/`
@@ -237,4 +253,4 @@ Based on common development tasks:
 
 **Note**: This index is maintained as documentation is added or reorganized. If you find missing or incorrect links, please update this file.
 
-**Last Major Update**: January 7, 2026 - Added user preferences documentation, updated onboarding docs
+**Last Major Update**: January 30, 2026 - Consolidated agentic chat docs, updated navigation index

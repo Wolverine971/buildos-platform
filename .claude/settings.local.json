@@ -78,7 +78,10 @@
       "Bash(__NEW_LINE_927ef5d05e941644__ echo \"\")",
       "Bash(__NEW_LINE_d111652697d48b13__ echo \"\")",
       "Bash(pnpm lint:fix:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(head:*)",
+      "Bash(pnpm test:run:*)"
     ],
     "deny": [],
     "ask": []

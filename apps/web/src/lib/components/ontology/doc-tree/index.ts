@@ -24,5 +24,6 @@ export {
 	type DropZone,
 	type DropZoneType,
 	type DragDropOptions,
-	type DragDropState
+	type DragDropState,
+	type MoveHistoryEntry
 } from './useDragDrop.svelte';
