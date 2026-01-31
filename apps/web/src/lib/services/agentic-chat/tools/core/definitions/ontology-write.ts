@@ -487,6 +487,7 @@ Use dry_run to preview edge changes before applying.`,
 					nodes: {
 						type: 'array',
 						description: 'Entities to reorganize with desired connections',
+						minItems: 1,
 						items: {
 							type: 'object',
 							properties: {

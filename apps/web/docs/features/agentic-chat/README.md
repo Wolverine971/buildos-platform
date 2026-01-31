@@ -275,6 +275,7 @@ When a plan step requires an executor:
 4. Orchestrator receives `executor_result` and continues plan execution
 
 <a name="project-creation-flow"></a>
+
 ### 6.4 Project creation flow (project_create context)
 
 The `project_create` context is a guided flow that emphasizes structure and completeness:
@@ -363,15 +364,24 @@ These are current issues observed directly in the codebase:
     - Opportunity: emit `focus_changed` when focus updates occur in `SessionManager.resolveProjectFocus()`.
     - File: `apps/web/src/routes/api/agent/stream/services/session-manager.ts`
 
-3. **Telemetry/debug events are dropped on the floor**
-    - Orchestrator emits `telemetry` and `debug_context`, but `event-mapper` does not map them to SSE.
-    - If debug mode is intended to surface in UI, add SSE mappings or persist to logs.
-    - Files: `agent-chat-orchestrator.ts`, `event-mapper.ts`
+3. **Telemetry/debug events are dropped on the floor (dev visibility gap)**
+    - Orchestrator emits `telemetry` (`tool_selection`, `tool_selection_miss`, `tool_execution`) and `debug_context` (gated by `DEBUG_AGENT_CONTEXT` / `VITE_DEBUG_AGENT_CONTEXT`), but `event-mapper` does not map them to SSE and the UI has no handler.
+    - **Plan (dev-only UI):**
+        1. Extend `AgentSSEMessage` with `telemetry` + `debug_context` payloads in `packages/shared-types/src/agent.types.ts`.
+        2. Add mappings in `apps/web/src/routes/api/agent/stream/utils/event-mapper.ts`.
+        3. In `apps/web/src/lib/components/agent/AgentChatModal.svelte`, surface these events only when `dev === true` (e.g., append to the thinking block as `telemetry`/`debug` activities).
+        4. Optional hard gate: only forward these events from the server in debug/dev modes.
+    - Files: `agent-chat-orchestrator.ts`, `debug-context-builder.ts`, `event-mapper.ts`, `AgentChatModal.svelte`
 
 4. **Tool call attribution can blur planner vs plan-step tools**
     - `StreamHandler` aggregates all `tool_call` events into one list and persists them on the assistant message.
-    - Plan-step tool calls may be attributed to the assistant turn, reducing audit clarity.
-    - File: `apps/web/src/routes/api/agent/stream/services/stream-handler.ts`
+    - Plan-step tool calls (emitted by `PlanOrchestrator`) may be attributed to the assistant turn, reducing audit clarity.
+    - **Plan:**
+        1. Add origin metadata to tool events (e.g., `source: 'planner' | 'plan_step'` + optional `stepNumber`).
+        2. Track planner vs plan-step tool calls separately in `StreamHandler`.
+        3. Persist planner tool calls on the assistant message; persist plan-step tool calls on executor records or in `chat_messages.metadata.tool_call_sources`.
+        4. Update the UI to label plan-step tool activity inside the plan execution timeline.
+    - Files: `plan-orchestrator.ts`, `agent-chat-orchestrator.ts`, `stream-handler.ts`, `AgentChatModal.svelte`
 
 5. **Context cache invalidation is time-based only**
     - Prewarm caches are TTL-based; ontology changes during TTL can yield stale context.
@@ -383,8 +393,8 @@ These are current issues observed directly in the codebase:
 ## 10. Suggested Next Improvements (Non-breaking)
 
 1. Emit `focus_changed` SSE event when focus metadata changes.
-2. Map `telemetry` and `debug_context` to SSE or persist them to a logging table.
-3. Track plan-step tool calls separately from planner tool calls in `chat_messages`.
+2. Map `telemetry` and `debug_context` to SSE and surface them in the UI when `dev === true`.
+3. Add tool call origin metadata and persist plan-step tool calls separately from planner tool calls.
 4. Add optional server-side cap on `conversation_history` length to protect throughput.
 5. Add cache invalidation hooks for ontology writes (invalidate session caches on write tools).
 

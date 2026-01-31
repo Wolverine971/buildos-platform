@@ -30,6 +30,7 @@ import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
 import { ChatCompressionService } from '$lib/services/chat-compression-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createLogger } from '$lib/utils/logger';
+import { v4 as uuidv4 } from 'uuid';
 import type {
 	AgentSessionMetadata,
 	StreamRequest,
@@ -261,6 +262,15 @@ export class StreamHandler {
 		const userMessageTimestamp = new Date().toISOString();
 		const abortSignal = requestAbortSignal;
 		const streamRunId = request.stream_run_id;
+		const timingStartMs = Date.now();
+		const timingMetricsId = await this.createTimingMetricRecord({
+			userId,
+			sessionId: session.id,
+			contextType: normalizedContextType,
+			messageLength: request.message.length,
+			messageReceivedAt: userMessageTimestamp,
+			streamRunId
+		});
 
 		// If no lastTurnContext provided and history exists but no tool results found,
 		// load them asynchronously from the database
@@ -320,6 +330,7 @@ export class StreamHandler {
 					linkedEntities: sessionMetadata.linkedEntitiesCache
 				},
 				projectClarificationMetadata,
+				timingMetricsId,
 				abortSignal
 			};
 
@@ -331,7 +342,13 @@ export class StreamHandler {
 				session,
 				normalizedContextType,
 				userId,
-				abortSignal
+				abortSignal,
+				timing: {
+					metricsId: timingMetricsId,
+					startMs: timingStartMs,
+					firstEventRecorded: false,
+					firstResponseRecorded: false
+				}
 			});
 
 			// Run orchestration
@@ -524,6 +541,12 @@ export class StreamHandler {
 		normalizedContextType: ChatContextType;
 		userId: string;
 		abortSignal?: AbortSignal;
+		timing?: {
+			metricsId?: string;
+			startMs: number;
+			firstEventRecorded: boolean;
+			firstResponseRecorded: boolean;
+		};
 	}): (event: StreamEvent | AgentSSEMessage | null | undefined) => Promise<void> {
 		const {
 			agentStream,
@@ -532,12 +555,37 @@ export class StreamHandler {
 			session,
 			normalizedContextType,
 			userId,
-			abortSignal
+			abortSignal,
+			timing
 		} = params;
 
 		return async (event: StreamEvent | AgentSSEMessage | null | undefined) => {
 			if (!event) return;
 			if (abortSignal?.aborted) return;
+
+			// Track timing for first event/response
+			if (timing?.metricsId) {
+				const now = Date.now();
+				if (!timing.firstEventRecorded) {
+					timing.firstEventRecorded = true;
+					void this.updateTimingMetric(timing.metricsId, {
+						first_event_at: new Date(now).toISOString(),
+						time_to_first_event_ms: Math.max(0, Math.round(now - timing.startMs))
+					});
+				}
+				if (
+					!timing.firstResponseRecorded &&
+					(event as StreamEvent).type === 'text' &&
+					typeof (event as any).content === 'string' &&
+					(event as any).content.trim().length > 0
+				) {
+					timing.firstResponseRecorded = true;
+					void this.updateTimingMetric(timing.metricsId, {
+						first_response_at: new Date(now).toISOString(),
+						time_to_first_response_ms: Math.max(0, Math.round(now - timing.startMs))
+					});
+				}
+			}
 
 			// Track text content
 			if ((event as StreamEvent).type === 'text' && (event as any).content) {
@@ -586,6 +634,60 @@ export class StreamHandler {
 				await agentStream.sendMessage(sseMessage);
 			}
 		};
+	}
+
+	private async createTimingMetricRecord(params: {
+		userId: string;
+		sessionId: string;
+		contextType: ChatContextType;
+		messageLength: number;
+		messageReceivedAt: string;
+		streamRunId?: number;
+	}): Promise<string | undefined> {
+		const metricId = uuidv4();
+		try {
+			const metadata =
+				typeof params.streamRunId === 'number' ? { stream_run_id: params.streamRunId } : {};
+			const { error } = await this.supabase.from('timing_metrics').insert({
+				id: metricId,
+				user_id: params.userId,
+				session_id: params.sessionId,
+				context_type: params.contextType,
+				message_length: params.messageLength,
+				message_received_at: params.messageReceivedAt,
+				metadata
+			});
+
+			if (error) {
+				throw error;
+			}
+
+			return metricId;
+		} catch (error) {
+			logger.warn('Failed to create timing metrics record', {
+				error: error instanceof Error ? error.message : String(error),
+				sessionId: params.sessionId
+			});
+			return undefined;
+		}
+	}
+
+	private async updateTimingMetric(id: string, data: Record<string, any>): Promise<void> {
+		try {
+			const { error } = await this.supabase
+				.from('timing_metrics')
+				.update({ ...data, updated_at: new Date().toISOString() })
+				.eq('id', id);
+
+			if (error) {
+				throw error;
+			}
+		} catch (error) {
+			logger.warn('Failed to update timing metrics record', {
+				error: error instanceof Error ? error.message : String(error),
+				timingMetricsId: id
+			});
+		}
 	}
 
 	/**

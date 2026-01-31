@@ -7978,6 +7978,119 @@ export type Database = {
           },
         ]
       }
+      timing_metrics: {
+        Row: {
+          agent_plan_id: string | null
+          clarification_ms: number | null
+          context_build_ms: number | null
+          context_type: string | null
+          created_at: string
+          first_event_at: string | null
+          first_response_at: string | null
+          id: string
+          message_length: number | null
+          message_received_at: string
+          metadata: Json
+          plan_completed_at: string | null
+          plan_created_at: string | null
+          plan_creation_ms: number | null
+          plan_execution_ms: number | null
+          plan_execution_started_at: string | null
+          plan_status: string | null
+          plan_step_count: number | null
+          planner_agent_id: string | null
+          session_id: string | null
+          time_to_first_event_ms: number | null
+          time_to_first_response_ms: number | null
+          tool_selection_ms: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_plan_id?: string | null
+          clarification_ms?: number | null
+          context_build_ms?: number | null
+          context_type?: string | null
+          created_at?: string
+          first_event_at?: string | null
+          first_response_at?: string | null
+          id?: string
+          message_length?: number | null
+          message_received_at?: string
+          metadata?: Json
+          plan_completed_at?: string | null
+          plan_created_at?: string | null
+          plan_creation_ms?: number | null
+          plan_execution_ms?: number | null
+          plan_execution_started_at?: string | null
+          plan_status?: string | null
+          plan_step_count?: number | null
+          planner_agent_id?: string | null
+          session_id?: string | null
+          time_to_first_event_ms?: number | null
+          time_to_first_response_ms?: number | null
+          tool_selection_ms?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_plan_id?: string | null
+          clarification_ms?: number | null
+          context_build_ms?: number | null
+          context_type?: string | null
+          created_at?: string
+          first_event_at?: string | null
+          first_response_at?: string | null
+          id?: string
+          message_length?: number | null
+          message_received_at?: string
+          metadata?: Json
+          plan_completed_at?: string | null
+          plan_created_at?: string | null
+          plan_creation_ms?: number | null
+          plan_execution_ms?: number | null
+          plan_execution_started_at?: string | null
+          plan_status?: string | null
+          plan_step_count?: number | null
+          planner_agent_id?: string | null
+          session_id?: string | null
+          time_to_first_event_ms?: number | null
+          time_to_first_response_ms?: number | null
+          tool_selection_ms?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timing_metrics_agent_plan_id_fkey"
+            columns: ["agent_plan_id"]
+            isOneToOne: false
+            referencedRelation: "agent_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timing_metrics_planner_agent_id_fkey"
+            columns: ["planner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timing_metrics_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timing_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tree_agent_artifacts: {
         Row: {
           artifact_type: Database["public"]["Enums"]["tree_agent_artifact_type"]

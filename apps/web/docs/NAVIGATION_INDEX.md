@@ -25,7 +25,7 @@
 ### Other Features
 
 - **Agentic Chat**: [`/features/agentic-chat/README.md`](./features/agentic-chat/README.md) - AI chat system with tool execution
-  - **Tool/API Mapping**: [`/features/agentic-chat/TOOL_API_MAPPING.md`](./features/agentic-chat/TOOL_API_MAPPING.md) - Tool to endpoint/data map
+    - **Tool/API Mapping**: [`/features/agentic-chat/TOOL_API_MAPPING.md`](./features/agentic-chat/TOOL_API_MAPPING.md) - Tool to endpoint/data map
 - **Brain Dump**: [`/features/brain-dump/README.md`](./features/brain-dump/README.md) - AI processing system
 - **Calendar**: [`/features/calendar-integration/README.md`](./features/calendar-integration/README.md) - Google Calendar sync
 - **Notifications**: [`/features/notifications/README.md`](./features/notifications/README.md) - Notification system

@@ -12,7 +12,9 @@
 		Sparkles,
 		AlertCircle,
 		ChevronDown,
-		ChevronUp
+		ChevronUp,
+		Timer,
+		Zap
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -31,6 +33,19 @@
 	let selectedTimeframe = $state<'24h' | '7d' | '30d'>('7d');
 	let showFilters = $state(false);
 
+	// Timing metrics type
+	interface TimingMetrics {
+		ttfr_ms: number | null;
+		ttfe_ms: number | null;
+		context_build_ms: number | null;
+		tool_selection_ms: number | null;
+		clarification_ms: number | null;
+		plan_creation_ms: number | null;
+		plan_execution_ms: number | null;
+		plan_step_count: number | null;
+		plan_status: string | null;
+	}
+
 	// Sessions data
 	let sessions = $state<
 		Array<{
@@ -48,8 +63,12 @@
 			has_compression: boolean;
 			has_errors: boolean;
 			cost_estimate: number;
+			timing: TimingMetrics | null;
 		}>
 	>([]);
+
+	// View mode (list or timing)
+	let viewMode = $state<'list' | 'timing'>('list');
 
 	let totalSessions = $state(0);
 	let currentPage = $state(1);
@@ -117,6 +136,19 @@
 
 	function formatDate(dateString: string): string {
 		return new Date(dateString).toLocaleString();
+	}
+
+	function formatMs(ms: number | null | undefined): string {
+		if (ms === null || ms === undefined) return '-';
+		if (ms < 1000) return `${Math.round(ms)}ms`;
+		return `${(ms / 1000).toFixed(2)}s`;
+	}
+
+	function getTtfrWarning(ms: number | null): 'normal' | 'warning' | 'critical' {
+		if (ms === null) return 'normal';
+		if (ms > 10000) return 'critical';
+		if (ms > 5000) return 'warning';
+		return 'normal';
 	}
 
 	function getStatusColor(status: string): string {
@@ -198,6 +230,26 @@
 				<option value="7d">Last 7 Days</option>
 				<option value="30d">Last 30 Days</option>
 			</Select>
+
+			<!-- View Toggle -->
+			<div class="flex items-center border border-border rounded-lg overflow-hidden">
+				<button
+					onclick={() => (viewMode = 'list')}
+					class="px-3 py-1.5 text-sm font-medium transition-colors {viewMode === 'list'
+						? 'bg-accent text-accent-foreground'
+						: 'bg-card text-muted-foreground hover:text-foreground'}"
+				>
+					List
+				</button>
+				<button
+					onclick={() => (viewMode = 'timing')}
+					class="px-3 py-1.5 text-sm font-medium transition-colors {viewMode === 'timing'
+						? 'bg-accent text-accent-foreground'
+						: 'bg-card text-muted-foreground hover:text-foreground'}"
+				>
+					Timing
+				</button>
+			</div>
 
 			<!-- Refresh -->
 			<Button
@@ -372,32 +424,100 @@
 					</div>
 
 					<!-- Metrics -->
-					<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-						<div>
-							<div class="text-xs text-muted-foreground">Messages</div>
-							<div class="text-base font-semibold text-foreground">
-								{formatNumber(session.message_count)}
+					{#if viewMode === 'list'}
+						<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+							<div>
+								<div class="text-xs text-muted-foreground">Messages</div>
+								<div class="text-base font-semibold text-foreground">
+									{formatNumber(session.message_count)}
+								</div>
+							</div>
+							<div>
+								<div class="text-xs text-muted-foreground">Tokens</div>
+								<div class="text-base font-semibold text-foreground">
+									{formatNumber(session.total_tokens)}
+								</div>
+							</div>
+							<div>
+								<div class="text-xs text-muted-foreground">Tool Calls</div>
+								<div class="text-base font-semibold text-foreground">
+									{formatNumber(session.tool_call_count)}
+								</div>
+							</div>
+							<div>
+								<div class="text-xs text-muted-foreground">Cost</div>
+								<div class="text-base font-semibold text-foreground">
+									{formatCurrency(session.cost_estimate)}
+								</div>
 							</div>
 						</div>
-						<div>
-							<div class="text-xs text-muted-foreground">Tokens</div>
-							<div class="text-base font-semibold text-foreground">
-								{formatNumber(session.total_tokens)}
+					{:else}
+						<!-- Timing Metrics View -->
+						<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-3">
+							<div>
+								<div class="text-xs text-muted-foreground flex items-center gap-1">
+									<Clock class="h-3 w-3" /> TTFR
+								</div>
+								<div
+									class="text-base font-semibold {getTtfrWarning(
+										session.timing?.ttfr_ms
+									) === 'critical'
+										? 'text-red-500'
+										: getTtfrWarning(session.timing?.ttfr_ms) === 'warning'
+											? 'text-amber-500'
+											: 'text-foreground'}"
+								>
+									{formatMs(session.timing?.ttfr_ms)}
+								</div>
+							</div>
+							<div>
+								<div class="text-xs text-muted-foreground flex items-center gap-1">
+									<Zap class="h-3 w-3" /> TTFE
+								</div>
+								<div class="text-base font-semibold text-foreground">
+									{formatMs(session.timing?.ttfe_ms)}
+								</div>
+							</div>
+							<div>
+								<div class="text-xs text-muted-foreground">Context</div>
+								<div class="text-base font-semibold text-foreground">
+									{formatMs(session.timing?.context_build_ms)}
+								</div>
+							</div>
+							<div>
+								<div class="text-xs text-muted-foreground">Tool Sel.</div>
+								<div
+									class="text-base font-semibold {(session.timing
+										?.tool_selection_ms ?? 0) > 2000
+										? 'text-red-500'
+										: (session.timing?.tool_selection_ms ?? 0) > 1000
+											? 'text-amber-500'
+											: 'text-foreground'}"
+								>
+									{formatMs(session.timing?.tool_selection_ms)}
+								</div>
+							</div>
+							<div>
+								<div class="text-xs text-muted-foreground">Plan</div>
+								<div class="text-base font-semibold text-foreground">
+									{formatMs(session.timing?.plan_creation_ms)}
+								</div>
+							</div>
+							<div>
+								<div class="text-xs text-muted-foreground">Exec</div>
+								<div
+									class="text-base font-semibold {(session.timing
+										?.plan_execution_ms ?? 0) > 10000
+										? 'text-red-500'
+										: (session.timing?.plan_execution_ms ?? 0) > 5000
+											? 'text-amber-500'
+											: 'text-foreground'}"
+								>
+									{formatMs(session.timing?.plan_execution_ms)}
+								</div>
 							</div>
 						</div>
-						<div>
-							<div class="text-xs text-muted-foreground">Tool Calls</div>
-							<div class="text-base font-semibold text-foreground">
-								{formatNumber(session.tool_call_count)}
-							</div>
-						</div>
-						<div>
-							<div class="text-xs text-muted-foreground">Cost</div>
-							<div class="text-base font-semibold text-foreground">
-								{formatCurrency(session.cost_estimate)}
-							</div>
-						</div>
-					</div>
+					{/if}
 
 					<!-- Badges -->
 					<div class="flex flex-wrap items-center gap-2">
@@ -423,6 +543,24 @@
 							>
 								<AlertCircle class="h-3 w-3 mr-1" />
 								Has Errors
+							</span>
+						{/if}
+						{#if session.timing?.ttfr_ms && session.timing.ttfr_ms > 5000}
+							<span
+								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {session
+									.timing.ttfr_ms > 10000
+									? 'bg-red-500/10 text-red-600 dark:text-red-400'
+									: 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}"
+							>
+								<Timer class="h-3 w-3 mr-1" />
+								Slow ({formatMs(session.timing.ttfr_ms)})
+							</span>
+						{/if}
+						{#if session.timing?.plan_step_count}
+							<span
+								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+							>
+								{session.timing.plan_step_count} steps
 							</span>
 						{/if}
 					</div>

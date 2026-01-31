@@ -27,7 +27,11 @@ import type {
 	PlanExecutionMode,
 	ExecutorResult
 } from '../shared/types';
-import type { PlanOrchestrator, PlanIntent } from '../planning/plan-orchestrator';
+import type {
+	PlanOrchestrator,
+	PlanIntent,
+	ProvidedPlanInput
+} from '../planning/plan-orchestrator';
 import type { ToolExecutionService, VirtualToolHandler } from '../execution/tool-execution-service';
 import type { ResponseSynthesizer, SynthesisUsage } from '../synthesis/response-synthesizer';
 import type { AgentContextService } from '../../agent-context-service';
@@ -94,6 +98,43 @@ const PLAN_TOOL_DEFINITION: ChatToolDefinition = {
 					type: 'array',
 					items: { type: 'string' },
 					description: 'IDs or slugs the plan must focus on.'
+				},
+				plan: {
+					type: 'object',
+					description:
+						'Optional prebuilt plan JSON. When provided, the planner emits steps directly and plan generation is skipped.',
+					properties: {
+						strategy: {
+							type: 'string',
+							enum: [
+								'planner_stream',
+								'project_creation',
+								'ask_clarifying_questions'
+							],
+							description: 'Optional strategy override for the provided plan.'
+						},
+						reasoning: {
+							type: 'string',
+							description: 'Optional reasoning summary for the provided plan.'
+						},
+						steps: {
+							type: 'array',
+							description: 'Plan steps in execution order.',
+							items: {
+								type: 'object',
+								properties: {
+									stepNumber: { type: 'number' },
+									type: { type: 'string' },
+									description: { type: 'string' },
+									tools: { type: 'array', items: { type: 'string' } },
+									executorRequired: { type: 'boolean' },
+									dependsOn: { type: 'array', items: { type: 'number' } },
+									metadata: { type: 'object' }
+								},
+								required: ['description']
+							}
+						}
+					}
 				}
 			},
 			required: ['objective']
@@ -142,6 +183,7 @@ export class AgentChatOrchestrator {
 	): AsyncGenerator<StreamEvent, void, unknown> {
 		const { contextService, persistenceService } = this.deps;
 		const conversationHistory = request.conversationHistory ?? [];
+		const timingMetricsId = request.timingMetricsId;
 
 		let plannerContext: PlannerContext;
 		let plannerAgentId: string | undefined;
@@ -158,6 +200,7 @@ export class AgentChatOrchestrator {
 			await callback(ackEvent);
 		}
 		try {
+			const contextBuildStart = Date.now();
 			plannerContext = await contextService.buildPlannerContext({
 				sessionId: request.sessionId,
 				userId: request.userId,
@@ -171,6 +214,9 @@ export class AgentChatOrchestrator {
 				contextCache: request.contextCache,
 				deferCompression: true
 			});
+			void this.safeUpdateTimingMetric(timingMetricsId, {
+				context_build_ms: Date.now() - contextBuildStart
+			});
 
 			const contextScope =
 				request.ontologyContext?.scope ??
@@ -182,16 +228,21 @@ export class AgentChatOrchestrator {
 				contextType: request.contextType,
 				entityId: request.entityId,
 				conversationHistory,
+				timingMetricsId,
 				ontologyContext: request.ontologyContext,
 				lastTurnContext: request.lastTurnContext,
 				projectFocus: request.projectFocus ?? null,
 				contextScope
 			};
 
+			const toolSelectionStart = Date.now();
 			plannerContext = await this.applyToolSelection({
 				request,
 				plannerContext,
 				serviceContext
+			});
+			void this.safeUpdateTimingMetric(timingMetricsId, {
+				tool_selection_ms: Date.now() - toolSelectionStart
 			});
 
 			// Emit tool selection telemetry
@@ -220,6 +271,9 @@ export class AgentChatOrchestrator {
 				plannerContext,
 				request
 			);
+			void this.safeUpdateTimingMetric(timingMetricsId, {
+				planner_agent_id: plannerAgentId
+			});
 
 			plannerContext.metadata = {
 				...plannerContext.metadata,
@@ -283,11 +337,15 @@ export class AgentChatOrchestrator {
 			// For project_create context, check if we need to ask clarifying questions
 			// before proceeding with the planner loop
 			if (request.contextType === 'project_create') {
+				const clarificationStart = Date.now();
 				const clarificationResult = await this.checkProjectCreationClarification(
 					request,
 					serviceContext,
 					callback
 				);
+				void this.safeUpdateTimingMetric(timingMetricsId, {
+					clarification_ms: Date.now() - clarificationStart
+				});
 
 				if (clarificationResult.needsClarification) {
 					// Emit clarifying questions and return early
@@ -1021,13 +1079,21 @@ export class AgentChatOrchestrator {
 			requestedOutputs: this.normalizeStringArray(rawArgs.requested_outputs),
 			priorityEntities: this.normalizeStringArray(rawArgs.priority_entities)
 		};
+		const providedPlan = this.normalizeProvidedPlan(rawArgs.plan);
 
 		try {
-			const plan = await this.deps.planOrchestrator.createPlanFromIntent(
-				intent,
-				plannerContext,
-				serviceContext
-			);
+			const plan = providedPlan
+				? await this.deps.planOrchestrator.createPlanFromProvidedSteps(
+						intent,
+						plannerContext,
+						serviceContext,
+						providedPlan
+					)
+				: await this.deps.planOrchestrator.createPlanFromIntent(
+						intent,
+						plannerContext,
+						serviceContext
+					);
 
 			await this.emitStreamEvent({ type: 'plan_created', plan }, streamEvents);
 
@@ -1075,6 +1141,7 @@ export class AgentChatOrchestrator {
 					sessionId: serviceContext.sessionId,
 					contextType: serviceContext.contextType,
 					executionMode,
+					providedPlan: Boolean(providedPlan),
 					objectivePreview: sanitizeLogText(objective, 160),
 					objectiveLength: objective.length,
 					requestedOutputs: intent.requestedOutputs,
@@ -1456,6 +1523,27 @@ export class AgentChatOrchestrator {
 			.map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
 			.filter(Boolean);
 		return normalized.length > 0 ? normalized : undefined;
+	}
+
+	private normalizeProvidedPlan(value: unknown): ProvidedPlanInput | undefined {
+		if (!value || typeof value !== 'object') {
+			return undefined;
+		}
+		const plan = value as Record<string, any>;
+		if (!Array.isArray(plan.steps)) {
+			return undefined;
+		}
+
+		const strategy =
+			typeof plan.strategy === 'string' && Object.values(ChatStrategy).includes(plan.strategy)
+				? (plan.strategy as ChatStrategy)
+				: undefined;
+
+		return {
+			steps: plan.steps,
+			reasoning: typeof plan.reasoning === 'string' ? plan.reasoning : undefined,
+			strategy
+		};
 	}
 
 	private enrichToolCallArguments(
@@ -1897,5 +1985,22 @@ export class AgentChatOrchestrator {
 			(typeof maybeError.message === 'string' &&
 				maybeError.message.toLowerCase().includes('aborted'))
 		);
+	}
+
+	private async safeUpdateTimingMetric(
+		timingMetricsId: string | undefined,
+		data: Record<string, any>
+	): Promise<void> {
+		if (!timingMetricsId) {
+			return;
+		}
+		try {
+			await this.deps.persistenceService.updateTimingMetric(timingMetricsId, data);
+		} catch (error) {
+			logger.debug('Failed to update timing metrics', {
+				timingMetricsId,
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}
 	}
 }

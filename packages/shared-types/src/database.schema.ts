@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-01-30T19:08:09.678Z
+// Generated on: 2026-01-31T00:33:44.983Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1929,6 +1929,33 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	timing_metrics: {
+		agent_plan_id: string | null;
+		clarification_ms: number | null;
+		context_build_ms: number | null;
+		context_type: string | null;
+		created_at: string;
+		first_event_at: string | null;
+		first_response_at: string | null;
+		id: string;
+		message_length: number | null;
+		message_received_at: string;
+		metadata: Json;
+		plan_completed_at: string | null;
+		plan_created_at: string | null;
+		plan_creation_ms: number | null;
+		plan_execution_ms: number | null;
+		plan_execution_started_at: string | null;
+		plan_status: string | null;
+		plan_step_count: number | null;
+		planner_agent_id: string | null;
+		session_id: string | null;
+		time_to_first_event_ms: number | null;
+		time_to_first_response_ms: number | null;
+		tool_selection_ms: number | null;
+		updated_at: string;
+		user_id: string;
+	};
 	tree_agent_artifacts: {
 		artifact_type: string;
 		created_at: string;
@@ -2407,6 +2434,7 @@ export const tableNames = [
 	'task_calendar_events',
 	'tasks',
 	'time_blocks',
+	'timing_metrics',
 	'tree_agent_artifacts',
 	'tree_agent_events',
 	'tree_agent_nodes',

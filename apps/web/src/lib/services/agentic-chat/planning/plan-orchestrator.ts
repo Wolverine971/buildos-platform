@@ -43,7 +43,11 @@ import type {
 	ChatToolDefinition
 } from '@buildos/shared-types';
 import { v4 as uuidv4, validate as uuidValidate } from 'uuid';
-import { formatToolSummaries } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { resolveToolName } from '$lib/services/agentic-chat/tools/core/tools.config';
+import {
+	TOOL_METADATA,
+	type ToolMetadata
+} from '$lib/services/agentic-chat/tools/core/definitions';
 import { ToolExecutionService } from '../execution/tool-execution-service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
 import { enrichOntologyUpdateArgs } from '../shared/tool-arg-enrichment';
@@ -94,6 +98,7 @@ interface PersistenceService {
 		stepNumber: number,
 		stepUpdate: Record<string, any>
 	): Promise<void>;
+	updateTimingMetric?(id: string, data: Record<string, any>): Promise<void>;
 }
 
 /**
@@ -123,6 +128,12 @@ export interface PlanIntent {
 	priorityEntities?: string[];
 	executionMode?: PlanExecutionMode;
 	autoExecute?: boolean; // legacy alias for executionMode === 'auto_execute'
+}
+
+export interface ProvidedPlanInput {
+	steps: any[];
+	reasoning?: string;
+	strategy?: ChatStrategy;
 }
 
 /**
@@ -186,6 +197,7 @@ export class PlanOrchestrator implements BaseService {
 		context: ServiceContext,
 		strategyOverride?: ChatStrategy
 	): Promise<AgentPlan> {
+		const planStartMs = Date.now();
 		const strategy = strategyOverride ?? this.determineStrategyFromIntent(intent);
 		const executionMode = this.resolveExecutionMode(intent);
 
@@ -261,6 +273,14 @@ export class PlanOrchestrator implements BaseService {
 				created_at: plan.createdAt.toISOString()
 			});
 
+			void this.safeUpdateTimingMetric(context, {
+				agent_plan_id: plan.id,
+				plan_created_at: plan.createdAt.toISOString(),
+				plan_creation_ms: Date.now() - planStartMs,
+				plan_step_count: plan.steps.length,
+				plan_status: plan.status
+			});
+
 			return plan;
 		} catch (error) {
 			logger.error(error as Error, {
@@ -299,6 +319,142 @@ export class PlanOrchestrator implements BaseService {
 			}
 			throw new PlanExecutionError(
 				`Failed to create plan: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				{ objective: intent.objective, strategy, error }
+			);
+		}
+	}
+
+	async createPlanFromProvidedSteps(
+		intent: PlanIntent,
+		plannerContext: PlannerContext,
+		context: ServiceContext,
+		providedPlan: ProvidedPlanInput,
+		strategyOverride?: ChatStrategy
+	): Promise<AgentPlan> {
+		const planStartMs = Date.now();
+		const strategy =
+			strategyOverride ?? providedPlan.strategy ?? this.determineStrategyFromIntent(intent);
+		const executionMode = this.resolveExecutionMode(intent);
+
+		logger.info('Creating plan from provided steps', {
+			strategy,
+			contextType: intent.contextType,
+			executionMode,
+			stepCount: providedPlan.steps?.length ?? 0
+		});
+
+		const plannerAgentId =
+			intent.plannerAgentId ??
+			context.plannerAgentId ??
+			plannerContext.metadata?.plannerAgentId;
+
+		if (!plannerAgentId) {
+			throw new PlanExecutionError('Missing planner agent identifier for plan creation', {
+				context,
+				plannerContext
+			});
+		}
+
+		try {
+			if (!Array.isArray(providedPlan.steps) || providedPlan.steps.length === 0) {
+				throw new PlanExecutionError('Provided plan must include steps', {
+					intent,
+					providedPlan
+				});
+			}
+
+			const plan: AgentPlan = {
+				id: uuidv4(),
+				sessionId: intent.sessionId,
+				userId: intent.userId,
+				plannerAgentId,
+				userMessage: intent.objective,
+				strategy,
+				status: 'pending',
+				steps: this.normalizeSteps(providedPlan.steps),
+				createdAt: new Date(),
+				metadata: {
+					estimatedDuration: this.estimateDuration(providedPlan.steps),
+					totalTokensUsed: 0,
+					executionMode,
+					contextType: intent.contextType,
+					requestedOutputs: intent.requestedOutputs,
+					priorityEntities: intent.priorityEntities
+				}
+			};
+
+			const validation = this.validatePlan(plan);
+			if (!validation.isValid) {
+				throw new PlanExecutionError(
+					`Invalid provided plan: ${validation.errors.join('; ')}`,
+					{ plan, errors: validation.errors }
+				);
+			}
+
+			if (intent.contextType === 'project_create') {
+				this.enforceProjectCreationPlan(plan, plannerContext);
+			}
+
+			await this.persistenceService.createPlan({
+				id: plan.id,
+				session_id: plan.sessionId,
+				user_id: plan.userId,
+				planner_agent_id: plan.plannerAgentId,
+				user_message: plan.userMessage,
+				strategy: plan.strategy,
+				status: plan.status,
+				steps: plan.steps,
+				metadata: plan.metadata,
+				created_at: plan.createdAt.toISOString()
+			});
+
+			void this.safeUpdateTimingMetric(context, {
+				agent_plan_id: plan.id,
+				plan_created_at: plan.createdAt.toISOString(),
+				plan_creation_ms: Date.now() - planStartMs,
+				plan_step_count: plan.steps.length,
+				plan_status: plan.status
+			});
+
+			return plan;
+		} catch (error) {
+			logger.error(error as Error, {
+				operation: 'create_plan_provided',
+				sessionId: intent.sessionId,
+				contextType: intent.contextType,
+				strategy
+			});
+			if (this.errorLogger) {
+				const toolNames = plannerContext.availableTools.map((tool) => {
+					const name = (tool as any)?.function?.name ?? (tool as any)?.name;
+					return name ?? 'unknown';
+				});
+				const toolPreview = toolNames.slice(0, 20);
+				void this.errorLogger.logError(error, {
+					userId: intent.userId,
+					projectId: context.contextScope?.projectId ?? context.entityId,
+					operationType: 'plan_create_provided',
+					metadata: {
+						sessionId: intent.sessionId,
+						contextType: intent.contextType,
+						strategy,
+						objectivePreview: sanitizeLogText(intent.objective, 160),
+						objectiveLength: intent.objective.length,
+						executionMode,
+						requestedOutputs: intent.requestedOutputs,
+						priorityEntities: intent.priorityEntities,
+						stepCount: providedPlan.steps?.length ?? 0,
+						toolCount: toolNames.length,
+						toolNames: toolPreview,
+						toolNamesTruncated:
+							toolNames.length > toolPreview.length
+								? toolNames.length - toolPreview.length
+								: undefined
+					}
+				});
+			}
+			throw new PlanExecutionError(
+				`Failed to create provided plan: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				{ objective: intent.objective, strategy, error }
 			);
 		}
@@ -390,6 +546,7 @@ export class PlanOrchestrator implements BaseService {
 		context: ServiceContext,
 		callback: StreamCallback
 	): AsyncGenerator<StreamEvent, void, unknown> {
+		const executionStartMs = Date.now();
 		logger.info('Executing plan', {
 			planId: plan.id,
 			stepCount: plan.steps.length,
@@ -403,6 +560,11 @@ export class PlanOrchestrator implements BaseService {
 			...(plan.metadata ?? {}),
 			totalTokensUsed: plan.metadata?.totalTokensUsed ?? 0
 		};
+		void this.safeUpdateTimingMetric(context, {
+			agent_plan_id: plan.id,
+			plan_execution_started_at: new Date(executionStartMs).toISOString(),
+			plan_status: plan.status
+		});
 
 		// Track completed and failed steps
 		const completedSteps = new Set<number>();
@@ -556,6 +718,13 @@ export class PlanOrchestrator implements BaseService {
 			}
 			plan.completedAt = new Date();
 			await this.updatePlanStatus(plan.id, plan.status, plan.completedAt, plan.metadata);
+			void this.safeUpdateTimingMetric(context, {
+				agent_plan_id: plan.id,
+				plan_completed_at: plan.completedAt.toISOString(),
+				plan_execution_ms: plan.completedAt.getTime() - executionStartMs,
+				plan_status: plan.status,
+				plan_step_count: plan.steps.length
+			});
 
 			// Emit done event
 			const doneEvent: StreamEvent = {
@@ -614,6 +783,12 @@ export class PlanOrchestrator implements BaseService {
 			// Mark plan as failed
 			plan.status = 'failed';
 			await this.updatePlanStatus(plan.id, 'failed', undefined, plan.metadata);
+			void this.safeUpdateTimingMetric(context, {
+				agent_plan_id: plan.id,
+				plan_completed_at: new Date().toISOString(),
+				plan_execution_ms: Date.now() - executionStartMs,
+				plan_status: plan.status
+			});
 
 			// Emit error event
 			const errorEvent: StreamEvent = {
@@ -854,9 +1029,7 @@ export class PlanOrchestrator implements BaseService {
 		const toolList = plannerContext.availableTools
 			.map((t) => (t as any).name || (t as any).function?.name || 'unknown')
 			.join(', ');
-		const toolSummaries = plannerContext.availableTools.length
-			? formatToolSummaries(plannerContext.availableTools)
-			: 'No tools available.';
+		const toolSummaries = this.buildPlanToolSummaryBlock(plannerContext.availableTools);
 		const toolRequirements = plannerContext.availableTools.length
 			? this.buildToolRequirementsSummary(plannerContext.availableTools)
 			: 'none';
@@ -897,6 +1070,7 @@ Guidelines:
 - Keep plans minimal and focused
 - Mark steps as executorRequired only for complex analysis
 - For tools with required parameters, include them in metadata.toolArguments or metadata.arguments
+- Do not use empty strings or empty arrays as placeholders for required parameters; fetch or derive missing values first
 - Use dependencies to ensure proper execution order
 - For planner_stream, target 3-5 steps and mark executorRequired only when parallel execution is needed
 - Keep each description under 200 characters and focus on actions, not final creative output
@@ -920,6 +1094,83 @@ Return JSON: { steps: [...], reasoning: "Brief explanation" }`;
 		}
 
 		return lines.length > 0 ? lines.join('\n') : 'none';
+	}
+
+	private buildPlanToolSummaryBlock(tools: ChatToolDefinition[]): string {
+		if (!tools.length) {
+			return 'No tools available.';
+		}
+
+		const lines: string[] = [];
+		for (const tool of tools) {
+			const summaryLine = this.formatPlanToolSummary(tool);
+			if (summaryLine) {
+				lines.push(`- ${summaryLine}`);
+			}
+		}
+
+		return lines.length > 0 ? lines.join('\n') : 'No tools available.';
+	}
+
+	private formatPlanToolSummary(tool: ChatToolDefinition): string | null {
+		const name = resolveToolName(tool);
+		if (!name || name === 'unknown') {
+			return null;
+		}
+
+		const metadata: ToolMetadata | undefined = TOOL_METADATA[name];
+		if (!this.shouldIncludeToolSummary(name, metadata)) {
+			return name;
+		}
+
+		const summary = metadata?.summary ?? name.replace(/_/g, ' ');
+		const hint = this.getPlanToolGuardrailHint(name);
+		const trimmedSummary = this.truncateToolSummary(summary, 140);
+		return hint
+			? `${name}: ${trimmedSummary} | Guardrail: ${hint}`
+			: `${name}: ${trimmedSummary}`;
+	}
+
+	private shouldIncludeToolSummary(name: string, metadata?: ToolMetadata): boolean {
+		if (metadata?.category === 'write') {
+			return true;
+		}
+		return this.isTierASummaryTool(name);
+	}
+
+	private isTierASummaryTool(name: string): boolean {
+		return ['web_search', 'web_visit', 'get_field_info'].includes(name);
+	}
+
+	private getPlanToolGuardrailHint(name: string): string | undefined {
+		switch (name) {
+			case 'create_onto_task':
+				return 'Only create tasks for future user actions; do not create tasks for work you can do now.';
+			case 'create_onto_project':
+				return 'Include complete spec + relationships + context_document; do not skip project creation.';
+			case 'reorganize_onto_project_graph':
+				return 'High impact; use only when asked to reorganize project structure. Must supply a non-empty nodes array (use get_onto_project_graph first).';
+			case 'link_onto_entities':
+				return 'Use only for explicit relationship changes.';
+			case 'unlink_onto_edge':
+				return 'Use only to remove a specific edge requested.';
+			case 'move_document':
+				return 'Use only when explicitly asked to move documents.';
+			case 'create_calendar_event':
+			case 'update_calendar_event':
+				return 'Use ISO timestamps with timezone.';
+			case 'delete_calendar_event':
+				return 'Use only with explicit delete intent.';
+			default:
+				return undefined;
+		}
+	}
+
+	private truncateToolSummary(text: string, maxLength: number): string {
+		if (text.length <= maxLength) {
+			return text;
+		}
+		return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
 	}
 
 	/**
@@ -1186,74 +1437,151 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		} else if (step.tools.length > 0) {
 			// Execute tools directly with streaming events
 			const aggregatedResults: any[] = [];
+			const shouldParallelize = this.shouldParallelizeStepTools(step);
 
-			for (const toolName of step.tools) {
-				const args = this.buildToolArgs(
-					toolName,
-					step,
-					stepResults,
-					context,
-					plannerContext
-				);
-				const normalizedArgs = this.applyToolArgumentDefaults(
-					toolName,
-					args,
-					step,
-					plannerContext
-				);
-				const enrichedArgs = enrichOntologyUpdateArgs(toolName, normalizedArgs, {
-					ontologyContext: plannerContext.ontologyContext ?? context.ontologyContext,
-					locationMetadata: plannerContext.locationMetadata,
-					contextScope: plannerContext.metadata?.scope ?? context.contextScope
+			if (!shouldParallelize) {
+				for (const toolName of step.tools) {
+					const args = this.buildToolArgs(
+						toolName,
+						step,
+						stepResults,
+						context,
+						plannerContext
+					);
+					const normalizedArgs = this.applyToolArgumentDefaults(
+						toolName,
+						args,
+						step,
+						plannerContext
+					);
+					const enrichedArgs = enrichOntologyUpdateArgs(toolName, normalizedArgs, {
+						ontologyContext: plannerContext.ontologyContext ?? context.ontologyContext,
+						locationMetadata: plannerContext.locationMetadata,
+						contextScope: plannerContext.metadata?.scope ?? context.contextScope
+					});
+
+					const toolCall: ChatToolCall = {
+						id: uuidv4(),
+						type: 'function',
+						function: {
+							name: toolName,
+							arguments: JSON.stringify(enrichedArgs ?? {})
+						}
+					};
+
+					const callEvent: StreamEvent = {
+						type: 'tool_call',
+						toolCall
+					};
+					emittedEvents.push(callEvent);
+
+					const toolResult = await this.toolExecutionService.executeTool(
+						toolCall,
+						context,
+						plannerContext.availableTools
+					);
+
+					const resultEvent: StreamEvent = {
+						type: 'tool_result',
+						result: toolResult
+					};
+					emittedEvents.push(resultEvent);
+
+					if (toolResult.streamEvents) {
+						for (const event of toolResult.streamEvents) {
+							emittedEvents.push(event);
+						}
+					}
+
+					if (!toolResult.success) {
+						const message =
+							typeof toolResult.error === 'string'
+								? toolResult.error
+								: toolResult.error?.message || `Tool ${toolName} failed`;
+						throw new Error(message);
+					}
+
+					const contextShift = extractContextShift(toolResult);
+					if (contextShift) {
+						applyContextShiftToContext(context, contextShift);
+					}
+
+					aggregatedResults.push(toolResult.data);
+				}
+			} else {
+				const toolCalls = step.tools.map((toolName) => {
+					const args = this.buildToolArgs(
+						toolName,
+						step,
+						stepResults,
+						context,
+						plannerContext
+					);
+					const normalizedArgs = this.applyToolArgumentDefaults(
+						toolName,
+						args,
+						step,
+						plannerContext
+					);
+					const enrichedArgs = enrichOntologyUpdateArgs(toolName, normalizedArgs, {
+						ontologyContext: plannerContext.ontologyContext ?? context.ontologyContext,
+						locationMetadata: plannerContext.locationMetadata,
+						contextScope: plannerContext.metadata?.scope ?? context.contextScope
+					});
+
+					const toolCall: ChatToolCall = {
+						id: uuidv4(),
+						type: 'function',
+						function: {
+							name: toolName,
+							arguments: JSON.stringify(enrichedArgs ?? {})
+						}
+					};
+
+					emittedEvents.push({ type: 'tool_call', toolCall });
+					return { toolName, toolCall };
 				});
 
-				const toolCall: ChatToolCall = {
-					id: uuidv4(),
-					type: 'function',
-					function: {
-						name: toolName,
-						arguments: JSON.stringify(enrichedArgs ?? {})
-					}
-				};
-
-				const callEvent: StreamEvent = {
-					type: 'tool_call',
-					toolCall
-				};
-				emittedEvents.push(callEvent);
-
-				const toolResult = await this.toolExecutionService.executeTool(
-					toolCall,
-					context,
-					plannerContext.availableTools
+				const toolResults = await Promise.all(
+					toolCalls.map(({ toolCall }) =>
+						this.toolExecutionService.executeTool(
+							toolCall,
+							context,
+							plannerContext.availableTools
+						)
+					)
 				);
 
-				const resultEvent: StreamEvent = {
-					type: 'tool_result',
-					result: toolResult
-				};
-				emittedEvents.push(resultEvent);
+				let failureMessage: string | null = null;
 
-				if (toolResult.streamEvents) {
-					for (const event of toolResult.streamEvents) {
-						emittedEvents.push(event);
+				toolResults.forEach((toolResult, index) => {
+					emittedEvents.push({ type: 'tool_result', result: toolResult });
+
+					if (toolResult.streamEvents) {
+						for (const event of toolResult.streamEvents) {
+							emittedEvents.push(event);
+						}
 					}
-				}
 
-				if (!toolResult.success) {
-					const message =
-						typeof toolResult.error === 'string'
-							? toolResult.error
-							: toolResult.error?.message || `Tool ${toolName} failed`;
-					throw new Error(message);
-				}
+					if (!toolResult.success && !failureMessage) {
+						const toolName = toolCalls[index]?.toolName ?? 'unknown';
+						failureMessage =
+							typeof toolResult.error === 'string'
+								? toolResult.error
+								: toolResult.error?.message || `Tool ${toolName} failed`;
+					}
 
-				const contextShift = extractContextShift(toolResult);
-				if (contextShift) {
-					applyContextShiftToContext(context, contextShift);
-				}
+					const contextShift = extractContextShift(toolResult);
+					if (contextShift) {
+						applyContextShiftToContext(context, contextShift);
+					}
 
-				aggregatedResults.push(toolResult.data);
+					aggregatedResults.push(toolResult.data);
+				});
+
+				if (failureMessage) {
+					throw new Error(failureMessage);
+				}
 			}
 
 			// Return combined results (preserve original shape for downstream steps)
@@ -1264,6 +1592,22 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 			// No execution needed
 			return { result: { completed: true }, events: emittedEvents };
 		}
+	}
+
+	private shouldParallelizeStepTools(step: PlanStep): boolean {
+		if (!step.tools || step.tools.length < 2) {
+			return false;
+		}
+
+		if (step.metadata?.parallelizeTools === false) {
+			return false;
+		}
+
+		if (step.metadata?.parallelizeTools === true) {
+			return true;
+		}
+
+		return !step.dependsOn || step.dependsOn.length === 0;
 	}
 
 	private tryParsePlanResponse(response: string): { steps: any[]; reasoning?: string } | null {
@@ -1900,6 +2244,23 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 
 		// Stop if critical step or has dependents
 		return step.type === 'research' || hasDependents;
+	}
+
+	private async safeUpdateTimingMetric(
+		context: ServiceContext,
+		data: Record<string, any>
+	): Promise<void> {
+		if (!context.timingMetricsId || !this.persistenceService.updateTimingMetric) {
+			return;
+		}
+		try {
+			await this.persistenceService.updateTimingMetric(context.timingMetricsId, data);
+		} catch (error) {
+			logger.debug('Failed to update timing metrics', {
+				planId: data.agent_plan_id,
+				error: error instanceof Error ? error.message : String(error)
+			});
+		}
 	}
 
 	/**

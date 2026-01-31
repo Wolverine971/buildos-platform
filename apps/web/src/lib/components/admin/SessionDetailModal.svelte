@@ -12,7 +12,9 @@
 		ChevronUp,
 		Sparkles,
 		Wrench,
-		Zap
+		Zap,
+		Timer,
+		Activity
 	} from 'lucide-svelte';
 	import { marked } from 'marked';
 	import { browser } from '$app/environment';
@@ -29,10 +31,39 @@
 	let sessionData = $state<any>(null);
 
 	// Expandable sections
+	let showTiming = $state(true);
 	let showAgentPlan = $state(true);
 	let showExecutions = $state(true);
 	let showTools = $state(false);
 	let expandedExecutions = $state<Set<string>>(new Set());
+
+	// Timing formatting helpers
+	function formatMs(ms: number | null | undefined): string {
+		if (ms === null || ms === undefined) return '-';
+		if (ms < 1000) return `${Math.round(ms)}ms`;
+		return `${(ms / 1000).toFixed(2)}s`;
+	}
+
+	function formatTimestamp(ts: string | null): string {
+		if (!ts) return '-';
+		return new Date(ts).toLocaleTimeString('en-US', {
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			fractionalSecondDigits: 3
+		});
+	}
+
+	function getTimingWarningClass(metric: string, value: number | null): string {
+		if (value === null) return 'text-foreground';
+		if (metric === 'ttfr' && value > 10000) return 'text-red-500';
+		if (metric === 'ttfr' && value > 5000) return 'text-amber-500';
+		if (metric === 'tool_selection' && value > 2000) return 'text-red-500';
+		if (metric === 'tool_selection' && value > 1000) return 'text-amber-500';
+		if (metric === 'plan_execution' && value > 10000) return 'text-red-500';
+		if (metric === 'plan_execution' && value > 5000) return 'text-amber-500';
+		return 'text-foreground';
+	}
 
 	// Load session data when sessionId changes
 	$effect(() => {
@@ -203,6 +234,329 @@
 							</div>
 						</div>
 					</div>
+
+					<!-- Timing Metrics -->
+					{#if sessionData.timing_metrics}
+						<div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+							<button
+								onclick={() => (showTiming = !showTiming)}
+								class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+							>
+								<div class="flex items-center space-x-2">
+									<Timer class="h-5 w-5 text-cyan-600" />
+									<span class="font-semibold text-gray-900 dark:text-white"
+										>Timing Metrics</span
+									>
+									{#if sessionData.timing_metrics.breakdown.ttfr_ms && sessionData.timing_metrics.breakdown.ttfr_ms > 5000}
+										<span
+											class="px-2 py-1 text-xs rounded-full {sessionData
+												.timing_metrics.breakdown.ttfr_ms > 10000
+												? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+												: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'}"
+										>
+											Slow
+										</span>
+									{/if}
+								</div>
+								{#if showTiming}
+									<ChevronUp class="h-5 w-5 text-gray-500" />
+								{:else}
+									<ChevronDown class="h-5 w-5 text-gray-500" />
+								{/if}
+							</button>
+
+							{#if showTiming}
+								<div
+									class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4"
+								>
+									<!-- Timeline Visualization -->
+									<div>
+										<h4
+											class="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+										>
+											<Activity class="h-4 w-4" />
+											Timeline
+										</h4>
+										<div class="relative">
+											<!-- Timeline bar -->
+											<div
+												class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full mb-4"
+											></div>
+
+											<!-- Timeline markers -->
+											<div
+												class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs"
+											>
+												<div class="flex flex-col">
+													<span class="text-muted-foreground"
+														>Message Received</span
+													>
+													<span class="font-mono text-foreground">
+														{formatTimestamp(
+															sessionData.timing_metrics.timeline
+																.message_received_at
+														)}
+													</span>
+												</div>
+												<div class="flex flex-col">
+													<span class="text-muted-foreground"
+														>First Event</span
+													>
+													<span class="font-mono text-foreground">
+														{formatTimestamp(
+															sessionData.timing_metrics.timeline
+																.first_event_at
+														)}
+													</span>
+												</div>
+												<div class="flex flex-col">
+													<span class="text-muted-foreground"
+														>First Response</span
+													>
+													<span class="font-mono text-foreground">
+														{formatTimestamp(
+															sessionData.timing_metrics.timeline
+																.first_response_at
+														)}
+													</span>
+												</div>
+												{#if sessionData.timing_metrics.timeline.plan_created_at}
+													<div class="flex flex-col">
+														<span class="text-muted-foreground"
+															>Plan Created</span
+														>
+														<span class="font-mono text-foreground">
+															{formatTimestamp(
+																sessionData.timing_metrics.timeline
+																	.plan_created_at
+															)}
+														</span>
+													</div>
+												{/if}
+												{#if sessionData.timing_metrics.timeline.plan_execution_started_at}
+													<div class="flex flex-col">
+														<span class="text-muted-foreground"
+															>Execution Started</span
+														>
+														<span class="font-mono text-foreground">
+															{formatTimestamp(
+																sessionData.timing_metrics.timeline
+																	.plan_execution_started_at
+															)}
+														</span>
+													</div>
+												{/if}
+												{#if sessionData.timing_metrics.timeline.plan_completed_at}
+													<div class="flex flex-col">
+														<span class="text-muted-foreground"
+															>Plan Completed</span
+														>
+														<span class="font-mono text-foreground">
+															{formatTimestamp(
+																sessionData.timing_metrics.timeline
+																	.plan_completed_at
+															)}
+														</span>
+													</div>
+												{/if}
+											</div>
+										</div>
+									</div>
+
+									<!-- Breakdown Panel -->
+									<div>
+										<h4 class="font-medium text-gray-900 dark:text-white mb-3">
+											Breakdown
+										</h4>
+										<div
+											class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
+										>
+											<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+												<div
+													class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1"
+												>
+													<Clock class="h-3 w-3" /> TTFR
+												</div>
+												<div
+													class="text-lg font-semibold {getTimingWarningClass(
+														'ttfr',
+														sessionData.timing_metrics.breakdown.ttfr_ms
+													)}"
+												>
+													{formatMs(
+														sessionData.timing_metrics.breakdown.ttfr_ms
+													)}
+												</div>
+											</div>
+											<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+												<div
+													class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1"
+												>
+													<Zap class="h-3 w-3" /> TTFE
+												</div>
+												<div
+													class="text-lg font-semibold text-gray-900 dark:text-white"
+												>
+													{formatMs(
+														sessionData.timing_metrics.breakdown.ttfe_ms
+													)}
+												</div>
+											</div>
+											<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+												<div
+													class="text-xs text-gray-500 dark:text-gray-400"
+												>
+													Context Build
+												</div>
+												<div
+													class="text-lg font-semibold text-gray-900 dark:text-white"
+												>
+													{formatMs(
+														sessionData.timing_metrics.breakdown
+															.context_build_ms
+													)}
+												</div>
+											</div>
+											<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+												<div
+													class="text-xs text-gray-500 dark:text-gray-400"
+												>
+													Tool Selection
+												</div>
+												<div
+													class="text-lg font-semibold {getTimingWarningClass(
+														'tool_selection',
+														sessionData.timing_metrics.breakdown
+															.tool_selection_ms
+													)}"
+												>
+													{formatMs(
+														sessionData.timing_metrics.breakdown
+															.tool_selection_ms
+													)}
+												</div>
+											</div>
+											{#if sessionData.timing_metrics.breakdown.clarification_ms}
+												<div
+													class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+												>
+													<div
+														class="text-xs text-gray-500 dark:text-gray-400"
+													>
+														Clarification
+													</div>
+													<div
+														class="text-lg font-semibold text-gray-900 dark:text-white"
+													>
+														{formatMs(
+															sessionData.timing_metrics.breakdown
+																.clarification_ms
+														)}
+													</div>
+												</div>
+											{/if}
+											{#if sessionData.timing_metrics.breakdown.plan_creation_ms}
+												<div
+													class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+												>
+													<div
+														class="text-xs text-gray-500 dark:text-gray-400"
+													>
+														Plan Creation
+													</div>
+													<div
+														class="text-lg font-semibold text-gray-900 dark:text-white"
+													>
+														{formatMs(
+															sessionData.timing_metrics.breakdown
+																.plan_creation_ms
+														)}
+													</div>
+												</div>
+											{/if}
+											{#if sessionData.timing_metrics.breakdown.plan_execution_ms}
+												<div
+													class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+												>
+													<div
+														class="text-xs text-gray-500 dark:text-gray-400"
+													>
+														Plan Execution
+													</div>
+													<div
+														class="text-lg font-semibold {getTimingWarningClass(
+															'plan_execution',
+															sessionData.timing_metrics.breakdown
+																.plan_execution_ms
+														)}"
+													>
+														{formatMs(
+															sessionData.timing_metrics.breakdown
+																.plan_execution_ms
+														)}
+													</div>
+												</div>
+											{/if}
+											{#if sessionData.timing_metrics.breakdown.planning_overhead_ms}
+												<div
+													class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+												>
+													<div
+														class="text-xs text-gray-500 dark:text-gray-400"
+													>
+														Planning Overhead
+													</div>
+													<div
+														class="text-lg font-semibold text-gray-900 dark:text-white"
+													>
+														{formatMs(
+															sessionData.timing_metrics.breakdown
+																.planning_overhead_ms
+														)}
+													</div>
+												</div>
+											{/if}
+										</div>
+
+										<!-- Plan Summary -->
+										{#if sessionData.timing_metrics.breakdown.plan_status}
+											<div class="mt-3 flex items-center gap-3 text-sm">
+												<span class="text-gray-500 dark:text-gray-400"
+													>Plan:</span
+												>
+												<span
+													class="px-2 py-1 text-xs rounded-full font-medium {sessionData
+														.timing_metrics.breakdown.plan_status ===
+													'completed'
+														? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+														: sessionData.timing_metrics.breakdown
+																	.plan_status === 'failed'
+															? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+															: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'}"
+												>
+													{sessionData.timing_metrics.breakdown
+														.plan_status}
+												</span>
+												{#if sessionData.timing_metrics.breakdown.plan_step_count}
+													<span class="text-gray-500 dark:text-gray-400">
+														{sessionData.timing_metrics.breakdown
+															.plan_step_count} steps
+													</span>
+												{/if}
+												{#if sessionData.timing_metrics.breakdown.plan_latency_share}
+													<span class="text-gray-500 dark:text-gray-400">
+														({sessionData.timing_metrics.breakdown.plan_latency_share.toFixed(
+															0
+														)}% of TTFR)
+													</span>
+												{/if}
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/if}
 
 					<!-- Agent Plan -->
 					{#if sessionData.agent_plan}

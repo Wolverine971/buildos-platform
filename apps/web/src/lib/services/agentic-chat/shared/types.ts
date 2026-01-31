@@ -23,6 +23,7 @@ import type {
 	AgentChatSessionInsert,
 	AgentChatMessageInsert,
 	ChatSession,
+	Database,
 	Json,
 	ContextUsageSnapshot
 } from '@buildos/shared-types';
@@ -52,6 +53,8 @@ export interface ServiceContext {
 	contextType: ChatContextType;
 	entityId?: string;
 	plannerAgentId?: string;
+	/** Optional timing metrics record for latency tracking */
+	timingMetricsId?: string;
 	ontologyContext?: OntologyContext;
 	lastTurnContext?: LastTurnContext;
 	conversationHistory: ChatMessage[];
@@ -212,6 +215,8 @@ export interface AgentChatRequest {
 	contextCache?: ContextCacheHint;
 	/** Metadata for project creation clarification flow */
 	projectClarificationMetadata?: ProjectClarificationMetadata;
+	/** Optional timing metrics record for latency tracking */
+	timingMetricsId?: string;
 	/** Abort signal to cancel streaming work when the client disconnects */
 	abortSignal?: AbortSignal;
 }
@@ -437,6 +442,8 @@ export interface StreamingService extends BaseService {
 // PERSISTENCE TYPES
 // ============================================
 
+export type TimingMetricInsert = Database['public']['Tables']['timing_metrics']['Insert'];
+
 /**
  * Database operation types for persistence service
  */
@@ -468,6 +475,10 @@ export interface PersistenceOperations {
 	// Note: id is optional - if provided, it will be used; otherwise generated
 	saveMessage(data: AgentChatMessageInsert): Promise<string>;
 	getMessages(sessionId: string, limit?: number): Promise<AgentChatMessageInsert[]>;
+
+	// Timing metrics operations
+	createTimingMetric(data: TimingMetricInsert): Promise<string>;
+	updateTimingMetric(id: string, data: Partial<TimingMetricInsert>): Promise<void>;
 }
 
 // ============================================

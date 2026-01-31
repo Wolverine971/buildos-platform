@@ -45,7 +45,9 @@ describe('ExecutorCoordinator', () => {
 			updateChatSession: vi.fn(),
 			getChatSession: vi.fn(),
 			saveMessage: vi.fn(),
-			getMessages: vi.fn().mockResolvedValue([])
+			getMessages: vi.fn().mockResolvedValue([]),
+			createTimingMetric: vi.fn(),
+			updateTimingMetric: vi.fn()
 		};
 
 		coordinator = new ExecutorCoordinator(

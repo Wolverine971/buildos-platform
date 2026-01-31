@@ -2,11 +2,23 @@
 /**
  * Chat Sessions List API
  *
- * Returns paginated list of chat sessions with filters
+ * Returns paginated list of chat sessions with filters and timing metrics
  */
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+
+interface TimingMetrics {
+	ttfr_ms: number | null;
+	ttfe_ms: number | null;
+	context_build_ms: number | null;
+	tool_selection_ms: number | null;
+	clarification_ms: number | null;
+	plan_creation_ms: number | null;
+	plan_execution_ms: number | null;
+	plan_step_count: number | null;
+	plan_status: string | null;
+}
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	// Check authentication
@@ -33,6 +45,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const search = url.searchParams.get('search');
 	const page = parseInt(url.searchParams.get('page') || '1');
 	const limit = parseInt(url.searchParams.get('limit') || '20');
+	const sortBy = url.searchParams.get('sort_by') || 'created_at';
+	const sortOrder = url.searchParams.get('sort_order') || 'desc';
 
 	// Calculate time range
 	const now = new Date();
@@ -71,7 +85,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				{ count: 'exact' }
 			)
 			.gte('created_at', startDate.toISOString())
-			.order('created_at', { ascending: false });
+			.order('created_at', { ascending: sortOrder === 'asc' });
 
 		// Apply filters
 		if (status) {
@@ -95,19 +109,21 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		if (sessionsError) throw sessionsError;
 
-		// For each session, check for token usage, tool calls, and errors
+		// For each session, check for token usage, tool calls, errors, and timing metrics
 		const sessionIds = sessionsData?.map((s) => s.id) || [];
 
 		const usageBySession = new Map<string, { total_tokens: number; total_cost: number }>();
 		const tokensBySession = new Map<string, number>();
 		const toolCallsBySession = new Map<string, number>();
 		const sessionsWithErrors = new Set<string>();
+		const timingBySession = new Map<string, TimingMetrics>();
 
 		if (sessionIds.length > 0) {
 			const [
 				{ data: usageLogs, error: usageError },
 				{ data: messageStats, error: messageStatsError },
-				{ data: executions, error: executionsError }
+				{ data: executions, error: executionsError },
+				{ data: timingMetrics, error: timingError }
 			] = await Promise.all([
 				supabase
 					.from('llm_usage_logs')
@@ -120,12 +136,30 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				supabase
 					.from('agent_executions')
 					.select('agent_session_id, success')
-					.in('agent_session_id', sessionIds)
+					.in('agent_session_id', sessionIds),
+				supabase
+					.from('timing_metrics')
+					.select(
+						`
+						session_id,
+						time_to_first_response_ms,
+						time_to_first_event_ms,
+						context_build_ms,
+						tool_selection_ms,
+						clarification_ms,
+						plan_creation_ms,
+						plan_execution_ms,
+						plan_step_count,
+						plan_status
+					`
+					)
+					.in('session_id', sessionIds)
 			]);
 
 			if (usageError) throw usageError;
 			if (messageStatsError) throw messageStatsError;
 			if (executionsError) throw executionsError;
+			if (timingError) throw timingError;
 
 			(usageLogs || []).forEach((log) => {
 				if (!log.agent_session_id) return;
@@ -156,6 +190,25 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					sessionsWithErrors.add(execution.agent_session_id);
 				}
 			});
+
+			// Store timing metrics by session - use most recent if multiple
+			(timingMetrics || []).forEach((timing) => {
+				if (!timing.session_id) return;
+				// Only set if not already present (first row is most recent due to order)
+				if (!timingBySession.has(timing.session_id)) {
+					timingBySession.set(timing.session_id, {
+						ttfr_ms: timing.time_to_first_response_ms,
+						ttfe_ms: timing.time_to_first_event_ms,
+						context_build_ms: timing.context_build_ms,
+						tool_selection_ms: timing.tool_selection_ms,
+						clarification_ms: timing.clarification_ms,
+						plan_creation_ms: timing.plan_creation_ms,
+						plan_execution_ms: timing.plan_execution_ms,
+						plan_step_count: timing.plan_step_count,
+						plan_status: timing.plan_status
+					});
+				}
+			});
 		}
 
 		// Format sessions
@@ -171,6 +224,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				context?.title ||
 				context?.user_message ||
 				(session.session_type === 'planner_thinking' ? 'Planner Session' : 'Agent Session');
+
+			const timing = timingBySession.get(session.id);
 
 			return {
 				id: session.id,
@@ -190,9 +245,25 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				has_agent_plan: !!session.plan_id,
 				has_compression: false,
 				has_errors: sessionsWithErrors.has(session.id) || session.status === 'failed',
-				cost_estimate: costEstimate
+				cost_estimate: costEstimate,
+				// Timing metrics
+				timing: timing || null
 			};
 		});
+
+		// If sorting by timing field, sort in memory after fetching
+		if (sortBy.startsWith('timing_')) {
+			const timingField = sortBy.replace('timing_', '') as keyof TimingMetrics;
+			sessions.sort((a, b) => {
+				const aVal =
+					a.timing?.[timingField] ?? (sortOrder === 'desc' ? -Infinity : Infinity);
+				const bVal =
+					b.timing?.[timingField] ?? (sortOrder === 'desc' ? -Infinity : Infinity);
+				const aNum = typeof aVal === 'number' ? aVal : 0;
+				const bNum = typeof bVal === 'number' ? bVal : 0;
+				return sortOrder === 'desc' ? bNum - aNum : aNum - bNum;
+			});
+		}
 
 		return ApiResponse.success({
 			sessions,

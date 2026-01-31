@@ -51,7 +51,9 @@ describe('AgentChatOrchestrator (flexible loop)', () => {
 				updateChatSession: vi.fn(),
 				getChatSession: vi.fn(),
 				saveMessage: vi.fn(),
-				getMessages: vi.fn()
+				getMessages: vi.fn(),
+				createTimingMetric: vi.fn(),
+				updateTimingMetric: vi.fn()
 			},
 			contextService: {
 				buildPlannerContext: vi.fn().mockResolvedValue({

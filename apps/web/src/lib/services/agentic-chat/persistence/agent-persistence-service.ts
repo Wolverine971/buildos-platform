@@ -31,7 +31,11 @@ import type {
 	AgentChatSessionInsert,
 	AgentChatMessageInsert
 } from '@buildos/shared-types';
-import { PersistenceError, type PersistenceOperations } from '../shared/types';
+import {
+	PersistenceError,
+	type PersistenceOperations,
+	type TimingMetricInsert
+} from '../shared/types';
 import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '$lib/utils/logger';
 
@@ -699,6 +703,82 @@ export class AgentPersistenceService implements PersistenceOperations {
 				`Failed to get messages: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				'getMessages',
 				{ error, sessionId, limit }
+			);
+		}
+	}
+
+	// ============================================
+	// TIMING METRICS OPERATIONS
+	// ============================================
+
+	/**
+	 * Create a new timing metrics record
+	 * If data.id is provided, it will be used; otherwise a new UUID is generated
+	 */
+	async createTimingMetric(data: TimingMetricInsert): Promise<string> {
+		try {
+			const metricId = data.id || uuidv4();
+			const metricData: TimingMetricInsert = {
+				...data,
+				id: metricId,
+				created_at: data.created_at || new Date().toISOString(),
+				updated_at: data.updated_at || new Date().toISOString()
+			};
+
+			const { error } = await this.supabase.from('timing_metrics').insert(metricData);
+
+			if (error) {
+				throw new PersistenceError(
+					`Failed to create timing metric: ${error.message}`,
+					'createTimingMetric',
+					{ error, data }
+				);
+			}
+
+			logger.info('Created timing metric', { metricId, sessionId: data.session_id });
+			return metricId;
+		} catch (error) {
+			if (error instanceof PersistenceError) {
+				throw error;
+			}
+			throw new PersistenceError(
+				`Failed to create timing metric: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				'createTimingMetric',
+				{ error, data }
+			);
+		}
+	}
+
+	/**
+	 * Update an existing timing metrics record
+	 */
+	async updateTimingMetric(id: string, data: Partial<TimingMetricInsert>): Promise<void> {
+		try {
+			const updateData = {
+				...data,
+				updated_at: new Date().toISOString()
+			};
+
+			const { error } = await this.supabase
+				.from('timing_metrics')
+				.update(updateData)
+				.eq('id', id);
+
+			if (error) {
+				throw new PersistenceError(
+					`Failed to update timing metric: ${error.message}`,
+					'updateTimingMetric',
+					{ error, id, data }
+				);
+			}
+		} catch (error) {
+			if (error instanceof PersistenceError) {
+				throw error;
+			}
+			throw new PersistenceError(
+				`Failed to update timing metric: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				'updateTimingMetric',
+				{ error, id, data }
 			);
 		}
 	}

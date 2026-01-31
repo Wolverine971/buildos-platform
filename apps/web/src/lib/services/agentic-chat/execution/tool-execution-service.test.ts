@@ -397,6 +397,64 @@ describe('ToolExecutionService', () => {
 			expect(validation.errors[0]).toContain('Missing required parameter: title');
 		});
 
+		it('should allow null for required nullable parameters', () => {
+			const toolDefs: ChatToolDefinition[] = [
+				{
+					name: 'move_document',
+					description: 'Move document',
+					parameters: {
+						type: 'object',
+						properties: {
+							document_id: { type: 'string' },
+							new_parent_id: {
+								anyOf: [{ type: 'string' }, { type: 'null' }]
+							}
+						},
+						required: ['document_id', 'new_parent_id']
+					}
+				}
+			];
+
+			const toolCall: ChatToolCall = {
+				id: 'call_move',
+				name: 'move_document',
+				arguments: { document_id: 'doc_123', new_parent_id: null }
+			};
+
+			const validation = service.validateToolCall(toolCall, toolDefs);
+
+			expect(validation.isValid).toBe(true);
+			expect(validation.errors).toEqual([]);
+		});
+
+		it('should enforce minItems when provided', () => {
+			const toolDefs: ChatToolDefinition[] = [
+				{
+					name: 'reorganize_onto_project_graph',
+					description: 'Reorganize project graph',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							nodes: { type: 'array', minItems: 1 }
+						},
+						required: ['project_id', 'nodes']
+					}
+				}
+			];
+
+			const toolCall: ChatToolCall = {
+				id: 'call_reorg',
+				name: 'reorganize_onto_project_graph',
+				arguments: { project_id: 'proj_123', nodes: [] }
+			};
+
+			const validation = service.validateToolCall(toolCall, toolDefs);
+
+			expect(validation.isValid).toBe(false);
+			expect(validation.errors[0]).toContain('expected at least 1 items');
+		});
+
 		it('should validate parameter types', () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_type',

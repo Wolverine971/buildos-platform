@@ -444,6 +444,44 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		const errors: string[] = [];
+		const getActualType = (value: unknown): string => {
+			if (value === null) return 'null';
+			if (Array.isArray(value)) return 'array';
+			return typeof value;
+		};
+		const collectTypes = (schema: Record<string, any> | undefined, types: Set<string>) => {
+			if (!schema || typeof schema !== 'object') return;
+			if (schema.nullable === true) {
+				types.add('null');
+			}
+			if (Array.isArray(schema.type)) {
+				schema.type.forEach((t: unknown) => {
+					if (typeof t === 'string') {
+						types.add(t);
+					}
+				});
+			} else if (typeof schema.type === 'string') {
+				types.add(schema.type);
+			}
+			const unions = []
+				.concat(schema.anyOf ?? [])
+				.concat(schema.oneOf ?? [])
+				.concat(schema.allOf ?? []);
+			for (const unionEntry of unions) {
+				if (unionEntry && typeof unionEntry === 'object') {
+					collectTypes(unionEntry as Record<string, any>, types);
+				}
+			}
+		};
+		const getAllowedTypes = (schema: Record<string, any> | undefined): Set<string> | null => {
+			const types = new Set<string>();
+			collectTypes(schema, types);
+			return types.size > 0 ? types : null;
+		};
+		const allowsNull = (schema: Record<string, any> | undefined): boolean => {
+			const types = getAllowedTypes(schema);
+			return types ? types.has('null') : false;
+		};
 
 		// Check if tool exists
 		const toolDef = this.getToolDefinition(toolName, toolDefs);
@@ -458,12 +496,21 @@ export class ToolExecutionService implements BaseService {
 			const requiredParams = Array.isArray(paramSchema.required) ? paramSchema.required : [];
 
 			for (const required of requiredParams) {
-				if (
-					!(required in args) ||
-					args[required] === undefined ||
-					args[required] === null
-				) {
+				const value = args[required];
+				const paramDef = (paramSchema.properties ?? {})[required] as
+					| Record<string, any>
+					| undefined;
+				if (!(required in args) || value === undefined) {
 					errors.push(`Missing required parameter: ${required}`);
+					continue;
+				}
+				if (value === null && !allowsNull(paramDef)) {
+					errors.push(`Missing required parameter: ${required}`);
+					continue;
+				}
+				if (typeof value === 'string' && value.trim().length === 0) {
+					errors.push(`Missing required parameter: ${required}`);
+					continue;
 				}
 			}
 
@@ -472,26 +519,31 @@ export class ToolExecutionService implements BaseService {
 				const paramDef = properties[key];
 				if (!paramDef || typeof paramDef !== 'object') continue;
 
-				const expectedType = (paramDef as any).type;
-				const actualType = Array.isArray(value) ? 'array' : typeof value;
+				const allowedTypes = getAllowedTypes(paramDef);
+				const actualType = getActualType(value);
 
-				// Basic type checking
-				if (expectedType === 'string' && actualType !== 'string') {
+				// Basic type checking with union support
+				if (allowedTypes && !allowedTypes.has(actualType)) {
+					const expectedList = Array.from(allowedTypes).join(' | ');
 					errors.push(
-						`Invalid type for parameter ${key}: expected string, got ${actualType}`
+						`Invalid type for parameter ${key}: expected ${expectedList}, got ${actualType}`
 					);
-				} else if (expectedType === 'number' && actualType !== 'number') {
-					errors.push(
-						`Invalid type for parameter ${key}: expected number, got ${actualType}`
-					);
-				} else if (expectedType === 'boolean' && actualType !== 'boolean') {
-					errors.push(
-						`Invalid type for parameter ${key}: expected boolean, got ${actualType}`
-					);
-				} else if (expectedType === 'array' && actualType !== 'array') {
-					errors.push(
-						`Invalid type for parameter ${key}: expected array, got ${actualType}`
-					);
+				}
+
+				if (typeof value === 'string' && typeof (paramDef as any).minLength === 'number') {
+					if (value.length < (paramDef as any).minLength) {
+						errors.push(
+							`Invalid length for parameter ${key}: expected at least ${(paramDef as any).minLength} characters`
+						);
+					}
+				}
+
+				if (Array.isArray(value) && typeof (paramDef as any).minItems === 'number') {
+					if (value.length < (paramDef as any).minItems) {
+						errors.push(
+							`Invalid length for parameter ${key}: expected at least ${(paramDef as any).minItems} items`
+						);
+					}
 				}
 			}
 		}
