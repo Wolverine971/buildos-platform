@@ -427,7 +427,7 @@ export class ToolExecutionService implements BaseService {
 
 		if (typeof toolCallOrName === 'string') {
 			// Called as validateToolCall(toolName, args, availableTools)
-			toolName = toolCallOrName;
+			toolName = toolCallOrName.trim();
 			args = (availableToolsOrArgs as Record<string, any>) || {};
 			toolDefs = availableTools;
 		} else {
@@ -548,10 +548,110 @@ export class ToolExecutionService implements BaseService {
 			}
 		}
 
+		this.applyCustomValidation(toolName, args, errors);
+
 		return {
 			isValid: errors.length === 0,
 			errors
 		};
+	}
+
+	private applyCustomValidation(
+		toolName: string,
+		args: Record<string, any>,
+		errors: string[]
+	): void {
+		switch (toolName) {
+			case 'reorganize_onto_project_graph':
+				this.validateReorganizeProjectGraphArgs(args, errors);
+				break;
+			default:
+				break;
+		}
+	}
+
+	private validateReorganizeProjectGraphArgs(
+		args: Record<string, any>,
+		errors: string[]
+	): void {
+		const projectId = typeof args.project_id === 'string' ? args.project_id.trim() : '';
+		if (!projectId || !isValidUUID(projectId)) {
+			errors.push('Invalid project_id: expected UUID');
+		}
+
+		const nodes = Array.isArray(args.nodes) ? args.nodes : [];
+		let needsGraphLookupHint = false;
+
+		for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) {
+			const node = nodes[nodeIndex];
+			if (!node || typeof node !== 'object') {
+				errors.push(`Invalid nodes[${nodeIndex}] entry`);
+				continue;
+			}
+
+			const kind = typeof (node as any).kind === 'string' ? (node as any).kind.trim() : '';
+			const id = typeof (node as any).id === 'string' ? (node as any).id.trim() : '';
+
+			if (!id) {
+				errors.push(`Missing id for node at nodes[${nodeIndex}]`);
+			} else if (!isValidUUID(id)) {
+				needsGraphLookupHint = true;
+				errors.push(
+					`Invalid ${kind || 'node'} id at nodes[${nodeIndex}]: expected UUID`
+				);
+			}
+
+			const connections = Array.isArray((node as any).connections)
+				? (node as any).connections
+				: [];
+
+			for (let connIndex = 0; connIndex < connections.length; connIndex += 1) {
+				const connection = connections[connIndex];
+				if (!connection || typeof connection !== 'object') {
+					errors.push(`Invalid connection at nodes[${nodeIndex}].connections[${connIndex}]`);
+					continue;
+				}
+
+				const connKind =
+					typeof (connection as any).kind === 'string'
+						? (connection as any).kind.trim()
+						: '';
+				const connId =
+					typeof (connection as any).id === 'string'
+						? (connection as any).id.trim()
+						: '';
+
+				if (!connKind || !connId) {
+					errors.push(
+						`Invalid connection at nodes[${nodeIndex}].connections[${connIndex}]: requires kind and id`
+					);
+					continue;
+				}
+
+				if (connKind === 'project') {
+					if (!isValidUUID(connId)) {
+						errors.push(
+							`Invalid connection project id at nodes[${nodeIndex}].connections[${connIndex}]: expected UUID`
+						);
+					} else if (projectId && isValidUUID(projectId) && connId !== projectId) {
+						errors.push(
+							`Connection project id must match project_id at nodes[${nodeIndex}].connections[${connIndex}]`
+						);
+					}
+				} else if (!isValidUUID(connId)) {
+					needsGraphLookupHint = true;
+					errors.push(
+						`Invalid connection id for ${connKind} at nodes[${nodeIndex}].connections[${connIndex}]: expected UUID`
+					);
+				}
+			}
+		}
+
+		if (needsGraphLookupHint) {
+			errors.push(
+				'Use get_onto_project_graph to fetch entity UUIDs before calling reorganize_onto_project_graph.'
+			);
+		}
 	}
 
 	/**
@@ -885,7 +985,8 @@ export class ToolExecutionService implements BaseService {
 	}
 
 	private resolveToolCall(toolCall: ChatToolCall): { name: string; rawArguments: unknown } {
-		const name = toolCall.function?.name ?? (toolCall as any)?.name ?? '';
+		const rawName = toolCall.function?.name ?? (toolCall as any)?.name ?? '';
+		const name = typeof rawName === 'string' ? rawName.trim() : '';
 		const rawArguments = toolCall.function?.arguments ?? (toolCall as any)?.arguments;
 		return { name, rawArguments };
 	}
@@ -937,10 +1038,25 @@ export class ToolExecutionService implements BaseService {
 	): Record<string, any> {
 		const resolved = { ...args };
 
-		if (this.toolSupportsProjectId(toolName, availableTools) && !resolved.project_id) {
-			const projectId = this.resolveProjectIdFromContext(context);
-			if (projectId) {
-				resolved.project_id = projectId;
+		if (this.toolSupportsProjectId(toolName, availableTools)) {
+			if (typeof resolved.project_id === 'string') {
+				const trimmed = resolved.project_id.trim();
+				if (trimmed) {
+					resolved.project_id = trimmed;
+				} else {
+					delete resolved.project_id;
+				}
+			} else if ('project_id' in resolved) {
+				delete resolved.project_id;
+			}
+
+			const hasValidProjectId =
+				typeof resolved.project_id === 'string' && isValidUUID(resolved.project_id);
+			if (!hasValidProjectId) {
+				const projectId = this.resolveProjectIdFromContext(context);
+				if (projectId) {
+					resolved.project_id = projectId;
+				}
 			}
 		}
 

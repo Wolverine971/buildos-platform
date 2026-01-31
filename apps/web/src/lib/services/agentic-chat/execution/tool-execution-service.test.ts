@@ -105,6 +105,26 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('should trim whitespace in tool names', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_trim',
+				name: '  list_onto_tasks  ',
+				arguments: { project_id: 'proj_123' }
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ tasks: [] });
+
+			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
+
+			expect(result.success).toBe(true);
+			expect(result.toolName).toBe('list_onto_tasks');
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'list_onto_tasks',
+				{ project_id: 'proj_123' },
+				mockContext
+			);
+		});
+
 		it('should handle tool execution errors', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_456',
@@ -453,6 +473,48 @@ describe('ToolExecutionService', () => {
 
 			expect(validation.isValid).toBe(false);
 			expect(validation.errors[0]).toContain('expected at least 1 items');
+		});
+
+		it('should validate UUIDs for reorganize_onto_project_graph nodes', () => {
+			const toolDefs: ChatToolDefinition[] = [
+				{
+					name: 'reorganize_onto_project_graph',
+					description: 'Reorganize project graph',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							nodes: { type: 'array', minItems: 1 }
+						},
+						required: ['project_id', 'nodes']
+					}
+				}
+			];
+
+			const toolCall: ChatToolCall = {
+				id: 'call_reorg_invalid',
+				name: 'reorganize_onto_project_graph',
+				arguments: {
+					project_id: '153dea7b-1fc7-4f68-b014-cd2b00c572ec',
+					nodes: [
+						{
+							id: 'business-plan-folder',
+							kind: 'document',
+							connections: [{ kind: 'document', id: 'marketing-folder' }]
+						}
+					]
+				}
+			};
+
+			const validation = service.validateToolCall(toolCall, toolDefs);
+
+			expect(validation.isValid).toBe(false);
+			expect(validation.errors.some((error) => error.includes('expected UUID'))).toBe(true);
+			expect(
+				validation.errors.some((error) =>
+					error.includes('reorganize_onto_project_graph')
+				)
+			).toBe(true);
 		});
 
 		it('should validate parameter types', () => {

@@ -288,10 +288,18 @@ export class ToolSelectionService {
 	private normalizeToolNames(names: string[], allowed: Set<string>): string[] {
 		const normalized: string[] = [];
 		const seen = new Set<string>();
+		const lookup = new Map<string, string>();
+		for (const name of allowed) {
+			lookup.set(name.toLowerCase(), name);
+		}
 		for (const name of names) {
-			if (!allowed.has(name) || seen.has(name)) continue;
-			seen.add(name);
-			normalized.push(name);
+			if (typeof name !== 'string') continue;
+			const trimmed = name.trim();
+			if (!trimmed) continue;
+			const canonical = lookup.get(trimmed.toLowerCase());
+			if (!canonical || seen.has(canonical)) continue;
+			seen.add(canonical);
+			normalized.push(canonical);
 		}
 		return normalized;
 	}

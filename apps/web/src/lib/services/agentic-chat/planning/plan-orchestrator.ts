@@ -228,6 +228,7 @@ export class PlanOrchestrator implements BaseService {
 				context
 			);
 
+			const toolNameMap = this.buildToolNameMap(plannerContext.availableTools);
 			const plan: AgentPlan = {
 				id: uuidv4(),
 				sessionId: intent.sessionId,
@@ -236,7 +237,7 @@ export class PlanOrchestrator implements BaseService {
 				userMessage: intent.objective,
 				strategy,
 				status: 'pending',
-				steps: this.normalizeSteps(planData.steps),
+				steps: this.normalizeSteps(planData.steps, toolNameMap),
 				createdAt: new Date(),
 				metadata: {
 					estimatedDuration: this.estimateDuration(planData.steps),
@@ -363,6 +364,7 @@ export class PlanOrchestrator implements BaseService {
 				});
 			}
 
+			const toolNameMap = this.buildToolNameMap(plannerContext.availableTools);
 			const plan: AgentPlan = {
 				id: uuidv4(),
 				sessionId: intent.sessionId,
@@ -371,7 +373,7 @@ export class PlanOrchestrator implements BaseService {
 				userMessage: intent.objective,
 				strategy,
 				status: 'pending',
-				steps: this.normalizeSteps(providedPlan.steps),
+				steps: this.normalizeSteps(providedPlan.steps, toolNameMap),
 				createdAt: new Date(),
 				metadata: {
 					estimatedDuration: this.estimateDuration(providedPlan.steps),
@@ -1200,7 +1202,7 @@ Generate an execution plan to fulfill this request.`;
 	/**
 	 * Normalize plan steps
 	 */
-	private normalizeSteps(steps: any[]): PlanStep[] {
+	private normalizeSteps(steps: any[], toolNameMap?: Map<string, string>): PlanStep[] {
 		return steps.map((step, index) => {
 			const metadata: Record<string, any> = {
 				...(step.metadata ?? {})
@@ -1213,13 +1215,32 @@ Generate an execution plan to fulfill this request.`;
 				metadata.arguments = step.arguments;
 			}
 
+			const rawStepNumber =
+				typeof step.stepNumber === 'number' ? step.stepNumber : Number(step.stepNumber);
+			const stepNumber =
+				Number.isFinite(rawStepNumber) && rawStepNumber > 0
+					? Math.trunc(rawStepNumber)
+					: index + 1;
+
+			const tools = Array.isArray(step.tools)
+				? step.tools
+						.map((tool: unknown) => this.normalizeToolName(tool, toolNameMap))
+						.filter((tool): tool is string => Boolean(tool))
+				: [];
+
+			const dependsOn = Array.isArray(step.dependsOn)
+				? step.dependsOn
+						.map((dep: unknown) => (typeof dep === 'number' ? dep : Number(dep)))
+						.filter((dep: number) => Number.isFinite(dep))
+				: undefined;
+
 			return {
-				stepNumber: step.stepNumber || index + 1,
+				stepNumber,
 				type: step.type || 'research',
 				description: step.description || `Step ${index + 1}`,
 				executorRequired: !!step.executorRequired,
-				tools: Array.isArray(step.tools) ? step.tools : [],
-				dependsOn: Array.isArray(step.dependsOn) ? step.dependsOn : undefined,
+				tools,
+				dependsOn: dependsOn && dependsOn.length > 0 ? dependsOn : undefined,
 				status: 'pending',
 				metadata: Object.keys(metadata).length > 0 ? metadata : undefined
 			};
@@ -1235,9 +1256,7 @@ Generate an execution plan to fulfill this request.`;
 		if (!createProjectStep) {
 			throw new PlanExecutionError('Project creation plan must call create_onto_project', {
 				planId: plan.id,
-				availableTools: plannerContext.availableTools.map(
-					(tool) => tool.function.name || ''
-				)
+				availableTools: plannerContext.availableTools.map((tool) => resolveToolName(tool))
 			});
 		}
 
@@ -1307,6 +1326,28 @@ Plan steps:
 ${stepsSummary}
 
 Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short explanation"}`;
+	}
+
+	private buildToolNameMap(tools: ChatToolDefinition[]): Map<string, string> {
+		const lookup = new Map<string, string>();
+		for (const tool of tools) {
+			const name = resolveToolName(tool);
+			if (!name || name === 'unknown') continue;
+			lookup.set(name.toLowerCase(), name);
+		}
+		return lookup;
+	}
+
+	private normalizeToolName(name: unknown, toolNameMap?: Map<string, string>): string | null {
+		if (typeof name !== 'string') {
+			return null;
+		}
+		const trimmed = name.trim();
+		if (!trimmed) {
+			return null;
+		}
+		const canonical = toolNameMap?.get(trimmed.toLowerCase());
+		return canonical ?? trimmed;
 	}
 
 	private parsePlanReviewResponse(response: string): PlanReviewResult {
@@ -1969,9 +2010,10 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		toolName: string,
 		plannerContext: PlannerContext
 	): ChatToolDefinition | undefined {
+		const normalized = toolName.trim().toLowerCase();
 		return plannerContext.availableTools.find((tool) => {
-			const name = (tool as any).function?.name ?? (tool as any).name;
-			return name === toolName;
+			const name = resolveToolName(tool);
+			return name.toLowerCase() === normalized;
 		});
 	}
 

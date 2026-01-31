@@ -2,18 +2,18 @@
 
 # Prompt Audit: agent-executor-task-execution
 
-**Generated at:** 2026-01-30T19:15:22.819Z
+**Generated at:** 2026-01-31T01:02:57.148Z
 **Environment:** Development
 
 ## Metadata
 
 ```json
 {
-	"executorId": "cb0e9b6e-99a6-444b-8a50-47d037c6a87f",
-	"sessionId": "92e5e910-de5f-4beb-8298-cd7ef53d7a8b",
-	"taskDescription": "Analyze critical path for Jan 29 deadline focusing on domain hookup and homepage approval blockers",
+	"executorId": "d9e18ca2-fbc7-4a91-aecf-ce683c325c91",
+	"sessionId": "88b17991-89a3-42d1-80c0-4eac3e9f1678",
+	"taskDescription": "Reorganize project graph to link overdue shooting card task with audience segmentation task",
 	"taskGoal": "Complete plan step 3 for strategy planner_stream",
-	"availableTools": [],
+	"availableTools": ["reorganize_onto_project_graph"],
 	"hasRelevantData": true,
 	"userId": "255735ad-a34b-4ca9-942c-397ed8cc1435"
 }
@@ -30,13 +30,13 @@ Execute ONE task with the provided tools. No conversation, no questions.
 
 ## Your Task
 
-Analyze critical path for Jan 29 deadline focusing on domain hookup and homepage approval blockers
+Reorganize project graph to link overdue shooting card task with audience segmentation task
 
 **Goal:** Complete plan step 3 for strategy planner_stream
 
 **Constraints:**
-- Incorporate outputs from plan steps 2
-- Use reasoning and summarization without additional tools
+- Incorporate outputs from plan steps 1, 2
+- Use only the assigned tools: `reorganize_onto_project_graph`
 - Return structured JSON data that can be used by subsequent plan steps
 
 ## Operating Rules
@@ -65,12 +65,12 @@ If blocked, set success=false and fill error and next_step. Return JSON only (no
 ```
 Execute this task:
 
-**Description:** Analyze critical path for Jan 29 deadline focusing on domain hookup and homepage approval blockers
+**Description:** Reorganize project graph to link overdue shooting card task with audience segmentation task
 **Goal:** Complete plan step 3 for strategy planner_stream
 
 **Constraints:**
-- Incorporate outputs from plan steps 2
-- Use reasoning and summarization without additional tools
+- Incorporate outputs from plan steps 1, 2
+- Use only the assigned tools: `reorganize_onto_project_graph`
 - Return structured JSON data that can be used by subsequent plan steps
 
 Use the available tools to complete this task. Return JSON only, following the system prompt schema.

@@ -491,15 +491,15 @@ Use dry_run to preview edge changes before applying.`,
 						items: {
 							type: 'object',
 							properties: {
-								id: { type: 'string' },
-								kind: { type: 'string' },
+								id: { type: 'string', description: 'Entity UUID' },
+								kind: { type: 'string', description: 'Entity kind' },
 								connections: {
 									type: 'array',
 									items: {
 										type: 'object',
 										properties: {
-											kind: { type: 'string' },
-											id: { type: 'string' },
+											kind: { type: 'string', description: 'Connection kind' },
+											id: { type: 'string', description: 'Connection entity UUID' },
 											intent: {
 												type: 'string',
 												enum: ['containment', 'semantic']

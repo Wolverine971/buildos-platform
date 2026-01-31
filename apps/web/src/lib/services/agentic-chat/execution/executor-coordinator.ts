@@ -156,15 +156,20 @@ export class ExecutorCoordinator {
 			return [];
 		}
 
+		const lookup = new Map<string, ChatToolDefinition>();
+		for (const tool of availableTools) {
+			const name = this.getToolName(tool);
+			if (!name) continue;
+			lookup.set(name.toLowerCase(), tool);
+		}
+
 		return toolNames
-			.map((toolName) =>
-				availableTools.find(
-					(tool) =>
-						this.getToolName(tool) === toolName ||
-						// Some configurations expose `function.name`
-						(tool as any)?.function?.name === toolName
-				)
-			)
+			.map((toolName) => {
+				if (typeof toolName !== 'string') return undefined;
+				const trimmed = toolName.trim();
+				if (!trimmed) return undefined;
+				return lookup.get(trimmed.toLowerCase());
+			})
 			.filter((tool): tool is ChatToolDefinition => !!tool);
 	}
 

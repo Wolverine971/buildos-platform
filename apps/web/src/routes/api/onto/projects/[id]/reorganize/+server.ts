@@ -21,6 +21,7 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { VALID_RELS, type EntityKind } from '$lib/services/ontology/edge-direction';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const VALID_MODES = new Set<GraphReorgMode>(['replace', 'merge']);
 const VALID_SEMANTIC_MODES = new Set<GraphReorgSemanticMode>(['replace_auto', 'merge', 'preserve']);
@@ -73,6 +74,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		if (!id) {
 			return ApiResponse.badRequest('Project ID required');
 		}
+		if (!isValidUUID(id)) {
+			return ApiResponse.badRequest('Invalid project ID');
+		}
 
 		const body = await request.json().catch(() => null);
 		if (!body || typeof body !== 'object') {
@@ -80,6 +84,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const projectId = typeof (body as any).project_id === 'string' ? body.project_id : id;
+		if (!isValidUUID(projectId)) {
+			return ApiResponse.badRequest('Invalid project ID');
+		}
 		if (projectId !== id) {
 			return ApiResponse.badRequest('project_id must match route project id');
 		}
@@ -131,6 +138,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			if (!rawKind || !rawId) {
 				return ApiResponse.badRequest('Each node requires kind and id');
 			}
+			if (!isValidUUID(rawId)) {
+				return ApiResponse.badRequest(`Invalid ${rawKind} id; expected UUID`);
+			}
 			if (rawKind === 'project') {
 				return ApiResponse.badRequest('project cannot be reorganized as a node');
 			}
@@ -152,6 +162,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				if (!(connection.kind in ENTITY_TABLES) && connection.kind !== 'project') {
 					return ApiResponse.badRequest(
 						`Unsupported connection kind: ${connection.kind}`
+					);
+				}
+				if (connection.kind === 'project' && connection.id !== projectId) {
+					return ApiResponse.badRequest('Connection project id must match project_id');
+				}
+				if (connection.kind !== 'project' && !isValidUUID(connection.id)) {
+					return ApiResponse.badRequest(
+						`Invalid connection id for ${connection.kind}; expected UUID`
 					);
 				}
 				if (connection.intent && !VALID_INTENTS.has(connection.intent)) {
