@@ -59,6 +59,12 @@ export const CONTEXT_USAGE_TOKEN_BUDGET = 2500;
  */
 export const ONTOLOGY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Project context snapshot TTL in milliseconds.
+ * Used to decide when to refresh background snapshots.
+ */
+export const PROJECT_SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
 // ============================================
 // CONTEXT TYPES
 // ============================================

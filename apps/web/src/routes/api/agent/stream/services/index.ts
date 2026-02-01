@@ -28,6 +28,12 @@ export { SessionManager, createSessionManager } from './session-manager';
 export { OntologyCacheService, createOntologyCacheService } from './ontology-cache';
 
 // ============================================
+// ACCESS CHECKING
+// ============================================
+
+export { AccessCheckService, createAccessCheckService } from './access-check';
+
+// ============================================
 // MESSAGE PERSISTENCE
 // ============================================
 

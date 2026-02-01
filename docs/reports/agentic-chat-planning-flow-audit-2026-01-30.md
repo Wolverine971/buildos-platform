@@ -34,9 +34,9 @@ These quick wins were implemented after the initial audit:
 - **Decreased plan-generation retries** to a single attempt and disabled JSON parse retries in JSON mode.
     - Files: `apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts`
 - **Inlined plan creation into the plan tool**: `agent_create_plan` can accept a full plan JSON payload and skip plan-generation LLM.
-  - Files: `apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts`, `apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts`
+    - Files: `apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.ts`, `apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts`
 - **Trimmed plan-generation tool summaries** with Tier A/B logic to keep critical guardrails while reducing prompt size.
-  - Files: `apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts`
+    - Files: `apps/web/src/lib/services/agentic-chat/planning/plan-orchestrator.ts`
 
 ## Current Planning-Mode Flow (Create Plan -> Executors)
 

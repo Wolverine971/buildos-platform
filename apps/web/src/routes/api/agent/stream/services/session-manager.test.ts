@@ -70,6 +70,6 @@ describe('SessionManager.resolveProjectFocus', () => {
 
 		expect(result.resolvedFocus).toBeNull();
 		expect(result.focusChanged).toBe(true);
-		expect(supabase.update).toHaveBeenCalled();
+		expect(supabase.update).not.toHaveBeenCalled();
 	});
 });

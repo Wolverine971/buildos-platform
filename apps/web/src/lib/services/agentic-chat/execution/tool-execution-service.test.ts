@@ -511,9 +511,7 @@ describe('ToolExecutionService', () => {
 			expect(validation.isValid).toBe(false);
 			expect(validation.errors.some((error) => error.includes('expected UUID'))).toBe(true);
 			expect(
-				validation.errors.some((error) =>
-					error.includes('reorganize_onto_project_graph')
-				)
+				validation.errors.some((error) => error.includes('reorganize_onto_project_graph'))
 			).toBe(true);
 		});
 

@@ -92,6 +92,17 @@ export class ToolExecutionService implements BaseService {
 	private static readonly DEFAULT_RETRY_COUNT = 0;
 	private static readonly DEFAULT_RETRY_DELAY = 1000;
 	private static readonly MAX_FORMATTED_LENGTH = 4000;
+	private static readonly UPDATE_TOOL_PREFIX = 'update_onto_';
+	private static readonly UPDATE_TOOL_DISPLAY_KEYS: Record<string, string> = {
+		project: 'project_name',
+		task: 'task_title',
+		goal: 'goal_name',
+		plan: 'plan_name',
+		document: 'document_title',
+		milestone: 'milestone_title',
+		risk: 'risk_title',
+		requirement: 'requirement_text'
+	};
 
 	constructor(
 		private toolExecutor: ToolExecutorFunction,
@@ -191,6 +202,7 @@ export class ToolExecutionService implements BaseService {
 
 		args = this.applySchemaDefaults(toolName, args, availableTools);
 		args = this.applyContextDefaults(toolName, args, context, availableTools);
+		args = this.normalizeIdFields(args);
 
 		if (options.abortSignal?.aborted) {
 			return finalizeResult({
@@ -561,6 +573,10 @@ export class ToolExecutionService implements BaseService {
 		args: Record<string, any>,
 		errors: string[]
 	): void {
+		if (toolName.startsWith(ToolExecutionService.UPDATE_TOOL_PREFIX)) {
+			this.validateOntologyUpdateArgs(toolName, args, errors);
+		}
+
 		switch (toolName) {
 			case 'reorganize_onto_project_graph':
 				this.validateReorganizeProjectGraphArgs(args, errors);
@@ -570,10 +586,52 @@ export class ToolExecutionService implements BaseService {
 		}
 	}
 
-	private validateReorganizeProjectGraphArgs(
+	private validateOntologyUpdateArgs(
+		toolName: string,
 		args: Record<string, any>,
 		errors: string[]
 	): void {
+		const entity = toolName.slice(ToolExecutionService.UPDATE_TOOL_PREFIX.length);
+		if (!entity) return;
+
+		const addErrorOnce = (message: string): void => {
+			if (!errors.includes(message)) {
+				errors.push(message);
+			}
+		};
+
+		const idKey = `${entity}_id`;
+		const rawId = args[idKey];
+		const trimmedId = typeof rawId === 'string' ? rawId.trim() : rawId;
+		if (!trimmedId || typeof trimmedId !== 'string') {
+			addErrorOnce(`Missing required parameter: ${idKey}`);
+		} else if (!isValidUUID(trimmedId)) {
+			addErrorOnce(`Invalid ${idKey}: expected UUID`);
+		}
+
+		const displayKey = ToolExecutionService.UPDATE_TOOL_DISPLAY_KEYS[entity];
+		const ignoredKeys = new Set<string>([idKey, 'update_strategy', 'merge_instructions']);
+		if (displayKey) {
+			ignoredKeys.add(displayKey);
+		}
+
+		const hasUpdateField = Object.entries(args).some(([key, value]) => {
+			if (ignoredKeys.has(key)) return false;
+			if (value === undefined || value === null) return false;
+			if (typeof value === 'string') {
+				return value.trim().length > 0;
+			}
+			return true;
+		});
+
+		if (!hasUpdateField) {
+			addErrorOnce(
+				`No update fields provided for ${toolName}. Include at least one field to change.`
+			);
+		}
+	}
+
+	private validateReorganizeProjectGraphArgs(args: Record<string, any>, errors: string[]): void {
 		const projectId = typeof args.project_id === 'string' ? args.project_id.trim() : '';
 		if (!projectId || !isValidUUID(projectId)) {
 			errors.push('Invalid project_id: expected UUID');
@@ -596,9 +654,7 @@ export class ToolExecutionService implements BaseService {
 				errors.push(`Missing id for node at nodes[${nodeIndex}]`);
 			} else if (!isValidUUID(id)) {
 				needsGraphLookupHint = true;
-				errors.push(
-					`Invalid ${kind || 'node'} id at nodes[${nodeIndex}]: expected UUID`
-				);
+				errors.push(`Invalid ${kind || 'node'} id at nodes[${nodeIndex}]: expected UUID`);
 			}
 
 			const connections = Array.isArray((node as any).connections)
@@ -608,7 +664,9 @@ export class ToolExecutionService implements BaseService {
 			for (let connIndex = 0; connIndex < connections.length; connIndex += 1) {
 				const connection = connections[connIndex];
 				if (!connection || typeof connection !== 'object') {
-					errors.push(`Invalid connection at nodes[${nodeIndex}].connections[${connIndex}]`);
+					errors.push(
+						`Invalid connection at nodes[${nodeIndex}].connections[${connIndex}]`
+					);
 					continue;
 				}
 
@@ -617,9 +675,7 @@ export class ToolExecutionService implements BaseService {
 						? (connection as any).kind.trim()
 						: '';
 				const connId =
-					typeof (connection as any).id === 'string'
-						? (connection as any).id.trim()
-						: '';
+					typeof (connection as any).id === 'string' ? (connection as any).id.trim() : '';
 
 				if (!connKind || !connId) {
 					errors.push(
@@ -989,6 +1045,24 @@ export class ToolExecutionService implements BaseService {
 		const name = typeof rawName === 'string' ? rawName.trim() : '';
 		const rawArguments = toolCall.function?.arguments ?? (toolCall as any)?.arguments;
 		return { name, rawArguments };
+	}
+
+	private normalizeIdFields(args: Record<string, any>): Record<string, any> {
+		let mutated = false;
+		const normalized: Record<string, any> = { ...args };
+		for (const [key, value] of Object.entries(args)) {
+			if (!key.endsWith('_id') || typeof value !== 'string') continue;
+			const trimmed = value.trim();
+			if (trimmed !== value) {
+				normalized[key] = trimmed;
+				mutated = true;
+			}
+			if (!trimmed) {
+				delete normalized[key];
+				mutated = true;
+			}
+		}
+		return mutated ? normalized : args;
 	}
 
 	private normalizeExecutionError(

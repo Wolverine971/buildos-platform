@@ -30,7 +30,8 @@ import {
 	createSessionManager,
 	createOntologyCacheService,
 	createMessagePersister,
-	createStreamHandler
+	createStreamHandler,
+	createAccessCheckService
 } from './services';
 
 // ============================================
@@ -248,9 +249,10 @@ export const POST: RequestHandler = async ({
 		try {
 			// 4. Create services
 			const sessionManager = createSessionManager(supabase);
-			const ontologyCacheService = createOntologyCacheService(supabase, actorId);
+			const ontologyCacheService = createOntologyCacheService(supabase, actorId, userId);
 			const messagePersister = createMessagePersister(supabase);
 			const streamHandler = createStreamHandler(supabase);
+			const accessCheckService = createAccessCheckService(supabase);
 
 			// 5. Resolve session
 			const sessionResult = await sessionManager.resolveSession(streamRequest, userId);
@@ -276,7 +278,105 @@ export const POST: RequestHandler = async ({
 				metadata
 			);
 
-			// 7. Load ontology context with caching
+			// 7. Fast access check (decoupled from ontology load)
+			const accessResult = await accessCheckService.checkAccess({
+				request: streamRequest,
+				metadata: focusResult.metadata
+			});
+
+			if (!accessResult.allowed) {
+				await agentStream.sendMessage({
+					type: 'error',
+					error: ERROR_MESSAGES.CONTEXT_ACCESS_DENIED
+				});
+				await agentStream.sendMessage({
+					type: 'done',
+					usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+					finished_reason: 'error'
+				});
+				await agentStream.close();
+				return;
+			}
+
+			// 8. Persist user message in background (after access check)
+			const userMessageMetadata = streamRequest.voice_note_group_id
+				? { voice_note_group_id: streamRequest.voice_note_group_id }
+				: undefined;
+
+			const persistPromise = messagePersister
+				.persistUserMessage({
+					sessionId: session.id,
+					userId,
+					content: streamRequest.message,
+					metadata: userMessageMetadata
+				})
+				.then(async (persistedUserMessage) => {
+					if (streamRequest.voice_note_group_id && persistedUserMessage?.id) {
+						const groupLinkUpdate = {
+							linked_entity_type: 'chat_message',
+							linked_entity_id: persistedUserMessage.id,
+							chat_session_id: session.id,
+							status: 'attached'
+						};
+
+						const { data: attachResult, error: attachError } = await supabase
+							.from('voice_note_groups')
+							.update(groupLinkUpdate)
+							.eq('id', streamRequest.voice_note_group_id)
+							.eq('user_id', userId)
+							.select('id');
+
+						if (attachError) {
+							logger.warn('Failed to attach voice note group to chat message', {
+								error: attachError,
+								groupId: streamRequest.voice_note_group_id,
+								messageId: persistedUserMessage.id
+							});
+						} else if (!attachResult || attachResult.length === 0) {
+							const { error: insertError } = await supabase
+								.from('voice_note_groups')
+								.insert({
+									id: streamRequest.voice_note_group_id,
+									user_id: userId,
+									...groupLinkUpdate,
+									metadata: { source_component: 'agent_chat' }
+								});
+
+							if (insertError?.code === '23505') {
+								const { error: retryError } = await supabase
+									.from('voice_note_groups')
+									.update(groupLinkUpdate)
+									.eq('id', streamRequest.voice_note_group_id)
+									.eq('user_id', userId);
+
+								if (retryError) {
+									logger.warn(
+										'Failed to attach voice note group after insert conflict',
+										{
+											error: retryError,
+											groupId: streamRequest.voice_note_group_id,
+											messageId: persistedUserMessage.id
+										}
+									);
+								}
+							} else if (insertError) {
+								logger.warn('Failed to create voice note group for chat message', {
+									error: insertError,
+									groupId: streamRequest.voice_note_group_id,
+									messageId: persistedUserMessage.id
+								});
+							}
+						}
+					}
+				})
+				.catch((error) => {
+					logger.error('Failed to persist user message', {
+						error,
+						sessionId: session.id
+					});
+				});
+
+			// 9. Load ontology context with caching
 			let ontologyContext = null;
 			try {
 				const ontologyResult = await ontologyCacheService.loadWithSessionCache(
@@ -360,72 +460,7 @@ export const POST: RequestHandler = async ({
 				return;
 			}
 
-			// 8. Persist user message (only after ontology access is validated)
-			const userMessageMetadata = streamRequest.voice_note_group_id
-				? { voice_note_group_id: streamRequest.voice_note_group_id }
-				: undefined;
-
-			const persistedUserMessage = await messagePersister.persistUserMessage({
-				sessionId: session.id,
-				userId,
-				content: streamRequest.message,
-				metadata: userMessageMetadata
-			});
-
-			if (streamRequest.voice_note_group_id && persistedUserMessage?.id) {
-				const groupLinkUpdate = {
-					linked_entity_type: 'chat_message',
-					linked_entity_id: persistedUserMessage.id,
-					chat_session_id: session.id,
-					status: 'attached'
-				};
-
-				const { data: attachResult, error: attachError } = await supabase
-					.from('voice_note_groups')
-					.update(groupLinkUpdate)
-					.eq('id', streamRequest.voice_note_group_id)
-					.eq('user_id', userId)
-					.select('id');
-
-				if (attachError) {
-					logger.warn('Failed to attach voice note group to chat message', {
-						error: attachError,
-						groupId: streamRequest.voice_note_group_id,
-						messageId: persistedUserMessage.id
-					});
-				} else if (!attachResult || attachResult.length === 0) {
-					const { error: insertError } = await supabase.from('voice_note_groups').insert({
-						id: streamRequest.voice_note_group_id,
-						user_id: userId,
-						...groupLinkUpdate,
-						metadata: { source_component: 'agent_chat' }
-					});
-
-					if (insertError?.code === '23505') {
-						const { error: retryError } = await supabase
-							.from('voice_note_groups')
-							.update(groupLinkUpdate)
-							.eq('id', streamRequest.voice_note_group_id)
-							.eq('user_id', userId);
-
-						if (retryError) {
-							logger.warn('Failed to attach voice note group after insert conflict', {
-								error: retryError,
-								groupId: streamRequest.voice_note_group_id,
-								messageId: persistedUserMessage.id
-							});
-						}
-					} else if (insertError) {
-						logger.warn('Failed to create voice note group for chat message', {
-							error: insertError,
-							groupId: streamRequest.voice_note_group_id,
-							messageId: persistedUserMessage.id
-						});
-					}
-				}
-			}
-
-			// 9. Start stream orchestration on the already-open SSE stream
+			// 10. Start stream orchestration on the already-open SSE stream
 			streamHandler.startAgentStream(
 				{
 					supabase,
@@ -435,6 +470,9 @@ export const POST: RequestHandler = async ({
 					session,
 					ontologyContext,
 					metadata: focusResult.metadata,
+					pendingMetadataUpdates: focusResult.focusChanged
+						? { focus: focusResult.metadata.focus ?? null }
+						: undefined,
 					conversationHistory,
 					userId,
 					actorId,
@@ -442,6 +480,8 @@ export const POST: RequestHandler = async ({
 				},
 				agentStream
 			);
+
+			void persistPromise;
 		} catch (err) {
 			logger.error('Agent API error', { error: err });
 			await errorLogger.logError(err, {

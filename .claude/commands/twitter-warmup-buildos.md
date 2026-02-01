@@ -13,6 +13,21 @@ Create this file FIRST before scanning.
 
 ---
 
+## Browser Automation Skill
+
+**REQUIRED:** Before interacting with X/Twitter in the browser, read and follow the workflows in:
+- `/.claude/skills/twitter.skill.md` - Contains proven click patterns, selectors, and URL patterns for X/Twitter automation
+
+This skill file documents:
+- How to create posts (click "What's happening?" → type → click "Post")
+- How to search (search bar → type query → Enter)
+- How to navigate (URL patterns for home, notifications, search, profiles)
+- How to interact with posts (like, reply, repost buttons)
+- Keyboard shortcuts (n=new post, l=like, r=reply, t=repost)
+- Important notes about X Chat encryption, dark mode, etc.
+
+---
+
 ## Related Documentation
 
 **Voice & Strategy:**

@@ -151,23 +151,6 @@ export class SessionManager {
 
 			if (!projectFocusEquals(storedFocus, incomingFocus)) {
 				focusChanged = true;
-
-				// Persist focus change immediately (not deferred)
-
-				const { error: metadataError } = await (this.supabase as any)
-					.from('chat_sessions')
-					.update({ agent_metadata: metadata })
-					.eq('id', session.id);
-
-				if (metadataError) {
-					logger.error('Failed to persist focus metadata', {
-						error: metadataError,
-						sessionId: session.id
-					});
-				} else {
-					// Update session object to reflect change
-					(session as any).agent_metadata = metadata;
-				}
 			}
 
 			resolvedFocus = incomingFocus ?? null;

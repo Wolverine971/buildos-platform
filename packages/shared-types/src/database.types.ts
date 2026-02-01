@@ -6258,6 +6258,88 @@ export type Database = {
           },
         ]
       }
+      project_context_snapshot: {
+        Row: {
+          compute_ms: number | null
+          computed_at: string
+          created_at: string
+          project_id: string
+          snapshot: Json
+          snapshot_version: number
+          source_updated_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          compute_ms?: number | null
+          computed_at?: string
+          created_at?: string
+          project_id: string
+          snapshot: Json
+          snapshot_version?: number
+          source_updated_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          compute_ms?: number | null
+          computed_at?: string
+          created_at?: string
+          project_id?: string
+          snapshot?: Json
+          snapshot_version?: number
+          source_updated_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_context_snapshot_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_context_snapshot_metrics: {
+        Row: {
+          computed_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          project_id: string
+          queue_job_id: string | null
+          snapshot_version: number
+          status: string
+        }
+        Insert: {
+          computed_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          project_id: string
+          queue_job_id?: string | null
+          snapshot_version?: number
+          status?: string
+        }
+        Update: {
+          computed_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          project_id?: string
+          queue_job_id?: string | null
+          snapshot_version?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_context_snapshot_metrics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_daily_briefs: {
         Row: {
           brief_content: string
@@ -10691,6 +10773,7 @@ export type Database = {
         | "transcribe_voice_note"
         | "buildos_homework"
         | "buildos_tree_agent"
+        | "build_project_context_snapshot"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -10962,6 +11045,7 @@ export const Constants = {
         "transcribe_voice_note",
         "buildos_homework",
         "buildos_tree_agent",
+        "build_project_context_snapshot",
       ],
       recurrence_end_reason: [
         "indefinite",

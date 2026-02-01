@@ -63,6 +63,7 @@ export interface StreamHandlerParams {
 	session: ChatSession;
 	ontologyContext: OntologyContext | null;
 	metadata: AgentSessionMetadata;
+	pendingMetadataUpdates?: Partial<AgentSessionMetadata>;
 	conversationHistory: ChatMessage[];
 	userId: string;
 	actorId: string;
@@ -123,6 +124,7 @@ export class StreamHandler {
 			session,
 			ontologyContext,
 			metadata,
+			pendingMetadataUpdates,
 			conversationHistory,
 			userId,
 			actorId,
@@ -140,6 +142,7 @@ export class StreamHandler {
 		const resolvedFocus = metadata.focus ?? request.project_focus ?? null;
 
 		// Initialize stream state
+		const pendingMetadata = pendingMetadataUpdates ?? {};
 		const state: StreamState = {
 			assistantResponse: '',
 			toolCalls: [],
@@ -148,8 +151,8 @@ export class StreamHandler {
 			completionSent: false,
 			contextShiftOccurred: false,
 			effectiveContextType: normalizedContextType,
-			pendingMetadataUpdates: {},
-			hasPendingMetadataUpdate: false
+			pendingMetadataUpdates: { ...pendingMetadata },
+			hasPendingMetadataUpdate: Object.keys(pendingMetadata).length > 0
 		};
 
 		// Merge session metadata with any pending updates
@@ -263,7 +266,9 @@ export class StreamHandler {
 		const abortSignal = requestAbortSignal;
 		const streamRunId = request.stream_run_id;
 		const timingStartMs = Date.now();
-		const timingMetricsId = await this.createTimingMetricRecord({
+		const timingMetricsId = uuidv4();
+		const timingInsertPromise = this.createTimingMetricRecord({
+			id: timingMetricsId,
 			userId,
 			sessionId: session.id,
 			contextType: normalizedContextType,
@@ -273,21 +278,13 @@ export class StreamHandler {
 		});
 
 		// If no lastTurnContext provided and history exists but no tool results found,
-		// load them asynchronously from the database
+		// skip DB hydration to keep TTFR low (tool results can be fetched later if needed).
 		if (!lastTurnContextForPlanner && request.history && request.history.length > 0) {
 			const toolResultsFromHistory = this.extractToolResultsFromHistory(conversationHistory);
 			if (toolResultsFromHistory.length === 0) {
-				const loadedToolResults = await this.safeLoadRecentToolResults(session.id);
-				if (loadedToolResults.length > 0) {
-					const generatedContext = generateLastTurnContext(
-						conversationHistory,
-						normalizedContextType,
-						{ toolResults: loadedToolResults }
-					);
-					if (generatedContext) {
-						lastTurnContextForPlanner = generatedContext;
-					}
-				}
+				logger.debug('Skipping tool result hydration to keep TTFR low', {
+					sessionId: session.id
+				});
 			}
 		}
 
@@ -345,6 +342,7 @@ export class StreamHandler {
 				abortSignal,
 				timing: {
 					metricsId: timingMetricsId,
+					insertPromise: timingInsertPromise,
 					startMs: timingStartMs,
 					firstEventRecorded: false,
 					firstResponseRecorded: false
@@ -543,6 +541,7 @@ export class StreamHandler {
 		abortSignal?: AbortSignal;
 		timing?: {
 			metricsId?: string;
+			insertPromise?: Promise<boolean>;
 			startMs: number;
 			firstEventRecorded: boolean;
 			firstResponseRecorded: boolean;
@@ -568,10 +567,20 @@ export class StreamHandler {
 				const now = Date.now();
 				if (!timing.firstEventRecorded) {
 					timing.firstEventRecorded = true;
-					void this.updateTimingMetric(timing.metricsId, {
-						first_event_at: new Date(now).toISOString(),
-						time_to_first_event_ms: Math.max(0, Math.round(now - timing.startMs))
-					});
+					const update = () =>
+						this.updateTimingMetric(timing.metricsId as string, {
+							first_event_at: new Date(now).toISOString(),
+							time_to_first_event_ms: Math.max(0, Math.round(now - timing.startMs))
+						});
+					if (timing.insertPromise) {
+						void timing.insertPromise.then((inserted) => {
+							if (inserted) {
+								void update();
+							}
+						});
+					} else {
+						void update();
+					}
 				}
 				if (
 					!timing.firstResponseRecorded &&
@@ -580,10 +589,20 @@ export class StreamHandler {
 					(event as any).content.trim().length > 0
 				) {
 					timing.firstResponseRecorded = true;
-					void this.updateTimingMetric(timing.metricsId, {
-						first_response_at: new Date(now).toISOString(),
-						time_to_first_response_ms: Math.max(0, Math.round(now - timing.startMs))
-					});
+					const update = () =>
+						this.updateTimingMetric(timing.metricsId as string, {
+							first_response_at: new Date(now).toISOString(),
+							time_to_first_response_ms: Math.max(0, Math.round(now - timing.startMs))
+						});
+					if (timing.insertPromise) {
+						void timing.insertPromise.then((inserted) => {
+							if (inserted) {
+								void update();
+							}
+						});
+					} else {
+						void update();
+					}
 				}
 			}
 
@@ -637,19 +656,19 @@ export class StreamHandler {
 	}
 
 	private async createTimingMetricRecord(params: {
+		id: string;
 		userId: string;
 		sessionId: string;
 		contextType: ChatContextType;
 		messageLength: number;
 		messageReceivedAt: string;
 		streamRunId?: number;
-	}): Promise<string | undefined> {
-		const metricId = uuidv4();
+	}): Promise<boolean> {
 		try {
 			const metadata =
 				typeof params.streamRunId === 'number' ? { stream_run_id: params.streamRunId } : {};
 			const { error } = await this.supabase.from('timing_metrics').insert({
-				id: metricId,
+				id: params.id,
 				user_id: params.userId,
 				session_id: params.sessionId,
 				context_type: params.contextType,
@@ -662,13 +681,13 @@ export class StreamHandler {
 				throw error;
 			}
 
-			return metricId;
+			return true;
 		} catch (error) {
 			logger.warn('Failed to create timing metrics record', {
 				error: error instanceof Error ? error.message : String(error),
 				sessionId: params.sessionId
 			});
-			return undefined;
+			return false;
 		}
 	}
 

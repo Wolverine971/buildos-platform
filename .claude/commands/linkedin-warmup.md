@@ -11,6 +11,21 @@ Do this in the beginning before researching
 
 ---
 
+## Browser Automation Skill
+
+**REQUIRED:** Before interacting with LinkedIn in the browser, read and follow the workflows in:
+- `/.claude/skills/linkedin.skill.md` - Contains proven click patterns, selectors, and URL patterns for LinkedIn automation
+
+This skill file documents:
+- How to create posts (click "Start a post" → click text area → type → click "Post")
+- How to search for people/companies (search bar → type → click "People" tab)
+- How to send messages (Messaging → click conversation → type → Send)
+- How to navigate (URL patterns for feed, messaging, notifications, profiles, search)
+- Key UI elements and selectors
+- Important notes about draft saving, connection levels, InMail, etc.
+
+---
+
 ## Phase 1: Load Context
 
 ### Read These Files (Required)

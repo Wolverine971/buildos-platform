@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-01-31T13:04:42.546Z
+// Generated on: 2026-02-01T20:35:09.751Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1498,6 +1498,26 @@ export type DatabaseSchema = {
 		user_id: string;
 		visibility: string | null;
 	};
+	project_context_snapshot: {
+		compute_ms: number | null;
+		computed_at: string;
+		created_at: string;
+		project_id: string;
+		snapshot: Json;
+		snapshot_version: number;
+		source_updated_at: string | null;
+		updated_at: string;
+	};
+	project_context_snapshot_metrics: {
+		computed_at: string;
+		duration_ms: number | null;
+		error_message: string | null;
+		id: string;
+		project_id: string;
+		queue_job_id: string | null;
+		snapshot_version: number;
+		status: string;
+	};
 	project_daily_briefs: {
 		brief_content: string;
 		brief_date: string;
@@ -2409,6 +2429,8 @@ export const tableNames = [
 	'phases',
 	'project_brief_templates',
 	'project_calendars',
+	'project_context_snapshot',
+	'project_context_snapshot_metrics',
 	'project_daily_briefs',
 	'project_drafts',
 	'project_questions',

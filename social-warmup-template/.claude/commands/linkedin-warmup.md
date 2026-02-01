@@ -9,6 +9,20 @@ Create a daily engagement doc at:
 
 ---
 
+## Browser Automation Skill
+
+**REQUIRED:** Before interacting with LinkedIn in the browser, read and follow the workflows in:
+- `/.claude/skills/linkedin.skill.md` - Contains proven click patterns, selectors, and URL patterns for LinkedIn automation
+
+If this skill file doesn't exist, create it by exploring LinkedIn's interface and documenting:
+- How to create posts
+- How to search for people/companies
+- How to send messages
+- How to navigate
+- URL patterns
+
+---
+
 ## Phase 1: Load Context
 
 ### Read These Files (Required)

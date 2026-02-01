@@ -9,6 +9,20 @@ Create a daily engagement doc at:
 
 ---
 
+## Browser Automation Skill
+
+**REQUIRED:** Before interacting with X/Twitter in the browser, read and follow the workflows in:
+- `/.claude/skills/twitter.skill.md` - Contains proven click patterns, selectors, and URL patterns for X/Twitter automation
+
+If this skill file doesn't exist, create it by exploring Twitter's interface and documenting:
+- How to create posts
+- How to search
+- How to navigate
+- How to interact with posts (like, reply, repost)
+- URL patterns
+
+---
+
 ## Related Documentation
 
 **Cross-Links (Read for Full Context):**

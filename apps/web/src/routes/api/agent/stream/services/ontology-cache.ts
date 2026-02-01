@@ -25,10 +25,12 @@ import type {
 } from '../types';
 import {
 	ONTOLOGY_CACHE_TTL_MS,
+	PROJECT_SNAPSHOT_TTL_MS,
 	PROJECT_CONTEXT_TYPES,
 	VALID_ONTOLOGY_ENTITY_TYPES
 } from '../constants';
-import { generateOntologyCacheKey, normalizeContextType } from '../utils';
+import { generateOntologyCacheKey, normalizeContextType, normalizeProjectFocus } from '../utils';
+import { queueProjectContextSnapshot } from '$lib/server/project-context-snapshot.service';
 
 const logger = createLogger('OntologyCache');
 
@@ -45,7 +47,8 @@ export class OntologyCacheService {
 
 	constructor(
 		private supabase: SupabaseClient<Database>,
-		private actorId: string
+		private actorId: string,
+		private userId?: string
 	) {
 		this.loader = new OntologyContextLoader(supabase, actorId);
 	}
@@ -62,7 +65,9 @@ export class OntologyCacheService {
 		metadata: AgentSessionMetadata
 	): Promise<OntologyLoadResult> {
 		const contextType = normalizeContextType(request.context_type);
-		const resolvedFocus = metadata.focus ?? request.project_focus ?? null;
+		const resolvedFocus = normalizeProjectFocus(
+			metadata.focus ?? request.project_focus ?? null
+		);
 		const useProjectFocus = this.shouldUseProjectFocus(contextType, request);
 
 		// Generate cache key
@@ -170,7 +175,13 @@ export class OntologyCacheService {
 					resolvedFocus.focusEntityId
 				);
 			} else {
-				// Load project-level context
+				// Load project-level context (prefer snapshot if available)
+				const snapshot = await this.loadProjectSnapshot(resolvedFocus.projectId, {
+					reason: 'project_focus'
+				});
+				if (snapshot) {
+					return snapshot;
+				}
 				return await this.loader.loadProjectContext(resolvedFocus.projectId);
 			}
 		}
@@ -187,6 +198,45 @@ export class OntologyCacheService {
 			request.entity_id,
 			validatedOntologyEntityType
 		);
+	}
+
+	private async loadProjectSnapshot(
+		projectId: string,
+		options?: { reason?: string }
+	): Promise<OntologyContext | null> {
+		const { data, error } = await (this.supabase as any)
+			.from('project_context_snapshot')
+			.select('snapshot, computed_at')
+			.eq('project_id', projectId)
+			.maybeSingle();
+
+		if (error) {
+			logger.warn('Failed to read project context snapshot', { error, projectId });
+			return null;
+		}
+
+		if (!data?.snapshot) {
+			this.queueSnapshotBuild(projectId, options?.reason ?? 'missing');
+			return null;
+		}
+
+		const computedAt = data.computed_at ? Date.parse(data.computed_at) : 0;
+		if (computedAt && Date.now() - computedAt > PROJECT_SNAPSHOT_TTL_MS) {
+			this.queueSnapshotBuild(projectId, options?.reason ?? 'stale');
+		}
+
+		return data.snapshot as OntologyContext;
+	}
+
+	private queueSnapshotBuild(projectId: string, reason: string): void {
+		if (!this.userId) {
+			return;
+		}
+		void queueProjectContextSnapshot({
+			projectId,
+			userId: this.userId,
+			reason
+		});
 	}
 
 	/**
@@ -230,6 +280,12 @@ export class OntologyCacheService {
 				entityId
 			) {
 				logger.debug('Loading project-level ontology context');
+				const snapshot = await this.loadProjectSnapshot(entityId, {
+					reason: 'project_context'
+				});
+				if (snapshot) {
+					return snapshot;
+				}
 				return await this.loader.loadProjectContext(entityId);
 			}
 
@@ -295,7 +351,8 @@ export class OntologyCacheService {
  */
 export function createOntologyCacheService(
 	supabase: SupabaseClient<Database>,
-	actorId: string
+	actorId: string,
+	userId?: string
 ): OntologyCacheService {
-	return new OntologyCacheService(supabase, actorId);
+	return new OntologyCacheService(supabase, actorId, userId);
 }

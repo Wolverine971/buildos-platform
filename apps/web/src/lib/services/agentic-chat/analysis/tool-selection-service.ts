@@ -112,6 +112,50 @@ export class ToolSelectionService {
 		});
 	}
 
+	private shouldApplyFocusFilter(message: string, focus: ProjectFocus | null | undefined): boolean {
+		if (!focus || focus.focusType === 'project-wide') {
+			return false;
+		}
+
+		const mentioned = this.detectEntityMentions(message);
+		if (mentioned.size === 0) {
+			return true;
+		}
+
+		if (!mentioned.has(focus.focusType)) {
+			return false;
+		}
+
+		return mentioned.size === 1;
+	}
+
+	private detectEntityMentions(message: string): Set<string> {
+		const text = message?.toLowerCase() ?? '';
+		if (!text) return new Set();
+
+		const entityTokens: Record<string, string[]> = {
+			task: ['task', 'tasks'],
+			goal: ['goal', 'goals'],
+			plan: ['plan', 'plans'],
+			document: ['document', 'documents', 'doc', 'docs'],
+			milestone: ['milestone', 'milestones'],
+			risk: ['risk', 'risks'],
+			requirement: ['requirement', 'requirements', 'req', 'reqs']
+		};
+
+		const mentions = new Set<string>();
+		for (const [entity, tokens] of Object.entries(entityTokens)) {
+			for (const token of tokens) {
+				const pattern = new RegExp(`\\b${token}\\b`, 'i');
+				if (pattern.test(text)) {
+					mentions.add(entity);
+					break;
+				}
+			}
+		}
+		return mentions;
+	}
+
 	/**
 	 * Main entry point: Select tools based on context, focus, and user intent.
 	 * This service owns all default pool logic - don't determine defaults elsewhere.
@@ -147,7 +191,9 @@ export class ToolSelectionService {
 		const contextDefaultTools = this.getDefaultToolPool(normalizedContextType);
 
 		// STEP 2: Apply focus filtering (skip when tool selection is preselected)
-		const applyFocusFilter = !llmSelectionDisabled;
+		const applyFocusFilter =
+			!llmSelectionDisabled &&
+			this.shouldApplyFocusFilter(message, analysisContext.projectFocus);
 		const focusFilteredTools = applyFocusFilter
 			? this.filterToolsForFocus(contextDefaultTools, analysisContext.projectFocus)
 			: contextDefaultTools;

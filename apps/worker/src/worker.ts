@@ -12,6 +12,7 @@ import { processBraindumpProcessingJob } from './workers/braindump/braindumpProc
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
 import { processHomeworkJob } from './workers/homework/homeworkWorker';
 import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
+import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -300,6 +301,22 @@ async function processTreeAgent(job: ProcessingJob) {
 }
 
 /**
+ * Project context snapshot processor
+ */
+async function processProjectContextSnapshot(job: ProcessingJob) {
+	await job.log('Project context snapshot job received');
+
+	try {
+		const result = await processProjectContextSnapshotJob(job as any);
+		await job.log('Project context snapshot job completed');
+		return result;
+	} catch (error: any) {
+		await job.log(`Project context snapshot job failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -332,6 +349,9 @@ export async function startWorker() {
 
 	// Register Tree Agent processor (cast until database types are regenerated)
 	queue.process('buildos_tree_agent' as any, processTreeAgent);
+
+	// Register project context snapshot processor
+	queue.process('build_project_context_snapshot' as any, processProjectContextSnapshot);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(

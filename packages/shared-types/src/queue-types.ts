@@ -180,6 +180,12 @@ export interface TreeAgentJobMetadata {
 	project_ids?: string[] | null;
 }
 
+export interface ProjectContextSnapshotJobMetadata {
+	projectId: string;
+	reason?: string;
+	force?: boolean;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	generate_daily_brief: DailyBriefJobMetadata;
@@ -199,6 +205,7 @@ export interface JobMetadataMap {
 	transcribe_voice_note: VoiceNoteTranscriptionJobMetadata;
 	buildos_homework: HomeworkJobMetadata;
 	buildos_tree_agent: TreeAgentJobMetadata;
+	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -254,6 +261,14 @@ export interface HomeworkJobResult {
 	message?: string;
 }
 
+export interface ProjectContextSnapshotResult {
+	success: boolean;
+	projectId: string;
+	duration_ms?: number;
+	skipped?: boolean;
+	error?: string;
+}
+
 // Job result types
 export interface JobResultMap {
 	// Allow indexing by queue job types that are not explicitly listed yet.
@@ -274,6 +289,7 @@ export interface JobResultMap {
 	process_onto_braindump: OntoBraindumpProcessingResult;
 	transcribe_voice_note: VoiceNoteTranscriptionResult;
 	buildos_homework: HomeworkJobResult;
+	build_project_context_snapshot: ProjectContextSnapshotResult;
 	other: unknown;
 }
 
