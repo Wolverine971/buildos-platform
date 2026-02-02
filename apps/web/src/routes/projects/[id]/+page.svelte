@@ -1556,7 +1556,9 @@
 
 				<!-- Desktop: Show all buttons -->
 				<div class="hidden sm:flex items-center gap-1.5 shrink-0">
-					<StateDisplay state={project.state_key} entityKind="project" />
+					{#if project}
+						<StateDisplay state={project.state_key} entityKind="project" />
+					{/if}
 					{#if graphHidden}
 						<button
 							onclick={handleGraphShow}

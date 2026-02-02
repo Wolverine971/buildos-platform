@@ -38,6 +38,9 @@ import {
 	isWriteToolName
 } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('ToolSelectionService');
 
 export type ToolSelectionMode = 'llm' | 'heuristic' | 'default';
 
@@ -112,7 +115,10 @@ export class ToolSelectionService {
 		});
 	}
 
-	private shouldApplyFocusFilter(message: string, focus: ProjectFocus | null | undefined): boolean {
+	private shouldApplyFocusFilter(
+		message: string,
+		focus: ProjectFocus | null | undefined
+	): boolean {
 		if (!focus || focus.focusType === 'project-wide') {
 			return false;
 		}
@@ -215,6 +221,16 @@ export class ToolSelectionService {
 				ChatStrategy.PLANNER_STREAM,
 				'Tool selection LLM disabled via AGENTIC_CHAT_DISABLE_TOOL_SELECTION_LLM.'
 			);
+			const removedTools = defaultToolNames.filter((name) => !toolCatalogNames.has(name));
+			this.logSelectionSummary({
+				contextType: normalizedContextType,
+				mode: 'default',
+				defaultToolNames,
+				selectedToolNames,
+				addedTools: [],
+				removedTools,
+				strategy: analysis.primary_strategy
+			});
 
 			return {
 				tools,
@@ -224,7 +240,7 @@ export class ToolSelectionService {
 					defaultToolNames,
 					selectedToolNames,
 					addedTools: [],
-					removedTools: defaultToolNames.filter((name) => !toolCatalogNames.has(name)),
+					removedTools,
 					strategy: analysis.primary_strategy,
 					confidence: analysis.confidence
 				}
@@ -316,6 +332,16 @@ export class ToolSelectionService {
 
 		const tools = extractTools(selectedToolNames);
 
+		this.logSelectionSummary({
+			contextType: normalizedContextType,
+			mode,
+			defaultToolNames,
+			selectedToolNames,
+			addedTools,
+			removedTools,
+			strategy: analysis.primary_strategy
+		});
+
 		return {
 			tools,
 			analysis,
@@ -329,6 +355,53 @@ export class ToolSelectionService {
 				confidence: analysis.confidence
 			}
 		};
+	}
+
+	private logSelectionSummary(params: {
+		contextType: ChatContextType;
+		mode: ToolSelectionMode;
+		defaultToolNames: string[];
+		selectedToolNames: string[];
+		addedTools: string[];
+		removedTools: string[];
+		strategy: StrategyAnalysis['primary_strategy'];
+	}): void {
+		const {
+			contextType,
+			mode,
+			defaultToolNames,
+			selectedToolNames,
+			addedTools,
+			removedTools,
+			strategy
+		} = params;
+		const selectedWriteCount = selectedToolNames.filter((name) => isWriteToolName(name)).length;
+		const removedWriteCount = removedTools.filter((name) => isWriteToolName(name)).length;
+
+		logger.debug('Tool selection result', {
+			contextType,
+			mode,
+			strategy,
+			defaultCount: defaultToolNames.length,
+			selectedCount: selectedToolNames.length,
+			addedCount: addedTools.length,
+			removedCount: removedTools.length,
+			selectedWriteCount,
+			removedWriteCount
+		});
+
+		if (defaultToolNames.length >= 20 && selectedToolNames.length <= 4) {
+			logger.info('Tool selection heavily reduced', {
+				contextType,
+				mode,
+				strategy,
+				defaultCount: defaultToolNames.length,
+				selectedCount: selectedToolNames.length,
+				selectedTools: selectedToolNames.slice(0, 8),
+				selectedWriteCount,
+				removedWriteCount
+			});
+		}
 	}
 
 	private normalizeToolNames(names: string[], allowed: Set<string>): string[] {

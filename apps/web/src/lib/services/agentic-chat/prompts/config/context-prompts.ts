@@ -113,6 +113,7 @@ const PROJECT_CREATION_TOOL_GUIDE: PromptSection = {
 	title: 'Tool Usage Guide (Internal - do not mention tool names to user)',
 	content: `- **create_onto_project**: Create the project
 - **get_field_info**: Check valid field values if needed
+- **Document tree**: Context docs and any documents live in the project's doc_structure; use parent_id/position when creating docs or move_document to reorganize
 
 **When talking to user, say things like:**
 - "I'm setting up your project now..."

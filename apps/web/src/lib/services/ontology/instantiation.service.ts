@@ -23,6 +23,10 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { logActivitiesAsync } from '$lib/services/async-activity-logger';
 import { autoOrganizeConnections } from '$lib/services/ontology/auto-organizer.service';
 import {
+	addDocumentToTree,
+	type AddDocumentOptions
+} from '$lib/services/ontology/doc-structure.service';
+import {
 	DEPRECATED_RELATIONSHIPS,
 	RELATIONSHIP_DIRECTIONS,
 	type EntityKind,
@@ -206,6 +210,20 @@ async function insertDocument(
 	return data.id;
 }
 
+async function addDocumentToDocStructure(
+	client: TypedSupabaseClient,
+	projectId: string,
+	documentId: string,
+	actorId: string,
+	options?: AddDocumentOptions
+): Promise<void> {
+	try {
+		await addDocumentToTree(client as any, projectId, documentId, options ?? {}, actorId);
+	} catch (error) {
+		console.error(`[Ontology] Failed to add document ${documentId} to doc_structure:`, error);
+	}
+}
+
 export class OntologyInstantiationError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -317,6 +335,7 @@ export async function instantiateProject(
 
 			inserted.documents.push(contextDocId);
 			counts.documents += 1;
+			await addDocumentToDocStructure(client, typedProjectId, contextDocId, actorId);
 
 			// Use has_context_document edge to link the context document
 			edgesToInsert.push({
@@ -542,6 +561,7 @@ export async function instantiateProject(
 					entityIdByTempId.set(entity.temp_id, { kind: 'document', id: docId });
 					inserted.documents.push(docId);
 					counts.documents += 1;
+					await addDocumentToDocStructure(client, typedProjectId, docId, actorId);
 					break;
 				}
 				case 'risk': {

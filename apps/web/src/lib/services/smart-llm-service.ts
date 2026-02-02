@@ -1649,28 +1649,11 @@ export class SmartLLMService {
 						// Yield any pending tool call that wasn't completed
 						// This can happen if the stream ends without a finish_reason
 						if (currentToolCall && currentToolCall.function.name) {
-							// Try to parse incomplete arguments as valid JSON, or use empty object
-							if (!this.isCompleteJSON(currentToolCall.function.arguments)) {
-								// Try to fix common incomplete JSON patterns
-								let fixedArgs = currentToolCall.function.arguments;
-								if (fixedArgs && !fixedArgs.endsWith('}')) {
-									// Attempt to close incomplete JSON
-									fixedArgs = fixedArgs.replace(/,\s*$/, '') + '}';
-								}
-								if (this.isCompleteJSON(fixedArgs)) {
-									currentToolCall.function.arguments = fixedArgs;
-								} else {
-									// Fall back to empty object if we can't fix it
-									console.warn(
-										'Tool call arguments incomplete at stream end:',
-										currentToolCall.function.arguments
-									);
-									currentToolCall.function.arguments = '{}';
-								}
-							}
+							const { toolCall: sanitizedToolCall } =
+								this.coerceToolCallArguments(currentToolCall);
 							yield {
 								type: 'tool_call',
-								tool_call: currentToolCall
+								tool_call: sanitizedToolCall
 							};
 							currentToolCall = null;
 						}
@@ -1809,9 +1792,11 @@ export class SmartLLMService {
 										currentToolCall.function.arguments &&
 										this.isCompleteJSON(currentToolCall.function.arguments))
 								) {
+									const { toolCall: sanitizedToolCall } =
+										this.coerceToolCallArguments(currentToolCall);
 									yield {
 										type: 'tool_call',
-										tool_call: currentToolCall
+										tool_call: sanitizedToolCall
 									};
 									currentToolCall = null;
 								}
@@ -1924,29 +1909,151 @@ export class SmartLLMService {
 		tool_call_id?: string;
 		reasoning_content?: string;
 	}> {
-		if (!this.requiresToolCallReasoningContent(models)) {
-			return messages;
-		}
-
+		const needsReasoningContent = this.requiresToolCallReasoningContent(models);
 		let mutated = false;
 		const updated = messages.map((message) => {
-			if (
-				message.role === 'assistant' &&
-				Array.isArray(message.tool_calls) &&
-				message.tool_calls.length > 0
-			) {
-				if (typeof message.reasoning_content !== 'string') {
-					mutated = true;
-					return {
-						...message,
-						reasoning_content: ''
+			let next = message;
+			let localMutated = false;
+
+			if (message.tool_calls !== undefined) {
+				const normalizedToolCalls = this.normalizeToolCallsForRequest(message.tool_calls);
+				if (normalizedToolCalls.mutated) {
+					next = {
+						...next,
+						tool_calls: normalizedToolCalls.toolCalls
 					};
+					localMutated = true;
 				}
 			}
-			return message;
+
+			if (
+				needsReasoningContent &&
+				next.role === 'assistant' &&
+				Array.isArray(next.tool_calls) &&
+				next.tool_calls.length > 0
+			) {
+				if (typeof next.reasoning_content !== 'string') {
+					next = {
+						...next,
+						reasoning_content: ''
+					};
+					localMutated = true;
+				}
+			}
+
+			if (localMutated) {
+				mutated = true;
+			}
+			return next;
 		});
 
 		return mutated ? updated : messages;
+	}
+
+	private normalizeToolCallsForRequest(toolCalls: unknown): {
+		toolCalls?: any[];
+		mutated: boolean;
+	} {
+		if (toolCalls === undefined || toolCalls === null) {
+			return { toolCalls: undefined, mutated: false };
+		}
+
+		let calls = toolCalls;
+		let mutated = false;
+
+		if (!Array.isArray(calls)) {
+			if (typeof calls === 'string') {
+				try {
+					const parsed = JSON.parse(calls);
+					if (Array.isArray(parsed)) {
+						calls = parsed;
+						mutated = true;
+					} else {
+						return { toolCalls: undefined, mutated: true };
+					}
+				} catch {
+					return { toolCalls: undefined, mutated: true };
+				}
+			} else {
+				return { toolCalls: undefined, mutated: true };
+			}
+		}
+
+		const sanitized = (calls as any[]).map((call) => {
+			const { toolCall, mutated: callMutated } = this.coerceToolCallArguments(call);
+			if (callMutated) {
+				mutated = true;
+			}
+			return toolCall;
+		});
+
+		return mutated ? { toolCalls: sanitized, mutated } : { toolCalls: calls as any[], mutated };
+	}
+
+	private coerceToolCallArguments(toolCall: any): { toolCall: any; mutated: boolean } {
+		if (!toolCall || typeof toolCall !== 'object') {
+			return { toolCall, mutated: false };
+		}
+
+		const fn = toolCall.function;
+		if (!fn || typeof fn !== 'object') {
+			return { toolCall, mutated: false };
+		}
+
+		const args = fn.arguments;
+		let nextArgs = args;
+		let mutated = false;
+
+		const setArgs = (value: string) => {
+			nextArgs = value;
+			mutated = true;
+		};
+
+		if (args === undefined || args === null) {
+			setArgs('{}');
+		} else if (typeof args === 'string') {
+			const trimmed = args.trim();
+			if (!trimmed) {
+				setArgs('{}');
+			} else if (this.isCompleteJSON(trimmed)) {
+				if (trimmed !== args) {
+					setArgs(trimmed);
+				}
+			} else {
+				let fixed = trimmed;
+				if (fixed.includes('{') && !fixed.endsWith('}')) {
+					fixed = fixed.replace(/,\s*$/, '') + '}';
+				}
+				if (this.isCompleteJSON(fixed)) {
+					setArgs(fixed);
+				} else {
+					setArgs('{}');
+				}
+			}
+		} else if (typeof args === 'object') {
+			try {
+				setArgs(JSON.stringify(args));
+			} catch {
+				setArgs('{}');
+			}
+		} else {
+			setArgs('{}');
+		}
+
+		if (!mutated) {
+			return { toolCall, mutated: false };
+		}
+
+		return {
+			toolCall: {
+				...toolCall,
+				function: {
+					...fn,
+					arguments: nextArgs
+				}
+			},
+			mutated: true
+		};
 	}
 
 	private requiresToolCallReasoningContent(models: string[]): boolean {

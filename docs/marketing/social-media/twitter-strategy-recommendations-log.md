@@ -149,6 +149,36 @@ _Last reviewed: 2026-01-09_
 
 ---
 
+### 2026-02-01 - Boris Cherny Viral Moment + Claude Code Explosion
+
+**Observation:** Boris Cherny (@bcherny) posted a Claude Code tips thread that went massively viral - 4.2M views, 640 replies, 36K likes. He gained +26K followers in 2 days (193.8K → 220.1K). At the end of the thread, he directly asked "What do you want to hear about next?" - a golden opportunity for engagement.
+
+**Additional Findings:**
+
+- @steipete (Peter Steinberger, 215K followers) posted contrarian take: "I don't let Claude Code on my codebase. It's all codex. Would be too buggy with Opus." - Claude vs Codex debate happening
+- @levelsio hit 809.6K followers (+15K), revenue in bio: $219K/m total
+- Nina Lopatina (works at ContextualAI) followed @djwayne3 - strategic connection
+- Dex continues posting about something "coming" with his team
+
+**Implications for BuildOS:**
+
+- Claude Code is THE tool for builders right now - validates our LLM choice
+- Boris is accessible and asking for feedback - rare direct engagement opportunity
+- Context management is becoming the key differentiator in AI tools discussions
+- The Claude vs Codex debate creates natural opportunity to share BuildOS experience
+
+**Recommendations:**
+
+1. **URGENT: Engage Boris's feedback request** - Ask for context management content
+2. **Reply to Boris tips thread** - Share real BuildOS/Claude Code experience
+3. **Join steipete debate** - Defend Claude Code with specific CLAUDE.md examples
+4. **Follow Nina Lopatina back** - She works at ContextualAI, strategic relationship
+5. **Continue Dex engagement** - He's still defining context engineering space
+
+**Strategy Change:** Minor priority shift - Claude Code team engagement becomes top priority for next 24-48h while thread is hot. The 4.2M views mean any reply gets massive visibility.
+
+---
+
 ## Log Entry Template
 
 When adding new entries, use this format:

@@ -789,6 +789,7 @@ export class AgentChatOrchestrator {
 		let lastUsage: { total_tokens: number } | undefined;
 		let continueLoop = true;
 		let toolMissRetryUsed = false;
+		let validationRetryUsed = false;
 
 		yield this.buildAgentStateEvent(
 			'thinking',
@@ -897,6 +898,7 @@ export class AgentChatOrchestrator {
 			});
 
 			let retryWithExpandedTools = false;
+			let retryWithValidationRepair = false;
 			for (const toolCall of pendingToolCalls) {
 				if (request.abortSignal?.aborted) {
 					return;
@@ -978,6 +980,18 @@ export class AgentChatOrchestrator {
 				};
 				messages.push(toolMessage);
 
+				if (result.errorType === 'validation_error' && !validationRetryUsed) {
+					validationRetryUsed = true;
+					messages.push({
+						role: 'system',
+						content: this.buildValidationRepairInstruction({
+							result,
+							toolCall
+						})
+					});
+					retryWithValidationRepair = true;
+				}
+
 				if (result.errorType === 'tool_not_loaded' && !toolMissRetryUsed) {
 					toolMissRetryUsed = true;
 					const expanded = this.expandToolPoolAfterMiss({
@@ -993,15 +1007,57 @@ export class AgentChatOrchestrator {
 					retryWithExpandedTools = true;
 				}
 
-				if (retryWithExpandedTools) {
+				if (retryWithExpandedTools || retryWithValidationRepair) {
 					break;
 				}
 			}
 
-			if (retryWithExpandedTools) {
+			if (retryWithExpandedTools || retryWithValidationRepair) {
 				continue;
 			}
 		}
+	}
+
+	private buildValidationRepairInstruction(params: {
+		result: ToolExecutionResult;
+		toolCall: ChatToolCall;
+	}): string {
+		const { result } = params;
+		const toolName = result.toolName || 'unknown';
+		const error = result.error ? String(result.error) : 'Tool validation failed.';
+
+		const missingIdMatch =
+			error.match(/Missing required parameter: ([a-z_]+_id)/i) ??
+			error.match(/Invalid ([a-z_]+_id): expected UUID/i);
+		const idKey = missingIdMatch?.[1];
+		const isUpdateTool = toolName.startsWith('update_onto_');
+		const missingUpdateFields = /No update fields provided/i.test(error);
+
+		const guidance: string[] = [
+			`Tool "${toolName}" failed validation: ${error}`,
+			'Do not guess or fabricate IDs. Never use placeholders.'
+		];
+
+		if (idKey) {
+			guidance.push(
+				`Find a valid ${idKey} using list/search/detail tools (or ask a clarifying question), then retry.`
+			);
+		}
+
+		if (isUpdateTool && missingUpdateFields) {
+			guidance.push(
+				'Include at least one field to change (e.g., state_key, title, description, priority).'
+			);
+		}
+
+		if (!idKey && !(isUpdateTool && missingUpdateFields)) {
+			guidance.push(
+				'Fix the arguments to match the tool schema; if unsure, fetch details first or ask the user.'
+			);
+		}
+
+		guidance.push('Replan and try again once with available tools.');
+		return guidance.join(' ');
 	}
 
 	private expandToolPoolAfterMiss(params: {

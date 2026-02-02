@@ -13,7 +13,7 @@
 	import { getPlanStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 
 	interface Props {
-		state: string;
+		state?: string;
 		entityKind: 'project' | 'plan' | 'task' | 'document' | 'goal' | 'milestone' | 'risk';
 		class?: string;
 	}
@@ -22,6 +22,7 @@
 
 	const stateLabel = $derived.by(() => {
 		// Format state for display (replace underscores, capitalize)
+		if (!state) return 'Unknown';
 		return state
 			.split('_')
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -29,6 +30,8 @@
 	});
 
 	const badgeClass = $derived.by(() => {
+		if (!state) return 'bg-muted text-muted-foreground';
+
 		switch (entityKind) {
 			case 'project':
 				return getProjectStateBadgeClass(state);

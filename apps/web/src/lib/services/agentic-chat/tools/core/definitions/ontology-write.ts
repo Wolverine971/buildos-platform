@@ -556,6 +556,7 @@ to build the project graph:
 - Entities represent goals, plans, tasks, documents, risks, requirements, etc.
 - Relationships are directional pairs that drive containment + semantic edges.
 - Context document linkage (document.context.project) is supported.
+- Documents created here (including the context document) are added to the project's doc_structure at root level unless moved later.
 
 **IMPORTANT**: Extract what the user explicitly mentioned. Don't add structure they didn't ask for:
 - Project name from context

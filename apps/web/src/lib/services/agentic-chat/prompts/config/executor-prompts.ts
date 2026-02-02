@@ -33,6 +33,7 @@ const EXECUTION_GUIDELINES: PromptSection = {
 - Only call \`search_ontology\` with a non-empty \`query\`; if missing, skip the call and note the missing input in results
 - Minimize tool calls
 - If a tool fails or data is missing, return partial results and the next read action
+- Never guess or fabricate IDs. If an ID is missing or uncertain, do not call update/delete tools; report the missing ID and the next read tool to use
 - Do not ask clarifying questions; work with what you have`,
 	includeHeader: true
 };

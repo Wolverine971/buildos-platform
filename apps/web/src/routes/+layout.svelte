@@ -813,9 +813,7 @@
 		id="main-content"
 		class={`rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] p-1 ${showNavigation ? '' : 'min-h-screen'} `}
 	>
-		{#if children}
-			{@render children()}
-		{/if}
+		{@render children?.()}
 	</main>
 
 	{#if showFooter}
