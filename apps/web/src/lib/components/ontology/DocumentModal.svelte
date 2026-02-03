@@ -952,13 +952,18 @@
 									<div class="pt-2 border-t border-border">
 										<button
 											type="button"
-											onclick={() => (showLinkedEntities = !showLinkedEntities)}
+											onclick={() =>
+												(showLinkedEntities = !showLinkedEntities)}
 											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
 										>
 											<span class="flex items-center gap-2">
-												<span class="micro-label text-foreground">LINKED ENTITIES</span>
+												<span class="micro-label text-foreground"
+													>LINKED ENTITIES</span
+												>
 												{#if linkedCount > 0}
-													<span class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-accent/20 text-accent rounded-full">
+													<span
+														class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-accent/20 text-accent rounded-full"
+													>
 														{linkedCount}
 													</span>
 												{/if}
@@ -966,7 +971,9 @@
 											{#if showLinkedEntities}
 												<ChevronUp class="w-4 h-4 text-muted-foreground" />
 											{:else}
-												<ChevronDown class="w-4 h-4 text-muted-foreground" />
+												<ChevronDown
+													class="w-4 h-4 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 										{#if showLinkedEntities}
@@ -987,14 +994,19 @@
 									<div class="pt-2 border-t border-border">
 										<button
 											type="button"
-											onclick={() => (showVersionHistory = !showVersionHistory)}
+											onclick={() =>
+												(showVersionHistory = !showVersionHistory)}
 											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
 										>
-											<span class="micro-label text-foreground">VERSION HISTORY</span>
+											<span class="micro-label text-foreground"
+												>VERSION HISTORY</span
+											>
 											{#if showVersionHistory}
 												<ChevronUp class="w-4 h-4 text-muted-foreground" />
 											{:else}
-												<ChevronDown class="w-4 h-4 text-muted-foreground" />
+												<ChevronDown
+													class="w-4 h-4 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 										{#if showVersionHistory}
@@ -1018,11 +1030,15 @@
 											onclick={() => (showVoiceNotes = !showVoiceNotes)}
 											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
 										>
-											<span class="micro-label text-foreground">VOICE NOTES</span>
+											<span class="micro-label text-foreground"
+												>VOICE NOTES</span
+											>
 											{#if showVoiceNotes}
 												<ChevronUp class="w-4 h-4 text-muted-foreground" />
 											{:else}
-												<ChevronDown class="w-4 h-4 text-muted-foreground" />
+												<ChevronDown
+													class="w-4 h-4 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 										{#if showVoiceNotes}
@@ -1044,11 +1060,15 @@
 											onclick={() => (showActivityLog = !showActivityLog)}
 											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
 										>
-											<span class="micro-label text-foreground">ACTIVITY LOG</span>
+											<span class="micro-label text-foreground"
+												>ACTIVITY LOG</span
+											>
 											{#if showActivityLog}
 												<ChevronUp class="w-4 h-4 text-muted-foreground" />
 											{:else}
-												<ChevronDown class="w-4 h-4 text-muted-foreground" />
+												<ChevronDown
+													class="w-4 h-4 text-muted-foreground"
+												/>
 											{/if}
 										</button>
 										{#if showActivityLog}
@@ -1279,7 +1299,6 @@
 								{/if}
 							</div>
 						</div>
-
 					</div>
 
 					{#if globalFormError}

@@ -917,7 +917,7 @@ export class SmartLLMService {
 	// Kept for backwards compatibility but not used in API calls.
 	// See: https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request
 
-			private trackPerformance(model: string, duration: number): void {
+	private trackPerformance(model: string, duration: number): void {
 		const history = this.performanceMetrics.get(model) || [];
 		history.push(duration);
 

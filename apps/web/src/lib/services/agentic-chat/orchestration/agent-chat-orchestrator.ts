@@ -338,9 +338,7 @@ export class AgentChatOrchestrator {
 			// before proceeding with the planner loop
 			if (request.contextType === 'project_create') {
 				const clarificationStart = Date.now();
-				const clarificationResult = await this.checkProjectCreationClarification(
-					request
-				);
+				const clarificationResult = await this.checkProjectCreationClarification(request);
 				void this.safeUpdateTimingMetric(timingMetricsId, {
 					clarification_ms: Date.now() - clarificationStart
 				});
@@ -1720,9 +1718,7 @@ export class AgentChatOrchestrator {
 	 * 4. If insufficient, generate friendly intro message + questions, return events
 	 * 5. Include updated metadata for the next round in the response
 	 */
-	private async checkProjectCreationClarification(
-		request: AgentChatRequest
-	): Promise<{
+	private async checkProjectCreationClarification(request: AgentChatRequest): Promise<{
 		needsClarification: boolean;
 		events: StreamEvent[];
 		updatedMetadata?: ClarificationRoundMetadata;

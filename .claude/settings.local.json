@@ -81,7 +81,8 @@
       "Bash(tee:*)",
       "Bash(git ls-tree:*)",
       "Bash(head:*)",
-      "Bash(pnpm test:run:*)"
+      "Bash(pnpm test:run:*)",
+      "Bash(timeout 30 npx vite build:*)"
     ],
     "deny": [],
     "ask": []

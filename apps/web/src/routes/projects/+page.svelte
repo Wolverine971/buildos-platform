@@ -418,9 +418,7 @@
 	class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4"
 >
 	<!-- Page Header - Inkprint design with micro-label pattern -->
-	<header
-		class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between"
-	>
+	<header class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div class="space-y-1 sm:space-y-1.5 flex-1">
 			<p class="micro-label text-accent">YOUR WORKSPACE</p>
 			<div class="flex items-center gap-2.5">
@@ -652,7 +650,9 @@
 								? 'grid-rows-[1fr] opacity-100'
 								: 'grid-rows-[0fr] opacity-0'}"
 						>
-							<div class="px-3 pb-3 pt-1 space-y-3 border-t border-border overflow-hidden">
+							<div
+								class="px-3 pb-3 pt-1 space-y-3 border-t border-border overflow-hidden"
+							>
 								<!-- State Filters -->
 								<FilterGroup
 									label="State"

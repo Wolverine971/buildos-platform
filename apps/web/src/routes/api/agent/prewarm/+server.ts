@@ -161,11 +161,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			shouldWarmLocation = false;
 			locationSkipReason = 'missing_entity';
 		} else {
-			const legacyProject = await hasLegacyProjectAccess(
-				supabase,
-				resolvedEntityId,
-				userId
-			);
+			const legacyProject = await hasLegacyProjectAccess(supabase, resolvedEntityId, userId);
 			if (!legacyProject) {
 				shouldWarmLocation = false;
 				locationSkipReason = 'project_not_legacy';

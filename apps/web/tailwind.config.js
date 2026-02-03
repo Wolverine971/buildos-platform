@@ -55,16 +55,17 @@ export default {
 					foreground: withOpacity('--destructive-foreground')
 				},
 
+				// Warning (attention states - uses CSS variable for dark mode support)
+				warning: {
+					DEFAULT: withOpacity('--warning'),
+					foreground: withOpacity('--warning-foreground')
+				},
+
 				// Status colors (paired with textures per design bible)
 				success: {
 					DEFAULT: '#059669', // emerald-600
 					light: '#10b981',
 					dark: '#047857'
-				},
-				warning: {
-					DEFAULT: '#d97706', // amber-600
-					light: '#f59e0b',
-					dark: '#b45309'
 				},
 				danger: {
 					DEFAULT: '#dc2626', // red-600

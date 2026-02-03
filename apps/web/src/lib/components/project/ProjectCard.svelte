@@ -140,7 +140,11 @@
 			<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
 				{#each projectStats as stat (stat.key)}
 					{@const StatIcon = stat.Icon}
-					<span class="flex items-center gap-1" aria-label="{stat.key} count" title={stat.key}>
+					<span
+						class="flex items-center gap-1"
+						aria-label="{stat.key} count"
+						title={stat.key}
+					>
 						<StatIcon class="h-3.5 w-3.5" />
 						<span class="font-semibold text-xs">{stat.count}</span>
 					</span>

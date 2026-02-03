@@ -47,7 +47,11 @@
 		<p class="micro-label">{label}</p>
 		<div class="flex flex-wrap gap-1.5">
 			{#each options as option (option)}
-				<button type="button" class={getButtonClasses(option)} onclick={() => onToggle(option)}>
+				<button
+					type="button"
+					class={getButtonClasses(option)}
+					onclick={() => onToggle(option)}
+				>
 					{option}
 				</button>
 			{/each}

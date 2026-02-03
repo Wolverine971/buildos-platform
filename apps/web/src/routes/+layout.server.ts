@@ -46,13 +46,30 @@ export const load: LayoutServerLoad = async ({
 			user: null,
 			completedOnboarding: true,
 			onboardingProgress: 100,
-			billingContext: createEmptyBillingContext(false)
+			billingContext: createEmptyBillingContext(false),
+			pendingInvites: []
 		};
 	}
+
+	depends('app:invites');
 
 	checkAndRegisterWebhookIfNeeded(supabase, user.id, url.origin).catch((error) => {
 		console.error('Background webhook check failed:', error);
 	});
+
+	let pendingInvites: unknown[] = [];
+	try {
+		const { data, error } = await measure('db.pending_invites', () =>
+			supabase.rpc('list_pending_project_invites')
+		);
+		if (error) {
+			console.warn('[Layout] Failed to load pending invites:', error);
+		} else if (Array.isArray(data)) {
+			pendingInvites = data;
+		}
+	} catch (error) {
+		console.warn('[Layout] Failed to load pending invites:', error);
+	}
 
 	const completedOnboarding = Boolean(user.completed_onboarding);
 	const onboardingProgressPromise = completedOnboarding
@@ -89,6 +106,7 @@ export const load: LayoutServerLoad = async ({
 		user,
 		completedOnboarding,
 		onboardingProgress: completedOnboarding ? 100 : onboardingProgressPromise,
-		billingContext: billingContextPromise
+		billingContext: billingContextPromise,
+		pendingInvites
 	};
 };

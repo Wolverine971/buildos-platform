@@ -166,7 +166,12 @@
 }
 
 .skeleton {
-	background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%);
+	background: linear-gradient(
+		90deg,
+		hsl(var(--muted)) 25%,
+		hsl(var(--border)) 50%,
+		hsl(var(--muted)) 75%
+	);
 	background-size: 200px 100%;
 	animation: skeleton 1.5s infinite;
 

@@ -109,6 +109,12 @@
 	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
 	const onboardingUrgent = $derived(user && onboardingProgress < 50);
 	const userName = $derived(user?.name || user?.email || '');
+	const pendingInvites = $derived.by(() => {
+		const invites = $page.data?.pendingInvites;
+		return Array.isArray(invites) ? invites : [];
+	});
+	const pendingInviteCount = $derived(pendingInvites.length);
+	const hasPendingInvites = $derived(pendingInviteCount > 0);
 
 	$effect(() => {
 		const path = currentPath;
@@ -411,11 +417,11 @@
 									<div class="relative">
 										<!-- Glow effect for zap -->
 										<div
-											class="absolute inset-0 bg-yellow-400 rounded-full blur-md opacity-70 animate-pulse"
+											class="absolute inset-0 bg-accent rounded-full blur-md opacity-60 animate-pulse"
 											style="transform: scale(2.5);"
 										></div>
 										<Zap
-											class="w-4 h-5 sm:w-5 sm:h-6 text-yellow-500 relative z-10 drop-shadow-lg"
+											class="w-4 h-5 sm:w-5 sm:h-6 text-accent relative z-10 drop-shadow-lg"
 										/>
 									</div>
 								</div>
@@ -434,10 +440,10 @@
 								href="/onboarding"
 								data-onboarding-link
 								onclick={() => handleMenuItemClick('/onboarding')}
-								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 whitespace-nowrap
+								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 whitespace-nowrap tx tx-bloom tx-weak
 								{onboardingUrgent
-									? 'bg-amber-500 hover:bg-amber-600 text-white'
-									: 'bg-accent hover:bg-accent/90 text-accent-foreground'}
+									? 'bg-warning text-warning-foreground hover:bg-warning/90 border border-warning/20'
+									: 'bg-accent hover:bg-accent/90 text-accent-foreground border border-accent/20'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
@@ -510,7 +516,7 @@
 								<Shield class="w-4 h-4 text-destructive" />
 							{/if}
 							{#if needsOnboarding}
-								<div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+								<div class="w-2 h-2 bg-warning rounded-full animate-pulse"></div>
 							{/if}
 						</Button>
 
@@ -526,7 +532,7 @@
 											{user?.name || 'User'}
 											{#if user?.is_admin}
 												<span
-													class="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded font-bold"
+													class="ml-2 px-2 py-0.5 text-xs bg-destructive text-destructive-foreground rounded font-bold"
 												>
 													Admin
 												</span>
@@ -551,10 +557,10 @@
 											<a
 												href="/onboarding"
 												onclick={() => handleMenuItemClick('/onboarding')}
-												class="flex items-center w-full px-4 py-2.5 text-sm font-bold tracking-tight rounded-lg transition-all duration-200 shadow-ink pressable
+												class="flex items-center w-full px-4 py-2.5 text-sm font-bold tracking-tight rounded-lg transition-all duration-200 shadow-ink pressable tx tx-bloom tx-weak
 													{onboardingUrgent
-													? 'bg-amber-500 hover:bg-amber-600 text-white'
-													: 'bg-accent hover:bg-accent/90 text-accent-foreground'}
+													? 'bg-warning text-warning-foreground hover:bg-warning/90 border border-warning/20'
+													: 'bg-accent hover:bg-accent/90 text-accent-foreground border border-accent/20'}
 													{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 											>
 												{#if onboardingUrgent}
@@ -591,6 +597,22 @@
 										Notifications
 									</a>
 
+									{#if hasPendingInvites}
+										<a
+											href="/invites"
+											onclick={() => handleMenuItemClick('/invites')}
+											class="flex items-center w-full px-4 py-1.5 text-xs font-semibold text-accent hover:text-accent/90 hover:bg-muted transition-colors
+											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+										>
+											<span class="ml-7">Project invites</span>
+											<span
+												class="ml-auto inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[0.6rem] font-bold text-accent"
+											>
+												{pendingInviteCount}
+											</span>
+										</a>
+									{/if}
+
 									{#if stripeEnabled}
 										<a
 											href={subscription?.hasActiveSubscription
@@ -602,7 +624,7 @@
 														? '/profile?tab=billing'
 														: '/pricing'
 												)}
-											class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<svg
@@ -628,7 +650,7 @@
 										<a
 											href="/admin"
 											onclick={() => handleMenuItemClick('/admin')}
-											class="flex items-center w-full px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors
+											class="flex items-center w-full px-4 py-2 text-sm font-bold text-destructive hover:bg-destructive/10 transition-colors
 											{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										>
 											<Shield class="w-4 h-4 mr-3" />
@@ -638,7 +660,7 @@
 
 									<button
 										onclick={toggleMode}
-										class="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
+										class="flex items-center w-full px-4 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors
 										{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 										disabled={loggingOut}
 										aria-label="Toggle theme"
@@ -660,7 +682,7 @@
 										fullWidth
 										btnType="container"
 										loading={loggingOut}
-										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted min-h-0 transition-colors rounded-none"
+										class="justify-start w-full px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted min-h-0 transition-colors rounded-none font-bold"
 									>
 										{#if loggingOut}
 											<LoaderCircle class="w-4 h-4 mr-3 animate-spin" />
@@ -675,12 +697,12 @@
 						{/if}
 					</div>
 				{:else}
-					<!-- Auth buttons for non-authenticated users - synesthetic texture style -->
-					<div class="hidden md:flex items-center gap-3">
+					<!-- Auth buttons for non-authenticated users -->
+					<div class="hidden md:flex items-center gap-2">
 						<!-- Theme toggle button -->
 						<button
 							onclick={toggleMode}
-							class="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+							class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable"
 							aria-label="Toggle theme"
 						>
 							{#if isDark}
@@ -691,13 +713,13 @@
 						</button>
 						<a
 							href="/auth/login"
-							class="pressable rounded-full border border-border bg-card px-3 py-1.5 text-xs shadow-ink hover:opacity-95"
+							class="px-3.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-lg border border-border bg-card shadow-ink hover:bg-muted hover:border-accent/50 transition-colors pressable"
 						>
 							Log in
 						</a>
 						<a
 							href="/auth/register"
-							class="pressable rounded-full bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground shadow-ink"
+							class="px-4 py-1.5 text-xs font-bold text-accent-foreground bg-accent rounded-lg shadow-ink hover:bg-accent/90 transition-colors pressable tx tx-bloom tx-weak"
 						>
 							Sign up free
 						</a>
@@ -744,10 +766,10 @@
 						<a
 							href="/onboarding"
 							onclick={() => handleMenuItemClick('/onboarding')}
-							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200
+							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 tx tx-bloom tx-weak
 							{onboardingUrgent
-								? 'bg-amber-500 hover:bg-amber-600 text-white'
-								: 'bg-accent hover:bg-accent/90 text-accent-foreground'}
+								? 'bg-warning text-warning-foreground hover:bg-warning/90 border border-warning/20'
+								: 'bg-accent hover:bg-accent/90 text-accent-foreground border border-accent/20'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>
@@ -797,14 +819,14 @@
 							{user?.name || 'User'}
 							{#if user?.is_admin}
 								<span
-									class="ml-2 px-2 py-1 text-xs bg-destructive/15 text-destructive rounded-full font-semibold"
+									class="ml-2 px-2 py-0.5 text-xs bg-destructive/15 text-destructive rounded-full font-semibold"
 								>
 									Admin
 								</span>
 							{/if}
 							{#if needsOnboarding}
 								<div
-									class="ml-2 w-2 h-2 bg-amber-500 rounded-full animate-pulse"
+									class="ml-2 w-2 h-2 bg-warning rounded-full animate-pulse"
 								></div>
 							{/if}
 						</div>
@@ -823,7 +845,7 @@
 						<a
 							href="/profile"
 							onclick={() => handleMenuItemClick('/profile')}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<User class="w-5 h-5 mr-3" />
@@ -833,12 +855,28 @@
 						<a
 							href="/notifications"
 							onclick={() => handleMenuItemClick('/notifications')}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
+							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 						>
 							<Bell class="w-5 h-5 mr-3" />
 							Notifications
 						</a>
+
+						{#if hasPendingInvites}
+							<a
+								href="/invites"
+								onclick={() => handleMenuItemClick('/invites')}
+								class="flex items-center px-3 py-1 text-sm font-semibold text-accent hover:text-accent/90 hover:bg-muted rounded-md transition-colors
+								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
+							>
+								<span class="ml-8">Project invites</span>
+								<span
+									class="ml-auto inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[0.65rem] font-bold text-accent"
+								>
+									{pendingInviteCount}
+								</span>
+							</a>
+						{/if}
 
 						{#if stripeEnabled}
 							<a
@@ -851,7 +889,7 @@
 											? '/profile?tab=billing'
 											: '/pricing'
 									)}
-								class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<svg
@@ -875,7 +913,7 @@
 							<a
 								href="/admin"
 								onclick={() => handleMenuItemClick('/admin')}
-								class="flex items-center px-3 py-1.5 text-base font-medium text-destructive hover:text-destructive/80 hover:bg-destructive/10 rounded-md transition-colors
+								class="flex items-center px-3 py-1.5 text-base font-bold text-destructive hover:text-destructive/80 hover:bg-destructive/10 rounded-md transition-colors
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							>
 								<Shield class="w-5 h-5 mr-3" />
@@ -885,7 +923,7 @@
 
 						<button
 							onclick={toggleMode}
-							class="flex items-center px-3 py-1.5 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors w-full
+							class="flex items-center px-3 py-1.5 text-base font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors w-full
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
 							disabled={loggingOut}
 							aria-label="Toggle theme"
@@ -908,33 +946,33 @@
 							icon={loggingOut ? LoaderCircle : LogOut}
 							iconPosition="left"
 							loading={loggingOut}
-							class="justify-start px-3 py-1.5 text-muted-foreground hover:bg-muted min-h-0"
+							class="justify-start px-3 py-1.5 text-muted-foreground hover:bg-muted min-h-0 font-bold"
 						>
 							{loggingOut ? 'Signing out...' : 'Sign out'}
 						</Button>
 					</div>
 				</div>
 			{:else}
-				<!-- Mobile auth menu for non-authenticated users - synesthetic texture style -->
-				<div class="px-2 pt-1.5 pb-2 space-y-1">
+				<!-- Mobile auth menu for non-authenticated users -->
+				<div class="px-2 pt-1.5 pb-3 space-y-1">
 					<a
 						href="/#how"
 						onclick={() => handleMenuItemClick('/#how')}
-						class="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+						class="block px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
 					>
 						How it works
 					</a>
 					<a
 						href="/#stack"
 						onclick={() => handleMenuItemClick('/#stack')}
-						class="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+						class="block px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
 					>
 						Under the hood
 					</a>
 					<div class="border-t border-border my-2"></div>
 					<button
 						onclick={toggleMode}
-						class="flex items-center w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+						class="flex items-center w-full px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
 						aria-label="Toggle theme"
 					>
 						{#if isDark}
@@ -948,14 +986,14 @@
 					<a
 						href="/auth/login"
 						onclick={() => handleMenuItemClick('/auth/login')}
-						class="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+						class="block px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
 					>
 						Log in
 					</a>
 					<a
 						href="/auth/register"
 						onclick={() => handleMenuItemClick('/auth/register')}
-						class="block px-3 py-2 text-sm font-semibold text-accent hover:text-accent/80 transition-colors"
+						class="block px-3 py-2.5 mt-2 text-sm font-bold text-center text-accent-foreground bg-accent hover:bg-accent/90 rounded-lg shadow-ink pressable tx tx-bloom tx-weak transition-colors"
 					>
 						Sign up free
 					</a>

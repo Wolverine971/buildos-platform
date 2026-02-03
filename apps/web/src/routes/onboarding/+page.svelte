@@ -3,12 +3,10 @@
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { fade, scale, slide } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
 	import {
 		ChevronLeft,
 		ChevronRight,
-		Mic,
-		MicOff,
 		LoaderCircle,
 		CheckCircle,
 		Rocket,
@@ -18,17 +16,9 @@
 		Sparkles
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
-	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
+	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import {
-		startRecording,
-		stopRecording,
-		isRecording,
-		liveTranscript,
-		voiceSupported,
-		liveTranscriptSupported,
-		getFileExtensionForMimeType
-	} from '$lib/utils/voice';
 	import { toastService } from '$lib/stores/toast.store';
 	import { requireApiSuccess } from '$lib/utils/api-client-helpers';
 
@@ -119,12 +109,21 @@
 	}
 
 	let currentStep = $state(data.recommendedStep || 0);
-	let isTranscribing = $state(false);
-	let microphonePermissionGranted = $state(false);
-	let canUseLiveTranscript = $state(false);
 	let showCompletionScreen = $state(false);
 	let isSaving = $state(false);
 	let saveFailed = $state(false);
+
+	// Voice state for TextareaWithVoice component
+	let voiceInputRef = $state<TextareaWithVoiceComponent | null>(null);
+	let isVoiceRecording = $state(false);
+	let isVoiceInitializing = $state(false);
+	let isVoiceTranscribing = $state(false);
+	let voiceErrorMessage = $state('');
+	let voiceRecordingDuration = $state(0);
+	let voiceSupportsLiveTranscript = $state(false);
+
+	// Current step input value (bound to TextareaWithVoice)
+	let currentStepInputValue = $state('');
 
 	const steps = [
 		{
@@ -218,6 +217,26 @@
 		})
 	);
 
+	// Sync currentStepInputValue with stepInputs array (bidirectional)
+	// Effect 1: Load from array when step changes
+	$effect(() => {
+		const arrayValue = stepInputs[currentStep] ?? '';
+		if (currentStepInputValue !== arrayValue) {
+			currentStepInputValue = arrayValue;
+		}
+	});
+
+	// Effect 2: Save to array when value changes (from typing or voice)
+	$effect(() => {
+		const value = currentStepInputValue;
+		if (value !== stepInputs[currentStep]) {
+			const nextInputs = [...stepInputs];
+			nextInputs[currentStep] = value;
+			stepInputs = nextInputs;
+			triggerAutoSave();
+		}
+	});
+
 	// Load existing content from server
 	function loadExistingContent() {
 		if (!data.userContext) return;
@@ -251,13 +270,6 @@
 	onMount(async () => {
 		// Load existing content
 		loadExistingContent();
-
-		// Check voice capabilities
-		if (voiceSupported()) {
-			canUseLiveTranscript = liveTranscriptSupported();
-			const previouslyGranted = localStorage.getItem('voice_permission_granted') === 'true';
-			microphonePermissionGranted = previouslyGranted;
-		}
 	});
 
 	onDestroy(() => {
@@ -334,14 +346,6 @@
 		}, 1500);
 	}
 
-	function handleStepInputChange(event: Event) {
-		const target = event.target as HTMLTextAreaElement;
-		const nextInputs = [...stepInputs];
-		nextInputs[currentStep] = target.value ?? '';
-		stepInputs = nextInputs;
-		triggerAutoSave();
-	}
-
 	// Navigation
 	async function handleNext() {
 		// Save current step before moving
@@ -398,71 +402,6 @@
 			toastService.error('Failed to complete setup. Please try again.');
 		} finally {
 			isSaving = false;
-		}
-	}
-
-	// Voice recording
-	async function handleVoiceToggle() {
-		if ($isRecording) {
-			isTranscribing = true;
-
-			try {
-				const audioBlob = await stopRecording();
-
-				if (audioBlob && audioBlob.size > 0) {
-					const mimeType = audioBlob.type || 'audio/webm';
-					const extension = getFileExtensionForMimeType(mimeType);
-					const filename = `recording.${extension}`;
-					const audioFile = new File([audioBlob], filename, { type: mimeType });
-
-					const formData = new FormData();
-					formData.append('audio', audioFile);
-
-					const response = await fetch('/api/transcribe', {
-						method: 'POST',
-						body: formData
-					});
-
-					if (!response.ok) {
-						throw new Error('Transcription failed');
-					}
-
-					const result = await response.json();
-					const data = result.success && result.data ? result.data : result;
-
-					if (data.transcript) {
-						const newTranscript = data.transcript.trim();
-						const existingContent = stepInputs[currentStep]?.trim() || '';
-						const nextInputs = [...stepInputs];
-
-						nextInputs[currentStep] = existingContent
-							? `${existingContent}\n\n${newTranscript}`
-							: newTranscript;
-
-						stepInputs = nextInputs;
-						liveTranscript.set('');
-						triggerAutoSave();
-					}
-				}
-			} catch (error) {
-				console.error('Transcription error:', error);
-				toastService.error('Could not transcribe audio. Please try again.');
-			} finally {
-				isTranscribing = false;
-			}
-		} else {
-			try {
-				liveTranscript.set('');
-				await startRecording();
-
-				if (!microphonePermissionGranted) {
-					microphonePermissionGranted = true;
-					localStorage.setItem('voice_permission_granted', 'true');
-				}
-			} catch (error) {
-				console.error('Failed to start recording:', error);
-				toastService.error('Could not access microphone. Please check permissions.');
-			}
 		}
 	}
 
@@ -645,80 +584,58 @@
 					</div>
 				</div>
 
-				<!-- Voice recording button -->
-				{#if voiceSupported()}
-					<div class="text-center mb-4">
-						<Button
-							onclick={handleVoiceToggle}
-							disabled={isTranscribing}
-							variant={$isRecording
-								? 'danger'
-								: hasCurrentInput
-									? 'primary'
-									: 'secondary'}
-							size="lg"
-							class="min-w-[200px] shadow-lg hover:shadow-xl transition-all duration-200 {$isRecording
-								? 'animate-pulse'
-								: ''}"
-						>
-							{#if isTranscribing}
-								<LoaderCircle class="w-5 h-5 mr-2 animate-spin" />
-								Transcribing...
-							{:else if $isRecording}
-								<MicOff class="w-5 h-5 mr-2" />
-								Stop Recording
-							{:else}
-								<Mic class="w-5 h-5 mr-2" />
-								{hasCurrentInput ? 'Add More' : 'Record Answer'}
-							{/if}
-						</Button>
-					</div>
-				{/if}
-
-				<!-- Text input -->
+				<!-- Text input with integrated voice recording (similar to Agentic Chat) -->
 				<div class="mb-8">
-					<Textarea
-						value={stepInputs[currentStep]}
-						oninput={handleStepInputChange}
+					<TextareaWithVoice
+						bind:this={voiceInputRef}
+						bind:value={currentStepInputValue}
+						bind:isRecording={isVoiceRecording}
+						bind:isInitializing={isVoiceInitializing}
+						bind:isTranscribing={isVoiceTranscribing}
+						bind:voiceError={voiceErrorMessage}
+						bind:recordingDuration={voiceRecordingDuration}
+						bind:canUseLiveTranscript={voiceSupportsLiveTranscript}
+						voiceNoteSource="onboarding"
+						class="w-full"
+						containerClass="rounded-xl border border-border bg-card shadow-ink tx tx-frame tx-weak"
+						textareaClass="border-none bg-transparent px-4 py-3 text-base font-medium leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 resize-none"
 						placeholder={currentStepData?.placeholder}
-						rows={8}
-						disabled={$isRecording || isTranscribing}
-						size="lg"
-						class="w-full resize-none shadow-ink-inner"
+						rows={6}
+						maxRows={10}
+						autoResize
+						disabled={false}
+						voiceBlocked={isSaving}
+						voiceBlockedLabel="Saving..."
+						voiceButtonLabel="Record your answer"
+						listeningLabel="Listening"
+						transcribingLabel="Transcribing..."
+						preparingLabel="Preparing mic…"
+						liveTranscriptLabel="Live"
+						showStatusRow={true}
+						showLiveTranscriptPreview={true}
 					/>
-					<!-- Live transcript -->
-					{#if $isRecording && $liveTranscript}
-						<div
-							class="mt-4 p-3 bg-accent/10 border border-accent/30 rounded-lg tx tx-pulse tx-weak"
-							transition:slide={{ duration: 200 }}
-						>
-							<p class="text-sm text-accent italic">
-								{$liveTranscript}
-							</p>
-						</div>
-					{/if}
 
 					<!-- Save indicator -->
-					{#if isSaving}
-						<p
-							class="text-xs text-muted-foreground mt-2 flex items-center"
-							transition:fade
-						>
-							<LoaderCircle class="w-3 h-3 mr-1 animate-spin" />
-							Saving...
-						</p>
-					{:else if !hasUnsavedChanges && hasCurrentInput}
-						<p class="text-xs text-emerald-600 mt-2 flex items-center" transition:fade>
-							<CheckCircle class="w-3 h-3 mr-1" />
-							Saved
-						</p>
-					{/if}
-
-					{#if saveFailed}
-						<p class="text-xs text-red-600 mt-2">
-							We couldn't save your last changes. We'll retry automatically.
-						</p>
-					{/if}
+					<div class="mt-2 min-h-[1.25rem]">
+						{#if isSaving}
+							<p
+								class="text-xs text-muted-foreground flex items-center"
+								transition:fade
+							>
+								<LoaderCircle class="w-3 h-3 mr-1 animate-spin" />
+								Saving...
+							</p>
+						{:else if !hasUnsavedChanges && hasCurrentInput}
+							<p class="text-xs text-emerald-600 flex items-center" transition:fade>
+								<CheckCircle class="w-3 h-3 mr-1" />
+								Saved
+							</p>
+						{:else if saveFailed}
+							<p class="text-xs text-destructive">
+								We couldn't save your last changes. We'll retry automatically.
+							</p>
+						{/if}
+					</div>
 				</div>
 
 				<!-- Navigation buttons -->

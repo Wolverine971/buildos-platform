@@ -67,7 +67,6 @@
 		return parseEntityReferences(nextStepLong);
 	});
 
-
 	const updatedTimeAgo = $derived.by(() => {
 		if (!nextStepUpdatedAt) return null;
 		const date = new Date(nextStepUpdatedAt);
