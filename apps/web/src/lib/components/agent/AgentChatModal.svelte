@@ -1073,10 +1073,12 @@
 	$effect(() => {
 		if (!browser || !isOpen || !selectedContextType) return;
 		const prewarmSessionId = currentSession?.id ?? initialChatSessionId ?? null;
+		const prewarmEntityId = selectedEntityId ?? resolvedProjectFocus?.projectId;
+		if (isProjectContext(selectedContextType) && !prewarmEntityId) return;
 		const key = buildPrewarmKey(
 			prewarmSessionId,
 			selectedContextType,
-			selectedEntityId,
+			prewarmEntityId,
 			resolvedProjectFocus
 		);
 		if (!key || key === lastPrewarmKey) return;
@@ -1086,7 +1088,7 @@
 			const session = await prewarmAgentContext({
 				session_id: prewarmSessionId ?? undefined,
 				context_type: selectedContextType,
-				entity_id: selectedEntityId,
+				entity_id: prewarmEntityId,
 				projectFocus: resolvedProjectFocus
 			});
 

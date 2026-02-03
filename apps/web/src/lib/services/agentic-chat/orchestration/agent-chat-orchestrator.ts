@@ -185,7 +185,7 @@ export class AgentChatOrchestrator {
 		const conversationHistory = request.conversationHistory ?? [];
 		const timingMetricsId = request.timingMetricsId;
 
-		let plannerContext: PlannerContext;
+		let plannerContext: PlannerContext | undefined;
 		let plannerAgentId: string | undefined;
 		let doneEmitted = false;
 
@@ -339,9 +339,7 @@ export class AgentChatOrchestrator {
 			if (request.contextType === 'project_create') {
 				const clarificationStart = Date.now();
 				const clarificationResult = await this.checkProjectCreationClarification(
-					request,
-					serviceContext,
-					callback
+					request
 				);
 				void this.safeUpdateTimingMetric(timingMetricsId, {
 					clarification_ms: Date.now() - clarificationStart
@@ -1591,7 +1589,8 @@ export class AgentChatOrchestrator {
 		}
 
 		const strategy =
-			typeof plan.strategy === 'string' && Object.values(ChatStrategy).includes(plan.strategy)
+			typeof plan.strategy === 'string' &&
+			Object.values(ChatStrategy).includes(plan.strategy as any)
 				? (plan.strategy as ChatStrategy)
 				: undefined;
 
@@ -1722,9 +1721,7 @@ export class AgentChatOrchestrator {
 	 * 5. Include updated metadata for the next round in the response
 	 */
 	private async checkProjectCreationClarification(
-		request: AgentChatRequest,
-		serviceContext: ServiceContext,
-		callback: StreamCallback
+		request: AgentChatRequest
 	): Promise<{
 		needsClarification: boolean;
 		events: StreamEvent[];

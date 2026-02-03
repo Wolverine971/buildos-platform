@@ -32,6 +32,14 @@
 	--destructive: 0 72% 51%; /* red-600 equivalent */
 	--destructive-foreground: 0 0% 100%;
 
+	/* Warning (caution/alert states) */
+	--warning: 38 92% 50%; /* amber-500 equivalent */
+	--warning-foreground: 0 0% 100%;
+
+	/* Success (positive/completed states) */
+	--success: 160 84% 39%; /* emerald-600 equivalent */
+	--success-foreground: 0 0% 100%;
+
 	/* Inkprint texture base color */
 	--tx-ink: 240 10% 10%;
 	--tx-ink-rgb: 24, 24, 27;
@@ -68,6 +76,14 @@
 	/* Destructive (brighter in dark mode for visibility) */
 	--destructive: 0 72% 55%;
 	--destructive-foreground: 0 0% 100%;
+
+	/* Warning (brighter in dark mode) */
+	--warning: 38 92% 55%;
+	--warning-foreground: 240 10% 6%;
+
+	/* Success (brighter in dark mode) */
+	--success: 160 84% 45%;
+	--success-foreground: 0 0% 100%;
 
 	/* Dark mode texture ink */
 	--tx-ink: 40 10% 92%;

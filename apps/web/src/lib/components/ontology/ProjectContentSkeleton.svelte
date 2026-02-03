@@ -5,10 +5,13 @@
 	Shows skeleton cards for Documents section while data loads.
 	Matches exact dimensions to prevent layout shift during hydration.
 
+	Uses Inkprint tokens:
+	- Consistent rounded-lg radius (no responsive escalation)
+	- tx-pulse texture for loading state
+	- Proper border-border and bg-card tokens
+
 	Usage:
-	<ProjectContentSkeleton
-		documentCount={2}
-	/>
+	<ProjectContentSkeleton documentCount={2} />
 -->
 <script lang="ts">
 	import { FileText, Sparkles, ChevronDown } from 'lucide-svelte';
@@ -23,12 +26,12 @@
 <div class="min-w-0 space-y-2 sm:space-y-4">
 	<!-- Documents Section Skeleton -->
 	<section
-		class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-pulse tx-weak overflow-hidden"
+		class="bg-card border border-border rounded-lg shadow-ink tx tx-pulse tx-weak overflow-hidden"
 	>
 		<div class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
 			<div class="flex items-center gap-2 sm:gap-3 flex-1">
 				<div
-					class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
+					class="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-accent/10 flex items-center justify-center"
 				>
 					<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 				</div>
@@ -63,7 +66,7 @@
 					class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 bg-muted tx tx-bloom tx-weak"
 				>
 					<div
-						class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
+						class="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-accent/10 flex items-center justify-center"
 					>
 						<Sparkles class="w-3 h-3 sm:w-4 sm:h-4 text-accent" />
 					</div>
@@ -80,7 +83,7 @@
 						<li class="animate-pulse" style="animation-delay: {i * 75}ms">
 							<div class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
 								<div
-									class="w-6 h-6 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-muted flex-shrink-0"
+									class="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-muted flex-shrink-0"
 								></div>
 								<div class="flex-1 space-y-1.5 sm:space-y-2">
 									<div class="h-3 sm:h-4 rounded bg-muted w-2/3"></div>

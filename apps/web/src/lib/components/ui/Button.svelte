@@ -77,18 +77,18 @@
 			disabled:text-muted-foreground/50 disabled:cursor-not-allowed
 		`,
 		danger: `
-			bg-red-600 text-white border border-red-700 font-semibold tracking-tight
-			hover:bg-red-700 hover:shadow-ink-strong
+			bg-destructive text-destructive-foreground border border-destructive font-semibold tracking-tight
+			hover:bg-destructive/90 hover:shadow-ink-strong
 			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-red-600 focus:ring-offset-1
+			focus:ring-2 focus:ring-destructive focus:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
 			shadow-ink tx-button relative
 		`,
 		warning: `
-			bg-amber-600 text-white border border-amber-700 font-semibold tracking-tight
-			hover:bg-amber-700 hover:shadow-ink-strong
+			bg-warning text-warning-foreground border border-warning font-semibold tracking-tight
+			hover:bg-warning/90 hover:shadow-ink-strong
 			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-amber-600 focus:ring-offset-1
+			focus:ring-2 focus:ring-warning focus:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
 			shadow-ink tx-button relative
 		`,
@@ -101,10 +101,10 @@
 			shadow-ink tx-button relative
 		`,
 		success: `
-			bg-emerald-600 text-white border border-emerald-700 font-semibold tracking-tight
-			hover:bg-emerald-700 hover:shadow-ink-strong
+			bg-success text-success-foreground border border-success font-semibold tracking-tight
+			hover:bg-success/90 hover:shadow-ink-strong
 			active:translate-y-[1px] active:shadow-ink-inner
-			focus:ring-2 focus:ring-emerald-600 focus:ring-offset-1
+			focus:ring-2 focus:ring-success focus:ring-offset-1
 			disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed disabled:shadow-none
 			shadow-ink tx-button relative
 		`

@@ -62,15 +62,14 @@
 		Pencil,
 		Trash2,
 		ArrowLeft,
-		CheckCircle2,
+		CheckCircle,
 		Circle,
 		Clock,
 		Target,
 		ChevronDown,
-		AlertTriangle,
-		Flag,
+		AlertCircle,
 		ListChecks,
-		MoreVertical,
+		MoreHorizontal,
 		GitBranch,
 		UserPlus
 	} from 'lucide-svelte';
@@ -136,7 +135,7 @@
 	type InsightPanel = {
 		key: InsightPanelKey;
 		label: string;
-		icon: typeof CheckCircle2;
+		icon: typeof CheckCircle;
 		items: Array<unknown>;
 		description?: string;
 	};
@@ -748,7 +747,7 @@
 		{
 			key: 'risks',
 			label: 'Risks',
-			icon: AlertTriangle,
+			icon: AlertCircle,
 			items: filteredRisks,
 			description: 'What could go wrong'
 		}
@@ -798,7 +797,7 @@
 	function getTaskVisuals(state: string) {
 		const normalized = state?.toLowerCase() || '';
 		if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') {
-			return { icon: CheckCircle2, color: 'text-emerald-500' };
+			return { icon: CheckCircle, color: 'text-emerald-500' };
 		}
 		if (normalized === 'in_progress' || normalized === 'active') {
 			return { icon: Clock, color: 'text-accent' };
@@ -1539,7 +1538,7 @@
 					<div class="min-w-0">
 						<h1
 							class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
-							style="view-transition-name: project-title-{project.id}"
+							style:view-transition-name="project-title-{project.id}"
 						>
 							{project?.name || 'Untitled Project'}
 						</h1>
@@ -1616,7 +1615,7 @@
 						aria-label="Project options"
 						aria-expanded={showMobileMenu}
 					>
-						<MoreVertical class="w-5 h-5 text-muted-foreground" />
+						<MoreHorizontal class="w-5 h-5 text-muted-foreground" />
 					</button>
 				</div>
 			</div>
@@ -1768,9 +1767,7 @@
 		</div>
 
 		<!-- Desktop Layout (hidden on mobile) -->
-		<div
-			class="hidden sm:grid sm:grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] gap-2 sm:gap-4 lg:gap-6"
-		>
+		<div class="hidden sm:grid lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4">
 			<!-- Left Column: Documents -->
 			{#if isHydrating && skeletonCounts}
 				<!-- Skeleton state - show loading placeholders with counts -->
@@ -1787,7 +1784,7 @@
 						>
 							<button
 								onclick={() => (documentsExpanded = !documentsExpanded)}
-								class="flex items-center gap-2 sm:gap-3 flex-1 text-left hover:bg-muted/60 -m-2 sm:-m-3 p-2 sm:p-3 rounded-lg transition-colors pressable"
+								class="flex items-center gap-2 flex-1 text-left hover:bg-muted/60 rounded-lg transition-colors pressable"
 							>
 								<div
 									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
@@ -1882,7 +1879,7 @@
 						description="What needs to move"
 					/>
 					<InsightPanelSkeleton
-						icon={AlertTriangle}
+						icon={AlertCircle}
 						label="Risks"
 						count={skeletonCounts.risk_count}
 						description="What could go wrong"
@@ -1953,7 +1950,7 @@
 							<div class="flex items-center justify-between gap-3 px-4 py-3">
 								<button
 									onclick={() => togglePanel(section.key)}
-									class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 -m-3 p-3 rounded-lg transition-colors pressable"
+									class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 rounded-lg transition-colors pressable"
 								>
 									<div
 										class="w-9 h-9 rounded-lg flex items-center justify-center {iconStyles}"

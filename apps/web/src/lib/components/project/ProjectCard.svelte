@@ -1,280 +1,154 @@
 <!-- apps/web/src/lib/components/project/ProjectCard.svelte -->
-<!-- Inkprint Design System: Uses semantic tokens for consistent styling -->
+<!--
+	ProjectCard - Unified card for owned and shared projects
+
+	Extracted from +page.svelte to eliminate ~200 lines of duplication.
+	Handles both owned and shared project display with conditional badge.
+
+	Features:
+	- Responsive design (mobile compact, desktop full)
+	- View transition support for smooth navigation
+	- Non-zero stats only display
+	- Shared badge with role indicator
+
+	Usage:
+	<ProjectCard {project} {onProjectClick} {getStateBadgeClasses} />
+	<ProjectCard {project} isShared {onProjectClick} {getStateBadgeClasses} />
+-->
 <script lang="ts">
-	import {
-		CheckCircle2,
-		Circle,
-		Clock,
-		Pause,
-		AlertCircle,
-		Edit3,
-		FileText,
-		Archive
-	} from 'lucide-svelte';
-	import { createStatusMapping } from '$lib/utils/componentOptimization';
-	import ProjectEditModal from './ProjectEditModal.svelte';
-	import { page } from '$app/stores';
-	import { invalidate } from '$app/navigation';
-	import Button from '$lib/components/ui/Button.svelte';
+	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
+	import ProjectCardNextStep from './ProjectCardNextStep.svelte';
+	import { ListChecks, Target, Calendar, FileText } from 'lucide-svelte';
 
 	interface Props {
-		project: any;
-		projectBrief?: any;
-		onviewbrief?: (brief: any) => void;
+		project: OntologyProjectSummary;
+		isShared?: boolean;
+		onProjectClick: (project: OntologyProjectSummary) => void;
+		getStateBadgeClasses: (state: string) => string;
 	}
 
-	let { project = $bindable(), projectBrief = null, onviewbrief }: Props = $props();
+	let { project, isShared = false, onProjectClick, getStateBadgeClasses }: Props = $props();
 
-	let showEditModal = $state(false);
-
-	// Get current page for projects list invalidation (different from project detail page)
-	const currentPage = $derived($page.url.pathname);
-	const isOnProjectsPage = $derived(
-		currentPage === '/projects' || currentPage.startsWith('/projects?')
+	// Build stats array with non-zero counts only
+	const projectStats = $derived(
+		[
+			{ key: 'tasks', count: project.task_count, Icon: ListChecks },
+			{ key: 'goals', count: project.goal_count, Icon: Target },
+			{ key: 'plans', count: project.plan_count, Icon: Calendar },
+			{ key: 'docs', count: project.document_count, Icon: FileText }
+		].filter((s) => s.count > 0)
 	);
 
-	// Inkprint status colors using semantic tokens
-	const statusMapping = createStatusMapping({
-		icons: {
-			active: Circle,
-			paused: Pause,
-			completed: CheckCircle2,
-			archived: Archive,
-			default: Circle
-		},
-		colors: {
-			active: 'text-accent',
-			paused: 'text-muted-foreground',
-			completed: 'text-foreground',
-			archived: 'text-muted-foreground/60',
-			default: 'text-muted-foreground'
-		},
-		messages: {
-			active: 'Active',
-			paused: 'Paused',
-			completed: 'Completed',
-			archived: 'Archived',
-			default: 'Unknown'
-		}
-	});
+	// Mobile: limit to 3 stats
+	const mobileProjectStats = $derived(projectStats.slice(0, 3));
 
-	// Optimized computed values using $derived
-	const hasTaskStats = $derived(project.taskStats?.total > 0);
-	const completionRate = $derived(project.taskStats?.completionRate || 0);
-	const hasTags = $derived(project.tags && project.tags.length > 0);
-	const visibleTags = $derived(hasTags ? project.tags.slice(0, 3) : []);
-	const extraTagsCount = $derived(hasTags ? Math.max(0, project.tags.length - 3) : 0);
-	const hasBlockedTasks = $derived(hasTaskStats && project.taskStats.blocked > 0);
-
-	// Performance optimization: prevent unnecessary re-renders
-	const projectStatusConfig = $derived(
-		project.status ? statusMapping.getIcon(project.status) : null
-	);
-	const projectStatusColor = $derived(
-		project.status ? statusMapping.getColor(project.status) : ''
-	);
-	const projectStatusText = $derived(
-		project.status ? statusMapping.getMessage(project.status) : ''
-	);
-	const isArchived = $derived(project.status === 'archived');
-
-	function handleEdit(event: Event) {
-		event.preventDefault();
-		event.stopPropagation();
-		showEditModal = true;
-	}
-
-	function handleViewBrief(event: Event) {
-		event.preventDefault();
-		event.stopPropagation();
-		if (projectBrief && onviewbrief) {
-			onviewbrief(projectBrief);
-		}
-	}
-
-	async function handleProjectUpdated(updatedProject: any) {
-		// Update the local project data immediately for reactive UI update
-		if (updatedProject) {
-			project = { ...project, ...updatedProject };
-		}
-
-		// For projects list page, we need a different invalidation strategy
-		if (isOnProjectsPage) {
-			// Invalidate the projects list data
-			const { invalidate } = await import('$app/navigation');
-			await invalidate('/projects');
-		} else {
-			const projectId = `projects:${$page.params.id}`;
-			await invalidate(projectId);
-		}
-	}
+	// Texture class based on shared status
+	const textureClass = $derived(isShared ? 'tx tx-thread tx-weak' : 'tx tx-frame tx-weak');
 </script>
 
 <a
 	href="/projects/{project.id}"
-	class={`block p-3 sm:p-4 ${isArchived ? 'opacity-80' : ''}`}
-	aria-label={isArchived ? 'View archived project' : undefined}
+	onclick={() => onProjectClick(project)}
+	class="group relative flex h-full flex-col wt-paper p-3 sm:p-4 {textureClass} hover:border-accent/60 pressable"
 >
-	<!-- Header with title and status -->
-	<div class="flex items-start justify-between mb-1.5 sm:mb-2">
-		<div class="flex-1 min-w-0 pr-1">
+	<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
+	<div class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3">
+		<div class="min-w-0 flex-1">
 			<h3
-				class="text-sm sm:text-base font-semibold text-foreground line-clamp-2 leading-tight"
-				data-project-name
-				style="--project-name: project-name-{project.id};"
+				class="text-xs sm:text-base font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-snug"
+				style:view-transition-name="project-title-{project.id}"
 			>
-				{project.name || 'Untitled Project'}
+				{project.name}
 			</h3>
-		</div>
-		<!-- Status indicator - icon only on mobile -->
-		{#if project.status && projectStatusConfig}
-			{@const ProjectStatusConfig = projectStatusConfig}
-			<div class="flex items-center space-x-1 flex-shrink-0 ml-1">
-				<ProjectStatusConfig class="w-3.5 h-3.5 sm:w-4 sm:h-4 {projectStatusColor}" />
-				<span class="hidden sm:inline text-xs font-medium {projectStatusColor} capitalize">
-					{projectStatusText}
+			<!-- Mobile: Inline badges under title -->
+			<div class="flex flex-wrap items-center gap-1 mt-1 sm:hidden">
+				<span
+					class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize {getStateBadgeClasses(
+						project.state_key
+					)}"
+				>
+					{project.state_key}
 				</span>
-			</div>
-		{/if}
-	</div>
-
-	{#if isArchived}
-		<div
-			class="mb-2 flex items-center gap-2 rounded-md border border-dashed border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-		>
-			<Archive class="w-3 h-3" />
-			<span class="hidden sm:inline">Archived — read only</span>
-			<span class="sm:hidden">Archived</span>
-		</div>
-	{/if}
-
-	<!-- Description - compact on mobile -->
-	{#if project.description}
-		<p class="text-sm text-muted-foreground line-clamp-2 mb-3 leading-snug min-h-[2.5rem]">
-			{project.description}
-		</p>
-	{:else}
-		<p class="text-sm text-muted-foreground/60 italic mb-3 min-h-[2.5rem]">No description</p>
-	{/if}
-
-	<!-- Progress bar and stats - ultra compact for mobile -->
-	{#if hasTaskStats}
-		<div class="space-y-2">
-			<!-- Progress bar with percentage -->
-			<div class="flex items-center gap-2">
-				<div class="flex-1">
-					<div class="flex items-center justify-between text-[10px] sm:text-xs mb-0.5">
-						<span class="text-muted-foreground">Progress</span>
-						<span class="font-semibold text-foreground tabular-nums">
-							{completionRate}%
-						</span>
-					</div>
-					<div class="w-full bg-muted rounded-full h-1">
-						<div
-							class="bg-accent h-1 rounded-full"
-							style="width: {completionRate}%; transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);"
-						/>
-					</div>
-				</div>
-			</div>
-
-			<!-- Task stats in compact row -->
-			<div class="flex items-center gap-3 text-xs">
-				<div class="flex items-center gap-1">
-					<CheckCircle2 class="w-3.5 h-3.5 text-accent" />
-					<span class="text-muted-foreground tabular-nums">
-						{project.taskStats.completed}
+				{#if isShared}
+					<span
+						class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-accent/15 text-accent border border-accent/20"
+					>
+						Shared{project.access_role ? ` · ${project.access_role}` : ''}
 					</span>
-				</div>
-				<div class="flex items-center gap-1">
-					<Clock class="w-3.5 h-3.5 text-muted-foreground" />
-					<span class="text-muted-foreground tabular-nums">
-						{project.taskStats.active}
-					</span>
-				</div>
-				{#if hasBlockedTasks}
-					<div class="flex items-center gap-1">
-						<AlertCircle class="w-3.5 h-3.5 text-destructive" />
-						<span class="text-muted-foreground tabular-nums">
-							{project.taskStats.blocked}
-						</span>
-					</div>
 				{/if}
 			</div>
 		</div>
-	{:else}
-		<div class="text-xs text-muted-foreground/60 italic">No tasks yet</div>
-	{/if}
-
-	<!-- View Brief Button - compact on mobile -->
-	{#if projectBrief}
-		<div class="mt-3 mb-2">
-			<Button
-				type="button"
-				onclick={handleViewBrief}
-				variant="outline"
-				size="sm"
-				class="w-full text-accent border-accent/30 hover:bg-accent/10"
-				data-no-pulse
-			>
-				<FileText class="w-3.5 h-3.5 mr-1" />
-				<span class="hidden sm:inline">View Brief</span>
-				<span class="sm:hidden">Brief</span>
-			</Button>
-		</div>
-	{/if}
-
-	<!-- Tags - ultra compact on mobile -->
-	{#if hasTags}
-		<div class="flex flex-wrap gap-1">
-			{#each visibleTags.slice(0, 2) as tag}
+		<!-- Desktop: Status badge (and shared badge if applicable) -->
+		<div class="hidden sm:flex items-center gap-2">
+			{#if isShared}
 				<span
-					class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground truncate max-w-[80px] sm:max-w-none"
-					title={tag}
+					class="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-semibold bg-accent/15 text-accent border border-accent/20"
 				>
-					{tag}
-				</span>
-			{/each}
-			{#if hasTags && project.tags.length > 2}
-				<span
-					class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground/60"
-				>
-					+{project.tags.length - 2}
+					Shared{project.access_role ? ` · ${project.access_role}` : ''}
 				</span>
 			{/if}
+			<span
+				class="flex-shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold capitalize {getStateBadgeClasses(
+					project.state_key
+				)}"
+			>
+				{project.state_key}
+			</span>
+		</div>
+	</div>
+
+	<!-- Description - Hidden on mobile -->
+	{#if project.description}
+		<p class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground leading-relaxed">
+			{project.description.length > 120
+				? project.description.slice(0, 120) + '...'
+				: project.description}
+		</p>
+	{/if}
+
+	<!-- Next Step - Hidden on mobile for density -->
+	{#if project.next_step_short}
+		<div class="hidden sm:block">
+			<ProjectCardNextStep
+				nextStepShort={project.next_step_short}
+				nextStepLong={project.next_step_long}
+				class="mb-3"
+			/>
 		</div>
 	{/if}
+
+	<!-- Footer Stats - Show non-zero counts, limit on mobile -->
+	<div
+		class="mt-auto flex items-center justify-between border-t border-border/60 pt-2 sm:pt-3 text-muted-foreground"
+	>
+		<!-- Mobile: Show up to 3 non-zero stats -->
+		<div class="flex sm:hidden items-center gap-2.5 overflow-hidden">
+			{#each mobileProjectStats as stat (stat.key)}
+				{@const StatIcon = stat.Icon}
+				<span class="flex items-center gap-1 shrink-0" title={stat.key}>
+					<StatIcon class="h-3 w-3" />
+					<span class="font-semibold text-[10px]">{stat.count}</span>
+				</span>
+			{/each}
+			{#if projectStats.length > 3}
+				<span class="text-[9px] text-muted-foreground/60">+{projectStats.length - 3}</span>
+			{/if}
+		</div>
+
+		<!-- Desktop: Full stats (non-zero only) -->
+		<div class="hidden sm:flex flex-col gap-1.5 w-full">
+			<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+				{#each projectStats as stat (stat.key)}
+					{@const StatIcon = stat.Icon}
+					<span class="flex items-center gap-1" aria-label="{stat.key} count" title={stat.key}>
+						<StatIcon class="h-3.5 w-3.5" />
+						<span class="font-semibold text-xs">{stat.count}</span>
+					</span>
+				{/each}
+			</div>
+			<span class="text-xs text-muted-foreground/60">
+				Updated {new Date(project.updated_at).toLocaleDateString()}
+			</span>
+		</div>
+	</div>
 </a>
-
-<!-- Edit Modal -->
-<ProjectEditModal
-	bind:isOpen={showEditModal}
-	{project}
-	onupdated={handleProjectUpdated}
-	onclose={() => (showEditModal = false)}
-/>
-
-<style>
-	.line-clamp-2 {
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	/* Ensure consistent height for description area */
-	.min-h-\[2rem\] {
-		min-height: 2rem;
-	}
-
-	.min-h-\[2\.5rem\] {
-		min-height: 2.5rem;
-	}
-
-	/* Tabular numbers for better alignment */
-	.tabular-nums {
-		font-variant-numeric: tabular-nums;
-	}
-</style>

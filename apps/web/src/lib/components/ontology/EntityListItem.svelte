@@ -1,17 +1,12 @@
 <!-- apps/web/src/lib/components/ontology/EntityListItem.svelte -->
 <!--
-	CORRECTED Universal Entity List Item Component
+	Universal Entity List Item Component
 
-	Uses proper Inkprint weight system:
-	- Weight provides: border, shadow, radius, bg, motion
-	- Texture provides: semantic overlay pattern
-	- Color overrides: entity-specific tints with ! prefix
-	- Spacing: separate layer (px-3 py-2.5)
-
-	Key difference from previous version:
-	- Applies wt-* class (provides foundation)
-	- Uses ! prefix to override border-color and bg
-	- Lets weight system control radius, shadow, motion
+	Simplified version using:
+	- CSS custom properties for entity-specific colors (no !important)
+	- data-entity-type attribute for targeting
+	- Inkprint semantic tokens where possible
+	- Clean separation: weight system + entity colors
 -->
 <script lang="ts">
 	import {
@@ -60,207 +55,304 @@
 		class: className = ''
 	}: Props = $props();
 
-	// Entity configuration (weight-aware)
-	const entityConfig = {
+	// Entity configuration - simplified, no color overrides
+	const entityConfig: Record<
+		EntityType,
+		{
+			icon: typeof FolderKanban;
+			texture: string;
+			weight: string;
+			hasLeftAccent?: boolean;
+			hasDashedBorder?: boolean;
+			hasDottedBorder?: boolean;
+		}
+	> = {
 		project: {
 			icon: FolderKanban,
-			iconColor: 'text-emerald-500',
-			texture: 'tx tx-frame tx-weak', // Canon, structure
-			weight: 'wt-card', // Elevated, important
-			borderOverride: '!border-emerald-500',
-			bgOverride: '!bg-emerald-50/50 dark:!bg-emerald-900/10',
-			hoverOverride: 'hover:!bg-emerald-100/50 dark:hover:!bg-emerald-900/20'
+			texture: 'tx tx-frame tx-weak',
+			weight: 'wt-card'
 		},
 		goal: {
 			icon: Target,
-			iconColor: 'text-amber-500',
-			texture: 'tx tx-bloom tx-weak', // Ideation, expansion
-			weight: 'wt-paper', // Standard working
-			borderOverride: '!border-l-4 !border-amber-500',
-			bgOverride: '!bg-amber-50/50 dark:!bg-amber-900/10',
-			hoverOverride: 'hover:!bg-amber-100/50 dark:hover:!bg-amber-900/20'
+			texture: 'tx tx-bloom tx-weak',
+			weight: 'wt-paper',
+			hasLeftAccent: true
 		},
 		milestone: {
 			icon: Flag,
-			iconColor: 'text-emerald-500',
-			texture: 'tx tx-frame tx-weak', // Canon achievement
-			weight: 'wt-paper', // Standard (can upgrade to wt-card when completed)
-			borderOverride: '!border-emerald-500/30',
-			bgOverride: '', // Use weight's default bg
-			hoverOverride: 'hover:!bg-emerald-50/30 dark:hover:!bg-emerald-900/10'
+			texture: 'tx tx-frame tx-weak',
+			weight: 'wt-paper'
 		},
 		plan: {
 			icon: Calendar,
-			iconColor: 'text-indigo-500',
-			texture: 'tx tx-grain tx-weak', // Execution, progress
+			texture: 'tx tx-grain tx-weak',
 			weight: 'wt-paper',
-			borderOverride: '!border-l-4 !border-indigo-500',
-			bgOverride: '!bg-indigo-50/50 dark:!bg-indigo-900/10',
-			hoverOverride: 'hover:!bg-indigo-100/50 dark:hover:!bg-indigo-900/20'
+			hasLeftAccent: true
 		},
 		task: {
 			icon: ListChecks,
-			iconColor: 'text-slate-500',
-			texture: 'tx tx-grain tx-weak', // Work, execution
-			weight: 'wt-ghost', // Default to ghost, varies by state
-			borderOverride: '',
-			bgOverride: '',
-			hoverOverride: 'hover:!bg-muted/30'
+			texture: 'tx tx-grain tx-weak',
+			weight: 'wt-ghost'
 		},
 		risk: {
 			icon: AlertTriangle,
-			iconColor: 'text-red-500',
-			texture: 'tx tx-static tx-weak', // Blockers, noise
-			weight: 'wt-paper', // Default, escalates to wt-card for high severity
-			borderOverride: '!border-dashed !border-red-500/40',
-			bgOverride: '!bg-red-50/40 dark:!bg-red-900/10',
-			hoverOverride: 'hover:!bg-red-100/50 dark:hover:!bg-red-900/20'
+			texture: 'tx tx-static tx-weak',
+			weight: 'wt-paper',
+			hasDashedBorder: true
 		},
 		requirement: {
 			icon: FileCheck,
-			iconColor: 'text-violet-500',
-			texture: 'tx tx-thread tx-weak', // Dependencies, relationships
+			texture: 'tx tx-thread tx-weak',
 			weight: 'wt-paper',
-			borderOverride: '!border-dotted !border-violet-500/40',
-			bgOverride: '!bg-violet-50/40 dark:!bg-violet-900/10',
-			hoverOverride: 'hover:!bg-violet-100/50 dark:hover:!bg-violet-900/20'
+			hasDottedBorder: true
 		},
 		document: {
 			icon: FileText,
-			iconColor: 'text-sky-500',
-			texture: 'tx tx-frame tx-weak', // Reference, structure
-			weight: 'wt-paper',
-			borderOverride: '!border-sky-500/30',
-			bgOverride: '!bg-sky-50/40 dark:!bg-sky-900/10',
-			hoverOverride: 'hover:!bg-sky-100/50 dark:hover:!bg-sky-900/20'
+			texture: 'tx tx-frame tx-weak',
+			weight: 'wt-paper'
 		},
 		event: {
 			icon: Clock,
-			iconColor: 'text-blue-500',
-			texture: 'tx tx-frame tx-weak', // Scheduled, structured
-			weight: 'wt-paper',
-			borderOverride: '!border-blue-500/30',
-			bgOverride: '!bg-blue-50/40 dark:!bg-blue-900/10',
-			hoverOverride: 'hover:!bg-blue-100/50 dark:hover:!bg-blue-900/20'
+			texture: 'tx tx-frame tx-weak',
+			weight: 'wt-paper'
 		}
 	};
 
-	// Task state-specific configuration
-	const taskStateConfig = $derived.by(() => {
-		if (type !== 'task' || !state) return null;
-
-		switch (state) {
-			case 'done':
-			case 'completed':
-				return {
-					icon: CheckCircle2,
-					iconColor: 'text-emerald-500',
-					weight: 'wt-card', // Completed = elevated
-					borderOverride: '!border-emerald-500/30',
-					bgOverride: '!bg-emerald-50/30 dark:!bg-emerald-900/10',
-					hoverOverride: 'hover:!bg-emerald-100/40 dark:hover:!bg-emerald-900/20'
-				};
-			case 'in_progress':
-			case 'active':
-				return {
-					icon: CircleDot,
-					iconColor: 'text-amber-500',
-					weight: 'wt-paper', // Active = standard
-					borderOverride: '!border-amber-500/30',
-					bgOverride: '!bg-amber-50/30 dark:!bg-amber-900/10',
-					hoverOverride: 'hover:!bg-amber-100/40 dark:hover:!bg-amber-900/20'
-				};
-			default:
-				return {
-					icon: Circle,
-					iconColor: 'text-slate-400',
-					weight: 'wt-ghost', // Todo = ephemeral
-					borderOverride: '',
-					bgOverride: '',
-					hoverOverride: 'hover:!bg-muted/30'
-				};
-		}
+	// Get effective state for tasks
+	const effectiveTaskState = $derived.by(() => {
+		if (type !== 'task') return null;
+		if (state === 'done' || state === 'completed') return 'completed';
+		if (state === 'in_progress' || state === 'active') return 'active';
+		return 'todo';
 	});
 
-	// Risk severity-specific weight escalation
-	const riskSeverityConfig = $derived.by(() => {
-		if (type !== 'risk' || !severity) return null;
-
-		const isHighSeverity = severity === 'high' || severity === 'critical';
-		return {
-			weight: isHighSeverity ? 'wt-card' : 'wt-paper',
-			borderOverride: isHighSeverity
-				? '!border-dashed !border-red-600'
-				: '!border-dashed !border-red-500/40',
-			bgOverride: isHighSeverity
-				? '!bg-red-50 dark:!bg-red-900/20'
-				: '!bg-red-50/40 dark:!bg-red-900/10',
-			hoverOverride: isHighSeverity
-				? 'hover:!bg-red-100 dark:hover:!bg-red-900/30'
-				: 'hover:!bg-red-100/50 dark:hover:!bg-red-900/20',
-			iconClass: isHighSeverity ? 'animate-pulse' : ''
-		};
+	// Get effective severity for risks
+	const effectiveSeverity = $derived.by(() => {
+		if (type !== 'risk') return null;
+		return severity === 'high' || severity === 'critical' ? 'high' : 'normal';
 	});
 
-	// Merge base config with state/severity overrides
-	const visual = $derived.by(() => {
-		const base = entityConfig[type];
-
-		// Task state overrides
-		if (taskStateConfig) {
-			return {
-				...base,
-				...taskStateConfig,
-				texture: base.texture // Keep base texture
-			};
+	// Determine icon based on state
+	const Icon = $derived.by(() => {
+		if (type === 'task') {
+			if (effectiveTaskState === 'completed') return CheckCircle2;
+			if (effectiveTaskState === 'active') return CircleDot;
+			return Circle;
 		}
+		return entityConfig[type].icon;
+	});
 
-		// Risk severity overrides
-		if (riskSeverityConfig) {
-			return {
-				...base,
-				...riskSeverityConfig,
-				iconColor: base.iconColor // Keep base icon color
-			};
+	// Determine weight based on state
+	const weight = $derived.by(() => {
+		const base = entityConfig[type].weight;
+		if (type === 'task') {
+			if (effectiveTaskState === 'completed') return 'wt-card';
+			if (effectiveTaskState === 'active') return 'wt-paper';
+			return 'wt-ghost';
 		}
-
+		if (type === 'risk' && effectiveSeverity === 'high') {
+			return 'wt-card';
+		}
 		return base;
 	});
 
-	const Icon = $derived(visual.icon);
-
 	// Text styling for completed tasks
-	const titleClass = $derived(
-		type === 'task' && (state === 'done' || state === 'completed')
-			? 'text-sm text-muted-foreground line-through truncate'
-			: 'text-sm font-medium text-foreground truncate'
-	);
+	const isCompleted = $derived(type === 'task' && effectiveTaskState === 'completed');
 
-	// Combine all classes
-	const buttonClasses = $derived(
-		[
-			'w-full flex items-center gap-3 text-left',
-			'px-3 py-2.5', // Spacing (separate layer)
-			visual.weight, // Weight provides: border, shadow, radius, bg, motion
-			visual.texture, // Texture provides: semantic pattern
-			visual.borderOverride, // Entity-specific border color
-			visual.bgOverride, // Entity-specific bg tint
-			visual.hoverOverride, // Entity-specific hover state
-			'transition-colors', // Only override transition-property, not duration
-			'pressable',
-			className
-		]
-			.filter(Boolean)
-			.join(' ')
+	// Build border style classes
+	const borderStyle = $derived.by(() => {
+		const config = entityConfig[type];
+		if (config.hasLeftAccent) return 'border-l-4';
+		if (config.hasDashedBorder) return 'border-dashed';
+		if (config.hasDottedBorder) return 'border-dotted';
+		return '';
+	});
+
+	// Animation class for high severity risks
+	const iconAnimation = $derived(
+		type === 'risk' && effectiveSeverity === 'high' ? 'animate-pulse' : ''
 	);
 </script>
 
-<button type="button" {onclick} class={buttonClasses}>
-	<Icon class="w-4 h-4 shrink-0 {visual.iconColor} {visual.iconClass || ''}" />
+<button
+	type="button"
+	{onclick}
+	data-entity-type={type}
+	data-entity-state={effectiveTaskState}
+	data-entity-severity={effectiveSeverity}
+	class="entity-list-item w-full flex items-center gap-3 text-left px-3 py-2.5 {weight} {entityConfig[
+		type
+	].texture} {borderStyle} transition-colors pressable {className}"
+>
+	<Icon class="entity-icon w-4 h-4 shrink-0 {iconAnimation}" />
 	<div class="min-w-0 flex-1">
-		<p class={titleClass}>{title}</p>
+		<p
+			class="text-sm truncate"
+			class:font-medium={!isCompleted}
+			class:line-through={isCompleted}
+			class:text-foreground={!isCompleted}
+			class:text-muted-foreground={isCompleted}
+		>
+			{title}
+		</p>
 		{#if metadata}
 			<p class="text-xs text-muted-foreground">{metadata}</p>
 		{/if}
 	</div>
 </button>
+
+<style>
+	/* Entity-specific colors using CSS custom properties */
+	/* No !important needed - specificity is handled by data attributes */
+
+	/* Project - emerald (structure, canonical) */
+	.entity-list-item[data-entity-type='project'] {
+		--entity-color: var(--color-emerald-500, #10b981);
+		border-color: var(--entity-color);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='project']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+	.entity-list-item[data-entity-type='project'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Goal - amber (aspiration, ideation) */
+	.entity-list-item[data-entity-type='goal'] {
+		--entity-color: var(--color-amber-500, #f59e0b);
+		border-color: var(--entity-color);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='goal']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+	.entity-list-item[data-entity-type='goal'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Milestone - emerald (achievement) */
+	.entity-list-item[data-entity-type='milestone'] {
+		--entity-color: var(--color-emerald-500, #10b981);
+		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
+	}
+	.entity-list-item[data-entity-type='milestone']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='milestone'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Plan - indigo (execution, progress) */
+	.entity-list-item[data-entity-type='plan'] {
+		--entity-color: var(--color-indigo-500, #6366f1);
+		border-color: var(--entity-color);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='plan']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+	.entity-list-item[data-entity-type='plan'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Task - varies by state */
+	.entity-list-item[data-entity-type='task'] {
+		--entity-color: var(--color-slate-400, #94a3b8);
+	}
+	.entity-list-item[data-entity-type='task']:hover {
+		background-color: var(--color-muted, hsl(var(--muted)));
+	}
+	.entity-list-item[data-entity-type='task'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Task - active state */
+	.entity-list-item[data-entity-type='task'][data-entity-state='active'] {
+		--entity-color: var(--color-amber-500, #f59e0b);
+		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='task'][data-entity-state='active']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+
+	/* Task - completed state */
+	.entity-list-item[data-entity-type='task'][data-entity-state='completed'] {
+		--entity-color: var(--color-emerald-500, #10b981);
+		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='task'][data-entity-state='completed']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+
+	/* Risk - red (danger, blockers) */
+	.entity-list-item[data-entity-type='risk'] {
+		--entity-color: var(--color-red-500, #ef4444);
+		border-color: color-mix(in srgb, var(--entity-color) 40%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='risk']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+	.entity-list-item[data-entity-type='risk'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Risk - high severity */
+	.entity-list-item[data-entity-type='risk'][data-entity-severity='high'] {
+		border-color: var(--entity-color);
+		background-color: color-mix(in srgb, var(--entity-color) 8%, transparent);
+	}
+	.entity-list-item[data-entity-type='risk'][data-entity-severity='high']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 15%, transparent);
+	}
+
+	/* Requirement - violet (dependencies) */
+	.entity-list-item[data-entity-type='requirement'] {
+		--entity-color: var(--color-violet-500, #8b5cf6);
+		border-color: color-mix(in srgb, var(--entity-color) 40%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='requirement']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+	.entity-list-item[data-entity-type='requirement'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Document - sky (reference) */
+	.entity-list-item[data-entity-type='document'] {
+		--entity-color: var(--color-sky-500, #0ea5e9);
+		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='document']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+	.entity-list-item[data-entity-type='document'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Event - blue (scheduled) */
+	.entity-list-item[data-entity-type='event'] {
+		--entity-color: var(--color-blue-500, #3b82f6);
+		border-color: color-mix(in srgb, var(--entity-color) 30%, transparent);
+		background-color: color-mix(in srgb, var(--entity-color) 5%, transparent);
+	}
+	.entity-list-item[data-entity-type='event']:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 10%, transparent);
+	}
+	.entity-list-item[data-entity-type='event'] .entity-icon {
+		color: var(--entity-color);
+	}
+
+	/* Dark mode adjustments */
+	:global(.dark) .entity-list-item {
+		background-color: color-mix(in srgb, var(--entity-color) 8%, transparent);
+	}
+	:global(.dark) .entity-list-item:hover {
+		background-color: color-mix(in srgb, var(--entity-color) 15%, transparent);
+	}
+</style>

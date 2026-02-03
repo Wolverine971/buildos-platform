@@ -22,16 +22,6 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
-			"type": "component",
-			"components": [
-				"ProjectSelectionView",
-				"RecordingView",
-				"SuccessView",
-				"OperationEditModal"
-			]
-		},
-		{
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
 			"type": "component",
 			"components": ["AgentChatModal", "DailyBriefModal"]
@@ -40,6 +30,16 @@
 			"file": "src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
 			"type": "component",
 			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
+			"type": "component",
+			"components": [
+				"ProjectSelectionView",
+				"RecordingView",
+				"SuccessView",
+				"OperationEditModal"
+			]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -1006,9 +1006,9 @@
 		]
 	},
 	"unusedComponents": [
-		"src/lib/components/brain-dump/BrainDumpModal.svelte",
 		"src/lib/components/dashboard/Dashboard.svelte",
 		"src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
+		"src/lib/components/brain-dump/BrainDumpModal.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",

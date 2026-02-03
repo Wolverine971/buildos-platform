@@ -3,9 +3,16 @@
 	Document Modal - Markdown Document Editing
 
 	Features:
-	- Two-column layout (metadata sidebar + content)
+	- Two-column layout: left sidebar (metadata + history) + main content
+	- Left sidebar contains collapsible sections:
+		- Settings (title, description, state) - always expanded
+		- Tags display
+		- Metadata (created, updated, ID)
+		- Linked Entities - collapsible
+		- Version History - collapsible
+		- Voice Notes - collapsible
+		- Activity Log - collapsible
 	- RichMarkdownEditor for Markdown content
-	- Linked entities and tags management
 	- High information density layout
 	- Svelte 5 runes and modern patterns
 	- Inkprint design language with semantic textures
@@ -16,6 +23,7 @@
 	- Error states: static texture (wt-card) - blocker emphasis
 	- Buttons: grain texture + pressable + appropriate weight
 	- Metadata: micro-label pattern for compact, scannable info
+	- Collapsible sections: pressable toggle buttons with chevron indicators
 
 	Documentation: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 -->
@@ -188,6 +196,12 @@
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let showMobileMetadata = $state(false);
+
+	// Left panel collapsible sections
+	let showLinkedEntities = $state(true);
+	let showVersionHistory = $state(false);
+	let showVoiceNotes = $state(false);
+	let showActivityLog = $state(false);
 
 	// Version history state
 	let showDiffDrawer = $state(false);
@@ -828,77 +842,66 @@
 				<form id={documentFormId} class="h-full" onsubmit={handleSave}>
 					<!-- Desktop: Two-column layout | Mobile: Content-first with collapsible metadata -->
 					<div class="flex flex-col lg:flex-row h-full">
-						<!-- Left sidebar (metadata) - Desktop only, hidden on mobile -->
+						<!-- Left sidebar (metadata + history + activity) - Desktop only, hidden on mobile -->
 						<div
-							class="hidden lg:block lg:w-72 xl:w-80 flex-shrink-0 lg:border-r border-border bg-muted"
+							class="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 flex-shrink-0 lg:border-r border-border bg-muted overflow-y-auto"
 						>
-							<div class="p-3 space-y-3">
-								<!-- Title field -->
-								<FormField
-									label="Title"
-									labelFor="document-title"
-									required={true}
-									error={titleFieldError}
-									uppercase={false}
-								>
-									<TextInput
-										id="document-title"
-										bind:value={title}
-										required
-										placeholder="Document title"
-										aria-label="Document title"
-										class="text-sm"
-										disabled={saving}
-									/>
-								</FormField>
-
-								<!-- Description -->
-								<FormField
-									label="Description"
-									labelFor="document-description"
-									uppercase={false}
-								>
-									<Textarea
-										id="document-description"
-										bind:value={description}
-										placeholder="Short summary"
-										rows={2}
-										disabled={saving}
-										size="sm"
-									/>
-								</FormField>
-
-								<!-- State -->
-								<FormField
-									label="State"
-									labelFor="document-state"
-									uppercase={false}
-								>
-									<Select
-										id="document-state"
-										bind:value={stateKey}
-										size="sm"
-										class="w-full text-xs"
+							<div class="p-3 space-y-2">
+								<!-- Settings Section - Always expanded -->
+								<div class="space-y-3">
+									<!-- Title field -->
+									<FormField
+										label="Title"
+										labelFor="document-title"
+										required={true}
+										error={titleFieldError}
+										uppercase={false}
 									>
-										{#each stateOptions as option}
-											<option value={option.value}>{option.label}</option>
-										{/each}
-									</Select>
-								</FormField>
-
-								<!-- Linked Entities -->
-								{#if isEditing && activeDocumentId}
-									<div class="pt-2 border-t border-border">
-										<LinkedEntities
-											sourceId={activeDocumentId}
-											sourceKind="document"
-											{projectId}
-											initialLinkedEntities={linkedEntities}
-											onEntityClick={handleLinkedEntityClick}
-											onLinksChanged={handleLinksChanged}
+										<TextInput
+											id="document-title"
+											bind:value={title}
+											required
+											placeholder="Document title"
+											aria-label="Document title"
+											class="text-sm"
+											disabled={saving}
 										/>
-									</div>
-								{/if}
+									</FormField>
+
+									<!-- Description -->
+									<FormField
+										label="Description"
+										labelFor="document-description"
+										uppercase={false}
+									>
+										<Textarea
+											id="document-description"
+											bind:value={description}
+											placeholder="Short summary"
+											rows={2}
+											disabled={saving}
+											size="sm"
+										/>
+									</FormField>
+
+									<!-- State -->
+									<FormField
+										label="State"
+										labelFor="document-state"
+										uppercase={false}
+									>
+										<Select
+											id="document-state"
+											bind:value={stateKey}
+											size="sm"
+											class="w-full text-xs"
+										>
+											{#each stateOptions as option}
+												<option value={option.value}>{option.label}</option>
+											{/each}
+										</Select>
+									</FormField>
+								</div>
 
 								<!-- Tags Display -->
 								{#if isEditing && hasTags}
@@ -940,6 +943,123 @@
 												>{activeDocumentId}</span
 											>
 										</div>
+									</div>
+								{/if}
+
+								<!-- Collapsible Sections for editing mode -->
+								{#if isEditing && activeDocumentId}
+									<!-- Linked Entities Section -->
+									<div class="pt-2 border-t border-border">
+										<button
+											type="button"
+											onclick={() => (showLinkedEntities = !showLinkedEntities)}
+											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
+										>
+											<span class="flex items-center gap-2">
+												<span class="micro-label text-foreground">LINKED ENTITIES</span>
+												{#if linkedCount > 0}
+													<span class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-accent/20 text-accent rounded-full">
+														{linkedCount}
+													</span>
+												{/if}
+											</span>
+											{#if showLinkedEntities}
+												<ChevronUp class="w-4 h-4 text-muted-foreground" />
+											{:else}
+												<ChevronDown class="w-4 h-4 text-muted-foreground" />
+											{/if}
+										</button>
+										{#if showLinkedEntities}
+											<div class="pt-2">
+												<LinkedEntities
+													sourceId={activeDocumentId}
+													sourceKind="document"
+													{projectId}
+													initialLinkedEntities={linkedEntities}
+													onEntityClick={handleLinkedEntityClick}
+													onLinksChanged={handleLinksChanged}
+												/>
+											</div>
+										{/if}
+									</div>
+
+									<!-- Version History Section -->
+									<div class="pt-2 border-t border-border">
+										<button
+											type="button"
+											onclick={() => (showVersionHistory = !showVersionHistory)}
+											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
+										>
+											<span class="micro-label text-foreground">VERSION HISTORY</span>
+											{#if showVersionHistory}
+												<ChevronUp class="w-4 h-4 text-muted-foreground" />
+											{:else}
+												<ChevronDown class="w-4 h-4 text-muted-foreground" />
+											{/if}
+										</button>
+										{#if showVersionHistory}
+											<div class="pt-2">
+												<DocumentVersionHistoryPanel
+													bind:this={versionHistoryPanelRef}
+													documentId={activeDocumentId}
+													{projectId}
+													isAdmin={isAdminUser}
+													onDiffRequested={handleDiffRequested}
+													onRestoreRequested={handleRestoreRequested}
+												/>
+											</div>
+										{/if}
+									</div>
+
+									<!-- Voice Notes Section -->
+									<div class="pt-2 border-t border-border">
+										<button
+											type="button"
+											onclick={() => (showVoiceNotes = !showVoiceNotes)}
+											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
+										>
+											<span class="micro-label text-foreground">VOICE NOTES</span>
+											{#if showVoiceNotes}
+												<ChevronUp class="w-4 h-4 text-muted-foreground" />
+											{:else}
+												<ChevronDown class="w-4 h-4 text-muted-foreground" />
+											{/if}
+										</button>
+										{#if showVoiceNotes}
+											<div class="pt-2">
+												<DocumentVoiceNotesPanel
+													bind:this={voiceNotesPanelRef}
+													documentId={activeDocumentId}
+													{projectId}
+													limit={20}
+												/>
+											</div>
+										{/if}
+									</div>
+
+									<!-- Activity Log Section -->
+									<div class="pt-2 border-t border-border">
+										<button
+											type="button"
+											onclick={() => (showActivityLog = !showActivityLog)}
+											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
+										>
+											<span class="micro-label text-foreground">ACTIVITY LOG</span>
+											{#if showActivityLog}
+												<ChevronUp class="w-4 h-4 text-muted-foreground" />
+											{:else}
+												<ChevronDown class="w-4 h-4 text-muted-foreground" />
+											{/if}
+										</button>
+										{#if showActivityLog}
+											<div class="pt-2">
+												<EntityActivityLog
+													entityType="document"
+													entityId={activeDocumentId}
+													autoLoad={!loading}
+												/>
+											</div>
+										{/if}
 									</div>
 								{/if}
 							</div>
@@ -1074,6 +1194,19 @@
 											</div>
 										{/if}
 
+										<!-- Version History -->
+										{#if isEditing && activeDocumentId}
+											<div class="pt-2 border-t border-border">
+												<DocumentVersionHistoryPanel
+													documentId={activeDocumentId}
+													{projectId}
+													isAdmin={isAdminUser}
+													onDiffRequested={handleDiffRequested}
+													onRestoreRequested={handleRestoreRequested}
+												/>
+											</div>
+										{/if}
+
 										<!-- Voice Recordings -->
 										{#if isEditing && activeDocumentId}
 											<div class="pt-2 border-t border-border">
@@ -1147,39 +1280,6 @@
 							</div>
 						</div>
 
-						<!-- Right rail (Version History + Activity) - Desktop only -->
-						{#if isEditing && activeDocumentId}
-							<div
-								class="hidden lg:flex lg:flex-col lg:w-72 xl:w-80 flex-shrink-0 lg:border-l border-border overflow-y-auto bg-muted"
-							>
-								<div class="p-3 space-y-3">
-									<!-- Version History Panel -->
-									<DocumentVersionHistoryPanel
-										bind:this={versionHistoryPanelRef}
-										documentId={activeDocumentId}
-										{projectId}
-										isAdmin={isAdminUser}
-										onDiffRequested={handleDiffRequested}
-										onRestoreRequested={handleRestoreRequested}
-									/>
-
-									<!-- Voice Recordings -->
-									<DocumentVoiceNotesPanel
-										bind:this={voiceNotesPanelRef}
-										documentId={activeDocumentId}
-										{projectId}
-										limit={20}
-									/>
-
-									<!-- Activity Log -->
-									<EntityActivityLog
-										entityType="document"
-										entityId={activeDocumentId}
-										autoLoad={!loading}
-									/>
-								</div>
-							</div>
-						{/if}
 					</div>
 
 					{#if globalFormError}

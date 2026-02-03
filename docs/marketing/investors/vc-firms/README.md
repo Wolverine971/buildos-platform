@@ -2,8 +2,8 @@
 
 # VC Firms Directory - BuildOS Investor Profiles
 
-**Last Updated:** January 2025
-**Total Firms:** 24
+**Last Updated:** February 2026
+**Total Firms:** 41
 
 This directory contains comprehensive investor profiles for venture capital firms aligned with BuildOS's AI-native productivity platform. Each profile includes fund overview, investment thesis, portfolio analysis, approach strategy, and contact information.
 
@@ -66,6 +66,44 @@ This directory contains comprehensive investor profiles for venture capital firm
 | --------------------------------------------- | ---------- | ------ | ----------------------------------------- | --------------------------------------------------------------- |
 | [Matrix Partners](./matrix-partners.md)       | $100K-$25M | Seed-A | `b2b-saas` `david-skok` `enterprise-only` | **B2B focus only** - conflicts with current B2C stage           |
 | [Point Nine Capital](./point-nine-capital.md) | €0.5M-€5M  | Seed   | `b2b-saas` `europe` `saas-metrics`        | **B2B SaaS exclusive** - not aligned with individual user focus |
+
+---
+
+## DC-Based Defense & National Security VCs (NEW - Feb 2026)
+
+_Added from LinkedIn "17 Elite DC-Based VCs" post. Evaluated for BuildOS fit based on thesis alignment, stage, and sector focus._
+
+### 🟢 High Priority - DC Defense VCs
+
+| Firm                                          | Check Size | Stage    | Key Tags                                           | Why Priority                                                    |
+| --------------------------------------------- | ---------- | -------- | -------------------------------------------------- | --------------------------------------------------------------- |
+| [Lavrock Ventures](./lavrock-ventures.md)     | $2M-$4M    | Seed-A   | `enterprise` `cyber` `national-security` `ai`      | Enterprise software focus, right stage/check, DC location       |
+| [Shield Capital](./shield-capital.md)         | Seed-A     | Seed-A   | `ai` `autonomy` `cyber` `space` `veteran-network`  | AI thesis, L3Harris partnership, advisory board (former SecDef) |
+| [Point72 Ventures](./point72-ventures.md)     | $2M-$20M+  | Seed-IPO | `ai` `enterprise` `defense-tech` `veteran-partner` | Chris Morales (Navy vet), AI/enterprise focus, multi-stage      |
+| [NQB8 / Flex Capital](./nqb8-flex-capital.md) | Seed       | Seed     | `ai-native` `enterprise` `incubation`              | Auren Hoffman, AI-focused, strong portfolio (Chime, Gusto)      |
+
+### 🟡 Medium Priority - DC Defense VCs
+
+| Firm                                                            | Check Size | Stage          | Key Tags                              | Why Medium Priority                                           |
+| --------------------------------------------------------------- | ---------- | -------------- | ------------------------------------- | ------------------------------------------------------------- |
+| [Red Cell Partners](./red-cell-partners.md)                     | Varies     | Venture Studio | `healthcare` `cyber` `defense` `dc`   | Venture studio (builds internally), may not invest externally |
+| [Washington Harbour Partners](./washington-harbour-partners.md) | Unknown    | Growth         | `enterprise` `national-security` `dc` | Limited public info, likely growth stage                      |
+| [Sands Capital](./sands-capital.md)                             | $10M-$50M+ | Growth         | `ai` `cyber` `defense` `dc`           | **Future target** - growth stage only (Series B+)             |
+
+### 🔴 Low Priority / Not Aligned - DC Defense VCs
+
+| Firm                                                              | Type           | Focus                    | Why Not Aligned                                         |
+| ----------------------------------------------------------------- | -------------- | ------------------------ | ------------------------------------------------------- |
+| [AE Industrial Partners](./ae-industrial-partners.md)             | Private Equity | Aerospace/Defense        | PE control investments, not venture, wrong stage        |
+| [Columbia Capital](./columbia-capital.md)                         | VC             | Digital Infrastructure   | Infrastructure "picks and shovels", not software        |
+| [Construct Capital](./construct-capital.md)                       | VC             | Industrial/Manufacturing | Foundational industries (physical), not software        |
+| [Shorewind Capital](./shorewind-capital.md)                       | VC             | Health/Climate           | Health/climate deep tech, not productivity              |
+| [New Vista Capital](./new-vista-capital.md)                       | VC             | Aerospace/Defense        | Explicit A&D hardware thesis, not software              |
+| [Overture Ventures](./overture-ventures.md)                       | VC             | Climate Tech             | Climate/energy focus, wrong sector                      |
+| [NextEra Energy Ventures](./nextera-energy-ventures.md)           | CVC            | Energy/Climate           | Corporate VC for energy sector only                     |
+| [The New Industrial Corporation](./new-industrial-corporation.md) | Infrastructure | Reindustrialization      | Infrastructure capital, not venture                     |
+| [StepStone Group](./stepstone-group.md)                           | Fund of Funds  | Multi-Asset              | Institutional scale ($771B), secondaries, not direct VC |
+| [Leonid Capital Partners](./leonid-capital-partners.md)           | Private Credit | Gov Contractors          | **Debt financing**, not equity VC                       |
 
 ---
 
@@ -261,32 +299,49 @@ This directory contains comprehensive investor profiles for venture capital firm
 
 ## Alphabetical Index
 
-| Firm                          | File                                                               | Priority   | Stage         | Check Size  |
-| ----------------------------- | ------------------------------------------------------------------ | ---------- | ------------- | ----------- |
-| AIX Ventures                  | [aix-ventures.md](./aix-ventures.md)                               | 🟢 Highest | Seed-A        | $750K-$3M   |
-| Andreessen Horowitz (a16z)    | [andreessen-horowitz-a16z.md](./andreessen-horowitz-a16z.md)       | 🟢 Highest | Seed-Growth   | $11M+       |
-| Bessemer Venture Partners     | [bessemer-venture-partners.md](./bessemer-venture-partners.md)     | 🟢 High    | Seed-Growth   | $1M-$20M    |
-| Character VC                  | [character-vc.md](./character-vc.md)                               | 🟢 High    | Seed          | Up to $2M   |
-| Coatue Management             | [coatue-management.md](./coatue-management.md)                     | 🟢 High    | Seed-Growth   | Varies      |
-| Context Ventures              | [context-ventures.md](./context-ventures.md)                       | 🟢 High ⭐ | Seed-A        | $500K-$2M   |
-| Craft Ventures                | [craft-ventures.md](./craft-ventures.md)                           | 🟢 High    | A-B           | $3M-$15M    |
-| First Round Capital           | [first-round-capital.md](./first-round-capital.md)                 | 🟢 Highest | Seed-A        | $500K-$5M   |
-| General Catalyst              | [general-catalyst.md](./general-catalyst.md)                       | 🟢 High    | Seed-Growth   | Varies      |
-| Greylock Partners             | [greylock-partners.md](./greylock-partners.md)                     | 🟢 Highest | Seed-A        | $2M-$20M    |
-| Index Ventures                | [index-ventures.md](./index-ventures.md)                           | 🟢 High    | Seed-B        | $5M-$35M    |
-| Insight Partners              | [insight-partners.md](./insight-partners.md)                       | 🟡 Future  | Series B+     | $100M+      |
-| Khosla Ventures               | [khosla-ventures.md](./khosla-ventures.md)                         | 🟢 Highest | Seed-Growth   | $2M-$20M    |
-| Lightspeed Venture Partners   | [lightspeed-venture-partners.md](./lightspeed-venture-partners.md) | 🟢 Highest | Seed-Growth   | $5M-$50M+   |
-| Matrix Partners               | [matrix-partners.md](./matrix-partners.md)                         | 🔴 Low     | Seed-A        | $100K-$25M  |
-| Obvious Ventures              | [obvious-ventures.md](./obvious-ventures.md)                       | 🟡 Medium  | Seed-A        | $1M-$5M     |
-| Pioneer Fund                  | [pioneer-fund.md](./pioneer-fund.md)                               | 🟡 Medium  | N/A           | Historical  |
-| Point Nine Capital            | [point-nine-capital.md](./point-nine-capital.md)                   | 🔴 Low     | Seed          | €0.5M-€5M   |
-| Sequoia Capital               | [sequoia-capital.md](./sequoia-capital.md)                         | 🟢 Highest | Seed-IPO      | $17.5M+     |
-| Soma Capital                  | [soma-capital.md](./soma-capital.md)                               | 🟢 High    | Pre-seed/Seed | $100K-$300K |
-| South Park Commons            | [south-park-commons.md](./south-park-commons.md)                   | 🟢 High    | Pre-seed/Seed | $500K-$1M   |
-| Standard Capital              | [standard-capital.md](./standard-capital.md)                       | 🟢 High ⚡ | Post-seed     | $5M-$10M    |
-| Thiel Capital / Founders Fund | [thiel-capital-founders-fund.md](./thiel-capital-founders-fund.md) | 🟢 Highest | Seed-Growth   | $5M-$25M    |
-| Vermilion Fund                | [vermilion-fund.md](./vermilion-fund.md)                           | 🟢 High    | Pre-seed/Seed | $100K-$500K |
+| Firm                          | File                                                               | Priority   | Stage          | Check Size    |
+| ----------------------------- | ------------------------------------------------------------------ | ---------- | -------------- | ------------- |
+| AE Industrial Partners        | [ae-industrial-partners.md](./ae-industrial-partners.md)           | 🔴 Not Fit | PE/Growth      | Control       |
+| AIX Ventures                  | [aix-ventures.md](./aix-ventures.md)                               | 🟢 Highest | Seed-A         | $750K-$3M     |
+| Andreessen Horowitz (a16z)    | [andreessen-horowitz-a16z.md](./andreessen-horowitz-a16z.md)       | 🟢 Highest | Seed-Growth    | $11M+         |
+| Bessemer Venture Partners     | [bessemer-venture-partners.md](./bessemer-venture-partners.md)     | 🟢 High    | Seed-Growth    | $1M-$20M      |
+| Character VC                  | [character-vc.md](./character-vc.md)                               | 🟢 High    | Seed           | Up to $2M     |
+| Coatue Management             | [coatue-management.md](./coatue-management.md)                     | 🟢 High    | Seed-Growth    | Varies        |
+| Columbia Capital              | [columbia-capital.md](./columbia-capital.md)                       | 🟡 Low     | Multi-stage    | Varies        |
+| Construct Capital             | [construct-capital.md](./construct-capital.md)                     | 🔴 Low     | Seed-A         | $6M-$30M      |
+| Context Ventures              | [context-ventures.md](./context-ventures.md)                       | 🟢 High ⭐ | Seed-A         | $500K-$2M     |
+| Craft Ventures                | [craft-ventures.md](./craft-ventures.md)                           | 🟢 High    | A-B            | $3M-$15M      |
+| First Round Capital           | [first-round-capital.md](./first-round-capital.md)                 | 🟢 Highest | Seed-A         | $500K-$5M     |
+| General Catalyst              | [general-catalyst.md](./general-catalyst.md)                       | 🟢 High    | Seed-Growth    | Varies        |
+| Greylock Partners             | [greylock-partners.md](./greylock-partners.md)                     | 🟢 Highest | Seed-A         | $2M-$20M      |
+| Index Ventures                | [index-ventures.md](./index-ventures.md)                           | 🟢 High    | Seed-B         | $5M-$35M      |
+| Insight Partners              | [insight-partners.md](./insight-partners.md)                       | 🟡 Future  | Series B+      | $100M+        |
+| Khosla Ventures               | [khosla-ventures.md](./khosla-ventures.md)                         | 🟢 Highest | Seed-Growth    | $2M-$20M      |
+| Lavrock Ventures              | [lavrock-ventures.md](./lavrock-ventures.md)                       | 🟢 High    | Seed-A         | $2M-$4M       |
+| Leonid Capital Partners       | [leonid-capital-partners.md](./leonid-capital-partners.md)         | 🔴 Not Fit | Credit         | Debt          |
+| Lightspeed Venture Partners   | [lightspeed-venture-partners.md](./lightspeed-venture-partners.md) | 🟢 Highest | Seed-Growth    | $5M-$50M+     |
+| Matrix Partners               | [matrix-partners.md](./matrix-partners.md)                         | 🔴 Low     | Seed-A         | $100K-$25M    |
+| New Industrial Corporation    | [new-industrial-corporation.md](./new-industrial-corporation.md)   | 🔴 Not Fit | Infrastructure | Project       |
+| New Vista Capital             | [new-vista-capital.md](./new-vista-capital.md)                     | 🔴 Low     | Seed-A         | $1M-$3M       |
+| NextEra Energy Ventures       | [nextera-energy-ventures.md](./nextera-energy-ventures.md)         | 🔴 Not Fit | CVC            | Strategic     |
+| NQB8 / Flex Capital           | [nqb8-flex-capital.md](./nqb8-flex-capital.md)                     | 🟢 High    | Seed           | Varies        |
+| Obvious Ventures              | [obvious-ventures.md](./obvious-ventures.md)                       | 🟡 Medium  | Seed-A         | $1M-$5M       |
+| Overture Ventures             | [overture-ventures.md](./overture-ventures.md)                     | 🔴 Low     | Seed-A         | $1M-$5M       |
+| Pioneer Fund                  | [pioneer-fund.md](./pioneer-fund.md)                               | 🟡 Medium  | N/A            | Historical    |
+| Point Nine Capital            | [point-nine-capital.md](./point-nine-capital.md)                   | 🔴 Low     | Seed           | €0.5M-€5M     |
+| Point72 Ventures              | [point72-ventures.md](./point72-ventures.md)                       | 🟢 High    | Seed-IPO       | $2M-$20M+     |
+| Red Cell Partners             | [red-cell-partners.md](./red-cell-partners.md)                     | 🟡 Medium  | Studio         | Varies        |
+| Sands Capital                 | [sands-capital.md](./sands-capital.md)                             | 🟡 Future  | Growth         | $10M-$50M+    |
+| Sequoia Capital               | [sequoia-capital.md](./sequoia-capital.md)                         | 🟢 Highest | Seed-IPO       | $17.5M+       |
+| Shield Capital                | [shield-capital.md](./shield-capital.md)                           | 🟢 High    | Seed-A         | Early-stage   |
+| Shorewind Capital             | [shorewind-capital.md](./shorewind-capital.md)                     | 🔴 Low     | Seed-A         | Varies        |
+| Soma Capital                  | [soma-capital.md](./soma-capital.md)                               | 🟢 High    | Pre-seed/Seed  | $100K-$300K   |
+| South Park Commons            | [south-park-commons.md](./south-park-commons.md)                   | 🟢 High    | Pre-seed/Seed  | $500K-$1M     |
+| Standard Capital              | [standard-capital.md](./standard-capital.md)                       | 🟢 High ⚡ | Post-seed      | $5M-$10M      |
+| StepStone Group               | [stepstone-group.md](./stepstone-group.md)                         | 🔴 Not Fit | Secondaries    | Institutional |
+| Thiel Capital / Founders Fund | [thiel-capital-founders-fund.md](./thiel-capital-founders-fund.md) | 🟢 Highest | Seed-Growth    | $5M-$25M      |
+| Vermilion Fund                | [vermilion-fund.md](./vermilion-fund.md)                           | 🟢 High    | Pre-seed/Seed  | $100K-$500K   |
+| Washington Harbour Partners   | [washington-harbour-partners.md](./washington-harbour-partners.md) | 🟡 Medium  | Growth         | Unknown       |
 
 ---
 
@@ -379,11 +434,21 @@ This directory contains comprehensive investor profiles for venture capital firm
 - **Character VC** - Design Sprint program
 - **First Round Capital** - First Round Academy
 
+### For Veteran Founder Positioning (Anna's USMC Background):
+
+- **Context Ventures** ⭐ - Veteran founder thesis, ACTIVE CONNECTION
+- **Shield Capital** - Advisory board includes former SecDef, Air Force Chief
+- **Point72 Ventures** - Chris Morales is Navy veteran, defense tech lead
+- **Lavrock Ventures** - DC-based, national security culture
+
 ### To Avoid (Current Stage):
 
 - **Matrix Partners** - B2B only, not aligned with B2C
 - **Point Nine Capital** - B2B SaaS exclusive
 - **Insight Partners** - Growth stage only (Series B+)
+- **AE Industrial Partners** - PE control investments, not VC
+- **Leonid Capital** - Debt financing, not equity
+- **StepStone Group** - Institutional fund-of-funds, not direct VC
 
 ---
 
@@ -397,8 +462,16 @@ This directory contains comprehensive investor profiles for venture capital firm
 - Track application deadlines with ⚡ tag
 - Remove/update firms that close or change thesis
 
-**Last Review:** January 2025
-**Next Review:** April 2025
+**Last Review:** February 2026
+**Next Review:** May 2026
+
+### DC-Based VCs Added (Feb 2026):
+
+17 DC-based defense/national security VCs evaluated from LinkedIn post. Key findings:
+
+- **4 High Priority**: Lavrock Ventures, Shield Capital, Point72 Ventures, NQB8/Flex Capital
+- **3 Medium Priority**: Red Cell Partners, Washington Harbour Partners, Sands Capital
+- **10 Not Aligned**: Wrong capital type, sector mismatch, or stage mismatch
 
 ---
 

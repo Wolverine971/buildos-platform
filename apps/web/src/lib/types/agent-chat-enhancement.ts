@@ -414,6 +414,7 @@ export interface EnhancedAgentStreamRequest {
 	projectFocus?: ProjectFocus | null;
 	conversation_history?: ChatMessage[];
 	voiceNoteGroupId?: string;
+	voice_note_group_id?: string;
 	stream_run_id?: number;
 }
 

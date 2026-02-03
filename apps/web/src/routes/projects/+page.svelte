@@ -33,6 +33,8 @@
 		ChevronDown
 	} from 'lucide-svelte';
 	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
+	import ProjectCard from '$lib/components/project/ProjectCard.svelte';
+	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import {
 		setNavigationData,
 		type ProjectNavigationData
@@ -417,7 +419,7 @@
 >
 	<!-- Page Header - Inkprint design with micro-label pattern -->
 	<header
-		class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between !mt-0"
+		class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between"
 	>
 		<div class="space-y-1 sm:space-y-1.5 flex-1">
 			<p class="micro-label text-accent">YOUR WORKSPACE</p>
@@ -551,9 +553,9 @@
 				</Card>
 
 				<!-- Stats Grid - Semantic textures per brand guidelines with weight -->
-				<div class="grid grid-cols-4 gap-2 sm:gap-3">
+				<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
 					<!-- Projects count - Frame texture (canonical/structure), paper weight (standard) -->
-					<div class="wt-paper p-2.5 sm:p-4 tx tx-frame tx-weak">
+					<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							PROJECTS
 						</p>
@@ -568,7 +570,7 @@
 						{/if}
 					</div>
 					<!-- Tasks count - Grain texture (execution/progress), paper weight -->
-					<div class="wt-paper p-2.5 sm:p-4 tx tx-grain tx-weak">
+					<div class="wt-paper p-3 sm:p-4 tx tx-grain tx-weak">
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							TASKS
 						</p>
@@ -583,7 +585,7 @@
 						{/if}
 					</div>
 					<!-- Documents count - Thread texture (connections/relationships), paper weight -->
-					<div class="wt-paper p-2.5 sm:p-4 tx tx-thread tx-weak">
+					<div class="wt-paper p-3 sm:p-4 tx tx-thread tx-weak">
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
 							DOCS
 						</p>
@@ -599,7 +601,7 @@
 					</div>
 					<!-- Active count - Pulse texture (urgency/momentum), paper weight with accent styling -->
 					<div
-						class="wt-paper p-2.5 sm:p-4 tx tx-pulse tx-weak border-accent/30 bg-accent/5"
+						class="wt-paper p-3 sm:p-4 tx tx-pulse tx-weak border-accent/30 bg-accent/5"
 					>
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-accent">ACTIVE</p>
 						{#if showSkeletons}
@@ -650,125 +652,53 @@
 								? 'grid-rows-[1fr] opacity-100'
 								: 'grid-rows-[0fr] opacity-0'}"
 						>
-							<div class="overflow-hidden">
-								<div class="px-3 pb-3 pt-1 space-y-3 border-t border-border">
-									<!-- State Filters -->
-									{#if availableStates.length}
-										<div class="flex flex-col gap-1.5">
-											<p class="micro-label">State</p>
-											<div class="flex flex-wrap gap-1.5">
-												{#each availableStates as state (state)}
-													<button
-														type="button"
-														class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable ${
-															selectedStates.includes(state)
-																? 'border-accent bg-accent text-accent-foreground shadow-ink'
-																: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
-														}`}
-														onclick={() =>
-															(selectedStates = toggleValue(
-																selectedStates,
-																state
-															))}
-													>
-														{state}
-													</button>
-												{/each}
-											</div>
-										</div>
-									{/if}
+							<div class="px-3 pb-3 pt-1 space-y-3 border-t border-border overflow-hidden">
+								<!-- State Filters -->
+								<FilterGroup
+									label="State"
+									options={availableStates}
+									selected={selectedStates}
+									onToggle={(state) =>
+										(selectedStates = toggleValue(selectedStates, state))}
+								/>
 
-									<!-- Context, Scale, Stage Filters -->
-									<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-										{#if availableContexts.length}
-											<div class="flex flex-col gap-1.5">
-												<p class="micro-label">Context</p>
-												<div class="flex flex-wrap gap-1.5">
-													{#each availableContexts as context (context)}
-														<button
-															type="button"
-															class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable ${
-																selectedContexts.includes(context)
-																	? 'border-accent bg-accent text-accent-foreground shadow-ink'
-																	: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
-															}`}
-															onclick={() =>
-																(selectedContexts = toggleValue(
-																	selectedContexts,
-																	context
-																))}
-														>
-															{context}
-														</button>
-													{/each}
-												</div>
-											</div>
-										{/if}
-
-										{#if availableScales.length}
-											<div class="flex flex-col gap-1.5">
-												<p class="micro-label">Scale</p>
-												<div class="flex flex-wrap gap-1.5">
-													{#each availableScales as scale (scale)}
-														<button
-															type="button"
-															class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable ${
-																selectedScales.includes(scale)
-																	? 'border-accent bg-accent text-accent-foreground shadow-ink'
-																	: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
-															}`}
-															onclick={() =>
-																(selectedScales = toggleValue(
-																	selectedScales,
-																	scale
-																))}
-														>
-															{scale}
-														</button>
-													{/each}
-												</div>
-											</div>
-										{/if}
-
-										{#if availableStages.length}
-											<div class="flex flex-col gap-1.5">
-												<p class="micro-label">Stage</p>
-												<div class="flex flex-wrap gap-1.5">
-													{#each availableStages as stage (stage)}
-														<button
-															type="button"
-															class={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold transition pressable ${
-																selectedStages.includes(stage)
-																	? 'border-accent bg-accent text-accent-foreground shadow-ink'
-																	: 'border-border text-muted-foreground hover:border-accent hover:bg-muted/50 hover:text-foreground'
-															}`}
-															onclick={() =>
-																(selectedStages = toggleValue(
-																	selectedStages,
-																	stage
-																))}
-														>
-															{stage}
-														</button>
-													{/each}
-												</div>
-											</div>
-										{/if}
-									</div>
-
-									<!-- Clear Filters Button (inside panel when expanded) -->
-									{#if activeFilterCount > 0}
-										<div class="pt-1">
-											<button
-												type="button"
-												class="text-xs font-bold text-accent hover:text-accent/80 transition pressable"
-												onclick={clearFilters}
-											>
-												Clear all filters
-											</button>
-										</div>
-									{/if}
+								<!-- Context, Scale, Stage Filters -->
+								<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+									<FilterGroup
+										label="Context"
+										options={availableContexts}
+										selected={selectedContexts}
+										onToggle={(ctx) =>
+											(selectedContexts = toggleValue(selectedContexts, ctx))}
+									/>
+									<FilterGroup
+										label="Scale"
+										options={availableScales}
+										selected={selectedScales}
+										onToggle={(scale) =>
+											(selectedScales = toggleValue(selectedScales, scale))}
+									/>
+									<FilterGroup
+										label="Stage"
+										options={availableStages}
+										selected={selectedStages}
+										onToggle={(stage) =>
+											(selectedStages = toggleValue(selectedStages, stage))}
+									/>
 								</div>
+
+								<!-- Clear Filters Button (inside panel when expanded) -->
+								{#if activeFilterCount > 0}
+									<div class="pt-1">
+										<button
+											type="button"
+											class="text-xs font-bold text-accent hover:text-accent/80 transition pressable"
+											onclick={clearFilters}
+										>
+											Clear all filters
+										</button>
+									</div>
+								{/if}
 							</div>
 						</div>
 					</div>
@@ -833,125 +763,11 @@
 						<!-- Project Cards Grid -->
 						<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 							{#each ownedFilteredProjects as project (project.id)}
-								{@const projectStats = [
-									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
-									{ key: 'goals', count: project.goal_count, Icon: Target },
-									{ key: 'plans', count: project.plan_count, Icon: Calendar },
-									{ key: 'docs', count: project.document_count, Icon: FileText }
-								].filter((s) => s.count > 0)}
-								{@const mobileProjectStats = projectStats.slice(0, 3)}
-								<!-- Project Card - Inkprint interactive card pattern with weight -->
-								<a
-									href="/projects/{project.id}"
-									onclick={() => handleProjectClick(project)}
-									class="group relative flex h-full flex-col wt-paper p-3 sm:p-4 tx tx-frame tx-weak hover:border-accent/60 pressable"
-								>
-									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
-									<div
-										class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3"
-									>
-										<div class="min-w-0 flex-1">
-											<h3
-												class="text-xs sm:text-base font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-snug"
-												style="view-transition-name: project-title-{project.id}"
-											>
-												{project.name}
-											</h3>
-											<!-- Mobile: Inline status under title -->
-											<span
-												class="sm:hidden inline-flex mt-1 items-center rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize {getProjectStateBadgeClass(
-													project.state_key
-												)}"
-											>
-												{project.state_key}
-											</span>
-										</div>
-										<!-- Desktop: Status badge -->
-										<span
-											class="hidden sm:inline-flex flex-shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold capitalize {getProjectStateBadgeClass(
-												project.state_key
-											)}"
-										>
-											{project.state_key}
-										</span>
-									</div>
-
-									<!-- Description - Hidden on mobile -->
-									{#if project.description}
-										<p
-											class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground leading-relaxed"
-										>
-											{project.description.length > 120
-												? project.description.slice(0, 120) + '...'
-												: project.description}
-										</p>
-									{/if}
-
-									<!-- Next Step - Hidden on mobile for density -->
-									{#if project.next_step_short}
-										<div class="hidden sm:block">
-											<ProjectCardNextStep
-												nextStepShort={project.next_step_short}
-												nextStepLong={project.next_step_long}
-												class="mb-3"
-											/>
-										</div>
-									{/if}
-
-									<!-- Footer Stats - Show non-zero counts, limit on mobile -->
-									<div
-										class="mt-auto flex items-center justify-between border-t border-border/60 pt-2 sm:pt-3 text-muted-foreground"
-									>
-										<!-- Mobile: Show up to 3 non-zero stats -->
-										<div
-											class="flex sm:hidden items-center gap-2.5 overflow-hidden"
-										>
-											{#each mobileProjectStats as stat (stat.key)}
-												{@const StatIcon = stat.Icon}
-												<span
-													class="flex items-center gap-1 shrink-0"
-													title={stat.key}
-												>
-													<StatIcon class="h-3 w-3" />
-													<span class="font-semibold text-[10px]"
-														>{stat.count}</span
-													>
-												</span>
-											{/each}
-											{#if projectStats.length > 3}
-												<span class="text-[9px] text-muted-foreground/60"
-													>+{projectStats.length - 3}</span
-												>
-											{/if}
-										</div>
-
-										<!-- Desktop: Full stats (non-zero only) -->
-										<div class="hidden sm:flex flex-col gap-1.5 w-full">
-											<div
-												class="flex flex-wrap items-center gap-x-3 gap-y-1"
-											>
-												{#each projectStats as stat (stat.key)}
-													{@const StatIcon = stat.Icon}
-													<span
-														class="flex items-center gap-1"
-														aria-label="{stat.key} count"
-														title={stat.key}
-													>
-														<StatIcon class="h-3.5 w-3.5" />
-														<span class="font-semibold text-xs"
-															>{stat.count}</span
-														>
-													</span>
-												{/each}
-											</div>
-											<span class="text-xs text-muted-foreground/60">
-												Updated {new Date(
-													project.updated_at
-												).toLocaleDateString()}
-											</span>
-										</div>
-									</div>
-								</a>
+								<ProjectCard
+									{project}
+									onProjectClick={handleProjectClick}
+									getStateBadgeClasses={getProjectStateBadgeClass}
+								/>
 							{/each}
 						</div>
 					</div>
@@ -969,134 +785,12 @@
 						<!-- Shared Project Cards Grid - Thread texture to indicate collaboration -->
 						<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 							{#each sharedFilteredProjects as project (project.id)}
-								{@const projectStats = [
-									{ key: 'tasks', count: project.task_count, Icon: ListChecks },
-									{ key: 'goals', count: project.goal_count, Icon: Target },
-									{ key: 'plans', count: project.plan_count, Icon: Calendar },
-									{ key: 'docs', count: project.document_count, Icon: FileText }
-								].filter((s) => s.count > 0)}
-								{@const mobileProjectStats = projectStats.slice(0, 3)}
-								<!-- Shared Project Card - Thread texture for collaboration, paper weight -->
-								<a
-									href="/projects/{project.id}"
-									onclick={() => handleProjectClick(project)}
-									class="group relative flex h-full flex-col wt-paper p-3 sm:p-4 tx tx-thread tx-weak hover:border-accent/60 pressable"
-								>
-									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
-									<div
-										class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3"
-									>
-										<div class="min-w-0 flex-1">
-											<h3
-												class="text-xs sm:text-base font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-snug"
-												style="view-transition-name: project-title-{project.id}"
-											>
-												{project.name}
-											</h3>
-											<div class="flex flex-wrap items-center gap-1 mt-1">
-												<span
-													class="sm:hidden inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize {getProjectStateBadgeClass(
-														project.state_key
-													)}"
-												>
-													{project.state_key}
-												</span>
-												<!-- Shared badge with accent styling -->
-												<span
-													class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-accent/15 text-accent border border-accent/20"
-												>
-													Shared{project.access_role
-														? ` · ${project.access_role}`
-														: ''}
-												</span>
-											</div>
-										</div>
-										<!-- Desktop: Status badge -->
-										<span
-											class="hidden sm:inline-flex flex-shrink-0 rounded-md border px-2 py-0.5 text-xs font-semibold capitalize {getProjectStateBadgeClass(
-												project.state_key
-											)}"
-										>
-											{project.state_key}
-										</span>
-									</div>
-
-									<!-- Description - Hidden on mobile -->
-									{#if project.description}
-										<p
-											class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground leading-relaxed"
-										>
-											{project.description.length > 120
-												? project.description.slice(0, 120) + '...'
-												: project.description}
-										</p>
-									{/if}
-
-									<!-- Next Step - Hidden on mobile for density -->
-									{#if project.next_step_short}
-										<div class="hidden sm:block">
-											<ProjectCardNextStep
-												nextStepShort={project.next_step_short}
-												nextStepLong={project.next_step_long}
-												class="mb-3"
-											/>
-										</div>
-									{/if}
-
-									<!-- Footer Stats - Show non-zero counts, limit on mobile -->
-									<div
-										class="mt-auto flex items-center justify-between border-t border-border/60 pt-2 sm:pt-3 text-muted-foreground"
-									>
-										<!-- Mobile: Show up to 3 non-zero stats -->
-										<div
-											class="flex sm:hidden items-center gap-2.5 overflow-hidden"
-										>
-											{#each mobileProjectStats as stat (stat.key)}
-												{@const StatIcon = stat.Icon}
-												<span
-													class="flex items-center gap-1 shrink-0"
-													title={stat.key}
-												>
-													<StatIcon class="h-3 w-3" />
-													<span class="font-semibold text-[10px]"
-														>{stat.count}</span
-													>
-												</span>
-											{/each}
-											{#if projectStats.length > 3}
-												<span class="text-[9px] text-muted-foreground/60"
-													>+{projectStats.length - 3}</span
-												>
-											{/if}
-										</div>
-
-										<!-- Desktop: Full stats (non-zero only) -->
-										<div class="hidden sm:flex flex-col gap-1.5 w-full">
-											<div
-												class="flex flex-wrap items-center gap-x-3 gap-y-1"
-											>
-												{#each projectStats as stat (stat.key)}
-													{@const StatIcon = stat.Icon}
-													<span
-														class="flex items-center gap-1"
-														aria-label="{stat.key} count"
-														title={stat.key}
-													>
-														<StatIcon class="h-3.5 w-3.5" />
-														<span class="font-semibold text-xs"
-															>{stat.count}</span
-														>
-													</span>
-												{/each}
-											</div>
-											<span class="text-xs text-muted-foreground/60">
-												Updated {new Date(
-													project.updated_at
-												).toLocaleDateString()}
-											</span>
-										</div>
-									</div>
-								</a>
+								<ProjectCard
+									{project}
+									isShared
+									onProjectClick={handleProjectClick}
+									getStateBadgeClasses={getProjectStateBadgeClass}
+								/>
 							{/each}
 						</div>
 					</div>

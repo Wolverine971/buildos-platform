@@ -26,7 +26,7 @@
 <div class="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 	{#each Array(count) as _, i (i)}
 		<div
-			class="group relative flex h-full flex-col wt-paper p-2.5 sm:p-4 tx tx-frame tx-weak animate-pulse"
+			class="group relative flex h-full flex-col wt-paper p-3 sm:p-4 tx tx-frame tx-weak animate-pulse"
 			aria-hidden="true"
 		>
 			<!-- Header: Title + Badge -->
@@ -67,19 +67,4 @@
 	{/each}
 </div>
 
-<style>
-	/* Smooth pulse animation for skeleton loading */
-	@keyframes pulse {
-		0%,
-		100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.5;
-		}
-	}
-
-	.animate-pulse {
-		animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-	}
-</style>
+<!-- Animation provided by Tailwind's built-in animate-pulse class -->

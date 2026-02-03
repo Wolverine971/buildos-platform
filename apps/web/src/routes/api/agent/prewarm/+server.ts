@@ -54,6 +54,26 @@ async function authenticateRequest(
 	}
 }
 
+async function hasLegacyProjectAccess(
+	supabase: any,
+	projectId: string,
+	userId: string
+): Promise<boolean> {
+	const { data, error } = await supabase
+		.from('projects')
+		.select('id')
+		.eq('id', projectId)
+		.eq('user_id', userId)
+		.maybeSingle();
+
+	if (error) {
+		logger.debug('Legacy project lookup failed for prewarm', { error, projectId, userId });
+		return false;
+	}
+
+	return !!data;
+}
+
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const authResult = await authenticateRequest(safeGetSession, supabase);
 	if (!authResult.success) {
@@ -133,9 +153,32 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const locationCacheKey = buildLocationCacheKey(normalizedContextType, resolvedEntityId);
 	const linkedEntitiesCacheKey = buildLinkedEntitiesCacheKey(resolvedFocus);
 
-	const shouldWarmLocation = !requiresEntityId || !!resolvedEntityId;
+	let shouldWarmLocation = !requiresEntityId || !!resolvedEntityId;
+	let locationSkipReason: string | null = null;
+
+	if (requiresEntityId) {
+		if (!resolvedEntityId) {
+			shouldWarmLocation = false;
+			locationSkipReason = 'missing_entity';
+		} else {
+			const legacyProject = await hasLegacyProjectAccess(
+				supabase,
+				resolvedEntityId,
+				userId
+			);
+			if (!legacyProject) {
+				shouldWarmLocation = false;
+				locationSkipReason = 'project_not_legacy';
+				logger.debug('Skipping location prewarm for non-legacy project', {
+					contextType: normalizedContextType,
+					entityId: resolvedEntityId
+				});
+			}
+		}
+	}
 
 	const hasFreshLocationCache =
+		shouldWarmLocation &&
 		metadata.locationContextCache?.cacheKey === locationCacheKey &&
 		isCacheFresh(metadata.locationContextCache.loadedAt);
 
@@ -216,6 +259,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	return ApiResponse.success({
 		warmed: updated,
 		session: session ?? undefined,
-		created: createdSession
+		created: createdSession,
+		locationSkippedReason: updated ? null : locationSkipReason
 	});
 };

@@ -428,9 +428,10 @@
 		if (!browser) return;
 
 		const currentRouteId = $page.route?.id ?? '';
-		const redirectTarget =
+		const pathname = String($page.url.pathname);
+		const redirectTarget: string =
 			consumeLogoutRedirect() ||
-			(currentRouteId.startsWith('/auth') ? $page.url.pathname : '/auth/login');
+			(currentRouteId.startsWith('/auth') ? pathname : '/auth/login');
 
 		if (!currentRouteId.startsWith('/auth')) {
 			await goto(redirectTarget || '/auth/login', { replaceState: true });
@@ -444,7 +445,7 @@
 	 * even if the user was already signed in (session restore/token refresh).
 	 * We track the previous user ID to distinguish actual sign-ins from session restores.
 	 */
-	async function handleAuthStateChange(event: AuthChangeEvent, session: any) {
+	async function handleAuthStateChange(event: AuthChangeEvent | 'USER_DELETED', session: any) {
 		const currentUserId = session?.user?.id ?? null;
 
 		switch (event) {

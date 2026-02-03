@@ -16,7 +16,7 @@
 -->
 <script lang="ts">
 	import { slide } from 'svelte/transition';
-	import { ChevronDown, Sparkles, User, Zap, RefreshCw, LoaderCircle } from 'lucide-svelte';
+	import { ChevronDown, Sparkles, Zap, RefreshCw, LoaderCircle } from 'lucide-svelte';
 	import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
 	import type { EntityReference } from '@buildos/shared-types';
 	import { toastService } from '$lib/stores/toast.store';
@@ -67,11 +67,6 @@
 		return parseEntityReferences(nextStepLong);
 	});
 
-	const sourceLabel = $derived.by(() => {
-		if (nextStepSource === 'ai') return 'AI suggested';
-		if (nextStepSource === 'user') return 'Set by you';
-		return null;
-	});
 
 	const updatedTimeAgo = $derived.by(() => {
 		if (!nextStepUpdatedAt) return null;
@@ -151,7 +146,7 @@
 		let html = nextStepLong;
 		const regex = /\[\[(\w+):([\w-]+)\|([^\]]+)\]\]/gi;
 
-		html = html.replace(regex, (match, type, id, displayText) => {
+		html = html.replace(regex, (_match, type, id, displayText) => {
 			// Properly escape all dynamic content for safe HTML injection
 			const safeType = escapeHtml(type);
 			const safeId = escapeHtml(id);
@@ -206,99 +201,64 @@
 				: 'cursor-default'}"
 			aria-expanded={isExpanded}
 		>
-			<!-- Mobile: Column layout (header row + content row) | Desktop: Row layout -->
-			<div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
-				<!-- Header wrapper - becomes transparent on desktop via sm:contents -->
-				<div class="flex items-center gap-2 sm:contents">
-					<!-- Icon -->
-					<div
-						class="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-accent/15 flex items-center justify-center sm:mt-0.5"
-					>
-						<Zap class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
-					</div>
-
-					<!-- Mobile: Label in header row -->
-					<span
-						class="text-[10px] font-semibold uppercase tracking-wider text-accent sm:hidden"
-					>
-						Next Move
-					</span>
-
-					<!-- Desktop: Content column (hidden on mobile, direct flex child on desktop) -->
-					<div class="hidden sm:block sm:flex-1 sm:min-w-0">
-						<div class="flex items-center gap-2 mb-0.5">
-							<span
-								class="text-[10px] font-semibold uppercase tracking-wider text-accent"
-							>
-								Next Move
-							</span>
-							{#if updatedTimeAgo}
-								<span class="text-[10px] text-muted-foreground">
-									{updatedTimeAgo}
-								</span>
-							{/if}
-							<!-- Desktop: Regenerate button (hover reveal) -->
-							<button
-								type="button"
-								onclick={(e) => {
-									e.stopPropagation();
-									handleGenerateNextStep();
-								}}
-								disabled={isGenerating}
-								class="ml-auto p-1.5 -mr-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-accent/15 active:bg-accent/25 transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring pressable"
-								title="Regenerate next step"
-								aria-label="Regenerate next step"
-							>
-								{#if isGenerating}
-									<LoaderCircle
-										class="w-3.5 h-3.5 text-muted-foreground animate-spin"
-									/>
-								{:else}
-									<RefreshCw class="w-3.5 h-3.5 text-muted-foreground" />
-								{/if}
-							</button>
-						</div>
-						<!-- Desktop: Next step text (indented under label) -->
-						<p class="text-sm font-medium text-foreground leading-snug pr-6">
-							{nextStepShort}
-						</p>
-					</div>
-
-					<!-- Mobile: Regenerate button in header -->
-					<button
-						type="button"
-						onclick={(e) => {
-							e.stopPropagation();
-							handleGenerateNextStep();
-						}}
-						disabled={isGenerating}
-						class="ml-auto p-1.5 rounded-md hover:bg-accent/15 active:bg-accent/25 transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring pressable sm:hidden"
-						title="Regenerate next step"
-						aria-label="Regenerate next step"
-					>
-						{#if isGenerating}
-							<LoaderCircle class="w-3.5 h-3.5 text-muted-foreground animate-spin" />
-						{:else}
-							<RefreshCw class="w-3.5 h-3.5 text-muted-foreground" />
-						{/if}
-					</button>
-
-					<!-- Chevron (in header on mobile, direct flex child on desktop) -->
-					{#if hasLongVersion}
-						<div
-							class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground transition-transform duration-[120ms] {isExpanded
-								? 'rotate-180'
-								: ''}"
-						>
-							<ChevronDown class="w-4 h-4" />
-						</div>
-					{/if}
+			<!-- Layout: Icon + Content + Actions -->
+			<div class="flex items-start gap-2 sm:gap-3">
+				<!-- Icon (always visible) -->
+				<div
+					class="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-accent/15 flex items-center justify-center mt-0.5"
+				>
+					<Zap class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 				</div>
 
-				<!-- Mobile: Next step text (full width, own row) -->
-				<p class="text-sm font-medium text-foreground leading-snug sm:hidden">
-					{nextStepShort}
-				</p>
+				<!-- Content area -->
+				<div class="flex-1 min-w-0">
+					<!-- Label row with actions -->
+					<div class="flex items-center gap-2 mb-0.5">
+						<span
+							class="text-[10px] font-semibold uppercase tracking-wider text-accent"
+						>
+							Next Move
+						</span>
+						{#if updatedTimeAgo}
+							<span class="text-[10px] text-muted-foreground hidden sm:inline">
+								{updatedTimeAgo}
+							</span>
+						{/if}
+						<!-- Regenerate button -->
+						<button
+							type="button"
+							onclick={(e) => {
+								e.stopPropagation();
+								handleGenerateNextStep();
+							}}
+							disabled={isGenerating}
+							class="ml-auto p-1.5 rounded-md sm:opacity-0 sm:group-hover:opacity-100 hover:bg-accent/15 active:bg-accent/25 transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring pressable"
+							title="Regenerate next step"
+							aria-label="Regenerate next step"
+						>
+							{#if isGenerating}
+								<LoaderCircle
+									class="w-3.5 h-3.5 text-muted-foreground animate-spin"
+								/>
+							{:else}
+								<RefreshCw class="w-3.5 h-3.5 text-muted-foreground" />
+							{/if}
+						</button>
+						<!-- Chevron -->
+						{#if hasLongVersion}
+							<div
+								class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground transition-transform duration-[120ms]"
+								class:rotate-180={isExpanded}
+							>
+								<ChevronDown class="w-4 h-4" />
+							</div>
+						{/if}
+					</div>
+					<!-- Next step text -->
+					<p class="text-sm font-medium text-foreground leading-snug pr-6">
+						{nextStepShort}
+					</p>
+				</div>
 			</div>
 		</div>
 

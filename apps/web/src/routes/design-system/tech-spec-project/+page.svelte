@@ -21,29 +21,21 @@
 		Plus,
 		FileText,
 		Pencil,
-		CheckCircle2,
+		CheckCircle,
 		Circle,
 		Clock,
 		Target,
 		ChevronDown,
 		ChevronRight,
-		AlertTriangle,
-		ListChecks,
-		Sparkles,
+		AlertCircle,
+		ListChecks
 		Zap,
-		MoreVertical,
-		Calendar,
-		Flag,
-		Trash2,
+		MoreHorizontal
+		Flag
 		Copy,
-		Check,
-		ExternalLink,
-		GitBranch,
-		Activity,
-		Cpu,
-		Terminal,
-		Hash,
-		Layers,
+		Check
+		GitBranch
+		Terminal
 		Settings,
 		Share2
 	} from 'lucide-svelte';
@@ -229,9 +221,9 @@
 
 	function getTaskIcon(state: string) {
 		const normalized = state?.toLowerCase() || '';
-		if (normalized === 'done' || normalized === 'completed') return CheckCircle2;
+		if (normalized === 'done' || normalized === 'completed') return CheckCircle;
 		if (normalized === 'in_progress' || normalized === 'active') return Clock;
-		if (normalized === 'blocked') return AlertTriangle;
+		if (normalized === 'blocked') return AlertCircle;
 		return Circle;
 	}
 
@@ -252,7 +244,9 @@
 <div class="min-h-screen bg-background text-foreground overflow-x-hidden">
 	<!-- Header - Card style matching inkprint-v2-demo -->
 	<header class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4">
-		<div class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink p-3 sm:p-4 space-y-3">
+		<div
+			class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink p-3 sm:p-4 space-y-3"
+		>
 			<!-- Title Row -->
 			<div class="flex items-center justify-between gap-1.5 sm:gap-2">
 				<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
@@ -266,18 +260,26 @@
 					<div class="min-w-0">
 						<!-- Spec reference line -->
 						<div class="flex items-center gap-1.5 sm:gap-2 mb-0.5">
-							<span class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-[0.1em] text-accent">
+							<span
+								class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-[0.1em] text-accent"
+							>
 								{project.id}
 							</span>
 							<span class="text-muted-foreground/40 hidden sm:inline">•</span>
-							<span class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-[0.1em] text-muted-foreground hidden sm:inline">
+							<span
+								class="font-mono text-[0.55rem] sm:text-[0.6rem] uppercase tracking-[0.1em] text-muted-foreground hidden sm:inline"
+							>
 								Rev {project.version}
 							</span>
 						</div>
-						<h1 class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2">
+						<h1
+							class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
+						>
 							{project.name}
 						</h1>
-						<p class="text-xs text-muted-foreground mt-0.5 line-clamp-2 hidden sm:block">
+						<p
+							class="text-xs text-muted-foreground mt-0.5 line-clamp-2 hidden sm:block"
+						>
 							{project.description}
 						</p>
 					</div>
@@ -286,63 +288,115 @@
 				<!-- Desktop: Show all buttons -->
 				<div class="hidden sm:flex items-center gap-1.5 shrink-0">
 					<!-- State Badge -->
-					{@const status = getStatusIndicator(project.state_key)}
-					<span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 border border-border mr-1">
-						<span class="w-1.5 h-1.5 rounded-full {status.color}"></span>
-						<span class="font-mono text-[0.55rem] uppercase tracking-wide text-foreground">{status.label}</span>
+
+					<span
+						class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 border border-border mr-1"
+					>
+						<span class="w-1.5 h-1.5 rounded-full {projectStatus.color}"></span>
+						<span
+							class="font-mono text-[0.55rem] uppercase tracking-wide text-foreground"
+							>{projectStatus.label}</span
+						>
 					</span>
-					<button class="p-2 rounded-lg hover:bg-muted transition-colors pressable" aria-label="Share">
+					<button
+						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+						aria-label="Share"
+					>
 						<Share2 class="w-5 h-5 text-muted-foreground" />
 					</button>
-					<button class="p-2 rounded-lg hover:bg-muted transition-colors pressable" aria-label="Settings">
+					<button
+						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+						aria-label="Settings"
+					>
 						<Settings class="w-5 h-5 text-muted-foreground" />
 					</button>
-					<button class="p-2 rounded-lg hover:bg-muted transition-colors pressable" aria-label="Edit project">
+					<button
+						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
+						aria-label="Edit project"
+					>
 						<Pencil class="w-5 h-5 text-muted-foreground" />
 					</button>
 				</div>
 
 				<!-- Mobile: State + 3-dot menu -->
 				<div class="flex items-center gap-1.5 sm:hidden">
-					{@const status = getStatusIndicator(project.state_key)}
-					<span class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[0.5rem]">
-						<span class="w-1.5 h-1.5 rounded-full {status.color}"></span>
-						<span class="font-mono uppercase text-foreground">{status.label}</span>
+					<span
+						class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/50 text-[0.5rem]"
+					>
+						<span class="w-1.5 h-1.5 rounded-full {projectStatus.color}"></span>
+						<span class="font-mono uppercase text-foreground"
+							>{projectStatus.label}</span
+						>
 					</span>
-					<button class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable" aria-label="Project options">
-						<MoreVertical class="w-5 h-5 text-muted-foreground" />
+					<button
+						class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
+						aria-label="Project options"
+					>
+						<MoreHorizontal class="w-5 h-5 text-muted-foreground" />
 					</button>
 				</div>
-			</div>
 
-			<!-- Key-Value Project Metadata -->
-			<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 p-2.5 sm:p-3 bg-muted/30 rounded-lg border border-border/50">
-				<div>
-					<span class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block">Type</span>
-					<span class="font-mono text-[0.65rem] sm:text-xs text-foreground capitalize">{project.type_key}</span>
-				</div>
-				<div>
-					<span class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block">Owner</span>
-					<span class="font-mono text-[0.65rem] sm:text-xs text-accent">@{project.owner}</span>
-				</div>
-				<div>
-					<span class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block">Created</span>
-					<span class="font-mono text-[0.65rem] sm:text-xs text-foreground">2026-01-15</span>
-				</div>
-				<div>
-					<span class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block">Updated</span>
-					<span class="font-mono text-[0.65rem] sm:text-xs text-foreground">2h ago</span>
-				</div>
-			</div>
+				<!-- Key-Value Project Metadata -->
+				<div
+					class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 p-2.5 sm:p-3 bg-muted/30 rounded-lg border border-border/50"
+				>
+					<div>
+						<span
+							class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block"
+							>Type</span
+						>
+						<span class="font-mono text-[0.65rem] sm:text-xs text-foreground capitalize"
+							>{project.type_key}</span
+						>
+					</div>
+					<div>
+						<span
+							class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block"
+							>Owner</span
+						>
+						<span class="font-mono text-[0.65rem] sm:text-xs text-accent"
+							>@{project.owner}</span
+						>
+					</div>
+					<div>
+						<span
+							class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block"
+							>Created</span
+						>
+						<span class="font-mono text-[0.65rem] sm:text-xs text-foreground"
+							>2026-01-15</span
+						>
+					</div>
+					<div>
+						<span
+							class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-muted-foreground block"
+							>Updated</span
+						>
+						<span class="font-mono text-[0.65rem] sm:text-xs text-foreground"
+							>2h ago</span
+						>
+					</div>
 
-			<!-- Next Step Display -->
-			<div class="flex items-center gap-3 p-2.5 sm:p-3 rounded-lg bg-accent/5 border border-accent/20">
-				<div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-					<Zap class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
-				</div>
-				<div class="min-w-0">
-					<p class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-accent">Next Action</p>
-					<p class="text-xs sm:text-sm text-foreground truncate">{project.next_step_short}</p>
+					<!-- Next Step Display -->
+					<div
+						class="flex items-center gap-3 p-2.5 sm:p-3 rounded-lg bg-accent/5 border border-accent/20"
+					>
+						<div
+							class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
+						>
+							<Zap class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
+						</div>
+						<div class="min-w-0">
+							<p
+								class="font-mono text-[0.5rem] sm:text-[0.55rem] uppercase tracking-wider text-accent"
+							>
+								Next Action
+							</p>
+							<p class="text-xs sm:text-sm text-foreground truncate">
+								{project.next_step_short}
+							</p>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -448,11 +502,11 @@
 											</div>
 											<div class="col-span-2 flex items-center gap-1.5">
 												<span
-													class="w-1.5 h-1.5 rounded-full {status.color}"
+													class="w-1.5 h-1.5 rounded-full {projectStatus.color}"
 												></span>
 												<span
 													class="font-mono text-[0.6rem] uppercase text-muted-foreground"
-													>{status.label}</span
+													>{projectStatus.label}</span
 												>
 											</div>
 										</div>
@@ -473,7 +527,7 @@
 												</div>
 												<div class="flex items-center gap-1.5 shrink-0">
 													<span
-														class="w-1.5 h-1.5 rounded-full {status.color}"
+														class="w-1.5 h-1.5 rounded-full {projectStatus.color}"
 													></span>
 												</div>
 											</div>
@@ -543,7 +597,7 @@
 					</div>
 				</section>
 
-				<!-- Activity Log Section -->
+				<!-- Log Section -->
 				<section>
 					<div class="flex items-center gap-2 mb-3">
 						<span
@@ -810,7 +864,7 @@
 							onclick={() => togglePanel('risks')}
 							class="flex items-center gap-3 hover:opacity-80 transition-opacity"
 						>
-							<AlertTriangle class="w-4 h-4 text-red-500" />
+							<AlertCircle class="w-4 h-4 text-red-500" />
 							<span
 								class="font-mono text-[0.65rem] uppercase tracking-[0.12em] text-foreground"
 								>Risks</span

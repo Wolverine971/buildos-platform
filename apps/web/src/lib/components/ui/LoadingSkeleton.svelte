@@ -2,8 +2,12 @@
 <script lang="ts">
 	import { LoaderCircle } from 'lucide-svelte';
 
-	export let message: string = 'Loading...';
-	export let height: string = '400px';
+	interface Props {
+		message?: string;
+		height?: string;
+	}
+
+	let { message = 'Loading...', height = '400px' }: Props = $props();
 </script>
 
 <div class="flex items-center justify-center" style="min-height: {height}">

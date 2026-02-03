@@ -34,8 +34,6 @@
 		expanded = false,
 		class: className = ''
 	}: Props = $props();
-
-	const itemLabel = count === 1 ? 'item' : 'items';
 </script>
 
 <div

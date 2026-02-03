@@ -84,24 +84,14 @@
 </script>
 
 <div
-	class="
-		bg-card border border-border rounded-lg shadow-ink
-		tx tx-frame tx-weak overflow-hidden
-		transition-all duration-[120ms] ease-out
-		{panelClasses}
-		{expanded ? '' : 'h-[52px]'}
-	"
+	class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden transition-all duration-[120ms] ease-out {panelClasses}"
+	class:h-14={!expanded}
 >
 	<!-- Panel Header (always visible) -->
 	<button
 		type="button"
 		onclick={() => onToggle(panelKey)}
-		class="
-			w-full flex items-center justify-between
-			px-2.5 py-2
-			hover:bg-accent/5 transition-colors pressable
-			focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset
-		"
+		class="w-full flex items-center justify-between px-2.5 py-2 hover:bg-accent/5 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 		aria-expanded={expanded}
 	>
 		<div class="flex items-center gap-2 min-w-0">
@@ -145,12 +135,7 @@
 				<button
 					type="button"
 					onclick={onAdd}
-					class="
-						flex items-center gap-1 px-2 py-1
-						text-[10px] font-medium text-accent
-						hover:bg-accent/10 rounded transition-colors
-						pressable shrink-0
-					"
+					class="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-accent hover:bg-accent/10 rounded transition-colors pressable shrink-0"
 				>
 					<Plus class="w-3 h-3" />
 					<span>Add</span>

@@ -13,6 +13,10 @@
 	- Icons: w-3.5 h-3.5 (14px - Compact tier)
 	- Text: text-xs (12px - comfortable reading)
 	- Clean, readable, properly subordinate to parent goals
+
+	Visibility patterns:
+	- Svelte conditionals ({#if}) for logic-based visibility
+	- CSS classes for responsive/hover visibility (hidden/flex sm:hidden, group-hover:flex)
 -->
 <script lang="ts">
 	import { Circle, CircleDot, CheckCircle2, XCircle, MoreHorizontal, Check } from 'lucide-svelte';
@@ -45,9 +49,8 @@
 			return {
 				icon: CheckCircle2,
 				iconColor: 'text-emerald-500',
-				textColor: 'text-muted-foreground',
-				textDecoration: 'line-through',
-				label: 'Completed'
+				isCompleted: true,
+				isMissed: false
 			};
 		}
 
@@ -55,9 +58,8 @@
 			return {
 				icon: XCircle,
 				iconColor: 'text-destructive',
-				textColor: 'text-foreground',
-				textDecoration: '',
-				label: 'Missed'
+				isCompleted: false,
+				isMissed: true
 			};
 		}
 
@@ -65,22 +67,23 @@
 			return {
 				icon: CircleDot,
 				iconColor: 'text-accent',
-				textColor: 'text-foreground',
-				textDecoration: '',
-				label: 'In Progress'
+				isCompleted: false,
+				isMissed: false
 			};
 		}
 
 		return {
 			icon: Circle,
 			iconColor: 'text-muted-foreground',
-			textColor: 'text-muted-foreground',
-			textDecoration: '',
-			label: 'Pending'
+			isCompleted: false,
+			isMissed: false
 		};
 	});
 
 	const StateIcon = $derived(stateVisuals.icon);
+	const canToggle = $derived(
+		onToggleComplete && effectiveState !== 'completed' && effectiveState !== 'missed'
+	);
 
 	function formatDueDate(dateString: string | null): string {
 		if (!dateString) return '';
@@ -127,30 +130,36 @@
 	onkeydown={handleKeyDown}
 	role="button"
 	tabindex="0"
-	class="w-full flex items-center gap-2 text-left cursor-pointer px-3 {compact
-		? 'py-1.5'
-		: 'py-2'} hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors group"
+	class="w-full flex items-center gap-2 text-left cursor-pointer px-3 py-2 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors group"
+	class:py-1.5={compact}
 	aria-label="Edit milestone: {milestone.title}"
 >
 	<StateIcon class="w-3.5 h-3.5 shrink-0 {stateVisuals.iconColor}" />
 
 	<div class="min-w-0 flex-1">
-		<p class="text-xs truncate {stateVisuals.textColor} {stateVisuals.textDecoration}">
+		<p
+			class="text-xs truncate"
+			class:text-muted-foreground={stateVisuals.isCompleted || !stateVisuals.isMissed}
+			class:text-foreground={stateVisuals.isMissed ||
+				(!stateVisuals.isCompleted && !stateVisuals.isMissed)}
+			class:line-through={stateVisuals.isCompleted}
+		>
 			{milestone.title}
 		</p>
 	</div>
 
 	{#if formattedDueDate}
 		<span
-			class="text-xs shrink-0 {resolvedState.isMissed
-				? 'text-destructive'
-				: 'text-muted-foreground'}"
+			class="text-xs shrink-0"
+			class:text-destructive={resolvedState.isMissed}
+			class:text-muted-foreground={!resolvedState.isMissed}
 		>
 			{formattedDueDate}
 		</span>
 	{/if}
 
-	{#if onToggleComplete && effectiveState !== 'completed' && effectiveState !== 'missed'}
+	<!-- Toggle complete button - appears on hover (CSS), logic-gated (Svelte) -->
+	{#if canToggle}
 		<button
 			type="button"
 			onclick={handleToggleComplete}
@@ -162,6 +171,7 @@
 		</button>
 	{/if}
 
+	<!-- Mobile edit button - always visible on mobile (CSS responsive) -->
 	<button
 		type="button"
 		onclick={(e) => {

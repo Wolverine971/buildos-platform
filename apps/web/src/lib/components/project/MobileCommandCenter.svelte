@@ -44,7 +44,7 @@
 	type PanelKey = 'goals' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
 
 	interface Props {
-		// Data
+		// Entity data arrays
 		goals: Goal[];
 		milestones: Milestone[];
 		tasks: Task[];
@@ -52,11 +52,9 @@
 		risks: Risk[];
 		documents: Document[];
 		events: OntoEvent[];
-
-		// Milestone-to-goal mapping for nested display
 		milestonesByGoalId?: Map<string, Milestone[]>;
 
-		// Add callbacks
+		// Entity action callbacks - Add
 		onAddGoal: () => void;
 		onAddMilestoneFromGoal?: (goalId: string, goalName: string) => void;
 		onAddTask: () => void;
@@ -65,7 +63,7 @@
 		onAddDocument: () => void;
 		onAddEvent: () => void;
 
-		// Edit callbacks
+		// Entity action callbacks - Edit
 		onEditGoal: (id: string) => void;
 		onEditMilestone: (id: string) => void;
 		onEditTask: (id: string) => void;
@@ -74,10 +72,10 @@
 		onEditDocument: (id: string) => void;
 		onEditEvent: (id: string) => void;
 
-		// Toggle milestone complete callback
+		// Entity action callbacks - State change
 		onToggleMilestoneComplete?: (milestoneId: string, currentState: string) => void;
 
-		// Optional filter/sort state and callbacks
+		// Panel filter/sort controls (optional - enables insight panel features)
 		panelStates?: Record<InsightPanelKey, InsightPanelState>;
 		panelCounts?: Record<InsightPanelKey, Record<string, number>>;
 		onFilterChange?: (panelKey: InsightPanelKey, filters: Record<string, string[]>) => void;
@@ -87,7 +85,7 @@
 		) => void;
 		onToggleChange?: (panelKey: InsightPanelKey, toggleId: string, value: boolean) => void;
 
-		// Whether user can edit (for milestone add buttons)
+		// Permissions
 		canEdit?: boolean;
 	}
 
