@@ -28,14 +28,14 @@
 		ChevronDown,
 		ChevronRight,
 		AlertCircle,
-		ListChecks
+		ListChecks,
 		Zap,
-		MoreHorizontal
-		Flag
+		MoreHorizontal,
+		Flag,
 		Copy,
-		Check
-		GitBranch
-		Terminal
+		Check,
+		GitBranch,
+		Terminal,
 		Settings,
 		Share2
 	} from 'lucide-svelte';
