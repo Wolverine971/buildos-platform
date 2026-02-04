@@ -83,6 +83,13 @@
 			category: 'user'
 		},
 		{
+			value: 'project.invite.accepted',
+			label: 'Invite Accepted',
+			description: 'Triggered when a teammate accepts a project invite',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
 			value: 'project.phase_scheduled',
 			label: 'Phase Scheduled',
 			description: 'Project phase has been scheduled to calendar',

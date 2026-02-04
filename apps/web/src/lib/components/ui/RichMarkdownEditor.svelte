@@ -142,6 +142,13 @@
 	let isTransitioningFromRecording = $state(false);
 	let transitionTranscript = $state('');
 
+	// Extended "Added" feedback state (shows longer than transition)
+	let showAddedFeedback = $state(false);
+	let addedFeedbackTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// Processing state - shows spinner on button while inserting text
+	let isInsertingText = $state(false);
+
 	// Cursor position tracking - CRITICAL for insertion at cursor
 	let cursorPositionBeforeRecording = $state<{ start: number; end: number } | null>(null);
 
@@ -244,6 +251,7 @@
 			isCurrentlyRecording,
 			isInitializingRecording,
 			isTranscribing: _isTranscribing,
+			isInsertingText,
 			voiceBlocked,
 			hasAttemptedVoice,
 			voiceError: _voiceError,
@@ -479,6 +487,7 @@
 		isCurrentlyRecording: boolean;
 		isInitializingRecording: boolean;
 		isTranscribing: boolean;
+		isInsertingText: boolean;
 		voiceBlocked: boolean;
 		hasAttemptedVoice: boolean;
 		voiceError: string;
@@ -493,6 +502,7 @@
 			isCurrentlyRecording,
 			isInitializingRecording,
 			isTranscribing,
+			isInsertingText,
 			voiceBlocked,
 			hasAttemptedVoice,
 			voiceError,
@@ -559,6 +569,16 @@
 				disabled: false,
 				isLoading: false,
 				variant: 'recording'
+			};
+		}
+
+		if (isInsertingText) {
+			return {
+				icon: LoaderCircle,
+				label: 'Adding text...',
+				disabled: true,
+				isLoading: true,
+				variant: 'loading'
 			};
 		}
 
@@ -652,12 +672,9 @@
 				(needsSpaceBefore ? ' ' : '') + trimmedTranscript + (needsSpaceAfter ? ' ' : '');
 		}
 
-		// Save ALL scroll positions before modifying - capture parent containers too
-		const textareaScrollTop = textareaElement?.scrollTop ?? 0;
-		const pageScrollY = window.scrollY;
-		// Also capture the modal/parent scroll container if it exists
-		const scrollContainer = textareaElement?.closest('.overflow-y-auto');
-		const containerScrollTop = (scrollContainer as HTMLElement)?.scrollTop ?? 0;
+		// SIMPLIFIED: Only save textarea scroll position
+		// Modal uses overscroll-contain which isolates scrolling
+		const savedScrollTop = textareaElement?.scrollTop ?? 0;
 
 		// Insert or replace
 		const newValue = value.slice(0, start) + finalTranscript + value.slice(end);
@@ -666,18 +683,13 @@
 		// Update cursor position to end of inserted text
 		const newCursorPos = start + finalTranscript.length;
 
-		// Use double-RAF to ensure DOM has fully updated before restoring positions
-		// First RAF: DOM update scheduled, Second RAF: after paint
+		// SIMPLIFIED: Single RAF, only restore textarea scroll
 		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				textareaElement?.focus({ preventScroll: true });
-				textareaElement?.setSelectionRange(newCursorPos, newCursorPos);
-				// Restore scroll positions
-				if (textareaElement) textareaElement.scrollTop = textareaScrollTop;
-				if (scrollContainer)
-					(scrollContainer as HTMLElement).scrollTop = containerScrollTop;
-				window.scrollTo({ top: pageScrollY, behavior: 'instant' });
-			});
+			textareaElement?.focus({ preventScroll: true });
+			textareaElement?.setSelectionRange(newCursorPos, newCursorPos);
+			if (textareaElement) {
+				textareaElement.scrollTop = savedScrollTop;
+			}
 		});
 
 		// Reset cursor tracking
@@ -1141,21 +1153,18 @@
 		// Store the transcript we'll use for insertion
 		const transcriptToInsert = capturedTranscriptForCallback;
 
-		// SMOOTH TRANSITION: Keep the recording UI visible during text insertion
-		// to prevent layout shift from footer height changes
-		if (transcriptToInsert) {
-			// Enter transition state - this keeps the recording UI visible
-			isTransitioningFromRecording = true;
-			transitionTranscript = transcriptToInsert;
-		}
-
-		// Clear the live preview but DON'T clear isCurrentlyRecording yet if transitioning
+		// Clear the live preview and recording state
 		liveTranscriptPreview = '';
 		isInitializingRecording = false;
+		isCurrentlyRecording = false;
 
-		// Only clear recording state if no transcript to insert (no transition needed)
-		if (!transcriptToInsert) {
-			isCurrentlyRecording = false;
+		// Show loading spinner on button while processing
+		isInsertingText = true;
+
+		// Clear any existing feedback timeout
+		if (addedFeedbackTimeout) {
+			clearTimeout(addedFeedbackTimeout);
+			addedFeedbackTimeout = null;
 		}
 
 		try {
@@ -1165,26 +1174,31 @@
 			// If we had a live transcript, insert it at cursor position now
 			// The audio transcription may update it later with better accuracy
 			if (transcriptToInsert) {
-				// Insert text while transition UI is still visible
+				// Insert text
 				insertTranscriptionAtCursor(transcriptToInsert);
 
-				// Now clear the recording state after a brief delay to allow smooth transition
-				// The 150ms allows CSS transitions to animate and prevents jarring layout shifts
-				setTimeout(() => {
-					isCurrentlyRecording = false;
-					isTransitioningFromRecording = false;
-					transitionTranscript = '';
-				}, 150);
+				// Show "Added" feedback for 1.5 seconds
+				showAddedFeedback = true;
+				addedFeedbackTimeout = setTimeout(() => {
+					showAddedFeedback = false;
+				}, 1500);
 			}
+
+			// Clear inserting state
+			isInsertingText = false;
+			isTransitioningFromRecording = false;
+			transitionTranscript = '';
 		} catch (error) {
 			console.error('Failed to stop voice recording:', error);
 			const message =
 				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
 			_voiceError = message;
-			// On error, immediately clear transition state
+			// On error, immediately clear all state
 			isCurrentlyRecording = false;
+			isInsertingText = false;
 			isTransitioningFromRecording = false;
 			transitionTranscript = '';
+			showAddedFeedback = false;
 		} finally {
 			capturedTranscriptForCallback = '';
 		}
@@ -1231,6 +1245,13 @@
 		// Clear transition state
 		isTransitioningFromRecording = false;
 		transitionTranscript = '';
+		// Clear feedback state
+		if (addedFeedbackTimeout) {
+			clearTimeout(addedFeedbackTimeout);
+			addedFeedbackTimeout = null;
+		}
+		showAddedFeedback = false;
+		isInsertingText = false;
 	}
 
 	// ============================================
@@ -1525,27 +1546,31 @@
 								>{formatDuration(_recordingDuration)}</span
 							>
 						</span>
-						<!-- Live transcript preview (inline on mobile) -->
+						<!-- Live transcript preview (multi-line on mobile) -->
 						{#if liveTranscriptPreview}
-							<span
-								class="truncate text-accent text-[10px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 max-w-[150px] sm:max-w-[250px]"
+							<div
+								class="text-accent text-[10px] sm:text-[11px] px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 max-w-[200px] sm:max-w-[300px] line-clamp-2 break-words leading-tight"
 							>
 								{liveTranscriptPreview}
-							</span>
+							</div>
 						{/if}
-					{:else if isTransitioningFromRecording}
-						<!-- Inserted indicator -->
+					{:else if showAddedFeedback}
+						<!-- Extended "Added" indicator (shows for 1.5 seconds) -->
 						<span
-							class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-in fade-in duration-150"
+							class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-in fade-in duration-200"
 						>
-							<svg class="h-3 w-3 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+							<svg
+								class="h-3.5 w-3.5 shrink-0"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+							>
 								<path
 									fill-rule="evenodd"
 									d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
 									clip-rule="evenodd"
 								/>
 							</svg>
-							<span class="font-medium text-[11px]">Added</span>
+							<span class="font-medium text-[11px]">Text added</span>
 						</span>
 					{:else if isInitializingRecording}
 						<!-- Initializing state -->

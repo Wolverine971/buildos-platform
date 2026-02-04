@@ -82,7 +82,9 @@
       "Bash(git ls-tree:*)",
       "Bash(head:*)",
       "Bash(pnpm test:run:*)",
-      "Bash(timeout 30 npx vite build:*)"
+      "Bash(timeout 30 npx vite build:*)",
+      "Bash(pnpm format:*)",
+      "Bash(pnpm exec prettier:*)"
     ],
     "deny": [],
     "ask": []

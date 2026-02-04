@@ -359,6 +359,7 @@ export class ToolExecutionService implements BaseService {
 			return;
 		}
 		const sanitizedArgs = details.args ? sanitizeLogData(details.args) : undefined;
+		const argsSummary = this.buildArgsSummary(details.args, toolName);
 		const operationPayload =
 			sanitizedArgs && typeof sanitizedArgs === 'object'
 				? (sanitizedArgs as Record<string, any>)
@@ -377,12 +378,39 @@ export class ToolExecutionService implements BaseService {
 				contextType: context.contextType,
 				entityId: context.entityId,
 				args: sanitizedArgs,
+				argsSummary,
 				errorType: result.errorType,
 				virtual: details.virtual,
 				timeoutMs: details.timeoutMs,
 				durationMs: details.durationMs
 			}
 		});
+	}
+
+	private buildArgsSummary(args: unknown, toolName: string): Record<string, unknown> | undefined {
+		if (!args || typeof args !== 'object' || Array.isArray(args)) {
+			return undefined;
+		}
+
+		const argKeys = Object.keys(args as Record<string, unknown>);
+		const summary: Record<string, unknown> = {
+			argCount: argKeys.length,
+			argKeys: argKeys.slice(0, 12)
+		};
+
+		if (argKeys.length > 12) {
+			summary.argKeysTruncated = argKeys.length - 12;
+		}
+
+		if (toolName === 'create_onto_project') {
+			const payload = args as Record<string, unknown>;
+			summary.hasProject = 'project' in payload;
+			summary.hasEntities = Array.isArray(payload.entities);
+			summary.hasRelationships = Array.isArray(payload.relationships);
+			summary.hasClarifications = Array.isArray(payload.clarifications);
+		}
+
+		return summary;
 	}
 
 	/**

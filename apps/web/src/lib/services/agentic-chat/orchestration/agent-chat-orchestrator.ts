@@ -1022,6 +1022,11 @@ export class AgentChatOrchestrator {
 		const toolName = result.toolName || 'unknown';
 		const error = result.error ? String(result.error) : 'Tool validation failed.';
 
+		const missingParams = new Set(
+			Array.from(error.matchAll(/Missing required parameter: ([a-z0-9_.]+)/gi)).map(
+				(match) => match[1]
+			)
+		);
 		const missingIdMatch =
 			error.match(/Missing required parameter: ([a-z_]+_id)/i) ??
 			error.match(/Invalid ([a-z_]+_id): expected UUID/i);
@@ -1033,6 +1038,21 @@ export class AgentChatOrchestrator {
 			`Tool "${toolName}" failed validation: ${error}`,
 			'Do not guess or fabricate IDs. Never use placeholders.'
 		];
+
+		if (toolName === 'create_onto_project') {
+			const needsProjectPayload =
+				missingParams.has('project') ||
+				missingParams.has('project.name') ||
+				missingParams.has('project.type_key') ||
+				missingParams.has('entities') ||
+				missingParams.has('relationships');
+
+			if (needsProjectPayload) {
+				guidance.push(
+					'create_onto_project requires: project { name, type_key }, entities: [], relationships: [] (even if empty). If details are missing, include clarifications[] and still send the project skeleton.'
+				);
+			}
+		}
 
 		if (idKey) {
 			guidance.push(

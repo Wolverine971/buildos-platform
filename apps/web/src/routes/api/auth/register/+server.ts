@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { validateEmail } from '$lib/utils/email-validation';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 function getEmailDomain(value: string): string | null {
 	const trimmed = value.trim().toLowerCase();
@@ -138,9 +139,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// IMPORTANT: Create public.users entry since we can't use triggers on auth.users in Supabase
 		if (data.user) {
 			console.log('Creating public.users entry for:', data.user.email);
+			const hasSession = !!data.session;
+			const profileClient = hasSession ? supabase : createAdminSupabaseClient();
+
+			if (!hasSession) {
+				console.info(
+					'[Register] No session after signUp; using admin client for profile insert',
+					{
+						userId: data.user.id,
+						emailDomain
+					}
+				);
+			}
 
 			// First check if user already exists (shouldn't happen, but be safe)
-			const { data: existingUser, error: fetchError } = await supabase
+			const { data: existingUser, error: fetchError } = await profileClient
 				.from('users')
 				.select('id')
 				.eq('id', data.user.id)
@@ -155,7 +168,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					operationType: 'auth_register_profile_check',
 					metadata: {
 						emailDomain,
-						userId: data.user.id
+						userId: data.user.id,
+						hasSession,
+						usedAdminClient: !hasSession
 					}
 				});
 			} else if (existingUser) {
@@ -164,7 +179,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			} else {
 				// User doesn't exist in public.users - create them
 				// Note: .maybeSingle() returns { data: null, error: null } when no rows found
-				const { error: insertError } = await supabase.from('users').insert({
+				const { error: insertError } = await profileClient.from('users').insert({
 					id: data.user.id,
 					email: data.user.email as string,
 					name:
@@ -187,7 +202,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						operationType: 'auth_register_profile_insert',
 						metadata: {
 							emailDomain,
-							userId: data.user.id
+							userId: data.user.id,
+							hasSession,
+							usedAdminClient: !hasSession
 						}
 					});
 					// Don't fail registration, but log the error

@@ -21,6 +21,7 @@ export type EventType =
   | "brief.failed"
   | "brain_dump.processed"
   | "task.due_soon"
+  | "project.invite.accepted"
   | "project.phase_scheduled"
   | "calendar.sync_failed";
 
