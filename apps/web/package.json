@@ -122,6 +122,7 @@
 		"@antv/g6": "^5.0.50",
 		"@buildos/shared-types": "workspace:*",
 		"@buildos/shared-utils": "workspace:*",
+		"@buildos/smart-llm": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
 		"@buildos/twilio-service": "workspace:*",
 		"@dagrejs/dagre": "^1.1.8",

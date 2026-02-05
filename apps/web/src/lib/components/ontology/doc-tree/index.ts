@@ -9,6 +9,7 @@
 export { default as DocTreeView } from './DocTreeView.svelte';
 export { default as DocTreeNode } from './DocTreeNode.svelte';
 export { default as DocTreeMobile } from './DocTreeMobile.svelte';
+export { default as DocTreeCompactList } from './DocTreeCompactList.svelte';
 export { default as DocTreeSkeleton } from './DocTreeSkeleton.svelte';
 export { default as DocTreeContextMenu } from './DocTreeContextMenu.svelte';
 export { default as DocTreeUpdateNotification } from './DocTreeUpdateNotification.svelte';

@@ -16,6 +16,16 @@ import type {
 import { SmartLLMService } from './smart-llm-service';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
 
+export const CHAT_COMPRESSION_DEFAULTS = {
+	KEEP_LAST_MESSAGES: 10,
+	SUMMARY_TARGET_TOKENS_MIN: 1000,
+	SUMMARY_TARGET_TOKENS_MAX: 2000,
+	SUMMARY_TARGET_RATIO: 0.45,
+	SUMMARY_MAX_RATIO: 0.6,
+	SUMMARY_MAX_TOKENS_MIN: 1200,
+	SUMMARY_MAX_TOKENS_MAX: 2400
+} as const;
+
 export class ChatCompressionService {
 	private llmService: SmartLLMService;
 
@@ -103,7 +113,8 @@ Title:`;
 		sessionId: string,
 		messages: ChatMessage[],
 		targetTokens: number = 2000,
-		userId?: string
+		userId?: string,
+		options?: { force?: boolean }
 	): Promise<{
 		compressedMessages: LLMMessage[];
 		compressionId: string;
@@ -119,8 +130,9 @@ Title:`;
 				{ estimatedTokens: currentTokens }
 			);
 
-			// Skip compression if already under target
-			if (currentTokens <= targetTokens) {
+			const forceCompression = options?.force === true;
+			// Skip compression if already under target (unless forced for rolling summary updates)
+			if (!forceCompression && currentTokens <= targetTokens) {
 				return {
 					compressedMessages: messages.map((m) => ({
 						role: m.role as any,
@@ -134,7 +146,7 @@ Title:`;
 			}
 
 			// Identify messages to compress (older messages, excluding recent context)
-			const recentCount = 4; // Keep last 4 messages uncompressed
+			const recentCount = CHAT_COMPRESSION_DEFAULTS.KEEP_LAST_MESSAGES;
 			const toCompress = messages.slice(0, -recentCount);
 			const toKeep = messages.slice(-recentCount);
 
@@ -151,10 +163,25 @@ Title:`;
 				};
 			}
 
+			const summaryTargetTokens = Math.min(
+				Math.max(
+					Math.floor(targetTokens * CHAT_COMPRESSION_DEFAULTS.SUMMARY_TARGET_RATIO),
+					CHAT_COMPRESSION_DEFAULTS.SUMMARY_TARGET_TOKENS_MIN
+				),
+				CHAT_COMPRESSION_DEFAULTS.SUMMARY_TARGET_TOKENS_MAX
+			);
+			const summaryMaxTokens = Math.min(
+				Math.max(
+					Math.floor(targetTokens * CHAT_COMPRESSION_DEFAULTS.SUMMARY_MAX_RATIO),
+					CHAT_COMPRESSION_DEFAULTS.SUMMARY_MAX_TOKENS_MIN
+				),
+				CHAT_COMPRESSION_DEFAULTS.SUMMARY_MAX_TOKENS_MAX
+			);
+
 			// Create compression prompt
 			const systemPrompt =
 				'You are an expert at compressing conversations while preserving essential information.';
-			const userPrompt = `Compress the following conversation into a concise summary that preserves key information, decisions, and context. Target approximately ${Math.floor(targetTokens * 0.3)} tokens.
+			const userPrompt = `Compress the following conversation into a concise summary that preserves key information, decisions, and context. Target approximately ${summaryTargetTokens} tokens.
 
 Conversation to compress:
 ${toCompress.map((m) => `${m.role}: ${m.content}`).join('\n\n')}
@@ -188,7 +215,7 @@ Compressed summary:`;
 				userId: userId || 'system',
 				profile: 'balanced',
 				temperature: 0.2,
-				maxTokens: Math.floor(targetTokens * 0.4),
+				maxTokens: summaryMaxTokens,
 				operationType: 'chat_conversation_compression',
 				chatSessionId: sessionId
 			});

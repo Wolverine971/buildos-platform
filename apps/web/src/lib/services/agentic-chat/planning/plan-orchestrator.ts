@@ -153,6 +153,7 @@ export class PlanOrchestrator implements BaseService {
 		'create_onto_plan',
 		'update_onto_project'
 	]);
+	private static readonly DEFAULT_STEP_CONCURRENCY = 3;
 	private toolExecutionService: ToolExecutionService;
 
 	constructor(
@@ -638,51 +639,68 @@ export class PlanOrchestrator implements BaseService {
 					runnableSteps.push(step);
 				}
 
-				const stepOutcomes = await Promise.all(
-					runnableSteps.map(async (step) => {
-						const emittedEvents: StreamEvent[] = [];
-						let outcomeError: unknown;
-						let fatalFailure = false;
+				const runStep = async (step: PlanStep) => {
+					const emittedEvents: StreamEvent[] = [];
+					let outcomeError: unknown;
+					let fatalFailure = false;
 
-						try {
-							const { result, events: internalEvents } = await this.executeStep(
-								step,
-								plan,
-								plannerContext,
-								context,
-								stepResults
-							);
-
-							this.accumulateTokensFromEvents(plan, internalEvents);
-							emittedEvents.push(...internalEvents);
-
-							step.status = 'completed';
-							step.result = result;
-							stepResults.set(step.stepNumber, result);
-							completedSteps.add(step.stepNumber);
-						} catch (error) {
-							step.status = 'failed';
-							step.error = error instanceof Error ? error.message : String(error);
-							failedSteps.add(step.stepNumber);
-							outcomeError = error;
-							fatalFailure = this.shouldStopOnFailure(step, plan);
-						}
-
-						const completeEvent: StreamEvent = {
-							type: 'step_complete',
-							step
-						};
-						emittedEvents.push(completeEvent);
-
-						await this.persistenceService.updatePlanStep(
-							plan.id,
-							step.stepNumber,
-							step
+					try {
+						const { result, events: internalEvents } = await this.executeStep(
+							step,
+							plan,
+							plannerContext,
+							context,
+							stepResults
 						);
 
-						return { events: emittedEvents, error: outcomeError, fatalFailure, step };
-					})
+						this.accumulateTokensFromEvents(plan, internalEvents);
+						emittedEvents.push(...internalEvents);
+
+						step.status = 'completed';
+						step.result = result;
+						stepResults.set(step.stepNumber, result);
+						completedSteps.add(step.stepNumber);
+					} catch (error) {
+						step.status = 'failed';
+						step.error = error instanceof Error ? error.message : String(error);
+						failedSteps.add(step.stepNumber);
+						outcomeError = error;
+						fatalFailure = this.shouldStopOnFailure(step, plan);
+					}
+
+					const completeEvent: StreamEvent = {
+						type: 'step_complete',
+						step
+					};
+					emittedEvents.push(completeEvent);
+
+					await this.persistenceService.updatePlanStep(plan.id, step.stepNumber, step);
+
+					return { events: emittedEvents, error: outcomeError, fatalFailure, step };
+				};
+
+				const stepOutcomes: Array<{
+					events: StreamEvent[];
+					error: unknown;
+					fatalFailure: boolean;
+					step: PlanStep;
+				}> = new Array(runnableSteps.length);
+				let nextIndex = 0;
+				const workerCount = Math.min(
+					PlanOrchestrator.DEFAULT_STEP_CONCURRENCY,
+					runnableSteps.length
 				);
+
+				const worker = async () => {
+					while (true) {
+						const index = nextIndex++;
+						if (index >= runnableSteps.length) return;
+						const step = runnableSteps[index];
+						stepOutcomes[index] = await runStep(step);
+					}
+				};
+
+				await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
 				let fatalError: { error?: unknown; step?: PlanStep } | undefined;
 				for (const outcome of stepOutcomes) {

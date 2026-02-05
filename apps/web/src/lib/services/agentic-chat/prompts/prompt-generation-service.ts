@@ -24,6 +24,8 @@ import {
 	formatLinkedEntitiesForSystemPrompt,
 	hasLinkedEntities
 } from '$lib/services/linked-entity-context-formatter';
+import { createLogger } from '$lib/utils/logger';
+import { dev } from '$app/environment';
 
 // Import prompt configurations
 import {
@@ -37,6 +39,7 @@ import {
 } from './config';
 
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
+const logger = createLogger('PromptGenerationService');
 
 export interface PromptGenerationContext {
 	contextType: ChatContextType;
@@ -91,6 +94,17 @@ export class PromptGenerationService {
 		// Add linked entities context when there's a focus entity
 		if (linkedEntitiesContext && hasLinkedEntities(linkedEntitiesContext)) {
 			prompt += '\n\n' + formatLinkedEntitiesForSystemPrompt(linkedEntitiesContext);
+		}
+
+		if (dev) {
+			logger.debug('Planner system prompt built', {
+				contextType,
+				length: prompt.length,
+				includesDocHierarchy: prompt.includes('Document Hierarchy'),
+				includesCreateDocTool: prompt.includes('create_onto_document'),
+				includesDocTreeGuidance: prompt.includes('document tree'),
+				includesDocTypeKeys: prompt.includes('Documents') && prompt.includes('type_key')
+			});
 		}
 
 		return prompt;

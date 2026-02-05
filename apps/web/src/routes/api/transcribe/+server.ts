@@ -220,7 +220,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 					});
 
 					const openrouterResult = await llmService.transcribeAudio({
-						audioFile: transcriptionFile,
+						audio: { kind: 'file', file: transcriptionFile },
 						userId,
 						vocabularyTerms: customVocabulary || undefined,
 						models: openrouterModels,

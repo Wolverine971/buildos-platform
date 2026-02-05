@@ -11,7 +11,7 @@
 
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
 import { format, parseISO } from 'date-fns';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
 
 /**
  * User SMS preferences interface (subset needed for checks)
@@ -132,7 +132,7 @@ export function checkQuietHours(
 export async function checkAndUpdateRateLimit(
 	userId: string,
 	smsPrefs: SMSPreferences,
-	supabase: SupabaseClient
+	supabase: TypedSupabaseClient
 ): Promise<RateLimitResult> {
 	try {
 		const limit = smsPrefs.daily_sms_limit || 10;
@@ -223,7 +223,7 @@ export async function checkAndUpdateRateLimit(
  */
 export async function performSMSSafetyChecks(
 	userId: string,
-	supabase: SupabaseClient,
+	supabase: TypedSupabaseClient,
 	options?: {
 		sendTime?: Date; // When the SMS would be sent (defaults to now)
 	}

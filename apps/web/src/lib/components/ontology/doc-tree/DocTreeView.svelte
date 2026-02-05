@@ -44,6 +44,10 @@
 		onCreateDocument: (parentId?: string | null) => void;
 		onMoveDocument?: (id: string) => void;
 		onDeleteDocument?: (id: string, hasChildren: boolean) => void;
+		onDataLoaded?: (data: {
+			structure: DocStructure;
+			documents: Record<string, OntoDocument>;
+		}) => void;
 		selectedDocumentId?: string | null;
 		maxInitialDepth?: number;
 		pollInterval?: number;
@@ -56,6 +60,7 @@
 		onCreateDocument,
 		onMoveDocument,
 		onDeleteDocument,
+		onDataLoaded,
 		selectedDocumentId = null,
 		maxInitialDepth = 3,
 		pollInterval = 30000,
@@ -319,6 +324,9 @@
 			documents = data.data.documents;
 			unlinked = data.data.unlinked;
 			currentVersion = newVersion;
+
+			// Notify parent of loaded data
+			onDataLoaded?.({ structure: data.data.structure, documents: data.data.documents });
 
 			// On first load, set up initial expansion
 			if (!isPolling && expandedIds.size === 0) {

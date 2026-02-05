@@ -17,6 +17,43 @@
 		.replace('-', ' ')
 		.replace(/\b\w/g, (l) => l.toUpperCase());
 
+	// Build JSON-LD structured data as a proper object
+	const jsonLd = {
+		'@context': 'https://schema.org',
+		'@type': 'BlogPosting',
+		headline: data.post.title,
+		description: data.post.description,
+		image: `https://build-os.com/og-blog-${data.post.category}-${data.post.slug}.jpg`,
+		url: `https://build-os.com/blogs/${data.post.category}/${data.post.slug}`,
+		datePublished: data.post.date,
+		dateModified: data.post.lastmod || data.post.date,
+		author: {
+			'@type': 'Person',
+			name: data.post.author || 'BuildOS Team'
+		},
+		publisher: {
+			'@type': 'Organization',
+			name: 'BuildOS',
+			logo: {
+				'@type': 'ImageObject',
+				url: 'https://build-os.com/brain-bolt.png'
+			}
+		},
+		mainEntityOfPage: {
+			'@type': 'WebPage',
+			'@id': `https://build-os.com/blogs/${data.post.category}/${data.post.slug}`
+		},
+		keywords: data.post.tags.join(', '),
+		wordCount: data.post.readingTime * 200,
+		timeRequired: `PT${data.post.readingTime}M`,
+		articleSection: categoryDisplayName,
+		isPartOf: {
+			'@type': 'Blog',
+			name: 'BuildOS Blog',
+			url: 'https://build-os.com/blogs'
+		}
+	};
+
 	onMount(async () => {
 		try {
 			// Dynamically import the content component
@@ -87,43 +124,7 @@
 	<meta name="robots" content="index, follow" />
 
 	<!-- JSON-LD Structured Data -->
-	<script type="application/ld+json">
-		{
-			"@context": "https://schema.org",
-			"@type": "BlogPosting",
-			"headline": "{data.post.title}",
-			"description": "{data.post.description}",
-			"image": "https://build-os.com/og-blog-{data.post.category}-{data.post.slug}.jpg",
-			"url": "https://build-os.com/blogs/{data.post.category}/{data.post.slug}",
-			"datePublished": "{data.post.date}",
-			"dateModified": "{data.post.lastmod || data.post.date}",
-			"author": {
-				"@type": "Person",
-				"name": "{data.post.author || 'BuildOS Team'}"
-			},
-			"publisher": {
-				"@type": "Organization",
-				"name": "BuildOS",
-				"logo": {
-					"@type": "ImageObject",
-					"url": "https://build-os.com/brain-bolt.png"
-				}
-			},
-			"mainEntityOfPage": {
-				"@type": "WebPage",
-				"@id": "https://build-os.com/blogs/{data.post.category}/{data.post.slug}"
-			},
-			"keywords": "{data.post.tags.join(', ')}",
-			"wordCount": "{data.post.readingTime * 200}",
-			"timeRequired": "PT{data.post.readingTime}M",
-			"articleSection": "{categoryDisplayName}",
-			"isPartOf": {
-				"@type": "Blog",
-				"name": "BuildOS Blog",
-				"url": "https://build-os.com/blogs"
-			}
-		}
-	</script>
+	{@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`}
 </svelte:head>
 
 <div class="min-h-screen bg-background">

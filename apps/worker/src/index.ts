@@ -250,6 +250,12 @@ app.post('/queue/brief', async (req, res) => {
 			scheduleTime = new Date(); // Default to now
 		}
 
+		if (Number.isNaN(scheduleTime.getTime())) {
+			return res.status(400).json({
+				error: 'scheduledFor must be a valid date string or timestamp'
+			});
+		}
+
 		// Calculate brief date
 		const zonedDate = utcToZonedTime(scheduleTime, timezone);
 		const briefDate = requestedBriefDate || format(zonedDate, 'yyyy-MM-dd');

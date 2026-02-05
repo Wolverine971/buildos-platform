@@ -173,7 +173,12 @@ export class ToolExecutionService implements BaseService {
 			logger.debug('Executing tool', {
 				toolName,
 				callId: toolCall.id,
-				hasArgs: rawArguments !== undefined && rawArguments !== null
+				hasArgs: rawArguments !== undefined && rawArguments !== null,
+				rawArgsType: Array.isArray(rawArguments)
+					? 'array'
+					: rawArguments === null
+						? 'null'
+						: typeof rawArguments
 			});
 		}
 
@@ -200,9 +205,85 @@ export class ToolExecutionService implements BaseService {
 			});
 		}
 
+		if (toolName === 'create_onto_document') {
+			if (typeof rawArguments === 'string') {
+				const trimmed = rawArguments.trim();
+				if (!trimmed) {
+					return finalizeResult({
+						success: false,
+						error: 'Tool arguments were empty string',
+						errorType: 'validation_error',
+						toolName,
+						toolCallId: toolCall.id
+					});
+				}
+				if (trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('"')) {
+					// ok to proceed; normalizeArguments will parse or reparse
+				} else {
+					return finalizeResult({
+						success: false,
+						error: 'Tool arguments were an unexpected string format',
+						errorType: 'validation_error',
+						toolName,
+						toolCallId: toolCall.id
+					});
+				}
+			} else if (rawArguments !== undefined && rawArguments !== null) {
+				if (typeof rawArguments !== 'object' || Array.isArray(rawArguments)) {
+					return finalizeResult({
+						success: false,
+						error: 'Tool arguments must be an object or JSON string',
+						errorType: 'validation_error',
+						toolName,
+						toolCallId: toolCall.id
+					});
+				}
+			}
+		}
+
+		if (toolName === 'create_onto_document') {
+			if (!this.hasDocumentPayload(args)) {
+				return finalizeResult({
+					success: false,
+					error: 'create_onto_document requires at least a title or content payload (missing)',
+					errorType: 'validation_error',
+					toolName,
+					toolCallId: toolCall.id
+				});
+			}
+		}
+
+		if (dev && toolName === 'create_onto_document') {
+			logger.debug('create_onto_document raw arguments', {
+				callId: toolCall.id,
+				rawArguments
+			});
+		}
+
 		args = this.applySchemaDefaults(toolName, args, availableTools);
 		args = this.applyContextDefaults(toolName, args, context, availableTools);
 		args = this.normalizeIdFields(args);
+
+		if (dev && toolName === 'create_onto_document') {
+			const normalizedContent =
+				typeof args.content === 'string'
+					? args.content
+					: typeof args.body_markdown === 'string'
+						? args.body_markdown
+						: undefined;
+			const contentLength =
+				typeof normalizedContent === 'string' ? normalizedContent.length : 0;
+			logger.debug('create_onto_document normalized args', {
+				callId: toolCall.id,
+				title: typeof args.title === 'string' ? args.title : undefined,
+				type_key: typeof args.type_key === 'string' ? args.type_key : undefined,
+				hasContent: typeof normalizedContent === 'string' && normalizedContent.length > 0,
+				contentLength,
+				hasNestedDocument:
+					typeof (args as Record<string, any>).document === 'object' &&
+					(args as Record<string, any>).document !== null
+			});
+		}
 
 		if (options.abortSignal?.aborted) {
 			return finalizeResult({
@@ -1050,9 +1131,19 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		if (typeof args === 'string') {
+			const trimmed = args.trim();
+			if (!trimmed) {
+				return {};
+			}
 			try {
-				return JSON.parse(args);
+				const parsed = JSON.parse(trimmed);
+				return this.normalizeParsedArguments(parsed, toolName, trimmed);
 			} catch (error) {
+				const fallback = this.buildStringArgumentFallback(toolName, trimmed);
+				if (fallback) {
+					this.logStringArgumentFallback(toolName, 'non_json_string', trimmed);
+					return fallback;
+				}
 				throw new ToolExecutionError(
 					`Invalid JSON for tool arguments: ${error instanceof Error ? error.message : 'unknown error'}`,
 					toolName ?? 'unknown',
@@ -1062,16 +1153,164 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		if (typeof args === 'object') {
-			return args as Record<string, any>;
+			return this.normalizeParsedArguments(args, toolName);
 		}
 
 		return {};
 	}
 
+	private hasDocumentPayload(args: Record<string, any>): boolean {
+		if (!args || typeof args !== 'object') return false;
+		const directKeys = [
+			'title',
+			'name',
+			'document_title',
+			'document_name',
+			'content',
+			'body_markdown',
+			'text',
+			'markdown',
+			'body'
+		];
+		if (directKeys.some((key) => key in args)) return true;
+
+		const nested =
+			args.document && typeof args.document === 'object'
+				? (args.document as Record<string, any>)
+				: undefined;
+		if (!nested) return false;
+
+		return directKeys.some((key) => key in nested);
+	}
+
+	private normalizeParsedArguments(
+		parsed: unknown,
+		toolName?: string,
+		rawString?: string,
+		depth = 0
+	): Record<string, any> {
+		if (parsed === undefined || parsed === null) {
+			return {};
+		}
+
+		if (depth > 3) {
+			if (dev) {
+				logger.debug('Tool arguments exceeded parse depth; using empty object', {
+					toolName
+				});
+			}
+			return {};
+		}
+
+		if (typeof parsed === 'string') {
+			const inner = parsed.trim();
+			if (inner && this.looksLikeJsonPayload(inner)) {
+				const reparsed = this.tryParseJsonPayload(inner, toolName);
+				if (reparsed !== null && reparsed !== undefined) {
+					if (dev) {
+						logger.debug('Tool arguments were nested JSON string; reparsed', {
+							toolName
+						});
+					}
+					return this.normalizeParsedArguments(reparsed, toolName, rawString, depth + 1);
+				}
+			}
+
+			const fallback = this.buildStringArgumentFallback(toolName, inner);
+			if (fallback) {
+				this.logStringArgumentFallback(toolName, 'json_string', inner);
+				return fallback;
+			}
+
+			if (dev) {
+				logger.debug('Tool arguments parsed to string; using empty object', {
+					toolName,
+					rawPreview: rawString?.slice(0, 200)
+				});
+			}
+			return {};
+		}
+
+		if (typeof parsed === 'object') {
+			return parsed as Record<string, any>;
+		}
+
+		return {};
+	}
+
+	private looksLikeJsonPayload(value: string): boolean {
+		const trimmed = value.trim();
+		if (!trimmed) return false;
+		if (trimmed.startsWith('{') || trimmed.startsWith('[')) return true;
+		return trimmed.startsWith('"') && trimmed.endsWith('"');
+	}
+
+	private tryParseJsonPayload(value: string, toolName?: string): unknown | null {
+		try {
+			return JSON.parse(value);
+		} catch {
+			const sanitized = value
+				.replace(/\r/g, '\\r')
+				.replace(/\n/g, '\\n')
+				.replace(/\t/g, '\\t');
+			if (sanitized === value) {
+				return null;
+			}
+			try {
+				const reparsed = JSON.parse(sanitized);
+				if (dev) {
+					logger.debug('Tool arguments reparsed after sanitizing control characters', {
+						toolName
+					});
+				}
+				return reparsed;
+			} catch {
+				return null;
+			}
+		}
+	}
+
+	private buildStringArgumentFallback(
+		toolName: string | undefined,
+		value: string
+	): Record<string, any> | null {
+		const trimmed = value.trim();
+		if (!trimmed) {
+			return null;
+		}
+
+		switch (toolName) {
+			case 'web_search':
+				return { query: trimmed };
+			case 'web_visit':
+				return { url: trimmed };
+			default:
+				return null;
+		}
+	}
+
+	private logStringArgumentFallback(
+		toolName: string | undefined,
+		reason: 'non_json_string' | 'json_string',
+		value: string
+	): void {
+		logger.warn('Tool arguments fallback applied', {
+			toolName: toolName ?? 'unknown',
+			reason,
+			rawLength: value.length,
+			rawPreview: value.slice(0, 160)
+		});
+	}
+
 	private resolveToolCall(toolCall: ChatToolCall): { name: string; rawArguments: unknown } {
 		const rawName = toolCall.function?.name ?? (toolCall as any)?.name ?? '';
 		const name = typeof rawName === 'string' ? rawName.trim() : '';
-		const rawArguments = toolCall.function?.arguments ?? (toolCall as any)?.arguments;
+		const primaryArgs = toolCall.function?.arguments;
+		const hasPrimaryArgs =
+			primaryArgs !== undefined &&
+			primaryArgs !== null &&
+			!(typeof primaryArgs === 'string' && primaryArgs.trim().length === 0);
+		const rawArguments = hasPrimaryArgs ? primaryArgs : (toolCall as any)?.arguments;
 		return { name, rawArguments };
 	}
 
@@ -1163,6 +1402,100 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		if (toolName === 'create_onto_document') {
+			const nestedDocument =
+				resolved.document && typeof resolved.document === 'object'
+					? (resolved.document as Record<string, any>)
+					: undefined;
+
+			const mergeIfMissing = (key: string) => {
+				if (resolved[key] !== undefined || !nestedDocument) return;
+				if (nestedDocument[key] !== undefined) {
+					resolved[key] = nestedDocument[key];
+				}
+			};
+
+			mergeIfMissing('title');
+			mergeIfMissing('type_key');
+			mergeIfMissing('state_key');
+			mergeIfMissing('content');
+			mergeIfMissing('body_markdown');
+			mergeIfMissing('props');
+			mergeIfMissing('parent_id');
+			mergeIfMissing('position');
+
+			if (
+				(resolved.parent_id === undefined || resolved.parent_id === null) &&
+				typeof (resolved as Record<string, any>).parent_document_id === 'string'
+			) {
+				resolved.parent_id = (resolved as Record<string, any>).parent_document_id;
+			}
+			if (
+				(resolved.parent_id === undefined || resolved.parent_id === null) &&
+				typeof (resolved as Record<string, any>).parentDocumentId === 'string'
+			) {
+				resolved.parent_id = (resolved as Record<string, any>).parentDocumentId;
+			}
+			if (
+				(resolved.parent_id === undefined || resolved.parent_id === null) &&
+				typeof nestedDocument?.parent_document_id === 'string'
+			) {
+				resolved.parent_id = nestedDocument.parent_document_id;
+			}
+			if (
+				(resolved.parent_id === undefined || resolved.parent_id === null) &&
+				typeof nestedDocument?.parentDocumentId === 'string'
+			) {
+				resolved.parent_id = nestedDocument.parentDocumentId;
+			}
+
+			const contentCandidates: Array<string | undefined> = [
+				typeof resolved.content === 'string' ? resolved.content : undefined,
+				typeof resolved.body_markdown === 'string' ? resolved.body_markdown : undefined,
+				typeof (resolved as Record<string, any>).body === 'string'
+					? (resolved as Record<string, any>).body
+					: undefined,
+				typeof (resolved as Record<string, any>).text === 'string'
+					? (resolved as Record<string, any>).text
+					: undefined,
+				typeof (resolved as Record<string, any>).markdown === 'string'
+					? (resolved as Record<string, any>).markdown
+					: undefined,
+				typeof nestedDocument?.content === 'string' ? nestedDocument.content : undefined,
+				typeof nestedDocument?.body_markdown === 'string'
+					? nestedDocument.body_markdown
+					: undefined,
+				typeof nestedDocument?.body === 'string' ? nestedDocument.body : undefined,
+				typeof nestedDocument?.text === 'string' ? nestedDocument.text : undefined,
+				typeof nestedDocument?.markdown === 'string' ? nestedDocument.markdown : undefined
+			];
+			const resolvedContent = contentCandidates.find(
+				(value) => typeof value === 'string' && value.trim().length > 0
+			);
+			if (
+				(typeof resolved.content !== 'string' || resolved.content.trim().length === 0) &&
+				resolvedContent
+			) {
+				resolved.content = resolvedContent;
+			}
+
+			const fallbackTitleCandidates = [
+				resolved.title,
+				(resolved as Record<string, unknown>).name,
+				(resolved as Record<string, unknown>).document_title,
+				(resolved as Record<string, unknown>).document_name,
+				nestedDocument?.title,
+				nestedDocument?.name,
+				nestedDocument?.document_title,
+				nestedDocument?.document_name
+			].filter((value): value is string => typeof value === 'string');
+			const fallbackTitle = fallbackTitleCandidates.find((value) => value.trim().length > 0);
+			if (
+				(typeof resolved.title !== 'string' || resolved.title.trim().length === 0) &&
+				fallbackTitle
+			) {
+				resolved.title = fallbackTitle.trim();
+			}
+
 			const trimmedTypeKey =
 				typeof resolved.type_key === 'string' ? resolved.type_key.trim() : '';
 			if (!trimmedTypeKey) {

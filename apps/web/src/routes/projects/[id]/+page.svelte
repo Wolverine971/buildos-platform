@@ -1065,11 +1065,22 @@
 	}
 
 	async function handleDocumentDeleted() {
-		await refreshData();
-		docTreeViewRef?.refresh();
+		// Optimistic delete - remove from local state immediately
+		const deletedDocId = activeDocumentId;
+		if (deletedDocId) {
+			documents = documents.filter((d) => d.id !== deletedDocId);
+			// Remove from docTreeDocuments cache
+			if (docTreeDocuments[deletedDocId]) {
+				const { [deletedDocId]: _, ...rest } = docTreeDocuments;
+				docTreeDocuments = rest;
+			}
+		}
+		// Close modal immediately for snappy UX
 		showDocumentModal = false;
 		activeDocumentId = null;
 		parentDocumentId = null;
+		// Refresh doc tree in background (async, non-blocking)
+		docTreeViewRef?.refresh();
 	}
 
 	// Document Tree Handlers
@@ -1152,8 +1163,25 @@
 	async function handleDeleteDocumentConfirm(mode: 'cascade' | 'promote') {
 		if (!deleteDocumentId || !project?.id) return;
 
+		const docIdToDelete = deleteDocumentId;
+
+		// Optimistic delete - close modal and update UI immediately
+		showDeleteDocConfirmModal = false;
+		deleteDocumentId = null;
+
+		// Remove from local state immediately
+		documents = documents.filter((d) => d.id !== docIdToDelete);
+		if (docTreeDocuments[docIdToDelete]) {
+			const { [docIdToDelete]: _, ...rest } = docTreeDocuments;
+			docTreeDocuments = rest;
+		}
+
+		// Refresh doc tree to update visual structure
+		docTreeViewRef?.refresh();
+
+		// Make API call in background
 		try {
-			const res = await fetch(`/api/onto/documents/${deleteDocumentId}`, {
+			const res = await fetch(`/api/onto/documents/${docIdToDelete}`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ mode })
@@ -1165,16 +1193,14 @@
 			}
 
 			toastService.success('Document deleted');
-			await refreshData();
-			docTreeViewRef?.refresh();
 		} catch (error) {
 			console.error('[Project] Failed to delete document:', error);
 			toastService.error(
 				error instanceof Error ? error.message : 'Failed to delete document'
 			);
-		} finally {
-			showDeleteDocConfirmModal = false;
-			deleteDocumentId = null;
+			// On error, refresh to restore correct state
+			void refreshData();
+			docTreeViewRef?.refresh();
 		}
 	}
 
@@ -1200,7 +1226,12 @@
 	}
 
 	function handleTaskDeleted() {
-		void refreshData();
+		// Optimistic delete - remove from local state immediately
+		// The API delete already succeeded in the modal component
+		const deletedTaskId = editingTaskId;
+		if (deletedTaskId) {
+			tasks = tasks.filter((t) => t.id !== deletedTaskId);
+		}
 		editingTaskId = null;
 	}
 
@@ -1218,7 +1249,11 @@
 	}
 
 	function handlePlanDeleted() {
-		void refreshData();
+		// Optimistic delete - remove from local state immediately
+		const deletedPlanId = editingPlanId;
+		if (deletedPlanId) {
+			plans = plans.filter((p) => p.id !== deletedPlanId);
+		}
 		editingPlanId = null;
 	}
 
@@ -1236,7 +1271,13 @@
 	}
 
 	function handleGoalDeleted() {
-		void refreshData();
+		// Optimistic delete - remove from local state immediately
+		const deletedGoalId = editingGoalId;
+		if (deletedGoalId) {
+			goals = goals.filter((g) => g.id !== deletedGoalId);
+			// Also remove any milestones linked to this goal
+			milestones = milestones.filter((m) => m.goal_id !== deletedGoalId);
+		}
 		editingGoalId = null;
 	}
 
@@ -1254,7 +1295,11 @@
 	}
 
 	function handleRiskDeleted() {
-		void refreshData();
+		// Optimistic delete - remove from local state immediately
+		const deletedRiskId = editingRiskId;
+		if (deletedRiskId) {
+			risks = risks.filter((r) => r.id !== deletedRiskId);
+		}
 		editingRiskId = null;
 	}
 
@@ -1273,7 +1318,11 @@
 	}
 
 	function handleMilestoneDeleted() {
-		void refreshData();
+		// Optimistic delete - remove from local state immediately
+		const deletedMilestoneId = editingMilestoneId;
+		if (deletedMilestoneId) {
+			milestones = milestones.filter((m) => m.id !== deletedMilestoneId);
+		}
 		editingMilestoneId = null;
 	}
 
@@ -1355,7 +1404,11 @@
 	}
 
 	function handleEventDeleted() {
-		void loadProjectEvents(true);
+		// Optimistic delete - remove from local state immediately
+		const deletedEventId = editingEventId;
+		if (deletedEventId) {
+			events = events.filter((e) => e.id !== deletedEventId);
+		}
 		editingEventId = null;
 	}
 
@@ -1706,6 +1759,9 @@
 					{documents}
 					events={filteredEvents}
 					{milestonesByGoalId}
+					docStructure={docTreeStructure}
+					{docTreeDocuments}
+					projectId={project.id}
 					{canEdit}
 					onAddGoal={() => canEdit && (showGoalCreateModal = true)}
 					onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
@@ -1841,6 +1897,7 @@
 									onCreateDocument={handleCreateDocument}
 									onMoveDocument={canEdit ? handleMoveDocument : undefined}
 									onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
+									onDataLoaded={handleDocTreeDataLoaded}
 									selectedDocumentId={activeDocumentId}
 								/>
 							</div>

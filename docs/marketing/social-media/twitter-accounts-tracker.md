@@ -4,7 +4,7 @@
 
 > Living document tracking all engagement accounts with last visited dates.
 > Updated automatically during each Twitter warmup scan.
-> Last Updated: 2026-02-03
+> Last Updated: 2026-02-05
 
 **Related Docs:**
 
@@ -30,15 +30,15 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                  | Name            | Followers | Last Visited | Notes                                   |
 | --------------------------------------- | --------------- | --------- | ------------ | --------------------------------------- |
-| [@levelsio](https://x.com/levelsio)     | Pieter Levels   | 809.6K    | 2026-02-01   | Indie hacker GOAT, building in public   |
+| [@levelsio](https://x.com/levelsio)     | Pieter Levels   | 809.6K    | 2026-02-05   | Indie hacker GOAT, building in public   |
 | [@shaanvp](https://x.com/ShaanVP)       | Shaan Puri      | 457.8K    | 2026-01-24   | My First Million, startup wisdom        |
 | [@thesamparr](https://x.com/thesamparr) | Sam Parr        | 319K      | ---          | MFM co-host, The Hustle                 |
 | [@lennysan](https://x.com/lennysan)     | Lenny Rachitsky | 249K      | ---          | Product leadership, scaling             |
-| [@danshipper](https://x.com/danshipper) | Dan Shipper     | 84.4K     | 2026-01-24   | AI productivity, Every - LAUNCHED PROOF |
+| [@danshipper](https://x.com/danshipper) | Dan Shipper     | 84.4K     | 2026-02-05   | AI productivity, Every - LAUNCHED PROOF |
 | [@swyx](https://x.com/swyx)             | swyx            | 112K      | ---          | AI Engineer, Latent Space               |
-| [@simonw](https://x.com/simonw)         | Simon Willison  | 140.9K    | 2026-01-24   | Datasette, LLM writing                  |
+| [@simonw](https://x.com/simonw)         | Simon Willison  | 140.9K    | 2026-02-05   | Datasette, LLM writing                  |
 | [@arvidkahl](https://x.com/arvidkahl)   | Arvid Kahl      | 96K       | ---          | Zero to Sold, bootstrapping             |
-| [@dexhorthy](https://x.com/dexhorthy)   | Dexter Horthy   | 11.6K     | 2026-02-03   | COINED "Context Engineering" - CRITICAL |
+| [@dexhorthy](https://x.com/dexhorthy)   | Dexter Horthy   | 11.6K     | 2026-02-05   | COINED "Context Engineering" - CRITICAL |
 
 ---
 
@@ -46,16 +46,16 @@ High-priority accounts. Scan in every warmup session.
 
 **Priority:** These accounts are building with or creating Claude Code. Engage strategically.
 
-| Handle                                      | Name               | Followers | Last Visited | Notes                                 |
-| ------------------------------------------- | ------------------ | --------- | ------------ | ------------------------------------- |
-| [@bcherny](https://x.com/bcherny)           | Boris Cherny       | 234.8K    | 2026-02-03   | **Claude Code creator at Anthropic!** |
-| [@trq212](https://x.com/trq212)             | Thorsten Ball      | 46.2K     | 2026-01-13   | **Anthropic Claude Code team!**       |
-| [@mckaywrigley](https://x.com/mckaywrigley) | Mckay Wrigley      | 217K      | ---          | AI product builder, Chatbot UI        |
-| [@skirano](https://x.com/skirano)           | Sawyer Hood        | 31K       | ---          | Cursor/AI dev                         |
-| [@dejavucoder](https://x.com/dejavucoder)   | Yoav Gur           | 22.9K     | 2026-01-13   | Claude Code guide author              |
-| [@mitchellh](https://x.com/mitchellh)       | Mitchell Hashimoto | 10K       | 2026-01-13   | HashiCorp founder, AI quality         |
-| [@lenadroid](https://x.com/lenadroid)       | Lena Hall          | 20.9K     | 2026-01-13   | DevRel @ Akamai, context eng educator |
-| [@DmytroKrasun](https://x.com/DmytroKrasun) | Dmytro Krasun      | 28K       | 2026-01-13   | ScreenshotOne, AI tools               |
+| Handle                                      | Name               | Followers | Last Visited | Notes                                                           |
+| ------------------------------------------- | ------------------ | --------- | ------------ | --------------------------------------------------------------- |
+| [@bcherny](https://x.com/bcherny)           | Boris Cherny       | ~250K+    | 2026-02-05   | **Claude Code creator at Anthropic! Cowork + Plugins launched** |
+| [@trq212](https://x.com/trq212)             | Thorsten Ball      | 46.2K     | 2026-01-13   | **Anthropic Claude Code team!**                                 |
+| [@mckaywrigley](https://x.com/mckaywrigley) | Mckay Wrigley      | 217K      | ---          | AI product builder, Chatbot UI                                  |
+| [@skirano](https://x.com/skirano)           | Sawyer Hood        | 31K       | ---          | Cursor/AI dev                                                   |
+| [@dejavucoder](https://x.com/dejavucoder)   | Yoav Gur           | 22.9K     | 2026-01-13   | Claude Code guide author                                        |
+| [@mitchellh](https://x.com/mitchellh)       | Mitchell Hashimoto | 10K       | 2026-01-13   | HashiCorp founder, AI quality                                   |
+| [@lenadroid](https://x.com/lenadroid)       | Lena Hall          | 20.9K     | 2026-01-13   | DevRel @ Akamai, context eng educator                           |
+| [@DmytroKrasun](https://x.com/DmytroKrasun) | Dmytro Krasun      | 28K       | 2026-01-13   | ScreenshotOne, AI tools                                         |
 
 ---
 
@@ -63,7 +63,7 @@ High-priority accounts. Scan in every warmup session.
 
 | Handle                                        | Name             | Followers | Last Visited | Notes                        |
 | --------------------------------------------- | ---------------- | --------- | ------------ | ---------------------------- |
-| [@dexhorthy](https://x.com/dexhorthy)         | Dexter Horthy    | 11.6K     | 2026-02-03   | Coined term - ENGAGE HEAVILY |
+| [@dexhorthy](https://x.com/dexhorthy)         | Dexter Horthy    | 11.6K     | 2026-02-05   | Coined term - ENGAGE HEAVILY |
 | [@datachaz](https://x.com/datachaz)           | Chaz Acheronti   | 149K      | ---          | 16-page Claude guide author  |
 | [@fchollet](https://x.com/fchollet)           | Francois Chollet | 596K      | ---          | Keras creator, ARC-AGI       |
 | [@drjimfan](https://x.com/drjimfan)           | Jim Fan          | 346K      | ---          | NVIDIA Robotics              |
@@ -222,6 +222,9 @@ These are accounts at your actual level (~262 followers) where engagement is mut
 
 | Date       | Accounts Scanned | Engagements Made | Notes                                                                     |
 | ---------- | ---------------- | ---------------- | ------------------------------------------------------------------------- |
+| 2026-02-05 | ~8 (web search)  | TBD              | Cowork/plugins $285B selloff - biggest story. Boris, Dex, Levels, Shipper |
+| 2026-02-03 | ~8               | TBD              | Context/memory searches, Boris thread 7.8M views, ADHD content            |
+| 2026-02-01 | ~6               | TBD              | Boris viral thread 4.2M views, steipete Claude vs Codex debate            |
 | 2026-01-13 | 84               | TBD              | MAJOR AUDIT: Verified all accounts, reorganized entire database           |
 | 2026-01-12 | ~12              | TBD              | Dex's follower explosion, Dan Shipper launched Proof, Acontext discovered |
 | 2026-01-08 | ~15              | TBD              | First structured warmup                                                   |

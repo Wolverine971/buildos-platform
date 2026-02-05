@@ -88,6 +88,7 @@ export class StreamHandler {
 	private sessionManager: ReturnType<typeof createSessionManager>;
 	private messagePersister: ReturnType<typeof createMessagePersister>;
 	private errorLogger: ErrorLoggerService;
+	private pendingSseFlush?: () => Promise<void>;
 
 	constructor(supabase: SupabaseClient<Database>) {
 		this.supabase = supabase;
@@ -501,6 +502,15 @@ export class StreamHandler {
 				await agentStream.close();
 				return;
 			}
+			if (this.pendingSseFlush) {
+				try {
+					await this.pendingSseFlush();
+				} catch (flushError) {
+					logger.warn('Failed to flush pending SSE messages', { error: flushError });
+				} finally {
+					this.pendingSseFlush = undefined;
+				}
+			}
 			// CRITICAL: Consolidate metadata persistence - single DB write
 			const shouldPersistMetadata =
 				state.hasPendingMetadataUpdate ||
@@ -557,6 +567,37 @@ export class StreamHandler {
 			abortSignal,
 			timing
 		} = params;
+
+		const pendingMessages: AgentSSEMessage[] = [];
+		let flushTimer: ReturnType<typeof setTimeout> | null = null;
+		let isFlushing = false;
+
+		const flushPending = async () => {
+			if (isFlushing) return;
+			if (flushTimer) {
+				clearTimeout(flushTimer);
+				flushTimer = null;
+			}
+			if (pendingMessages.length === 0) return;
+			isFlushing = true;
+			const batch = pendingMessages.splice(0, pendingMessages.length);
+			try {
+				for (const message of batch) {
+					await agentStream.sendMessage(message);
+				}
+			} finally {
+				isFlushing = false;
+			}
+		};
+
+		const scheduleFlush = () => {
+			if (flushTimer) return;
+			flushTimer = setTimeout(() => {
+				void flushPending();
+			}, 16);
+		};
+
+		this.pendingSseFlush = flushPending;
 
 		return async (event: StreamEvent | AgentSSEMessage | null | undefined) => {
 			if (!event) return;
@@ -649,9 +690,20 @@ export class StreamHandler {
 
 			// Map and send to client
 			const sseMessage = mapPlannerEventToSSE(event);
-			if (sseMessage) {
+			if (!sseMessage) return;
+
+			if (sseMessage.type === 'error' || sseMessage.type === 'done') {
+				await flushPending();
 				await agentStream.sendMessage(sseMessage);
+				return;
 			}
+
+			pendingMessages.push(sseMessage);
+			if (pendingMessages.length >= 24) {
+				await flushPending();
+				return;
+			}
+			scheduleFlush();
 		};
 	}
 

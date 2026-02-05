@@ -25,7 +25,6 @@
 	import type {
 		ChatSession,
 		ChatContextType,
-		ChatMessage,
 		ChatRole,
 		AgentSSEMessage,
 		ContextUsageSnapshot,
@@ -290,6 +289,8 @@
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
 	let currentAssistantMessageIndex = $state<number | null>(null);
+	let pendingAssistantText = '';
+	let pendingAssistantTextFlushHandle: number | null = null;
 	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
 	let hasSentMessage = $state(false);
 	const pendingToolResults = new Map<
@@ -2305,22 +2306,6 @@
 				: undefined
 		};
 
-		// Convert existing messages to conversation history format (only user/assistant messages)
-		const conversationHistory: Partial<ChatMessage>[] = messages
-			.filter(
-				(msg) =>
-					(msg.role === 'user' || msg.role === 'assistant') && !msg.metadata?.interrupted
-			)
-			.map((msg) => ({
-				id: msg.id,
-				session_id: currentSession?.id || 'pending',
-				role: msg.role as ChatRole,
-				content: msg.content,
-				created_at: msg.created_at || msg.timestamp.toISOString(),
-				tool_calls: msg.tool_calls,
-				tool_call_id: msg.tool_call_id
-			}));
-
 		messages = [...messages, userMessage];
 		hasSentMessage = true;
 		if (!suppressInputClear) {
@@ -2383,7 +2368,6 @@
 					session_id: currentSession?.id,
 					context_type: selectedContextType,
 					entity_id: selectedEntityId,
-					conversation_history: conversationHistory, // Pass conversation history for compression
 					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
 					projectFocus: resolvedProjectFocus,
 					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
@@ -2412,6 +2396,7 @@
 					currentStreamController = null;
 					agentState = null;
 					finalizeThinkingBlock('error');
+					flushAssistantText();
 					finalizeAssistantMessage();
 				},
 				onComplete: () => {
@@ -2424,6 +2409,7 @@
 						error = 'BuildOS did not return a response. Please try again.';
 					}
 					finalizeThinkingBlock('completed');
+					flushAssistantText();
 					finalizeAssistantMessage();
 				}
 			};
@@ -2444,6 +2430,7 @@
 				currentActivity = '';
 				agentState = null;
 				finalizeThinkingBlock('interrupted', 'Stopped');
+				flushAssistantText();
 				finalizeAssistantMessage();
 				return;
 			}
@@ -2454,6 +2441,7 @@
 			currentActivity = '';
 			agentState = null;
 			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
+			flushAssistantText();
 			finalizeAssistantMessage();
 
 			// Remove user message on error
@@ -2467,6 +2455,9 @@
 	}
 
 	function handleSSEMessage(event: AgentSSEMessage) {
+		if (event.type !== 'text') {
+			flushAssistantText();
+		}
 		switch (event.type) {
 			case 'session':
 				// Session hydration
@@ -2734,7 +2725,7 @@
 			case 'text':
 				// Streaming text (could be from planner or executor)
 				if (event.content) {
-					addOrUpdateAssistantMessage(event.content);
+					bufferAssistantText(event.content);
 				}
 				break;
 
@@ -2965,7 +2956,6 @@
 						currentActivity = 'Turn limit reached';
 						break;
 					}
-					runAgentToAgentTurn();
 				}
 				break;
 
@@ -3087,6 +3077,45 @@
 		return String(value);
 	}
 
+	function scheduleAssistantTextFlush() {
+		if (pendingAssistantTextFlushHandle !== null) return;
+		if (!browser) {
+			flushAssistantText();
+			return;
+		}
+
+		const raf =
+			typeof requestAnimationFrame === 'function'
+				? requestAnimationFrame
+				: (cb: FrameRequestCallback) => setTimeout(cb, 16);
+
+		pendingAssistantTextFlushHandle = raf(() => {
+			pendingAssistantTextFlushHandle = null;
+			flushAssistantText();
+		});
+	}
+
+	function bufferAssistantText(content: unknown) {
+		const normalized = normalizeMessageContent(content);
+		if (!normalized) return;
+		pendingAssistantText += normalized;
+		scheduleAssistantTextFlush();
+	}
+
+	function flushAssistantText() {
+		if (
+			pendingAssistantTextFlushHandle !== null &&
+			typeof cancelAnimationFrame === 'function'
+		) {
+			cancelAnimationFrame(pendingAssistantTextFlushHandle);
+			pendingAssistantTextFlushHandle = null;
+		}
+		if (!pendingAssistantText) return;
+		const payload = pendingAssistantText;
+		pendingAssistantText = '';
+		addOrUpdateAssistantMessage(payload);
+	}
+
 	// ✅ Svelte 5: Properly reassign array for reactivity
 	function addOrUpdateAssistantMessage(content: unknown) {
 		const normalizedContent = normalizeMessageContent(content);
@@ -3183,6 +3212,7 @@
 			reason === 'superseded' ? 'cancelled' : 'interrupted',
 			reason === 'user_cancelled' ? 'Stopped by you' : 'Stopped'
 		);
+		flushAssistantText();
 		finalizeAssistantMessage();
 
 		isStreaming = false;
@@ -3264,6 +3294,15 @@
 		// Clear all pending timeouts to prevent memory leaks
 		pendingTimeouts.forEach((id) => clearTimeout(id));
 		pendingTimeouts.clear();
+
+		if (
+			pendingAssistantTextFlushHandle !== null &&
+			typeof cancelAnimationFrame === 'function'
+		) {
+			cancelAnimationFrame(pendingAssistantTextFlushHandle);
+			pendingAssistantTextFlushHandle = null;
+		}
+		pendingAssistantText = '';
 
 		if (sessionLoadController) {
 			sessionLoadController.abort();

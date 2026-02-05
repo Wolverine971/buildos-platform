@@ -43,7 +43,7 @@
 		logo: 'https://build-os.com/brain-bolt.png',
 		description:
 			'AI-powered productivity platform that transforms unstructured thoughts into actionable plans.',
-		foundingDate: '2024',
+		foundingDate: '2025-11-01',
 		founder: {
 			'@type': 'Person',
 			name: 'DJ Wayne',

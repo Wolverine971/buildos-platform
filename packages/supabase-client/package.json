@@ -19,7 +19,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@supabase/supabase-js": "^2.53.0",
+		"@supabase/supabase-js": "^2.89.0",
 		"@supabase/ssr": "^0.6.1",
 		"@buildos/shared-types": "workspace:*"
 	},

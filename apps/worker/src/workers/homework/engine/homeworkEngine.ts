@@ -1,5 +1,5 @@
 // apps/worker/src/workers/homework/engine/homeworkEngine.ts
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database, Json } from '@buildos/shared-types';
 import { SmartLLMService } from '../../../lib/services/smart-llm-service';
 
@@ -192,7 +192,7 @@ const getPlanFromMetrics = (
 };
 
 async function getAccessibleProjectIds(
-	supabase: SupabaseClient<Database>,
+	supabase: TypedSupabaseClient,
 	actorId: string,
 	run: Database['public']['Tables']['homework_runs']['Row'],
 	workspaceProjectId: string
@@ -212,7 +212,7 @@ async function getAccessibleProjectIds(
 	return allowed;
 }
 
-async function ensureActorId(supabase: SupabaseClient<Database>, userId: string): Promise<string> {
+async function ensureActorId(supabase: TypedSupabaseClient, userId: string): Promise<string> {
 	const { data: actor } = await supabase
 		.from('onto_actors')
 		.select('id')
@@ -248,7 +248,7 @@ async function ensureActorId(supabase: SupabaseClient<Database>, userId: string)
 }
 
 async function ensureWorkspaceProject(
-	supabase: SupabaseClient<Database>,
+	supabase: TypedSupabaseClient,
 	userId: string,
 	actorId: string,
 	run: Database['public']['Tables']['homework_runs']['Row']
@@ -298,7 +298,7 @@ async function ensureWorkspaceProject(
 }
 
 async function ensureProjectMembership(
-	supabase: SupabaseClient<Database>,
+	supabase: TypedSupabaseClient,
 	projectId: string,
 	actorId: string
 ): Promise<void> {
@@ -322,7 +322,7 @@ async function ensureProjectMembership(
 }
 
 async function ensureWorkspaceDocs(params: {
-	supabase: SupabaseClient<Database>;
+	supabase: TypedSupabaseClient;
 	actorId: string;
 	projectId: string;
 	run: Database['public']['Tables']['homework_runs']['Row'];
@@ -424,7 +424,7 @@ async function ensureWorkspaceDocs(params: {
 }
 
 async function ensureExecutorScratchpad(params: {
-	supabase: SupabaseClient<Database>;
+	supabase: TypedSupabaseClient;
 	projectId: string;
 	runId: string;
 	mainScratchpadId: string;
@@ -485,7 +485,7 @@ async function ensureExecutorScratchpad(params: {
 }
 
 async function fetchLastIterationSummary(
-	supabase: SupabaseClient<Database>,
+	supabase: TypedSupabaseClient,
 	runId: string,
 	currentIteration: number
 ): Promise<LastIterationSummary | null> {
@@ -545,7 +545,7 @@ async function fetchLastIterationSummary(
 }
 
 async function fetchExecutorScratchpadSummaries(
-	supabase: SupabaseClient<Database>,
+	supabase: TypedSupabaseClient,
 	runId: string,
 	limit = 6
 ): Promise<ScratchpadSummary[]> {
@@ -663,7 +663,7 @@ async function repairFailedTools(params: {
 }
 
 async function executeToolCall(params: {
-	supabase: SupabaseClient<Database>;
+	supabase: TypedSupabaseClient;
 	actorId: string;
 	tool: ToolCall;
 	projectId?: string;
@@ -1052,7 +1052,7 @@ async function executeToolCall(params: {
 }
 
 async function executeToolCalls(params: {
-	supabase: SupabaseClient<Database>;
+	supabase: TypedSupabaseClient;
 	actorId: string;
 	toolCalls: ToolCall[];
 	projectId?: string;
@@ -1093,7 +1093,7 @@ async function executeToolCalls(params: {
 }
 
 async function runExecutorTask(params: {
-	supabase: SupabaseClient<Database>;
+	supabase: TypedSupabaseClient;
 	llm: SmartLLMService;
 	run: Database['public']['Tables']['homework_runs']['Row'];
 	userId: string;
@@ -1155,7 +1155,7 @@ async function runExecutorTask(params: {
 
 	// Log into executor scratchpad
 	if (params.execScratchpadId) {
-		const entryLines = toolCalls.map((tc, idx) => {
+		const entryLines = toolCalls.map((tc: ToolCall, idx: number) => {
 			const r = executed.results[idx];
 			const status = r?.ok ? 'ok' : 'error';
 			return `- ${tc.name} (${status})`;
@@ -1182,7 +1182,7 @@ async function runExecutorTask(params: {
 }
 
 export async function runHomeworkIteration(params: {
-	supabase: SupabaseClient<Database>;
+	supabase: TypedSupabaseClient;
 	llm: SmartLLMService;
 	run: Database['public']['Tables']['homework_runs']['Row'];
 	userId: string;

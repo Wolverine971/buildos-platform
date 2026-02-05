@@ -31,6 +31,8 @@ import {
 } from './agent-context-service';
 import { SmartLLMService } from './smart-llm-service';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
+import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
+import type { ServiceContext, ToolExecutorFunction } from '$lib/services/agentic-chat/shared/types';
 import { TOOL_METADATA } from '$lib/services/agentic-chat/tools/core/definitions';
 import { getToolsForAgent } from '@buildos/shared-types';
 import { v4 as uuidv4 } from 'uuid';
@@ -365,6 +367,58 @@ export class AgentExecutorService {
 			context.metadata.sessionId,
 			this.fetchFn
 		);
+		const toolExecutorFn: ToolExecutorFunction = async (toolName, args) => {
+			const call: ChatToolCall = {
+				id: uuidv4(),
+				type: 'function',
+				function: {
+					name: toolName,
+					arguments: JSON.stringify(args ?? {})
+				}
+			};
+			const result = await toolExecutor.execute(call);
+			if (!result.success) {
+				throw new Error(result.error || `Tool ${toolName} execution failed`);
+			}
+
+			const metadata: Record<string, any> = {};
+			if (typeof result.duration_ms === 'number') {
+				metadata.durationMs = result.duration_ms;
+			}
+			const usage =
+				(result as any)?.usage ??
+				(result.result as any)?.usage ??
+				(result.result as any)?.usage_metrics;
+			const tokensUsed =
+				usage && typeof usage.total_tokens === 'number'
+					? usage.total_tokens
+					: typeof usage?.totalTokens === 'number'
+						? usage.totalTokens
+						: undefined;
+			if (typeof tokensUsed === 'number') {
+				metadata.tokensUsed = tokensUsed;
+			}
+
+			return {
+				data: result.result ?? null,
+				streamEvents: Array.isArray(result.stream_events)
+					? (result.stream_events as any[])
+					: undefined,
+				metadata
+			};
+		};
+		const toolExecutionService = new ToolExecutionService(
+			toolExecutorFn,
+			undefined,
+			this.errorLogger
+		);
+		const serviceContext: ServiceContext = {
+			sessionId: context.metadata.sessionId,
+			userId,
+			contextType: normalizedContextType as ChatContextType,
+			entityId,
+			conversationHistory: []
+		};
 
 		// Save prompt for audit
 		await savePromptForAudit({
@@ -484,13 +538,14 @@ export class AgentExecutorService {
 					Math.max(1000, configuredTimeoutMs),
 					Math.max(1000, getRemainingTime())
 				);
-				const result = await this.runWithTimeout(
-					() => toolExecutor.execute(toolCall),
-					timeoutMs,
-					'Tool execution timed out.'
+				const result = await toolExecutionService.executeTool(
+					toolCall,
+					serviceContext,
+					writeEnabledTools,
+					{ timeout: timeoutMs }
 				);
 				const toolPayload =
-					result.result ?? (result.error ? { error: result.error } : null);
+					result.data ?? (result.error ? { error: String(result.error) } : null);
 
 				messages.push({
 					role: 'tool',
@@ -500,18 +555,26 @@ export class AgentExecutorService {
 
 				if (!resultData) resultData = {};
 				if (!resultData.toolResults) resultData.toolResults = [];
+				const errorMessage =
+					typeof result.error === 'string'
+						? result.error
+						: result.error instanceof Error
+							? result.error.message
+							: result.error
+								? String(result.error)
+								: undefined;
 				resultData.toolResults.push({
-					tool: toolCall.function.name,
-					result: result.result,
+					tool: result.toolName || toolCall.function.name,
+					result: result.data,
 					success: result.success,
-					error: result.error
+					error: errorMessage
 				});
 
 				if (!result.success) {
 					if (!resultData.errors) resultData.errors = [];
 					resultData.errors.push({
-						tool: toolCall.function.name,
-						error: result.error || 'Unknown error'
+						tool: result.toolName || toolCall.function.name,
+						error: errorMessage || 'Unknown error'
 					});
 				}
 			}

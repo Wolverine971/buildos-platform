@@ -312,11 +312,14 @@
 	}
 
 	// Watch for modal opening and load/reset form accordingly
+	// IMPORTANT: Use activeDocumentId (internal state) not documentId (prop) to avoid
+	// race condition where setting lastLoadedId triggers this effect to re-run,
+	// but documentId prop is still null, causing resetForm() to clear just-loaded data.
 	$effect(() => {
 		if (!browser) return;
-		// Track dependencies explicitly
+		// Track dependencies explicitly - use activeDocumentId to include internal state
 		const shouldLoad = isOpen;
-		const currentDocId = documentId;
+		const currentDocId = activeDocumentId;
 		const lastId = lastLoadedId;
 
 		if (!shouldLoad) return;

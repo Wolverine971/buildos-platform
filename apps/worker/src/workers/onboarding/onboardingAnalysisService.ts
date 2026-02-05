@@ -1,5 +1,5 @@
 // apps/worker/src/workers/onboarding/onboardingAnalysisService.ts
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { OnboardingAnalysisPrompt } from './prompts';
@@ -19,10 +19,10 @@ interface OnboardingAnalysisLLMResponse {
 }
 
 export class OnboardingAnalysisService {
-	private supabase: SupabaseClient<Database>;
+	private supabase: TypedSupabaseClient;
 	private llmService: SmartLLMService;
 
-	constructor(supabase: SupabaseClient<Database>) {
+	constructor(supabase: TypedSupabaseClient) {
 		this.supabase = supabase;
 		this.llmService = new SmartLLMService({
 			supabase,

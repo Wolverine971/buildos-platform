@@ -6,7 +6,7 @@
  * Spec Reference: /docs/specs/DAILY_BRIEF_ONTOLOGY_MIGRATION_SPEC.md
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
 import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz';
 import { addDays, subDays, subHours, parseISO, differenceInDays } from 'date-fns';
@@ -588,7 +588,7 @@ function resolveActorDisplayName(
 // ============================================================================
 
 export class OntologyBriefDataLoader {
-	constructor(private supabase: SupabaseClient<Database>) {}
+	constructor(private supabase: TypedSupabaseClient) {}
 
 	/**
 	 * Load all ontology data for a user for brief generation

@@ -105,6 +105,66 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('should coerce raw string arguments for web_search into query', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_web_search',
+				name: 'web_search',
+				arguments: 'openai latest news'
+			};
+			const webSearchDefinition: ChatToolDefinition = {
+				name: 'web_search',
+				description: 'Web search',
+				parameters: {
+					type: 'object',
+					properties: {
+						query: { type: 'string' }
+					},
+					required: ['query']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ results: [] });
+
+			const result = await service.executeTool(toolCall, mockContext, [webSearchDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'web_search',
+				{ query: 'openai latest news' },
+				mockContext
+			);
+		});
+
+		it('should coerce JSON string arguments for web_visit into url', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_web_visit',
+				name: 'web_visit',
+				arguments: '"https://example.com"'
+			};
+			const webVisitDefinition: ChatToolDefinition = {
+				name: 'web_visit',
+				description: 'Web visit',
+				parameters: {
+					type: 'object',
+					properties: {
+						url: { type: 'string' }
+					},
+					required: ['url']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ ok: true });
+
+			const result = await service.executeTool(toolCall, mockContext, [webVisitDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'web_visit',
+				{ url: 'https://example.com' },
+				mockContext
+			);
+		});
+
 		it('should trim whitespace in tool names', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_trim',
@@ -274,6 +334,148 @@ describe('ToolExecutionService', () => {
 					title: 'Untitled Document',
 					type_key: 'document.default'
 				},
+				mockContext
+			);
+		});
+
+		it('should use name as title for documents', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_doc_name',
+				name: 'create_onto_document',
+				arguments: {
+					project_id: 'proj_123',
+					name: 'Design Brief',
+					type_key: 'document.context.brief'
+				}
+			};
+
+			const toolDefs = [
+				...mockToolDefinitions,
+				{
+					name: 'create_onto_document',
+					description: 'Create a document',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							title: { type: 'string' },
+							type_key: { type: 'string' }
+						},
+						required: ['project_id', 'title', 'type_key']
+					}
+				}
+			];
+
+			mockToolExecutor.mockResolvedValueOnce({ document: { id: 'doc-2' } });
+
+			const result = await service.executeTool(toolCall, mockContext, toolDefs);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_document',
+				expect.objectContaining({
+					project_id: 'proj_123',
+					title: 'Design Brief',
+					type_key: 'document.context.brief'
+				}),
+				mockContext
+			);
+		});
+
+		it('should use nested document content when provided', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_doc_nested',
+				name: 'create_onto_document',
+				arguments: {
+					project_id: 'proj_123',
+					document: {
+						title: 'Research Notes',
+						content: '# Findings\n\n- Item one'
+					},
+					type_key: 'document.knowledge.research'
+				}
+			};
+
+			const toolDefs = [
+				...mockToolDefinitions,
+				{
+					name: 'create_onto_document',
+					description: 'Create a document',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							title: { type: 'string' },
+							type_key: { type: 'string' }
+						},
+						required: ['project_id', 'title', 'type_key']
+					}
+				}
+			];
+
+			mockToolExecutor.mockResolvedValueOnce({ document: { id: 'doc-3' } });
+
+			const result = await service.executeTool(toolCall, mockContext, toolDefs);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_document',
+				expect.objectContaining({
+					project_id: 'proj_123',
+					title: 'Research Notes',
+					type_key: 'document.knowledge.research',
+					content: '# Findings\n\n- Item one'
+				}),
+				mockContext
+			);
+		});
+
+		it('should parse double-encoded JSON arguments with newlines', async () => {
+			const rawArgs = JSON.stringify(
+				JSON.stringify({
+					project_id: 'proj_123',
+					title: 'Double Encoded',
+					type_key: 'document.spec.technical',
+					content: 'Hello\nWorld'
+				})
+			);
+
+			const toolCall: ChatToolCall = {
+				id: 'call_doc_double',
+				name: 'create_onto_document',
+				arguments: rawArgs
+			};
+
+			const toolDefs = [
+				...mockToolDefinitions,
+				{
+					name: 'create_onto_document',
+					description: 'Create a document',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							title: { type: 'string' },
+							type_key: { type: 'string' }
+						},
+						required: ['project_id', 'title', 'type_key']
+					}
+				}
+			];
+
+			mockToolExecutor.mockResolvedValueOnce({ document: { id: 'doc-4' } });
+
+			const result = await service.executeTool(toolCall, mockContext, toolDefs);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_document',
+				expect.objectContaining({
+					project_id: 'proj_123',
+					title: 'Double Encoded',
+					type_key: 'document.spec.technical',
+					content: 'Hello\nWorld'
+				}),
 				mockContext
 			);
 		});

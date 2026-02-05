@@ -323,7 +323,7 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 						}
 					}
 				},
-				required: ['project_id', 'title', 'type_key']
+				required: ['project_id', 'title', 'content']
 			}
 		}
 	},

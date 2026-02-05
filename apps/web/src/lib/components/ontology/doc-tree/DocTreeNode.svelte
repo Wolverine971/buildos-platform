@@ -48,7 +48,7 @@
 		onOpenDocument,
 		onContextMenu,
 		selectedId = null,
-		indentPx = 16,
+		indentPx = 20,
 		dragState = null,
 		onDragStart,
 		onDragOver,
@@ -225,10 +225,14 @@
 			{node.title}
 		</span>
 
-		<!-- Content indicator -->
+		<!-- Content indicator - more visible -->
 		{#if !isFolder && node.has_content}
-			<span class="w-1.5 h-1.5 rounded-full bg-accent/50 flex-shrink-0" title="Has content"
-			></span>
+			<span
+				class="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-accent/10 text-accent flex-shrink-0"
+				title="Has content"
+			>
+				<span class="w-1 h-1 rounded-full bg-accent"></span>
+			</span>
 		{/if}
 
 		<!-- Converting indicator -->
@@ -244,24 +248,27 @@
 
 	<!-- Children (if expanded) -->
 	{#if isFolder && isExpanded && node.children && node.children.length > 0}
-		<div class="doc-tree-children">
-			{#each node.children as child (child.id)}
-				<DocTreeNode
-					node={child}
-					{expandedIds}
-					{onToggleExpand}
-					{onOpenDocument}
-					{onContextMenu}
-					{selectedId}
-					{indentPx}
-					{dragState}
-					{onDragStart}
-					{onDragOver}
-					{onTouchStart}
-					{canDrag}
-					{cutNodeId}
-					{onFocus}
-				/>
+		<div class="doc-tree-children" style="--tree-line-left: {indent + 16}px">
+			{#each node.children as child, i (child.id)}
+				{@const isLast = i === (node.children?.length ?? 0) - 1}
+				<div class="doc-tree-child-wrapper" class:doc-tree-child-wrapper--last={isLast}>
+					<DocTreeNode
+						node={child}
+						{expandedIds}
+						{onToggleExpand}
+						{onOpenDocument}
+						{onContextMenu}
+						{selectedId}
+						{indentPx}
+						{dragState}
+						{onDragStart}
+						{onDragOver}
+						{onTouchStart}
+						{canDrag}
+						{cutNodeId}
+						{onFocus}
+					/>
+				</div>
 			{/each}
 		</div>
 	{/if}
@@ -314,5 +321,47 @@
 	/* Chevron button - prevent drag from starting here */
 	.doc-tree-chevron {
 		touch-action: manipulation;
+	}
+
+	/* Tree connecting lines */
+	.doc-tree-children {
+		position: relative;
+	}
+
+	/* Vertical line connecting children */
+	.doc-tree-children::before {
+		content: '';
+		position: absolute;
+		left: var(--tree-line-left, 24px);
+		top: 0;
+		bottom: 12px;
+		width: 1px;
+		background: hsl(var(--border));
+	}
+
+	/* Horizontal connector line for each child */
+	.doc-tree-child-wrapper {
+		position: relative;
+	}
+
+	.doc-tree-child-wrapper::before {
+		content: '';
+		position: absolute;
+		left: var(--tree-line-left, 24px);
+		top: 14px;
+		width: 8px;
+		height: 1px;
+		background: hsl(var(--border));
+	}
+
+	/* Hide vertical line below last child */
+	.doc-tree-child-wrapper--last::after {
+		content: '';
+		position: absolute;
+		left: var(--tree-line-left, 24px);
+		top: 14px;
+		bottom: 0;
+		width: 1px;
+		background: hsl(var(--card));
 	}
 </style>

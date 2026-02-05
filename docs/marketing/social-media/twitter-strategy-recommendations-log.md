@@ -179,6 +179,42 @@ _Last reviewed: 2026-01-09_
 
 ---
 
+### 2026-02-05 - Cowork Plugins Trigger $285B "SaaS-pocalypse"
+
+**Observation:** Anthropic launched Cowork (Claude Code for non-coding work) and 11 open-source plugins on Jan 30, including a legal plugin that caused a $285B stock selloff across software/SaaS stocks (Feb 3-4). Thomson Reuters dropped 16%, LegalZoom 20%, Wolters Kluwer 13%. Media calling it the "SaaS-pocalypse." Boris Cherny described Cowork as Claude Code expanding beyond coding. He also announced plugins as "the first major feature in Claude Code that I've gotten the opportunity to lead."
+
+**Additional Findings:**
+
+- Boris posted about non-coding usage: vacation research, slide decks, email cleanup, subscription cancellation, wedding photo recovery
+- Cowork built in ~1.5 weeks using Claude Code itself. Available for Pro subscribers as research preview (Jan 16)
+- Dan Shipper posted 2026 AI predictions podcast with Reid Hoffman - "agents amplifying work process"
+- YC Spring 2026 Request for Startups dropped - AI-native companies as the thesis
+- Levelsio predicted "2026 = year of AI world models"
+- Simon Willison active with OpenClaw/Docker posts (Feb 2)
+- New AI ADHD tools gaining traction: Saner.AI, Goblin Tools
+
+**Implications for BuildOS:**
+
+- **MASSIVE VALIDATION**: Context-specific AI beating generic SaaS is exactly BuildOS's thesis. The market is literally pricing this in.
+- Cowork plugins = context engineering made distributable. Plugins bundle context, tools, and workflows for specific domains.
+- BuildOS is on the RIGHT side of this disruption - AI-native, not traditional SaaS being disrupted
+- YC Spring 2026 RFS explicitly calls for AI-native companies - BuildOS has been this since May 2025
+- The "SaaS-pocalypse" creates a natural content opportunity to explain context engineering
+- Boris's posts continue getting massive visibility - engagement here is highest-leverage activity
+
+**Recommendations:**
+
+1. **URGENT: Engage Boris on Cowork and plugins posts** - The conversation is hot, every hour it cools
+2. **Jump into SaaS-pocalypse threads** with context engineering angle - explain WHY this is happening
+3. **Engage Dex on the validation** - his "context engineering" thesis just caused a $285B market event
+4. **Consider a standalone post/thread** about BuildOS being AI-native and what context engineering means for the future of software
+5. **Monitor Danny Postma** - if PostmaOS is SaaS-style, Cowork might threaten his model
+6. **Track new AI ADHD tools** (Saner.AI, Goblin Tools) as competitive intelligence for BuildOS's ADHD positioning
+
+**Strategy Change:** Minor priority shift - Cowork/SaaS-pocalypse creates urgent 48-72h engagement window. All engagement should tie back to context engineering narrative. This is the biggest validation event since Dex's original "context engineering" post went viral.
+
+---
+
 ## Log Entry Template
 
 When adding new entries, use this format:
@@ -207,44 +243,53 @@ When adding new entries, use this format:
 
 ### Theme: Context Engineering Ownership
 
-| Date       | Signal                                | Strength    | Action Taken                      |
-| ---------- | ------------------------------------- | ----------- | --------------------------------- |
-| 2026-01-24 | @bcherny 163.7K→183.9K (+20K)         | Very Strong | Engage on Skills feedback post    |
-| 2026-01-24 | @dexhorthy 10.7K→11.3K continued      | Strong      | Continue engagement               |
-| 2026-01-24 | Claude Code Skills announcement       | Very Strong | ENGAGE - opportunity to share     |
-| 2026-01-12 | @dexhorthy 3.2K→10.7K follower growth | Very Strong | Noted - context eng is mainstream |
-| 2026-01-12 | Acontext.io "context data platform"   | Strong      | Added to competitor watch         |
-| 2026-01-12 | @DropzoneAI context eng reliability   | Medium      | Fresh engagement opportunity      |
-| 2026-01-08 | @dexhorthy "harness engineering" post | Strong      | Engaged with value add            |
-| 2026-01-08 | Nvidia CES context management quote   | Very Strong | Noted for content                 |
+| Date       | Signal                                | Strength     | Action Taken                      |
+| ---------- | ------------------------------------- | ------------ | --------------------------------- |
+| 2026-02-05 | Cowork plugins → $285B stock selloff  | **CRITICAL** | Engage Boris, Dex, SaaS threads   |
+| 2026-02-05 | @bcherny Cowork + Plugins launch      | **CRITICAL** | Engage on Cowork/plugins posts    |
+| 2026-02-05 | YC Spring 2026 RFS: AI-native thesis  | Very Strong  | Content opportunity               |
+| 2026-02-03 | @bcherny 234.8K (Jan 31 thread 7.8M)  | Very Strong  | Continue engagement               |
+| 2026-01-24 | @bcherny 163.7K→183.9K (+20K)         | Very Strong  | Engage on Skills feedback post    |
+| 2026-01-24 | @dexhorthy 10.7K→11.3K continued      | Strong       | Continue engagement               |
+| 2026-01-24 | Claude Code Skills announcement       | Very Strong  | ENGAGE - opportunity to share     |
+| 2026-01-12 | @dexhorthy 3.2K→10.7K follower growth | Very Strong  | Noted - context eng is mainstream |
+| 2026-01-12 | Acontext.io "context data platform"   | Strong       | Added to competitor watch         |
+| 2026-01-12 | @DropzoneAI context eng reliability   | Medium       | Fresh engagement opportunity      |
+| 2026-01-08 | @dexhorthy "harness engineering" post | Strong       | Engaged with value add            |
+| 2026-01-08 | Nvidia CES context management quote   | Very Strong  | Noted for content                 |
 
 ### Theme: ADHD Audience Resonance
 
 | Date       | Signal                                                | Strength    | Action Taken                            |
 | ---------- | ----------------------------------------------------- | ----------- | --------------------------------------- |
+| 2026-02-05 | New AI ADHD tools: Saner.AI, Goblin Tools             | Threat/Opp  | Monitor as competitive intelligence     |
 | 2026-01-12 | Major ADHD accounts quiet (HowtoADHD, StructuredSucc) | Opportunity | Consider creating content in this space |
 
 ### Theme: Competitor Activity
 
-| Date       | Account      | Activity                             | Response          |
-| ---------- | ------------ | ------------------------------------ | ----------------- |
-| 2026-01-24 | @danshipper  | Vibe Code Camp community engagement  | Monitor           |
-| 2026-01-24 | @dannypostma | Still "laying low" - geopolitics     | Monitoring        |
-| 2026-01-24 | @bcherny     | Skills feedback request (HIGH VALUE) | ENGAGE NOW        |
-| 2026-01-12 | @danshipper  | Launched "Proof" agent-native editor | Study positioning |
-| 2026-01-12 | @acontext_io | New - "context data platform"        | Monitor closely   |
-| 2026-01-12 | @dannypostma | Still "laying low"                   | Monitoring        |
-| 2026-01-12 | @danidonovan | Quiet since Dec 2025                 | Monitoring        |
-| 2026-01-08 | @dannypostma | "Laying low"                         | Monitoring        |
-| 2026-01-08 | @danidonovan | No major activity                    | Monitoring        |
+| Date       | Account      | Activity                             | Response                               |
+| ---------- | ------------ | ------------------------------------ | -------------------------------------- |
+| 2026-02-05 | Anthropic    | Cowork plugins → $285B SaaS selloff  | ENGAGE - position BuildOS as AI-native |
+| 2026-02-05 | @bcherny     | Cowork + Plugins system launch       | ENGAGE NOW on Cowork/plugins           |
+| 2026-02-05 | @danshipper  | 2026 AI predictions w/ Reid Hoffman  | Monitor - competitor content           |
+| 2026-01-24 | @danshipper  | Vibe Code Camp community engagement  | Monitor                                |
+| 2026-01-24 | @dannypostma | Still "laying low" - geopolitics     | Monitoring                             |
+| 2026-01-24 | @bcherny     | Skills feedback request (HIGH VALUE) | ENGAGE NOW                             |
+| 2026-01-12 | @danshipper  | Launched "Proof" agent-native editor | Study positioning                      |
+| 2026-01-12 | @acontext_io | New - "context data platform"        | Monitor closely                        |
+| 2026-01-12 | @dannypostma | Still "laying low"                   | Monitoring                             |
+| 2026-01-12 | @danidonovan | Quiet since Dec 2025                 | Monitoring                             |
+| 2026-01-08 | @dannypostma | "Laying low"                         | Monitoring                             |
+| 2026-01-08 | @danidonovan | No major activity                    | Monitoring                             |
 
 ---
 
 ## Strategy Adjustment History
 
-| Date       | Change                      | Reason                    | Impact               |
-| ---------- | --------------------------- | ------------------------- | -------------------- |
-| 2026-01-09 | Initial strategy documented | First structured approach | Baseline established |
+| Date       | Change                                     | Reason                                         | Impact                   |
+| ---------- | ------------------------------------------ | ---------------------------------------------- | ------------------------ |
+| 2026-02-05 | Priority: Cowork/SaaS-pocalypse engagement | $285B selloff = biggest context eng validation | 48-72h engagement window |
+| 2026-01-09 | Initial strategy documented                | First structured approach                      | Baseline established     |
 
 ---
 

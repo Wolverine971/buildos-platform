@@ -17,7 +17,8 @@
 		name: 'BuildOS',
 		url: 'https://build-os.com',
 		logo: 'https://build-os.com/brain-bolt.png',
-		description: 'AI-native productivity platform built for the agent economy',
+		description:
+			'AI-native productivity platform built for the agent economy. Features voice-first design, transparent context engine, and AI-native architecture.',
 		founder: {
 			'@type': 'Person',
 			name: 'DJ Wayne',
@@ -25,25 +26,12 @@
 			description:
 				'Former USMC Scout Sniper, 8 years software engineering experience, YC-backed startup background'
 		},
-		industry: 'Productivity Software',
-		keywords: [
-			'AI productivity',
-			'context management',
-			'voice AI',
-			'agent economy',
-			'LLM platform'
-		],
-		targetMarket: ['Individual professionals', 'Teams', 'Enterprise'],
-		competitiveAdvantage: [
-			'AI-native architecture',
-			'Voice-first design',
-			'Transparent context engine'
-		],
 		contactPoint: {
 			'@type': 'ContactPoint',
 			email: 'dj@build-os.com',
 			contactType: 'Business Inquiries'
-		}
+		},
+		sameAs: ['https://twitter.com/build_os', 'https://twitter.com/djwayne3']
 	}}
 />
 

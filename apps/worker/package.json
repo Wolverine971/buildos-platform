@@ -24,9 +24,10 @@
 	"dependencies": {
 		"@buildos/shared-types": "workspace:*",
 		"@buildos/shared-utils": "workspace:*",
+		"@buildos/smart-llm": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
 		"@buildos/twilio-service": "workspace:*",
-		"@supabase/supabase-js": "^2.38.4",
+		"@supabase/supabase-js": "^2.89.0",
 		"cors": "^2.8.5",
 		"date-fns": "^2.30.0",
 		"date-fns-tz": "^2.0.1",

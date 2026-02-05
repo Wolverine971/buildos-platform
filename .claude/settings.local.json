@@ -84,7 +84,12 @@
       "Bash(pnpm test:run:*)",
       "Bash(timeout 30 npx vite build:*)",
       "Bash(pnpm format:*)",
-      "Bash(pnpm exec prettier:*)"
+      "Bash(pnpm exec prettier:*)",
+      "Bash(dd:*)",
+      "Bash(pnpm vite build:*)",
+      "Bash(sort:*)",
+      "WebFetch(domain:build-os.com)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []

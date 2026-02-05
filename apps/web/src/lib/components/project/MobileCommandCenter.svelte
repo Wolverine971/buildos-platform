@@ -20,19 +20,13 @@
 	- Inkprint Design System: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 -->
 <script lang="ts">
-	import {
-		Target,
-		Flag,
-		ListChecks,
-		Calendar,
-		Clock,
-		AlertTriangle,
-		FileText
-	} from 'lucide-svelte';
+	import { Target, Flag, ListChecks, Calendar, Clock, AlertTriangle } from 'lucide-svelte';
 	import CommandCenterRow from './CommandCenterRow.svelte';
 	import CommandCenterPanel from './CommandCenterPanel.svelte';
+	import CommandCenterDocumentsPanel from './CommandCenterDocumentsPanel.svelte';
 	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
 	import type { Goal, Milestone, Task, Plan, Risk, Document, OntoEvent } from '$lib/types/onto';
+	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import {
 		PANEL_CONFIGS,
 		type InsightPanelKey,
@@ -53,6 +47,11 @@
 		documents: Document[];
 		events: OntoEvent[];
 		milestonesByGoalId?: Map<string, Milestone[]>;
+
+		// Hierarchical document tree data (optional - falls back to flat list)
+		docStructure?: DocStructure | null;
+		docTreeDocuments?: Record<string, OntoDocument>;
+		projectId?: string;
 
 		// Entity action callbacks - Add
 		onAddGoal: () => void;
@@ -98,6 +97,9 @@
 		documents,
 		events,
 		milestonesByGoalId,
+		docStructure,
+		docTreeDocuments,
+		projectId,
 		onAddGoal,
 		onAddMilestoneFromGoal,
 		onAddTask,
@@ -175,19 +177,6 @@
 		}
 	}
 
-	function getMilestoneStateColor(state: string): string {
-		switch (state) {
-			case 'completed':
-				return 'text-emerald-500';
-			case 'in_progress':
-				return 'text-amber-500';
-			case 'missed':
-				return 'text-red-500';
-			default:
-				return 'text-muted-foreground';
-		}
-	}
-
 	function getRiskStateColor(state: string): string {
 		switch (state) {
 			case 'mitigated':
@@ -206,22 +195,6 @@
 				return 'text-emerald-500';
 			case 'active':
 				return 'text-amber-500';
-			default:
-				return 'text-muted-foreground';
-		}
-	}
-
-	function getDocumentStateColor(state: string): string {
-		switch (state) {
-			case 'published':
-				return 'text-emerald-500';
-			case 'ready':
-				return 'text-sky-500';
-			case 'review':
-			case 'in_review':
-				return 'text-amber-500';
-			case 'archived':
-				return 'text-muted-foreground';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -459,36 +432,19 @@
 			{/each}
 		</CommandCenterPanel>
 
-		<!-- Documents Panel (no filter/sort - handled separately in desktop view) -->
-		<CommandCenterPanel
-			panelKey="documents"
-			label="Documents"
-			icon={FileText}
-			iconColor="text-sky-500"
-			count={documents.length}
+		<!-- Documents Panel - Uses hierarchical tree when available -->
+		<CommandCenterDocumentsPanel
+			projectId={projectId ?? ''}
+			{documents}
+			{docStructure}
+			{docTreeDocuments}
 			expanded={expandedPanel === 'documents'}
 			partnerExpanded={isPartnerExpanded('documents')}
-			onToggle={togglePanel}
-			onAdd={onAddDocument}
-			emptyMessage="Add notes and research"
-		>
-			{#each documents as doc (doc.id)}
-				<button
-					type="button"
-					onclick={() => onEditDocument(doc.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
-				>
-					<div class="flex items-center justify-between gap-2">
-						<span class="text-xs text-foreground truncate">{doc.title}</span>
-						<span
-							class="text-[10px] capitalize shrink-0 {getDocumentStateColor(
-								doc.state_key
-							)}">{doc.state_key}</span
-						>
-					</div>
-				</button>
-			{/each}
-		</CommandCenterPanel>
+			onToggle={() => togglePanel('documents')}
+			onAddDocument={(_parentId) => onAddDocument()}
+			{onEditDocument}
+			{canEdit}
+		/>
 	</CommandCenterRow>
 
 	<!-- Row 4: Events (Scheduling) - Standalone -->

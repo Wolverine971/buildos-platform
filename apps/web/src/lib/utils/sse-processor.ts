@@ -29,6 +29,12 @@ export interface SSEProcessorOptions {
 export class SSEProcessor {
 	// Aligned with MAX_SESSION_DURATION_MS (90s) + buffer for network latency
 	private static readonly DEFAULT_TIMEOUT = 120000; // 2 minutes
+	private static readonly YIELD_EVERY_LINES = 64;
+	private static readonly YIELD_INTERVAL_MS = 16;
+
+	private static async yieldToEventLoop(): Promise<void> {
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+	}
 
 	/**
 	 * Process an SSE stream from a Response object
@@ -164,6 +170,8 @@ export class SSEProcessor {
 	): Promise<void> {
 		let buffer = initialBuffer;
 		let isDone = false;
+		let linesSinceYield = 0;
+		let lastYieldAt = Date.now();
 
 		while (!isDone) {
 			const { done, value } = await reader.read();
@@ -207,6 +215,16 @@ export class SSEProcessor {
 						// Handle custom event types if needed
 						const eventType = line.slice(7).trim();
 						callbacks.onStatus?.(eventType);
+					}
+
+					linesSinceYield++;
+					if (
+						linesSinceYield >= SSEProcessor.YIELD_EVERY_LINES ||
+						Date.now() - lastYieldAt >= SSEProcessor.YIELD_INTERVAL_MS
+					) {
+						await SSEProcessor.yieldToEventLoop();
+						linesSinceYield = 0;
+						lastYieldAt = Date.now();
 					}
 				}
 			}

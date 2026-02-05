@@ -447,17 +447,22 @@
 					"filePath": "src/content/blogs/getting-started/effective-brain-dumping.md"
 				},
 				"first-project-setup": {
-					"title": "Setting Up Your First Project in Build OS: A Complete Guide",
-					"description": "A step-by-step guide to creating and organizing your first project in Build OS. Learn how to transform ideas into structured, actionable project plans.",
+					"title": "Creating Your First Project in BuildOS: Just Start Talking",
+					"description": "Learn how to create your first project in BuildOS by simply having a conversation. No forms, no templates, just tell BuildOS what you want to build.",
 					"author": "DJ Wayne",
 					"date": "2025-6-26",
-					"lastmod": "2025-6-26",
+					"lastmod": "2026-2-05",
 					"changefreq": "monthly",
 					"priority": "0.8",
-					"published": false,
-					"tags": ["first-project", "getting-started", "project-management", "setup"],
-					"readingTime": 8,
-					"excerpt": "Transform your first big idea into a structured, actionable project using Build OS intelligent project creation and phase management system.",
+					"published": true,
+					"tags": [
+						"first-project",
+						"getting-started",
+						"agentic-chat",
+						"project-creation"
+					],
+					"readingTime": 5,
+					"excerpt": "Create your first project in BuildOS by having a natural conversation. Tell it what you want to build, answer a question or two, and watch your project take shape.",
 					"pic": "first-project-setup",
 					"path": "apps/web/src/content/blogs/getting-started/first-project-setup.md",
 					"slug": "first-project-setup",
@@ -1211,7 +1216,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-02-04T05:52:05.001Z",
+	"generatedAt": "2026-02-05T18:11:21.349Z",
 	"totalPosts": 51,
 	"totalCategories": 6
 }

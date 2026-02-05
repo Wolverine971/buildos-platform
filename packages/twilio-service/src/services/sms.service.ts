@@ -1,12 +1,13 @@
 // packages/twilio-service/src/services/sms.service.ts
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import { TwilioClient } from '../client';
 
 export class SMSService {
 	private twilioClient: TwilioClient;
-	private supabase: SupabaseClient<any>;
+	private supabase: TypedSupabaseClient;
 
-	constructor(twilioClient: TwilioClient, supabase: SupabaseClient<any>) {
+	constructor(twilioClient: TwilioClient, supabase: TypedSupabaseClient) {
 		this.twilioClient = twilioClient;
 		this.supabase = supabase;
 	}
@@ -44,28 +45,34 @@ export class SMSService {
 			throw new Error('User has disabled task reminder SMS');
 		}
 
+		const insertPayload: Database['public']['Tables']['sms_messages']['Insert'] = {
+			user_id: params.userId,
+			phone_number: params.phoneNumber,
+			message_content: message,
+			template_id: template.id,
+			template_vars: {
+				task_name: params.taskName,
+				due_time: dueTime,
+				task_context: params.projectContext || ''
+			},
+			priority: this.calculatePriority(params.dueDate),
+			metadata: {
+				type: 'task_reminder',
+				task_name: params.taskName,
+				due_date: params.dueDate.toISOString()
+			}
+		};
+
 		// Create message record
 		const { data: smsMessage } = await this.supabase
 			.from('sms_messages')
-			.insert({
-				user_id: params.userId,
-				phone_number: params.phoneNumber,
-				message_content: message,
-				template_id: template.id,
-				template_vars: {
-					task_name: params.taskName,
-					due_time: dueTime,
-					task_context: params.projectContext
-				},
-				priority: this.calculatePriority(params.dueDate),
-				metadata: {
-					type: 'task_reminder',
-					task_name: params.taskName,
-					due_date: params.dueDate
-				}
-			})
+			.insert(insertPayload)
 			.select()
 			.single();
+
+		if (!smsMessage) {
+			throw new Error('Failed to create SMS message');
+		}
 
 		// Send via Twilio
 		try {
@@ -89,10 +96,11 @@ export class SMSService {
 				.eq('id', smsMessage.id);
 
 			// Update template usage count using SQL increment
+			const usageCount = template.usage_count ?? 0;
 			await this.supabase
 				.from('sms_templates')
 				.update({
-					usage_count: template.usage_count + 1,
+					usage_count: usageCount + 1,
 					last_used_at: new Date().toISOString()
 				})
 				.eq('id', template.id);
@@ -175,21 +183,26 @@ export class SMSService {
 	}
 
 	private async sendMessage(params: any) {
+		const insertPayload: Database['public']['Tables']['sms_messages']['Insert'] = {
+			user_id: params.userId,
+			phone_number: params.phoneNumber,
+			message_content: params.message,
+			template_id: params.templateId,
+			priority: params.priority || 'normal',
+			metadata: params.metadata || {}
+		};
+
 		// Create message record
 		const { data: smsMessage, error: insertError } = await this.supabase
 			.from('sms_messages')
-			.insert({
-				user_id: params.userId,
-				phone_number: params.phoneNumber,
-				message_content: params.message,
-				template_id: params.templateId,
-				priority: params.priority || 'normal',
-				metadata: params.metadata || {}
-			})
+			.insert(insertPayload)
 			.select()
 			.single();
 
 		if (insertError) throw insertError;
+		if (!smsMessage) {
+			throw new Error('Failed to create SMS message');
+		}
 
 		try {
 			// Send via Twilio
@@ -250,7 +263,7 @@ export class SMSService {
 		}
 	}
 
-	private calculatePriority(dueDate: Date): string {
+	private calculatePriority(dueDate: Date): 'low' | 'normal' | 'high' | 'urgent' {
 		const hoursUntilDue = (dueDate.getTime() - Date.now()) / (1000 * 60 * 60);
 
 		if (hoursUntilDue < 1) return 'urgent';
@@ -290,11 +303,15 @@ export class SMSService {
 		}
 
 		// Check daily limit
-		if (prefs.daily_sms_count >= prefs.daily_sms_limit) {
+		const dailyCount = prefs.daily_sms_count ?? 0;
+		const dailyLimit = prefs.daily_sms_limit ?? Number.POSITIVE_INFINITY;
+		if (dailyCount >= dailyLimit) {
 			return false;
 		}
 
-		return prefs[preferenceType] === true;
+		const preferenceRecord = prefs as unknown as Record<string, boolean | null | undefined>;
+		const preferenceValue = preferenceRecord[preferenceType];
+		return preferenceValue === true;
 	}
 
 	private isTimeInRange(current: string, start: string, end: string): boolean {

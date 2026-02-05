@@ -31,7 +31,7 @@ import type {
 	ContextUsageSnapshot
 } from '@buildos/shared-types';
 import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
-import { ChatCompressionService } from './chat-compression-service';
+import { ChatCompressionService, CHAT_COMPRESSION_DEFAULTS } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
 import { PromptGenerationService } from './agentic-chat/prompts/prompt-generation-service';
 import { ErrorLoggerService } from './errorLogger.service';
@@ -423,24 +423,44 @@ export class AgentContextService {
 			0
 		);
 		const conversationBudget = TOKEN_BUDGETS.PLANNER.CONVERSATION;
-		const needsCompression = estimatedTokens > conversationBudget;
+		const keepRecentCount = CHAT_COMPRESSION_DEFAULTS.KEEP_LAST_MESSAGES;
+
+		let latestCompression: {
+			id: string;
+			summary: string | null;
+			first_message_id: string | null;
+			last_message_id: string | null;
+			created_at: string | null;
+		} | null = null;
+		let lastMessageIndex = -1;
+		let latestSummary: string | null = null;
+
+		if (this.compressionService && sessionId) {
+			latestCompression =
+				(await this.compressionService.getLatestCompressionSummary(sessionId)) ?? null;
+			const lastMessageId = latestCompression?.last_message_id ?? null;
+			lastMessageIndex = lastMessageId
+				? history.findIndex((msg) => msg.id === lastMessageId)
+				: -1;
+			latestSummary =
+				latestCompression?.summary && latestCompression.summary.trim().length > 0
+					? latestCompression.summary
+					: null;
+		}
+
+		const needsCompression = estimatedTokens > conversationBudget || Boolean(latestSummary);
 
 		if (needsCompression && this.compressionService && sessionId) {
 			if (deferCompression) {
 				// Defer LLM compression to keep first response fast; use stored summary or last N.
-				const latestCompression =
-					await this.compressionService.getLatestCompressionSummary(sessionId);
-				const lastMessageId = latestCompression?.last_message_id ?? null;
-				const lastMessageIndex = lastMessageId
-					? history.findIndex((msg) => msg.id === lastMessageId)
-					: -1;
-
-				if (latestCompression?.summary && lastMessageIndex >= 0) {
+				if (latestSummary) {
 					messages.push({
 						role: 'system',
-						content: `Previous conversation summary:\n${latestCompression.summary}`
+						content: `Previous conversation summary:\n${latestSummary}`
 					});
+				}
 
+				if (latestSummary && lastMessageIndex >= 0) {
 					const recentMessages = history.slice(lastMessageIndex + 1);
 					messages.push(
 						...recentMessages.map((m) => ({
@@ -451,7 +471,7 @@ export class AgentContextService {
 						}))
 					);
 				} else {
-					const recentMessages = history.slice(-10);
+					const recentMessages = history.slice(-keepRecentCount);
 					messages.push(
 						...recentMessages.map((m) => ({
 							role: m.role as any,
@@ -477,13 +497,29 @@ export class AgentContextService {
 					}
 				}
 
+				const messagesSinceSummary =
+					lastMessageIndex >= 0 ? history.slice(lastMessageIndex + 1) : history;
 				const shouldScheduleCompression =
-					!latestCompression?.last_message_id ||
-					latestCompression.last_message_id !== history[history.length - 1]?.id;
+					!latestSummary || messagesSinceSummary.length > keepRecentCount;
 
 				if (shouldScheduleCompression) {
+					const compressionInput = this.buildRollingCompressionHistory({
+						sessionId,
+						history,
+						latestSummary,
+						lastMessageIndex,
+						userId
+					});
 					void this.compressionService
-						.smartCompress(sessionId, history, contextType ?? 'global', userId)
+						.compressConversation(
+							sessionId,
+							compressionInput,
+							conversationBudget,
+							userId,
+							{
+								force: Boolean(latestSummary)
+							}
+						)
 						.catch((error) => {
 							logger.warn('Deferred compression failed (will retry next turn)', {
 								error: error instanceof Error ? error.message : String(error),
@@ -573,7 +609,7 @@ export class AgentContextService {
 				messageCount: history.length
 			});
 
-			const recentMessages = history.slice(-10);
+			const recentMessages = history.slice(-keepRecentCount);
 			messages.push(
 				...recentMessages.map((m) => ({
 					role: m.role as any,
@@ -625,6 +661,31 @@ export class AgentContextService {
 		}
 
 		return { messages, usageSnapshot };
+	}
+
+	private buildRollingCompressionHistory(params: {
+		sessionId: string;
+		history: ChatMessage[];
+		latestSummary: string | null;
+		lastMessageIndex: number;
+		userId?: string;
+	}): ChatMessage[] {
+		const { sessionId, history, latestSummary, lastMessageIndex, userId } = params;
+		if (!latestSummary) return history;
+
+		const summaryMessage: ChatMessage = {
+			id: `summary-${sessionId}-${Date.now()}`,
+			session_id: sessionId,
+			user_id: userId ?? null,
+			role: 'system',
+			content: `Previous conversation summary:\n${latestSummary}`,
+			created_at: new Date().toISOString()
+		} as ChatMessage;
+
+		const recentMessages =
+			lastMessageIndex >= 0 ? history.slice(lastMessageIndex + 1) : history;
+
+		return [summaryMessage, ...recentMessages];
 	}
 
 	/**

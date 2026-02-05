@@ -63,6 +63,7 @@ import { enrichOntologyUpdateArgs, isOntologyUpdateTool } from '../shared/tool-a
 import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
+import { dev } from '$app/environment';
 
 const logger = createLogger('AgentChatOrchestrator');
 
@@ -175,6 +176,20 @@ export class AgentChatOrchestrator {
 		);
 		this.strategyAnalyzer = new StrategyAnalyzer(deps.llmService, deps.errorLogger);
 		this.toolSelectionService = new ToolSelectionService(this.strategyAnalyzer);
+	}
+
+	private async yieldToEventLoop(): Promise<void> {
+		const setImmediateFn =
+			typeof (globalThis as typeof globalThis & { setImmediate?: unknown }).setImmediate ===
+			'function'
+				? (globalThis as typeof globalThis & { setImmediate: (cb: () => void) => void })
+						.setImmediate
+				: null;
+		if (setImmediateFn) {
+			await new Promise<void>((resolve) => setImmediateFn(resolve));
+			return;
+		}
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
 	}
 
 	async *streamConversation(
@@ -779,6 +794,7 @@ export class AgentChatOrchestrator {
 		let currentPlannerContext = plannerContext;
 		let currentTools = tools;
 		let currentVirtualHandlers = virtualHandlers;
+		let loggedDocToolSchema = false;
 
 		const startTime = Date.now();
 		let toolCallCount = 0;
@@ -800,6 +816,8 @@ export class AgentChatOrchestrator {
 			this.ensureWithinLimits(startTime, toolCallCount);
 			let assistantBuffer = '';
 			const pendingToolCalls: ChatToolCall[] = [];
+			let chunksSinceYield = 0;
+			let lastYieldAt = Date.now();
 
 			const streamAbortController = new AbortController();
 
@@ -812,6 +830,24 @@ export class AgentChatOrchestrator {
 				} else {
 					request.abortSignal.addEventListener('abort', handleRequestAbort);
 				}
+			}
+
+			if (dev && !loggedDocToolSchema) {
+				const docTool = currentTools.find(
+					(tool) => tool?.function?.name === 'create_onto_document'
+				);
+				if (docTool) {
+					const params =
+						(docTool as any).function?.parameters || (docTool as any).parameters;
+					const properties = params?.properties ? Object.keys(params.properties) : [];
+					logger.debug('create_onto_document tool schema', {
+						required: params?.required ?? [],
+						properties
+					});
+				} else {
+					logger.debug('create_onto_document tool schema missing from available tools');
+				}
+				loggedDocToolSchema = true;
 			}
 
 			// Use enhanced wrapper for intelligent model selection
@@ -855,6 +891,13 @@ export class AgentChatOrchestrator {
 						}
 					} else if (chunk.type === 'error') {
 						throw new Error(chunk.error || 'LLM streaming error');
+					}
+
+					chunksSinceYield++;
+					if (chunksSinceYield >= 64 || Date.now() - lastYieldAt >= 16) {
+						await this.yieldToEventLoop();
+						chunksSinceYield = 0;
+						lastYieldAt = Date.now();
 					}
 				}
 			} finally {
@@ -964,8 +1007,16 @@ export class AgentChatOrchestrator {
 				}
 
 				if (result.streamEvents) {
+					let eventsSinceYield = 0;
+					let eventsLastYieldAt = Date.now();
 					for (const event of result.streamEvents) {
 						yield event;
+						eventsSinceYield++;
+						if (eventsSinceYield >= 32 || Date.now() - eventsLastYieldAt >= 16) {
+							await this.yieldToEventLoop();
+							eventsSinceYield = 0;
+							eventsLastYieldAt = Date.now();
+						}
 					}
 				}
 
@@ -1626,18 +1677,12 @@ export class AgentChatOrchestrator {
 	): ChatToolCall {
 		const toolName = toolCall.function?.name;
 		const rawArgs = toolCall.function?.arguments;
-		if (!toolName || !rawArgs || !isOntologyUpdateTool(toolName)) {
+		if (!toolName || !isOntologyUpdateTool(toolName)) {
 			return toolCall;
 		}
 
-		let args: Record<string, any>;
-		try {
-			args = JSON.parse(rawArgs);
-		} catch {
-			return toolCall;
-		}
-
-		if (!args || typeof args !== 'object') {
+		const args = this.parseToolCallArguments(rawArgs);
+		if (!args) {
 			return toolCall;
 		}
 
@@ -1658,6 +1703,49 @@ export class AgentChatOrchestrator {
 				arguments: JSON.stringify(enrichedArgs)
 			}
 		};
+	}
+
+	private parseToolCallArguments(rawArgs: unknown): Record<string, any> | null {
+		if (!rawArgs) {
+			return null;
+		}
+
+		if (typeof rawArgs === 'object' && !Array.isArray(rawArgs)) {
+			return rawArgs as Record<string, any>;
+		}
+
+		if (typeof rawArgs !== 'string') {
+			return null;
+		}
+
+		const trimmed = rawArgs.trim();
+		if (!trimmed) {
+			return null;
+		}
+
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+				return parsed as Record<string, any>;
+			}
+			if (typeof parsed === 'string') {
+				const inner = parsed.trim();
+				if (inner && (inner.startsWith('{') || inner.startsWith('['))) {
+					try {
+						const reparsed = JSON.parse(inner);
+						if (reparsed && typeof reparsed === 'object' && !Array.isArray(reparsed)) {
+							return reparsed as Record<string, any>;
+						}
+					} catch {
+						return null;
+					}
+				}
+			}
+		} catch {
+			return null;
+		}
+
+		return null;
 	}
 
 	private summarizePlan(plan: AgentPlan): string {

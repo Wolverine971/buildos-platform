@@ -70,6 +70,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://build-os.com/blogs/getting-started/first-project-setup</loc>
+    <lastmod>2026-02-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/getting-started/under-the-hood</loc>
     <lastmod>2026-01-23</lastmod>
     <changefreq>monthly</changefreq>
@@ -107,7 +113,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs</loc>
-    <lastmod>2026-01-23</lastmod>
+    <lastmod>2026-02-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -149,7 +155,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/getting-started</loc>
-    <lastmod>2026-01-23</lastmod>
+    <lastmod>2026-02-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
