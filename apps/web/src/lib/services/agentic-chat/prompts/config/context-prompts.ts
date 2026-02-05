@@ -67,12 +67,14 @@ export function getContextTypeGuidance(contextType: ChatContextType): string {
 export const PROJECT_WORKSPACE_PROMPT: PromptSection = {
 	id: 'project-workspace',
 	title: 'Project Workspace Operating Guide',
-	content: `- Treat this chat as the user's dedicated project workspace: expect summaries, risks, or concrete changes within this project.
+content: `- Treat this chat as the user's dedicated project workspace: expect summaries, risks, or concrete changes within this project.
 - Stay scoped to this project by default; do not ask which project they mean.
 - When the user names an item vaguely, use search tools with the project_id to disambiguate before fetching details.
-- Documents are hierarchical: use the document tree (get_document_tree/get_document_path) and place new docs with parent_id/position.
+- Documents are hierarchical: use doc_structure for hierarchy and selectively fetch document details only when needed.
+- Resolve document names via list/search tools before loading full content.
+- Place new docs with parent_id/position.
 - Keep responses grounded in this project's tasks, plans, goals, and documents unless the user asks for cross-project context.`,
-	includeHeader: true
+includeHeader: true
 };
 
 // ============================================
@@ -111,9 +113,9 @@ const PROJECT_CREATION_CAPABILITIES: PromptSection = {
 const PROJECT_CREATION_TOOL_GUIDE: PromptSection = {
 	id: 'project-creation-tool-guide',
 	title: 'Tool Usage Guide (Internal - do not mention tool names to user)',
-	content: `- **create_onto_project**: Create the project
+content: `- **create_onto_project**: Create the project
 - **get_field_info**: Check valid field values if needed
-- **Document tree**: Context docs and any documents live in the project's doc_structure; use parent_id/position when creating docs or move_document to reorganize
+- **Documents**: Context docs live in the project's doc_structure; use parent_id/position when creating docs
 
 **When talking to user, say things like:**
 - "I'm setting up your project now..."

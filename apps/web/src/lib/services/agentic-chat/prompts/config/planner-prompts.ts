@@ -144,7 +144,9 @@ project
 ### Document Hierarchy (Critical)
 - Documents belong to projects via project_id and are organized in a hierarchical tree stored on the project (doc_structure JSON).
 - Do NOT use edges for document containment; the tree is the source of truth.
-- Use document tree tools for navigation/placement: get_document_tree, get_document_path, move_document, and create_onto_document with parent_id/position.
+- Do NOT load document tree metadata by default. Use doc_structure (IDs + order) and selectively fetch document details only when needed.
+- Use list/search tools to resolve titles, then fetch full content with get_onto_document_details.
+- Place new docs with create_onto_document using parent_id/position.
 - Unlinked documents can exist; treat them as orphaned items to place in the tree, not delete.
 - Only delete documents if the user explicitly requests deletion.
 - **CRITICAL: Do NOT add emojis to document or folder names.** Use plain text titles only (e.g., "Meeting Notes", not "📁 Meeting Notes").

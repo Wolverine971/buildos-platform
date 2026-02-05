@@ -173,6 +173,7 @@ Events emitted by the orchestrator (and stream layer) are mapped to SSE via:
 | `text`                                 | Planner loop                 | Streaming assistant text                            |
 | `tool_call`                            | Planner / Plan step          | LLM requested tool execution                        |
 | `tool_result`                          | ToolExecutionService         | Tool result (may include context shift)             |
+| `operation`                            | StreamHandler / Orchestrator | Human-readable tool activity (no raw IDs)           |
 | `plan_created`                         | Plan tool                    | Planner created a plan                              |
 | `plan_ready_for_review`                | Plan tool                    | Drafted plan awaiting review                        |
 | `plan_review`                          | Plan tool                    | Reviewer verdict                                    |
@@ -182,6 +183,23 @@ Events emitted by the orchestrator (and stream layer) are mapped to SSE via:
 | `clarifying_questions`                 | Project creation analyzer    | When clarification is required                      |
 | `error`                                | StreamHandler / Orchestrator | Error occurred                                      |
 | `done`                                 | StreamHandler / Orchestrator | Always sent at end                                  |
+
+#### Operation Event Schema
+
+When the agent performs list/search/read/create/update/delete actions, emit an
+`operation` event with human-readable names:
+
+```
+{
+  action: "list" | "search" | "read" | "create" | "update" | "delete",
+  entity_type: "document" | "task" | "goal" | "plan" | "project" | "milestone" | "risk" | "requirement",
+  entity_name: string,
+  status: "start" | "success" | "error",
+  entity_id?: string
+}
+```
+
+If the name is unknown, resolve minimal metadata (title/name) before emitting.
 
 ### 4.2 SSE ordering guarantee
 
