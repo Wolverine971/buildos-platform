@@ -135,10 +135,10 @@ Features:
 - Template rendering
 - User preference validation (quiet hours, opt-out)
 
-### @buildos/config
+### @buildos/smart-llm
 
-**Location:** `/packages/config/`  
-**Purpose:** Shared configuration (environment variables, constants)  
+**Location:** `/packages/smart-llm/`
+**Purpose:** LLM service abstraction with provider routing
 **Used By:** Web, Worker
 
 ## Data Flow Examples

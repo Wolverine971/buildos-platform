@@ -22,9 +22,10 @@ buildos-platform/
 │   └── /worker/           → Railway (Node.js + Express)
 ├── /packages/
 │   ├── /shared-types/     → Shared TypeScript types
+│   ├── /shared-utils/     → Shared utilities
+│   ├── /smart-llm/        → LLM service abstraction
 │   ├── /supabase-client/  → Database client
-│   ├── /twilio-service/   → SMS service
-│   └── /config/           → Shared configuration
+│   └── /twilio-service/   → SMS service
 └── /docs/                 → Cross-cutting documentation
 ```
 
@@ -59,7 +60,7 @@ buildos-platform/
 | ----------------------- | ----------------------------------------------- |
 | **Ontology System** ⭐  | `/apps/web/docs/features/ontology/`             |
 | **Agentic Chat** ⭐     | `/apps/web/docs/features/agentic-chat/`         |
-| Brain Dump System       | `/apps/web/docs/features/brain-dump/`           |
+| Brain Dump System       | `/apps/web/docs/features/braindump-context/`    |
 | Calendar Integration    | `/apps/web/docs/features/calendar-integration/` |
 | Notification System     | `/apps/web/docs/features/notifications/`        |
 | Onboarding Flow         | `/apps/web/docs/features/onboarding/`           |
@@ -236,7 +237,7 @@ For detailed patterns, see:
 | Feature/System           | Where to Learn More                                            |
 | ------------------------ | -------------------------------------------------------------- |
 | **Agentic Chat**         | `/apps/web/docs/features/agentic-chat/README.md`               |
-| **Brain Dump Flow**      | `/apps/web/docs/features/brain-dump/README.md`                 |
+| **Brain Dump Flow**      | `/apps/web/docs/features/braindump-context/README.md`          |
 | **Calendar Integration** | `/apps/web/docs/features/calendar-integration/README.md`       |
 | **Notification System**  | `/apps/web/docs/features/notifications/README.md`              |
 | **Daily Briefs**         | `/apps/worker/docs/features/daily-briefs/README.md`            |
@@ -259,8 +260,7 @@ pnpm pre-push
 **Testing Documentation:**
 
 - **Web Testing:** `/apps/web/docs/technical/testing/`
-- **Worker Testing:** `/apps/worker/docs/development/testing/`
-- **Testing Checklist:** `/apps/web/docs/development/TESTING_CHECKLIST.md`
+- **Testing Checklist:** `/apps/web/docs/technical/testing/TESTING_CHECKLIST.md`
 
 ## ⚙️ Environment Configuration
 

@@ -13,14 +13,15 @@ For **app-specific documentation**:
 
 For **package documentation**:
 
-- Shared Types: `/packages/shared-types/docs/`
-- Supabase Client: `/packages/supabase-client/docs/`
 - Twilio Service: `/packages/twilio-service/docs/`
+- Shared Types: `/packages/shared-types/` (types and schema definitions)
+- Shared Utils: `/packages/shared-utils/` (utility functions)
+- Smart LLM: `/packages/smart-llm/` (LLM service abstraction)
+- Supabase Client: `/packages/supabase-client/` (database client)
 
 ## What's in This Folder
 
 - `/architecture/` - System-wide architecture, data flows, ADRs, diagrams
-- `/audits/` - ⭐ **Comprehensive audits**: Svelte 5, Worker service, type safety, bug fixes
 - `/business/` - Business strategy, war room, communications guides
 - `/marketing/` - Brand, growth, social media, customer segments, investors
 - `/blogs/` - Content marketing, founder stories, user guides
@@ -30,7 +31,9 @@ For **package documentation**:
 - `/operations/` - Monorepo DevOps, CI/CD, monitoring, environment variables
 - `/integrations/` - Shared integrations (Supabase, Stripe, Twilio/SMS)
 - `/research/` - Cross-cutting research
-- `/archive/` - Historical documentation (outdated docs, completed migrations, archived audits)
+- `/specs/` - Feature and system specifications
+- `/plans/` - Implementation and project plans
+- `/guides/` - How-to guides
 
 ## 📝 Documentation Standards
 

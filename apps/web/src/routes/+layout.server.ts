@@ -57,56 +57,62 @@ export const load: LayoutServerLoad = async ({
 		console.error('Background webhook check failed:', error);
 	});
 
-	let pendingInvites: unknown[] = [];
-	try {
-		const { data, error } = await measure('db.pending_invites', () =>
-			supabase.rpc('list_pending_project_invites')
-		);
-		if (error) {
-			console.warn('[Layout] Failed to load pending invites:', error);
-		} else if (Array.isArray(data)) {
-			pendingInvites = data;
-		}
-	} catch (error) {
-		console.warn('[Layout] Failed to load pending invites:', error);
-	}
-
 	const completedOnboarding = Boolean(user.completed_onboarding);
-	const onboardingProgressPromise = completedOnboarding
-		? Promise.resolve(100)
-		: measure('db.onboarding_progress', () =>
-				new OnboardingProgressService(supabase)
-					.getOnboardingProgress(user.id)
-					.then((data) => clampProgress(data?.progress))
-					.catch((error) => {
-						console.error('Failed to load onboarding progress:', error);
-						return 0;
-					})
-			);
 
-	const billingContextPromise = stripeEnabled
-		? measure('db.billing_context', () =>
-				fetchBillingContext(supabase, user.id, stripeEnabled)
-					.then((context) => ({
-						subscription: context?.subscription ?? null,
-						trialStatus: context?.trialStatus ?? null,
-						paymentWarnings: context?.paymentWarnings ?? [],
-						isReadOnly: Boolean(context?.isReadOnly),
-						loading: false
-					}))
-					.catch((error) => {
-						console.error('Failed to load billing context:', error);
-						return createEmptyBillingContext(false);
-					})
-			)
-		: createEmptyBillingContext(false);
+	// Run all remaining queries in parallel instead of sequentially/streamed.
+	// Awaiting here prevents layout shifts from TrialBanner/PaymentWarning
+	// appearing late on the client when streamed promises resolve.
+	const [pendingInvitesResult, onboardingProgress, billingContext] = await Promise.all([
+		measure('db.pending_invites', async () => {
+			try {
+				const { data, error } = await supabase.rpc('list_pending_project_invites');
+				if (error) {
+					console.warn('[Layout] Failed to load pending invites:', error);
+					return [] as unknown[];
+				}
+				return Array.isArray(data) ? (data as unknown[]) : ([] as unknown[]);
+			} catch (error) {
+				console.warn('[Layout] Failed to load pending invites:', error);
+				return [] as unknown[];
+			}
+		}),
+
+		completedOnboarding
+			? 100
+			: measure('db.onboarding_progress', () =>
+					new OnboardingProgressService(supabase)
+						.getOnboardingProgress(user.id)
+						.then((data) => clampProgress(data?.progress))
+						.catch((error) => {
+							console.error('Failed to load onboarding progress:', error);
+							return 0;
+						})
+				),
+
+		stripeEnabled
+			? measure('db.billing_context', () =>
+					fetchBillingContext(supabase, user.id, stripeEnabled)
+						.then((context) => ({
+							subscription: context?.subscription ?? null,
+							trialStatus: context?.trialStatus ?? null,
+							paymentWarnings: context?.paymentWarnings ?? [],
+							isReadOnly: Boolean(context?.isReadOnly),
+							loading: false
+						}))
+						.catch((error) => {
+							console.error('Failed to load billing context:', error);
+							return createEmptyBillingContext(false);
+						})
+				)
+			: createEmptyBillingContext(false)
+	]);
 
 	return {
 		...baseData,
 		user,
 		completedOnboarding,
-		onboardingProgress: completedOnboarding ? 100 : onboardingProgressPromise,
-		billingContext: billingContextPromise,
-		pendingInvites
+		onboardingProgress,
+		billingContext,
+		pendingInvites: pendingInvitesResult
 	};
 };

@@ -6,20 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 📚 Documentation System
 
-**START HERE**: `/docs/start-here.md` is your comprehensive documentation index with:
+**START HERE**: `/apps/web/docs/START-HERE.md` is your comprehensive documentation index with:
 
 - Quick start guides for new developers
 - Common tasks reference table
 - Complete documentation structure and organization
 - Search guide for finding specific information
 
-All technical documentation is organized under `/docs/`:
+All web app documentation is organized under `/apps/web/docs/`:
 
-- `/docs/technical/` - All technical documentation (architecture, API, development, deployment)
-- `/docs/prompts/` - AI prompt templates and architecture
-- `/docs/business/` - Business strategy and planning
-- `/docs/user-guide/` - End user documentation
-- `/docs/archive/` - Archived/outdated documentation
+- `/apps/web/docs/features/` - Feature-specific documentation (ontology, agentic-chat, notifications, etc.)
+- `/apps/web/docs/technical/` - Technical documentation (architecture, API, components, database)
+- `/apps/web/docs/development/` - Development guides and workflows
+- `/apps/web/docs/operations/` - Operational documentation
 
 ### Feature-Specific Documentation
 
@@ -31,7 +30,7 @@ All technical documentation is organized under `/docs/`:
 
 - **[Ontology System](/apps/web/docs/features/ontology/README.md)** - Template-driven entity management system
     - **[Data Models](/apps/web/docs/features/ontology/DATA_MODELS.md)** - Complete database schema (31KB, 15 tables)
-    - **[Implementation Summary](/apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md)** - CRUD operations status
+    - **[Data Models](/apps/web/docs/features/ontology/DATA_MODELS.md)** - Complete database schema
     - Components: `/src/lib/components/ontology/`
     - API Endpoints: `/src/routes/api/onto/`
     - **Key Features:** Tasks, Plans, Goals, Documents, FSM state machines, template inheritance
@@ -42,13 +41,12 @@ All technical documentation is organized under `/docs/`:
     - **[Technical Analysis](/apps/web/docs/technical/components/modals/TECHNICAL_ANALYSIS.md)** - Deep dive
     - Components: `/src/lib/components/ui/Modal.svelte`, `/src/lib/components/ui/FormModal.svelte`
 
-- **[Notification System](../../NOTIFICATION_SYSTEM_DOCS_MAP.md)** - Generic stackable notification system
-    - **[Documentation Map](../../NOTIFICATION_SYSTEM_DOCS_MAP.md)** - START HERE - Complete guide to all docs
-    - [Implementation Summary](../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md) - Phase 1 complete, API reference, bug fixes
-    - [Original Specification](../../generic-stackable-notification-system-spec.md) - Full technical spec and architecture
-    - [Component README](/src/lib/components/notifications/README.md) - Quick reference and code examples
-    - Components: `/src/lib/components/notifications/`
-    - **Important:** See Svelte 5 Map reactivity patterns for store development
+- **[Notification System](/apps/web/docs/features/notifications/README.md)** - Generic stackable notification system
+    - **[Documentation Map](/apps/web/docs/features/notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md)** - START HERE - Complete guide to all docs
+    - [Implementation Summary](/apps/web/docs/features/notifications/NOTIFICATION_SYSTEM_IMPLEMENTATION.md) - Phase 1 complete, API reference, bug fixes
+    - [Original Specification](/apps/web/docs/features/notifications/generic-stackable-notification-system-spec.md) - Full technical spec and architecture
+    - [Component README](/apps/web/src/lib/components/notifications/README.md) - Quick reference and code examples
+    - Components: `/apps/web/src/lib/components/notifications/`
 
 ## 🚀 BuildOS Core Concepts
 
@@ -131,25 +129,34 @@ pnpm run preview
 // Core brain dump components
 src/lib/components/brain-dump/
   ├── BrainDumpModal.svelte           // Main input interface
-  ├── BrainDumpProcessingNotification.svelte // Progress feedback
-  └── BrainDumpQuestions.svelte       // AI clarification questions
+  ├── ProcessingModal.svelte          // Processing progress feedback
+  ├── ProjectSelectionView.svelte     // Project selection
+  ├── RecordingView.svelte            // Voice recording
+  ├── DualProcessingResults.svelte    // Results display
+  └── SuccessView.svelte              // Completion view
 
 // Processing logic
 src/lib/utils/
-  ├── braindump-processor.ts          // Main processor
-  ├── braindump-processor-stream-short.ts // Short dump handler
-  └── braindump-validation.ts         // Input validation
+  └── braindump-processor.ts          // Main processor
 
 // Services
 src/lib/services/
-  ├── braindump.service.ts            // Database operations
+  ├── braindump-api.service.ts        // API client operations
   ├── braindump-background.service.ts // Background processing
+  ├── braindump-status.service.ts     // Status tracking
   └── promptTemplate.service.ts       // AI prompt templates
+
+// Server-side processing
+src/lib/server/
+  └── braindump-processing.service.ts // Server-side processing
 
 // API endpoints
 src/routes/api/braindumps/
-  ├── stream/+server.ts               // Long brain dump endpoint
-  └── stream-short/+server.ts         // Short brain dump endpoint
+  ├── +server.ts                      // Main braindumps endpoint
+  ├── stream/+server.ts               // Streaming endpoint
+  ├── generate/+server.ts             // Generation endpoint
+  ├── init/+server.ts                 // Initialization endpoint
+  └── draft/+server.ts                // Draft management
 ```
 
 ### Brain Dump Processing Types
@@ -202,18 +209,22 @@ src/routes/projects/
 
 // Services
 src/lib/services/
-  ├── project.service.ts              // CRUD operations
-  ├── realtimeProject.service.ts     // Real-time updates
+  ├── projectService.ts               // CRUD operations
+  ├── projectData.service.ts          // Data fetching
+  ├── project-calendar.service.ts     // Calendar integration
+  ├── project-synthesis.service.ts    // AI synthesis
   └── phase-generation/               // Phase creation strategies
       ├── orchestrator.ts
       └── strategies/
 
 // Components
 src/lib/components/projects/
-  ├── ProjectCard.svelte
-  ├── ProjectHeader.svelte
-  ├── TaskList.svelte
-  └── PhaseManager.svelte
+  ├── ProjectsGrid.svelte             // Grid layout
+  ├── ProjectsHeader.svelte           // Header with actions
+  ├── ProjectsFilterBar.svelte        // Filtering controls
+  ├── ProjectStats.svelte             // Statistics display
+  ├── NewProjectModal.svelte          // Project creation
+  └── ProjectsEmptyState.svelte       // Empty state
 ```
 
 ### Project Features
@@ -292,7 +303,7 @@ src/lib/components/projects/
 
 ### Database Schema
 
-- Core tables defined in `src/lib/database.schema.ts`
+- Core tables defined in `/packages/shared-types/src/database.schema.ts`
 - Key tables: `users`, `projects`, `tasks`, `brain_dumps`, `daily_briefs`
 - Trial system with 14-day free trial
 - Stripe integration tables for payments
@@ -643,20 +654,16 @@ PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
 ### Documentation
 
-- `/docs/start-here.md` - **START HERE** - Complete documentation index and navigation guide
-- `/docs/technical/` - All technical documentation
+- `/apps/web/docs/START-HERE.md` - **START HERE** - Complete documentation index and navigation guide
+- `/apps/web/docs/NAVIGATION_INDEX.md` - Quick navigation to all web app docs
+- `/apps/web/docs/features/` - Feature-specific documentation (ontology, agentic-chat, notifications, etc.)
+- `/apps/web/docs/technical/` - All technical documentation
     - `architecture/` - System architecture and design decisions (ADRs)
     - `api/` - API documentation and endpoint reference
-    - `development/` - Development guides, workflows, and performance docs
-    - `deployment/` - Deployment checklists and runbooks
-    - `database/` - Schema, RLS policies, and indexes
     - `components/` - UI component standards and design system
-    - `services/` - Service layer documentation
+    - `database/` - Schema, RLS policies, and indexes
+    - `deployment/` - Deployment checklists and runbooks
     - `testing/` - Testing strategy and patterns
-- `/docs/prompts/` - AI prompt templates and architecture
-- `/docs/business/` - Business strategy, brand, and communications
-- `/docs/user-guide/` - End user guides and feature documentation
-- `/docs/archive/` - Archived/outdated documentation (historical reference only)
 
 ### Core Code
 
@@ -667,12 +674,12 @@ PUBLIC_STRIPE_PUBLISHABLE_KEY=
 
 ### Brain Dump Specific
 
-- `/src/lib/components/brain-dump/` - Brain dump UI components
-- `/src/lib/utils/braindump-*.ts` - Processing logic and validation
-- `/docs/prompts/brain-dump/` - Prompt templates organized by flow type
-- `/src/routes/api/braindumps/` - API endpoints (stream and stream-short)
+- `/apps/web/src/lib/components/brain-dump/` - Brain dump UI components
+- `/apps/web/src/lib/utils/braindump-processor.ts` - Processing logic
+- `/apps/web/docs/prompts/brain-dump/` - Prompt templates organized by flow type
+- `/apps/web/src/routes/api/braindumps/` - API endpoints
 
 ### Database
 
 - `/supabase/migrations/` - Database schema changes and migrations
-- `/src/lib/database.schema.ts` - TypeScript types for all tables
+- `/packages/shared-types/src/database.schema.ts` - TypeScript types for all tables

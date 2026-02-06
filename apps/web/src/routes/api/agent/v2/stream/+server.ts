@@ -17,10 +17,13 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import type {
 	ChatContextType,
+	ChatToolCall,
+	ChatToolResult,
 	ContextUsageSnapshot,
 	OperationEventPayload
 } from '@buildos/shared-types';
 import type { AgentState } from '$lib/types/agent-chat-enhancement';
+import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor-refactored';
 import {
 	AgentStateReconciliationService,
 	type AgentStateMessageSnapshot,
@@ -32,6 +35,7 @@ import {
 	buildFastContextUsageSnapshot,
 	loadFastChatPromptContext,
 	normalizeFastContextType,
+	selectFastChatTools,
 	streamFastChat,
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
@@ -316,6 +320,128 @@ function emitContextUsage(
 		.catch((error) => logger.warn('Failed to emit context usage', { error }));
 }
 
+function emitToolCall(
+	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	toolCall: ChatToolCall
+): void {
+	void agentStream
+		.sendMessage({ type: 'tool_call', tool_call: toolCall })
+		.catch((error) => logger.warn('Failed to emit tool_call', { error, toolCall }));
+}
+
+function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolResult) {
+	const toolName = toolCall.function.name;
+	return {
+		...result,
+		tool_name: toolName,
+		toolName,
+		toolCallId: result.tool_call_id ?? toolCall.id,
+		tool_call_id: result.tool_call_id ?? toolCall.id,
+		data: result.result
+	};
+}
+
+function emitToolResult(
+	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	toolCall: ChatToolCall,
+	result: ChatToolResult
+): void {
+	const payload = buildToolResultEventPayload(toolCall, result);
+	void agentStream
+		.sendMessage({ type: 'tool_result', result: payload })
+		.catch((error) => logger.warn('Failed to emit tool_result', { error, toolCall }));
+}
+
+const TOOL_ENTITY_KEYS = [
+	'project',
+	'task',
+	'goal',
+	'plan',
+	'document',
+	'milestone',
+	'risk',
+	'requirement',
+	'event'
+];
+
+function buildToolEntityCounts(payload: Record<string, any>): Record<string, number> {
+	const counts: Record<string, number> = {};
+	for (const key of TOOL_ENTITY_KEYS) {
+		const pluralKey = `${key}s`;
+		if (Array.isArray(payload?.[pluralKey])) {
+			counts[key] = payload[pluralKey].length;
+		}
+	}
+	return counts;
+}
+
+function buildToolEntityUpdates(
+	payload: Record<string, any>
+): Array<{ id: string; kind: string; name?: string }> {
+	const updates: Array<{ id: string; kind: string; name?: string }> = [];
+	for (const key of TOOL_ENTITY_KEYS) {
+		const record = payload?.[key];
+		if (!record || typeof record !== 'object') continue;
+		const id = typeof record.id === 'string' ? record.id : null;
+		if (!id) continue;
+		updates.push({
+			id,
+			kind: key,
+			name: extractEntityLabel(record)
+		});
+	}
+	return updates;
+}
+
+function buildToolResultSummaries(
+	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>
+): AgentStateToolSummary[] {
+	if (!executions.length) return [];
+
+	return executions.map(({ toolCall, result }) => {
+		const payload = result.result;
+		const counts =
+			payload && typeof payload === 'object'
+				? buildToolEntityCounts(payload as Record<string, any>)
+				: {};
+		const updates =
+			payload && typeof payload === 'object'
+				? buildToolEntityUpdates(payload as Record<string, any>)
+				: [];
+		const entitiesAccessed = Array.isArray((payload as any)?._entities_accessed)
+			? ((payload as any)._entities_accessed as string[])
+			: Array.isArray((payload as any)?.entities_accessed)
+				? ((payload as any).entities_accessed as string[])
+				: undefined;
+		const summaryParts: string[] = [`${toolCall.function.name}`];
+		if (Object.keys(counts).length > 0) {
+			const countsLine = Object.entries(counts)
+				.map(([key, count]) => `${key}:${count}`)
+				.join(', ');
+			summaryParts.push(`(${countsLine})`);
+		}
+		const summary = result.success
+			? `Executed ${summaryParts.join(' ')}.`
+			: `Failed ${toolCall.function.name}: ${result.error ?? 'unknown error'}`;
+		const toolSummary: AgentStateToolSummary = {
+			tool_name: toolCall.function.name,
+			success: result.success,
+			error: result.error,
+			summary
+		};
+		if (entitiesAccessed?.length) {
+			toolSummary.entities_accessed = entitiesAccessed;
+		}
+		if (Object.keys(counts).length > 0) {
+			toolSummary.entity_counts = counts;
+		}
+		if (updates.length > 0) {
+			toolSummary.entity_updates = updates;
+		}
+		return toolSummary;
+	});
+}
+
 function emitContextOperations(
 	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
 	params: {
@@ -492,6 +618,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				httpReferer: request.headers.get('referer') ?? undefined,
 				appName: 'BuildOS Agentic Chat V2'
 			});
+			const tools = selectFastChatTools({ contextType, message });
+			const toolExecutor =
+				tools.length > 0
+					? new ChatToolExecutor(supabase, user.id, session.id, fetch, llm)
+					: undefined;
 
 			let systemPrompt: string | undefined;
 			let promptContext:
@@ -587,7 +718,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				});
 			}
 
-			const { assistantText, usage, finishedReason } = await streamFastChat({
+			const { assistantText, usage, finishedReason, toolExecutions } = await streamFastChat({
 				llm,
 				userId: user.id,
 				sessionId: session.id,
@@ -598,6 +729,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				message,
 				signal: request.signal,
 				systemPrompt,
+				tools,
+				toolExecutor: toolExecutor ? (toolCall) => toolExecutor.execute(toolCall) : undefined,
+				onToolCall: async (toolCall) => {
+					emitToolCall(agentStream, toolCall);
+				},
+				onToolResult: async ({ toolCall, result }) => {
+					emitToolResult(agentStream, toolCall, result);
+				},
 				onDelta: async (delta) => {
 					await agentStream.sendMessage({ type: 'text_delta', content: delta });
 				}
@@ -664,13 +803,16 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				{ role: 'user', content: message },
 				{ role: 'assistant', content: assistantText.trim() }
 			];
-			const toolSummaries = buildContextToolSummary({
-				contextType,
-				data: promptContext?.data,
-				projectName: promptContext?.projectName ?? null,
-				focusEntityType: promptContext?.focusEntityType ?? null,
-				focusEntityName: promptContext?.focusEntityName ?? null
-			});
+			const toolSummaries = [
+				...buildContextToolSummary({
+					contextType,
+					data: promptContext?.data,
+					projectName: promptContext?.projectName ?? null,
+					focusEntityType: promptContext?.focusEntityType ?? null,
+					focusEntityName: promptContext?.focusEntityName ?? null
+				}),
+				...buildToolResultSummaries(toolExecutions ?? [])
+			];
 
 			void (async () => {
 				const reconciliation = new AgentStateReconciliationService(supabase, errorLogger);

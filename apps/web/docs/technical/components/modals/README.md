@@ -366,7 +366,7 @@ The modal components are well-designed, highly composable, and provide excellent
 ### Features Using Modal Components
 
 - 🎯 **[Ontology System](/apps/web/docs/features/ontology/README.md)** - Complete ontology documentation
-- 🔧 **[Ontology Implementation](/apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md)** - How modals are used in practice
+- 🔧 **[Ontology API Endpoints](/apps/web/docs/features/ontology/API_ENDPOINTS.md)** - How modals are used in practice
 - 📊 **[Ontology Data Models](/apps/web/docs/features/ontology/DATA_MODELS.md)** - Entity relationships
 - 💬 **[Agent Chat System](/apps/web/src/lib/components/agent/AgentChatModal.svelte)** - Modal v2.0 in production
 

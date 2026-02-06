@@ -20,6 +20,8 @@
 	import IOSSplashScreens from '$lib/components/layout/IOSSplashScreens.svelte';
 	import { initializePWAEnhancements, setupInstallPrompt } from '$lib/utils/pwa-enhancements';
 	import type { LayoutData } from './$types';
+	// Static import: TrialBanner must be in the SSR pass to prevent layout shift
+	import TrialBannerStatic from '$lib/components/trial/TrialBanner.svelte';
 
 	// Notification system integration
 	import NotificationStackManager from '$lib/components/notifications/NotificationStackManager.svelte';
@@ -65,7 +67,6 @@
 	let ToastContainer = $state<any>(undefined);
 	let toastService = $state<any>(undefined);
 	let PaymentWarning = $state<any>(undefined);
-	let TrialBanner = $state<any>(undefined);
 	let BackgroundJobIndicator = $state<any>(undefined);
 
 	// PERFORMANCE: Memoize route calculations to prevent unnecessary recalculations
@@ -282,9 +283,11 @@
 	let authSyncInProgress = $state(false);
 	let authSubscriptionCleanup = $state<(() => void) | null>(null);
 
-	// Track previous auth state to prevent unnecessary reloads on visibility change
-	// When tab becomes visible, Supabase may emit SIGNED_IN even if user was already signed in
-	let previousAuthUserId = $state<string | null>(null);
+	// Track previous auth state to prevent unnecessary reloads on visibility change.
+	// When tab becomes visible, Supabase may emit SIGNED_IN even if user was already signed in.
+	// Initialize from SSR user data so SIGNED_IN after INITIAL_SESSION(null) is recognized
+	// as the same user and skipped — preventing two redundant __data.json re-fetches.
+	let previousAuthUserId = $state<string | null>(data.user?.id ?? null);
 
 	// Convert to $effect - load resources when user becomes available
 	$effect(() => {
@@ -310,7 +313,6 @@
 				import('$lib/components/onboarding/OnboardingModal.svelte'),
 				import('$lib/components/ui/ToastContainer.svelte'),
 				import('$lib/components/notifications/PaymentWarning.svelte'),
-				import('$lib/components/trial/TrialBanner.svelte'),
 				import('$lib/components/BackgroundJobIndicator.svelte')
 			]);
 
@@ -319,7 +321,6 @@
 				onboardingModalModule,
 				toastContainerModule,
 				paymentWarningModule,
-				trialBannerModule,
 				backgroundJobIndicatorModule
 			] = (await Promise.race([loadPromise, timeoutPromise])) as any;
 
@@ -327,7 +328,6 @@
 			OnboardingModal = onboardingModalModule.default;
 			ToastContainer = toastContainerModule.default;
 			PaymentWarning = paymentWarningModule.default;
-			TrialBanner = trialBannerModule.default;
 			BackgroundJobIndicator = backgroundJobIndicatorModule.default;
 
 			// Use untrack for state updates to prevent triggering effects
@@ -377,14 +377,16 @@
 		try {
 			// Guard against calling invalidate when page context is not available
 			if ($page) {
-				// Always sync auth-specific dependencies
-				await invalidate('supabase:auth');
-				await invalidate('app:auth');
-
-				// Only invalidate all data when auth state actually changed
-				// This prevents unnecessary data reloads on tab visibility change
 				if (invalidateData) {
+					// invalidateAll() covers all dependencies including
+					// 'supabase:auth' and 'app:auth', so a single call suffices.
+					// Previously the specific invalidations fired first, causing
+					// a separate __data.json fetch before invalidateAll fired another.
 					await invalidateAll();
+				} else {
+					// Token refresh / session restore — only re-run auth-specific loaders
+					await invalidate('supabase:auth');
+					await invalidate('app:auth');
 				}
 			}
 		} catch (error) {
@@ -396,19 +398,30 @@
 
 	/**
 	 * Handle user sign-in events.
-	 * Only triggers full data reload if the user actually changed (new sign-in).
+	 * Only triggers full data reload if the user actually changed (new sign-in)
+	 * AND the current page data doesn't already reflect the signed-in user.
 	 * Skips data reload for session restores after tab visibility change.
 	 */
 	async function handleAuthSignedIn(currentUserId: string | null) {
 		const isNewSignIn = previousAuthUserId !== currentUserId;
 		previousAuthUserId = currentUserId;
 
+		// On initial page load, INITIAL_SESSION already set previousAuthUserId,
+		// so SIGNED_IN fires with isNewSignIn=false. The SSR data is already correct —
+		// skip invalidation and resource resets to prevent a visible page flicker.
+		if (!isNewSignIn) return;
+
+		// After login, goto('/', { invalidateAll: true }) already loaded fresh data
+		// including the user. When SIGNED_IN fires afterward (browser client detecting
+		// new cookies), data.user already matches — skip the redundant invalidation
+		// and resource reset to avoid flashing/conflicts with the completed navigation.
+		if (currentUserId && data.user?.id === currentUserId) return;
+
 		resetResourceLoaders();
 
-		// Only invalidate all data if this is an actual auth state change
+		// Full invalidation for actual auth state changes
 		// (user signed in for the first time or switched accounts)
-		// Skip invalidation if user was already signed in (session restore after visibility change)
-		await synchronizeAuthState(isNewSignIn);
+		await synchronizeAuthState(true);
 	}
 
 	async function handleAuthSignedOut() {
@@ -450,8 +463,13 @@
 
 		switch (event) {
 			case 'INITIAL_SESSION':
-				// Initialize tracking on first load without triggering invalidation
-				previousAuthUserId = currentUserId;
+				// Initialize tracking on first load without triggering invalidation.
+				// Only update if we get a real user ID, or if we have no SSR user data.
+				// Supabase may fire INITIAL_SESSION with null before _recoverAndRefresh
+				// resolves — we must not overwrite the SSR-initialized value.
+				if (currentUserId || !previousAuthUserId) {
+					previousAuthUserId = currentUserId;
+				}
 				return;
 
 			case 'SIGNED_IN':
@@ -798,8 +816,13 @@
 		<Navigation bind:element={navigationElement} {...navigationProps} />
 	{/if}
 
-	{#if user && trialStatus && TrialBanner && data.stripeEnabled}
-		<TrialBanner {user} />
+	{#if user && trialStatus && data.stripeEnabled}
+		<TrialBannerStatic
+			user={{
+				trial_ends_at: user.trial_ends_at,
+				subscription_status: user.subscription_status ?? undefined
+			}}
+		/>
 	{/if}
 
 	{#if !billingLoading && paymentWarnings.length > 0 && PaymentWarning}

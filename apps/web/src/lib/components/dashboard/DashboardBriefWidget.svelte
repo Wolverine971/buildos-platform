@@ -100,24 +100,10 @@
 		};
 	});
 
-	// Initialize data fetching once on mount - DEFERRED to not block initial render
-	// Brief data is not critical for initial page visibility
+	// Initialize data fetching on mount
 	onMount(() => {
 		if (!user?.id) return;
-
-		// Defer initialization to allow projects to render first
-		// Use requestIdleCallback if available, otherwise small delay
-		if ('requestIdleCallback' in window) {
-			requestIdleCallback(
-				() => {
-					initializeWidget();
-				},
-				{ timeout: 1000 }
-			); // Max 1 second delay
-		} else {
-			// Fallback: small delay to allow main content to render
-			setTimeout(initializeWidget, 100);
-		}
+		initializeWidget();
 	});
 
 	async function initializeWidget() {
@@ -238,7 +224,7 @@
 </script>
 
 <!-- Fixed-height container prevents layout shift during state transitions -->
-<div class="w-full min-h-[48px] sm:min-h-[60px]">
+<div class="w-full min-h-[52px] sm:min-h-[72px] transition-[min-height] duration-200">
 	{#if isLoading}
 		<!-- Skeleton Loading State - ghost weight for ephemeral state -->
 		<div

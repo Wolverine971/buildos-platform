@@ -12,7 +12,7 @@
 
 - **Main Hub**: [`/features/ontology/README.md`](./features/ontology/README.md)
 - **Data Models**: [`/features/ontology/DATA_MODELS.md`](./features/ontology/DATA_MODELS.md) - Complete schema analysis
-- **Implementation Guide**: [`/features/ontology/IMPLEMENTATION_SUMMARY.md`](./features/ontology/IMPLEMENTATION_SUMMARY.md) - What's built
+- **Data Models**: [`/features/ontology/DATA_MODELS.md`](./features/ontology/DATA_MODELS.md) - Complete database schema
 
 ### Working on UI Components?
 
@@ -26,7 +26,7 @@
 
 - **Agentic Chat**: [`/features/agentic-chat/README.md`](./features/agentic-chat/README.md) - AI chat system with tool execution
     - **Tool/API Mapping**: [`/features/agentic-chat/TOOL_API_MAPPING.md`](./features/agentic-chat/TOOL_API_MAPPING.md) - Tool to endpoint/data map
-- **Brain Dump**: [`/features/brain-dump/README.md`](./features/brain-dump/README.md) - AI processing system
+- **Brain Dump**: [`/features/braindump-context/README.md`](./features/braindump-context/README.md) - AI processing system
 - **Calendar**: [`/features/calendar-integration/README.md`](./features/calendar-integration/README.md) - Google Calendar sync
 - **Notifications**: [`/features/notifications/README.md`](./features/notifications/README.md) - Notification system
 - **Onboarding**: [`/features/onboarding/README.md`](./features/onboarding/README.md) - User onboarding flow
@@ -45,10 +45,9 @@
 │   │   ├── README.md                      # Complete architecture & flow (canonical)
 │   │   └── TOOL_API_MAPPING.md            # Tool -> API and data mapping
 │   │
-│   ├── /brain-dump/                       # Brain dump processing system
+│   ├── /braindump-context/                # Brain dump processing system
 │   │   ├── README.md                      # Overview & architecture
-│   │   ├── IMPLEMENTATION_GUIDE.md        # How to implement
-│   │   └── TESTING_GUIDE.md               # Testing brain dumps
+│   │   └── AGENT_CAPABILITIES_ASSESSMENT.md # Agent capabilities
 │   │
 │   ├── /calendar-integration/             # Google Calendar integration
 │   │   ├── README.md                      # Calendar overview
@@ -70,8 +69,7 @@
 │   │
 │   └── /ontology/                         # Ontology system
 │       ├── README.md                      # Ontology overview & quick start
-│       ├── DATA_MODELS.md                 # Complete database schema (31KB)
-│       └── IMPLEMENTATION_SUMMARY.md      # CRUD implementation status
+│       └── DATA_MODELS.md                 # Complete database schema (31KB)
 │
 ├── /technical/                            # Technical documentation
 │   ├── /api/                              # API documentation
@@ -132,13 +130,13 @@
 
 - **Svelte 5 / SvelteKit**: Check `/technical/architecture/` and component docs
 - **Supabase**: See `/technical/database/` and API patterns
-- **AI/LLM**: Look in `/features/brain-dump/` and prompt templates
+- **AI/LLM**: Look in `/features/braindump-context/` and prompt templates
 - **Google Calendar**: See `/features/calendar-integration/`
 - **Stripe**: Check environment setup and payment docs
 
 ### By Task Type
 
-- **Building CRUD Operations**: `/features/ontology/IMPLEMENTATION_SUMMARY.md`
+- **Building CRUD Operations**: `/features/ontology/README.md`
 - **Creating Modals**: `/technical/components/modals/QUICK_REFERENCE.md`
 - **Writing API Endpoints**: `/technical/api/PATTERNS.md`
 - **Database Changes**: `/technical/database/MIGRATIONS.md`
@@ -151,7 +149,7 @@
 - **Frontend Engineers**: Focus on `/technical/components/` and `/features/`
 - **Backend Engineers**: Check `/technical/api/` and `/technical/database/`
 - **DevOps**: See `/technical/deployment/` and `/operations/`
-- **AI/LLM Engineers**: Review `/features/brain-dump/` and prompt docs
+- **AI/LLM Engineers**: Review `/features/braindump-context/` and prompt docs
 
 ## 📝 Documentation Standards
 
@@ -232,7 +230,7 @@ All documentation should include:
 Based on common development tasks:
 
 1. **[BuildOS Style Guide](./technical/components/BUILDOS_STYLE_GUIDE.md)** - UI/UX patterns
-2. **[Ontology Implementation](./features/ontology/IMPLEMENTATION_SUMMARY.md)** - CRUD patterns
+2. **[Ontology Data Models](./features/ontology/DATA_MODELS.md)** - Schema & CRUD patterns
 3. **[Modal Quick Reference](./technical/components/modals/QUICK_REFERENCE.md)** - Modal usage
 4. **[API Patterns](./technical/api/PATTERNS.md)** - API development
 5. **[Getting Started](./development/GETTING_STARTED.md)** - New developer guide
@@ -241,7 +239,7 @@ Based on common development tasks:
 
 - **Add a new feature?** → Start with `/features/[similar-feature]/` as template
 - **Create a modal?** → `/technical/components/modals/QUICK_REFERENCE.md`
-- **Build CRUD operations?** → `/features/ontology/IMPLEMENTATION_SUMMARY.md`
+- **Build CRUD operations?** → `/features/ontology/README.md`
 - **Write an API endpoint?** → `/technical/api/PATTERNS.md`
 - **Update the database?** → `/technical/database/MIGRATIONS.md`
 - **Fix a bug?** → Check relevant feature docs first

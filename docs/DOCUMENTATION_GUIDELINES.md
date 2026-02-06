@@ -195,10 +195,11 @@ last_updated_by: [Researcher name]
 
 **Location:**
 
-- `/packages/shared-types/docs/` - Type system documentation
-- `/packages/supabase-client/docs/` - Database client usage
 - `/packages/twilio-service/docs/` - SMS service documentation
-- `/packages/config/docs/` - Configuration documentation
+- `/packages/shared-types/` - Type system and database schema
+- `/packages/shared-utils/` - Shared utility functions
+- `/packages/smart-llm/` - LLM service abstraction
+- `/packages/supabase-client/` - Database client
 
 **When to use:**
 

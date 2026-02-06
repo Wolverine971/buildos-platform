@@ -21,7 +21,7 @@
 
 - **[Type Key Taxonomy](./TYPE_KEY_TAXONOMY.md)** ⭐ - Naming conventions and entity classification
 - **[Data Models](./DATA_MODELS.md)** - Complete database schema
-- **[Implementation Summary](./IMPLEMENTATION_SUMMARY.md)** - CRUD implementation details
+- **[API Endpoint Reference](./API_ENDPOINTS.md)** - CRUD implementation details
 - **[Recurring Series](./RECURRING_SERIES.md)** - Timezone-aware recurring task architecture
 - **[API Endpoint Reference](./API_ENDPOINTS.md)** - Complete API documentation
 

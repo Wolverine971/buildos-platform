@@ -2,6 +2,8 @@
 import type {
 	ChatContextType,
 	ChatSession,
+	ChatToolCall,
+	ChatToolResult,
 	ContextUsageSnapshot,
 	OperationEventPayload
 } from '@buildos/shared-types';
@@ -28,6 +30,16 @@ export type FastAgentStreamEvent =
 	| { type: 'context_usage'; usage: ContextUsageSnapshot }
 	| { type: 'session'; session: ChatSession }
 	| { type: 'operation'; operation: OperationEventPayload }
+	| { type: 'tool_call'; tool_call: ChatToolCall }
+	| {
+			type: 'tool_result';
+			result: ChatToolResult & {
+				tool_name?: string;
+				toolName?: string;
+				toolCallId?: string;
+				data?: any;
+			};
+	  }
 	| {
 			type: 'agent_state';
 			state: 'thinking' | 'executing_plan' | 'waiting_on_user';
@@ -40,4 +52,6 @@ export type FastAgentStreamEvent =
 export type FastChatHistoryMessage = {
 	role: 'user' | 'assistant' | 'system' | 'tool';
 	content: string;
+	tool_calls?: ChatToolCall[];
+	tool_call_id?: string;
 };

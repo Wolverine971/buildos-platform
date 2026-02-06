@@ -58,7 +58,7 @@ pnpm clean
 
 ## Architecture Overview
 
-**📄 Comprehensive Documentation**: See [Worker Brief Generation Flow Analysis](../../thoughts/shared/research/2025-09-30_worker-brief-generation-flow.md) for complete technical details, data flows, and architectural decisions.
+**📄 Comprehensive Documentation**: See [Worker Brief Generation Flow Analysis](/thoughts/shared/research/2025-09-30_worker-brief-generation-flow.md) for complete technical details, data flows, and architectural decisions.
 
 ### Core Components
 

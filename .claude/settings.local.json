@@ -89,7 +89,13 @@
       "Bash(pnpm vite build:*)",
       "Bash(sort:*)",
       "WebFetch(domain:build-os.com)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(for:*)",
+      "Bash(do)",
+      "Bash(if [ -e \"$path\" ])",
+      "Bash(then)",
+      "Bash(echo:*)",
+      "Bash(else)"
     ],
     "deny": [],
     "ask": []
