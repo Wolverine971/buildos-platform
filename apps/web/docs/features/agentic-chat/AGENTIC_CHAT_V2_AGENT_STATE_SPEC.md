@@ -37,46 +37,46 @@ how that state is updated without blocking streaming.
 
 ```ts
 type AgentStateItem = {
-  id: string;
-  kind: 'task' | 'doc' | 'note' | 'idea' | 'question';
-  title: string;
-  details?: string;
-  status: 'active' | 'resolved' | 'discarded';
-  relatedEntityIds?: string[];
-  createdAt: string;
-  updatedAt: string;
+	id: string;
+	kind: 'task' | 'doc' | 'note' | 'idea' | 'question';
+	title: string;
+	details?: string;
+	status: 'active' | 'resolved' | 'discarded';
+	relatedEntityIds?: string[];
+	createdAt: string;
+	updatedAt: string;
 };
 
 type AgentState = {
-  sessionId: string;
-  current_understanding: {
-    entities: Array<{ id: string; kind: string; name?: string }>;
-    dependencies: Array<{ from: string; to: string; rel?: string }>;
-  };
-  assumptions: Array<{
-    id: string;
-    hypothesis: string;
-    confidence: number;
-    evidence?: string[];
-  }>;
-  expectations: Array<{
-    id?: string;
-    action: string;
-    expected_outcome: string;
-    expected_ids?: string[];
-    expected_type?: string;
-    expected_count?: number;
-    invariant?: string;
-    status?: 'pending' | 'confirmed' | 'failed';
-    last_checked_at?: string;
-  }>;
-  tentative_hypotheses: Array<{
-    id: string;
-    hypothesis: string;
-    reason?: string;
-  }>;
-  items: AgentStateItem[];
-  lastSummarizedAt?: string;
+	sessionId: string;
+	current_understanding: {
+		entities: Array<{ id: string; kind: string; name?: string }>;
+		dependencies: Array<{ from: string; to: string; rel?: string }>;
+	};
+	assumptions: Array<{
+		id: string;
+		hypothesis: string;
+		confidence: number;
+		evidence?: string[];
+	}>;
+	expectations: Array<{
+		id?: string;
+		action: string;
+		expected_outcome: string;
+		expected_ids?: string[];
+		expected_type?: string;
+		expected_count?: number;
+		invariant?: string;
+		status?: 'pending' | 'confirmed' | 'failed';
+		last_checked_at?: string;
+	}>;
+	tentative_hypotheses: Array<{
+		id: string;
+		hypothesis: string;
+		reason?: string;
+	}>;
+	items: AgentStateItem[];
+	lastSummarizedAt?: string;
 };
 ```
 
@@ -86,12 +86,12 @@ type AgentState = {
 
 Agent state updates come from three sources:
 
-1. **Deterministic updates** from tool results + entity patches  
-   - Update `current_understanding` and `dependencies` with structured data.
-2. **Planner intent** (optional)  
-   - Add lightweight expectations for planned steps.
-3. **Summarizer LLM (end‑of‑turn)**  
-   - Reconcile assumptions/hypotheses and update expectations.
+1. **Deterministic updates** from tool results + entity patches
+    - Update `current_understanding` and `dependencies` with structured data.
+2. **Planner intent** (optional)
+    - Add lightweight expectations for planned steps.
+3. **Summarizer LLM (end‑of‑turn)**
+    - Reconcile assumptions/hypotheses and update expectations.
 
 State updates **never block streaming**.
 
@@ -121,30 +121,28 @@ Skip verification when expectations are vague or the tool output is unstructured
 
 ```ts
 function verifyExpectation(
-  expectation: Expectation,
-  toolResult: ToolResult
+	expectation: Expectation,
+	toolResult: ToolResult
 ): AgentStateUpdate | null {
-  const matched = doesOutcomeMatch(expectation.expected_outcome, toolResult);
+	const matched = doesOutcomeMatch(expectation.expected_outcome, toolResult);
 
-  if (matched) {
-    return {
-      expectations: [
-        { ...expectation, status: 'confirmed', last_checked_at: now() }
-      ]
-    };
-  }
+	if (matched) {
+		return {
+			expectations: [{ ...expectation, status: 'confirmed', last_checked_at: now() }]
+		};
+	}
 
-  return {
-    assumptions: [{
-      id: generateId(),
-      hypothesis: `Expected "${expectation.expected_outcome}" but got "${summarize(toolResult)}"`,
-      confidence: 0.7,
-      evidence: [toolResult.id]
-    }],
-    expectations: [
-      { ...expectation, status: 'failed', last_checked_at: now() }
-    ]
-  };
+	return {
+		assumptions: [
+			{
+				id: generateId(),
+				hypothesis: `Expected "${expectation.expected_outcome}" but got "${summarize(toolResult)}"`,
+				confidence: 0.7,
+				evidence: [toolResult.id]
+			}
+		],
+		expectations: [{ ...expectation, status: 'failed', last_checked_at: now() }]
+	};
 }
 ```
 
@@ -185,16 +183,16 @@ Pseudo:
 
 ```ts
 function doesOutcomeMatch(expectation: Expectation, toolResult: ToolResult): boolean {
-  if (expectation.expected_ids?.length) {
-    return expectation.expected_ids.every((id) => toolResult.ids?.includes(id));
-  }
-  if (expectation.expected_type) {
-    return toolResult.types?.includes(expectation.expected_type);
-  }
-  if (typeof expectation.expected_count === 'number') {
-    return (toolResult.count ?? 0) === expectation.expected_count;
-  }
-  return false; // insufficient structure
+	if (expectation.expected_ids?.length) {
+		return expectation.expected_ids.every((id) => toolResult.ids?.includes(id));
+	}
+	if (expectation.expected_type) {
+		return toolResult.types?.includes(expectation.expected_type);
+	}
+	if (typeof expectation.expected_count === 'number') {
+		return (toolResult.count ?? 0) === expectation.expected_count;
+	}
+	return false; // insufficient structure
 }
 ```
 
@@ -204,37 +202,37 @@ function doesOutcomeMatch(expectation: Expectation, toolResult: ToolResult): boo
 
 ```ts
 type AgentStateItemUpdate =
-  | { op: 'add'; item: AgentStateItem }
-  | { op: 'update'; id: string; patch: Partial<AgentStateItem> }
-  | { op: 'remove'; id: string };
+	| { op: 'add'; item: AgentStateItem }
+	| { op: 'update'; id: string; patch: Partial<AgentStateItem> }
+	| { op: 'remove'; id: string };
 
 type AgentStateUpdate = {
-  current_understanding?: {
-    entities?: Array<{ id: string; kind: string; name?: string }>;
-    dependencies?: Array<{ from: string; to: string; rel?: string }>;
-  };
-  assumptions?: Array<{
-    id: string;
-    hypothesis: string;
-    confidence: number;
-    evidence?: string[];
-  }>;
-  expectations?: Array<{
-    id?: string;
-    action: string;
-    expected_outcome: string;
-    expected_ids?: string[];
-    expected_type?: string;
-    expected_count?: number;
-    invariant?: string;
-    status?: 'pending' | 'confirmed' | 'failed';
-    last_checked_at?: string;
-  }>;
-  tentative_hypotheses?: Array<{
-    id: string;
-    hypothesis: string;
-    reason?: string;
-  }>;
+	current_understanding?: {
+		entities?: Array<{ id: string; kind: string; name?: string }>;
+		dependencies?: Array<{ from: string; to: string; rel?: string }>;
+	};
+	assumptions?: Array<{
+		id: string;
+		hypothesis: string;
+		confidence: number;
+		evidence?: string[];
+	}>;
+	expectations?: Array<{
+		id?: string;
+		action: string;
+		expected_outcome: string;
+		expected_ids?: string[];
+		expected_type?: string;
+		expected_count?: number;
+		invariant?: string;
+		status?: 'pending' | 'confirmed' | 'failed';
+		last_checked_at?: string;
+	}>;
+	tentative_hypotheses?: Array<{
+		id: string;
+		hypothesis: string;
+		reason?: string;
+	}>;
 };
 ```
 

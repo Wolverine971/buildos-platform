@@ -39,6 +39,7 @@ Phase 2.
 **POST** `/api/agent/v2/stream`
 
 **Request body (MVP):**
+
 ```
 {
   message: string,
@@ -58,21 +59,24 @@ Phase 2.
 ## 4. Service Layout (MVP)
 
 ### 4.1 PromptBuilder (new)
-- **Responsibility:** build a *fresh* system prompt for V2.
+
+- **Responsibility:** build a _fresh_ system prompt for V2.
 - **Inputs:** context_type, entity_id (optional), feature flags.
 - **Output:** single system prompt string.
 - **Rule:** do not import or reuse any legacy prompt files.
 
 ### 4.2 SessionService (new)
+
 - **Responsibility:** resolve or create a `chat_sessions` row, load recent messages,
   persist user + assistant messages, and update session stats.
-- **Minimal DB ops:** 
-  - `chat_sessions` lookup/insert
-  - `chat_messages` load (limit N)
-  - `chat_messages` insert (user + assistant)
-  - optional `voice_note_groups` link
+- **Minimal DB ops:**
+    - `chat_sessions` lookup/insert
+    - `chat_messages` load (limit N)
+    - `chat_messages` insert (user + assistant)
+    - optional `voice_note_groups` link
 
 ### 4.3 StreamOrchestrator (new)
+
 - **Responsibility:** build model inputs, stream LLM output, and emit SSE events.
 - **Inputs:** user message, session, history, prompt.
 - **Output:** `text_delta` events + final `done`.
@@ -84,13 +88,13 @@ Phase 2.
 
 1. **Auth** user (no actor resolution required).
 2. **Open SSE** immediately and emit:
-   - `agent_state: thinking`
+    - `agent_state: thinking`
 3. **Resolve session** (create if missing) and emit:
-   - `session` event (authoritative session object)
+    - `session` event (authoritative session object)
 4. **Load last N messages** (default 8–12).
 5. **Persist user message** in the background.
 6. **Stream LLM** with new prompt:
-   - emit `text_delta` events
+    - emit `text_delta` events
 7. **Persist assistant message** and update session stats.
 8. **Emit done** (always).
 
@@ -132,12 +136,14 @@ plan_created / step_* / executor_*
 ## 7. Prompt Design (MVP)
 
 **Base rules:**
+
 - Be fast, direct, and concise.
 - Ask a single clarifying question when required.
 - Do not invent data or claim to have taken actions.
 - Use markdown only when helpful.
 
 **Scope addendum:**
+
 - **global:** general BuildOS assistant.
 - **project/entity:** indicate you need specific doc/task context if required.
 
@@ -158,9 +164,9 @@ plan_created / step_* / executor_*
 1. Add `/api/agent/v2/stream` and wire UI to use it by default.
 2. Keep `/api/agent/stream` intact for fallback.
 3. Incrementally add:
-   - context packs (doc_structure, project summary)
-   - operation + entity_patch events
-   - planner + executor loop
+    - context packs (doc_structure, project summary)
+    - operation + entity_patch events
+    - planner + executor loop
 
 ---
 

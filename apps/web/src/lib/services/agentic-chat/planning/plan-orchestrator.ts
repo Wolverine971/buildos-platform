@@ -987,7 +987,10 @@ export class PlanOrchestrator implements BaseService {
 		web_visit: 1,
 		get_document_tree: 1
 	};
-	private readonly toolConcurrency = new Map<string, { active: number; queue: Array<() => void> }>();
+	private readonly toolConcurrency = new Map<
+		string,
+		{ active: number; queue: Array<() => void> }
+	>();
 
 	private async generatePlanWithLLM(
 		intent: PlanIntent,
@@ -1720,10 +1723,7 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		return typeof limit === 'number' && Number.isFinite(limit) && limit > 0 ? limit : null;
 	}
 
-	private async withToolConcurrency<T>(
-		toolName: string,
-		fn: () => Promise<T>
-	): Promise<T> {
+	private async withToolConcurrency<T>(toolName: string, fn: () => Promise<T>): Promise<T> {
 		const limit = this.getToolConcurrencyLimit(toolName);
 		if (!limit) {
 			return await fn();
@@ -1737,16 +1737,12 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		}
 	}
 
-	private async acquireToolSlot(
-		toolName: string,
-		limit: number
-	): Promise<() => void> {
+	private async acquireToolSlot(toolName: string, limit: number): Promise<() => void> {
 		const key = toolName.trim().toLowerCase();
-		const entry =
-			this.toolConcurrency.get(key) ?? {
-				active: 0,
-				queue: []
-			};
+		const entry = this.toolConcurrency.get(key) ?? {
+			active: 0,
+			queue: []
+		};
 		this.toolConcurrency.set(key, entry);
 
 		if (entry.active < limit) {

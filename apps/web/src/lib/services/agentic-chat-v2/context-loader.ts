@@ -23,11 +23,7 @@ import type { MasterPromptContext } from './master-prompt-builder';
 
 const logger = createLogger('FastChatContext');
 
-const PROJECT_CONTEXTS = new Set<ChatContextType>([
-	'project',
-	'project_audit',
-	'project_forecast'
-]);
+const PROJECT_CONTEXTS = new Set<ChatContextType>(['project', 'project_audit', 'project_forecast']);
 
 const RECENT_ACTIVITY_PER_PROJECT = 6;
 const GLOBAL_DOC_STRUCTURE_DEPTH = 2;
@@ -75,8 +71,7 @@ type LinkedEntityConfig = {
 const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	project: {
 		table: 'onto_projects',
-		select:
-			'id, name, state_key, type_key, description, start_at, end_at, facet_context, facet_scale, facet_stage, next_step_short, updated_at',
+		select: 'id, name, state_key, type_key, description, start_at, end_at, facet_context, facet_scale, facet_stage, next_step_short, updated_at',
 		map: (row: ProjectRow) => ({
 			id: row.id,
 			name: row.name,
@@ -90,8 +85,7 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	task: {
 		table: 'onto_tasks',
-		select:
-			'id, title, description, state_key, type_key, priority, start_at, due_at, completed_at, updated_at',
+		select: 'id, title, description, state_key, type_key, priority, start_at, due_at, completed_at, updated_at',
 		map: (row: TaskRow) => ({
 			id: row.id,
 			title: row.title,
@@ -119,8 +113,7 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	goal: {
 		table: 'onto_goals',
-		select:
-			'id, name, description, state_key, type_key, target_date, completed_at, updated_at',
+		select: 'id, name, description, state_key, type_key, target_date, completed_at, updated_at',
 		map: (row: GoalRow) => ({
 			id: row.id,
 			name: row.name,
@@ -134,8 +127,7 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	milestone: {
 		table: 'onto_milestones',
-		select:
-			'id, title, description, state_key, type_key, due_at, completed_at, updated_at',
+		select: 'id, title, description, state_key, type_key, due_at, completed_at, updated_at',
 		map: (row: MilestoneRow) => ({
 			id: row.id,
 			title: row.title,
@@ -161,8 +153,7 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	event: {
 		table: 'onto_events',
-		select:
-			'id, title, description, state_key, type_key, start_at, end_at, all_day, location, updated_at',
+		select: 'id, title, description, state_key, type_key, start_at, end_at, all_day, location, updated_at',
 		map: (row: EventRow) => ({
 			id: row.id,
 			title: row.title,
@@ -230,7 +221,10 @@ function normalizeDocStructure(
 	return structure;
 }
 
-function mapProject(row: ProjectSelectRow, options?: { includeDocStructure?: boolean; truncateDepth?: number }): LightProject {
+function mapProject(
+	row: ProjectSelectRow,
+	options?: { includeDocStructure?: boolean; truncateDepth?: number }
+): LightProject {
 	return {
 		id: row.id,
 		name: row.name,
@@ -245,7 +239,10 @@ function mapProject(row: ProjectSelectRow, options?: { includeDocStructure?: boo
 		next_step_short: row.next_step_short,
 		updated_at: row.updated_at,
 		doc_structure: options?.includeDocStructure
-			? normalizeDocStructure(row.doc_structure as DocStructure | null, options?.truncateDepth)
+			? normalizeDocStructure(
+					row.doc_structure as DocStructure | null,
+					options?.truncateDepth
+				)
 			: undefined
 	};
 }
@@ -462,9 +459,7 @@ async function loadGlobalContextData(
 		(plansRes.data ?? []) as Array<PlanRow & { project_id: string }>,
 		mapPlan
 	);
-	const project_recent_activity = mapRecentActivity(
-		(logsRes.data ?? []) as ProjectLogRow[]
-	);
+	const project_recent_activity = mapRecentActivity((logsRes.data ?? []) as ProjectLogRow[]);
 
 	return {
 		projects: lightProjects,
@@ -564,7 +559,10 @@ async function loadLinkedEntities(
 	supabase: SupabaseClient<Database>,
 	projectId: string,
 	focusEntityId: string
-): Promise<{ linked_entities: Record<string, Array<Record<string, unknown>>>; linked_edges: LinkedEdge[] }> {
+): Promise<{
+	linked_entities: Record<string, Array<Record<string, unknown>>>;
+	linked_edges: LinkedEdge[];
+}> {
 	const { data: edges, error } = await supabase
 		.from('onto_edges')
 		.select('src_id, src_kind, dst_id, dst_kind, rel')
@@ -678,7 +676,8 @@ export async function loadFastChatPromptContext(
 	const baseContext: MasterPromptContext = {
 		contextType,
 		entityId: entityId ?? null,
-		projectId: projectFocus?.projectId ?? (isProjectContext(contextType) ? entityId ?? null : null),
+		projectId:
+			projectFocus?.projectId ?? (isProjectContext(contextType) ? (entityId ?? null) : null),
 		projectName: projectFocus?.projectName ?? null,
 		focusEntityType:
 			projectFocus?.focusType && projectFocus.focusType !== 'project-wide'

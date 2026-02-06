@@ -1,8 +1,10 @@
+<!-- design/research-graph.md -->
+
 https://arxiv.org/pdf/2602.04116
 
 Toward Effective Multimodal Graph Foundation Model:
 A Divide-and-Conquer Based Approach
-Sicheng Liu * 1 Xunkai Li * 1 Daohan Su 1 Ru Zhang 1 Hongchao Qin 1 Ronghua Li 1 Guoren Wang 1
+Sicheng Liu _ 1 Xunkai Li _ 1 Daohan Su 1 Ru Zhang 1 Hongchao Qin 1 Ronghua Li 1 Guoren Wang 1
 Abstract
 Graph Foundation Models (GFMs) have achieved
 remarkable success in generalizing across diverse
@@ -28,380 +30,381 @@ node granularity, ❷ Node-wise Discretization
 Retrieval (NDR) ensures global modality alignment by constructing a Discretized Semantic Representation Space (DSRS) to bridge modality
 gaps. Extensive experiments demonstrate that
 PLANET significantly outperforms state-of-theart baselines across diverse graph-centric and multimodal generative tasks.
-*Equal contribution 1Department of XXX, University of
+\*Equal contribution 1Department of XXX, University of
 YYY, Location, Country. Correspondence to: Ronghua Li
 <lironghuabit@126.com>.
 Preprint. February 5, 2026.
+
 1. Introduction
-In recent years, GFMs (Xia et al., 2024; Xia & Huang,
+   In recent years, GFMs (Xia et al., 2024; Xia & Huang,
+
 2024) have emerged as a transformative paradigm in graph
-representation learning, offering a unified encoding framework capable of generalizing across cross-domain datasets.
-However, most existing GFMs are primarily designed for
-TAGs (He et al., 2025a; Wang et al., 2024b) or focus on
-learning unified graph structures (Yu et al., 2025; Sun et al.,
-2025), failing to extend effectively to MAGs (Zhu et al.,
-2025a; Yan et al., 2025). This limitation implies significant missed improvements. From a data perspective, MAGs
-enriched with diverse modalities offer significantly richer
-multimodal semantic information compared to TAGs. From
-an application perspective, extending GFMs to MAGs significantly broadens the applicable downstream tasks such as
-modality retrieval task (Qu et al., 2021) and graph generative task (Yoon et al., 2023; Fang et al., 2025). To address
-this limitation, MGFMs (He et al., 2025b; Fang et al., 2025)
-have been introduced to integrate these heterogeneous signals within graph structures, achieve domain and modality
-alignment.
-To validate the advantages of incorporating multimodal information and the superiority of MGFMs approaches, we
-conducted an empirical study shown in Fig. 1(a)&(b). Our
-findings yield two key conclusions: ❶ The use of multiple modalities consistently improve model performance. ❷
-MGFMs significantly outperform GFMs. UniGraph2 (He
-et al., 2025b) consistently achieves state-of-the-art results,
-demonstrating the need for specialized architectures for
-MAGs. Please refer to Appendix B.1 for detailed implementation.
-Although MGFMs such as UniGraph2 have demonstrated a
-powerful capacity to learn from diverse multimodal graphs,
-they are fundamentally limited by their approach to modality
-interaction and alignment. Specifically, UniGraph2 does
-not account for the significant semantic disparities between
-the latent spaces of different encoders and, crucially, lacks
-modality interaction, which is verified to be important in
-learning robust feature representations (Zhu et al., 2025a).
-Furthermore, UniGraph2 lacks explicit supervisory signals
-for modality alignment, rendering the alignment process
-inefficient and inadequately constrained.
-1
-arXiv:2602.04116v1 [cs.LG] 4 Feb 2026
-Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach Accuracy (%)
-MRR
-Finetuning Epoch Finetuning Epoch
-(a) LP on Amazon-Sports (b) NC on Movies (c) NC on Goodreads-NC (d) NC on RedditS
-Figure 1. Empirical study results. (a)&(b) Performance comparison across different modalities and architectures. (c)&(d) Stepwise
-enhancement results.
-To empirically substantiate these limitations of UniGraph2,
-we consider the general architecture of MGFMs, which typically consists of four core components: ❶ Modality-specific
-encoding, ❷ Modality Interaction (including Graph Neural Network (GNN) processing), ❸ Modality Alignment,
-and ❹ Modality Fusion. As detailed in our ablation studies
-(See Fig. 1(c)&(d)), we involve a stepwise enhancement
-of the UniGraph2 architecture, progressively endowing it
-with capabilities for Modality Interaction (MI) and Modality
-Alignment (MA). The results demonstrate that each module provides a positive contribution to the model’s overall
-performance. This analysis forms the primary motivation
-for our work: to develop dedicated mechanisms for these
-two critical modules, tailored to address their challenges
-at distinct granularities. Please refer to Appendix B.2 for
-detailed implementation of the empirical study.
-Motivated by the limitations mentioned above, in this work,
-we propose PLANET, a novel framework that utilizes a
-Divide-and-Conquer strategy to decouple the complexity
-inherent in MGFM design across two distinct granularities. At the embedding granularity, we introduce the ❶
-EDG for Modality Interaction. We formulate modality
-interaction as a process of local semantic enrichment. This
-module employs a domain-specialized gating mechanism to
-adaptively extract and infuse topology-aware cross-modal
-context, enhancing the model’s comprehension of intricate
-inter-modality relationships at the fine-grained embedding
-level. At the node granularity, we propose the ❷ NDR
-for Modality Alignment. We view modality alignment as
-a global semantic consensus problem. By constructing a
-Discretized Semantic Representation Space (DSRS), this
-module retrieves and anchors heterogeneous signals into a
-unified space, explicitly enforcing robust alignment at the
-coarse-grained node level.
-In summary, our key contributions in PLANET are: (1)
-New Perspective. To the best of our knowledge, we are
-the first to systematically identify and address the critical
-shortcomings of existing MGFMs with respect to lack of
-modality interaction and alignment. (2) Novel Approach.
-We propose PLANET, a novel framework that introduces a
-paradigm of topology-aware modality interaction and modality alignment, offering a valuable reference for future designs in the MGFM domain. (3) SOTA Performance. Extensive experiments demonstrate the superiority of PLANET
-across various graph-centric tasks and multimodal generative tasks.
+      representation learning, offering a unified encoding framework capable of generalizing across cross-domain datasets.
+      However, most existing GFMs are primarily designed for
+      TAGs (He et al., 2025a; Wang et al., 2024b) or focus on
+      learning unified graph structures (Yu et al., 2025; Sun et al.,
+      2025), failing to extend effectively to MAGs (Zhu et al.,
+      2025a; Yan et al., 2025). This limitation implies significant missed improvements. From a data perspective, MAGs
+      enriched with diverse modalities offer significantly richer
+      multimodal semantic information compared to TAGs. From
+      an application perspective, extending GFMs to MAGs significantly broadens the applicable downstream tasks such as
+      modality retrieval task (Qu et al., 2021) and graph generative task (Yoon et al., 2023; Fang et al., 2025). To address
+      this limitation, MGFMs (He et al., 2025b; Fang et al., 2025)
+      have been introduced to integrate these heterogeneous signals within graph structures, achieve domain and modality
+      alignment.
+      To validate the advantages of incorporating multimodal information and the superiority of MGFMs approaches, we
+      conducted an empirical study shown in Fig. 1(a)&(b). Our
+      findings yield two key conclusions: ❶ The use of multiple modalities consistently improve model performance. ❷
+      MGFMs significantly outperform GFMs. UniGraph2 (He
+      et al., 2025b) consistently achieves state-of-the-art results,
+      demonstrating the need for specialized architectures for
+      MAGs. Please refer to Appendix B.1 for detailed implementation.
+      Although MGFMs such as UniGraph2 have demonstrated a
+      powerful capacity to learn from diverse multimodal graphs,
+      they are fundamentally limited by their approach to modality
+      interaction and alignment. Specifically, UniGraph2 does
+      not account for the significant semantic disparities between
+      the latent spaces of different encoders and, crucially, lacks
+      modality interaction, which is verified to be important in
+      learning robust feature representations (Zhu et al., 2025a).
+      Furthermore, UniGraph2 lacks explicit supervisory signals
+      for modality alignment, rendering the alignment process
+      inefficient and inadequately constrained.
+      1
+      arXiv:2602.04116v1 [cs.LG] 4 Feb 2026
+      Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach Accuracy (%)
+      MRR
+      Finetuning Epoch Finetuning Epoch
+      (a) LP on Amazon-Sports (b) NC on Movies (c) NC on Goodreads-NC (d) NC on RedditS
+      Figure 1. Empirical study results. (a)&(b) Performance comparison across different modalities and architectures. (c)&(d) Stepwise
+      enhancement results.
+      To empirically substantiate these limitations of UniGraph2,
+      we consider the general architecture of MGFMs, which typically consists of four core components: ❶ Modality-specific
+      encoding, ❷ Modality Interaction (including Graph Neural Network (GNN) processing), ❸ Modality Alignment,
+      and ❹ Modality Fusion. As detailed in our ablation studies
+      (See Fig. 1(c)&(d)), we involve a stepwise enhancement
+      of the UniGraph2 architecture, progressively endowing it
+      with capabilities for Modality Interaction (MI) and Modality
+      Alignment (MA). The results demonstrate that each module provides a positive contribution to the model’s overall
+      performance. This analysis forms the primary motivation
+      for our work: to develop dedicated mechanisms for these
+      two critical modules, tailored to address their challenges
+      at distinct granularities. Please refer to Appendix B.2 for
+      detailed implementation of the empirical study.
+      Motivated by the limitations mentioned above, in this work,
+      we propose PLANET, a novel framework that utilizes a
+      Divide-and-Conquer strategy to decouple the complexity
+      inherent in MGFM design across two distinct granularities. At the embedding granularity, we introduce the ❶
+      EDG for Modality Interaction. We formulate modality
+      interaction as a process of local semantic enrichment. This
+      module employs a domain-specialized gating mechanism to
+      adaptively extract and infuse topology-aware cross-modal
+      context, enhancing the model’s comprehension of intricate
+      inter-modality relationships at the fine-grained embedding
+      level. At the node granularity, we propose the ❷ NDR
+      for Modality Alignment. We view modality alignment as
+      a global semantic consensus problem. By constructing a
+      Discretized Semantic Representation Space (DSRS), this
+      module retrieves and anchors heterogeneous signals into a
+      unified space, explicitly enforcing robust alignment at the
+      coarse-grained node level.
+      In summary, our key contributions in PLANET are: (1)
+      New Perspective. To the best of our knowledge, we are
+      the first to systematically identify and address the critical
+      shortcomings of existing MGFMs with respect to lack of
+      modality interaction and alignment. (2) Novel Approach.
+      We propose PLANET, a novel framework that introduces a
+      paradigm of topology-aware modality interaction and modality alignment, offering a valuable reference for future designs in the MGFM domain. (3) SOTA Performance. Extensive experiments demonstrate the superiority of PLANET
+      across various graph-centric tasks and multimodal generative tasks.
+
 2. Preliminaries
-2.1. Notations and Problem Formulation
-Consider a MAG denoted as G = (V, E, R), with |V| = N
-nodes and |E| = M edges. R denotes the collection of raw
-multimodal data associated with the nodes (e.g., raw text descriptions, images). Let M = {m1, m2, . . . , m|Ω|} be the
-set of available modalities, where |Ω| denotes the number of
-modalities. In this work, we operate under the assumption
-that each node v ∈ V possesses complete features across
-all modalities in M, ensuring a comprehensive multimodal
-context for every entity. The raw data is transformed into feature X(m) ∈ R
-N×dm via ϕm, where ϕm denotes the frozen
-modality-specific encoders for modality m (e.g., ViT (Dosovitskiy, 2020) for images, BERT (Devlin et al., 2019) for
-texts). Consequently, we obtain a feature-transformed graph
-G
-′ = (V, E, X ), where X = {X(m)}m∈M serves as the
-input node features for the subsequent learning process.
-Based on G
-′
-, we aim to learn a unified embedding function
-fθ following the standard paradigm: Pre-training stage.
-We optimize fθ using self-supervised objectives (e.g., reconstruction tasks and contrastive tasks). Fine-tuning stage.
-The pre-trained fθ is adapted with task-specific heads to
-support diverse downstream tasks.
-2.2. Multimodal Graph Learning
-Multimodal Graph Learning (MGL) is the machine learning
-technique on multimodal graphs (Peng et al., 2024). MGL
-are widely employed across various domains, including biology (Gainza et al., 2020), chemistry (Guan et al., 2021),
-knowledge graph (Chen et al., 2022; Zeng et al., 2023),
-healthcare applications (Zheng et al., 2022) and recommendation systems (Wei et al., 2019; Tao et al., 2020; Yi et al.,
-2022; Zhang et al., 2021). However, these existing models
-2
-Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach
-Multimodal
-Attributed
-Graph
-Modality
-Encoding
-Modality
-Interaction
-Modality
-Alignment
-Modality
-Fusion
-x L layers
-Pre-Training:
-Self-supervised tasks
-Finetuning:
-Node
-embedding
-Modality
-embedding
-NC
-LP
-...
-G2Text
-G2Image
-...
-SMR
-SR
-CMR
-...
-MoE balance
-loss
-EDG for Modality Interaction
-Expert 1
-Expert 2
-Expert n ...
-Gate
-Components
-Attention
-Mechanism
-text
-Attention
-Mechanism
-image
-Query.
-Query.
-Key.
-Value.
-Key.
-Value.
-Text
-emb
-Image
-emb
-Data preprocessing + Modality-specific encoding
-Original
-Multimodal
-Graph
-Text Graph
-Image Graph
-Modalityspecific
-Encoder
-Quantized
-Text emb
-Quantized
-Image emb
-General Knowledge loss
-DSRS: Discretized Semantic
-Representation Space
-Anchor
-Discretization Retrieval
-Step 1.1 Find Nearest Vector in DSRS
-Step 1.2 Assign Vector
-NDR for Modality Alignment
-Dec Dec
-SMR Loss: CMR Loss: SR Loss: Text modality
-Image modality
-Node
-Center Node
-(in k-hop neighbor
-subgraphs)
-Training
-Assign vectors Frozen
-... Node Embeddings
-(After Modality Fusion)
-Token embedding
-Quantized embedding
-Distance between
-vectors
-Overall Pipeline
-Step 1. The MoE component selectively extracts relevant cross-modal semantics
-from the 1-hop neighborhood. Step 2. Topology-aware Attention integrates these signals, using the target modality as Query and MoE outputs as Key/Values.
-Step1. All node embeddings are mapped into DSRS. Step2. Computing General Knowledge loss for all assigned token embeddings. These
-embeddings are used in Self-supervised tasks and downstream tasks.
-Self-Supervised Tasks Legend In Framework
-Topology-aware Modality
-Interaction
-Discretized Modality
-Alignment
-𝒟𝒟𝓂𝓂𝓂𝓂′ 𝒞𝒞𝒞𝒞
-Dec
-𝒟𝒟 Dec𝓂𝓂
-𝒮𝒮
-Dec
-𝒟𝒟 Dec𝓂𝓂
-𝒮𝒮
-ℒs ℒ𝒸𝒸 ℒ𝑡𝑡𝑡𝑡𝑡𝑡𝑡𝑡
-Figure 2. Overall architecture of the proposed method: PLANET.
-are inherently designed for specific tasks within specific
-domains (e.g., user-item link predictions), lacking the generalization capability to transfer effectively to other domains
-or downstream tasks.
-2.3. Graph Foundation Models
-Recently, Graph Foundation Models (GFMs) have gained
-significant attention for their robust generalization capabilities (Liu et al., 2025b). Some approaches focused on
-capturing universal structural patterns (Chen et al., 2025;
-Yu et al., 2025; Sun et al., 2025). The majority of existing
-GFMs concentrate on TAGs, which focus on aligning graph
-structural representations with the semantic space (Tang
-et al., 2024; Chen et al., 2024; Kong et al., 2025; Zhu et al.,
-2025b; Li et al., 2024) and unifying diverse downstream
-tasks across domains to achieve transferability (Liu et al.,
-2024; Huang et al., 2023). However, these GFMs are not
-primarily designed for MAGs.
-Unlike previous works, UniGraph2 (He et al., 2025b) establishes a MGFM, but fails to effectively address the critical
-issues of modality interaction and alignment (see Sec. 1).
-Although a new study GraphGPT-O (Fang et al., 2025) attempts to incorporate cross-modal interaction, it employs a
-non-topology-aware modality interaction mechanism within
-an LLM-based framework restricted to generative tasks,
-thereby suffering from prohibitive computational overhead
-and limited versatility.
+   2.1. Notations and Problem Formulation
+   Consider a MAG denoted as G = (V, E, R), with |V| = N
+   nodes and |E| = M edges. R denotes the collection of raw
+   multimodal data associated with the nodes (e.g., raw text descriptions, images). Let M = {m1, m2, . . . , m|Ω|} be the
+   set of available modalities, where |Ω| denotes the number of
+   modalities. In this work, we operate under the assumption
+   that each node v ∈ V possesses complete features across
+   all modalities in M, ensuring a comprehensive multimodal
+   context for every entity. The raw data is transformed into feature X(m) ∈ R
+   N×dm via ϕm, where ϕm denotes the frozen
+   modality-specific encoders for modality m (e.g., ViT (Dosovitskiy, 2020) for images, BERT (Devlin et al., 2019) for
+   texts). Consequently, we obtain a feature-transformed graph
+   G
+   ′ = (V, E, X ), where X = {X(m)}m∈M serves as the
+   input node features for the subsequent learning process.
+   Based on G
+   ′
+   , we aim to learn a unified embedding function
+   fθ following the standard paradigm: Pre-training stage.
+   We optimize fθ using self-supervised objectives (e.g., reconstruction tasks and contrastive tasks). Fine-tuning stage.
+   The pre-trained fθ is adapted with task-specific heads to
+   support diverse downstream tasks.
+   2.2. Multimodal Graph Learning
+   Multimodal Graph Learning (MGL) is the machine learning
+   technique on multimodal graphs (Peng et al., 2024). MGL
+   are widely employed across various domains, including biology (Gainza et al., 2020), chemistry (Guan et al., 2021),
+   knowledge graph (Chen et al., 2022; Zeng et al., 2023),
+   healthcare applications (Zheng et al., 2022) and recommendation systems (Wei et al., 2019; Tao et al., 2020; Yi et al.,
+   2022; Zhang et al., 2021). However, these existing models
+   2
+   Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach
+   Multimodal
+   Attributed
+   Graph
+   Modality
+   Encoding
+   Modality
+   Interaction
+   Modality
+   Alignment
+   Modality
+   Fusion
+   x L layers
+   Pre-Training:
+   Self-supervised tasks
+   Finetuning:
+   Node
+   embedding
+   Modality
+   embedding
+   NC
+   LP
+   ...
+   G2Text
+   G2Image
+   ...
+   SMR
+   SR
+   CMR
+   ...
+   MoE balance
+   loss
+   EDG for Modality Interaction
+   Expert 1
+   Expert 2
+   Expert n ...
+   Gate
+   Components
+   Attention
+   Mechanism
+   text
+   Attention
+   Mechanism
+   image
+   Query.
+   Query.
+   Key.
+   Value.
+   Key.
+   Value.
+   Text
+   emb
+   Image
+   emb
+   Data preprocessing + Modality-specific encoding
+   Original
+   Multimodal
+   Graph
+   Text Graph
+   Image Graph
+   Modalityspecific
+   Encoder
+   Quantized
+   Text emb
+   Quantized
+   Image emb
+   General Knowledge loss
+   DSRS: Discretized Semantic
+   Representation Space
+   Anchor
+   Discretization Retrieval
+   Step 1.1 Find Nearest Vector in DSRS
+   Step 1.2 Assign Vector
+   NDR for Modality Alignment
+   Dec Dec
+   SMR Loss: CMR Loss: SR Loss: Text modality
+   Image modality
+   Node
+   Center Node
+   (in k-hop neighbor
+   subgraphs)
+   Training
+   Assign vectors Frozen
+   ... Node Embeddings
+   (After Modality Fusion)
+   Token embedding
+   Quantized embedding
+   Distance between
+   vectors
+   Overall Pipeline
+   Step 1. The MoE component selectively extracts relevant cross-modal semantics
+   from the 1-hop neighborhood. Step 2. Topology-aware Attention integrates these signals, using the target modality as Query and MoE outputs as Key/Values.
+   Step1. All node embeddings are mapped into DSRS. Step2. Computing General Knowledge loss for all assigned token embeddings. These
+   embeddings are used in Self-supervised tasks and downstream tasks.
+   Self-Supervised Tasks Legend In Framework
+   Topology-aware Modality
+   Interaction
+   Discretized Modality
+   Alignment
+   𝒟𝒟𝓂𝓂𝓂𝓂′ 𝒞𝒞𝒞𝒞
+   Dec
+   𝒟𝒟 Dec𝓂𝓂
+   𝒮𝒮
+   Dec
+   𝒟𝒟 Dec𝓂𝓂
+   𝒮𝒮
+   ℒs ℒ𝒸𝒸 ℒ𝑡𝑡𝑡𝑡𝑡𝑡𝑡𝑡
+   Figure 2. Overall architecture of the proposed method: PLANET.
+   are inherently designed for specific tasks within specific
+   domains (e.g., user-item link predictions), lacking the generalization capability to transfer effectively to other domains
+   or downstream tasks.
+   2.3. Graph Foundation Models
+   Recently, Graph Foundation Models (GFMs) have gained
+   significant attention for their robust generalization capabilities (Liu et al., 2025b). Some approaches focused on
+   capturing universal structural patterns (Chen et al., 2025;
+   Yu et al., 2025; Sun et al., 2025). The majority of existing
+   GFMs concentrate on TAGs, which focus on aligning graph
+   structural representations with the semantic space (Tang
+   et al., 2024; Chen et al., 2024; Kong et al., 2025; Zhu et al.,
+   2025b; Li et al., 2024) and unifying diverse downstream
+   tasks across domains to achieve transferability (Liu et al.,
+   2024; Huang et al., 2023). However, these GFMs are not
+   primarily designed for MAGs.
+   Unlike previous works, UniGraph2 (He et al., 2025b) establishes a MGFM, but fails to effectively address the critical
+   issues of modality interaction and alignment (see Sec. 1).
+   Although a new study GraphGPT-O (Fang et al., 2025) attempts to incorporate cross-modal interaction, it employs a
+   non-topology-aware modality interaction mechanism within
+   an LLM-based framework restricted to generative tasks,
+   thereby suffering from prohibitive computational overhead
+   and limited versatility.
 3. Methodology
-3.1. Overview
-We propose PLANET, a MGFM that uses a Divide-andConquer strategy to decouple modality interaction and
-modality alignment (Fig. 2).
-Modality Encoding. We use modality-specific encoders
-to transform raw multimodal data into feature vectors. Following Hou et al. (2022), we employ a modality masking
-strategy to these feature vectors (details in Appendix C.1),
-yielding the masked feature vectors X˜ (m)
-.
-For feature dimension alignment across heterogeneous
-modalities, we apply a set of modality-specific MLPs on
-X˜ (m)
-: H(0,m) = MLPm(X˜ (m)
-). Subsequently, to preserve the inherent distribution of each modality, we process
-H(0,m)
-through independent, modality-specific GNNs (e.g.,
-3
-Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach
-A plush
-teddy bear
-toy wearing
-red ...
-A small
-plastic frog,
-Children's
-puzzle toy ...
-A cute and soft
-pink plush
-rabbit pillow,
-suitable for
-girls to ...
-plush
-pillow
-Expert 1: focus on category
-Expert 2: focus on texture
-influence text modality
-1 2
-3
-Multimodal Attributed
-Graph
-plastic
-toy
-plush
-toy
-Node 1
-Node 3
-Node 2
-Image
-Image Image
-MoE
-Message passing
-path
-Node 1 Node 2
-Node 3
-Example of MoE-Based Cross-Modal Feature Extraction.
-Figure 3. Illustration of expert-driven semantic extraction within
-the EDG module. Taking the text modality as the target example,
-we observe that the target text modality (in Node 3) correlates with
-neighboring images (in Node 1,2) via diverse attributes. Our MoE
-module is designed to capture these distinct semantic patterns
-through specialized experts, enabling the precise extraction of
-effective cross-modal mutual information.
-Graph Transformer (Dwivedi & Bresson, 2020)) to obtain
-the modality-specific embeddings H(spe,m)
-.
-Modality Interaction & Modality Alignment. We first
-employ the EDG at the embedding granularity to infuse
-topology-aware cross-modal context (Sec. 3.2). Subsequently, the NDR operates at the node granularity, anchoring
-features into a DSRS for modality alignment. This process yields the aligned modality-level node representations
-H(cross,m)
-(Sec. 3.3).
-Modality Fusion. To integrate modality specificity with
-interactive semantics, we first fuse modality embeddings:
-H(all,m) = H(spe,m)
-|| H(cross,m)
-. Specifically, for graphcentric tasks (e.g., node classification), we further concatenate multimodal representations to obtain the final node
-embeddings: hi = ∥m∈Mh
-(all,m)
-i
-. The entire model is
-optimized via a joint self-supervised objective (Sec. 3.4).
-3.2. EDG for Modality Interaction
-Following the Divide-and-Conquer strategy, the first challenge is to model modality interaction. We formulate this
-as a process of local semantic enrichment at the embedding
-granularity. Unlike previous works that aggregate modalities globally (He et al., 2025b), EDG operates within the
-layer-wise propagation, allowing each node’s modality embedding to dynamically absorb complementary semantics
-from its neighbors before any global alignment is enforced.
-MoE-Based Cross-Modal Feature Extraction. Intuitively,
-in a MAG, the semantic representation of a node in one
-modality (e.g., text) is often correlated with the complementary modalities (e.g., image) of its neighbors and itself. For
-example, a textual description may correlate with the texture
-and category of objects in images (See Fig. 3). Guided by
-this observation, we employ a Mixture-of-Experts (MoE)
-module to capture these diverse semantic patterns. Formally,
-taking H(0,m)
-as input, let h
-(ℓ,m)
-i
-denote the output embedding of node i for modality m at the l-th layer of the EDG
-module.
-For a neighbor node j and modality m. The effective crossmodal signal e
-(ℓ,m)
-j
-is computed as:
-e
-(ℓ,m)
-j =
-X
-K
-k=1
-G
-
-n
-(ℓ,m)
-j
-
-k
-· Ek
-
-n
-(ℓ,m)
-j
-
-,
-where n
-(ℓ,m)
-j =
-
-
+   3.1. Overview
+   We propose PLANET, a MGFM that uses a Divide-andConquer strategy to decouple modality interaction and
+   modality alignment (Fig. 2).
+   Modality Encoding. We use modality-specific encoders
+   to transform raw multimodal data into feature vectors. Following Hou et al. (2022), we employ a modality masking
+   strategy to these feature vectors (details in Appendix C.1),
+   yielding the masked feature vectors X˜ (m)
+   .
+   For feature dimension alignment across heterogeneous
+   modalities, we apply a set of modality-specific MLPs on
+   X˜ (m)
+   : H(0,m) = MLPm(X˜ (m)
+   ). Subsequently, to preserve the inherent distribution of each modality, we process
+   H(0,m)
+   through independent, modality-specific GNNs (e.g.,
+   3
+   Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach
+   A plush
+   teddy bear
+   toy wearing
+   red ...
+   A small
+   plastic frog,
+   Children's
+   puzzle toy ...
+   A cute and soft
+   pink plush
+   rabbit pillow,
+   suitable for
+   girls to ...
+   plush
+   pillow
+   Expert 1: focus on category
+   Expert 2: focus on texture
+   influence text modality
+   1 2
+   3
+   Multimodal Attributed
+   Graph
+   plastic
+   toy
+   plush
+   toy
+   Node 1
+   Node 3
+   Node 2
+   Image
+   Image Image
+   MoE
+   Message passing
+   path
+   Node 1 Node 2
+   Node 3
+   Example of MoE-Based Cross-Modal Feature Extraction.
+   Figure 3. Illustration of expert-driven semantic extraction within
+   the EDG module. Taking the text modality as the target example,
+   we observe that the target text modality (in Node 3) correlates with
+   neighboring images (in Node 1,2) via diverse attributes. Our MoE
+   module is designed to capture these distinct semantic patterns
+   through specialized experts, enabling the precise extraction of
+   effective cross-modal mutual information.
+   Graph Transformer (Dwivedi & Bresson, 2020)) to obtain
+   the modality-specific embeddings H(spe,m)
+   .
+   Modality Interaction & Modality Alignment. We first
+   employ the EDG at the embedding granularity to infuse
+   topology-aware cross-modal context (Sec. 3.2). Subsequently, the NDR operates at the node granularity, anchoring
+   features into a DSRS for modality alignment. This process yields the aligned modality-level node representations
+   H(cross,m)
+   (Sec. 3.3).
+   Modality Fusion. To integrate modality specificity with
+   interactive semantics, we first fuse modality embeddings:
+   H(all,m) = H(spe,m)
+   || H(cross,m)
+   . Specifically, for graphcentric tasks (e.g., node classification), we further concatenate multimodal representations to obtain the final node
+   embeddings: hi = ∥m∈Mh
+   (all,m)
+   i
+   . The entire model is
+   optimized via a joint self-supervised objective (Sec. 3.4).
+   3.2. EDG for Modality Interaction
+   Following the Divide-and-Conquer strategy, the first challenge is to model modality interaction. We formulate this
+   as a process of local semantic enrichment at the embedding
+   granularity. Unlike previous works that aggregate modalities globally (He et al., 2025b), EDG operates within the
+   layer-wise propagation, allowing each node’s modality embedding to dynamically absorb complementary semantics
+   from its neighbors before any global alignment is enforced.
+   MoE-Based Cross-Modal Feature Extraction. Intuitively,
+   in a MAG, the semantic representation of a node in one
+   modality (e.g., text) is often correlated with the complementary modalities (e.g., image) of its neighbors and itself. For
+   example, a textual description may correlate with the texture
+   and category of objects in images (See Fig. 3). Guided by
+   this observation, we employ a Mixture-of-Experts (MoE)
+   module to capture these diverse semantic patterns. Formally,
+   taking H(0,m)
+   as input, let h
+   (ℓ,m)
+   i
+   denote the output embedding of node i for modality m at the l-th layer of the EDG
+   module.
+   For a neighbor node j and modality m. The effective crossmodal signal e
+   (ℓ,m)
+   j
+   is computed as:
+   e
+   (ℓ,m)
+   j =
+   X
+   K
+   k=1
+   G
+   
+   n
+   (ℓ,m)
+   j
+   
+   k
+   · Ek
+   
+   n
+   (ℓ,m)
+   j
+   
+   ,
+   where n
+   (ℓ,m)
+   j =
 
 m′̸=m
 h
@@ -739,8 +742,7 @@ This proves that projecting features into DSRS accelerates
 the alignment convergence rate from O(N −1/d) in continuous spaces to O(N −1/2
 ). Additionally, minimizing LV Q
 reduces the quantization error terms in Eq. (11), explicitly
-tightening the upper bound to ensure robust alignment.
-4. Experiments
+tightening the upper bound to ensure robust alignment. 4. Experiments
 To validate the superiority of PLANET, we raise several
 questions: Q1: Does PLANET consistently outperform
 SOTA baselines across standard graph-centric tasks (i.e.,
@@ -753,8 +755,7 @@ Appendix E.
 4.1. Graph-Centric Tasks
 Experimental Settings. To answer Q1, we conduct extensive evaluations on node classification and link prediction
 tasks under both supervised learning and few-shot learning scenarios. We compare PLANET with 9 strong baselines, which can be categorized into five distinct groups: (1)
-Vanilla GNNs: GCN (Kipf & Welling, 2017). (2) Multimodal Graph Models: Including MMGCN (Wei et al.,
-2019) and MGAT (Tao et al., 2020). (3) Self-supervised
+Vanilla GNNs: GCN (Kipf & Welling, 2017). (2) Multimodal Graph Models: Including MMGCN (Wei et al., 2019) and MGAT (Tao et al., 2020). (3) Self-supervised
 Graph Learning Models: Comprising contrastive learning
 method, GRACE (Zhu et al., 2020) and generative learning method, GraphMAE2 (Hou et al., 2023). (4) Graph
 6
@@ -872,7 +873,7 @@ Memory Usage (MB)
 Acc (%)
 Time (h)
 MMGCN
- 0.5h MGAT
+0.5h MGAT
 0.6h
 PLANET
 4.5h
@@ -886,8 +887,7 @@ SAMGPT 9.0h
 GAT
 0.3h
 Figure 6. Efficiency comparison between models on GoodreadsNC. (a) Total time consumption. (b) GPU memory usage during
-different stages.
-5. Conclusion
+different stages. 5. Conclusion
 In this work, we propose PLANET to resolve the critical limitations of existing MGFMs in modality interaction
 and alignment. Leveraging a Divide-and-Conquer strategy, the EDG module couples expert-driven extraction with
 topology-aware attention to facilitate modality interaction at
@@ -940,8 +940,7 @@ generation on graphs. In Proceedings of the Computer
 Vision and Pattern Recognition Conference, pp. 19467–
 19476, 2025.
 Federici, M., Dutta, A., Forre, P., Kushman, N., and Akata, ´
-Z. Learning robust representations via multi-view information bottleneck. arXiv preprint arXiv:2002.07017,
-2020.
+Z. Learning robust representations via multi-view information bottleneck. arXiv preprint arXiv:2002.07017, 2020.
 Fedus, W., Zoph, B., and Shazeer, N. Switch transformers:
 Scaling to trillion parameter models with simple and efficient sparsity. Journal of Machine Learning Research,
 23(120):1–39, 2022.
@@ -953,8 +952,7 @@ using geometric deep learning. Nature methods, 17(2):
 Guan, Y., Coley, C. W., Wu, H., Ranasinghe, D., Heid, E.,
 Struble, T. J., Pattanaik, L., Green, W. H., and Jensen,
 K. F. Regio-selectivity prediction with a machine-learned
-reaction representation and on-the-fly quantum mechanical descriptors. Chemical science, 12(6):2198–2208,
-2021.
+reaction representation and on-the-fly quantum mechanical descriptors. Chemical science, 12(6):2198–2208, 2021.
 He, Y., Sui, Y., He, X., and Hooi, B. Unigraph: Learning a unified cross-domain foundation model for textattributed graphs. Proceedings of the ACM SIGKDD
 Conference on Knowledge Discovery and Data Mining,
 KDD, 2025a.
@@ -985,8 +983,7 @@ joint graph language modeling. International Conference
 on Learning Representations, ICLR, 2025.
 Li, Y., Wang, P., Li, Z., Yu, J. X., and Li, J. Zerog: Investigating cross-dataset zero-shot transferability in graphs. In
 Proceedings of the 30th ACM SIGKDD Conference on
-Knowledge Discovery and Data Mining, pp. 1725–1735,
-2024.
+Knowledge Discovery and Data Mining, pp. 1725–1735, 2024.
 9
 Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach
 Liu, F., Li, Z., Yin, Q., Huang, J., Luo, J., Thakur, A., Branson, K., Schwab, P., Yin, B., Wu, X., et al. A multimodal
@@ -1018,16 +1015,14 @@ Tang, J., Yang, Y., Wei, W., Shi, L., Su, L., Cheng, S.,
 Yin, D., and Huang, C. Graphgpt: Graph instruction
 tuning for large language models. In Proceedings of the
 47th International ACM SIGIR Conference on Research
-and Development in Information Retrieval, pp. 491–500,
-2024.
+and Development in Information Retrieval, pp. 491–500, 2024.
 Tao, Z., Wei, Y., Wang, X., He, X., Huang, X., and Chua,
 T.-S. Mgat: Multimodal graph attention network for recommendation. Information Processing & Management,
 57(5):102277, 2020.
 Van Den Oord, A., Vinyals, O., et al. Neural discrete
 representation learning. Advances in neural information
 processing systems, NeurIPS, 30, 2017.
-Villani, C. et al. Optimal transport: old and new, volume
-338. Springer, 2008.
+Villani, C. et al. Optimal transport: old and new, volume 338. Springer, 2008.
 Wang, P., Bai, S., Tan, S., Wang, S., Fan, Z., Bai, J., Chen,
 K., Liu, X., Wang, J., Ge, W., et al. Qwen2-vl: Enhancing
 vision-language model’s perception of the world at any
@@ -1161,55 +1156,54 @@ m
 h
 (ℓ−1,m)
 
-+
-α
-|Ω| − 1
-X
-m′̸=m
-W(l)
-m′m · GNNLayer(l)
-m′
-
-h
-(ℓ−1,m′
-)
-
-(12)
-where W(l)
-m′m is a learnable projection matrix in layer l, capturing the relationship between modalities m′
-and m. α is a
-hyperparameter.
-MI+Modality Alignment (MA). Building upon the MI, we incorporated the Symmetric InfoNCE Loss (Radford et al.,
-2021) to enforce explicit modality alignment. This contrastive objective pulls representations of the same node across
-different modalities closer in the latent space.
-C. Detailed Formulations
-C.1. Modality Masking
-Inspired by Hou et al. (2022), we employ a modality masking strategy. Formally, for each node vi ∈ V˜ and modality m ∈ Ω,
-we have:
-x˜
-(m)
-i = x
-(m)
-i ⊙ b
-(m)
-i
-, (13)
-where b
-(m)
-i ∈ {0, 1}
-dm is a binary mask vector sampled from a Bernoulli distribution, V ⊂ V ˜ is a sampled subset of nodes,
-and ⊙ denotes the element-wise product. This process encourages the model to recover missing feature dimensions using
-contextual information from the graph and other modalities.
-C.2. Topology-Aware Attention Mechanism
-In Sec. 3.2, we abstract the topology-aware attention mechanism as a generic operator GTl(·). Here, we provide its detailed
-mathematical formulation. We strictly follow the implementation of Graph Transformer (Dwivedi & Bresson, 2020), but
-change the query,key and value vectors. The output of the multi-head attention is computed as:
-hˆ
-(ℓ,m)
-i = O(ℓ,m)
-H
 
+- α
+  |Ω| − 1
+  X
+  m′̸=m
+  W(l)
+  m′m · GNNLayer(l)
+  m′
+  
+  h
+  (ℓ−1,m′
+  )
+  
+  (12)
+  where W(l)
+  m′m is a learnable projection matrix in layer l, capturing the relationship between modalities m′
+  and m. α is a
+  hyperparameter.
+  MI+Modality Alignment (MA). Building upon the MI, we incorporated the Symmetric InfoNCE Loss (Radford et al.,
 
+2021. to enforce explicit modality alignment. This contrastive objective pulls representations of the same node across
+      different modalities closer in the latent space.
+      C. Detailed Formulations
+      C.1. Modality Masking
+      Inspired by Hou et al. (2022), we employ a modality masking strategy. Formally, for each node vi ∈ V˜ and modality m ∈ Ω,
+      we have:
+      x˜
+      (m)
+      i = x
+      (m)
+      i ⊙ b
+      (m)
+      i
+      , (13)
+      where b
+      (m)
+      i ∈ {0, 1}
+      dm is a binary mask vector sampled from a Bernoulli distribution, V ⊂ V ˜ is a sampled subset of nodes,
+      and ⊙ denotes the element-wise product. This process encourages the model to recover missing feature dimensions using
+      contextual information from the graph and other modalities.
+      C.2. Topology-Aware Attention Mechanism
+      In Sec. 3.2, we abstract the topology-aware attention mechanism as a generic operator GTl(·). Here, we provide its detailed
+      mathematical formulation. We strictly follow the implementation of Graph Transformer (Dwivedi & Bresson, 2020), but
+      change the query,key and value vectors. The output of the multi-head attention is computed as:
+      hˆ
+      (ℓ,m)
+      i = O(ℓ,m)
+      H
 
 k=1
 
@@ -1392,175 +1386,171 @@ A ≈ {UA}.
 14
 Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach
 • Keep Synergistic Features (KSF): The encoder captures both unique and synergistic features, i.e., Z
-+
-A ≈ {UA, SA}.
-We calculate the Marginal Contribution ∆LV anilla of shifting from Strategy DSF to Strategy KSF, which can be expressed
-as ∆LV anilla = ∆IY − β · ∆IG(A) . For ∆IY , we apply the Chain rule of mutual information (Federici et al., 2020):
-∆IY = I(Y ;Z
-+
-A ) − I(Y ;Z
-−
-A )
-= I(Y ;UA, SA) − I(Y ;UA)
-= I(Y ;UA) + I(Y ; SA | UA) − I(Y ;UA)
-= I(Y ; SA | UA).
-(21)
-Crucially, under the independent encoding setting, modality B is unobservable. According to Definition 3.1, the synergistic
-feature SA contains no information about Y without the presence of SB (i.e., I(Y ; SA | UA) ≈ 0). Therefore, we have
-∆IY ≈ 0.
-For ∆IG(A) , we similarly apply the Chain rule:
-∆IG(A) = I(G
-(A)
-;Z
-+
-A ) − I(G
-(A)
-;Z
-−
-A )
-= I(G
-(A)
-;UA, SA) − I(G
-(A)
-;UA)
-= I(G
-(A)
-; SA | UA)
-= H(SA | UA) − H(SA | G
-(A)
-, UA).
-(22)
-Since SA is intrinsically part of the input G(A)
-, we have H(SA | G(A)
-, UA) = 0, therefore:
-∆IG(A) = H(SA | UA) > 0. (23)
-Substituting these results back to the Marginal Contribution ∆LV anilla:
-∆LV anilla ≈ 0 − β · H(SA | UA) < 0. (24)
-Since the contribution is negative for any β > 0, maximizing the local IB objective necessitates the exclusion of synergistic
-features to avoid incurring unnecessary compression costs. Consequently, we have Z
-∗
-V anilla ≈ {UA, UB}.
-PLANET with the EDG Module. The topology-aware interaction mechanism aggregates semantic context from the crossmodal neighborhood. This implies that the encoding process follows a unified Markov chain Y ↔ {G(A)
-, G(B)} → ZEDG.
-The optimization objective is to maximize the local IB: LEDG = I(Y ;ZEDG) − βI(G(A)
-, G(B)
-;ZEDG).
-Similarly, we contrast two strategies: The first strategy captures only unique features, i.e., Z
-−
-EDG = {UA, UB}, and the
-second strategy additionally captures the synergistic pair, i.e., Z
-+
-EDG = {UA, UB, SA, SB}. The marginal contribution of
-transitioning from the first strategy to the second strategy is formulated as:
-∆LEDG = ∆IY − β · ∆I{G(A),G(B)}
-. (25)
-Applying the chain rule yields ∆I{G(A),G(B)} = H(SA, SB | UA, UB) > 0 and ∆IY = I(Y ; SA, SB | UA, UB). Under
-the joint view enabled by the unified Markov chain, the synergistic features become informative. By Definition 3.1, the
-interaction information is strictly positive, yielding:
-∆IY = I(Y ; SA, SB | UA, UB) ≫ 0. (26)
-Consequently, we have ∆LEDG = ∆IY − β · H(SA, SB | UA, UB). Given that the significant synergistic information gain
-outweighs the weighted compression cost (i.e., ∆IY > β·∆I{G(A),G(B)}
-), ∆LEDG becomes strictly positive. Consequently,
-maximizing the joint IB objective necessitates the preservation of these features, leading to Z
-∗
-EDG ≈ {UA, UB, SA, SB}.
-Finally, we quantify the information gap between the two representations:
-I(Y ;Z
-∗
-EDG) − I(Y ;Z
-∗
-V anilla) ≈ I(Y ;UA, UB, SA, SB) − I(Y ;UA, UB) = I(Y ; SA, SB | UA, UB) > 0. (27)
-This theorem demostrates that our EDG module captures a strictly larger amount of relevant information than vanilla
-Multimodal Graph Encoders which process MAGs as independent graphs.
-15
-Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach
-D.2. Proof of Theorem 3.4
-To analyze the generalization bound of our alignment strategy, we employ the 1-Wasserstein distance W1(ˆµm, µˆt) as the
-metric for distributional discrepancy.
-Utilizing the triangle inequality property of the Wasserstein metric, we decompose the total alignment error into three
-components:
-W1(ˆµm, µˆt) ≤ W1(ˆµm, νˆm) + W1(ˆνm, νˆt) + W1(ˆνt, µˆt). (28)
-For W1(ˆµm, νˆm). By the Kantorovich formulation of Optimal Transport (Villani et al., 2008), the Wasserstein distance is
-defined as the infimum of transport costs over all valid joint couplings Π(ˆµm, νˆm):
-W1(ˆµm, νˆm) = inf
-π∈Π(ˆµm,νˆm)
-E(x,y)∼π[∥x − y∥2]. (29)
-We define π
-∗
-such that it transports the probability mass 1/N associated with each sample x
-(m)
-i
-directly to its corresponding quantized token Q(x
-(m)
-i
-). Formally, the joint distribution π
-∗
-is supported exclusively on the set of pairs
-{(x
-(m)
-i
-, Q(x
-(m)
-i
-))}
-N
-i=1. Let C(π) denote the transport cost associated with a coupling π. Under our deterministic coupling
-π
-∗
-, this cost is exactly:
-C(π
-∗
-) = 1
-N
-X
-N
-i=1
-∥x
-(m)
-i − Q(x
-(m)
-i
-)∥2 = Ex∼µˆm∥x − Q(x)∥2. (30)
-Therefore, we have the inequality:
-W1(ˆµm, νˆm) ≤ C(π
-∗
-) = Ex∼µˆm∥x − Q(x)∥2. (31)
-For W1(ˆνt, µˆt). Similarly, due to the symmetry of the Wasserstein metric and the same quantization mechanism applied to
-the anchor text modality t, we have the corresponding upper bound:
-W1(ˆνt, µˆt) = W1(ˆµt, νˆt) ≤ Ex∼µˆt
-∥x − Q(x)∥2. (32)
-For W1(ˆνm, νˆt). We denote ν
-∗
-m and ν
-∗
-t
-as the underlying ground-truth discrete distributions for modality m and the anchor
-text modality t, both supported on S. Accordingly, the empirical push-forward measures νˆm and νˆt are viewed as samples
-drawn from these corresponding ground-truth distributions. Leveraging the triangle inequality, we have:
-W1(ˆνm, νˆt) ≤ W1(ˆνm, ν∗
-m) + W1(ν
-∗
-m, ν∗
-t
-) + W1(ν
-∗
-t
-, νˆt). (33)
-Let δ ∈ (0, 1) be the scale parameter. According to Proposition 1 in Weed & Bach (2019), The 1-Wasserstein distance is
-bounded by:
-E[W1(ˆνm, ν∗
-m)] ≲ δ
-k
-∗
-+
-k
-X∗
-k=1
-δ
-k−1 X
-Qk
-i ∈Qk
-E
+
+- A ≈ {UA, SA}.
+  We calculate the Marginal Contribution ∆LV anilla of shifting from Strategy DSF to Strategy KSF, which can be expressed
+  as ∆LV anilla = ∆IY − β · ∆IG(A) . For ∆IY , we apply the Chain rule of mutual information (Federici et al., 2020):
+  ∆IY = I(Y ;Z
+- A ) − I(Y ;Z
+  −
+  A )
+  = I(Y ;UA, SA) − I(Y ;UA)
+  = I(Y ;UA) + I(Y ; SA | UA) − I(Y ;UA)
+  = I(Y ; SA | UA).
+  (21)
+  Crucially, under the independent encoding setting, modality B is unobservable. According to Definition 3.1, the synergistic
+  feature SA contains no information about Y without the presence of SB (i.e., I(Y ; SA | UA) ≈ 0). Therefore, we have
+  ∆IY ≈ 0.
+  For ∆IG(A) , we similarly apply the Chain rule:
+  ∆IG(A) = I(G
+  (A)
+  ;Z
+- A ) − I(G
+  (A)
+  ;Z
+  −
+  A )
+  = I(G
+  (A)
+  ;UA, SA) − I(G
+  (A)
+  ;UA)
+  = I(G
+  (A)
+  ; SA | UA)
+  = H(SA | UA) − H(SA | G
+  (A)
+  , UA).
+  (22)
+  Since SA is intrinsically part of the input G(A)
+  , we have H(SA | G(A)
+  , UA) = 0, therefore:
+  ∆IG(A) = H(SA | UA) > 0. (23)
+  Substituting these results back to the Marginal Contribution ∆LV anilla:
+  ∆LV anilla ≈ 0 − β · H(SA | UA) < 0. (24)
+  Since the contribution is negative for any β > 0, maximizing the local IB objective necessitates the exclusion of synergistic
+  features to avoid incurring unnecessary compression costs. Consequently, we have Z
+  ∗
+  V anilla ≈ {UA, UB}.
+  PLANET with the EDG Module. The topology-aware interaction mechanism aggregates semantic context from the crossmodal neighborhood. This implies that the encoding process follows a unified Markov chain Y ↔ {G(A)
+  , G(B)} → ZEDG.
+  The optimization objective is to maximize the local IB: LEDG = I(Y ;ZEDG) − βI(G(A)
+  , G(B)
+  ;ZEDG).
+  Similarly, we contrast two strategies: The first strategy captures only unique features, i.e., Z
+  −
+  EDG = {UA, UB}, and the
+  second strategy additionally captures the synergistic pair, i.e., Z
+- EDG = {UA, UB, SA, SB}. The marginal contribution of
+  transitioning from the first strategy to the second strategy is formulated as:
+  ∆LEDG = ∆IY − β · ∆I{G(A),G(B)}
+  . (25)
+  Applying the chain rule yields ∆I{G(A),G(B)} = H(SA, SB | UA, UB) > 0 and ∆IY = I(Y ; SA, SB | UA, UB). Under
+  the joint view enabled by the unified Markov chain, the synergistic features become informative. By Definition 3.1, the
+  interaction information is strictly positive, yielding:
+  ∆IY = I(Y ; SA, SB | UA, UB) ≫ 0. (26)
+  Consequently, we have ∆LEDG = ∆IY − β · H(SA, SB | UA, UB). Given that the significant synergistic information gain
+  outweighs the weighted compression cost (i.e., ∆IY > β·∆I{G(A),G(B)}
+  ), ∆LEDG becomes strictly positive. Consequently,
+  maximizing the joint IB objective necessitates the preservation of these features, leading to Z
+  ∗
+  EDG ≈ {UA, UB, SA, SB}.
+  Finally, we quantify the information gap between the two representations:
+  I(Y ;Z
+  ∗
+  EDG) − I(Y ;Z
+  ∗
+  V anilla) ≈ I(Y ;UA, UB, SA, SB) − I(Y ;UA, UB) = I(Y ; SA, SB | UA, UB) > 0. (27)
+  This theorem demostrates that our EDG module captures a strictly larger amount of relevant information than vanilla
+  Multimodal Graph Encoders which process MAGs as independent graphs.
+  15
+  Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based Approach
+  D.2. Proof of Theorem 3.4
+  To analyze the generalization bound of our alignment strategy, we employ the 1-Wasserstein distance W1(ˆµm, µˆt) as the
+  metric for distributional discrepancy.
+  Utilizing the triangle inequality property of the Wasserstein metric, we decompose the total alignment error into three
+  components:
+  W1(ˆµm, µˆt) ≤ W1(ˆµm, νˆm) + W1(ˆνm, νˆt) + W1(ˆνt, µˆt). (28)
+  For W1(ˆµm, νˆm). By the Kantorovich formulation of Optimal Transport (Villani et al., 2008), the Wasserstein distance is
+  defined as the infimum of transport costs over all valid joint couplings Π(ˆµm, νˆm):
+  W1(ˆµm, νˆm) = inf
+  π∈Π(ˆµm,νˆm)
+  E(x,y)∼π[∥x − y∥2]. (29)
+  We define π
+  ∗
+  such that it transports the probability mass 1/N associated with each sample x
+  (m)
+  i
+  directly to its corresponding quantized token Q(x
+  (m)
+  i
+  ). Formally, the joint distribution π
+  ∗
+  is supported exclusively on the set of pairs
+  {(x
+  (m)
+  i
+  , Q(x
+  (m)
+  i
+  ))}
+  N
+  i=1. Let C(π) denote the transport cost associated with a coupling π. Under our deterministic coupling
+  π
+  ∗
+  , this cost is exactly:
+  C(π
+  ∗
+  ) = 1
+  N
+  X
+  N
+  i=1
+  ∥x
+  (m)
+  i − Q(x
+  (m)
+  i
+  )∥2 = Ex∼µˆm∥x − Q(x)∥2. (30)
+  Therefore, we have the inequality:
+  W1(ˆµm, νˆm) ≤ C(π
+  ∗
+  ) = Ex∼µˆm∥x − Q(x)∥2. (31)
+  For W1(ˆνt, µˆt). Similarly, due to the symmetry of the Wasserstein metric and the same quantization mechanism applied to
+  the anchor text modality t, we have the corresponding upper bound:
+  W1(ˆνt, µˆt) = W1(ˆµt, νˆt) ≤ Ex∼µˆt
+  ∥x − Q(x)∥2. (32)
+  For W1(ˆνm, νˆt). We denote ν
+  ∗
+  m and ν
+  ∗
+  t
+  as the underlying ground-truth discrete distributions for modality m and the anchor
+  text modality t, both supported on S. Accordingly, the empirical push-forward measures νˆm and νˆt are viewed as samples
+  drawn from these corresponding ground-truth distributions. Leveraging the triangle inequality, we have:
+  W1(ˆνm, νˆt) ≤ W1(ˆνm, ν∗
+  m) + W1(ν
+  ∗
+  m, ν∗
+  t
+  ) + W1(ν
+  ∗
+  t
+  , νˆt). (33)
+  Let δ ∈ (0, 1) be the scale parameter. According to Proposition 1 in Weed & Bach (2019), The 1-Wasserstein distance is
+  bounded by:
+  E[W1(ˆνm, ν∗
+  m)] ≲ δ
+  k
+  ∗
+- k
+  X∗
+  k=1
+  δ
+  k−1 X
+  Qk
+  i ∈Qk
+  E
 
 |νˆm(Q
 k
@@ -1642,7 +1632,7 @@ N
 
 
 =
- X∞
+X∞
 k=1
 δ
 k−1
@@ -1787,13 +1777,21 @@ Toward Effective Multimodal Graph Foundation Model: A Divide-and-Conquer Based A
 Table 7. Specific prompts for Grocery and Flickr30k datasets in G2Text task.
 Dataset Prompt
 Grocery
+
 ### Task: Generate a natural-language description of the product node.
+
 ### Input: Title: <item title of the target node >.
+
 ### Output Results:
+
 Flickr30k
+
 ### Task: Generate a detailed description for the image based on the context.
+
 ### Input: Context: <desc 2 >, <desc 3 >, <desc 4 >, <desc 5 >.
+
 ### Output Results:
+
 For the specific prompts used for each dataset, please refer to Table 7.
 G2Image. We evaluate the G2Image task on two datasets: Goodreads-NC and Ele-fashion. Following the experimental
 setting of InstructG2I (Jin et al., 2024), we focus on specific, visually distinct categories to verify whether our embeddings

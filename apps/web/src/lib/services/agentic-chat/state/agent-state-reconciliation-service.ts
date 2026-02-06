@@ -347,8 +347,7 @@ export class AgentStateReconciliationService {
 		payload: NonNullable<AgentStateUpdate['current_understanding']>
 	): void {
 		if (Array.isArray(payload.entities)) {
-			const entityKey = (entry: { id: string; kind: string }) =>
-				`${entry.kind}:${entry.id}`;
+			const entityKey = (entry: { id: string; kind: string }) => `${entry.kind}:${entry.id}`;
 			const existing = new Map(
 				agentState.current_understanding.entities.map((e) => [entityKey(e), e])
 			);

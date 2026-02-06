@@ -7,7 +7,7 @@
 **Date:** 2026-02-05
 **Scope:** End-to-end agent-to-chat system redesign with a document-first, fast, and sync-safe architecture.
 
-This spec defines the *next-generation* agentic chat flow. It is not yet implemented. It intentionally simplifies the current flow and re-centers around:
+This spec defines the _next-generation_ agentic chat flow. It is not yet implemented. It intentionally simplifies the current flow and re-centers around:
 
 - Speed and responsiveness (TTFT first, streaming always)
 - Document structure as the primary knowledge model
@@ -16,6 +16,7 @@ This spec defines the *next-generation* agentic chat flow. It is not yet impleme
 - Cooperative yielding and backpressure to avoid UI stalls
 
 **Related specs:**
+
 - `apps/web/docs/features/agentic-chat/AGENTIC_CHAT_V2_PLANNER_SPEC.md`
 - `apps/web/docs/features/agentic-chat/AGENTIC_CHAT_V2_AGENT_STATE_SPEC.md`
 
@@ -73,32 +74,32 @@ entity   -> a specific ontology entity within a project
 type ContextScope = 'global' | 'project' | 'entity';
 
 type ContextPack = {
-  scope: ContextScope;
-  focus: {
-    projectId?: string;
-    projectName?: string;
-    entityId?: string;
-    entityType?: 'document' | 'task' | 'goal' | 'plan' | 'milestone' | 'risk' | 'requirement';
-  };
-  systemInstructions: string;
-  data: {
-    docStructure?: DocStructure;         // required for project scope
-    projectSummary?: string;             // short summary, always present in project/entity
-    entityDetails?: Record<string, any>; // full entity payload for entity scope
-    linkedEntities?: LinkedEntities;     // abbreviated by default
-    recentActivity?: ActivitySummary;    // optional
-    userPreferences?: UserPrefs;         // optional
-    agentState?: AgentState;             // structured state snapshot
-  };
-  retrievalHints: {
-    keywords: string[];
-    docIds?: string[];
-  };
-  budgets: {
-    maxTokens: number;
-    summaryTokens: number;
-    recentMessages: number;
-  };
+	scope: ContextScope;
+	focus: {
+		projectId?: string;
+		projectName?: string;
+		entityId?: string;
+		entityType?: 'document' | 'task' | 'goal' | 'plan' | 'milestone' | 'risk' | 'requirement';
+	};
+	systemInstructions: string;
+	data: {
+		docStructure?: DocStructure; // required for project scope
+		projectSummary?: string; // short summary, always present in project/entity
+		entityDetails?: Record<string, any>; // full entity payload for entity scope
+		linkedEntities?: LinkedEntities; // abbreviated by default
+		recentActivity?: ActivitySummary; // optional
+		userPreferences?: UserPrefs; // optional
+		agentState?: AgentState; // structured state snapshot
+	};
+	retrievalHints: {
+		keywords: string[];
+		docIds?: string[];
+	};
+	budgets: {
+		maxTokens: number;
+		summaryTokens: number;
+		recentMessages: number;
+	};
 };
 ```
 
@@ -126,7 +127,7 @@ The agent should adapt to conversation intent:
 - **Inform**: user wants knowledge or explanation; avoid creating entities
 - **Act**: user issues explicit or strongly implied instructions; proceed with tools
 
-Default to *clarify* when intent is ambiguous. Be proactive only when the user
+Default to _clarify_ when intent is ambiguous. Be proactive only when the user
 signals they want action.
 
 ### 4.5 Context Assembly Inputs
@@ -179,7 +180,7 @@ Trigger summarization when any condition is met:
 - Context token budget is exceeded
 
 **Exception:** If the user pastes a large document and the conversation is about
-that document, keep the document content in context and summarize *other* history
+that document, keep the document content in context and summarize _other_ history
 first.
 
 ### 5.4 Summarization Execution
@@ -404,8 +405,8 @@ Tool selection is gated to reduce unnecessary calls.
 
 ### 8.6 Agent State (Scratchpad)
 
-Agent state is the structured, persistent snapshot of what the agent *knows*,
-*assumes*, and *expects* as it reasons. This is the formalized version of the
+Agent state is the structured, persistent snapshot of what the agent _knows_,
+_assumes_, and _expects_ as it reasons. This is the formalized version of the
 scratchpad concept.
 
 Agent state should contain:
@@ -430,40 +431,40 @@ keeping the user experience fluid and non-destructive.
 
 ```ts
 type AgentStateItem = {
-  id: string;
-  kind: 'task' | 'doc' | 'note' | 'idea' | 'question';
-  title: string;
-  details?: string;
-  status: 'active' | 'resolved' | 'discarded';
-  relatedEntityIds?: string[];
-  createdAt: string;
-  updatedAt: string;
+	id: string;
+	kind: 'task' | 'doc' | 'note' | 'idea' | 'question';
+	title: string;
+	details?: string;
+	status: 'active' | 'resolved' | 'discarded';
+	relatedEntityIds?: string[];
+	createdAt: string;
+	updatedAt: string;
 };
 
 type AgentState = {
-  sessionId: string;
-  current_understanding: {
-    entities: Array<{ id: string; kind: string; name?: string }>;
-    dependencies: Array<{ from: string; to: string; rel?: string }>;
-  };
-  assumptions: Array<{
-    id: string;
-    hypothesis: string;
-    confidence: number;
-    evidence?: string[];
-  }>;
-  expectations: Array<{
-    action: string;
-    expected_outcome: string;
-    invariant?: string;
-  }>;
-  tentative_hypotheses: Array<{
-    id: string;
-    hypothesis: string;
-    reason?: string;
-  }>;
-  items: AgentStateItem[];
-  lastSummarizedAt?: string;
+	sessionId: string;
+	current_understanding: {
+		entities: Array<{ id: string; kind: string; name?: string }>;
+		dependencies: Array<{ from: string; to: string; rel?: string }>;
+	};
+	assumptions: Array<{
+		id: string;
+		hypothesis: string;
+		confidence: number;
+		evidence?: string[];
+	}>;
+	expectations: Array<{
+		action: string;
+		expected_outcome: string;
+		invariant?: string;
+	}>;
+	tentative_hypotheses: Array<{
+		id: string;
+		hypothesis: string;
+		reason?: string;
+	}>;
+	items: AgentStateItem[];
+	lastSummarizedAt?: string;
 };
 ```
 
@@ -490,7 +491,7 @@ type AgentState = {
 #### Agent State Update Pipeline (Hybrid, Non-Blocking)
 
 We want **fast streaming** and **high-quality state** without bloating tool calls.
-State updates are derived from *existing* outputs (tool results, patches, and the
+State updates are derived from _existing_ outputs (tool results, patches, and the
 final summarizer), not from extra tool calls.
 
 **Sources of truth for state updates:**
@@ -498,9 +499,9 @@ final summarizer), not from extra tool calls.
 1. **Entity patches + tool results (deterministic)**  
    When a tool creates/updates/deletes an entity, we already have structured
    payloads. Use those payloads to update:
-   - `current_understanding.entities`
-   - `current_understanding.dependencies` (if edges were created)
-   These updates require **no extra LLM call** and do not add tool calls.
+    - `current_understanding.entities`
+    - `current_understanding.dependencies` (if edges were created)
+      These updates require **no extra LLM call** and do not add tool calls.
 
 2. **Planner intent (optional, lightweight)**  
    If the planner already produced a plan or stated an intended action, record
@@ -510,10 +511,10 @@ final summarizer), not from extra tool calls.
 3. **End-of-turn reconciliation (LLM summarizer)**  
    After `done`, a **separate summarizer LLM** reconciles hypotheses, assumptions,
    and tentative alternatives using:
-   - recent messages
-   - tool results
-   - current agent state
-   This is the primary mechanism for **assumptions/hypotheses/expectations**.
+    - recent messages
+    - tool results
+    - current agent state
+      This is the primary mechanism for **assumptions/hypotheses/expectations**.
 
 **Why this avoids tool bloat:**  
 We are **not** adding extra tool calls. We reuse existing tool outputs and only
@@ -538,31 +539,31 @@ All state changes are applied as **deltas** to keep updates minimal and safe.
 
 ```ts
 type AgentStateItemUpdate =
-  | { op: 'add'; item: AgentStateItem }
-  | { op: 'update'; id: string; patch: Partial<AgentStateItem> }
-  | { op: 'remove'; id: string };
+	| { op: 'add'; item: AgentStateItem }
+	| { op: 'update'; id: string; patch: Partial<AgentStateItem> }
+	| { op: 'remove'; id: string };
 
 type AgentStateUpdate = {
-  current_understanding?: {
-    entities?: Array<{ id: string; kind: string; name?: string }>;
-    dependencies?: Array<{ from: string; to: string; rel?: string }>;
-  };
-  assumptions?: Array<{
-    id: string;
-    hypothesis: string;
-    confidence: number;
-    evidence?: string[];
-  }>;
-  expectations?: Array<{
-    action: string;
-    expected_outcome: string;
-    invariant?: string;
-  }>;
-  tentative_hypotheses?: Array<{
-    id: string;
-    hypothesis: string;
-    reason?: string;
-  }>;
+	current_understanding?: {
+		entities?: Array<{ id: string; kind: string; name?: string }>;
+		dependencies?: Array<{ from: string; to: string; rel?: string }>;
+	};
+	assumptions?: Array<{
+		id: string;
+		hypothesis: string;
+		confidence: number;
+		evidence?: string[];
+	}>;
+	expectations?: Array<{
+		action: string;
+		expected_outcome: string;
+		invariant?: string;
+	}>;
+	tentative_hypotheses?: Array<{
+		id: string;
+		hypothesis: string;
+		reason?: string;
+	}>;
 };
 ```
 
@@ -628,7 +629,7 @@ Output JSON:
 - Do **not** load document tree metadata or document content by default.
 - Prefer the prewarmed doc_structure cache (titles + description + content_length) for the JSON snippet.
 - Every node must include **order**; treat it as canonical sibling ordering.
-- Full document content should be fetched *selectively* on demand.
+- Full document content should be fetched _selectively_ on demand.
 
 ### 9.2 Doc Structure Purpose (Project Topology)
 
@@ -651,7 +652,7 @@ The agent should treat `doc_structure` as the primary index for:
 
 The agent should fluidly traverse the doc tree:
 
-- identify relevant documents by *path* (even 2–4 levels deep)
+- identify relevant documents by _path_ (even 2–4 levels deep)
 - request the minimal doc content needed to answer the question
 - resolve names via list/search tools before reading content
 
@@ -749,27 +750,27 @@ run in parallel, but stages themselves run in order.
 
 ```ts
 type PlanStage = {
-  id: string;
-  name: string;
-  mode: 'parallel' | 'sequence';
-  steps: PlanStep[];
+	id: string;
+	name: string;
+	mode: 'parallel' | 'sequence';
+	steps: PlanStep[];
 };
 
 type PlanStep = {
-  id: string;
-  title: string;
-  intent: 'research' | 'analysis' | 'draft' | 'edit' | 'create' | 'update' | 'review';
-  executor: 'planner' | 'research' | 'writer' | 'editor' | 'tooling';
-  tools?: string[];
-  inputs?: string[];      // ids of dependent steps
-  outputs?: string[];     // artifacts produced (doc ids, task ids, etc.)
+	id: string;
+	title: string;
+	intent: 'research' | 'analysis' | 'draft' | 'edit' | 'create' | 'update' | 'review';
+	executor: 'planner' | 'research' | 'writer' | 'editor' | 'tooling';
+	tools?: string[];
+	inputs?: string[]; // ids of dependent steps
+	outputs?: string[]; // artifacts produced (doc ids, task ids, etc.)
 };
 
 type AgentPlan = {
-  id: string;
-  goal: string;
-  stages: PlanStage[];
-  constraints?: string[];
+	id: string;
+	goal: string;
+	stages: PlanStage[];
+	constraints?: string[];
 };
 ```
 
@@ -779,11 +780,13 @@ dependency is declared in `inputs`.
 ### 10.3 Example
 
 Stage 1 (parallel research):
+
 - research market trends
 - research competitors
 - research user needs
 
 Stage 2 (sequence synthesis):
+
 - summarize research into doc outline
 - draft document
 - review/edit document
@@ -792,8 +795,8 @@ Stage 2 (sequence synthesis):
 
 - Orchestrator executes stages **in order**
 - Within a stage:
-  - `mode: parallel` → run steps concurrently with a concurrency cap
-  - `mode: sequence` → run steps in order
+    - `mode: parallel` → run steps concurrently with a concurrency cap
+    - `mode: sequence` → run steps in order
 - Each step can spawn an **executor agent** with a scoped context pack
 - All executor results emit **entity_patch** events or structured outputs
 
@@ -835,44 +838,52 @@ Key optimizations:
 ### Phase 1 — Context Foundation (Doc-Structure-Only) ✅
 
 **Build:**
+
 - ContextPack wiring (doc_structure only, no doc tree/content)
 - Operation events with human-readable names
 - Minimal tool gating for list/search/read
 
 **Expected gains (estimate):**
+
 - 30–60% prompt size reduction (no doc content)
 - 150–400ms faster TTFT from smaller prompts
 
 ### Phase 2 — Selective Loading + Agent State/Summary ✅
 
 **Build:**
+
 - Summarizer LLM integration + agent state sync
 - Selective document loading rules
 - Updated AgentChatModal event rendering (operation feed)
 
 **Expected gains (estimate):**
+
 - 20–40% reduction in average tool calls
 - More stable latency on long chats (lower variance)
 
 ### Phase 3 — Planner/Executor Parallelization ✅
 
 **Build:**
+
 - Stage-aware plans with parallel steps
 - Executor agent fan-out with concurrency caps
 - Yield/backpressure helpers in long loops
 
 **Expected gains (estimate):**
+
 - 25–50% faster completion for multi-step tasks
 - Improved UI responsiveness under heavy workloads
 
 ### Phase 4 — Caching + Prewarm (In Progress)
 
 **Build:**
+
 - Cache doc_structure and doc metadata (short TTL)
 - Prewarm critical context on focus change
 - Route doc_structure cache into prompt context (JSON snippet, no doc content)
 
 **Expected gains (estimate):**
+
 - Additional 100–300ms shaved per turn on warm sessions
 
 ---

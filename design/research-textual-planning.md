@@ -1,3 +1,5 @@
+<!-- design/research-textual-planning.md -->
+
 https://arxiv.org/pdf/2602.04557
 
 ---
@@ -20,11 +22,13 @@ This paper introduces **EMBEDPLAN** — a way to predict "what comes next" in a 
 ## What EMBEDPLAN Does
 
 Instead of generating "next state" text autoregressively:
+
 ```
 State + Action → LLM generates → Next State (slow, expensive)
 ```
 
 EMBEDPLAN:
+
 ```
 State + Action → Embed → Lightweight Transition Network → Predict Next Embedding → Retrieve from candidates (fast, cheap)
 ```
@@ -33,20 +37,21 @@ State + Action → Embed → Lightweight Transition Network → Predict Next Emb
 
 ## The Generalization Hierarchy
 
-| Protocol | Performance | What it Tests |
-|----------|-------------|---------------|
-| Interpolation | 99.7% | Same problems, held-out steps |
-| Plan-Variant | 51.2% | Same problems, different optimal paths |
-| Extrapolation | 54.6% | New problem configurations |
-| Multi-Domain | 37.2% | All domains jointly |
-| Leave-One-Out | 9.2% | Train on 8 domains, test on 9th |
-| Cross-Domain | 6.6% | Train on A, test on B |
+| Protocol      | Performance | What it Tests                          |
+| ------------- | ----------- | -------------------------------------- |
+| Interpolation | 99.7%       | Same problems, held-out steps          |
+| Plan-Variant  | 51.2%       | Same problems, different optimal paths |
+| Extrapolation | 54.6%       | New problem configurations             |
+| Multi-Domain  | 37.2%       | All domains jointly                    |
+| Leave-One-Out | 9.2%        | Train on 8 domains, test on 9th        |
+| Cross-Domain  | 6.6%        | Train on A, test on B                  |
 
 **Critical insight:** Once you've seen a domain's dynamics, you can extrapolate reasonably. But learning from one domain provides ZERO benefit for another.
 
 ## Why Cross-Domain Transfer Fails
 
 Embeddings cluster by **surface form**, not **structural role**:
+
 - "pick-up(BlockA)" and "board(Car1)" share the same abstract schema
 - But embeddings place them in distant regions because the text is different
 - This is a fundamental limitation of frozen LLM embeddings
@@ -54,42 +59,54 @@ Embeddings cluster by **surface form**, not **structural role**:
 ## Key Insights for BuildOS
 
 ### 1. Domain-Specific Knowledge is the Bottleneck
+
 > "The 8× jump from Cross-Domain (6.6%) to Single-Domain Extrapolation (54.6%) far exceeds the 1.8× gain from Extrapolation to Interpolation (99.7%)."
 
 **BuildOS Application:**
+
 - Don't expect a generic "task planning" model to work across all users
 - **Personalization is key** — learn each user's domain/patterns
 - Once you understand a user's workflow, you can extrapolate well
 
 ### 2. State Transitions Can Be Predicted in Embedding Space
+
 The paper proves that: State + Action → Next State can be learned with a tiny network.
 
 **BuildOS Application for Brain Dump:**
+
 ```
 Current Brain State + User Input → Predicted Next State (tasks extracted, projects created)
 ```
+
 Instead of generating extraction results from scratch, could we learn transition patterns?
 
 ### 3. Contrastive Learning for Action Disambiguation
+
 Two losses used:
+
 - **State prediction**: Pull predictions toward correct next states
 - **Action disambiguation**: Distinguish effects of different actions on same state
 
 **BuildOS Application:**
+
 - When multiple actions are possible (create task vs create project vs add context), learn to disambiguate
 - Train on: given this brain dump state, what action leads to what outcome?
 
 ### 4. 5-Minute Context is Sufficient (Corroborates ProAgentBench)
+
 > "Teacher forcing decouples transition quality from compounding state-distribution drift"
 
 **BuildOS Application:**
+
 - Short context windows work for transition prediction
 - Avoid feeding entire conversation history — it adds noise
 
 ### 5. Multi-Domain Training Retains Capability
+
 > "A unified model achieves 37.2%, underperforming single-domain specialists by 17 pp but retaining meaningful capability across all nine domains without catastrophic forgetting."
 
 **BuildOS Application:**
+
 - A single model CAN handle multiple user types/workflows
 - Trade-off: generalist vs specialist
 - Consider user-specific fine-tuning for power users
@@ -97,55 +114,60 @@ Two losses used:
 ## Limitations to Note
 
 1. **Requires candidate pool**: Predictions retrieve from pre-enumerated states
-   - BuildOS equivalent: need to define what possible "next states" exist
+    - BuildOS equivalent: need to define what possible "next states" exist
 
 2. **Template language**: Tested on structured PDDL descriptions, not free-form text
-   - Brain dumps are messy — may perform differently
+    - Brain dumps are messy — may perform differently
 
 3. **Frozen embeddings**: No fine-tuning of the encoder
-   - Fine-tuning might improve cross-domain transfer
+    - Fine-tuning might improve cross-domain transfer
 
 ## Actionable Ideas for BuildOS
 
 ### Brain Dump Processing
+
 1. **Frame brain dump processing as state transitions:**
-   - State: Current parsed brain dump (raw text, extracted items so far)
-   - Action: User adds more text, confirms extraction, rejects suggestion
-   - Next State: Updated extraction with new items
+    - State: Current parsed brain dump (raw text, extracted items so far)
+    - Action: User adds more text, confirms extraction, rejects suggestion
+    - Next State: Updated extraction with new items
 
 2. **Learn transition patterns:**
-   - "When user mentions 'tomorrow' after a task, add deadline"
-   - "When user mentions a person after a task, add as assignee"
-   - These are learnable state transitions
+    - "When user mentions 'tomorrow' after a task, add deadline"
+    - "When user mentions a person after a task, add as assignee"
+    - These are learnable state transitions
 
 3. **Use contrastive learning for extraction quality:**
-   - Given a brain dump state, distinguish between good and bad extraction actions
+    - Given a brain dump state, distinguish between good and bad extraction actions
 
 ### Task Planning
+
 4. **Predict task sequences:**
-   - Given project + current tasks + user goal → predict likely next task
-   - Use for proactive suggestions
+    - Given project + current tasks + user goal → predict likely next task
+    - Use for proactive suggestions
 
 5. **Learn user-specific planning patterns:**
-   - Each user has their own "planning domain"
-   - Once you see their patterns, extrapolation works
+    - Each user has their own "planning domain"
+    - Once you see their patterns, extrapolation works
 
 ### Technical Implementation
+
 6. **Embed task/project states:**
-   - Represent ontology entities as embeddings
-   - Learn lightweight transition models per user or user-type
+    - Represent ontology entities as embeddings
+    - Learn lightweight transition models per user or user-type
 
 7. **Action disambiguation for agentic chat:**
-   - User says "add this" — is it a task, subtask, project, or context?
-   - Learn to disambiguate based on state + input patterns
+    - User says "add this" — is it a task, subtask, project, or context?
+    - Learn to disambiguate based on state + input patterns
 
 ## Connection to State-Aware Agents Paper
 
 These papers complement each other:
+
 - **State-Aware Agents**: Agents need explicit state, not just conversation history
 - **EMBEDPLAN**: State transitions can be predicted efficiently in embedding space
 
 **Combined insight:** Build agentic chat with:
+
 1. Explicit state representation (from State-Aware paper)
 2. Lightweight transition prediction (from EMBEDPLAN)
 3. Proactive timing detection (from ProAgentBench)
@@ -160,12 +182,12 @@ These papers complement each other:
 
 ---
 
-*Original paper content below*
+_Original paper content below_
 
 ---
 
 Textual Planning with Explicit Latent Transitions
-Eliezer Shlomi * 1 Ido Levy * 2 Eilam Shapira 1 Michael Katz 2 Guy Uziel 2 Segev Shlomov 2 Nir Mashkif 2
+Eliezer Shlomi _ 1 Ido Levy _ 2 Eilam Shapira 1 Michael Katz 2 Guy Uziel 2 Segev Shlomov 2 Nir Mashkif 2
 Roi Reichart 1 Sarah Keren 1
 Abstract
 Planning with LLMs is bottlenecked by tokenby-token generation and repeated full forward
@@ -182,163 +204,164 @@ but a sharp degradation when generalization requires transfer to unseen problems
 support within-domain dynamics learning after
 observing a domain’s transitions, while transfer
 across domain boundaries remains a bottleneck.
+
 1. Introduction
-Planning with large language models requires generating action sequences token-by-token, invoking full forward passes
-per decision. This makes multi-step lookahead and rolloutbased search, essential for robust, long-horizon planning,
-prohibitively expensive in latency and cost. The bottleneck is fundamental: without a compact transition function
-that predicts how actions transform states, planners cannot
-*Equal contribution 1Technion – Israel Institute of Technology, Haifa, Israel 2
-IBM, Haifa, Israel. Correspondence
-to: Eliezer Shlomi <Eliezer@campus.technion.ac.il>, Ido Levy
-<Ido.Levy1@ibm.com>.
-Preprint. February 5, 2026.
-cheaply evaluate alternatives or backtrack from errors.
-Although efforts have addressed this via prompting-based
-reasoning (Wei et al., 2022; Yao et al., 2023; 2022), symbolic compilation to Planning Domain Definition Language
-(PDDL) (Liu et al., 2023; Guan et al., 2023; Oswald et al.,
-2024; Tantakoun et al., 2025; Zuo et al., 2025), and end-toend latent world models (Ha & Schmidhuber, 2018; Hafner
-et al., 2020; Schrittwieser et al., 2020), a key opportunity
-remains: can we leverage pre-trained language embeddings
-to construct efficient transition functions? Replacing autoregressive generation with lightweight operations in a frozen
-embedding space offers an architectural path toward reduced
-planning computation at inference time.
-We introduce EMBEDPLAN, a framework that learns explicit transition dynamics directly in frozen LLM embedding space over text-described planning domains. Rather
-than generating next states autoregressively, EMBEDPLAN
-encodes natural language state descriptions (e.g., “Block
-A is on B, Block C is clear”) and action descriptions (e.g.,
-pick-up(C)) into vectors, trains a lightweight network
-(<500K parameters) to predict next-state embeddings, and
-retrieves candidates by cosine similarity (Figure 1). EMBEDPLAN training combines two contrastive objectives:
-state prediction, which learns to identify correct next states
-among candidates, and action disambiguation, which learns
-to distinguish the effects of different actions applied to the
-same state. Together, these losses enable both accurate
-retrieval and fine-grained action semantics. This architecture decouples semantic understanding, handled by frozen
-pre-trained language encoders, from dynamics prediction,
-handled by learned transition networks, collapsing the need
-of expensive LLM calls into cheap embedding space operations while enabling modular updates and test-time verification. We isolate and characterize what frozen pretrained
-embeddings can support for transition learning, independent of search algorithms or symbolic compilation. We
-hypothesize that LLM embeddings encode sufficient structural regularities to support generalizable transition learning
-when planning problems are rendered as natural language.
-We evaluate the next state prediction ability of EMBEDPLAN across 9 classical planning domains from ACPBENCH (Kokel et al., 2025a), each rendered as natural
-1
-arXiv:2602.04557v1 [cs.CL] 4 Feb 2026
-Textual Planning with Explicit Latent Transitions
-Figure 1. EmbedPlan: Latent Transition Learning. (A) Planning domains define state transitions as linguistic triplets (s, a, s′
-):
-the Blocksworld action pick-up(C) transforms the textual state description from “arm is empty, C is clear” to “arm is holding C.”
-(B) EMBEDPLAN encodes states and actions via frozen LLM embeddings, then trains a lightweight transition network Tθ to predict
-next-state embeddings. Contrastive learning (InfoNCE) pulls predictions toward ground-truth states while pushing away negatives;
-inference retrieves the nearest candidate.
-language state descriptions within a cumulative dataset of
-over 3 million transitions, using six protocols: Interpolation
-split (interpolation within problem manifolds), Extrapolation split (extrapolation to new problems), Cross-Domain
-transfer, Multi-Domain learning, and Leave-One-Out generalization. We compare Llama-3.3-70B (4096-dim) and allmpnet-base-v2 (768-dim) sentence embeddings, measuring
-next-state retrieval accuracy (Hit@k) across all conditions.
-Our experiments reveal a sharp capability boundary for latent transition learning in frozen embedding spaces. Within
-known problem manifolds, EMBEDPLAN achieves nearperfect next-state retrieval (99.7% Hit@5 under Interpolation), showing that pretrained embeddings are sufficient for
-learning accurate dynamics when train and test share the
-same underlying instances. However, this ability degrades
-substantially when generalization requires structural transfer: performance drops to 54.6% on unseen problem configurations (Extrapolation; a 45.2 pp gap), and transfer across
-domain boundaries fails, with Cross-Domain reaching only
-6.6% Hit@5 (+2.7 pp above the 3.9% untrained baseline)
-and Leave-One-Out achieving just 9.2% on the held-out
-ninth domain. Importantly, the within-domain generalization is not explained by memorizing training-set plans: in
-the Plan-Variant setting, where test problems require executing alternative optimal solution paths for the same underlying instances, EMBEDPLAN still achieves 51.2% mean
-complete plan execution, indicating that it learns reusable
-action-conditioned dynamics rather than merely replaying
-trajectories. Together, these results confirm that frozen embeddings support generalization primarily after exposure to
-the target domain’s dynamics, enabling meaningful extrapolation within a domain once its transition structure has been
-observed. Despite these limitations, we find two positive signals for practitioners: (i) joint training across all 9 domains
-retains meaningful performance (37.2% Hit@5) without
-catastrophic forgetting, and (ii) larger encoders consistently
-improve learnability (up to +104%).
-We make key three contributions:
+   Planning with large language models requires generating action sequences token-by-token, invoking full forward passes
+   per decision. This makes multi-step lookahead and rolloutbased search, essential for robust, long-horizon planning,
+   prohibitively expensive in latency and cost. The bottleneck is fundamental: without a compact transition function
+   that predicts how actions transform states, planners cannot
+   \*Equal contribution 1Technion – Israel Institute of Technology, Haifa, Israel 2
+   IBM, Haifa, Israel. Correspondence
+   to: Eliezer Shlomi <Eliezer@campus.technion.ac.il>, Ido Levy
+   <Ido.Levy1@ibm.com>.
+   Preprint. February 5, 2026.
+   cheaply evaluate alternatives or backtrack from errors.
+   Although efforts have addressed this via prompting-based
+   reasoning (Wei et al., 2022; Yao et al., 2023; 2022), symbolic compilation to Planning Domain Definition Language
+   (PDDL) (Liu et al., 2023; Guan et al., 2023; Oswald et al.,
+   2024; Tantakoun et al., 2025; Zuo et al., 2025), and end-toend latent world models (Ha & Schmidhuber, 2018; Hafner
+   et al., 2020; Schrittwieser et al., 2020), a key opportunity
+   remains: can we leverage pre-trained language embeddings
+   to construct efficient transition functions? Replacing autoregressive generation with lightweight operations in a frozen
+   embedding space offers an architectural path toward reduced
+   planning computation at inference time.
+   We introduce EMBEDPLAN, a framework that learns explicit transition dynamics directly in frozen LLM embedding space over text-described planning domains. Rather
+   than generating next states autoregressively, EMBEDPLAN
+   encodes natural language state descriptions (e.g., “Block
+   A is on B, Block C is clear”) and action descriptions (e.g.,
+   pick-up(C)) into vectors, trains a lightweight network
+   (<500K parameters) to predict next-state embeddings, and
+   retrieves candidates by cosine similarity (Figure 1). EMBEDPLAN training combines two contrastive objectives:
+   state prediction, which learns to identify correct next states
+   among candidates, and action disambiguation, which learns
+   to distinguish the effects of different actions applied to the
+   same state. Together, these losses enable both accurate
+   retrieval and fine-grained action semantics. This architecture decouples semantic understanding, handled by frozen
+   pre-trained language encoders, from dynamics prediction,
+   handled by learned transition networks, collapsing the need
+   of expensive LLM calls into cheap embedding space operations while enabling modular updates and test-time verification. We isolate and characterize what frozen pretrained
+   embeddings can support for transition learning, independent of search algorithms or symbolic compilation. We
+   hypothesize that LLM embeddings encode sufficient structural regularities to support generalizable transition learning
+   when planning problems are rendered as natural language.
+   We evaluate the next state prediction ability of EMBEDPLAN across 9 classical planning domains from ACPBENCH (Kokel et al., 2025a), each rendered as natural
+   1
+   arXiv:2602.04557v1 [cs.CL] 4 Feb 2026
+   Textual Planning with Explicit Latent Transitions
+   Figure 1. EmbedPlan: Latent Transition Learning. (A) Planning domains define state transitions as linguistic triplets (s, a, s′
+   ):
+   the Blocksworld action pick-up(C) transforms the textual state description from “arm is empty, C is clear” to “arm is holding C.”
+   (B) EMBEDPLAN encodes states and actions via frozen LLM embeddings, then trains a lightweight transition network Tθ to predict
+   next-state embeddings. Contrastive learning (InfoNCE) pulls predictions toward ground-truth states while pushing away negatives;
+   inference retrieves the nearest candidate.
+   language state descriptions within a cumulative dataset of
+   over 3 million transitions, using six protocols: Interpolation
+   split (interpolation within problem manifolds), Extrapolation split (extrapolation to new problems), Cross-Domain
+   transfer, Multi-Domain learning, and Leave-One-Out generalization. We compare Llama-3.3-70B (4096-dim) and allmpnet-base-v2 (768-dim) sentence embeddings, measuring
+   next-state retrieval accuracy (Hit@k) across all conditions.
+   Our experiments reveal a sharp capability boundary for latent transition learning in frozen embedding spaces. Within
+   known problem manifolds, EMBEDPLAN achieves nearperfect next-state retrieval (99.7% Hit@5 under Interpolation), showing that pretrained embeddings are sufficient for
+   learning accurate dynamics when train and test share the
+   same underlying instances. However, this ability degrades
+   substantially when generalization requires structural transfer: performance drops to 54.6% on unseen problem configurations (Extrapolation; a 45.2 pp gap), and transfer across
+   domain boundaries fails, with Cross-Domain reaching only
+   6.6% Hit@5 (+2.7 pp above the 3.9% untrained baseline)
+   and Leave-One-Out achieving just 9.2% on the held-out
+   ninth domain. Importantly, the within-domain generalization is not explained by memorizing training-set plans: in
+   the Plan-Variant setting, where test problems require executing alternative optimal solution paths for the same underlying instances, EMBEDPLAN still achieves 51.2% mean
+   complete plan execution, indicating that it learns reusable
+   action-conditioned dynamics rather than merely replaying
+   trajectories. Together, these results confirm that frozen embeddings support generalization primarily after exposure to
+   the target domain’s dynamics, enabling meaningful extrapolation within a domain once its transition structure has been
+   observed. Despite these limitations, we find two positive signals for practitioners: (i) joint training across all 9 domains
+   retains meaningful performance (37.2% Hit@5) without
+   catastrophic forgetting, and (ii) larger encoders consistently
+   improve learnability (up to +104%).
+   We make key three contributions:
 1. We introduce EMBEDPLAN, a novel application of learning action-conditioned transitions in frozen LLM embedding spaces without encoder finetuning.
-2. We rigorously characterize generalization boundaries via
-controlled protocols (interpolation, plan variation, extrapolation, and transfer), establishing a reusable evaluation
-methodology for latent dynamics models.
-3. We establish a six-protocol hierarchy across 9 domains
-and 4 encoders for standardized evaluation.
-2. Related Work
-Prompting-based reasoning methods framed planning as
-iterative generation over intermediate thoughts. Wei et al.
-(2022) showed that chain-of-thought prompting elicits multistep rationales from large models, and building on this idea,
-Yao et al. (2023) proposed tree search over candidate reasoning trajectories. Action-grounded schemes interleave
-reasoning with environment interaction, with ReAct-style
-traces enabling agents to update beliefs from observations
-(Yao et al., 2022; Shinn et al., 2023). More explicit planning
-formulations treat the LLM as a world model combined with
-2
-Textual Planning with Explicit Latent Transitions
-Monte Carlo Tree Search (Hao et al., 2023), while complementary work compiles natural language goals into PDDL
-and invokes classical solvers (Liu et al., 2023; Guan et al.,
-2023). However, these approaches rely on repeated LLM
-calls per decision, and recent critiques emphasize brittleness,
-hallucinated actions, and mismatches between generated rationales and executable plans (Kambhampati et al., 2024;
-Katz et al., 2024). EMBEDPLAN addresses this bottleneck
-by testing whether next state can be computed efficiently in
-a frozen embedding space using latent transition function.
-Early work demonstrated that planning can be done in the
-learned latent space rather than in the hand-crafted symbolic
-state space. Asai & Fukunaga (2018) introduced LATPLAN,
-which learns discrete state encodings from visual inputs via
-autoencoders and applies classical planners in latent space.
-Model-based reinforcement learning extended this by learning dynamics models that predict latent states under actions
-(Ha & Schmidhuber, 2018; Hafner et al., 2019; 2020; Schrittwieser et al., 2020). Recently, Micheli et al. (2023) applied transformer architectures to world modeling with high
-sample efficiency on Atari, while Gieselmann & Pokorny
-(2022) developed Expansive Latent Space Trees (ELAST)
-for tree search over visual dynamics. However, these methods operate in visual domains with limited action primitives.
-To our knowledge, our work is the first to translate this
-paradigm to natural language, where the transition function
-must generalize across combinatorial textual action spaces
-rather than fixed motor primitives. Unlike end-to-end training, EMBEDPLAN operates with frozen LLM embeddings
-and evaluates whether learned transition functions support
-multi-step planning across 9 classical domains, quantifying
-within-distribution success and out-of-distribution collapse.
-Object-centric architectures that factor states into entities
-and relations (Battaglia et al., 2018) and symbolic compilation to PDDL (Liu et al., 2023; Guan et al., 2023) offer complementary inductive biases for cross-domain transfer; our
-study establishes the baseline capability of unstructured text
-embeddings, quantifying the gap that structured approaches
-must close and providing a diagnostic methodology against
-which such methods can be measured.
-Sentence embedding methods target semantic similarity,
-often using contrastive objectives (Reimers & Gurevych,
-2019; Gao et al., 2021; Radford et al., 2021; Oved et al.,
-2025). Representation learning for control leverages similar contrastive signals to induce state structure (Oord et al.,
-2018; Laskin et al., 2020; Schwarzer et al., 2021), while
-JEPA-style methods predict held-out representations in an
-embedding space rather than reconstructing raw inputs (Assran et al., 2023). Retrieval-augmented models similarly rely
-on embedding space lookups for prediction (Khandelwal
-et al., 2020) and control (Humphreys et al., 2022). However, these approaches largely focus on visual/RL settings or
-general-purpose similarity, and are not evaluated as actionconditioned transition operators for planning in frozen language embedding spaces. EMBEDPLAN bridges this gap by
-learning transition functions in a frozen LLM embedding
-space and systematically evaluating generalization across
-planning domains and problem configurations.
-Classical planning benchmarks provide controlled testbeds
-(McDermott et al., 1998). ACPBENCH measures predictive
-transition accuracy and generalization across held-out problems (Kokel et al., 2025a). A recent extension, (Kokel et al.,
-2025b), introduces open-ended generative versions of these
-tasks. Compositional generalization benchmarks reveal that
-neural models often memorize training patterns (Lake &
-Baroni, 2018; Kim & Linzen, 2020). EMBEDPLAN evaluates transition learning in embedding space with explicit
-within-distribution and out-of-distribution metrics, connecting failures to embedding clustering by problem instance
-rather than generalizable structure.
-3. Experimental Setup
-Task Formulation. Given a state s and action a described
-in natural language, we aim to predict the next state s
-′
-. Let
-E : S → R
-d denote a frozen LLM encoder mapping text
-to embeddings. We train a lightweight transition network
-Tθ : R
-d × R
-d → R
-d
-to predict the next-state embedding:
-eˆs
-′ = Tθ
+1. We rigorously characterize generalization boundaries via
+   controlled protocols (interpolation, plan variation, extrapolation, and transfer), establishing a reusable evaluation
+   methodology for latent dynamics models.
+1. We establish a six-protocol hierarchy across 9 domains
+   and 4 encoders for standardized evaluation.
+1. Related Work
+   Prompting-based reasoning methods framed planning as
+   iterative generation over intermediate thoughts. Wei et al.
+   (2022) showed that chain-of-thought prompting elicits multistep rationales from large models, and building on this idea,
+   Yao et al. (2023) proposed tree search over candidate reasoning trajectories. Action-grounded schemes interleave
+   reasoning with environment interaction, with ReAct-style
+   traces enabling agents to update beliefs from observations
+   (Yao et al., 2022; Shinn et al., 2023). More explicit planning
+   formulations treat the LLM as a world model combined with
+   2
+   Textual Planning with Explicit Latent Transitions
+   Monte Carlo Tree Search (Hao et al., 2023), while complementary work compiles natural language goals into PDDL
+   and invokes classical solvers (Liu et al., 2023; Guan et al.,
+   2023). However, these approaches rely on repeated LLM
+   calls per decision, and recent critiques emphasize brittleness,
+   hallucinated actions, and mismatches between generated rationales and executable plans (Kambhampati et al., 2024;
+   Katz et al., 2024). EMBEDPLAN addresses this bottleneck
+   by testing whether next state can be computed efficiently in
+   a frozen embedding space using latent transition function.
+   Early work demonstrated that planning can be done in the
+   learned latent space rather than in the hand-crafted symbolic
+   state space. Asai & Fukunaga (2018) introduced LATPLAN,
+   which learns discrete state encodings from visual inputs via
+   autoencoders and applies classical planners in latent space.
+   Model-based reinforcement learning extended this by learning dynamics models that predict latent states under actions
+   (Ha & Schmidhuber, 2018; Hafner et al., 2019; 2020; Schrittwieser et al., 2020). Recently, Micheli et al. (2023) applied transformer architectures to world modeling with high
+   sample efficiency on Atari, while Gieselmann & Pokorny
+   (2022) developed Expansive Latent Space Trees (ELAST)
+   for tree search over visual dynamics. However, these methods operate in visual domains with limited action primitives.
+   To our knowledge, our work is the first to translate this
+   paradigm to natural language, where the transition function
+   must generalize across combinatorial textual action spaces
+   rather than fixed motor primitives. Unlike end-to-end training, EMBEDPLAN operates with frozen LLM embeddings
+   and evaluates whether learned transition functions support
+   multi-step planning across 9 classical domains, quantifying
+   within-distribution success and out-of-distribution collapse.
+   Object-centric architectures that factor states into entities
+   and relations (Battaglia et al., 2018) and symbolic compilation to PDDL (Liu et al., 2023; Guan et al., 2023) offer complementary inductive biases for cross-domain transfer; our
+   study establishes the baseline capability of unstructured text
+   embeddings, quantifying the gap that structured approaches
+   must close and providing a diagnostic methodology against
+   which such methods can be measured.
+   Sentence embedding methods target semantic similarity,
+   often using contrastive objectives (Reimers & Gurevych,
+   2019; Gao et al., 2021; Radford et al., 2021; Oved et al.,
+   2025). Representation learning for control leverages similar contrastive signals to induce state structure (Oord et al.,
+   2018; Laskin et al., 2020; Schwarzer et al., 2021), while
+   JEPA-style methods predict held-out representations in an
+   embedding space rather than reconstructing raw inputs (Assran et al., 2023). Retrieval-augmented models similarly rely
+   on embedding space lookups for prediction (Khandelwal
+   et al., 2020) and control (Humphreys et al., 2022). However, these approaches largely focus on visual/RL settings or
+   general-purpose similarity, and are not evaluated as actionconditioned transition operators for planning in frozen language embedding spaces. EMBEDPLAN bridges this gap by
+   learning transition functions in a frozen LLM embedding
+   space and systematically evaluating generalization across
+   planning domains and problem configurations.
+   Classical planning benchmarks provide controlled testbeds
+   (McDermott et al., 1998). ACPBENCH measures predictive
+   transition accuracy and generalization across held-out problems (Kokel et al., 2025a). A recent extension, (Kokel et al.,
+   2025b), introduces open-ended generative versions of these
+   tasks. Compositional generalization benchmarks reveal that
+   neural models often memorize training patterns (Lake &
+   Baroni, 2018; Kim & Linzen, 2020). EMBEDPLAN evaluates transition learning in embedding space with explicit
+   within-distribution and out-of-distribution metrics, connecting failures to embedding clustering by problem instance
+   rather than generalizable structure.
+1. Experimental Setup
+   Task Formulation. Given a state s and action a described
+   in natural language, we aim to predict the next state s
+   ′
+   . Let
+   E : S → R
+   d denote a frozen LLM encoder mapping text
+   to embeddings. We train a lightweight transition network
+   Tθ : R
+   d × R
+   d → R
+   d
+   to predict the next-state embedding:
+   eˆs
+   ′ = Tθ
 
 E(s), E(a)
 
@@ -387,8 +410,7 @@ details appear in Appendix B.1 (Figure 4).
 Training Objective. We train with a composite contrastive objective:
 L = Lstate + λ · Laction (3)
 where λ controls action disambiguation emphasis.
-The state prediction loss Lstate is InfoNCE (Oord et al.,
-2018) over next-state candidates: given a batch of B transitions, it pulls predicted embeddings toward ground-truth
+The state prediction loss Lstate is InfoNCE (Oord et al., 2018) over next-state candidates: given a batch of B transitions, it pulls predicted embeddings toward ground-truth
 next states while pushing away other batch states. This
 teaches the model which state results from a transition, capturing coarse domain dynamics.
 The action disambiguation loss Laction distinguishes effects
@@ -461,8 +483,7 @@ Encoder Dim Interp. Extrap. Gap
 MPNet 768 70.0±44 26.8±19 43∗∗
 BGE-M3 1,024 99.6±0.5 36.3±15 63∗∗∗
 Qwen2.5-7B 3,584 99.5±0.6 47.7±15 52∗∗∗
-Llama-3.3-70B 8,192 99.7±0.4 54.6±17 45∗∗∗
-4. Results
+Llama-3.3-70B 8,192 99.7±0.4 54.6±17 45∗∗∗ 4. Results
 We evaluate whether frozen LLM embeddings support generalizable transition learning.. Results report the best configuration, averaged over 3 seeds. More details in Appendix D.
 Figure 2. PCA of sampled transitions from three domains. States s
 (◦), predictions sˆ
@@ -674,8 +695,7 @@ underperforming single-domain specialists by 17 pp but retaining meaningful capa
 the cost of generality, where a single model substitutes for
 nine specialists while preserving two-thirds of their average
 performance, confirms the model captures action-specific
-transformation patterns across domains.
-5. Conclusion
+transformation patterns across domains. 5. Conclusion
 This research introduces EMBEDPLAN, a framework for
 learning transition dynamics in frozen LLM embedding
 space, systematically evaluated across 9 planning domains,
@@ -783,8 +803,7 @@ Systems, 36:79081–79094, 2023.
 Ha, D. and Schmidhuber, J. Recurrent world models facilitate policy evolution. Advances in neural information
 processing systems, 31, 2018.
 Ha, D., Dai, A. M., and Le, Q. V. Hypernetworks. In
-International Conference on Learning Representations,
-2017. URL https://openreview.net/forum?
+International Conference on Learning Representations, 2017. URL https://openreview.net/forum?
 id=rkpACe1lx.
 Hafner, D., Lillicrap, T., Fischer, I., Villegas, R., Ha, D.,
 Lee, H., and Davidson, J. Learning latent dynamics for
@@ -792,8 +811,7 @@ planning from pixels. In International conference on
 machine learning, pp. 2555–2565. PMLR, 2019.
 Hafner, D., Lillicrap, T., Ba, J., and Norouzi, M. Dream
 to control: Learning behaviors by latent imagination. In
-International Conference on Learning Representations,
-2020.
+International Conference on Learning Representations, 2020.
 Hao, S., Gu, Y., Ma, H., Hong, J., Wang, Z., Wang, D., and
 Hu, Z. Reasoning with language model is planning with
 world model. In Proceedings of the 2023 Conference on
@@ -874,16 +892,13 @@ Processing Systems, 36:8634–8652, 2023.
 Tantakoun, M., Muise, C., and Zhu, X. LLMs as planning formalizers: A survey for leveraging large language
 models to construct automated planning models. In Che,
 W., Nabende, J., Shutova, E., and Pilehvar, M. T. (eds.),
-Findings of the Association for Computational Linguistics: ACL 2025, pp. 25167–25188, Vienna, Austria, July
-2025. Association for Computational Linguistics. ISBN
-979-8-89176-256-5. doi: 10.18653/v1/2025.findings-acl.
-1291. URL https://aclanthology.org/2025.
+Findings of the Association for Computational Linguistics: ACL 2025, pp. 25167–25188, Vienna, Austria, July 2025. Association for Computational Linguistics. ISBN
+979-8-89176-256-5. doi: 10.18653/v1/2025.findings-acl. 1291. URL https://aclanthology.org/2025.
 findings-acl.1291/.
 Wei, J., Wang, X., Schuurmans, D., Bosma, M., Xia, F., Chi,
 E., Le, Q. V., Zhou, D., et al. Chain-of-thought prompting
 elicits reasoning in large language models. Advances in
-neural information processing systems, 35:24824–24837,
-2022.
+neural information processing systems, 35:24824–24837, 2022.
 Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan,
 K. R., and Cao, Y. React: Synergizing reasoning and
 acting in language models. In The eleventh international
@@ -897,10 +912,8 @@ S. Planetarium: A rigorous benchmark for translating text to structured planning
 L., Ritter, A., and Wang, L. (eds.), Proceedings of the
 2025 Conference of the Nations of the Americas Chapter
 of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers),
-pp. 11223–11240, Albuquerque, New Mexico, April
-2025. Association for Computational Linguistics. ISBN
-979-8-89176-189-6. doi: 10.18653/v1/2025.naacl-long.
-560. URL https://aclanthology.org/2025.
+pp. 11223–11240, Albuquerque, New Mexico, April 2025. Association for Computational Linguistics. ISBN
+979-8-89176-189-6. doi: 10.18653/v1/2025.naacl-long. 560. URL https://aclanthology.org/2025.
 naacl-long.560/.
 10
 Textual Planning with Explicit Latent Transitions
@@ -1275,11 +1288,12 @@ fθ
 
 [hs; ha]
 
-+ Wres hs
-
-(27)
-The feedforward network fθ has architecture:
-fθ(x) = W3 σ
+
+- Wres hs
+  
+  (27)
+  The feedforward network fθ has architecture:
+  fθ(x) = W3 σ
 
 W2 σ(W1x)
 
@@ -1430,513 +1444,514 @@ Table 6. Hyperparameter search space. Bold values indicate final configuration.
 B.3. Evaluation Protocol
 Hit@k Computation. For each test transition (s, a, s′
 ):
+
 1. Compute predicted embedding: hˆ
-s
-′ = Tθ(πs(zs), πa(za))
-16
-Textual Planning with Explicit Latent Transitions
+   s
+   ′ = Tθ(πs(zs), πa(za))
+   16
+   Textual Planning with Explicit Latent Transitions
 2. Compute similarity to all candidates: simj = sim(hˆ
-s
-′ , hs
-′
-j
-) for s
-′
-j ∈ C
+   s
+   ′ , hs
+   ′
+   j
+   ) for s
+   ′
+   j ∈ C
 3. Rank candidates by similarity (descending)
 4. Record hit if correct s
-′
-appears in top-k
-The candidate pool C contains 128 states: the ground-truth next state plus 127 distractors sampled according to the evaluation
-protocol (uniformly from the domain for Interpolation; from the same problem instance for Extrapolation).
-Tie-Breaking. When multiple candidates have identical similarity scores, we take one of them randomly.
-Action Disambiguation. Given a state s and ground-truth next state s
-′
-, we apply all possible actions of the domain and
-check which prediction best matches s
-′
-:
-aˆ = arg max
-a∈A
-sim
-Tθ(hs, ha), hs
-′
-
-(33)
-Accuracy measures how often aˆ matches the true action.
-B.4. Compute Resources
-All experiments were conducted on the following infrastructure:
-• GPU: NVIDIA A100 80GB
-• CPU: AMD EPYC 7763 64-Core Processor
-• Memory: 512GB RAM
-• Framework: PyTorch 2.1, CUDA 12.1
-Training Time.
-• Embedding extraction (per domain, Llama-3.3-70B): ∼2 hours
-• Embedding extraction (per domain, MPNet): ∼5 minutes
-• Transition network training (per domain): ∼15 minutes
-• Full experimental suite (all encoders, all protocols): ∼72 hours
-Carbon Footprint. Estimated total compute: ∼200 GPU-hours on A100. Using a carbon intensity of 0.4 kg CO2/kWh
-and A100 TDP of 400W, estimated emissions: ∼32 kg CO2.
-C. Dataset
-C.1. Dataset Statistics
-We use 9 classical PDDL domains from planning benchmarks (Kokel et al., 2025a). Table 7 summarizes the dataset. Note:
-our transition datasets are derived from ACPBench domains but involve additional processing not included in the publicly
-released dataset. We will release our processed data upon acceptance.
-C.2. State Representation
-States are rendered as natural language descriptions containing the current predicate values. Example from Blocksworld:
-“Block A is on the table. Block B is on Block A. Block C is clear. The robotic arm is empty.”
-Actions are parameterized strings (e.g., pick-up(BlockC), stack(BlockA, BlockB)).
-17
-Textual Planning with Explicit Latent Transitions
-Domain Problems States Transitions Actions
-Blocksworld 5 43,551 43,065 4
-Depot 7 5,795 13,256 5
-Ferry 10 46,205 225,300 3
-Floortile 6 33,608 166,565 6
-Goldminer 7 12,237 52,023 7
-Grid 5 8,671 664,346 5
-Logistics 7 13,373 46,866 6
-Rovers 10 46,783 509,457 9
-Satellite 10 49,204 1,248,696 4
-Total 67 259,427 2,969,574 —
-Table 7. Dataset statistics by domain.
-Blocksworld
-State s: Block block 2 is on the table, Block block 3 is located on the table, No blocks are placed on top of block 1, The block
-block 2 is currently situated under the block block 1, The robotic arm is not holding anything, and Block block 3 is clear.
-Action a: (pick-up block 3)
-Result s
-′
-: Block block 1 is clear, Block block 2 is located on the table, The robotic arm is holding block 3, and The block block 2 is
-currently situated under the block block 1.
-C.3. Domain Descriptions
-Blocksworld. A robotic arm must rearrange colored blocks into a specified goal configuration. Only clear blocks (with
-nothing on top) can be moved. This domain is renowned for simple rules yet rich combinatorial complexity.
-Depot. Combines logistics and block stacking. Crates must be moved between depots using trucks for transportation and
-hoists for stacking/unstacking.
-Ferry. A ferry boat transports cars between locations. The ferry can carry only one car at a time, requiring optimization of
-loading/unloading sequences.
-Floortile. Robots paint floor tiles in a grid according to a target pattern. Robots must navigate while managing limited
-paint supplies and adjacency constraints.
-Goldminer. An agent navigates a grid to collect gold pieces and deliver them to goal locations while managing inventory
-limits.
-Grid. An agent moves on a 2D grid to reach target locations, potentially with obstacles restricting movement.
-Logistics. Packages must be delivered within and across cities. Trucks handle intra-city transport; airplanes handle
-inter-city deliveries.
-Rovers. Planetary exploration with multiple rovers collecting samples, taking images, and transmitting data. Rovers have
-specialized equipment and must communicate with a base station.
-Satellite. Multiple satellites with various instruments must photograph ground targets while managing power, storage, and
-instrument calibration.
-18
-Textual Planning with Explicit Latent Transitions
-Ferry
-State s: Car c0 is at location l0, Car c2 is at location l1, The ferry is at l0, and Car c1 is on the ferry.
-Action a: (debark c1 l0)
-Result s
-′
-: Car c0 is at location l0, Car c1 is at location l0, The ferry is at l0, The ferry is empty, and Car c2 is at location l1.
-Logistics
-State s: p3 is in t1, a0 is at l0-0, t1 is at l1-0, p0 is at l1-0, p1 is in t1, t0 is at l0-0, and p2 is in a0.
-Action a: (fly-airplane a0 l0-0 l1-0)
-Result s
-′
-: t1 is at l1-0, p0 is at l1-0, p1 is in t1, p3 is in t1, t0 is at l0-0, a0 is at l1-0, and p2 is in a0.
-C.4. Transition Examples
-D. Extended Results
-D.1. Per-Domain Results
-Table 8 provides complete per-domain breakdown across encoders and evaluation protocols.
-Qwen2.5-7B Llama-3.3-70B
-Domain Int. Ext. Int. Ext.
-Blocksworld 100.0 41.6±15 100.0 49.1±10
-Depot 98.2 24.8±9 98.8 25.9±6
-Ferry 99.9 36.7±1 100.0 40.6±3
-Floortile 99.4 55.2±19 99.6 68.8±16
-Goldminer 99.9 74.4±10 100.0 76.2±5
-Grid 98.6 62.7±9 99.8 74.9±1
-Logistics 99.6 44.7±20 99.9 53.7±10
-Rovers 99.7 49.2±3 99.0 54.4±3
-Satellite 99.9 40.0±1 99.9 47.5±6
-Mean 99.5 47.7±14 99.7 54.6±17
-Table 8. Per-domain Hit@5 (%) for Interpolation and Extrapolation splits.
-D.2. Full Performance Metrics
-Table 9 reports Hit@1/5/10 and action accuracy for Problem-Grouped evaluation.
-The gap between Hit@5 (54.6%) and Acc@5 (16.2%) reveals that models predict correct next states without fully capturing
-causal action structure.
-D.3. Cross-Domain Transfer Matrix
-Table 10 shows the complete 9×9 transfer matrix.
-The only notable transfer is Ferry→Logistics (22.3%), which we attribute to shared transportation semantics in state
-descriptions.
-D.4. Leave-One-Out Results
-Despite training on 8 diverse domains, LOO performance (9.2%) barely exceeds the untrained baseline (3.9%).
-19
-Textual Planning with Explicit Latent Transitions
-Rovers
-State s: Store(s) store0 is empty, Channel general is free, Image objective1 was communicated in mode colour, Rover rover0 has
-image objective1 in mode colour, Rover rover1 has soil analyzed in waypoint waypoint0, Rover rover1 is available, Rover rover1 is at
-waypoint0, Rocks can be sampled at the following location(s): waypoint0, Store(s) store1 is empty, Rover rover0 is available, and
-Rover rover0 is at waypoint2.
-Action a: (communicate soil data rover1 general waypoint0 waypoint0 waypoint1)
-Result s
-′
-: Store(s) store0 is empty, Channel general is free, Rover rover0 has image objective1 in mode colour, Image objective1 was
-communicated in mode colour, Rover rover1 has soil analyzed in waypoint waypoint0, Rover rover1 is available, Rover rover1 is at
-waypoint0, Rocks can be sampled at the following location(s): waypoint0, Soil data was communicated from waypoint waypoint0,
-Store(s) store1 is empty, Rover rover0 is available, and Rover rover0 is at waypoint2.
-State Prediction Action Accuracy
-Domain Hit@1 Hit@5 Hit@10 Acc@1 Acc@5 Acc@10
-Blocksworld 17.6±9 49.1±17 64.6±13 0.7±0.2 7.9±2 24.0±4
-Depot 4.7±2 25.9±11 41.2±14 0.7±0.4 7.8±3 21.8±4
-Ferry 12.0±3 40.6±6 58.1±7 1.1±0.7 10.3±2 23.7±4
-Floortile 37.6±22 68.8±27 78.9±22 3.2±1 28.3±15 52.3±25
-Goldminer 35.8±11 76.2±9 88.0±3 3.0±0.4 16.5±2 45.7±6
-Grid 25.7±2 74.9±2 88.0±2 8.0±4 50.0±8 73.9±10
-Logistics 16.5±6 53.7±17 70.8±17 0.6±0.5 8.4±3 25.3±3
-Rovers 16.9±2 54.4±5 72.2±4 0.9±0.1 7.1±0.4 16.5±3
-Satellite 14.4±4 47.5±10 66.9±10 0.9±0.3 9.1±2 23.5±7
-Mean 20.1±11 54.6±17 69.9±14 2.1±2 16.2±14 34.1±19
-Table 9. Full metrics (Llama-3.3-70B, Problem-Grouped). Action accuracy measures whether the correct action is identified given (s, s′
-).
-D.5. Multi-Domain Results
-D.6. Untrained Baseline
-To establish a performance floor, we evaluated the transition function with randomly initialized weights.
-The untrained baseline (3.9% Hit@5) confirms the retrieval task’s inherent difficulty and that learned performance results
-from actual dynamics learning.
-D.7. Plan-Level Evaluation Across Encoders
-We extend our evaluation to the trajectory level to assess whether high transition accuracy translates to reliable multi-step
-planning. We compare two splitting strategies:
-• Interpolation: Test plans come from problem instances seen during training (though the specific plans are held out).
-• Extrapolation: Test plans come from entirely new problem instances never seen during training.
-We report two metrics:
-• Mean Trajectory Hit@5: Average Hit@5 across all steps in a trajectory.
-• Exact Trajectory Hit@5: Percentage of trajectories where every step is correctly retrieved (100% reliability).
-Tables 14–16 present results across three encoders. We observe a consistent Trajectory Generalization Gap across all
-models. Under Interpolation, models achieve moderate reliability, though Exact Match rates remain low due to error
-accumulation. Under Extrapolation, performance collapses dramatically—for Blocksworld, the Exact Trajectory rate falls to
-0.0% across all encoders.
-20
-Textual Planning with Explicit Latent Transitions
-Block Depot Ferry Floor Gold Grid Logis Rover Satel Mean
-Blocksworld – 5.7 5.5 6.7 6.1 6.5 9.2 5.1 5.3 6.3
-Depot 4.3 – 5.3 4.8 5.0 4.9 6.0 7.5 5.4 5.4
-Ferry 5.3 8.7 – 9.3 5.2 9.0 22.3 6.6 5.6 9.0
-Floortile 5.0 7.3 7.0 – 6.1 6.5 7.5 10.0 7.9 7.2
-Goldminer 4.2 5.4 5.7 5.0 – 7.5 5.4 5.9 4.9 5.5
-Grid 5.4 6.6 8.6 9.0 10.4 – 14.3 5.9 5.4 8.2
-Logistics 4.3 5.5 7.7 4.9 7.0 6.3 – 5.1 4.5 5.7
-Rovers 4.3 5.7 5.0 8.4 4.6 5.9 4.8 – 8.2 5.9
-Satellite 4.5 7.5 6.3 7.8 6.4 5.2 10.1 5.9 – 6.7
-Mean 4.7 6.5 6.4 7.0 6.4 6.5 9.9 6.5 5.9 6.6
-Table 10. Cross-domain transfer (Llama-3.3-70B). Hit@5 (%) training on row, testing on column. Baseline: 3.9%.
-Held-Out Hit@1 Hit@5 Hit@10
-Logistics 3.3±0.4 15.8±2.2 27.6±3.3
-Grid 2.3±0.2 12.3±0.8 22.9±1.4
-Rovers 2.6±0.3 12.6±1.1 22.6±1.6
-Ferry 1.8±0.1 9.0±0.5 17.2±0.8
-Satellite 1.6±0.1 8.4±0.8 16.1±1.5
-Floortile 1.7±0.3 7.9±1.1 14.9±2.0
-Goldminer 1.3±0.0 6.4±0.2 12.5±0.3
-Depot 1.1±0.1 5.6±0.5 10.9±0.9
-Blocksworld 1.0±0.0 5.2±0.1 10.3±0.3
-Mean 1.9±0.7 9.2±3.5 17.2±5.8
-Table 11. Leave-One-Out (Llama-3.3-70B). Train on 8 domains, test on held-out.
-This confirms that the transition model’s planning capability is largely confined to memorized problem manifolds; when
-forced to extrapolate to new problems, the probability of executing a valid multi-step plan drops to near zero.
-Key Observations.
-• Interpolation performance scales with encoder size: Llama-3.3-70B and BGE-M3 achieve similar Mean Hit@5
-(∼51–53%), while MPNet lags significantly (24.3%).
-• Extrapolation collapse is universal: All encoders show dramatic degradation under Extrapolation, with Exact Hit@5
-dropping below 4% on average.
-• Domain-specific patterns persist: Goldminer and Grid show relatively better Extrapolation performance across all
-encoders, while Blocksworld and Satellite consistently fail.
-• MPNet struggles even with Interpolation: Rovers and Satellite show near-zero performance even under Interpolation,
-suggesting these domains require higher-capacity embeddings.
-E. Statistical Analysis
-E.1. Main Generalization Gap
-See Table 17.
-E.2. Effect Sizes for Key Comparisons
-See Table 18.
-E.3. Per-Domain Statistical Tests
-See Table 19.
-21
-Textual Planning with Explicit Latent Transitions
-Domain Hit@5 Domain Hit@5
-Floortile 52.0±10 Blocksworld 36.9±13
-Rovers 51.9±5 Satellite 34.3±7
-Goldminer 46.0±8 Grid 32.6±1
-Ferry 37.7±14 Logistics 24.8±10
-Depot 18.9±12
-Mean: 37.2±10.7 (vs. 54.6 single-domain)
-Table 12. Multi-domain unified model (Llama-3.3-70B, Problem-Grouped).
-Domain Hit@1 Hit@5 Hit@10
-Blocksworld 0.8±0.1 4.0±0.2 8.0±0.4
-Depot 0.9±0.2 3.9±0.0 8.0±0.4
-Ferry 0.7±0.1 4.3±0.6 8.4±0.9
-Floortile 0.8±0.0 4.0±0.1 8.0±0.1
-Goldminer 1.0±0.4 4.8±1.4 8.9±2.0
-Grid 0.9±0.1 4.4±0.3 8.0±0.2
-Logistics 0.9±0.1 4.1±0.2 8.6±0.6
-Rovers 0.7±0.0 4.1±0.2 8.4±0.1
-Satellite 0.7±0.0 3.9±0.1 7.8±0.1
-Mean 0.8±0.1 3.9±0.3 8.2±0.4
-Table 13. Untrained baseline (random weights, Llama-3.3-70B).
-All comparisons remain significant after Bonferroni correction (α = 0.05/9 = 0.0056) except Floortile and Goldminer,
-which are significant at uncorrected α = 0.05.
-F. Embedding Analysis
-F.1. PCA Visualization
-Figure 5 compares embedding geometry across model scales.
-(A) MPNet (110M) (B) Llama-3.3-70B-70B
-Figure 5. Embedding Space Fragmentation Across Scales. PCA visualization of state embeddings colored by problem instance. (A)
-MPNet embeddings show tight, isolated clusters for each problem. (B) Llama-3.3-70B-70B embeddings, despite being 700× larger,
-exhibit the same fragmentation. This confirms that pre-trained embeddings primarily cluster by problem-specific lexical features rather
-than abstract planning roles, regardless of model scale.
-Both MPNet and Llama show isolated clusters corresponding to specific problem instances. While Llama shows slightly
-more spread within clusters, the critical structural limitation remains: manifolds for different problems are disjoint. Scaling
-up model parameters does not automatically induce abstract, problem-invariant representations.
-22
-Textual Planning with Explicit Latent Transitions
-Interpolation Extrapolation
-Domain Mean Hit@5 Exact Hit@5 Mean Hit@5 Exact Hit@5
-Blocksworld 38.7 ± 0.8 1.6 ± 0.2 3.7 ± 1.3 0.0 ± 0.0
-Depot 30.1 ± 2.6 11.2 ± 1.5 2.4 ± 1.7 1.0 ± 1.0
-Ferry 71.1 ± 1.1 39.1 ± 1.6 2.0 ± 0.7 0.5 ± 0.2
-Floortile 74.1 ± 2.7 33.6 ± 3.3 11.6 ± 4.4 2.8 ± 1.2
-Goldminer 55.4 ± 2.2 23.8 ± 1.6 18.5 ± 6.2 5.5 ± 1.8
-Grid 55.0 ± 2.4 37.4 ± 2.2 16.6 ± 3.7 8.2 ± 2.1
-Logistics 52.8 ± 0.6 14.1 ± 2.0 22.7 ± 8.6 9.6 ± 4.4
-Rovers 26.5 ± 0.8 10.0 ± 0.7 12.2 ± 3.5 1.9 ± 0.8
-Satellite 56.8 ± 1.2 32.2 ± 1.0 1.2 ± 0.4 0.5 ± 0.1
-Mean 51.2 ± 16.6 22.6 ± 13.7 10.1 ± 8.0 3.3 ± 3.5
-Table 14. Plan-Level Evaluation (Llama-3.3-70B-70B). Trajectory metrics across Interpolation and Extrapolation.
-Interpolation Extrapolation
-Domain Mean Hit@5 Exact Hit@5 Mean Hit@5 Exact Hit@5
-Blocksworld 23.7 ± 1.5 0.2 ± 0.1 1.0 ± 0.4 0.0 ± 0.0
-Depot 45.5 ± 1.0 20.9 ± 0.1 3.0 ± 1.4 1.1 ± 0.6
-Ferry 63.3 ± 1.4 27.8 ± 2.1 5.4 ± 4.5 2.4 ± 2.2
-Floortile 49.2 ± 1.0 13.1 ± 1.1 3.4 ± 1.2 0.6 ± 0.3
-Goldminer 67.9 ± 2.6 35.0 ± 3.2 23.1 ± 3.2 9.4 ± 1.7
-Grid 51.9 ± 1.5 34.0 ± 1.2 13.1 ± 5.5 7.1 ± 3.7
-Logistics 67.2 ± 0.3 25.6 ± 1.6 22.7 ± 8.6 9.6 ± 4.4
-Rovers 60.5 ± 0.2 24.7 ± 0.2 12.2 ± 3.5 1.9 ± 0.8
-Satellite 51.2 ± 0.4 27.5 ± 0.6 1.2 ± 0.4 0.5 ± 0.1
-Mean 53.4 ± 13.5 23.2 ± 10.6 9.5 ± 8.4 3.6 ± 3.8
-Table 15. Plan-Level Evaluation (BAAI/bge-m3). Trajectory metrics across Interpolation and Extrapolation splits.
-Interpolation Extrapolation
-Domain Mean Hit@5 Exact Hit@5 Mean Hit@5 Exact Hit@5
-Blocksworld 16.7 ± 0.3 0.3 ± 0.1 0.7 ± 0.3 0.0 ± 0.0
-Depot 31.1 ± 1.6 10.8 ± 1.1 2.9 ± 1.2 1.8 ± 1.2
-Ferry 60.9 ± 2.0 29.1 ± 2.3 1.2 ± 1.0 0.6 ± 0.5
-Floortile 9.2 ± 0.5 3.0 ± 0.4 0.2 ± 0.1 0.1 ± 0.1
-Goldminer 26.8 ± 0.8 10.5 ± 0.5 5.1 ± 1.2 1.8 ± 0.3
-Grid 32.7 ± 2.7 17.5 ± 2.6 17.6 ± 2.6 7.7 ± 0.9
-Logistics 41.3 ± 2.2 9.9 ± 1.9 12.1 ± 5.4 2.4 ± 1.0
-Rovers 0.1 ± 0.0 0.0 ± 0.0 — —
-Satellite 0.2 ± 0.1 0.1 ± 0.0 0.0 ± 0.0 0.0 ± 0.0
-Mean 24.3 ± 19.5 9.0 ± 9.5 5.0 ± 6.3 1.8 ± 2.5
-Table 16. Plan-Level Evaluation (MPNet). Trajectory metrics across Interpolation and Extrapolation splits.
-F.2. Domain Complexity Analysis
-Correlation analysis reveals moderate positive correlation between average state space size and generalization gap (Pearson
-r = 0.42, p = 0.26), though not statistically significant with n = 9 domains. Domains with complex multi-object
-interactions (Depot, Logistics) show larger gaps than domains with simpler dynamics (Goldminer, Grid).
-23
-Textual Planning with Explicit Latent Transitions
-Statistic Value
-Interpolation 99.5% ± 0.6%
-Extrapolation (Problem-Grouped) 47.7% ± 13.9%
-Gap 51.8 pp
-Paired t-test t(8) = 10.58
-p-value 5.57 × 10−6
-95% CI [40.7, 62.9] pp
-Table 17. Statistical analysis of the generalization gap.
-Comparison ∆ Cohen’s d p
-Interpolation vs. Extrapolation −51.8 pp 5.25 < 10−5
-Extrapolation vs. Cross-Domain −48.0 pp 4.32 < 10−5
-Cross-Domain vs. Untrained +2.7 pp 0.82 0.032
-Llama vs. MPNet (Ext.) +27.8 pp 2.53 < 0.001
-Single vs. Multi (Ext.) +17.4 pp 1.42 0.028
-Table 18. Effect sizes for major findings.
-G. Ablations
-G.1. Architecture and Encoder Comparison
-Architecture choice has minimal impact on performance (paired t-test: p > 0.5 for all comparisons). The generalization
-gap is consistent across architectures, confirming that the limitation stems from embedding structure rather than transition
-network design.
-Larger encoders yield better extrapolation performance, but the improvement is sublinear: a 700× increase in parameters
-(MPNet to Llama) yields only a 2.2× improvement in Hit@5. This suggests that scale alone does not resolve the fundamental
-structural limitation.
-G.2. Effect of Action Disambiguation Loss
-We ablate the contribution of the action disambiguation loss Laction by comparing models trained with the full composite
-objective (λ = 2, i.e., L = Lstate + 2Laction) against models trained with state prediction loss only (λ = 0).
-The action disambiguation loss yields substantial improvements across both metrics and all nine domains. The direct
-target—Action Acc@5—shows the most dramatic gain, improving 3.4× from 4.8% to 16.2%. Without explicit supervision
-on action effects, models fail to distinguish between actions with similar but distinct consequences: Action Acc@5 under
-λ = 0 barely exceeds the untrained baseline in most domains, indicating that state prediction loss alone provides essentially
-no signal for learning action semantics.
-Critically, Hit@5 also improves by 19.3 pp (+55% relative), despite Laction not directly optimizing this metric. This
-substantial indirect benefit reveals that action disambiguation serves as more than auxiliary supervision—it fundamentally
-shapes how the transition network represents dynamics. We identify two mechanisms: (1) without action-contrastive
-training, the model exploits spurious correlations between surface-level state-action features and outcomes, which fail to
-transfer to unseen problems; (2) the action loss forces the network to encode causal transformation patterns—understanding
-that pick-up(A) and pick-up(B) share abstract structure while differing in object binding—enabling compositional
-generalization.
-The improvement is consistent across domains but varies in magnitude. Grid shows the largest absolute gain in Action
-Acc@5 (+31.3 pp), likely because its spatial action semantics (movement in cardinal directions) are highly distinctive when
-explicitly supervised. Depot and Rovers show the largest relative Hit@5 gains (+93% and +55%), suggesting that domains
-with complex multi-object interactions benefit most from learning precise action effects.
-We set λ = 2 to emphasize action disambiguation, reflecting that distinguishing among K domain actions applied to the
-same state requires finer-grained representations than distinguishing among B random states in a batch. This design choice
-proves essential: without it, EMBEDPLAN’s extrapolation capability would drop by over one-third, and action understanding
-24
-Textual Planning with Explicit Latent Transitions
-Domain Gap (pp) t-statistic p-value
-Depot 73.4 12.87 1.17 × 10−4
-Ferry 63.3 65.49 3.24 × 10−6
-Satellite 59.9 153.39 4.11 × 10−8
-Blocksworld 58.4 5.95 2.70 × 10−3
-Logistics 55.0 4.28 8.28 × 10−3
-Rovers 50.5 20.22 8.90 × 10−6
-Floortile 44.2 3.68 1.57 × 10−2
-Grid 35.9 5.38 2.40 × 10−3
-Goldminer 25.5 3.54 1.13 × 10−2
-Table 19. Independent t-tests comparing Interpolation vs Extrapolation per domain (Qwen2.5-7B).
-Domain Actions Predicates Avg States Gap
-Depot 5 8 1,247 73.4
-Logistics 6 6 892 55.0
-Satellite 5 8 634 59.9
-Blocksworld 4 5 423 58.4
-Ferry 3 5 312 63.3
-Rovers 9 26 1,891 50.5
-Floortile 7 10 567 44.2
-Grid 5 9 489 35.9
-Goldminer 4 7 234 25.5
-Table 20. Domain complexity metrics and generalization gaps.
-would be nearly absent.
-Given the substantial impact of the action disambiguation loss (+19.3 pp Hit@5, +55% relative), we reference this ablation
-in the main text (Section 3, Training Objective) and report λ = 2 as the final configuration. The full ablation across
-λ ∈ {0, 0.5, 1, 1.5, 2, 4} confirms λ = 2 as optimal; performance degrades slightly at λ = 4 due to over-emphasis on action
-discrimination at the expense of state prediction.
-H. Preliminary Studies
-H.1. Latent Distance Alignment
-Before learning transition functions, we tested whether pre-trained embeddings already encode planning-relevant structure.
-If embedding geometry reflects plan costs, one could use simple distance-based heuristics for search without any additional
-learning.
-Hypothesis. We define Latent Distance Alignment (LDA) as the property that embedding distance between a state and
-goal correlates with the number of actions required to reach the goal:
-LDA : corr
-d(es, eg), cost(s, g)
-
-> 0 (34)
-where es and eg are the embeddings of state s and goal g, d(·, ·) is cosine distance, and cost(s, g) is the optimal plan length
-from s to g.
-Motivation. This hypothesis draws from successes in other domains. CLIP embeddings align images and text such
-that semantic similarity corresponds to embedding proximity (Radford et al., 2021). Sentence embeddings place entailed
-sentences closer than contradictions (Reimers & Gurevych, 2019). We test whether similar alignment emerges for planning
-cost.
-Method. For 21,003 state-goal pairs across 9 domains, we computed embedding distances (using all four encoders) and
-correlated with ground-truth plan costs from A* search.
-25
-Textual Planning with Explicit Latent Transitions
-Encoder Parameters MLP HyperNetwork
-Llama-3.3-70B-70B 70B 54.6±17.0 53.8±16.5
-Qwen2.5-7B 7B 47.7±14.8 46.2±15.1
-BGE-M3 568M 33.5±15.6 32.8±14.9
-MPNet 110M 24.4±17.1 22.8±17.4
-Table 21. Architecture and encoder comparison (Problem-Grouped, Hit@5 %).
-Hit@5 (%) Action Acc@5 (%)
-Domain λ=0 λ=2 λ=0 λ=2
-Blocksworld 30.2±8 49.1±10 1.8±0.4 7.9±2
-Depot 13.4±4 25.9±6 1.6±0.3 7.8±3
-Ferry 24.8±3 40.6±3 2.5±0.5 10.3±2
-Floortile 45.3±14 68.8±16 8.2±3 28.3±15
-Goldminer 55.7±6 76.2±5 4.9±1.2 16.5±2
-Grid 52.1±2 74.9±1 18.7±5 50.0±8
-Logistics 31.5±9 53.7±10 1.9±0.6 8.4±3
-Rovers 35.2±4 54.4±3 1.7±0.3 7.1±0.4
-Satellite 29.8±5 47.5±6 2.2±0.5 9.1±2
-Mean 35.3±13 54.6±17 4.8±5 16.2±14
-∆ +19.3 pp (+55%) +11.4 pp (3.4×)
-Table 22. Ablation: Action Disambiguation Loss. Comparing models trained without (λ=0) and with (λ=2) action disambiguation
-under Extrapolation evaluation (Llama-3.3-70B). The action loss yields substantial gains in both state prediction (+19.3 pp) and action
-accuracy (3.4×).
-Result. After controlling for prompt length as a confound, correlations collapsed to near-zero across all encoders.
-Pre-trained embeddings do not encode planning cost through geometric distance.
-Implication. This negative result motivated our transition learning approach: rather than relying on inherent geometry, we
-explicitly learn how actions transform states in embedding space.
-I. Reproducibility
-I.1. Code and Data Availability
-Will be released upon publication.
-I.2. Experimental Reproducibility
-• Random Seeds: All experiments run with seeds {42, 123, 456}; results report mean ± standard error.
-• Hardware: NVIDIA A100 80GB GPU
-• Software: PyTorch 2.1, CUDA 12.1, Python 3.10
-J. Error Analysis
-We qualitatively analyzed Hit@5 errors under Extrapolation evaluation to characterize failure modes. Specifically, we
-sampled 50 incorrect predictions per domain (where the ground-truth next state ranked outside top-5) and manually inspected
-the retrieved candidates.
-Methodology. For each error, we compared the top-1 retrieved state against the ground-truth next state, counting the
-number of differing predicates and noting whether both states belonged to the same problem instance.
-Findings. Across domains, 78% of top-1 errors shared the same problem instance as the query state. Among these, the
-median predicate difference was 2 (IQR: 1–3). Table 23 shows representative examples.
-26
-Textual Planning with Explicit Latent Transitions
-Domain Ground Truth s
-′ Retrieved sˆ
-′
-Blocks Block A is clear, arm
-holds B, C is on table
-Block A is clear, arm
-holds C, B is on table
-Ferry Car c1 at l0, ferry
-empty, c2 at l1
-Car c1 at l0, ferry
-empty, c2 at l0
-Logistics Package p1 in truck t0,
-t0 at l1-0
-Package p1 at l1-0, t0
-at l1-0
-Table 23. Representative Hit@5 errors. Retrieved states differ from ground truth by 1–2 predicates (italicized), typically involving object
-locations or holdings within the same problem instance.
-These errors suggest the model captures coarse transition structure (correct problem context, approximate state region) but
-struggles to resolve fine-grained predicate changes, particularly when multiple objects undergo similar transformations.
-K. Complete Results Tables
-See Tables 24 – 25.
-Domain Split Hit@1 Hit@5 Hit@10
-Blocksworld Interpolation 94.3±0.3 100.0±0.0 100.0±0.0
-Problem-Grouped 14.2±5.7 41.6±12.5 56.6±11.8
-Depot Interpolation 76.7±1.4 98.2±0.2 99.0±0.0
-Problem-Grouped 4.9±1.7 24.8±7.0 42.2±11.0
-Ferry Interpolation 98.7±0.1 99.9±0.0 100.0±0.0
-Problem-Grouped 10.7±1.1 36.7±1.0 52.8±1.5
-Floortile Interpolation 96.2±0.4 99.4±0.0 99.6±0.0
-Problem-Grouped 24.0±8.1 55.2±15.5 69.0±16.2
-Goldminer Interpolation 94.0±0.8 99.9±0.0 100.0±0.0
-Problem-Grouped 34.5±9.6 74.4±8.1 86.7±3.1
-Grid Interpolation 80.9±1.7 98.6±0.1 99.6±0.1
-Problem-Grouped 19.4±4.5 62.7±7.4 76.9±8.0
-Logistics Interpolation 88.9±1.5 99.6±0.1 99.8±0.0
-Problem-Grouped 14.9±6.5 44.7±16.0 60.7±17.4
-Rovers Interpolation 97.4±0.2 99.7±0.0 99.8±0.0
-Problem-Grouped 18.5±1.4 49.2±2.5 65.0±2.6
-Satellite Interpolation 98.1±0.2 99.9±0.0 100.0±0.0
-Problem-Grouped 14.3±0.6 40.0±0.8 54.8±1.4
-Table 24. Complete metrics for Qwen2.5-7B across all domains and splits.
-27
-Textual Planning with Explicit Latent Transitions
-Domain Split Hit@1 Hit@5 Hit@10
-Blocksworld Interpolation 96.2±0.4 100.0±0.0 100.0±0.0
-Problem-Grouped 17.6±9.0 49.1±17.0 64.6±13.0
-Depot Interpolation 79.5±1.2 98.8±0.1 99.2±0.1
-Problem-Grouped 4.7±2.0 25.9±11.0 41.2±14.0
-Ferry Interpolation 99.1±0.1 100.0±0.0 100.0±0.0
-Problem-Grouped 12.0±3.0 40.6±6.0 58.1±7.0
-Floortile Interpolation 97.4±0.3 99.6±0.0 99.8±0.0
-Problem-Grouped 37.6±22.0 68.8±27.0 78.9±22.0
-Goldminer Interpolation 95.8±0.6 100.0±0.0 100.0±0.0
-Problem-Grouped 35.8±11.0 76.2±9.0 88.0±3.0
-Grid Interpolation 84.3±1.4 99.8±0.0 99.9±0.0
-Problem-Grouped 25.7±2.0 74.9±2.0 88.0±2.0
-Logistics Interpolation 91.2±1.1 99.9±0.0 100.0±0.0
-Problem-Grouped 16.5±6.0 53.7±17.0 70.8±17.0
-Rovers Interpolation 97.8±0.2 99.0±0.1 99.5±0.1
-Problem-Grouped 16.9±2.0 54.4±5.0 72.2±4.0
-Satellite Interpolation 98.5±0.2 99.9±0.0 100.0±0.0
-Problem-Grouped 14.4±4.0 47.5±10.0 66.9±10.0
-Table 25. Complete metrics for Llama-3.3-70B-70B across all domains and splits.
-28
+   ′
+   appears in top-k
+   The candidate pool C contains 128 states: the ground-truth next state plus 127 distractors sampled according to the evaluation
+   protocol (uniformly from the domain for Interpolation; from the same problem instance for Extrapolation).
+   Tie-Breaking. When multiple candidates have identical similarity scores, we take one of them randomly.
+   Action Disambiguation. Given a state s and ground-truth next state s
+   ′
+   , we apply all possible actions of the domain and
+   check which prediction best matches s
+   ′
+   :
+   aˆ = arg max
+   a∈A
+   sim
+   Tθ(hs, ha), hs
+   ′
+   
+   (33)
+   Accuracy measures how often aˆ matches the true action.
+   B.4. Compute Resources
+   All experiments were conducted on the following infrastructure:
+   • GPU: NVIDIA A100 80GB
+   • CPU: AMD EPYC 7763 64-Core Processor
+   • Memory: 512GB RAM
+   • Framework: PyTorch 2.1, CUDA 12.1
+   Training Time.
+   • Embedding extraction (per domain, Llama-3.3-70B): ∼2 hours
+   • Embedding extraction (per domain, MPNet): ∼5 minutes
+   • Transition network training (per domain): ∼15 minutes
+   • Full experimental suite (all encoders, all protocols): ∼72 hours
+   Carbon Footprint. Estimated total compute: ∼200 GPU-hours on A100. Using a carbon intensity of 0.4 kg CO2/kWh
+   and A100 TDP of 400W, estimated emissions: ∼32 kg CO2.
+   C. Dataset
+   C.1. Dataset Statistics
+   We use 9 classical PDDL domains from planning benchmarks (Kokel et al., 2025a). Table 7 summarizes the dataset. Note:
+   our transition datasets are derived from ACPBench domains but involve additional processing not included in the publicly
+   released dataset. We will release our processed data upon acceptance.
+   C.2. State Representation
+   States are rendered as natural language descriptions containing the current predicate values. Example from Blocksworld:
+   “Block A is on the table. Block B is on Block A. Block C is clear. The robotic arm is empty.”
+   Actions are parameterized strings (e.g., pick-up(BlockC), stack(BlockA, BlockB)).
+   17
+   Textual Planning with Explicit Latent Transitions
+   Domain Problems States Transitions Actions
+   Blocksworld 5 43,551 43,065 4
+   Depot 7 5,795 13,256 5
+   Ferry 10 46,205 225,300 3
+   Floortile 6 33,608 166,565 6
+   Goldminer 7 12,237 52,023 7
+   Grid 5 8,671 664,346 5
+   Logistics 7 13,373 46,866 6
+   Rovers 10 46,783 509,457 9
+   Satellite 10 49,204 1,248,696 4
+   Total 67 259,427 2,969,574 —
+   Table 7. Dataset statistics by domain.
+   Blocksworld
+   State s: Block block 2 is on the table, Block block 3 is located on the table, No blocks are placed on top of block 1, The block
+   block 2 is currently situated under the block block 1, The robotic arm is not holding anything, and Block block 3 is clear.
+   Action a: (pick-up block 3)
+   Result s
+   ′
+   : Block block 1 is clear, Block block 2 is located on the table, The robotic arm is holding block 3, and The block block 2 is
+   currently situated under the block block 1.
+   C.3. Domain Descriptions
+   Blocksworld. A robotic arm must rearrange colored blocks into a specified goal configuration. Only clear blocks (with
+   nothing on top) can be moved. This domain is renowned for simple rules yet rich combinatorial complexity.
+   Depot. Combines logistics and block stacking. Crates must be moved between depots using trucks for transportation and
+   hoists for stacking/unstacking.
+   Ferry. A ferry boat transports cars between locations. The ferry can carry only one car at a time, requiring optimization of
+   loading/unloading sequences.
+   Floortile. Robots paint floor tiles in a grid according to a target pattern. Robots must navigate while managing limited
+   paint supplies and adjacency constraints.
+   Goldminer. An agent navigates a grid to collect gold pieces and deliver them to goal locations while managing inventory
+   limits.
+   Grid. An agent moves on a 2D grid to reach target locations, potentially with obstacles restricting movement.
+   Logistics. Packages must be delivered within and across cities. Trucks handle intra-city transport; airplanes handle
+   inter-city deliveries.
+   Rovers. Planetary exploration with multiple rovers collecting samples, taking images, and transmitting data. Rovers have
+   specialized equipment and must communicate with a base station.
+   Satellite. Multiple satellites with various instruments must photograph ground targets while managing power, storage, and
+   instrument calibration.
+   18
+   Textual Planning with Explicit Latent Transitions
+   Ferry
+   State s: Car c0 is at location l0, Car c2 is at location l1, The ferry is at l0, and Car c1 is on the ferry.
+   Action a: (debark c1 l0)
+   Result s
+   ′
+   : Car c0 is at location l0, Car c1 is at location l0, The ferry is at l0, The ferry is empty, and Car c2 is at location l1.
+   Logistics
+   State s: p3 is in t1, a0 is at l0-0, t1 is at l1-0, p0 is at l1-0, p1 is in t1, t0 is at l0-0, and p2 is in a0.
+   Action a: (fly-airplane a0 l0-0 l1-0)
+   Result s
+   ′
+   : t1 is at l1-0, p0 is at l1-0, p1 is in t1, p3 is in t1, t0 is at l0-0, a0 is at l1-0, and p2 is in a0.
+   C.4. Transition Examples
+   D. Extended Results
+   D.1. Per-Domain Results
+   Table 8 provides complete per-domain breakdown across encoders and evaluation protocols.
+   Qwen2.5-7B Llama-3.3-70B
+   Domain Int. Ext. Int. Ext.
+   Blocksworld 100.0 41.6±15 100.0 49.1±10
+   Depot 98.2 24.8±9 98.8 25.9±6
+   Ferry 99.9 36.7±1 100.0 40.6±3
+   Floortile 99.4 55.2±19 99.6 68.8±16
+   Goldminer 99.9 74.4±10 100.0 76.2±5
+   Grid 98.6 62.7±9 99.8 74.9±1
+   Logistics 99.6 44.7±20 99.9 53.7±10
+   Rovers 99.7 49.2±3 99.0 54.4±3
+   Satellite 99.9 40.0±1 99.9 47.5±6
+   Mean 99.5 47.7±14 99.7 54.6±17
+   Table 8. Per-domain Hit@5 (%) for Interpolation and Extrapolation splits.
+   D.2. Full Performance Metrics
+   Table 9 reports Hit@1/5/10 and action accuracy for Problem-Grouped evaluation.
+   The gap between Hit@5 (54.6%) and Acc@5 (16.2%) reveals that models predict correct next states without fully capturing
+   causal action structure.
+   D.3. Cross-Domain Transfer Matrix
+   Table 10 shows the complete 9×9 transfer matrix.
+   The only notable transfer is Ferry→Logistics (22.3%), which we attribute to shared transportation semantics in state
+   descriptions.
+   D.4. Leave-One-Out Results
+   Despite training on 8 diverse domains, LOO performance (9.2%) barely exceeds the untrained baseline (3.9%).
+   19
+   Textual Planning with Explicit Latent Transitions
+   Rovers
+   State s: Store(s) store0 is empty, Channel general is free, Image objective1 was communicated in mode colour, Rover rover0 has
+   image objective1 in mode colour, Rover rover1 has soil analyzed in waypoint waypoint0, Rover rover1 is available, Rover rover1 is at
+   waypoint0, Rocks can be sampled at the following location(s): waypoint0, Store(s) store1 is empty, Rover rover0 is available, and
+   Rover rover0 is at waypoint2.
+   Action a: (communicate soil data rover1 general waypoint0 waypoint0 waypoint1)
+   Result s
+   ′
+   : Store(s) store0 is empty, Channel general is free, Rover rover0 has image objective1 in mode colour, Image objective1 was
+   communicated in mode colour, Rover rover1 has soil analyzed in waypoint waypoint0, Rover rover1 is available, Rover rover1 is at
+   waypoint0, Rocks can be sampled at the following location(s): waypoint0, Soil data was communicated from waypoint waypoint0,
+   Store(s) store1 is empty, Rover rover0 is available, and Rover rover0 is at waypoint2.
+   State Prediction Action Accuracy
+   Domain Hit@1 Hit@5 Hit@10 Acc@1 Acc@5 Acc@10
+   Blocksworld 17.6±9 49.1±17 64.6±13 0.7±0.2 7.9±2 24.0±4
+   Depot 4.7±2 25.9±11 41.2±14 0.7±0.4 7.8±3 21.8±4
+   Ferry 12.0±3 40.6±6 58.1±7 1.1±0.7 10.3±2 23.7±4
+   Floortile 37.6±22 68.8±27 78.9±22 3.2±1 28.3±15 52.3±25
+   Goldminer 35.8±11 76.2±9 88.0±3 3.0±0.4 16.5±2 45.7±6
+   Grid 25.7±2 74.9±2 88.0±2 8.0±4 50.0±8 73.9±10
+   Logistics 16.5±6 53.7±17 70.8±17 0.6±0.5 8.4±3 25.3±3
+   Rovers 16.9±2 54.4±5 72.2±4 0.9±0.1 7.1±0.4 16.5±3
+   Satellite 14.4±4 47.5±10 66.9±10 0.9±0.3 9.1±2 23.5±7
+   Mean 20.1±11 54.6±17 69.9±14 2.1±2 16.2±14 34.1±19
+   Table 9. Full metrics (Llama-3.3-70B, Problem-Grouped). Action accuracy measures whether the correct action is identified given (s, s′
+   ).
+   D.5. Multi-Domain Results
+   D.6. Untrained Baseline
+   To establish a performance floor, we evaluated the transition function with randomly initialized weights.
+   The untrained baseline (3.9% Hit@5) confirms the retrieval task’s inherent difficulty and that learned performance results
+   from actual dynamics learning.
+   D.7. Plan-Level Evaluation Across Encoders
+   We extend our evaluation to the trajectory level to assess whether high transition accuracy translates to reliable multi-step
+   planning. We compare two splitting strategies:
+   • Interpolation: Test plans come from problem instances seen during training (though the specific plans are held out).
+   • Extrapolation: Test plans come from entirely new problem instances never seen during training.
+   We report two metrics:
+   • Mean Trajectory Hit@5: Average Hit@5 across all steps in a trajectory.
+   • Exact Trajectory Hit@5: Percentage of trajectories where every step is correctly retrieved (100% reliability).
+   Tables 14–16 present results across three encoders. We observe a consistent Trajectory Generalization Gap across all
+   models. Under Interpolation, models achieve moderate reliability, though Exact Match rates remain low due to error
+   accumulation. Under Extrapolation, performance collapses dramatically—for Blocksworld, the Exact Trajectory rate falls to
+   0.0% across all encoders.
+   20
+   Textual Planning with Explicit Latent Transitions
+   Block Depot Ferry Floor Gold Grid Logis Rover Satel Mean
+   Blocksworld – 5.7 5.5 6.7 6.1 6.5 9.2 5.1 5.3 6.3
+   Depot 4.3 – 5.3 4.8 5.0 4.9 6.0 7.5 5.4 5.4
+   Ferry 5.3 8.7 – 9.3 5.2 9.0 22.3 6.6 5.6 9.0
+   Floortile 5.0 7.3 7.0 – 6.1 6.5 7.5 10.0 7.9 7.2
+   Goldminer 4.2 5.4 5.7 5.0 – 7.5 5.4 5.9 4.9 5.5
+   Grid 5.4 6.6 8.6 9.0 10.4 – 14.3 5.9 5.4 8.2
+   Logistics 4.3 5.5 7.7 4.9 7.0 6.3 – 5.1 4.5 5.7
+   Rovers 4.3 5.7 5.0 8.4 4.6 5.9 4.8 – 8.2 5.9
+   Satellite 4.5 7.5 6.3 7.8 6.4 5.2 10.1 5.9 – 6.7
+   Mean 4.7 6.5 6.4 7.0 6.4 6.5 9.9 6.5 5.9 6.6
+   Table 10. Cross-domain transfer (Llama-3.3-70B). Hit@5 (%) training on row, testing on column. Baseline: 3.9%.
+   Held-Out Hit@1 Hit@5 Hit@10
+   Logistics 3.3±0.4 15.8±2.2 27.6±3.3
+   Grid 2.3±0.2 12.3±0.8 22.9±1.4
+   Rovers 2.6±0.3 12.6±1.1 22.6±1.6
+   Ferry 1.8±0.1 9.0±0.5 17.2±0.8
+   Satellite 1.6±0.1 8.4±0.8 16.1±1.5
+   Floortile 1.7±0.3 7.9±1.1 14.9±2.0
+   Goldminer 1.3±0.0 6.4±0.2 12.5±0.3
+   Depot 1.1±0.1 5.6±0.5 10.9±0.9
+   Blocksworld 1.0±0.0 5.2±0.1 10.3±0.3
+   Mean 1.9±0.7 9.2±3.5 17.2±5.8
+   Table 11. Leave-One-Out (Llama-3.3-70B). Train on 8 domains, test on held-out.
+   This confirms that the transition model’s planning capability is largely confined to memorized problem manifolds; when
+   forced to extrapolate to new problems, the probability of executing a valid multi-step plan drops to near zero.
+   Key Observations.
+   • Interpolation performance scales with encoder size: Llama-3.3-70B and BGE-M3 achieve similar Mean Hit@5
+   (∼51–53%), while MPNet lags significantly (24.3%).
+   • Extrapolation collapse is universal: All encoders show dramatic degradation under Extrapolation, with Exact Hit@5
+   dropping below 4% on average.
+   • Domain-specific patterns persist: Goldminer and Grid show relatively better Extrapolation performance across all
+   encoders, while Blocksworld and Satellite consistently fail.
+   • MPNet struggles even with Interpolation: Rovers and Satellite show near-zero performance even under Interpolation,
+   suggesting these domains require higher-capacity embeddings.
+   E. Statistical Analysis
+   E.1. Main Generalization Gap
+   See Table 17.
+   E.2. Effect Sizes for Key Comparisons
+   See Table 18.
+   E.3. Per-Domain Statistical Tests
+   See Table 19.
+   21
+   Textual Planning with Explicit Latent Transitions
+   Domain Hit@5 Domain Hit@5
+   Floortile 52.0±10 Blocksworld 36.9±13
+   Rovers 51.9±5 Satellite 34.3±7
+   Goldminer 46.0±8 Grid 32.6±1
+   Ferry 37.7±14 Logistics 24.8±10
+   Depot 18.9±12
+   Mean: 37.2±10.7 (vs. 54.6 single-domain)
+   Table 12. Multi-domain unified model (Llama-3.3-70B, Problem-Grouped).
+   Domain Hit@1 Hit@5 Hit@10
+   Blocksworld 0.8±0.1 4.0±0.2 8.0±0.4
+   Depot 0.9±0.2 3.9±0.0 8.0±0.4
+   Ferry 0.7±0.1 4.3±0.6 8.4±0.9
+   Floortile 0.8±0.0 4.0±0.1 8.0±0.1
+   Goldminer 1.0±0.4 4.8±1.4 8.9±2.0
+   Grid 0.9±0.1 4.4±0.3 8.0±0.2
+   Logistics 0.9±0.1 4.1±0.2 8.6±0.6
+   Rovers 0.7±0.0 4.1±0.2 8.4±0.1
+   Satellite 0.7±0.0 3.9±0.1 7.8±0.1
+   Mean 0.8±0.1 3.9±0.3 8.2±0.4
+   Table 13. Untrained baseline (random weights, Llama-3.3-70B).
+   All comparisons remain significant after Bonferroni correction (α = 0.05/9 = 0.0056) except Floortile and Goldminer,
+   which are significant at uncorrected α = 0.05.
+   F. Embedding Analysis
+   F.1. PCA Visualization
+   Figure 5 compares embedding geometry across model scales.
+   (A) MPNet (110M) (B) Llama-3.3-70B-70B
+   Figure 5. Embedding Space Fragmentation Across Scales. PCA visualization of state embeddings colored by problem instance. (A)
+   MPNet embeddings show tight, isolated clusters for each problem. (B) Llama-3.3-70B-70B embeddings, despite being 700× larger,
+   exhibit the same fragmentation. This confirms that pre-trained embeddings primarily cluster by problem-specific lexical features rather
+   than abstract planning roles, regardless of model scale.
+   Both MPNet and Llama show isolated clusters corresponding to specific problem instances. While Llama shows slightly
+   more spread within clusters, the critical structural limitation remains: manifolds for different problems are disjoint. Scaling
+   up model parameters does not automatically induce abstract, problem-invariant representations.
+   22
+   Textual Planning with Explicit Latent Transitions
+   Interpolation Extrapolation
+   Domain Mean Hit@5 Exact Hit@5 Mean Hit@5 Exact Hit@5
+   Blocksworld 38.7 ± 0.8 1.6 ± 0.2 3.7 ± 1.3 0.0 ± 0.0
+   Depot 30.1 ± 2.6 11.2 ± 1.5 2.4 ± 1.7 1.0 ± 1.0
+   Ferry 71.1 ± 1.1 39.1 ± 1.6 2.0 ± 0.7 0.5 ± 0.2
+   Floortile 74.1 ± 2.7 33.6 ± 3.3 11.6 ± 4.4 2.8 ± 1.2
+   Goldminer 55.4 ± 2.2 23.8 ± 1.6 18.5 ± 6.2 5.5 ± 1.8
+   Grid 55.0 ± 2.4 37.4 ± 2.2 16.6 ± 3.7 8.2 ± 2.1
+   Logistics 52.8 ± 0.6 14.1 ± 2.0 22.7 ± 8.6 9.6 ± 4.4
+   Rovers 26.5 ± 0.8 10.0 ± 0.7 12.2 ± 3.5 1.9 ± 0.8
+   Satellite 56.8 ± 1.2 32.2 ± 1.0 1.2 ± 0.4 0.5 ± 0.1
+   Mean 51.2 ± 16.6 22.6 ± 13.7 10.1 ± 8.0 3.3 ± 3.5
+   Table 14. Plan-Level Evaluation (Llama-3.3-70B-70B). Trajectory metrics across Interpolation and Extrapolation.
+   Interpolation Extrapolation
+   Domain Mean Hit@5 Exact Hit@5 Mean Hit@5 Exact Hit@5
+   Blocksworld 23.7 ± 1.5 0.2 ± 0.1 1.0 ± 0.4 0.0 ± 0.0
+   Depot 45.5 ± 1.0 20.9 ± 0.1 3.0 ± 1.4 1.1 ± 0.6
+   Ferry 63.3 ± 1.4 27.8 ± 2.1 5.4 ± 4.5 2.4 ± 2.2
+   Floortile 49.2 ± 1.0 13.1 ± 1.1 3.4 ± 1.2 0.6 ± 0.3
+   Goldminer 67.9 ± 2.6 35.0 ± 3.2 23.1 ± 3.2 9.4 ± 1.7
+   Grid 51.9 ± 1.5 34.0 ± 1.2 13.1 ± 5.5 7.1 ± 3.7
+   Logistics 67.2 ± 0.3 25.6 ± 1.6 22.7 ± 8.6 9.6 ± 4.4
+   Rovers 60.5 ± 0.2 24.7 ± 0.2 12.2 ± 3.5 1.9 ± 0.8
+   Satellite 51.2 ± 0.4 27.5 ± 0.6 1.2 ± 0.4 0.5 ± 0.1
+   Mean 53.4 ± 13.5 23.2 ± 10.6 9.5 ± 8.4 3.6 ± 3.8
+   Table 15. Plan-Level Evaluation (BAAI/bge-m3). Trajectory metrics across Interpolation and Extrapolation splits.
+   Interpolation Extrapolation
+   Domain Mean Hit@5 Exact Hit@5 Mean Hit@5 Exact Hit@5
+   Blocksworld 16.7 ± 0.3 0.3 ± 0.1 0.7 ± 0.3 0.0 ± 0.0
+   Depot 31.1 ± 1.6 10.8 ± 1.1 2.9 ± 1.2 1.8 ± 1.2
+   Ferry 60.9 ± 2.0 29.1 ± 2.3 1.2 ± 1.0 0.6 ± 0.5
+   Floortile 9.2 ± 0.5 3.0 ± 0.4 0.2 ± 0.1 0.1 ± 0.1
+   Goldminer 26.8 ± 0.8 10.5 ± 0.5 5.1 ± 1.2 1.8 ± 0.3
+   Grid 32.7 ± 2.7 17.5 ± 2.6 17.6 ± 2.6 7.7 ± 0.9
+   Logistics 41.3 ± 2.2 9.9 ± 1.9 12.1 ± 5.4 2.4 ± 1.0
+   Rovers 0.1 ± 0.0 0.0 ± 0.0 — —
+   Satellite 0.2 ± 0.1 0.1 ± 0.0 0.0 ± 0.0 0.0 ± 0.0
+   Mean 24.3 ± 19.5 9.0 ± 9.5 5.0 ± 6.3 1.8 ± 2.5
+   Table 16. Plan-Level Evaluation (MPNet). Trajectory metrics across Interpolation and Extrapolation splits.
+   F.2. Domain Complexity Analysis
+   Correlation analysis reveals moderate positive correlation between average state space size and generalization gap (Pearson
+   r = 0.42, p = 0.26), though not statistically significant with n = 9 domains. Domains with complex multi-object
+   interactions (Depot, Logistics) show larger gaps than domains with simpler dynamics (Goldminer, Grid).
+   23
+   Textual Planning with Explicit Latent Transitions
+   Statistic Value
+   Interpolation 99.5% ± 0.6%
+   Extrapolation (Problem-Grouped) 47.7% ± 13.9%
+   Gap 51.8 pp
+   Paired t-test t(8) = 10.58
+   p-value 5.57 × 10−6
+   95% CI [40.7, 62.9] pp
+   Table 17. Statistical analysis of the generalization gap.
+   Comparison ∆ Cohen’s d p
+   Interpolation vs. Extrapolation −51.8 pp 5.25 < 10−5
+   Extrapolation vs. Cross-Domain −48.0 pp 4.32 < 10−5
+   Cross-Domain vs. Untrained +2.7 pp 0.82 0.032
+   Llama vs. MPNet (Ext.) +27.8 pp 2.53 < 0.001
+   Single vs. Multi (Ext.) +17.4 pp 1.42 0.028
+   Table 18. Effect sizes for major findings.
+   G. Ablations
+   G.1. Architecture and Encoder Comparison
+   Architecture choice has minimal impact on performance (paired t-test: p > 0.5 for all comparisons). The generalization
+   gap is consistent across architectures, confirming that the limitation stems from embedding structure rather than transition
+   network design.
+   Larger encoders yield better extrapolation performance, but the improvement is sublinear: a 700× increase in parameters
+   (MPNet to Llama) yields only a 2.2× improvement in Hit@5. This suggests that scale alone does not resolve the fundamental
+   structural limitation.
+   G.2. Effect of Action Disambiguation Loss
+   We ablate the contribution of the action disambiguation loss Laction by comparing models trained with the full composite
+   objective (λ = 2, i.e., L = Lstate + 2Laction) against models trained with state prediction loss only (λ = 0).
+   The action disambiguation loss yields substantial improvements across both metrics and all nine domains. The direct
+   target—Action Acc@5—shows the most dramatic gain, improving 3.4× from 4.8% to 16.2%. Without explicit supervision
+   on action effects, models fail to distinguish between actions with similar but distinct consequences: Action Acc@5 under
+   λ = 0 barely exceeds the untrained baseline in most domains, indicating that state prediction loss alone provides essentially
+   no signal for learning action semantics.
+   Critically, Hit@5 also improves by 19.3 pp (+55% relative), despite Laction not directly optimizing this metric. This
+   substantial indirect benefit reveals that action disambiguation serves as more than auxiliary supervision—it fundamentally
+   shapes how the transition network represents dynamics. We identify two mechanisms: (1) without action-contrastive
+   training, the model exploits spurious correlations between surface-level state-action features and outcomes, which fail to
+   transfer to unseen problems; (2) the action loss forces the network to encode causal transformation patterns—understanding
+   that pick-up(A) and pick-up(B) share abstract structure while differing in object binding—enabling compositional
+   generalization.
+   The improvement is consistent across domains but varies in magnitude. Grid shows the largest absolute gain in Action
+   Acc@5 (+31.3 pp), likely because its spatial action semantics (movement in cardinal directions) are highly distinctive when
+   explicitly supervised. Depot and Rovers show the largest relative Hit@5 gains (+93% and +55%), suggesting that domains
+   with complex multi-object interactions benefit most from learning precise action effects.
+   We set λ = 2 to emphasize action disambiguation, reflecting that distinguishing among K domain actions applied to the
+   same state requires finer-grained representations than distinguishing among B random states in a batch. This design choice
+   proves essential: without it, EMBEDPLAN’s extrapolation capability would drop by over one-third, and action understanding
+   24
+   Textual Planning with Explicit Latent Transitions
+   Domain Gap (pp) t-statistic p-value
+   Depot 73.4 12.87 1.17 × 10−4
+   Ferry 63.3 65.49 3.24 × 10−6
+   Satellite 59.9 153.39 4.11 × 10−8
+   Blocksworld 58.4 5.95 2.70 × 10−3
+   Logistics 55.0 4.28 8.28 × 10−3
+   Rovers 50.5 20.22 8.90 × 10−6
+   Floortile 44.2 3.68 1.57 × 10−2
+   Grid 35.9 5.38 2.40 × 10−3
+   Goldminer 25.5 3.54 1.13 × 10−2
+   Table 19. Independent t-tests comparing Interpolation vs Extrapolation per domain (Qwen2.5-7B).
+   Domain Actions Predicates Avg States Gap
+   Depot 5 8 1,247 73.4
+   Logistics 6 6 892 55.0
+   Satellite 5 8 634 59.9
+   Blocksworld 4 5 423 58.4
+   Ferry 3 5 312 63.3
+   Rovers 9 26 1,891 50.5
+   Floortile 7 10 567 44.2
+   Grid 5 9 489 35.9
+   Goldminer 4 7 234 25.5
+   Table 20. Domain complexity metrics and generalization gaps.
+   would be nearly absent.
+   Given the substantial impact of the action disambiguation loss (+19.3 pp Hit@5, +55% relative), we reference this ablation
+   in the main text (Section 3, Training Objective) and report λ = 2 as the final configuration. The full ablation across
+   λ ∈ {0, 0.5, 1, 1.5, 2, 4} confirms λ = 2 as optimal; performance degrades slightly at λ = 4 due to over-emphasis on action
+   discrimination at the expense of state prediction.
+   H. Preliminary Studies
+   H.1. Latent Distance Alignment
+   Before learning transition functions, we tested whether pre-trained embeddings already encode planning-relevant structure.
+   If embedding geometry reflects plan costs, one could use simple distance-based heuristics for search without any additional
+   learning.
+   Hypothesis. We define Latent Distance Alignment (LDA) as the property that embedding distance between a state and
+   goal correlates with the number of actions required to reach the goal:
+   LDA : corr
+   d(es, eg), cost(s, g)
+   
+    > 0 (34)
+    > where es and eg are the embeddings of state s and goal g, d(·, ·) is cosine distance, and cost(s, g) is the optimal plan length
+    > from s to g.
+    > Motivation. This hypothesis draws from successes in other domains. CLIP embeddings align images and text such
+    > that semantic similarity corresponds to embedding proximity (Radford et al., 2021). Sentence embeddings place entailed
+    > sentences closer than contradictions (Reimers & Gurevych, 2019). We test whether similar alignment emerges for planning
+    > cost.
+    > Method. For 21,003 state-goal pairs across 9 domains, we computed embedding distances (using all four encoders) and
+    > correlated with ground-truth plan costs from A\* search.
+    > 25
+    > Textual Planning with Explicit Latent Transitions
+    > Encoder Parameters MLP HyperNetwork
+    > Llama-3.3-70B-70B 70B 54.6±17.0 53.8±16.5
+    > Qwen2.5-7B 7B 47.7±14.8 46.2±15.1
+    > BGE-M3 568M 33.5±15.6 32.8±14.9
+    > MPNet 110M 24.4±17.1 22.8±17.4
+    > Table 21. Architecture and encoder comparison (Problem-Grouped, Hit@5 %).
+    > Hit@5 (%) Action Acc@5 (%)
+    > Domain λ=0 λ=2 λ=0 λ=2
+    > Blocksworld 30.2±8 49.1±10 1.8±0.4 7.9±2
+    > Depot 13.4±4 25.9±6 1.6±0.3 7.8±3
+    > Ferry 24.8±3 40.6±3 2.5±0.5 10.3±2
+    > Floortile 45.3±14 68.8±16 8.2±3 28.3±15
+    > Goldminer 55.7±6 76.2±5 4.9±1.2 16.5±2
+    > Grid 52.1±2 74.9±1 18.7±5 50.0±8
+    > Logistics 31.5±9 53.7±10 1.9±0.6 8.4±3
+    > Rovers 35.2±4 54.4±3 1.7±0.3 7.1±0.4
+    > Satellite 29.8±5 47.5±6 2.2±0.5 9.1±2
+    > Mean 35.3±13 54.6±17 4.8±5 16.2±14
+    > ∆ +19.3 pp (+55%) +11.4 pp (3.4×)
+    > Table 22. Ablation: Action Disambiguation Loss. Comparing models trained without (λ=0) and with (λ=2) action disambiguation
+    > under Extrapolation evaluation (Llama-3.3-70B). The action loss yields substantial gains in both state prediction (+19.3 pp) and action
+    > accuracy (3.4×).
+    > Result. After controlling for prompt length as a confound, correlations collapsed to near-zero across all encoders.
+    > Pre-trained embeddings do not encode planning cost through geometric distance.
+    > Implication. This negative result motivated our transition learning approach: rather than relying on inherent geometry, we
+    > explicitly learn how actions transform states in embedding space.
+    > I. Reproducibility
+    > I.1. Code and Data Availability
+    > Will be released upon publication.
+    > I.2. Experimental Reproducibility
+    > • Random Seeds: All experiments run with seeds {42, 123, 456}; results report mean ± standard error.
+    > • Hardware: NVIDIA A100 80GB GPU
+    > • Software: PyTorch 2.1, CUDA 12.1, Python 3.10
+    > J. Error Analysis
+    > We qualitatively analyzed Hit@5 errors under Extrapolation evaluation to characterize failure modes. Specifically, we
+    > sampled 50 incorrect predictions per domain (where the ground-truth next state ranked outside top-5) and manually inspected
+    > the retrieved candidates.
+    > Methodology. For each error, we compared the top-1 retrieved state against the ground-truth next state, counting the
+    > number of differing predicates and noting whether both states belonged to the same problem instance.
+    > Findings. Across domains, 78% of top-1 errors shared the same problem instance as the query state. Among these, the
+    > median predicate difference was 2 (IQR: 1–3). Table 23 shows representative examples.
+    > 26
+    > Textual Planning with Explicit Latent Transitions
+    > Domain Ground Truth s
+    > ′ Retrieved sˆ
+    > ′
+    > Blocks Block A is clear, arm
+    > holds B, C is on table
+    > Block A is clear, arm
+    > holds C, B is on table
+    > Ferry Car c1 at l0, ferry
+    > empty, c2 at l1
+    > Car c1 at l0, ferry
+    > empty, c2 at l0
+    > Logistics Package p1 in truck t0,
+    > t0 at l1-0
+    > Package p1 at l1-0, t0
+    > at l1-0
+    > Table 23. Representative Hit@5 errors. Retrieved states differ from ground truth by 1–2 predicates (italicized), typically involving object
+    > locations or holdings within the same problem instance.
+    > These errors suggest the model captures coarse transition structure (correct problem context, approximate state region) but
+    > struggles to resolve fine-grained predicate changes, particularly when multiple objects undergo similar transformations.
+    > K. Complete Results Tables
+    > See Tables 24 – 25.
+    > Domain Split Hit@1 Hit@5 Hit@10
+    > Blocksworld Interpolation 94.3±0.3 100.0±0.0 100.0±0.0
+    > Problem-Grouped 14.2±5.7 41.6±12.5 56.6±11.8
+    > Depot Interpolation 76.7±1.4 98.2±0.2 99.0±0.0
+    > Problem-Grouped 4.9±1.7 24.8±7.0 42.2±11.0
+    > Ferry Interpolation 98.7±0.1 99.9±0.0 100.0±0.0
+    > Problem-Grouped 10.7±1.1 36.7±1.0 52.8±1.5
+    > Floortile Interpolation 96.2±0.4 99.4±0.0 99.6±0.0
+    > Problem-Grouped 24.0±8.1 55.2±15.5 69.0±16.2
+    > Goldminer Interpolation 94.0±0.8 99.9±0.0 100.0±0.0
+    > Problem-Grouped 34.5±9.6 74.4±8.1 86.7±3.1
+    > Grid Interpolation 80.9±1.7 98.6±0.1 99.6±0.1
+    > Problem-Grouped 19.4±4.5 62.7±7.4 76.9±8.0
+    > Logistics Interpolation 88.9±1.5 99.6±0.1 99.8±0.0
+    > Problem-Grouped 14.9±6.5 44.7±16.0 60.7±17.4
+    > Rovers Interpolation 97.4±0.2 99.7±0.0 99.8±0.0
+    > Problem-Grouped 18.5±1.4 49.2±2.5 65.0±2.6
+    > Satellite Interpolation 98.1±0.2 99.9±0.0 100.0±0.0
+    > Problem-Grouped 14.3±0.6 40.0±0.8 54.8±1.4
+    > Table 24. Complete metrics for Qwen2.5-7B across all domains and splits.
+    > 27
+    > Textual Planning with Explicit Latent Transitions
+    > Domain Split Hit@1 Hit@5 Hit@10
+    > Blocksworld Interpolation 96.2±0.4 100.0±0.0 100.0±0.0
+    > Problem-Grouped 17.6±9.0 49.1±17.0 64.6±13.0
+    > Depot Interpolation 79.5±1.2 98.8±0.1 99.2±0.1
+    > Problem-Grouped 4.7±2.0 25.9±11.0 41.2±14.0
+    > Ferry Interpolation 99.1±0.1 100.0±0.0 100.0±0.0
+    > Problem-Grouped 12.0±3.0 40.6±6.0 58.1±7.0
+    > Floortile Interpolation 97.4±0.3 99.6±0.0 99.8±0.0
+    > Problem-Grouped 37.6±22.0 68.8±27.0 78.9±22.0
+    > Goldminer Interpolation 95.8±0.6 100.0±0.0 100.0±0.0
+    > Problem-Grouped 35.8±11.0 76.2±9.0 88.0±3.0
+    > Grid Interpolation 84.3±1.4 99.8±0.0 99.9±0.0
+    > Problem-Grouped 25.7±2.0 74.9±2.0 88.0±2.0
+    > Logistics Interpolation 91.2±1.1 99.9±0.0 100.0±0.0
+    > Problem-Grouped 16.5±6.0 53.7±17.0 70.8±17.0
+    > Rovers Interpolation 97.8±0.2 99.0±0.1 99.5±0.1
+    > Problem-Grouped 16.9±2.0 54.4±5.0 72.2±4.0
+    > Satellite Interpolation 98.5±0.2 99.9±0.0 100.0±0.0
+    > Problem-Grouped 14.4±4.0 47.5±10.0 66.9±10.0
+    > Table 25. Complete metrics for Llama-3.3-70B-70B across all domains and splits.
+    > 28

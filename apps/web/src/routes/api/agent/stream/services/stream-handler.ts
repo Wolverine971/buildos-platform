@@ -106,10 +106,7 @@ export class StreamHandler {
 		this.sessionManager = createSessionManager(supabase);
 		this.messagePersister = createMessagePersister(supabase);
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
-		this.agentStateReconciler = new AgentStateReconciliationService(
-			supabase,
-			this.errorLogger
-		);
+		this.agentStateReconciler = new AgentStateReconciliationService(supabase, this.errorLogger);
 	}
 
 	/**
@@ -873,12 +870,7 @@ export class StreamHandler {
 		};
 
 		state.toolResults.push(toolResultData);
-		this.applyAgentStateFromToolResult(
-			sessionMetadata,
-			session.id,
-			toolResultData,
-			state
-		);
+		this.applyAgentStateFromToolResult(sessionMetadata, session.id, toolResultData, state);
 
 		// Check for context shift
 		const contextShift: ContextShiftData | undefined =
@@ -948,10 +940,7 @@ export class StreamHandler {
 		state.hasPendingMetadataUpdate = true;
 	}
 
-	private ensureAgentState(
-		sessionMetadata: AgentSessionMetadata,
-		sessionId: string
-	): AgentState {
+	private ensureAgentState(sessionMetadata: AgentSessionMetadata, sessionId: string): AgentState {
 		const existing = sessionMetadata.agent_state;
 		if (existing && typeof existing === 'object') {
 			return {
@@ -1209,7 +1198,10 @@ export class StreamHandler {
 		if (!payload || typeof payload !== 'object') return [];
 
 		const relationships =
-			payload.relationships ?? payload.edges ?? payload.graph?.edges ?? payload.graph_snapshot?.edges;
+			payload.relationships ??
+			payload.edges ??
+			payload.graph?.edges ??
+			payload.graph_snapshot?.edges;
 		if (!Array.isArray(relationships)) return [];
 
 		const deps: Array<{ from: string; to: string; rel?: string }> = [];
@@ -1235,7 +1227,11 @@ export class StreamHandler {
 		expectations?: AgentState['expectations'];
 		assumptions?: AgentState['assumptions'];
 	} | null {
-		if (!payload || !Array.isArray(agentState.expectations) || agentState.expectations.length === 0) {
+		if (
+			!payload ||
+			!Array.isArray(agentState.expectations) ||
+			agentState.expectations.length === 0
+		) {
 			return null;
 		}
 
@@ -1328,7 +1324,7 @@ export class StreamHandler {
 		if (typeof expectation.expected_count === 'number') {
 			const count =
 				typeof expectation.expected_type === 'string'
-					? summary.counts[expectation.expected_type] ?? 0
+					? (summary.counts[expectation.expected_type] ?? 0)
 					: summary.ids.length;
 			if (count !== expectation.expected_count) return false;
 		}
@@ -1443,7 +1439,8 @@ export class StreamHandler {
 				entities_accessed: Array.isArray(result.entities_accessed)
 					? result.entities_accessed.slice(0, 6)
 					: undefined,
-				entity_updates: extractedEntities.length > 0 ? extractedEntities.slice(0, 6) : undefined,
+				entity_updates:
+					extractedEntities.length > 0 ? extractedEntities.slice(0, 6) : undefined,
 				entity_counts: summary?.counts,
 				summary: summary?.brief
 			};

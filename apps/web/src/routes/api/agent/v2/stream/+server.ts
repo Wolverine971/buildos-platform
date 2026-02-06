@@ -200,8 +200,7 @@ function buildContextToolSummary(params: {
 
 	if (record.project) {
 		const projectRecord = record.project as Record<string, any>;
-		const projectId =
-			typeof projectRecord.id === 'string' ? projectRecord.id : undefined;
+		const projectId = typeof projectRecord.id === 'string' ? projectRecord.id : undefined;
 		if (projectId) {
 			entity_updates.push({
 				id: projectId,
@@ -361,7 +360,8 @@ function emitContextOperations(
 		});
 	}
 
-	const listSummaries: Array<{ entity: OperationEventPayload['entity_type']; count: number }> = [];
+	const listSummaries: Array<{ entity: OperationEventPayload['entity_type']; count: number }> =
+		[];
 	if (Array.isArray(data?.goals)) {
 		listSummaries.push({ entity: 'goal', count: data.goals.length });
 	}
@@ -673,10 +673,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			});
 
 			void (async () => {
-				const reconciliation = new AgentStateReconciliationService(
-					supabase,
-					errorLogger
-				);
+				const reconciliation = new AgentStateReconciliationService(supabase, errorLogger);
 				const currentState =
 					(sessionMetadata.agent_state as AgentState | undefined) ??
 					buildEmptyAgentState(session.id);
@@ -691,9 +688,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				});
 
 				if (updated) {
-					await updateAgentMetadata(supabase, session.id, {
-						agent_state: updated
-					}, errorLogger);
+					await updateAgentMetadata(
+						supabase,
+						session.id,
+						{
+							agent_state: updated
+						},
+						errorLogger
+					);
 				}
 			})().catch((error) => {
 				logger.warn('FastChat agent_state reconciliation failed', { error });

@@ -90,6 +90,7 @@ Chat text is **not** authoritative for state; patches are.
 - Only fetch document content when the agent explicitly loads it.
 
 If a document is fetched:
+
 - optionally show a short “Document loaded” chip
 - do not auto-render the full document in chat
 

@@ -1,3 +1,5 @@
+<!-- design/research-state-aware-agents.md -->
+
 https://arxiv.org/pdf/2602.04640
 
 ---
@@ -11,6 +13,7 @@ https://arxiv.org/pdf/2602.04640
 ## TL;DR
 
 This position paper argues that current AI agents are **fundamentally reactive** — they just respond to the latest message without maintaining persistent state. This causes:
+
 - Inconsistent reasoning over long conversations
 - "Forgotten" assumptions that lead to contradictions
 - Inability to connect new information to prior context
@@ -20,11 +23,13 @@ The solution: **Structured, State-Aware, Execution-Grounded Reasoning** — agen
 ## The Core Problem
 
 Current agents operate like this:
+
 ```
 Input → LLM → Tools → Output
 ```
 
 They should operate like this:
+
 ```
 Input + State(t-1) → LLM → Tools → Execution Feedback → State(t) → Output
 ```
@@ -33,31 +38,35 @@ Input + State(t-1) → LLM → Tools → Execution Feedback → State(t) → Out
 
 ## Key Concepts Defined
 
-| Term | Definition | BuildOS Equivalent |
-|------|------------|-------------------|
-| **Agent State** | Explicit representation of current understanding (hypotheses, invariants, dependencies) | What the agent "knows" about user's projects/tasks |
-| **Hypothesis** | Provisional assumption formed during reasoning | "User probably wants to schedule this task for tomorrow" |
-| **Structure** | How state is organized, updated, and queried | The ontology graph structure |
-| **System State** | Actual state of the software/environment | Current state of user's projects, tasks, calendar |
+| Term             | Definition                                                                              | BuildOS Equivalent                                       |
+| ---------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Agent State**  | Explicit representation of current understanding (hypotheses, invariants, dependencies) | What the agent "knows" about user's projects/tasks       |
+| **Hypothesis**   | Provisional assumption formed during reasoning                                          | "User probably wants to schedule this task for tomorrow" |
+| **Structure**    | How state is organized, updated, and queried                                            | The ontology graph structure                             |
+| **System State** | Actual state of the software/environment                                                | Current state of user's projects, tasks, calendar        |
 
 ## Why Reactive Agents Fail (Relevant Patterns)
 
 ### 1. Inconsistent Reasoning Reconstructions
+
 > "Without stable intermediate representations, agents may generate inconsistent explanations or plans across steps."
 
 **BuildOS Example:** User asks agent to help with a project. Agent suggests one approach. User asks follow-up. Agent contradicts its earlier suggestion because it "forgot" its own reasoning.
 
 ### 2. Forgotten Assumptions
+
 > "The 'assumptions' or 'hypotheses' that agents made across actions are not tracked and maintained in agent memory."
 
 **BuildOS Example:** Agent assumes user is working on Project A based on context. Later in the conversation, agent starts mixing in Project B context without realizing the assumption changed.
 
 ### 3. Interpreting Feedback in Isolation
+
 > "Agents often interpret feedback in isolation rather than as part of an ongoing line of reasoning."
 
 **BuildOS Example:** User says "that didn't work" — agent doesn't connect this to its prior suggestion, just generates a new response without updating its understanding.
 
 ### 4. Retrying Without Knowing Where to Return
+
 > "Many agents restart the entire process from the beginning, rather than identifying a specific step where reasoning went off course."
 
 **BuildOS Example:** Task extraction fails → instead of identifying WHICH extraction was wrong, agent re-processes entire brain dump.
@@ -65,17 +74,20 @@ Input + State(t-1) → LLM → Tools → Execution Feedback → State(t) → Out
 ## The Proposed Solution: Structured State
 
 ### What Agent State Should Contain:
+
 1. **Current understanding** of relevant entities and dependencies
 2. **Assumptions/hypotheses** formed during earlier steps
 3. **Expected behaviors/invariants** for actions taken
 4. **Tentative/alternative hypotheses** to explore
 
 ### How Reasoning Should Work:
+
 - Treat reasoning as **state addition/deletion/evolution** — not sequence of independent actions
 - After each action: **update state** (revise hypothesis, adjust expectations, incorporate evidence)
 - Keep reasoning **cleaner and structured** — reduces noise, avoids full restarts
 
 ### Connecting Execution Feedback:
+
 - Map feedback to corresponding assumptions/hypotheses
 - Identify which state components are affected
 - Revise planned next steps based on feedback
@@ -84,41 +96,49 @@ Input + State(t-1) → LLM → Tools → Execution Feedback → State(t) → Out
 ## Key Insights for BuildOS Agentic Chat
 
 ### 1. Implement Explicit Agent State
+
 Instead of just conversation history, maintain structured state:
+
 ```typescript
 interface AgentState {
-  currentContext: {
-    activeProject?: Project;
-    activeTasks: Task[];
-    userIntent?: string;
-  };
-  hypotheses: {
-    id: string;
-    assumption: string;
-    confidence: number;
-    evidence: string[];
-  }[];
-  pendingActions: Action[];
-  expectations: {
-    action: string;
-    expectedOutcome: string;
-  }[];
+	currentContext: {
+		activeProject?: Project;
+		activeTasks: Task[];
+		userIntent?: string;
+	};
+	hypotheses: {
+		id: string;
+		assumption: string;
+		confidence: number;
+		evidence: string[];
+	}[];
+	pendingActions: Action[];
+	expectations: {
+		action: string;
+		expectedOutcome: string;
+	}[];
 }
 ```
 
 ### 2. State Transitions, Not Reconstructions
+
 When user provides feedback:
+
 - DON'T: Re-read entire conversation history
 - DO: Update specific state components based on feedback type
 
 ### 3. Hypothesis Tracking
+
 When agent makes assumptions:
+
 - **Explicitly record them** in state
 - **Link to evidence** that supports them
 - **Update/invalidate** when contradicted
 
 ### 4. Pre/Post Conditions for Actions
+
 Before executing an action:
+
 - Record what you expect to happen
 - After execution: compare actual vs expected
 - If mismatch: update state, don't just continue
@@ -126,31 +146,35 @@ Before executing an action:
 ## Actionable Ideas for BuildOS
 
 ### Immediate
+
 1. Add a `currentContext` object to agentic chat that persists across turns
 2. When agent makes assumptions (e.g., "working on Project X"), log them explicitly
 3. When user corrects agent, update context rather than starting fresh
 
 ### Medium-Term
+
 4. Implement hypothesis tracking:
-   - Agent proposes: "I think you want to create a task for this"
-   - Store as hypothesis with confidence
-   - If user confirms/denies, update and learn
+    - Agent proposes: "I think you want to create a task for this"
+    - Store as hypothesis with confidence
+    - If user confirms/denies, update and learn
 
 5. Add "expected outcome" tracking:
-   - Agent: "I'll create this task for you" → expect: task created
-   - If task creation fails → agent knows to update state
+    - Agent: "I'll create this task for you" → expect: task created
+    - If task creation fails → agent knows to update state
 
 ### Long-Term
+
 6. Build a finite-state machine abstraction for multi-step workflows
 7. Implement structured "where did I go wrong?" backtracking
 8. Create agent memory that separates:
-   - Completed actions (immutable)
-   - Current hypotheses (mutable)
-   - Pending decisions (queued)
+    - Completed actions (immutable)
+    - Current hypotheses (mutable)
+    - Pending decisions (queued)
 
 ## Connection to Ontology Graph
 
 The paper's concept of "structure" maps directly to BuildOS's ontology:
+
 - **Entities**: Projects, tasks, contexts, people
 - **Relations**: Parent/child, dependencies, contexts
 - **State**: Current status, priorities, deadlines
@@ -169,7 +193,7 @@ The paper's concept of "structure" maps directly to BuildOS's ontology:
 
 ---
 
-*Original paper content below*
+_Original paper content below_
 
 ---
 
@@ -439,15 +463,13 @@ BoatSE ’26, April 12–18, 2026, Rio de Janeiro, Brazil Tse-Hsun (Peter) Chen
 IEEE/ACM International Conference on Automated Software Engineering (ASE’25).
 12 pages.
 [3] ByteDance. 2025. TRAE. https://www.trae.ai/. Accessed: 2025-12-01.
-[4] Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet Singh, and Deshraj Yadav.
-2025. Mem0: Building Production-Ready AI Agents with Scalable Long-Term
+[4] Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet Singh, and Deshraj Yadav. 2025. Mem0: Building Production-Ready AI Agents with Scalable Long-Term
 Memory. arXiv:2504.19413 [cs.CL] https://arxiv.org/abs/2504.19413
 [5] Darshan Deshpande, Varun Gangal, Hersh Mehta, Jitin Krishnan, Anand Kannappan, and Rebecca Qian. 2025. TRAIL: Trace Reasoning and Agentic Issue
 Localization. arXiv:2505.08638 [cs.AI] https://arxiv.org/abs/2505.08638
 [6] GitHub, Inc. 2025. GitHub Copilot. https://github.com/features/copilot. Accessed:
 2025-12-01.
-[7] Linqiang Guo, Wei Liu, Yi Wen Heng, Tse-Hsun (Peter) Chen, and Yang Wang.
-2026. Agent-SAMA: State-Aware Mobile Assistant. In The Fortieth AAAI Conference on Artificial Intelligence (AAAI’26).
+[7] Linqiang Guo, Wei Liu, Yi Wen Heng, Tse-Hsun (Peter) Chen, and Yang Wang. 2026. Agent-SAMA: State-Aware Mobile Assistant. In The Fortieth AAAI Conference on Artificial Intelligence (AAAI’26).
 [8] Dong Huang, Jie M. Zhang, Michael Luck, Qingwen Bu, Yuhao Qing, and Heming
 Cui. 2024. AgentCoder: Multi-Agent-based Code Generation with Iterative Testing and Optimisation. arXiv:2312.13010 [cs.CL] https://arxiv.org/abs/2312.13010
 [9] Feng Lin, Dong Jae Kim, and Tse-Hsun (Peter) Chen. 2025. SOEN-101: Code
@@ -476,8 +498,7 @@ Shunyu Yao. 2023. Reflexion: language agents with verbal reinforcement learning.
 T. Naumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine (Eds.). 8634–8652.
 [17] Chunqiu Steven Xia, Yinlin Deng, Soren Dunn, and Lingming Zhang. 2025. Demystifying LLM-Based Software Engineering Agents. Proc. ACM Softw. Eng. 2,
 FSE (2025).
-[18] Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Juntao Tan, and Yongfeng Zhang.
-2025. A-Mem: Agentic Memory for LLM Agents. In The Thirty-ninth Annual
+[18] Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Juntao Tan, and Yongfeng Zhang. 2025. A-Mem: Agentic Memory for LLM Agents. In The Thirty-ninth Annual
 Conference on Neural Information Processing Systems (NeurIPS’25).
 [19] John Yang, Carlos E Jimenez, Alexander Wettig, Kilian Lieret, Shunyu Yao,
 Karthik R Narasimhan, and Ofir Press. 2024. SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering. In The Thirty-eighth Annual

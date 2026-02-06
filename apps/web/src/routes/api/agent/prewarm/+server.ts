@@ -156,7 +156,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const locationCacheKey = buildLocationCacheKey(normalizedContextType, resolvedEntityId);
 	const linkedEntitiesCacheKey = buildLinkedEntitiesCacheKey(resolvedFocus);
 	const docStructureProjectId =
-		resolvedFocus?.projectId ?? (requiresEntityId ? resolvedEntityId ?? null : null);
+		resolvedFocus?.projectId ?? (requiresEntityId ? (resolvedEntityId ?? null) : null);
 	const docStructureCacheKey = docStructureProjectId
 		? buildDocStructureCacheKey(docStructureProjectId)
 		: null;

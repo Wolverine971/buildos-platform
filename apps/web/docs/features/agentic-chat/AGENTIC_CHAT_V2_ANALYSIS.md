@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/agentic-chat/AGENTIC_CHAT_V2_ANALYSIS.md -->
+
 # Agentic Chat V2 Spec — Analysis & Research Alignment
 
 **Status:** Analysis Document
@@ -17,11 +19,11 @@ The V2 spec is **exceptionally well-designed** and aligns strongly with recent A
 
 ## Research Alignment Score Card
 
-| Research Paper | Alignment | Notes |
-|----------------|-----------|-------|
+| Research Paper         | Alignment  | Notes                                                               |
+| ---------------------- | ---------- | ------------------------------------------------------------------- |
 | **State-Aware Agents** | ⭐⭐⭐⭐⭐ | Agent State implementation is almost 1:1 with paper recommendations |
-| **ProAgentBench** | ⭐⭐⭐⭐ | Good foundation, missing burstiness and proactive timing |
-| **EMBEDPLAN** | ⭐⭐⭐ | Document-first helps, but personalization layer missing |
+| **ProAgentBench**      | ⭐⭐⭐⭐   | Good foundation, missing burstiness and proactive timing            |
+| **EMBEDPLAN**          | ⭐⭐⭐     | Document-first helps, but personalization layer missing             |
 
 ---
 
@@ -31,15 +33,16 @@ The V2 spec is **exceptionally well-designed** and aligns strongly with recent A
 
 The `AgentState` type directly implements the State-Aware Agents paper's core recommendations:
 
-| Paper Concept | Spec Implementation | Status |
-|---------------|---------------------|--------|
-| Current understanding of entities | `current_understanding.entities` | ✅ Implemented |
-| Dependencies between entities | `current_understanding.dependencies` | ✅ Implemented |
-| Assumptions/hypotheses | `assumptions[]` with confidence | ✅ Implemented |
-| Expected outcomes | `expectations[]` | ✅ Implemented |
-| Tentative alternatives | `tentative_hypotheses[]` | ✅ Implemented |
+| Paper Concept                     | Spec Implementation                  | Status         |
+| --------------------------------- | ------------------------------------ | -------------- |
+| Current understanding of entities | `current_understanding.entities`     | ✅ Implemented |
+| Dependencies between entities     | `current_understanding.dependencies` | ✅ Implemented |
+| Assumptions/hypotheses            | `assumptions[]` with confidence      | ✅ Implemented |
+| Expected outcomes                 | `expectations[]`                     | ✅ Implemented |
+| Tentative alternatives            | `tentative_hypotheses[]`             | ✅ Implemented |
 
 **This is exactly what the research recommends.** The spec even gets the nuance right:
+
 - Confidence scores on assumptions
 - Evidence linking for hypotheses
 - Delta-based updates (not full rewrites)
@@ -47,6 +50,7 @@ The `AgentState` type directly implements the State-Aware Agents paper's core re
 ### 2. State Transition Model — Well-Designed
 
 The update pipeline (Section 8.6) correctly separates:
+
 1. **Deterministic updates** from tool results (no LLM needed)
 2. **LLM-derived updates** from summarizer (hypotheses/expectations)
 
@@ -59,12 +63,14 @@ Clarify → Inform → Act
 ```
 
 This maps to ProAgentBench's "When + How" framework:
+
 - **Clarify/Inform** = "Not the right time to act"
 - **Act** = "When to Assist" triggered
 
 ### 4. Rolling Context Window (Section 5) — Solid
 
 The compression strategy preserves:
+
 - Entity IDs and names
 - User decisions and approvals
 - Doc edits and key diffs
@@ -74,6 +80,7 @@ This aligns with the research finding that **structure matters more than raw con
 ### 5. Document-First as Knowledge Graph (Section 9)
 
 Using `doc_structure` as the primary knowledge map is smart:
+
 - Provides stable topology (projects/tasks are ephemeral)
 - Acts as a knowledge graph for retrieval
 - Aligns with ProAgentBench finding that **Knowledge Graphs > RAG**
@@ -95,10 +102,10 @@ Add a time-based constraint:
 
 ```ts
 type ContextBudgets = {
-  maxTokens: number;
-  summaryTokens: number;
-  recentMessages: number;
-  maxContextAge: number;  // Add: 300000 (5 minutes in ms)
+	maxTokens: number;
+	summaryTokens: number;
+	recentMessages: number;
+	maxContextAge: number; // Add: 300000 (5 minutes in ms)
 };
 ```
 
@@ -119,20 +126,21 @@ Add a lightweight proactive detection layer:
 
 ```ts
 type ProactiveSignal = {
-  trigger: 'idle_detected' | 'context_change' | 'deadline_approaching' | 'pattern_match';
-  confidence: number;
-  suggested_action?: string;
+	trigger: 'idle_detected' | 'context_change' | 'deadline_approaching' | 'pattern_match';
+	confidence: number;
+	suggested_action?: string;
 };
 
 // Run periodically or on context changes
 function detectProactiveOpportunity(
-  userState: UserActivityState,
-  agentState: AgentState,
-  projectContext: ContextPack
+	userState: UserActivityState,
+	agentState: AgentState,
+	projectContext: ContextPack
 ): ProactiveSignal | null;
 ```
 
 This could power:
+
 - "I noticed you haven't captured any tasks from your last brain dump"
 - "Your deadline for X is approaching — want me to help prioritize?"
 - "Based on your pattern, you usually brain dump around this time"
@@ -152,14 +160,15 @@ Track session engagement patterns:
 
 ```ts
 type SessionMetrics = {
-  messageCount: number;
-  burstScore: number;  // Rolling calculation of inter-event times
-  lastActivityAt: string;
-  sessionStartedAt: string;
+	messageCount: number;
+	burstScore: number; // Rolling calculation of inter-event times
+	lastActivityAt: string;
+	sessionStartedAt: string;
 };
 ```
 
 Use burstiness to:
+
 - **High burst (active sprint):** Be more responsive, reduce confirmation prompts
 - **Low activity:** Be more proactive with gentle nudges
 - **Post-burst lull:** Summarize what was accomplished
@@ -180,23 +189,23 @@ Enhance `ContextPack` assembly to use graph relationships:
 ```ts
 // When building context for a task entity
 function buildEntityContext(entityId: string): ContextPack {
-  const entity = await getEntity(entityId);
+	const entity = await getEntity(entityId);
 
-  // Use graph relationships, not just vector similarity
-  const relatedEntities = await getGraphNeighbors(entityId, {
-    depth: 2,
-    relationTypes: ['parent', 'blocks', 'related_to', 'mentioned_in']
-  });
+	// Use graph relationships, not just vector similarity
+	const relatedEntities = await getGraphNeighbors(entityId, {
+		depth: 2,
+		relationTypes: ['parent', 'blocks', 'related_to', 'mentioned_in']
+	});
 
-  // Include graph path as context
-  return {
-    ...baseContext,
-    data: {
-      entityDetails: entity,
-      linkedEntities: relatedEntities,
-      graphPath: getPathToRoot(entityId)  // Add: where this sits in the tree
-    }
-  };
+	// Include graph path as context
+	return {
+		...baseContext,
+		data: {
+			entityDetails: entity,
+			linkedEntities: relatedEntities,
+			graphPath: getPathToRoot(entityId) // Add: where this sits in the tree
+		}
+	};
 }
 ```
 
@@ -215,21 +224,22 @@ Add a user pattern layer to Agent State:
 
 ```ts
 type UserPatterns = {
-  preferredActionPatterns: Array<{
-    context: string;      // "when discussing tasks"
-    typicalAction: string; // "user usually wants them created"
-    confidence: number;
-  }>;
-  vocabularyMapping: Map<string, string>;  // "sync" → "meeting", "EOD" → "end of day"
-  workingHoursPattern?: {
-    typicalStart: string;
-    typicalEnd: string;
-    burstTimes: string[];
-  };
+	preferredActionPatterns: Array<{
+		context: string; // "when discussing tasks"
+		typicalAction: string; // "user usually wants them created"
+		confidence: number;
+	}>;
+	vocabularyMapping: Map<string, string>; // "sync" → "meeting", "EOD" → "end of day"
+	workingHoursPattern?: {
+		typicalStart: string;
+		typicalEnd: string;
+		burstTimes: string[];
+	};
 };
 ```
 
 Populate over time from:
+
 - Agent state assumption confirmations/rejections
 - User corrections to generated content
 - Temporal patterns of engagement
@@ -249,23 +259,21 @@ Add post-action verification:
 
 ```ts
 type ExpectationResult = {
-  expectationId: string;
-  matched: boolean;
-  actual_outcome?: string;
-  state_update?: AgentStateUpdate;
+	expectationId: string;
+	matched: boolean;
+	actual_outcome?: string;
+	state_update?: AgentStateUpdate;
 };
 
 // After tool execution
-function verifyExpectation(
-  expectation: Expectation,
-  toolResult: ToolResult
-): ExpectationResult {
-  // Compare expected vs actual
-  // Generate state delta if mismatch
+function verifyExpectation(expectation: Expectation, toolResult: ToolResult): ExpectationResult {
+	// Compare expected vs actual
+	// Generate state delta if mismatch
 }
 ```
 
 Example flow:
+
 1. Agent expects: "Creating task X should add it to Phase 1"
 2. Tool executes: Task created but added to Phase 2 (user preference)
 3. Verification: Mismatch detected
@@ -323,13 +331,13 @@ This follows the principle of progressive disclosure.
 ### Potential Risks
 
 1. **State Bloat:** Without cleanup, `assumptions` and `tentative_hypotheses` could grow unbounded
-   - **Mitigation:** Add confidence decay + periodic pruning in summarizer
+    - **Mitigation:** Add confidence decay + periodic pruning in summarizer
 
 2. **Summarizer as Bottleneck:** If summarizer is slow, state updates lag behind
-   - **Mitigation:** Already addressed with async post-`done` execution
+    - **Mitigation:** Already addressed with async post-`done` execution
 
 3. **Cold Start Problem:** New sessions have no agent state
-   - **Mitigation:** Bootstrap from user preferences + project context
+    - **Mitigation:** Bootstrap from user preferences + project context
 
 ---
 
@@ -337,15 +345,15 @@ This follows the principle of progressive disclosure.
 
 Based on research impact, I'd prioritize additions in this order:
 
-| Priority | Enhancement | Expected Impact |
-|----------|-------------|-----------------|
-| 1 | 5-minute context window constraint | Reduces noise, aligns with research |
-| 2 | Expectation verification loop | Completes the state-aware feedback cycle |
-| 3 | Graph-based retrieval for context | +10-15% context relevance (per ProAgentBench) |
-| 4 | Confidence decay on assumptions | Prevents stale state accumulation |
-| 5 | Proactive timing detection | Enables "When to Assist" capability |
-| 6 | User pattern learning | Long-term personalization (high effort) |
-| 7 | Burstiness awareness | Nice-to-have for engagement optimization |
+| Priority | Enhancement                        | Expected Impact                               |
+| -------- | ---------------------------------- | --------------------------------------------- |
+| 1        | 5-minute context window constraint | Reduces noise, aligns with research           |
+| 2        | Expectation verification loop      | Completes the state-aware feedback cycle      |
+| 3        | Graph-based retrieval for context  | +10-15% context relevance (per ProAgentBench) |
+| 4        | Confidence decay on assumptions    | Prevents stale state accumulation             |
+| 5        | Proactive timing detection         | Enables "When to Assist" capability           |
+| 6        | User pattern learning              | Long-term personalization (high effort)       |
+| 7        | Burstiness awareness               | Nice-to-have for engagement optimization      |
 
 ---
 
@@ -354,6 +362,7 @@ Based on research impact, I'd prioritize additions in this order:
 The V2 spec demonstrates a strong understanding of modern agent architecture. The Agent State implementation is research-grade and directly addresses the problems identified in academic literature.
 
 The main opportunities are:
+
 1. Adding proactive capabilities (beyond reactive chat)
 2. Tightening the expectation verification loop
 3. Leveraging the ontology graph more deeply for retrieval

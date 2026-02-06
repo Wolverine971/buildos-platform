@@ -85,7 +85,6 @@ export interface AgentSessionMetadata {
 	[key: string]: unknown;
 }
 
-
 /**
  * Parsed and validated stream request from POST body.
  * This is the internal representation after parsing EnhancedAgentStreamRequest.

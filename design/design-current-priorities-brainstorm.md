@@ -180,6 +180,7 @@ The agentic chat flow is failing. It's doing too much, it's too complicated.
 Stop scrolling feeds. Start **searching** for conversations in the niche.
 
 **Search Terms to Explore:**
+
 - Context engineering
 - AI agents
 - LLMs / large language models
@@ -201,12 +202,14 @@ Stop scrolling feeds. Start **searching** for conversations in the niche.
 **The Goal:** Find up-and-comers building similar things. Support them → they support you.
 
 **Where to Find Them:**
+
 - Search results for niche keywords
 - Who's replying to big accounts (the watering hole)
 - Indie hackers building in public
 - People with 500-5K followers posting about AI/productivity
 
 **What to Look For:**
+
 - Building something in the space
 - Posting regularly
 - Not already famous
@@ -219,6 +222,7 @@ Stop scrolling feeds. Start **searching** for conversations in the niche.
 **Insight:** Big accounts aren't for direct engagement. They're for **finding people**.
 
 Who comments on @karpathy, @sama, @simonw, etc.? Those commenters are:
+
 - Paying attention to the same things you are
 - Potentially building related things
 - Signal of interest in the space
@@ -232,6 +236,7 @@ Who comments on @karpathy, @sama, @simonw, etc.? Those commenters are:
 Not for everyone - just for the promising accounts at your level.
 
 **What to Track:**
+
 - What are they building?
 - What's their angle/niche?
 - How can I support them?
@@ -252,13 +257,13 @@ Not for everyone - just for the promising accounts at your level.
 
 ### The Mindset Shift
 
-| Old Approach | New Approach |
-|--------------|--------------|
-| Follow big accounts | Search for niche conversations |
-| Try to get noticed by celebrities | Find peers and support them |
-| Consume content | Create relationships |
-| Random engagement | Strategic network building |
-| Looking up | Looking sideways |
+| Old Approach                      | New Approach                   |
+| --------------------------------- | ------------------------------ |
+| Follow big accounts               | Search for niche conversations |
+| Try to get noticed by celebrities | Find peers and support them    |
+| Consume content                   | Create relationships           |
+| Random engagement                 | Strategic network building     |
+| Looking up                        | Looking sideways               |
 
 ---
 

@@ -9,14 +9,14 @@
 
 ## Priority Summary
 
-| Priority | Author                       | Post Topic                                                          | Age  | Comments | Score | Why                                                          |
-| -------- | ---------------------------- | ------------------------------------------------------------------- | ---- | -------- | ----- | ------------------------------------------------------------ |
-| 1        | Mark Starkman                | ADHD "Cycle of Doom" - entrepreneur burnout pattern                 | ~30m | 0        | 95    | VERY FRESH, ADHD pillar, zero competition, authentic content |
-| 2        | Yhoni David Hilton-Shomron   | "When LinkedIn Breaks Your Learning Workflow" - neurodivergent UX   | ~30m | 0        | 90    | VERY FRESH, ADHD/UX angle, zero competition                 |
-| 3        | Alex Lieberman               | "Claude Code Community is the biggest unfair advantage"             | 1d   | 9        | 85    | Morning Brew cofounder, Context Engineering adjacent, fresh  |
-| 4        | Ethan Mollick                | Genie 3 - visually interesting worlds with Midjourney               | 13h  | 15       | 78    | Tier 1 account, AI/creativity angle, manageable comments     |
-| 5        | David Mlcoch                 | "After 3 frontend rebuilds" - YC W25 founder, asteroid              | 1d   | 7        | 76    | Building in Public, YC founder, low competition              |
-| 6        | Dexter Horthy                | Repost: OpenClaw Unhackathon                                        | 3h   | ~0       | 72    | Context Engineering originator, fresh repost, relationship   |
+| Priority | Author                     | Post Topic                                                        | Age  | Comments | Score | Why                                                          |
+| -------- | -------------------------- | ----------------------------------------------------------------- | ---- | -------- | ----- | ------------------------------------------------------------ |
+| 1        | Mark Starkman              | ADHD "Cycle of Doom" - entrepreneur burnout pattern               | ~30m | 0        | 95    | VERY FRESH, ADHD pillar, zero competition, authentic content |
+| 2        | Yhoni David Hilton-Shomron | "When LinkedIn Breaks Your Learning Workflow" - neurodivergent UX | ~30m | 0        | 90    | VERY FRESH, ADHD/UX angle, zero competition                  |
+| 3        | Alex Lieberman             | "Claude Code Community is the biggest unfair advantage"           | 1d   | 9        | 85    | Morning Brew cofounder, Context Engineering adjacent, fresh  |
+| 4        | Ethan Mollick              | Genie 3 - visually interesting worlds with Midjourney             | 13h  | 15       | 78    | Tier 1 account, AI/creativity angle, manageable comments     |
+| 5        | David Mlcoch               | "After 3 frontend rebuilds" - YC W25 founder, asteroid            | 1d   | 7        | 76    | Building in Public, YC founder, low competition              |
+| 6        | Dexter Horthy              | Repost: OpenClaw Unhackathon                                      | 3h   | ~0       | 72    | Context Engineering originator, fresh repost, relationship   |
 
 ---
 
@@ -235,11 +235,11 @@ Dexter coined "Context Engineering" - relationship-building priority. Fresh repo
 
 ## New Accounts Discovered
 
-| Account                      | Followers | Theme                           | Suggested Tier | Why                                                        |
-| ---------------------------- | --------- | ------------------------------- | -------------- | ---------------------------------------------------------- |
-| Mark Starkman                | ~1K       | ADHD, Tech Leadership           | Tier 2         | Authentic ADHD entrepreneur content, "Cycle of Doom" frame |
-| Yhoni David Hilton-Shomron   | ~500      | Neurodivergent UX               | Tier 3         | UX perspective on neurodivergent workflows                 |
-| David Mlcoch                 | ~1K       | YC W25 founder, Building Public | Tier 3         | YC founder sharing real build journey                      |
+| Account                    | Followers | Theme                           | Suggested Tier | Why                                                        |
+| -------------------------- | --------- | ------------------------------- | -------------- | ---------------------------------------------------------- |
+| Mark Starkman              | ~1K       | ADHD, Tech Leadership           | Tier 2         | Authentic ADHD entrepreneur content, "Cycle of Doom" frame |
+| Yhoni David Hilton-Shomron | ~500      | Neurodivergent UX               | Tier 3         | UX perspective on neurodivergent workflows                 |
+| David Mlcoch               | ~1K       | YC W25 founder, Building Public | Tier 3         | YC founder sharing real build journey                      |
 
 ### Account Detail: Mark Starkman
 

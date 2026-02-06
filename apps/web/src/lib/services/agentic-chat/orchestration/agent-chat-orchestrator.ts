@@ -885,7 +885,10 @@ export class AgentChatOrchestrator {
 						);
 						pendingToolCalls.push(enrichedToolCall);
 						yield { type: 'tool_call', toolCall: enrichedToolCall };
-						const opEvent = this.buildOperationEventFromToolCall(enrichedToolCall, 'start');
+						const opEvent = this.buildOperationEventFromToolCall(
+							enrichedToolCall,
+							'start'
+						);
 						if (opEvent) {
 							yield opEvent;
 						}
@@ -2133,7 +2136,8 @@ export class AgentChatOrchestrator {
 			data.risk ??
 			data.requirement;
 		if (entity && typeof entity === 'object') {
-			const title = (entity as Record<string, any>).title ?? (entity as Record<string, any>).name;
+			const title =
+				(entity as Record<string, any>).title ?? (entity as Record<string, any>).name;
 			if (typeof title === 'string' && title.trim().length > 0) {
 				return title.trim();
 			}

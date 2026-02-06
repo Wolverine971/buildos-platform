@@ -2877,11 +2877,17 @@
 			case 'operation': {
 				const operationPayload =
 					'operation' in event && event.operation ? event.operation : event;
-				const { message: operationMessage, activityStatus } =
-					formatOperationEvent(operationPayload as Record<string, any>);
-				addActivityToThinkingBlock(operationMessage, 'operation', {
-					operation: operationPayload
-				}, activityStatus);
+				const { message: operationMessage, activityStatus } = formatOperationEvent(
+					operationPayload as Record<string, any>
+				);
+				addActivityToThinkingBlock(
+					operationMessage,
+					'operation',
+					{
+						operation: operationPayload
+					},
+					activityStatus
+				);
 				break;
 			}
 

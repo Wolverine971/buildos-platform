@@ -22,16 +22,6 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/lib/components/dashboard/Dashboard.svelte",
-			"type": "component",
-			"components": ["AgentChatModal", "DailyBriefModal"]
-		},
-		{
-			"file": "src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
 			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
 			"type": "component",
 			"components": [
@@ -40,6 +30,16 @@
 				"SuccessView",
 				"OperationEditModal"
 			]
+		},
+		{
+			"file": "src/lib/components/dashboard/Dashboard.svelte",
+			"type": "component",
+			"components": ["AgentChatModal", "DailyBriefModal"]
+		},
+		{
+			"file": "src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
+			"type": "component",
+			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -156,6 +156,11 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -174,11 +179,6 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -1006,9 +1006,9 @@
 		]
 	},
 	"unusedComponents": [
+		"src/lib/components/brain-dump/BrainDumpModal.svelte",
 		"src/lib/components/dashboard/Dashboard.svelte",
 		"src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
-		"src/lib/components/brain-dump/BrainDumpModal.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",

@@ -24,17 +24,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	usage?: FastAgentStreamUsage;
 	finishedReason?: string;
 }> {
-	const {
-		llm,
-		userId,
-		sessionId,
-		contextType,
-		entityId,
-		history,
-		message,
-		signal,
-		onDelta
-	} = params;
+	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
+		params;
 
 	const normalizedContext = normalizeFastContextType(contextType);
 	const systemPrompt =

@@ -38,27 +38,27 @@ rules and event emission.
 
 ```ts
 type PlanStage = {
-  id: string;
-  name: string;
-  mode: 'parallel' | 'sequence';
-  steps: PlanStep[];
+	id: string;
+	name: string;
+	mode: 'parallel' | 'sequence';
+	steps: PlanStep[];
 };
 
 type PlanStep = {
-  id: string;
-  title: string;
-  intent: 'research' | 'analysis' | 'draft' | 'edit' | 'create' | 'update' | 'review';
-  executor: 'planner' | 'research' | 'writer' | 'editor' | 'tooling';
-  tools?: string[];
-  inputs?: string[];      // step IDs this step depends on
-  outputs?: string[];     // produced artifact IDs
+	id: string;
+	title: string;
+	intent: 'research' | 'analysis' | 'draft' | 'edit' | 'create' | 'update' | 'review';
+	executor: 'planner' | 'research' | 'writer' | 'editor' | 'tooling';
+	tools?: string[];
+	inputs?: string[]; // step IDs this step depends on
+	outputs?: string[]; // produced artifact IDs
 };
 
 type AgentPlan = {
-  id: string;
-  goal: string;
-  stages: PlanStage[];
-  constraints?: string[];
+	id: string;
+	goal: string;
+	stages: PlanStage[];
+	constraints?: string[];
 };
 ```
 
@@ -84,8 +84,8 @@ The planner must:
 
 - Stages run **in order**.
 - Within a stage:
-  - `mode: parallel` → run steps concurrently (with concurrency cap)
-  - `mode: sequence` → run steps in order
+    - `mode: parallel` → run steps concurrently (with concurrency cap)
+    - `mode: sequence` → run steps in order
 - A step is eligible to run only when **all `inputs` are complete**.
 
 **Implementation note:** The runtime derives stages from `dependsOn` and annotates
@@ -100,9 +100,9 @@ for UI + auditability.
 ### 6.3 Failure Handling
 
 - If a step fails:
-  - mark step `failed`
-  - propagate to dependent steps (skip or block)
-  - emit `error` + `step_complete` with `status: failed`
+    - mark step `failed`
+    - propagate to dependent steps (skip or block)
+    - emit `error` + `step_complete` with `status: failed`
 - Planner may choose to regenerate a fallback step **within the same stage**.
 
 ---
@@ -148,11 +148,13 @@ Agent state **must** update asynchronously and never block execution.
 ## 9. Example Plan
 
 Stage 1 (parallel research):
+
 - Research market trends
 - Research competitors
 - Review user interviews
 
 Stage 2 (sequence synthesis):
+
 - Draft findings summary
 - Draft spec
 - Edit spec
