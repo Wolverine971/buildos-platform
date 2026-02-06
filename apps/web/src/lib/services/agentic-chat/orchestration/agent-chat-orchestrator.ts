@@ -885,6 +885,10 @@ export class AgentChatOrchestrator {
 						);
 						pendingToolCalls.push(enrichedToolCall);
 						yield { type: 'tool_call', toolCall: enrichedToolCall };
+						const opEvent = this.buildOperationEventFromToolCall(enrichedToolCall, 'start');
+						if (opEvent) {
+							yield opEvent;
+						}
 					} else if (chunk.type === 'done') {
 						if (chunk.usage?.total_tokens) {
 							lastUsage = { total_tokens: chunk.usage.total_tokens };
@@ -975,6 +979,14 @@ export class AgentChatOrchestrator {
 				}
 
 				yield { type: 'tool_result', result };
+				const opEvent = this.buildOperationEventFromToolCall(
+					toolCall,
+					result.success ? 'success' : 'error',
+					result
+				);
+				if (opEvent) {
+					yield opEvent;
+				}
 
 				// Type-safe context shift extraction
 				const contextShift = extractContextShift(result);
@@ -1970,6 +1982,203 @@ export class AgentChatOrchestrator {
 			return;
 		}
 		streamEvents.push(event);
+	}
+
+	private buildOperationEventFromToolCall(
+		toolCall: ChatToolCall,
+		status: 'start' | 'success' | 'error',
+		result?: ToolExecutionResult
+	): StreamEvent | null {
+		const toolName = toolCall?.function?.name;
+		if (!toolName) return null;
+
+		const args = this.safeParseToolArgs(toolCall?.function?.arguments);
+		const action = this.resolveOperationAction(toolName);
+		const entityType = this.resolveOperationEntityType(toolName);
+
+		if (!action || !entityType) return null;
+
+		const entityName =
+			this.resolveOperationName(args) ??
+			this.resolveOperationNameFromResult(result) ??
+			this.fallbackEntityLabel(entityType, action);
+
+		if (!entityName) return null;
+
+		const entityId = this.resolveOperationEntityId(args);
+
+		return {
+			type: 'operation',
+			operation: {
+				action,
+				entity_type: entityType,
+				entity_name: entityName,
+				status,
+				...(entityId ? { entity_id: entityId } : {})
+			}
+		};
+	}
+
+	private safeParseToolArgs(rawArgs: string | null | undefined): Record<string, any> | undefined {
+		if (!rawArgs || typeof rawArgs !== 'string') return undefined;
+		try {
+			return JSON.parse(rawArgs) as Record<string, any>;
+		} catch {
+			return undefined;
+		}
+	}
+
+	private resolveOperationAction(
+		toolName: string
+	): 'list' | 'search' | 'read' | 'create' | 'update' | 'delete' | null {
+		if (toolName.startsWith('list_')) return 'list';
+		if (toolName.startsWith('search_')) return 'search';
+		if (toolName.startsWith('get_')) return 'read';
+		if (toolName.startsWith('create_')) return 'create';
+		if (toolName.startsWith('update_')) return 'update';
+		if (toolName.startsWith('delete_')) return 'delete';
+		if (toolName === 'move_document') return 'update';
+		return null;
+	}
+
+	private resolveOperationEntityType(
+		toolName: string
+	):
+		| 'document'
+		| 'task'
+		| 'goal'
+		| 'plan'
+		| 'project'
+		| 'milestone'
+		| 'risk'
+		| 'requirement'
+		| null {
+		const match = toolName.match(
+			/(?:list|search|get|create|update|delete)_onto_([a-z_]+?)(?:_details)?$/
+		);
+		const raw = match?.[1];
+		if (!raw) {
+			if (toolName.startsWith('get_document_') || toolName === 'move_document') {
+				return 'document';
+			}
+			return null;
+		}
+
+		const map: Record<string, string> = {
+			projects: 'project',
+			project: 'project',
+			tasks: 'task',
+			task: 'task',
+			goals: 'goal',
+			goal: 'goal',
+			plans: 'plan',
+			plan: 'plan',
+			documents: 'document',
+			document: 'document',
+			milestones: 'milestone',
+			milestone: 'milestone',
+			risks: 'risk',
+			risk: 'risk',
+			requirements: 'requirement',
+			requirement: 'requirement'
+		};
+
+		const resolved = map[raw];
+		return resolved
+			? (resolved as
+					| 'document'
+					| 'task'
+					| 'goal'
+					| 'plan'
+					| 'project'
+					| 'milestone'
+					| 'risk'
+					| 'requirement')
+			: null;
+	}
+
+	private resolveOperationName(args?: Record<string, any>): string | undefined {
+		if (!args) return undefined;
+		const keys = [
+			'title',
+			'name',
+			'document_title',
+			'task_title',
+			'goal_name',
+			'plan_name',
+			'project_name',
+			'milestone_title',
+			'risk_title',
+			'requirement_text'
+		];
+		for (const key of keys) {
+			const value = args[key];
+			if (typeof value === 'string' && value.trim().length > 0) {
+				return value.trim();
+			}
+		}
+		return undefined;
+	}
+
+	private resolveOperationNameFromResult(result?: ToolExecutionResult): string | undefined {
+		const data = result?.data as Record<string, any> | null | undefined;
+		if (!data || typeof data !== 'object') return undefined;
+		const entity =
+			data.document ??
+			data.task ??
+			data.goal ??
+			data.plan ??
+			data.project ??
+			data.milestone ??
+			data.risk ??
+			data.requirement;
+		if (entity && typeof entity === 'object') {
+			const title = (entity as Record<string, any>).title ?? (entity as Record<string, any>).name;
+			if (typeof title === 'string' && title.trim().length > 0) {
+				return title.trim();
+			}
+		}
+		return undefined;
+	}
+
+	private resolveOperationEntityId(args?: Record<string, any>): string | undefined {
+		if (!args) return undefined;
+		const keys = [
+			'document_id',
+			'task_id',
+			'goal_id',
+			'plan_id',
+			'project_id',
+			'milestone_id',
+			'risk_id',
+			'requirement_id',
+			'entity_id'
+		];
+		for (const key of keys) {
+			const value = args[key];
+			if (typeof value === 'string' && value.trim().length > 0) {
+				return value;
+			}
+		}
+		return undefined;
+	}
+
+	private fallbackEntityLabel(
+		entityType:
+			| 'document'
+			| 'task'
+			| 'goal'
+			| 'plan'
+			| 'project'
+			| 'milestone'
+			| 'risk'
+			| 'requirement',
+		action: 'list' | 'search' | 'read' | 'create' | 'update' | 'delete'
+	): string {
+		if (action === 'list' || action === 'search') {
+			return `${entityType}s`;
+		}
+		return entityType;
 	}
 
 	private buildAgentStateEvent(

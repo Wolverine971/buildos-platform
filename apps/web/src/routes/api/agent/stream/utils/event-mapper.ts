@@ -149,6 +149,14 @@ const EVENT_MAPPERS: EventMapperRegistry = {
 		};
 	},
 
+	operation: (event) => {
+		const e = event as Extract<StreamEvent, { type: 'operation' }>;
+		return {
+			type: 'operation',
+			operation: e.operation
+		};
+	},
+
 	done: (event) => ({
 		type: 'done',
 		usage: (event as Extract<StreamEvent, { type: 'done' }>).usage

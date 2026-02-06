@@ -10,9 +10,11 @@ import type {
 	ProjectFocus,
 	OntologyEntityType,
 	ProjectHighlights,
-	DocumentTreeContext
+	DocumentTreeContext,
+	DocStructureCache
 } from '$lib/types/agent-chat-enhancement';
 import type { FormattedContextResult } from './types';
+import type { DocStructure, DocTreeNode } from '$lib/types/onto-api';
 
 const truncateText = (value: string | null | undefined, limit: number): string | null => {
 	if (!value) return null;
@@ -27,6 +29,11 @@ const formatDateShort = (value?: string | null): string | null => {
 };
 
 type DocumentTreeNode = DocumentTreeContext['root'][number];
+type DocStructureContext = {
+	structure: DocStructure;
+	documents: DocStructureCache['documents'];
+	unlinked?: string[];
+};
 
 function findDocumentNodeWithPath(
 	nodes: DocumentTreeNode[],
@@ -90,13 +97,16 @@ function formatDocumentFocusDetails(
 /**
  * Format ontology context for inclusion in prompt
  */
-export function formatOntologyContext(ontology: OntologyContext): FormattedContextResult {
+export function formatOntologyContext(
+	ontology: OntologyContext,
+	options?: { docStructureCache?: DocStructureCache }
+): FormattedContextResult {
 	let content = `## Context Overview (Internal Reference - ${ontology.type})\n\n`;
 
 	if (ontology.type === 'project') {
-		content += formatProjectContext(ontology);
+		content += formatProjectContext(ontology, options?.docStructureCache);
 	} else if (ontology.type === 'element') {
-		content += formatElementContext(ontology);
+		content += formatElementContext(ontology, options?.docStructureCache);
 	} else if (ontology.type === 'global') {
 		content += formatGlobalContext(ontology);
 	}
@@ -112,7 +122,8 @@ export function formatOntologyContext(ontology: OntologyContext): FormattedConte
  */
 export function formatCombinedContext(
 	ontology: OntologyContext,
-	focus: ProjectFocus
+	focus: ProjectFocus,
+	options?: { docStructureCache?: DocStructureCache }
 ): FormattedContextResult {
 	const project = ontology.entities.project;
 	const element =
@@ -207,15 +218,20 @@ ${propKeys.map((key) => `- ${key}: ${JSON.stringify(elementProps[key])}`).join('
 
 	const focusDocDetails =
 		focus.focusType === 'document'
-			? formatDocumentFocusDetails(ontology.metadata?.document_tree, focus.focusEntityId)
+			? formatDocumentFocusDetailsFromStructure(
+					options?.docStructureCache,
+					ontology.metadata?.doc_structure,
+					focus.focusEntityId
+				)
 			: '';
 	if (focusDocDetails) {
 		sections.push(focusDocDetails);
 	}
 
-	const documentTree = formatDocumentTreePreview(ontology.metadata?.document_tree);
-	if (documentTree) {
-		sections.push(documentTree);
+	const docStructureContext = buildDocStructureContext(ontology, options?.docStructureCache);
+	const docStructureSection = formatDocStructurePreview(docStructureContext);
+	if (docStructureSection) {
+		sections.push(docStructureSection);
 	}
 
 	sections.push(
@@ -406,7 +422,10 @@ function buildEntityDetailLines(
 // PRIVATE FORMATTERS
 // ============================================
 
-function formatProjectContext(ontology: OntologyContext): string {
+function formatProjectContext(
+	ontology: OntologyContext,
+	docStructureCache?: DocStructureCache
+): string {
 	const project = ontology.entities.project;
 	const sections: string[] = [];
 	const description = truncateText(project?.description ?? null, 150);
@@ -452,9 +471,10 @@ function formatProjectContext(ontology: OntologyContext): string {
 		);
 	}
 
-	const documentTree = formatDocumentTreePreview(ontology.metadata?.document_tree);
-	if (documentTree) {
-		sections.push(documentTree);
+	const docStructureContext = buildDocStructureContext(ontology, docStructureCache);
+	const docStructureSection = formatDocStructurePreview(docStructureContext);
+	if (docStructureSection) {
+		sections.push(docStructureSection);
 	}
 
 	sections.push(`### Entity Summary
@@ -489,7 +509,10 @@ ${(ontology?.relationships?.edges?.length ?? 0) > 5 ? `... and ${(ontology?.rela
 	return sections.join('\n\n');
 }
 
-function formatElementContext(ontology: OntologyContext): string {
+function formatElementContext(
+	ontology: OntologyContext,
+	docStructureCache?: DocStructureCache
+): string {
 	const elementType = ontology.scope?.focus?.type ?? detectElementType(ontology);
 	const elem = getScopedEntity(ontology, elementType);
 	const parentProject = ontology.entities.project;
@@ -535,15 +558,20 @@ ${
 
 	const focusDocDetails =
 		elementType === 'document'
-			? formatDocumentFocusDetails(ontology.metadata?.document_tree, elem?.id ?? null)
+			? formatDocumentFocusDetailsFromStructure(
+					docStructureCache,
+					ontology.metadata?.doc_structure,
+					elem?.id ?? null
+				)
 			: '';
 	if (focusDocDetails) {
 		sections.push(focusDocDetails);
 	}
 
-	const documentTree = formatDocumentTreePreview(ontology.metadata?.document_tree);
-	if (documentTree) {
-		sections.push(documentTree);
+	const docStructureContext = buildDocStructureContext(ontology, docStructureCache);
+	const docStructureSection = formatDocStructurePreview(docStructureContext);
+	if (docStructureSection) {
+		sections.push(docStructureSection);
 	}
 
 	sections.push(`### Hints
@@ -631,6 +659,220 @@ function formatDocumentTreePreview(tree?: DocumentTreeContext): string {
 	}
 
 	return lines.join('\n');
+}
+
+function buildDocStructureContext(
+	ontology: OntologyContext,
+	cache?: DocStructureCache
+): DocStructureContext | null {
+	const structure = cache?.structure ?? ontology.metadata?.doc_structure;
+	if (!structure) return null;
+
+	const documents =
+		cache?.documents ??
+		buildDocStructureDocumentMap(
+			Array.isArray(ontology.entities.documents) ? ontology.entities.documents : undefined
+		);
+
+	return {
+		structure,
+		documents,
+		unlinked: cache?.unlinked
+	};
+}
+
+function buildDocStructureDocumentMap(
+	documents: Array<Record<string, any>> | undefined
+): DocStructureCache['documents'] {
+	if (!documents || documents.length === 0) return {};
+
+	const map: DocStructureCache['documents'] = {};
+	for (const doc of documents) {
+		if (!doc?.id) continue;
+		const props = (doc.props as Record<string, unknown> | null) ?? null;
+		const contentLength =
+			typeof doc.content === 'string'
+				? doc.content.length
+				: typeof props?.content_length === 'number'
+					? (props.content_length as number)
+					: typeof (props as any)?.contentLength === 'number'
+						? ((props as any).contentLength as number)
+						: null;
+
+		map[doc.id] = {
+			id: doc.id,
+			title: doc.title ?? 'Untitled',
+			description: doc.description ?? null,
+			type_key: doc.type_key ?? null,
+			state_key: doc.state_key ?? null,
+			updated_at: doc.updated_at ?? null,
+			content_length: contentLength
+		};
+	}
+
+	return map;
+}
+
+function formatDocStructurePreview(context?: DocStructureContext | null): string {
+	if (!context) return '';
+	const { structure, documents } = context;
+
+	const totalNodes = countDocStructureNodes(structure.root ?? []);
+	const preview = buildDocStructurePreview(structure, documents);
+
+	const payload = {
+		version: preview.version,
+		total_nodes: totalNodes,
+		truncated: preview.truncated || undefined,
+		root: preview.root,
+		unlinked:
+			context.unlinked && context.unlinked.length > 0
+				? context.unlinked
+						.map((id) => ({
+							id,
+							title: documents[id]?.title ?? 'Untitled'
+						}))
+						.slice(0, 10)
+				: undefined
+	};
+
+	const lines: string[] = [];
+	lines.push('### Doc Structure (JSON)');
+	lines.push('```json');
+	lines.push(JSON.stringify(payload, null, 2));
+	lines.push('```');
+	lines.push('- Use doc_structure for hierarchy; load specific docs as needed.');
+	return lines.join('\n');
+}
+
+function formatDocumentFocusDetailsFromStructure(
+	cache: DocStructureCache | undefined,
+	docStructure: DocStructure | undefined,
+	documentId?: string | null
+): string | null {
+	if (!documentId) return null;
+	const structure = cache?.structure ?? docStructure;
+	if (!structure) return null;
+
+	const documents = cache?.documents ?? {};
+	const found = findDocNodeWithPath(structure.root ?? [], documentId);
+	if (!found) {
+		return `### Document Tree Focus
+- Document not found in doc_structure.
+- Use get_document_path or get_document_tree for the complete structure.`;
+	}
+
+	const pathTitles = found.path
+		.map((node) => documents[node.id]?.title ?? 'Untitled')
+		.concat(documents[found.node.id]?.title ?? 'Untitled');
+
+	const lines: string[] = [];
+	lines.push('### Document Tree Focus');
+	lines.push(`- Path: ${pathTitles.join(' > ') || 'Unknown path'}`);
+	lines.push(`- Document ID: ${found.node.id}`);
+
+	const children = found.node.children ?? [];
+	if (children.length > 0) {
+		lines.push(`- Children (preview): ${Math.min(children.length, 6)}`);
+		children.slice(0, 6).forEach((child) => {
+			const title = documents[child.id]?.title ?? 'Untitled';
+			lines.push(`- ${title} [${child.id}]`);
+		});
+		if (children.length > 6) {
+			lines.push(`- ...and ${children.length - 6} more`);
+		}
+	} else {
+		lines.push('- Children: none');
+	}
+
+	return lines.join('\n');
+}
+
+function buildDocStructurePreview(
+	structure: DocStructure,
+	documents: DocStructureCache['documents']
+): { version: number; root: Array<Record<string, any>>; truncated: boolean } {
+	const maxNodes = 80;
+	const maxDepth = 4;
+	let rendered = 0;
+	let truncated = false;
+
+	const walk = (nodes: DocTreeNode[], depth: number): Array<Record<string, any>> => {
+		if (depth > maxDepth) {
+			truncated = true;
+			return [];
+		}
+
+		const sorted = [...nodes].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+		const results: Array<Record<string, any>> = [];
+
+		for (const node of sorted) {
+			if (rendered >= maxNodes) {
+				truncated = true;
+				break;
+			}
+			rendered += 1;
+
+			const meta = documents[node.id];
+			const entry: Record<string, any> = {
+				id: node.id,
+				order: node.order ?? 0,
+				title: meta?.title ?? 'Untitled',
+				description: meta?.description ?? null,
+				content_length: meta?.content_length ?? null
+			};
+
+			if (node.children && node.children.length > 0) {
+				const children = walk(node.children, depth + 1);
+				if (children.length > 0) {
+					entry.children = children;
+				} else if (node.children.length > 0) {
+					truncated = true;
+				}
+			}
+
+			results.push(entry);
+		}
+
+		return results;
+	};
+
+	return {
+		version: structure.version ?? 1,
+		root: walk(structure.root ?? [], 0),
+		truncated
+	};
+}
+
+function countDocStructureNodes(nodes: DocTreeNode[]): number {
+	let count = 0;
+	const walk = (list: DocTreeNode[]) => {
+		for (const node of list) {
+			count += 1;
+			if (node.children && node.children.length > 0) {
+				walk(node.children);
+			}
+		}
+	};
+	walk(nodes);
+	return count;
+}
+
+function findDocNodeWithPath(
+	nodes: DocTreeNode[],
+	targetId: string,
+	path: DocTreeNode[] = []
+): { node: DocTreeNode; path: DocTreeNode[] } | null {
+	for (const node of nodes) {
+		if (node.id === targetId) {
+			return { node, path };
+		}
+		if (node.children && node.children.length > 0) {
+			const found = findDocNodeWithPath(node.children, targetId, [...path, node]);
+			if (found) return found;
+		}
+	}
+	return null;
 }
 
 function formatProjectHighlights(highlights?: ProjectHighlights): string {

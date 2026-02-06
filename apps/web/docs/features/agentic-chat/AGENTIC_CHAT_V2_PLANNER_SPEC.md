@@ -88,9 +88,13 @@ The planner must:
   - `mode: sequence` → run steps in order
 - A step is eligible to run only when **all `inputs` are complete**.
 
+**Implementation note:** The runtime derives stages from `dependsOn` and annotates
+each step with `metadata.stageId`, `metadata.stageIndex`, and `metadata.stageMode`
+for UI + auditability.
+
 ### 6.2 Concurrency Controls
 
-- Global cap per turn (e.g., 3–5 concurrent executor runs).
+- Global cap per turn (default: **5** concurrent steps/executors).
 - Per-tool cap to prevent overload (e.g., 1 web search at a time).
 
 ### 6.3 Failure Handling

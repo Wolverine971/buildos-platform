@@ -8,6 +8,7 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { normalizeContextType } from '../../../routes/api/agent/stream/utils/context-utils';
 
 export const CONTEXT_PREWARM_TTL_MS = 5 * 60 * 1000;
+export const DOC_STRUCTURE_CACHE_TTL_MS = 2 * 60 * 1000;
 
 export function isCacheFresh(loadedAt?: number, ttlMs: number = CONTEXT_PREWARM_TTL_MS): boolean {
 	if (!loadedAt) return false;
@@ -24,4 +25,8 @@ export function buildLinkedEntitiesCacheKey(focus?: ProjectFocus | null): string
 		return null;
 	}
 	return `linked:${focus.projectId}:${focus.focusType}:${focus.focusEntityId}`;
+}
+
+export function buildDocStructureCacheKey(projectId: string): string {
+	return `doc_structure:${projectId}`;
 }

@@ -28,7 +28,9 @@ import type {
 	OntologyContext,
 	LastTurnContext,
 	LocationContextCache,
-	LinkedEntitiesCache
+	LinkedEntitiesCache,
+	AgentState,
+	DocStructureCache
 } from '$lib/types/agent-chat-enhancement';
 
 // Import types that already exist - don't recreate them
@@ -71,6 +73,10 @@ export interface AgentSessionMetadata {
 	locationContextCache?: LocationContextCache;
 	/** Cached linked-entities context for focused entities */
 	linkedEntitiesCache?: LinkedEntitiesCache;
+	/** Cached document structure + metadata (short TTL) */
+	docStructureCache?: DocStructureCache;
+	/** Structured agent state (session-scoped) */
+	agent_state?: AgentState;
 	/** Metadata for project creation clarification rounds */
 	projectClarification?: ProjectClarificationMetadata;
 	/** Last context usage snapshot */
@@ -78,6 +84,7 @@ export interface AgentSessionMetadata {
 	/** Allow additional metadata fields */
 	[key: string]: unknown;
 }
+
 
 /**
  * Parsed and validated stream request from POST body.
@@ -241,4 +248,4 @@ export interface RateLimitState {
 // Re-export commonly used shared types to reduce import verbosity
 export type { ProjectClarificationMetadata };
 export type { ChatContextType, ChatSession, ChatMessage, ChatToolCall, ProjectFocus };
-export type { OntologyContext, LastTurnContext };
+export type { OntologyContext, LastTurnContext, DocStructureCache };

@@ -1735,6 +1735,45 @@
 		return ` - ${errorMessage}`;
 	}
 
+	function capitalizeWord(value: string): string {
+		if (!value) return value;
+		return value.charAt(0).toUpperCase() + value.slice(1);
+	}
+
+	const OPERATION_VERBS: Record<string, { present: string; past: string }> = {
+		list: { present: 'Listing', past: 'Listed' },
+		search: { present: 'Searching', past: 'Searched' },
+		read: { present: 'Reading', past: 'Read' },
+		create: { present: 'Creating', past: 'Created' },
+		update: { present: 'Updating', past: 'Updated' },
+		delete: { present: 'Deleting', past: 'Deleted' }
+	};
+
+	function formatOperationEvent(operation: Record<string, any>): {
+		message: string;
+		activityStatus: ActivityEntry['status'];
+	} {
+		const action = typeof operation?.action === 'string' ? operation.action : 'work';
+		const status = typeof operation?.status === 'string' ? operation.status : 'start';
+		const entityType =
+			typeof operation?.entity_type === 'string'
+				? operation.entity_type.replace(/_/g, ' ')
+				: 'item';
+		const entityName =
+			typeof operation?.entity_name === 'string' ? operation.entity_name.trim() : '';
+		const verbPair = OPERATION_VERBS[action] ?? {
+			present: capitalizeWord(action),
+			past: capitalizeWord(action)
+		};
+		const verb = status === 'success' ? verbPair.past : verbPair.present;
+		const message = entityName
+			? `${verb} ${entityType}: "${entityName}"`
+			: `${verb} ${entityType}`;
+		const activityStatus =
+			status === 'success' ? 'completed' : status === 'error' ? 'failed' : 'pending';
+		return { message, activityStatus };
+	}
+
 	/**
 	 * Formats a tool message based on tool name, arguments, and status
 	 */
@@ -2357,7 +2396,7 @@
 				ontologyEntityType = resolvedProjectFocus.focusType;
 			}
 
-			const response = await fetch('/api/agent/stream', {
+			const response = await fetch('/api/agent/v2/stream', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -2455,7 +2494,7 @@
 	}
 
 	function handleSSEMessage(event: AgentSSEMessage) {
-		if (event.type !== 'text') {
+		if (event.type !== 'text' && event.type !== 'text_delta') {
 			flushAssistantText();
 		}
 		switch (event.type) {
@@ -2722,6 +2761,7 @@
 				break;
 			}
 
+			case 'text_delta':
 			case 'text':
 				// Streaming text (could be from planner or executor)
 				if (event.content) {
@@ -2831,6 +2871,27 @@
 				}
 
 				recordDataMutation(resolvedToolName, resolvedArgs, success, toolResult);
+				break;
+			}
+
+			case 'operation': {
+				const operationPayload =
+					'operation' in event && event.operation ? event.operation : event;
+				const { message: operationMessage, activityStatus } =
+					formatOperationEvent(operationPayload as Record<string, any>);
+				addActivityToThinkingBlock(operationMessage, 'operation', {
+					operation: operationPayload
+				}, activityStatus);
+				break;
+			}
+
+			case 'entity_patch': {
+				if (dev) {
+					console.debug('[AgentChat] entity_patch received', event);
+				}
+				addActivityToThinkingBlock('State updated', 'operation', {
+					patch: (event as { patch?: unknown }).patch
+				});
 				break;
 			}
 			case 'context_shift': {

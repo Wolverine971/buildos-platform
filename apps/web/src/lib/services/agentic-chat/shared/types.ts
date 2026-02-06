@@ -355,6 +355,24 @@ export type StreamEvent =
 			details?: string;
 	  }
 	| {
+			type: 'operation';
+			operation: {
+				action: 'list' | 'search' | 'read' | 'create' | 'update' | 'delete';
+				entity_type:
+					| 'document'
+					| 'task'
+					| 'goal'
+					| 'plan'
+					| 'project'
+					| 'milestone'
+					| 'risk'
+					| 'requirement';
+				entity_name: string;
+				status: 'start' | 'success' | 'error';
+				entity_id?: string;
+			};
+	  }
+	| {
 			type: 'clarifying_questions';
 			questions: string[];
 			metadata?: ProjectClarificationMetadata;

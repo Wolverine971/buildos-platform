@@ -16,11 +16,14 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 import {
 	buildLinkedEntitiesCacheKey,
 	buildLocationCacheKey,
-	isCacheFresh
+	isCacheFresh,
+	buildDocStructureCacheKey,
+	DOC_STRUCTURE_CACHE_TTL_MS
 } from '$lib/services/agentic-chat/context-prewarm';
+import { getDocTree } from '$lib/services/ontology/doc-structure.service';
 import { normalizeContextType } from '../stream/utils/context-utils';
 import { createSessionManager } from '../stream/services';
-import type { AgentSessionMetadata } from '../stream/types';
+import type { AgentSessionMetadata, DocStructureCache } from '../stream/types';
 
 const logger = createLogger('API:AgentPrewarm');
 
@@ -127,7 +130,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	} else {
 		const { data: existing, error: sessionError } = await supabase
 			.from('chat_sessions')
-			.select('id, agent_metadata, context_type, entity_id')
+			.select('*')
 			.eq('id', session_id)
 			.eq('user_id', userId)
 			.single();
@@ -152,6 +155,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 	const locationCacheKey = buildLocationCacheKey(normalizedContextType, resolvedEntityId);
 	const linkedEntitiesCacheKey = buildLinkedEntitiesCacheKey(resolvedFocus);
+	const docStructureProjectId =
+		resolvedFocus?.projectId ?? (requiresEntityId ? resolvedEntityId ?? null : null);
+	const docStructureCacheKey = docStructureProjectId
+		? buildDocStructureCacheKey(docStructureProjectId)
+		: null;
 
 	let shouldWarmLocation = !requiresEntityId || !!resolvedEntityId;
 	let locationSkipReason: string | null = null;
@@ -182,6 +190,22 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		linkedEntitiesCacheKey &&
 		metadata.linkedEntitiesCache?.cacheKey === linkedEntitiesCacheKey &&
 		isCacheFresh(metadata.linkedEntitiesCache.loadedAt);
+
+	const hasFreshDocStructureCache =
+		docStructureCacheKey &&
+		metadata.docStructureCache?.cacheKey === docStructureCacheKey &&
+		isCacheFresh(metadata.docStructureCache.loadedAt, DOC_STRUCTURE_CACHE_TTL_MS);
+	if (hasFreshDocStructureCache) {
+		logger.debug('Doc structure cache hit', {
+			projectId: docStructureProjectId ?? resolvedEntityId ?? null,
+			cacheKey: docStructureCacheKey
+		});
+	} else if (docStructureCacheKey && docStructureProjectId) {
+		logger.debug('Doc structure cache miss', {
+			projectId: docStructureProjectId,
+			cacheKey: docStructureCacheKey
+		});
+	}
 
 	const locationPromise =
 		shouldWarmLocation && !hasFreshLocationCache
@@ -221,9 +245,69 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					})
 			: null;
 
-	const [locationContext, linkedEntitiesContext] = await Promise.all([
+	const docStructurePromise =
+		docStructureCacheKey && !hasFreshDocStructureCache && docStructureProjectId
+			? (async (): Promise<DocStructureCache | null> => {
+					try {
+						const { data: project } = await supabase
+							.from('onto_projects')
+							.select('id')
+							.eq('id', docStructureProjectId)
+							.eq('created_by', actorId)
+							.maybeSingle();
+
+						if (!project?.id) {
+							return null;
+						}
+
+						const tree = await getDocTree(supabase, docStructureProjectId, {
+							includeContent: false
+						});
+						const documents: DocStructureCache['documents'] = {};
+
+						Object.values(tree.documents || {}).forEach((doc: any) => {
+							if (!doc?.id) return;
+							const props = (doc.props as Record<string, unknown> | null) ?? null;
+							const contentLength =
+								typeof props?.content_length === 'number'
+									? (props.content_length as number)
+									: typeof (props as any)?.contentLength === 'number'
+										? ((props as any).contentLength as number)
+										: null;
+
+							documents[doc.id] = {
+								id: doc.id,
+								title: doc.title,
+								description: doc.description ?? null,
+								type_key: doc.type_key ?? null,
+								state_key: doc.state_key ?? null,
+								updated_at: doc.updated_at ?? null,
+								content_length: contentLength
+							};
+						});
+
+						return {
+							cacheKey: docStructureCacheKey,
+							loadedAt: Date.now(),
+							projectId: docStructureProjectId,
+							structure: tree.structure,
+							documents,
+							unlinked: (tree.unlinked || []).map((doc: any) => doc.id)
+						};
+					} catch (error) {
+						logger.warn('Doc structure prewarm failed', {
+							error,
+							projectId: resolvedEntityId
+						});
+						return null;
+					}
+				})()
+			: null;
+
+	const [locationContext, linkedEntitiesContext, docStructureCache] = await Promise.all([
 		locationPromise,
-		linkedEntitiesPromise
+		linkedEntitiesPromise,
+		docStructurePromise
 	]);
 
 	let updated = false;
@@ -244,6 +328,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			loadedAt: Date.now(),
 			context: linkedEntitiesContext
 		};
+		updated = true;
+	}
+
+	if (docStructureCache && docStructureCacheKey && !hasFreshDocStructureCache) {
+		metadata.docStructureCache = docStructureCache;
 		updated = true;
 	}
 

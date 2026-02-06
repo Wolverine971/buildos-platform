@@ -517,9 +517,116 @@ export interface LinkedEntitiesCache {
 	context: EntityLinkedContext;
 }
 
+export interface DocStructureCache {
+	cacheKey: string;
+	loadedAt: number;
+	projectId: string;
+	structure: DocStructure;
+	documents: Record<
+		string,
+		{
+			id: string;
+			title: string;
+			description?: string | null;
+			type_key?: string | null;
+			state_key?: string | null;
+			updated_at?: string | null;
+			content_length?: number | null;
+		}
+	>;
+	unlinked?: string[];
+}
+
 export interface ContextCacheHint {
 	location?: LocationContextCache;
 	linkedEntities?: LinkedEntitiesCache;
+	docStructure?: DocStructureCache;
+}
+
+// ============================================
+// AGENT STATE (SESSION-SCOPED)
+// ============================================
+
+export interface AgentStateItem {
+	id: string;
+	kind: 'task' | 'doc' | 'note' | 'idea' | 'question';
+	title: string;
+	details?: string;
+	status: 'active' | 'resolved' | 'discarded';
+	relatedEntityIds?: string[];
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface AgentState {
+	sessionId: string;
+	current_understanding: {
+		entities: Array<{ id: string; kind: string; name?: string }>;
+		dependencies: Array<{ from: string; to: string; rel?: string }>;
+	};
+	assumptions: Array<{
+		id: string;
+		hypothesis: string;
+		confidence: number;
+		evidence?: string[];
+	}>;
+	expectations: Array<{
+		id?: string;
+		action: string;
+		expected_outcome: string;
+		expected_ids?: string[];
+		expected_type?: string;
+		expected_count?: number;
+		invariant?: string;
+		status?: 'pending' | 'confirmed' | 'failed';
+		last_checked_at?: string;
+	}>;
+	tentative_hypotheses: Array<{
+		id: string;
+		hypothesis: string;
+		reason?: string;
+	}>;
+	items: AgentStateItem[];
+	lastSummarizedAt?: string;
+}
+
+export type AgentStateItemUpdate =
+	| { op: 'add'; item: AgentStateItem }
+	| { op: 'update'; id: string; patch: Partial<AgentStateItem> }
+	| { op: 'remove'; id: string };
+
+export interface AgentStateUpdate {
+	current_understanding?: {
+		entities?: Array<{ id: string; kind: string; name?: string }>;
+		dependencies?: Array<{ from: string; to: string; rel?: string }>;
+	};
+	assumptions?: Array<{
+		id?: string;
+		hypothesis: string;
+		confidence?: number;
+		evidence?: string[];
+	}>;
+	expectations?: Array<{
+		id?: string;
+		action: string;
+		expected_outcome: string;
+		expected_ids?: string[];
+		expected_type?: string;
+		expected_count?: number;
+		invariant?: string;
+		status?: 'pending' | 'confirmed' | 'failed';
+		last_checked_at?: string;
+	}>;
+	tentative_hypotheses?: Array<{
+		id?: string;
+		hypothesis: string;
+		reason?: string;
+	}>;
+}
+
+export interface AgentStateDelta {
+	agent_state_item_updates?: AgentStateItemUpdate[];
+	agent_state_updates?: AgentStateUpdate;
 }
 
 export interface EnhancedBuildPlannerContextParams {

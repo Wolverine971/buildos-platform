@@ -14,6 +14,7 @@ export type ActivityType =
 	| 'context_shift'
 	| 'ontology_loaded'
 	| 'clarification'
+	| 'operation'
 	| 'general';
 
 export interface ActivityEntry {

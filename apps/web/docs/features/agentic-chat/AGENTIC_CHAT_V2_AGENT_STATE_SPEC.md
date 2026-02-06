@@ -63,6 +63,9 @@ type AgentState = {
     id?: string;
     action: string;
     expected_outcome: string;
+    expected_ids?: string[];
+    expected_type?: string;
+    expected_count?: number;
     invariant?: string;
     status?: 'pending' | 'confirmed' | 'failed';
     last_checked_at?: string;
@@ -157,7 +160,47 @@ This is intentionally lightweight and does **not** require extra tool calls.
 
 ---
 
-## 7. State Delta Schema
+## 7. Event Note (Expectation Verification)
+
+Expectation verification emits updates via the existing `agent_state_update`
+channel. A separate `expectation_verified` event is **not required**.
+
+If needed later, `expectation_verified` can be derived from:
+
+- expectation status change (`pending` → `confirmed` / `failed`)
+- the associated tool result
+
+---
+
+## 8. Deterministic Matcher (doesOutcomeMatch)
+
+Use a minimal, deterministic matcher to avoid LLM overhead:
+
+1. **Exact ID match:** if expectation references entity IDs, require those IDs in tool result.
+2. **Type match:** if expectation specifies an entity type, ensure tool result contains that type.
+3. **Count match:** if expectation specifies a count (e.g., “create 2 tasks”), compare counts.
+4. **Fallback:** if no structured fields are available, skip verification (do not guess).
+
+Pseudo:
+
+```ts
+function doesOutcomeMatch(expectation: Expectation, toolResult: ToolResult): boolean {
+  if (expectation.expected_ids?.length) {
+    return expectation.expected_ids.every((id) => toolResult.ids?.includes(id));
+  }
+  if (expectation.expected_type) {
+    return toolResult.types?.includes(expectation.expected_type);
+  }
+  if (typeof expectation.expected_count === 'number') {
+    return (toolResult.count ?? 0) === expectation.expected_count;
+  }
+  return false; // insufficient structure
+}
+```
+
+---
+
+## 9. State Delta Schema
 
 ```ts
 type AgentStateItemUpdate =
@@ -180,6 +223,9 @@ type AgentStateUpdate = {
     id?: string;
     action: string;
     expected_outcome: string;
+    expected_ids?: string[];
+    expected_type?: string;
+    expected_count?: number;
     invariant?: string;
     status?: 'pending' | 'confirmed' | 'failed';
     last_checked_at?: string;
@@ -194,7 +240,7 @@ type AgentStateUpdate = {
 
 ---
 
-## 8. Summarizer Prompt Snippet
+## 10. Summarizer Prompt Snippet
 
 ```
 You are updating the agent_state for a BuildOS chat.
@@ -216,7 +262,7 @@ Output JSON:
 
 ---
 
-## 9. Integration Points
+## 11. Integration Points
 
 - **ContextPack** includes `agentState`.
 - Planner reads agent state before planning.
@@ -225,7 +271,7 @@ Output JSON:
 
 ---
 
-## 10. Open Questions
+## 12. Open Questions
 
 **Decisions (2026-02-05):**
 

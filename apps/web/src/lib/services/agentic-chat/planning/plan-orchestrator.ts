@@ -153,7 +153,7 @@ export class PlanOrchestrator implements BaseService {
 		'create_onto_plan',
 		'update_onto_project'
 	]);
-	private static readonly DEFAULT_STEP_CONCURRENCY = 3;
+	private static readonly DEFAULT_STEP_CONCURRENCY = 5;
 	private toolExecutionService: ToolExecutionService;
 
 	constructor(
@@ -576,6 +576,7 @@ export class PlanOrchestrator implements BaseService {
 
 		// Get execution groups (topologically sorted by dependencies)
 		const executionGroups = this.getParallelExecutionGroups(plan);
+		this.annotateStageMetadata(plan, executionGroups);
 
 		if (executionGroups.length === 0 && plan.steps.length > 0) {
 			// Circular dependency detected
@@ -722,6 +723,8 @@ export class PlanOrchestrator implements BaseService {
 						stepDescription: fatalError.step?.description
 					});
 				}
+
+				await this.yieldToEventLoop();
 			}
 
 			// Mark plan as completed (even if some non-critical steps failed)
@@ -940,6 +943,37 @@ export class PlanOrchestrator implements BaseService {
 		return groups;
 	}
 
+	private annotateStageMetadata(plan: AgentPlan, groups: number[][]): void {
+		if (!plan.steps || plan.steps.length === 0) return;
+		if (!groups || groups.length === 0) return;
+
+		for (let stageIndex = 0; stageIndex < groups.length; stageIndex++) {
+			const group = groups[stageIndex];
+			if (!group || group.length === 0) continue;
+
+			const stageId = `stage-${stageIndex + 1}`;
+			const stageMode = group.length > 1 ? 'parallel' : 'sequence';
+
+			for (let stepOffset = 0; stepOffset < group.length; stepOffset++) {
+				const stepNumber = group[stepOffset];
+				const step = plan.steps.find((entry) => entry.stepNumber === stepNumber);
+				if (!step) continue;
+				step.metadata = {
+					...(step.metadata ?? {}),
+					stageId,
+					stageIndex,
+					stageMode,
+					stageStepIndex: stepOffset,
+					stageSize: group.length
+				};
+			}
+		}
+	}
+
+	private async yieldToEventLoop(): Promise<void> {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	}
+
 	// ============================================
 	// PRIVATE HELPER METHODS
 	// ============================================
@@ -948,6 +982,12 @@ export class PlanOrchestrator implements BaseService {
 	 * Generate plan using LLM
 	 */
 	private static readonly PLAN_GENERATION_ATTEMPTS = 1;
+	private static readonly TOOL_CONCURRENCY_LIMITS: Record<string, number> = {
+		web_search: 1,
+		web_visit: 1,
+		get_document_tree: 1
+	};
+	private readonly toolConcurrency = new Map<string, { active: number; queue: Array<() => void> }>();
 
 	private async generatePlanWithLLM(
 		intent: PlanIntent,
@@ -1091,7 +1131,8 @@ Guidelines:
 - Mark steps as executorRequired only for complex analysis
 - For tools with required parameters, include them in metadata.toolArguments or metadata.arguments
 - Do not use empty strings or empty arrays as placeholders for required parameters; fetch or derive missing values first
-- Use dependencies to ensure proper execution order
+- Use dependencies only when a step truly requires outputs from another step
+- Leave dependsOn empty for independent steps so they can run in parallel
 - For planner_stream, target 3-5 steps and mark executorRequired only when parallel execution is needed
 - Keep each description under 200 characters and focus on actions, not final creative output
 - The response must be strict JSON without prose or markdown fences
@@ -1534,10 +1575,12 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 					};
 					emittedEvents.push(callEvent);
 
-					const toolResult = await this.toolExecutionService.executeTool(
-						toolCall,
-						context,
-						plannerContext.availableTools
+					const toolResult = await this.withToolConcurrency(toolName, () =>
+						this.toolExecutionService.executeTool(
+							toolCall,
+							context,
+							plannerContext.availableTools
+						)
 					);
 
 					const resultEvent: StreamEvent = {
@@ -1602,11 +1645,13 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 				});
 
 				const toolResults = await Promise.all(
-					toolCalls.map(({ toolCall }) =>
-						this.toolExecutionService.executeTool(
-							toolCall,
-							context,
-							plannerContext.availableTools
+					toolCalls.map(({ toolName, toolCall }) =>
+						this.withToolConcurrency(toolName, () =>
+							this.toolExecutionService.executeTool(
+								toolCall,
+								context,
+								plannerContext.availableTools
+							)
 						)
 					)
 				);
@@ -1667,6 +1712,64 @@ Return JSON: {"verdict":"approved|changes_requested|rejected","notes":"short exp
 		}
 
 		return !step.dependsOn || step.dependsOn.length === 0;
+	}
+
+	private getToolConcurrencyLimit(toolName: string): number | null {
+		const normalized = toolName.trim().toLowerCase();
+		const limit = PlanOrchestrator.TOOL_CONCURRENCY_LIMITS[normalized];
+		return typeof limit === 'number' && Number.isFinite(limit) && limit > 0 ? limit : null;
+	}
+
+	private async withToolConcurrency<T>(
+		toolName: string,
+		fn: () => Promise<T>
+	): Promise<T> {
+		const limit = this.getToolConcurrencyLimit(toolName);
+		if (!limit) {
+			return await fn();
+		}
+
+		const release = await this.acquireToolSlot(toolName, limit);
+		try {
+			return await fn();
+		} finally {
+			release();
+		}
+	}
+
+	private async acquireToolSlot(
+		toolName: string,
+		limit: number
+	): Promise<() => void> {
+		const key = toolName.trim().toLowerCase();
+		const entry =
+			this.toolConcurrency.get(key) ?? {
+				active: 0,
+				queue: []
+			};
+		this.toolConcurrency.set(key, entry);
+
+		if (entry.active < limit) {
+			entry.active += 1;
+			return () => this.releaseToolSlot(key);
+		}
+
+		await new Promise<void>((resolve) => {
+			entry.queue.push(resolve);
+		});
+
+		entry.active += 1;
+		return () => this.releaseToolSlot(key);
+	}
+
+	private releaseToolSlot(toolName: string): void {
+		const entry = this.toolConcurrency.get(toolName);
+		if (!entry) return;
+		entry.active = Math.max(0, entry.active - 1);
+		const next = entry.queue.shift();
+		if (next) {
+			next();
+		}
 	}
 
 	private tryParsePlanResponse(response: string): { steps: any[]; reasoning?: string } | null {

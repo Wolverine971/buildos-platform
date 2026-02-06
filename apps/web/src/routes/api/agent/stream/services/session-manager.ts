@@ -17,6 +17,7 @@ import type {
 import { ApiResponse } from '$lib/utils/api-response';
 import { createLogger } from '$lib/utils/logger';
 import type { AgentSessionMetadata, SessionResolutionResult, StreamRequest } from '../types';
+import type { AgentState } from '$lib/types/agent-chat-enhancement';
 import { RECENT_MESSAGE_LIMIT, DEFAULT_SESSION_TITLE, MAX_SESSIONS_LIST } from '../constants';
 import { normalizeProjectFocus, projectFocusEquals } from '../utils';
 
@@ -185,6 +186,46 @@ export class SessionManager {
 				hasOntologyCache: !!metadata.ontologyCache,
 				clarificationRound: metadata.projectClarification?.roundNumber
 			});
+		}
+	}
+
+	/**
+	 * Update only the agent_state portion of session metadata.
+	 * Uses a read-merge-write to avoid clobbering concurrent metadata updates.
+	 */
+	async updateSessionAgentState(sessionId: string, agentState: AgentState): Promise<void> {
+		const { data, error } = await (this.supabase as any)
+			.from('chat_sessions')
+			.select('agent_metadata')
+			.eq('id', sessionId)
+			.single();
+
+		if (error) {
+			logger.warn('Failed to load session metadata for agent state update', {
+				error,
+				sessionId
+			});
+			return;
+		}
+
+		const currentMetadata = (data?.agent_metadata as AgentSessionMetadata) ?? {};
+		const mergedMetadata: AgentSessionMetadata = {
+			...currentMetadata,
+			agent_state: agentState
+		};
+
+		const { error: updateError } = await (this.supabase as any)
+			.from('chat_sessions')
+			.update({ agent_metadata: mergedMetadata })
+			.eq('id', sessionId);
+
+		if (updateError) {
+			logger.warn('Failed to persist agent state update', {
+				error: updateError,
+				sessionId
+			});
+		} else {
+			logger.debug('Agent state updated', { sessionId });
 		}
 	}
 

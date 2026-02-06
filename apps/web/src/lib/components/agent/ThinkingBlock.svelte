@@ -108,6 +108,11 @@
 			color: 'text-amber-600 dark:text-amber-400',
 			prefix: 'CONTEXT'
 		},
+		operation: {
+			icon: '⚡',
+			color: 'text-sky-600 dark:text-sky-400',
+			prefix: 'OP'
+		},
 		ontology_loaded: {
 			icon: '📚',
 			color: 'text-indigo-600 dark:text-indigo-400',

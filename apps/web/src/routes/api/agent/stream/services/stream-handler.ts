@@ -7,7 +7,8 @@
  * CRITICAL STREAM GUARANTEES (from original implementation):
  * 1. `done` event is ALWAYS sent (on success AND error)
  * 2. `error` event ALWAYS precedes `done` (if error occurs)
- * 3. Metadata is persisted in a SINGLE write in the finally block
+ * 3. Stream-managed metadata is persisted in a SINGLE write in the finally block
+ *    (agent state reconciliation may issue a follow-up update after the stream closes)
  * 4. Stream is ALWAYS closed in finally block
  */
 
@@ -20,7 +21,11 @@ import type {
 	ProjectFocus,
 	AgentSSEMessage
 } from '@buildos/shared-types';
-import type { OntologyContext, LastTurnContext } from '$lib/types/agent-chat-enhancement';
+import type {
+	OntologyContext,
+	LastTurnContext,
+	AgentState
+} from '$lib/types/agent-chat-enhancement';
 import type {
 	StreamEvent,
 	ProjectClarificationMetadata
@@ -28,6 +33,11 @@ import type {
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
 import { ChatCompressionService } from '$lib/services/chat-compression-service';
+import {
+	AgentStateReconciliationService,
+	type AgentStateMessageSnapshot,
+	type AgentStateToolSummary
+} from '$lib/services/agentic-chat/state/agent-state-reconciliation-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createLogger } from '$lib/utils/logger';
 import { v4 as uuidv4 } from 'uuid';
@@ -80,7 +90,7 @@ export interface StreamHandlerParams {
  * IMPORTANT: This class preserves the critical stream semantics:
  * - done event always sent
  * - error event precedes done
- * - metadata single-write in finally block
+ * - stream metadata single-write in finally block (agent state reconciliation may follow)
  * - stream always closed
  */
 export class StreamHandler {
@@ -88,6 +98,7 @@ export class StreamHandler {
 	private sessionManager: ReturnType<typeof createSessionManager>;
 	private messagePersister: ReturnType<typeof createMessagePersister>;
 	private errorLogger: ErrorLoggerService;
+	private agentStateReconciler: AgentStateReconciliationService;
 	private pendingSseFlush?: () => Promise<void>;
 
 	constructor(supabase: SupabaseClient<Database>) {
@@ -95,6 +106,10 @@ export class StreamHandler {
 		this.sessionManager = createSessionManager(supabase);
 		this.messagePersister = createMessagePersister(supabase);
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
+		this.agentStateReconciler = new AgentStateReconciliationService(
+			supabase,
+			this.errorLogger
+		);
 	}
 
 	/**
@@ -325,7 +340,8 @@ export class StreamHandler {
 				projectFocus: resolvedFocus || undefined,
 				contextCache: {
 					location: sessionMetadata.locationContextCache,
-					linkedEntities: sessionMetadata.linkedEntitiesCache
+					linkedEntities: sessionMetadata.linkedEntitiesCache,
+					docStructure: sessionMetadata.docStructureCache
 				},
 				projectClarificationMetadata,
 				timingMetricsId,
@@ -439,6 +455,17 @@ export class StreamHandler {
 					finished_reason: 'stop'
 				} as AgentSSEMessage);
 			}
+
+			this.queueAgentStateReconciliation({
+				session,
+				sessionMetadata,
+				state,
+				requestMessage: request.message,
+				conversationHistory,
+				contextType: state.effectiveContextType,
+				userId,
+				httpReferer
+			});
 		} catch (streamError) {
 			if (abortSignal?.aborted) {
 				await this.persistInterruptedState({
@@ -654,7 +681,9 @@ export class StreamHandler {
 
 			// Track tool calls
 			if ((event as StreamEvent).type === 'tool_call' && (event as any).toolCall) {
-				state.toolCalls.push((event as any).toolCall);
+				const toolCall = (event as any).toolCall;
+				state.toolCalls.push(toolCall);
+				this.applyExpectationFromToolCall(sessionMetadata, session.id, toolCall, state);
 			}
 
 			// Handle clarifying questions
@@ -676,7 +705,8 @@ export class StreamHandler {
 					state,
 					session,
 					normalizedContextType,
-					userId
+					userId,
+					sessionMetadata
 				);
 			}
 
@@ -820,7 +850,8 @@ export class StreamHandler {
 		state: StreamState,
 		session: ChatSession,
 		normalizedContextType: ChatContextType,
-		userId: string
+		userId: string,
+		sessionMetadata: AgentSessionMetadata
 	): Promise<void> {
 		const result = event.result;
 
@@ -842,6 +873,12 @@ export class StreamHandler {
 		};
 
 		state.toolResults.push(toolResultData);
+		this.applyAgentStateFromToolResult(
+			sessionMetadata,
+			session.id,
+			toolResultData,
+			state
+		);
 
 		// Check for context shift
 		const contextShift: ContextShiftData | undefined =
@@ -857,6 +894,565 @@ export class StreamHandler {
 				userId
 			);
 		}
+	}
+
+	private applyAgentStateFromToolResult(
+		sessionMetadata: AgentSessionMetadata,
+		sessionId: string,
+		result: ToolResultData,
+		state: StreamState
+	): void {
+		const agentState = this.ensureAgentState(sessionMetadata, sessionId);
+		const payload = result.result as Record<string, any> | null | undefined;
+
+		const extractedEntities = this.extractEntitiesFromPayload(payload);
+		if (extractedEntities.length > 0) {
+			const entityKey = (entry: { id: string; kind: string }) => `${entry.kind}:${entry.id}`;
+			const existing = new Map(
+				agentState.current_understanding.entities.map((e) => [entityKey(e), e])
+			);
+			for (const entity of extractedEntities) {
+				existing.set(entityKey(entity), entity);
+			}
+			agentState.current_understanding.entities = Array.from(existing.values());
+		}
+
+		const extractedDependencies = this.extractDependenciesFromPayload(payload);
+		if (extractedDependencies.length > 0) {
+			const depKey = (entry: { from: string; to: string; rel?: string }) =>
+				`${entry.from}:${entry.to}:${entry.rel ?? ''}`;
+			const existing = new Map(
+				agentState.current_understanding.dependencies.map((d) => [depKey(d), d])
+			);
+			for (const dep of extractedDependencies) {
+				existing.set(depKey(dep), dep);
+			}
+			agentState.current_understanding.dependencies = Array.from(existing.values());
+		}
+
+		const expectationUpdate = this.verifyExpectations(agentState, payload);
+		if (expectationUpdate) {
+			if (expectationUpdate.assumptions?.length) {
+				agentState.assumptions = [
+					...agentState.assumptions,
+					...expectationUpdate.assumptions
+				];
+			}
+			if (expectationUpdate.expectations?.length) {
+				agentState.expectations = expectationUpdate.expectations;
+			}
+		}
+
+		sessionMetadata.agent_state = agentState;
+		state.pendingMetadataUpdates.agent_state = agentState;
+		state.hasPendingMetadataUpdate = true;
+	}
+
+	private ensureAgentState(
+		sessionMetadata: AgentSessionMetadata,
+		sessionId: string
+	): AgentState {
+		const existing = sessionMetadata.agent_state;
+		if (existing && typeof existing === 'object') {
+			return {
+				sessionId: existing.sessionId ?? sessionId,
+				current_understanding: existing.current_understanding ?? {
+					entities: [],
+					dependencies: []
+				},
+				assumptions: Array.isArray(existing.assumptions) ? existing.assumptions : [],
+				expectations: Array.isArray(existing.expectations) ? existing.expectations : [],
+				tentative_hypotheses: Array.isArray(existing.tentative_hypotheses)
+					? existing.tentative_hypotheses
+					: [],
+				items: Array.isArray(existing.items) ? existing.items : [],
+				lastSummarizedAt: existing.lastSummarizedAt
+			};
+		}
+
+		const fresh: AgentState = {
+			sessionId,
+			current_understanding: { entities: [], dependencies: [] },
+			assumptions: [],
+			expectations: [],
+			tentative_hypotheses: [],
+			items: []
+		};
+		sessionMetadata.agent_state = fresh;
+		return fresh;
+	}
+
+	private applyExpectationFromToolCall(
+		sessionMetadata: AgentSessionMetadata,
+		sessionId: string,
+		toolCall: { id?: string; function?: { name?: string; arguments?: string | null } },
+		state: StreamState
+	): void {
+		const toolName = toolCall?.function?.name;
+		if (!toolName) return;
+
+		const action = this.resolveOperationAction(toolName);
+		if (!action || !['create', 'update', 'delete'].includes(action)) return;
+
+		const entityType = this.resolveOperationEntityType(toolName);
+		if (!entityType) return;
+
+		const args = this.safeParseToolArgs(toolCall?.function?.arguments);
+		const expectationId = toolCall.id ? `exp:${toolCall.id}` : `exp:${uuidv4()}`;
+		const expectedIds = this.resolveExpectedIds(args);
+		const expectedOutcome = this.buildExpectedOutcome(action, entityType, args);
+
+		const agentState = this.ensureAgentState(sessionMetadata, sessionId);
+		if (agentState.expectations.some((e) => e.id === expectationId)) return;
+
+		agentState.expectations = [
+			...agentState.expectations,
+			{
+				id: expectationId,
+				action,
+				expected_outcome: expectedOutcome,
+				expected_ids: expectedIds.length > 0 ? expectedIds : undefined,
+				expected_type: entityType,
+				expected_count: action === 'create' ? 1 : undefined,
+				status: 'pending'
+			}
+		];
+
+		sessionMetadata.agent_state = agentState;
+		state.pendingMetadataUpdates.agent_state = agentState;
+		state.hasPendingMetadataUpdate = true;
+	}
+
+	private safeParseToolArgs(rawArgs: string | null | undefined): Record<string, any> | undefined {
+		if (!rawArgs || typeof rawArgs !== 'string') return undefined;
+		try {
+			return JSON.parse(rawArgs) as Record<string, any>;
+		} catch {
+			return undefined;
+		}
+	}
+
+	private resolveOperationAction(
+		toolName: string
+	): 'list' | 'search' | 'read' | 'create' | 'update' | 'delete' | null {
+		if (toolName.startsWith('list_')) return 'list';
+		if (toolName.startsWith('search_')) return 'search';
+		if (toolName.startsWith('get_')) return 'read';
+		if (toolName.startsWith('create_')) return 'create';
+		if (toolName.startsWith('update_')) return 'update';
+		if (toolName.startsWith('delete_')) return 'delete';
+		if (toolName === 'move_document') return 'update';
+		return null;
+	}
+
+	private resolveOperationEntityType(
+		toolName: string
+	):
+		| 'document'
+		| 'task'
+		| 'goal'
+		| 'plan'
+		| 'project'
+		| 'milestone'
+		| 'risk'
+		| 'requirement'
+		| null {
+		const match = toolName.match(
+			/(?:list|search|get|create|update|delete)_onto_([a-z_]+?)(?:_details)?$/
+		);
+		const raw = match?.[1];
+		if (!raw) {
+			if (toolName.startsWith('get_document_') || toolName === 'move_document') {
+				return 'document';
+			}
+			return null;
+		}
+
+		const map: Record<string, string> = {
+			projects: 'project',
+			project: 'project',
+			tasks: 'task',
+			task: 'task',
+			goals: 'goal',
+			goal: 'goal',
+			plans: 'plan',
+			plan: 'plan',
+			documents: 'document',
+			document: 'document',
+			milestones: 'milestone',
+			milestone: 'milestone',
+			risks: 'risk',
+			risk: 'risk',
+			requirements: 'requirement',
+			requirement: 'requirement'
+		};
+
+		const resolved = map[raw];
+		return resolved
+			? (resolved as
+					| 'document'
+					| 'task'
+					| 'goal'
+					| 'plan'
+					| 'project'
+					| 'milestone'
+					| 'risk'
+					| 'requirement')
+			: null;
+	}
+
+	private resolveExpectedIds(args?: Record<string, any>): string[] {
+		if (!args) return [];
+		const keys = [
+			'document_id',
+			'task_id',
+			'goal_id',
+			'plan_id',
+			'project_id',
+			'milestone_id',
+			'risk_id',
+			'requirement_id',
+			'entity_id'
+		];
+		const ids: string[] = [];
+		for (const key of keys) {
+			const value = args[key];
+			if (typeof value === 'string' && value.trim().length > 0) {
+				ids.push(value);
+			}
+		}
+		return ids;
+	}
+
+	private buildExpectedOutcome(
+		action: 'create' | 'update' | 'delete',
+		entityType:
+			| 'document'
+			| 'task'
+			| 'goal'
+			| 'plan'
+			| 'project'
+			| 'milestone'
+			| 'risk'
+			| 'requirement',
+		args?: Record<string, any>
+	): string {
+		const name =
+			(args?.title as string | undefined) ??
+			(args?.name as string | undefined) ??
+			(args?.document_title as string | undefined) ??
+			(args?.task_title as string | undefined) ??
+			(args?.goal_name as string | undefined) ??
+			(args?.plan_name as string | undefined);
+		if (name && name.trim().length > 0) {
+			return `${action} ${entityType}: ${name.trim()}`;
+		}
+		return `${action} ${entityType}`;
+	}
+
+	private extractEntitiesFromPayload(
+		payload: Record<string, any> | null | undefined
+	): Array<{ id: string; kind: string; name?: string }> {
+		if (!payload || typeof payload !== 'object') return [];
+
+		const mapping: Record<string, string> = {
+			document: 'document',
+			documents: 'document',
+			task: 'task',
+			tasks: 'task',
+			goal: 'goal',
+			goals: 'goal',
+			plan: 'plan',
+			plans: 'plan',
+			project: 'project',
+			projects: 'project',
+			milestone: 'milestone',
+			milestones: 'milestone',
+			risk: 'risk',
+			risks: 'risk',
+			requirement: 'requirement',
+			requirements: 'requirement'
+		};
+
+		const extracted: Array<{ id: string; kind: string; name?: string }> = [];
+
+		for (const [key, kind] of Object.entries(mapping)) {
+			const value = (payload as Record<string, any>)[key];
+			if (!value) continue;
+			if (Array.isArray(value)) {
+				for (const entry of value) {
+					const record = entry as Record<string, any>;
+					if (record?.id) {
+						extracted.push({
+							id: record.id,
+							kind,
+							name: record.title ?? record.name
+						});
+					}
+				}
+			} else if (typeof value === 'object' && (value as Record<string, any>).id) {
+				const record = value as Record<string, any>;
+				extracted.push({
+					id: record.id,
+					kind,
+					name: record.title ?? record.name
+				});
+			}
+		}
+
+		return extracted;
+	}
+
+	private extractDependenciesFromPayload(
+		payload: Record<string, any> | null | undefined
+	): Array<{ from: string; to: string; rel?: string }> {
+		if (!payload || typeof payload !== 'object') return [];
+
+		const relationships =
+			payload.relationships ?? payload.edges ?? payload.graph?.edges ?? payload.graph_snapshot?.edges;
+		if (!Array.isArray(relationships)) return [];
+
+		const deps: Array<{ from: string; to: string; rel?: string }> = [];
+		for (const rel of relationships) {
+			if (!rel || typeof rel !== 'object') continue;
+			const record = rel as Record<string, any>;
+			const from = record.src_id ?? record.source_id ?? record.from_id ?? record.from;
+			const to = record.dst_id ?? record.target_id ?? record.to_id ?? record.to;
+			if (!from || !to) continue;
+			deps.push({
+				from: String(from),
+				to: String(to),
+				rel: record.rel ?? record.relation ?? record.type
+			});
+		}
+		return deps;
+	}
+
+	private verifyExpectations(
+		agentState: AgentState,
+		payload: Record<string, any> | null | undefined
+	): {
+		expectations?: AgentState['expectations'];
+		assumptions?: AgentState['assumptions'];
+	} | null {
+		if (!payload || !Array.isArray(agentState.expectations) || agentState.expectations.length === 0) {
+			return null;
+		}
+
+		const summary = this.summarizeToolResult(payload);
+		let updated = false;
+		const newAssumptions: AgentState['assumptions'] = [];
+
+		const expectations = agentState.expectations.map((expectation) => {
+			if (expectation.status && expectation.status !== 'pending') {
+				return expectation;
+			}
+
+			const hasStructuredMatch =
+				(Array.isArray(expectation.expected_ids) && expectation.expected_ids.length > 0) ||
+				typeof expectation.expected_type === 'string' ||
+				typeof expectation.expected_count === 'number';
+
+			if (!hasStructuredMatch) {
+				return expectation;
+			}
+
+			if (summary.ids.length === 0 && summary.types.length === 0) {
+				return expectation;
+			}
+
+			const matched = this.doesOutcomeMatch(expectation, summary);
+			updated = true;
+
+			if (matched) {
+				return {
+					...expectation,
+					status: 'confirmed',
+					last_checked_at: new Date().toISOString()
+				};
+			}
+
+			newAssumptions.push({
+				id: uuidv4(),
+				hypothesis: `Expected "${expectation.expected_outcome}" but got "${summary.brief}"`,
+				confidence: 0.7,
+				evidence: summary.ids.slice(0, 6)
+			});
+
+			return {
+				...expectation,
+				status: 'failed',
+				last_checked_at: new Date().toISOString()
+			};
+		});
+
+		if (!updated) return null;
+
+		return {
+			expectations,
+			assumptions: newAssumptions.length > 0 ? newAssumptions : undefined
+		};
+	}
+
+	private summarizeToolResult(payload: Record<string, any>): {
+		ids: string[];
+		types: string[];
+		counts: Record<string, number>;
+		brief: string;
+	} {
+		const entities = this.extractEntitiesFromPayload(payload);
+		const ids = entities.map((e) => e.id);
+		const types = entities.map((e) => e.kind);
+		const counts: Record<string, number> = {};
+		for (const entry of entities) {
+			counts[entry.kind] = (counts[entry.kind] ?? 0) + 1;
+		}
+		const brief =
+			entities.length > 0
+				? `${entities.length} entity update${entities.length === 1 ? '' : 's'}`
+				: 'tool result';
+		return { ids, types, counts, brief };
+	}
+
+	private doesOutcomeMatch(
+		expectation: AgentState['expectations'][number],
+		summary: { ids: string[]; types: string[]; counts: Record<string, number> }
+	): boolean {
+		if (Array.isArray(expectation.expected_ids) && expectation.expected_ids.length > 0) {
+			const allIdsPresent = expectation.expected_ids.every((id) => summary.ids.includes(id));
+			if (!allIdsPresent) return false;
+		}
+		if (typeof expectation.expected_type === 'string') {
+			if (!summary.types.includes(expectation.expected_type)) return false;
+		}
+		if (typeof expectation.expected_count === 'number') {
+			const count =
+				typeof expectation.expected_type === 'string'
+					? summary.counts[expectation.expected_type] ?? 0
+					: summary.ids.length;
+			if (count !== expectation.expected_count) return false;
+		}
+		return true;
+	}
+
+	private queueAgentStateReconciliation(params: {
+		session: ChatSession;
+		sessionMetadata: AgentSessionMetadata;
+		state: StreamState;
+		requestMessage: string;
+		conversationHistory: ChatMessage[];
+		contextType: ChatContextType;
+		userId: string;
+		httpReferer?: string;
+	}): void {
+		const {
+			session,
+			sessionMetadata,
+			state,
+			requestMessage,
+			conversationHistory,
+			contextType,
+			userId,
+			httpReferer
+		} = params;
+
+		if (!state.assistantResponse.trim() && state.toolResults.length === 0) {
+			return;
+		}
+
+		const agentState = this.ensureAgentState(sessionMetadata, session.id);
+		const messages = this.buildReconciliationMessages(
+			conversationHistory,
+			requestMessage,
+			state.assistantResponse
+		);
+		const toolSummaries = this.buildToolResultSummaries(state.toolResults);
+
+		void this.agentStateReconciler
+			.reconcile({
+				sessionId: session.id,
+				userId,
+				contextType,
+				messages,
+				toolResults: toolSummaries,
+				agentState,
+				httpReferer
+			})
+			.then((updated) => {
+				if (!updated) return;
+				sessionMetadata.agent_state = updated;
+				state.pendingMetadataUpdates.agent_state = updated;
+				state.hasPendingMetadataUpdate = true;
+				return this.sessionManager.updateSessionAgentState(session.id, updated);
+			})
+			.catch((error) => {
+				logger.warn('Agent state reconciliation failed', {
+					error,
+					sessionId: session.id
+				});
+			});
+	}
+
+	private buildReconciliationMessages(
+		conversationHistory: ChatMessage[],
+		userMessage: string,
+		assistantResponse: string
+	): AgentStateMessageSnapshot[] {
+		const maxMessages = 12;
+		const maxChars = 1600;
+		const messages: AgentStateMessageSnapshot[] = [];
+
+		for (const message of conversationHistory) {
+			if (!message?.content || typeof message.content !== 'string') continue;
+			messages.push({
+				role: (message.role ?? 'user') as AgentStateMessageSnapshot['role'],
+				content: this.truncateText(message.content, maxChars),
+				createdAt: message.created_at ?? undefined
+			});
+		}
+
+		if (userMessage && typeof userMessage === 'string') {
+			messages.push({
+				role: 'user',
+				content: this.truncateText(userMessage, maxChars),
+				createdAt: new Date().toISOString()
+			});
+		}
+
+		if (assistantResponse && typeof assistantResponse === 'string') {
+			messages.push({
+				role: 'assistant',
+				content: this.truncateText(assistantResponse, maxChars),
+				createdAt: new Date().toISOString()
+			});
+		}
+
+		return messages.slice(-maxMessages);
+	}
+
+	private buildToolResultSummaries(toolResults: ToolResultData[]): AgentStateToolSummary[] {
+		return toolResults.map((result) => {
+			const payload = result.result as Record<string, any> | null | undefined;
+			const extractedEntities = this.extractEntitiesFromPayload(payload);
+			const summary =
+				payload && typeof payload === 'object' ? this.summarizeToolResult(payload) : null;
+			return {
+				tool_name: result.tool_name,
+				success: result.success,
+				error: result.error,
+				entities_accessed: Array.isArray(result.entities_accessed)
+					? result.entities_accessed.slice(0, 6)
+					: undefined,
+				entity_updates: extractedEntities.length > 0 ? extractedEntities.slice(0, 6) : undefined,
+				entity_counts: summary?.counts,
+				summary: summary?.brief
+			};
+		});
+	}
+
+	private truncateText(value: string, maxChars: number): string {
+		if (value.length <= maxChars) return value;
+		return `${value.slice(0, Math.max(0, maxChars - 3))}...`;
 	}
 
 	/**

@@ -47,7 +47,6 @@ export interface ExecutorCoordinatorOptions {
 
 	/**
 	 * Maximum number of executors that can run concurrently
-	 * (not currently enforced – reserved for future enhancements)
 	 */
 	maxConcurrency?: number;
 }
@@ -55,23 +54,34 @@ export interface ExecutorCoordinatorOptions {
 const DEFAULT_EXECUTOR_MODEL = 'deepseek/deepseek-coder';
 const DEFAULT_EXECUTOR_PROMPT =
 	'You are a BuildOS executor agent focused on completing a single, well-defined task. Use only the provided tools and return concise, structured results.';
+const DEFAULT_EXECUTOR_CONCURRENCY = 5;
 
 /**
  * Coordinator responsible for managing executor agents
  */
 export class ExecutorCoordinator {
 	private activeExecutors = new Map<string, Promise<ExecutorResult>>();
+	private activeExecutorCount = 0;
+	private readonly maxConcurrency: number;
+	private readonly waitQueue: Array<() => void> = [];
 
 	constructor(
 		private executorService: AgentExecutorService,
 		private persistenceService: PersistenceOperations,
 		private options: ExecutorCoordinatorOptions = {}
-	) {}
+	) {
+		const configured = options.maxConcurrency;
+		this.maxConcurrency =
+			typeof configured === 'number' && Number.isFinite(configured) && configured > 0
+				? Math.floor(configured)
+				: DEFAULT_EXECUTOR_CONCURRENCY;
+	}
 
 	/**
 	 * Spawn a new executor agent for the provided plan step
 	 */
 	async spawnExecutor(params: ExecutorSpawnParams, context: ServiceContext): Promise<string> {
+		await this.acquireSlot();
 		const resolvedTools = this.resolveTools(
 			params.step.tools,
 			params.plannerContext.availableTools
@@ -98,34 +108,41 @@ export class ExecutorCoordinator {
 			});
 		}
 
-		const executorAgentId = await this.createExecutorAgentRecord(
-			params,
-			context,
-			tools,
-			permissions,
-			executorSystemPrompt
-		);
-
-		const executorTask = this.buildExecutorTask(params, context);
-
-		const executionPromise = this.runExecutor(
-			{
-				executorId: executorAgentId,
-				sessionId: context.sessionId,
-				userId: context.userId,
-				task: executorTask,
+		try {
+			const executorAgentId = await this.createExecutorAgentRecord(
+				params,
+				context,
 				tools,
-				planId: params.plan.id,
-				stepNumber: params.step.stepNumber,
-				plannerAgentId: context.plannerAgentId,
-				contextType: context.contextType,
-				entityId: context.entityId
-			},
-			params
-		);
+				permissions,
+				executorSystemPrompt
+			);
 
-		this.activeExecutors.set(executorAgentId, executionPromise);
-		return executorAgentId;
+			const executorTask = this.buildExecutorTask(params, context);
+
+			const executionPromise = this.runExecutor(
+				{
+					executorId: executorAgentId,
+					sessionId: context.sessionId,
+					userId: context.userId,
+					task: executorTask,
+					tools,
+					planId: params.plan.id,
+					stepNumber: params.step.stepNumber,
+					plannerAgentId: context.plannerAgentId,
+					contextType: context.contextType,
+					entityId: context.entityId
+				},
+				params
+			).finally(() => {
+				this.releaseSlot();
+			});
+
+			this.activeExecutors.set(executorAgentId, executionPromise);
+			return executorAgentId;
+		} catch (error) {
+			this.releaseSlot();
+			throw error;
+		}
 	}
 
 	/**
@@ -142,6 +159,34 @@ export class ExecutorCoordinator {
 			return await execution;
 		} finally {
 			this.activeExecutors.delete(executorId);
+		}
+	}
+
+	private async acquireSlot(): Promise<void> {
+		if (!this.maxConcurrency || this.maxConcurrency <= 0) {
+			this.activeExecutorCount += 1;
+			return;
+		}
+
+		if (this.activeExecutorCount < this.maxConcurrency) {
+			this.activeExecutorCount += 1;
+			return;
+		}
+
+		await new Promise<void>((resolve) => {
+			this.waitQueue.push(resolve);
+		});
+
+		this.activeExecutorCount += 1;
+	}
+
+	private releaseSlot(): void {
+		if (this.activeExecutorCount > 0) {
+			this.activeExecutorCount -= 1;
+		}
+		const next = this.waitQueue.shift();
+		if (next) {
+			next();
 		}
 	}
 

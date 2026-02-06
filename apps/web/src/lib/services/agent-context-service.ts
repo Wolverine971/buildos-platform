@@ -291,7 +291,9 @@ export class AgentContextService {
 			}
 
 			if (ontologyContext?.type === 'combined' && projectFocus) {
-				const formatted = formatCombinedContext(ontologyContext, projectFocus);
+				const formatted = formatCombinedContext(ontologyContext, projectFocus, {
+					docStructureCache: contextCache?.docStructure
+				});
 				debugLog('[AgentContext] Using combined focus context', {
 					focusType: projectFocus.focusType,
 					entityId: projectFocus.focusEntityId
@@ -300,7 +302,9 @@ export class AgentContextService {
 			}
 
 			if (ontologyContext) {
-				const formatted = formatOntologyContext(ontologyContext);
+				const formatted = formatOntologyContext(ontologyContext, {
+					docStructureCache: contextCache?.docStructure
+				});
 				debugLog('[AgentContext] Using ontology context', { type: ontologyContext.type });
 				return { content: formatted.content, metadata: formatted.metadata };
 			}

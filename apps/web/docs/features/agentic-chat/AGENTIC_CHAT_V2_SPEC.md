@@ -626,6 +626,7 @@ Output JSON:
 
 - `doc_structure` stores hierarchy only (no doc content).
 - Do **not** load document tree metadata or document content by default.
+- Prefer the prewarmed doc_structure cache (titles + description + content_length) for the JSON snippet.
 - Every node must include **order**; treat it as canonical sibling ordering.
 - Full document content should be fetched *selectively* on demand.
 
@@ -831,7 +832,7 @@ Key optimizations:
 
 ## 12. Phased Delivery Plan (with Expected Gains)
 
-### Phase 1 — Context Foundation (Doc-Structure-Only)
+### Phase 1 — Context Foundation (Doc-Structure-Only) ✅
 
 **Build:**
 - ContextPack wiring (doc_structure only, no doc tree/content)
@@ -842,7 +843,7 @@ Key optimizations:
 - 30–60% prompt size reduction (no doc content)
 - 150–400ms faster TTFT from smaller prompts
 
-### Phase 2 — Selective Loading + Agent State/Summary
+### Phase 2 — Selective Loading + Agent State/Summary ✅
 
 **Build:**
 - Summarizer LLM integration + agent state sync
@@ -853,7 +854,7 @@ Key optimizations:
 - 20–40% reduction in average tool calls
 - More stable latency on long chats (lower variance)
 
-### Phase 3 — Planner/Executor Parallelization
+### Phase 3 — Planner/Executor Parallelization ✅
 
 **Build:**
 - Stage-aware plans with parallel steps
@@ -864,11 +865,12 @@ Key optimizations:
 - 25–50% faster completion for multi-step tasks
 - Improved UI responsiveness under heavy workloads
 
-### Phase 4 — Caching + Prewarm
+### Phase 4 — Caching + Prewarm (In Progress)
 
 **Build:**
 - Cache doc_structure and doc metadata (short TTL)
 - Prewarm critical context on focus change
+- Route doc_structure cache into prompt context (JSON snippet, no doc content)
 
 **Expected gains (estimate):**
 - Additional 100–300ms shaved per turn on warm sessions

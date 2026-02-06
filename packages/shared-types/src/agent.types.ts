@@ -198,6 +198,22 @@ export interface ChatOperation extends ParsedOperation {
   after_data?: any;
 }
 
+export interface OperationEventPayload {
+  action: 'list' | 'search' | 'read' | 'create' | 'update' | 'delete';
+  entity_type:
+    | 'document'
+    | 'task'
+    | 'goal'
+    | 'plan'
+    | 'project'
+    | 'milestone'
+    | 'risk'
+    | 'requirement';
+  entity_name: string;
+  status: 'start' | 'success' | 'error';
+  entity_id?: string;
+}
+
 // ============================================================================
 // Agent Metadata
 // ============================================================================
@@ -372,7 +388,7 @@ export interface ContextUsageSnapshot {
 }
 
 type LegacyAgentSSEMessage =
-  | { type: 'operation'; operation: ChatOperation }
+  | { type: 'operation'; operation: ChatOperation | OperationEventPayload }
   | { type: 'draft_update'; draft: Partial<ProjectDraft> }
   | { type: 'dimension_update'; dimension: string; content: string }
   | { type: 'phase_update'; phase: AgentSessionPhase; message?: string }
@@ -412,12 +428,17 @@ export type AgentSSEMessage =
       reviewer?: string;
     }
   | { type: 'text'; content: string }
+  | { type: 'text_delta'; content: string }
   | { type: 'tool_call'; tool_call: ChatToolCall }
   | { type: 'tool_result'; result: Record<string, any> }
   | { type: 'context_shift'; context_shift: ContextShiftPayload }
+  | { type: 'entity_patch'; patch: Record<string, any> }
   | TemplateCreationEvent
   | { type: 'error'; error: string }
-  | { type: 'done'; usage?: { total_tokens: number } }
+  | {
+      type: 'done';
+      usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
+    }
   | LegacyAgentSSEMessage;
 
 // ============================================================================
