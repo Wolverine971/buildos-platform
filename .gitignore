@@ -43,6 +43,7 @@ coverage
 
 # Misc
 *.pem
+*.har
 .cache
 # nul
 # Calendar analysis prompt audits (contain user data)

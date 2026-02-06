@@ -95,7 +95,9 @@
       "Bash(if [ -e \"$path\" ])",
       "Bash(then)",
       "Bash(echo:*)",
-      "Bash(else)"
+      "Bash(else)",
+      "Bash(shuf:*)",
+      "Bash(git -C /Users/djwayne/buildos-platform status --short)"
     ],
     "deny": [],
     "ask": []
