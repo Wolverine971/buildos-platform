@@ -41,7 +41,7 @@ The agentic chat flow is failing. It's doing too much, it's too complicated.
 
 ### 2. Reduce Variable Overload (Chunking)
 
-**Source:** `design/research-beyond-prompt.md`
+**Source:** `research-library/research/research-beyond-prompt.md`
 
 **Key Insight:** When LLMs are asked to consider too many variables simultaneously, they start failing.
 
@@ -88,7 +88,7 @@ The agentic chat flow is failing. It's doing too much, it's too complicated.
 
 ### 4. Human-in-the-Loop for Semantic Divergence
 
-**Source:** `design/research-learning.md`
+**Source:** `research-library/research/research-learning.md`
 
 **Key Insights:**
 
@@ -131,7 +131,7 @@ The agentic chat flow is failing. It's doing too much, it's too complicated.
 
 ## 5. Anti-Marketing Strategy
 
-**Inspiration:** Steve Yegge's Gas Town launch (`design/blog-gas-town.md`)
+**Inspiration:** Steve Yegge's Gas Town launch (`research-library/blogs/blog-gas-town.md`)
 
 **Yegge's Golden Rules:**
 
@@ -291,8 +291,8 @@ Not for everyone - just for the promising accounts at your level.
 
 ## Related Files
 
-- `design/research-beyond-prompt.md` - Research on LLM variable limits
-- `design/research-learning.md` - Research on LLM iterative understanding
-- `design/blog-gas-town.md` - Steve Yegge's Gas Town anti-marketing inspiration
+- `research-library/research/research-beyond-prompt.md` - Research on LLM variable limits
+- `research-library/research/research-learning.md` - Research on LLM iterative understanding
+- `research-library/blogs/blog-gas-town.md` - Steve Yegge's Gas Town anti-marketing inspiration
 - `apps/web/src/lib/services/agentic-chat/` - Current implementation
 - `apps/web/docs/features/agentic-chat/` - Feature documentation

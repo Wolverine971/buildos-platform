@@ -98,7 +98,9 @@
       "Bash(else)",
       "Bash(shuf:*)",
       "Bash(git -C /Users/djwayne/buildos-platform status --short)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(npm ls:*)",
+      "Bash(pnpm ls:*)"
     ],
     "deny": [],
     "ask": []

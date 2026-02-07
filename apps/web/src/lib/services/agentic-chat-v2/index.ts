@@ -11,4 +11,5 @@ export {
 export * from './context-models';
 export { createFastChatSessionService } from './session-service';
 export { streamFastChat } from './stream-orchestrator';
+export { FASTCHAT_LIMITS } from './limits';
 export * from './types';

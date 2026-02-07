@@ -9,6 +9,7 @@ import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { FastChatHistoryMessage, FastAgentStreamUsage } from './types';
 import { normalizeFastContextType } from './prompt-builder';
 import { buildMasterPrompt } from './master-prompt-builder';
+import { FASTCHAT_LIMITS } from './limits';
 
 type FastToolExecution = {
 	toolCall: ChatToolCall;
@@ -67,8 +68,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const allowedToolNames = new Set(
 		tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 	);
-	const maxToolRounds = Math.max(1, params.maxToolRounds ?? 4);
-	const maxToolCalls = Math.max(1, params.maxToolCalls ?? 10);
+	const maxToolRounds = Math.max(1, params.maxToolRounds ?? FASTCHAT_LIMITS.MAX_TOOL_ROUNDS);
+	const maxToolCalls = Math.max(1, params.maxToolCalls ?? FASTCHAT_LIMITS.MAX_TOOL_CALLS);
 	let toolRounds = 0;
 	let toolCallsMade = 0;
 

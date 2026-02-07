@@ -374,7 +374,7 @@ With these additions, BuildOS would have one of the most sophisticated agentic c
 
 ## References
 
-- `design/research-proactive-agents.md` — ProAgentBench analysis
-- `design/research-state-aware-agents.md` — State-Aware Agents analysis
-- `design/research-textual-planning.md` — EMBEDPLAN analysis
-- `design/research-index.md` — Full research index
+- `research-library/research/research-proactive-agents.md` — ProAgentBench analysis
+- `research-library/research/research-state-aware-agents.md` — State-Aware Agents analysis
+- `research-library/research/research-textual-planning.md` — EMBEDPLAN analysis
+- `research-library/research/research-index.md` — Full research index

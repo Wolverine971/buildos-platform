@@ -115,55 +115,53 @@
 │       └── README.md
 │
 ├── /technical/                            # Technical documentation
+│   ├── README.md                          # Technical docs overview
 │   ├── /api/                              # API documentation
 │   │   ├── README.md                      # API overview
-│   │   ├── ENDPOINTS.md                   # All API endpoints
-│   │   └── PATTERNS.md                    # API design patterns
+│   │   ├── routes-reference.md            # Route reference
+│   │   └── /endpoints/                    # Per-resource endpoint docs
 │   │
 │   ├── /architecture/                     # System architecture
 │   │   ├── README.md                      # Architecture overview
-│   │   ├── SYSTEM_DESIGN.md               # High-level design
-│   │   └── DATA_FLOW.md                   # Data flow diagrams
+│   │   └── BUILD_OS_MASTER_CONTEXT.md     # Master context document
 │   │
 │   ├── /components/                       # UI component docs
-│   │   ├── BUILDOS_STYLE_GUIDE.md        # Design system & patterns
-│   │   └── /modals/                       # Modal components (NEW)
-│   │       ├── README.md                  # Modal overview
+│   │   ├── INKPRINT_DESIGN_SYSTEM.md      # Inkprint design system
+│   │   ├── BUILDOS_STYLE_GUIDE.md         # Style guide & patterns
+│   │   └── /modals/                       # Modal components
 │   │       ├── QUICK_REFERENCE.md         # Developer cheatsheet
 │   │       ├── VISUAL_GUIDE.md            # Visual diagrams
 │   │       ├── TECHNICAL_ANALYSIS.md      # Deep technical dive
-│   │       └── ANALYSIS_SUMMARY.txt       # Executive summary
+│   │       └── ANALYSIS_SUMMARY.md        # Executive summary
 │   │
 │   ├── /database/                         # Database documentation
-│   │   ├── README.md                      # Database overview
-│   │   ├── SCHEMA.md                      # Full schema
-│   │   └── MIGRATIONS.md                  # Migration guide
+│   │   ├── schema.md                      # Full schema
+│   │   ├── indexes.md                     # Database indexes
+│   │   └── rls-policies.md                # Row-level security
 │   │
 │   ├── /testing/                          # Testing documentation
-│   │   ├── README.md                      # Testing strategy
-│   │   ├── UNIT_TESTS.md                  # Unit testing guide
-│   │   └── E2E_TESTS.md                   # E2E testing guide
+│   │   ├── TESTING_CHECKLIST.md           # Testing requirements
+│   │   ├── strategy.md                    # Testing strategy
+│   │   ├── llm-testing.md                 # LLM test guide
+│   │   └── vitest-setup.md                # Vitest configuration
 │   │
-│   └── /deployment/                       # Deployment docs
-│       ├── README.md                      # Deployment overview
-│       ├── VERCEL.md                      # Vercel deployment
-│       └── /runbooks/                     # Operational runbooks
+│   ├── /deployment/                       # Deployment docs
+│   │   ├── DEPLOYMENT_CHECKLIST.md        # Deployment checklist
+│   │   ├── VERCEL_DEPLOYMENT.md           # Vercel deployment
+│   │   └── /runbooks/                     # Operational runbooks
+│   │
+│   └── /design-system/                    # Design system docs
+│       ├── README.md                      # Design system overview
+│       └── DARK_MODE.md                   # Dark mode implementation
 │
 ├── /operations/                           # Operational documentation
-│   ├── /environment/                      # Environment setup
-│   │   └── ENV_VARIABLES.md               # Environment variables
-│   │
-│   └── /monitoring/                       # Monitoring & logging
-│       └── LOGGING.md                     # Logging patterns
-│
-├── /development/                          # Development guides
-│   ├── GETTING_STARTED.md                 # New developer guide
-│   ├── CODING_STANDARDS.md                # Code style guide
-│   ├── TESTING_CHECKLIST.md               # Testing requirements
-│   └── WORKFLOW.md                        # Development workflow
+│   ├── README.md                          # Operations overview
+│   └── /deployment/                       # Deployment operations
+│       ├── READY_TO_DEPLOY.md             # Deploy readiness checklist
+│       └── VERCEL_CONFIGURATION_GUIDE.md  # Vercel config guide
 │
 └── /migrations/                           # Migration documentation
-    ├── /active/                           # Active migrations
+    ├── README.md                          # Migrations overview
     └── /completed/                        # Completed migrations
 ```
 
@@ -181,14 +179,14 @@
 
 - **Building CRUD Operations**: `/features/ontology/README.md`
 - **Creating Modals**: `/technical/components/modals/QUICK_REFERENCE.md`
-- **Writing API Endpoints**: `/technical/api/PATTERNS.md`
-- **Database Changes**: `/technical/database/MIGRATIONS.md`
+- **Writing API Endpoints**: `/technical/api/README.md`
+- **Database Changes**: `/technical/database/schema.md`
 - **Testing**: `/technical/testing/` and feature-specific test guides
 - **Deployment**: `/technical/deployment/` and runbooks
 
 ### By User Role
 
-- **New Developers**: Start with `/development/GETTING_STARTED.md`
+- **New Developers**: Start with `/technical/development/getting-started.md`
 - **Frontend Engineers**: Focus on `/technical/components/` and `/features/`
 - **Backend Engineers**: Check `/technical/api/` and `/technical/database/`
 - **DevOps**: See `/technical/deployment/` and `/operations/`
@@ -272,11 +270,11 @@ All documentation should include:
 
 Based on common development tasks:
 
-1. **[BuildOS Style Guide](./technical/components/BUILDOS_STYLE_GUIDE.md)** - UI/UX patterns
+1. **[Inkprint Design System](./technical/components/INKPRINT_DESIGN_SYSTEM.md)** - Design system reference
 2. **[Ontology Data Models](./features/ontology/DATA_MODELS.md)** - Schema & CRUD patterns
 3. **[Modal Quick Reference](./technical/components/modals/QUICK_REFERENCE.md)** - Modal usage
-4. **[API Patterns](./technical/api/PATTERNS.md)** - API development
-5. **[Getting Started](./development/GETTING_STARTED.md)** - New developer guide
+4. **[API Reference](./technical/api/README.md)** - API documentation
+5. **[Getting Started](./technical/development/getting-started.md)** - New developer guide
 
 ## 🚀 Quick Links for Common Tasks
 

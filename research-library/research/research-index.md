@@ -213,7 +213,7 @@ The following categories from the scrape are **not relevant**:
 
 | Paper                        | Location                   | Key Insights                                                            |
 | ---------------------------- | -------------------------- | ----------------------------------------------------------------------- |
-| PLANET (Multimodal Graph FM) | `design/research-graph.md` | Topology-aware modality interaction, DSRS for alignment, text as anchor |
+| PLANET (Multimodal Graph FM) | `research-library/research/research-graph.md` | Topology-aware modality interaction, DSRS for alignment, text as anchor |
 
 ---
 

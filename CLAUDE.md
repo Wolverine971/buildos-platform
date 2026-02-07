@@ -79,7 +79,7 @@ buildos-platform/
 | Web → Vercel            | `/apps/web/docs/operations/deployment/`                     |
 | Worker → Railway        | `/apps/worker/docs/README.md`                               |
 | Environment Variables   | `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`  |
-| Active Migrations       | `/apps/web/docs/migrations/active/`                         |
+| Migrations              | `/apps/web/docs/migrations/`                                |
 
 ## Essential Commands
 
@@ -374,8 +374,12 @@ pnpm pre-push       # Complete validation (typecheck + test + lint + build)
 ### Integration Documentation
 
 - **Twilio/SMS Integration:** `/docs/integrations/twilio/README.md`
-- **Supabase Integration:** `/docs/integrations/supabase/`
+- **Supabase Client:** `/packages/supabase-client/`
 - **Stripe Integration:** `/docs/integrations/stripe/`
+
+### Research Library
+
+- **Research Library:** `/research-library/` - Collected reference material (transcripts, blogs, papers, design thinking)
 
 ### Technical Deep Dives
 

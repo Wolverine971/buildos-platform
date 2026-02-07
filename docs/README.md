@@ -69,6 +69,10 @@ See [Task Index](TASK_INDEX.md) for navigation by "what you want to do"
 - **Web (Vercel)**: `/apps/web/docs/` - User interface, API routes, real-time UI
 - **Worker (Railway)**: `/apps/worker/docs/` - Background jobs, email, scheduled tasks
 
+### Research & Design
+
+- **Research Library**: `/research-library/` - Transcripts, blogs, papers, insights, and design thinking
+
 ## Environment Variables
 
 For environment configuration, see:

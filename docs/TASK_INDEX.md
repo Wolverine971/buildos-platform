@@ -10,7 +10,7 @@ Navigation organized by **what you want to do**, not just what exists.
 | ------------------------------ | ----------------------------------------------- | --------------------------------------------- | --------------------------------------------- |
 | The monorepo structure         | [Monorepo Guide](MONOREPO_GUIDE.md)             | [Deployment Topology](DEPLOYMENT_TOPOLOGY.md) | Root `turbo.json`                             |
 | How apps deploy                | [Deployment Topology](DEPLOYMENT_TOPOLOGY.md)   | App deployment guides                         | `/apps/*/docs/operations/`                    |
-| How brain dumps work           | `/apps/web/docs/features/brain-dump/`           | Brain dump processor code                     | `/apps/web/src/lib/services/`                 |
+| How brain dumps work           | `/apps/web/docs/features/braindump-context/`    | Brain dump processor code                     | `/apps/web/src/lib/services/`                 |
 | How calendar sync works        | `/apps/web/docs/features/calendar-integration/` | Calendar service code                         | `/apps/web/src/lib/services/`                 |
 | How daily briefs work          | `/apps/worker/docs/features/daily-briefs/`      | Worker daily brief service                    | `/apps/worker/src/services/`                  |
 | How notifications work         | `/apps/web/docs/features/notifications/`        | Notification components                       | `/apps/web/src/lib/components/notifications/` |
@@ -47,7 +47,7 @@ Navigation organized by **what you want to do**, not just what exists.
 | Task                        | Command                                 | Documentation                                     |
 | --------------------------- | --------------------------------------- | ------------------------------------------------- |
 | Run web tests               | `cd apps/web && pnpm test`              | `/apps/web/docs/technical/testing/`               |
-| Run worker tests            | `cd apps/worker && pnpm test`           | `/apps/worker/docs/development/testing/`          |
+| Run worker tests            | `cd apps/worker && pnpm test`           | `/apps/worker/docs/README.md`                     |
 | Run LLM tests (costs money) | `cd apps/web && pnpm test:llm`          | `/apps/web/docs/technical/testing/llm-testing.md` |
 | Test specific file          | `cd apps/web && pnpm test path/to/file` | Vitest documentation                              |
 | Run pre-push validation     | `pnpm pre-push`                         | [Monorepo Guide](MONOREPO_GUIDE.md)               |
@@ -59,7 +59,7 @@ Navigation organized by **what you want to do**, not just what exists.
 | Target              | Guide                                                                          | Checklist                                                 |
 | ------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------- |
 | Web to Vercel       | `/apps/web/docs/operations/deployment/VERCEL_CONFIGURATION_GUIDE.md`           | `/apps/web/docs/operations/deployment/READY_TO_DEPLOY.md` |
-| Worker to Railway   | `/apps/worker/docs/RAILWAY_DEPLOYMENT.md`                                      | Railway deployment checklist                              |
+| Worker to Railway   | `/apps/worker/docs/README.md`                                                  | Railway deployment checklist                              |
 | Environment setup   | [Deployment Env Checklist](operations/environment/DEPLOYMENT_ENV_CHECKLIST.md) | Complete environment variables                            |
 | Database migrations | Supabase dashboard                                                             | Migration files in Supabase project                       |
 
@@ -71,7 +71,7 @@ Navigation organized by **what you want to do**, not just what exists.
 | Configure OpenAI API     | `.env` (OPENAI_API_KEY)     | `/apps/web/docs/technical/services/`    |
 | Configure Google OAuth   | `.env` + Google Console     | `/apps/web/docs/`                       |
 | Configure Stripe         | `.env` + Stripe dashboard   | `/docs/integrations/stripe/setup.md`    |
-| Configure Email (Worker) | `.env` (EMAIL\_\* vars)     | `/apps/worker/docs/integrations/email/` |
+| Configure Email (Worker) | `.env` (EMAIL\_\* vars)     | `/apps/worker/docs/EMAIL_SETUP.md`      |
 
 ## Debugging Tasks
 
@@ -80,7 +80,7 @@ Navigation organized by **what you want to do**, not just what exists.
 | Issue Type           | Check                   | Location                                                                    |
 | -------------------- | ----------------------- | --------------------------------------------------------------------------- |
 | Web app broken       | Vercel logs             | `/apps/web/docs/technical/deployment/runbooks/`                             |
-| Worker jobs failing  | Railway logs            | `/apps/worker/docs/operations/runbooks/`                                    |
+| Worker jobs failing  | Railway logs            | `/apps/worker/docs/README.md`                                               |
 | Database errors      | Supabase dashboard logs | Supabase dashboard                                                          |
 | Build failures       | Clear cache, reinstall  | [Monorepo Guide](MONOREPO_GUIDE.md)                                         |
 | Type errors          | Rebuild shared packages | [Monorepo Guide](MONOREPO_GUIDE.md)                                         |
@@ -95,7 +95,7 @@ Navigation organized by **what you want to do**, not just what exists.
 | Slow page loads       | Vercel analytics           | `/apps/web/docs/technical/deployment/runbooks/performance-issues.md`   |
 | Database slow queries | Supabase query performance | `/apps/web/docs/technical/database/indexes.md`                         |
 | API rate limiting     | OpenAI usage dashboard     | `/apps/web/docs/technical/deployment/runbooks/openai-rate-limiting.md` |
-| Worker job delays     | Queue status in Supabase   | `/apps/worker/docs/features/queue-system/`                             |
+| Worker job delays     | Queue status in Supabase   | `/apps/worker/docs/README.md`                                          |
 
 ## Documentation Tasks
 
@@ -120,7 +120,7 @@ Navigation organized by **what you want to do**, not just what exists.
 | Deployment guides   | `/**/operations/deployment/` | [Deployment Topology](DEPLOYMENT_TOPOLOGY.md) |
 | Business strategy   | `/docs/business/`            | Business README.md                            |
 | Marketing materials | `/docs/marketing/`           | Marketing INDEX.md                            |
-| Archived docs       | `/docs/archive/`             | Archive README.md                             |
+| Research library    | `/research-library/`         | Research Library README.md                    |
 
 ## Quick Reference
 
