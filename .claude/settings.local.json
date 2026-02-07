@@ -100,7 +100,12 @@
       "Bash(git -C /Users/djwayne/buildos-platform status --short)",
       "Bash(git mv:*)",
       "Bash(npm ls:*)",
-      "Bash(pnpm ls:*)"
+      "Bash(pnpm ls:*)",
+      "Bash(npm list:*)",
+      "Bash(node:*)",
+      "Bash(npm --version:*)",
+      "Bash(pnpm:*)",
+      "Bash(do echo \"\" echo \"Package: @buildos/$pkg\" echo \"Files in dist:\" ls -1 /Users/djwayne/buildos-platform/packages/$pkg/dist/)"
     ],
     "deny": [],
     "ask": []

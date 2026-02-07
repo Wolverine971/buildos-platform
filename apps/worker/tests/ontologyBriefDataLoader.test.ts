@@ -9,7 +9,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	categorizeTasks,
 	calculateGoalProgress,
-	getOutputStatus,
 	getMilestoneStatus,
 	calculatePlanProgress,
 	findUnblockingTasks,
@@ -18,7 +17,6 @@ import {
 import type {
 	OntoTask,
 	OntoGoal,
-	OntoOutput,
 	OntoMilestone,
 	OntoPlan,
 	OntoEdge,
@@ -62,25 +60,6 @@ function createMockGoal(overrides: Partial<OntoGoal> = {}): OntoGoal {
 		search_vector: null,
 		...overrides
 	} as OntoGoal;
-}
-
-function createMockOutput(overrides: Partial<OntoOutput> = {}): OntoOutput {
-	return {
-		id: 'output-1',
-		project_id: 'project-1',
-		name: 'Test Output',
-		state_key: 'draft',
-		type_key: 'document',
-		facet_stage: null,
-		source_document_id: null,
-		source_event_id: null,
-		created_by: 'actor-1',
-		created_at: '2025-12-17T00:00:00Z',
-		updated_at: '2025-12-17T00:00:00Z',
-		props: {},
-		search_vector: null,
-		...overrides
-	} as OntoOutput;
 }
 
 function createMockMilestone(overrides: Partial<OntoMilestone> = {}): OntoMilestone {
@@ -440,48 +419,6 @@ describe('calculateGoalProgress', () => {
 		expect(result.targetDate).toBe('2025-12-15');
 		expect(result.targetDaysAway).toBe(-2);
 		expect(result.status).toBe('behind');
-	});
-});
-
-// ============================================================================
-// TESTS: getOutputStatus
-// ============================================================================
-
-describe('getOutputStatus', () => {
-	it('should return output status with linked entities', () => {
-		const output = createMockOutput({ id: 'output-1', state_key: 'review' });
-		const edges = [
-			createMockEdge({
-				src_id: 'output-1',
-				src_kind: 'output',
-				dst_id: 'goal-1',
-				dst_kind: 'goal',
-				rel: 'delivers'
-			}),
-			createMockEdge({
-				src_id: 'task-1',
-				src_kind: 'task',
-				dst_id: 'output-1',
-				dst_kind: 'output',
-				rel: 'produces'
-			})
-		];
-
-		const result = getOutputStatus(output, edges);
-
-		expect(result.state).toBe('review');
-		expect(result.linkedGoals).toContain('goal-1');
-		expect(result.linkedTasks).toContain('task-1');
-	});
-
-	it('should handle output with no linked entities', () => {
-		const output = createMockOutput({ id: 'output-1', state_key: 'draft' });
-		const edges: OntoEdge[] = [];
-
-		const result = getOutputStatus(output, edges);
-
-		expect(result.linkedGoals).toHaveLength(0);
-		expect(result.linkedTasks).toHaveLength(0);
 	});
 });
 

@@ -18,6 +18,7 @@ import { SmartLLMService } from '$lib/services/smart-llm-service';
 import type {
 	ChatContextType,
 	ChatToolCall,
+	ChatToolDefinition,
 	ChatToolResult,
 	ContextUsageSnapshot,
 	OperationEventPayload
@@ -117,6 +118,55 @@ function isOperationEntityType(
 ): value is OperationEventPayload['entity_type'] {
 	if (!value) return false;
 	return OPERATION_ENTITY_TYPES.includes(value as OperationEventPayload['entity_type']);
+}
+
+function getToolsRequiringProjectId(tools: ChatToolDefinition[]): Set<string> {
+	const required = new Set<string>();
+	for (const tool of tools) {
+		const name = tool.function?.name;
+		if (!name) continue;
+		const params = tool.function?.parameters as
+			| { required?: string[]; properties?: Record<string, unknown> }
+			| undefined;
+		const requiredParams = Array.isArray(params?.required) ? params?.required : [];
+		if (requiredParams.includes('project_id')) {
+			required.add(name);
+		}
+	}
+	return required;
+}
+
+function maybeInjectProjectId(
+	toolCall: ChatToolCall,
+	projectId: string | undefined,
+	toolsRequiringProjectId: Set<string>
+): ChatToolCall {
+	if (!projectId) return toolCall;
+	if (!toolsRequiringProjectId.has(toolCall.function.name)) return toolCall;
+
+	let args: Record<string, unknown> = {};
+	const rawArgs = toolCall.function.arguments;
+	if (rawArgs) {
+		try {
+			args = JSON.parse(rawArgs);
+		} catch {
+			return toolCall;
+		}
+	}
+
+	const existing =
+		typeof (args as Record<string, unknown>).project_id === 'string'
+			? String((args as Record<string, unknown>).project_id).trim()
+			: '';
+	if (existing) return toolCall;
+
+	return {
+		...toolCall,
+		function: {
+			...toolCall.function,
+			arguments: JSON.stringify({ ...args, project_id: projectId })
+		}
+	};
 }
 
 function buildContextCacheKey(params: {
@@ -619,10 +669,21 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				appName: 'BuildOS Agentic Chat V2'
 			});
 			const tools = selectFastChatTools({ contextType, message });
+			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
+			const projectIdForTools =
+				projectFocus?.projectId ??
+				((contextType === 'project' ||
+					contextType === 'project_audit' ||
+					contextType === 'project_forecast') &&
+				typeof entityId === 'string'
+					? entityId
+					: undefined);
 			const toolExecutor =
 				tools.length > 0
 					? new ChatToolExecutor(supabase, user.id, session.id, fetch, llm)
 					: undefined;
+			const patchToolCall = (toolCall: ChatToolCall) =>
+				maybeInjectProjectId(toolCall, projectIdForTools, toolsRequiringProjectId);
 
 			let systemPrompt: string | undefined;
 			let promptContext:
@@ -731,13 +792,13 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				systemPrompt,
 				tools,
 				toolExecutor: toolExecutor
-					? (toolCall) => toolExecutor.execute(toolCall)
+					? (toolCall) => toolExecutor.execute(patchToolCall(toolCall))
 					: undefined,
 				onToolCall: async (toolCall) => {
-					emitToolCall(agentStream, toolCall);
+					emitToolCall(agentStream, patchToolCall(toolCall));
 				},
 				onToolResult: async ({ toolCall, result }) => {
-					emitToolResult(agentStream, toolCall, result);
+					emitToolResult(agentStream, patchToolCall(toolCall), result);
 				},
 				onDelta: async (delta) => {
 					await agentStream.sendMessage({ type: 'text_delta', content: delta });

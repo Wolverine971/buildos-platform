@@ -211,8 +211,8 @@ The following categories from the scrape are **not relevant**:
 
 ## Already Analyzed
 
-| Paper                        | Location                   | Key Insights                                                            |
-| ---------------------------- | -------------------------- | ----------------------------------------------------------------------- |
+| Paper                        | Location                                      | Key Insights                                                            |
+| ---------------------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
 | PLANET (Multimodal Graph FM) | `research-library/research/research-graph.md` | Topology-aware modality interaction, DSRS for alignment, text as anchor |
 
 ---
