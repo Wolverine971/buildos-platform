@@ -1,3 +1,11 @@
+---
+title: "Project Scaffolding Templates System"
+status: exploratory
+date: 2026-02-06
+category: features
+path: thoughts/shared/ideas/project-scaffolding.md
+---
+
 <!-- thoughts/shared/ideas/project-scaffolding.md -->
 
 > almost. I like my current flexible structure. I just want to add this onto_scaffolding_templates on top of what 

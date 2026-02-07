@@ -1,3 +1,11 @@
+---
+title: "Project Context Sub-node System - Implementation Instructions"
+status: exploratory
+date: 2026-02-06
+category: features
+path: thoughts/shared/ideas/project-context-sub-node-system.md
+---
+
 <!-- thoughts/shared/ideas/project-context-sub-node-system.md -->
 # Implementation Instructions: Project Context Sub-node System
 

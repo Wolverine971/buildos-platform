@@ -1,4 +1,4 @@
-<!-- docs/tree-agent-llm-orchestration-spec.md -->
+<!-- docs/specs/tree-agent/tree-agent-llm-orchestration-spec.md -->
 
 # Tree Agent LLM Orchestration Spec
 

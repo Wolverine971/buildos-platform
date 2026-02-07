@@ -1,6 +1,6 @@
 ---
 title: 'Ontology System Implementation Roadmap'
-date: 2025-02-11
+date: 2026-02-11
 status: active
 priority: high
 tags: [ontology, fsm, roadmap, implementation]

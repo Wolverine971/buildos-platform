@@ -1,3 +1,11 @@
+---
+title: "BuildOS Conversational Agent - Context and Vision"
+status: implemented
+date: 2026-02-06
+category: chat
+path: thoughts/shared/ideas/buildos-conversational-agent.md
+---
+
 <!-- thoughts/shared/ideas/buildos-conversational-agent.md -->
 # BuildOS Conversational Agent - Context & Vision Document
 

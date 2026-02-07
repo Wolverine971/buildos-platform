@@ -1,3 +1,11 @@
+---
+title: "NotebookLM Counter-Positioning - BuildOS Competitive Analysis"
+status: design-phase
+date: 2026-02-06
+category: ontology
+path: thoughts/shared/ideas/ontology/notebooklm-counter-positioning.md
+---
+
 <!-- thoughts/shared/ideas/ontology/notebooklm-counter-positioning.md -->
 I'll search for current information about NotebookLM's positioning and features to help you understand the competitive terrain.Perfect! Now I have a clear picture of the competitive terrain. Let me break down NotebookLM's positioning and show you how BuildOS can carve out a distinctly more valuable category.
 

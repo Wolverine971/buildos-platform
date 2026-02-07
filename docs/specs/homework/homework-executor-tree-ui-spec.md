@@ -1,4 +1,4 @@
-<!-- docs/homework-executor-tree-ui-spec.md -->
+<!-- docs/specs/homework/homework-executor-tree-ui-spec.md -->
 
 # Homework Executor Tree UI Spec
 

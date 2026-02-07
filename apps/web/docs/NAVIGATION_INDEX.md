@@ -2,7 +2,7 @@
 
 # BuildOS Web App Documentation Navigation Index
 
-**Last Updated**: January 30, 2026
+**Last Updated**: February 6, 2026
 **Purpose**: Quick navigation guide to all documentation in the web app
 **Location**: `/apps/web/docs/`
 
@@ -11,8 +11,7 @@
 ### Working on Ontology Features?
 
 - **Main Hub**: [`/features/ontology/README.md`](./features/ontology/README.md)
-- **Data Models**: [`/features/ontology/DATA_MODELS.md`](./features/ontology/DATA_MODELS.md) - Complete schema analysis
-- **Data Models**: [`/features/ontology/DATA_MODELS.md`](./features/ontology/DATA_MODELS.md) - Complete database schema
+- **Data Models**: [`/features/ontology/DATA_MODELS.md`](./features/ontology/DATA_MODELS.md) - Complete database schema (31KB, 15 tables)
 
 ### Working on UI Components?
 
@@ -24,12 +23,23 @@
 
 ### Other Features
 
+- **Admin Dashboard**: [`/features/admin-dashboard/README.md`](./features/admin-dashboard/README.md) - Admin tools and dashboard
 - **Agentic Chat**: [`/features/agentic-chat/README.md`](./features/agentic-chat/README.md) - AI chat system with tool execution
     - **Tool/API Mapping**: [`/features/agentic-chat/TOOL_API_MAPPING.md`](./features/agentic-chat/TOOL_API_MAPPING.md) - Tool to endpoint/data map
 - **Brain Dump**: [`/features/braindump-context/README.md`](./features/braindump-context/README.md) - AI processing system
 - **Calendar**: [`/features/calendar-integration/README.md`](./features/calendar-integration/README.md) - Google Calendar sync
+- **Chat System**: [`/features/chat-system/README.md`](./features/chat-system/README.md) - Chat infrastructure
+- **Conversational Agent**: [`/features/conversational-agent/README.md`](./features/conversational-agent/README.md) - Agent conversation design
+- **History Page**: [`/features/history-page/README.md`](./features/history-page/README.md) - Chat session history and resumption
+- **Integrations**: [`/features/integrations/README.md`](./features/integrations/README.md) - External integration capabilities
 - **Notifications**: [`/features/notifications/README.md`](./features/notifications/README.md) - Notification system
 - **Onboarding**: [`/features/onboarding/README.md`](./features/onboarding/README.md) - User onboarding flow
+- **Onboarding V2**: [`/features/onboarding-v2/README.md`](./features/onboarding-v2/README.md) - Updated onboarding flow
+- **Phase Generation**: [`/features/phase-generation/README.md`](./features/phase-generation/README.md) - Procedural phase generation
+- **Project Activity Logging**: [`/features/project-activity-logging/README.md`](./features/project-activity-logging/README.md) - Activity tracking and next steps
+- **Project Export**: [`/features/project-export/README.md`](./features/project-export/README.md) - Browser-native PDF export
+- **Project Sharing**: [`/features/project-sharing/README.md`](./features/project-sharing/README.md) - Project sharing capabilities
+- **Time Blocks**: [`/features/time-blocks/README.md`](./features/time-blocks/README.md) - Time block scheduling
 - **User Preferences**: [`/features/preferences/README.md`](./features/preferences/README.md) - AI behavior preferences
 
 ## 📁 Complete Directory Structure
@@ -41,6 +51,9 @@
 ├── NAVIGATION_INDEX.md                    # THIS FILE - Quick navigation
 │
 ├── /features/                             # Feature-specific documentation
+│   ├── /admin-dashboard/                  # Admin tools and dashboard
+│   │   └── README.md
+│   │
 │   ├── /agentic-chat/                     # AI chat system with tool execution
 │   │   ├── README.md                      # Complete architecture & flow (canonical)
 │   │   └── TOOL_API_MAPPING.md            # Tool -> API and data mapping
@@ -54,6 +67,18 @@
 │   │   ├── API_REFERENCE.md               # Calendar API docs
 │   │   └── WEBHOOK_SETUP.md               # Webhook configuration
 │   │
+│   ├── /chat-system/                      # Chat infrastructure
+│   │   └── README.md
+│   │
+│   ├── /conversational-agent/             # Agent conversation design
+│   │   └── README.md
+│   │
+│   ├── /history-page/                     # Chat session history
+│   │   └── README.md
+│   │
+│   ├── /integrations/                     # External integrations
+│   │   └── README.md
+│   │
 │   ├── /notifications/                    # Notification system
 │   │   ├── README.md                      # Notification overview
 │   │   ├── IMPLEMENTATION.md              # Implementation details
@@ -64,12 +89,30 @@
 │   │   ├── ONBOARDING_V2_UPDATE_ASSESSMENT.md  # V2 implementation spec
 │   │   └── ONBOARDING_V2_UPDATED_SPEC.md  # Detailed V2 specification
 │   │
-│   ├── /preferences/                      # User preferences (NEW)
+│   ├── /onboarding-v2/                    # Updated onboarding flow
+│   │   └── README.md
+│   │
+│   ├── /ontology/                         # Ontology system
+│   │   ├── README.md                      # Ontology overview & quick start
+│   │   └── DATA_MODELS.md                 # Complete database schema (31KB)
+│   │
+│   ├── /phase-generation/                 # Procedural phase generation
+│   │   └── README.md
+│   │
+│   ├── /preferences/                      # User preferences
 │   │   └── README.md                      # Preference system documentation
 │   │
-│   └── /ontology/                         # Ontology system
-│       ├── README.md                      # Ontology overview & quick start
-│       └── DATA_MODELS.md                 # Complete database schema (31KB)
+│   ├── /project-activity-logging/         # Activity tracking & next steps
+│   │   └── README.md
+│   │
+│   ├── /project-export/                   # Browser-native PDF export
+│   │   └── README.md
+│   │
+│   ├── /project-sharing/                  # Project sharing
+│   │   └── README.md
+│   │
+│   └── /time-blocks/                      # Time block scheduling
+│       └── README.md
 │
 ├── /technical/                            # Technical documentation
 │   ├── /api/                              # API documentation
@@ -251,4 +294,4 @@ Based on common development tasks:
 
 **Note**: This index is maintained as documentation is added or reorganized. If you find missing or incorrect links, please update this file.
 
-**Last Major Update**: January 30, 2026 - Consolidated agentic chat docs, updated navigation index
+**Last Major Update**: February 6, 2026 - Added all 19 feature directories to navigation, fixed broken links

@@ -730,7 +730,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				signal: request.signal,
 				systemPrompt,
 				tools,
-				toolExecutor: toolExecutor ? (toolCall) => toolExecutor.execute(toolCall) : undefined,
+				toolExecutor: toolExecutor
+					? (toolCall) => toolExecutor.execute(toolCall)
+					: undefined,
 				onToolCall: async (toolCall) => {
 					emitToolCall(agentStream, toolCall);
 				},

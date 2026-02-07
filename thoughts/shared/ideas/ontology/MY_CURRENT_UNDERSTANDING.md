@@ -1,3 +1,11 @@
+---
+title: "Ontology Vision - Current Understanding and Direction"
+status: design-phase
+date: 2026-02-06
+category: ontology
+path: thoughts/shared/ideas/ontology/MY_CURRENT_UNDERSTANDING.md
+---
+
 <!-- thoughts/shared/ideas/ontology/MY_CURRENT_UNDERSTANDING.md -->
 # My vision
 

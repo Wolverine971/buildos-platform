@@ -77,10 +77,7 @@ export function shouldEnableWebTools(message: string): boolean {
 	return matchesAny(text, WEB_INTENT_PATTERNS);
 }
 
-export function shouldEnableCalendarTools(
-	contextType: ChatContextType,
-	message: string
-): boolean {
+export function shouldEnableCalendarTools(contextType: ChatContextType, message: string): boolean {
 	if (isCalendarContext(contextType)) return true;
 	if (isProjectContext(contextType)) return true;
 	const text = message?.trim() ?? '';

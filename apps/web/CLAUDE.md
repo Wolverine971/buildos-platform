@@ -30,7 +30,6 @@ All web app documentation is organized under `/apps/web/docs/`:
 
 - **[Ontology System](/apps/web/docs/features/ontology/README.md)** - Template-driven entity management system
     - **[Data Models](/apps/web/docs/features/ontology/DATA_MODELS.md)** - Complete database schema (31KB, 15 tables)
-    - **[Data Models](/apps/web/docs/features/ontology/DATA_MODELS.md)** - Complete database schema
     - Components: `/src/lib/components/ontology/`
     - API Endpoints: `/src/routes/api/onto/`
     - **Key Features:** Tasks, Plans, Goals, Documents, FSM state machines, template inheritance

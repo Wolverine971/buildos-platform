@@ -1,4 +1,4 @@
-<!-- docs/homework-planner-executor-fix-spec.md -->
+<!-- docs/specs/homework/homework-planner-executor-fix-spec.md -->
 
 # Homework Planner/Executor Improvement Spec
 

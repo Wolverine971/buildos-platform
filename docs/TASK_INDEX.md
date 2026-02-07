@@ -15,6 +15,8 @@ Navigation organized by **what you want to do**, not just what exists.
 | How daily briefs work          | `/apps/worker/docs/features/daily-briefs/`      | Worker daily brief service                    | `/apps/worker/src/services/`                  |
 | How notifications work         | `/apps/web/docs/features/notifications/`        | Notification components                       | `/apps/web/src/lib/components/notifications/` |
 | How web and worker communicate | [Deployment Topology](DEPLOYMENT_TOPOLOGY.md)   | Queue job types                               | `/packages/shared-types/`                     |
+| How homework system works      | `/docs/specs/homework/`                         | Homework agent orchestration                  | `/docs/specs/homework/`                       |
+| How tree agent works           | `/docs/specs/tree-agent/`                       | Tree agent LLM orchestration                  | `/docs/specs/tree-agent/`                     |
 | Database schema                | `/apps/web/docs/technical/database/`            | Supabase dashboard                            | Supabase migrations                           |
 
 ## Development Tasks
@@ -77,14 +79,14 @@ Navigation organized by **what you want to do**, not just what exists.
 
 | Issue Type           | Check                   | Location                                                                    |
 | -------------------- | ----------------------- | --------------------------------------------------------------------------- |
-| Web app broken       | Vercel logs             | `/apps/web/docs/operations/runbooks/`                                       |
+| Web app broken       | Vercel logs             | `/apps/web/docs/technical/deployment/runbooks/`                             |
 | Worker jobs failing  | Railway logs            | `/apps/worker/docs/operations/runbooks/`                                    |
 | Database errors      | Supabase dashboard logs | Supabase dashboard                                                          |
 | Build failures       | Clear cache, reinstall  | [Monorepo Guide](MONOREPO_GUIDE.md)                                         |
 | Type errors          | Rebuild shared packages | [Monorepo Guide](MONOREPO_GUIDE.md)                                         |
 | API errors           | Check error logs        | `/apps/web/docs/technical/api/`                                             |
 | Calendar sync issues | Check webhook logs      | `/apps/web/docs/technical/deployment/runbooks/calendar-webhook-failures.md` |
-| Payment failures     | Check Stripe dashboard  | `/apps/web/docs/technical/deployment/runbooks/stripe-webhook-failures.md`   |
+| Payment failures     | Check Stripe dashboard  | `/docs/integrations/stripe/runbooks/webhook-failures.md`                    |
 
 ### Performance Debugging
 

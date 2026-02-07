@@ -1,4 +1,4 @@
-<!-- docs/admin-tools-and-patterns.md -->
+<!-- docs/guides/admin-tools-and-patterns.md -->
 
 # Admin Tools & Manual Trigger Endpoints - Pattern Analysis
 

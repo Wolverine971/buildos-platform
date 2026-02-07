@@ -1,4 +1,4 @@
-<!-- docs/tree-agent-context-selection-spec.md -->
+<!-- docs/specs/tree-agent/tree-agent-context-selection-spec.md -->
 
 # Tree Agent: Context Selection Implementation Spec
 

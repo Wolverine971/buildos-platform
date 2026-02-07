@@ -1,4 +1,4 @@
-<!-- docs/homework-agent-orchestration-architecture.md -->
+<!-- docs/specs/homework/homework-agent-orchestration-architecture.md -->
 
 # Recursive Planner + Executor Architecture
 

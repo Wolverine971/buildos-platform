@@ -117,7 +117,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						}
 						if (event.usage.completion_tokens !== undefined) {
 							usage.completion_tokens =
-								(usage.completion_tokens ?? 0) + (event.usage.completion_tokens ?? 0);
+								(usage.completion_tokens ?? 0) +
+								(event.usage.completion_tokens ?? 0);
 						}
 					}
 				}

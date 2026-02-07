@@ -1,3 +1,11 @@
+---
+title: "Admin Ontology Graph View - Cytoscape.js Visualization Spec"
+status: design-phase
+date: 2026-02-06
+category: ontology
+path: thoughts/shared/ideas/ontology/admin-ontology-graph-view-spec.md
+---
+
 <!-- thoughts/shared/ideas/ontology/admin-ontology-graph-view-spec.md -->
 # Cytoscape.js Ontology Visualization Specification
 

@@ -41,6 +41,10 @@ coverage
 # Vercel
 .vercel
 
+# Generated Supabase files
+supabase.openapi*.json
+postgrest.api.d.ts
+
 # Misc
 *.pem
 *.har

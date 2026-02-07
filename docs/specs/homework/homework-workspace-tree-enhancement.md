@@ -1,4 +1,4 @@
-<!-- docs/homework-workspace-tree-enhancement.md -->
+<!-- docs/specs/homework/homework-workspace-tree-enhancement.md -->
 
 # Homework Workspace Tree Enhancement
 

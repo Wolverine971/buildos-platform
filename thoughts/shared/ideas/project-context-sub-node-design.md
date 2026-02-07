@@ -1,3 +1,11 @@
+---
+title: "Project Context Sub-node System - Feature Overview"
+status: exploratory
+date: 2026-02-06
+category: features
+path: thoughts/shared/ideas/project-context-sub-node-design.md
+---
+
 <!-- thoughts/shared/ideas/project-context-sub-node-design.md -->
 # Project Context Sub-node System - Feature Overview
 

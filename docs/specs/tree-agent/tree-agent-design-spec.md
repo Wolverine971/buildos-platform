@@ -1,4 +1,4 @@
-<!-- docs/tree-agent-design-spec.md -->
+<!-- docs/specs/tree-agent/tree-agent-design-spec.md -->
 
 # Tree Agent - Live Orchestration + Graph UI Spec
 

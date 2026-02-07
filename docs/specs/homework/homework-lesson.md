@@ -1,4 +1,4 @@
-<!-- docs/homework-lesson.md -->
+<!-- docs/specs/homework/homework-lesson.md -->
 
 # BuildOS Homework (Long-Running Tasks) — Lesson Plan (Sixth-Grade Friendly)
 

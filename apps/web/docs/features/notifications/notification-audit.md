@@ -1,4 +1,4 @@
-<!-- docs/notification-audit.md -->
+<!-- apps/web/docs/features/notifications/notification-audit.md -->
 
 # Notification Flow Audit (BuildOS)
 

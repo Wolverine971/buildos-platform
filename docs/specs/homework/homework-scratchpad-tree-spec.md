@@ -1,4 +1,4 @@
-<!-- docs/homework-scratchpad-tree-spec.md -->
+<!-- docs/specs/homework/homework-scratchpad-tree-spec.md -->
 
 # Homework Scratchpad Tree Spec
 

@@ -32,6 +32,8 @@ For **package documentation**:
 - `/integrations/` - Shared integrations (Supabase, Stripe, Twilio/SMS)
 - `/research/` - Cross-cutting research
 - `/specs/` - Feature and system specifications
+    - `/specs/homework/` - Homework agent orchestration system (Draft)
+    - `/specs/tree-agent/` - Tree agent LLM orchestration system (Draft)
 - `/plans/` - Implementation and project plans
 - `/guides/` - How-to guides
 

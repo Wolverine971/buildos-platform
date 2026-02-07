@@ -1,3 +1,11 @@
+---
+title: "Ontology Endpoint Stubs - SvelteKit Server Routes"
+status: design-phase
+date: 2026-02-06
+category: ontology
+path: thoughts/shared/ideas/ontology/endpoint-stubs.md
+---
+
 <!-- thoughts/shared/ideas/ontology/endpoint-stubs.md -->
 TypeScript endpoint stubs (SvelteKit server routes)
 Types: src/lib/types/onto.ts

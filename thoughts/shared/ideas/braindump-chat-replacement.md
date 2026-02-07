@@ -1,3 +1,11 @@
+---
+title: "Braindump Chat Replacement - Multi-Phase Implementation Spec"
+status: implemented
+date: 2026-02-06
+category: chat
+path: thoughts/shared/ideas/braindump-chat-replacement.md
+---
+
 <!-- thoughts/shared/ideas/braindump-chat-replacement.md -->
 # BuildOS Conversational Agent - Multi-Phase Implementation Spec
 

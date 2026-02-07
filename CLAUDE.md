@@ -65,6 +65,8 @@ buildos-platform/
 | Notification System     | `/apps/web/docs/features/notifications/`        |
 | Onboarding Flow         | `/apps/web/docs/features/onboarding/`           |
 | Daily Briefs (Worker)   | `/apps/worker/docs/features/daily-briefs/`      |
+| Homework System         | `/docs/specs/homework/`                         |
+| Tree Agent System       | `/docs/specs/tree-agent/`                       |
 | **Modal Components** ⭐ | `/apps/web/docs/technical/components/modals/`   |
 
 ### Architecture & Deployment
@@ -115,6 +117,7 @@ pnpm test:watch       # Watch mode
 # Worker tests
 cd apps/worker
 pnpm test
+pnpm test:run         # Run once without watch mode
 pnpm test:scheduler   # Scheduler-specific tests
 ```
 
