@@ -2,20 +2,35 @@
 import type { Database } from '@buildos/shared-types';
 import type { DocStructure, DocTreeNode } from '$lib/types/onto-api';
 
+export type DocMetaSummary = {
+	title?: string | null;
+	description?: string | null;
+};
+
+export type DocStructureNodeSummary = {
+	id: string;
+	type?: DocTreeNode['type'];
+	order: number;
+	title?: string | null;
+	description?: string | null;
+	children?: DocStructureNodeSummary[];
+};
+
+export type DocStructureSummary = {
+	version: number;
+	root: DocStructureNodeSummary[];
+};
+
 export type LightProject = {
 	id: string;
 	name: string;
 	state_key: Database['public']['Tables']['onto_projects']['Row']['state_key'];
-	type_key: string;
 	description: string | null;
 	start_at: string | null;
 	end_at: string | null;
-	facet_context: string | null;
-	facet_scale: string | null;
-	facet_stage: string | null;
 	next_step_short: string | null;
 	updated_at: string;
-	doc_structure?: DocStructure | null;
+	doc_structure?: DocStructureSummary | null;
 };
 
 export type LightGoal = {
@@ -23,9 +38,7 @@ export type LightGoal = {
 	name: string;
 	description: string | null;
 	state_key: string | null;
-	type_key: string | null;
 	target_date: string | null;
-	progress_percent: number | null;
 	completed_at: string | null;
 	updated_at: string | null;
 };
@@ -35,7 +48,6 @@ export type LightMilestone = {
 	title: string;
 	description: string | null;
 	state_key: string | null;
-	type_key: string | null;
 	due_at: string | null;
 	completed_at: string | null;
 	updated_at: string | null;
@@ -46,7 +58,6 @@ export type LightPlan = {
 	name: string;
 	description: string | null;
 	state_key: string | null;
-	type_key: string | null;
 	task_count: number | null;
 	completed_task_count: number | null;
 	updated_at: string | null;
@@ -57,13 +68,10 @@ export type LightTask = {
 	title: string;
 	description: string | null;
 	state_key: string | null;
-	type_key: string | null;
 	priority: number | null;
 	start_at: string | null;
 	due_at: string | null;
 	completed_at: string | null;
-	plan_ids?: string[] | null;
-	goal_ids?: string[] | null;
 	updated_at: string | null;
 };
 
@@ -72,21 +80,11 @@ export type LightEvent = {
 	title: string;
 	description: string | null;
 	state_key: string;
-	type_key: string;
 	start_at: string;
 	end_at: string | null;
 	all_day: boolean;
 	location: string | null;
 	updated_at: string;
-};
-
-export type LightDocumentMeta = {
-	id: string;
-	title: string;
-	description: string | null;
-	state_key: string | null;
-	type_key: string | null;
-	updated_at: string | null;
 };
 
 export type LightRecentActivity = {
@@ -115,13 +113,12 @@ export type GlobalContextData = {
 
 export type ProjectContextData = {
 	project: LightProject;
-	doc_structure: DocStructure | null;
+	doc_structure: DocStructureSummary | null;
 	goals: LightGoal[];
 	milestones: LightMilestone[];
 	plans: LightPlan[];
 	tasks: LightTask[];
 	events: LightEvent[];
-	documents?: LightDocumentMeta[];
 };
 
 export type EntityContextData = ProjectContextData & {
@@ -132,21 +129,47 @@ export type EntityContextData = ProjectContextData & {
 	linked_edges?: LinkedEdge[];
 };
 
-export function truncateDocStructure(
+export function collectDocStructureIds(
 	structure: DocStructure | null | undefined,
-	maxDepth = 2
-): DocStructure | null {
+	maxDepth?: number
+): string[] {
+	if (!structure) return [];
+	const root = structure.root ?? [];
+	const ids: string[] = [];
+
+	const walk = (nodes: DocTreeNode[], depth: number): void => {
+		if (typeof maxDepth === 'number' && depth >= maxDepth) return;
+		for (const node of nodes) {
+			ids.push(node.id);
+			if (node.children) walk(node.children, depth + 1);
+		}
+	};
+
+	walk(root, 0);
+	return ids;
+}
+
+export function buildDocStructureSummary(
+	structure: DocStructure | null | undefined,
+	docMetaById: Record<string, DocMetaSummary>,
+	maxDepth?: number
+): DocStructureSummary | null {
 	if (!structure) return null;
 	const root = structure.root ?? [];
 
-	const walk = (nodes: DocTreeNode[], depth: number): DocTreeNode[] => {
-		if (depth >= maxDepth) return [];
-		return nodes.map((node) => ({
-			id: node.id,
-			type: node.type,
-			order: node.order,
-			children: node.children ? walk(node.children, depth + 1) : undefined
-		}));
+	const walk = (nodes: DocTreeNode[], depth: number): DocStructureNodeSummary[] => {
+		if (typeof maxDepth === 'number' && depth >= maxDepth) return [];
+		return nodes.map((node) => {
+			const meta = docMetaById[node.id];
+			return {
+				id: node.id,
+				type: node.type,
+				order: node.order,
+				title: meta?.title ?? null,
+				description: meta?.description ?? null,
+				children: node.children ? walk(node.children, depth + 1) : undefined
+			};
+		});
 	};
 
 	return {

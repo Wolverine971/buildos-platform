@@ -305,11 +305,12 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	reorganize_onto_project_graph: {
-		summary: 'Reorganize a subset of a project graph from a node-centric structure.',
+		summary: 'Reorganize a subset of a project graph from a node-centric structure (excludes documents).',
 		capabilities: [
 			'Reparents containment edges',
 			'Rebuilds auto-managed semantics',
-			'Supports dry-run previews'
+			'Supports dry-run previews',
+			'Documents are managed only via doc_structure'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
@@ -399,16 +400,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	delete_onto_plan: {
 		summary: 'Delete a plan container while leaving tasks untouched.',
 		capabilities: ['Validates ownership', 'Irreversible delete'],
-		contexts: ['project', 'project_audit', 'project_forecast'],
-		category: 'write'
-	},
-	move_document: {
-		summary: 'Move a document to a new location in the hierarchical document tree.',
-		capabilities: [
-			'Moves to root or under another document',
-			'Validates ownership and cycle prevention',
-			'Supports position specification'
-		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},

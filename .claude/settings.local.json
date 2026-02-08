@@ -105,7 +105,21 @@
       "Bash(node:*)",
       "Bash(npm --version:*)",
       "Bash(pnpm:*)",
-      "Bash(do echo \"\" echo \"Package: @buildos/$pkg\" echo \"Files in dist:\" ls -1 /Users/djwayne/buildos-platform/packages/$pkg/dist/)"
+      "Bash(do echo \"\" echo \"Package: @buildos/$pkg\" echo \"Files in dist:\" ls -1 /Users/djwayne/buildos-platform/packages/$pkg/dist/)",
+      "WebFetch(domain:steve-yegge.medium.com)",
+      "WebFetch(domain:maggieappleton.com)",
+      "WebFetch(domain:justin.abrah.ms)",
+      "WebFetch(domain:druriley.com)",
+      "WebFetch(domain:www.technologyreview.com)",
+      "WebFetch(domain:stackoverflow.blog)",
+      "WebFetch(domain:metr.org)",
+      "WebFetch(domain:fortune.com)",
+      "Bash(npm init:*)",
+      "Bash(npm pkg set:*)",
+      "Bash(npm install:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:discuss.codemirror.net)",
+      "WebFetch(domain:codemirror.net)"
     ],
     "deny": [],
     "ask": []

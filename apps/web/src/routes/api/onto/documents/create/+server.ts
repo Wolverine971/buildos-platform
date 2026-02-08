@@ -69,6 +69,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('title is required');
 		}
 
+		if (!description || typeof description !== 'string' || !description.trim()) {
+			return ApiResponse.badRequest('description is required');
+		}
+
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeDocumentStateInput(state_key);
 
@@ -185,7 +189,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					: null;
 		const normalizedContent = normalizeMarkdownInput(rawContent);
 
-		const normalizedDescription = typeof description === 'string' ? description : null;
+		const normalizedDescription = typeof description === 'string' ? description.trim() : null;
 		const parentId =
 			typeof parent_id === 'string' && parent_id.trim().length > 0 ? parent_id : null;
 		const positionValue =

@@ -264,6 +264,39 @@ export class ToolExecutionService implements BaseService {
 		args = this.applyContextDefaults(toolName, args, context, availableTools);
 		args = this.normalizeIdFields(args);
 
+		if (toolName === 'create_onto_document') {
+			const description = typeof args.description === 'string' ? args.description.trim() : '';
+			if (!description) {
+				return finalizeResult({
+					success: false,
+					error: 'create_onto_document requires a non-empty description',
+					errorType: 'validation_error',
+					toolName,
+					toolCallId: toolCall.id
+				});
+			}
+			args.description = description;
+		}
+
+		if (toolName === 'create_task_document') {
+			const hasDocumentId =
+				typeof args.document_id === 'string' && args.document_id.trim().length > 0;
+			if (!hasDocumentId) {
+				const description =
+					typeof args.description === 'string' ? args.description.trim() : '';
+				if (!description) {
+					return finalizeResult({
+						success: false,
+						error: 'create_task_document requires a non-empty description when creating a document',
+						errorType: 'validation_error',
+						toolName,
+						toolCallId: toolCall.id
+					});
+				}
+				args.description = description;
+			}
+		}
+
 		if (dev && toolName === 'create_onto_document') {
 			const normalizedContent =
 				typeof args.content === 'string'
@@ -748,6 +781,10 @@ export class ToolExecutionService implements BaseService {
 
 		const nodes = Array.isArray(args.nodes) ? args.nodes : [];
 		let needsGraphLookupHint = false;
+		const isDocumentKind = (value: string): boolean => {
+			const normalized = value.trim().toLowerCase();
+			return normalized === 'document' || normalized.startsWith('document.');
+		};
 
 		for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) {
 			const node = nodes[nodeIndex];
@@ -758,6 +795,12 @@ export class ToolExecutionService implements BaseService {
 
 			const kind = typeof (node as any).kind === 'string' ? (node as any).kind.trim() : '';
 			const id = typeof (node as any).id === 'string' ? (node as any).id.trim() : '';
+
+			if (kind && isDocumentKind(kind)) {
+				errors.push(
+					`Document nodes are not allowed in reorganize_onto_project_graph (nodes[${nodeIndex}]). Documents are organized only via onto_projects.doc_structure.`
+				);
+			}
 
 			if (!id) {
 				errors.push(`Missing id for node at nodes[${nodeIndex}]`);
@@ -785,6 +828,12 @@ export class ToolExecutionService implements BaseService {
 						: '';
 				const connId =
 					typeof (connection as any).id === 'string' ? (connection as any).id.trim() : '';
+
+				if (connKind && isDocumentKind(connKind)) {
+					errors.push(
+						`Document connections are not allowed in reorganize_onto_project_graph (nodes[${nodeIndex}].connections[${connIndex}]). Documents are organized only via onto_projects.doc_structure.`
+					);
+				}
 
 				if (!connKind || !connId) {
 					errors.push(
@@ -1415,6 +1464,7 @@ export class ToolExecutionService implements BaseService {
 			};
 
 			mergeIfMissing('title');
+			mergeIfMissing('description');
 			mergeIfMissing('type_key');
 			mergeIfMissing('state_key');
 			mergeIfMissing('content');
@@ -1478,6 +1528,39 @@ export class ToolExecutionService implements BaseService {
 				resolved.content = resolvedContent;
 			}
 
+			const descriptionCandidates: Array<string | undefined> = [
+				typeof resolved.description === 'string' ? resolved.description : undefined,
+				typeof (resolved as Record<string, any>).summary === 'string'
+					? (resolved as Record<string, any>).summary
+					: undefined,
+				typeof (resolved as Record<string, any>).doc_description === 'string'
+					? (resolved as Record<string, any>).doc_description
+					: undefined,
+				typeof (resolved as Record<string, any>).document_description === 'string'
+					? (resolved as Record<string, any>).document_description
+					: undefined,
+				typeof nestedDocument?.description === 'string'
+					? nestedDocument.description
+					: undefined,
+				typeof nestedDocument?.summary === 'string' ? nestedDocument.summary : undefined,
+				typeof nestedDocument?.doc_description === 'string'
+					? nestedDocument.doc_description
+					: undefined,
+				typeof nestedDocument?.document_description === 'string'
+					? nestedDocument.document_description
+					: undefined
+			];
+			const resolvedDescription = descriptionCandidates.find(
+				(value) => typeof value === 'string' && value.trim().length > 0
+			);
+			if (
+				(typeof resolved.description !== 'string' ||
+					resolved.description.trim().length === 0) &&
+				resolvedDescription
+			) {
+				resolved.description = resolvedDescription;
+			}
+
 			const fallbackTitleCandidates = [
 				resolved.title,
 				(resolved as Record<string, unknown>).name,
@@ -1511,6 +1594,12 @@ export class ToolExecutionService implements BaseService {
 				const inferred = this.inferDocumentTitle(context.conversationHistory);
 				resolved.title =
 					inferred && inferred.trim() ? inferred.trim() : 'Untitled Document';
+			}
+
+			const trimmedDescription =
+				typeof resolved.description === 'string' ? resolved.description.trim() : '';
+			if (trimmedDescription) {
+				resolved.description = trimmedDescription;
 			}
 		}
 

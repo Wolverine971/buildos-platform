@@ -299,7 +299,7 @@ FastChat is a speed-first path that should:
 - create: `create_onto_task`, `create_onto_goal`, `create_onto_plan`, `create_onto_document`, `create_task_document`
 - update: `update_onto_task`, `update_onto_project`, `update_onto_goal`, `update_onto_plan`, `update_onto_document`, `update_onto_milestone`, `update_onto_risk`, `update_onto_requirement`
 - delete: `delete_onto_task`, `delete_onto_goal`, `delete_onto_plan`, `delete_onto_document`
-- graph: `link_onto_entities`, `unlink_onto_edge`, `move_document`, `reorganize_onto_project_graph`
+- graph: `link_onto_entities`, `unlink_onto_edge`, `reorganize_onto_project_graph`
 
 **project_create**
 
@@ -331,7 +331,7 @@ Included by default for project + entity contexts. Still require explicit user i
 - create: `create_onto_task`, `create_onto_goal`, `create_onto_plan`, `create_onto_document`
 - update: `update_onto_*`
 - delete: `delete_onto_*`
-- graph: `link_onto_entities`, `unlink_onto_edge`, `move_document`, `reorganize_onto_project_graph`
+- graph: `link_onto_entities`, `unlink_onto_edge`, `reorganize_onto_project_graph`
 
 ---
 
@@ -475,7 +475,6 @@ Add on as needed:
 - delete_onto_goal
 - delete_onto_plan
 - delete_onto_document
-- move_document
 - list_calendar_events
 - get_calendar_event_details
 - create_calendar_event

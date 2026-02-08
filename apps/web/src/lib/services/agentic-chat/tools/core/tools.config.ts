@@ -129,8 +129,7 @@ export const TOOL_CATEGORIES = {
 			'delete_onto_task',
 			'delete_onto_goal',
 			'delete_onto_plan',
-			'delete_onto_document',
-			'move_document'
+			'delete_onto_document'
 		],
 		averageTokens: 400,
 		costTier: 'medium'
@@ -244,7 +243,6 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'delete_onto_goal',
 		'delete_onto_plan',
 		'delete_onto_document',
-		'move_document',
 		'list_calendar_events',
 		'get_calendar_event_details',
 		'create_calendar_event',
@@ -370,8 +368,7 @@ export const ONTOLOGY_TOOLS = extractTools([
 	'delete_onto_task',
 	'delete_onto_goal',
 	'delete_onto_plan',
-	'delete_onto_document',
-	'move_document'
+	'delete_onto_document'
 ]);
 
 export const UTILITY_TOOLS = extractTools([

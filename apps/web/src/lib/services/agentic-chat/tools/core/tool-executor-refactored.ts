@@ -450,9 +450,6 @@ export class ChatToolExecutor {
 			case 'delete_onto_document':
 				return this.writeExecutor.deleteOntoDocument(args);
 
-			case 'move_document':
-				return this.writeExecutor.moveDocument(args);
-
 			// ==================
 			// UNKNOWN
 			// ==================

@@ -5,9 +5,9 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { createLogger } from '$lib/utils/logger';
 import type { DocStructure } from '$lib/types/onto-api';
 import type {
+	DocMetaSummary,
 	EntityContextData,
 	GlobalContextData,
-	LightDocumentMeta,
 	LightEvent,
 	LightGoal,
 	LightMilestone,
@@ -18,7 +18,7 @@ import type {
 	ProjectContextData,
 	LinkedEdge
 } from './context-models';
-import { truncateDocStructure } from './context-models';
+import { buildDocStructureSummary, collectDocStructureIds } from './context-models';
 import type { MasterPromptContext } from './master-prompt-builder';
 
 const logger = createLogger('FastChatContext');
@@ -34,13 +34,9 @@ type ProjectSelectRow = Pick<
 	| 'id'
 	| 'name'
 	| 'state_key'
-	| 'type_key'
 	| 'description'
 	| 'start_at'
 	| 'end_at'
-	| 'facet_context'
-	| 'facet_scale'
-	| 'facet_stage'
 	| 'next_step_short'
 	| 'updated_at'
 	| 'doc_structure'
@@ -53,6 +49,7 @@ type EventRow = Database['public']['Tables']['onto_events']['Row'];
 type DocumentRow = Database['public']['Tables']['onto_documents']['Row'];
 type ProjectLogRow = Database['public']['Tables']['onto_project_logs']['Row'];
 type EdgeRow = Database['public']['Tables']['onto_edges']['Row'];
+type DocMetaRow = Pick<DocumentRow, 'id' | 'title' | 'description'>;
 
 type LoadContextParams = {
 	supabase: SupabaseClient<Database>;
@@ -71,13 +68,12 @@ type LinkedEntityConfig = {
 const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	project: {
 		table: 'onto_projects',
-		select: 'id, name, state_key, type_key, description, start_at, end_at, facet_context, facet_scale, facet_stage, next_step_short, updated_at',
+		select: 'id, name, state_key, description, start_at, end_at, next_step_short, updated_at',
 		map: (row: ProjectRow) => ({
 			id: row.id,
 			name: row.name,
 			description: row.description,
 			state_key: row.state_key,
-			type_key: row.type_key,
 			start_at: row.start_at,
 			end_at: row.end_at,
 			updated_at: row.updated_at
@@ -85,13 +81,12 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	task: {
 		table: 'onto_tasks',
-		select: 'id, title, description, state_key, type_key, priority, start_at, due_at, completed_at, updated_at',
+		select: 'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at',
 		map: (row: TaskRow) => ({
 			id: row.id,
 			title: row.title,
 			description: row.description,
 			state_key: row.state_key,
-			type_key: row.type_key,
 			priority: row.priority,
 			start_at: row.start_at,
 			due_at: row.due_at,
@@ -101,25 +96,23 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	plan: {
 		table: 'onto_plans',
-		select: 'id, name, description, state_key, type_key, updated_at',
+		select: 'id, name, description, state_key, updated_at',
 		map: (row: PlanRow) => ({
 			id: row.id,
 			name: row.name,
 			description: row.description,
 			state_key: row.state_key,
-			type_key: row.type_key,
 			updated_at: row.updated_at
 		})
 	},
 	goal: {
 		table: 'onto_goals',
-		select: 'id, name, description, state_key, type_key, target_date, completed_at, updated_at',
+		select: 'id, name, description, state_key, target_date, completed_at, updated_at',
 		map: (row: GoalRow) => ({
 			id: row.id,
 			name: row.name,
 			description: row.description,
 			state_key: row.state_key,
-			type_key: row.type_key,
 			target_date: row.target_date,
 			completed_at: row.completed_at,
 			updated_at: row.updated_at
@@ -127,13 +120,12 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	milestone: {
 		table: 'onto_milestones',
-		select: 'id, title, description, state_key, type_key, due_at, completed_at, updated_at',
+		select: 'id, title, description, state_key, due_at, completed_at, updated_at',
 		map: (row: MilestoneRow) => ({
 			id: row.id,
 			title: row.title,
 			description: row.description,
 			state_key: row.state_key,
-			type_key: row.type_key,
 			due_at: row.due_at,
 			completed_at: row.completed_at,
 			updated_at: row.updated_at
@@ -141,25 +133,23 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	document: {
 		table: 'onto_documents',
-		select: 'id, title, description, state_key, type_key, updated_at',
+		select: 'id, title, description, state_key, updated_at',
 		map: (row: DocumentRow) => ({
 			id: row.id,
 			title: row.title,
 			description: row.description,
 			state_key: row.state_key,
-			type_key: row.type_key,
 			updated_at: row.updated_at
 		})
 	},
 	event: {
 		table: 'onto_events',
-		select: 'id, title, description, state_key, type_key, start_at, end_at, all_day, location, updated_at',
+		select: 'id, title, description, state_key, start_at, end_at, all_day, location, updated_at',
 		map: (row: EventRow) => ({
 			id: row.id,
 			title: row.title,
 			description: row.description,
 			state_key: row.state_key,
-			type_key: row.type_key,
 			start_at: row.start_at,
 			end_at: row.end_at,
 			all_day: row.all_day,
@@ -169,13 +159,12 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	risk: {
 		table: 'onto_risks',
-		select: 'id, title, content, state_key, type_key, impact, probability, updated_at',
+		select: 'id, title, content, state_key, impact, probability, updated_at',
 		map: (row: any) => ({
 			id: row.id,
 			title: row.title,
 			content: row.content,
 			state_key: row.state_key,
-			type_key: row.type_key,
 			impact: row.impact,
 			probability: row.probability,
 			updated_at: row.updated_at
@@ -183,12 +172,11 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	},
 	requirement: {
 		table: 'onto_requirements',
-		select: 'id, text, priority, type_key, updated_at',
+		select: 'id, text, priority, updated_at',
 		map: (row: any) => ({
 			id: row.id,
 			text: row.text,
 			priority: row.priority,
-			type_key: row.type_key,
 			updated_at: row.updated_at
 		})
 	}
@@ -210,37 +198,49 @@ function resolveEntityName(entity: Record<string, unknown> | null | undefined): 
 	return typeof candidate === 'string' ? candidate : null;
 }
 
-function normalizeDocStructure(
-	structure: DocStructure | null | undefined,
-	maxDepth?: number
-): DocStructure | null {
-	if (!structure) return null;
-	if (typeof maxDepth === 'number') {
-		return truncateDocStructure(structure, maxDepth);
+const STRIP_ENTITY_FIELDS = new Set([
+	'type_key',
+	'facet_context',
+	'facet_scale',
+	'facet_stage',
+	'progress_percent',
+	'plan_ids',
+	'goal_ids'
+]);
+
+function stripEntityFields(
+	entity: Record<string, unknown> | null | undefined
+): Record<string, unknown> {
+	if (!entity) return {};
+	const result: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(entity)) {
+		if (STRIP_ENTITY_FIELDS.has(key)) continue;
+		result[key] = value;
 	}
-	return structure;
+	return result;
 }
 
 function mapProject(
 	row: ProjectSelectRow,
-	options?: { includeDocStructure?: boolean; truncateDepth?: number }
+	options?: {
+		includeDocStructure?: boolean;
+		truncateDepth?: number;
+		docMetaById?: Record<string, DocMetaSummary>;
+	}
 ): LightProject {
 	return {
 		id: row.id,
 		name: row.name,
 		state_key: row.state_key,
-		type_key: row.type_key,
 		description: row.description,
 		start_at: row.start_at,
 		end_at: row.end_at,
-		facet_context: row.facet_context,
-		facet_scale: row.facet_scale,
-		facet_stage: row.facet_stage,
 		next_step_short: row.next_step_short,
 		updated_at: row.updated_at,
 		doc_structure: options?.includeDocStructure
-			? normalizeDocStructure(
+			? buildDocStructureSummary(
 					row.doc_structure as DocStructure | null,
+					options?.docMetaById ?? {},
 					options?.truncateDepth
 				)
 			: undefined
@@ -253,9 +253,7 @@ function mapGoal(row: GoalRow): LightGoal {
 		name: row.name,
 		description: row.description,
 		state_key: row.state_key,
-		type_key: row.type_key,
 		target_date: row.target_date,
-		progress_percent: null,
 		completed_at: row.completed_at,
 		updated_at: row.updated_at
 	};
@@ -267,7 +265,6 @@ function mapMilestone(row: MilestoneRow): LightMilestone {
 		title: row.title,
 		description: row.description,
 		state_key: row.state_key,
-		type_key: row.type_key,
 		due_at: row.due_at,
 		completed_at: row.completed_at,
 		updated_at: row.updated_at
@@ -280,7 +277,6 @@ function mapPlan(row: PlanRow): LightPlan {
 		name: row.name,
 		description: row.description,
 		state_key: row.state_key,
-		type_key: row.type_key,
 		task_count: null,
 		completed_task_count: null,
 		updated_at: row.updated_at
@@ -293,13 +289,10 @@ function mapTask(row: TaskRow): LightTask {
 		title: row.title,
 		description: row.description,
 		state_key: row.state_key,
-		type_key: row.type_key,
 		priority: row.priority,
 		start_at: row.start_at,
 		due_at: row.due_at,
 		completed_at: row.completed_at,
-		plan_ids: null,
-		goal_ids: null,
 		updated_at: row.updated_at
 	};
 }
@@ -310,7 +303,6 @@ function mapEvent(row: EventRow): LightEvent {
 		title: row.title,
 		description: row.description,
 		state_key: row.state_key,
-		type_key: row.type_key,
 		start_at: row.start_at,
 		end_at: row.end_at,
 		all_day: row.all_day,
@@ -319,15 +311,15 @@ function mapEvent(row: EventRow): LightEvent {
 	};
 }
 
-function mapDocument(row: DocumentRow): LightDocumentMeta {
-	return {
-		id: row.id,
-		title: row.title,
-		description: row.description,
-		state_key: row.state_key,
-		type_key: row.type_key,
-		updated_at: row.updated_at
-	};
+function buildDocMetaById(rows: DocMetaRow[]): Record<string, DocMetaSummary> {
+	const result: Record<string, DocMetaSummary> = {};
+	for (const row of rows) {
+		result[row.id] = {
+			title: row.title ?? null,
+			description: row.description ?? null
+		};
+	}
+	return result;
 }
 
 function extractTitle(payload: unknown): string | null {
@@ -378,7 +370,7 @@ async function loadGlobalContextData(
 	const { data: projects, error } = await supabase
 		.from('onto_projects')
 		.select(
-			'id, name, state_key, type_key, description, start_at, end_at, facet_context, facet_scale, facet_stage, next_step_short, updated_at, doc_structure'
+			'id, name, state_key, description, start_at, end_at, next_step_short, updated_at, doc_structure'
 		)
 		.eq('created_by', userId)
 		.is('deleted_at', null)
@@ -395,8 +387,36 @@ async function loadGlobalContextData(
 		};
 	}
 
-	const lightProjects = (projects ?? []).map((row) =>
-		mapProject(row, { includeDocStructure: true, truncateDepth: GLOBAL_DOC_STRUCTURE_DEPTH })
+	const projectRows = projects ?? [];
+	const docIds = new Set<string>();
+	for (const row of projectRows) {
+		const ids = collectDocStructureIds(
+			row.doc_structure as DocStructure | null | undefined,
+			GLOBAL_DOC_STRUCTURE_DEPTH
+		);
+		for (const id of ids) docIds.add(id);
+	}
+
+	let docMetaById: Record<string, DocMetaSummary> = {};
+	if (docIds.size > 0) {
+		const { data: docs, error: docsError } = await supabase
+			.from('onto_documents')
+			.select('id, title, description')
+			.in('id', Array.from(docIds))
+			.is('deleted_at', null);
+		if (docsError) {
+			logger.warn('Failed to load global documents', { error: docsError });
+		} else {
+			docMetaById = buildDocMetaById((docs ?? []) as DocMetaRow[]);
+		}
+	}
+
+	const lightProjects = projectRows.map((row) =>
+		mapProject(row, {
+			includeDocStructure: true,
+			truncateDepth: GLOBAL_DOC_STRUCTURE_DEPTH,
+			docMetaById
+		})
 	);
 	const projectIds = lightProjects.map((project) => project.id);
 
@@ -414,20 +434,20 @@ async function loadGlobalContextData(
 		supabase
 			.from('onto_goals')
 			.select(
-				'id, project_id, name, description, state_key, type_key, target_date, completed_at, updated_at'
+				'id, project_id, name, description, state_key, target_date, completed_at, updated_at'
 			)
 			.in('project_id', projectIds)
 			.is('deleted_at', null),
 		supabase
 			.from('onto_milestones')
 			.select(
-				'id, project_id, title, description, state_key, type_key, due_at, completed_at, updated_at'
+				'id, project_id, title, description, state_key, due_at, completed_at, updated_at'
 			)
 			.in('project_id', projectIds)
 			.is('deleted_at', null),
 		supabase
 			.from('onto_plans')
-			.select('id, project_id, name, description, state_key, type_key, updated_at')
+			.select('id, project_id, name, description, state_key, updated_at')
 			.in('project_id', projectIds)
 			.is('deleted_at', null),
 		supabase
@@ -477,7 +497,7 @@ async function loadProjectContextData(
 	const { data: projectRow, error } = await supabase
 		.from('onto_projects')
 		.select(
-			'id, name, state_key, type_key, description, start_at, end_at, facet_context, facet_scale, facet_stage, next_step_short, updated_at, doc_structure'
+			'id, name, state_key, description, start_at, end_at, next_step_short, updated_at, doc_structure'
 		)
 		.eq('id', projectId)
 		.maybeSingle();
@@ -488,48 +508,41 @@ async function loadProjectContextData(
 	}
 
 	const project = mapProject(projectRow, { includeDocStructure: false });
-	const doc_structure = normalizeDocStructure(
-		projectRow.doc_structure as DocStructure | null | undefined
-	);
 
 	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes, documentsRes] =
 		await Promise.all([
 			supabase
 				.from('onto_goals')
-				.select(
-					'id, name, description, state_key, type_key, target_date, completed_at, updated_at'
-				)
+				.select('id, name, description, state_key, target_date, completed_at, updated_at')
 				.eq('project_id', projectId)
 				.is('deleted_at', null),
 			supabase
 				.from('onto_milestones')
-				.select(
-					'id, title, description, state_key, type_key, due_at, completed_at, updated_at'
-				)
+				.select('id, title, description, state_key, due_at, completed_at, updated_at')
 				.eq('project_id', projectId)
 				.is('deleted_at', null),
 			supabase
 				.from('onto_plans')
-				.select('id, name, description, state_key, type_key, updated_at')
+				.select('id, name, description, state_key, updated_at')
 				.eq('project_id', projectId)
 				.is('deleted_at', null),
 			supabase
 				.from('onto_tasks')
 				.select(
-					'id, title, description, state_key, type_key, priority, start_at, due_at, completed_at, updated_at'
+					'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
 				)
 				.eq('project_id', projectId)
 				.is('deleted_at', null),
 			supabase
 				.from('onto_events')
 				.select(
-					'id, title, description, state_key, type_key, start_at, end_at, all_day, location, updated_at'
+					'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
 				)
 				.eq('project_id', projectId)
 				.is('deleted_at', null),
 			supabase
 				.from('onto_documents')
-				.select('id, title, description, state_key, type_key, updated_at')
+				.select('id, title, description')
 				.eq('project_id', projectId)
 				.is('deleted_at', null)
 		]);
@@ -543,6 +556,12 @@ async function loadProjectContextData(
 	if (documentsRes.error)
 		logger.warn('Failed to load project documents', { error: documentsRes.error });
 
+	const docMetaById = buildDocMetaById((documentsRes.data ?? []) as DocMetaRow[]);
+	const doc_structure = buildDocStructureSummary(
+		projectRow.doc_structure as DocStructure | null | undefined,
+		docMetaById
+	);
+
 	return {
 		project,
 		doc_structure,
@@ -550,8 +569,7 @@ async function loadProjectContextData(
 		milestones: (milestonesRes.data ?? []).map(mapMilestone),
 		plans: (plansRes.data ?? []).map(mapPlan),
 		tasks: (tasksRes.data ?? []).map(mapTask),
-		events: (eventsRes.data ?? []).map(mapEvent),
-		documents: (documentsRes.data ?? []).map(mapDocument)
+		events: (eventsRes.data ?? []).map(mapEvent)
 	};
 }
 
@@ -644,7 +662,7 @@ async function loadEntityContextData(params: {
 		if (error) {
 			logger.warn('Failed to load focus entity', { error, focusType, focusEntityId });
 		} else if (data) {
-			focusEntityFull = data as Record<string, unknown>;
+			focusEntityFull = stripEntityFields(data as Record<string, unknown>);
 			focusEntityName = resolveEntityName(focusEntityFull);
 		}
 	}

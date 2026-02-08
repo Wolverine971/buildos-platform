@@ -649,22 +649,27 @@
 	// Transcription at Cursor Position
 	// ============================================
 	function insertTranscriptionAtCursor(transcript: string) {
+		const trimmedTranscript = transcript.trim();
+		if (!trimmedTranscript) return;
+
 		if (!cursorPositionBeforeRecording) {
-			// Fallback: append to end
+			// Fallback: append to end with undo support
+			const start = value.length;
 			const separator = value.trim() ? ' ' : '';
-			setValue(value + separator + transcript.trim());
+			const text = separator + trimmedTranscript;
+			const newCursorPos = start + text.length;
+			insertTextWithUndo(start, start, text, newCursorPos, newCursorPos);
 			return;
 		}
 
 		const { start, end } = cursorPositionBeforeRecording;
 		const hasSelection = start !== end;
-		const trimmedTranscript = transcript.trim();
 
 		// Determine spacing
 		let finalTranscript = trimmedTranscript;
 
 		if (!hasSelection) {
-			// Inserting at cursor position
+			// Inserting at cursor position - add smart spacing
 			const needsSpaceBefore = start > 0 && !/\s/.test(value[start - 1] || '');
 			const needsSpaceAfter = start < value.length && !/\s/.test(value[start] || '');
 
@@ -672,25 +677,9 @@
 				(needsSpaceBefore ? ' ' : '') + trimmedTranscript + (needsSpaceAfter ? ' ' : '');
 		}
 
-		// SIMPLIFIED: Only save textarea scroll position
-		// Modal uses overscroll-contain which isolates scrolling
-		const savedScrollTop = textareaElement?.scrollTop ?? 0;
-
-		// Insert or replace
-		const newValue = value.slice(0, start) + finalTranscript + value.slice(end);
-		setValue(newValue);
-
-		// Update cursor position to end of inserted text
+		// Insert with undo support via execCommand
 		const newCursorPos = start + finalTranscript.length;
-
-		// SIMPLIFIED: Single RAF, only restore textarea scroll
-		requestAnimationFrame(() => {
-			textareaElement?.focus({ preventScroll: true });
-			textareaElement?.setSelectionRange(newCursorPos, newCursorPos);
-			if (textareaElement) {
-				textareaElement.scrollTop = savedScrollTop;
-			}
-		});
+		insertTextWithUndo(start, end, finalTranscript, newCursorPos, newCursorPos);
 
 		// Reset cursor tracking
 		cursorPositionBeforeRecording = null;

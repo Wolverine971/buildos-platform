@@ -572,7 +572,11 @@ function emitContextOperations(
 	});
 }
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({
+	request,
+	locals: { supabase, safeGetSession },
+	fetch
+}) => {
 	const { user } = await safeGetSession();
 
 	if (!user?.id) {
@@ -682,8 +686,14 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				tools.length > 0
 					? new ChatToolExecutor(supabase, user.id, session.id, fetch, llm)
 					: undefined;
-			const patchToolCall = (toolCall: ChatToolCall) =>
-				maybeInjectProjectId(toolCall, projectIdForTools, toolsRequiringProjectId);
+			const patchToolCall = (toolCall: ChatToolCall) => {
+				if (toolCall.function.name === 'update_onto_document'){
+					console.log(toolCall.function)
+				}
+
+				let resp = maybeInjectProjectId(toolCall, projectIdForTools, toolsRequiringProjectId);
+				return resp
+			}
 
 			let systemPrompt: string | undefined;
 			let promptContext:

@@ -235,6 +235,18 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const { document, actorId } = accessResult;
 
+		// Optimistic concurrency: if client sends expected_updated_at, reject if stale
+		const expectedUpdatedAt = (body as Record<string, unknown>).expected_updated_at;
+		if (typeof expectedUpdatedAt === 'string' && document.updated_at) {
+			const clientTime = new Date(expectedUpdatedAt).getTime();
+			const serverTime = new Date(document.updated_at as string).getTime();
+			if (!isNaN(clientTime) && !isNaN(serverTime) && clientTime !== serverTime) {
+				return ApiResponse.conflict(
+					'Document was modified by another user. Reload to see the latest version.'
+				);
+			}
+		}
+
 		const {
 			title,
 			state_key,

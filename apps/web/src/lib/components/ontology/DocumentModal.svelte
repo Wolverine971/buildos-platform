@@ -70,7 +70,10 @@
 		ChevronRight,
 		Settings2,
 		FolderInput,
-		FilePlus
+		FilePlus,
+		Check,
+		AlertTriangle,
+		LoaderCircle
 	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { Component } from 'svelte';
@@ -136,6 +139,93 @@
 	let updatedAt = $state<string | null>(null);
 	let documentProps = $state<Record<string, unknown> | null>(null);
 
+	// ============================================
+	// Autosave State
+	// ============================================
+	type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'conflict';
+	let saveStatus = $state<SaveStatus>('idle');
+	let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
+	let savedFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
+	const AUTOSAVE_DEBOUNCE_MS = 2000;
+
+	// Snapshot of last-saved values to detect actual changes
+	let lastSavedSnapshot = $state<{
+		title: string;
+		description: string;
+		body: string;
+		stateKey: string;
+	} | null>(null);
+
+	// Track the server's updated_at for conflict detection
+	let serverUpdatedAt = $state<string | null>(null);
+
+	/** Whether content has changed vs. last-saved snapshot */
+	const hasUnsavedChanges = $derived.by(() => {
+		if (!lastSavedSnapshot || !isEditing) return false;
+		return (
+			title !== lastSavedSnapshot.title ||
+			description !== lastSavedSnapshot.description ||
+			body !== lastSavedSnapshot.body ||
+			stateKey !== lastSavedSnapshot.stateKey
+		);
+	});
+
+	function captureSnapshot() {
+		lastSavedSnapshot = {
+			title,
+			description,
+			body,
+			stateKey
+		};
+	}
+
+	function clearAutosaveTimers() {
+		if (autosaveTimer) {
+			clearTimeout(autosaveTimer);
+			autosaveTimer = null;
+		}
+		if (savedFeedbackTimer) {
+			clearTimeout(savedFeedbackTimer);
+			savedFeedbackTimer = null;
+		}
+	}
+
+	function scheduleAutosave() {
+		if (autosaveTimer) {
+			clearTimeout(autosaveTimer);
+		}
+		autosaveTimer = setTimeout(() => {
+			autosaveTimer = null;
+			if (hasUnsavedChanges && isEditing && !saving && !loading) {
+				handleAutosave();
+			}
+		}, AUTOSAVE_DEBOUNCE_MS);
+	}
+
+	// Watch for content changes and schedule autosave
+	$effect(() => {
+		// Read reactive dependencies
+		const _title = title;
+		const _desc = description;
+		const _body = body;
+		const _state = stateKey;
+		const _editing = isEditing;
+
+		if (!_editing || !lastSavedSnapshot || loading) return;
+
+		// Check if anything actually changed
+		const changed =
+			_title !== lastSavedSnapshot.title ||
+			_desc !== lastSavedSnapshot.description ||
+			_body !== lastSavedSnapshot.body ||
+			_state !== lastSavedSnapshot.stateKey;
+
+		if (changed) {
+			saveStatus = 'dirty';
+			scheduleAutosave();
+		}
+	});
+
 	// Internal document ID state - allows transitioning from create to edit mode after saving
 	let internalDocumentId = $state<string | null>(null);
 
@@ -155,9 +245,12 @@
 	const isEditing = $derived(Boolean(activeDocumentId));
 	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);
 	const titleFieldError = $derived(formError === 'Title is required' ? formError : '');
+	const descriptionFieldError = $derived(
+		formError === 'Description is required' ? formError : ''
+	);
 	const globalFormError = $derived.by(() => {
 		if (!formError) return null;
-		if (formError === 'Title is required') {
+		if (formError === 'Title is required' || formError === 'Description is required') {
 			return null;
 		}
 		return formError;
@@ -248,6 +341,11 @@
 		updatedAt = null;
 		documentProps = null;
 		lastLoadedId = null;
+		// Reset autosave state
+		lastSavedSnapshot = null;
+		serverUpdatedAt = null;
+		saveStatus = 'idle';
+		clearAutosaveTimers();
 	}
 
 	function normalizeDocumentState(state?: string | null): string {
@@ -294,6 +392,11 @@
 			updatedAt = document.updated_at ?? null;
 			documentProps = document.props ?? null;
 			lastLoadedId = id;
+
+			// Track server state for autosave and conflict detection
+			serverUpdatedAt = document.updated_at ?? null;
+			captureSnapshot();
+			saveStatus = 'idle';
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load document';
 			void logOntologyClientError(error, {
@@ -334,6 +437,7 @@
 	});
 
 	function closeModal() {
+		clearAutosaveTimers();
 		isOpen = false;
 		onClose?.();
 	}
@@ -343,24 +447,33 @@
 			formError = 'Title is required';
 			return false;
 		}
+		if (!isEditing && !description.trim()) {
+			formError = 'Description is required';
+			return false;
+		}
 		return true;
 	}
 
-	async function handleSave(event?: SubmitEvent) {
-		event?.preventDefault();
-		if (!validateForm()) return;
+	/** Internal save logic shared by autosave and manual save */
+	async function performSave(options: { silent?: boolean } = {}): Promise<boolean> {
+		const { silent = false } = options;
 
 		try {
 			saving = true;
+			saveStatus = 'saving';
 			formError = null;
 
 			const payload: Record<string, unknown> = {
 				title: title.trim(),
 				state_key: stateKey,
 				description: description.trim() || null,
-				// Use content column (API handles backwards compatibility with props.body_markdown)
 				content: body
 			};
+
+			// Include expected_updated_at for conflict detection (editing existing docs only)
+			if (activeDocumentId && serverUpdatedAt) {
+				payload.expected_updated_at = serverUpdatedAt;
+			}
 
 			if (isEditing && typeKey.trim()) {
 				payload.type_key = typeKey.trim();
@@ -394,7 +507,6 @@
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
 						project_id: projectId,
-						// Include parent_id if creating as child of another document
 						...(parentDocumentId ? { parent_id: parentDocumentId } : {}),
 						...payload
 					})
@@ -403,22 +515,49 @@
 
 			const result = await request.json().catch(() => null);
 
+			if (request.status === 409) {
+				// Conflict detected - server version is newer
+				saveStatus = 'conflict';
+				formError = null;
+				return false;
+			}
+
 			if (!request.ok) {
 				throw new Error(result?.error || 'Failed to save document');
 			}
 
-			toastService.success(activeDocumentId ? 'Document updated' : 'Document created');
+			// Update server timestamp from response
+			const updatedDoc = result?.data?.document;
+			if (updatedDoc?.updated_at) {
+				serverUpdatedAt = updatedDoc.updated_at;
+				updatedAt = updatedDoc.updated_at;
+			}
+
+			// Capture snapshot of what we just saved
+			captureSnapshot();
+
+			// Show saved status briefly, then return to idle
+			saveStatus = 'saved';
+			if (savedFeedbackTimer) clearTimeout(savedFeedbackTimer);
+			savedFeedbackTimer = setTimeout(() => {
+				if (saveStatus === 'saved') {
+					saveStatus = 'idle';
+				}
+			}, 2000);
+
+			if (!silent) {
+				toastService.success(wasCreating ? 'Document created' : 'Document updated');
+			}
 			onSaved?.();
 
 			// If we just created a new document, transition to edit mode
-			// by updating internal state and loading the full document
-			// API returns { document, version } so ID is at result.data.document.id
 			const newDocumentId = result?.data?.document?.id ?? result?.data?.id;
 			if (wasCreating && newDocumentId) {
 				internalDocumentId = newDocumentId;
 				await loadDocument(newDocumentId);
 			}
-			// Modal stays open - no closeModal() call
+
+			return true;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to save document';
 			const endpoint = activeDocumentId
@@ -437,10 +576,42 @@
 				metadata: taskId ? { taskId } : undefined
 			});
 			formError = message;
-			toastService.error(message);
+			saveStatus = 'error';
+			if (!silent) {
+				toastService.error(message);
+			}
+			return false;
 		} finally {
 			saving = false;
 		}
+	}
+
+	async function handleAutosave() {
+		if (!isEditing || !hasUnsavedChanges || saving || loading) return;
+		if (!title.trim()) return; // Don't autosave without a title
+		await performSave({ silent: true });
+	}
+
+	async function handleSave(event?: SubmitEvent) {
+		event?.preventDefault();
+		if (!validateForm()) return;
+		await performSave({ silent: false });
+	}
+
+	/** Reload the document from server (used for conflict resolution) */
+	async function handleConflictReload() {
+		if (!activeDocumentId) return;
+		saveStatus = 'idle';
+		formError = null;
+		await loadDocument(activeDocumentId);
+	}
+
+	/** Force-overwrite the server version (used for conflict resolution) */
+	async function handleConflictOverwrite() {
+		// Clear serverUpdatedAt so the next save won't include conflict check
+		serverUpdatedAt = null;
+		saveStatus = 'dirty';
+		await performSave({ silent: false });
 	}
 
 	async function handleDelete() {
@@ -791,16 +962,38 @@
 							</Badge>
 						{/if}
 					</div>
-					<!-- Use micro-label pattern for metadata -->
-					<p class="micro-label text-muted-foreground/70 mt-0.5">
-						{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}{#if updatedAt && updatedAt !== createdAt}
-							· UPDATED {new Date(updatedAt).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}
+					<!-- Use micro-label pattern for metadata + save status -->
+					<p class="micro-label text-muted-foreground/70 mt-0.5 flex items-center gap-1.5 flex-wrap">
+						<span>
+							{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(undefined, {
+									month: 'short',
+									day: 'numeric'
+								})}{/if}{#if updatedAt && updatedAt !== createdAt}
+								· UPDATED {new Date(updatedAt).toLocaleDateString(undefined, {
+									month: 'short',
+									day: 'numeric'
+								})}{/if}
+						</span>
+						{#if isEditing}
+							<span class="inline-flex items-center gap-1">
+								{#if saveStatus === 'saving'}
+									<LoaderCircle class="w-2.5 h-2.5 animate-spin text-muted-foreground" />
+									<span class="text-muted-foreground">SAVING</span>
+								{:else if saveStatus === 'saved'}
+									<Check class="w-2.5 h-2.5 text-green-600 dark:text-green-400" />
+									<span class="text-green-600 dark:text-green-400">SAVED</span>
+								{:else if saveStatus === 'error'}
+									<AlertTriangle class="w-2.5 h-2.5 text-destructive" />
+									<span class="text-destructive">SAVE FAILED</span>
+								{:else if saveStatus === 'conflict'}
+									<AlertTriangle class="w-2.5 h-2.5 text-amber-500" />
+									<span class="text-amber-500">CONFLICT</span>
+								{:else if saveStatus === 'dirty'}
+									<span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+									<span class="text-muted-foreground/50">UNSAVED</span>
+								{/if}
+							</span>
+						{/if}
 					</p>
 				</div>
 			</div>
@@ -875,6 +1068,8 @@
 									<FormField
 										label="Description"
 										labelFor="document-description"
+										required={!isEditing}
+										error={descriptionFieldError}
 										uppercase={false}
 									>
 										<Textarea
@@ -883,6 +1078,8 @@
 											placeholder="Short summary"
 											rows={2}
 											disabled={saving}
+											required={!isEditing}
+											error={Boolean(descriptionFieldError)}
 											size="sm"
 										/>
 									</FormField>
@@ -1164,6 +1361,8 @@
 										<FormField
 											label="Description"
 											labelFor="document-description-mobile"
+											required={!isEditing}
+											error={descriptionFieldError}
 											uppercase={false}
 										>
 											<Textarea
@@ -1172,6 +1371,8 @@
 												placeholder="Short summary"
 												rows={2}
 												disabled={saving}
+												required={!isEditing}
+												error={Boolean(descriptionFieldError)}
 												size="sm"
 											/>
 										</FormField>
@@ -1303,6 +1504,35 @@
 							</div>
 						</div>
 					</div>
+
+					{#if saveStatus === 'conflict'}
+						<div
+							class="mx-3 mb-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 px-3 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg"
+						>
+							<div class="flex items-center gap-2 flex-1 min-w-0">
+								<AlertTriangle class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+								<span class="text-sm text-amber-800 dark:text-amber-200">
+									This document was modified by someone else.
+								</span>
+							</div>
+							<div class="flex items-center gap-2 shrink-0">
+								<button
+									type="button"
+									onclick={handleConflictReload}
+									class="text-xs font-medium px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-800/50 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors pressable"
+								>
+									Reload latest
+								</button>
+								<button
+									type="button"
+									onclick={handleConflictOverwrite}
+									class="text-xs font-medium px-2.5 py-1 rounded bg-card border border-border text-foreground hover:bg-muted transition-colors pressable"
+								>
+									Overwrite
+								</button>
+							</div>
+						</div>
+					{/if}
 
 					{#if globalFormError}
 						<div

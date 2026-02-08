@@ -220,6 +220,7 @@ export interface CreateOntoPlanArgs {
 export interface CreateOntoDocumentArgs {
 	project_id: string;
 	title: string;
+	description: string;
 	type_key: string;
 	state_key?: string;
 	/** Markdown content stored in the content column */
@@ -239,6 +240,7 @@ export interface CreateTaskDocumentArgs {
 	task_id: string;
 	document_id?: string;
 	title?: string;
+	description?: string;
 	type_key?: string;
 	state_key?: string;
 	role?: string;
@@ -381,10 +383,14 @@ export interface UpdateOntoDocumentArgs {
 	title?: string;
 	type_key?: string;
 	state_key?: string;
+	description?: string;
 	/** Markdown content stored in the content column */
 	content?: string;
 	/** @deprecated Use content instead. Kept for backwards compatibility. */
 	body_markdown?: string;
+	/** Optional nested update payload (LLM sometimes wraps updates). */
+	document?: Record<string, unknown>;
+	updates?: Record<string, unknown>;
 	update_strategy?: 'replace' | 'append' | 'merge_llm';
 	merge_instructions?: string;
 	props?: Record<string, unknown>;
@@ -434,16 +440,6 @@ export interface DeleteOntoPlanArgs {
 
 export interface DeleteOntoDocumentArgs {
 	document_id: string;
-}
-
-export interface MoveDocumentArgs {
-	/** Optional project ID to avoid extra lookup */
-	project_id?: string;
-	document_id: string;
-	/** New parent document ID, or null to move to root level */
-	new_parent_id: string | null;
-	/** Position within new parent's children (0-indexed). If omitted, appends to end. */
-	position?: number;
 }
 
 // ============================================

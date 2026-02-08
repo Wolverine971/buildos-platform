@@ -45,6 +45,10 @@ import {
 	normalizeStreamingContent
 } from './response-parsing';
 import {
+	ToolCallAssembler,
+	resolveToolCallAssemblerProfile
+} from './tool-call-assembler';
+import {
 	buildTranscriptionVocabulary,
 	coerceAudioInput,
 	encodeAudioToBase64,
@@ -1679,8 +1683,10 @@ export class SmartLLMService {
 			const decoder = new TextDecoder();
 			let buffer = '';
 			let accumulatedContent = '';
-			const pendingToolCalls = new Map<number, any>();
-			const pendingToolCallOrder: number[] = [];
+			const toolCallAssembler = new ToolCallAssembler({
+				profile: resolveToolCallAssemblerProfile(resolvedProvider, resolvedModel),
+				isCompleteJSON: (value) => this.isCompleteJSON(value)
+			});
 			let usage: any = null;
 			let inThinkingBlock = false;
 			let linesSinceYield = 0;
@@ -1705,19 +1711,25 @@ export class SmartLLMService {
 
 						// Yield any pending tool calls that weren't completed
 						// This can happen if the stream ends without a finish_reason
-						if (pendingToolCalls.size > 0) {
-							for (const index of pendingToolCallOrder) {
-								const pending = pendingToolCalls.get(index);
+						if (toolCallAssembler.hasPending()) {
+							for (const pending of toolCallAssembler.drain()) {
 								if (!pending?.function?.name) continue;
 								const { toolCall: sanitizedToolCall } =
 									this.coerceToolCallArguments(pending);
+								if (this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)) {
+									void this.writeKimiToolCallLog({
+										model: resolvedModel,
+										provider: resolvedProvider,
+										sessionId: options.sessionId,
+										messageId: options.messageId,
+										toolCall: sanitizedToolCall
+									});
+								}
 								yield {
 									type: 'tool_call',
 									tool_call: sanitizedToolCall
 								};
 							}
-							pendingToolCalls.clear();
-							pendingToolCallOrder.length = 0;
 						}
 
 						// Log usage if available
@@ -1796,6 +1808,9 @@ export class SmartLLMService {
 							if (!providerResolvedFromStream) {
 								resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
 							}
+							toolCallAssembler.setProfile(
+								resolveToolCallAssemblerProfile(resolvedProvider, resolvedModel)
+							);
 						}
 						if (
 							typeof chunk?.provider === 'string' &&
@@ -1803,6 +1818,9 @@ export class SmartLLMService {
 						) {
 							resolvedProvider = chunk.provider;
 							providerResolvedFromStream = true;
+							toolCallAssembler.setProfile(
+								resolveToolCallAssemblerProfile(resolvedProvider, resolvedModel)
+							);
 						}
 
 						// Handle different chunk types
@@ -1830,69 +1848,29 @@ export class SmartLLMService {
 							if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
 								for (const toolCallDelta of delta.tool_calls) {
 									if (!toolCallDelta) continue;
-
-									const index =
-										typeof toolCallDelta.index === 'number'
-											? toolCallDelta.index
-											: pendingToolCallOrder.length;
-									let pending = pendingToolCalls.get(index);
-
-									if (!pending) {
-										pending = {
-											id: toolCallDelta.id || `toolcall_${index}`,
-											type: 'function',
-											function: {
-												name: toolCallDelta.function?.name || '',
-												arguments: ''
-											}
-										};
-										pendingToolCalls.set(index, pending);
-										pendingToolCallOrder.push(index);
-									}
-
-									if (toolCallDelta.id) {
-										pending.id = toolCallDelta.id;
-									}
-									if (toolCallDelta.function?.name) {
-										pending.function.name = toolCallDelta.function.name;
-									}
-
-									if (typeof toolCallDelta.function?.arguments === 'string') {
-										const nextArgs = toolCallDelta.function.arguments;
-										if (!pending.function.arguments) {
-											pending.function.arguments = nextArgs;
-										} else if (this.isCompleteJSON(nextArgs)) {
-											const existingComplete = this.isCompleteJSON(
-												pending.function.arguments
-											);
-											if (
-												!existingComplete ||
-												nextArgs.length >= pending.function.arguments.length
-											) {
-												pending.function.arguments = nextArgs;
-											} else {
-												pending.function.arguments += nextArgs;
-											}
-										} else {
-											pending.function.arguments += nextArgs;
-										}
-									}
+									toolCallAssembler.ingest(toolCallDelta);
 								}
 							}
 
 							if (choice.finish_reason === 'tool_calls') {
-								for (const index of pendingToolCallOrder) {
-									const pending = pendingToolCalls.get(index);
+								for (const pending of toolCallAssembler.drain()) {
 									if (!pending?.function?.name) continue;
 									const { toolCall: sanitizedToolCall } =
 										this.coerceToolCallArguments(pending);
+									if (this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)) {
+										void this.writeKimiToolCallLog({
+											model: resolvedModel,
+											provider: resolvedProvider,
+											sessionId: options.sessionId,
+											messageId: options.messageId,
+											toolCall: sanitizedToolCall
+										});
+									}
 									yield {
 										type: 'tool_call',
 										tool_call: sanitizedToolCall
 									};
 								}
-								pendingToolCalls.clear();
-								pendingToolCallOrder.length = 0;
 							}
 
 							// Track usage
@@ -1991,6 +1969,99 @@ export class SmartLLMService {
 			(typeof maybeError.message === 'string' &&
 				maybeError.message.toLowerCase().includes('aborted'))
 		);
+	}
+
+	private isKimiK25Model(model?: string): boolean {
+		if (!model) return false;
+		return model.toLowerCase().startsWith('moonshotai/kimi-k2.5');
+	}
+
+	private shouldLogKimiToolCalls(model: string | undefined, hasTools: boolean): boolean {
+		return hasTools && this.isKimiK25Model(model);
+	}
+
+	private async writeKimiToolCallLog(payload: {
+		model?: string;
+		provider?: string;
+		sessionId?: string;
+		messageId?: string;
+		toolCall: unknown;
+	}): Promise<void> {
+		if (
+			typeof process === 'undefined' ||
+			!process.versions ||
+			!process.versions.node
+		) {
+			return;
+		}
+
+		try {
+			const [{ appendFile, mkdir, access }, path] = await Promise.all([
+				import('node:fs/promises'),
+				import('node:path')
+			]);
+
+			const exists = async (target: string): Promise<boolean> => {
+				try {
+					await access(target);
+					return true;
+				} catch {
+					return false;
+				}
+			};
+
+			const resolveBaseDir = async (): Promise<string> => {
+				const override =
+					process.env.KIMI_TOOL_CALL_LOG_DIR ||
+					process.env.BUILDOS_PROMPT_DUMPS_DIR;
+				if (override) {
+					return path.resolve(override);
+				}
+
+				const markers = ['pnpm-workspace.yaml', 'turbo.json', '.git'];
+				let current = process.cwd();
+				for (let i = 0; i < 8; i++) {
+					for (const marker of markers) {
+						if (await exists(path.join(current, marker))) {
+							return path.join(current, 'apps', 'web', '.prompt-dumps');
+						}
+					}
+					const parent = path.dirname(current);
+					if (parent === current) break;
+					current = parent;
+				}
+
+				return path.resolve(process.cwd(), 'apps', 'web', '.prompt-dumps');
+			};
+
+			const baseDir = await resolveBaseDir();
+			await mkdir(baseDir, { recursive: true });
+
+			const date = new Date();
+			const dateStamp = date.toISOString().slice(0, 10);
+			const filePath = path.join(baseDir, `kimi-tool-calls-${dateStamp}.jsonl`);
+			const record = {
+				timestamp: date.toISOString(),
+				model: payload.model ?? null,
+				provider: payload.provider ?? null,
+				sessionId: payload.sessionId ?? null,
+				messageId: payload.messageId ?? null,
+				toolCall: payload.toolCall
+			};
+
+			await appendFile(filePath, `${JSON.stringify(record)}\n`, 'utf8');
+			if (process.env.KIMI_TOOL_CALL_LOG_DEBUG === '1') {
+				console.debug('[SmartLLMService] Logged Kimi tool call', {
+					baseDir,
+					filePath
+				});
+			}
+		} catch (e) {
+			// Ignore logging failures to avoid disrupting streaming.
+			if (process.env.KIMI_TOOL_CALL_LOG_DEBUG === '1') {
+				console.warn('[SmartLLMService] Failed to log Kimi tool call', e);
+			}
+		}
 	}
 
 	private prepareMessagesForModel(

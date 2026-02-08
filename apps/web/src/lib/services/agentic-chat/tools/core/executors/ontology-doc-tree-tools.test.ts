@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-doc-tree-tools.test.ts
 /**
- * Tests for document tree tooling behaviors (placement, moves, unlinked path reporting).
+ * Tests for document tree tooling behaviors (placement, unlinked path reporting).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -62,14 +62,6 @@ describe('Ontology document tree tools', () => {
 				);
 			}
 
-			if (String(url).includes('/api/onto/projects/project-1/doc-tree/move')) {
-				return Promise.resolve(
-					buildJsonResponse({
-						structure: { version: 1, root: [] }
-					})
-				);
-			}
-
 			if (String(url).includes('/api/onto/projects/project-1/doc-tree')) {
 				return Promise.resolve(
 					buildJsonResponse({
@@ -112,6 +104,7 @@ describe('Ontology document tree tools', () => {
 		await executor.createOntoDocument({
 			project_id: 'project-1',
 			title: 'Placement Doc',
+			description: 'Doc for placement testing',
 			type_key: 'document.context.project',
 			parent_id: 'parent-123',
 			position: 2
@@ -120,23 +113,6 @@ describe('Ontology document tree tools', () => {
 		const lastBody = (mockFetch as any).lastCreateBody();
 		expect(lastBody.parent_id).toBe('parent-123');
 		expect(lastBody.position).toBe(2);
-	});
-
-	it('moves documents to root without extra document fetch when project_id is provided', async () => {
-		const executor = new OntologyWriteExecutor(context);
-
-		const result = await executor.moveDocument({
-			project_id: 'project-1',
-			document_id: 'doc-1',
-			new_parent_id: null,
-			position: 0
-		});
-
-		expect(result.message).toContain('root level');
-		const calledDocLookup = mockFetch.mock.calls.some(([url]) =>
-			String(url).includes('/api/onto/documents/')
-		);
-		expect(calledDocLookup).toBe(false);
 	});
 
 	it('returns an unlinked message when document exists but is not in the tree', async () => {

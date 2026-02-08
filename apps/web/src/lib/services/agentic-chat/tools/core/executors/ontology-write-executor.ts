@@ -34,8 +34,7 @@ import type {
 	DeleteOntoTaskArgs,
 	DeleteOntoGoalArgs,
 	DeleteOntoPlanArgs,
-	DeleteOntoDocumentArgs,
-	MoveDocumentArgs
+	DeleteOntoDocumentArgs
 } from './types';
 import { createLogger } from '$lib/utils/logger';
 
@@ -471,6 +470,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			title: args.title,
 			type_key: args.type_key,
 			state_key: args.state_key ?? 'draft',
+			description: args.description,
 			// Use content column (body_markdown is preserved for backwards compatibility via API)
 			content: documentContent,
 			body_markdown: documentContent ?? '',
@@ -509,6 +509,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			type_key: args.type_key,
 			state_key: args.state_key,
 			role: args.role,
+			description: args.description,
 			content: documentContent,
 			body_markdown: documentContent,
 			props: args.props
@@ -798,23 +799,26 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		document: any;
 		message: string;
 	}> {
+		const normalizedArgs = this.normalizeDocumentUpdateArgs(args);
 		const updateData: Record<string, unknown> = {};
 
-		if (args.title !== undefined) updateData.title = args.title;
-		if (args.type_key !== undefined) updateData.type_key = args.type_key;
-		if (args.state_key !== undefined) updateData.state_key = args.state_key;
+		if (normalizedArgs.title !== undefined) updateData.title = normalizedArgs.title;
+		if (normalizedArgs.type_key !== undefined) updateData.type_key = normalizedArgs.type_key;
+		if (normalizedArgs.state_key !== undefined) updateData.state_key = normalizedArgs.state_key;
+		if (normalizedArgs.description !== undefined)
+			updateData.description = normalizedArgs.description;
 		// Support both content (new) and body_markdown (legacy) parameters
-		const documentContent = args.content ?? args.body_markdown;
+		const documentContent = normalizedArgs.content ?? normalizedArgs.body_markdown;
 		if (documentContent !== undefined) {
-			const strategy = args.update_strategy ?? 'replace';
+			const strategy = normalizedArgs.update_strategy ?? 'replace';
 			// Resolve content with strategy, then send as content (API handles backwards compat)
 			const resolvedContent = await this.resolveTextWithStrategy({
 				strategy,
 				newContent: documentContent ?? '',
-				instructions: args.merge_instructions,
-				entityLabel: `document:${args.document_id}`,
+				instructions: normalizedArgs.merge_instructions,
+				entityLabel: `document:${normalizedArgs.document_id}`,
 				existingLoader: async () => {
-					const existing = await getDocumentDetails(args.document_id);
+					const existing = await getDocumentDetails(normalizedArgs.document_id);
 					// Prefer content column, fall back to props.body_markdown for backwards compat
 					return {
 						text:
@@ -829,20 +833,20 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			// Use content column (API handles backwards compatibility with props.body_markdown)
 			updateData.content = resolvedContent;
 		}
-		if (args.props !== undefined) updateData.props = args.props;
+		if (normalizedArgs.props !== undefined) updateData.props = normalizedArgs.props;
 
 		if (Object.keys(updateData).length === 0) {
 			throw new Error('No updates provided for ontology document');
 		}
 
-		const data = await this.apiRequest(`/api/onto/documents/${args.document_id}`, {
+		const data = await this.apiRequest(`/api/onto/documents/${normalizedArgs.document_id}`, {
 			method: 'PATCH',
 			body: JSON.stringify(updateData)
 		});
 
 		return {
 			document: data.document,
-			message: `Updated ontology document "${data.document?.title ?? args.document_id}"`
+			message: `Updated ontology document "${data.document?.title ?? normalizedArgs.document_id}"`
 		};
 	}
 
@@ -992,61 +996,50 @@ export class OntologyWriteExecutor extends BaseExecutor {
 	}
 
 	// ============================================
-	// DOCUMENT TREE OPERATIONS
-	// ============================================
-
-	async moveDocument(args: MoveDocumentArgs): Promise<{
-		structure: any;
-		message: string;
-	}> {
-		if (!args.document_id) {
-			throw new Error('document_id is required for move_document');
-		}
-
-		const actorId = await this.getActorId();
-		let projectId = args.project_id;
-		let documentTitle = 'Document';
-
-		if (!projectId) {
-			// First get the document to find its project_id
-			const docDetails = await this.apiRequest(`/api/onto/documents/${args.document_id}`);
-			if (!docDetails?.document) {
-				throw new Error('Document not found');
-			}
-
-			projectId = docDetails.document.project_id;
-			documentTitle = docDetails.document.title ?? documentTitle;
-		}
-
-		if (!projectId) {
-			throw new Error('Document has no project association');
-		}
-
-		// Verify ownership/access
-		await this.assertProjectOwnership(projectId, actorId);
-
-		// Call the move endpoint
-		const data = await this.apiRequest(`/api/onto/projects/${projectId}/doc-tree/move`, {
-			method: 'POST',
-			body: JSON.stringify({
-				document_id: args.document_id,
-				new_parent_id: args.new_parent_id,
-				new_position: args.position ?? 0
-			})
-		});
-
-		const destDescription =
-			args.new_parent_id === null ? 'root level' : `under document ${args.new_parent_id}`;
-
-		return {
-			structure: data.structure,
-			message: `Moved document "${documentTitle}" to ${destDescription}`
-		};
-	}
-
-	// ============================================
 	// UPDATE STRATEGY HELPERS
 	// ============================================
+
+	private normalizeDocumentUpdateArgs(args: UpdateOntoDocumentArgs): UpdateOntoDocumentArgs {
+		const merged: Record<string, any> = { ...args };
+		const nestedCandidates = [
+			args.document,
+			args.updates,
+			(merged as Record<string, any>).document_update
+		];
+
+		for (const candidate of nestedCandidates) {
+			if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+			for (const [key, value] of Object.entries(candidate as Record<string, unknown>)) {
+				if (merged[key] === undefined) {
+					merged[key] = value;
+				}
+			}
+		}
+
+		if (merged.title === undefined && typeof merged.name === 'string') {
+			merged.title = merged.name;
+		}
+
+		if (merged.description === undefined && typeof merged.summary === 'string') {
+			merged.description = merged.summary;
+		}
+
+		if (merged.type_key === undefined && typeof merged.type === 'string') {
+			merged.type_key = merged.type;
+		}
+
+		if (merged.content === undefined && merged.body_markdown === undefined) {
+			if (typeof merged.body === 'string') {
+				merged.body_markdown = merged.body;
+			} else if (typeof merged.text === 'string') {
+				merged.body_markdown = merged.text;
+			} else if (typeof merged.markdown === 'string') {
+				merged.body_markdown = merged.markdown;
+			}
+		}
+
+		return merged as UpdateOntoDocumentArgs;
+	}
 
 	/**
 	 * Resolve text content based on update strategy.

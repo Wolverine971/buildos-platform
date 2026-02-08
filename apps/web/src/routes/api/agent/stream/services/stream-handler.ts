@@ -1030,7 +1030,6 @@ export class StreamHandler {
 		if (toolName.startsWith('create_')) return 'create';
 		if (toolName.startsWith('update_')) return 'update';
 		if (toolName.startsWith('delete_')) return 'delete';
-		if (toolName === 'move_document') return 'update';
 		return null;
 	}
 
@@ -1051,7 +1050,7 @@ export class StreamHandler {
 		);
 		const raw = match?.[1];
 		if (!raw) {
-			if (toolName.startsWith('get_document_') || toolName === 'move_document') {
+			if (toolName.startsWith('get_document_')) {
 				return 'document';
 			}
 			return null;

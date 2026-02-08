@@ -1218,8 +1218,6 @@ Return JSON: { steps: [...], reasoning: "Brief explanation" }`;
 				return 'Use only for explicit relationship changes.';
 			case 'unlink_onto_edge':
 				return 'Use only to remove a specific edge requested.';
-			case 'move_document':
-				return 'Use only when explicitly asked to move documents.';
 			case 'create_calendar_event':
 			case 'update_calendar_event':
 				return 'Use ISO timestamps with timezone.';

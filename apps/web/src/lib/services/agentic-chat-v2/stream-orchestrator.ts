@@ -10,6 +10,10 @@ import type { FastChatHistoryMessage, FastAgentStreamUsage } from './types';
 import { normalizeFastContextType } from './prompt-builder';
 import { buildMasterPrompt } from './master-prompt-builder';
 import { FASTCHAT_LIMITS } from './limits';
+import { dev } from '$app/environment';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 type FastToolExecution = {
 	toolCall: ChatToolCall;
@@ -36,6 +40,12 @@ type StreamFastChatParams = {
 	maxToolCalls?: number;
 };
 
+type ToolValidationIssue = {
+	toolCall: ChatToolCall;
+	toolName: string;
+	errors: string[];
+};
+
 export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	assistantText: string;
 	usage?: FastAgentStreamUsage;
@@ -59,6 +69,82 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		{ role: 'user', content: message }
 	];
 
+	// --- PROMPT DUMP (dev only) ---
+	if (dev) {
+		try {
+			const dumpDir = join(process.cwd(), '.prompt-dumps');
+			mkdirSync(dumpDir, { recursive: true });
+			const ts = new Date().toISOString().replace(/[:.]/g, '-');
+			const dumpPath = join(dumpDir, `fastchat-${ts}.txt`);
+
+			const toolNames = (params.tools ?? []).map((t) => t.function?.name).filter(Boolean);
+
+			const lines: string[] = [
+				`========================================`,
+				`FASTCHAT V2 PROMPT DUMP`,
+				`Timestamp: ${new Date().toISOString()}`,
+				`Session:   ${sessionId}`,
+				`Context:   ${normalizedContext}`,
+				`Entity ID: ${entityId ?? 'none'}`,
+				`Project:   ${params.projectId ?? 'none'}`,
+				`Tools (${toolNames.length}): ${toolNames.join(', ') || 'none'}`,
+				`History messages: ${history.length}`,
+				`User message length: ${message.length} chars`,
+				`System prompt length: ${systemPrompt.length} chars (~${Math.ceil(systemPrompt.length / 4)} tokens)`,
+				`========================================`,
+				``,
+				`────────────────────────────────────────`,
+				`SYSTEM PROMPT`,
+				`────────────────────────────────────────`,
+				``,
+				systemPrompt,
+				``,
+				`────────────────────────────────────────`,
+				`CONVERSATION HISTORY (${history.length} messages)`,
+				`────────────────────────────────────────`,
+				``
+			];
+
+			for (const msg of history) {
+				lines.push(`[${msg.role.toUpperCase()}]`);
+				lines.push(msg.content);
+				if (msg.tool_calls?.length) {
+					lines.push(`  tool_calls: ${JSON.stringify(msg.tool_calls, null, 2)}`);
+				}
+				if (msg.tool_call_id) {
+					lines.push(`  tool_call_id: ${msg.tool_call_id}`);
+				}
+				lines.push(``);
+			}
+
+			lines.push(`────────────────────────────────────────`);
+			lines.push(`CURRENT USER MESSAGE`);
+			lines.push(`────────────────────────────────────────`);
+			lines.push(``);
+			lines.push(message);
+			lines.push(``);
+
+			if (toolNames.length > 0) {
+				lines.push(`────────────────────────────────────────`);
+				lines.push(`TOOL DEFINITIONS (${toolNames.length})`);
+				lines.push(`────────────────────────────────────────`);
+				lines.push(``);
+				lines.push(JSON.stringify(params.tools, null, 2));
+				lines.push(``);
+			}
+
+			lines.push(`════════════════════════════════════════`);
+			lines.push(`END OF DUMP`);
+			lines.push(`════════════════════════════════════════`);
+
+			writeFileSync(dumpPath, lines.join('\n'), 'utf-8');
+			console.log(`[FastChat] Prompt dumped to ${dumpPath}`);
+		} catch {
+			// silent — don't break the stream for a debug dump
+		}
+	}
+	// --- END PROMPT DUMP ---
+
 	let assistantText = '';
 	let usage: FastAgentStreamUsage | undefined;
 	let finishedReason: string | undefined;
@@ -72,6 +158,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const maxToolCalls = Math.max(1, params.maxToolCalls ?? FASTCHAT_LIMITS.MAX_TOOL_CALLS);
 	let toolRounds = 0;
 	let toolCallsMade = 0;
+	let validationRetryUsed = false;
 
 	while (true) {
 		if (signal?.aborted) {
@@ -85,6 +172,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			messages,
 			tools: hasTools ? tools : undefined,
 			tool_choice: hasTools ? 'auto' : undefined,
+			temperature: hasTools ? 0.2 : undefined,
 			userId,
 			sessionId,
 			chatSessionId: sessionId,
@@ -150,6 +238,46 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			tool_calls: pendingToolCalls
 		});
 
+		const validationIssues = validateToolCalls(pendingToolCalls, tools);
+		if (validationIssues.length > 0) {
+			for (const issue of validationIssues) {
+				toolCallsMade += 1;
+				if (toolCallsMade > maxToolCalls) {
+					throw new Error('FastChat exceeded tool call limit');
+				}
+
+				const errorMessage = `Tool validation failed: ${issue.errors.join(' ')}`;
+				const result: ChatToolResult = {
+					tool_call_id: issue.toolCall.id,
+					result: null,
+					success: false,
+					error: errorMessage
+				};
+
+				toolExecutions.push({ toolCall: issue.toolCall, result });
+				if (params.onToolResult) {
+					await params.onToolResult({ toolCall: issue.toolCall, result });
+				}
+
+				messages.push({
+					role: 'tool',
+					content: JSON.stringify({ error: errorMessage }),
+					tool_call_id: issue.toolCall.id
+				});
+			}
+
+			if (!validationRetryUsed) {
+				validationRetryUsed = true;
+				messages.push({
+					role: 'system',
+					content: buildToolValidationRepairInstruction(validationIssues)
+				});
+				continue;
+			}
+
+			break;
+		}
+
 		for (const toolCall of pendingToolCalls) {
 			if (signal?.aborted) {
 				throw new Error('Request aborted');
@@ -199,4 +327,158 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	}
 
 	return { assistantText, usage, finishedReason, toolExecutions };
+}
+
+const UPDATE_TOOL_PREFIX = 'update_onto_';
+
+function parseToolArguments(rawArgs: unknown): { args: Record<string, any>; error?: string } {
+	if (rawArgs === undefined || rawArgs === null) {
+		return { args: {} };
+	}
+
+	if (typeof rawArgs === 'string') {
+		const trimmed = rawArgs.trim();
+		if (!trimmed) {
+			return { args: {} };
+		}
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+				return { args: {}, error: 'Tool arguments must be a JSON object.' };
+			}
+			return { args: parsed as Record<string, any> };
+		} catch (error) {
+			return {
+				args: {},
+				error: `Invalid JSON in tool arguments: ${
+					error instanceof Error ? error.message : String(error)
+				}`
+			};
+		}
+	}
+
+	if (typeof rawArgs === 'object') {
+		if (Array.isArray(rawArgs)) {
+			return { args: {}, error: 'Tool arguments must be a JSON object.' };
+		}
+		return { args: rawArgs as Record<string, any> };
+	}
+
+	return { args: {}, error: 'Tool arguments must be a JSON object.' };
+}
+
+function getValueByPath(value: Record<string, any>, path: string): unknown {
+	const parts = path.split('.');
+	let cursor: any = value;
+	for (const part of parts) {
+		if (!cursor || typeof cursor !== 'object') {
+			return undefined;
+		}
+		cursor = cursor[part];
+	}
+	return cursor;
+}
+
+function validateUpdateToolArgs(
+	toolName: string,
+	args: Record<string, any>,
+	errors: string[]
+): void {
+	const entity = toolName.slice(UPDATE_TOOL_PREFIX.length);
+	if (!entity) return;
+
+	const idKey = `${entity}_id`;
+	const rawId = args[idKey];
+	const trimmedId = typeof rawId === 'string' ? rawId.trim() : rawId;
+	if (!trimmedId || typeof trimmedId !== 'string') {
+		errors.push(`Missing required parameter: ${idKey}`);
+	} else if (!isValidUUID(trimmedId)) {
+		errors.push(`Invalid ${idKey}: expected UUID`);
+	}
+
+	const ignoredKeys = new Set<string>([idKey, 'update_strategy', 'merge_instructions']);
+	const hasUpdateField = Object.entries(args).some(([key, value]) => {
+		if (ignoredKeys.has(key)) return false;
+		if (value === undefined || value === null) return false;
+		if (typeof value === 'string') {
+			return value.trim().length > 0;
+		}
+		return true;
+	});
+
+	if (!hasUpdateField) {
+		errors.push(
+			`No update fields provided for ${toolName}. Include at least one field to change.`
+		);
+	}
+}
+
+function validateToolCalls(
+	toolCalls: ChatToolCall[],
+	toolDefs: ChatToolDefinition[]
+): ToolValidationIssue[] {
+	const issues: ToolValidationIssue[] = [];
+	const toolMap = new Map<string, ChatToolDefinition>();
+	for (const tool of toolDefs) {
+		const name = tool.function?.name;
+		if (name) {
+			toolMap.set(name, tool);
+		}
+	}
+
+	for (const toolCall of toolCalls) {
+		const toolName = toolCall.function?.name?.trim() ?? '';
+		const errors: string[] = [];
+
+		if (!toolName) {
+			errors.push('Tool call did not include a function name.');
+		}
+
+		const { args, error } = parseToolArguments(toolCall.function?.arguments);
+		if (error) {
+			errors.push(error);
+		}
+
+		const toolDef = toolMap.get(toolName);
+		const paramSchema =
+			toolDef && (toolDef as any).function?.parameters
+				? (toolDef as any).function.parameters
+				: (toolDef as any)?.parameters;
+		const requiredParams = Array.isArray(paramSchema?.required) ? paramSchema.required : [];
+		for (const required of requiredParams) {
+			const value = getValueByPath(args, required);
+			if (value === undefined || value === null) {
+				errors.push(`Missing required parameter: ${required}`);
+				continue;
+			}
+			if (typeof value === 'string' && value.trim().length === 0) {
+				errors.push(`Missing required parameter: ${required}`);
+			}
+		}
+
+		if (toolName.startsWith(UPDATE_TOOL_PREFIX)) {
+			validateUpdateToolArgs(toolName, args, errors);
+		}
+
+		if (errors.length > 0) {
+			issues.push({ toolCall, toolName, errors });
+		}
+	}
+
+	return issues;
+}
+
+function buildToolValidationRepairInstruction(issues: ToolValidationIssue[]): string {
+	const lines = [
+		'One or more tool calls failed validation.',
+		'Do not guess or fabricate IDs. Never use placeholders.',
+		'Return only corrected tool calls with arguments. Do not include prose.',
+		'If a required value is missing, ask a clarifying question instead of calling a tool.'
+	];
+
+	for (const issue of issues) {
+		lines.push(`Tool "${issue.toolName || 'unknown'}": ${issue.errors.join(' ')}`);
+	}
+
+	return lines.join(' ');
 }

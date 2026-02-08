@@ -321,7 +321,6 @@ Based on codebase research and decisions made, we need to update:
 
 - [x] **Update `/apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts`**
     - Updated `create_onto_document` to accept `parent_id` and `position`
-    - Added `move_document` tool
     - Note: `create_document_folder` not added - any doc with children is a folder
 
 ### 6.2 Update Tool Executors
@@ -331,7 +330,6 @@ Based on codebase research and decisions made, we need to update:
     - Implemented `getDocumentPath()` handler
 
 - [x] **Update `/apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts`**
-    - Implemented `moveDocument()` handler
     - Note: `createOntoDocument` unchanged (parent/position handled by API)
 
 ### 6.3 Update Tool Types
@@ -339,13 +337,12 @@ Based on codebase research and decisions made, we need to update:
 - [x] **Update `/apps/web/src/lib/services/agentic-chat/tools/core/executors/types.ts`**
     - Added `GetDocumentTreeArgs`
     - Added `GetDocumentPathArgs`
-    - Added `MoveDocumentArgs`
     - Updated `CreateOntoDocumentArgs` with `parent_id`, `position`
 
 ### 6.4 Tool Configuration
 
 - [x] **Update `/apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts`**
-    - Added dispatch cases for `get_document_tree`, `get_document_path`, `move_document`
+    - Added dispatch cases for `get_document_tree`, `get_document_path`
 
 - [x] **Update `/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`**
     - Added new tools to TOOL_CATEGORIES (ontology, ontology_action)
@@ -353,7 +350,7 @@ Based on codebase research and decisions made, we need to update:
     - Added new tools to ONTOLOGY_TOOLS export
 
 - [x] **Update `/apps/web/src/lib/services/agentic-chat/tools/core/definitions/tool-metadata.ts`**
-    - Added metadata for `get_document_tree`, `get_document_path`, `move_document`
+    - Added metadata for `get_document_tree`, `get_document_path`
 
 ### 6.5 Context Building (Deferred)
 

@@ -22,7 +22,7 @@
 -->
 <div
 	class="
-		fixed z-[200]
+		fixed z-[10000]
 		flex flex-col pointer-events-none
 
 		/* Mobile: Bottom positioning with safe areas */

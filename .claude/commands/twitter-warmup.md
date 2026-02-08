@@ -2,12 +2,19 @@
 
 You are conducting a daily Twitter/X engagement scan for @djwayne3 to find high-quality reply opportunities that align with the BuildOS brand.
 
+**This command runs in TWO STAGES:**
+
+1. **Stage 1 (This Agent):** Source tweets using the browser. Find opportunities. Update the document AS YOU GO - don't wait until the end.
+2. **Stage 2 (Separate Agent):** After sourcing is complete, launch a separate agent to craft replies using the anti-marketing playbook.
+
+---
+
 ## Output
 
 Create a daily engagement doc at:
 `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_twitter-warmup.md`
 
-Do this in the beginning before researching
+**Create this file FIRST before scanning. Update it continuously as you find tweets.**
 
 ---
 
@@ -84,6 +91,12 @@ This skill file documents:
 
 ---
 
+# STAGE 1: SOURCE TWEETS
+
+> **Your job in Stage 1 is ONLY to find tweets.** Do not craft replies. Just find good opportunities, capture the tweet data, and explain why each one is relevant. Update the document after EVERY tweet you find - do not batch updates.
+
+---
+
 ## Phase 0: Check Notifications & Timeline FIRST
 
 **ALWAYS START HERE - This shows real-time activity from accounts that matter.**
@@ -105,7 +118,7 @@ Scan the "For You" and "Following" tabs for:
 - Conversations happening in real-time
 - Trending topics in your space
 
-**Capture any engagement opportunities from notifications/timeline FIRST.**
+**Capture any engagement opportunities from notifications/timeline FIRST. Write them to the document immediately.**
 
 ---
 
@@ -174,7 +187,7 @@ Use Twitter's search (Latest tab) with queries from:
 **Round 8: Following Feed Discovery (New Accounts)**
 Navigate to https://x.com/home (Following tab) to discover new accounts.
 
-### For Each Potential Tweet, Capture:
+### For Each Potential Tweet, Capture & Write to Document Immediately:
 
 - Author handle and name
 - Tweet text (full content)
@@ -182,6 +195,9 @@ Navigate to https://x.com/home (Following tab) to discover new accounts.
 - Current engagement (replies, likes, retweets)
 - Link to tweet
 - Why it's relevant (which content pillar it matches)
+- **Opportunity type:** One of: `AI reality check` | `Tool frustration` | `ADHD/productivity` | `Building in public` | `Context engineering` | `Indie hacker win` | `Community` | `Competitor intel`
+
+**IMPORTANT: Write each tweet to the document as you find it. Don't wait.**
 
 ### Selection Criteria
 
@@ -201,7 +217,7 @@ Navigate to https://x.com/home (Following tab) to discover new accounts.
 
 ## Phase 3: Prioritize & Score
 
-Score each tweet opportunity (1-10):
+After all scanning is complete, go back through the document and score each tweet:
 
 | Factor | Weight | Criteria |
 |--------|--------|----------|
@@ -210,122 +226,11 @@ Score each tweet opportunity (1-10):
 | Engagement Potential | 2x | Author reach + topic interest |
 | Reply Competition | 2x | Fewer replies = higher score |
 
-Select **top 5-7 opportunities** based on total score.
+Select **top 5-7 opportunities** based on total score. Update the priority summary table in the document.
 
 ---
 
-## Phase 4: Generate Replies
-
-For each selected tweet, create 2-3 reply options following DJ's voice:
-
-### The Core Philosophy: Interesting Guy + Cheerleader
-
-> **NOT a thought leader.** Everyone is trying to be a thought leader. That's overdone and inauthentic.
-> **The goal:** Come across as an interesting person who has interesting things to say, OR as a genuine supporter when you don't have specific expertise.
-
-### Two Modes of Engagement
-
-**Mode 1: Add Value (When You Have Something)**
-Use when the topic touches your actual experience - Curri integrations, BuildOS, Marines, context engineering, solo founder journey.
-- Share specific experience or insight
-- Lead with curiosity, not authority
-- Offer a perspective others might not have considered
-- Be direct and lowercase casual
-
-**Mode 2: Cheerleader (When You Don't)**
-Use when you don't have specific expertise but want to engage.
-- Genuine hype and encouragement
-- Ask curious questions
-- Celebrate their wins specifically
-- "We're all rowing the same boat" energy
-- It's valid to just be excited for someone
-
-### Reply Generation Rules
-
-1. **Decide your mode first** - Do you have value to add, or are you here to support?
-2. **Lead with insight OR genuine excitement** - Both are valid, not just insight
-3. **Use specific experience when relevant** - Marines (sparingly), solo founder journey, Curri integrations
-4. **Context engineering angle** - When discussing AI, frame around memory/context IF relevant
-5. **Be direct** - Cut filler words, lowercase casual
-6. **Teammate energy** - We're in this together
-7. **BuildOS mentions** - Only when genuinely relevant, use "shameless plug" framing
-8. **It's okay to just encourage** - Not every reply needs to teach something
-
-### Reply Templates by Topic
-
-**AI/Context Posts - Value Mode:**
-```
-[observation about AI memory problem from experience]
-
-[your experience - Curri integrations, BuildOS building]
-
-[question to extend the conversation]
-```
-
-**AI/Context Posts - Cheerleader Mode:**
-```
-[genuine reaction to what they're sharing]
-
-[curious question about their approach]
-```
-
-**Productivity Posts - Value Mode:**
-```
-[validate the struggle with specific detail from your experience]
-
-[what actually works / what you've learned]
-
-[question to open dialogue]
-```
-
-**Productivity Posts - Cheerleader Mode:**
-```
-[validate their struggle/insight genuinely]
-
-[ask what's working for them]
-
-[encouraging note - we're all figuring this out]
-```
-
-**Building/Startup Posts - Value Mode:**
-```
-[direct reaction or agreement]
-
-[add your experience - solo founder journey]
-
-[extend their point with your angle]
-```
-
-**Building/Startup Posts - Cheerleader Mode:**
-```
-[hell yes energy for their win/progress]
-
-[specific thing that impressed you]
-
-[curious question about what's next]
-```
-
-**Someone Sharing a Win:**
-```
-hell yes. [specific thing about the win that's impressive].
-
-[curious question or genuine hype]
-```
-
-**Big Account Engagement:**
-```
-[reference their past content or framework]
-
-[add unique angle from your experience OR genuine curiosity]
-
-[ask a direct question - not generic praise]
-```
-
----
-
-## Phase 5: Output Document
-
-### Document Format
+## Stage 1 Output Document Format
 
 ```markdown
 <!-- docs/marketing/social-media/daily-engagement/YYYY-MM-DD_twitter-warmup.md -->
@@ -335,6 +240,7 @@ hell yes. [specific thing about the win that's impressive].
 **Date:** [YYYY-MM-DD]
 **Account:** @djwayne3
 **Scan Time:** [timestamp]
+**Status:** STAGE 1 COMPLETE - Awaiting reply crafting
 
 ---
 
@@ -347,15 +253,17 @@ hell yes. [specific thing about the win that's impressive].
 
 ## Priority Summary
 
-| Priority | Account | Post Topic | Age | Why |
-|----------|---------|------------|-----|-----|
-| 1 | @handle | [brief topic] | Xh | [reason] |
-| 2 | ... | ... | ... | ... |
+| Priority | Account | Post Topic | Age | Opportunity Type | Score | Why |
+|----------|---------|------------|-----|------------------|-------|-----|
+| 1 | @handle | [brief topic] | Xh | [type] | XX | [reason] |
+| 2 | ... | ... | ... | ... | ... | ... |
 [5-7 rows]
 
 ---
 
-## 1. [Author Name] - [Topic]
+## Tweet Opportunities
+
+### 1. [Author Name] - [Topic]
 
 **Post Link:** [full URL]
 
@@ -363,34 +271,18 @@ hell yes. [specific thing about the win that's impressive].
 > [full tweet text]
 
 **Stats:** X replies, Y likes ([age])
+**Opportunity Type:** [AI reality check / Tool frustration / ADHD / etc.]
 
 **Why This Tweet:**
 [1-2 sentences on why this is a good engagement opportunity]
 
-**Suggested Reply Option 1 ([angle]):**
-> [reply text]
+**Engagement Mode:** [Value / Cheerleader] — [brief note on which angle]
 
-**Suggested Reply Option 2 ([angle]):**
-> [reply text]
-
-**Suggested Reply Option 3 ([angle]):**
-> [reply text]
+**Replies:** _Pending Stage 2_
 
 ---
 
-[Repeat for all 5-7 tweets]
-
----
-
-## Posting Strategy
-
-**Recommended Order:**
-1. [Most fresh/lowest competition first]
-2. [Second priority]
-...
-
-**Timing:** [Best window based on freshness]
-**Spacing:** 30+ min between replies
+[Repeat for all found tweets - add as you go]
 
 ---
 
@@ -401,18 +293,6 @@ Accounts from your Following feed worth adding to engagement tiers:
 | Account | Followers | Theme | Suggested Tier | Why |
 |---------|-----------|-------|----------------|-----|
 | @handle | Xk | [AI/ADHD/Building] | [1/2/3] | [brief reason] |
-
-### Account Details
-
-#### @[handle] - [Name]
-**Followers:** X,XXX
-**Bio:** [their bio]
-**Content Themes:** [what they post about]
-**Recent Post That Stood Out:**
-> [tweet text]
-
-**Why Add to Tier [X]:**
-[1-2 sentences on why this account is worth engaging with regularly]
 
 ---
 
@@ -435,35 +315,6 @@ Accounts from your Following feed worth adding to engagement tiers:
 
 ---
 
-## Voice Reminder
-
-### The Philosophy
-**Interesting guy + cheerleader. NOT a thought leader.**
-
-### Two Modes
-1. **Value Mode:** When you have experience to share - lead with insight, be specific, ask smart questions
-2. **Cheerleader Mode:** When you don't - genuine hype, curious questions, celebrate their wins
-
-### The 3 Rules (for Value Mode)
-1. Can I visualize it? (specific details)
-2. Can I falsify it? (real experience)
-3. Can nobody else say this? (unique perspective)
-
-### Quick Do's
-- Genuine excitement when cheering someone on
-- "hell yes" and specific praise for wins
-- Curious questions about their journey
-- Teammate energy - we're all rowing together
-
-### Quick Don'ts
-- "love this" or "great post" (hollow)
-- Preachy setups ("Most people don't realize...")
-- Generic observations anyone could make
-- Teaching when you're just supporting
-- Thought leader energy
-
----
-
 ## Accounts Scanned & Last Visited Updates
 
 | Account | Scanned | Notes |
@@ -479,37 +330,147 @@ Accounts from your Following feed worth adding to engagement tiers:
 | Account | Change | Old → New |
 |---------|--------|-----------|
 | @handle | Followers | 10K → 12K |
-| @handle | Bio | [brief note] |
-
-No significant changes observed for other profiles.
 
 ---
 
-## Strategy Recommendations
+## Strategy Observations
 
-[Based on today's scan, note any strategic observations or recommendations]
+[Raw observations from today's scan - strategy recs will be finalized after Stage 2]
 
-### Today's Observations
 - [What patterns did you notice?]
 - [Any shifts in the landscape?]
 - [New opportunities or threats?]
 
-### Recommendations
-- [Any strategy adjustments needed?]
-- [New accounts to prioritize?]
-- [Content angles to explore?]
-
-### Strategy Update Needed?
-[ ] No changes - current strategy is working
-[ ] Minor tweak - [describe]
-[ ] Significant shift - [describe]
-
-**Update the strategy log:** `docs/marketing/social-media/twitter-strategy-recommendations-log.md`
-
 ---
 
 **Created:** [timestamp]
-**Next Scan:** [tomorrow's date]
+**Stage 1 Completed:** [timestamp]
+**Stage 2 Status:** Pending
+```
+
+---
+
+# STAGE 2: CRAFT REPLIES (Separate Agent)
+
+> **After Stage 1 is complete, launch a separate agent to craft replies.**
+
+## How to Launch Stage 2
+
+After Stage 1 scanning is complete, present the summary to the user and then launch the reply-crafting agent:
+
+```
+Stage 1 complete for [date].
+
+## Tweets Sourced: X
+
+- [count] from notifications/timeline
+- [count] from Tier 1 accounts
+- [count] from topic searches
+- [count] total prioritized (top 5-7)
+
+## New Accounts Discovered: X
+
+## Notable Competitor Activity: [Yes/No]
+
+Launching Stage 2 to craft replies...
+```
+
+Then use the Task tool to launch a separate agent with this prompt:
+
+---
+
+### Stage 2 Agent Prompt
+
+```
+You are crafting Twitter reply suggestions for @djwayne3.
+
+## Required Reading (Load These First)
+
+1. **The daily engagement doc (Stage 1 output):**
+   `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_twitter-warmup.md`
+
+2. **Reply Strategy & Tone Guide (CRITICAL - this defines how we respond):**
+   `docs/marketing/social-media/twitter-reply-strategy.md`
+
+3. **Voice Reference:**
+   `docs/marketing/social-media/twitter-voice-quick-ref.md`
+
+4. **Founder Context:**
+   `docs/marketing/social-media/FOUNDER_CONTEXT.md`
+
+## Your Job
+
+For each prioritized tweet in the document (the top 5-7), craft 2-3 reply options.
+
+## Reply Crafting Rules
+
+### The Anti-Marketing Playbook (from twitter-reply-strategy.md)
+
+1. **80% of replies should have ZERO product mention.** Pure value, pure community.
+2. **Hold the tension:** Excited about AI AND honest that it's not there yet.
+3. **Add to conversations, don't hijack them.**
+4. **Include honest caveats** whenever mentioning BuildOS.
+5. **Never mention BuildOS** on ADHD struggles, personal wins, or emotional posts.
+
+### The Two Modes (from voice reference)
+
+**Mode 1: Add Value (When You Have Something)**
+- Share specific experience or insight
+- Lead with curiosity, not authority
+- Be direct and lowercase casual
+- Teammate energy, not teaching
+
+**Mode 2: Cheerleader (When You Don't)**
+- Genuine hype and encouragement
+- Curious questions
+- Celebrate their wins specifically
+- "hell yes" energy
+
+### The 3 Rules (for Value Mode)
+1. Can I visualize it? (specific details)
+2. Can I falsify it? (real experience)
+3. Can nobody else say this? (unique perspective)
+
+### Tone Calibration
+
+Read the "Reply Tone Guide" section in twitter-reply-strategy.md carefully. Every reply should live at "excited pragmatism" - not pure hype, not pure cynicism.
+
+**Phrases to use:** "honestly...", "here's what I've found...", "still figuring this out, but...", "not gonna lie, this is hard."
+
+**Phrases to avoid:** "game-changer", "the future of...", "most people don't realize...", "I've cracked the code on..."
+
+## Reply Format
+
+For each tweet, add this to the document:
+
+**Suggested Reply Option 1 ([mode: value/cheerleader] - [angle]):**
+> [reply text]
+
+**Suggested Reply Option 2 ([mode] - [angle]):**
+> [reply text]
+
+**Suggested Reply Option 3 ([mode] - [angle]):**
+> [reply text]
+
+**Product mention?** [Yes - with caveat / No]
+
+## After All Replies Are Crafted
+
+1. Update the document status from "Awaiting reply crafting" to "COMPLETE"
+2. Add a "Posting Strategy" section:
+   - Recommended order (freshest/lowest competition first)
+   - Timing window
+   - Spacing: 30+ min between replies
+   - Which replies include product mentions (max 2-3 per day)
+
+3. Add final "Strategy Recommendations" section:
+   - Today's observations
+   - Recommendations
+   - Strategy update needed? [No / Minor tweak / Significant shift]
+
+4. Update the strategy log: `docs/marketing/social-media/twitter-strategy-recommendations-log.md`
+
+5. Present final summary to user.
 ```
 
 ---
@@ -522,43 +483,11 @@ No significant changes observed for other profiles.
 4. **Use Latest tab** for searches to get fresh content
 5. **Check for previous engagement** - don't suggest same posts twice
 6. **Quality over quantity** - better to find 5 great opportunities than 10 mediocre ones
+7. **Write to the document as you go** - Don't accumulate everything in memory
 
 ---
 
-## When Complete
-
-Present a summary to the user:
-
-```
-Twitter warmup complete for [date].
-
-## Engagement Opportunities Found: X
-
-- [count] from notifications/timeline
-- [count] from Tier 1 accounts
-- [count] from Tier 2/3 accounts
-- [count] from topic searches
-
-Top opportunities:
-1. @[handle] - [topic] (Xh ago, Y replies)
-2. @[handle] - [topic] (Xh ago, Y replies)
-3. @[handle] - [topic] (Xh ago, Y replies)
-
-## New Accounts Discovered: X
-
-Worth adding to your engagement tiers:
-- @[handle] ([followers]) - [theme] → Suggested: Tier [X]
-- @[handle] ([followers]) - [theme] → Suggested: Tier [X]
-
-## Strategy Notes
-[Any observations or recommendations from today's scan]
-
-Full doc: docs/marketing/social-media/daily-engagement/[filename]
-
-Ready to post? Start with [recommendation] - it's the freshest with lowest competition.
-```
-
-### After Each Scan - Update Living Documents
+## After Each Scan - Update Living Documents
 
 **IMPORTANT:** After completing a warmup scan, update these living documents:
 
@@ -646,7 +575,8 @@ After completing a warmup scan, ensure these files stay in sync:
 
 ---
 
-*Last Updated: 2026-01-09*
+*Last Updated: 2026-02-07*
 *Accounts Tracker: `/docs/marketing/social-media/twitter-accounts-tracker.md`*
 *Strategy Log: `/docs/marketing/social-media/twitter-strategy-recommendations-log.md`*
+*Reply Strategy: `/docs/marketing/social-media/twitter-reply-strategy.md`*
 *Profile Database: `/docs/marketing/social-media/twitter-profiles/INDEX.md`*

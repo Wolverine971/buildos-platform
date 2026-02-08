@@ -213,14 +213,14 @@ Create, update, and delete ontology entities:
 - create_onto_task → Create task in project (required: project_id, title)
 - create_onto_goal → Create project goal (required: project_id, name)
 - create_onto_plan → Create task grouping (required: project_id, name)
-- create_onto_document → Create project document (required: project_id, title, type_key)
+- create_onto_document → Create project document (required: project_id, title, description, type_key)
 
 **UPDATE Tools** (Modify existing):
 - update_onto_task → Update task fields (required: task_id, optional: title, description, state_key, priority, due_at, props)
 - update_onto_project → Update project fields (required: project_id, optional: name, description, state_key, props)
 - update_onto_goal → Update goal fields (required: goal_id, optional: name, description, priority, target_date, props)
 - update_onto_plan → Update plan fields (required: plan_id, optional: name, description, state_key, dates, props)
-- update_onto_document → Update document fields (required: document_id, optional: title, state_key, content, props)
+- update_onto_document → Update document fields (required: document_id, optional: title, description, type_key, state_key, content, props)
 - update_onto_milestone → Update milestone fields (required: milestone_id, optional: title, due_at, state_key, description, props)
 - update_onto_risk → Update risk fields (required: risk_id, optional: title, impact, probability, state_key, content, props)
 - update_onto_requirement → Update requirement fields (required: requirement_id, optional: text, priority, type_key, props)

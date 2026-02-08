@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-07T05:41:10.844Z
+// Generated on: 2026-02-07T21:33:44.094Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 

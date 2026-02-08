@@ -28,30 +28,29 @@ All tool calls flow through `ToolExecutionService` -> `ChatToolExecutor` -> doma
 
 Source: `apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts`
 
-| Tool                            | HTTP   | Endpoint                                        | Primary side effects                                                       |
-| ------------------------------- | ------ | ----------------------------------------------- | -------------------------------------------------------------------------- |
-| `create_onto_project`           | POST   | `/api/onto/projects/instantiate`                | Creates project + entities + edges; returns `context_shift` to new project |
-| `create_onto_task`              | POST   | `/api/onto/tasks/create`                        | Creates task row in `onto_tasks`                                           |
-| `create_onto_goal`              | POST   | `/api/onto/goals/create`                        | Creates goal row in `onto_goals`                                           |
-| `create_onto_plan`              | POST   | `/api/onto/plans/create`                        | Creates plan row in `onto_plans`                                           |
-| `create_onto_document`          | POST   | `/api/onto/documents/create`                    | Creates document row in `onto_documents`                                   |
-| `create_task_document`          | POST   | `/api/onto/tasks/{task_id}/documents`           | Creates document + link edge to task                                       |
-| `link_onto_entities`            | POST   | `/api/onto/edges`                               | Inserts edges in `onto_edges`                                              |
-| `unlink_onto_edge`              | DELETE | `/api/onto/edges/{edge_id}`                     | Deletes edge in `onto_edges`                                               |
-| `reorganize_onto_project_graph` | POST   | `/api/onto/projects/{project_id}/reorganize`    | Bulk create/delete/update edges                                            |
-| `update_onto_project`           | PATCH  | `/api/onto/projects/{project_id}`               | Updates project row                                                        |
-| `update_onto_task`              | PATCH  | `/api/onto/tasks/{task_id}`                     | Updates task row                                                           |
-| `update_onto_goal`              | PATCH  | `/api/onto/goals/{goal_id}`                     | Updates goal row                                                           |
-| `update_onto_plan`              | PATCH  | `/api/onto/plans/{plan_id}`                     | Updates plan row                                                           |
-| `update_onto_document`          | PATCH  | `/api/onto/documents/{document_id}`             | Updates document row                                                       |
-| `update_onto_milestone`         | PATCH  | `/api/onto/milestones/{milestone_id}`           | Updates milestone row                                                      |
-| `update_onto_risk`              | PATCH  | `/api/onto/risks/{risk_id}`                     | Updates risk row                                                           |
-| `update_onto_requirement`       | PATCH  | `/api/onto/requirements/{requirement_id}`       | Updates requirement row                                                    |
-| `delete_onto_task`              | DELETE | `/api/onto/tasks/{task_id}`                     | Soft-delete task                                                           |
-| `delete_onto_goal`              | DELETE | `/api/onto/goals/{goal_id}`                     | Soft-delete goal                                                           |
-| `delete_onto_plan`              | DELETE | `/api/onto/plans/{plan_id}`                     | Soft-delete plan                                                           |
-| `delete_onto_document`          | DELETE | `/api/onto/documents/{document_id}`             | Soft-delete document                                                       |
-| `move_document`                 | POST   | `/api/onto/projects/{project_id}/doc-tree/move` | Moves document in tree + edges                                             |
+| Tool                            | HTTP   | Endpoint                                     | Primary side effects                                                       |
+| ------------------------------- | ------ | -------------------------------------------- | -------------------------------------------------------------------------- |
+| `create_onto_project`           | POST   | `/api/onto/projects/instantiate`             | Creates project + entities + edges; returns `context_shift` to new project |
+| `create_onto_task`              | POST   | `/api/onto/tasks/create`                     | Creates task row in `onto_tasks`                                           |
+| `create_onto_goal`              | POST   | `/api/onto/goals/create`                     | Creates goal row in `onto_goals`                                           |
+| `create_onto_plan`              | POST   | `/api/onto/plans/create`                     | Creates plan row in `onto_plans`                                           |
+| `create_onto_document`          | POST   | `/api/onto/documents/create`                 | Creates document row in `onto_documents`                                   |
+| `create_task_document`          | POST   | `/api/onto/tasks/{task_id}/documents`        | Creates document + link edge to task                                       |
+| `link_onto_entities`            | POST   | `/api/onto/edges`                            | Inserts edges in `onto_edges`                                              |
+| `unlink_onto_edge`              | DELETE | `/api/onto/edges/{edge_id}`                  | Deletes edge in `onto_edges`                                               |
+| `reorganize_onto_project_graph` | POST   | `/api/onto/projects/{project_id}/reorganize` | Bulk create/delete/update edges                                            |
+| `update_onto_project`           | PATCH  | `/api/onto/projects/{project_id}`            | Updates project row                                                        |
+| `update_onto_task`              | PATCH  | `/api/onto/tasks/{task_id}`                  | Updates task row                                                           |
+| `update_onto_goal`              | PATCH  | `/api/onto/goals/{goal_id}`                  | Updates goal row                                                           |
+| `update_onto_plan`              | PATCH  | `/api/onto/plans/{plan_id}`                  | Updates plan row                                                           |
+| `update_onto_document`          | PATCH  | `/api/onto/documents/{document_id}`          | Updates document row                                                       |
+| `update_onto_milestone`         | PATCH  | `/api/onto/milestones/{milestone_id}`        | Updates milestone row                                                      |
+| `update_onto_risk`              | PATCH  | `/api/onto/risks/{risk_id}`                  | Updates risk row                                                           |
+| `update_onto_requirement`       | PATCH  | `/api/onto/requirements/{requirement_id}`    | Updates requirement row                                                    |
+| `delete_onto_task`              | DELETE | `/api/onto/tasks/{task_id}`                  | Soft-delete task                                                           |
+| `delete_onto_goal`              | DELETE | `/api/onto/goals/{goal_id}`                  | Soft-delete goal                                                           |
+| `delete_onto_plan`              | DELETE | `/api/onto/plans/{plan_id}`                  | Soft-delete plan                                                           |
+| `delete_onto_document`          | DELETE | `/api/onto/documents/{document_id}`          | Soft-delete document                                                       |
 
 Notes:
 

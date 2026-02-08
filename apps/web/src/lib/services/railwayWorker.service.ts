@@ -65,9 +65,26 @@ export class RailwayWorkerService {
 	 * Check if Railway worker is available
 	 */
 	static async isWorkerAvailable(): Promise<boolean> {
-		if (!browser) return false;
-		// Worker API is internal-only; avoid browser calls.
-		return false;
+		if (!this.WORKER_URL) return false;
+		const healthUrl = browser ? '/api/worker/health' : `${this.WORKER_URL}/health`;
+
+		try {
+			const response = await fetch(healthUrl, {
+				signal: AbortSignal.timeout(this.TIMEOUT)
+			});
+
+			if (!response.ok) return false;
+
+			const payload = await response.json().catch(() => null);
+			const status =
+				(payload as { status?: string } | null)?.status ??
+				(payload as { data?: { status?: string } } | null)?.data?.status;
+
+			return status === 'healthy' || status === 'ok' || response.ok;
+		} catch (error) {
+			console.error('Error checking worker health:', error);
+			return false;
+		}
 	}
 
 	/**
@@ -89,7 +106,8 @@ export class RailwayWorkerService {
 		// Get user's timezone if not provided
 		const timezone = options?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-		const response = await fetch(`${this.WORKER_URL}/queue/brief`, {
+		const endpoint = browser ? '/api/brief-jobs/queue' : `${this.WORKER_URL}/queue/brief`;
+		const response = await fetch(endpoint, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -116,12 +134,16 @@ export class RailwayWorkerService {
 			);
 		}
 
-		const result = await response.json();
+		const payload = await response.json();
+		const result = payload?.data ?? payload;
 		if (!result?.success || !result?.jobId) {
 			throw new Error('Invalid response format from worker');
 		}
 
-		return result;
+		return {
+			...result,
+			message: result.message || 'Brief generation queued successfully'
+		};
 	}
 
 	/**

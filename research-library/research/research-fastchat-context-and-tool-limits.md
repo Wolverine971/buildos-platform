@@ -85,6 +85,23 @@
 - Added a lightweight FastChat-side arg injection that supplies `project_id` for tools that **require** it when FastChat is running in a project context.
 - This happens in `apps/web/src/routes/api/agent/v2/stream/+server.ts` before execution and before emitting tool events, keeping the UI consistent.
 
+## Update: relative fetch failures (2026-02-07)
+
+### Symptom
+
+- Tool errors like:
+    - `Cannot use relative URL (/api/onto/projects/.../doc-tree...) with global fetch — use event.fetch instead`
+    - Affected tools include `get_document_tree` and `create_onto_document`.
+
+### Root cause
+
+- In FastChat, the `ChatToolExecutor` was constructed with the global `fetch`.
+- SvelteKit requires `event.fetch` for relative URLs in server handlers, otherwise relative requests fail.
+
+### Mitigation applied
+
+- Updated FastChat’s `/api/agent/v2/stream` handler to pass `event.fetch` into `ChatToolExecutor`.
+
 ## Recommendations (optional follow-ups)
 
 1. Add caps or ordering (e.g., most recent N) for project tasks/events/documents to keep the prompt stable as projects grow.

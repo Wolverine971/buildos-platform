@@ -48,6 +48,7 @@ Examples:
 Remember: Tasks should represent FUTURE USER WORK, not a log of what you discussed or helped with.`,
 			parameters: {
 				type: 'object',
+				additionalProperties: false,
 				properties: {
 					project_id: {
 						type: 'string',
@@ -271,6 +272,10 @@ Documents are organized in a hierarchical tree structure. Use parent_id to place
 						type: 'string',
 						description: 'Document title (required)'
 					},
+					description: {
+						type: 'string',
+						description: 'Short summary of the document (required)'
+					},
 					type_key: {
 						type: 'string',
 						default: 'document.default',
@@ -323,7 +328,7 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 						}
 					}
 				},
-				required: ['project_id', 'title', 'content']
+				required: ['project_id', 'title', 'description', 'content']
 			}
 		}
 	},
@@ -348,6 +353,10 @@ Also ensures the project has_document edge exists for discovery.`,
 					title: {
 						type: 'string',
 						description: 'Document title (required if creating new)'
+					},
+					description: {
+						type: 'string',
+						description: 'Short summary of the document (required if creating new)'
 					},
 					type_key: {
 						type: 'string',
@@ -441,42 +450,11 @@ Avoid creating project edges unless the entity is truly a root-level item.`,
 	{
 		type: 'function',
 		function: {
-			name: 'move_document',
-			description: `Move a document to a new location in the hierarchical document tree.
-Use to reorganize document structure, moving documents between folders or to root level.
-Cannot move a folder into its own descendant (would create a cycle).`,
-			parameters: {
-				type: 'object',
-				properties: {
-					project_id: {
-						type: 'string',
-						description: 'Project ID (optional; inferred from context if omitted)'
-					},
-					document_id: {
-						type: 'string',
-						description: 'Document ID to move (required)'
-					},
-					new_parent_id: {
-						anyOf: [{ type: 'string' }, { type: 'null' }],
-						description: 'New parent document ID, or null to move to root level'
-					},
-					position: {
-						type: 'number',
-						description: 'Position among siblings (0-indexed, default: 0)'
-					}
-				},
-				required: ['document_id', 'new_parent_id']
-			}
-		}
-	},
-
-	{
-		type: 'function',
-		function: {
 			name: 'reorganize_onto_project_graph',
 			description: `Reorganize part of a project graph by providing a node-centric structure.
 Accepts nodes with desired connections and applies auto-organization rules to reparent and relink edges.
-Use dry_run to preview edge changes before applying.`,
+Use dry_run to preview edge changes before applying.
+IMPORTANT: Do not include documents. Documents are flat and managed only via onto_projects.doc_structure; this tool must not create or modify document edges.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -486,13 +464,18 @@ Use dry_run to preview edge changes before applying.`,
 					},
 					nodes: {
 						type: 'array',
-						description: 'Entities to reorganize with desired connections',
+						description:
+							'Non-document entities to reorganize with desired connections (documents are excluded)',
 						minItems: 1,
 						items: {
 							type: 'object',
 							properties: {
 								id: { type: 'string', description: 'Entity UUID' },
-								kind: { type: 'string', description: 'Entity kind' },
+								kind: {
+									type: 'string',
+									description:
+										'Entity kind (project, plan, goal, milestone, task, risk, requirement, metric, source). Document is not allowed.'
+								},
 								connections: {
 									type: 'array',
 									items: {
@@ -500,7 +483,8 @@ Use dry_run to preview edge changes before applying.`,
 										properties: {
 											kind: {
 												type: 'string',
-												description: 'Connection kind'
+												description:
+													'Connection kind (project, plan, goal, milestone, task, risk, requirement, metric, source). Document is not allowed.'
 											},
 											id: {
 												type: 'string',
@@ -997,7 +981,19 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						description: 'Properties to merge with existing props'
 					}
 				},
-				required: ['task_id']
+				required: ['task_id'],
+				anyOf: [
+					{ required: ['title'] },
+					{ required: ['description'] },
+					{ required: ['type_key'] },
+					{ required: ['state_key'] },
+					{ required: ['priority'] },
+					{ required: ['goal_id'] },
+					{ required: ['supporting_milestone_id'] },
+					{ required: ['start_at'] },
+					{ required: ['due_at'] },
+					{ required: ['props'] }
+				]
 			}
 		}
 	},
@@ -1011,6 +1007,7 @@ Can modify name, description, state, and custom properties.
 Only updates fields that are provided.`,
 			parameters: {
 				type: 'object',
+				additionalProperties: false,
 				properties: {
 					project_id: {
 						type: 'string',
@@ -1044,7 +1041,13 @@ Only updates fields that are provided.`,
 						description: 'Properties to merge with existing props'
 					}
 				},
-				required: ['project_id']
+				required: ['project_id'],
+				anyOf: [
+					{ required: ['name'] },
+					{ required: ['description'] },
+					{ required: ['state_key'] },
+					{ required: ['props'] }
+				]
 			}
 		}
 	},
@@ -1057,6 +1060,7 @@ Only updates fields that are provided.`,
 Use for edits to goal names, descriptions, priorities, target dates, or metadata.`,
 			parameters: {
 				type: 'object',
+				additionalProperties: false,
 				properties: {
 					goal_id: {
 						type: 'string',
@@ -1098,7 +1102,15 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 						description: 'Metadata fields to merge into goal props'
 					}
 				},
-				required: ['goal_id']
+				required: ['goal_id'],
+				anyOf: [
+					{ required: ['name'] },
+					{ required: ['description'] },
+					{ required: ['priority'] },
+					{ required: ['target_date'] },
+					{ required: ['measurement_criteria'] },
+					{ required: ['props'] }
+				]
 			}
 		}
 	},
@@ -1111,6 +1123,7 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 Use for edits to plan names, dates, status, or metadata.`,
 			parameters: {
 				type: 'object',
+				additionalProperties: false,
 				properties: {
 					plan_id: {
 						type: 'string',
@@ -1152,7 +1165,15 @@ Use for edits to plan names, dates, status, or metadata.`,
 						description: 'Metadata fields to merge into plan props'
 					}
 				},
-				required: ['plan_id']
+				required: ['plan_id'],
+				anyOf: [
+					{ required: ['name'] },
+					{ required: ['description'] },
+					{ required: ['start_date'] },
+					{ required: ['end_date'] },
+					{ required: ['state_key'] },
+					{ required: ['props'] }
+				]
 			}
 		}
 	},
@@ -1165,6 +1186,7 @@ Use for edits to plan names, dates, status, or metadata.`,
 Use for edits to titles, states, body markdown, or metadata.`,
 			parameters: {
 				type: 'object',
+				additionalProperties: false,
 				properties: {
 					document_id: {
 						type: 'string',
@@ -1186,6 +1208,10 @@ Use for edits to titles, states, body markdown, or metadata.`,
 						type: 'string',
 						description: 'Markdown content to store in the content column'
 					},
+					description: {
+						type: 'string',
+						description: 'Short summary of the document'
+					},
 					update_strategy: {
 						type: 'string',
 						description:
@@ -1203,7 +1229,15 @@ Use for edits to titles, states, body markdown, or metadata.`,
 						description: 'Metadata fields to merge into document props'
 					}
 				},
-				required: ['document_id']
+				required: ['document_id'],
+				anyOf: [
+					{ required: ['title'] },
+					{ required: ['type_key'] },
+					{ required: ['state_key'] },
+					{ required: ['content'] },
+					{ required: ['description'] },
+					{ required: ['props'] }
+				]
 			}
 		}
 	},
@@ -1215,6 +1249,7 @@ Use for edits to titles, states, body markdown, or metadata.`,
 Use for edits to title, due date, state, or metadata.`,
 			parameters: {
 				type: 'object',
+				additionalProperties: false,
 				properties: {
 					milestone_id: {
 						type: 'string',
@@ -1241,7 +1276,14 @@ Use for edits to title, due date, state, or metadata.`,
 						description: 'Metadata fields to merge into milestone props'
 					}
 				},
-				required: ['milestone_id']
+				required: ['milestone_id'],
+				anyOf: [
+					{ required: ['title'] },
+					{ required: ['due_at'] },
+					{ required: ['state_key'] },
+					{ required: ['description'] },
+					{ required: ['props'] }
+				]
 			}
 		}
 	},
@@ -1253,6 +1295,7 @@ Use for edits to title, due date, state, or metadata.`,
 Use for edits to title, impact, probability, state, or mitigation metadata.`,
 			parameters: {
 				type: 'object',
+				additionalProperties: false,
 				properties: {
 					risk_id: {
 						type: 'string',
@@ -1295,7 +1338,18 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 						description: 'Metadata fields to merge into risk props'
 					}
 				},
-				required: ['risk_id']
+				required: ['risk_id'],
+				anyOf: [
+					{ required: ['title'] },
+					{ required: ['impact'] },
+					{ required: ['probability'] },
+					{ required: ['state_key'] },
+					{ required: ['content'] },
+					{ required: ['description'] },
+					{ required: ['mitigation_strategy'] },
+					{ required: ['owner'] },
+					{ required: ['props'] }
+				]
 			}
 		}
 	},
@@ -1307,6 +1361,7 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 Use for edits to requirement text, priority, or metadata.`,
 			parameters: {
 				type: 'object',
+				additionalProperties: false,
 				properties: {
 					requirement_id: {
 						type: 'string',
@@ -1329,7 +1384,13 @@ Use for edits to requirement text, priority, or metadata.`,
 						description: 'Metadata fields to merge into requirement props'
 					}
 				},
-				required: ['requirement_id']
+				required: ['requirement_id'],
+				anyOf: [
+					{ required: ['text'] },
+					{ required: ['priority'] },
+					{ required: ['type_key'] },
+					{ required: ['props'] }
+				]
 			}
 		}
 	},

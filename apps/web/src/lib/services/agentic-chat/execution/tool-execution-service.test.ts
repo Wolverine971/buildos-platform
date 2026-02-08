@@ -301,6 +301,7 @@ describe('ToolExecutionService', () => {
 				arguments: {
 					project_id: 'proj_123',
 					title: '   ',
+					description: 'Short summary',
 					type_key: ' '
 				}
 			};
@@ -332,6 +333,7 @@ describe('ToolExecutionService', () => {
 				{
 					project_id: 'proj_123',
 					title: 'Untitled Document',
+					description: 'Short summary',
 					type_key: 'document.default'
 				},
 				mockContext
@@ -345,6 +347,7 @@ describe('ToolExecutionService', () => {
 				arguments: {
 					project_id: 'proj_123',
 					name: 'Design Brief',
+					description: 'Brief for the new design',
 					type_key: 'document.context.brief'
 				}
 			};
@@ -376,6 +379,7 @@ describe('ToolExecutionService', () => {
 				expect.objectContaining({
 					project_id: 'proj_123',
 					title: 'Design Brief',
+					description: 'Brief for the new design',
 					type_key: 'document.context.brief'
 				}),
 				mockContext
@@ -390,6 +394,7 @@ describe('ToolExecutionService', () => {
 					project_id: 'proj_123',
 					document: {
 						title: 'Research Notes',
+						description: 'Key findings from discovery',
 						content: '# Findings\n\n- Item one'
 					},
 					type_key: 'document.knowledge.research'
@@ -423,6 +428,7 @@ describe('ToolExecutionService', () => {
 				expect.objectContaining({
 					project_id: 'proj_123',
 					title: 'Research Notes',
+					description: 'Key findings from discovery',
 					type_key: 'document.knowledge.research',
 					content: '# Findings\n\n- Item one'
 				}),
@@ -435,6 +441,7 @@ describe('ToolExecutionService', () => {
 				JSON.stringify({
 					project_id: 'proj_123',
 					title: 'Double Encoded',
+					description: 'Encoded document',
 					type_key: 'document.spec.technical',
 					content: 'Hello\nWorld'
 				})
@@ -473,6 +480,7 @@ describe('ToolExecutionService', () => {
 				expect.objectContaining({
 					project_id: 'proj_123',
 					title: 'Double Encoded',
+					description: 'Encoded document',
 					type_key: 'document.spec.technical',
 					content: 'Hello\nWorld'
 				}),
@@ -619,36 +627,6 @@ describe('ToolExecutionService', () => {
 			expect(validation.errors[0]).toContain('Missing required parameter: title');
 		});
 
-		it('should allow null for required nullable parameters', () => {
-			const toolDefs: ChatToolDefinition[] = [
-				{
-					name: 'move_document',
-					description: 'Move document',
-					parameters: {
-						type: 'object',
-						properties: {
-							document_id: { type: 'string' },
-							new_parent_id: {
-								anyOf: [{ type: 'string' }, { type: 'null' }]
-							}
-						},
-						required: ['document_id', 'new_parent_id']
-					}
-				}
-			];
-
-			const toolCall: ChatToolCall = {
-				id: 'call_move',
-				name: 'move_document',
-				arguments: { document_id: 'doc_123', new_parent_id: null }
-			};
-
-			const validation = service.validateToolCall(toolCall, toolDefs);
-
-			expect(validation.isValid).toBe(true);
-			expect(validation.errors).toEqual([]);
-		});
-
 		it('should enforce minItems when provided', () => {
 			const toolDefs: ChatToolDefinition[] = [
 				{
@@ -714,6 +692,91 @@ describe('ToolExecutionService', () => {
 			expect(validation.errors.some((error) => error.includes('expected UUID'))).toBe(true);
 			expect(
 				validation.errors.some((error) => error.includes('reorganize_onto_project_graph'))
+			).toBe(true);
+		});
+
+		it('should reject document nodes for reorganize_onto_project_graph', () => {
+			const toolDefs: ChatToolDefinition[] = [
+				{
+					name: 'reorganize_onto_project_graph',
+					description: 'Reorganize project graph',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							nodes: { type: 'array', minItems: 1 }
+						},
+						required: ['project_id', 'nodes']
+					}
+				}
+			];
+
+			const toolCall: ChatToolCall = {
+				id: 'call_reorg_document_node',
+				name: 'reorganize_onto_project_graph',
+				arguments: {
+					project_id: '153dea7b-1fc7-4f68-b014-cd2b00c572ec',
+					nodes: [
+						{
+							id: 'dc6c356e-9fe3-4784-b571-d0c1a26a95d2',
+							kind: 'document',
+							connections: []
+						}
+					]
+				}
+			};
+
+			const validation = service.validateToolCall(toolCall, toolDefs);
+
+			expect(validation.isValid).toBe(false);
+			expect(
+				validation.errors.some((error) => error.includes('Document nodes are not allowed'))
+			).toBe(true);
+		});
+
+		it('should reject document connections for reorganize_onto_project_graph', () => {
+			const toolDefs: ChatToolDefinition[] = [
+				{
+					name: 'reorganize_onto_project_graph',
+					description: 'Reorganize project graph',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							nodes: { type: 'array', minItems: 1 }
+						},
+						required: ['project_id', 'nodes']
+					}
+				}
+			];
+
+			const toolCall: ChatToolCall = {
+				id: 'call_reorg_document_conn',
+				name: 'reorganize_onto_project_graph',
+				arguments: {
+					project_id: '153dea7b-1fc7-4f68-b014-cd2b00c572ec',
+					nodes: [
+						{
+							id: '1d2d5d90-3a0a-4a2c-8f68-2e7154392d75',
+							kind: 'task',
+							connections: [
+								{
+									kind: 'document',
+									id: 'dc6c356e-9fe3-4784-b571-d0c1a26a95d2'
+								}
+							]
+						}
+					]
+				}
+			};
+
+			const validation = service.validateToolCall(toolCall, toolDefs);
+
+			expect(validation.isValid).toBe(false);
+			expect(
+				validation.errors.some((error) =>
+					error.includes('Document connections are not allowed')
+				)
 			).toBe(true);
 		});
 
