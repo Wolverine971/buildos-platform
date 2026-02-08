@@ -3,7 +3,7 @@ title: "FastChat V2 — Actual Prompts (Literal Text)"
 date: 2026-02-07
 type: research
 scope: agentic-chat-v2
-path: thoughts/shared/research/2026-02-07_fastchat-v2-actual-prompts.md
+path: thoughts/shared/research/2026-02-07_00-00-00_fastchat-v2-actual-prompts.md
 ---
 
 # FastChat V2 — Actual Prompts Sent to the LLM

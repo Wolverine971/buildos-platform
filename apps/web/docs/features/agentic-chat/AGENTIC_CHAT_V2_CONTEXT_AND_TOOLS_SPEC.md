@@ -308,6 +308,7 @@ FastChat is a speed-first path that should:
 - `get_onto_risk_details`, `get_onto_requirement_details`
 - `list_task_documents`
 - create: `create_onto_task`, `create_onto_goal`, `create_onto_plan`, `create_onto_document`, `create_task_document`
+- doc tree: `move_document_in_tree`
 - update: `update_onto_task`, `update_onto_project`, `update_onto_goal`, `update_onto_plan`, `update_onto_document`, `update_onto_milestone`, `update_onto_risk`, `update_onto_requirement`
 - delete: `delete_onto_task`, `delete_onto_goal`, `delete_onto_plan`, `delete_onto_document`
 - graph: `link_onto_entities`, `unlink_onto_edge`, `reorganize_onto_project_graph`

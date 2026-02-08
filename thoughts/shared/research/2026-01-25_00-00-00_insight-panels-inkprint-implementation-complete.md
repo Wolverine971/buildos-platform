@@ -8,7 +8,7 @@ related:
   - /thoughts/shared/research/2026-01-25_ULTRATHINK_inkprint-system-deep-analysis.md
   - /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
   - /apps/web/src/lib/components/ontology/EntityListItem.svelte
-path: thoughts/shared/research/2026-01-25_insight-panels-inkprint-implementation-complete.md
+path: thoughts/shared/research/2026-01-25_00-00-00_insight-panels-inkprint-implementation-complete.md
 ---
 
 # Insight Panels Inkprint Implementation - Complete

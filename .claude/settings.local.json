@@ -119,7 +119,15 @@
       "Bash(npm install:*)",
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:discuss.codemirror.net)",
-      "WebFetch(domain:codemirror.net)"
+      "WebFetch(domain:codemirror.net)",
+      "Bash(git ls-files:*)",
+      "Bash(git rm:*)",
+      "WebFetch(domain:every.to)",
+      "WebFetch(domain:cc.deeptoai.com)",
+      "WebFetch(domain:ai-assisted-software-development.com)",
+      "WebFetch(domain:ht-x.com)",
+      "WebFetch(domain:www.thisisuncharted.co)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

@@ -159,6 +159,8 @@ export interface ListTaskDocumentsArgs {
 
 export interface GetDocumentTreeArgs {
 	project_id: string;
+	/** Include document metadata + unlinked list (default: false). */
+	include_documents?: boolean;
 	/** Include document content bodies in response (default: false for metadata-only) */
 	include_content?: boolean;
 }
@@ -234,6 +236,15 @@ export interface CreateOntoDocumentArgs {
 	parent_id?: string | null;
 	/** Position within parent's children (0-indexed). If omitted, appends to end. */
 	position?: number;
+}
+
+export interface MoveDocumentInTreeArgs {
+	project_id: string;
+	document_id: string;
+	/** New parent document ID (null places at root). */
+	new_parent_id?: string | null;
+	/** Position among siblings (0-indexed). */
+	new_position?: number;
 }
 
 export interface CreateTaskDocumentArgs {

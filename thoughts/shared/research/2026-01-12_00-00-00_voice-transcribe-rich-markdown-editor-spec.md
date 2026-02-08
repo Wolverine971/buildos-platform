@@ -3,7 +3,7 @@ title: Voice Transcription for RichMarkdownEditor - Technical Specification
 created: 2026-01-12
 status: draft
 type: feature-spec
-path: thoughts/shared/research/2026-01-12_voice-transcribe-rich-markdown-editor-spec.md
+path: thoughts/shared/research/2026-01-12_00-00-00_voice-transcribe-rich-markdown-editor-spec.md
 ---
 
 # Voice Transcription for RichMarkdownEditor

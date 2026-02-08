@@ -813,9 +813,7 @@ export async function updateDocNodeMetadata(
 		includeDocuments: false
 	});
 
-	const updateNodes = (
-		nodes: DocTreeNode[]
-	): { nodes: DocTreeNode[]; changed: boolean } => {
+	const updateNodes = (nodes: DocTreeNode[]): { nodes: DocTreeNode[]; changed: boolean } => {
 		let changed = false;
 		const updatedNodes = nodes.map((node) => {
 			if (!node || typeof node.id !== 'string') return node;

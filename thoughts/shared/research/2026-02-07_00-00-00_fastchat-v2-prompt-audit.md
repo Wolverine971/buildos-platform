@@ -3,7 +3,7 @@ title: "FastChat V2 Prompt Audit"
 date: 2026-02-07
 type: research
 scope: agentic-chat-v2
-path: thoughts/shared/research/2026-02-07_fastchat-v2-prompt-audit.md
+path: thoughts/shared/research/2026-02-07_00-00-00_fastchat-v2-prompt-audit.md
 ---
 
 # FastChat V2 - Prompt Audit & Token Metrics

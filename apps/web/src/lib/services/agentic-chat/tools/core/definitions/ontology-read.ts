@@ -589,7 +589,7 @@ Use when you need the full requirement record before updating it.`,
 		function: {
 			name: 'get_document_tree',
 			description: `Get the hierarchical document tree structure for a project.
-Returns the full tree with document metadata, useful for understanding how documents are organized.
+Returns the tree structure; set include_documents to include document metadata and unlinked docs.
 Documents are organized in a wiki-like tree structure with folders (documents that have children) and leaf documents.`,
 			parameters: {
 				type: 'object',
@@ -598,11 +598,17 @@ Documents are organized in a wiki-like tree structure with folders (documents th
 						type: 'string',
 						description: 'Project ID to get the document tree for (required)'
 					},
+					include_documents: {
+						type: 'boolean',
+						default: false,
+						description:
+							'Include document metadata and unlinked document list. Set true when you need titles or orphaned docs.'
+					},
 					include_content: {
 						type: 'boolean',
 						default: false,
 						description:
-							'Include full document content bodies. Defaults to false to return metadata only.'
+							'Include full document content bodies. Only applies when include_documents is true.'
 					}
 				},
 				required: ['project_id']

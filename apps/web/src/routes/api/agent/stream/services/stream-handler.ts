@@ -915,7 +915,38 @@ export class StreamHandler {
 			for (const entity of extractedEntities) {
 				existing.set(entityKey(entity), entity);
 			}
-		agentState.current_understanding.entities = Array.from(existing.values());
+			agentState.current_understanding.entities = Array.from(existing.values());
+		}
+
+		const extractedDependencies = this.extractDependenciesFromPayload(payload);
+		if (extractedDependencies.length > 0) {
+			const depKey = (entry: { from: string; to: string; rel?: string }) =>
+				`${entry.from}:${entry.to}:${entry.rel ?? ''}`;
+			const existing = new Map(
+				agentState.current_understanding.dependencies.map((d) => [depKey(d), d])
+			);
+			for (const dep of extractedDependencies) {
+				existing.set(depKey(dep), dep);
+			}
+			agentState.current_understanding.dependencies = Array.from(existing.values());
+		}
+
+		const expectationUpdate = this.verifyExpectations(agentState, payload);
+		if (expectationUpdate) {
+			if (expectationUpdate.assumptions?.length) {
+				agentState.assumptions = [
+					...agentState.assumptions,
+					...expectationUpdate.assumptions
+				];
+			}
+			if (expectationUpdate.expectations?.length) {
+				agentState.expectations = expectationUpdate.expectations;
+			}
+		}
+
+		sessionMetadata.agent_state = agentState;
+		state.pendingMetadataUpdates.agent_state = agentState;
+		state.hasPendingMetadataUpdate = true;
 	}
 
 	private extractProjectIdFromToolResult(result: ToolResultData): string | null {
@@ -960,6 +991,7 @@ export class StreamHandler {
 
 		const mutatingTools = new Set([
 			'create_onto_document',
+			'move_document_in_tree',
 			'update_onto_document',
 			'delete_onto_document',
 			'create_task_document'
@@ -1010,37 +1042,6 @@ export class StreamHandler {
 				projectId
 			});
 		}
-	}
-
-		const extractedDependencies = this.extractDependenciesFromPayload(payload);
-		if (extractedDependencies.length > 0) {
-			const depKey = (entry: { from: string; to: string; rel?: string }) =>
-				`${entry.from}:${entry.to}:${entry.rel ?? ''}`;
-			const existing = new Map(
-				agentState.current_understanding.dependencies.map((d) => [depKey(d), d])
-			);
-			for (const dep of extractedDependencies) {
-				existing.set(depKey(dep), dep);
-			}
-			agentState.current_understanding.dependencies = Array.from(existing.values());
-		}
-
-		const expectationUpdate = this.verifyExpectations(agentState, payload);
-		if (expectationUpdate) {
-			if (expectationUpdate.assumptions?.length) {
-				agentState.assumptions = [
-					...agentState.assumptions,
-					...expectationUpdate.assumptions
-				];
-			}
-			if (expectationUpdate.expectations?.length) {
-				agentState.expectations = expectationUpdate.expectations;
-			}
-		}
-
-		sessionMetadata.agent_state = agentState;
-		state.pendingMetadataUpdates.agent_state = agentState;
-		state.hasPendingMetadataUpdate = true;
 	}
 
 	private ensureAgentState(sessionMetadata: AgentSessionMetadata, sessionId: string): AgentState {

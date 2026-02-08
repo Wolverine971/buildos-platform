@@ -1,4 +1,4 @@
-<!-- thoughts/shared/research/2026-02-02_dashboard-ui-audit.md -->
+<!-- thoughts/shared/research/2026-02-02_00-00-00_dashboard-ui-audit.md -->
 # UI Audit: Dashboard Page & Global Styles
 
 ```yaml

@@ -10,6 +10,7 @@
  * - Queues send_sms jobs for scheduled times
  */
 
+import type { Database } from '@buildos/shared-types';
 import { supabase } from '../lib/supabase';
 import type { LegacyJob } from './shared/jobAdapter';
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
@@ -184,7 +185,8 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
 		// Filter events that need SMS reminders
 		const now = new Date();
-		const scheduledMessages: any[] = [];
+		const scheduledMessages: Database['public']['Tables']['scheduled_sms_messages']['Insert'][] =
+			[];
 		let quietHoursSkipCount = 0;
 
 		for (const event of calendarEvents) {
@@ -468,7 +470,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 			scheduled_count: insertedMessages?.length || 0,
 			message: `Scheduled ${insertedMessages?.length} SMS reminders`
 		};
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error(`❌ [DailySMS] Error processing daily SMS for user ${userId}:`, error);
 		throw error;
 	}

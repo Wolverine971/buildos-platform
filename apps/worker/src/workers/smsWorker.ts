@@ -1,4 +1,5 @@
 // apps/worker/src/workers/smsWorker.ts
+import type { Json } from '@buildos/shared-types';
 import type { LegacyJob } from './shared/jobAdapter';
 import { SMSService, TwilioClient } from '@buildos/twilio-service';
 import { createServiceClient } from '@buildos/supabase-client';
@@ -152,7 +153,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				await supabase.rpc('add_queue_job', {
 					p_user_id: user_id,
 					p_job_type: 'send_sms',
-					p_metadata: validatedData as any,
+					p_metadata: validatedData as unknown as Json,
 					p_scheduled_for: quietHoursResult.rescheduleTime.toISOString(),
 					p_priority: priority === 'urgent' ? 1 : 10,
 					p_dedup_key: `sms_reschedule_${scheduled_sms_id}_${quietHoursResult.rescheduleTime.getTime()}`
@@ -169,7 +170,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 
 			// Check daily limit
 			// BUG FIX #1: Use null-check instead of truthy check to handle daily_sms_count = 0
-			if (userPrefs.daily_sms_limit != null && userPrefs.daily_sms_count != null) {
+			if (userPrefs.daily_sms_limit !== null && userPrefs.daily_sms_count !== null) {
 				if (userPrefs.daily_sms_count >= userPrefs.daily_sms_limit) {
 					console.log(
 						`[SMS Worker] Daily SMS limit reached (${userPrefs.daily_sms_count}/${userPrefs.daily_sms_limit}), skipping`
@@ -333,7 +334,8 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			twilio_sid: twilioMessage.sid,
 			scheduled_sms_id
 		};
-	} catch (error: any) {
+	} catch (error: unknown) {
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		console.error('SMS job failed:', error);
 
 		// Update message status with error
@@ -347,14 +349,13 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			.from('sms_messages')
 			.update({
 				status: 'failed',
-				twilio_error_message: error.message,
+				twilio_error_message: errorMessage,
 				attempt_count: (currentMessage?.attempt_count || 0) + 1
 			})
 			.eq('id', message_id);
 
 		let newAttemptCount = 0;
 		let maxAttempts = 3;
-		let message: any = null; // For non-scheduled SMS
 
 		// Phase 4: Update scheduled_sms_messages on failure
 		if (scheduled_sms_id) {
@@ -375,7 +376,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				.from('scheduled_sms_messages')
 				.update({
 					status: 'failed',
-					last_error: error.message,
+					last_error: errorMessage,
 					send_attempts: newAttemptCount,
 					updated_at: new Date().toISOString()
 				})
@@ -384,12 +385,12 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 
 		// Track failed metrics (non-blocking)
 		smsMetricsService
-			.recordFailed(user_id, message_id, error.message)
+			.recordFailed(user_id, message_id, errorMessage)
 			.catch((err: unknown) =>
 				console.error('[SMS Worker] Error tracking failed metrics:', err)
 			);
 
-		await updateJobStatus(job.id, 'failed', 'send_sms', error.message);
+		await updateJobStatus(job.id, 'failed', 'send_sms', errorMessage);
 
 		// Check if we should retry
 		// BUG FIX #2: For scheduled SMS, we already fetched the data. Only fetch if NOT scheduled.
@@ -405,11 +406,10 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				.eq('id', message_id)
 				.single();
 
-			message = smsMessage;
-			const attempts = message?.attempt_count ?? 0;
-			maxAttempts = message?.max_attempts ?? 3;
+			const attempts = smsMessage?.attempt_count ?? 0;
+			maxAttempts = smsMessage?.max_attempts ?? 3;
 			newAttemptCount = attempts; // For consistent naming
-			shouldRetry = Boolean(message) && attempts < maxAttempts;
+			shouldRetry = Boolean(smsMessage) && attempts < maxAttempts;
 		}
 
 		if (shouldRetry) {
@@ -425,7 +425,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			await supabase.rpc('add_queue_job', {
 				p_user_id: user_id,
 				p_job_type: 'send_sms',
-				p_metadata: validatedData as any,
+				p_metadata: validatedData as unknown as Json,
 				p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
 				p_priority: priority === 'urgent' ? 1 : 10,
 				p_dedup_key: dedupKey

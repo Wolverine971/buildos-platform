@@ -1095,10 +1095,13 @@
 
 			if (session) {
 				currentSession = session;
+				// Use prewarmEntityId (captured at effect time) to match the key
+				// computed in the effect body — selectedEntityId may differ when
+				// it's undefined and the fallback resolvedProjectFocus.projectId is used
 				const refreshedKey = buildPrewarmKey(
 					session.id,
 					selectedContextType,
-					selectedEntityId,
+					prewarmEntityId,
 					resolvedProjectFocus
 				);
 				if (refreshedKey) {

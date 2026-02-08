@@ -7,7 +7,7 @@ related:
   - /thoughts/shared/research/2026-01-25_insight-panels-inkprint-implementation-complete.md
   - /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
   - /apps/web/src/routes/projects/[id]/+page.svelte
-path: thoughts/shared/research/2026-01-25_project-page-cleanup-consistency.md
+path: thoughts/shared/research/2026-01-25_00-00-00_project-page-cleanup-consistency.md
 ---
 
 # Project Page Cleanup - Consistency Pass

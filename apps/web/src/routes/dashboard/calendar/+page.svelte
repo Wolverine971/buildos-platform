@@ -9,7 +9,20 @@
 		SlidersHorizontal,
 		LoaderCircle,
 		ExternalLink,
-		ArrowLeft
+		ArrowLeft,
+		Clock,
+		MapPin,
+		FolderOpen,
+		Target,
+		ListChecks,
+		Milestone,
+		FileText,
+		ChevronRight,
+		CircleDot,
+		CheckCircle2,
+		Circle,
+		Ban,
+		Pause
 	} from 'lucide-svelte';
 	import CalendarView from '$lib/components/scheduling/CalendarView.svelte';
 	import CalendarItemDrawer from '$lib/components/scheduling/CalendarItemDrawer.svelte';
@@ -24,7 +37,43 @@
 
 	type ViewMode = 'day' | 'week' | 'month';
 
-	type ItemDetail = { type: 'task'; data: any } | { type: 'event'; data: any } | null;
+	interface ProjectInfo {
+		id: string;
+		name: string;
+		state_key: string;
+		description: string | null;
+		facet_stage: string | null;
+		facet_scale: string | null;
+		facet_context: string | null;
+	}
+
+	interface LinkedEntity {
+		id: string;
+		name?: string;
+		title?: string;
+		state_key?: string;
+		type_key?: string;
+		due_at?: string;
+		edge_rel?: string;
+	}
+
+	interface LinkedEntities {
+		plans: LinkedEntity[];
+		goals: LinkedEntity[];
+		milestones: LinkedEntity[];
+		documents: LinkedEntity[];
+		dependentTasks: LinkedEntity[];
+	}
+
+	type ItemDetail =
+		| {
+				type: 'task';
+				data: any;
+				linkedEntities: LinkedEntities | null;
+				project: ProjectInfo | null;
+		  }
+		| { type: 'event'; data: any; project: ProjectInfo | null }
+		| null;
 
 	const LOCAL_STORAGE_KEY = 'dashboard_calendar_state';
 	const BUFFER_DAYS = 7;
@@ -79,6 +128,7 @@
 	let editProjectId = $state<string | null>(null);
 
 	const detailCache = new Map<string, ItemDetail>();
+	const projectCache = new Map<string, ProjectInfo>();
 
 	const toggleKey = () =>
 		`${includeEvents}-${includeTaskRange}-${includeTaskStart}-${includeTaskDue}`;
@@ -308,6 +358,31 @@
 		);
 	}
 
+	async function fetchProjectInfo(projectId: string): Promise<ProjectInfo | null> {
+		if (projectCache.has(projectId)) {
+			return projectCache.get(projectId) ?? null;
+		}
+		try {
+			const response = await fetch(`/api/onto/projects/${projectId}`);
+			const json = await response.json();
+			if (!response.ok || !json?.data?.project) return null;
+			const p = json.data.project;
+			const info: ProjectInfo = {
+				id: p.id,
+				name: p.name,
+				state_key: p.state_key,
+				description: p.description,
+				facet_stage: p.facet_stage,
+				facet_scale: p.facet_scale,
+				facet_context: p.facet_context
+			};
+			projectCache.set(projectId, info);
+			return info;
+		} catch {
+			return null;
+		}
+	}
+
 	async function loadItemDetail(item: CalendarItem) {
 		const cacheKey = `${item.item_type}:${item.task_id || item.event_id || item.calendar_item_id}`;
 		if (detailCache.has(cacheKey)) {
@@ -319,24 +394,39 @@
 		detailError = null;
 		try {
 			if (item.item_type === 'task' && item.task_id) {
-				const response = await fetch(`/api/onto/tasks/${item.task_id}`);
-				const data = await response.json();
-				if (!response.ok) {
+				const [taskResponse, projectInfo] = await Promise.all([
+					fetch(`/api/onto/tasks/${item.task_id}`),
+					item.project_id ? fetchProjectInfo(item.project_id) : Promise.resolve(null)
+				]);
+				const data = await taskResponse.json();
+				if (!taskResponse.ok) {
 					throw new Error(data?.error || 'Failed to load task');
 				}
-				const taskDetail: ItemDetail = { type: 'task', data: data.task };
+				const taskDetail: ItemDetail = {
+					type: 'task',
+					data: data.data?.task ?? data.task,
+					linkedEntities: data.data?.linkedEntities ?? data.linkedEntities ?? null,
+					project: projectInfo
+				};
 				detail = taskDetail;
 				detailCache.set(cacheKey, taskDetail);
 				return;
 			}
 
 			if (item.event_id) {
-				const response = await fetch(`/api/onto/events/${item.event_id}`);
-				const data = await response.json();
-				if (!response.ok) {
+				const [eventResponse, projectInfo] = await Promise.all([
+					fetch(`/api/onto/events/${item.event_id}`),
+					item.project_id ? fetchProjectInfo(item.project_id) : Promise.resolve(null)
+				]);
+				const data = await eventResponse.json();
+				if (!eventResponse.ok) {
 					throw new Error(data?.error || 'Failed to load event');
 				}
-				const eventDetail: ItemDetail = { type: 'event', data: data.event };
+				const eventDetail: ItemDetail = {
+					type: 'event',
+					data: data.data?.event ?? data.event,
+					project: projectInfo
+				};
 				detail = eventDetail;
 				detailCache.set(cacheKey, eventDetail);
 			}
@@ -466,6 +556,72 @@
 		if (itemKind === 'start') return 'Start marker';
 		if (itemKind === 'due') return 'Due marker';
 		return itemKind;
+	}
+
+	function getStateLabel(stateKey: string | null | undefined): string {
+		if (!stateKey) return 'Unknown';
+		const labels: Record<string, string> = {
+			todo: 'To Do',
+			in_progress: 'In Progress',
+			blocked: 'Blocked',
+			done: 'Done',
+			planning: 'Planning',
+			active: 'Active',
+			paused: 'Paused',
+			completed: 'Completed',
+			cancelled: 'Cancelled',
+			scheduled: 'Scheduled'
+		};
+		return (
+			labels[stateKey] || stateKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+		);
+	}
+
+	function getStateColor(stateKey: string | null | undefined): string {
+		if (!stateKey) return 'bg-muted text-muted-foreground';
+		const colors: Record<string, string> = {
+			todo: 'bg-muted text-muted-foreground',
+			in_progress: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300',
+			blocked: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
+			done: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
+			planning: 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300',
+			active: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300',
+			paused: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
+			completed:
+				'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
+			cancelled: 'bg-muted text-muted-foreground line-through',
+			scheduled: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
+		};
+		return colors[stateKey] || 'bg-muted text-muted-foreground';
+	}
+
+	function getPriorityLabel(priority: number | null | undefined): string | null {
+		if (priority == null) return null;
+		if (priority >= 4) return 'Critical';
+		if (priority === 3) return 'High';
+		if (priority === 2) return 'Medium';
+		if (priority === 1) return 'Low';
+		return null;
+	}
+
+	function getPriorityColor(priority: number | null | undefined): string {
+		if (priority == null) return '';
+		if (priority >= 4) return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300';
+		if (priority === 3)
+			return 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300';
+		if (priority === 2)
+			return 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
+		return 'bg-muted text-muted-foreground';
+	}
+
+	function getScaleLabel(scale: string | null | undefined): string | null {
+		if (!scale) return null;
+		return scale.charAt(0).toUpperCase() + scale.slice(1);
+	}
+
+	function getStageLabel(stage: string | null | undefined): string | null {
+		if (!stage) return null;
+		return stage.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 	}
 
 	function openProject(projectId: string | null) {
@@ -600,95 +756,317 @@
 		isOpen={showDetailDrawer}
 		onClose={closeDetail}
 		title={selectedItem.title || 'Calendar item'}
+		subtitle={selectedItem.item_type === 'task'
+			? `Task · ${getTaskMarkerLabel(selectedItem.item_kind)}`
+			: 'Event'}
 	>
-		<div class="space-y-4">
-			<div class="flex items-center gap-2">
-				{#if selectedItem.item_type === 'task'}
-					<span class="text-lg">{getTaskMarkerIcon(selectedItem.item_kind)}</span>
-					<div>
-						<div
-							class="text-xs uppercase tracking-wide font-semibold text-muted-foreground"
-						>
-							Task · {getTaskMarkerLabel(selectedItem.item_kind)}
-						</div>
-					</div>
-				{:else}
-					<div
-						class="text-xs uppercase tracking-wide text-muted-foreground font-semibold"
-					>
-						Event
-					</div>
-				{/if}
-			</div>
-
-			<div class="rounded-lg border border-border bg-muted/30 p-3 text-sm">
-				{formatRange(selectedItem.start_at, selectedItem.end_at, selectedItem.all_day)}
-			</div>
-
+		<div class="space-y-5">
+			<!-- Status badges row -->
 			{#if detailLoading}
-				<div class="flex items-center gap-2 text-sm text-muted-foreground">
+				<div
+					class="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center"
+				>
 					<LoaderCircle class="h-4 w-4 animate-spin" />
 					Loading details…
 				</div>
 			{:else if detailError}
-				<div class="text-sm text-rose-600">{detailError}</div>
+				<div
+					class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-3 text-sm text-red-700 dark:text-red-400"
+				>
+					{detailError}
+				</div>
 			{:else if detail}
-				{@const description = getDescription(detail)}
-				{#if description}
-					<div class="text-sm text-foreground whitespace-pre-wrap">
-						{description}
+				<!-- Badges -->
+				<div class="flex flex-wrap items-center gap-2">
+					{#if detail.data?.state_key}
+						<span
+							class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium {getStateColor(
+								detail.data.state_key
+							)}"
+						>
+							{#if detail.data.state_key === 'done' || detail.data.state_key === 'completed'}
+								<CheckCircle2 class="h-3 w-3" />
+							{:else if detail.data.state_key === 'in_progress' || detail.data.state_key === 'active'}
+								<CircleDot class="h-3 w-3" />
+							{:else if detail.data.state_key === 'blocked'}
+								<Ban class="h-3 w-3" />
+							{:else if detail.data.state_key === 'paused'}
+								<Pause class="h-3 w-3" />
+							{:else}
+								<Circle class="h-3 w-3" />
+							{/if}
+							{getStateLabel(detail.data.state_key)}
+						</span>
+					{/if}
+					{#if detail.type === 'task'}
+						{@const priorityLabel = getPriorityLabel(detail.data?.priority)}
+						{#if priorityLabel}
+							<span
+								class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {getPriorityColor(
+									detail.data?.priority
+								)}"
+							>
+								{priorityLabel}
+							</span>
+						{/if}
+						{@const scaleLabel = getScaleLabel(detail.data?.facet_scale)}
+						{#if scaleLabel}
+							<span
+								class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground"
+							>
+								{scaleLabel}
+							</span>
+						{/if}
+					{/if}
+				</div>
+
+				<!-- Date/time -->
+				<div
+					class="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm text-foreground"
+				>
+					<Clock class="h-4 w-4 shrink-0 text-muted-foreground" />
+					<span
+						>{formatRange(
+							selectedItem.start_at,
+							selectedItem.end_at,
+							selectedItem.all_day
+						)}</span
+					>
+				</div>
+
+				<!-- Task-specific: due date and start date if different from calendar item -->
+				{#if detail.type === 'task'}
+					{#if detail.data?.due_at && detail.data.due_at !== selectedItem.end_at}
+						<div class="flex items-center gap-2 text-sm text-muted-foreground">
+							<Target class="h-3.5 w-3.5 shrink-0" />
+							<span>Due: {format(new Date(detail.data.due_at), 'MMM d, yyyy')}</span>
+						</div>
+					{/if}
+					{#if detail.data?.completed_at}
+						<div
+							class="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400"
+						>
+							<CheckCircle2 class="h-3.5 w-3.5 shrink-0" />
+							<span
+								>Completed: {format(
+									new Date(detail.data.completed_at),
+									'MMM d, yyyy'
+								)}</span
+							>
+						</div>
+					{/if}
+				{/if}
+
+				<!-- Event-specific: location -->
+				{#if detail.type === 'event' && detail.data?.location}
+					<div class="flex items-center gap-2 text-sm text-muted-foreground">
+						<MapPin class="h-3.5 w-3.5 shrink-0" />
+						<span>{detail.data.location}</span>
 					</div>
 				{/if}
+
+				<!-- Description -->
+				{@const description = getDescription(detail)}
+				{#if description}
+					<div class="rounded-lg border border-border bg-card p-3">
+						<div class="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+							{description}
+						</div>
+					</div>
+				{/if}
+
+				<!-- External link -->
 				{@const externalLink = getExternalLink(detail)}
 				{#if externalLink}
 					<a
 						href={externalLink}
 						target="_blank"
 						rel="noreferrer"
-						class="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-500"
+						class="inline-flex items-center gap-2 text-sm font-medium text-accent hover:underline"
 					>
-						<ExternalLink class="h-4 w-4" />
-						Open in Calendar
+						<ExternalLink class="h-3.5 w-3.5" />
+						Open in external calendar
 					</a>
 				{/if}
-			{/if}
 
-			<div class="flex flex-wrap gap-2 pt-2">
-				{#if selectedItem.item_type === 'task'}
-					<Button
-						variant="primary"
-						size="sm"
-						onclick={openTaskEditor}
-						disabled={!selectedItem.task_id || !selectedItem.project_id}
-					>
-						Open Task
-					</Button>
-					<Button
-						variant="ghost"
-						size="sm"
-						onclick={() => openTaskPage(selectedItem.task_id, selectedItem.project_id)}
-					>
-						Open Task Page
-					</Button>
-				{:else}
-					<Button
-						variant="primary"
-						size="sm"
-						onclick={openEventEditor}
-						disabled={!selectedItem.event_id || !selectedItem.project_id}
-					>
-						Open Event
-					</Button>
+				<!-- Linked entities (tasks only) -->
+				{#if detail.type === 'task' && detail.linkedEntities}
+					{@const le = detail.linkedEntities}
+					{#if le.plans.length > 0 || le.goals.length > 0 || le.milestones.length > 0 || le.documents.length > 0 || le.dependentTasks.length > 0}
+						<div class="space-y-2">
+							<h3
+								class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+							>
+								Linked Entities
+							</h3>
+							<div class="space-y-1">
+								{#each le.plans as plan}
+									<div
+										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+									>
+										<ListChecks class="h-3.5 w-3.5 shrink-0 text-violet-500" />
+										<span class="text-foreground truncate"
+											>{plan.name || plan.title || 'Untitled Plan'}</span
+										>
+									</div>
+								{/each}
+								{#each le.goals as goal}
+									<div
+										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+									>
+										<Target class="h-3.5 w-3.5 shrink-0 text-amber-500" />
+										<span class="text-foreground truncate"
+											>{goal.name || goal.title || 'Untitled Goal'}</span
+										>
+									</div>
+								{/each}
+								{#each le.milestones as milestone}
+									<div
+										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+									>
+										<Milestone class="h-3.5 w-3.5 shrink-0 text-teal-500" />
+										<span class="text-foreground truncate"
+											>{milestone.title ||
+												milestone.name ||
+												'Untitled Milestone'}</span
+										>
+										{#if milestone.due_at}
+											<span
+												class="ml-auto text-xs text-muted-foreground shrink-0"
+											>
+												{format(new Date(milestone.due_at), 'MMM d')}
+											</span>
+										{/if}
+									</div>
+								{/each}
+								{#each le.documents as doc}
+									<div
+										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+									>
+										<FileText class="h-3.5 w-3.5 shrink-0 text-sky-500" />
+										<span class="text-foreground truncate"
+											>{doc.title || doc.name || 'Untitled Document'}</span
+										>
+									</div>
+								{/each}
+								{#each le.dependentTasks as depTask}
+									<div
+										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
+									>
+										<ChevronRight
+											class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+										/>
+										<span class="text-foreground truncate"
+											>{depTask.title ||
+												depTask.name ||
+												'Untitled Task'}</span
+										>
+										{#if depTask.state_key}
+											<span
+												class="ml-auto inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium {getStateColor(
+													depTask.state_key
+												)}"
+											>
+												{getStateLabel(depTask.state_key)}
+											</span>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
 				{/if}
-				<Button
-					variant="ghost"
-					size="sm"
-					onclick={() => openProject(selectedItem.project_id)}
-					disabled={!selectedItem.project_id}
-				>
-					Open Project
-				</Button>
-			</div>
+
+				<!-- Project section -->
+				{#if detail.project}
+					<div class="space-y-2 pt-1">
+						<h3
+							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+						>
+							Project
+						</h3>
+						<button
+							onclick={() => openProject(detail.project?.id ?? null)}
+							class="w-full rounded-lg border border-border bg-card p-3 text-left hover:bg-muted/50 transition-colors"
+						>
+							<div class="flex items-center gap-2">
+								<FolderOpen class="h-4 w-4 shrink-0 text-accent" />
+								<span class="text-sm font-medium text-foreground truncate">
+									{detail.project.name}
+								</span>
+							</div>
+							<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+								<span
+									class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {getStateColor(
+										detail.project.state_key
+									)}"
+								>
+									{getStateLabel(detail.project.state_key)}
+								</span>
+								{#if detail.project.facet_stage}
+									<span
+										class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground"
+									>
+										{getStageLabel(detail.project.facet_stage)}
+									</span>
+								{/if}
+								{#if detail.project.facet_scale}
+									<span
+										class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground"
+									>
+										{getScaleLabel(detail.project.facet_scale)}
+									</span>
+								{/if}
+							</div>
+							{#if detail.project.description}
+								<p class="mt-2 text-xs text-muted-foreground line-clamp-2">
+									{detail.project.description}
+								</p>
+							{/if}
+						</button>
+					</div>
+				{/if}
+
+				<!-- Actions -->
+				<div class="flex flex-wrap gap-2 pt-2 border-t border-border">
+					{#if selectedItem.item_type === 'task'}
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={openTaskEditor}
+							disabled={!selectedItem.task_id || !selectedItem.project_id}
+						>
+							Edit Task
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() =>
+								openTaskPage(selectedItem.task_id, selectedItem.project_id)}
+						>
+							Full Page
+						</Button>
+					{:else}
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={openEventEditor}
+							disabled={!selectedItem.event_id || !selectedItem.project_id}
+						>
+							Edit Event
+						</Button>
+					{/if}
+					{#if !detail.project && selectedItem.project_id}
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() => openProject(selectedItem.project_id)}
+						>
+							Open Project
+						</Button>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</CalendarItemDrawer>
 {/if}

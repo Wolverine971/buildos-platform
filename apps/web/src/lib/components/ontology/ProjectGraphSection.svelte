@@ -90,9 +90,10 @@
 	// Handle node selection - trigger callback
 	$effect(() => {
 		if (selectedNode && onNodeClick) {
-			onNodeClick(selectedNode);
-			// Clear selection after callback
+			// Clear before calling back so a throw won't cause repeated callbacks
+			const node = selectedNode;
 			selectedNode = null;
+			onNodeClick(node);
 		}
 	});
 

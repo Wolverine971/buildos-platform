@@ -54,7 +54,9 @@ const DOC_STRUCTURE_RULES = `Documents are organized by onto_projects.doc_struct
 - Do not create edges between documents.
 - Do not use reorganize_onto_project_graph to reorganize documents.
 - Other entities may link to documents as references.
-- Keep document hierarchy derived from doc_structure.`;
+- Keep document hierarchy derived from doc_structure.
+- To nest or rehome existing docs (including unlinked docs), use move_document_in_tree with new_parent_id (null for root) and new_position.
+- To identify unlinked docs, call get_document_tree with include_documents=true.`;
 
 function wrapTag(tag: string, content: string): string {
 	return `<${tag}>\n${content}\n</${tag}>`;

@@ -174,9 +174,9 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	get_document_tree: {
 		summary: 'Get the hierarchical document tree structure for a project.',
 		capabilities: [
-			'Returns full tree with parent-child relationships',
-			'Includes document metadata',
-			'Identifies unlinked documents',
+			'Returns tree structure with parent-child relationships',
+			'Include document metadata + unlinked docs when include_documents=true',
+			'Supports structure-only mode for low-token usage',
 			'Supports metadata-only mode (omit document bodies)'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
@@ -274,6 +274,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Validates ownership',
 			'Stores body markdown/props',
 			'Supports tree placement via parent_id/position'
+		],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	move_document_in_tree: {
+		summary: 'Move or insert a document within the project doc_structure.',
+		capabilities: [
+			'Nests documents under a new parent',
+			'Adds unlinked documents into the tree',
+			'Reorders siblings by position'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'

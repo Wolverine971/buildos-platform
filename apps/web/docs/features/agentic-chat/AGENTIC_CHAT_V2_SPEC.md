@@ -703,6 +703,14 @@ create_onto_document({
   description: "...",
   content: "..."
 })
+
+If a document already exists (or is unlinked), place it in the tree with:
+move_document_in_tree({
+  project_id: "<projectId>",
+  document_id: "<docId>",
+  new_parent_id: "<parentDocId or null>",
+  new_position: 0
+})
 ```
 
 ### 9.5 Document-Centric Responses

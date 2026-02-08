@@ -21,24 +21,9 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/lib/components/brain-dump/BrainDumpModal.svelte",
-			"type": "component",
-			"components": [
-				"ProjectSelectionView",
-				"RecordingView",
-				"SuccessView",
-				"OperationEditModal"
-			]
-		},
-		{
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
 			"type": "component",
 			"components": ["AgentChatModal", "DailyBriefModal"]
-		},
-		{
-			"file": "src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -112,42 +97,6 @@
 				"PlanEditModal",
 				"AgentChatModal"
 			]
-		},
-		{
-			"file": "src/lib/components/project/PhasesSection.svelte",
-			"type": "component",
-			"components": ["KanbanView", "TimelineView", "PhaseForm"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectHeaderMinimal.svelte",
-			"type": "component",
-			"components": ["ProjectTimelineCompact"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectModals.svelte",
-			"type": "component",
-			"components": [
-				"ProjectEditModal",
-				"ProjectContextModal",
-				"ProjectHistoryModal",
-				"ProjectCalendarSettingsModal",
-				"ProjectCalendarConnectModal",
-				"ProjectBriefModal",
-				"TaskModal",
-				"NoteModal",
-				"PhaseSchedulingModal",
-				"ScheduleAllPhasesModal",
-				"ProjectDatesModal",
-				"PhaseGenerationConfirmationModal",
-				"AssignBacklogTasksModal",
-				"UnscheduleAllTasksModal",
-				"RescheduleOverdueTasksModal"
-			]
-		},
-		{
-			"file": "src/lib/components/project/ProjectSynthesis.svelte",
-			"type": "component",
-			"components": ["SynthesisLoadingState"]
 		},
 		{
 			"file": "src/routes/dashboard/calendar/+page.svelte",
@@ -457,12 +406,6 @@
 			"type": "service",
 			"components": [],
 			"exports": ["NotificationTestService", "notificationTestService"]
-		},
-		{
-			"file": "src/lib/services/oldagent-orchestrator.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["AgentOrchestrator"]
 		},
 		{
 			"file": "src/lib/services/onboarding-v2.service.ts",
@@ -998,10 +941,6 @@
 		}
 	],
 	"dependencies": {
-		"src/lib/components/dashboard/WeeklyTaskCalendar.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
@@ -1040,16 +979,10 @@
 		]
 	},
 	"unusedComponents": [
-		"src/lib/components/brain-dump/BrainDumpModal.svelte",
 		"src/lib/components/dashboard/Dashboard.svelte",
-		"src/lib/components/dashboard/WeeklyTaskCalendar.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
-		"src/lib/components/project/PhasesSection.svelte",
-		"src/lib/components/project/ProjectHeaderMinimal.svelte",
-		"src/lib/components/project/ProjectModals.svelte",
-		"src/lib/components/project/ProjectSynthesis.svelte",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",

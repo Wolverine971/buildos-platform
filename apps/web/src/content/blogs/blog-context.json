@@ -640,6 +640,37 @@
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md"
 				},
+				"compound-engineering-for-your-life": {
+					"title": "Compound Engineering for Your Life: Why Every Brain Dump Makes You Smarter",
+					"description": "Software engineers discovered that AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps, daily briefs, and Project Lens all compound over time.",
+					"author": "DJ Wayne",
+					"date": "2026-02-08",
+					"lastmod": "2026-02-08",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"compound-engineering",
+						"context-engineering",
+						"AI-productivity",
+						"compounding",
+						"brain-dump",
+						"build-os",
+						"AI-philosophy",
+						"project-lens",
+						"context-building",
+						"daily-briefs",
+						"self-improvement",
+						"systems-thinking"
+					],
+					"readingTime": 10,
+					"excerpt": "Software engineers discovered that AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps, daily briefs, and Project Lens all compound over time.",
+					"pic": "compound-engineering-life",
+					"path": "apps/web/src/content/blogs/philosophy/compound-engineering-for-your-life.md",
+					"slug": "compound-engineering-for-your-life",
+					"category": "philosophy",
+					"filePath": "src/content/blogs/philosophy/compound-engineering-for-your-life.md"
+				},
 				"future-of-personal-knowledge-management-interview": {
 					"title": "Blog Guide: Future of Personal Knowledge Management",
 					"description": "Planning guide for the Future of Personal Knowledge Management blog post.",
@@ -1216,7 +1247,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-02-08T04:27:59.782Z",
-	"totalPosts": 51,
+	"generatedAt": "2026-02-08T06:06:01.142Z",
+	"totalPosts": 52,
 	"totalCategories": 6
 }

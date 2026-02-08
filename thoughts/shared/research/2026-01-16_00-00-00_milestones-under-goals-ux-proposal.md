@@ -1,4 +1,4 @@
-<!-- thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md -->
+<!-- thoughts/shared/research/2026-01-16_00-00-00_milestones-under-goals-ux-proposal.md -->
 # Milestones Under Goals - UX Proposal
 
 **Date:** 2026-01-16

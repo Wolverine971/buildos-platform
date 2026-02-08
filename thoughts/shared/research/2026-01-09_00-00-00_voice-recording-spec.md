@@ -1,4 +1,4 @@
-<!-- thoughts/shared/research/2026-01-09_voice-recording-spec.md -->
+<!-- thoughts/shared/research/2026-01-09_00-00-00_voice-recording-spec.md -->
 # Voice Recording Feature Specification
 
 **Date:** 2026-01-09

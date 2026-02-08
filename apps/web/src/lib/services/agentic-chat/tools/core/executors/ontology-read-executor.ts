@@ -764,8 +764,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 		const actorId = await this.getActorId();
 		await this.assertProjectOwnership(args.project_id, actorId);
 
-		const includeContent = args.include_content === true;
-		const query = `?include_documents=false&include_content=${includeContent ? 'true' : 'false'}`;
+		const includeDocuments = args.include_documents === true;
+		const includeContent = includeDocuments && args.include_content === true;
+		const query = `?include_documents=${includeDocuments ? 'true' : 'false'}&include_content=${
+			includeContent ? 'true' : 'false'
+		}`;
 		const data = await this.apiRequest(
 			`/api/onto/projects/${args.project_id}/doc-tree${query}`,
 			{
@@ -787,13 +790,18 @@ export class OntologyReadExecutor extends BaseExecutor {
 		};
 
 		const docCount = countNodes(data.structure?.root || []);
-		const unlinkedCount = (data.unlinked || []).length;
+		const unlinkedCount = includeDocuments ? (data.unlinked || []).length : null;
+		const unlinkedMessage = includeDocuments
+			? unlinkedCount > 0
+				? `${unlinkedCount} documents are not in the tree structure.`
+				: 'All documents are organized in the tree.'
+			: 'Unlinked documents not included (set include_documents=true to list them).';
 
 		return {
 			structure: data.structure,
 			documents: data.documents || {},
 			unlinked: data.unlinked || [],
-			message: `Document tree loaded with ${docCount} nodes. ${unlinkedCount > 0 ? `${unlinkedCount} documents are not in the tree structure.` : 'All documents are organized in the tree.'}`
+			message: `Document tree loaded with ${docCount} nodes. ${unlinkedMessage}`
 		};
 	}
 

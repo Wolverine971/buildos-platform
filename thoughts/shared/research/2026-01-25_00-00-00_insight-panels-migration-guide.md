@@ -7,7 +7,7 @@ related:
   - /thoughts/shared/research/2026-01-25_ontology-entity-semantic-visual-design.md
   - /thoughts/shared/research/2026-01-25_ontology-visual-patterns-quick-ref.md
   - /apps/web/src/routes/projects/[id]/+page.svelte
-path: thoughts/shared/research/2026-01-25_insight-panels-migration-guide.md
+path: thoughts/shared/research/2026-01-25_00-00-00_insight-panels-migration-guide.md
 ---
 
 # Insight Panels Migration Guide

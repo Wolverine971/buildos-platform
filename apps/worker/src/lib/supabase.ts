@@ -1,6 +1,5 @@
 // apps/worker/src/lib/supabase.ts
 import { createCustomClient } from '@buildos/supabase-client';
-import type { Database } from '@buildos/shared-types';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -74,7 +73,7 @@ export interface ProjectDailyBrief {
 	generation_started_at: string | null;
 	generation_status: string | null;
 	id: string;
-	metadata: any | null;
+	metadata: Record<string, unknown> | null;
 	project_id: string;
 	template_id: string | null;
 	updated_at: string | null;
@@ -86,12 +85,12 @@ export interface DailyBrief {
 	created_at: string | null;
 	generation_completed_at: string | null;
 	generation_error: string | null;
-	generation_progress: any | null;
+	generation_progress: Record<string, unknown> | null;
 	generation_started_at: string | null;
 	generation_status: string | null;
 	id: string;
 	insights: string | null;
-	metadata: any | null;
+	metadata: Record<string, unknown> | null;
 	priority_actions: string[] | null;
 	project_brief_ids: string[] | null;
 	summary_content: string;

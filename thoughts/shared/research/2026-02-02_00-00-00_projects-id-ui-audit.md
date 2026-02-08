@@ -1,4 +1,4 @@
-<!-- thoughts/shared/research/2026-02-02_projects-id-ui-audit.md -->
+<!-- thoughts/shared/research/2026-02-02_00-00-00_projects-id-ui-audit.md -->
 # UI Audit: Projects/[ID] Page - Style Simplification & Flattening
 
 ```yaml

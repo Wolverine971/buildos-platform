@@ -7,7 +7,7 @@ related:
   - /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
   - /thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md
   - /apps/web/src/routes/projects/[id]/+page.svelte
-path: thoughts/shared/research/2026-01-25_ontology-entity-semantic-visual-design.md
+path: thoughts/shared/research/2026-01-25_00-00-00_ontology-entity-semantic-visual-design.md
 ---
 
 # Ontology Entity Semantic Visual Design

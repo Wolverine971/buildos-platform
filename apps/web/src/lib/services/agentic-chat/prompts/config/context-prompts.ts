@@ -73,6 +73,7 @@ export const PROJECT_WORKSPACE_PROMPT: PromptSection = {
 - Documents are hierarchical: use doc_structure for hierarchy and selectively fetch document details only when needed.
 - Resolve document names via list/search tools before loading full content.
 - Place new docs with parent_id/position.
+- Use move_document_in_tree to nest or rehome existing/unlinked docs.
 - Keep responses grounded in this project's tasks, plans, goals, and documents unless the user asks for cross-project context.`,
 	includeHeader: true
 };

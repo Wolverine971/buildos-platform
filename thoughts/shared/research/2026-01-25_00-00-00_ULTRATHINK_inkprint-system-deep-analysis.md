@@ -7,7 +7,7 @@ tags: [design-system, inkprint, corrections, deep-analysis]
 related:
   - /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
   - /apps/web/src/lib/styles/inkprint.css
-path: thoughts/shared/research/2026-01-25_ULTRATHINK_inkprint-system-deep-analysis.md
+path: thoughts/shared/research/2026-01-25_00-00-00_ULTRATHINK_inkprint-system-deep-analysis.md
 ---
 
 # ULTRATHINK: Inkprint System Deep Analysis

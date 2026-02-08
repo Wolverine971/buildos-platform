@@ -1,11 +1,5 @@
 // apps/worker/src/lib/supabaseQueue.ts
-import type {
-	Database,
-	JobMetadataMap,
-	QueueJobStatus,
-	QueueJobType,
-	QueueJob as SharedQueueJob
-} from '@buildos/shared-types';
+import type { Database, Json, QueueJobStatus, QueueJobType } from '@buildos/shared-types';
 import { queueConfig } from '../config/queueConfig';
 import { updateJobProgress } from './progressTracker';
 import { supabase } from './supabase';
@@ -25,11 +19,13 @@ export interface JobProgress {
 	current: number;
 	total: number;
 	message?: string;
-	[key: string]: any; // Allow indexing for Json compatibility
+	[key: string]: Json | undefined;
 }
 
-export type JobProcessor<T = any> = (job: ProcessingJob<T>) => Promise<any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic defaults require any for queue flexibility
+export type JobProcessor<T = any> = (job: ProcessingJob<T>) => Promise<unknown>;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic defaults require any for queue flexibility
 export interface ProcessingJob<T = any> {
 	id: string;
 	userId: string;
@@ -64,7 +60,7 @@ export class SupabaseQueue {
 	async add(
 		jobType: JobType,
 		userId: string,
-		data: any,
+		data: Record<string, Json | undefined>,
 		options?: JobOptions
 	): Promise<QueueJob> {
 		const dedupKey =
@@ -276,8 +272,9 @@ export class SupabaseQueue {
 					}
 				},
 
-				log: async (message: string) => {
+				log: (message: string): Promise<void> => {
 					console.log(`   📝 [${job.queue_job_id}] ${message}`);
+					return Promise.resolve();
 				}
 			};
 
@@ -285,6 +282,7 @@ export class SupabaseQueue {
 			const result = await processor(processingJob);
 
 			// Mark as completed
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated Supabase types
 			const { error } = await (supabase as any).rpc('complete_queue_job', {
 				p_job_id: job.id,
 				p_result: result
@@ -296,13 +294,14 @@ export class SupabaseQueue {
 
 			const duration = Date.now() - startTime;
 			console.log(`✅ Completed ${job.job_type} job ${job.queue_job_id} in ${duration}ms`);
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error(`❌ Job ${job.queue_job_id} failed:`, error);
 
 			// Determine if we should retry - use configuration instead of hardcoded value
 			const maxRetries = job.max_attempts || queueConfig.maxRetries;
 			const shouldRetry = (job.attempts || 0) < maxRetries;
-			await this.failJob(job.id, error.message || 'Unknown error', shouldRetry);
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			await this.failJob(job.id, errorMessage, shouldRetry);
 		}
 	}
 
@@ -371,7 +370,7 @@ export class SupabaseQueue {
 	/**
 	 * Get queue statistics
 	 */
-	async getStats(): Promise<any> {
+	async getStats(): Promise<Record<string, unknown>[] | null> {
 		const { data, error } = await supabase.from('queue_jobs_stats').select('*');
 
 		if (error) {
@@ -410,10 +409,11 @@ export class SupabaseQueue {
 	async cancelJobsAtomic(
 		userId: string,
 		jobType: JobType,
-		metadataFilter?: any,
+		metadataFilter?: Record<string, unknown>,
 		allowedStatuses: string[] = ['pending', 'processing']
-	): Promise<{ count: number; cancelledJobs: any[] }> {
+	): Promise<{ count: number; cancelledJobs: unknown[] }> {
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated Supabase types
 			const { data: cancelledJobs, error } = await (supabase as any).rpc(
 				'cancel_jobs_atomic',
 				{
@@ -429,12 +429,13 @@ export class SupabaseQueue {
 				return { count: 0, cancelledJobs: [] };
 			}
 
-			const count = (cancelledJobs as any[])?.length || 0;
+			const jobs = Array.isArray(cancelledJobs) ? cancelledJobs : [];
+			const count = jobs.length;
 			if (count > 0) {
 				console.log(`🚫 Atomically cancelled ${count} job(s) for user ${userId}`);
 			}
 
-			return { count, cancelledJobs: (cancelledJobs as any[]) || [] };
+			return { count, cancelledJobs: jobs };
 		} catch (error) {
 			console.error('❌ Error in cancelJobsAtomic:', error);
 			return { count: 0, cancelledJobs: [] };
@@ -450,6 +451,7 @@ export class SupabaseQueue {
 		excludeJobId?: string
 	): Promise<{ count: number; cancelledJobIds: string[] }> {
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated Supabase types
 			const { data, error } = await (supabase as any).rpc('cancel_brief_jobs_for_date', {
 				p_user_id: userId,
 				p_brief_date: briefDate,
@@ -461,8 +463,10 @@ export class SupabaseQueue {
 				return { count: 0, cancelledJobIds: [] };
 			}
 
-			const count = (data as any)?.[0]?.cancelled_count || 0;
-			const cancelledJobIds = (data as any)?.[0]?.cancelled_job_ids || [];
+			const result = Array.isArray(data) ? data[0] : null;
+			const count = ((result as Record<string, unknown>)?.cancelled_count as number) || 0;
+			const cancelledJobIds =
+				((result as Record<string, unknown>)?.cancelled_job_ids as string[]) || [];
 
 			if (count > 0) {
 				console.log(`🚫 Cancelled ${count} brief job(s) for date ${briefDate}`);
@@ -484,6 +488,7 @@ export class SupabaseQueue {
 		allowProcessing: boolean = false
 	): Promise<boolean> {
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated Supabase types
 			const { data: success, error } = await (supabase as any).rpc('cancel_job_with_reason', {
 				p_job_id: jobId,
 				p_reason: reason,

@@ -63,7 +63,6 @@
 		Trash2,
 		ArrowLeft,
 		CheckCircle,
-		Circle,
 		Clock,
 		Target,
 		ChevronDown,
@@ -99,7 +98,7 @@
 		DocMoveModal,
 		DocDeleteConfirmModal
 	} from '$lib/components/ontology/doc-tree';
-	import type { DocStructure, OntoDocument, GetDocTreeResponse } from '$lib/types/onto-api';
+	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type { Database, EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 	import {
@@ -114,7 +113,6 @@
 		getSortValueDisplay,
 		STAGE_ORDER,
 		IMPACT_ORDER,
-		type InsightPanelState,
 		type InsightPanelKey as ConfigPanelKey
 	} from '$lib/components/ontology/insight-panels';
 
@@ -177,8 +175,6 @@
 				})
 			: null
 	);
-	const skeletonRows = [0, 1, 2, 3];
-
 	// Core data - initialized from skeleton or full data
 	let project = $state(
 		data.skeleton
@@ -252,7 +248,6 @@
 	let docTreeViewRef = $state<{ refresh: () => void } | null>(null);
 
 	// UI State
-	let dataRefreshing = $state(false);
 	let documentsExpanded = $state(true);
 	let expandedPanels = $state<Record<InsightPanelKey, boolean>>({
 		tasks: false,
@@ -757,17 +752,6 @@
 	// UTILITY FUNCTIONS
 	// ============================================================
 
-	function getTypeLabel(typeKey: string): string {
-		// Extract the last part of the type_key
-		const parts = typeKey.split('.');
-		const variant = parts[parts.length - 1] ?? typeKey;
-		// Convert snake_case to Title Case
-		return variant
-			.split('_')
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(' ');
-	}
-
 	function togglePanel(key: InsightPanelKey) {
 		expandedPanels = { ...expandedPanels, [key]: !expandedPanels[key] };
 	}
@@ -794,28 +778,6 @@
 		}
 	}
 
-	function getTaskVisuals(state: string) {
-		const normalized = state?.toLowerCase() || '';
-		if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') {
-			return { icon: CheckCircle, color: 'text-emerald-500' };
-		}
-		if (normalized === 'in_progress' || normalized === 'active') {
-			return { icon: Clock, color: 'text-accent' };
-		}
-		return { icon: Circle, color: 'text-muted-foreground' };
-	}
-
-	function formatDueDate(dateString?: string | null) {
-		if (!dateString) return 'No due date';
-		const parsed = new Date(dateString);
-		if (Number.isNaN(parsed.getTime())) return 'No due date';
-		return parsed.toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
-
 	/**
 	 * Format entity state for display
 	 */
@@ -825,43 +787,6 @@
 			.split('_')
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(' ');
-	}
-
-	/**
-	 * Format last modified date for display
-	 */
-	function formatLastModified(dateString: string | null | undefined): string {
-		if (!dateString) return 'Never';
-		const date = new Date(dateString);
-		if (Number.isNaN(date.getTime())) return 'Never';
-
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffMins = Math.floor(diffMs / 60000);
-		const diffHours = Math.floor(diffMs / 3600000);
-		const diffDays = Math.floor(diffMs / 86400000);
-
-		// Less than 1 hour: "X min ago"
-		if (diffMins < 60) {
-			return diffMins <= 1 ? '1 min ago' : `${diffMins} min ago`;
-		}
-
-		// Less than 24 hours: "X hr ago"
-		if (diffHours < 24) {
-			return diffHours === 1 ? '1 hr ago' : `${diffHours} hr ago`;
-		}
-
-		// Less than 7 days: "X days ago"
-		if (diffDays < 7) {
-			return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
-		}
-
-		// Otherwise: "Mon DD, YYYY" format
-		return date.toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
 	}
 
 	/**
@@ -882,34 +807,6 @@
 			default:
 				return 'bg-accent/10 text-accent';
 		}
-	}
-
-	function formatEventWindow(event: OntoEventWithSync): string {
-		const start = new Date(event.start_at);
-		if (Number.isNaN(start.getTime())) return 'No time';
-
-		const startLabel = start.toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			hour: 'numeric',
-			minute: '2-digit'
-		});
-
-		if (!event.end_at) {
-			return startLabel;
-		}
-
-		const end = new Date(event.end_at);
-		if (Number.isNaN(end.getTime())) {
-			return startLabel;
-		}
-
-		const endLabel = end.toLocaleTimeString(undefined, {
-			hour: 'numeric',
-			minute: '2-digit'
-		});
-
-		return `${startLabel} – ${endLabel}`;
 	}
 
 	/**
@@ -1017,7 +914,6 @@
 
 	async function refreshData() {
 		if (!project?.id) return;
-		dataRefreshing = true;
 
 		try {
 			const response = await fetch(`/api/onto/projects/${project.id}`);
@@ -1049,8 +945,6 @@
 				operation: 'project_refresh'
 			});
 			toastService.error(error instanceof Error ? error.message : 'Failed to refresh data');
-		} finally {
-			dataRefreshing = false;
 		}
 	}
 
@@ -2351,10 +2245,12 @@
 			bind:isOpen={showDocumentModal}
 			projectId={project.id}
 			documentId={activeDocumentId}
+			{parentDocumentId}
 			typeOptions={documentTypeOptions}
 			onClose={() => {
 				showDocumentModal = false;
 				activeDocumentId = null;
+				parentDocumentId = null;
 			}}
 			onSaved={handleDocumentSaved}
 			onDeleted={handleDocumentDeleted}

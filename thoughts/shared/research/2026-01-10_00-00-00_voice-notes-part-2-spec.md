@@ -1,4 +1,4 @@
-<!-- thoughts/shared/research/2026-01-10_voice-notes-part-2-spec.md -->
+<!-- thoughts/shared/research/2026-01-10_00-00-00_voice-notes-part-2-spec.md -->
 # Voice Notes Part 2 - Agentic Chat + TextareaWithVoice Integration Spec
 
 **Date:** 2026-01-10  

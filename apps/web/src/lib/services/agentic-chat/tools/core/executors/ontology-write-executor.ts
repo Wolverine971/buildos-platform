@@ -19,6 +19,7 @@ import type {
 	CreateOntoGoalArgs,
 	CreateOntoPlanArgs,
 	CreateOntoDocumentArgs,
+	MoveDocumentInTreeArgs,
 	CreateTaskDocumentArgs,
 	UpdateOntoProjectArgs,
 	UpdateOntoTaskArgs,
@@ -489,6 +490,34 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			document: data.document,
 			message: `Created ontology document "${data.document?.title ?? 'Document'}"`
+		};
+	}
+
+	async moveDocumentInTree(args: MoveDocumentInTreeArgs): Promise<{
+		structure: any;
+		message: string;
+	}> {
+		if (!args.project_id) {
+			throw new Error('project_id is required for move_document_in_tree');
+		}
+		if (!args.document_id) {
+			throw new Error('document_id is required for move_document_in_tree');
+		}
+
+		const payload = {
+			document_id: args.document_id,
+			new_parent_id: args.new_parent_id ?? null,
+			new_position: typeof args.new_position === 'number' ? args.new_position : 0
+		};
+
+		const data = await this.apiRequest(`/api/onto/projects/${args.project_id}/doc-tree/move`, {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		});
+
+		return {
+			structure: data.structure,
+			message: `Moved document ${args.document_id} in doc structure.`
 		};
 	}
 

@@ -11,7 +11,7 @@ tags:
   - performance
   - llm
   - optimization
-path: thoughts/shared/research/2026-01-01_brief-generation-process-analysis.md
+path: thoughts/shared/research/2026-01-01_00-00-00_brief-generation-process-analysis.md
 ---
 
 

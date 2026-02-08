@@ -49,6 +49,7 @@ describe('Ontology document tree tools', () => {
 		} as unknown as SupabaseClient<Database>;
 
 		let lastCreateBody: any = null;
+		let lastMoveBody: any = null;
 		mockFetch = vi.fn().mockImplementation((url, options) => {
 			if (String(url).includes('/api/onto/documents/create')) {
 				lastCreateBody = options?.body ? JSON.parse(options.body as string) : null;
@@ -58,6 +59,15 @@ describe('Ontology document tree tools', () => {
 							id: 'doc-1',
 							title: lastCreateBody?.title ?? 'Untitled'
 						}
+					})
+				);
+			}
+
+			if (String(url).includes('/api/onto/projects/project-1/doc-tree/move')) {
+				lastMoveBody = options?.body ? JSON.parse(options.body as string) : null;
+				return Promise.resolve(
+					buildJsonResponse({
+						structure: { version: 1, root: [] }
 					})
 				);
 			}
@@ -96,6 +106,7 @@ describe('Ontology document tree tools', () => {
 
 		// Attach lastCreateBody to the fetch mock for assertions
 		(mockFetch as any).lastCreateBody = () => lastCreateBody;
+		(mockFetch as any).lastMoveBody = () => lastMoveBody;
 	});
 
 	it('passes parent_id and position when creating documents', async () => {
@@ -125,5 +136,23 @@ describe('Ontology document tree tools', () => {
 
 		expect(result.path).toHaveLength(0);
 		expect(result.message.toLowerCase()).toContain('not found');
+	});
+
+	it('posts move payload when rehoming documents in the tree', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.moveDocumentInTree({
+			project_id: 'project-1',
+			document_id: 'doc-unlinked',
+			new_parent_id: 'parent-123',
+			new_position: 1
+		});
+
+		const lastBody = (mockFetch as any).lastMoveBody();
+		expect(lastBody).toEqual({
+			document_id: 'doc-unlinked',
+			new_parent_id: 'parent-123',
+			new_position: 1
+		});
 	});
 });

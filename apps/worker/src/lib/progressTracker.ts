@@ -53,11 +53,11 @@ export class ProgressTracker {
 
 			if (fetchError) {
 				console.error(`❌ Failed to fetch job ${jobId} for progress update:`, fetchError);
-				return await this.handleProgressUpdateError(
+				return this.handleProgressUpdateError(
 					jobId,
 					progress,
 					retryCount,
-					fetchError
+					new Error(fetchError.message)
 				);
 			}
 
@@ -94,11 +94,11 @@ export class ProgressTracker {
 
 			if (updateError) {
 				console.error(`❌ Failed to update progress for job ${jobId}:`, updateError);
-				return await this.handleProgressUpdateError(
+				return this.handleProgressUpdateError(
 					jobId,
 					progress,
 					retryCount,
-					updateError
+					new Error(updateError.message)
 				);
 			}
 
@@ -109,17 +109,17 @@ export class ProgressTracker {
 
 			// Audit log if enabled
 			if (this.enableAuditLog) {
-				await this.logProgressUpdate(jobId, validatedProgress);
+				this.logProgressUpdate(jobId, validatedProgress);
 			}
 
 			return true;
 		} catch (error) {
 			console.error(`❌ Unexpected error updating progress for job ${jobId}:`, error);
-			return await this.handleProgressUpdateError(
+			return this.handleProgressUpdateError(
 				jobId,
 				progress,
 				retryCount,
-				error as Error
+				error instanceof Error ? error : new Error(String(error))
 			);
 		}
 	}
@@ -173,9 +173,10 @@ export class ProgressTracker {
 	/**
 	 * Safely parse job metadata
 	 */
-	private safeParseMetadata(metadata: any): Record<string, any> {
+	private safeParseMetadata(metadata: unknown): Record<string, unknown> {
 		if (!metadata) return {};
-		if (typeof metadata === 'object' && metadata !== null) return metadata;
+		if (typeof metadata === 'object' && metadata !== null)
+			return metadata as Record<string, unknown>;
 
 		// Try to parse if it's a string
 		if (typeof metadata === 'string') {
@@ -198,7 +199,7 @@ export class ProgressTracker {
 		jobId: string,
 		progress: JobProgress,
 		retryCount: number,
-		error: any
+		error: Error
 	): Promise<boolean> {
 		// Check if this is a temporary error worth retrying
 		const isTemporaryError = this.isTemporaryError(error);
@@ -207,7 +208,7 @@ export class ProgressTracker {
 			if (!isTemporaryError) {
 				console.warn(
 					`⚠️ Progress update failed permanently for job ${jobId} (non-temporary error):`,
-					error.message || error
+					error.message
 				);
 			} else {
 				console.error(
@@ -217,7 +218,7 @@ export class ProgressTracker {
 			}
 
 			// Log the failure for monitoring (non-blocking)
-			await this.logProgressUpdateFailure(jobId, progress, error);
+			this.logProgressUpdateFailure(jobId, progress, error);
 			// Don't block job execution for progress tracking failure
 			return false;
 		}
@@ -228,21 +229,21 @@ export class ProgressTracker {
 
 		console.warn(
 			`⚠️ Progress update temporary failure, retrying in ${delay}ms (${retryCount + 1}/${this.maxRetries}):`,
-			error.message || error
+			error.message
 		);
 
 		// Wait before retry
 		await new Promise((resolve) => setTimeout(resolve, delay));
 
 		// Retry the update
-		return await this.updateProgress(jobId, progress, retryCount + 1);
+		return this.updateProgress(jobId, progress, retryCount + 1);
 	}
 
 	/**
 	 * Determine if an error is temporary and worth retrying
 	 */
-	private isTemporaryError(error: any): boolean {
-		const errorMessage = error.message || error.toString();
+	private isTemporaryError(error: Error): boolean {
+		const errorMessage = error.message;
 
 		return (
 			errorMessage.includes('connection') ||
@@ -258,7 +259,7 @@ export class ProgressTracker {
 	/**
 	 * Log successful progress updates for monitoring
 	 */
-	private async logProgressUpdate(jobId: string, progress: JobProgress): Promise<void> {
+	private logProgressUpdate(jobId: string, progress: JobProgress): void {
 		try {
 			// This is a simple audit log - in production you might want to batch these
 			// or use a separate logging service to avoid overwhelming the database
@@ -274,14 +275,10 @@ export class ProgressTracker {
 	/**
 	 * Log progress update failures for monitoring and alerting
 	 */
-	private async logProgressUpdateFailure(
-		jobId: string,
-		progress: JobProgress,
-		error: any
-	): Promise<void> {
+	private logProgressUpdateFailure(jobId: string, progress: JobProgress, error: Error): void {
 		try {
 			console.error(
-				`🚨 Progress update failure - Job: ${jobId}, Progress: ${JSON.stringify(progress)}, Error: ${error.message || error}`
+				`🚨 Progress update failure - Job: ${jobId}, Progress: ${JSON.stringify(progress)}, Error: ${error.message}`
 			);
 
 			// In production, you might want to send this to a monitoring service
@@ -308,7 +305,7 @@ export class ProgressTracker {
 			}
 
 			const metadata = this.safeParseMetadata(job.metadata);
-			return metadata.progress || null;
+			return (metadata.progress as JobProgress) || null;
 		} catch (error) {
 			console.error(`Error getting job progress for ${jobId}:`, error);
 			return null;
@@ -326,6 +323,6 @@ export const progressTracker = new ProgressTracker({
 /**
  * Convenience function for updating progress
  */
-export async function updateJobProgress(jobId: string, progress: JobProgress): Promise<boolean> {
-	return await progressTracker.updateProgress(jobId, progress);
+export function updateJobProgress(jobId: string, progress: JobProgress): Promise<boolean> {
+	return progressTracker.updateProgress(jobId, progress);
 }

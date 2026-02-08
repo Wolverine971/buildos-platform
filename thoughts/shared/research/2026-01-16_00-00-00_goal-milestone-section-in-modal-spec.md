@@ -1,4 +1,4 @@
-<!-- thoughts/shared/research/2026-01-16_goal-milestone-section-in-modal-spec.md -->
+<!-- thoughts/shared/research/2026-01-16_00-00-00_goal-milestone-section-in-modal-spec.md -->
 # Goal Milestones Section in GoalEditModal
 
 > **Date:** 2026-01-16

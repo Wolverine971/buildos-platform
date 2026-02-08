@@ -1,4 +1,4 @@
-<!-- thoughts/shared/research/2026-01-03_modal-field-exposure-audit.md -->
+<!-- thoughts/shared/research/2026-01-03_00-00-00_modal-field-exposure-audit.md -->
 # Modal Field Exposure Audit for /projects/[id]
 
 ---

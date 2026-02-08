@@ -6,7 +6,7 @@ tags: [design, ontology, quick-reference, cheat-sheet]
 related:
   - /thoughts/shared/research/2026-01-25_ontology-entity-semantic-visual-design.md
   - /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
-path: thoughts/shared/research/2026-01-25_ontology-visual-patterns-quick-ref.md
+path: thoughts/shared/research/2026-01-25_00-00-00_ontology-visual-patterns-quick-ref.md
 ---
 
 # Ontology Visual Patterns - Quick Reference

@@ -394,6 +394,9 @@ export class ChatToolExecutor {
 			case 'create_onto_document':
 				return this.writeExecutor.createOntoDocument(args);
 
+			case 'move_document_in_tree':
+				return this.writeExecutor.moveDocumentInTree(args);
+
 			case 'create_task_document':
 				return this.writeExecutor.createTaskDocument(args);
 

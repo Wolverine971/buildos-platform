@@ -7,7 +7,7 @@ related:
   - /apps/web/docs/technical/components/SPACING_BORDER_STANDARDS.md
   - /thoughts/shared/research/2026-01-25_ontology-entity-semantic-visual-design.md
   - /apps/web/src/lib/components/ontology/EntityListItem.svelte
-path: thoughts/shared/research/2026-01-25_clean-insight-panels-implementation.md
+path: thoughts/shared/research/2026-01-25_00-00-00_clean-insight-panels-implementation.md
 ---
 
 # Clean Insight Panels Implementation

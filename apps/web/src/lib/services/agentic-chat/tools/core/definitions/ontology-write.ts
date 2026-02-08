@@ -336,6 +336,40 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 	{
 		type: 'function',
 		function: {
+			name: 'move_document_in_tree',
+			description: `Move or insert an existing document within the project's doc_structure.
+Use this to nest existing or unlinked documents under a parent or reorder siblings.
+If new_parent_id is null or omitted, the document is placed at root level.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project UUID (required)'
+					},
+					document_id: {
+						type: 'string',
+						description: 'Document UUID to move (required)'
+					},
+					new_parent_id: {
+						type: 'string',
+						description:
+							'New parent document ID (null or omitted places the document at root level).'
+					},
+					new_position: {
+						type: 'number',
+						default: 0,
+						description: 'Position among siblings (0-indexed). Omit to place at top.'
+					}
+				},
+				required: ['project_id', 'document_id']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'create_task_document',
 			description: `Create or attach a document to a task workspace.
 Also ensures the project has_document edge exists for discovery.`,
