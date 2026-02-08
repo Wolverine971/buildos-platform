@@ -23,22 +23,10 @@
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
-	import {
-		ListChecks,
-		Target,
-		Calendar,
-		FileText,
-		LoaderCircle,
-		SlidersHorizontal,
-		ChevronDown
-	} from 'lucide-svelte';
-	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
+	import { LoaderCircle, SlidersHorizontal, ChevronDown } from 'lucide-svelte';
 	import ProjectCard from '$lib/components/project/ProjectCard.svelte';
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
-	import {
-		setNavigationData,
-		type ProjectNavigationData
-	} from '$lib/stores/project-navigation.store';
+	import { setNavigationData } from '$lib/stores/project-navigation.store';
 
 	let { data } = $props();
 
@@ -308,11 +296,6 @@
 			totalDocuments: documentTotal,
 			activeProjects: inProgress
 		};
-	});
-
-	const graphLastUpdated = $derived.by(() => {
-		const iso = $graphStore.metadata?.generatedAt;
-		return iso ? new Date(iso).toLocaleString() : null;
 	});
 
 	function toggleValue(list: string[], value: string): string[] {

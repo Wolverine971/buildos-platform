@@ -209,7 +209,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// 5. Fetch user preferences (optional - for additional customization)
-		const { data: preferences } = await supabase
+		const { data: _preferences } = await supabase
 			.from('user_brief_preferences')
 			.select('*')
 			.eq('user_id', payload.userId)

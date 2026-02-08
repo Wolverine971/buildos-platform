@@ -90,7 +90,7 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 	const progressService = new OnboardingProgressService(supabase);
 
 	// Load core profile data (not calendar data - that's loaded lazily)
-	const [userContext, progressData, projectTemplates, userData] = await Promise.all([
+	const [userContext, _progressData, projectTemplates, userData] = await Promise.all([
 		// Get user context
 		supabase
 			.from('user_context')

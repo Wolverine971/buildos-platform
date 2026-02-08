@@ -24,6 +24,7 @@
 		"@buildos/shared-types": "workspace:*"
 	},
 	"devDependencies": {
+		"@types/node": "^20.11.10",
 		"tsup": "^8.3.5",
 		"typescript": "^5.9.2"
 	}

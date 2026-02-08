@@ -19,7 +19,6 @@
 		XCircle,
 		CheckCircle,
 		Calendar,
-		Zap,
 		ListTodo,
 		AlertTriangle,
 		Sparkles,
@@ -127,7 +126,7 @@
 		openedAt?: string | null,
 		clickedAt?: string | null,
 		failedAt?: string | null,
-		lastError?: string | null
+		_lastError?: string | null
 	): {
 		label: string;
 		color: string;

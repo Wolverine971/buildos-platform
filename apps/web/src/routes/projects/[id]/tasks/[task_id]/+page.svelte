@@ -35,7 +35,6 @@
 		Circle,
 		AlertTriangle,
 		Layers,
-		ExternalLink,
 		CircleCheck,
 		Sparkles,
 		RefreshCw,
@@ -48,10 +47,6 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import LinkedEntities from '$lib/components/ontology/linked-entities/LinkedEntities.svelte';
@@ -81,8 +76,6 @@
 	let documents = $state(data.documents || []);
 	let milestones = $state(data.milestones || []);
 	let projectTasks = $state(data.tasks || []);
-	let risks = $state(data.risks || []);
-
 	// Form fields
 	let title = $state('');
 	let description = $state('');
@@ -91,7 +84,6 @@
 	let dueAt = $state('');
 
 	// UI state
-	let isLoading = $state(false);
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
 	let error = $state('');
@@ -114,7 +106,6 @@
 	// Workspace state
 	let workspaceDocuments = $state<TaskWorkspaceDocument[]>([]);
 	let workspaceLoading = $state(false);
-	let workspaceError = $state('');
 	let workspaceInitialized = $state(false);
 	let selectedWorkspaceDocId = $state<string | null>(null);
 	let workspaceDocContent = $state('');
@@ -362,7 +353,6 @@
 		if (!task?.id) return;
 		try {
 			workspaceLoading = true;
-			workspaceError = '';
 			const result = await fetchTaskDocuments(task.id);
 			workspaceDocuments = result.documents ?? [];
 
@@ -374,7 +364,6 @@
 			workspaceInitialized = true;
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to load documents';
-			workspaceError = message;
 			toastService.error(message);
 		} finally {
 			workspaceLoading = false;
@@ -528,7 +517,6 @@
 				documents = projectData.data?.documents || [];
 				milestones = projectData.data?.milestones || [];
 				projectTasks = projectData.data?.tasks || [];
-				risks = projectData.data?.risks || [];
 			}
 		} catch (err) {
 			console.error('Failed to refresh data:', err);

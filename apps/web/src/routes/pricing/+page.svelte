@@ -9,8 +9,6 @@
 
 	export let data: PageData;
 
-	let isAnnual = false; // Currently only monthly is supported
-	let showComparison = false;
 	let isLoading = false;
 	let error = '';
 

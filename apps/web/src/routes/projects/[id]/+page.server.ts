@@ -68,7 +68,7 @@ export interface ProjectSkeletonData {
 	};
 }
 
-export const load: PageServerLoad = async ({ params, locals, url }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	const { id } = params;
 
 	if (!id) {

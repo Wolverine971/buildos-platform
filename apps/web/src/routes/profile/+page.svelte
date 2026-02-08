@@ -52,7 +52,6 @@
 	let activeTab = $state(data.activeTab || 'account');
 
 	// Template management state
-	let projectTemplates = $state<any[]>(data.projectTemplates || []);
 	let editingTemplate = $state<any>(null);
 	let creatingTemplate = $state<'project' | null>(null);
 
@@ -163,17 +162,6 @@
 		try {
 			// Use the store to reload data
 			await userContextStore.load();
-
-			// Also refresh templates if needed
-			if (activeTab === 'prompts') {
-				// Fetch templates separately if not handled by store
-				const response = await fetch('/api/templates');
-				const templateData = await requireApiData<{ projectTemplates?: any[] }>(
-					response,
-					'Failed to load templates'
-				);
-				projectTemplates = templateData.projectTemplates || [];
-			}
 		} catch (error) {
 			console.error('Error refreshing data:', error);
 			showError('Failed to refresh data');
@@ -181,7 +169,7 @@
 	}
 
 	// Utility functions for messages
-	function showSuccess(message: string) {
+	function showSuccess(_message: string) {
 		saveSuccess = true;
 		saveError = false;
 		setTimeout(() => {
@@ -198,35 +186,9 @@
 		}, 5000);
 	}
 
-	function previewTemplate(template: any) {
-		editingTemplate = { ...template, preview: true };
-	}
-
-	function createNewTemplate() {
-		creatingTemplate = 'project';
-		editingTemplate = {
-			name: '',
-			description: '',
-			template_content: '',
-			user_id: data.user.id,
-			in_use: false
-		};
-	}
-
-	function editTemplate(template: any) {
-		editingTemplate = { ...template };
-	}
-
 	function closeTemplateEditor() {
 		editingTemplate = null;
 		creatingTemplate = null;
-	}
-
-	function getActiveTemplate() {
-		return (
-			projectTemplates.find((t) => t.in_use && t.user_id === data.user.id) ||
-			projectTemplates.find((t) => t.is_default && !t.user_id)
-		);
 	}
 
 	// Handle success messages from child components
@@ -239,7 +201,6 @@
 		showError(event?.message || 'An error occurred');
 	}
 
-	let activeProjectTemplate = $derived(getActiveTemplate());
 	let storeState = $derived($userContextStore);
 
 	// Handle store errors
