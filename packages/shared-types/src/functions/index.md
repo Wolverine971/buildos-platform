@@ -4,7 +4,7 @@
 
 This directory contains SQL definitions for all RPC functions available in the BuildOS database.
 
-## Active Functions (91 total)
+## Active Functions (92 total)
 
 > **Note:** 52 unused functions were removed on 2026-01-12. See `supabase/migrations/20260112000000_cleanup_unused_rpc_functions.sql` for details.
 
@@ -134,9 +134,10 @@ This directory contains SQL definitions for all RPC functions available in the B
 
 ### Dashboard (0 active)
 
-### Chat System (1 active)
+### Chat System (2 active)
 
 - [increment_chat_session_metrics](./increment_chat_session_metrics.sql) - Increment chat session metrics
+- [load_fastchat_context](./load_fastchat_context.sql) - Load FastChat V2 context payload
 
 ### Feedback (2 active)
 

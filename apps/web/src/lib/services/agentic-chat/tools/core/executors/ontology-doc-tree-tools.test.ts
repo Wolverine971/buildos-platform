@@ -115,7 +115,7 @@ describe('Ontology document tree tools', () => {
 		expect(lastBody.position).toBe(2);
 	});
 
-	it('returns an unlinked message when document exists but is not in the tree', async () => {
+	it('returns a not-found message when the document is not in the tree', async () => {
 		const executor = new OntologyReadExecutor(context);
 
 		const result = await executor.getDocumentPath({
@@ -124,6 +124,6 @@ describe('Ontology document tree tools', () => {
 		});
 
 		expect(result.path).toHaveLength(0);
-		expect(result.message.toLowerCase()).toContain('unlinked');
+		expect(result.message.toLowerCase()).toContain('not found');
 	});
 });

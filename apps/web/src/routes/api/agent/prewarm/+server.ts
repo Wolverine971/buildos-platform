@@ -261,29 +261,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 						}
 
 						const tree = await getDocTree(supabase, docStructureProjectId, {
-							includeContent: false
-						});
-						const documents: DocStructureCache['documents'] = {};
-
-						Object.values(tree.documents || {}).forEach((doc: any) => {
-							if (!doc?.id) return;
-							const props = (doc.props as Record<string, unknown> | null) ?? null;
-							const contentLength =
-								typeof props?.content_length === 'number'
-									? (props.content_length as number)
-									: typeof (props as any)?.contentLength === 'number'
-										? ((props as any).contentLength as number)
-										: null;
-
-							documents[doc.id] = {
-								id: doc.id,
-								title: doc.title,
-								description: doc.description ?? null,
-								type_key: doc.type_key ?? null,
-								state_key: doc.state_key ?? null,
-								updated_at: doc.updated_at ?? null,
-								content_length: contentLength
-							};
+							includeContent: false,
+							includeDocuments: false
 						});
 
 						return {
@@ -291,8 +270,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							loadedAt: Date.now(),
 							projectId: docStructureProjectId,
 							structure: tree.structure,
-							documents,
-							unlinked: (tree.unlinked || []).map((doc: any) => doc.id)
+							documents: {},
+							unlinked: []
 						};
 					} catch (error) {
 						logger.warn('Doc structure prewarm failed', {

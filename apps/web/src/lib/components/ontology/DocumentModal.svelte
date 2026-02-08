@@ -963,12 +963,17 @@
 						{/if}
 					</div>
 					<!-- Use micro-label pattern for metadata + save status -->
-					<p class="micro-label text-muted-foreground/70 mt-0.5 flex items-center gap-1.5 flex-wrap">
+					<p
+						class="micro-label text-muted-foreground/70 mt-0.5 flex items-center gap-1.5 flex-wrap"
+					>
 						<span>
-							{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(undefined, {
-									month: 'short',
-									day: 'numeric'
-								})}{/if}{#if updatedAt && updatedAt !== createdAt}
+							{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(
+									undefined,
+									{
+										month: 'short',
+										day: 'numeric'
+									}
+								)}{/if}{#if updatedAt && updatedAt !== createdAt}
 								· UPDATED {new Date(updatedAt).toLocaleDateString(undefined, {
 									month: 'short',
 									day: 'numeric'
@@ -977,7 +982,9 @@
 						{#if isEditing}
 							<span class="inline-flex items-center gap-1">
 								{#if saveStatus === 'saving'}
-									<LoaderCircle class="w-2.5 h-2.5 animate-spin text-muted-foreground" />
+									<LoaderCircle
+										class="w-2.5 h-2.5 animate-spin text-muted-foreground"
+									/>
 									<span class="text-muted-foreground">SAVING</span>
 								{:else if saveStatus === 'saved'}
 									<Check class="w-2.5 h-2.5 text-green-600 dark:text-green-400" />
@@ -989,7 +996,8 @@
 									<AlertTriangle class="w-2.5 h-2.5 text-amber-500" />
 									<span class="text-amber-500">CONFLICT</span>
 								{:else if saveStatus === 'dirty'}
-									<span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
+									<span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+									></span>
 									<span class="text-muted-foreground/50">UNSAVED</span>
 								{/if}
 							</span>
@@ -1510,7 +1518,9 @@
 							class="mx-3 mb-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 px-3 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg"
 						>
 							<div class="flex items-center gap-2 flex-1 min-w-0">
-								<AlertTriangle class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+								<AlertTriangle
+									class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0"
+								/>
 								<span class="text-sm text-amber-800 dark:text-amber-200">
 									This document was modified by someone else.
 								</span>

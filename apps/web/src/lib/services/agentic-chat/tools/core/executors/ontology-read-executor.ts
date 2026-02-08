@@ -765,7 +765,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		await this.assertProjectOwnership(args.project_id, actorId);
 
 		const includeContent = args.include_content === true;
-		const query = `?include_content=${includeContent ? 'true' : 'false'}`;
+		const query = `?include_documents=false&include_content=${includeContent ? 'true' : 'false'}`;
 		const data = await this.apiRequest(
 			`/api/onto/projects/${args.project_id}/doc-tree${query}`,
 			{
@@ -773,14 +773,27 @@ export class OntologyReadExecutor extends BaseExecutor {
 			}
 		);
 
-		const docCount = Object.keys(data.documents || {}).length;
+		const countNodes = (nodes: any[]): number => {
+			let count = 0;
+			for (const node of nodes || []) {
+				if (!node || typeof node !== 'object') continue;
+				if (typeof node.id !== 'string') continue;
+				count += 1;
+				if (Array.isArray(node.children) && node.children.length > 0) {
+					count += countNodes(node.children);
+				}
+			}
+			return count;
+		};
+
+		const docCount = countNodes(data.structure?.root || []);
 		const unlinkedCount = (data.unlinked || []).length;
 
 		return {
 			structure: data.structure,
 			documents: data.documents || {},
 			unlinked: data.unlinked || [],
-			message: `Document tree loaded with ${docCount} documents. ${unlinkedCount > 0 ? `${unlinkedCount} documents are not in the tree structure.` : 'All documents are organized in the tree.'}`
+			message: `Document tree loaded with ${docCount} nodes. ${unlinkedCount > 0 ? `${unlinkedCount} documents are not in the tree structure.` : 'All documents are organized in the tree.'}`
 		};
 	}
 
@@ -814,16 +827,17 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		await this.assertProjectOwnership(projectId, actorId);
 
-		// Get the document tree
-		const treeData = await this.apiRequest(`/api/onto/projects/${projectId}/doc-tree`, {
-			method: 'GET'
-		});
+		// Get the document tree (structure-only)
+		const treeData = await this.apiRequest(
+			`/api/onto/projects/${projectId}/doc-tree?include_documents=false`,
+			{
+				method: 'GET'
+			}
+		);
 
 		// Build path from tree structure
 		const path: Array<{ id: string; title: string }> = [];
-		const documents = treeData.documents || {};
-		const documentEntry = documents[args.document_id];
-		const resolvedTitle = documentEntry?.title || fallbackTitle || 'Untitled';
+		const resolvedTitle = fallbackTitle || 'Untitled';
 
 		function findPath(
 			nodes: any[],
@@ -831,8 +845,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 			currentPath: Array<{ id: string; title: string }>
 		): boolean {
 			for (const node of nodes) {
-				const doc = documents[node.id];
-				const nodeInfo = { id: node.id, title: doc?.title || 'Untitled' };
+				const nodeTitle =
+					typeof node?.title === 'string' && node.title.trim().length > 0
+						? node.title
+						: 'Untitled';
+				const nodeInfo = { id: node.id, title: nodeTitle };
 
 				if (node.id === targetId) {
 					path.push(...currentPath, nodeInfo);
@@ -852,10 +869,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		const pathStr = path.length > 0 ? path.map((p) => p.title).join(' > ') : 'Root level';
 		let message = `Document path: ${pathStr}`;
-		if (!documentEntry) {
-			message = `Document "${resolvedTitle}" not found in project ${projectId}.`;
-		} else if (!found) {
+		if (!found && fallbackTitle) {
 			message = `Document "${resolvedTitle}" is not placed in the tree (unlinked).`;
+		} else if (!found) {
+			message = `Document "${resolvedTitle}" not found in project ${projectId}.`;
 		}
 
 		return {

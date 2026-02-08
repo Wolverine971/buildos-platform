@@ -489,7 +489,7 @@ export const TEXT_MODELS: Record<string, ModelProfile> = {
 // Priority: Highest reliability first, then cost-effectiveness as tiebreaker
 export const TOOL_CALLING_MODEL_ORDER = [
 	'x-ai/grok-4.1-fast', // Best τ²-Bench: 100% (xAI claim), 2M context, optimized for agents: $0.20/$0.50
-	'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, 1500 parallel tools, 262K ctx, multimodal: $0.60/$0.30
+	// 'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, 1500 parallel tools, 262K ctx, multimodal: $0.60/$0.30
 	'moonshotai/kimi-k2-thinking', // τ²-Bench: 93% (legacy), 256K ctx, 200-300 tool calls: $0.57/$2.42
 	'anthropic/claude-opus-4.5', // Best coding: 80.9% SWE-bench, agents, computer-use: $5/$25
 	'anthropic/claude-haiku-4.5', // Fast + reliable: parallel tool calls, extended thinking: $1/$5
@@ -527,7 +527,7 @@ export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 		'deepseek/deepseek-chat' // Native JSON mode + good value: $0.27/$1.10
 	],
 	balanced: [
-		'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, 1500 tools, multimodal: $0.60/$0.30
+		// 'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, 1500 tools, multimodal: $0.60/$0.30
 		'qwen/qwen3-32b', // Best value + native JSON: $0.08/$0.24
 		'x-ai/grok-4.1-fast', // Best tool-calling + fast: $0.20/$0.50
 		'minimax/minimax-m2.1', // Strong agentic + structured output: 87% τ²-Bench: $0.27/$1.12
@@ -536,7 +536,7 @@ export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 		'google/gemini-2.5-flash' // Hybrid reasoning model: $0.30/$2.50
 	],
 	powerful: [
-		'moonshotai/kimi-k2.5', // Best agentic: agent swarm, 262K ctx, multimodal: $0.60/$0.30
+		// 'moonshotai/kimi-k2.5', // Best agentic: agent swarm, 262K ctx, multimodal: $0.60/$0.30
 		'deepseek/deepseek-r1', // Native JSON + good reasoning: $0.55/$1.68
 		'minimax/minimax-m2.1', // Strong agentic: 87% τ²-Bench, 72.5% SWE-bench-multilingual
 		'openai/gpt-4o', // Strong general purpose + native JSON: $2.50/$10
@@ -546,7 +546,7 @@ export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 	],
 	maximum: [
 		'anthropic/claude-opus-4.5', // Best coding: 80.9% SWE-bench: $5/$25
-		'moonshotai/kimi-k2.5', // Best agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
+		// 'moonshotai/kimi-k2.5', // Best agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
 		'anthropic/claude-sonnet-4.5', // Best overall: 61.4% OSWorld, extended thinking: $3/$15
 		'deepseek/deepseek-r1', // Native JSON + good for pure reasoning: $0.55/$1.68
 		'openai/gpt-4o' // Reliable fallback with native JSON: $2.50/$10
@@ -562,7 +562,7 @@ export const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 		'anthropic/claude-haiku-4.5' // Fast with extended thinking: $1/$5
 	],
 	balanced: [
-		'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, multimodal, 262K ctx: $0.60/$0.30
+		// 'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, multimodal, 262K ctx: $0.60/$0.30
 		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
 		'qwen/qwen3-32b', // Best value: $0.08/$0.24, smartness 4.5
 		'deepseek/deepseek-chat', // Good value: $0.27/$1.10, smartness 4.5
@@ -571,7 +571,7 @@ export const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 		'openai/gpt-4o-mini' // Reliable fallback: $0.15/$0.60
 	],
 	quality: [
-		'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
+		// 'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
 		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
 		'deepseek/deepseek-r1', // Good reasoning, excellent for technical content: $0.55/$1.68
 		'anthropic/claude-haiku-4.5', // Excellent tool-calling, parallel tools: $1/$5

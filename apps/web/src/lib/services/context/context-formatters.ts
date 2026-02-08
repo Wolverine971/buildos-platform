@@ -763,8 +763,8 @@ function formatDocumentFocusDetailsFromStructure(
 	}
 
 	const pathTitles = found.path
-		.map((node) => documents[node.id]?.title ?? 'Untitled')
-		.concat(documents[found.node.id]?.title ?? 'Untitled');
+		.map((node) => node.title ?? documents[node.id]?.title ?? 'Untitled')
+		.concat(found.node.title ?? documents[found.node.id]?.title ?? 'Untitled');
 
 	const lines: string[] = [];
 	lines.push('### Document Tree Focus');
@@ -775,7 +775,7 @@ function formatDocumentFocusDetailsFromStructure(
 	if (children.length > 0) {
 		lines.push(`- Children (preview): ${Math.min(children.length, 6)}`);
 		children.slice(0, 6).forEach((child) => {
-			const title = documents[child.id]?.title ?? 'Untitled';
+			const title = child.title ?? documents[child.id]?.title ?? 'Untitled';
 			lines.push(`- ${title} [${child.id}]`);
 		});
 		if (children.length > 6) {
@@ -817,8 +817,8 @@ function buildDocStructurePreview(
 			const entry: Record<string, any> = {
 				id: node.id,
 				order: node.order ?? 0,
-				title: meta?.title ?? 'Untitled',
-				description: meta?.description ?? null,
+				title: node.title ?? meta?.title ?? 'Untitled',
+				description: node.description ?? meta?.description ?? null,
 				content_length: meta?.content_length ?? null
 			};
 

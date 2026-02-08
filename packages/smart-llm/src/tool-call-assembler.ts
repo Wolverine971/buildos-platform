@@ -1,3 +1,4 @@
+// packages/smart-llm/src/tool-call-assembler.ts
 export type ToolCallAssemblerProfile = 'default' | 'kimi';
 
 export type ToolCallDelta = {
@@ -114,7 +115,9 @@ export class ToolCallAssembler {
 		const explicitIndex =
 			typeof toolCallDelta?.index === 'number' ? toolCallDelta.index : undefined;
 		const id =
-			typeof toolCallDelta?.id === 'string' && toolCallDelta.id ? toolCallDelta.id : undefined;
+			typeof toolCallDelta?.id === 'string' && toolCallDelta.id
+				? toolCallDelta.id
+				: undefined;
 
 		if (explicitIndex !== undefined) {
 			if (id) {

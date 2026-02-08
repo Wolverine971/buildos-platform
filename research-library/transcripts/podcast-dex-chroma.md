@@ -13,33 +13,43 @@
 ## Key Insights & Takeaways
 
 ### 1. Context Engineering = Information Density, Not Volume
-Dex defines context engineering as "how do you get the most out of today's models" - and the core insight is that it's not just about putting the right information in, but about **keeping the context as small and dense as possible.** Not token density, but *information per token* density. More isn't better. Denser is better.
+
+Dex defines context engineering as "how do you get the most out of today's models" - and the core insight is that it's not just about putting the right information in, but about **keeping the context as small and dense as possible.** Not token density, but _information per token_ density. More isn't better. Denser is better.
 
 ### 2. The Deterministic Layer Is the Real Unlock
+
 The most powerful pattern isn't pure agentic loops. It's having a fast model identify what's relevant, then a **deterministic layer** that stuffs the right context into a single prompt for an expensive model. De-emphasize the agentic loop. Pre-gather context, then make one smart call. This is the "context engineering fix" for slow, expensive tool-calling loops.
 
 ### 3. Pick One Model and Go Deep
+
 Dex is adamant: switching between tools and models constantly caps your skill at ~80%. The people getting the best results have spent 2+ months with a single model and developed deep intuition for its behavior - when to push it, when to restructure prompts, when it'll follow six steps vs. forget step four. **Models are not swappable.** Prompts optimized for Opus break on Codex and vice versa.
 
 ### 4. Markdown + Front Matter Is the AI-Native Data Layer
+
 Dex built his entire CRM, productivity system, and GTM stack on markdown files with YAML front matter, managed by Claude Code. Front matter lets you slice and filter deterministically without the model reading the whole file. His stack: markdown as data, prompts as business logic, slash commands as orchestration, Airtable as a human-friendly view. "Schemas are for humans, not for AI."
 
 ### 5. "Don't Rely on the Prompt for Control Flow"
+
 The single most quotable line. If you know what the workflow steps are, don't put them all in one prompt and hope the model follows them. Break the workflow into explicit stages with explicit transitions. Dex went from "12 Factor Agents" (anti-agent) to "full-fat Claude Code agents" to now landing on **micro-agents with stage-gated workflows.** The pendulum settled in the middle.
 
 ### 6. The "Oral Tradition" Problem
+
 Most people can't replicate expert prompting results because there's massive tacit knowledge - when to reinforce instructions, when to nudge the model back on track, what a "good session" looks like. Dex's current work is about **baking that oral tradition into the product** so you don't need 10,000 hours of prompt intuition to get expert results.
 
 ### 7. Agent Memory Is Almost Impossible to Do Generically
+
 Building good agent memory is "really freaking hard" and nearly impossible to do as a horizontal layer. The success stories are vertical-specific: a tutoring app with "decaying resolution memory" (today's events, daily summaries for 14 days, weekly for 3 weeks, monthly for 2 months). Factual recall ("user likes X") is doable. Behavioral learning ("how to do the job better") is unsolved.
 
 ### 8. Instruction Following Has a Hard Ceiling (~150-200 Rules)
+
 Frontier models can reliably follow about 150-200 instructions. Beyond that, attention spreads too thin and the model starts ignoring rules. This creates "instruction severity inflation" - everyone puts their rules in ALL CAPS, which de-tunes everything else. The potential fix: RAG-based rules search (retrieve relevant rules per task) instead of stuffing everything in the system prompt.
 
 ### 9. Vibes-First Eval Strategy
+
 Don't build evals first for AI products. Capabilities are emergent - you don't know what the system can do until you build it. Instead: build the thing, vibe on it for a few days, identify the behaviors you like, then back into evals. Snapshot-based regression testing (diff outputs, accept/reject changes) is their approach. "Never send an AI to do a linter's job."
 
 ### 10. The AI-Native MVC Stack
+
 Dex's vision for what every AI-native system needs: **(1)** Markdown as the data layer, **(2)** Prompts as business logic, **(3)** Orchestration/scheduling (cron, GitHub Actions), **(4)** Code execution + storage, **(5)** Secrets/OAuth management, **(6)** An agent harness, **(7)** Views for humans. Git is a temporary solution - CRDTs are the real answer for multi-agent collaboration.
 
 ---

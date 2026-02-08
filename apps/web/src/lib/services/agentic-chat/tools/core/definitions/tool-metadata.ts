@@ -305,7 +305,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	reorganize_onto_project_graph: {
-		summary: 'Reorganize a subset of a project graph from a node-centric structure (excludes documents).',
+		summary:
+			'Reorganize a subset of a project graph from a node-centric structure (excludes documents).',
 		capabilities: [
 			'Reparents containment edges',
 			'Rebuilds auto-managed semantics',

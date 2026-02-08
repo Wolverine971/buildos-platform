@@ -59,6 +59,7 @@
 	let localDocuments = $state<Record<string, OntoDocument>>({});
 	let isLoading = $state(false);
 	let loadError = $state<string | null>(null);
+	let hasFetched = $state(false);
 
 	// Determine display mode - use provided data or locally fetched
 	const effectiveStructure = $derived(docStructure ?? localStructure);
@@ -95,12 +96,13 @@
 			loadError = err instanceof Error ? err.message : 'Failed to load documents';
 		} finally {
 			isLoading = false;
+			hasFetched = true;
 		}
 	}
 
-	// Fetch when expanded and we don't have data
+	// Fetch when expanded and we don't have data (only once)
 	$effect(() => {
-		if (expanded && !hasDocTree && !isLoading && !loadError) {
+		if (expanded && !hasDocTree && !isLoading && !loadError && !hasFetched) {
 			fetchTreeData();
 		}
 	});

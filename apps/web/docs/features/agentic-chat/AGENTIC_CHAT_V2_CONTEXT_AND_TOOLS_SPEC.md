@@ -105,6 +105,17 @@ This section describes the current production context pipeline used by
 - Session cache: `chat_sessions.agent_metadata.ontologyCache` (5 min TTL)
 - Loader cache: in-memory (60s TTL)
 
+### 2.4 FastChat V2 Context RPC (Implemented)
+
+FastChat V2 now loads initial context via a single RPC call to reduce round trips:
+
+- RPC: `load_fastchat_context(p_context_type, p_user_id, p_project_id, p_focus_type, p_focus_entity_id)`
+- Global payload: projects (with `doc_structure`), doc meta (depth 2), goals/milestones/plans, recent activity logs.
+- Project payload: project + doc meta (all docs), goals/milestones/plans/tasks/events.
+- Focus payload: `focus_entity_full` (raw row), `linked_entities` (light fields), `linked_edges`.
+- The app builds `doc_structure` summaries client-side directly from `doc_structure` (title/description included).
+- Access is enforced with `current_actor_has_project_access` inside the RPC.
+
 ---
 
 ## 3. Tool Selection (Current System)

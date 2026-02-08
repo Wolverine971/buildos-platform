@@ -687,13 +687,17 @@ export const POST: RequestHandler = async ({
 					? new ChatToolExecutor(supabase, user.id, session.id, fetch, llm)
 					: undefined;
 			const patchToolCall = (toolCall: ChatToolCall) => {
-				if (toolCall.function.name === 'update_onto_document'){
-					console.log(toolCall.function)
+				if (toolCall.function.name === 'update_onto_document') {
+					console.log(toolCall.function);
 				}
 
-				let resp = maybeInjectProjectId(toolCall, projectIdForTools, toolsRequiringProjectId);
-				return resp
-			}
+				let resp = maybeInjectProjectId(
+					toolCall,
+					projectIdForTools,
+					toolsRequiringProjectId
+				);
+				return resp;
+			};
 
 			let systemPrompt: string | undefined;
 			let promptContext:
@@ -761,13 +765,6 @@ export const POST: RequestHandler = async ({
 				promptContext.conversationSummary = conversationSummary;
 
 				systemPrompt = buildMasterPrompt(promptContext);
-				emitContextOperations(agentStream, {
-					contextType,
-					data: promptContext.data,
-					projectName: promptContext.projectName,
-					focusEntityType: promptContext.focusEntityType,
-					focusEntityName: promptContext.focusEntityName
-				});
 
 				const usageSnapshot = buildFastContextUsageSnapshot({
 					systemPrompt,

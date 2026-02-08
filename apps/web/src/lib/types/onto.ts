@@ -475,6 +475,8 @@ export const DocTreeNodeSchema: z.ZodType<DocTreeNode> = z.lazy(() =>
 		id: z.string().uuid(),
 		// Type is derived from children at render time; stored value is optional.
 		type: z.enum(['folder', 'doc']).optional(),
+		title: z.string().nullable().optional(),
+		description: z.string().nullable().optional(),
 		order: z.number().int().min(0),
 		children: z.array(DocTreeNodeSchema).optional()
 	})
@@ -484,6 +486,8 @@ export type DocTreeNode = {
 	id: string;
 	/** Optional hint; UI computes folder/doc from children. */
 	type?: 'folder' | 'doc';
+	title?: string | null;
+	description?: string | null;
 	order: number;
 	children?: DocTreeNode[];
 };

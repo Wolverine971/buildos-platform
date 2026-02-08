@@ -292,7 +292,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				supabase,
 				project_id as string,
 				document.id,
-				{ parentId, position: positionValue },
+				{
+					parentId,
+					position: positionValue,
+					title: document.title ?? null,
+					description: document.description ?? null
+				},
 				actorId
 			);
 		} catch (treeError) {

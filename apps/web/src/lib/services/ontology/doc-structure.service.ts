@@ -32,6 +32,8 @@ export type ChangeType = 'create' | 'move' | 'delete' | 'reorder' | 'reorganize'
 export interface AddDocumentOptions {
 	parentId?: string | null;
 	position?: number;
+	title?: string | null;
+	description?: string | null;
 }
 
 export interface MoveDocumentOptions {
@@ -69,12 +71,28 @@ function normalizeDocTreeNodes(nodes: unknown): DocTreeNode[] {
 		const order =
 			typeof record.order === 'number' && Number.isFinite(record.order) ? record.order : 0;
 		const type = record.type === 'folder' || record.type === 'doc' ? record.type : undefined;
+		const titleCandidate = record.title ?? record.name;
+		const title =
+			typeof titleCandidate === 'string'
+				? titleCandidate
+				: titleCandidate === null
+					? null
+					: undefined;
+		const descriptionCandidate = record.description;
+		const description =
+			typeof descriptionCandidate === 'string'
+				? descriptionCandidate
+				: descriptionCandidate === null
+					? null
+					: undefined;
 		const children = normalizeDocTreeNodes(record.children);
 
 		const node: DocTreeNode = {
 			id,
 			order,
 			...(type ? { type } : {}),
+			...(title !== undefined ? { title } : {}),
+			...(description !== undefined ? { description } : {}),
 			...(children.length > 0 ? { children } : {})
 		};
 
@@ -114,6 +132,36 @@ function parseDocStructure(value: unknown): DocStructure {
 	return {
 		version,
 		root: normalizeDocTreeNodes(record.root)
+	};
+}
+
+type DocMeta = {
+	title: string | null;
+	description: string | null;
+};
+
+async function fetchDocMeta(
+	supabase: SupabaseClient<Database>,
+	projectId: string,
+	docId: string
+): Promise<DocMeta | null> {
+	const { data, error } = await supabase
+		.from('onto_documents')
+		.select('title, description')
+		.eq('id', docId)
+		.eq('project_id', projectId)
+		.maybeSingle();
+
+	if (error) {
+		console.error(`[Doc Tree] Failed to fetch doc metadata for ${docId}:`, error);
+		return null;
+	}
+
+	if (!data) return null;
+
+	return {
+		title: data.title ?? null,
+		description: data.description ?? null
 	};
 }
 
@@ -320,6 +368,25 @@ export function pruneDeletedNodes(nodes: DocTreeNode[], activeDocIds: Set<string
 		}));
 }
 
+function applyDocMetaToTree(
+	nodes: DocTreeNode[],
+	docMetaById: Record<string, DocMeta>
+): DocTreeNode[] {
+	return nodes.map((node) => {
+		const meta = docMetaById[node.id];
+		const updated: DocTreeNode = {
+			...node,
+			...(meta ? { title: meta.title, description: meta.description } : {})
+		};
+
+		if (node.children) {
+			updated.children = applyDocMetaToTree(node.children, docMetaById);
+		}
+
+		return updated;
+	});
+}
+
 // ============================================
 // ENRICHMENT
 // ============================================
@@ -343,8 +410,8 @@ export function enrichTreeNodes(
 			id: node.id,
 			type: resolvedType,
 			order: node.order,
-			title: doc?.title || 'Untitled',
-			description: doc?.description || null,
+			title: doc?.title ?? node.title ?? 'Untitled',
+			description: doc?.description ?? node.description ?? null,
 			state_key: doc?.state_key || 'draft',
 			type_key: doc?.type_key || 'document',
 			has_content: !!(doc?.content && doc.content.trim().length > 0),
@@ -372,9 +439,10 @@ export function enrichTreeNodes(
 export async function getDocTree(
 	supabase: SupabaseClient<Database>,
 	projectId: string,
-	options: { includeContent?: boolean } = {}
+	options: { includeContent?: boolean; includeDocuments?: boolean } = {}
 ): Promise<GetDocTreeResponse> {
-	const includeContent = options.includeContent ?? true;
+	const includeDocuments = options.includeDocuments ?? true;
+	const includeContent = includeDocuments && (options.includeContent ?? true);
 	// Fetch project with doc_structure
 	const { data: project, error: projectError } = await supabase
 		.from('onto_projects')
@@ -387,6 +455,10 @@ export async function getDocTree(
 	}
 
 	const structure = parseDocStructure(project?.doc_structure);
+
+	if (!includeDocuments) {
+		return { structure, documents: {}, unlinked: [] };
+	}
 
 	const documentSelect = includeContent
 		? '*'
@@ -558,10 +630,12 @@ export async function addDocumentToTree(
 	options: AddDocumentOptions = {},
 	actorId?: string
 ): Promise<DocStructure> {
-	const { parentId = null, position } = options;
+	const { parentId = null, position, title, description } = options;
 
-	// Get current structure
-	const { structure } = await getDocTree(supabase, projectId);
+	// Get current structure (no content needed)
+	const { structure, documents } = await getDocTree(supabase, projectId, {
+		includeContent: false
+	});
 
 	// Check if document already exists in tree
 	if (collectDocIds(structure.root).has(docId)) {
@@ -573,10 +647,28 @@ export async function addDocumentToTree(
 		resolvedParentId = null;
 	}
 
+	let resolvedTitle = title;
+	let resolvedDescription = description;
+	if (resolvedTitle === undefined || resolvedDescription === undefined) {
+		const doc = documents[docId];
+		if (doc) {
+			if (resolvedTitle === undefined) resolvedTitle = doc.title ?? null;
+			if (resolvedDescription === undefined) resolvedDescription = doc.description ?? null;
+		} else {
+			const meta = await fetchDocMeta(supabase, projectId, docId);
+			if (meta) {
+				if (resolvedTitle === undefined) resolvedTitle = meta.title;
+				if (resolvedDescription === undefined) resolvedDescription = meta.description;
+			}
+		}
+	}
+
 	// Create new node
 	const newNode: DocTreeNode = {
 		id: docId,
-		order: 0 // Will be set by insertNodeIntoTree
+		order: 0, // Will be set by insertNodeIntoTree
+		...(resolvedTitle !== undefined ? { title: resolvedTitle } : {}),
+		...(resolvedDescription !== undefined ? { description: resolvedDescription } : {})
 	};
 
 	// Determine position
@@ -640,7 +732,9 @@ export async function moveDocument(
 	actorId?: string
 ): Promise<DocStructure> {
 	const { newParentId, newPosition } = options;
-	const { structure } = await getDocTree(supabase, projectId);
+	const { structure, documents } = await getDocTree(supabase, projectId, {
+		includeContent: false
+	});
 
 	let resolvedParentId = newParentId === docId ? null : newParentId;
 	if (resolvedParentId && !findNodeById(structure.root, resolvedParentId)) {
@@ -658,10 +752,29 @@ export async function moveDocument(
 	// Remove from current location if it exists
 	let newRoot = findResult ? removeNodeFromTree(structure.root, docId) : structure.root;
 
+	let resolvedTitle = findResult?.node.title;
+	let resolvedDescription = findResult?.node.description;
+	if (resolvedTitle === undefined || resolvedDescription === undefined) {
+		const doc = documents[docId];
+		if (doc) {
+			if (resolvedTitle === undefined) resolvedTitle = doc.title ?? null;
+			if (resolvedDescription === undefined) resolvedDescription = doc.description ?? null;
+		} else {
+			const meta = await fetchDocMeta(supabase, projectId, docId);
+			if (meta) {
+				if (resolvedTitle === undefined) resolvedTitle = meta.title;
+				if (resolvedDescription === undefined) resolvedDescription = meta.description;
+			}
+		}
+	}
+
 	// Create node to insert (preserve children if present)
 	const nodeToMove: DocTreeNode = {
 		id: docId,
 		order: 0,
+		...(findResult?.node.type ? { type: findResult.node.type } : {}),
+		...(resolvedTitle !== undefined ? { title: resolvedTitle } : {}),
+		...(resolvedDescription !== undefined ? { description: resolvedDescription } : {}),
 		children: findResult?.node.children
 	};
 
@@ -691,7 +804,7 @@ export async function recomputeDocStructure(
 	// Fetch all active documents to verify
 	const { data: docs, error } = await supabase
 		.from('onto_documents')
-		.select('id')
+		.select('id, title, description')
 		.eq('project_id', projectId)
 		.is('deleted_at', null);
 
@@ -699,26 +812,40 @@ export async function recomputeDocStructure(
 		throw new Error(`Failed to fetch documents: ${error.message}`);
 	}
 
-	const activeDocIds = new Set((docs || []).map((d) => d.id));
+	const docMetaById: Record<string, DocMeta> = {};
+	const activeDocIds = new Set<string>();
+
+	for (const doc of docs || []) {
+		activeDocIds.add(doc.id);
+		docMetaById[doc.id] = {
+			title: doc.title ?? null,
+			description: doc.description ?? null
+		};
+	}
 
 	// Prune deleted docs from structure
 	const prunedRoot = pruneDeletedNodes(structure.root, activeDocIds);
+	const hydratedRoot = applyDocMetaToTree(prunedRoot, docMetaById);
 
 	// Add orphaned docs to root
-	const structureDocIds = collectDocIds(prunedRoot);
+	const structureDocIds = collectDocIds(hydratedRoot);
 	const orphanedDocs = [...activeDocIds].filter((id) => !structureDocIds.has(id));
 
-	const maxOrder = prunedRoot.length > 0 ? Math.max(...prunedRoot.map((n) => n.order)) : -1;
+	const maxOrder = hydratedRoot.length > 0 ? Math.max(...hydratedRoot.map((n) => n.order)) : -1;
 
-	const orphanNodes: DocTreeNode[] = orphanedDocs.map((id, i) => ({
-		id,
-		type: 'doc' as const,
-		order: maxOrder + 1 + i
-	}));
+	const orphanNodes: DocTreeNode[] = orphanedDocs.map((id, i) => {
+		const meta = docMetaById[id];
+		return {
+			id,
+			type: 'doc' as const,
+			order: maxOrder + 1 + i,
+			...(meta ? { title: meta.title, description: meta.description } : {})
+		};
+	});
 
 	const newStructure: DocStructure = {
 		version: structure.version,
-		root: reorderNodes([...prunedRoot, ...orphanNodes])
+		root: reorderNodes([...hydratedRoot, ...orphanNodes])
 	};
 
 	return updateDocStructure(supabase, projectId, newStructure, 'reorganize', actorId);

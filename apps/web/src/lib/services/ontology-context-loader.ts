@@ -931,13 +931,13 @@ export class OntologyContextLoader {
 
 	private buildDocumentTreeContext(
 		structure: DocStructure,
-		documents: ProjectGraphDataLight['documents']
+		documents?: ProjectGraphDataLight['documents'] | null
 	): DocumentTreeContext {
 		const normalized = this.normalizeDocStructure(structure);
-		const docIndex = new Map(documents.map((doc) => [doc.id, doc]));
+		const docList = Array.isArray(documents) ? documents : [];
 		const docIdsInTree = this.collectDocIds(normalized.root);
 		const totalNodes = docIdsInTree.size;
-		const unlinkedDocs = documents.filter((doc) => !docIdsInTree.has(doc.id));
+		const unlinkedDocs = docList.filter((doc) => !docIdsInTree.has(doc.id));
 		const unlinkedPreview = unlinkedDocs
 			.slice(0, DOCUMENT_TREE_LIMITS.maxUnlinked)
 			.map((doc) => ({
@@ -966,12 +966,14 @@ export class OntologyContextLoader {
 			nodesRendered += 1;
 			renderedIds.add(node.id);
 
-			const doc = docIndex.get(node.id);
 			const contextNode: DocumentTreeContext['root'][number] = {
 				id: node.id,
-				title: doc?.title || 'Untitled',
+				title:
+					typeof node.title === 'string' && node.title.trim().length > 0
+						? node.title
+						: 'Untitled',
 				description: this.truncateText(
-					doc?.description ?? null,
+					(typeof node.description === 'string' ? node.description : null) ?? null,
 					DOCUMENT_TREE_LIMITS.descriptionPreview
 				),
 				order: typeof node.order === 'number' ? node.order : null
@@ -1052,22 +1054,6 @@ export class OntologyContextLoader {
 		return this.normalizeDocStructure(structure);
 	}
 
-	private async loadProjectDocumentsForTree(
-		projectId: string
-	): Promise<ProjectGraphDataLight['documents']> {
-		const { data, error } = await this.supabase
-			.from('onto_documents')
-			.select('id, title, description')
-			.eq('project_id', projectId)
-			.is('deleted_at', null);
-
-		if (error) {
-			throw error;
-		}
-
-		return (data ?? []) as ProjectGraphDataLight['documents'];
-	}
-
 	private async loadProjectDocumentTreeContext(
 		projectId: string,
 		structure?: DocStructure | null
@@ -1075,11 +1061,10 @@ export class OntologyContextLoader {
 		const docStructure = structure
 			? this.normalizeDocStructure(structure)
 			: await this.loadProjectDocStructure(projectId);
-		const documents = await this.loadProjectDocumentsForTree(projectId);
 
 		return {
 			docStructure,
-			documentTree: this.buildDocumentTreeContext(docStructure, documents)
+			documentTree: this.buildDocumentTreeContext(docStructure, null)
 		};
 	}
 

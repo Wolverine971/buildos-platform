@@ -69,16 +69,21 @@
 		return items;
 	});
 
-	// Auto-expand first level on mount
+	// Auto-expand first level on mount (once)
+	let hasAutoExpanded = $state(false);
+
 	$effect(() => {
-		if (enrichedTree.length > 0 && expandedIds.size === 0) {
+		if (enrichedTree.length > 0 && !hasAutoExpanded) {
+			hasAutoExpanded = true;
 			const toExpand = new Set<string>();
 			for (const node of enrichedTree) {
 				if (node.type === 'folder') {
 					toExpand.add(node.id);
 				}
 			}
-			expandedIds = toExpand;
+			if (toExpand.size > 0) {
+				expandedIds = toExpand;
+			}
 		}
 	});
 

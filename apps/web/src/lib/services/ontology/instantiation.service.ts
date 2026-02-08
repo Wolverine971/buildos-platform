@@ -335,7 +335,9 @@ export async function instantiateProject(
 
 			inserted.documents.push(contextDocId);
 			counts.documents += 1;
-			await addDocumentToDocStructure(client, typedProjectId, contextDocId, actorId);
+			await addDocumentToDocStructure(client, typedProjectId, contextDocId, actorId, {
+				title: parsed.context_document.title
+			});
 
 			// Use has_context_document edge to link the context document
 			edgesToInsert.push({
@@ -561,7 +563,10 @@ export async function instantiateProject(
 					entityIdByTempId.set(entity.temp_id, { kind: 'document', id: docId });
 					inserted.documents.push(docId);
 					counts.documents += 1;
-					await addDocumentToDocStructure(client, typedProjectId, docId, actorId);
+					await addDocumentToDocStructure(client, typedProjectId, docId, actorId, {
+						title: entity.title,
+						description: entity.description ?? null
+					});
 					break;
 				}
 				case 'risk': {

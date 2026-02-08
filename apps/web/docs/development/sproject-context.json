@@ -944,6 +944,41 @@
 			]
 		},
 		{
+			"file": "src/lib/components/ui/codemirror/extensions.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"toggleBold",
+				"toggleItalic",
+				"insertH1",
+				"insertH2",
+				"insertBulletList",
+				"insertOrderedList",
+				"insertBlockquote",
+				"insertCodeBlock",
+				"insertLink",
+				"formattingKeymap",
+				"buildExtensions"
+			]
+		},
+		{
+			"file": "src/lib/components/ui/codemirror/inkprint-theme.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["inkprintEditorTheme", "inkprintHighlightStyle", "inkprintTheme"]
+		},
+		{
+			"file": "src/lib/components/ui/codemirror/voice-widget.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"showVoiceWidget",
+				"updateVoicePreview",
+				"hideVoiceWidget",
+				"voiceWidgetExtension"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
 			"type": "component",
 			"components": [],
@@ -1022,6 +1057,9 @@
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+		"src/lib/components/ui/codemirror/extensions.ts",
+		"src/lib/components/ui/codemirror/inkprint-theme.ts",
+		"src/lib/components/ui/codemirror/voice-widget.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts",
 		"src/lib/components/ontology/graph/lib/svelteflow.service.ts"

@@ -276,6 +276,10 @@ export interface DocTreeNode {
 	id: string;
 	/** Optional hint; UI derives folder/doc from children at render time. */
 	type?: 'folder' | 'doc';
+	/** Optional cached title for faster doc tree rendering */
+	title?: string | null;
+	/** Optional cached description for faster doc tree rendering */
+	description?: string | null;
 	/** Order among siblings (0-indexed) */
 	order: number;
 	/** Child nodes (optional) */

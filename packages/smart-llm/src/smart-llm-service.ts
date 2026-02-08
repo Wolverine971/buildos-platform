@@ -44,10 +44,7 @@ import {
 	extractTextFromChoice,
 	normalizeStreamingContent
 } from './response-parsing';
-import {
-	ToolCallAssembler,
-	resolveToolCallAssemblerProfile
-} from './tool-call-assembler';
+import { ToolCallAssembler, resolveToolCallAssemblerProfile } from './tool-call-assembler';
 import {
 	buildTranscriptionVocabulary,
 	coerceAudioInput,
@@ -1857,7 +1854,9 @@ export class SmartLLMService {
 									if (!pending?.function?.name) continue;
 									const { toolCall: sanitizedToolCall } =
 										this.coerceToolCallArguments(pending);
-									if (this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)) {
+									if (
+										this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)
+									) {
 										void this.writeKimiToolCallLog({
 											model: resolvedModel,
 											provider: resolvedProvider,
@@ -1987,11 +1986,7 @@ export class SmartLLMService {
 		messageId?: string;
 		toolCall: unknown;
 	}): Promise<void> {
-		if (
-			typeof process === 'undefined' ||
-			!process.versions ||
-			!process.versions.node
-		) {
+		if (typeof process === 'undefined' || !process.versions || !process.versions.node) {
 			return;
 		}
 
@@ -2012,8 +2007,7 @@ export class SmartLLMService {
 
 			const resolveBaseDir = async (): Promise<string> => {
 				const override =
-					process.env.KIMI_TOOL_CALL_LOG_DIR ||
-					process.env.BUILDOS_PROMPT_DUMPS_DIR;
+					process.env.KIMI_TOOL_CALL_LOG_DIR || process.env.BUILDOS_PROMPT_DUMPS_DIR;
 				if (override) {
 					return path.resolve(override);
 				}

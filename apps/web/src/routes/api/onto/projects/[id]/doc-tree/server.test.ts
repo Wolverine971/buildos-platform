@@ -75,7 +75,8 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 		await GET(requestEvent);
 
 		expect(getDocTreeMock).toHaveBeenCalledWith(supabase, 'project-1', {
-			includeContent: true
+			includeContent: true,
+			includeDocuments: true
 		});
 	});
 
@@ -95,7 +96,8 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 		await GET(requestEvent);
 
 		expect(getDocTreeMock).toHaveBeenCalledWith(supabase, 'project-1', {
-			includeContent: false
+			includeContent: false,
+			includeDocuments: true
 		});
 	});
 });

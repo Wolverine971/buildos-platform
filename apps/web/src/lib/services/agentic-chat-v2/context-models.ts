@@ -151,7 +151,7 @@ export function collectDocStructureIds(
 
 export function buildDocStructureSummary(
 	structure: DocStructure | null | undefined,
-	docMetaById: Record<string, DocMetaSummary>,
+	docMetaById: Record<string, DocMetaSummary> = {},
 	maxDepth?: number
 ): DocStructureSummary | null {
 	if (!structure) return null;
@@ -165,8 +165,8 @@ export function buildDocStructureSummary(
 				id: node.id,
 				type: node.type,
 				order: node.order,
-				title: meta?.title ?? null,
-				description: meta?.description ?? null,
+				title: node.title ?? meta?.title ?? null,
+				description: node.description ?? meta?.description ?? null,
 				children: node.children ? walk(node.children, depth + 1) : undefined
 			};
 		});

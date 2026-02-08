@@ -91,12 +91,13 @@ Phase 2.
     - `agent_state: thinking`
 3. **Resolve session** (create if missing) and emit:
     - `session` event (authoritative session object)
-4. **Load last N messages** (default 8–12).
-5. **Persist user message** in the background.
-6. **Stream LLM** with new prompt:
+4. **Load initial context** via `load_fastchat_context` RPC (global/project/focus).
+5. **Load last N messages** (default 8–12).
+6. **Persist user message** in the background.
+7. **Stream LLM** with new prompt:
     - emit `text_delta` events
-7. **Persist assistant message** and update session stats.
-8. **Emit done** (always).
+8. **Persist assistant message** and update session stats.
+9. **Emit done** (always).
 
 ---
 

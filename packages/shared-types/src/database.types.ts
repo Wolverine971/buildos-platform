@@ -10428,6 +10428,16 @@ export type Database = {
           status: string
         }[]
       }
+      load_fastchat_context: {
+        Args: {
+          p_context_type: string
+          p_focus_entity_id?: string
+          p_focus_type?: string
+          p_project_id?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       load_project_graph_context: {
         Args: { p_project_id: string }
         Returns: Json

@@ -5,7 +5,7 @@
 
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import type { HTMLTextareaAttributes } from 'svelte/elements';
+	import CodeMirrorEditor from './codemirror/CodeMirrorEditor.svelte';
 	import {
 		Bold,
 		Italic,
@@ -51,15 +51,21 @@
 		variant: VoiceButtonVariant;
 	};
 
-	interface Props extends Omit<HTMLTextareaAttributes, 'value'> {
+	interface Props {
 		value?: string;
+		id?: string;
 		label?: string;
 		helpText?: string;
+		placeholder?: string;
+		required?: boolean;
+		disabled?: boolean;
 		maxLength?: number;
+		/** @deprecated No longer used with CodeMirror editor */
 		rows?: number;
 		size?: EditorSize;
 		/** When true, the editor expands to fill its parent container height */
 		fillHeight?: boolean;
+		class?: string;
 		// Voice recording props
 		enableVoice?: boolean;
 		voiceBlocked?: boolean;
@@ -74,6 +80,10 @@
 		onVoiceNoteGroupReady?: (groupId: string) => void;
 		onVoiceNoteSegmentSaved?: (voiceNote: VoiceNote) => void;
 		onVoiceNoteSegmentError?: (error: string) => void;
+		/** Callback on Cmd/Ctrl+S */
+		onSave?: () => void;
+		/** Called on every document change (replaces onchange/oninput) */
+		onDocChange?: (value: string) => void;
 		// Bindable voice state
 		isRecording?: boolean;
 		isTranscribing?: boolean;
@@ -94,7 +104,6 @@
 		size = 'base',
 		fillHeight = false,
 		class: className = '',
-		oninput,
 		// Voice props
 		enableVoice = true,
 		voiceBlocked = false,
@@ -109,19 +118,20 @@
 		onVoiceNoteGroupReady,
 		onVoiceNoteSegmentSaved,
 		onVoiceNoteSegmentError,
+		onSave,
+		onDocChange,
 		// Bindable voice state
 		isRecording = $bindable(false),
 		isTranscribing = $bindable(false),
 		voiceError = $bindable(''),
-		recordingDuration = $bindable(0),
-		...restProps
+		recordingDuration = $bindable(0)
 	}: Props = $props();
 
 	let mode = $state<'edit' | 'preview'>('edit');
-	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	let editorRef = $state<CodeMirrorEditor | null>(null);
 	let showMoreTools = $state(false);
 	const generatedId = `rich-markdown-${++richMarkdownIdCounter}`;
-	const textareaId = $derived(id ?? generatedId);
+	const editorId = $derived(id ?? generatedId);
 
 	// ============================================
 	// Voice Recording State
@@ -194,23 +204,7 @@
 		chars: value.length
 	});
 
-	const sizeConfig = {
-		sm: {
-			label: 'text-sm',
-			textarea: 'text-sm',
-			toolbar: 'text-sm'
-		},
-		base: {
-			label: 'text-sm',
-			textarea: 'text-base',
-			toolbar: 'text-sm'
-		},
-		lg: {
-			label: 'text-base',
-			textarea: 'text-lg',
-			toolbar: 'text-base'
-		}
-	} as const;
+	const labelSizeClass = size === 'lg' ? 'text-base' : 'text-sm';
 
 	const proseSize = size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'base';
 	const proseClasses = $derived(getProseClasses(proseSize));
@@ -232,12 +226,6 @@
 			{ id: 'code', icon: Code, label: 'Code' },
 			{ id: 'link', icon: LinkIcon, label: 'Link' }
 		];
-
-	// All toolbar buttons combined (for desktop)
-	const toolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> = [
-		...primaryToolbarButtons,
-		...secondaryToolbarButtons
-	];
 
 	// Voice button state machine
 	const transcribingStatusLabel = $derived(
@@ -289,180 +277,46 @@
 		}
 	});
 
+	// Sync live transcript preview to CM6 voice widget
+	$effect(() => {
+		if (editorRef && liveTranscriptPreview) {
+			editorRef.updateTranscriptPreview(liveTranscriptPreview);
+		}
+	});
+
 	// ============================================
-	// Text Manipulation Functions
+	// Toolbar Commands (delegated to CodeMirror)
 	// ============================================
-	function handleInput(event: Event & { currentTarget: EventTarget & HTMLTextAreaElement }) {
-		if (disabled) return;
-		const nextValue = (event.target as HTMLTextAreaElement).value;
-		if (maxLength && nextValue.length > maxLength) {
-			value = nextValue.slice(0, maxLength);
-		} else {
-			value = nextValue;
-		}
-		oninput?.(event as InputEvent & { currentTarget: EventTarget & HTMLTextAreaElement });
-	}
-
-	function setValue(next: string) {
-		const normalized = maxLength ? next.slice(0, maxLength) : next;
-		value = normalized;
-	}
-
-	/**
-	 * Insert text at a specific range in the textarea with proper undo support.
-	 * Uses execCommand which integrates with the browser's native undo stack.
-	 */
-	function insertTextWithUndo(
-		start: number,
-		end: number,
-		text: string,
-		cursorStart: number,
-		cursorEnd: number
-	) {
-		if (!textareaElement) return;
-
-		// Save scroll positions
-		const textareaScrollTop = textareaElement.scrollTop;
-		const pageScrollY = window.scrollY;
-
-		// Focus and select the range to replace
-		textareaElement.focus({ preventScroll: true });
-		textareaElement.setSelectionRange(start, end);
-
-		// Use execCommand for undo support - this is deprecated but still the best
-		// cross-browser way to insert text with undo support
-		const inserted = document.execCommand('insertText', false, text);
-
-		if (!inserted) {
-			// Fallback for browsers where execCommand doesn't work (rare)
-			// Use setRangeText which has partial undo support in some browsers
-			textareaElement.setRangeText(text, start, end, 'end');
-			// Manually sync value since setRangeText doesn't trigger input event
-			value = textareaElement.value;
-		} else {
-			// execCommand triggers input event which syncs value via handleInput
-			// but we need to ensure value is in sync
-			value = textareaElement.value;
-		}
-
-		// Apply maxLength constraint if needed
-		if (maxLength && value.length > maxLength) {
-			value = value.slice(0, maxLength);
-			textareaElement.value = value;
-		}
-
-		// Set cursor position and restore scroll
-		queueMicrotask(() => {
-			textareaElement?.focus({ preventScroll: true });
-			textareaElement?.setSelectionRange(cursorStart, cursorEnd);
-			if (textareaElement) textareaElement.scrollTop = textareaScrollTop;
-			window.scrollTo({ top: pageScrollY, behavior: 'instant' });
-		});
-	}
-
-	function surroundSelection(prefix: string, suffix: string = prefix) {
-		if (!textareaElement) return;
-		const start = textareaElement.selectionStart ?? 0;
-		const end = textareaElement.selectionEnd ?? 0;
-		const selection = value.slice(start, end) || '';
-		const innerText = selection || 'text';
-		const replacement = `${prefix}${innerText}${suffix}`;
-		const cursorStart = start + prefix.length;
-		const cursorEnd = cursorStart + innerText.length;
-		insertTextWithUndo(start, end, replacement, cursorStart, cursorEnd);
-	}
-
-	function insertAtLineStart(token: string) {
-		if (!textareaElement) return;
-		const start = textareaElement.selectionStart ?? 0;
-		const before = value.slice(0, start);
-		const lineStart = before.lastIndexOf('\n') + 1;
-		const cursor = start + token.length;
-		// Insert the token at the start of the current line
-		insertTextWithUndo(lineStart, lineStart, token, cursor, cursor);
-	}
-
-	function prefixSelectedLines(prefix: string, ordered = false) {
-		if (!textareaElement) return;
-		const start = textareaElement.selectionStart ?? 0;
-		const end = textareaElement.selectionEnd ?? 0;
-		const selection = value.slice(start, end);
-
-		if (!selection) {
-			insertAtLineStart(prefix);
-			return;
-		}
-
-		const lines = selection.split('\n');
-		const updated = lines
-			.map((line, index) => {
-				if (!line.trim()) return line;
-				return ordered ? `${index + 1}. ${line}` : `${prefix}${line}`;
-			})
-			.join('\n');
-
-		const cursor = start + updated.length;
-		insertTextWithUndo(start, end, updated, cursor, cursor);
-	}
-
-	function insertCodeBlock() {
-		if (!textareaElement) return;
-		const start = textareaElement.selectionStart ?? 0;
-		const end = textareaElement.selectionEnd ?? 0;
-		const selection = value.slice(start, end);
-		const isMultiline = selection.includes('\n');
-		const replacement = isMultiline
-			? `\`\`\`\n${selection || 'code'}\n\`\`\``
-			: `\`${selection || 'code'}\``;
-
-		const cursor = start + replacement.length;
-		insertTextWithUndo(start, end, replacement, cursor, cursor);
-	}
-
-	function insertLink() {
-		if (typeof window === 'undefined') return;
-		const url = window.prompt('Enter URL');
-		if (!url) return;
-
-		if (!textareaElement) return;
-		const start = textareaElement.selectionStart ?? 0;
-		const end = textareaElement.selectionEnd ?? 0;
-		const selection = value.slice(start, end) || 'link text';
-		const replacement = `[${selection}](${url})`;
-		const cursor = start + replacement.length;
-		insertTextWithUndo(start, end, replacement, cursor, cursor);
-	}
-
 	function handleToolbar(action: ToolbarAction) {
-		if (disabled) return;
+		if (disabled || !editorRef) return;
 
 		switch (action) {
 			case 'bold':
-				surroundSelection('**');
+				editorRef.execBold();
 				break;
 			case 'italic':
-				surroundSelection('*');
+				editorRef.execItalic();
 				break;
 			case 'h1':
-				insertAtLineStart('# ');
+				editorRef.execH1();
 				break;
 			case 'h2':
-				insertAtLineStart('## ');
+				editorRef.execH2();
 				break;
 			case 'ul':
-				prefixSelectedLines('- ');
+				editorRef.execBulletList();
 				break;
 			case 'ol':
-				prefixSelectedLines('', true);
+				editorRef.execOrderedList();
 				break;
 			case 'quote':
-				prefixSelectedLines('> ');
+				editorRef.execBlockquote();
 				break;
 			case 'code':
-				insertCodeBlock();
+				editorRef.execCodeBlock();
 				break;
 			case 'link':
-				insertLink();
+				editorRef.execLink();
 				break;
 		}
 	}
@@ -474,7 +328,7 @@
 		}
 		mode = nextMode;
 		if (nextMode === 'edit') {
-			textareaElement?.focus();
+			editorRef?.focus();
 		}
 	}
 
@@ -650,36 +504,19 @@
 	// ============================================
 	function insertTranscriptionAtCursor(transcript: string) {
 		const trimmedTranscript = transcript.trim();
-		if (!trimmedTranscript) return;
+		if (!trimmedTranscript || !editorRef) return;
 
 		if (!cursorPositionBeforeRecording) {
-			// Fallback: append to end with undo support
-			const start = value.length;
+			// Fallback: append to end
+			const pos = value.length;
 			const separator = value.trim() ? ' ' : '';
-			const text = separator + trimmedTranscript;
-			const newCursorPos = start + text.length;
-			insertTextWithUndo(start, start, text, newCursorPos, newCursorPos);
+			editorRef.insertTextAt(pos, separator + trimmedTranscript);
 			return;
 		}
 
 		const { start, end } = cursorPositionBeforeRecording;
-		const hasSelection = start !== end;
-
-		// Determine spacing
-		let finalTranscript = trimmedTranscript;
-
-		if (!hasSelection) {
-			// Inserting at cursor position - add smart spacing
-			const needsSpaceBefore = start > 0 && !/\s/.test(value[start - 1] || '');
-			const needsSpaceAfter = start < value.length && !/\s/.test(value[start] || '');
-
-			finalTranscript =
-				(needsSpaceBefore ? ' ' : '') + trimmedTranscript + (needsSpaceAfter ? ' ' : '');
-		}
-
-		// Insert with undo support via execCommand
-		const newCursorPos = start + finalTranscript.length;
-		insertTextWithUndo(start, end, finalTranscript, newCursorPos, newCursorPos);
+		// insertTextAt handles smart spacing when start === end (no selection)
+		editorRef.insertTextAt(start, trimmedTranscript, end !== start ? end : undefined);
 
 		// Reset cursor tracking
 		cursorPositionBeforeRecording = null;
@@ -1099,11 +936,11 @@
 		hadLiveTranscript = false;
 
 		// CRITICAL: Capture cursor position BEFORE recording starts
-		if (textareaElement) {
-			cursorPositionBeforeRecording = {
-				start: textareaElement.selectionStart ?? value.length,
-				end: textareaElement.selectionEnd ?? value.length
-			};
+		if (editorRef) {
+			const sel = editorRef.getSelection();
+			cursorPositionBeforeRecording = { start: sel.from, end: sel.to };
+			// Show inline transcribing indicator in the editor
+			editorRef.showTranscribing();
 		} else {
 			cursorPositionBeforeRecording = { start: value.length, end: value.length };
 		}
@@ -1114,8 +951,8 @@
 			isInitializingRecording = false;
 			isCurrentlyRecording = true;
 			microphonePermissionGranted = true;
-			// Focus textarea so Space/Enter can stop recording
-			textareaElement?.focus();
+			// Focus editor so Space/Enter can stop recording
+			editorRef?.focus();
 		} catch (error) {
 			console.error('Failed to start voice recording:', error);
 			const message =
@@ -1127,6 +964,7 @@
 			isInitializingRecording = false;
 			isCurrentlyRecording = false;
 			cursorPositionBeforeRecording = null;
+			editorRef?.hideTranscribing();
 		}
 	}
 
@@ -1141,6 +979,9 @@
 
 		// Store the transcript we'll use for insertion
 		const transcriptToInsert = capturedTranscriptForCallback;
+
+		// Hide the inline voice widget in the editor
+		editorRef?.hideTranscribing();
 
 		// Clear the live preview and recording state
 		liveTranscriptPreview = '';
@@ -1183,6 +1024,7 @@
 				error instanceof Error ? error.message : 'Failed to stop recording. Try again.';
 			_voiceError = message;
 			// On error, immediately clear all state
+			editorRef?.hideTranscribing();
 			isCurrentlyRecording = false;
 			isInsertingText = false;
 			isTransitioningFromRecording = false;
@@ -1246,15 +1088,6 @@
 	// ============================================
 	// Keyboard Shortcuts
 	// ============================================
-	function handleTextareaKeyDown(event: KeyboardEvent) {
-		// Stop recording on Space or Enter when recording is active
-		if (isCurrentlyRecording && (event.key === ' ' || event.key === 'Enter')) {
-			event.preventDefault();
-			event.stopPropagation();
-			stopVoiceRecording();
-		}
-	}
-
 	// Global keydown handler for stopping recording
 	function handleGlobalKeyDown(event: KeyboardEvent) {
 		if (isCurrentlyRecording && (event.key === ' ' || event.key === 'Enter')) {
@@ -1318,7 +1151,7 @@
 <div class={`${fillHeight ? 'flex flex-col h-full' : 'space-y-2'} ${className}`}>
 	{#if label}
 		<div class="flex items-center justify-between">
-			<label for={textareaId} class="font-medium text-foreground {sizeConfig[size].label}">
+			<label for={editorId} class="font-medium text-foreground {labelSizeClass}">
 				{label}{#if required}<span class="text-destructive ml-1">*</span>{/if}
 			</label>
 			{#if maxLength}
@@ -1474,24 +1307,18 @@
 
 		<!-- Content area -->
 		{#if mode === 'edit'}
-			<textarea
-				id={textareaId}
-				bind:this={textareaElement}
-				class="w-full border-0 resize-none focus:ring-0 px-4 py-3 bg-card text-foreground placeholder:text-muted-foreground {sizeConfig[
-					size
-				].textarea} {fillHeight ? 'flex-1' : ''}"
+			<CodeMirrorEditor
+				bind:this={editorRef}
+				bind:value
 				{placeholder}
-				{required}
+				readOnly={disabled}
 				{disabled}
-				style="min-height: min(50dvh, 300px); max-height: min(80dvh, 100%);"
-				rows={fillHeight ? undefined : rows}
-				aria-required={required}
-				aria-disabled={disabled}
-				{value}
-				oninput={handleInput}
-				onkeydown={handleTextareaKeyDown}
-				{...restProps}
-			></textarea>
+				{maxLength}
+				{fillHeight}
+				{onSave}
+				{onDocChange}
+				class={fillHeight ? 'flex-1' : ''}
+			/>
 		{:else}
 			<div
 				class="px-4 py-4 bg-card overflow-y-auto {fillHeight

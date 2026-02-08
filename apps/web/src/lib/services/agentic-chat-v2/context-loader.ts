@@ -5,7 +5,6 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { createLogger } from '$lib/utils/logger';
 import type { DocStructure } from '$lib/types/onto-api';
 import type {
-	DocMetaSummary,
 	EntityContextData,
 	GlobalContextData,
 	LightEvent,
@@ -18,7 +17,7 @@ import type {
 	ProjectContextData,
 	LinkedEdge
 } from './context-models';
-import { buildDocStructureSummary, collectDocStructureIds } from './context-models';
+import { buildDocStructureSummary } from './context-models';
 import type { MasterPromptContext } from './master-prompt-builder';
 
 const logger = createLogger('FastChatContext');
@@ -27,6 +26,7 @@ const PROJECT_CONTEXTS = new Set<ChatContextType>(['project', 'project_audit', '
 
 const RECENT_ACTIVITY_PER_PROJECT = 6;
 const GLOBAL_DOC_STRUCTURE_DEPTH = 2;
+const FASTCHAT_CONTEXT_RPC = 'load_fastchat_context';
 
 type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
 type ProjectSelectRow = Pick<
@@ -46,10 +46,8 @@ type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 type PlanRow = Database['public']['Tables']['onto_plans']['Row'];
 type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 type EventRow = Database['public']['Tables']['onto_events']['Row'];
-type DocumentRow = Database['public']['Tables']['onto_documents']['Row'];
 type ProjectLogRow = Database['public']['Tables']['onto_project_logs']['Row'];
 type EdgeRow = Database['public']['Tables']['onto_edges']['Row'];
-type DocMetaRow = Pick<DocumentRow, 'id' | 'title' | 'description'>;
 
 type LoadContextParams = {
 	supabase: SupabaseClient<Database>;
@@ -57,6 +55,22 @@ type LoadContextParams = {
 	contextType: ChatContextType;
 	entityId?: string | null;
 	projectFocus?: ProjectFocus | null;
+};
+
+type FastChatContextRpcResponse = {
+	projects?: ProjectSelectRow[];
+	project?: ProjectSelectRow | null;
+	goals?: Array<GoalRow & { project_id?: string }>;
+	milestones?: Array<MilestoneRow & { project_id?: string }>;
+	plans?: Array<PlanRow & { project_id?: string }>;
+	tasks?: Array<TaskRow & { project_id?: string }>;
+	events?: Array<EventRow & { project_id?: string }>;
+	project_logs?: ProjectLogRow[];
+	focus_entity_full?: Record<string, unknown> | null;
+	focus_entity_type?: string | null;
+	focus_entity_id?: string | null;
+	linked_entities?: Record<string, Array<Record<string, unknown>>>;
+	linked_edges?: LinkedEdge[];
 };
 
 type LinkedEntityConfig = {
@@ -186,6 +200,30 @@ function isProjectContext(contextType: ChatContextType): boolean {
 	return PROJECT_CONTEXTS.has(contextType);
 }
 
+function resolveProjectId(
+	contextType: ChatContextType,
+	entityId?: string | null,
+	projectFocus?: ProjectFocus | null
+): string | null {
+	if (projectFocus?.projectId) return projectFocus.projectId;
+	if (isProjectContext(contextType)) return entityId ?? null;
+	return null;
+}
+
+function resolveRpcContextType(
+	contextType: ChatContextType,
+	projectFocus?: ProjectFocus | null
+): 'global' | 'project' | null {
+	if (contextType === 'global') return 'global';
+	if (isProjectContext(contextType)) return 'project';
+	if (contextType === 'ontology' && projectFocus?.projectId) return 'project';
+	return null;
+}
+
+function asArray<T>(value: unknown): T[] {
+	return Array.isArray(value) ? (value as T[]) : [];
+}
+
 function resolveEntityName(entity: Record<string, unknown> | null | undefined): string | null {
 	if (!entity) return null;
 	const candidate =
@@ -225,7 +263,6 @@ function mapProject(
 	options?: {
 		includeDocStructure?: boolean;
 		truncateDepth?: number;
-		docMetaById?: Record<string, DocMetaSummary>;
 	}
 ): LightProject {
 	return {
@@ -240,7 +277,7 @@ function mapProject(
 		doc_structure: options?.includeDocStructure
 			? buildDocStructureSummary(
 					row.doc_structure as DocStructure | null,
-					options?.docMetaById ?? {},
+					undefined,
 					options?.truncateDepth
 				)
 			: undefined
@@ -311,17 +348,6 @@ function mapEvent(row: EventRow): LightEvent {
 	};
 }
 
-function buildDocMetaById(rows: DocMetaRow[]): Record<string, DocMetaSummary> {
-	const result: Record<string, DocMetaSummary> = {};
-	for (const row of rows) {
-		result[row.id] = {
-			title: row.title ?? null,
-			description: row.description ?? null
-		};
-	}
-	return result;
-}
-
 function extractTitle(payload: unknown): string | null {
 	if (!payload || typeof payload !== 'object') return null;
 	const record = payload as Record<string, unknown>;
@@ -363,6 +389,136 @@ function groupByProject<T extends { project_id: string }, U>(
 	return result;
 }
 
+function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalContextData {
+	const projects = asArray<ProjectSelectRow>(payload.projects);
+	const lightProjects = projects.map((row) =>
+		mapProject(row, {
+			includeDocStructure: true,
+			truncateDepth: GLOBAL_DOC_STRUCTURE_DEPTH
+		})
+	);
+
+	if (lightProjects.length === 0) {
+		return {
+			projects: lightProjects,
+			project_recent_activity: {},
+			project_goals: {},
+			project_milestones: {},
+			project_plans: {}
+		};
+	}
+
+	const goals = asArray<GoalRow & { project_id?: string }>(payload.goals).filter(
+		(row): row is GoalRow & { project_id: string } => typeof row.project_id === 'string'
+	);
+	const milestones = asArray<MilestoneRow & { project_id?: string }>(payload.milestones).filter(
+		(row): row is MilestoneRow & { project_id: string } => typeof row.project_id === 'string'
+	);
+	const plans = asArray<PlanRow & { project_id?: string }>(payload.plans).filter(
+		(row): row is PlanRow & { project_id: string } => typeof row.project_id === 'string'
+	);
+
+	return {
+		projects: lightProjects,
+		project_recent_activity: mapRecentActivity(asArray<ProjectLogRow>(payload.project_logs)),
+		project_goals: groupByProject(goals, mapGoal),
+		project_milestones: groupByProject(milestones, mapMilestone),
+		project_plans: groupByProject(plans, mapPlan)
+	};
+}
+
+function buildProjectContextFromRpc(
+	payload: FastChatContextRpcResponse
+): ProjectContextData | null {
+	const projectRow = payload.project;
+	if (!projectRow) return null;
+
+	const doc_structure = buildDocStructureSummary(
+		projectRow.doc_structure as DocStructure | null | undefined
+	);
+
+	return {
+		project: mapProject(projectRow, { includeDocStructure: false }),
+		doc_structure,
+		goals: asArray<GoalRow>(payload.goals).map(mapGoal),
+		milestones: asArray<MilestoneRow>(payload.milestones).map(mapMilestone),
+		plans: asArray<PlanRow>(payload.plans).map(mapPlan),
+		tasks: asArray<TaskRow>(payload.tasks).map(mapTask),
+		events: asArray<EventRow>(payload.events).map(mapEvent)
+	};
+}
+
+function buildEntityContextFromRpc(params: {
+	payload: FastChatContextRpcResponse;
+	projectContext: ProjectContextData;
+	focusType: ProjectFocus['focusType'];
+	focusEntityId: string;
+}): { data: EntityContextData; focusEntityName?: string | null } {
+	const { payload, projectContext, focusType, focusEntityId } = params;
+	const rawFocus =
+		payload.focus_entity_full && typeof payload.focus_entity_full === 'object'
+			? (payload.focus_entity_full as Record<string, unknown>)
+			: null;
+	const focusEntityFull = stripEntityFields(rawFocus);
+	const focusEntityName = resolveEntityName(focusEntityFull);
+	const linked_entities =
+		payload.linked_entities && typeof payload.linked_entities === 'object'
+			? (payload.linked_entities as Record<string, Array<Record<string, unknown>>>)
+			: {};
+	const linked_edges = asArray<LinkedEdge>(payload.linked_edges);
+
+	return {
+		data: {
+			...projectContext,
+			focus_entity_type: focusType,
+			focus_entity_id: focusEntityId,
+			focus_entity_full: focusEntityFull ?? {},
+			linked_entities,
+			linked_edges
+		},
+		focusEntityName
+	};
+}
+
+async function loadFastChatContextViaRpc(
+	params: LoadContextParams
+): Promise<FastChatContextRpcResponse | null> {
+	const { supabase, userId, contextType, entityId, projectFocus } = params;
+	const rpcContextType = resolveRpcContextType(contextType, projectFocus);
+	if (!rpcContextType) return null;
+
+	const projectId = resolveProjectId(contextType, entityId, projectFocus);
+	if (rpcContextType === 'project' && !projectId) return null;
+
+	const focusType =
+		projectFocus?.focusType && projectFocus.focusType !== 'project-wide'
+			? projectFocus.focusType
+			: null;
+	const focusEntityId = focusType ? (projectFocus?.focusEntityId ?? null) : null;
+
+	const { data, error } = await supabase.rpc(FASTCHAT_CONTEXT_RPC, {
+		p_context_type: rpcContextType,
+		p_user_id: userId,
+		p_project_id: projectId ?? null,
+		p_focus_type: focusEntityId ? focusType : null,
+		p_focus_entity_id: focusEntityId ?? null
+	});
+
+	if (error) {
+		logger.warn('FastChat context RPC failed', {
+			error,
+			contextType,
+			projectId,
+			focusType
+		});
+		return null;
+	}
+
+	if (!data || typeof data !== 'object') return null;
+
+	return data as FastChatContextRpcResponse;
+}
+
 async function loadGlobalContextData(
 	supabase: SupabaseClient<Database>,
 	userId: string
@@ -388,34 +544,10 @@ async function loadGlobalContextData(
 	}
 
 	const projectRows = projects ?? [];
-	const docIds = new Set<string>();
-	for (const row of projectRows) {
-		const ids = collectDocStructureIds(
-			row.doc_structure as DocStructure | null | undefined,
-			GLOBAL_DOC_STRUCTURE_DEPTH
-		);
-		for (const id of ids) docIds.add(id);
-	}
-
-	let docMetaById: Record<string, DocMetaSummary> = {};
-	if (docIds.size > 0) {
-		const { data: docs, error: docsError } = await supabase
-			.from('onto_documents')
-			.select('id, title, description')
-			.in('id', Array.from(docIds))
-			.is('deleted_at', null);
-		if (docsError) {
-			logger.warn('Failed to load global documents', { error: docsError });
-		} else {
-			docMetaById = buildDocMetaById((docs ?? []) as DocMetaRow[]);
-		}
-	}
-
 	const lightProjects = projectRows.map((row) =>
 		mapProject(row, {
 			includeDocStructure: true,
-			truncateDepth: GLOBAL_DOC_STRUCTURE_DEPTH,
-			docMetaById
+			truncateDepth: GLOBAL_DOC_STRUCTURE_DEPTH
 		})
 	);
 	const projectIds = lightProjects.map((project) => project.id);
@@ -509,43 +641,37 @@ async function loadProjectContextData(
 
 	const project = mapProject(projectRow, { includeDocStructure: false });
 
-	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes, documentsRes] =
-		await Promise.all([
-			supabase
-				.from('onto_goals')
-				.select('id, name, description, state_key, target_date, completed_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_milestones')
-				.select('id, title, description, state_key, due_at, completed_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_plans')
-				.select('id, name, description, state_key, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_tasks')
-				.select(
-					'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_events')
-				.select(
-					'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_documents')
-				.select('id, title, description')
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-		]);
+	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes] = await Promise.all([
+		supabase
+			.from('onto_goals')
+			.select('id, name, description, state_key, target_date, completed_at, updated_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_milestones')
+			.select('id, title, description, state_key, due_at, completed_at, updated_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_plans')
+			.select('id, name, description, state_key, updated_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_tasks')
+			.select(
+				'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
+			)
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_events')
+			.select(
+				'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
+			)
+			.eq('project_id', projectId)
+			.is('deleted_at', null)
+	]);
 
 	if (goalsRes.error) logger.warn('Failed to load project goals', { error: goalsRes.error });
 	if (milestonesRes.error)
@@ -553,13 +679,9 @@ async function loadProjectContextData(
 	if (plansRes.error) logger.warn('Failed to load project plans', { error: plansRes.error });
 	if (tasksRes.error) logger.warn('Failed to load project tasks', { error: tasksRes.error });
 	if (eventsRes.error) logger.warn('Failed to load project events', { error: eventsRes.error });
-	if (documentsRes.error)
-		logger.warn('Failed to load project documents', { error: documentsRes.error });
 
-	const docMetaById = buildDocMetaById((documentsRes.data ?? []) as DocMetaRow[]);
 	const doc_structure = buildDocStructureSummary(
-		projectRow.doc_structure as DocStructure | null | undefined,
-		docMetaById
+		projectRow.doc_structure as DocStructure | null | undefined
 	);
 
 	return {
@@ -691,25 +813,62 @@ export async function loadFastChatPromptContext(
 ): Promise<MasterPromptContext> {
 	const { supabase, userId, contextType, entityId, projectFocus } = params;
 
+	const projectId = resolveProjectId(contextType, entityId, projectFocus);
+	const focusType =
+		projectFocus?.focusType && projectFocus.focusType !== 'project-wide'
+			? projectFocus.focusType
+			: null;
+	const focusEntityId = focusType ? (projectFocus?.focusEntityId ?? null) : null;
+	const focusEntityName = focusType ? (projectFocus?.focusEntityName ?? null) : null;
+
 	const baseContext: MasterPromptContext = {
 		contextType,
 		entityId: entityId ?? null,
-		projectId:
-			projectFocus?.projectId ?? (isProjectContext(contextType) ? (entityId ?? null) : null),
+		projectId,
 		projectName: projectFocus?.projectName ?? null,
-		focusEntityType:
-			projectFocus?.focusType && projectFocus.focusType !== 'project-wide'
-				? projectFocus.focusType
-				: null,
-		focusEntityId:
-			projectFocus?.focusType && projectFocus.focusType !== 'project-wide'
-				? projectFocus.focusEntityId
-				: null,
-		focusEntityName:
-			projectFocus?.focusType && projectFocus.focusType !== 'project-wide'
-				? projectFocus.focusEntityName
-				: null
+		focusEntityType: focusType,
+		focusEntityId,
+		focusEntityName
 	};
+
+	const rpcContextType = resolveRpcContextType(contextType, projectFocus);
+	if (rpcContextType) {
+		const rpcPayload = await loadFastChatContextViaRpc(params);
+		if (rpcPayload) {
+			if (rpcContextType === 'global') {
+				const data = buildGlobalContextFromRpc(rpcPayload);
+				return { ...baseContext, data };
+			}
+
+			const projectContext = buildProjectContextFromRpc(rpcPayload);
+			if (projectContext) {
+				const resolvedProjectName =
+					projectContext.project.name ?? baseContext.projectName ?? null;
+				if (focusType && focusEntityId) {
+					const { data, focusEntityName: resolvedFocusName } = buildEntityContextFromRpc({
+						payload: rpcPayload,
+						projectContext,
+						focusType,
+						focusEntityId
+					});
+					return {
+						...baseContext,
+						projectId,
+						projectName: resolvedProjectName,
+						focusEntityName: resolvedFocusName ?? baseContext.focusEntityName ?? null,
+						data
+					};
+				}
+
+				return {
+					...baseContext,
+					projectId,
+					projectName: resolvedProjectName,
+					data: projectContext
+				};
+			}
+		}
+	}
 
 	if (contextType === 'global') {
 		const data = await loadGlobalContextData(supabase, userId);
@@ -717,26 +876,21 @@ export async function loadFastChatPromptContext(
 	}
 
 	if (isProjectContext(contextType)) {
-		const projectId = projectFocus?.projectId ?? entityId;
 		if (!projectId) {
 			return { ...baseContext, data: null };
 		}
 
-		if (
-			projectFocus?.focusType &&
-			projectFocus.focusType !== 'project-wide' &&
-			projectFocus.focusEntityId
-		) {
+		if (focusType && focusEntityId) {
 			const { data, focusEntityName } = await loadEntityContextData({
 				supabase,
 				projectId,
-				focusType: projectFocus.focusType,
-				focusEntityId: projectFocus.focusEntityId
+				focusType,
+				focusEntityId
 			});
 			return {
 				...baseContext,
 				projectId,
-				projectName: projectFocus.projectName ?? baseContext.projectName,
+				projectName: projectFocus?.projectName ?? baseContext.projectName,
 				focusEntityName: focusEntityName ?? baseContext.focusEntityName ?? null,
 				data
 			};
@@ -753,11 +907,11 @@ export async function loadFastChatPromptContext(
 	}
 
 	if (contextType === 'ontology' && projectFocus?.projectId) {
-		const projectId = projectFocus.projectId;
-		const data = await loadProjectContextData(supabase, projectId);
+		const resolvedProjectId = projectFocus.projectId;
+		const data = await loadProjectContextData(supabase, resolvedProjectId);
 		return {
 			...baseContext,
-			projectId,
+			projectId: resolvedProjectId,
 			projectName: projectFocus.projectName ?? data?.project.name ?? null,
 			data
 		};

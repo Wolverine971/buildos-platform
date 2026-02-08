@@ -1,3 +1,5 @@
+<!-- apps/web/docs/features/collaborative-editor/RICH_MARKDOWN_EDITOR_SPEC.md -->
+
 # Rich Markdown Editor - Assessment & Implementation Spec
 
 > **Status:** Draft
@@ -31,27 +33,27 @@
 
 **What works well:**
 
-| Feature | Implementation | Notes |
-|---------|---------------|-------|
-| Markdown toolbar | Bold, italic, H1/H2, lists, quote, code, link | Uses `execCommand('insertText')` for undo support |
-| Edit/Preview toggle | Segmented control switches between textarea and rendered HTML | Preview uses `marked` + `sanitize-html` |
-| Voice recording | Start/stop via mic button, live transcript in footer | Dual-pipeline: MediaRecorder (accuracy) + Web Speech API (live preview) |
-| Cursor-aware insertion | Captures cursor position before recording, inserts transcript there | `cursorPositionBeforeRecording: { start, end }` |
-| Voice note storage | Groups, segments, upload queue (max 2 concurrent) | Persists audio blobs with transcription metadata |
-| Mobile responsive | Overflow toolbar menu, compact footer, touch-optimized buttons | Mobile-first with `sm:` breakpoints |
-| Inkprint design | Semantic tokens, textures, pressable interactions | Consistent with BuildOS design system |
+| Feature                | Implementation                                                      | Notes                                                                   |
+| ---------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Markdown toolbar       | Bold, italic, H1/H2, lists, quote, code, link                       | Uses `execCommand('insertText')` for undo support                       |
+| Edit/Preview toggle    | Segmented control switches between textarea and rendered HTML       | Preview uses `marked` + `sanitize-html`                                 |
+| Voice recording        | Start/stop via mic button, live transcript in footer                | Dual-pipeline: MediaRecorder (accuracy) + Web Speech API (live preview) |
+| Cursor-aware insertion | Captures cursor position before recording, inserts transcript there | `cursorPositionBeforeRecording: { start, end }`                         |
+| Voice note storage     | Groups, segments, upload queue (max 2 concurrent)                   | Persists audio blobs with transcription metadata                        |
+| Mobile responsive      | Overflow toolbar menu, compact footer, touch-optimized buttons      | Mobile-first with `sm:` breakpoints                                     |
+| Inkprint design        | Semantic tokens, textures, pressable interactions                   | Consistent with BuildOS design system                                   |
 
 **Current limitations:**
 
-| Limitation | Impact | Details |
-|-----------|--------|---------|
-| Plain `<textarea>` | No syntax highlighting, no line numbers, no inline decorations | Cannot show widgets or styled content inline |
-| Transcript shows in footer only | Users don't see where text will land | Live transcript appears in a small `max-w-[200px]` box in the footer bar, not at the cursor position in the document |
-| Stale cursor position | If user scrolls/moves cursor during recording, insertion uses pre-recording position | `cursorPositionBeforeRecording` captured once at recording start, never updated |
-| No autosave | Manual save only, risk of lost work | Save triggered by clicking "Save" button in DocumentModal footer |
-| No conflict detection | Last-write-wins on concurrent edits | PATCH endpoint sets `updated_at` but doesn't check it |
-| No collaboration | Single-user only | No presence, no shared cursors, no real-time sync |
-| `insertTranscriptionAtCursor` bypasses undo | Uses `setValue()` instead of `insertTextWithUndo()` | Toolbar actions use `execCommand` for undo; voice insertion does not |
+| Limitation                                  | Impact                                                                               | Details                                                                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Plain `<textarea>`                          | No syntax highlighting, no line numbers, no inline decorations                       | Cannot show widgets or styled content inline                                                                         |
+| Transcript shows in footer only             | Users don't see where text will land                                                 | Live transcript appears in a small `max-w-[200px]` box in the footer bar, not at the cursor position in the document |
+| Stale cursor position                       | If user scrolls/moves cursor during recording, insertion uses pre-recording position | `cursorPositionBeforeRecording` captured once at recording start, never updated                                      |
+| No autosave                                 | Manual save only, risk of lost work                                                  | Save triggered by clicking "Save" button in DocumentModal footer                                                     |
+| No conflict detection                       | Last-write-wins on concurrent edits                                                  | PATCH endpoint sets `updated_at` but doesn't check it                                                                |
+| No collaboration                            | Single-user only                                                                     | No presence, no shared cursors, no real-time sync                                                                    |
+| `insertTranscriptionAtCursor` bypasses undo | Uses `setValue()` instead of `insertTextWithUndo()`                                  | Toolbar actions use `execCommand` for undo; voice insertion does not                                                 |
 
 ### 1.2 DocumentModal.svelte
 
@@ -60,6 +62,7 @@
 **What it is:** A full-featured modal for viewing and editing documents, with a two-column layout (metadata sidebar + editor).
 
 **Key features:**
+
 - Two-column layout: left sidebar (metadata, linked entities, version history, voice notes, activity log) + main content area (RichMarkdownEditor)
 - Version history with diff viewer and restore functionality
 - Breadcrumb navigation for nested document trees
@@ -68,22 +71,24 @@
 - Document tree operations (move, create child)
 
 **Integration with editor:**
+
 ```svelte
 <RichMarkdownEditor
-    bind:value={body}
-    maxLength={50000}
-    fillHeight={true}
-    voiceNoteSource="document-modal"
-    voiceNoteLinkedEntityType={activeDocumentId ? 'document' : ''}
-    voiceNoteLinkedEntityId={activeDocumentId ?? ''}
-    onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
-    onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
+	bind:value={body}
+	maxLength={50000}
+	fillHeight={true}
+	voiceNoteSource="document-modal"
+	voiceNoteLinkedEntityType={activeDocumentId ? 'document' : ''}
+	voiceNoteLinkedEntityId={activeDocumentId ?? ''}
+	onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+	onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
 />
 ```
 
 ### 1.3 Document Save Pipeline
 
 **Current flow:**
+
 ```
 User clicks Save → handleSave() → PATCH /api/onto/documents/{id}
     → Server updates content column
@@ -99,11 +104,11 @@ User clicks Save → handleSave() → PATCH /api/onto/documents/{id}
 
 BuildOS already uses Supabase Realtime in three services:
 
-| Service | Channel Pattern | Event Type | Use Case |
-|---------|----------------|------------|----------|
-| `realtimeProject.service.ts` | `project:{id}` | `postgres_changes` | Live sync of tasks, phases, notes |
-| `realtimeBrief.service.ts` | `brief:{date}:{userId}` | `postgres_changes` | Daily brief generation status |
-| `treeAgentRealtime.service.ts` | `tree-agent:run:{runId}` | `broadcast` | Agent execution events |
+| Service                        | Channel Pattern          | Event Type         | Use Case                          |
+| ------------------------------ | ------------------------ | ------------------ | --------------------------------- |
+| `realtimeProject.service.ts`   | `project:{id}`           | `postgres_changes` | Live sync of tasks, phases, notes |
+| `realtimeBrief.service.ts`     | `brief:{date}:{userId}`  | `postgres_changes` | Daily brief generation status     |
+| `treeAgentRealtime.service.ts` | `tree-agent:run:{runId}` | `broadcast`        | Agent execution events            |
 
 **Common patterns:** Channel subscription with status callbacks, deduplication of local events (2-3 second window), cleanup via `removeChannel()`, browser-only guards.
 
@@ -184,6 +189,7 @@ Each tier is independently shippable and builds on the previous one.
 Add debounced autosave to DocumentModal that PATCHes content after the user stops typing.
 
 **Behavior:**
+
 - 2-second debounce after last keystroke
 - Only saves if content has actually changed (compare with last-saved value)
 - Show save status indicator in header: "Saving..." / "Saved" / "Unsaved changes"
@@ -193,6 +199,7 @@ Add debounced autosave to DocumentModal that PATCHes content after the user stop
 **Implementation location:** `DocumentModal.svelte` (new `$effect` watching `body`, `title`, `description`, `stateKey`)
 
 **Save status states:**
+
 ```
 idle        → User hasn't changed anything since last save
 dirty       → User has unsaved changes
@@ -207,6 +214,7 @@ conflict    → Server version is newer (see 3.2)
 Add optimistic concurrency control to the document PATCH endpoint.
 
 **Mechanism:**
+
 - Include `expected_updated_at` in PATCH request body (the `updated_at` value from when the document was loaded)
 - Server compares `expected_updated_at` against current `updated_at` in database
 - If mismatch: return `409 Conflict` with the current server document
@@ -221,12 +229,14 @@ Add optimistic concurrency control to the document PATCH endpoint.
 Replace `setValue()` in `insertTranscriptionAtCursor()` with `insertTextWithUndo()` (which already exists and uses `execCommand`). This makes voice-inserted text part of the browser's undo stack.
 
 **Current (broken):**
+
 ```typescript
 const newValue = value.slice(0, start) + finalTranscript + value.slice(end);
 setValue(newValue); // Bypasses undo stack
 ```
 
 **Fixed:**
+
 ```typescript
 insertTextWithUndo(start, end, finalTranscript, newCursorPos, newCursorPos);
 ```
@@ -235,14 +245,14 @@ insertTextWithUndo(start, end, finalTranscript, newCursorPos, newCursorPos);
 
 Add standard keyboard shortcuts to the textarea:
 
-| Shortcut | Action |
-|----------|--------|
-| `Cmd/Ctrl+B` | Bold |
-| `Cmd/Ctrl+I` | Italic |
-| `Cmd/Ctrl+K` | Insert link |
-| `Cmd/Ctrl+S` | Save (trigger autosave immediately) |
-| `Tab` | Indent (insert 2 spaces or indent list) |
-| `Shift+Tab` | Outdent |
+| Shortcut     | Action                                  |
+| ------------ | --------------------------------------- |
+| `Cmd/Ctrl+B` | Bold                                    |
+| `Cmd/Ctrl+I` | Italic                                  |
+| `Cmd/Ctrl+K` | Insert link                             |
+| `Cmd/Ctrl+S` | Save (trigger autosave immediately)     |
+| `Tab`        | Indent (insert 2 spaces or indent list) |
+| `Shift+Tab`  | Outdent                                 |
 
 ---
 
@@ -254,17 +264,17 @@ Add standard keyboard shortcuts to the textarea:
 
 ### 4.1 Why CodeMirror 6
 
-| Criteria | textarea (current) | CodeMirror 6 | TipTap/ProseMirror |
-|----------|-------------------|-------------|-------------------|
-| Markdown fidelity | Lossless (plain text) | Lossless (plain text) | Lossy (schema conversion) |
-| Syntax highlighting | None | Built-in via `@codemirror/lang-markdown` | N/A (rich text) |
-| Inline widgets | Impossible | `Decoration.widget()` API | NodeViews |
-| Collaboration | None | `y-codemirror.next` (mature) | `y-prosemirror` (mature) |
-| Svelte 5 support | Native | `svelte-codemirror-editor` v2.x | No official binding |
-| Line numbers | None | Built-in | N/A |
-| Performance (large docs) | Good | Excellent (virtual rendering) | Good |
-| Undo/redo | Browser native (fragile) | Built-in history extension | Built-in |
-| Best comparison | Notepad | VS Code | Notion |
+| Criteria                 | textarea (current)       | CodeMirror 6                             | TipTap/ProseMirror        |
+| ------------------------ | ------------------------ | ---------------------------------------- | ------------------------- |
+| Markdown fidelity        | Lossless (plain text)    | Lossless (plain text)                    | Lossy (schema conversion) |
+| Syntax highlighting      | None                     | Built-in via `@codemirror/lang-markdown` | N/A (rich text)           |
+| Inline widgets           | Impossible               | `Decoration.widget()` API                | NodeViews                 |
+| Collaboration            | None                     | `y-codemirror.next` (mature)             | `y-prosemirror` (mature)  |
+| Svelte 5 support         | Native                   | `svelte-codemirror-editor` v2.x          | No official binding       |
+| Line numbers             | None                     | Built-in                                 | N/A                       |
+| Performance (large docs) | Good                     | Excellent (virtual rendering)            | Good                      |
+| Undo/redo                | Browser native (fragile) | Built-in history extension               | Built-in                  |
+| Best comparison          | Notepad                  | VS Code                                  | Notion                    |
 
 **Decision: CodeMirror 6** - aligns with "VS Code Live" vision, markdown-native, clean Yjs integration path.
 
@@ -296,6 +306,7 @@ RichMarkdownEditor.svelte
 ### 4.3 Markdown Syntax Highlighting
 
 Use `@codemirror/lang-markdown` for:
+
 - Headings styled with larger/bolder text
 - Bold/italic rendered inline
 - Code blocks with language-specific highlighting
@@ -311,19 +322,19 @@ Create two CodeMirror themes that match Inkprint design tokens:
 ```typescript
 // Light theme
 const inkprintLight = EditorView.theme({
-  '&': {
-    backgroundColor: 'var(--card)',
-    color: 'var(--foreground)',
-  },
-  '.cm-cursor': { borderLeftColor: 'var(--foreground)' },
-  '.cm-selectionBackground': { backgroundColor: 'var(--accent)/.15' },
-  '.cm-gutters': {
-    backgroundColor: 'var(--muted)',
-    color: 'var(--muted-foreground)',
-    borderRight: '1px solid var(--border)',
-  },
-  // ... markdown-specific styles
-})
+	'&': {
+		backgroundColor: 'var(--card)',
+		color: 'var(--foreground)'
+	},
+	'.cm-cursor': { borderLeftColor: 'var(--foreground)' },
+	'.cm-selectionBackground': { backgroundColor: 'var(--accent)/.15' },
+	'.cm-gutters': {
+		backgroundColor: 'var(--muted)',
+		color: 'var(--muted-foreground)',
+		borderRight: '1px solid var(--border)'
+	}
+	// ... markdown-specific styles
+});
 ```
 
 Dark theme follows the same pattern with `dark:` semantic tokens.
@@ -334,14 +345,14 @@ The existing toolbar buttons currently call functions like `surroundSelection('*
 
 ```typescript
 function toggleBold(view: EditorView): boolean {
-    const { from, to } = view.state.selection.main;
-    const selected = view.state.sliceDoc(from, to);
-    const replacement = `**${selected || 'text'}**`;
-    view.dispatch({
-        changes: { from, to, insert: replacement },
-        selection: { anchor: from + 2, head: from + 2 + (selected || 'text').length }
-    });
-    return true;
+	const { from, to } = view.state.selection.main;
+	const selected = view.state.sliceDoc(from, to);
+	const replacement = `**${selected || 'text'}**`;
+	view.dispatch({
+		changes: { from, to, insert: replacement },
+		selection: { anchor: from + 2, head: from + 2 + (selected || 'text').length }
+	});
+	return true;
 }
 ```
 
@@ -366,6 +377,7 @@ CodeMirror 6 manages its own state. We need bidirectional sync with the `value` 
 Each document gets a `Y.Doc` containing a `Y.Text` type that syncs with the CodeMirror editor.
 
 **Setup per document session:**
+
 ```
 1. Open DocumentModal for document {id}
 2. Create Y.Doc
@@ -418,11 +430,13 @@ Yjs includes an Awareness protocol that the `yCollab` extension renders automati
 The Yjs document state needs to survive all clients disconnecting:
 
 **Option A - Inline snapshot (recommended for v1):**
+
 - On every autosave (debounced), also persist `Y.encodeStateAsUpdate(ydoc)` as a base64 string in a new `yjs_state` column on `onto_documents`
 - On document load: if `yjs_state` exists, apply it to a fresh `Y.Doc` instead of setting plain text
 - Fallback: if `yjs_state` is missing/corrupt, initialize from `content` column
 
 **Option B - Separate storage (future):**
+
 - Store Yjs state in a dedicated `document_yjs_state` table
 - Enables incremental updates instead of full snapshots
 - Better for large documents with many collaborators
@@ -432,12 +446,14 @@ The Yjs document state needs to survive all clients disconnecting:
 With Yjs, conflicts are resolved automatically by the CRDT algorithm. However, we need to handle the transition:
 
 **Existing documents (no Yjs state):**
+
 1. Load `content` from database
 2. Initialize `Y.Doc` with content as initial text
 3. First edit creates Yjs state going forward
 4. Autosave writes both `content` (plain text) and `yjs_state` (CRDT)
 
 **Mixed clients (one with Yjs, one without):**
+
 - The `content` column always reflects the latest plain text (written by autosave)
 - Non-collaborative clients (older code, API writes) can still read/write `content`
 - On next collaborative session open, `yjs_state` is rehydrated and content is reconciled
@@ -445,6 +461,7 @@ With Yjs, conflicts are resolved automatically by the CRDT algorithm. However, w
 ### 5.6 Document Locking (Optional Safety Net)
 
 For the transition period, consider lightweight document locking:
+
 - When a user opens a document for editing, register a "presence" record
 - Show other users who is currently editing: "Alice is also editing this document"
 - No hard locks - just awareness
@@ -462,6 +479,7 @@ This is the "nice little character with a description saying it's transcribing r
 Since Tier 1 keeps the `<textarea>`, we use an overlay approach:
 
 **Mechanism:**
+
 1. When recording starts, capture cursor position (already done)
 2. Create a hidden mirror `<div>` with identical styling to the textarea
 3. Copy text up to cursor position into the mirror
@@ -478,6 +496,7 @@ Since Tier 1 keeps the `<textarea>`, we use an overlay approach:
 With CodeMirror 6, this becomes clean and native:
 
 **Mechanism:**
+
 1. Define a `TranscribingWidget` extending `WidgetType`
 2. Create a `StateField` that manages a `DecorationSet` containing the widget
 3. When recording starts: dispatch `addTranscribingWidget` effect at cursor position
@@ -486,6 +505,7 @@ With CodeMirror 6, this becomes clean and native:
 6. When recording stops: dispatch `removeTranscribingWidget` effect, insert final text via CM6 transaction
 
 **Widget appearance:**
+
 ```
 ... existing document text |[cursor] [animated-dot] Transcribing... "partial transcript here" | more text ...
 ```
@@ -493,6 +513,7 @@ With CodeMirror 6, this becomes clean and native:
 The widget sits inline with the text at the exact cursor position. It's visible to the user exactly where their text will appear.
 
 **StateField definition (conceptual):**
+
 ```
 StateField<DecorationSet>
 ├── Effects:
@@ -535,26 +556,27 @@ No new packages needed. All changes are within existing components.
 
 ### Tier 2
 
-| Package | Version | Purpose | Size |
-|---------|---------|---------|------|
-| `codemirror` | ^6.0.0 | Core editor bundle | ~150KB min+gz |
-| `@codemirror/lang-markdown` | ^6.5.0 | Markdown language support | ~15KB |
-| `@codemirror/theme-one-dark` | ^6.0.0 | Dark theme (base for Inkprint dark) | ~3KB |
-| `@lezer/markdown` | (peer dep) | Markdown parser | ~12KB |
+| Package                      | Version    | Purpose                             | Size          |
+| ---------------------------- | ---------- | ----------------------------------- | ------------- |
+| `codemirror`                 | ^6.0.0     | Core editor bundle                  | ~150KB min+gz |
+| `@codemirror/lang-markdown`  | ^6.5.0     | Markdown language support           | ~15KB         |
+| `@codemirror/theme-one-dark` | ^6.0.0     | Dark theme (base for Inkprint dark) | ~3KB          |
+| `@lezer/markdown`            | (peer dep) | Markdown parser                     | ~12KB         |
 
 **Total added bundle:** ~180KB min+gzip (loaded only when editor is mounted, can be code-split)
 
 ### Tier 3 (Additional)
 
-| Package | Version | Purpose | Size |
-|---------|---------|---------|------|
-| `yjs` | ^13.6.0 | CRDT library | ~30KB min+gz |
-| `y-codemirror.next` | ^0.3.5 | Yjs <-> CM6 binding | ~5KB |
-| `lib0` | (peer dep of yjs) | Utility library | ~10KB |
+| Package             | Version           | Purpose             | Size         |
+| ------------------- | ----------------- | ------------------- | ------------ |
+| `yjs`               | ^13.6.0           | CRDT library        | ~30KB min+gz |
+| `y-codemirror.next` | ^0.3.5            | Yjs <-> CM6 binding | ~5KB         |
+| `lib0`              | (peer dep of yjs) | Utility library     | ~10KB        |
 
 **Total added bundle (Tier 3):** ~45KB min+gzip on top of Tier 2
 
 **Not needed:**
+
 - `svelte-codemirror-editor` - we'll integrate CM6 directly for full extension control
 - `y-supabase` - we'll write a custom ~200-line provider
 - `y-websocket` / `y-webrtc` - using Supabase Realtime instead
@@ -568,20 +590,21 @@ No new packages needed. All changes are within existing components.
 `RichMarkdownEditor.svelte` is the migration boundary. Its external interface (props, events, bindables) stays the same across all tiers. DocumentModal and other consumers should not need changes.
 
 **Contract to preserve:**
+
 ```typescript
 interface Props {
-    value?: string;              // Two-way bindable, markdown string
-    maxLength?: number;
-    fillHeight?: boolean;
-    enableVoice?: boolean;
-    voiceNoteSource?: string;
-    voiceNoteLinkedEntityType?: string;
-    voiceNoteLinkedEntityId?: string;
-    onVoiceNoteSegmentSaved?: (note: VoiceNote) => void;
-    onVoiceNoteSegmentError?: (error: string) => void;
-    isRecording?: boolean;       // Bindable
-    isTranscribing?: boolean;    // Bindable
-    // ... other existing props unchanged
+	value?: string; // Two-way bindable, markdown string
+	maxLength?: number;
+	fillHeight?: boolean;
+	enableVoice?: boolean;
+	voiceNoteSource?: string;
+	voiceNoteLinkedEntityType?: string;
+	voiceNoteLinkedEntityId?: string;
+	onVoiceNoteSegmentSaved?: (note: VoiceNote) => void;
+	onVoiceNoteSegmentError?: (error: string) => void;
+	isRecording?: boolean; // Bindable
+	isTranscribing?: boolean; // Bindable
+	// ... other existing props unchanged
 }
 ```
 
@@ -602,6 +625,7 @@ interface Props {
 ### 8.4 File Changes by Tier
 
 **Tier 1:**
+
 ```
 MODIFY  apps/web/src/lib/components/ui/RichMarkdownEditor.svelte
             - Fix insertTranscriptionAtCursor to use insertTextWithUndo
@@ -615,6 +639,7 @@ MODIFY  apps/web/src/routes/api/onto/documents/[id]/+server.ts
 ```
 
 **Tier 2:**
+
 ```
 CREATE  apps/web/src/lib/components/ui/CodeMirrorEditor.svelte
             - New CM6-based editor component
@@ -629,6 +654,7 @@ MODIFY  apps/web/src/lib/components/ui/RichMarkdownEditor.svelte
 ```
 
 **Tier 3:**
+
 ```
 CREATE  apps/web/src/lib/services/collaboration/
             - supabase-yjs-provider.ts (custom Yjs provider)
@@ -646,31 +672,32 @@ MIGRATE  Database: add yjs_state column to onto_documents
 
 ## 9. Open Questions
 
-| # | Question | Context | Impact |
-|---|----------|---------|--------|
-| 1 | **Should Tier 2 include Obsidian-style live preview?** | Hiding markdown syntax on unfocused lines. Adds ~1 week of custom ViewPlugin work. | UX polish vs. scope |
-| 2 | **Yjs state persistence: inline or separate table?** | Inline (`yjs_state` column) is simpler. Separate table allows incremental updates. | Database design |
-| 3 | **Max concurrent collaborators per document?** | Supabase Realtime broadcast supports ~100 clients per channel. Yjs itself has no hard limit. | Architecture constraints |
-| 4 | **Should non-CM6 clients (API, agents) be able to write to collaborative documents?** | If yes, need reconciliation logic when Yjs state and content column diverge. | Complexity |
-| 5 | **Voice transcription during collaboration: should other users see the "Transcribing..." widget?** | Requires broadcasting voice state via Awareness protocol. Cool but adds complexity. | Feature scope |
-| 6 | **Should we pursue Tier 1 textarea overlay for voice-at-cursor, or skip to Tier 2?** | Tier 1 overlay is hacky and fragile. Tier 2 does it cleanly. If Tier 2 is happening soon, maybe skip Tier 1 overlay. | Prioritization |
-| 7 | **Line numbers: always on, or toggleable?** | VS Code shows them by default. Some markdown editors hide them. | UX preference |
-| 8 | **Code-split the CM6 bundle?** | ~180KB is significant. Could lazy-load when editor mounts. DocumentModal already lazy-loads AgentChatModal. | Performance |
+| #   | Question                                                                                           | Context                                                                                                              | Impact                   |
+| --- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 1   | **Should Tier 2 include Obsidian-style live preview?**                                             | Hiding markdown syntax on unfocused lines. Adds ~1 week of custom ViewPlugin work.                                   | UX polish vs. scope      |
+| 2   | **Yjs state persistence: inline or separate table?**                                               | Inline (`yjs_state` column) is simpler. Separate table allows incremental updates.                                   | Database design          |
+| 3   | **Max concurrent collaborators per document?**                                                     | Supabase Realtime broadcast supports ~100 clients per channel. Yjs itself has no hard limit.                         | Architecture constraints |
+| 4   | **Should non-CM6 clients (API, agents) be able to write to collaborative documents?**              | If yes, need reconciliation logic when Yjs state and content column diverge.                                         | Complexity               |
+| 5   | **Voice transcription during collaboration: should other users see the "Transcribing..." widget?** | Requires broadcasting voice state via Awareness protocol. Cool but adds complexity.                                  | Feature scope            |
+| 6   | **Should we pursue Tier 1 textarea overlay for voice-at-cursor, or skip to Tier 2?**               | Tier 1 overlay is hacky and fragile. Tier 2 does it cleanly. If Tier 2 is happening soon, maybe skip Tier 1 overlay. | Prioritization           |
+| 7   | **Line numbers: always on, or toggleable?**                                                        | VS Code shows them by default. Some markdown editors hide them.                                                      | UX preference            |
+| 8   | **Code-split the CM6 bundle?**                                                                     | ~180KB is significant. Could lazy-load when editor mounts. DocumentModal already lazy-loads AgentChatModal.          | Performance              |
 
 ---
 
 ## Appendix A: Reference Implementations
 
-| Project | Stack | Relevance |
-|---------|-------|-----------|
-| [Obsidian](https://obsidian.md/) | CodeMirror 6 + custom decorations | Live preview markdown editing |
-| [Yjs CodeMirror Demo](https://demos.yjs.dev/codemirror.next/codemirror.next.html) | CM6 + y-codemirror.next + y-websocket | Minimal collaborative CM6 setup |
-| [codemirror-rich-markdoc](https://github.com/segphault/codemirror-rich-markdoc) | CM6 + custom ViewPlugin | Hybrid rich-text/markdown editing |
-| [HackMD](https://hackmd.io/) | CodeMirror + collaborative | Production collaborative markdown |
+| Project                                                                           | Stack                                 | Relevance                         |
+| --------------------------------------------------------------------------------- | ------------------------------------- | --------------------------------- |
+| [Obsidian](https://obsidian.md/)                                                  | CodeMirror 6 + custom decorations     | Live preview markdown editing     |
+| [Yjs CodeMirror Demo](https://demos.yjs.dev/codemirror.next/codemirror.next.html) | CM6 + y-codemirror.next + y-websocket | Minimal collaborative CM6 setup   |
+| [codemirror-rich-markdoc](https://github.com/segphault/codemirror-rich-markdoc)   | CM6 + custom ViewPlugin               | Hybrid rich-text/markdown editing |
+| [HackMD](https://hackmd.io/)                                                      | CodeMirror + collaborative            | Production collaborative markdown |
 
 ## Appendix B: Database Schema Reference
 
 **`onto_documents` (current columns):**
+
 ```sql
 id              uuid PRIMARY KEY
 project_id      uuid REFERENCES onto_projects(id)
@@ -689,6 +716,7 @@ search_vector   tsvector
 ```
 
 **`onto_document_versions` (current columns):**
+
 ```sql
 id              uuid PRIMARY KEY
 document_id     uuid REFERENCES onto_documents(id)
@@ -700,6 +728,7 @@ created_at      timestamptz
 ```
 
 **Tier 3 addition:**
+
 ```sql
 ALTER TABLE onto_documents ADD COLUMN yjs_state bytea;
 -- Binary Yjs document state, used to hydrate Y.Doc on load

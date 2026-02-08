@@ -159,9 +159,15 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 			includeContentParam === null
 				? true
 				: includeContentParam === 'true' || includeContentParam === '1';
+		const includeDocumentsParam = url.searchParams.get('include_documents');
+		const includeDocuments =
+			includeDocumentsParam === null
+				? true
+				: includeDocumentsParam === 'true' || includeDocumentsParam === '1';
 
 		const { structure, documents, unlinked } = await getDocTree(supabase, id, {
-			includeContent
+			includeContent,
+			includeDocuments
 		});
 
 		return ApiResponse.success({ structure, documents, unlinked });
