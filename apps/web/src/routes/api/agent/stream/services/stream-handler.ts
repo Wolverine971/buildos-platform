@@ -41,6 +41,7 @@ import {
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createLogger } from '$lib/utils/logger';
 import { v4 as uuidv4 } from 'uuid';
+import { getDocTree } from '$lib/services/ontology/doc-structure.service';
 import type {
 	AgentSessionMetadata,
 	StreamRequest,
@@ -58,6 +59,7 @@ import {
 } from '../utils';
 import { createSessionManager } from './session-manager';
 import { createMessagePersister } from './message-persister';
+import { buildDocStructureCacheKey } from '$lib/services/agentic-chat/context-prewarm';
 
 const logger = createLogger('StreamHandler');
 
@@ -402,6 +404,13 @@ export class StreamHandler {
 						toolResults: state.toolResults
 					});
 				}
+
+				await this.refreshDocStructureCacheIfNeeded({
+					toolResults: state.toolResults,
+					state,
+					sessionMetadata,
+					fallbackProjectId: resolvedFocus?.projectId ?? resolvedEntityId ?? null
+				});
 
 				// Generate and send refreshed last turn context
 				// Build partial message objects and cast to satisfy ChatMessage[]
@@ -906,8 +915,102 @@ export class StreamHandler {
 			for (const entity of extractedEntities) {
 				existing.set(entityKey(entity), entity);
 			}
-			agentState.current_understanding.entities = Array.from(existing.values());
+		agentState.current_understanding.entities = Array.from(existing.values());
+	}
+
+	private extractProjectIdFromToolResult(result: ToolResultData): string | null {
+		const payload = result.result as Record<string, any> | null | undefined;
+		if (!payload || typeof payload !== 'object') return null;
+
+		const candidates = [
+			payload.project_id,
+			payload.projectId,
+			payload.project?.id,
+			payload.document?.project_id,
+			payload.document?.projectId,
+			payload.updatedDocument?.project_id,
+			payload.updatedDocument?.projectId,
+			payload.goal?.project_id,
+			payload.goal?.projectId,
+			payload.plan?.project_id,
+			payload.plan?.projectId,
+			payload.task?.project_id,
+			payload.task?.projectId,
+			payload.milestone?.project_id,
+			payload.milestone?.projectId
+		];
+
+		for (const candidate of candidates) {
+			if (typeof candidate === 'string' && candidate.length > 0) {
+				return candidate;
+			}
 		}
+
+		return null;
+	}
+
+	private async refreshDocStructureCacheIfNeeded(params: {
+		toolResults: ToolResultData[];
+		state: StreamState;
+		sessionMetadata: AgentSessionMetadata;
+		fallbackProjectId?: string | null;
+	}): Promise<void> {
+		const { toolResults, state, sessionMetadata, fallbackProjectId } = params;
+		if (!toolResults || toolResults.length === 0) return;
+
+		const mutatingTools = new Set([
+			'create_onto_document',
+			'update_onto_document',
+			'delete_onto_document',
+			'create_task_document'
+		]);
+
+		const relevantResults = toolResults.filter(
+			(result) =>
+				result.success !== false &&
+				typeof result.tool_name === 'string' &&
+				mutatingTools.has(result.tool_name)
+		);
+
+		if (relevantResults.length === 0) return;
+
+		let projectId: string | null = null;
+		for (const result of relevantResults) {
+			projectId = this.extractProjectIdFromToolResult(result) ?? projectId;
+			if (projectId) break;
+		}
+
+		if (!projectId && fallbackProjectId) {
+			projectId = fallbackProjectId;
+		}
+
+		if (!projectId) return;
+
+		try {
+			const tree = await getDocTree(this.supabase, projectId, {
+				includeDocuments: false,
+				includeContent: false
+			});
+
+			const cache = {
+				cacheKey: buildDocStructureCacheKey(projectId),
+				loadedAt: Date.now(),
+				projectId,
+				structure: tree.structure,
+				documents: {},
+				unlinked: []
+			};
+
+			sessionMetadata.docStructureCache = cache;
+			state.pendingMetadataUpdates.docStructureCache = cache;
+			state.hasPendingMetadataUpdate = true;
+		} catch (error) {
+			logger.warn('Failed to refresh doc_structure cache after tool execution', {
+				error,
+				projectId
+			});
+		}
+	}
 
 		const extractedDependencies = this.extractDependenciesFromPayload(payload);
 		if (extractedDependencies.length > 0) {

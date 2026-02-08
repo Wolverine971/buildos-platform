@@ -21,7 +21,10 @@ import {
 	assertEntityRefsInProject,
 	toParentRefs
 } from '$lib/services/ontology/auto-organizer.service';
-import { removeDocumentFromTree } from '$lib/services/ontology/doc-structure.service';
+import {
+	removeDocumentFromTree,
+	updateDocNodeMetadata
+} from '$lib/services/ontology/doc-structure.service';
 import {
 	createOrMergeDocumentVersion,
 	toDocumentSnapshot
@@ -425,6 +428,39 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 					skipContainment: !hasDocumentConnection
 				}
 			});
+		}
+
+		const shouldSyncDocStructure =
+			Object.prototype.hasOwnProperty.call(updatePayload, 'title') ||
+			Object.prototype.hasOwnProperty.call(updatePayload, 'description');
+
+		if (shouldSyncDocStructure) {
+			try {
+				await updateDocNodeMetadata(
+					locals.supabase,
+					document.project_id,
+					documentId,
+					{
+						title: updatedDocument.title ?? null,
+						description: updatedDocument.description ?? null
+					},
+					actorId
+				);
+			} catch (syncError) {
+				console.error('[Document API] Failed to sync doc_structure metadata:', syncError);
+				await logOntologyApiError({
+					supabase: locals.supabase,
+					error: syncError,
+					endpoint: `/api/onto/documents/${documentId}`,
+					method: 'PATCH',
+					userId: session.user.id,
+					projectId: document.project_id,
+					entityType: 'project',
+					entityId: documentId,
+					operation: 'doc_structure_metadata_sync',
+					metadata: { nonFatal: true }
+				});
+			}
 		}
 
 		// Log activity async (non-blocking)

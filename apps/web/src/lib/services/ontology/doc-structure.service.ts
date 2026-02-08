@@ -46,6 +46,11 @@ export interface RemoveDocumentOptions {
 	mode?: 'cascade' | 'promote';
 }
 
+export interface UpdateDocMetadataOptions {
+	title?: string | null;
+	description?: string | null;
+}
+
 // ============================================
 // STRUCTURE NORMALIZATION
 // ============================================
@@ -787,6 +792,85 @@ export async function moveDocument(
 	};
 
 	return updateDocStructure(supabase, projectId, newStructure, 'move', actorId);
+}
+
+/**
+ * Update cached title/description metadata for a document node in the tree.
+ * No-ops if the document is not present or values are unchanged.
+ */
+export async function updateDocNodeMetadata(
+	supabase: SupabaseClient<Database>,
+	projectId: string,
+	docId: string,
+	metadata: UpdateDocMetadataOptions,
+	actorId?: string
+): Promise<DocStructure | null> {
+	if (metadata.title === undefined && metadata.description === undefined) {
+		return null;
+	}
+
+	const { structure } = await getDocTree(supabase, projectId, {
+		includeDocuments: false
+	});
+
+	const updateNodes = (
+		nodes: DocTreeNode[]
+	): { nodes: DocTreeNode[]; changed: boolean } => {
+		let changed = false;
+		const updatedNodes = nodes.map((node) => {
+			if (!node || typeof node.id !== 'string') return node;
+			let nodeChanged = false;
+			let nextNode = node;
+
+			if (node.id === docId) {
+				const nextTitle = metadata.title !== undefined ? metadata.title : node.title;
+				const nextDescription =
+					metadata.description !== undefined ? metadata.description : node.description;
+
+				if (nextTitle !== node.title || nextDescription !== node.description) {
+					nodeChanged = true;
+					nextNode = {
+						...node,
+						...(metadata.title !== undefined ? { title: metadata.title } : {}),
+						...(metadata.description !== undefined
+							? { description: metadata.description }
+							: {})
+					};
+				}
+			}
+
+			if (node.children && node.children.length > 0) {
+				const childResult = updateNodes(node.children);
+				if (childResult.changed) {
+					nodeChanged = true;
+					if (nextNode === node) {
+						nextNode = { ...node };
+					}
+					nextNode.children = childResult.nodes;
+				}
+			}
+
+			if (nodeChanged) {
+				changed = true;
+			}
+
+			return nextNode;
+		});
+
+		return { nodes: changed ? updatedNodes : nodes, changed };
+	};
+
+	const updated = updateNodes(structure.root);
+	if (!updated.changed) {
+		return null;
+	}
+
+	const newStructure: DocStructure = {
+		version: structure.version,
+		root: updated.nodes
+	};
+
+	return updateDocStructure(supabase, projectId, newStructure, 'reorganize', actorId);
 }
 
 /**
