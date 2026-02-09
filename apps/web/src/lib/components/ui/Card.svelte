@@ -46,9 +46,9 @@
 	// Padding styles - optimized for high information density (8px grid system)
 	const paddingClasses: Record<CardPadding, string> = {
 		none: '',
-		sm: 'p-3', // 12px
-		md: 'p-4', // 16px
-		lg: 'p-6' // 24px
+		sm: 'p-2.5 sm:p-3', // 10px mobile, 12px tablet+
+		md: 'p-3 sm:p-4', // 12px mobile, 16px tablet+
+		lg: 'p-4 sm:p-6' // 16px mobile, 24px tablet+
 	};
 
 	// Texture classes - Inkprint semantic textures

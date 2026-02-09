@@ -4,7 +4,7 @@
 
 > Living document tracking all engagement accounts with last visited dates.
 > Updated automatically during each Twitter warmup scan.
-> Last Updated: 2026-02-07
+> Last Updated: 2026-02-09
 
 **Related Docs:**
 
@@ -28,17 +28,17 @@
 
 High-priority accounts. Scan in every warmup session.
 
-| Handle                                  | Name            | Followers | Last Visited | Notes                                                        |
-| --------------------------------------- | --------------- | --------- | ------------ | ------------------------------------------------------------ |
-| [@levelsio](https://x.com/levelsio)     | Pieter Levels   | 817.3K    | 2026-02-07   | Indie hacker GOAT, building in public                        |
-| [@shaanvp](https://x.com/ShaanVP)       | Shaan Puri      | 457.8K    | 2026-01-24   | My First Million, startup wisdom                             |
-| [@thesamparr](https://x.com/thesamparr) | Sam Parr        | 319K      | ---          | MFM co-host, The Hustle                                      |
-| [@lennysan](https://x.com/lennysan)     | Lenny Rachitsky | 249K      | ---          | Product leadership, scaling                                  |
-| [@danshipper](https://x.com/danshipper) | Dan Shipper     | 90.7K     | 2026-02-07   | AI productivity, Every - "Compound Engineering"              |
-| [@swyx](https://x.com/swyx)             | swyx            | 112K      | ---          | AI Engineer, Latent Space                                    |
-| [@simonw](https://x.com/simonw)         | Simon Willison  | 144.7K    | 2026-02-07   | Datasette, LLM writing, "Software Factory"                   |
-| [@arvidkahl](https://x.com/arvidkahl)   | Arvid Kahl      | 96K       | ---          | Zero to Sold, bootstrapping                                  |
-| [@dexhorthy](https://x.com/dexhorthy)   | Dexter Horthy   | 11.8K     | 2026-02-07   | COINED "Context Engineering" - Getting Latent Space podcast! |
+| Handle                                  | Name            | Followers | Last Visited | Notes                                                                  |
+| --------------------------------------- | --------------- | --------- | ------------ | ---------------------------------------------------------------------- |
+| [@levelsio](https://x.com/levelsio)     | Pieter Levels   | 820.1K    | 2026-02-09   | Indie hacker GOAT, building in public                                  |
+| [@shaanvp](https://x.com/ShaanVP)       | Shaan Puri      | 457.8K    | 2026-01-24   | My First Million, startup wisdom                                       |
+| [@thesamparr](https://x.com/thesamparr) | Sam Parr        | 319K      | ---          | MFM co-host, The Hustle                                                |
+| [@lennysan](https://x.com/lennysan)     | Lenny Rachitsky | 249K      | ---          | Product leadership, scaling                                            |
+| [@danshipper](https://x.com/danshipper) | Dan Shipper     | 91.8K     | 2026-02-09   | AI productivity, Every - "Compound Engineering"                        |
+| [@swyx](https://x.com/swyx)             | swyx            | 112K      | ---          | AI Engineer, Latent Space                                              |
+| [@simonw](https://x.com/simonw)         | Simon Willison  | 145K      | 2026-02-09   | Datasette, LLM writing, "AI Doesn't Reduce Work" HBR                   |
+| [@arvidkahl](https://x.com/arvidkahl)   | Arvid Kahl      | 96K       | ---          | Zero to Sold, bootstrapping                                            |
+| [@dexhorthy](https://x.com/dexhorthy)   | Dexter Horthy   | 11.8K     | 2026-02-09   | COINED "Context Engineering" - "AI That Works" podcast @ hlyr.dev/aitw |
 
 ---
 
@@ -46,29 +46,29 @@ High-priority accounts. Scan in every warmup session.
 
 **Priority:** These accounts are building with or creating Claude Code. Engage strategically.
 
-| Handle                                      | Name               | Followers | Last Visited | Notes                                                       |
-| ------------------------------------------- | ------------------ | --------- | ------------ | ----------------------------------------------------------- |
-| [@bcherny](https://x.com/bcherny)           | Boris Cherny       | 245.4K    | 2026-02-07   | **Claude Code creator! Fast mode Opus 4.6 launched today!** |
-| [@trq212](https://x.com/trq212)             | Thorsten Ball      | 46.2K     | 2026-01-13   | **Anthropic Claude Code team!**                             |
-| [@mckaywrigley](https://x.com/mckaywrigley) | Mckay Wrigley      | 217K      | ---          | AI product builder, Chatbot UI                              |
-| [@skirano](https://x.com/skirano)           | Sawyer Hood        | 31K       | ---          | Cursor/AI dev                                               |
-| [@dejavucoder](https://x.com/dejavucoder)   | Yoav Gur           | 22.9K     | 2026-01-13   | Claude Code guide author                                    |
-| [@mitchellh](https://x.com/mitchellh)       | Mitchell Hashimoto | 10K       | 2026-01-13   | HashiCorp founder, AI quality                               |
-| [@lenadroid](https://x.com/lenadroid)       | Lena Hall          | 20.9K     | 2026-01-13   | DevRel @ Akamai, context eng educator                       |
-| [@DmytroKrasun](https://x.com/DmytroKrasun) | Dmytro Krasun      | 28K       | 2026-01-13   | ScreenshotOne, AI tools                                     |
+| Handle                                      | Name               | Followers | Last Visited | Notes                                                    |
+| ------------------------------------------- | ------------------ | --------- | ------------ | -------------------------------------------------------- |
+| [@bcherny](https://x.com/bcherny)           | Boris Cherny       | 247.7K    | 2026-02-09   | **Claude Code creator! Fast mode Opus 4.6 (266K views)** |
+| [@trq212](https://x.com/trq212)             | Thorsten Ball      | 46.2K     | 2026-01-13   | **Anthropic Claude Code team!**                          |
+| [@mckaywrigley](https://x.com/mckaywrigley) | Mckay Wrigley      | 217K      | ---          | AI product builder, Chatbot UI                           |
+| [@skirano](https://x.com/skirano)           | Sawyer Hood        | 31K       | ---          | Cursor/AI dev                                            |
+| [@dejavucoder](https://x.com/dejavucoder)   | Yoav Gur           | 22.9K     | 2026-01-13   | Claude Code guide author                                 |
+| [@mitchellh](https://x.com/mitchellh)       | Mitchell Hashimoto | 10K       | 2026-01-13   | HashiCorp founder, AI quality                            |
+| [@lenadroid](https://x.com/lenadroid)       | Lena Hall          | 20.9K     | 2026-01-13   | DevRel @ Akamai, context eng educator                    |
+| [@DmytroKrasun](https://x.com/DmytroKrasun) | Dmytro Krasun      | 28K       | 2026-01-13   | ScreenshotOne, AI tools                                  |
 
 ---
 
 ## Context Engineering - Own This Space
 
-| Handle                                        | Name             | Followers | Last Visited | Notes                                       |
-| --------------------------------------------- | ---------------- | --------- | ------------ | ------------------------------------------- |
-| [@dexhorthy](https://x.com/dexhorthy)         | Dexter Horthy    | 11.8K     | 2026-02-07   | Coined term - Getting Latent Space podcast! |
-| [@datachaz](https://x.com/datachaz)           | Chaz Acheronti   | 149K      | ---          | 16-page Claude guide author                 |
-| [@fchollet](https://x.com/fchollet)           | Francois Chollet | 596K      | ---          | Keras creator, ARC-AGI                      |
-| [@drjimfan](https://x.com/drjimfan)           | Jim Fan          | 346K      | ---          | NVIDIA Robotics                             |
-| [@jeremyphoward](https://x.com/jeremyphoward) | Jeremy Howard    | 268K      | ---          | fast.ai                                     |
-| [@\_philschmid](https://x.com/_philschmid)    | Philipp Schmid   | 54K       | ---          | Google DeepMind                             |
+| Handle                                        | Name             | Followers | Last Visited | Notes                                                 |
+| --------------------------------------------- | ---------------- | --------- | ------------ | ----------------------------------------------------- |
+| [@dexhorthy](https://x.com/dexhorthy)         | Dexter Horthy    | 11.8K     | 2026-02-09   | Coined term - "AI That Works" podcast @ hlyr.dev/aitw |
+| [@datachaz](https://x.com/datachaz)           | Charly Wargnier  | 154.4K    | 2026-02-08   | Clawbot/OpenClaw tinkerer, ex-Streamlit               |
+| [@fchollet](https://x.com/fchollet)           | Francois Chollet | 596K      | ---          | Keras creator, ARC-AGI                                |
+| [@drjimfan](https://x.com/drjimfan)           | Jim Fan          | 346K      | ---          | NVIDIA Robotics                                       |
+| [@jeremyphoward](https://x.com/jeremyphoward) | Jeremy Howard    | 268K      | ---          | fast.ai                                               |
+| [@\_philschmid](https://x.com/_philschmid)    | Philipp Schmid   | 54K       | ---          | Google DeepMind                                       |
 
 ---
 

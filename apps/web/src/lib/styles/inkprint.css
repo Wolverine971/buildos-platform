@@ -464,8 +464,10 @@
 	transform: translateY(0);
 }
 
-.pressable:hover {
-	opacity: 0.95;
+@media (hover: hover) {
+	.pressable:hover {
+		opacity: 0.95;
+	}
 }
 
 .pressable:active {

@@ -109,24 +109,30 @@
 		@apply transition-transform-gpu;
 	}
 
-	.hover-scale-sm:hover:not(:disabled) {
-		transform: scale(1.02) translateZ(0);
+	@media (hover: hover) {
+		.hover-scale-sm:hover:not(:disabled) {
+			transform: scale(1.02) translateZ(0);
+		}
 	}
 
 	.hover-scale {
 		@apply transition-transform-gpu;
 	}
 
-	.hover-scale:hover:not(:disabled) {
-		transform: scale(1.05) translateZ(0);
+	@media (hover: hover) {
+		.hover-scale:hover:not(:disabled) {
+			transform: scale(1.05) translateZ(0);
+		}
 	}
 
 	.hover-scale-lg {
 		@apply transition-transform-gpu;
 	}
 
-	.hover-scale-lg:hover:not(:disabled) {
-		transform: scale(1.08) translateZ(0);
+	@media (hover: hover) {
+		.hover-scale-lg:hover:not(:disabled) {
+			transform: scale(1.08) translateZ(0);
+		}
 	}
 
 	/* Fade transitions */

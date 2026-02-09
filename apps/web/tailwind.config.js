@@ -13,6 +13,9 @@ const withOpacity = (varName) => {
 };
 
 export default {
+	future: {
+		hoverOnlyWhenSupported: true
+	},
 	darkMode: 'class',
 	content: ['./src/**/*.{html,js,svelte,ts}'],
 	theme: {

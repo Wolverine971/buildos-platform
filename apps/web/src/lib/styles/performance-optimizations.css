@@ -221,6 +221,11 @@
 	}
 }
 
+/* Content-visibility optimization — skip rendering off-screen list items */
+.cv-auto {
+	content-visibility: auto;
+}
+
 /* GPU acceleration hints for smooth scrolling */
 .smooth-scroll {
 	transform: translateZ(0);

@@ -320,3 +320,11 @@
 		{/each}
 	{/if}
 </div>
+
+<style>
+	/* Skip rendering off-screen chat messages for scroll performance */
+	.agent-chat-scroll > :global(*) {
+		content-visibility: auto;
+		contain-intrinsic-size: 0 120px;
+	}
+</style>

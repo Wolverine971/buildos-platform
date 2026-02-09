@@ -56,6 +56,10 @@
 	let isDark = $state(false);
 	let showChatModal = $state(false);
 
+	// Hide-on-scroll: hide nav when scrolling down on mobile, show on scroll up
+	let lastScrollY = $state(0);
+	let navHidden = $state(false);
+
 	const currentPath = $derived($page.url.pathname);
 
 	// Context-aware chat configuration based on current page
@@ -229,6 +233,32 @@
 		showChatModal = false;
 	}
 
+	function handleScroll() {
+		// Only hide nav on mobile
+		if (window.innerWidth >= 768) {
+			navHidden = false;
+			lastScrollY = window.scrollY;
+			return;
+		}
+
+		const currentY = window.scrollY;
+		const delta = currentY - lastScrollY;
+
+		if (currentY < 80) {
+			// Always show nav near top of page
+			navHidden = false;
+		} else if (delta > 10) {
+			// Scrolling down — hide nav
+			navHidden = true;
+			closeAllMenus();
+		} else if (delta < -5) {
+			// Scrolling up — show nav
+			navHidden = false;
+		}
+
+		lastScrollY = currentY;
+	}
+
 	onMount(() => {
 		if (!browser) return;
 
@@ -251,11 +281,13 @@
 
 		document.addEventListener('keydown', handleKeydown);
 		document.addEventListener('click', handleClickOutside);
+		window.addEventListener('scroll', handleScroll, { passive: true });
 
 		return () => {
 			themeObserver.disconnect();
 			document.removeEventListener('keydown', handleKeydown);
 			document.removeEventListener('click', handleClickOutside);
+			window.removeEventListener('scroll', handleScroll);
 		};
 	});
 </script>
@@ -264,7 +296,9 @@
 	aria-label="Main navigation"
 	data-fixed-element
 	bind:this={element}
-	class="sticky top-0 z-10 bg-card border-b border-border shadow-ink transition-all duration-200"
+	class="sticky top-0 z-10 bg-card border-b border-border shadow-ink transition-all duration-200 {navHidden
+		? '-translate-y-full'
+		: 'translate-y-0'}"
 >
 	<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
 		<div class="flex justify-between items-center h-16 gap-2.5">

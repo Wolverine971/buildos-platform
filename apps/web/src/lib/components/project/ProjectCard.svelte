@@ -49,7 +49,8 @@
 <a
 	href="/projects/{project.id}"
 	onclick={() => onProjectClick(project)}
-	class="group relative flex h-full flex-col wt-paper p-3 sm:p-4 {textureClass} hover:border-accent/60 pressable"
+	class="group relative flex h-full flex-col wt-paper p-2.5 sm:p-4 {textureClass} hover:border-accent/60 pressable"
+	style="content-visibility: auto; contain-intrinsic-size: 0 220px;"
 >
 	<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 	<div class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3">

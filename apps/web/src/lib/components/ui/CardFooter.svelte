@@ -45,9 +45,9 @@
 
 	// Padding optimized for high information density (8px grid system)
 	const paddingClasses: Record<FooterPadding, string> = {
-		sm: 'px-3 py-2', // 12px x 8px
-		md: 'px-4 py-3', // 16px x 12px
-		lg: 'px-6 py-4' // 24px x 16px
+		sm: 'px-2.5 py-1.5 sm:px-3 sm:py-2', // 10x6 mobile, 12x8 tablet+
+		md: 'px-3 py-2.5 sm:px-4 sm:py-3', // 12x10 mobile, 16x12 tablet+
+		lg: 'px-4 py-3 sm:px-6 sm:py-4' // 16x12 mobile, 24x16 tablet+
 	};
 
 	// Alignment

@@ -398,7 +398,7 @@
 </svelte:head>
 
 <div
-	class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4"
+	class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-2 sm:space-y-4"
 >
 	<!-- Page Header - Inkprint design with micro-label pattern -->
 	<header class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -534,7 +534,7 @@
 				</Card>
 
 				<!-- Stats Grid - Semantic textures per brand guidelines with weight -->
-				<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+				<div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
 					<!-- Projects count - Frame texture (canonical/structure), paper weight (standard) -->
 					<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
 						<p class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground">
@@ -744,7 +744,7 @@
 							</span>
 						</div>
 						<!-- Project Cards Grid -->
-						<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+						<div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 							{#each ownedFilteredProjects as project (project.id)}
 								<ProjectCard
 									{project}
@@ -766,7 +766,7 @@
 							</span>
 						</div>
 						<!-- Shared Project Cards Grid - Thread texture to indicate collaboration -->
-						<div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+						<div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
 							{#each sharedFilteredProjects as project (project.id)}
 								<ProjectCard
 									{project}

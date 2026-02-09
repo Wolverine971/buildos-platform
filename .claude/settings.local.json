@@ -127,7 +127,16 @@
       "WebFetch(domain:ai-assisted-software-development.com)",
       "WebFetch(domain:ht-x.com)",
       "WebFetch(domain:www.thisisuncharted.co)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "WebFetch(domain:web.dev)",
+      "WebFetch(domain:www.smashingmagazine.com)",
+      "WebFetch(domain:brainhub.eu)",
+      "WebFetch(domain:ishadeed.com)",
+      "WebFetch(domain:blog.logrocket.com)",
+      "WebFetch(domain:linear.app)",
+      "WebFetch(domain:svelte.dev)",
+      "WebFetch(domain:developer.chrome.com)",
+      "Bash(npx vitest:*)"
     ],
     "deny": [],
     "ask": []

@@ -167,6 +167,7 @@
 					class="rounded-lg border border-border bg-card transition-all hover:shadow-ink-strong {isExpanded
 						? 'shadow-ink-strong'
 						: 'shadow-ink'} tx tx-frame tx-weak {weightClass}"
+					style="content-visibility: auto; contain-intrinsic-size: 0 150px;"
 				>
 					<button
 						class="flex w-full items-start justify-between gap-3 p-3 text-left transition-colors pressable hover:bg-muted"
