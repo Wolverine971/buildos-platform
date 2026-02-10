@@ -183,6 +183,7 @@
 	class="entity-list-item w-full flex items-center gap-3 text-left px-3 py-2.5 {weight} {entityConfig[
 		type
 	].texture} {borderStyle} transition-colors pressable {className}"
+	style="content-visibility: auto; contain-intrinsic-size: 0 44px;"
 >
 	<Icon class="entity-icon w-4 h-4 shrink-0 {iconAnimation}" />
 	<div class="min-w-0 flex-1">

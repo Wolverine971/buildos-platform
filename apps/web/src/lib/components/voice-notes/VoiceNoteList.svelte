@@ -119,6 +119,7 @@
 				class="group rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak {compact
 					? 'p-2'
 					: 'p-3'}"
+				style="content-visibility: auto; contain-intrinsic-size: 0 70px;"
 			>
 				<!-- Header row: timestamp + status + delete -->
 				<div class="flex items-center justify-between gap-2">

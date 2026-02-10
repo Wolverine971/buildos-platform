@@ -1617,7 +1617,7 @@
 		{/if}
 
 		<!-- Mobile Command Center (shown only on mobile < 640px) -->
-		<div class="sm:hidden mb-4">
+		<div class="sm:hidden mb-2">
 			{#if isHydrating}
 				<div class="space-y-1.5">
 					<!-- Row 1: Goals (full width) -->

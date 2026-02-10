@@ -136,7 +136,12 @@
       "WebFetch(domain:linear.app)",
       "WebFetch(domain:svelte.dev)",
       "WebFetch(domain:developer.chrome.com)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "WebFetch(domain:www.linkedin.com)",
+      "WebFetch(domain:www.oneusefulthing.org)",
+      "WebFetch(domain:simonwillison.net)",
+      "Bash(curl:*)",
+      "Bash(npx turbo run typecheck:*)"
     ],
     "deny": [],
     "ask": []

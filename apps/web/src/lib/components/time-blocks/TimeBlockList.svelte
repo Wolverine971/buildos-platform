@@ -106,6 +106,7 @@
 		{#each blocks as block (block.id)}
 			<article
 				class="group relative overflow-hidden rounded-lg border border-border bg-card px-3 py-3 shadow-ink transition hover:-translate-y-[1px] hover:border-blue-200 hover:shadow-ink-strong tx tx-frame tx-weak sm:px-4 sm:py-4"
+				style="content-visibility: auto; contain-intrinsic-size: 0 180px;"
 			>
 				<div
 					class="absolute inset-y-2.5 left-2 w-[2px] rounded-full opacity-90 transition group-hover:scale-y-105"

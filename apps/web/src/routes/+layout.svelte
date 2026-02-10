@@ -792,9 +792,7 @@
 	/>
 	<meta property="og:type" content="website" />
 
-	<!-- PERFORMANCE: Preload critical fonts -->
-	<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
-	<link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+	<!-- PERFORMANCE: System fonts used — no external font loading needed -->
 </svelte:head>
 
 <ModeWatcher />

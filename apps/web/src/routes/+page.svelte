@@ -209,8 +209,6 @@
 	{:else}
 		<!-- Preload critical landing page resources -->
 		<link rel="preload" href="/s-brain-bolt.webp" as="image" type="image/webp" />
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="dns-prefetch" href="https://fonts.gstatic.com" />
 	{/if}
 
 	<!-- Twitter/X Card Tags (using name attribute as per X documentation) -->

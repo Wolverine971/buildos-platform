@@ -652,8 +652,8 @@
 </script>
 
 <main class="min-h-screen bg-background">
-	<div class="container mx-auto max-w-6xl px-3 py-4 sm:px-5 sm:py-6">
-		<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+	<div class="container mx-auto max-w-6xl px-3 py-3 sm:px-5 sm:py-6">
+		<div class="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div class="space-y-1">
 				<button
 					onclick={() => goto('/')}
@@ -680,12 +680,12 @@
 		</div>
 
 		{#if showSettings}
-			<div class="mt-4 rounded-lg border border-border bg-card p-4">
-				<div class="flex items-center gap-2 mb-3">
+			<div class="mt-3 sm:mt-4 rounded-lg border border-border bg-card p-3 sm:p-4">
+				<div class="flex items-center gap-2 mb-2 sm:mb-3">
 					<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
 					<span class="text-sm font-semibold text-foreground">Display Filters</span>
 				</div>
-				<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+				<div class="grid gap-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-4">
 					<label class="flex items-center gap-2 text-sm">
 						<input
 							type="checkbox"

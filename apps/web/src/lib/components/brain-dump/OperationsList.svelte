@@ -281,6 +281,7 @@
 					)
 						? 'opacity-50 bg-gray-50 dark:bg-gray-800'
 						: 'bg-white dark:bg-gray-900'} {operationColors[operation.operation]}"
+					style="content-visibility: auto; contain-intrinsic-size: 0 160px;"
 				>
 					<div class="flex flex-col sm:flex-row sm:items-start gap-3">
 						<!-- Mobile: Checkbox + Actions in header -->

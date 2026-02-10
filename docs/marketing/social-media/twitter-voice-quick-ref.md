@@ -112,6 +112,27 @@
 - "great post!" (thought leader energy)
 - Preachy teaching when you're just supporting
 - Making it about you when cheering someone on
+- Punchy quotable closing lines (thought leader energy)
+- Claiming to have "the fix" or "the answer" (prescriptive)
+- Abstract principles without concrete process ("clarity over noise")
+
+---
+
+## Voice Calibration (from real tweets, Feb 2026)
+
+**Pattern: Vulnerability → Process → Honest ending**
+
+When sharing a value reply on a topic you have experience with:
+
+1. **Acknowledge you're in the same boat** - "I fall into this but..." / "Id say..." (not declarative)
+2. **Share specific process, not abstract principle** - "In practice this looks like me telling the AI I am at X and asking what the next step is" (not "the fix is clarity")
+3. **Don't claim to have solved it** - "but yes the game is how many chat sessions can i do in parallel" (honest, not prescriptive)
+
+**Conversational markers:** "Id say", "sorta", "net net", "in practice this looks like"
+
+**Key insight:** DJ shares what he DOES, not what others SHOULD do. Process over conclusions. Admits the struggle, offers what's working, stays honest about what isn't.
+
+**Anti-pattern to avoid:** Drafts that end with a punchy one-liner are thought leader energy. DJ's real tweets end with honest observations, not soundbites.
 
 ---
 

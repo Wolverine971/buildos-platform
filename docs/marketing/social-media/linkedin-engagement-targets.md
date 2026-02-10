@@ -33,13 +33,14 @@
 
 ### AI & Context Engineering Thought Leaders
 
-| Name                | Role                        | Why Engage                         | Topics They Cover              |
-| ------------------- | --------------------------- | ---------------------------------- | ------------------------------ |
-| **Ethan Mollick**   | Wharton Prof, AI researcher | Massive reach, thoughtful AI takes | AI in business, future of work |
-| **Andrej Karpathy** | Former Tesla AI, educator   | Technical authority, AI education  | LLMs, AI engineering           |
-| **Harrison Chase**  | LangChain founder           | Building in context/agents space   | LLM apps, agents, RAG          |
-| **Reid Hoffman**    | LinkedIn founder, investor  | AI future, entrepreneurship        | AI, startups, future of work   |
-| **Sam Altman**      | OpenAI CEO                  | When posts, massive engagement     | AI future, building            |
+| Name                  | Role                         | Why Engage                                                                                        | Topics They Cover                              |
+| --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Ethan Mollick**     | Wharton Prof, AI researcher  | Massive reach, thoughtful AI takes                                                                | AI in business, future of work                 |
+| **Andrej Karpathy**   | Former Tesla AI, educator    | Technical authority, AI education                                                                 | LLMs, AI engineering                           |
+| **Harrison Chase**    | LangChain founder            | Building in context/agents space                                                                  | LLM apps, agents, RAG                          |
+| **Reid Hoffman**      | LinkedIn founder, investor   | AI future, entrepreneurship                                                                       | AI, startups, future of work                   |
+| **Sam Altman**        | OpenAI CEO                   | When posts, massive engagement                                                                    | AI future, building                            |
+| **Simon Willison** ⭐ | Datasette, Django co-creator | Most relevant content for BuildOS positioning. "AI without the hype." Practical, builder-focused. | AI tools, LLM engineering, context engineering |
 
 ### AI Productivity & Tools Space
 
@@ -125,6 +126,14 @@ BuildOS's core audience. These creators have massive reach in the ADHD productiv
 | **Shreyas Doshi** | Ex-Stripe PM    | Product wisdom   | Product strategy   |
 | **Julie Zhuo**    | Ex-FB Design VP | Design + AI      | Product design     |
 | **Gibson Biddle** | Ex-Netflix VP   | Product strategy | Product leadership |
+
+### Infrastructure & Open Source Builders
+
+| Name                      | Role                                    | Why Engage                                                                       | LinkedIn Profile                                  |
+| ------------------------- | --------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
+| **Mitchell Hashimoto** ⭐ | HashiCorp co-founder, Vagrant/Terraform | Legendary builder. Practical AI quality approach ("Vouch"). Builder credibility. | [Profile](https://www.linkedin.com/in/mitchellh/) |
+
+> **Added 2026-02-09:** Mitchell Hashimoto's "Vouch" system for AI-generated PR quality addresses the same context/quality gap DJ thinks about. High-credibility engagement target.
 
 ### Tech Writers & Analysts
 
@@ -401,11 +410,23 @@ LinkedIn has a growing community of solo founders and indie hackers. Action item
 ---
 
 _Document created: 2026-01-06_
-_Last updated: 2026-01-08 (Cross-platform audit from Twitter strategy)_
+_Last updated: 2026-02-09 (Added Simon Willison to Tier 1, Mitchell Hashimoto to Tier 2)_
 
 ---
 
 ## Change Log
+
+### 2026-02-09 - Tier Updates from LinkedIn Warmup
+
+**Source:** Daily LinkedIn warmup scan
+
+**Added:**
+- **Simon Willison** upgraded to **Tier 1** (AI & Context Engineering Thought Leaders) - Consistently producing the most relevant content for BuildOS positioning. "Software Factory" + "Structured Context Engineering" posts directly validate context > agents thesis. Practical, builder-focused, "AI without the hype."
+- **Mitchell Hashimoto** added to **Tier 2** (Infrastructure & Open Source Builders - new category) - HashiCorp co-founder. "Vouch" system for AI-generated PR quality. Legendary builder, practical AI approach aligned with "blue collar software engineering" brand.
+
+**Key Signal:** "Context Engineering" is going mainstream. Academic papers, Gartner analysts, Google Developers Blog, and Martin Fowler's site all publishing about it in Feb 2026. DJ's positioning is being validated. Window to own the conversation is NOW.
+
+---
 
 ### 2026-01-08 - Cross-Platform Strategy Audit
 

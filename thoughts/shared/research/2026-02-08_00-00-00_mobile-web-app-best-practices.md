@@ -1026,20 +1026,20 @@ Ranked by impact for the "mobile command center" goal.
 
 ### Tier 1: Transformative (Do First)
 
-| # | Action | Impact | Effort | Details |
-|---|--------|--------|--------|---------|
-| 1 | **Add bottom navigation bar** | Transforms mobile UX entirely. Puts primary actions in thumb zone. | Medium | 4 items: Home, Projects, Chat, Create. Hide on scroll-down. Safe area padding. |
-| 2 | **Mobile density pass** | More content visible per screen. Feels like a command center, not a website. | Low | Tighten padding, gap, margins. Smaller text for metadata. Compact list items. |
-| 3 | **Add `content-visibility: auto`** to all list items | 50-90% rendering perf boost on long lists. | Low | One CSS property per list item class. Dramatic scroll smoothness improvement. |
+| # | Action | Impact | Effort | Status |
+|---|--------|--------|--------|--------|
+| 1 | **Add bottom navigation bar** | Transforms mobile UX entirely. Puts primary actions in thumb zone. | Medium | ⏭️ Skipped — complexity vs. density tradeoff |
+| 2 | **Mobile density pass** | More content visible per screen. Feels like a command center, not a website. | Low | ✅ Phase 1 done (Card system + projects page). Phase 2 in progress. |
+| 3 | **Add `content-visibility: auto`** to all list items | 50-90% rendering perf boost on long lists. | Low | ✅ Phase 1 done (chat, project cards, drafts). Phase 2 in progress. |
 
 ### Tier 2: High Impact
 
-| # | Action | Impact | Effort | Details |
-|---|--------|--------|--------|---------|
-| 4 | **Hide-on-scroll navigation** | Reclaims ~50px of vertical space while scrolling. More content visible. | Low | Track scroll direction, toggle nav visibility with CSS transform. |
-| 5 | **Add `@media (hover: hover)` guards** | Eliminates sticky hover states on touch devices. | Low | Audit all `:hover` styles, wrap in media query. Add `:active` fallbacks. |
-| 6 | **Contextual bottom action bar** on detail views | Primary actions in thumb zone on project/task detail screens. | Medium | Replace or supplement top action buttons with bottom bar on mobile. |
-| 7 | **PWA shortcuts in manifest** | Quick access to Brain Dump, Brief, Projects from home screen long-press. | Low | JSON addition to `site.webmanifest`. Create shortcut icons. |
+| # | Action | Impact | Effort | Status |
+|---|--------|--------|--------|--------|
+| 4 | **Hide-on-scroll navigation** | Reclaims ~64px of vertical space while scrolling. More content visible. | Low | ✅ Done |
+| 5 | **Add `@media (hover: hover)` guards** | Eliminates sticky hover states on touch devices. | Low | ✅ Done (Tailwind config + CSS) |
+| 6 | **Contextual bottom action bar** on detail views | Primary actions in thumb zone on project/task detail screens. | Medium | Pending |
+| 7 | **PWA shortcuts in manifest** | Quick access to Brain Dump, Brief, Projects from home screen long-press. | Low | 🔄 In progress |
 
 ### Tier 3: Polish & Delight
 
@@ -1078,14 +1078,45 @@ Ranked by impact for the "mobile command center" goal.
 
 ---
 
+## Implementation Progress
+
+### Sprint 1 — Completed (2026-02-08)
+
+| # | Item | Status | Files Changed |
+|---|------|--------|---------------|
+| 2 | **Mobile density pass (phase 1)** | ✅ Done | Card.svelte, CardBody.svelte, CardHeader.svelte, CardFooter.svelte, ProjectCard.svelte, projects/+page.svelte — responsive padding tightened on mobile |
+| 3 | **Content-visibility (phase 1)** | ✅ Done | AgentMessageList.svelte, ProjectCard.svelte, DraftsList.svelte, performance-optimizations.css — `.cv-auto` utility added |
+| 4 | **Hide-on-scroll navigation** | ✅ Done | Navigation.svelte — passive scroll listener, mobile-only, `-translate-y-full` on scroll-down |
+| 5 | **Hover guards** | ✅ Done | tailwind.config.js (`future.hoverOnlyWhenSupported: true`), inkprint.css (`.pressable:hover`), animation-utils.css (`.hover-scale-*:hover`) |
+
+**Decision:** Bottom navigation bar (#1) skipped — adds complexity and permanent screen chrome that conflicts with information density goals. May revisit later if hamburger menu becomes a friction point.
+
+### Sprint 2 — Completed (2026-02-08)
+
+| # | Item | Status | Files Changed |
+|---|------|--------|---------------|
+| 3b | **Content-visibility (phase 2)** | ✅ Done | OperationsList.svelte, TimeBlockList.svelte, VoiceNoteList.svelte, EntityListItem.svelte |
+| 7 | **PWA shortcuts in manifest** | ✅ Done | site.webmanifest — added Brain Dump, Projects, History shortcuts |
+| 15 | **Font loading optimization** | ✅ Done | Removed unused Google Fonts preconnect hints from +layout.svelte and +page.svelte (app uses system fonts only) |
+| 2b | **Expand density pass** | ✅ Done | Dashboard.svelte (grid gaps, section spacing), calendar/+page.svelte (container, settings panel, grid), time-blocks/+page.svelte (container gaps/padding), voice-notes/+page.svelte (gaps/padding), projects/[id]/+page.svelte (mobile command center margin) |
+
+### Not Planned (Deferred)
+
+| # | Item | Reason |
+|---|------|--------|
+| 1 | Bottom navigation bar | Complexity vs. value tradeoff; revisit if needed |
+| 8 | Swipe actions on list items | Not needed right now |
+
+---
+
 ## Conclusion
 
 BuildOS has a **strong mobile foundation** — the hard infrastructure work (PWA, viewport, safe areas, responsive layout, dark mode) is done well. The biggest opportunities are in the **interaction layer**:
 
-1. **Bottom navigation** transforms reachability
-2. **Tighter spacing** transforms density
-3. **Content-visibility** transforms scroll performance
-4. **Hover guards** fix touch bugs
-5. **Gestures** (swipe, pull-to-refresh, long-press) make it feel native
+1. ~~**Hover guards** fix touch bugs~~ ✅
+2. ~~**Tighter spacing** transforms density~~ ✅ (phase 1)
+3. ~~**Content-visibility** transforms scroll performance~~ ✅ (phase 1)
+4. ~~**Hide-on-scroll nav** reclaims vertical space~~ ✅
+5. **Gestures** (swipe, pull-to-refresh, long-press) make it feel native — future work
 
-These changes would take BuildOS from "works on mobile" to "designed for mobile" — a true pocket command center.
+These changes are taking BuildOS from "works on mobile" to "designed for mobile" — a true pocket command center.

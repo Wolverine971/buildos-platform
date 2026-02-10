@@ -70,5 +70,46 @@
 			"color": "#f9fafb",
 			"media": "(prefers-color-scheme: light)"
 		}
+	],
+	"shortcuts": [
+		{
+			"name": "Brain Dump",
+			"short_name": "Dump",
+			"description": "Capture thoughts quickly",
+			"url": "/?action=braindump",
+			"icons": [
+				{
+					"src": "/AppImages/android/android-launchericon-96-96.png",
+					"sizes": "96x96",
+					"type": "image/png"
+				}
+			]
+		},
+		{
+			"name": "Projects",
+			"short_name": "Projects",
+			"description": "View all projects",
+			"url": "/projects",
+			"icons": [
+				{
+					"src": "/AppImages/android/android-launchericon-96-96.png",
+					"sizes": "96x96",
+					"type": "image/png"
+				}
+			]
+		},
+		{
+			"name": "History",
+			"short_name": "History",
+			"description": "View brain dump history",
+			"url": "/history",
+			"icons": [
+				{
+					"src": "/AppImages/android/android-launchericon-96-96.png",
+					"sizes": "96x96",
+					"type": "image/png"
+				}
+			]
+		}
 	]
 }

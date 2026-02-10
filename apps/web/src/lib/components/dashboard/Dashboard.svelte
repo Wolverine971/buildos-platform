@@ -276,7 +276,7 @@
 		{/if}
 
 		<!-- Projects Grid - Always render structure, use skeletons or real cards -->
-		<section class="space-y-3">
+		<section class="space-y-2 sm:space-y-3">
 			<!-- Mobile Create Button (compact) -->
 			{#if hasProjects}
 				<button
@@ -303,7 +303,7 @@
 
 			<!-- Loading State with Skeletons -->
 			{#if showSkeletons}
-				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
 					<!-- Create New Project Card (skeleton placeholder on desktop) - ghost weight -->
 					<div
 						class="hidden sm:flex group flex-col items-center justify-center wt-ghost border-dashed p-4 sm:p-6 sm:min-h-[200px] opacity-50"
@@ -357,7 +357,7 @@
 						>
 							My Projects
 						</h3>
-						<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+						<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
 							<!-- Create New Project Card (hidden on mobile, shown on desktop) - ghost weight for CTA -->
 							<button
 								onclick={handleCreateProject}

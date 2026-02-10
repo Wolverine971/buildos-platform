@@ -226,7 +226,7 @@
 
 <div class="relative min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-900">
 	<section
-		class="relative mx-auto flex max-w-7xl flex-col gap-4 px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 lg:gap-5"
+		class="relative mx-auto flex max-w-7xl flex-col gap-2 sm:gap-4 px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4 md:py-6 lg:gap-5"
 	>
 		<header class="space-y-1">
 			<h1
