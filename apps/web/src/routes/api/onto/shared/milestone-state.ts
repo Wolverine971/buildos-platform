@@ -7,7 +7,7 @@ const MILESTONE_STATE_ALIASES: Record<string, string> = {
 	deferred: 'pending'
 };
 
-const MILESTONE_STATE_SET = new Set(MILESTONE_STATES);
+const MILESTONE_STATE_SET: Set<string> = new Set(MILESTONE_STATES);
 
 export function normalizeMilestoneStateInput(state: unknown): string | undefined {
 	if (state === undefined || state === null) return undefined;

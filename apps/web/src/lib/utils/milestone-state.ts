@@ -2,10 +2,11 @@
 // Helpers to normalize milestone state and compute "missed" status consistently
 import { MILESTONE_STATES, type MilestoneState } from '$lib/types/onto';
 
-type MilestoneStateInput = {
+export type MilestoneStateInput = {
 	state_key?: string | null;
 	due_at?: string | null;
-	props?: Record<string, unknown> | null;
+	// Accept Json-typed props from database rows (Json can be primitives, arrays, or objects)
+	props?: unknown;
 	effective_state_key?: string | null;
 	is_missed?: boolean | null;
 };
@@ -20,10 +21,11 @@ export function resolveMilestoneState(
 	milestone: MilestoneStateInput,
 	now: Date = new Date()
 ): { state: MilestoneState; isMissed: boolean } {
+	const props = milestone.props as Record<string, unknown> | null | undefined;
 	const rawState =
 		(milestone.effective_state_key as string | null | undefined) ??
 		milestone.state_key ??
-		(milestone.props?.state_key as string | undefined) ??
+		(props?.state_key as string | undefined) ??
 		'pending';
 
 	const baseState: MilestoneState = MILESTONE_STATE_SET.has(rawState ?? '')

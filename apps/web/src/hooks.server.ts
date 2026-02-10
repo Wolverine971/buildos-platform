@@ -196,7 +196,8 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	// PERFORMANCE: Lazy calendar token loader - only when needed
 	event.locals.getCalendarTokens = async () => {
 		// Skip if no user ID available
-		if (!event.locals.user?.id) {
+		const userId = event.locals.user?.id;
+		if (!userId) {
 			return null;
 		}
 
@@ -216,7 +217,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					.select(
 						'access_token, refresh_token, expiry_date, scope, updated_at, token_type'
 					)
-					.eq('user_id', event.locals.user.id)
+					.eq('user_id', userId)
 					.single()
 			);
 

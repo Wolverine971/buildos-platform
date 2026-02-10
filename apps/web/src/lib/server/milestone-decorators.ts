@@ -6,7 +6,10 @@ import { withComputedMilestoneState } from '$lib/utils/milestone-state';
 
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
-type EdgeRow = Database['public']['Tables']['onto_edges']['Row'];
+type GoalMilestoneEdge = Pick<
+	Database['public']['Tables']['onto_edges']['Row'],
+	'src_id' | 'dst_id' | 'created_at'
+>;
 
 export type DecoratedMilestone = MilestoneRow & {
 	goal_id: string | null;
@@ -14,7 +17,7 @@ export type DecoratedMilestone = MilestoneRow & {
 	is_missed: boolean;
 };
 
-function buildGoalMapping(edges: EdgeRow[]): Map<string, string> {
+function buildGoalMapping(edges: GoalMilestoneEdge[]): Map<string, string> {
 	// Prefer the newest edge when multiple goal links exist
 	const sorted = [...edges].sort((a, b) => {
 		const aTime = new Date(a.created_at ?? 0).getTime();
@@ -35,11 +38,11 @@ export async function decorateMilestonesWithGoals(
 	supabase: SupabaseClient<Database>,
 	goals: GoalRow[] | null | undefined,
 	milestones: MilestoneRow[] | null | undefined
-): Promise<{ milestones: DecoratedMilestone[]; edges: EdgeRow[] }> {
+): Promise<{ milestones: DecoratedMilestone[]; edges: GoalMilestoneEdge[] }> {
 	const goalIds = (goals ?? []).map((g) => g.id).filter(Boolean);
 	const milestoneIds = (milestones ?? []).map((m) => m.id).filter(Boolean);
 
-	let edges: EdgeRow[] = [];
+	let edges: GoalMilestoneEdge[] = [];
 
 	if (goalIds.length > 0 && milestoneIds.length > 0) {
 		const { data: edgeData, error: edgeError } = await supabase

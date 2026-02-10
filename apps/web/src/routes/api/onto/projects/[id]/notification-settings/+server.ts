@@ -76,7 +76,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const supabase = locals.supabase;
 		await ensureActorId(supabase, user.id);
 
-		const { data, error } = await (supabase.rpc as any)('get_project_notification_settings', {
+		const { data, error } = await supabase.rpc('get_project_notification_settings', {
 			p_project_id: projectId
 		});
 
@@ -141,10 +141,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const supabase = locals.supabase;
 		await ensureActorId(supabase, user.id);
 
-		const { data, error } = await (supabase.rpc as any)('set_project_notification_settings', {
+		const { data, error } = await supabase.rpc('set_project_notification_settings', {
 			p_project_id: projectId,
-			p_member_enabled: memberEnabled,
-			p_project_default_enabled: projectDefaultEnabled
+			p_member_enabled: memberEnabled ?? undefined,
+			p_project_default_enabled: projectDefaultEnabled ?? undefined
 		});
 
 		if (error) {

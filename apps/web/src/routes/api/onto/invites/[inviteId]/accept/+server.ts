@@ -229,37 +229,39 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 					}
 				}
 
-				for (const recipientId of recipientIds) {
-					const { error: emitError } = await (supabase.rpc as any)(
-						'emit_notification_event',
-						{
-							p_event_type: eventType,
-							p_event_source: 'api_action',
-							p_actor_user_id: user.id,
-							p_target_user_id: recipientId,
-							p_payload: payload,
-							p_metadata: {
-								correlationId,
-								projectId,
-								recipientUserId: recipientId,
-								inviteId
+				await Promise.all(
+					recipientIds.map(async (recipientId) => {
+						const { error: emitError } = await (supabase.rpc as any)(
+							'emit_notification_event',
+							{
+								p_event_type: eventType,
+								p_event_source: 'api_action',
+								p_actor_user_id: user.id,
+								p_target_user_id: recipientId,
+								p_payload: payload,
+								p_metadata: {
+									correlationId,
+									projectId,
+									recipientUserId: recipientId,
+									inviteId
+								}
 							}
-						}
-					);
+						);
 
-					if (emitError) {
-						void logOntologyApiError({
-							supabase,
-							error: emitError,
-							endpoint: `/api/onto/invites/${inviteId}/accept`,
-							method: 'POST',
-							userId,
-							projectId,
-							entityType: 'project_invite',
-							operation: 'project_invite_accept_notify_emit'
-						});
-					}
-				}
+						if (emitError) {
+							void logOntologyApiError({
+								supabase,
+								error: emitError,
+								endpoint: `/api/onto/invites/${inviteId}/accept`,
+								method: 'POST',
+								userId,
+								projectId,
+								entityType: 'project_invite',
+								operation: 'project_invite_accept_notify_emit'
+							});
+						}
+					})
+				);
 			}
 		}
 

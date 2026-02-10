@@ -268,6 +268,26 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		labelMarginY: 6,
 		borderWidth: 2,
 		borderStyle: 'solid'
+	},
+	note: {
+		shape: 'rectangle',
+		baseWidth: 22,
+		baseHeight: 28,
+		fontSize: 8,
+		labelValign: 'bottom',
+		labelMarginY: 4,
+		borderWidth: 1,
+		borderStyle: 'dashed'
+	},
+	event: {
+		shape: 'diamond',
+		baseWidth: 30,
+		baseHeight: 30,
+		fontSize: 9,
+		labelValign: 'bottom',
+		labelMarginY: 6,
+		borderWidth: 2,
+		borderStyle: 'solid'
 	}
 };
 
