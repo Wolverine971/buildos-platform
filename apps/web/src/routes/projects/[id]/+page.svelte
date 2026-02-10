@@ -59,6 +59,8 @@
 		FileText,
 		Calendar,
 		ExternalLink,
+		Bell,
+		BellOff,
 		Pencil,
 		Trash2,
 		ArrowLeft,
@@ -138,6 +140,17 @@
 		description?: string;
 	};
 
+	type ProjectNotificationSettings = {
+		project_id: string;
+		member_count: number;
+		is_shared_project: boolean;
+		project_default_enabled: boolean;
+		member_enabled: boolean;
+		effective_enabled: boolean;
+		member_overridden: boolean;
+		can_manage_default: boolean;
+	};
+
 	// ============================================================
 	// PROPS & DATA
 	// ============================================================
@@ -153,8 +166,8 @@
 	);
 	const canEdit = $derived(access.canEdit);
 	const canAdmin = $derived(access.canAdmin);
-	const canInvite = $derived(access.canInvite);
 	const canViewLogs = $derived(access.canViewLogs);
+	const canOpenShareModal = $derived(canViewLogs);
 
 	// Skeleton loading state
 	// When data.skeleton is true, we're in skeleton mode and need to hydrate
@@ -232,6 +245,9 @@
 	let editingMilestoneId = $state<string | null>(null);
 	let showEventCreateModal = $state(false);
 	let editingEventId = $state<string | null>(null);
+	let projectNotificationSettings = $state<ProjectNotificationSettings | null>(null);
+	let isNotificationSettingsLoading = $state(false);
+	let isNotificationSettingsSaving = $state(false);
 
 	// Document Tree State
 	let parentDocumentId = $state<string | null>(null);
@@ -333,6 +349,10 @@
 		if (typeof window !== 'undefined' && window.localStorage) {
 			const stored = window.localStorage.getItem('buildos:project-graph-hidden');
 			graphHidden = stored === 'true';
+		}
+
+		if (canOpenShareModal) {
+			void loadProjectNotificationSettings();
 		}
 
 		if (data.skeleton) {
@@ -912,6 +932,99 @@
 		}
 	}
 
+	async function loadProjectNotificationSettings(showToast = false) {
+		if (!project?.id || !canOpenShareModal) return;
+
+		isNotificationSettingsLoading = true;
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}/notification-settings`, {
+				method: 'GET',
+				credentials: 'same-origin'
+			});
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to load notification settings');
+			}
+
+			projectNotificationSettings = payload?.data?.settings ?? null;
+		} catch (error) {
+			console.error('[Project] Failed to load notification settings', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${project.id}/notification-settings`,
+				method: 'GET',
+				projectId: project.id,
+				entityType: 'project',
+				operation: 'project_notification_settings_load'
+			});
+			if (showToast) {
+				toastService.error(
+					error instanceof Error
+						? error.message
+						: 'Failed to load project notification settings'
+				);
+			}
+		} finally {
+			isNotificationSettingsLoading = false;
+		}
+	}
+
+	async function handleProjectNotificationQuickToggle() {
+		if (!project?.id || !projectNotificationSettings || isNotificationSettingsSaving) {
+			return;
+		}
+
+		const previousSettings = projectNotificationSettings;
+		const nextEnabled = !previousSettings.member_enabled;
+
+		projectNotificationSettings = {
+			...previousSettings,
+			member_enabled: nextEnabled,
+			effective_enabled: nextEnabled,
+			member_overridden: nextEnabled !== previousSettings.project_default_enabled
+		};
+		isNotificationSettingsSaving = true;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}/notification-settings`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify({ member_enabled: nextEnabled })
+			});
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to update notification settings');
+			}
+
+			projectNotificationSettings = payload?.data?.settings ?? projectNotificationSettings;
+
+			toastService.success(
+				nextEnabled
+					? 'Project activity notifications enabled'
+					: 'Project activity notifications muted'
+			);
+		} catch (error) {
+			projectNotificationSettings = previousSettings;
+			console.error('[Project] Failed to update notification settings', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${project.id}/notification-settings`,
+				method: 'PATCH',
+				projectId: project.id,
+				entityType: 'project',
+				operation: 'project_notification_settings_toggle'
+			});
+			toastService.error(
+				error instanceof Error
+					? error.message
+					: 'Failed to update project notification settings'
+			);
+		} finally {
+			isNotificationSettingsSaving = false;
+		}
+	}
+
 	async function refreshData() {
 		if (!project?.id) return;
 
@@ -933,6 +1046,7 @@
 			risks = newData.risks || [];
 			contextDocument = newData.context_document || null;
 			await loadProjectEvents();
+			await loadProjectNotificationSettings();
 
 			toastService.success('Data refreshed');
 		} catch (error) {
@@ -1515,12 +1629,38 @@
 							<GitBranch class="w-5 h-5 text-muted-foreground" />
 						</button>
 					{/if}
-					{#if canInvite}
+					{#if canOpenShareModal}
+						<button
+							onclick={handleProjectNotificationQuickToggle}
+							class="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-border hover:bg-muted transition-colors pressable disabled:opacity-60 disabled:cursor-not-allowed"
+							aria-label="Toggle project activity notifications"
+							title={projectNotificationSettings?.member_enabled
+								? 'Turn off project activity notifications'
+								: 'Turn on project activity notifications'}
+							disabled={isNotificationSettingsSaving ||
+								isNotificationSettingsLoading ||
+								!projectNotificationSettings}
+						>
+							{#if projectNotificationSettings?.member_enabled}
+								<Bell class="w-4 h-4 text-muted-foreground" />
+							{:else}
+								<BellOff class="w-4 h-4 text-muted-foreground" />
+							{/if}
+							<span class="text-xs font-medium text-foreground">
+								{isNotificationSettingsSaving
+									? 'Saving...'
+									: projectNotificationSettings?.member_enabled
+										? 'Notifications on'
+										: 'Notifications off'}
+							</span>
+						</button>
+					{/if}
+					{#if canOpenShareModal}
 						<button
 							onclick={() => (showShareModal = true)}
 							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-							aria-label="Share project"
-							title="Share project"
+							aria-label="Project sharing"
+							title="Project sharing"
 						>
 							<UserPlus class="w-5 h-5 text-muted-foreground" />
 						</button>
@@ -2463,7 +2603,7 @@
 {/if}
 
 <!-- Project Share Modal -->
-{#if showShareModal && canInvite}
+{#if showShareModal && canOpenShareModal}
 	<ProjectShareModal
 		bind:isOpen={showShareModal}
 		projectId={project.id}
@@ -2525,7 +2665,30 @@
 				Show graph
 			</button>
 		{/if}
-		{#if canInvite}
+		{#if canOpenShareModal}
+			<button
+				onclick={() => {
+					showMobileMenu = false;
+					void handleProjectNotificationQuickToggle();
+				}}
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable disabled:opacity-60 disabled:cursor-not-allowed"
+				disabled={isNotificationSettingsSaving ||
+					isNotificationSettingsLoading ||
+					!projectNotificationSettings}
+			>
+				{#if projectNotificationSettings?.member_enabled}
+					<Bell class="w-4 h-4 text-muted-foreground" />
+				{:else}
+					<BellOff class="w-4 h-4 text-muted-foreground" />
+				{/if}
+				{isNotificationSettingsSaving
+					? 'Saving notifications...'
+					: projectNotificationSettings?.member_enabled
+						? 'Turn notifications off'
+						: 'Turn notifications on'}
+			</button>
+		{/if}
+		{#if canOpenShareModal}
 			<button
 				onclick={() => {
 					showMobileMenu = false;
@@ -2534,7 +2697,7 @@
 				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
 			>
 				<UserPlus class="w-4 h-4 text-muted-foreground" />
-				Share project
+				Project sharing
 			</button>
 		{/if}
 		{#if canEdit}

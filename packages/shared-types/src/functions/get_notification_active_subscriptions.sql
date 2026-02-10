@@ -12,14 +12,14 @@ BEGIN
     u.email,
     u.name,
     ARRAY_AGG(DISTINCT ns.event_type) AS subscribed_events,
-    BOOL_OR(unp.push_enabled) AS push_enabled,
-    BOOL_OR(unp.email_enabled) AS email_enabled,
-    BOOL_OR(unp.sms_enabled) AS sms_enabled,
-    BOOL_OR(unp.in_app_enabled) AS in_app_enabled,
+    COALESCE(BOOL_OR(unp.push_enabled), false) AS push_enabled,
+    COALESCE(BOOL_OR(unp.email_enabled), false) AS email_enabled,
+    COALESCE(BOOL_OR(unp.sms_enabled), false) AS sms_enabled,
+    COALESCE(BOOL_OR(unp.in_app_enabled), false) AS in_app_enabled,
     MAX(nd.created_at) AS last_notification_sent
   FROM users u
   JOIN notification_subscriptions ns ON ns.user_id = u.id
-  LEFT JOIN user_notification_preferences unp ON unp.user_id = u.id AND unp.event_type = ns.event_type
+  LEFT JOIN user_notification_preferences unp ON unp.user_id = u.id
   LEFT JOIN notification_deliveries nd ON nd.recipient_user_id = u.id
   WHERE ns.is_active = true
   GROUP BY u.id, u.email, u.name

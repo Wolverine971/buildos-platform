@@ -421,6 +421,7 @@ _Last updated: 2026-02-09 (Added Simon Willison to Tier 1, Mitchell Hashimoto to
 **Source:** Daily LinkedIn warmup scan
 
 **Added:**
+
 - **Simon Willison** upgraded to **Tier 1** (AI & Context Engineering Thought Leaders) - Consistently producing the most relevant content for BuildOS positioning. "Software Factory" + "Structured Context Engineering" posts directly validate context > agents thesis. Practical, builder-focused, "AI without the hype."
 - **Mitchell Hashimoto** added to **Tier 2** (Infrastructure & Open Source Builders - new category) - HashiCorp co-founder. "Vouch" system for AI-generated PR quality. Legendary builder, practical AI approach aligned with "blue collar software engineering" brand.
 

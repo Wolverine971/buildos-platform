@@ -10199,6 +10199,19 @@ export type Database = {
           status: string
         }[]
       }
+      get_project_notification_settings: {
+        Args: { p_project_id: string }
+        Returns: {
+          can_manage_default: boolean
+          effective_enabled: boolean
+          is_shared_project: boolean
+          member_count: number
+          member_enabled: boolean
+          member_overridden: boolean
+          project_default_enabled: boolean
+          project_id: string
+        }[]
+      }
       get_project_phases_hierarchy: {
         Args: { p_project_id: string; p_user_id?: string }
         Returns: Json
@@ -10611,6 +10624,23 @@ export type Database = {
           content: string
           id: string
           similarity: number
+        }[]
+      }
+      set_project_notification_settings: {
+        Args: {
+          p_member_enabled?: boolean
+          p_project_default_enabled?: boolean
+          p_project_id: string
+        }
+        Returns: {
+          can_manage_default: boolean
+          effective_enabled: boolean
+          is_shared_project: boolean
+          member_count: number
+          member_enabled: boolean
+          member_overridden: boolean
+          project_default_enabled: boolean
+          project_id: string
         }[]
       }
       show_limit: { Args: never; Returns: number }

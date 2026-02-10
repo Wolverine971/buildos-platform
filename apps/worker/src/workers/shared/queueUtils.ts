@@ -1,12 +1,7 @@
 // apps/worker/src/workers/shared/queueUtils.ts
 // Utility functions for queue operations (Redis-free version)
 
-import type {
-	QueueJobStatus,
-	DailyBriefJobMetadata,
-	PhaseGenerationJobMetadata,
-	OnboardingAnalysisJobMetadata
-} from '@buildos/shared-types';
+import type { DailyBriefJobMetadata, QueueJobStatus } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
 
 // Legacy job data interfaces - kept for backward compatibility
@@ -154,9 +149,6 @@ export async function broadcastUserEvent(
 	}
 }
 
-// Backward compatibility alias (realtime broadcast, not persistent notification delivery)
-export const notifyUser = broadcastUserEvent;
-
 /**
  * Validate BriefJobData and throw if invalid
  * Ensures data integrity before job processing
@@ -190,7 +182,7 @@ export function validateBriefJobData(data: any): BriefJobData {
 	if (data.timezone) {
 		try {
 			new Intl.DateTimeFormat('en-US', { timeZone: data.timezone });
-		} catch (e) {
+		} catch {
 			throw new Error(`Invalid job data: timezone "${data.timezone}" is not valid`);
 		}
 	}

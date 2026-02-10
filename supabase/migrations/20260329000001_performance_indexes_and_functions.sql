@@ -66,9 +66,10 @@ BEGIN
     SELECT 1
     FROM information_schema.columns
     WHERE table_name = 'user_notification_preferences'
-      AND column_name = 'event_type'
+      AND column_name = 'user_id'
   ) THEN
-    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_user_notification_preferences_user_event ON user_notification_preferences(user_id, event_type)';
+    EXECUTE 'DROP INDEX IF EXISTS idx_user_notification_preferences_user_event';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_user_notification_preferences_user_id ON user_notification_preferences(user_id)';
   END IF;
 END
 $$;

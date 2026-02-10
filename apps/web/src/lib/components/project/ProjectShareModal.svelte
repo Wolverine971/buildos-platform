@@ -6,7 +6,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
-	import { Mail, Users } from 'lucide-svelte';
+	import { Bell, Mail, Users } from 'lucide-svelte';
 
 	type MemberRole = 'owner' | 'editor' | 'viewer';
 	type InviteRole = 'editor' | 'viewer';
@@ -33,6 +33,17 @@
 		expires_at: string | null;
 	}
 
+	interface NotificationSettingsRow {
+		project_id: string;
+		member_count: number;
+		is_shared_project: boolean;
+		project_default_enabled: boolean;
+		member_enabled: boolean;
+		effective_enabled: boolean;
+		member_overridden: boolean;
+		can_manage_default: boolean;
+	}
+
 	interface Props {
 		isOpen?: boolean;
 		onClose?: () => void;
@@ -54,6 +65,9 @@
 	let inviteActionType = $state<'resend' | 'revoke' | null>(null);
 	let memberActionId = $state<string | null>(null);
 	let memberActionType = $state<'role' | 'remove' | null>(null);
+	let notificationSettings = $state<NotificationSettingsRow | null>(null);
+	let settingsError = $state<string | null>(null);
+	let settingsActionType = $state<'member' | 'project' | null>(null);
 
 	$effect(() => {
 		if (!isOpen) {
@@ -68,6 +82,9 @@
 			inviteActionType = null;
 			memberActionId = null;
 			memberActionType = null;
+			notificationSettings = null;
+			settingsError = null;
+			settingsActionType = null;
 			return;
 		}
 		void loadShareData();
@@ -77,14 +94,17 @@
 		if (!projectId) return;
 		members = [];
 		invites = [];
+		notificationSettings = null;
+		settingsError = null;
 		canInvite = true;
 		isLoading = true;
 		error = null;
 		let membersStatus: number | null = null;
 		let invitesStatus: number | null = null;
+		let settingsStatus: number | null = null;
 
 		try {
-			const [membersRes, invitesRes] = await Promise.all([
+			const [membersRes, invitesRes, settingsRes] = await Promise.all([
 				fetch(`/api/onto/projects/${projectId}/members`, {
 					method: 'GET',
 					credentials: 'same-origin'
@@ -92,11 +112,16 @@
 				fetch(`/api/onto/projects/${projectId}/invites`, {
 					method: 'GET',
 					credentials: 'same-origin'
+				}),
+				fetch(`/api/onto/projects/${projectId}/notification-settings`, {
+					method: 'GET',
+					credentials: 'same-origin'
 				})
 			]);
 
 			membersStatus = membersRes.status;
 			invitesStatus = invitesRes.status;
+			settingsStatus = settingsRes.status;
 
 			if (membersRes.ok) {
 				const payload = await membersRes.json();
@@ -141,6 +166,26 @@
 					}
 				);
 			}
+
+			if (settingsRes.ok) {
+				const payload = await settingsRes.json().catch(() => null);
+				notificationSettings = payload?.data?.settings ?? null;
+			} else {
+				const payload = await settingsRes.json().catch(() => null);
+				const message = payload?.error || 'Failed to load notification settings';
+				settingsError = message;
+				void logOntologyClientError(new Error(message), {
+					endpoint: `/api/onto/projects/${projectId}/notification-settings`,
+					method: 'GET',
+					projectId,
+					entityType: 'project',
+					operation: 'project_notification_settings_get',
+					metadata: {
+						source: 'project_share_modal',
+						status: settingsStatus
+					}
+				});
+			}
 		} catch (err) {
 			console.error('[ProjectShareModal] Failed to load share data:', err);
 			void logOntologyClientError(err, {
@@ -152,13 +197,90 @@
 				metadata: {
 					source: 'project_share_modal',
 					membersStatus,
-					invitesStatus
+					invitesStatus,
+					settingsStatus
 				}
 			});
 			error = err instanceof Error ? err.message : 'Failed to load sharing data';
 		} finally {
 			isLoading = false;
 		}
+	}
+
+	async function updateNotificationSettings(
+		updates: { member_enabled?: boolean; project_default_enabled?: boolean },
+		actionType: 'member' | 'project'
+	) {
+		if (settingsActionType) {
+			return;
+		}
+
+		settingsActionType = actionType;
+		settingsError = null;
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${projectId}/notification-settings`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify(updates)
+			});
+
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to update notification settings');
+			}
+
+			const nextSettings = payload?.data?.settings as NotificationSettingsRow | null;
+			if (!nextSettings) {
+				throw new Error('Notification settings response was invalid');
+			}
+
+			notificationSettings = nextSettings;
+
+			if (actionType === 'project') {
+				toastService.success(
+					nextSettings.project_default_enabled
+						? 'Project default notifications are enabled'
+						: 'Project default notifications are disabled'
+				);
+			} else {
+				toastService.success(
+					nextSettings.member_enabled
+						? 'Project activity notifications enabled for you'
+						: 'Project activity notifications muted for you'
+				);
+			}
+		} catch (err) {
+			console.error('[ProjectShareModal] Failed to update notification settings:', err);
+			settingsError =
+				err instanceof Error ? err.message : 'Failed to update notification settings';
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/notification-settings`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'project',
+				operation: 'project_notification_settings_update',
+				metadata: {
+					source: 'project_share_modal',
+					status: responseStatus,
+					actionType
+				}
+			});
+			toastService.error(settingsError);
+		} finally {
+			settingsActionType = null;
+		}
+	}
+
+	async function handleMemberNotificationsToggle(enabled: boolean) {
+		await updateNotificationSettings({ member_enabled: enabled }, 'member');
+	}
+
+	async function handleProjectDefaultNotificationsToggle(enabled: boolean) {
+		await updateNotificationSettings({ project_default_enabled: enabled }, 'project');
 	}
 
 	async function handleInvite(event: Event) {
@@ -477,6 +599,86 @@
 					{isSending ? 'Sending...' : 'Send Invite'}
 				</Button>
 			</form>
+		</div>
+
+		<!-- Notification Settings Section -->
+		<div class="border-t border-border pt-3 space-y-2">
+			<div class="flex items-center gap-2 text-foreground">
+				<Bell class="h-4 w-4 text-muted-foreground" />
+				<h3 class="text-sm font-semibold">Notification settings</h3>
+			</div>
+
+			{#if isLoading && !notificationSettings}
+				<p class="text-xs text-muted-foreground">Loading notification settings...</p>
+			{:else if notificationSettings}
+				<div class="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+					<label class="flex items-start gap-2.5 cursor-pointer">
+						<input
+							type="checkbox"
+							class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+							checked={notificationSettings.member_enabled}
+							disabled={settingsActionType !== null}
+							onchange={(event) =>
+								handleMemberNotificationsToggle(
+									(event.currentTarget as HTMLInputElement).checked
+								)}
+						/>
+						<span class="space-y-0.5">
+							<span class="block text-sm font-medium text-foreground">
+								Notify me about project activity
+							</span>
+							<span class="block text-xs text-muted-foreground">
+								Uses your existing push and in-app channel preferences.
+							</span>
+						</span>
+					</label>
+
+					{#if notificationSettings.can_manage_default}
+						<div class="border-t border-border pt-3">
+							<label class="flex items-start gap-2.5 cursor-pointer">
+								<input
+									type="checkbox"
+									class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+									checked={notificationSettings.project_default_enabled}
+									disabled={settingsActionType !== null}
+									onchange={(event) =>
+										handleProjectDefaultNotificationsToggle(
+											(event.currentTarget as HTMLInputElement).checked
+										)}
+								/>
+								<span class="space-y-0.5">
+									<span class="block text-sm font-medium text-foreground">
+										Default notifications for collaborators
+									</span>
+									<span class="block text-xs text-muted-foreground">
+										New and existing members inherit this unless they set their
+										own preference.
+									</span>
+								</span>
+							</label>
+						</div>
+					{:else}
+						<p class="text-xs text-muted-foreground">
+							Project defaults can only be changed by project admins.
+						</p>
+					{/if}
+
+					{#if !notificationSettings.is_shared_project}
+						<p class="text-xs text-muted-foreground">
+							This project is currently solo. Default notifications automatically turn
+							on when a second member joins.
+						</p>
+					{/if}
+				</div>
+			{:else}
+				<p class="text-xs text-muted-foreground">
+					Notification settings are unavailable right now.
+				</p>
+			{/if}
+
+			{#if settingsError}
+				<p class="text-xs text-destructive">{settingsError}</p>
+			{/if}
 		</div>
 
 		<!-- Members Section -->

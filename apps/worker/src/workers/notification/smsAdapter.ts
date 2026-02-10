@@ -721,44 +721,8 @@ export async function sendSMSNotification(
 			priority
 		});
 
-		// Create SMS message record with notification link
-		const { data: smsMessage, error: smsError } = await supabase
-			.from('sms_messages')
-			.insert({
-				user_id: delivery.recipient_user_id,
-				phone_number: phoneNumber,
-				message_content: messageContent,
-				priority,
-				notification_delivery_id: delivery.id, // Link to notification delivery
-				status: 'pending',
-				metadata: {
-					event_type: delivery.payload.event_type || delivery.payload.eventType,
-					event_id: delivery.event_id,
-					notification_delivery_id: delivery.id,
-					...delivery.payload.data
-				}
-			})
-			.select()
-			.single();
-
-		if (smsError) {
-			smsLogger.error('Failed to create SMS message record', smsError, {
-				notificationDeliveryId: delivery.id,
-				phoneNumber
-			});
-			return {
-				success: false,
-				error: `Failed to create SMS message: ${smsError.message}`
-			};
-		}
-
-		smsLogger.info('Created SMS message record', {
-			smsMessageId: smsMessage.id,
-			notificationDeliveryId: delivery.id
-		});
-
-		// Queue SMS job using existing queue_sms_message RPC
-		// This will be processed by the SMS worker
+		// Queue SMS job using queue_sms_message RPC.
+		// queue_sms_message is the single owner of sms_messages inserts.
 		const { data: messageId, error: queueError } = await supabase.rpc('queue_sms_message', {
 			p_user_id: delivery.recipient_user_id,
 			p_phone_number: phoneNumber,
@@ -773,27 +737,8 @@ export async function sendSMSNotification(
 
 		if (queueError) {
 			smsLogger.error('Failed to queue SMS job', queueError, {
-				smsMessageId: smsMessage.id,
 				notificationDeliveryId: delivery.id
 			});
-
-			// Update SMS message status to failed
-			const { error: smsStatusError } = await supabase
-				.from('sms_messages')
-				.update({ status: 'failed' })
-				.eq('id', smsMessage.id);
-
-			if (smsStatusError) {
-				smsLogger.error(
-					'Failed to update SMS message status after queue error',
-					smsStatusError,
-					{
-						smsMessageId: smsMessage.id,
-						notificationDeliveryId: delivery.id
-					}
-				);
-				// Still return failure - SMS wasn't queued
-			}
 
 			return {
 				success: false,
@@ -801,16 +746,26 @@ export async function sendSMSNotification(
 			};
 		}
 
+		if (!messageId) {
+			smsLogger.error('queue_sms_message returned no message ID', undefined, {
+				notificationDeliveryId: delivery.id,
+				phoneNumber
+			});
+			return {
+				success: false,
+				error: 'Failed to queue SMS: no message ID returned'
+			};
+		}
+
 		smsLogger.info('SMS queued successfully', {
-			smsMessageId: smsMessage.id,
-			queueJobId: messageId,
+			smsMessageId: messageId,
 			notificationDeliveryId: delivery.id,
 			phoneNumber
 		});
 
 		return {
 			success: true,
-			external_id: smsMessage.id // Use sms_messages ID as external reference
+			external_id: messageId // Use sms_messages ID as external reference
 		};
 	} catch (error: any) {
 		smsLogger.error('Failed to send SMS notification', error, {

@@ -108,10 +108,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			subscriptions?.map((sub) => ({
 				event_type: sub.event_type as EventType,
 				// Global preferences apply to ALL subscribed events
-				push_enabled: globalPrefs?.push_enabled ?? true,
-				email_enabled: globalPrefs?.email_enabled ?? true,
+				push_enabled: globalPrefs?.push_enabled ?? false,
+				email_enabled: globalPrefs?.email_enabled ?? false,
 				sms_enabled: globalPrefs?.sms_enabled ?? false,
-				in_app_enabled: globalPrefs?.in_app_enabled ?? true,
+				in_app_enabled: globalPrefs?.in_app_enabled ?? false,
 				is_subscribed: sub.is_active ?? false
 			})) ?? [];
 

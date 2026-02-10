@@ -1,7 +1,9 @@
+<!-- apps/web/docs/features/notifications/shared-project-activity-notification-spec.md -->
+
 # Shared Project Activity Notifications: Product Spec + Infrastructure Audit
 
 Date: 2026-02-10  
-Status: Proposed  
+Status: In progress (Phase 0 complete, Phase 1 partial)  
 Author: Codex (research + codebase audit)
 
 ## 1) Executive Summary
@@ -18,6 +20,28 @@ Core decisions:
 
 ---
 
+## 1.1) Implementation Status Update (2026-02-10)
+
+Implemented in code:
+
+- [x] Fixed notification function/schema drift for global preferences.
+    - `supabase/migrations/20260421000000_notification_risk_cleanup.sql`
+    - `packages/shared-types/src/functions/get_notification_active_subscriptions.sql`
+- [x] Fixed SMS double-insert risk by standardizing queue ownership.
+    - `apps/worker/src/workers/notification/smsAdapter.ts`
+    - `packages/shared-types/src/functions/queue_sms_message.sql`
+- [x] Fixed invite-accept path to avoid bypassing core notification fan-out behavior.
+    - `apps/web/src/routes/api/onto/invites/[inviteId]/accept/+server.ts`
+- [x] Added join-time, in-context push opt-in UX in invite acceptance flow.
+    - `apps/web/src/routes/invites/[token]/+page.svelte`
+- [x] Implemented project-scoped shared-activity notification settings (default + member override) with share-modal controls.
+    - `supabase/migrations/20260422000000_project_notification_settings_rpc.sql`
+    - `apps/web/src/routes/api/onto/projects/[id]/notification-settings/+server.ts`
+    - `apps/web/src/lib/components/project/ProjectShareModal.svelte`
+    - `apps/web/src/routes/projects/[id]/+page.svelte`
+
+---
+
 ## 2) User Requirements (from product request)
 
 - Shared projects should notify members when teammates make updates.
@@ -25,8 +49,8 @@ Core decisions:
 - Default behavior should be enabled for shared projects.
 - Users should not get bombarded; rapid updates should be batched.
 - Need best-practice guidance for:
-  - batching/frequency control
-  - permission/opt-in timing
+    - batching/frequency control
+    - permission/opt-in timing
 - Need a full audit of current notification infrastructure and simplification recommendations.
 
 ---
@@ -49,18 +73,18 @@ Recommendation: do not fire permission prompts at first page load; request in co
 ## 3.2 Anti-spam, grouping, and batching patterns
 
 - Android recommends updating existing notifications and grouping related notifications to avoid flooding.  
-  Sources:  
-  - [About notifications](https://developer.android.com/guide/topics/ui/notifiers/notifications.html)  
-  - [Create a group of notifications](https://developer.android.com/develop/ui/views/notifications/group)  
-  - [Build notification (`setOnlyAlertOnce`, update behavior)](https://developer.android.com/develop/ui/views/notifications/build-notification)
+  Sources:
+    - [About notifications](https://developer.android.com/guide/topics/ui/notifiers/notifications.html)
+    - [Create a group of notifications](https://developer.android.com/develop/ui/views/notifications/group)
+    - [Build notification (`setOnlyAlertOnce`, update behavior)](https://developer.android.com/develop/ui/views/notifications/build-notification)
 - APNs supports coalescing with `apns-collapse-id` and grouping with payload `thread-id`.  
-  Sources:  
-  - [APNs communication headers](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html)  
-  - [APNs payload key reference (`thread-id`)](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/PayloadKeyReference.html)
+  Sources:
+    - [APNs communication headers](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/CommunicatingwithAPNs.html)
+    - [APNs payload key reference (`thread-id`)](https://developer.apple.com/library/archive/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/PayloadKeyReference.html)
 - FCM supports collapsible semantics and throttles collapsible traffic to protect device battery (includes explicit burst/refill behavior).  
-  Sources:  
-  - [FCM message types](https://firebase.google.com/docs/cloud-messaging/customize-messages/set-message-type)  
-  - [FCM throttling and quotas](https://firebase.google.com/docs/cloud-messaging/throttling-and-quotas)
+  Sources:
+    - [FCM message types](https://firebase.google.com/docs/cloud-messaging/customize-messages/set-message-type)
+    - [FCM throttling and quotas](https://firebase.google.com/docs/cloud-messaging/throttling-and-quotas)
 - Frequency capping is a common operational control; dropped-vs-queued behavior should be explicit in product expectations.  
   Source: [OneSignal frequency capping](https://documentation.onesignal.com/docs/frequency-capping)
 
@@ -95,63 +119,76 @@ Primary flow references:
 Current source-of-truth is split:
 
 - Global channel preferences (one row per user): `user_notification_preferences`
-  - `packages/shared-types/src/database.schema.ts:2141`
+    - `packages/shared-types/src/database.schema.ts:2141`
 - Event subscription opt-in/out: `notification_subscriptions`
-  - `packages/shared-types/src/database.schema.ts:959`
+    - `packages/shared-types/src/database.schema.ts:959`
 - Push device endpoints/subscriptions: `push_subscriptions`
-  - `packages/shared-types/src/database.schema.ts:1643`
+    - `packages/shared-types/src/database.schema.ts:1643`
 - SMS channel state and limits: `user_sms_preferences`
-  - `packages/shared-types/src/database.schema.ts:2199`
+    - `packages/shared-types/src/database.schema.ts:2199`
 
 Important note: there is currently **no project-level notification preference table**.
 
 ## 4.3 What appears to be working well
 
 - Explicit opt-in defaults are implemented and fail-closed behavior exists in event emission.
-  - `supabase/migrations/20260205_001_notification_opt_in_defaults.sql`
-  - `supabase/migrations/20260205_002_emit_notification_event_opt_in.sql`
+    - `supabase/migrations/20260205_001_notification_opt_in_defaults.sql`
+    - `supabase/migrations/20260205_002_emit_notification_event_opt_in.sql`
 - Daily brief path is well integrated with the notification event pipeline.
-  - `apps/worker/src/workers/brief/briefWorker.ts:324`
+    - `apps/worker/src/workers/brief/briefWorker.ts:324`
 
-## 4.4 Key findings and risks
+## 4.4 Key findings and risks (status update)
 
 Severity: High
 
-1. Legacy schema drift in active SQL function:
+1. [Resolved] Legacy schema drift in active SQL function:
+
 - `get_notification_active_subscriptions` still joins `user_notification_preferences` on `event_type`, but global prefs no longer have that column.
-- File: `packages/shared-types/src/functions/get_notification_active_subscriptions.sql:22`
+- Fixed in:
+    - `supabase/migrations/20260421000000_notification_risk_cleanup.sql`
+    - `packages/shared-types/src/functions/get_notification_active_subscriptions.sql`
 
-2. SMS adapter appears to create duplicate `sms_messages` records:
+2. [Resolved] SMS adapter duplicate `sms_messages` writes:
+
 - Adapter inserts directly, then calls `queue_sms_message` which also inserts.
-- Files:
-  - `apps/worker/src/workers/notification/smsAdapter.ts:724`
-  - `packages/shared-types/src/functions/queue_sms_message.sql:22`
+- Fixed in:
+    - `apps/worker/src/workers/notification/smsAdapter.ts:724`
+    - `packages/shared-types/src/functions/queue_sms_message.sql:22`
 
-3. Some notification paths bypass the standardized event fan-out path:
+3. [Resolved] Some notification paths bypassed standardized event fan-out:
+
 - Invite acceptance manually inserts event + deliveries as already delivered in-app, bypassing subscription/channel worker logic.
-- File: `apps/web/src/routes/api/onto/invites/[inviteId]/accept/+server.ts:167`
+- Fixed in:
+    - `apps/web/src/routes/api/onto/invites/[inviteId]/accept/+server.ts`
 
 Severity: Medium
 
-4. Admin notification context API uses fallback defaults that can conflict with explicit opt-in defaults:
+4. [Resolved] Admin notification context API fallback defaults conflicted with explicit opt-in:
+
 - `push_enabled ?? true`, `email_enabled ?? true`, `in_app_enabled ?? true`
-- File: `apps/web/src/routes/api/admin/users/[id]/notification-context/+server.ts:111`
+- Fixed in:
+    - `apps/web/src/routes/api/admin/users/[id]/notification-context/+server.ts`
 
-5. Performance migration retains old model checks for `event_type` in `user_notification_preferences`:
-- File: `supabase/migrations/20260329000001_performance_indexes_and_functions.sql:65`
+5. [Resolved] Performance migration retained stale preference index assumptions:
 
-6. Mixed notification planes increase mental overhead:
+- Fixed in:
+    - `supabase/migrations/20260329000001_performance_indexes_and_functions.sql`
+    - `supabase/migrations/20260421000000_notification_risk_cleanup.sql`
+
+6. [Open] Mixed notification planes increase mental overhead:
+
 - Persistent notification events/deliveries
 - Realtime broadcast utility alias (`notifyUser`) for transient UI events
 - Separate stackable/in-app mechanisms
 - File: `apps/worker/src/workers/shared/queueUtils.ts:123`
 
-7. Push opt-in UX is settings-only today:
+7. [Resolved] Push opt-in UX was settings-only:
+
 - Browser permission request is tied to profile settings toggle, not join-time project context.
-- Files:
-  - `apps/web/src/lib/components/settings/NotificationPreferences.svelte:200`
-  - `apps/web/src/lib/services/browser-push.service.ts:133`
-  - `apps/web/src/routes/invites/[token]/+page.svelte:46`
+- Fixed in:
+    - `apps/web/src/lib/components/settings/NotificationPreferences.svelte:200`
+    - `apps/web/src/lib/services/browser-push.service.ts:133`
+    - `apps/web/src/routes/invites/[token]/+page.svelte`
 
 ## 4.5 Audit conclusion
 
@@ -180,8 +217,8 @@ It does not change daily brief generation behavior.
 - Setting name: `project_activity_notifications_enabled`
 - Location: project settings UI.
 - Default:
-  - `true` when active project member count > 1
-  - `false` for solo projects
+    - `true` when active project member count > 1
+    - `false` for solo projects
 - Editable by project owner/admin role.
 
 ### Rule B: Member-level override
@@ -193,39 +230,39 @@ It does not change daily brief generation behavior.
 
 - Do not notify actor for their own action.
 - Only notify active project members with:
-  - project setting enabled
-  - member override enabled
-  - channel permission enabled
-  - active device subscription (for push)
+    - project setting enabled
+    - member override enabled
+    - channel permission enabled
+    - active device subscription (for push)
 
 ### Rule D: Batching
 
 - Default batch window: 5 minutes per `(recipient_user_id, project_id)`.
 - If multiple actions occur in window, send one summary push.
 - Summary body example:
-  - `"Alex updated 4 tasks and added 1 note in Project Atlas"`
+    - `"Alex updated 4 tasks and added 1 note in Project Atlas"`
 - Immediate bypass events (not batched):
-  - direct mentions
-  - direct assignments
-  - explicit high-priority alert types
+    - direct mentions
+    - direct assignments
+    - explicit high-priority alert types
 
 ### Rule E: Frequency controls
 
 - Per user + per project caps:
-  - max 1 push per 10 minutes (after batch output)
-  - max 6 pushes per hour
-  - max 30 pushes per day
+    - max 1 push per 10 minutes (after batch output)
+    - max 6 pushes per hour
+    - max 30 pushes per day
 - If cap exceeded:
-  - keep in-app record
-  - suppress push
+    - keep in-app record
+    - suppress push
 
 ### Rule F: Collapse/group semantics
 
 - For push providers use project-scoped collapse/group keys:
-  - APNs: `apns-collapse-id = project:{projectId}:activity`
-  - APNs payload: `thread-id = project:{projectId}`
-  - FCM: `collapse_key = project_{projectId}_activity`
-  - Web Push payload: `tag = project:{projectId}:activity`
+    - APNs: `apns-collapse-id = project:{projectId}:activity`
+    - APNs payload: `thread-id = project:{projectId}`
+    - FCM: `collapse_key = project_{projectId}_activity`
+    - Web Push payload: `tag = project:{projectId}:activity`
 
 ---
 
@@ -262,7 +299,7 @@ create table if not exists project_member_notification_preferences (
 Batch state (choose one approach):
 
 - Option 1 (recommended): persistent aggregate rows:
-  - `project_notification_batches` table keyed by `(recipient_user_id, project_id, window_start)`.
+    - `project_notification_batches` table keyed by `(recipient_user_id, project_id, window_start)`.
 - Option 2: queue-only with dedup metadata (less queryable, weaker observability).
 
 Recommended: Option 1 for debuggability and admin support.
@@ -280,14 +317,14 @@ Payload shape for `project.activity.changed`:
 
 ```json
 {
-  "project_id": "uuid",
-  "project_name": "string",
-  "actor_user_id": "uuid",
-  "actor_name": "string",
-  "action_type": "task.updated|task.created|doc.updated|comment.added|...",
-  "entity_id": "uuid",
-  "entity_type": "task|doc|comment|...",
-  "occurred_at": "ISO8601"
+	"project_id": "uuid",
+	"project_name": "string",
+	"actor_user_id": "uuid",
+	"actor_name": "string",
+	"action_type": "task.updated|task.created|doc.updated|comment.added|...",
+	"entity_id": "uuid",
+	"entity_type": "task|doc|comment|...",
+	"occurred_at": "ISO8601"
 }
 ```
 
@@ -295,21 +332,21 @@ Payload shape for `project.activity.batched`:
 
 ```json
 {
-  "project_id": "uuid",
-  "project_name": "string",
-  "recipient_user_id": "uuid",
-  "window_start": "ISO8601",
-  "window_end": "ISO8601",
-  "total_events": 7,
-  "top_actions": {
-    "task.updated": 4,
-    "comment.added": 2,
-    "doc.updated": 1
-  },
-  "actors": [
-    { "user_id": "uuid", "name": "Alex" },
-    { "user_id": "uuid", "name": "Maya" }
-  ]
+	"project_id": "uuid",
+	"project_name": "string",
+	"recipient_user_id": "uuid",
+	"window_start": "ISO8601",
+	"window_end": "ISO8601",
+	"total_events": 7,
+	"top_actions": {
+		"task.updated": 4,
+		"comment.added": 2,
+		"doc.updated": 1
+	},
+	"actors": [
+		{ "user_id": "uuid", "name": "Alex" },
+		{ "user_id": "uuid", "name": "Maya" }
+	]
 }
 ```
 
@@ -321,10 +358,10 @@ Payload shape for `project.activity.batched`:
 2. Emit `project.activity.changed`.
 3. Recipient resolver computes project members minus actor.
 4. Preference gate checks:
-   - project setting
-   - member override
-   - user/global channel settings
-   - device subscription
+    - project setting
+    - member override
+    - user/global channel settings
+    - device subscription
 5. Aggregator upserts into open 5-minute batch.
 6. Scheduler enqueues one deduped flush job per recipient+project window.
 7. Flush job creates `project.activity.batched` and downstream `notification_deliveries`.
@@ -340,15 +377,15 @@ Payload shape for `project.activity.batched`:
 Trigger: after invite acceptance and first redirect into project context.
 
 1. Show soft modal:
-   - Title: `"Stay updated on {projectName}?"`
-   - Text: short explanation of teammate activity updates
-   - Controls:
-     - Toggle A: `"Project activity notifications"` (default ON)
-     - Button B: `"Enable push on this device"` (only shown if browser permission is not granted)
+    - Title: `"Stay updated on {projectName}?"`
+    - Text: short explanation of teammate activity updates
+    - Controls:
+        - Toggle A: `"Project activity notifications"` (default ON)
+        - Button B: `"Enable push on this device"` (only shown if browser permission is not granted)
 2. Only when user clicks Button B, call `Notification.requestPermission()` (user gesture compliant).
 3. If denied:
-   - Keep project setting enabled at app level if desired (in-app only), but mark push unavailable.
-   - Show one-click help path to browser settings.
+    - Keep project setting enabled at app level if desired (in-app only), but mark push unavailable.
+    - Show one-click help path to browser settings.
 
 ## 6.2 Additional entry points
 
@@ -433,21 +470,21 @@ Phase 4: Metrics + tuning
 Track:
 
 - Opt-in funnel:
-  - soft-ask shown rate
-  - soft-ask accept rate
-  - browser permission grant rate
+    - soft-ask shown rate
+    - soft-ask accept rate
+    - browser permission grant rate
 - Delivery quality:
-  - push sent / user / day
-  - pushes suppressed by cap
-  - pushes collapsed/batched count
+    - push sent / user / day
+    - pushes suppressed by cap
+    - pushes collapsed/batched count
 - User outcomes:
-  - open/click rate on batched notifications
-  - project-level mute rate
-  - unsubscribe/permission revoke rate
+    - open/click rate on batched notifications
+    - project-level mute rate
+    - unsubscribe/permission revoke rate
 - Reliability:
-  - queue lag
-  - adapter failure rates
-  - batch flush failures
+    - queue lag
+    - adapter failure rates
+    - batch flush failures
 
 Success target (initial):
 
@@ -459,15 +496,15 @@ Success target (initial):
 ## 10) Test Plan
 
 - Unit tests:
-  - preference resolution across project + member + global settings
-  - batch merge logic
-  - cap enforcement
+    - preference resolution across project + member + global settings
+    - batch merge logic
+    - cap enforcement
 - Integration tests:
-  - invite acceptance -> modal -> preference persistence -> send behavior
-  - multiple events in 5 minutes -> single push + correct summary payload
+    - invite acceptance -> modal -> preference persistence -> send behavior
+    - multiple events in 5 minutes -> single push + correct summary payload
 - Regression tests:
-  - daily brief email/SMS/push unaffected
-  - notification page rendering still correct
+    - daily brief email/SMS/push unaffected
+    - notification page rendering still correct
 
 ---
 
@@ -503,4 +540,3 @@ Success target (initial):
 - `apps/web/src/lib/components/settings/NotificationPreferences.svelte`
 - `apps/web/src/lib/services/browser-push.service.ts`
 - `apps/web/src/routes/notifications/+page.server.ts`
-

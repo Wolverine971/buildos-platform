@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		const result = Array.isArray(data) ? data[0] : data;
 		projectId = result?.project_id as string | undefined;
 
-		// Log acceptance to project activity + notify owners
+		// Log acceptance to project activity + notify owners/inviter
 		if (projectId) {
 			const actorId = await ensureActorId(supabase, user.id);
 
@@ -80,7 +80,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				});
 			}
 
-			// Build in-app notification for project owners (and inviter if distinct)
+			// Build notifications for project owners (and inviter if distinct)
 			const { data: project, error: projectError } = await supabase
 				.from('onto_projects')
 				.select('id, name')
@@ -150,79 +150,115 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				recipients.add(inviterUserId);
 			}
 
-			if (recipients.size > 0) {
+			const recipientIds = Array.from(recipients).filter(
+				(recipientId) => recipientId !== user.id
+			);
+
+			if (recipientIds.length > 0) {
+				const eventType = 'project.invite.accepted';
 				const correlationId = randomUUID();
 				const displayName = user.name || user.email || 'A teammate';
 				const projectName = project?.name || 'project';
 				const payload = {
 					title: `${displayName} joined ${projectName}`,
 					body: `${displayName} accepted an invite as ${result?.role_key ?? 'member'}`,
+					action_url: `/projects/${projectId}`,
 					project_id: projectId,
+					project_name: projectName,
 					actor_user_id: user.id,
 					actor_actor_id: actorId,
 					role_key: result?.role_key ?? null,
 					access: result?.access ?? null
 				};
 
-				const { data: eventInsert, error: eventError } = await supabase
-					.from('notification_events')
-					.insert({
-						event_type: 'project.invite.accepted',
-						event_source: 'api_action',
-						actor_user_id: user.id,
-						target_user_id: null,
-						payload,
-						metadata: { correlationId },
-						correlation_id: correlationId
-					})
-					.select('id')
-					.single();
+				// Ensure recipients are explicitly subscribed for this event type.
+				// Missing subscriptions are created; existing records are respected as-is.
+				const { data: existingSubscriptions, error: existingSubscriptionsError } =
+					await supabase
+						.from('notification_subscriptions')
+						.select('user_id')
+						.eq('event_type', eventType)
+						.in('user_id', recipientIds);
 
-				if (!eventError && eventInsert?.id) {
-					const deliveries = Array.from(recipients).map((recipientId) => ({
-						event_id: eventInsert.id,
-						recipient_user_id: recipientId,
-						channel: 'in_app',
-						status: 'delivered',
-						payload,
-						correlation_id: correlationId
-					}));
-
-					const { error: deliveryError } = await supabase
-						.from('notification_deliveries')
-						.insert(deliveries);
-
-					if (deliveryError) {
-						console.warn(
-							'[Invite Accept API] Failed to create notification deliveries:',
-							deliveryError
-						);
-						void logOntologyApiError({
-							supabase,
-							error: deliveryError,
-							endpoint: `/api/onto/invites/${inviteId}/accept`,
-							method: 'POST',
-							userId,
-							projectId,
-							entityType: 'project_invite',
-							operation: 'project_invite_accept_notify_deliveries'
-						});
-					}
-				} else if (eventError) {
-					console.warn(
-						'[Invite Accept API] Failed to create notification event:',
-						eventError
-					);
+				if (existingSubscriptionsError) {
 					void logOntologyApiError({
 						supabase,
-						error: eventError,
+						error: existingSubscriptionsError,
 						endpoint: `/api/onto/invites/${inviteId}/accept`,
 						method: 'POST',
 						userId,
 						projectId,
 						entityType: 'project_invite',
-						operation: 'project_invite_accept_notify_event'
+						operation: 'project_invite_accept_subscription_check'
 					});
+				}
+
+				const existingSubscriptionUserIds = new Set(
+					(existingSubscriptions ?? []).map((subscription) => subscription.user_id)
+				);
+
+				const missingSubscriptions = recipientIds
+					.filter((recipientId) => !existingSubscriptionUserIds.has(recipientId))
+					.map((recipientId) => ({
+						user_id: recipientId,
+						event_type: eventType,
+						is_active: true,
+						admin_only: false,
+						created_by: user.id,
+						updated_at: new Date().toISOString()
+					}));
+
+				if (missingSubscriptions.length > 0) {
+					const { error: subscriptionUpsertError } = await supabase
+						.from('notification_subscriptions')
+						.upsert(missingSubscriptions, {
+							onConflict: 'user_id,event_type'
+						});
+
+					if (subscriptionUpsertError) {
+						void logOntologyApiError({
+							supabase,
+							error: subscriptionUpsertError,
+							endpoint: `/api/onto/invites/${inviteId}/accept`,
+							method: 'POST',
+							userId,
+							projectId,
+							entityType: 'project_invite',
+							operation: 'project_invite_accept_subscription_upsert'
+						});
+					}
+				}
+
+				for (const recipientId of recipientIds) {
+					const { error: emitError } = await (supabase.rpc as any)(
+						'emit_notification_event',
+						{
+							p_event_type: eventType,
+							p_event_source: 'api_action',
+							p_actor_user_id: user.id,
+							p_target_user_id: recipientId,
+							p_payload: payload,
+							p_metadata: {
+								correlationId,
+								projectId,
+								recipientUserId: recipientId,
+								inviteId
+							}
+						}
+					);
+
+					if (emitError) {
+						void logOntologyApiError({
+							supabase,
+							error: emitError,
+							endpoint: `/api/onto/invites/${inviteId}/accept`,
+							method: 'POST',
+							userId,
+							projectId,
+							entityType: 'project_invite',
+							operation: 'project_invite_accept_notify_emit'
+						});
+					}
 				}
 			}
 		}
