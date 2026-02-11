@@ -133,7 +133,8 @@ export const DEPRECATED_RELATIONSHIPS: Record<
 	referenced_by: { canonical: 'references', swapDirection: true },
 	mitigated_by: { canonical: 'mitigates', swapDirection: true },
 	achieved_by: { canonical: 'supports_goal', swapDirection: true },
-	supports: { canonical: 'supports_goal', swapDirection: false }
+	supports: { canonical: 'supports_goal', swapDirection: false },
+	builds_on: { canonical: 'depends_on', swapDirection: false }
 };
 
 /**
