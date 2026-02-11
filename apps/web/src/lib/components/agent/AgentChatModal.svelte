@@ -1465,16 +1465,286 @@
 	/**
 	 * Formats tool messages with meaningful context from arguments
 	 */
-	function buildEntityTarget(name?: string, id?: string): string | undefined {
-		const normalizedName = typeof name === 'string' ? name.trim() : '';
-		const normalizedId = typeof id === 'string' ? id.trim() : '';
-		if (normalizedName && normalizedId) {
-			return normalizedName === normalizedId
-				? normalizedName
-				: `${normalizedName} (${normalizedId})`;
-		}
-		return normalizedName || normalizedId || undefined;
+	type OntologyEntityKind =
+		| 'project'
+		| 'task'
+		| 'goal'
+		| 'plan'
+		| 'document'
+		| 'milestone'
+		| 'risk'
+		| 'requirement'
+		| 'event';
+
+	const ENTITY_NAME_FIELDS = ['name', 'title', 'text', 'summary', 'label'] as const;
+	const ENTITY_SINGULAR_KEYS: Record<string, OntologyEntityKind> = {
+		project: 'project',
+		task: 'task',
+		goal: 'goal',
+		plan: 'plan',
+		document: 'document',
+		milestone: 'milestone',
+		risk: 'risk',
+		requirement: 'requirement',
+		event: 'event'
+	};
+	const ENTITY_PLURAL_KEYS: Record<string, OntologyEntityKind> = {
+		projects: 'project',
+		tasks: 'task',
+		goals: 'goal',
+		plans: 'plan',
+		documents: 'document',
+		milestones: 'milestone',
+		risks: 'risk',
+		requirements: 'requirement',
+		events: 'event'
+	};
+
+	const entityNameCache = new Map<string, string>();
+
+	function normalizeEntityLabel(value: unknown): string | undefined {
+		if (typeof value !== 'string') return undefined;
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : undefined;
 	}
+
+	function cacheEntityName(kind: OntologyEntityKind | 'entity', id: string, name: string): void {
+		const normalizedId = normalizeEntityLabel(id);
+		const normalizedName = normalizeEntityLabel(name);
+		if (!normalizedId || !normalizedName) return;
+		if (normalizedId === normalizedName) return;
+		entityNameCache.set(`${kind}:${normalizedId}`, normalizedName);
+		entityNameCache.set(`entity:${normalizedId}`, normalizedName);
+	}
+
+	function getCachedEntityName(
+		kind: OntologyEntityKind | 'entity' | undefined,
+		id?: string
+	): string | undefined {
+		const normalizedId = normalizeEntityLabel(id);
+		if (!normalizedId) return undefined;
+		if (kind) {
+			const typed = entityNameCache.get(`${kind}:${normalizedId}`);
+			if (typed) return typed;
+		}
+		return entityNameCache.get(`entity:${normalizedId}`);
+	}
+
+	function resolveContextEntityName(
+		kind: OntologyEntityKind | undefined,
+		id?: string
+	): string | undefined {
+		const normalizedId = normalizeEntityLabel(id);
+		if (!normalizedId) return undefined;
+
+		if (kind === 'project' || isProjectContext(selectedContextType)) {
+			if (
+				resolvedProjectFocus?.projectId === normalizedId &&
+				resolvedProjectFocus?.projectName
+			) {
+				return normalizeEntityLabel(resolvedProjectFocus.projectName);
+			}
+			if (
+				isProjectContext(selectedContextType) &&
+				selectedEntityId === normalizedId &&
+				selectedContextLabel
+			) {
+				return normalizeEntityLabel(selectedContextLabel);
+			}
+		}
+
+		if (
+			projectFocus?.focusEntityId === normalizedId &&
+			projectFocus?.focusEntityName &&
+			projectFocus?.focusType &&
+			projectFocus.focusType !== 'project-wide'
+		) {
+			return normalizeEntityLabel(projectFocus.focusEntityName);
+		}
+
+		if (selectedEntityId === normalizedId && selectedContextLabel) {
+			return normalizeEntityLabel(selectedContextLabel);
+		}
+
+		return undefined;
+	}
+
+	function resolveEntityName(
+		kind: OntologyEntityKind | undefined,
+		id?: string,
+		candidateName?: string
+	): string | undefined {
+		const direct = normalizeEntityLabel(candidateName);
+		if (direct) return direct;
+		if (!id) return undefined;
+		return (
+			resolveContextEntityName(kind, id) ||
+			getCachedEntityName(kind, id) ||
+			getCachedEntityName('entity', id)
+		);
+	}
+
+	function extractEntityDisplayName(entity: Record<string, any>): string | undefined {
+		for (const key of ENTITY_NAME_FIELDS) {
+			const value = normalizeEntityLabel(entity[key]);
+			if (value) return value;
+		}
+		return undefined;
+	}
+
+	function indexEntityRecord(kind: OntologyEntityKind, entity: Record<string, any>): void {
+		const id =
+			normalizeEntityLabel(entity.id) ||
+			normalizeEntityLabel(entity[`${kind}_id`]) ||
+			normalizeEntityLabel(entity.entity_id);
+		const name = extractEntityDisplayName(entity);
+		if (id && name) {
+			cacheEntityName(kind, id, name);
+		}
+
+		const projectId = normalizeEntityLabel(entity.project_id);
+		const projectName = normalizeEntityLabel(entity.project_name);
+		if (projectId && projectName) {
+			cacheEntityName('project', projectId, projectName);
+		}
+	}
+
+	function indexEntityResults(results: unknown[]): void {
+		for (const result of results) {
+			if (!result || typeof result !== 'object') continue;
+			const entry = result as Record<string, any>;
+			const id = normalizeEntityLabel(entry.entity_id) || normalizeEntityLabel(entry.id);
+			const kind =
+				normalizeEntityLabel(entry.entity_type) || normalizeEntityLabel(entry.type);
+			const name = normalizeEntityLabel(entry.entity_name) || extractEntityDisplayName(entry);
+			if (id && name) {
+				cacheEntityName((kind as OntologyEntityKind) ?? 'entity', id, name);
+			}
+		}
+	}
+
+	function indexEntitiesFromPayload(payload: Record<string, any>): void {
+		if (!payload) return;
+
+		const contextShift =
+			payload.context_shift && typeof payload.context_shift === 'object'
+				? (payload.context_shift as Record<string, any>)
+				: null;
+		if (contextShift) {
+			const shiftId = normalizeEntityLabel(contextShift.entity_id);
+			const shiftName = normalizeEntityLabel(contextShift.entity_name);
+			const shiftType = normalizeEntityLabel(contextShift.entity_type);
+			if (shiftId && shiftName) {
+				cacheEntityName((shiftType as OntologyEntityKind) ?? 'entity', shiftId, shiftName);
+			}
+		}
+
+		if (payload.project_id && payload.project_name) {
+			cacheEntityName('project', payload.project_id, payload.project_name);
+		}
+
+		for (const [key, kind] of Object.entries(ENTITY_SINGULAR_KEYS)) {
+			const entity = payload[key];
+			if (entity && typeof entity === 'object') {
+				indexEntityRecord(kind, entity as Record<string, any>);
+			}
+		}
+
+		for (const [key, kind] of Object.entries(ENTITY_PLURAL_KEYS)) {
+			const entities = payload[key];
+			if (Array.isArray(entities)) {
+				for (const entity of entities) {
+					if (entity && typeof entity === 'object') {
+						indexEntityRecord(kind, entity as Record<string, any>);
+					}
+				}
+			}
+		}
+
+		if (Array.isArray(payload.results)) {
+			indexEntityResults(payload.results);
+		}
+
+		const nestedResult = payload.result;
+		if (nestedResult && typeof nestedResult === 'object' && nestedResult !== payload) {
+			indexEntitiesFromPayload(nestedResult as Record<string, any>);
+		}
+	}
+
+	function extractToolResultPayload(toolResult: unknown): Record<string, any> | null {
+		if (!toolResult || typeof toolResult !== 'object') return null;
+		const record = toolResult as Record<string, any>;
+		const candidate =
+			(record.data && typeof record.data === 'object' && record.data) ||
+			(record.result && typeof record.result === 'object' && record.result) ||
+			(record.tool_result && typeof record.tool_result === 'object' && record.tool_result);
+		if (candidate) return candidate as Record<string, any>;
+
+		const fallbackKeys = [
+			'project',
+			'projects',
+			'task',
+			'tasks',
+			'goal',
+			'goals',
+			'plan',
+			'plans',
+			'document',
+			'documents',
+			'milestone',
+			'milestones',
+			'risk',
+			'risks',
+			'requirement',
+			'requirements',
+			'results',
+			'context_shift'
+		];
+		if (fallbackKeys.some((key) => key in record)) {
+			return record;
+		}
+		return null;
+	}
+
+	function indexEntitiesFromToolResult(toolResult: unknown): void {
+		const payload = extractToolResultPayload(toolResult);
+		if (!payload) return;
+		indexEntitiesFromPayload(payload);
+	}
+
+	function buildEntityTarget(
+		name?: string,
+		id?: string,
+		kind?: OntologyEntityKind
+	): string | undefined {
+		return resolveEntityName(kind, id, name);
+	}
+
+	$effect(() => {
+		if (resolvedProjectFocus?.projectId && resolvedProjectFocus.projectName) {
+			cacheEntityName(
+				'project',
+				resolvedProjectFocus.projectId,
+				resolvedProjectFocus.projectName
+			);
+		}
+		if (
+			resolvedProjectFocus?.focusType &&
+			resolvedProjectFocus.focusType !== 'project-wide' &&
+			resolvedProjectFocus.focusEntityId &&
+			resolvedProjectFocus.focusEntityName
+		) {
+			cacheEntityName(
+				resolvedProjectFocus.focusType as OntologyEntityKind,
+				resolvedProjectFocus.focusEntityId,
+				resolvedProjectFocus.focusEntityName
+			);
+		}
+		if (selectedEntityId && selectedContextLabel) {
+			const inferredKind = isProjectContext(selectedContextType) ? 'project' : 'entity';
+			cacheEntityName(inferredKind, selectedEntityId, selectedContextLabel);
+		}
+	});
 
 	const TOOL_DISPLAY_FORMATTERS: Record<
 		string,
@@ -1494,7 +1764,7 @@
 		}),
 		get_onto_project_details: (args) => ({
 			action: 'Loading project',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		create_onto_project: (args) => ({
 			action: 'Creating project',
@@ -1502,11 +1772,11 @@
 		}),
 		update_onto_project: (args) => ({
 			action: 'Updating project',
-			target: buildEntityTarget(args?.project_name ?? args?.name, args?.project_id)
+			target: buildEntityTarget(args?.project_name ?? args?.name, args?.project_id, 'project')
 		}),
 		list_onto_tasks: (args) => ({
 			action: 'Listing tasks',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		search_onto_tasks: (args) => ({
 			action: 'Searching tasks',
@@ -1514,7 +1784,7 @@
 		}),
 		get_onto_task_details: (args) => ({
 			action: 'Loading task',
-			target: args?.task_id
+			target: resolveEntityName('task', args?.task_id)
 		}),
 		create_onto_task: (args) => ({
 			action: 'Creating task',
@@ -1522,19 +1792,19 @@
 		}),
 		update_onto_task: (args) => ({
 			action: 'Updating task',
-			target: buildEntityTarget(args?.task_title ?? args?.title, args?.task_id)
+			target: buildEntityTarget(args?.task_title ?? args?.title, args?.task_id, 'task')
 		}),
 		delete_onto_task: (args) => ({
 			action: 'Deleting task',
-			target: args?.task_id
+			target: resolveEntityName('task', args?.task_id)
 		}),
 		list_onto_goals: (args) => ({
 			action: 'Listing goals',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		get_onto_goal_details: (args) => ({
 			action: 'Loading goal',
-			target: args?.goal_id
+			target: resolveEntityName('goal', args?.goal_id)
 		}),
 		create_onto_goal: (args) => ({
 			action: 'Creating goal',
@@ -1542,19 +1812,19 @@
 		}),
 		update_onto_goal: (args) => ({
 			action: 'Updating goal',
-			target: buildEntityTarget(args?.goal_name ?? args?.name, args?.goal_id)
+			target: buildEntityTarget(args?.goal_name ?? args?.name, args?.goal_id, 'goal')
 		}),
 		delete_onto_goal: (args) => ({
 			action: 'Deleting goal',
-			target: args?.goal_id
+			target: resolveEntityName('goal', args?.goal_id)
 		}),
 		list_onto_plans: (args) => ({
 			action: 'Listing plans',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		get_onto_plan_details: (args) => ({
 			action: 'Loading plan',
-			target: args?.plan_id
+			target: resolveEntityName('plan', args?.plan_id)
 		}),
 		create_onto_plan: (args) => ({
 			action: 'Creating plan',
@@ -1562,27 +1832,27 @@
 		}),
 		update_onto_plan: (args) => ({
 			action: 'Updating plan',
-			target: buildEntityTarget(args?.plan_name ?? args?.name, args?.plan_id)
+			target: buildEntityTarget(args?.plan_name ?? args?.name, args?.plan_id, 'plan')
 		}),
 		delete_onto_plan: (args) => ({
 			action: 'Deleting plan',
-			target: args?.plan_id
+			target: resolveEntityName('plan', args?.plan_id)
 		}),
 		list_onto_documents: (args) => ({
 			action: 'Listing documents',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		list_onto_milestones: (args) => ({
 			action: 'Listing milestones',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		list_onto_risks: (args) => ({
 			action: 'Listing risks',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		list_onto_requirements: (args) => ({
 			action: 'Listing requirements',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		search_onto_documents: (args) => ({
 			action: 'Searching documents',
@@ -1590,19 +1860,19 @@
 		}),
 		get_onto_document_details: (args) => ({
 			action: 'Loading document',
-			target: args?.document_id
+			target: resolveEntityName('document', args?.document_id)
 		}),
 		get_onto_milestone_details: (args) => ({
 			action: 'Loading milestone',
-			target: args?.milestone_id
+			target: resolveEntityName('milestone', args?.milestone_id)
 		}),
 		get_onto_risk_details: (args) => ({
 			action: 'Loading risk',
-			target: args?.risk_id
+			target: resolveEntityName('risk', args?.risk_id)
 		}),
 		get_onto_requirement_details: (args) => ({
 			action: 'Loading requirement',
-			target: args?.requirement_id
+			target: resolveEntityName('requirement', args?.requirement_id)
 		}),
 		create_onto_document: (args) => ({
 			action: 'Creating document',
@@ -1610,31 +1880,43 @@
 		}),
 		update_onto_document: (args) => ({
 			action: 'Updating document',
-			target: buildEntityTarget(args?.document_title ?? args?.title, args?.document_id)
+			target: buildEntityTarget(
+				args?.document_title ?? args?.title,
+				args?.document_id,
+				'document'
+			)
 		}),
 		update_onto_milestone: (args) => ({
 			action: 'Updating milestone',
-			target: buildEntityTarget(args?.milestone_title ?? args?.title, args?.milestone_id)
+			target: buildEntityTarget(
+				args?.milestone_title ?? args?.title,
+				args?.milestone_id,
+				'milestone'
+			)
 		}),
 		update_onto_risk: (args) => ({
 			action: 'Updating risk',
-			target: buildEntityTarget(args?.risk_title ?? args?.title, args?.risk_id)
+			target: buildEntityTarget(args?.risk_title ?? args?.title, args?.risk_id, 'risk')
 		}),
 		update_onto_requirement: (args) => ({
 			action: 'Updating requirement',
-			target: buildEntityTarget(args?.requirement_text ?? args?.text, args?.requirement_id)
+			target: buildEntityTarget(
+				args?.requirement_text ?? args?.text,
+				args?.requirement_id,
+				'requirement'
+			)
 		}),
 		delete_onto_document: (args) => ({
 			action: 'Deleting document',
-			target: args?.document_id
+			target: resolveEntityName('document', args?.document_id)
 		}),
 		get_entity_relationships: (args) => ({
 			action: 'Loading relationships',
-			target: args?.entity_id
+			target: resolveEntityName(args?.entity_kind as OntologyEntityKind, args?.entity_id)
 		}),
 		get_linked_entities: (args) => ({
 			action: 'Loading linked entities',
-			target: args?.entity_id
+			target: resolveEntityName(args?.entity_kind as OntologyEntityKind, args?.entity_id)
 		}),
 		get_field_info: () => ({
 			action: 'Loading field guidance'
@@ -1651,7 +1933,7 @@
 		}),
 		fetch_project_data: (args) => ({
 			action: 'Fetching project',
-			target: args.project_name || args.project_id
+			target: buildEntityTarget(args.project_name, args.project_id, 'project')
 		}),
 		search_tasks: (args) => ({
 			action: 'Searching tasks',
@@ -1663,11 +1945,11 @@
 		}),
 		list_calendar_events: (args) => ({
 			action: 'Listing calendar events',
-			target: args?.project_id || args?.calendar_scope
+			target: resolveEntityName('project', args?.project_id) || args?.calendar_scope
 		}),
 		get_calendar_event_details: (args) => ({
 			action: 'Loading calendar event',
-			target: args?.onto_event_id || args?.event_id
+			target: resolveEntityName('event', args?.onto_event_id || args?.event_id)
 		}),
 		create_calendar_event: (args) => ({
 			action: 'Creating calendar event',
@@ -1675,19 +1957,19 @@
 		}),
 		update_calendar_event: (args) => ({
 			action: 'Updating calendar event',
-			target: args?.onto_event_id || args?.event_id
+			target: resolveEntityName('event', args?.onto_event_id || args?.event_id)
 		}),
 		delete_calendar_event: (args) => ({
 			action: 'Deleting calendar event',
-			target: args?.onto_event_id || args?.event_id
+			target: resolveEntityName('event', args?.onto_event_id || args?.event_id)
 		}),
 		get_project_calendar: (args) => ({
 			action: 'Loading project calendar',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		}),
 		set_project_calendar: (args) => ({
 			action: 'Updating project calendar',
-			target: args?.project_id
+			target: resolveEntityName('project', args?.project_id)
 		})
 	};
 
@@ -2842,6 +3124,8 @@
 					});
 				}
 
+				indexEntitiesFromToolResult(toolResult);
+
 				if (resultToolCallId) {
 					// Update the matching activity status
 					const result = updateActivityStatus(
@@ -2915,6 +3199,15 @@
 						shift.entity_name ??
 						CONTEXT_DESCRIPTORS[normalizedContext]?.title ??
 						selectedContextLabel;
+
+					if (shift.entity_id && shift.entity_name) {
+						cacheEntityName(
+							(shift.entity_type as OntologyEntityKind) ??
+								(isProjectContext(normalizedContext) ? 'project' : 'entity'),
+							shift.entity_id,
+							shift.entity_name
+						);
+					}
 
 					if (isProjectContext(normalizedContext) && shift.entity_id) {
 						projectFocus = buildProjectWideFocus(
