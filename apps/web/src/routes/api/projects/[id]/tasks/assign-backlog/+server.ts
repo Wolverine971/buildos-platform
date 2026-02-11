@@ -323,7 +323,7 @@ async function getValidPhasesWithTaskCounts(
 
 	// Filter out phases with end dates in the past
 	const now = new Date();
-	const validPhases = phases.filter((phase) => {
+	const validPhases = phases.filter((phase: any) => {
 		if (!phase.end_date) return true;
 		const phaseEndDate = new Date(phase.end_date);
 		return phaseEndDate >= now;
@@ -339,13 +339,13 @@ async function getValidPhasesWithTaskCounts(
 		.select('phase_id')
 		.in(
 			'phase_id',
-			validPhases.map((p) => p.id)
+			validPhases.map((p: any) => p.id)
 		);
 
 	// Count tasks per phase
 	const taskCountsByPhase: Record<string, number> = {};
 	if (phaseTasks) {
-		phaseTasks.forEach((pt) => {
+		phaseTasks.forEach((pt: any) => {
 			taskCountsByPhase[pt.phase_id] = (taskCountsByPhase[pt.phase_id] || 0) + 1;
 		});
 	}
@@ -368,12 +368,12 @@ async function getBacklogTasks(supabase: any, projectId: string): Promise<any[]>
 	// Find tasks that are NOT in phase_tasks (backlogged tasks)
 	const tasksWithPhases = new Set(
 		allProjectTasks
-			?.filter((t) => t.phase_tasks && t.phase_tasks.length > 0)
-			.map((t) => t.id) || []
+			?.filter((t: any) => t.phase_tasks && t.phase_tasks.length > 0)
+			.map((t: any) => t.id) || []
 	);
 
 	const backloggedTaskIds =
-		allProjectTasks?.filter((t) => !tasksWithPhases.has(t.id)).map((t) => t.id) || [];
+		allProjectTasks?.filter((t: any) => !tasksWithPhases.has(t.id)).map((t: any) => t.id) || [];
 
 	if (backloggedTaskIds.length === 0) {
 		return [];
@@ -436,7 +436,7 @@ async function batchUpdateTasksAndCreatePhaseAssignments(
 	// Process update results
 	updateResults.forEach((result, index) => {
 		if (result.error) {
-			console.error('Failed to update task:', taskUpdates[index].id, result.error);
+			console.error('Failed to update task:', taskUpdates[index]!.id, result.error);
 			return;
 		}
 
@@ -445,7 +445,7 @@ async function batchUpdateTasksAndCreatePhaseAssignments(
 			...result.data,
 			phase_tasks: [
 				{
-					phase_id: taskUpdates[index].phase_id,
+					phase_id: taskUpdates[index]!.phase_id,
 					task_id: result.data.id
 				}
 			]
@@ -593,7 +593,7 @@ export const POST: RequestHandler = async ({
 
 		if (autoAssign) {
 			// Use LLM for intelligent auto-assignment
-			const today = new Date().toISOString().split('T')[0];
+			const today = new Date().toISOString().split('T')[0]!;
 			const phasesInfo = formatPhasesForPrompt(phasesWithCounts, today);
 			const tasksInfo = formatTasksForPrompt(tasks);
 
@@ -646,7 +646,7 @@ export const POST: RequestHandler = async ({
 
 				if (needsDates) {
 					const totalTasksInPhase = llmAssignments.phase_assignments.filter(
-						(a) => a.phase_id === assignment.phase_id
+						(a: any) => a.phase_id === assignment.phase_id
 					).length;
 
 					taskWithDate.start_date = validateAndCorrectTaskDate(

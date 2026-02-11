@@ -89,15 +89,17 @@ const EVENT_MAPPERS: EventMapperRegistry = {
 		};
 	},
 
-	step_start: (event) => ({
-		type: 'step_start' as const,
-		step: (event as Extract<StreamEvent, { type: 'step_start' }>).step
-	}) as AgentSSEMessage,
+	step_start: (event) =>
+		({
+			type: 'step_start' as const,
+			step: (event as Extract<StreamEvent, { type: 'step_start' }>).step
+		}) as AgentSSEMessage,
 
-	step_complete: (event) => ({
-		type: 'step_complete' as const,
-		step: (event as Extract<StreamEvent, { type: 'step_complete' }>).step
-	}) as AgentSSEMessage,
+	step_complete: (event) =>
+		({
+			type: 'step_complete' as const,
+			step: (event as Extract<StreamEvent, { type: 'step_complete' }>).step
+		}) as AgentSSEMessage,
 
 	executor_spawned: (event) => {
 		const e = event as Extract<StreamEvent, { type: 'executor_spawned' }>;

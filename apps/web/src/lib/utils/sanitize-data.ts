@@ -25,8 +25,8 @@ export const sanitizeTaskData = (task: Task): Partial<Task> => {
 	};
 
 	Object.keys(sanitizedData).forEach((key) => {
-		if (sanitizedData[key] === undefined) {
-			delete sanitizedData[key];
+		if ((sanitizedData as Record<string, any>)[key] === undefined) {
+			delete (sanitizedData as Record<string, any>)[key];
 		}
 	});
 

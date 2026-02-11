@@ -894,7 +894,10 @@ export class TaskMigrationService {
 		const dueAt = this.resolveDueAt(task);
 		const priority = this.mapPriority(task.priority);
 		const facetScale = classification.requiresDeepWork ? 'medium' : 'small';
-		const baseProps = this.buildTaskProps(task, classification) as unknown as Record<string, unknown>;
+		const baseProps = this.buildTaskProps(task, classification) as unknown as Record<
+			string,
+			unknown
+		>;
 		// Add type_key and facets to props (facet_scale is a GENERATED column from props->'facets'->'scale')
 		const props = {
 			...baseProps,

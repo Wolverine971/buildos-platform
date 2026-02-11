@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 			: DEFAULT_REDIRECT_PATH;
 
 	const buildRedirectTarget = (path: string, params: Record<string, string>): string => {
-		const [basePath, existingQuery = ''] = path.split('?');
+		const [basePath = '', existingQuery = ''] = path.split('?');
 		const search = new URLSearchParams(existingQuery);
 		Object.entries(params).forEach(([key, value]) => search.set(key, value));
 		const queryString = search.toString();

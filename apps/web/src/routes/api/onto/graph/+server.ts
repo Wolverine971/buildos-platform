@@ -284,7 +284,8 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			totalDocuments: sourceData.documents.length,
 			totalPlans: sourceData.plans.length,
 			totalGoals: sourceData.goals.length,
-			totalMilestones: sourceData.milestones.length
+			totalMilestones: sourceData.milestones.length,
+			totalRisks: 0
 		};
 
 		return ApiResponse.success({

@@ -269,7 +269,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		const clientIP = getClientIP(request);
 		const recaptchaEnabled = !!env.PRIVATE_RECAPTCHA_SECRET_KEY || dev;
 		if (recaptchaEnabled) {
-
 			// Verify reCAPTCHA token (if provided)
 			const isRecaptchaValid = await verifyRecaptcha(data.recaptcha_token || '', clientIP);
 			if (!isRecaptchaValid) {

@@ -855,7 +855,7 @@ export const POST: RequestHandler = async ({
 							const contextScope = projectIdForTools
 								? {
 										projectId: projectIdForTools,
-										projectName: promptContext?.projectName
+										projectName: promptContext?.projectName ?? undefined
 									}
 								: undefined;
 							const serviceContext: ServiceContext = {

@@ -1,7 +1,6 @@
 // apps/web/src/routes/(public)/integrations/+page.ts
-import type { PageLoad } from './$types';
 
-export const load: PageLoad = async () => {
+export const load = async () => {
 	// This is a public page - no authentication required
 	// In the future, you could load dynamic content here like:
 	// - Featured integrations

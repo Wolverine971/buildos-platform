@@ -84,7 +84,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 						metadata: {
 							template_id: templateId,
 							template_type: type,
-							template_name: template?.name
+							template_name: (template as any)?.name
 						},
 						created_at: new Date().toISOString()
 					});
@@ -102,7 +102,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 
 				// Use the database function to copy the template
 				const { data: newTemplateId, error: copyError } = await supabase.rpc(
-					'copy_template_for_user',
+					'copy_template_for_user' as any,
 					{
 						template_table: tableName,
 						template_id: templateId,
@@ -137,7 +137,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 							original_template_id: templateId,
 							new_template_id: newTemplateId,
 							template_type: type,
-							template_name: newTemplate?.name
+							template_name: (newTemplate as any)?.name
 						},
 						created_at: new Date().toISOString()
 					});
@@ -182,9 +182,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 						user_id: user.id,
 						activity_type: 'template_created',
 						metadata: {
-							template_id: template.id,
+							template_id: (template as any).id,
 							template_type: type,
-							template_name: template.name
+							template_name: (template as any).name
 						},
 						created_at: new Date().toISOString()
 					});
@@ -253,7 +253,7 @@ export const PUT: RequestHandler = async ({ request, locals: { safeGetSession, s
 				metadata: {
 					template_id: id,
 					template_type: type,
-					template_name: template.name
+					template_name: (template as any).name
 				},
 				created_at: new Date().toISOString()
 			});

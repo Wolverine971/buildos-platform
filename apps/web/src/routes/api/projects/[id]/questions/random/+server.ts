@@ -44,15 +44,15 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		}
 
 		// Update shown_to_user_count for selected questions
-		const questionIds = selectedQuestions.map((q) => q.id);
+		const questionIds = selectedQuestions.map((q) => q!.id);
 		await supabase.rpc('increment_question_display_count', { question_ids: questionIds });
 
 		return ApiResponse.success({
 			questions: selectedQuestions.map((q) => ({
-				id: q.id,
-				question: q.question,
-				category: q.category,
-				context: q.context
+				id: q!.id,
+				question: q!.question,
+				category: q!.category,
+				context: q!.context
 			}))
 		});
 	} catch (error) {

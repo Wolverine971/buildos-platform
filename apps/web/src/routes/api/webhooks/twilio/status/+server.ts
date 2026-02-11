@@ -132,8 +132,17 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Create logger with correlation ID if available
 		const logger = correlationId
-			? baseLogger.child('status', { correlationId, messageSid, messageId, userId })
-			: baseLogger.child('status', { messageSid, messageId, userId });
+			? baseLogger.child('status', {
+					correlationId,
+					messageSid,
+					messageId: messageId ?? undefined,
+					userId: userId ?? undefined
+				})
+			: baseLogger.child('status', {
+					messageSid,
+					messageId: messageId ?? undefined,
+					userId: userId ?? undefined
+				});
 
 		logger.info('Received Twilio status webhook', {
 			messageStatus,

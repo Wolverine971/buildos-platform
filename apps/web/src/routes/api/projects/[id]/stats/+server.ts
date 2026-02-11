@@ -31,13 +31,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				return handleOriginalStats({ supabase, projectId, userId: user.id });
 			}
 
+			const rpcData = rpcResult as any;
+
 			// Check for authorization error
-			if (rpcResult?.error === 'Unauthorized') {
+			if (rpcData?.error === 'Unauthorized') {
 				return ApiResponse.error('Unauthorized', 401);
 			}
 
 			// Return the optimized stats with additional breakdowns
-			const stats = rpcResult?.stats || {};
+			const stats = rpcData?.stats || {};
 
 			// Ensure backward compatibility with expected format
 			const formattedStats = {

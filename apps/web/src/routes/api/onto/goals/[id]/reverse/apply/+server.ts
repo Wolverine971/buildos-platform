@@ -113,7 +113,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				return ApiResponse.databaseError(taskInsertError);
 			}
 
-			insertedTasks = (taskRows || []) as unknown as Array<{ id: string; props: Record<string, unknown> | null }>;
+			insertedTasks = (taskRows || []) as unknown as Array<{
+				id: string;
+				props: Record<string, unknown> | null;
+			}>;
 		}
 
 		const edgePayloads: Array<{
@@ -252,7 +255,9 @@ function normalizeTaskState(state?: string | null): Database['public']['Enums'][
 	if (!state) return DEFAULT_TASK_STATE as Database['public']['Enums']['task_state'];
 	const normalized = state.toLowerCase().replace(/\s+/g, '_');
 	const allowed = new Set(['todo', 'in_progress', 'done', 'blocked']);
-	return (allowed.has(normalized) ? normalized : DEFAULT_TASK_STATE) as Database['public']['Enums']['task_state'];
+	return (
+		allowed.has(normalized) ? normalized : DEFAULT_TASK_STATE
+	) as Database['public']['Enums']['task_state'];
 }
 
 function normalizePriority(priority?: number | null): number | null {

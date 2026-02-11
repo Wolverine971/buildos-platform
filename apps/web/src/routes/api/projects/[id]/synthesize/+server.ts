@@ -225,7 +225,7 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			return ApiResponse.notFound('Synthesis');
 		}
 
-		const synthesisToDelete = syntheses[0];
+		const synthesisToDelete = syntheses[0]!;
 
 		// Delete only the most recent synthesis
 		const { error: deleteError } = await supabase

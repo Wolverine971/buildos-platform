@@ -394,15 +394,16 @@ export class ProjectDataService {
 	}
 
 	async deleteTask(taskId: string): Promise<boolean> {
-		return (projectStoreV2.optimisticDeleteTask(taskId, async () => {
+		const result = await projectStoreV2.optimisticDeleteTask(taskId, async () => {
 			const response = await fetch(`/api/projects/${this.projectId}/tasks/${taskId}`, {
 				method: 'DELETE'
 			});
 
-			const result = await response.json();
-			if (!result.success) throw new Error(result.error);
+			const res = await response.json();
+			if (!res.success) throw new Error(res.error);
 			return true;
-		})) ?? false;
+		});
+		return (result as boolean) ?? false;
 	}
 
 	async createNote(noteData: Partial<Note>): Promise<Note> {

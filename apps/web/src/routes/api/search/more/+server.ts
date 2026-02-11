@@ -10,11 +10,11 @@ interface LoadMoreRequest {
 	userId?: string; // Optional since we'll get from session
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals }): Promise<Response> => {
 	try {
 		// Validate authentication
 		const authResult = await requireAuth(locals);
-		if ('error' in authResult) {
+		if ('error' in authResult && authResult.error) {
 			return authResult.error;
 		}
 		const { user } = authResult;

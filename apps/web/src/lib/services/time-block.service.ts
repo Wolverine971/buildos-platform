@@ -257,7 +257,7 @@ export class TimeBlockService {
 				suggestionSummary: suggestionResult.summary
 			});
 
-			const updatePayload = {
+			const updatePayload: Record<string, any> = {
 				ai_suggestions: suggestionResult.suggestions as any,
 				suggestions_summary: suggestionResult.summary ?? null,
 				suggestions_generated_at: suggestionResult.generatedAt.toISOString(),
@@ -296,10 +296,9 @@ export class TimeBlockService {
 						event_id: updatedBlock.calendar_event_id,
 						summary: calendarContent.summary,
 						description: calendarContent.description,
-						start: startTime,
-						end: endTime,
-						timeZone: timezone,
-						colorId: calendarContent.colorId
+						start_time: startTime.toISOString(),
+						end_time: endTime.toISOString(),
+						timeZone: timezone
 					});
 				} catch (calendarError) {
 					console.error(
@@ -466,8 +465,8 @@ export class TimeBlockService {
 					event_id: existingBlock.calendar_event_id,
 					summary: calendarContent.summary,
 					description: calendarContent.description,
-					start_time: startTime,
-					end_time: endTime,
+					start_time: startTime.toISOString(),
+					end_time: endTime.toISOString(),
 					timeZone: timezone
 				});
 			} catch (error) {

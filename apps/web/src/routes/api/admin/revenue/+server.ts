@@ -112,15 +112,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		activeSubscriptions?.forEach((sub) => {
 			if (!sub.subscription_plans) return;
 
-			const periodEnd = new Date(sub.current_period_end);
+			const periodEnd = new Date(sub.current_period_end!);
 			const now = new Date();
 			const daysRemaining = Math.max(
 				0,
 				(periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
 			);
-			const monthlyPrice =
-				sub.subscription_plans.price_cents /
-				(sub.subscription_plans.billing_interval === 'year' ? 12 : 1);
+			const plan = sub.subscription_plans as any;
+			const monthlyPrice = plan.price_cents / (plan.billing_interval === 'year' ? 12 : 1);
 			const dailyRate = monthlyPrice / 30;
 			const deferredAmount = dailyRate * daysRemaining;
 
@@ -161,24 +160,47 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// Build response
 		const recognized = {
 			current_period:
-				currentRevenue?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0,
+				currentRevenue?.reduce(
+					(sum: number, inv: any) => sum + (inv.amount_paid || 0),
+					0
+				) || 0,
 			previous_period:
-				previousRevenue?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0,
-			year_to_date: yearRevenue?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0,
-			all_time: allTimeRevenue?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0
+				previousRevenue?.reduce(
+					(sum: number, inv: any) => sum + (inv.amount_paid || 0),
+					0
+				) || 0,
+			year_to_date:
+				yearRevenue?.reduce((sum: number, inv: any) => sum + (inv.amount_paid || 0), 0) ||
+				0,
+			all_time:
+				allTimeRevenue?.reduce(
+					(sum: number, inv: any) => sum + (inv.amount_paid || 0),
+					0
+				) || 0
 		};
 
 		const refunds = {
 			current_period:
-				currentRefunds?.reduce((sum, inv) => sum + (inv.amount_refunded || 0), 0) || 0,
+				currentRefunds?.reduce(
+					(sum: number, inv: any) => sum + (inv.amount_refunded || 0),
+					0
+				) || 0,
 			previous_period:
-				previousRefunds?.reduce((sum, inv) => sum + (inv.amount_refunded || 0), 0) || 0,
+				previousRefunds?.reduce(
+					(sum: number, inv: any) => sum + (inv.amount_refunded || 0),
+					0
+				) || 0,
 			total_count: currentRefunds?.length || 0
 		};
 
 		const prorations = {
-			upgrades: upgrades?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0,
-			downgrades: downgrades?.reduce((sum, inv) => sum + (inv.amount_refunded || 0), 0) || 0,
+			upgrades:
+				upgrades?.reduce((sum: number, inv: any) => sum + (inv.amount_paid || 0), 0) || 0,
+			downgrades:
+				downgrades?.reduce(
+					(sum: number, inv: any) => sum + (inv.amount_refunded || 0),
+					0
+				) || 0,
 			net: 0
 		};
 		prorations.net = prorations.upgrades - prorations.downgrades;
@@ -196,12 +218,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			let periodCount = 0;
 
 			activeSubscriptions?.forEach((sub) => {
-				const periodEnd = new Date(sub.current_period_end);
+				const periodEnd = new Date(sub.current_period_end!);
 				if (
 					periodEnd.getMonth() === periodDate.getMonth() &&
 					periodEnd.getFullYear() === periodDate.getFullYear()
 				) {
-					periodAmount += sub.subscription_plans?.price_cents || 0;
+					periodAmount += (sub.subscription_plans as any)?.price_cents || 0;
 					periodCount++;
 				}
 			});

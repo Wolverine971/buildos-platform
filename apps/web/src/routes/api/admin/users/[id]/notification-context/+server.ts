@@ -234,7 +234,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				tasks_created: baseContext.activity.tasks_created,
 				tasks_completed: baseContext.activity.tasks_completed,
 				brain_dump_count: (baseContext.activity as any).brain_dump_count ?? 0,
-				brief_count: (baseContext.activity as any).brief_count ?? baseContext.activity.daily_briefs_count ?? 0
+				brief_count:
+					(baseContext.activity as any).brief_count ??
+					baseContext.activity.daily_briefs_count ??
+					0
 			},
 			beta: baseContext.beta
 		};

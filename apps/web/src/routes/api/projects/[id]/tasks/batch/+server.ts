@@ -81,7 +81,7 @@ export const PATCH: RequestHandler = async ({
 				const { data: existingTask } = await supabase
 					.from('tasks')
 					.select(
-						'task_type, start_date, duration_minutes, title, task_calendar_events(*)'
+						'task_type, start_date, duration_minutes, title, status, task_calendar_events(*)'
 					)
 					.eq('id', id)
 					.single();
@@ -96,7 +96,7 @@ export const PATCH: RequestHandler = async ({
 					data.recurrence_ends = null;
 					data.recurrence_end_source = null;
 					// If there are calendar events, they need to be deleted
-					if (existingTask.task_calendar_events?.length > 0) {
+					if ((existingTask.task_calendar_events as any[])?.length > 0) {
 						needsCalendarSync = true;
 						calendarOperation = 'delete';
 					}
@@ -115,20 +115,26 @@ export const PATCH: RequestHandler = async ({
 
 				// Check if date changes require calendar sync
 				if (data.start_date && data.start_date !== existingTask?.start_date) {
-					if (existingTask?.task_calendar_events?.length > 0) {
+					if ((existingTask?.task_calendar_events as any[])?.length > 0) {
 						needsCalendarSync = true;
 						calendarOperation = 'update';
 					}
 				}
 
 				// Check if task is being marked as done (should remove from calendar)
-				if (data.status === 'done' && existingTask?.task_calendar_events?.length > 0) {
+				if (
+					data.status === 'done' &&
+					(existingTask?.task_calendar_events as any[])?.length > 0
+				) {
 					needsCalendarSync = true;
 					calendarOperation = 'delete';
 				}
 
 				// Check if start_date is being cleared (should remove from calendar)
-				if (data.start_date === null && existingTask?.task_calendar_events?.length > 0) {
+				if (
+					data.start_date === null &&
+					(existingTask?.task_calendar_events as any[])?.length > 0
+				) {
 					needsCalendarSync = true;
 					calendarOperation = 'delete';
 				}
@@ -228,7 +234,7 @@ export const PATCH: RequestHandler = async ({
 						{ batchSize: 5 }
 					);
 					results.warnings.push(
-						`Calendar sync: ${deleteResult.deleted} events deleted, ${deleteResult.failed} failed`
+						`Calendar sync: ${deleteResult.deletedCount} events deleted, ${deleteResult.errors.length} failed`
 					);
 				}
 

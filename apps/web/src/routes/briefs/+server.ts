@@ -31,7 +31,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			return formatter.format(now);
 		} catch (err) {
 			// Error formatting date in timezone
-			return new Date().toISOString().split('T')[0];
+			return new Date().toISOString().split('T')[0]!;
 		}
 	};
 

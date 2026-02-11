@@ -2,7 +2,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { json, error } from '@sveltejs/kit';
 import { createHmac } from 'crypto';
-import { createCustomClient } from '@buildos/supabase-client';
+import { createClient } from '@supabase/supabase-js';
 import { PRIVATE_SUPABASE_SERVICE_KEY, PRIVATE_BUILDOS_WEBHOOK_SECRET } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
 import { EmailService } from '$lib/services/email-service';
@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const source = request.headers.get('x-source');
 
 		if (!signature || !timestamp) {
-			const supabase = createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
 				auth: {
 					autoRefreshToken: false,
 					persistSession: false
@@ -70,7 +70,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		if (source !== 'daily-brief-worker') {
-			const supabase = createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
 				auth: {
 					autoRefreshToken: false,
 					persistSession: false
@@ -92,7 +92,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const webhookSecret = PRIVATE_BUILDOS_WEBHOOK_SECRET;
 
 		if (!webhookSecret) {
-			const supabase = createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
 				auth: {
 					autoRefreshToken: false,
 					persistSession: false
@@ -112,7 +112,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Verify signature
 		if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-			const supabase = createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
 				auth: {
 					autoRefreshToken: false,
 					persistSession: false
@@ -135,7 +135,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const MAX_AGE = 5 * 60 * 1000; // 5 minutes
 
 		if (Math.abs(now - requestTime) > MAX_AGE) {
-			const supabase = createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+			const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
 				auth: {
 					autoRefreshToken: false,
 					persistSession: false
@@ -160,7 +160,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const payload: WebhookPayload = JSON.parse(rawBody);
 
 		// 3. Initialize Supabase client with service role
-		const supabase = createCustomClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+		const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
 			auth: {
 				autoRefreshToken: false,
 				persistSession: false
@@ -379,16 +379,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			!err.message.includes('Webhook timestamp')
 		) {
 			try {
-				const supabase = createCustomClient(
-					PUBLIC_SUPABASE_URL,
-					PRIVATE_SUPABASE_SERVICE_KEY,
-					{
-						auth: {
-							autoRefreshToken: false,
-							persistSession: false
-						}
+				const supabase = createClient(PUBLIC_SUPABASE_URL, PRIVATE_SUPABASE_SERVICE_KEY, {
+					auth: {
+						autoRefreshToken: false,
+						persistSession: false
 					}
-				);
+				});
 				const errorLogger = ErrorLoggerService.getInstance(supabase);
 				const payload = request.headers.get('x-webhook-payload')
 					? JSON.parse(request.headers.get('x-webhook-payload') as string)

@@ -117,7 +117,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		// Apply status filter if provided
 		if (status && ['pending', 'processing', 'processed', 'failed'].includes(status)) {
-			query = query.eq('status', status as Database['public']['Enums']['onto_braindump_status']);
+			query = query.eq(
+				'status',
+				status as Database['public']['Enums']['onto_braindump_status']
+			);
 		}
 
 		const { data: braindumps, error, count } = await query;

@@ -106,7 +106,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 
 	const { data: created, error } = await supabase
 		.from('voice_note_groups')
-		.insert(insertPayload)
+		.insert(insertPayload as any)
 		.select()
 		.single();
 

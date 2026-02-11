@@ -35,7 +35,9 @@ export function parseOpenRouterErrorMetadata(error: unknown): OpenRouterErrorMet
 			? maybeError.openrouter
 			: null;
 	const errorObject =
-		openrouter?.error && typeof openrouter.error === 'object' ? (openrouter.error as Record<string, unknown>) : null;
+		openrouter?.error && typeof openrouter.error === 'object'
+			? (openrouter.error as Record<string, unknown>)
+			: null;
 	const metadata =
 		errorObject?.metadata && typeof errorObject.metadata === 'object'
 			? (errorObject.metadata as Record<string, unknown>)

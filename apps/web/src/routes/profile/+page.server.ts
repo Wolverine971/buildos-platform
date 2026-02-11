@@ -199,7 +199,7 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		];
 
 		const completedFields = inputFields.filter((field) => {
-			const value = userContext[field];
+			const value = (userContext as Record<string, any>)[field];
 			return value && typeof value === 'string' && value.trim().length > 0;
 		});
 
@@ -217,8 +217,8 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 
 	const missingCategoriesArray = ['projects', 'work_style', 'challenges', 'help_focus'].filter(
 		(category) => {
-			const inputField = `input_${category}` as any;
-			const value = userContext?.[inputField];
+			const inputField = `input_${category}`;
+			const value = (userContext as Record<string, any> | null)?.[inputField];
 			return !(value && typeof value === 'string' && (value as string).trim().length > 0);
 		}
 	);
@@ -615,7 +615,7 @@ export const actions: Actions = {
 					metadata: {
 						template_id: templateId,
 						template_type: type,
-						template_name: template?.name,
+						template_name: (template as any)?.name,
 						onboarding_version: '4_question_focused'
 					},
 					created_at: new Date().toISOString()
@@ -697,9 +697,9 @@ export const actions: Actions = {
 					activity_type: 'template_copied',
 					metadata: {
 						original_template_id: templateId,
-						new_template_id: newTemplate.id,
+						new_template_id: (newTemplate as any).id,
 						template_type: type,
-						template_name: newTemplate.name,
+						template_name: (newTemplate as any).name,
 						onboarding_version: '4_question_focused'
 					},
 					created_at: new Date().toISOString()

@@ -32,7 +32,7 @@ const MIME_EXTENSION_MAP: Record<string, string> = {
 };
 
 function normalizeMimeType(mimeType: string): string {
-	return mimeType.split(';')[0]?.trim().toLowerCase();
+	return mimeType.split(';')[0]?.trim().toLowerCase() ?? '';
 }
 
 function getExtensionForMimeType(mimeType: string): string {
@@ -283,7 +283,7 @@ export const POST: RequestHandler = async ({
 			group_id: groupId,
 			segment_index: segmentIndex,
 			recorded_at: recordedAt,
-			metadata
+			metadata: metadata as any
 		})
 		.select()
 		.single();
@@ -324,7 +324,7 @@ export const POST: RequestHandler = async ({
 						...metadata,
 						transcription_source: metadata.transcription_source || 'audio',
 						transcription_service: metadata.transcription_service || 'openai'
-					}
+					} as any
 				})
 				.eq('id', noteId)
 				.select()
@@ -362,7 +362,7 @@ export const POST: RequestHandler = async ({
 						...metadata,
 						transcription_source: metadata.transcription_source || 'audio',
 						transcription_service: metadata.transcription_service || 'openai'
-					}
+					} as any
 				})
 				.eq('id', noteId)
 				.select()
@@ -414,7 +414,7 @@ export const POST: RequestHandler = async ({
 				.update({
 					transcription_model: TRANSCRIPTION_MODEL,
 					transcription_error: null,
-					metadata: queuedMetadata
+					metadata: queuedMetadata as any
 				})
 				.eq('id', noteId)
 				.select()
@@ -443,7 +443,7 @@ export const POST: RequestHandler = async ({
 					transcription_status: 'failed',
 					transcription_model: TRANSCRIPTION_MODEL,
 					transcription_error: message,
-					metadata: queuedMetadata
+					metadata: queuedMetadata as any
 				})
 				.eq('id', noteId)
 				.select()
@@ -469,7 +469,7 @@ export const POST: RequestHandler = async ({
 					transcription_status: 'failed',
 					transcription_model: TRANSCRIPTION_MODEL,
 					transcription_error: message,
-					metadata: queuedMetadata
+					metadata: queuedMetadata as any
 				};
 			}
 		}

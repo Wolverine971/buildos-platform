@@ -66,7 +66,7 @@ export function parseLocalDate(dateStr: string | Date | null | undefined): Date 
 	// If it's a date-only string (YYYY-MM-DD), parse it as local date
 	if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
 		const [year, month, day] = dateStr.split('-').map(Number);
-		return new Date(year, month - 1, day); // month is 0-indexed
+		return new Date(year!, month! - 1, day!); // month is 0-indexed
 	}
 
 	// If it's an ISO string with time, just parse normally
@@ -248,8 +248,8 @@ export function getWorkingHoursForDay(
 	const [startHour, startMin] = workingHours.work_start_time.split(':').map(Number);
 	const [endHour, endMin] = workingHours.work_end_time.split(':').map(Number);
 
-	const dayStart = setMinutes(setHours(startOfDay(date), startHour), startMin || 0);
-	const dayEnd = setMinutes(setHours(startOfDay(date), endHour), endMin || 0);
+	const dayStart = setMinutes(setHours(startOfDay(date), startHour!), startMin || 0);
+	const dayEnd = setMinutes(setHours(startOfDay(date), endHour!), endMin || 0);
 
 	return { start: dayStart, end: dayEnd };
 }
@@ -325,15 +325,15 @@ export function findNextAvailableSlot(
 
 	// Find consecutive slots
 	for (let i = 0; i < availableSlots.length; i++) {
-		const consecutiveSlots = [availableSlots[i]];
+		const consecutiveSlots = [availableSlots[i]!];
 
 		for (
 			let j = i + 1;
 			j < availableSlots.length && consecutiveSlots.length < slotsNeeded;
 			j++
 		) {
-			const lastSlot = consecutiveSlots[consecutiveSlots.length - 1];
-			const currentSlot = availableSlots[j];
+			const lastSlot = consecutiveSlots[consecutiveSlots.length - 1]!;
+			const currentSlot = availableSlots[j]!;
 
 			// Check if slots are consecutive
 			if (currentSlot.start.getTime() === lastSlot.end.getTime()) {
@@ -345,8 +345,8 @@ export function findNextAvailableSlot(
 
 		if (consecutiveSlots.length >= slotsNeeded) {
 			return {
-				start: consecutiveSlots[0].start,
-				end: consecutiveSlots[consecutiveSlots.length - 1].end
+				start: consecutiveSlots[0]!.start,
+				end: consecutiveSlots[consecutiveSlots.length - 1]!.end
 			};
 		}
 	}

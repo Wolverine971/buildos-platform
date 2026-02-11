@@ -60,7 +60,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		return ApiResponse.success({
 			brief: brief || null,
-			generation_status: brief?.generation_status || (hasActiveJob ? activeJob?.status : null),
+			generation_status:
+				brief?.generation_status || (hasActiveJob ? activeJob?.status : null),
 			isGenerating,
 			activeJob: activeJob
 				? {

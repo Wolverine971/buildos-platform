@@ -1,7 +1,6 @@
 // apps/web/src/routes/design-system-test/+page.ts
-import type { PageLoad } from './$types';
 
-export const load: PageLoad = async () => {
+export const load = async () => {
 	return {
 		title: 'Scratchpad Ops Design System Test',
 		description:

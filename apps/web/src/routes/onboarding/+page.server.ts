@@ -76,11 +76,11 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		];
 
 		for (let i = 0; i < inputFields.length; i++) {
-			const field = inputFields[i];
+			const field = inputFields[i]!;
 			const hasContent = !!(
-				userContext[field] &&
-				typeof userContext[field] === 'string' &&
-				userContext[field].trim().length > 0
+				(userContext as Record<string, any>)[field] &&
+				typeof (userContext as Record<string, any>)[field] === 'string' &&
+				(userContext as Record<string, any>)[field].trim().length > 0
 			);
 
 			if (!hasContent) {

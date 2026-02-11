@@ -249,7 +249,7 @@ Maximum Group Size: ${config.maxGroupSize}
    - Momentum from completing related work
    - Clear progress milestones
 
-5. **Strategy**: ${strategyGuide[config.strategy]}
+5. **Strategy**: ${strategyGuide[config.strategy as keyof typeof strategyGuide]}
 
 Remember: Good batching can cut project time by 30% or more!`;
 	}
@@ -296,7 +296,7 @@ Include Buffer Time: ${config.includeBufferTime}
    - Midday: Standard tasks (30-90 minute blocks)  
    - Afternoon: Batched small tasks & admin (15-30 min each)
    
-6. **Approach**: ${confidenceGuide[config.confidenceLevel]}
+6. **Approach**: ${confidenceGuide[config.confidenceLevel as keyof typeof confidenceGuide]}
 
 Remember: It's better to overestimate and finish early than underestimate and fall behind!`;
 	}

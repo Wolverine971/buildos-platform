@@ -161,7 +161,7 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 
 		const { data: saved, error } = await supabase
 			.from('users')
-			.update({ preferences: mergedPreferences })
+			.update({ preferences: mergedPreferences as any })
 			.eq('id', user.id)
 			.select('preferences')
 			.single();

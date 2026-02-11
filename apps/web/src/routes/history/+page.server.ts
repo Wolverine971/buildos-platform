@@ -188,7 +188,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 
 /** Helper to load full history data - streamed in background */
 async function loadHistoryData(
-	supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>,
+	supabase: any,
 	userId: string,
 	filters: {
 		limit: number;
@@ -379,10 +379,11 @@ async function loadHistoryData(
 		const stats = {
 			totalBraindumps: braindumpStats?.length || 0,
 			processedBraindumps:
-				braindumpStats?.filter((b) => b.status === 'processed').length || 0,
-			pendingBraindumps: braindumpStats?.filter((b) => b.status === 'pending').length || 0,
+				braindumpStats?.filter((b: any) => b.status === 'processed').length || 0,
+			pendingBraindumps:
+				braindumpStats?.filter((b: any) => b.status === 'pending').length || 0,
 			totalChatSessions: chatStats?.length || 0,
-			chatSessionsWithSummary: chatStats?.filter((c) => c.summary).length || 0
+			chatSessionsWithSummary: chatStats?.filter((c: any) => c.summary).length || 0
 		};
 
 		return {

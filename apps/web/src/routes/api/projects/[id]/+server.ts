@@ -110,8 +110,8 @@ export const PUT: RequestHandler = async ({
 			if (taskCalendarEvents && taskCalendarEvents.length > 0) {
 				const calendarService = new CalendarService(supabase);
 				const deletionResult = await calendarService.bulkDeleteCalendarEvents(
-					taskCalendarEvents as any,
-					user.id
+					user.id,
+					taskCalendarEvents as any
 				);
 
 				// Log warnings if any

@@ -85,7 +85,7 @@ export const POST: RequestHandler = async ({
 		// Create the task
 		const { data: task, error: createError } = await supabase
 			.from('tasks')
-			.insert(sanitizedData)
+			.insert(sanitizedData as any)
 			.select('*')
 			.single();
 

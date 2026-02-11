@@ -33,7 +33,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			.select('id,name')
 			.in('id', [contextProjectId]);
 		if (projects && projects.length > 0) {
-			projectsMap = Object.fromEntries(projects.map((project) => [project.id, project]));
+			projectsMap = Object.fromEntries(projects.map((project: any) => [project.id, project]));
 		}
 	}
 

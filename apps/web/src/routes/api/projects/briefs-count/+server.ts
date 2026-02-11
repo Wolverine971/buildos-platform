@@ -22,8 +22,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		const briefCounts: Record<string, number> = {};
 
 		// Get daily briefs count for each project
-		const { data: briefsData, error: briefsError } = await supabase
-			.from('daily_briefs')
+		const { data: briefsData, error: briefsError } = await (
+			supabase.from('daily_briefs') as any
+		)
 			.select('project_id')
 			.in('project_id', projectIds)
 			.eq('user_id', user.id);
@@ -34,11 +35,11 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		}
 
 		// Count briefs per project
-		projectIds.forEach((projectId) => {
+		projectIds.forEach((projectId: string) => {
 			briefCounts[projectId] = 0;
 		});
 
-		briefsData?.forEach((brief) => {
+		(briefsData as any[])?.forEach((brief: any) => {
 			if (brief.project_id) {
 				briefCounts[brief.project_id] = (briefCounts[brief.project_id] || 0) + 1;
 			}

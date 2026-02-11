@@ -209,8 +209,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			const { data, error } =
 				kind === 'project'
-					? await supabase.from(table as 'onto_projects').select('id').in('id', ids)
-					: await supabase.from(table as 'onto_tasks').select('id, project_id').in('id', ids);
+					? await supabase
+							.from(table as 'onto_projects')
+							.select('id')
+							.in('id', ids)
+					: await supabase
+							.from(table as 'onto_tasks')
+							.select('id, project_id')
+							.in('id', ids);
 			if (error) {
 				console.error(`[Edges API] Access check failed for ${kind}:`, error);
 				return ApiResponse.databaseError(error);

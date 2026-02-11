@@ -153,8 +153,8 @@ export async function loadGoalReverseContext(
 		existingMilestones: (existingMilestones || []).map((milestone) => ({
 			id: milestone.id,
 			title: milestone.title,
-			due_at: milestone.due_at
-		})),
+			due_at: milestone.due_at ?? null
+		})) as ReverseEngineeringExistingMilestone[],
 		existingTasks: (existingTasks || []).map((task) => ({
 			id: task.id,
 			title: task.title,

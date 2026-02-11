@@ -77,7 +77,7 @@ export const PATCH: RequestHandler = async ({
 
 	const { data: updated, error: updateError } = await supabase
 		.from('voice_note_groups')
-		.upsert(upsertPayload, { onConflict: 'id' })
+		.upsert(upsertPayload as any, { onConflict: 'id' })
 		.select()
 		.single();
 

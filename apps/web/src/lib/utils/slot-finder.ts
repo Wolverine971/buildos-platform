@@ -203,10 +203,10 @@ function mergeOverlappingSlots(slots: OccupiedTimeSlot[]): OccupiedTimeSlot[] {
 	if (slots.length === 0) return [];
 
 	const merged: OccupiedTimeSlot[] = [];
-	let current = { ...slots[0] };
+	let current = { ...slots[0]! };
 
 	for (let i = 1; i < slots.length; i++) {
-		const next = slots[i];
+		const next = slots[i]!;
 
 		// If current overlaps with next, merge them
 		if (current.end >= next.start) {
@@ -241,7 +241,7 @@ function findGaps(
 	}
 
 	// Gap before first occupied slot
-	const firstSlot = occupied[0];
+	const firstSlot = occupied[0]!;
 	if (firstSlot.start > dayStart) {
 		gaps.push({
 			start: new Date(dayStart),
@@ -251,8 +251,8 @@ function findGaps(
 
 	// Gaps between occupied slots
 	for (let i = 0; i < occupied.length - 1; i++) {
-		const currentEnd = occupied[i].end;
-		const nextStart = occupied[i + 1].start;
+		const currentEnd = occupied[i]!.end;
+		const nextStart = occupied[i + 1]!.start;
 
 		if (currentEnd < nextStart) {
 			gaps.push({
@@ -263,7 +263,7 @@ function findGaps(
 	}
 
 	// Gap after last occupied slot
-	const lastSlot = occupied[occupied.length - 1];
+	const lastSlot = occupied[occupied.length - 1]!;
 	if (lastSlot.end < dayEnd) {
 		gaps.push({
 			start: new Date(lastSlot.end),

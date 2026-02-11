@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 				delivered: acc.delivered + (day.delivered_count || 0),
 				failed: acc.failed + (day.failed_count || 0),
 				cancelled: acc.cancelled + (day.cancelled_count || 0),
-				llmCost: acc.llmCost + (day.total_llm_cost_usd || 0),
+				llmCost: acc.llmCost + (day.llm_cost_usd || 0),
 				llmSuccess: acc.llmSuccess + (day.llm_success_count || 0),
 				templateFallback: acc.templateFallback + (day.template_fallback_count || 0)
 			}),

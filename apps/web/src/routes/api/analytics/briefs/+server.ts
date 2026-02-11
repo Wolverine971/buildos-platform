@@ -224,7 +224,8 @@ async function getEngagementMetrics(supabase: any, userId: string, startDate: Da
 			.sort((a, b) => b.brief_count - a.brief_count);
 
 		// Get most active goals (if you have a life_goals table)
-		let mostActiveGoals: Array<{ goal_id: string; goal_name: string; brief_count: number }> = [];
+		let mostActiveGoals: Array<{ goal_id: string; goal_name: string; brief_count: number }> =
+			[];
 		try {
 			const { data: goalBriefs } = await supabase
 				.from('life_goal_daily_briefs')

@@ -69,7 +69,7 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
 	}
 
 	const userInfo: UserInfo = {
-		id: targetUser.user_id,
+		id: targetUser.user_id ?? userId,
 		email: targetUser.email ?? '',
 		name: targetUser.name,
 		avatarUrl: targetUser.avatar_url
@@ -106,7 +106,9 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
 
 	const taskCountMap = new Map<string, number>();
 	for (const task of taskCounts ?? []) {
-		taskCountMap.set(task.project_id, (taskCountMap.get(task.project_id) ?? 0) + 1);
+		if (task.project_id) {
+			taskCountMap.set(task.project_id, (taskCountMap.get(task.project_id) ?? 0) + 1);
+		}
 	}
 
 	// Get task IDs for migration check
@@ -118,9 +120,11 @@ export const load: PageServerLoad = async ({ params, locals: { safeGetSession } 
 
 	const taskIdsByProject = new Map<string, string[]>();
 	for (const task of allTasks ?? []) {
-		const arr = taskIdsByProject.get(task.project_id) ?? [];
-		arr.push(task.id);
-		taskIdsByProject.set(task.project_id, arr);
+		if (task.project_id) {
+			const arr = taskIdsByProject.get(task.project_id) ?? [];
+			arr.push(task.id);
+			taskIdsByProject.set(task.project_id, arr);
+		}
 	}
 
 	// Get migrated task mappings

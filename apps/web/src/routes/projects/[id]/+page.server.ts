@@ -152,13 +152,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	// COLD LOAD: Fetch skeleton data from RPC
 	// This is fast (~50ms) - just project metadata and counts
-	const { data: skeletonData, error: skeletonError } = await supabase.rpc(
-		'get_project_skeleton',
-		{
-			p_project_id: id,
-			p_actor_id: actorId
-		}
-	);
+	const { data: skeletonRaw, error: skeletonError } = await supabase.rpc('get_project_skeleton', {
+		p_project_id: id,
+		p_actor_id: actorId!
+	});
+	const skeletonData = skeletonRaw as Record<string, any> | null;
 
 	if (skeletonError) {
 		console.error('[Project Page] Skeleton RPC error:', skeletonError);
@@ -208,9 +206,9 @@ async function loadFullData(
 	supabase: App.Locals['supabase'],
 	actorId: string | null
 ): Promise<any> {
-	const { data, error: rpcError } = await supabase.rpc('get_project_full', {
+	const { data: rawData, error: rpcError } = await supabase.rpc('get_project_full', {
 		p_project_id: id,
-		p_actor_id: actorId
+		p_actor_id: actorId!
 	});
 
 	if (rpcError) {
@@ -218,10 +216,11 @@ async function loadFullData(
 		throw error(500, 'Failed to load project');
 	}
 
-	if (!data) {
+	if (!rawData) {
 		throw error(404, 'Project not found');
 	}
 
+	const data = rawData as Record<string, any>;
 	const goals = (data.goals || []) as GoalRow[];
 	const milestones = (data.milestones || []) as MilestoneRow[];
 	const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(

@@ -68,7 +68,7 @@ export class BriefStreamHandler {
 				const encoder = new TextEncoder();
 				let keepAliveInterval: NodeJS.Timeout | null = null;
 
-				const sendEvent = (event: StreamEvent) => {
+				const sendEvent = (event: StreamEvent | Record<string, any>) => {
 					try {
 						// Check if the stream is still active
 						if (abortController.signal.aborted) {

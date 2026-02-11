@@ -7,7 +7,7 @@ import { injectAnalytics } from '@vercel/analytics/sveltekit';
 // Note: Speed Insights is injected in +layout.svelte with browser/dev guards
 injectAnalytics({ mode: dev ? 'development' : 'production' });
 
-export const load = async ({ data, depends }) => {
+export const load = async ({ data, depends }: { data: any; depends: (dep: string) => void }) => {
 	depends('supabase:auth');
 
 	// Pass through server data

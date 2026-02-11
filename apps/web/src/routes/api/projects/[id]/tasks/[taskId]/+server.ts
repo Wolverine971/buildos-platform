@@ -763,7 +763,7 @@ async function handlePhaseAssignment(
 	if (currentPhaseTask) {
 		if (phases) {
 			const taskDate = new Date(startDate);
-			const targetPhase = phases.find((phase) => {
+			const targetPhase = phases.find((phase: any) => {
 				return phase.id === currentPhaseTask.phase_id;
 			});
 
@@ -792,7 +792,7 @@ async function handlePhaseAssignment(
 
 	if (phases) {
 		const taskDate = new Date(startDate);
-		const targetPhase = phases.find((phase) => {
+		const targetPhase = phases.find((phase: any) => {
 			const phaseStart = new Date(phase.start_date);
 			const phaseEnd = new Date(phase.end_date);
 			phaseEnd.setHours(23, 59, 59, 999);
@@ -891,9 +891,10 @@ export const DELETE: RequestHandler = async ({
 		const errors: string[] = [];
 
 		// Edge Case: Handle subtasks
-		if (task?.subtasks?.length > 0) {
+		const subtasks = task?.subtasks as any[] | null;
+		if (subtasks && subtasks.length > 0) {
 			// Option 1: Prevent deletion if has active subtasks
-			const activeSubtasks = task.subtasks.filter((st: any) => st.status !== 'done');
+			const activeSubtasks = subtasks.filter((st: any) => st.status !== 'done');
 			if (activeSubtasks.length > 0) {
 				return ApiResponse.badRequest(
 					`Cannot delete task with ${activeSubtasks.length} active subtask(s). Complete or delete subtasks first.`
@@ -1050,8 +1051,7 @@ export const DELETE: RequestHandler = async ({
 		}
 
 		// Log deletion for audit trail (optional)
-		await supabase
-			.from('user_activity_logs')
+		await (supabase.from('user_activity_logs') as any)
 			.insert({
 				user_id: user.id,
 				action: 'task_deleted',
@@ -1060,7 +1060,7 @@ export const DELETE: RequestHandler = async ({
 				metadata: {
 					task_title: task.title,
 					project_id: projectId,
-					had_calendar_events: task.task_calendar_events?.length > 0,
+					had_calendar_events: (task.task_calendar_events as any[])?.length > 0,
 					was_completed: task.status === 'done'
 				}
 			})
@@ -1105,7 +1105,7 @@ async function handleCalendarEventDeletion(
 		{} as Record<string, any[]>
 	);
 
-	for (const [calendarId, events] of Object.entries(eventsByCalendar)) {
+	for (const [calendarId, events] of Object.entries(eventsByCalendar) as [string, any[]][]) {
 		for (const event of events) {
 			// Skip already deleted events
 			if (event.sync_status === 'deleted') {

@@ -745,11 +745,11 @@ export const POST: RequestHandler = async ({
 
 		// Step 7: Build response
 		const rescheduledTasks = updatedTasks.filter((t: any) =>
-			rescheduleResult.rescheduled_tasks.some((r) => r.task_id === t.id)
+			rescheduleResult.rescheduled_tasks.some((r: any) => r.task_id === t.id)
 		);
 
 		const shiftedTasks = updatedTasks.filter((t: any) =>
-			rescheduleResult.shifted_tasks?.some((s) => s.task_id === t.id)
+			rescheduleResult.shifted_tasks?.some((s: any) => s.task_id === t.id)
 		);
 
 		const response_data: any = {

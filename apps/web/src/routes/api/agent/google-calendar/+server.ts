@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Check authentication
 		const { user } = await locals.safeGetSession();
 		if (!user) {
-			return json<MCPErrorResponse>(
+			return json(
 				{
 					error: {
 						code: -32001,
@@ -64,8 +64,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Handle list tools request
 		if (mcpRequest.method === 'tools/list') {
-			const tools = CalendarService.getToolDefinitions();
-			return json<MCPToolsListResponse>({ tools });
+			const tools = (CalendarService as any).getToolDefinitions();
+			return json({ tools });
 		}
 
 		// Handle tool call request
@@ -73,17 +73,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const calendarService = new CalendarService(locals.supabase);
 
 			try {
-				const result = await calendarService.executeToolCall(user.id, {
+				const result = await (calendarService as any).executeToolCall(user.id, {
 					tool: mcpRequest.params.name,
 					arguments: mcpRequest.params.arguments || {}
 				});
 
-				return json<MCPToolCallResponse>(result);
+				return json(result);
 			} catch (error) {
 				// Handle calendar-specific errors
 				if (error instanceof CalendarConnectionError) {
 					if (error.requiresReconnection) {
-						return json<MCPErrorResponse>(
+						return json(
 							{
 								error: {
 									code: -32002,
@@ -103,7 +103,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Unknown method
-		return json<MCPErrorResponse>(
+		return json(
 			{
 				error: {
 					code: -32601,
@@ -130,7 +130,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			code = -32404;
 		}
 
-		return json<MCPErrorResponse>(
+		return json(
 			{
 				error: {
 					code,
@@ -158,6 +158,6 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 		version: '1.0.0',
 		description: 'Google Calendar integration for BuildOS',
 		connected: isConnected,
-		tools: CalendarService.getToolDefinitions()
+		tools: (CalendarService as any).getToolDefinitions()
 	});
 };

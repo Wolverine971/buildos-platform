@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		const projectId = params.id;
 
 		if (!projectId) {
-			return json({ error: 'Project ID is required' }, { status: 400 });
+			return ApiResponse.badRequest('Project ID is required');
 		}
 
 		// Verify user has access to this project
@@ -38,11 +38,11 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		if (historyError) {
 			console.error('Error fetching project history:', historyError);
-			return json({ error: 'Failed to fetch project history' }, { status: 500 });
+			return ApiResponse.error('Failed to fetch project history', 500);
 		}
 
 		if (!historyVersions || historyVersions.length === 0) {
-			return json({
+			return ApiResponse.success({
 				versions: [],
 				message: 'No history available for this project'
 			});
@@ -80,7 +80,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						.limit(1);
 
 					if (!linksError && braindumpLinks && braindumpLinks.length > 0) {
-						const link = braindumpLinks[0];
+						const link = braindumpLinks[0]!;
 						if (link.brain_dumps) {
 							braindump = {
 								id: link.brain_dumps.id,
