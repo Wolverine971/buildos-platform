@@ -360,15 +360,19 @@ export class MigrationRetryService {
 	 * Update run status
 	 */
 	private async updateRunStatus(runId: string, status: string): Promise<void> {
+		const { data: existing } = await this.supabase
+			.from('migration_log')
+			.select('metadata')
+			.eq('run_id', runId)
+			.eq('entity_type', 'run')
+			.single();
+
+		const existingMetadata = (existing?.metadata ?? {}) as Record<string, unknown>;
 		await this.supabase
 			.from('migration_log')
 			.update({
 				status,
-				metadata: this.supabase.rpc('jsonb_set', {
-					target: 'metadata',
-					path: ['completedAt'],
-					value: JSON.stringify(new Date().toISOString())
-				})
+				metadata: { ...existingMetadata, completedAt: new Date().toISOString() }
 			})
 			.eq('run_id', runId)
 			.eq('entity_type', 'run');

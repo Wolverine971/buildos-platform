@@ -14,6 +14,7 @@
  * - Supports filtering by status
  */
 import type { RequestHandler } from './$types';
+import type { Database } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { queueBraindumpProcessing } from '$lib/server/braindump-processing.service';
 
@@ -46,7 +47,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const braindumpData = {
 			user_id: user.id,
 			content: trimmedContent,
-			status: 'pending',
+			status: 'pending' as const,
 			metadata: {
 				...metadata,
 				source: 'agent_chat',
@@ -116,7 +117,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		// Apply status filter if provided
 		if (status && ['pending', 'processing', 'processed', 'failed'].includes(status)) {
-			query = query.eq('status', status);
+			query = query.eq('status', status as Database['public']['Enums']['onto_braindump_status']);
 		}
 
 		const { data: braindumps, error, count } = await query;

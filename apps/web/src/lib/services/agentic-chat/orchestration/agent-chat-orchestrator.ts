@@ -64,6 +64,8 @@ import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 import { dev } from '$app/environment';
+import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
+import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 
 const logger = createLogger('AgentChatOrchestrator');
 
@@ -1087,6 +1089,11 @@ export class AgentChatOrchestrator {
 		const { result } = params;
 		const toolName = result.toolName || 'unknown';
 		const error = result.error ? String(result.error) : 'Tool validation failed.';
+		const gatewayPayload = result.data as Record<string, any> | null | undefined;
+		const gatewayError = gatewayPayload?.error as Record<string, any> | undefined;
+		const helpPath =
+			typeof gatewayError?.help_path === 'string' ? gatewayError.help_path : undefined;
+		const opLabel = typeof gatewayPayload?.op === 'string' ? gatewayPayload?.op : undefined;
 
 		const missingParams = new Set(
 			Array.from(error.matchAll(/Missing required parameter: ([a-z0-9_.]+)/gi)).map(
@@ -1097,15 +1104,21 @@ export class AgentChatOrchestrator {
 			error.match(/Missing required parameter: ([a-z_]+_id)/i) ??
 			error.match(/Invalid ([a-z_]+_id): expected UUID/i);
 		const idKey = missingIdMatch?.[1];
-		const isUpdateTool = toolName.startsWith('update_onto_');
+		let isUpdateTool = toolName.startsWith('update_onto_');
+		if (!isUpdateTool && helpPath) {
+			const registryEntry = getToolRegistry().ops[helpPath];
+			if (registryEntry?.tool_name?.startsWith('update_onto_')) {
+				isUpdateTool = true;
+			}
+		}
 		const missingUpdateFields = /No update fields provided/i.test(error);
 
 		const guidance: string[] = [
-			`Tool "${toolName}" failed validation: ${error}`,
+			`Tool "${helpPath ?? opLabel ?? toolName}" failed validation: ${error}`,
 			'Do not guess or fabricate IDs. Never use placeholders.'
 		];
 
-		if (toolName === 'create_onto_project') {
+		if (toolName === 'create_onto_project' || helpPath === 'onto.project.create') {
 			const needsProjectPayload =
 				missingParams.has('project') ||
 				missingParams.has('project.name') ||
@@ -1118,6 +1131,10 @@ export class AgentChatOrchestrator {
 					'create_onto_project requires: project { name, type_key }, entities: [], relationships: [] (even if empty). If details are missing, include clarifications[] and still send the project skeleton.'
 				);
 			}
+		}
+
+		if (helpPath) {
+			guidance.push(`Call tool_help("${helpPath}") to verify required args, then retry.`);
 		}
 
 		if (idKey) {
@@ -1154,6 +1171,28 @@ export class AgentChatOrchestrator {
 		virtualHandlers: Record<string, VirtualToolHandler>;
 	} {
 		const { request, serviceContext, plannerContext, messages, missedToolName } = params;
+
+		if (isToolGatewayEnabled()) {
+			messages.push({
+				role: 'system',
+				content:
+					'Tool gateway is enabled. Use tool_help("root") to discover ops, then call tool_exec with the exact args.'
+			});
+
+			return {
+				plannerContext,
+				tools: this.appendVirtualTools({
+					plannerContext,
+					serviceContext,
+					request
+				}),
+				virtualHandlers: this.createVirtualToolHandlers({
+					request,
+					plannerContext,
+					serviceContext
+				})
+			};
+		}
 		const expandedPlannerContext: PlannerContext = {
 			...plannerContext,
 			availableTools: ALL_TOOLS
@@ -1692,12 +1731,47 @@ export class AgentChatOrchestrator {
 	): ChatToolCall {
 		const toolName = toolCall.function?.name;
 		const rawArgs = toolCall.function?.arguments;
-		if (!toolName || !isOntologyUpdateTool(toolName)) {
+		if (!toolName) {
 			return toolCall;
 		}
 
 		const args = this.parseToolCallArguments(rawArgs);
 		if (!args) {
+			return toolCall;
+		}
+
+		if (toolName === 'tool_exec') {
+			const op = typeof args.op === 'string' ? args.op.trim() : '';
+			const opArgs =
+				args.args && typeof args.args === 'object' && !Array.isArray(args.args)
+					? (args.args as Record<string, any>)
+					: null;
+			if (!op || !opArgs) {
+				return toolCall;
+			}
+			const registryEntry = getToolRegistry().ops[op];
+			if (!registryEntry || !isOntologyUpdateTool(registryEntry.tool_name)) {
+				return toolCall;
+			}
+			const enrichedOpArgs = enrichOntologyUpdateArgs(registryEntry.tool_name, opArgs, {
+				ontologyContext: plannerContext?.ontologyContext ?? serviceContext.ontologyContext,
+				locationMetadata: plannerContext?.locationMetadata,
+				contextScope: plannerContext?.metadata?.scope ?? serviceContext.contextScope
+			});
+			if (enrichedOpArgs === opArgs) {
+				return toolCall;
+			}
+			const updatedArgs = { ...args, args: enrichedOpArgs };
+			return {
+				...toolCall,
+				function: {
+					...toolCall.function,
+					arguments: JSON.stringify(updatedArgs)
+				}
+			};
+		}
+
+		if (!isOntologyUpdateTool(toolName)) {
 			return toolCall;
 		}
 
@@ -1996,19 +2070,31 @@ export class AgentChatOrchestrator {
 		if (!toolName) return null;
 
 		const args = this.safeParseToolArgs(toolCall?.function?.arguments);
-		const action = this.resolveOperationAction(toolName);
-		const entityType = this.resolveOperationEntityType(toolName);
+		let action = this.resolveOperationAction(toolName);
+		let entityType = this.resolveOperationEntityType(toolName);
+		let entityArgs = args;
+
+		if (toolName === 'tool_exec' && args) {
+			const op = typeof args.op === 'string' ? args.op.trim() : '';
+			const opArgs =
+				args.args && typeof args.args === 'object' && !Array.isArray(args.args)
+					? (args.args as Record<string, any>)
+					: undefined;
+			action = this.resolveOperationActionFromOp(op);
+			entityType = this.resolveOperationEntityTypeFromOp(op);
+			entityArgs = opArgs ?? args;
+		}
 
 		if (!action || !entityType) return null;
 
 		const entityName =
-			this.resolveOperationName(args) ??
+			this.resolveOperationName(entityArgs) ??
 			this.resolveOperationNameFromResult(result) ??
 			this.fallbackEntityLabel(entityType, action);
 
 		if (!entityName) return null;
 
-		const entityId = this.resolveOperationEntityId(args);
+		const entityId = this.resolveOperationEntityId(entityArgs);
 
 		return {
 			type: 'operation',
@@ -2041,6 +2127,33 @@ export class AgentChatOrchestrator {
 		if (toolName.startsWith('update_')) return 'update';
 		if (toolName.startsWith('delete_')) return 'delete';
 		return null;
+	}
+
+	private resolveOperationActionFromOp(
+		op: string
+	): 'list' | 'search' | 'read' | 'create' | 'update' | 'delete' | null {
+		if (!op) return null;
+		const parts = op.split('.');
+		const action = parts[parts.length - 1];
+		switch (action) {
+			case 'list':
+				return 'list';
+			case 'search':
+				return 'search';
+			case 'get':
+				return 'read';
+			case 'create':
+				return 'create';
+			case 'update':
+				return 'update';
+			case 'delete':
+				return 'delete';
+			case 'move':
+			case 'reorganize':
+				return 'update';
+			default:
+				return null;
+		}
 	}
 
 	private resolveOperationEntityType(
@@ -2099,6 +2212,47 @@ export class AgentChatOrchestrator {
 			: null;
 	}
 
+	private resolveOperationEntityTypeFromOp(
+		op: string
+	):
+		| 'document'
+		| 'task'
+		| 'goal'
+		| 'plan'
+		| 'project'
+		| 'milestone'
+		| 'risk'
+		| 'requirement'
+		| null {
+		if (!op) return null;
+		const parts = op.split('.');
+		if (parts.length < 2) return null;
+		if (parts[0] !== 'onto') return null;
+		const entity = parts[1]!;
+		const map: Record<string, string> = {
+			task: 'task',
+			project: 'project',
+			document: 'document',
+			goal: 'goal',
+			plan: 'plan',
+			milestone: 'milestone',
+			risk: 'risk',
+			requirement: 'requirement'
+		};
+		const resolved = map[entity];
+		return resolved
+			? (resolved as
+					| 'document'
+					| 'task'
+					| 'goal'
+					| 'plan'
+					| 'project'
+					| 'milestone'
+					| 'risk'
+					| 'requirement')
+			: null;
+	}
+
 	private resolveOperationName(args?: Record<string, any>): string | undefined {
 		if (!args) return undefined;
 		const keys = [
@@ -2125,15 +2279,19 @@ export class AgentChatOrchestrator {
 	private resolveOperationNameFromResult(result?: ToolExecutionResult): string | undefined {
 		const data = result?.data as Record<string, any> | null | undefined;
 		if (!data || typeof data !== 'object') return undefined;
+		const payload =
+			data && typeof data.result === 'object' && data.result !== null
+				? (data.result as Record<string, any>)
+				: data;
 		const entity =
-			data.document ??
-			data.task ??
-			data.goal ??
-			data.plan ??
-			data.project ??
-			data.milestone ??
-			data.risk ??
-			data.requirement;
+			payload.document ??
+			payload.task ??
+			payload.goal ??
+			payload.plan ??
+			payload.project ??
+			payload.milestone ??
+			payload.risk ??
+			payload.requirement;
 		if (entity && typeof entity === 'object') {
 			const title =
 				(entity as Record<string, any>).title ?? (entity as Record<string, any>).name;

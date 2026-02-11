@@ -275,7 +275,10 @@ export class BatchTaskMigrationService {
 
 		// Filter out deleted and completed tasks (should already be done, but ensure)
 		const activeTasks = legacyTasks.filter(
-			(t) => !t.deleted_at && t.status !== 'completed' && t.status !== 'done'
+			(t) =>
+				!t.deleted_at &&
+				(t.status as string) !== 'completed' &&
+				(t.status as string) !== 'done'
 		);
 
 		if (activeTasks.length === 0) {
@@ -1009,7 +1012,7 @@ IMPORTANT:
 			title: string;
 			project_id: string;
 			type_key: string;
-			state_key: string;
+			state_key: Database['public']['Enums']['task_state'];
 			priority: number;
 			due_at: string | null;
 			props: Json;
@@ -1052,7 +1055,7 @@ IMPORTANT:
 				project_id: options.projectId,
 				type_key: typeKey,
 				state_key: this.mapStatusToState(legacyTask.status),
-				priority: this.mapPriority(legacyTask.priority),
+				priority: this.mapPriority(legacyTask.priority as unknown as number | null),
 				due_at: legacyTask.start_date ?? null, // start_date → due_at
 				props: propsWithMetadata as Json,
 				created_by: options.actorId,
@@ -1213,8 +1216,11 @@ IMPORTANT:
 		);
 	}
 
-	private mapStatusToState(status: LegacyTask['status']): string {
-		switch (status) {
+	private mapStatusToState(
+		status: LegacyTask['status']
+	): Database['public']['Enums']['task_state'] {
+		const s: string = status;
+		switch (s) {
 			case 'completed':
 			case 'done':
 				return 'done';
@@ -1236,7 +1242,7 @@ IMPORTANT:
 
 	private inferScale(task: LegacyTask): 'micro' | 'small' | 'medium' | 'large' | 'epic' {
 		const descLength = (task.description ?? '').length;
-		const notesLength = (task.notes ?? '').length;
+		const notesLength = ((task as unknown as Record<string, string | null>).notes ?? '').length;
 		const totalLength = descLength + notesLength;
 
 		if (totalLength > 1000) return 'large';

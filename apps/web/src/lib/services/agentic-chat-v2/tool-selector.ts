@@ -1,9 +1,11 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
+import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
 import {
 	getToolsForContextType,
 	resolveToolName
 } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { normalizeFastContextType } from './prompt-builder';
 
 const WEB_TOOL_NAMES = new Set(['web_search', 'web_visit']);
@@ -89,6 +91,10 @@ export function selectFastChatTools(params: {
 	contextType: ChatContextType;
 	message: string;
 }): ChatToolDefinition[] {
+	if (isToolGatewayEnabled()) {
+		return [...GATEWAY_TOOL_DEFINITIONS];
+	}
+
 	const normalized = normalizeFastContextType(params.contextType);
 	let tools = getToolsForContextType(normalized as Exclude<ChatContextType, 'general'>, {
 		includeWriteTools: true

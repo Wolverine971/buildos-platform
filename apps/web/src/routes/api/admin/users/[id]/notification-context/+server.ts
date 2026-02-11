@@ -210,7 +210,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				event_type: (notif.notification_events as any)?.event_type as EventType,
 				channel: notif.channel as NotificationChannel,
 				status: notif.status,
-				created_at: notif.created_at,
+				created_at: notif.created_at ?? new Date().toISOString(),
 				delivered_at: notif.delivered_at,
 				opened_at: notif.opened_at
 			})) ?? [];
@@ -229,7 +229,13 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			preferences: preferencesWithSubscription,
 			channels: capabilities,
 			recent_notifications: formattedNotifications,
-			activity: baseContext.activity,
+			activity: {
+				project_count: baseContext.activity.project_count,
+				tasks_created: baseContext.activity.tasks_created,
+				tasks_completed: baseContext.activity.tasks_completed,
+				brain_dump_count: (baseContext.activity as any).brain_dump_count ?? 0,
+				brief_count: (baseContext.activity as any).brief_count ?? baseContext.activity.daily_briefs_count ?? 0
+			},
 			beta: baseContext.beta
 		};
 

@@ -13,7 +13,7 @@
  */
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { Json } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 import type {
 	LegacyTask,
 	MigrationContext,
@@ -53,7 +53,7 @@ export class EnhancedTaskMigrator {
 
 			// Create onto_task with minimal properties
 			const stateKey = this.mapStatusToState(task.status);
-			const priority = this.mapPriority(task.priority);
+			const priority = this.mapPriority(task.priority as unknown as number | null);
 			const dueAt = task.start_date ?? task.completed_at ?? null;
 			const facetScale = this.inferScale(task);
 
@@ -159,9 +159,13 @@ export class EnhancedTaskMigrator {
 	// PRIVATE HELPER METHODS
 	// ============================================
 
-	private mapStatusToState(status: LegacyTask['status']): string {
-		switch (status) {
+	private mapStatusToState(
+		status: LegacyTask['status']
+	): Database['public']['Enums']['task_state'] {
+		const s: string = status;
+		switch (s) {
 			case 'completed':
+			case 'done':
 				return 'done';
 			case 'in_progress':
 				return 'in_progress';
@@ -182,7 +186,7 @@ export class EnhancedTaskMigrator {
 
 	private inferScale(task: LegacyTask): 'micro' | 'small' | 'medium' | 'large' | 'epic' {
 		const descLength = (task.description ?? '').length;
-		const notesLength = (task.notes ?? '').length;
+		const notesLength = ((task as unknown as Record<string, string | null>).notes ?? '').length;
 		const totalLength = descLength + notesLength;
 
 		if (totalLength > 1000) return 'large';

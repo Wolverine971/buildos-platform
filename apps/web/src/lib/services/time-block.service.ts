@@ -140,7 +140,7 @@ export class TimeBlockService {
 			const { data: projectRow, error: projectError } = await this.supabase
 				.from('projects')
 				.select('name, calendar_color_id')
-				.eq('id', projectId)
+				.eq('id', projectId!)
 				.eq('user_id', this.userId)
 				.maybeSingle();
 
@@ -258,7 +258,7 @@ export class TimeBlockService {
 			});
 
 			const updatePayload = {
-				ai_suggestions: suggestionResult.suggestions,
+				ai_suggestions: suggestionResult.suggestions as any,
 				suggestions_summary: suggestionResult.summary ?? null,
 				suggestions_generated_at: suggestionResult.generatedAt.toISOString(),
 				suggestions_model: suggestionResult.model ?? null,
@@ -455,7 +455,7 @@ export class TimeBlockService {
 			blockType,
 			projectName: project?.name ?? null,
 			projectColorId: project?.calendar_color_id ?? null,
-			suggestions: suggestionResult?.suggestions ?? existingBlock.ai_suggestions,
+			suggestions: (suggestionResult?.suggestions ?? existingBlock.ai_suggestions) as any,
 			suggestionSummary: suggestionResult?.summary ?? existingBlock.suggestions_summary
 		});
 
@@ -466,10 +466,9 @@ export class TimeBlockService {
 					event_id: existingBlock.calendar_event_id,
 					summary: calendarContent.summary,
 					description: calendarContent.description,
-					start: startTime,
-					end: endTime,
-					timeZone: timezone,
-					colorId: calendarContent.colorId
+					start_time: startTime,
+					end_time: endTime,
+					timeZone: timezone
 				});
 			} catch (error) {
 				console.error('[TimeBlockService] Failed to update calendar event:', error);

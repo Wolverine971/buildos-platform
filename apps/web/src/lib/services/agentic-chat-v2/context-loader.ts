@@ -45,6 +45,7 @@ type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 type PlanRow = Database['public']['Tables']['onto_plans']['Row'];
 type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
+type DocumentRow = Database['public']['Tables']['onto_documents']['Row'];
 type EventRow = Database['public']['Tables']['onto_events']['Row'];
 type ProjectLogRow = Database['public']['Tables']['onto_project_logs']['Row'];
 type EdgeRow = Database['public']['Tables']['onto_edges']['Row'];
@@ -499,9 +500,9 @@ async function loadFastChatContextViaRpc(
 	const { data, error } = await supabase.rpc(FASTCHAT_CONTEXT_RPC, {
 		p_context_type: rpcContextType,
 		p_user_id: userId,
-		p_project_id: projectId ?? null,
-		p_focus_type: focusEntityId ? focusType : null,
-		p_focus_entity_id: focusEntityId ?? null
+		p_project_id: projectId ?? undefined,
+		p_focus_type: (focusEntityId ? focusType : null) ?? undefined,
+		p_focus_entity_id: focusEntityId ?? undefined
 	});
 
 	if (error) {
@@ -687,11 +688,11 @@ async function loadProjectContextData(
 	return {
 		project,
 		doc_structure,
-		goals: (goalsRes.data ?? []).map(mapGoal),
-		milestones: (milestonesRes.data ?? []).map(mapMilestone),
-		plans: (plansRes.data ?? []).map(mapPlan),
-		tasks: (tasksRes.data ?? []).map(mapTask),
-		events: (eventsRes.data ?? []).map(mapEvent)
+		goals: ((goalsRes.data ?? []) as GoalRow[]).map(mapGoal),
+		milestones: ((milestonesRes.data ?? []) as MilestoneRow[]).map(mapMilestone),
+		plans: ((plansRes.data ?? []) as PlanRow[]).map(mapPlan),
+		tasks: ((tasksRes.data ?? []) as TaskRow[]).map(mapTask),
+		events: ((eventsRes.data ?? []) as EventRow[]).map(mapEvent)
 	};
 }
 
@@ -714,7 +715,7 @@ async function loadLinkedEntities(
 		return { linked_entities: {}, linked_edges: [] };
 	}
 
-	const linkedEdges: LinkedEdge[] = (edges ?? []).map((edge: EdgeRow) => ({
+	const linkedEdges: LinkedEdge[] = ((edges ?? []) as EdgeRow[]).map((edge) => ({
 		src_id: edge.src_id,
 		src_kind: edge.src_kind,
 		dst_id: edge.dst_id,
@@ -737,20 +738,22 @@ async function loadLinkedEntities(
 		return { linked_entities: {}, linked_edges: linkedEdges };
 	}
 
-	const fetches = entries.map(async ([kind, ids]) => {
-		const config = LINKED_ENTITY_CONFIG[kind];
-		if (!config) return [kind, []] as const;
-		const { data, error } = await supabase
-			.from(config.table)
-			.select(config.select)
-			.in('id', Array.from(ids))
-			.is('deleted_at', null);
-		if (error) {
-			logger.warn('Failed to load linked entities', { error, kind });
-			return [kind, []] as const;
+	const fetches = entries.map(
+		async ([kind, ids]): Promise<readonly [string, Record<string, unknown>[]]> => {
+			const config = LINKED_ENTITY_CONFIG[kind];
+			if (!config) return [kind, []] as const;
+			const { data, error } = await (supabase
+				.from(config.table as any)
+				.select(config.select)
+				.in('id', Array.from(ids))
+				.is('deleted_at', null) as any);
+			if (error) {
+				logger.warn('Failed to load linked entities', { error, kind });
+				return [kind, []] as const;
+			}
+			return [kind, ((data ?? []) as any[]).map(config.map)] as const;
 		}
-		return [kind, (data ?? []).map(config.map)] as const;
-	});
+	);
 
 	const resolved = await Promise.all(fetches);
 	const linked_entities: Record<string, Array<Record<string, unknown>>> = {};
@@ -776,11 +779,11 @@ async function loadEntityContextData(params: {
 	let focusEntityName: string | null = null;
 
 	if (focusConfig) {
-		const { data, error } = await supabase
-			.from(focusConfig.table)
+		const { data, error } = await (supabase
+			.from(focusConfig.table as any)
 			.select('*')
 			.eq('id', focusEntityId)
-			.maybeSingle();
+			.maybeSingle() as any);
 		if (error) {
 			logger.warn('Failed to load focus entity', { error, focusType, focusEntityId });
 		} else if (data) {

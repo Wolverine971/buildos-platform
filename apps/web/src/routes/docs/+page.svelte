@@ -1,8 +1,6 @@
 <!-- apps/web/src/routes/docs/+page.svelte -->
 <script lang="ts">
 	import {
-		Book,
-		Code,
 		Zap,
 		Brain,
 		Target,
@@ -14,7 +12,6 @@
 		BarChart3,
 		Settings,
 		Copy,
-		Play,
 		Edit3,
 		CheckCircle,
 		Clock

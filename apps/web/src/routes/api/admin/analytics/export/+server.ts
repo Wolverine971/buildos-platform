@@ -20,14 +20,17 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
 
 		// Get comprehensive analytics data
+		const startDateStr = startDate.toISOString().split('T')[0]!;
+		const endDateStr = endDate.toISOString().split('T')[0]!;
+
 		const [dailyUsers, briefStats, systemMetrics] = await Promise.all([
 			supabase.rpc('get_daily_active_users', {
-				start_date: startDate.toISOString().split('T')[0],
-				end_date: endDate.toISOString().split('T')[0]
+				start_date: startDateStr,
+				end_date: endDateStr
 			}),
 			supabase.rpc('get_brief_generation_stats', {
-				start_date: startDate.toISOString().split('T')[0],
-				end_date: endDate.toISOString().split('T')[0]
+				start_date: startDateStr,
+				end_date: endDateStr
 			}),
 			supabase.from('system_metrics').select('*').order('recorded_at', { ascending: false })
 		]);

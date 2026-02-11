@@ -23,8 +23,12 @@ import type {
 	ContextUsageSnapshot,
 	OperationEventPayload
 } from '@buildos/shared-types';
+import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState } from '$lib/types/agent-chat-enhancement';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor-refactored';
+import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
+import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
+import { v4 as uuidv4 } from 'uuid';
 import {
 	AgentStateReconciliationService,
 	type AgentStateMessageSnapshot,
@@ -672,6 +676,7 @@ export const POST: RequestHandler = async ({
 				httpReferer: request.headers.get('referer') ?? undefined,
 				appName: 'BuildOS Agentic Chat V2'
 			});
+			const gatewayEnabled = isToolGatewayEnabled();
 			const tools = selectFastChatTools({ contextType, message });
 			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
 			const projectIdForTools =
@@ -682,9 +687,56 @@ export const POST: RequestHandler = async ({
 				typeof entityId === 'string'
 					? entityId
 					: undefined);
-			const toolExecutor =
+			const toolExecutorInstance =
 				tools.length > 0
 					? new ChatToolExecutor(supabase, user.id, session.id, fetch, llm)
+					: undefined;
+			const sharedToolExecutor =
+				toolExecutorInstance &&
+				(async (toolName: string, args: Record<string, any>, _context: ServiceContext) => {
+					const call: ChatToolCall = {
+						id: uuidv4(),
+						type: 'function',
+						function: {
+							name: toolName,
+							arguments: JSON.stringify(args ?? {})
+						}
+					} as ChatToolCall;
+
+					const result = await toolExecutorInstance.execute(call);
+					if (!result.success) {
+						throw new Error(result.error || `Tool ${toolName} execution failed`);
+					}
+
+					const metadata: Record<string, any> = {};
+					if (typeof result.duration_ms === 'number') {
+						metadata.durationMs = result.duration_ms;
+					}
+					const usage =
+						(result as any)?.usage ??
+						(result.result as any)?.usage ??
+						(result.result as any)?.usage_metrics;
+					const tokensUsed =
+						usage && typeof usage.total_tokens === 'number'
+							? usage.total_tokens
+							: typeof usage?.totalTokens === 'number'
+								? usage.totalTokens
+								: undefined;
+					if (typeof tokensUsed === 'number') {
+						metadata.tokensUsed = tokensUsed;
+					}
+
+					return {
+						data: result.result ?? null,
+						streamEvents: Array.isArray(result.stream_events)
+							? (result.stream_events as any[])
+							: undefined,
+						metadata: Object.keys(metadata).length > 0 ? metadata : undefined
+					};
+				});
+			const toolExecutionService =
+				gatewayEnabled && sharedToolExecutor
+					? new ToolExecutionService(sharedToolExecutor, undefined, errorLogger)
 					: undefined;
 			const patchToolCall = (toolCall: ChatToolCall) => {
 				if (toolCall.function.name === 'update_onto_document') {
@@ -798,9 +850,41 @@ export const POST: RequestHandler = async ({
 				signal: request.signal,
 				systemPrompt,
 				tools,
-				toolExecutor: toolExecutor
-					? (toolCall) => toolExecutor.execute(patchToolCall(toolCall))
-					: undefined,
+				toolExecutor: toolExecutionService
+					? async (toolCall) => {
+							const contextScope = projectIdForTools
+								? {
+										projectId: projectIdForTools,
+										projectName: promptContext?.projectName
+									}
+								: undefined;
+							const serviceContext: ServiceContext = {
+								sessionId: session.id,
+								userId: user.id,
+								contextType,
+								entityId: entityId ?? undefined,
+								conversationHistory: [],
+								contextScope
+							};
+							const result = await toolExecutionService.executeTool(
+								toolCall,
+								serviceContext,
+								tools,
+								{ abortSignal: request.signal }
+							);
+							return {
+								tool_call_id: result.toolCallId,
+								result: result.data ?? null,
+								success: result.success,
+								error:
+									typeof result.error === 'string'
+										? result.error
+										: result.error?.message
+							};
+						}
+					: toolExecutorInstance
+						? (toolCall) => toolExecutorInstance.execute(patchToolCall(toolCall))
+						: undefined,
 				onToolCall: async (toolCall) => {
 					emitToolCall(agentStream, patchToolCall(toolCall));
 				},

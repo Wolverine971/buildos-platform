@@ -181,8 +181,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			error = createError;
 		}
 
-		if (error) {
-			throw error;
+		if (error || !preferences) {
+			throw error ?? new Error('Failed to save preferences');
 		}
 
 		// Cancel existing pending brief generation jobs and let the scheduler reschedule

@@ -10,14 +10,13 @@ import { logOntologyApiError } from '../../../shared/error-logging';
 export const POST: RequestHandler = async ({ params, locals }) => {
 	const supabase = locals.supabase;
 	let userId: string | undefined;
+	const inviteId = params.inviteId?.trim();
 	try {
 		const { user } = await locals.safeGetSession();
 		userId = user?.id;
 		if (!user) {
 			return ApiResponse.unauthorized('Authentication required');
 		}
-
-		const inviteId = params.inviteId?.trim();
 		if (!inviteId) {
 			return ApiResponse.badRequest('Invite ID required');
 		}

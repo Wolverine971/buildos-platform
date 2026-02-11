@@ -95,10 +95,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		const nextTask =
 			upcomingTasks.length > 0
 				? {
-						id: upcomingTasks[0].id,
-						title: upcomingTasks[0].title,
-						start_date: upcomingTasks[0].start_date,
-						priority: upcomingTasks[0].priority
+						id: upcomingTasks[0]!.id,
+						title: upcomingTasks[0]!.title,
+						start_date: upcomingTasks[0]!.start_date,
+						priority: upcomingTasks[0]!.priority
 					}
 				: null;
 

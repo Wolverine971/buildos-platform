@@ -296,11 +296,11 @@ export class OntologyContextLoader {
 		for (const edge of edges) {
 			if (edge.src_kind === 'project' && edge.src_id === projectId) {
 				if (map[edge.dst_kind]) {
-					map[edge.dst_kind].add(edge.dst_id);
+					map[edge.dst_kind]!.add(edge.dst_id);
 				}
 			} else if (edge.dst_kind === 'project' && edge.dst_id === projectId) {
 				if (map[edge.src_kind]) {
-					map[edge.src_kind].add(edge.src_id);
+					map[edge.src_kind]!.add(edge.src_id);
 				}
 			}
 		}
@@ -584,7 +584,7 @@ export class OntologyContextLoader {
 				progress_percent: progressPercent,
 				completed_tasks: totalTasks > 0 ? completedTasks : null,
 				total_tasks: totalTasks > 0 ? totalTasks : null,
-				direct_edge: directEdgeIds.goal.has(goal.id)
+				direct_edge: directEdgeIds.goal!.has(goal.id)
 			};
 		});
 		const goalsSection = this.buildHighlightSection(
@@ -612,7 +612,7 @@ export class OntologyContextLoader {
 			),
 			created_at: doc.created_at,
 			updated_at: doc.updated_at,
-			direct_edge: directEdgeIds.document.has(doc.id)
+			direct_edge: directEdgeIds.document!.has(doc.id)
 		}));
 		const documentsSection = this.buildHighlightSection(
 			documentItems.slice(0, PROJECT_HIGHLIGHT_LIMITS.documents),
@@ -620,7 +620,7 @@ export class OntologyContextLoader {
 		);
 
 		const risksSorted = graph.risks
-			.filter((risk) => directEdgeIds.risk.has(risk.id))
+			.filter((risk) => directEdgeIds.risk!.has(risk.id))
 			.filter((risk) => !['mitigated', 'closed'].includes(risk.state_key ?? ''))
 			.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 		const riskItems = risksSorted.map((risk) => ({
@@ -641,7 +641,7 @@ export class OntologyContextLoader {
 		);
 
 		const requirementsSorted = graph.requirements
-			.filter((req) => directEdgeIds.requirement.has(req.id))
+			.filter((req) => directEdgeIds.requirement!.has(req.id))
 			.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 		const requirementItems = requirementsSorted.map((req) => ({
 			id: req.id,
@@ -657,7 +657,7 @@ export class OntologyContextLoader {
 		);
 
 		const milestonesSorted = graph.milestones
-			.filter((milestone) => directEdgeIds.milestone.has(milestone.id))
+			.filter((milestone) => directEdgeIds.milestone!.has(milestone.id))
 			.sort((a, b) => {
 				const aDate = a.due_at || a.created_at;
 				const bDate = b.due_at || b.created_at;
@@ -683,7 +683,7 @@ export class OntologyContextLoader {
 		);
 
 		const plansSorted = graph.plans
-			.filter((plan) => directEdgeIds.plan.has(plan.id))
+			.filter((plan) => directEdgeIds.plan!.has(plan.id))
 			.sort((a, b) => {
 				const aDate = a.updated_at || a.created_at;
 				const bDate = b.updated_at || b.created_at;
@@ -717,7 +717,7 @@ export class OntologyContextLoader {
 		);
 
 		const signalsSorted = graph.signals
-			.filter((signal) => directEdgeIds.signal.has(signal.id))
+			.filter((signal) => directEdgeIds.signal!.has(signal.id))
 			.sort((a, b) => {
 				const aDate = a.ts || a.created_at;
 				const bDate = b.ts || b.created_at;
@@ -736,7 +736,7 @@ export class OntologyContextLoader {
 		);
 
 		const insightsSorted = graph.insights
-			.filter((insight) => directEdgeIds.insight.has(insight.id))
+			.filter((insight) => directEdgeIds.insight!.has(insight.id))
 			.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
 		const insightItems = insightsSorted.map((insight) => ({
 			id: insight.id,
@@ -1101,7 +1101,7 @@ export class OntologyContextLoader {
 		return {
 			type: 'global',
 			entities: {
-				projects: projects || []
+				projects: (projects || []) as any
 			},
 			metadata: {
 				entity_count: entityCounts,

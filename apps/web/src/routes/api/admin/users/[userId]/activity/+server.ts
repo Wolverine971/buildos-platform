@@ -149,9 +149,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				if (!taskCountsByProject[task.project_id]) {
 					taskCountsByProject[task.project_id] = { total: 0, completed: 0 };
 				}
-				taskCountsByProject[task.project_id].total++;
+				taskCountsByProject[task.project_id]!.total++;
 				if (task.state_key === 'done') {
-					taskCountsByProject[task.project_id].completed++;
+					taskCountsByProject[task.project_id]!.completed++;
 				}
 			}
 		});

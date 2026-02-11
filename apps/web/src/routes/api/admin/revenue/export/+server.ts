@@ -54,8 +54,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
           stripe_price_id,
           subscription_plans!customer_subscriptions_plan_id_fkey (
             name,
-            price,
-            interval
+            price_cents,
+            billing_interval
           )
         )
       `
@@ -80,27 +80,28 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const rows =
 			invoices?.map((invoice) => {
-				const netAmount = (invoice.amount_paid || 0) - (invoice.amount_refunded || 0);
+				const invoiceAny = invoice as any;
+				const netAmount = (invoice.amount_paid || 0) - (invoiceAny.amount_refunded || 0);
 				const planName = invoice.customer_subscriptions?.subscription_plans?.name || 'N/A';
 
 				return [
-					new Date(invoice.created_at).toLocaleDateString(),
+					new Date(invoice.created_at ?? '').toLocaleDateString(),
 					invoice.stripe_invoice_id,
 					invoice.users?.email || 'N/A',
 					planName,
 					invoice.status,
 					(invoice.amount_paid / 100).toFixed(2),
 					(invoice.amount_due / 100).toFixed(2),
-					(invoice.amount_refunded / 100).toFixed(2),
+					((invoiceAny.amount_refunded || 0) / 100).toFixed(2),
 					(netAmount / 100).toFixed(2),
-					invoice.currency.toUpperCase()
+					(invoice.currency ?? 'usd').toUpperCase()
 				];
 			}) || [];
 
 		// Add summary rows
 		const totalPaid = invoices?.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0) || 0;
 		const totalRefunded =
-			invoices?.reduce((sum, inv) => sum + (inv.amount_refunded || 0), 0) || 0;
+			invoices?.reduce((sum, inv) => sum + ((inv as any).amount_refunded || 0), 0) || 0;
 		const netRevenue = totalPaid - totalRefunded;
 
 		rows.push([]);

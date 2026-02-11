@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/dailyBrief/streamHandler.ts
 import type { DailyBriefGenerator } from './generator';
 import type { DailyBriefRepository } from './repository';
-import type { StreamEvent } from '@buildos/shared-types';
+import type { StreamEvent } from '$lib/types/daily-brief';
 
 export class BriefStreamHandler {
 	private activeStreams = new Map<string, { controller: AbortController; startTime: number }>();

@@ -177,7 +177,7 @@ export class OnboardingClientService {
 
 		// Find first incomplete category
 		for (let i = 0; i < this.CATEGORIES.length; i++) {
-			if (!this.hasCategoryContent(context, this.CATEGORIES[i])) {
+			if (!this.hasCategoryContent(context, this.CATEGORIES[i]!)) {
 				return i;
 			}
 		}

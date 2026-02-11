@@ -158,7 +158,8 @@ export class EnhancedProjectMigrator {
 		else facets.scale = 'micro';
 
 		// Stage
-		switch (project.status) {
+		const status: string = project.status;
+		switch (status) {
 			case 'completed':
 				facets.stage = 'complete';
 				break;
@@ -177,7 +178,8 @@ export class EnhancedProjectMigrator {
 	}
 
 	private mapStatusToState(status: LegacyProject['status']): ProjectState {
-		switch (status) {
+		const s: string = status;
+		switch (s) {
 			case 'active':
 				return 'active';
 			case 'completed':

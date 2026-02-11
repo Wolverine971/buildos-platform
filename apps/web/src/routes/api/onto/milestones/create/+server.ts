@@ -29,6 +29,7 @@
  * - Project ownership verification
  */
 import type { RequestHandler } from './$types';
+import type { Database } from '@buildos/shared-types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import type { EnsureActorResponse } from '$lib/types/onto-api';
@@ -181,7 +182,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const legacyConnections: ConnectionRef[] = [
 			...explicitParents,
-			...(validatedGoalId ? [{ kind: 'goal', id: validatedGoalId }] : [])
+			...(validatedGoalId ? [{ kind: 'goal' as const, id: validatedGoalId }] : [])
 		];
 
 		const connectionList: ConnectionRef[] =
@@ -201,17 +202,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 
 		// Create the milestone
-		const milestoneData = {
+		const milestoneData: Database['public']['Tables']['onto_milestones']['Insert'] = {
 			project_id,
 			type_key: 'milestone.default',
 			title: title.trim(),
 			milestone: milestone?.trim() || null,
 			due_at: dueDateIso,
-			state_key: finalState,
-			description: description?.trim() || null, // Use dedicated column
+			state_key: finalState as Database['public']['Enums']['milestone_state'],
+			description: description?.trim() || null,
 			created_by: actorId,
 			props: {
-				// Maintain backwards compatibility by also storing in props
 				description: description?.trim() || null,
 				state_key: finalState
 			}
@@ -233,7 +233,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				userId: user.id,
 				projectId: project_id,
 				entityType: 'milestone',
-				entityId: createdMilestone?.id,
+				entityId: (createdMilestone as { id?: string } | null)?.id,
 				operation: 'milestone_create',
 				tableName: 'onto_milestones'
 			});

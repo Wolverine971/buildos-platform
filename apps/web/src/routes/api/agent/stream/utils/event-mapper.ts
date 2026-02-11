@@ -90,14 +90,14 @@ const EVENT_MAPPERS: EventMapperRegistry = {
 	},
 
 	step_start: (event) => ({
-		type: 'step_start',
+		type: 'step_start' as const,
 		step: (event as Extract<StreamEvent, { type: 'step_start' }>).step
-	}),
+	}) as AgentSSEMessage,
 
 	step_complete: (event) => ({
-		type: 'step_complete',
+		type: 'step_complete' as const,
 		step: (event as Extract<StreamEvent, { type: 'step_complete' }>).step
-	}),
+	}) as AgentSSEMessage,
 
 	executor_spawned: (event) => {
 		const e = event as Extract<StreamEvent, { type: 'executor_spawned' }>;
@@ -265,6 +265,6 @@ function normalizePlan(plan: unknown): SSEAgentPlan {
 		status: cast.status ?? 'pending',
 		created_at: coerceDate(cast.created_at ?? cast.createdAt, new Date().toISOString())!,
 		completed_at: coerceDate(cast.completed_at ?? cast.completedAt),
-		updated_at: coerceDate(cast.updated_at ?? cast.updatedAt, new Date().toISOString())
+		updated_at: coerceDate(cast.updated_at ?? cast.updatedAt, new Date().toISOString())!
 	};
 }

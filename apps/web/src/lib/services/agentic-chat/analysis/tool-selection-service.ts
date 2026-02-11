@@ -37,6 +37,8 @@ import {
 	getDefaultToolsForContextType,
 	isWriteToolName
 } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
+import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
 import { createLogger } from '$lib/utils/logger';
 
@@ -68,6 +70,9 @@ export class ToolSelectionService {
 	 * This is the CANONICAL method for determining default tools.
 	 */
 	getDefaultToolPool(contextType: ChatContextType): ChatToolDefinition[] {
+		if (isToolGatewayEnabled()) {
+			return [...GATEWAY_TOOL_DEFINITIONS];
+		}
 		const normalized = normalizeContextType(contextType);
 		const defaultTools = getDefaultToolsForContextType(normalized);
 		const pool = defaultTools.length > 0 ? defaultTools : ALL_TOOLS;
@@ -173,6 +178,39 @@ export class ToolSelectionService {
 		lastTurnContext?: LastTurnContext;
 		toolCatalog?: ChatToolDefinition[];
 	}): Promise<ToolSelectionResult> {
+		if (isToolGatewayEnabled()) {
+			const tools = [...GATEWAY_TOOL_DEFINITIONS];
+			const toolNames = extractToolNamesFromDefinitions(tools);
+			const analysis: StrategyAnalysis = {
+				primary_strategy: ChatStrategy.PLANNER_STREAM,
+				confidence: 0.9,
+				reasoning:
+					'Tool gateway enabled; use tool_help/tool_exec for discovery and execution.',
+				needs_clarification: false,
+				estimated_steps: 1,
+				required_tools: toolNames,
+				can_complete_directly: true,
+				tool_selection: {
+					selected_tools: toolNames,
+					reasoning: 'Gateway mode (fixed tool set)',
+					is_fallback: true
+				}
+			};
+
+			return {
+				tools,
+				analysis,
+				metadata: {
+					mode: 'default',
+					defaultToolNames: toolNames,
+					selectedToolNames: toolNames,
+					addedTools: [],
+					removedTools: [],
+					strategy: analysis.primary_strategy,
+					confidence: analysis.confidence
+				}
+			};
+		}
 		const {
 			message,
 			plannerContext,

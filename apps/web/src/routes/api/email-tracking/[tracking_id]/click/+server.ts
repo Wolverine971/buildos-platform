@@ -19,8 +19,8 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 
 	try {
 		// Find the email by tracking ID
-		const { data: email, error: emailError } = await supabase
-			.from('emails')
+		const { data: email, error: emailError } = await (supabase
+			.from('emails') as any)
 			.select(
 				`
 				id,
@@ -34,7 +34,7 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 			`
 			)
 			.eq('tracking_id', tracking_id)
-			.single();
+			.single() as any;
 
 		if (emailError || !email) {
 			baseLogger.warn('Email not found for click tracking', {

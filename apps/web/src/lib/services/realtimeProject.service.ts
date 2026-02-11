@@ -155,7 +155,7 @@ export class RealtimeProjectService {
 				}
 			});
 
-			if (subscription === 'error' || subscription === 'timed_out') {
+			if ((subscription as any) === 'error' || (subscription as any) === 'timed_out') {
 				throw new Error(`Subscription failed: ${subscription}`);
 			}
 		} catch (error) {

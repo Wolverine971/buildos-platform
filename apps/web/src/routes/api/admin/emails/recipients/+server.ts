@@ -14,7 +14,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const search = url.searchParams.get('search');
 		const limit = parseInt(url.searchParams.get('limit') || '50');
 
-		let recipients = [];
+		let recipients: Array<Record<string, unknown>> = [];
 
 		if (source === 'beta_users') {
 			let query = supabase

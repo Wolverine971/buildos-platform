@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		// Apply filters
 		if (status) {
-			query = query.eq('status', status);
+			query = query.eq('status', status as any);
 		}
 		if (projectId) {
 			query = query.eq('metadata->>projectId', projectId);

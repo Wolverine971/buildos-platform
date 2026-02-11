@@ -76,15 +76,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.eq('status', 'paid');
 
 		// Get refunds
-		const { data: currentRefunds } = await supabase
-			.from('invoices')
+		const { data: currentRefunds } = await (supabase.from('invoices') as any)
 			.select('amount_refunded, metadata')
 			.gt('amount_refunded', 0)
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString());
 
-		const { data: previousRefunds } = await supabase
-			.from('invoices')
+		const { data: previousRefunds } = await (supabase.from('invoices') as any)
 			.select('amount_refunded')
 			.gt('amount_refunded', 0)
 			.gte('created_at', previousStartDate.toISOString())
@@ -137,15 +135,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 
 		// Get prorations (simplified - look for subscription changes)
-		const { data: upgrades } = await supabase
-			.from('invoices')
+		const { data: upgrades } = await (supabase.from('invoices') as any)
 			.select('amount_paid, metadata')
 			.eq('status', 'paid')
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString());
 
-		const { data: downgrades } = await supabase
-			.from('invoices')
+		const { data: downgrades } = await (supabase.from('invoices') as any)
 			.select('amount_refunded, metadata')
 			.gt('amount_refunded', 0)
 			.gte('created_at', startDate.toISOString())
@@ -230,14 +226,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			prorations,
 			refunds,
 			chargebacks,
-			metrics: revenueMetrics
+			metrics: revenueMetrics?.[0]
 				? {
-						mrr: Math.round((revenueMetrics.current_mrr || 0) * 100),
-						arr: Math.round((revenueMetrics.current_mrr || 0) * 12 * 100),
+						mrr: Math.round((revenueMetrics[0].current_mrr || 0) * 100),
+						arr: Math.round((revenueMetrics[0].current_mrr || 0) * 12 * 100),
 						average_revenue_per_user: Math.round(
-							(revenueMetrics.average_revenue_per_user || 0) * 100
+							(revenueMetrics[0].average_revenue_per_user || 0) * 100
 						),
-						lifetime_value: Math.round((revenueMetrics.lifetime_value || 0) * 100),
+						lifetime_value: Math.round((revenueMetrics[0].lifetime_value || 0) * 100),
 						gross_margin: 85 // Default to 85% gross margin for SaaS
 					}
 				: {

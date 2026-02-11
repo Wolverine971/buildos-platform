@@ -306,7 +306,7 @@ export class MigrationRollbackService {
 			try {
 				// Try using the cascade delete function if it exists
 				const { error } = await this.supabase.rpc('delete_onto_project', {
-					project_id: mapping.onto_id
+					p_project_id: mapping.onto_id
 				});
 
 				if (error) {
@@ -338,14 +338,11 @@ export class MigrationRollbackService {
 	private async softDeleteRelatedEdges(ontoIds: string[]): Promise<number> {
 		if (ontoIds.length === 0) return 0;
 
-		const now = new Date().toISOString();
-
 		// Delete edges where either src or dst is in the list
 		const { count, error } = await this.supabase
 			.from('onto_edges')
-			.update({ deleted_at: now }, { count: 'exact' })
-			.or(`src_id.in.(${ontoIds.join(',')}),dst_id.in.(${ontoIds.join(',')})`)
-			.is('deleted_at', null);
+			.delete({ count: 'exact' })
+			.or(`src_id.in.(${ontoIds.join(',')}),dst_id.in.(${ontoIds.join(',')})`);
 
 		if (error) {
 			console.error('Failed to soft delete edges:', error);

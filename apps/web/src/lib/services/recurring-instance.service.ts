@@ -85,7 +85,7 @@ export class RecurringInstanceService {
 				return [];
 			}
 
-			return data || [];
+			return (data || []) as RecurringTaskInstance[];
 		} catch (error) {
 			console.error('Error in getInstancesForDateRange:', error);
 			return [];
@@ -142,7 +142,7 @@ export class RecurringInstanceService {
 					);
 			}
 
-			return data || [];
+			return (data || []) as RecurringTaskInstance[];
 		} catch (error) {
 			console.error('Error in getOverdueInstances:', error);
 			return [];
@@ -224,10 +224,10 @@ export class RecurringInstanceService {
 			let generateFromDate: Date;
 			if (existingInstances && existingInstances.length > 0) {
 				// Start from day after last instance
-				generateFromDate = addDays(new Date(existingInstances[0].instance_date), 1);
+				generateFromDate = addDays(new Date(existingInstances[0]!.instance_date), 1);
 			} else {
 				// Start from task start date
-				generateFromDate = new Date(task.start_date);
+				generateFromDate = new Date(task.start_date!);
 			}
 
 			// Only generate if we need to

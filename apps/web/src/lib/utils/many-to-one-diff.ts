@@ -102,11 +102,11 @@ export function createManyToOneComparison(
 	for (const field of fields) {
 		const config = fieldConfigs[field];
 		const rightValue = rightItem.data[field];
-		const rightDisplayValue = formatValue(rightValue, config.formatter);
+		const rightDisplayValue = formatValue(rightValue, config?.formatter);
 
 		const leftValues = leftItems.map((leftItem) => {
 			const leftValue = leftItem.data[field];
-			const leftDisplayValue = formatValue(leftValue, config.formatter);
+			const leftDisplayValue = formatValue(leftValue, config?.formatter);
 			const isDifferent = areValuesDifferent(leftValue, rightValue);
 
 			return {
@@ -126,7 +126,7 @@ export function createManyToOneComparison(
 
 		fieldComparisons.push({
 			field,
-			label: config.label,
+			label: config?.label ?? field,
 			leftValues,
 			rightValue: {
 				value: rightValue,

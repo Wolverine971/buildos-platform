@@ -124,7 +124,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				if (linkedProject) {
 					// Check if this is a new project
 					const projectLink = brain_dump_links.find(
-						(link) => link.project_id === braindump.project_id
+						(link: any) => link.project_id === braindump.project_id
 					);
 
 					if (projectLink) {
@@ -141,7 +141,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			// Efficiently determine linked types
 			if (brain_dump_links.length > 0) {
 				const typeSet = new Set();
-				brain_dump_links.forEach((link) => {
+				brain_dump_links.forEach((link: any) => {
 					if (link.project_id) typeSet.add('project');
 					if (link.task_id) typeSet.add('task');
 					if (link.note_id) typeSet.add('note');

@@ -16,7 +16,7 @@ class MockSmartLLMService extends SmartLLMService {
 		super({ supabase: null });
 	}
 
-	async *streamText(options: any) {
+	async *streamText(options: any): AsyncGenerator<any, void, unknown> {
 		console.log('[MockLLM] streamText called with:', {
 			profile: options.profile,
 			temperature: options.temperature,
@@ -43,7 +43,7 @@ async function testEnhancedWrapper() {
 	console.log('=== Testing Enhanced LLM Wrapper ===\n');
 
 	const mockLLM = new MockSmartLLMService();
-	const enhancedLLM = createEnhancedLLMWrapper(mockLLM);
+	const enhancedLLM = createEnhancedLLMWrapper(mockLLM as unknown as SmartLLMService);
 
 	// Test 1: Stream with project audit context (should use 'quality' profile)
 	console.log('Test 1: Project Audit Context');

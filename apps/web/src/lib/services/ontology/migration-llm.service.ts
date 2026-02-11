@@ -47,14 +47,14 @@ const TOKEN_COSTS: Record<string, TokenCosts> = {
 };
 
 // Estimated tokens per entity type (based on typical prompt/response sizes)
-const TOKENS_PER_ENTITY: Record<string, { input: number; output: number }> = {
+const TOKENS_PER_ENTITY: Record<'project' | 'task' | 'phase', { input: number; output: number }> = {
 	project: { input: 800, output: 400 }, // Template inference + property extraction
 	task: { input: 200, output: 100 }, // Work mode classification
 	phase: { input: 300, output: 150 } // Plan type inference
 };
 
 // Average processing time per entity (ms)
-const PROCESSING_TIME_PER_ENTITY: Record<string, number> = {
+const PROCESSING_TIME_PER_ENTITY: Record<'project' | 'task' | 'phase', number> = {
 	project: 3000, // 3 seconds
 	task: 500, // 0.5 seconds
 	phase: 1000 // 1 second
@@ -206,7 +206,7 @@ export function estimateMigrationCost(
 	avgPhasesPerProject: number = 2,
 	model: string = 'deepseek-chat'
 ): CostEstimate {
-	const costs = TOKEN_COSTS[model] || TOKEN_COSTS['deepseek-chat'];
+	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS['deepseek-chat']!;
 
 	// Calculate total tokens
 	const projectInputTokens = projectCount * TOKENS_PER_ENTITY.project.input;
@@ -261,7 +261,7 @@ export function estimateCostForEntities(counts: {
 	model?: string;
 }): CostEstimate {
 	const model = counts.model || 'deepseek-chat';
-	const costs = TOKEN_COSTS[model] || TOKEN_COSTS['deepseek-chat'];
+	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS['deepseek-chat']!;
 
 	const projectInputTokens = counts.projects * TOKENS_PER_ENTITY.project.input;
 	const projectOutputTokens = counts.projects * TOKENS_PER_ENTITY.project.output;
@@ -325,7 +325,7 @@ export function createLLMUsageMetadata(
 	outputTokens: number,
 	durationMs: number
 ): LLMUsageMetadata {
-	const costs = TOKEN_COSTS[model] || TOKEN_COSTS['deepseek-chat'];
+	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS['deepseek-chat']!;
 	const estimatedCost = (inputTokens / 1000) * costs.input + (outputTokens / 1000) * costs.output;
 
 	return {
@@ -352,25 +352,25 @@ export function getAvailableModels(): Array<{
 		{
 			id: 'deepseek-chat',
 			name: 'DeepSeek Chat',
-			costs: TOKEN_COSTS['deepseek-chat'],
+			costs: TOKEN_COSTS['deepseek-chat']!,
 			recommended: true
 		},
 		{
 			id: 'gpt-4o-mini',
 			name: 'GPT-4o Mini',
-			costs: TOKEN_COSTS['gpt-4o-mini'],
+			costs: TOKEN_COSTS['gpt-4o-mini']!,
 			recommended: false
 		},
 		{
 			id: 'gpt-4o',
 			name: 'GPT-4o',
-			costs: TOKEN_COSTS['gpt-4o'],
+			costs: TOKEN_COSTS['gpt-4o']!,
 			recommended: false
 		},
 		{
 			id: 'gpt-4-turbo',
 			name: 'GPT-4 Turbo',
-			costs: TOKEN_COSTS['gpt-4-turbo'],
+			costs: TOKEN_COSTS['gpt-4-turbo']!,
 			recommended: false
 		}
 	];

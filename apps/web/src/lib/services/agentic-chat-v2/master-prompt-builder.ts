@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts
 import type { ChatContextType } from '@buildos/shared-types';
+import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 
 export type MasterPromptContext = {
 	contextType: ChatContextType;
@@ -23,6 +24,7 @@ const RESPONSE_PATTERN = `CRITICAL: Always respond to the user with text BEFORE 
 - "Let me look at the current plan to see where this fits."
 Keep the lead-in short (1-2 sentences), then make your tool calls. After tool calls complete, summarize what happened and surface any follow-ups.`;
 const OPERATIONAL_GUIDELINES = `Use tools for data retrieval and mutations. Always pass valid tool arguments; do not guess. Reuse provided context and agent_state to avoid redundant tool calls. When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.`;
+const TOOL_DISCOVERY_GUIDE = `Tool discovery mode is enabled.\n- You only have access to tool_help and tool_exec (and optional tool_batch).\n- Always call tool_help to discover the right op and required args before tool_exec.\n- Use tool_help(\"root\") to see groups, then drill down (e.g., tool_help(\"onto.task\"), tool_help(\"onto.task.update\")).\n- When you call tool_exec, pass args exactly as described by tool_help.\n- If a tool_exec error includes help_path, call tool_help(help_path) and retry with corrected args.\n- Never guess IDs or required fields; use list/search/get ops via tool_exec to look them up.`;
 const BEHAVIORAL_RULES = `Be direct, supportive, and action-oriented. Do not claim actions you did not perform.
 
 Information capture — be thorough:
@@ -80,6 +82,7 @@ export function buildMasterPrompt(context: MasterPromptContext): string {
 		wrapTag('platform_context', PLATFORM_CONTEXT),
 		wrapTag('data_model_overview', DATA_MODEL_OVERVIEW),
 		wrapTag('operational_guidelines', OPERATIONAL_GUIDELINES),
+		...(isToolGatewayEnabled() ? [wrapTag('tool_discovery', TOOL_DISCOVERY_GUIDE)] : []),
 		wrapTag('behavioral_rules', BEHAVIORAL_RULES),
 		wrapTag('error_handling', ERROR_HANDLING),
 		wrapTag('proactive_intelligence', PROACTIVE_INTELLIGENCE),

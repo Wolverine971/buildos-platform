@@ -409,11 +409,11 @@ export class ChatSessionService {
 			incrementToolCalls?: number;
 		}
 	): Promise<void> {
-		try {
-			const messageIncrement = metrics.incrementMessages ?? 0;
-			const tokenIncrement = metrics.incrementTokens ?? 0;
-			const toolIncrement = metrics.incrementToolCalls ?? 0;
+		const messageIncrement = metrics.incrementMessages ?? 0;
+		const tokenIncrement = metrics.incrementTokens ?? 0;
+		const toolIncrement = metrics.incrementToolCalls ?? 0;
 
+		try {
 			if (messageIncrement === 0 && tokenIncrement === 0 && toolIncrement === 0) {
 				return;
 			}

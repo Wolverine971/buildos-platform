@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 		const { data: event, error: eventError } = await supabase
 			.from('notification_events')
 			.select('payload, event_type')
-			.eq('id', originalDelivery.event_id)
+			.eq('id', originalDelivery.event_id!)
 			.single();
 
 		if (eventError || !event) {

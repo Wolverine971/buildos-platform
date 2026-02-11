@@ -77,7 +77,7 @@ function getClientIP(request: Request): string {
 	const cfConnectingIP = request.headers.get('cf-connecting-ip'); // Cloudflare
 
 	if (forwardedFor) {
-		return forwardedFor.split(',')[0].trim();
+		return forwardedFor.split(',')[0]!.trim();
 	}
 
 	if (realIP) {

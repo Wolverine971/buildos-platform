@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
+import type { GoogleColorId } from '$lib/config/calendar-colors';
 
 type ProjectAccessResult =
 	| {
@@ -103,7 +104,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const body = await request.json().catch(() => null);
 	const name = body?.name as string | undefined;
 	const description = body?.description as string | undefined;
-	const colorId = body?.colorId as string | undefined;
+	const colorId = body?.colorId as GoogleColorId | undefined;
 	const timeZone = body?.timeZone as string | undefined;
 
 	const oAuthService = new GoogleOAuthService(locals.supabase);

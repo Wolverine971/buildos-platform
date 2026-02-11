@@ -447,7 +447,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const costByDate = (agentMessagesData || []).reduce(
 			(acc, msg) => {
-				const date = msg.created_at.split('T')[0];
+				const date = msg.created_at.split('T')[0]!;
 				if (!acc[date]) {
 					acc[date] = {
 						date,

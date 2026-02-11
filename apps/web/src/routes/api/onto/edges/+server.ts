@@ -49,6 +49,7 @@ import {
 	logActivitiesAsync,
 	getChangeSourceFromRequest
 } from '$lib/services/async-activity-logger';
+import { logOntologyApiError } from '../shared/error-logging';
 
 const VALID_KINDS = [
 	'task',
@@ -60,7 +61,8 @@ const VALID_KINDS = [
 	'risk',
 	'metric',
 	'source',
-	'requirement'
+	'requirement',
+	'event'
 ];
 
 const TABLE_MAP: Record<string, string> = {
@@ -73,7 +75,8 @@ const TABLE_MAP: Record<string, string> = {
 	risk: 'onto_risks',
 	metric: 'onto_metrics',
 	source: 'onto_sources',
-	requirement: 'onto_requirements'
+	requirement: 'onto_requirements',
+	event: 'onto_events'
 };
 
 /**
@@ -131,6 +134,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const body = await request.json().catch(() => null);
 		if (!body || !Array.isArray(body.edges) || body.edges.length === 0) {
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: new Error('edges array is required'),
+				endpoint: '/api/onto/edges',
+				method: 'POST',
+				userId: user.id,
+				entityType: 'edge',
+				operation: 'edge_validate'
+			});
 			return ApiResponse.badRequest('edges array is required');
 		}
 
@@ -140,6 +152,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		for (const edge of edges) {
 			const validationError = validateEdge(edge);
 			if (validationError) {
+				await logOntologyApiError({
+					supabase: locals.supabase,
+					error: new Error(validationError),
+					endpoint: '/api/onto/edges',
+					method: 'POST',
+					userId: user.id,
+					entityType: 'edge',
+					operation: 'edge_validate',
+					metadata: {
+						edge
+					}
+				});
 				return ApiResponse.badRequest(validationError);
 			}
 		}
@@ -170,30 +194,50 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const ids = Array.from(idSet);
 			const table = TABLE_MAP[kind];
 			if (!table) {
+				await logOntologyApiError({
+					supabase: locals.supabase,
+					error: new Error(`Unsupported entity kind: ${kind}`),
+					endpoint: '/api/onto/edges',
+					method: 'POST',
+					userId: user.id,
+					entityType: 'edge',
+					operation: 'edge_validate',
+					metadata: { kind }
+				});
 				return ApiResponse.badRequest(`Unsupported entity kind: ${kind}`);
 			}
 
 			const { data, error } =
 				kind === 'project'
-					? await supabase.from(table).select('id').in('id', ids)
-					: await supabase.from(table).select('id, project_id').in('id', ids);
+					? await supabase.from(table as 'onto_projects').select('id').in('id', ids)
+					: await supabase.from(table as 'onto_tasks').select('id, project_id').in('id', ids);
 			if (error) {
 				console.error(`[Edges API] Access check failed for ${kind}:`, error);
 				return ApiResponse.databaseError(error);
 			}
 
 			const foundIds = new Set<string>();
-			for (const row of data ?? []) {
+			for (const row of (data ?? []) as Array<{ id: string; project_id?: string }>) {
 				foundIds.add(row.id);
 				if (kind === 'project') {
-					projectIds.add(row.id as string);
-				} else if ((row as any).project_id) {
-					projectIds.add((row as any).project_id as string);
+					projectIds.add(row.id);
+				} else if (row.project_id) {
+					projectIds.add(row.project_id);
 				}
 			}
 
 			for (const id of ids) {
 				if (!foundIds.has(id)) {
+					await logOntologyApiError({
+						supabase: locals.supabase,
+						error: new Error(`${kind} not found: ${id}`),
+						endpoint: '/api/onto/edges',
+						method: 'POST',
+						userId: user.id,
+						entityType: 'edge',
+						operation: 'edge_validate',
+						metadata: { kind, id }
+					});
 					return ApiResponse.notFound(`${kind} not found: ${id}`);
 				}
 			}
@@ -334,7 +378,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					entityId: insertedEdges[index]?.id ?? 'unknown',
 					action: 'created' as const,
 					afterData: { src_kind: edge.src_kind, dst_kind: edge.dst_kind, rel: edge.rel },
-					changedBy: actorId,
+					changedBy: user.id,
 					changeSource
 				}))
 			});

@@ -91,7 +91,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 
 		// Fetch task and note counts for each project
-		let projectsWithCounts = [];
+		let projectsWithCounts: Array<Record<string, unknown>> = [];
 		if (projects.length > 0) {
 			const projectIds = projects.map((p) => p.id);
 

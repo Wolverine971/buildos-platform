@@ -28,7 +28,7 @@ export const GET: RequestHandler = async ({ request }) => {
 		const today = new Date();
 
 		for (const user of users || []) {
-			const trialEnd = new Date(user.trial_ends_at);
+			const trialEnd = new Date(user.trial_ends_at!);
 			const daysUntilEnd = Math.ceil(
 				(trialEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
 			);

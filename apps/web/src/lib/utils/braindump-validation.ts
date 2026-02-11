@@ -223,7 +223,7 @@ export class BrainDumpValidator {
 	 * Create consistent error response for regular API endpoints
 	 */
 	static createApiError(message: string, code?: string): Response {
-		return ApiResponse.error(message, code || ErrorCode.INVALID_REQUEST);
+		return ApiResponse.error(message, 400, code || ErrorCode.INVALID_REQUEST);
 	}
 
 	private static sanitizeDisplayedQuestions(

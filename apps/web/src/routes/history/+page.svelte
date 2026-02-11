@@ -126,7 +126,6 @@
 	let isAgentModalOpen = $state(false);
 	let selectedBraindumpForChat = $state<OntoBraindump | null>(null);
 	let selectedChatSessionId = $state<string | null>(null);
-	let isLoadingChatSession = $state(false);
 	let chatClassificationState = $state<Record<string, 'loading' | 'queued' | 'error'>>({});
 
 	// Open modal if we have a selectedItem from streamed data

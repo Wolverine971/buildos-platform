@@ -83,7 +83,7 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 				updates.agent_metadata = {
 					...currentMeta,
 					focus: projectFocus
-				} as typeof updates.agent_metadata;
+				} as unknown as typeof updates.agent_metadata;
 			}
 
 			if (Object.keys(updates).length > 0) {
@@ -110,7 +110,7 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 			entity_id: entityId ?? null,
 			status: 'active',
 			agent_metadata: projectFocus
-				? ({ focus: projectFocus } as ChatSessionInsert['agent_metadata'])
+				? ({ focus: projectFocus } as unknown as ChatSessionInsert['agent_metadata'])
 				: undefined
 		};
 

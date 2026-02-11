@@ -295,7 +295,7 @@ async function addTasksToExistingProject(
 			dst_id: planId
 		});
 	} else {
-		planId = existingPlans[0].id;
+		planId = existingPlans[0]!.id;
 	}
 
 	const taskInserts = tasks.map((task) => {

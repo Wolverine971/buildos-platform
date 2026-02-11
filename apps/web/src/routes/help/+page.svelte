@@ -7,9 +7,7 @@
 		Calendar,
 		StickyNote,
 		Search,
-		Book,
 		MessageCircle,
-		Mail,
 		ArrowRight
 	} from 'lucide-svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';

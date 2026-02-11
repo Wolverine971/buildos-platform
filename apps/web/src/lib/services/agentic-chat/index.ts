@@ -63,7 +63,7 @@ export function createAgentChatOrchestrator(
 	const executorCoordinator = new ExecutorCoordinator(executorService, persistenceService);
 
 	const planOrchestrator = new PlanOrchestrator(
-		llmService,
+		llmService as any,
 		sharedToolExecutor,
 		executorCoordinator,
 		persistenceService,

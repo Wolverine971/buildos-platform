@@ -56,6 +56,7 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { JSONRequestOptions } from '$lib/services/smart-llm-service';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 import { getOptimalJSONProfile } from '../config/model-selection-config';
+import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 
 const logger = createLogger('PlanOrchestrator');
 
@@ -696,7 +697,7 @@ export class PlanOrchestrator implements BaseService {
 					while (true) {
 						const index = nextIndex++;
 						if (index >= runnableSteps.length) return;
-						const step = runnableSteps[index];
+						const step = runnableSteps[index]!;
 						stepOutcomes[index] = await runStep(step);
 					}
 				};
@@ -1096,6 +1097,14 @@ export class PlanOrchestrator implements BaseService {
 		const toolRequirements = plannerContext.availableTools.length
 			? this.buildToolRequirementsSummary(plannerContext.availableTools)
 			: 'none';
+		const gatewayGuidance = isToolGatewayEnabled()
+			? `
+TOOL DISCOVERY MODE (CRITICAL):
+- You only have tool_help and tool_exec (and optional tool_batch).
+- If you need an op or its args, plan a tool_help call first.
+- Use tool_exec with args exactly as described by tool_help.
+- If tool_exec returns help_path, call tool_help(help_path) and retry with corrected args.`
+			: '';
 
 		const strategyGuidance =
 			strategy === ChatStrategy.PROJECT_CREATION || intent?.contextType === 'project_create'
@@ -1117,6 +1126,7 @@ ${toolSummaries}
 Tool required parameters (include these when using the tool):
 ${toolRequirements}
 ${strategyGuidance}
+${gatewayGuidance}
 
 Create a step-by-step execution plan.
 
@@ -1285,7 +1295,7 @@ Generate an execution plan to fulfill this request.`;
 			const tools = Array.isArray(step.tools)
 				? step.tools
 						.map((tool: unknown) => this.normalizeToolName(tool, toolNameMap))
-						.filter((tool): tool is string => Boolean(tool))
+						.filter((tool: string | null): tool is string => Boolean(tool))
 				: [];
 
 			const dependsOn = Array.isArray(step.dependsOn)

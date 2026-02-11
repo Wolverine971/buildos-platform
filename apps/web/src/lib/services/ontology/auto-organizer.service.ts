@@ -30,7 +30,8 @@ export const ENTITY_TABLES = {
 	risk: 'onto_risks',
 	requirement: 'onto_requirements',
 	metric: 'onto_metrics',
-	source: 'onto_sources'
+	source: 'onto_sources',
+	event: 'onto_events'
 } as const satisfies Record<EntityKind, keyof Database['public']['Tables']>;
 
 type Supabase = SupabaseClient<Database>;

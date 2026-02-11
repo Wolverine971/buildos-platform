@@ -338,7 +338,7 @@ class ProjectStoreV2 {
 				const storeUpdateStart = performance.now();
 				this.store.update((state) => ({
 					...state,
-					tasks: mergedTasks,
+					tasks: mergedTasks as any,
 					loadingStates: { ...state.loadingStates, tasks: 'success' },
 					errors: { ...state.errors, tasks: null },
 					lastFetch: { ...state.lastFetch, tasks: Date.now() }

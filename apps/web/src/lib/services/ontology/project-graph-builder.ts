@@ -70,7 +70,8 @@ const PROJECT_CONTAINMENT_RELS: Record<EntityKind, string | null> = {
 	risk: 'has_risk',
 	requirement: 'has_requirement',
 	metric: 'has_metric',
-	source: 'has_source'
+	source: 'has_source',
+	event: 'has_event'
 };
 
 /**
@@ -114,7 +115,8 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 		risk: new Map(),
 		requirement: new Map(),
 		metric: new Map(),
-		source: new Map()
+		source: new Map(),
+		event: new Map()
 	};
 
 	// Index project
@@ -122,10 +124,10 @@ export function buildProjectGraph(data: ProjectGraphData): ProjectGraph {
 	entitiesByKind.project.set(data.project.id, data.project);
 
 	// Helper to index entities of a specific kind
-	const indexEntities = <K extends EntityKind>(entities: EntityTypeMap[K][], kind: K) => {
+	const indexEntities = (entities: AnyEntity[], kind: EntityKind) => {
 		for (const entity of entities) {
 			entitiesById.set(entity.id, entity);
-			(entitiesByKind[kind] as Map<string, EntityTypeMap[K]>).set(entity.id, entity);
+			(entitiesByKind[kind] as Map<string, AnyEntity>).set(entity.id, entity);
 		}
 	};
 
@@ -564,7 +566,8 @@ export function getGraphStats(graph: ProjectGraph): {
 		risk: graph.entitiesByKind.risk.size,
 		requirement: graph.entitiesByKind.requirement.size,
 		metric: graph.entitiesByKind.metric.size,
-		source: graph.entitiesByKind.source.size
+		source: graph.entitiesByKind.source.size,
+		event: graph.entitiesByKind.event.size
 	};
 
 	const edgesByRelationship: Record<string, number> = {};

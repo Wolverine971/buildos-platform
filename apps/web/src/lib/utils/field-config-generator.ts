@@ -107,7 +107,7 @@ const FIELD_TYPE_PATTERNS: Record<string, Partial<FieldConfig>> = {
 };
 
 // Predefined select options for known fields
-const SELECT_OPTIONS: Record<string, string[]> = {
+const SELECT_OPTIONS: Record<string, Record<string, string[]>> = {
 	status: {
 		tasks: ['backlog', 'in_progress', 'done', 'blocked'],
 		projects: ['active', 'paused', 'completed', 'archived']
@@ -238,7 +238,7 @@ export function generateFieldConfig<T extends TableName>(
 function getAllFieldsForTable(tableName: TableName): string[] {
 	// This is a mapping based on your database schema
 	// You could generate this automatically or maintain it manually
-	const tableFields: Record<TableName, string[]> = {
+	const tableFields: Partial<Record<TableName, string[]>> = {
 		tasks: [
 			'title',
 			'description',

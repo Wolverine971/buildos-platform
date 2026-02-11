@@ -158,12 +158,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		// Fallback to preferences table if users.timezone is not set
 		if (!userTimezone) {
-			const { data: preferences } = await supabase
-				.from('user_brief_preferences')
+			const { data: userRecord } = await supabase
+				.from('users')
 				.select('timezone')
-				.eq('user_id', userId)
+				.eq('id', userId)
 				.single();
-			userTimezone = preferences?.timezone;
+			userTimezone = userRecord?.timezone;
 		}
 
 		userTimezone = getSafeTimezone(userTimezone, userId);

@@ -1,5 +1,5 @@
 // apps/web/src/lib/utils/sanitize-data.ts
-import type { Task } from '$lib/types';
+import type { Task } from '$lib/types/project';
 
 export const sanitizeTaskData = (task: Task): Partial<Task> => {
 	let sanitizedData = {

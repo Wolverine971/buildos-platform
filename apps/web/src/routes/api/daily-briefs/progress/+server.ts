@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	const userId = user.id;
-	const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
+	const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0]!;
 
 	try {
 		// Get main brief status

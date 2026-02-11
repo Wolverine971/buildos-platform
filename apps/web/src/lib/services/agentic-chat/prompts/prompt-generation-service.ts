@@ -26,6 +26,7 @@ import {
 } from '$lib/services/linked-entity-context-formatter';
 import { createLogger } from '$lib/utils/logger';
 import { dev } from '$app/environment';
+import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 
 // Import prompt configurations
 import {
@@ -156,6 +157,17 @@ export class PromptGenerationService {
 		sections.push(
 			`## ${PLANNER_PROMPTS.operationalGuidelines.title}\n\n${PLANNER_PROMPTS.operationalGuidelines.content}`
 		);
+
+		if (isToolGatewayEnabled()) {
+			sections.push(
+				`## Tool Discovery Mode\n\n` +
+					`- You only have access to tool_help and tool_exec (and optional tool_batch).\n` +
+					`- Use tool_help to discover available ops and required args before calling tool_exec.\n` +
+					`- Use tool_help(\"root\") to list groups, then drill down (e.g., tool_help(\"onto.task\"), tool_help(\"onto.task.update\")).\n` +
+					`- When a tool_exec error includes help_path, call tool_help(help_path) and retry.\n` +
+					`- Do not guess IDs or required fields; use list/search/get ops via tool_exec to look them up.`
+			);
+		}
 
 		// ===== BEHAVIORAL SECTIONS (Consolidated + New) =====
 

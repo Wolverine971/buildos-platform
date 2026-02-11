@@ -191,7 +191,7 @@ async function migrateTasksToProjectCalendar(
 				for (const batch of chunk(cleanedUpdates, DB_BATCH_SIZE)) {
 					const { error: upsertError } = await supabase
 						.from('task_calendar_events')
-						.upsert(batch, { onConflict: 'id' });
+						.upsert(batch as any, { onConflict: 'id' });
 
 					if (upsertError) {
 						console.error('Error updating task calendar events batch:', upsertError);

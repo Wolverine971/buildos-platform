@@ -87,7 +87,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			.from('chat_sessions')
 			.update({
 				last_compression_at: new Date().toISOString(),
-				compression_count: (chatSession.compression_count || 0) + 1,
+				compression_count: ((chatSession as any).compression_count || 0) + 1,
 				updated_at: new Date().toISOString()
 			})
 			.eq('id', session_id);

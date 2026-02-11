@@ -184,7 +184,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				userId: user.id,
 				projectId: project_id,
 				entityType: 'goal',
-				entityId: createdGoal?.id,
+				entityId: (createdGoal as { id?: string } | null)?.id,
 				operation: 'goal_create',
 				tableName: 'onto_goals'
 			});

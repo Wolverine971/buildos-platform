@@ -480,10 +480,14 @@ export class CalendarExecutor extends BaseExecutor {
 				}
 			: undefined;
 
+		const resolvedOwnerType = ownerType as 'task' | 'project' | 'actor' | 'standalone';
 		const result = await this.eventSyncService.createEvent(this.userId, {
 			orgId: null,
 			projectId,
-			owner: { type: ownerType, id: ownerType === 'standalone' ? null : ownerId },
+			owner: {
+				type: resolvedOwnerType,
+				id: resolvedOwnerType === 'standalone' ? null : ownerId
+			},
 			typeKey: ownerType === 'task' ? 'event.task_work' : 'event.general',
 			title: args.title,
 			description: args.description ?? null,
@@ -577,7 +581,7 @@ export class CalendarExecutor extends BaseExecutor {
 				location: args.location ?? null,
 				startAt: args.start_at,
 				endAt: args.end_at ?? null,
-				props: nextProps,
+				props: nextProps as any,
 				syncToCalendar: args.sync_to_calendar
 			});
 			return { source: 'ontology', event: updated };

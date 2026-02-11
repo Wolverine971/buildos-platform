@@ -226,11 +226,11 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						`
 						id,
 						project_id,
-						last_sync_error
+						sync_error
 					`
 					)
 					.eq('user_id', userId)
-					.not('last_sync_error', 'is', null)
+					.not('sync_error', 'is', null)
 					.order('updated_at', { ascending: false })
 					.limit(1)
 					.single();
@@ -239,7 +239,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					payload = {
 						calendar_id: calendar.id,
 						project_id: calendar.project_id,
-						error_message: calendar.last_sync_error || 'Sync failed',
+						error_message: calendar.sync_error || 'Sync failed',
 						sync_attempted_at: new Date().toISOString()
 					};
 				}
@@ -268,14 +268,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				// Get user info for trial expiration
 				const { data: userData } = await supabase
 					.from('users')
-					.select('email, trial_end_date')
+					.select('email, trial_ends_at')
 					.eq('id', userId)
 					.single();
 
 				if (userData) {
 					payload = {
 						user_email: userData.email,
-						trial_end_date: userData.trial_end_date || new Date().toISOString()
+						trial_end_date: userData.trial_ends_at || new Date().toISOString()
 					};
 				}
 				break;
@@ -292,6 +292,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		if (Object.keys(payload).length === 0) {
 			return ApiResponse.error(
 				`No real data found for user. User may not have any ${eventType.split('.')[0]} records.`,
+				404,
+				undefined,
 				{ canUseSample: true }
 			);
 		}

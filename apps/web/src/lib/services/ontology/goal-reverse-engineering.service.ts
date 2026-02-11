@@ -32,7 +32,7 @@ export interface ReverseEngineeringContextDocument {
 export interface ReverseEngineeringExistingMilestone {
 	id: string;
 	title: string;
-	due_at: string;
+	due_at: string | null;
 }
 
 export interface ReverseEngineeringExistingTask {
@@ -243,6 +243,9 @@ ${trimmed}`;
 
 		const sample = milestones.slice(0, MAX_EXISTING_MILESTONES);
 		const lines = sample.map((milestone) => {
+			if (!milestone.due_at) {
+				return `- ${milestone.title} (No due date)`;
+			}
 			const dueDate = new Date(milestone.due_at);
 			const formatted = Number.isNaN(dueDate.getTime())
 				? milestone.due_at

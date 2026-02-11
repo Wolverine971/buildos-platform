@@ -79,7 +79,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			completedWithDuration.length > 0
 				? completedWithDuration.reduce((sum, a) => {
 						const duration =
-							new Date(a.completed_at).getTime() - new Date(a.created_at).getTime();
+							new Date(a.completed_at!).getTime() - new Date(a.created_at).getTime();
 						return sum + duration;
 					}, 0) / completedWithDuration.length
 				: 0;
@@ -127,8 +127,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		if (plansError) throw plansError;
 
 		const totalPlans = plansData?.length || 0;
-		const directPlans = plansData?.filter((p) => p.strategy === 'direct').length || 0;
-		const complexPlans = plansData?.filter((p) => p.strategy === 'complex').length || 0;
+		const directPlans =
+			plansData?.filter((p) => (p.strategy as string) === 'direct').length || 0;
+		const complexPlans =
+			plansData?.filter((p) => (p.strategy as string) === 'complex').length || 0;
 		const completedPlans = plansData?.filter((p) => p.status === 'completed').length || 0;
 		const failedPlans = plansData?.filter((p) => p.status === 'failed').length || 0;
 		const activePlans = plansData?.filter((p) => p.status === 'executing').length || 0;

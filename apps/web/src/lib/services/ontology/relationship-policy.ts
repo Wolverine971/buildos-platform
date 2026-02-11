@@ -56,5 +56,5 @@ export function selectPreferredParents(params: {
 		return winners;
 	}
 
-	return winners.length > 0 ? [winners[0]] : [];
+	return winners.length > 0 ? [winners[0]!] : [];
 }

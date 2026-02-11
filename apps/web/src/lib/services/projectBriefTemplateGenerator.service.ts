@@ -267,7 +267,7 @@ Generate a template that feels custom-built for this project's needs.`;
 			throw new Error('Failed to save template');
 		}
 
-		return data;
+		return data as unknown as GeneratedTemplate & { id: string };
 	}
 
 	async regenerateTemplate(
@@ -291,7 +291,7 @@ Generate a template that feels custom-built for this project's needs.`;
 			projectId: existingTemplate.project_id!,
 			userId,
 			templateName: existingTemplate.name,
-			description: existingTemplate.description
+			description: existingTemplate.description ?? undefined
 		});
 
 		// Update the existing template
@@ -310,7 +310,7 @@ Generate a template that feels custom-built for this project's needs.`;
 			throw new Error('Failed to update template');
 		}
 
-		return updated;
+		return updated as unknown as GeneratedTemplate & { id: string };
 	}
 
 	// Helper method to format project for template generation

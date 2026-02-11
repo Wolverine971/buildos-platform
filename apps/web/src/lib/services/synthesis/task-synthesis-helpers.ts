@@ -2,8 +2,9 @@
 // Helper functions for task synthesis prompt generation
 // These are extracted for testing purposes
 
-import type { CompositeTask } from '$lib/types';
 import type { TaskSynthesisConfig } from '$lib/types/synthesis';
+
+type CompositeTask = Record<string, any>;
 
 export function getBaseInstruction(): string {
 	return `Your job is to synthesize and reorganize the tasks in this project to bring organization and clarity. 

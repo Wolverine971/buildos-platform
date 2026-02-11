@@ -108,14 +108,14 @@ export function initializePWAEnhancements(): (() => void) | void {
 
 	const handleTouchStart = (e: TouchEvent) => {
 		if (e.touches.length !== 1) return;
-		lastTouchY = e.touches[0].clientY;
+		lastTouchY = e.touches[0]!.clientY;
 		preventPullToRefresh = window.scrollY === 0;
 	};
 
 	const handleTouchMove = (e: TouchEvent) => {
 		if (!preventPullToRefresh || e.touches.length !== 1) return;
 
-		const touchY = e.touches[0].clientY;
+		const touchY = e.touches[0]!.clientY;
 		const touchYDelta = touchY - lastTouchY;
 		lastTouchY = touchY;
 

@@ -306,7 +306,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const legacyConnections: ConnectionRef[] = [
 			...explicitParents,
-			...(validatedGoalId ? [{ kind: 'goal', id: validatedGoalId }] : [])
+			...(validatedGoalId ? [{ kind: 'goal' as const, id: validatedGoalId }] : [])
 		];
 
 		const hasConnectionsInput = Array.isArray(connections);

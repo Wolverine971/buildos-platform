@@ -197,8 +197,8 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 		};
 
 		// Insert activity log (non-blocking)
-		supabase
-			.from('user_activity')
+		(supabase
+			.from('user_activity' as any) as any)
 			.insert(activityData)
 			.then(({ error }) => {
 				if (error) {

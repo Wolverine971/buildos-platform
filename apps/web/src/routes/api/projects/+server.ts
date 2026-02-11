@@ -43,7 +43,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.from('projects')
 			.select(selectFields, { count: 'exact' })
 			.eq('user_id', user.id)
-			.in('status', statuses)
+			.in('status', statuses as any)
 			.order('updated_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 
@@ -102,7 +102,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// Create the project
 		const { data: project, error } = await supabase
 			.from('projects')
-			.insert(cleanedData)
+			.insert(cleanedData as any)
 			.select()
 			.single();
 

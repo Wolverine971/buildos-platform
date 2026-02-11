@@ -90,7 +90,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		}
 
 		// Get all related deliveries for this correlation
-		let deliveries = [];
+		let deliveries: Array<Record<string, unknown>> = [];
 		if (notificationEvent) {
 			const { data: deliveriesData } = await supabase
 				.from('notification_deliveries')
@@ -140,8 +140,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			end: logs?.[logs.length - 1]?.created_at,
 			duration:
 				logs && logs.length > 0
-					? new Date(logs[logs.length - 1].created_at).getTime() -
-						new Date(logs[0].created_at).getTime()
+					? new Date(logs[logs.length - 1]!.created_at).getTime() -
+						new Date(logs[0]!.created_at).getTime()
 					: 0,
 			log_count: logs?.length || 0,
 			error_count:

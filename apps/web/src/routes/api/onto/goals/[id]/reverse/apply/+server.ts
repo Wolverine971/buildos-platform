@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/onto/goals/[id]/reverse/apply/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import type { Json } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 import { GoalReverseContextError, loadGoalReverseContext } from '../context';
 
 const SOURCE_TAG = 'goal_reverse_engineering_v1';
@@ -53,15 +53,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const insertedMilestones: Array<{ id: string; title: string }> = [];
-		const taskInserts: Array<{
-			project_id: string;
-			title: string;
-			state_key: string;
-			priority: number | null;
-			due_at: string | null;
-			props: Json;
-			created_by: string;
-		}> = [];
+		const taskInserts: Database['public']['Tables']['onto_tasks']['Insert'][] = [];
 
 		for (const [index, milestone] of sanitizedMilestones.entries()) {
 			const dueAt = resolveDueDate(milestone.due_at, index);
@@ -121,7 +113,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				return ApiResponse.databaseError(taskInsertError);
 			}
 
-			insertedTasks = taskRows || [];
+			insertedTasks = (taskRows || []) as unknown as Array<{ id: string; props: Record<string, unknown> | null }>;
 		}
 
 		const edgePayloads: Array<{
@@ -256,11 +248,11 @@ function resolveDueDate(dueAt: string | null, position: number): string {
 	return fallback.toISOString();
 }
 
-function normalizeTaskState(state?: string | null): string {
-	if (!state) return DEFAULT_TASK_STATE;
+function normalizeTaskState(state?: string | null): Database['public']['Enums']['task_state'] {
+	if (!state) return DEFAULT_TASK_STATE as Database['public']['Enums']['task_state'];
 	const normalized = state.toLowerCase().replace(/\s+/g, '_');
 	const allowed = new Set(['todo', 'in_progress', 'done', 'blocked']);
-	return allowed.has(normalized) ? normalized : DEFAULT_TASK_STATE;
+	return (allowed.has(normalized) ? normalized : DEFAULT_TASK_STATE) as Database['public']['Enums']['task_state'];
 }
 
 function normalizePriority(priority?: number | null): number | null {

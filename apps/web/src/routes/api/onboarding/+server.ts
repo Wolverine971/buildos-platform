@@ -58,7 +58,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 
 			case 'complete': {
 				// Mark onboarding as complete and queue analysis
-				await onboardingService.completeOnboarding(user);
+				await onboardingService.completeOnboarding(user as any);
 				return ApiResponse.success({ success: true }, 'Onboarding complete');
 			}
 

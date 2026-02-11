@@ -63,7 +63,7 @@ export function validateEmailClient(email: string): {
 		};
 	}
 
-	if (parts[0].length > 64) {
+	if (parts[0]!.length > 64) {
 		return {
 			valid: false,
 			error: 'Email format is invalid (local part must be 64 characters or less)'

@@ -365,7 +365,7 @@ async function executePhaseGeneration(
 				start_date: controller.requestPayload.project_start_date,
 				end_date: controller.requestPayload.project_end_date
 			};
-			projectStoreV2.updateStoreState({ project: updated });
+			projectStoreV2.updateStoreState({ project: updated as any });
 		}
 
 		stopAndCleanup(controller);
@@ -519,7 +519,7 @@ export async function startPhaseGeneration(
 			},
 			progress: buildProgress(createInitialSteps(strategy), 0),
 			actions: {}
-		} as Notification),
+		} as unknown as Notification),
 		projectId: options.projectId,
 		projectName: options.projectName,
 		isRegeneration: options.isRegeneration,

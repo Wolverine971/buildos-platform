@@ -135,9 +135,9 @@ export class AgentStateReconciliationService {
 			if (this.errorLogger) {
 				void this.errorLogger.logError(error, {
 					userId: input.userId,
-					sessionId: input.sessionId,
 					operationType: 'agent_state_reconciliation',
 					metadata: {
+						sessionId: input.sessionId,
 						contextType: input.contextType,
 						messageCount: input.messages.length,
 						toolCount: input.toolResults.length
@@ -271,12 +271,12 @@ export class AgentStateReconciliationService {
 					item.status && allowedStatus.has(item.status) ? item.status : 'active';
 				const existingIndex = agentState.items.findIndex((entry) => entry.id === id);
 
-				const hydrated = {
+				const hydrated: AgentStateItem = {
 					id,
-					kind: item.kind,
+					kind: item.kind as AgentStateItem['kind'],
 					title: item.title.trim(),
 					details: typeof item.details === 'string' ? item.details : undefined,
-					status,
+					status: status as AgentStateItem['status'],
 					relatedEntityIds: Array.isArray(item.relatedEntityIds)
 						? item.relatedEntityIds.filter((entry) => typeof entry === 'string')
 						: undefined,
@@ -295,8 +295,9 @@ export class AgentStateReconciliationService {
 			if (update.op === 'update' && update.id) {
 				const index = agentState.items.findIndex((item) => item.id === update.id);
 				if (index === -1) continue;
+				const existing = agentState.items[index]!;
 				const patch = update.patch ?? {};
-				const next = { ...agentState.items[index] };
+				const next: AgentStateItem = { ...existing };
 				if (typeof patch.title === 'string') {
 					next.title = patch.title.trim();
 				}
@@ -306,10 +307,10 @@ export class AgentStateReconciliationService {
 					next.details = undefined;
 				}
 				if (typeof patch.status === 'string' && allowedStatus.has(patch.status)) {
-					next.status = patch.status;
+					next.status = patch.status as AgentStateItem['status'];
 				}
 				if (typeof patch.kind === 'string' && allowedKinds.has(patch.kind)) {
-					next.kind = patch.kind;
+					next.kind = patch.kind as AgentStateItem['kind'];
 				}
 				if (Array.isArray(patch.relatedEntityIds)) {
 					next.relatedEntityIds = patch.relatedEntityIds.filter(

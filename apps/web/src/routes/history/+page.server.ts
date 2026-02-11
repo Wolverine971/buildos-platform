@@ -172,13 +172,7 @@ export const load: PageServerLoad = async ({ locals, url, depends }) => {
 
 	// STREAMED: Full history data loaded in background
 	// Skeletons will be hydrated when this resolves
-	const historyData = loadHistoryData(
-		supabase,
-		user.id,
-		filters,
-		braindumpCount,
-		chatSessionCount
-	);
+	const historyData = loadHistoryData(supabase, user.id, filters);
 
 	return {
 		// Immediate data for skeleton rendering
@@ -204,9 +198,7 @@ async function loadHistoryData(
 		search: string;
 		selectedId: string | null;
 		selectedType: string | null;
-	},
-	braindumpCount: number,
-	chatSessionCount: number
+	}
 ): Promise<{
 	items: HistoryItem[];
 	totalItems: number;

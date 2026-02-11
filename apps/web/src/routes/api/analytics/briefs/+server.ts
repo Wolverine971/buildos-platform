@@ -123,8 +123,8 @@ async function calculateStreak(supabase: any, userId: string): Promise<number> {
 
 		// Convert brief dates to Date objects and sort
 		const briefDates = recentBriefs
-			.map((brief) => new Date(brief.brief_date + 'T00:00:00'))
-			.sort((a, b) => b.getTime() - a.getTime());
+			.map((brief: any) => new Date(brief.brief_date + 'T00:00:00'))
+			.sort((a: Date, b: Date) => b.getTime() - a.getTime());
 
 		// Check if there's a brief for today or yesterday (to handle late night generation)
 		const today = new Date(currentDate);
@@ -136,7 +136,7 @@ async function calculateStreak(supabase: any, userId: string): Promise<number> {
 		while (checkDate.getTime() > 0) {
 			const dateString = checkDate.toISOString().split('T')[0];
 			const hasBrief = briefDates.some(
-				(date) => date.toISOString().split('T')[0] === dateString
+				(date: Date) => date.toISOString().split('T')[0] === dateString
 			);
 
 			if (hasBrief) {
@@ -173,7 +173,7 @@ async function getEngagementMetrics(supabase: any, userId: string, startDate: Da
 						const content = brief.summary_content || '';
 						const wordCount = content
 							.split(/\s+/)
-							.filter((word) => word.length > 0).length;
+							.filter((word: string) => word.length > 0).length;
 						return sum + wordCount;
 					}, 0) / briefs.length
 				: 0;
@@ -224,7 +224,7 @@ async function getEngagementMetrics(supabase: any, userId: string, startDate: Da
 			.sort((a, b) => b.brief_count - a.brief_count);
 
 		// Get most active goals (if you have a life_goals table)
-		let mostActiveGoals = [];
+		let mostActiveGoals: Array<{ goal_id: string; goal_name: string; brief_count: number }> = [];
 		try {
 			const { data: goalBriefs } = await supabase
 				.from('life_goal_daily_briefs')
@@ -354,15 +354,15 @@ async function getTemplateUsage(supabase: any, userId: string, startDate: Date) 
 			.eq('is_default', false);
 
 		return {
-			most_used_project_template: mostUsedProjectTemplate,
-			most_used_goal_template: mostUsedGoalTemplate,
+			most_used_project_template: mostUsedProjectTemplate ?? '',
+			most_used_goal_template: mostUsedGoalTemplate ?? '',
 			custom_template_count: customProjectTemplates || 0
 		};
 	} catch (error) {
 		console.error('Error in getTemplateUsage:', error);
 		return {
-			most_used_project_template: null,
-			most_used_goal_template: null,
+			most_used_project_template: '',
+			most_used_goal_template: '',
 			custom_template_count: 0
 		};
 	}

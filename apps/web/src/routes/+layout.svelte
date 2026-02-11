@@ -850,7 +850,7 @@
 		<div
 			aria-live="polite"
 			aria-atomic="true"
-			class="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:p-6 z-50"
+			class="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:p-6 z-[10001]"
 		>
 			<ToastContainer />
 		</div>

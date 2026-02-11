@@ -22,6 +22,7 @@ export { ONTOLOGY_READ_TOOLS } from './ontology-read';
 export { ONTOLOGY_WRITE_TOOLS } from './ontology-write';
 export { UTILITY_TOOL_DEFINITIONS } from './utility';
 export { CALENDAR_TOOL_DEFINITIONS } from './calendar';
+export { GATEWAY_TOOL_DEFINITIONS } from './gateway';
 
 // Import for combination
 import { ONTOLOGY_READ_TOOLS } from './ontology-read';

@@ -90,8 +90,8 @@ export class ProjectActivityLogService {
 				entity_type: params.entityType,
 				entity_id: params.entityId,
 				action: params.action,
-				before_data: params.beforeData ?? null,
-				after_data: params.afterData ?? null,
+				before_data: (params.beforeData ?? null) as any,
+				after_data: (params.afterData ?? null) as any,
 				changed_by: params.changedBy,
 				change_source: params.changeSource ?? null,
 				chat_session_id: params.chatSessionId ?? null

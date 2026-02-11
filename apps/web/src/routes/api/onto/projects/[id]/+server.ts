@@ -311,7 +311,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (state_key !== undefined) {
-			if (typeof state_key !== 'string' || !PROJECT_STATES.includes(state_key)) {
+			if (typeof state_key !== 'string' || !PROJECT_STATES.includes(state_key as typeof PROJECT_STATES[number])) {
 				return ApiResponse.badRequest(
 					`state_key must be one of: ${PROJECT_STATES.join(', ')}`
 				);

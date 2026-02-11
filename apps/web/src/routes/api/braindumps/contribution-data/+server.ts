@@ -62,14 +62,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const endDate = new Date(endOfYear);
 
 		for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-			const dateStr = d.toISOString().split('T')[0];
+			const dateStr = d.toISOString().split('T')[0]!;
 			contributionMap[dateStr] = 0;
 		}
 
 		// Count braindumps per day
 		braindumps?.forEach((braindump) => {
 			const date = new Date(braindump.created_at);
-			const dateStr = date.toISOString().split('T')[0];
+			const dateStr = date.toISOString().split('T')[0]!;
 			contributionMap[dateStr] = (contributionMap[dateStr] || 0) + 1;
 		});
 

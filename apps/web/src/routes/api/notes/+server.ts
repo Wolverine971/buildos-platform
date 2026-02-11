@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		const { data: note, error } = await supabase
 			.from('notes')
-			.insert(cleanedData)
+			.insert(cleanedData as any)
 			.select(
 				`
                 *,

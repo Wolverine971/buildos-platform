@@ -251,7 +251,7 @@ export class SMSMonitoringService {
 	private async getAuthHeaders(): Promise<Record<string, string>> {
 		const {
 			data: { session }
-		} = await supabase.auth.getSession();
+		} = await supabase!.auth.getSession();
 
 		if (session?.access_token) {
 			return {

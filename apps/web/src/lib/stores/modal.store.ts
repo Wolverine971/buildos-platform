@@ -70,7 +70,7 @@ function createModalStore() {
 
 		closeAll() {
 			update((state) => {
-				const newState = {};
+				const newState: Record<string, any> = {};
 				Object.keys(state).forEach((key) => {
 					newState[key] = { isOpen: false, data: null, phaseId: null, phase: null };
 				});

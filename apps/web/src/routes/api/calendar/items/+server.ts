@@ -58,8 +58,8 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			p_include_task_range: includeTaskRange,
 			p_include_task_start: includeTaskStart,
 			p_include_task_due: includeTaskDue,
-			p_project_ids: projectIds,
-			p_limit: Number.isFinite(limit) ? limit : null
+			p_project_ids: projectIds ?? undefined,
+			p_limit: Number.isFinite(limit) ? limit! : undefined
 		});
 
 		if (error) {

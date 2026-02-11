@@ -1,6 +1,7 @@
 // apps/web/src/lib/tests/llm/helpers/simple-runner.ts
 import { BrainDumpProcessor } from '$lib/utils/braindump-processor';
-import type { BrainDumpParseResult, ProjectWithRelations } from '$lib/types';
+import type { BrainDumpParseResult } from '$lib/types';
+import type { ProjectWithRelations } from '$lib/types/project';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Minimal mock Supabase for testing

@@ -458,7 +458,7 @@ export class SessionManager {
 				tool_call_id: row.tool_call_id,
 				tool_name: row.tool_name,
 				result: parsedResult,
-				created_at: row.created_at
+				created_at: row.created_at ?? undefined
 			};
 		});
 	}

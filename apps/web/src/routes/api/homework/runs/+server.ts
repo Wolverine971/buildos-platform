@@ -45,7 +45,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		.limit(limit);
 
 	if (status) {
-		query = query.eq('status', status);
+		query = query.eq('status', status as any);
 	}
 
 	const { data, error } = await query;
@@ -169,7 +169,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 
 	const { data: run, error: runError } = await admin
 		.from('homework_runs')
-		.insert(runInsert)
+		.insert(runInsert as any)
 		.select('*')
 		.single();
 

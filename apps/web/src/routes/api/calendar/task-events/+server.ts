@@ -33,7 +33,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 
 		if (fetchError) {
 			console.error('[API] Failed to fetch task calendar events:', fetchError);
-			throw error(500, 'Failed to fetch task calendar events');
+			return ApiResponse.error('Failed to fetch task calendar events', 500);
 		}
 
 		// Extract calendar event IDs from the nested structure

@@ -153,8 +153,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		}
 
 		if (error.message?.includes('rate limit') || error.message?.includes('quota')) {
-			return ApiResponse.tooManyRequests(
-				'Calendar API limit reached. Please try again in a few minutes.'
+			return ApiResponse.error(
+				'Calendar API limit reached. Please try again in a few minutes.',
+				429
 			);
 		}
 

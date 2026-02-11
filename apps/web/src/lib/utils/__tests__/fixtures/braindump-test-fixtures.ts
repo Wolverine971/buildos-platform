@@ -1,4 +1,5 @@
 // apps/web/src/lib/utils/__tests__/fixtures/braindump-test-fixtures.ts
+import { expect } from 'vitest';
 
 export const braindumpFixtures = {
 	// Short braindumps (< 500 chars)

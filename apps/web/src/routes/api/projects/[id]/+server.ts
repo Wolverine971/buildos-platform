@@ -103,14 +103,14 @@ export const PUT: RequestHandler = async ({
 				console.error('Error fetching tasks:', tasksError);
 			}
 
-			const taskCalendarEvents = tasks
+			const taskCalendarEvents = (tasks ?? [])
 				.filter((t) => t.task_calendar_events.length)
 				.flatMap((task) => task.task_calendar_events);
 
 			if (taskCalendarEvents && taskCalendarEvents.length > 0) {
 				const calendarService = new CalendarService(supabase);
 				const deletionResult = await calendarService.bulkDeleteCalendarEvents(
-					taskCalendarEvents,
+					taskCalendarEvents as any,
 					user.id
 				);
 

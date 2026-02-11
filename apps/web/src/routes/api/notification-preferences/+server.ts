@@ -145,7 +145,7 @@ export const PUT: RequestHandler = async ({ request, locals: { supabase, safeGet
 		// Upsert global user preferences (one row per user)
 		const { data, error } = await supabase
 			.from('user_notification_preferences')
-			.upsert(updateData, {
+			.upsert(updateData as any, {
 				onConflict: 'user_id'
 			})
 			.select()

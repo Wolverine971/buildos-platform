@@ -27,7 +27,7 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 		}
 
 		// Check if max attempts exceeded
-		if (delivery.attempts >= delivery.max_attempts) {
+		if ((delivery.attempts ?? 0) >= (delivery.max_attempts ?? 3)) {
 			return ApiResponse.badRequest('Maximum retry attempts exceeded');
 		}
 

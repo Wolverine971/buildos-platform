@@ -949,7 +949,7 @@ Use get_task_details('${taskId}') for complete information.`;
 		const { data: events } = await this.supabase
 			.from('onto_events')
 			.select('id, title, start_at, end_at')
-			.eq('created_by', actorId)
+			.eq('created_by', actorId!)
 			.is('deleted_at', null)
 			.gte('start_at', today.toISOString())
 			.lte('start_at', nextWeek.toISOString())

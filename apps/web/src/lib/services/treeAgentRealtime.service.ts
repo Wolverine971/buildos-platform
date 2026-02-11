@@ -83,7 +83,7 @@ export class TreeAgentRealtimeService {
 				}
 			});
 
-			if (subscription === 'error' || subscription === 'timed_out') {
+			if ((subscription as any) === 'error' || (subscription as any) === 'timed_out') {
 				throw new Error(`Tree Agent realtime subscription failed: ${subscription}`);
 			}
 

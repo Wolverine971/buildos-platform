@@ -8,7 +8,7 @@
 
 import type { ChatToolDefinition } from '@buildos/shared-types';
 
-export const ONTOLOGY_WRITE_TOOLS: ChatToolDefinition[] = [
+export const ONTOLOGY_WRITE_TOOLS = [
 	// ============================================
 	// CREATE TOOLS
 	// ============================================
@@ -1511,4 +1511,4 @@ This action is permanent and cannot be undone.`,
 			}
 		}
 	}
-];
+] as ChatToolDefinition[];

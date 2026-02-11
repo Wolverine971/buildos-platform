@@ -165,7 +165,7 @@ function createSchedulingStore() {
 							duration_minutes: item.duration_minutes || 60
 						};
 					})
-					.filter(Boolean);
+					.filter((item): item is NonNullable<typeof item> => Boolean(item));
 
 				// Load calendar events
 				let calendarEvents = [];
@@ -233,7 +233,7 @@ function createSchedulingStore() {
 				const scheduleIndex = schedules.findIndex((s) => s.task.id === taskId);
 
 				if (scheduleIndex >= 0) {
-					const schedule = { ...schedules[scheduleIndex] };
+					const schedule = { ...schedules[scheduleIndex]! };
 					schedule.proposedStart = newStart;
 					schedule.proposedEnd = newEnd;
 					schedule.duration_minutes = Math.round(

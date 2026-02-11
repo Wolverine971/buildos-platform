@@ -20,13 +20,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.from('queue_jobs')
 			.select('*', { count: 'exact' })
 			.eq('user_id', user.id)
-			.eq('job_type', jobType)
+			.eq('job_type', jobType as any)
 			.order('created_at', { ascending: false });
 
 		// Apply status filter (can be comma-separated)
 		if (status) {
 			const statuses = status.split(',').map((s) => s.trim());
-			query = query.in('status', statuses);
+			query = query.in('status', statuses as any);
 		}
 
 		// Apply pagination

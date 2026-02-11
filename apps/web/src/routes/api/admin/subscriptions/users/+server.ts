@@ -151,7 +151,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 				// Log admin action
 				await supabase.from('user_activity_logs').insert({
-					user_id,
+					user_id: userId,
 					activity_type: 'admin_subscription_cancel',
 					metadata: {
 						admin_id: user.id,
@@ -176,7 +176,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				if (extendError) throw extendError;
 
 				await supabase.from('user_activity_logs').insert({
-					user_id,
+					user_id: userId,
 					activity_type: 'admin_trial_extended',
 					metadata: {
 						admin_id: user.id,
@@ -193,7 +193,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 				// Apply discount logic here
 				await supabase.from('user_activity_logs').insert({
-					user_id,
+					user_id: userId,
 					activity_type: 'admin_discount_applied',
 					metadata: {
 						admin_id: user.id,

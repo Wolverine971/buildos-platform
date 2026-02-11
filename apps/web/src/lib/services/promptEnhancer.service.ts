@@ -76,38 +76,39 @@ Personalize the brief to the user to make it more relevant to the user's specifi
 	 * Build personal context section
 	 */
 	private buildPersonalContextSection(personalContext: UserContext): string {
+		const ctx = personalContext as Record<string, any>;
 		const sections: string[] = [];
 
-		if (personalContext.identity) {
-			sections.push(`**Identity**: ${personalContext.identity}`);
+		if (ctx.identity) {
+			sections.push(`**Identity**: ${ctx.identity}`);
 		}
 
 		if (personalContext.background) {
 			sections.push(`**Background**: ${personalContext.background}`);
 		}
 
-		if (personalContext.personality) {
-			sections.push(`**Personality**: ${personalContext.personality}`);
+		if (ctx.personality) {
+			sections.push(`**Personality**: ${ctx.personality}`);
 		}
 
-		if (personalContext.philosophies) {
-			sections.push(`**Philosophies**: ${personalContext.philosophies}`);
+		if (ctx.philosophies) {
+			sections.push(`**Philosophies**: ${ctx.philosophies}`);
 		}
 
-		if (personalContext.worldview) {
-			sections.push(`**Worldview**: ${personalContext.worldview}`);
+		if (ctx.worldview) {
+			sections.push(`**Worldview**: ${ctx.worldview}`);
 		}
 
-		if (personalContext.principles) {
-			sections.push(`**Guiding Principles**: ${personalContext.principles}`);
+		if (ctx.principles) {
+			sections.push(`**Guiding Principles**: ${ctx.principles}`);
 		}
 
-		if (personalContext.values) {
-			sections.push(`**Core Values**: ${personalContext.values}`);
+		if (ctx.values) {
+			sections.push(`**Core Values**: ${ctx.values}`);
 		}
 
-		if (personalContext.aspirations) {
-			sections.push(`**Aspirations**: ${personalContext.aspirations}`);
+		if (ctx.aspirations) {
+			sections.push(`**Aspirations**: ${ctx.aspirations}`);
 		}
 
 		if (personalContext.goals_overview) {

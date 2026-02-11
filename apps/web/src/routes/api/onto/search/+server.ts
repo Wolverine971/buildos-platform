@@ -101,8 +101,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data, error } = await supabase.rpc('onto_search_entities', {
 			p_actor_id: actorId,
 			p_query: query,
-			p_project_id: projectId,
-			p_types: requestedTypes && requestedTypes.length ? requestedTypes : null,
+			p_project_id: projectId ?? undefined,
+			p_types: requestedTypes && requestedTypes.length ? requestedTypes : undefined,
 			p_limit: limit
 		});
 

@@ -25,5 +25,5 @@ export function normalizeDocumentStateInput(state: unknown): DocumentState | und
 	if (!normalized) return undefined;
 
 	const candidate = DOCUMENT_STATE_ALIASES[normalized] ?? normalized;
-	return DOCUMENT_STATE_SET.has(candidate) ? (candidate as DocumentState) : undefined;
+	return DOCUMENT_STATE_SET.has(candidate as DocumentState) ? (candidate as DocumentState) : undefined;
 }

@@ -10,7 +10,8 @@
  * Created: 2026-01-03 as part of security/performance audit fixes
  */
 
-import type { TypedSupabaseClient } from '$lib/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+type TypedSupabaseClient = SupabaseClient<any>;
 import { ApiResponse } from './api-response';
 
 // ============================================

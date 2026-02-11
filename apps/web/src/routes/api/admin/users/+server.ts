@@ -154,7 +154,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				.in('user_id', userIds),
 			supabase
 				.from('user_brief_preferences')
-				.select('user_id, is_active, email_daily_brief')
+				.select('user_id, is_active')
 				.in('user_id', userIds),
 			supabase.from('daily_briefs').select('user_id').in('user_id', userIds),
 			actorIds.length
@@ -260,7 +260,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const dailyBriefPreferenceMap =
 			userBriefPrefs?.reduce(
 				(acc, pref) => {
-					const isOptedIn = Boolean(pref.is_active) || Boolean(pref.email_daily_brief);
+					const isOptedIn = Boolean(pref.is_active);
 					acc[pref.user_id] = acc[pref.user_id] || isOptedIn;
 					return acc;
 				},

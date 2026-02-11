@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	} catch (error) {
 		const errorLogger = ErrorLoggerService.getInstance(supabase);
 		errorLogger.logError(error, {
-			operation: 'calendar_analyze_endpoint',
+			operationType: 'calendar_analyze_endpoint',
 			endpoint: 'POST /api/calendar/analyze'
 		});
 

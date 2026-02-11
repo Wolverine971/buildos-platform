@@ -320,7 +320,8 @@ export const ENTITY_MODAL_MAP: Record<EntityReferenceType, string> = {
 	requirement: 'RequirementEditModal',
 	source: 'SourceEditModal',
 	edge: 'EdgeEditModal',
-	user: 'UserProfileModal'
+	user: 'UserProfileModal',
+	event: 'EventEditModal'
 };
 
 /**

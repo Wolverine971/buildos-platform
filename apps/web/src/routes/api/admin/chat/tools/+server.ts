@@ -403,7 +403,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// ===================================================
 		const dailyStats = (toolExecutionsData || []).reduce(
 			(acc, exec) => {
-				const date = exec.created_at.split('T')[0]; // YYYY-MM-DD
+				const date = exec.created_at.split('T')[0]!; // YYYY-MM-DD
 				if (!acc[date]) {
 					acc[date] = {
 						date,

@@ -47,7 +47,7 @@ export class TaskMigrationService {
 		this.llmService = llmService;
 		// Always initialize enhanced migrator when LLM service is available
 		if (llmService) {
-			this.enhancedMigrator = new EnhancedTaskMigrator(client, llmService);
+			this.enhancedMigrator = new EnhancedTaskMigrator(client);
 			this.batchMigrator = new BatchTaskMigrationService(client, llmService);
 		}
 	}
@@ -438,7 +438,7 @@ export class TaskMigrationService {
 			source_calendar_event_id: task.source_calendar_event_id,
 			source: task.source,
 			classification
-		};
+		} as unknown as Json;
 	}
 
 	private buildProposedPayload(params: {
@@ -504,8 +504,10 @@ export class TaskMigrationService {
 	}
 
 	private mapTaskState(status: LegacyTaskRow['status']): string {
-		switch (status) {
+		const s: string = status;
+		switch (s) {
 			case 'completed':
+			case 'done':
 				return 'done';
 			case 'in_progress':
 				return 'in_progress';
@@ -521,7 +523,8 @@ export class TaskMigrationService {
 	}
 
 	private mapPriority(priority: LegacyTaskRow['priority']): number {
-		switch (priority) {
+		const p: string = priority;
+		switch (p) {
 			case 'urgent':
 				return 5;
 			case 'high':
@@ -562,7 +565,7 @@ export class TaskMigrationService {
 		};
 
 		// Run enhanced migration
-		const enhancedResult = await this.enhancedMigrator.migrate(
+		const enhancedResult = await this.enhancedMigrator!.migrate(
 			task,
 			migrationContext,
 			projectContext
@@ -891,7 +894,7 @@ export class TaskMigrationService {
 		const dueAt = this.resolveDueAt(task);
 		const priority = this.mapPriority(task.priority);
 		const facetScale = classification.requiresDeepWork ? 'medium' : 'small';
-		const baseProps = this.buildTaskProps(task, classification);
+		const baseProps = this.buildTaskProps(task, classification) as unknown as Record<string, unknown>;
 		// Add type_key and facets to props (facet_scale is a GENERATED column from props->'facets'->'scale')
 		const props = {
 			...baseProps,
@@ -914,18 +917,19 @@ export class TaskMigrationService {
 		// Convert legacy type_keys to valid task taxonomy (task.{work_mode})
 		const typeKey = this.normalizeTaskTypeKey(classification.typeKey);
 
+		const insertPayload: Database['public']['Tables']['onto_tasks']['Insert'] = {
+			title: task.title,
+			project_id: ontoProjectId!,
+			type_key: typeKey,
+			state_key: recommendedStateKey as Database['public']['Enums']['task_state'],
+			priority,
+			due_at: dueAt,
+			props: props as unknown as Json,
+			created_by: actorId
+		};
 		const { data, error } = await this.client
 			.from('onto_tasks')
-			.insert({
-				title: task.title,
-				project_id: ontoProjectId,
-				type_key: typeKey,
-				state_key: recommendedStateKey,
-				priority,
-				due_at: dueAt,
-				props,
-				created_by: actorId
-			})
+			.insert(insertPayload)
 			.select('id')
 			.single();
 
@@ -966,7 +970,7 @@ export class TaskMigrationService {
 				dst_id: data.id,
 				dst_kind: 'task',
 				rel: 'has_task',
-				project_id: ontoProjectId
+				project_id: ontoProjectId!
 			});
 
 			if (edgeError) {

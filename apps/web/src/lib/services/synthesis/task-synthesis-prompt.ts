@@ -139,7 +139,7 @@ This is a complete reorganization to transform chaos into an executable, time-bl
 
 		return `### Task Consolidation
 Aggressiveness Level: ${config.aggressiveness}
-Guideline: ${aggressivenessGuide[config.aggressiveness]}
+Guideline: ${aggressivenessGuide[config.aggressiveness as keyof typeof aggressivenessGuide]}
 
 Instructions:
 1. Identify duplicate or highly similar tasks
@@ -220,7 +220,7 @@ Remember: Good sequencing prevents rework and reduces confusion!`;
 
 		return `### Task Grouping & Batching (STEP 2 of Reorganization)
 Strategy: ${config.strategy}
-Approach: ${strategyGuide[config.strategy]}
+Approach: ${strategyGuide[config.strategy as keyof typeof strategyGuide]}
 Maximum Group Size: ${config.maxGroupSize}
 
 ## 🎯 BATCHING FOR EFFICIENCY:
@@ -263,7 +263,7 @@ Remember: Good batching can cut project time by 30% or more!`;
 
 		return `### Time Estimation & Timeblocking
 Confidence Level: ${config.confidenceLevel}
-Approach: ${confidenceGuide[config.confidenceLevel]}
+Approach: ${confidenceGuide[config.confidenceLevel as keyof typeof confidenceGuide]}
 Include Buffer Time: ${config.includeBufferTime}
 
 ## 🕐 CRITICAL TIMEBLOCKING RULES:

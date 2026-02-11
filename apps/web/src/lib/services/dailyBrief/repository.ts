@@ -63,13 +63,13 @@ export class DailyBriefRepository {
 			const phasesWithTasks = (project.phases || []).map((phase) => {
 				const phaseTasks = (phase.phase_tasks || [])
 					.map((pt) => taskMap.get(pt.task_id))
-					.filter(Boolean);
+					.filter((t): t is NonNullable<typeof t> => Boolean(t));
 
 				return {
 					...phase,
 					tasks: phaseTasks,
 					task_count: phaseTasks.length,
-					completed_tasks: phaseTasks.filter((t) => t.status === 'done').length
+					completed_tasks: phaseTasks.filter((t) => t?.status === 'done').length
 				};
 			});
 
@@ -118,7 +118,7 @@ export class DailyBriefRepository {
 		// All remaining generations are non-stale (cleanup already happened)
 		return {
 			canStart: false,
-			message: `You already have a brief generating for ${activeGenerations[0].brief_date}.`,
+			message: `You already have a brief generating for ${activeGenerations[0]!.brief_date}.`,
 			staleBriefs: cleanedBriefs || []
 		};
 	}

@@ -30,7 +30,9 @@ import type {
 } from '../shared/types';
 import { normalizeToolError } from '../shared/error-utils';
 import type { ChatMessage, ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
-import { TOOL_METADATA } from '../tools/core/definitions';
+import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../tools/core/definitions';
+import { getToolHelp } from '../tools/registry/tool-help';
+import { getToolRegistry } from '../tools/registry/tool-registry';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
@@ -38,6 +40,7 @@ import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const logger = createLogger('ToolExecutionService');
+const GATEWAY_TOOL_NAMES = new Set(['tool_help', 'tool_exec', 'tool_batch']);
 
 /**
  * Tool execution options
@@ -200,6 +203,21 @@ export class ToolExecutionService implements BaseService {
 			return finalizeResult({
 				success: false,
 				error: message,
+				toolName,
+				toolCallId: toolCall.id
+			});
+		}
+
+		if (GATEWAY_TOOL_NAMES.has(toolName)) {
+			const gatewayResult = await this.executeGatewayTool(
+				toolName,
+				args,
+				context,
+				availableTools,
+				options
+			);
+			return finalizeResult({
+				...gatewayResult,
 				toolName,
 				toolCallId: toolCall.id
 			});
@@ -563,6 +581,269 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		return results;
+	}
+
+	private async executeGatewayTool(
+		toolName: string,
+		args: Record<string, any>,
+		context: ServiceContext,
+		availableTools: ChatToolDefinition[],
+		options: ToolExecutionOptions
+	): Promise<ToolExecutionResult> {
+		if (toolName === 'tool_help') {
+			const path = typeof args.path === 'string' ? args.path : 'root';
+			const help = getToolHelp(path, {
+				format: args.format === 'full' ? 'full' : 'short',
+				include_examples: args.include_examples !== false,
+				include_schemas: Boolean(args.include_schemas)
+			});
+			return { success: true, data: help, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'tool_exec') {
+			return this.executeGatewayExec(args, context, options);
+		}
+
+		if (toolName === 'tool_batch') {
+			const ops = Array.isArray(args.ops) ? args.ops : [];
+			if (ops.length === 0) {
+				return {
+					success: false,
+					error: 'tool_batch requires a non-empty ops array',
+					errorType: 'validation_error',
+					toolName,
+					toolCallId: 'gateway'
+				};
+			}
+
+			const results: any[] = [];
+			const streamEvents: StreamEvent[] = [];
+
+			for (const entry of ops) {
+				if (!entry || typeof entry !== 'object') continue;
+				if (entry.type === 'help') {
+					const help = getToolHelp(typeof entry.path === 'string' ? entry.path : 'root', {
+						format: entry.format === 'full' ? 'full' : 'short',
+						include_examples: entry.include_examples !== false,
+						include_schemas: Boolean(entry.include_schemas)
+					});
+					results.push({ type: 'help', path: entry.path, result: help });
+					continue;
+				}
+				if (entry.type === 'exec') {
+					const execResult = await this.executeGatewayExec(
+						{
+							op: entry.op,
+							args: entry.args ?? {},
+							idempotency_key: entry.idempotency_key,
+							dry_run: entry.dry_run
+						},
+						context,
+						options
+					);
+					results.push({ type: 'exec', op: entry.op, result: execResult.data });
+					if (execResult.streamEvents) {
+						streamEvents.push(...execResult.streamEvents);
+					}
+				}
+			}
+
+			return {
+				success: true,
+				data: { ok: true, results },
+				streamEvents: streamEvents.length > 0 ? streamEvents : undefined,
+				toolName,
+				toolCallId: 'gateway'
+			};
+		}
+
+		return {
+			success: false,
+			error: `Unknown gateway tool: ${toolName}`,
+			errorType: 'validation_error',
+			toolName,
+			toolCallId: 'gateway'
+		};
+	}
+
+	private async executeGatewayExec(
+		args: Record<string, any>,
+		context: ServiceContext,
+		options: ToolExecutionOptions
+	): Promise<ToolExecutionResult> {
+		const op = typeof args.op === 'string' ? args.op.trim() : '';
+		const registry = getToolRegistry();
+		if (!op) {
+			return this.buildGatewayErrorResult(op, 'VALIDATION_ERROR', 'Missing op');
+		}
+
+		const entry = registry.ops[op];
+		if (!entry) {
+			return this.buildGatewayErrorResult(op, 'NOT_FOUND', `Unknown op: ${op}`, 'root');
+		}
+
+		const opArgs = args.args && typeof args.args === 'object' ? args.args : {};
+		let normalizedArgs = this.applySchemaDefaults(
+			entry.tool_name,
+			opArgs,
+			CHAT_TOOL_DEFINITIONS
+		);
+		normalizedArgs = this.applyContextDefaults(
+			entry.tool_name,
+			normalizedArgs,
+			context,
+			CHAT_TOOL_DEFINITIONS
+		);
+		normalizedArgs = this.normalizeIdFields(normalizedArgs);
+
+		const validation = this.validateToolCall(
+			entry.tool_name,
+			normalizedArgs,
+			CHAT_TOOL_DEFINITIONS
+		);
+		if (!validation.isValid) {
+			return this.buildGatewayErrorResult(
+				op,
+				'VALIDATION_ERROR',
+				validation.errors.join('; '),
+				op,
+				{ field_errors: validation.errors }
+			);
+		}
+
+		const dryRun = Boolean(args.dry_run);
+		if (dryRun && entry.kind === 'write') {
+			return {
+				success: true,
+				data: {
+					op,
+					ok: true,
+					result: {
+						dry_run: true,
+						tool_name: entry.tool_name,
+						args: normalizedArgs
+					},
+					meta: { warnings: ['dry_run enabled; no changes applied'] }
+				},
+				toolName: 'tool_exec',
+				toolCallId: 'gateway'
+			};
+		}
+
+		const execStart = Date.now();
+		let abortListener: (() => void) | undefined;
+		try {
+			const timeout = this.resolveTimeoutMs(entry.tool_name, options.timeout);
+			const execPromise = this.executeWithTimeout<ToolExecutorResponse>(
+				() => this.toolExecutor(entry.tool_name, normalizedArgs, context),
+				timeout
+			);
+			let execution: ToolExecutorResponse;
+			if (options.abortSignal) {
+				execution = await Promise.race([
+					execPromise,
+					new Promise<never>((_, reject) => {
+						const onAbort = () =>
+							reject(new DOMException('Tool execution aborted', 'AbortError'));
+						options.abortSignal?.addEventListener('abort', onAbort);
+						abortListener = () =>
+							options.abortSignal?.removeEventListener('abort', onAbort);
+						if (options.abortSignal?.aborted) {
+							onAbort();
+						}
+					})
+				]);
+			} else {
+				execution = await execPromise;
+			}
+
+			const executionMetadata = execution?.metadata;
+			const tokensUsed = this.extractTokensUsed(execution, executionMetadata);
+			const cleanedResult = this.cleanResult(execution?.data);
+			const latencyMs =
+				typeof executionMetadata?.durationMs === 'number'
+					? executionMetadata.durationMs
+					: Date.now() - execStart;
+
+			return {
+				success: true,
+				data: {
+					op,
+					ok: true,
+					result: cleanedResult ?? null,
+					meta: { latency_ms: latencyMs, warnings: [] }
+				},
+				streamEvents: Array.isArray(execution?.streamEvents)
+					? (execution.streamEvents as StreamEvent[])
+					: undefined,
+				tokensUsed,
+				metadata: executionMetadata,
+				toolName: 'tool_exec',
+				toolCallId: 'gateway'
+			};
+		} catch (error) {
+			if (abortListener) {
+				abortListener();
+			}
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				return {
+					success: false,
+					error: 'Operation cancelled',
+					errorType: 'execution_error',
+					data: {
+						op,
+						ok: false,
+						error: { code: 'INTERNAL', message: 'Operation cancelled', help_path: op }
+					},
+					toolName: 'tool_exec',
+					toolCallId: 'gateway'
+				};
+			}
+
+			const normalizedError = this.normalizeExecutionError(
+				error,
+				entry.tool_name,
+				normalizedArgs
+			);
+			return {
+				success: false,
+				error: normalizedError,
+				errorType: 'execution_error',
+				data: {
+					op,
+					ok: false,
+					error: { code: 'INTERNAL', message: normalizedError, help_path: op }
+				},
+				toolName: 'tool_exec',
+				toolCallId: 'gateway'
+			};
+		}
+	}
+
+	private buildGatewayErrorResult(
+		op: string,
+		code: string,
+		message: string,
+		helpPath?: string,
+		details?: Record<string, any>
+	): ToolExecutionResult {
+		return {
+			success: false,
+			error: message,
+			errorType: 'validation_error',
+			data: {
+				op,
+				ok: false,
+				error: {
+					code,
+					message,
+					details,
+					help_path: helpPath ?? op
+				}
+			},
+			toolName: 'tool_exec',
+			toolCallId: 'gateway'
+		};
 	}
 
 	/**

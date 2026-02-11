@@ -4,7 +4,6 @@
 	import WorkspaceTreeNode from '$lib/components/homework/WorkspaceTreeNode.svelte';
 	import DocumentModal from '$lib/components/ontology/DocumentModal.svelte';
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
-	import { marked } from 'marked';
 
 	interface WorkspaceDoc {
 		id: string;
@@ -98,7 +97,6 @@
 	let workspaceEdges = $state(data.workspaceEdges ?? []);
 	let scratchpad = $state(data.scratchpad);
 	let executorPads = $state(data.executorPads ?? []);
-	let expandedExecutorId = $state<string | null>(null);
 	const latestPlan = $derived.by(() => {
 		const firstIter = iterations[0];
 		const plan = (firstIter?.artifacts?.plan as any) || (run?.metrics?.plan as any) || null;
@@ -307,10 +305,6 @@
 		} catch (error) {
 			console.error('Failed to delete scratchpad:', error);
 		}
-	};
-
-	const renderMarkdown = (content: string): string => {
-		return marked(content || '', { breaks: true, gfm: true }) as string;
 	};
 
 	// Get project_id from the first workspace document (they all share the same project)

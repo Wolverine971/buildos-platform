@@ -449,7 +449,7 @@ export class ScheduleInPhasesStrategy extends BaseSchedulingStrategy {
 
 		// Ensure date is not in the past
 		if (date < today) {
-			return today.toISOString().split('T')[0];
+			return today.toISOString().split('T')[0]!;
 		}
 
 		// Ensure date is within phase bounds

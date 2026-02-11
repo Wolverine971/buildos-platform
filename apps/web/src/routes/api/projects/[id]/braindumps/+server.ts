@@ -76,8 +76,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					id: braindump.id,
 					title: braindump.title || '',
 					content: braindump.content || '',
-					ai_summary: braindump.ai_summary,
-					status: braindump.status,
+					ai_summary: braindump.ai_summary ?? undefined,
+					status: braindump.status as any,
 					created_at: braindump.created_at,
 					updated_at: braindump.updated_at,
 					linked_at: link.linked_at,
@@ -90,7 +90,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 			// Add task if present and not already added
 			if (link.task_id && link.tasks) {
-				const taskExists = bd.linked_tasks.find((t) => t.id === link.tasks.id);
+				const taskExists = bd.linked_tasks.find((t) => t.id === link.tasks!.id);
 				if (!taskExists) {
 					bd.linked_tasks.push({
 						id: link.tasks.id,
@@ -102,11 +102,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 			// Add note if present and not already added
 			if (link.note_id && link.notes) {
-				const noteExists = bd.linked_notes.find((n) => n.id === link.notes.id);
+				const noteExists = bd.linked_notes.find((n) => n.id === link.notes!.id);
 				if (!noteExists) {
 					bd.linked_notes.push({
 						id: link.notes.id,
-						title: link.notes.title
+						title: link.notes!.title ?? ''
 					});
 				}
 			}

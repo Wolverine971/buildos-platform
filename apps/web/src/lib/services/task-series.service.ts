@@ -328,8 +328,8 @@ function buildInstanceTitle(title: string, index: number) {
 
 function buildUtcDateFromLocalString(local: string) {
 	const [datePart, timePart = '00:00:00'] = local.split('T');
-	const [year, month, day] = datePart.split('-').map((part) => Number(part));
+	const [year, month, day] = datePart!.split('-').map((part) => Number(part));
 	const [hour, minute, second] = timePart.split(':').map((part) => Number(part));
 
-	return new Date(Date.UTC(year, month - 1, day, hour ?? 0, minute ?? 0, second ?? 0));
+	return new Date(Date.UTC(year!, month! - 1, day!, hour ?? 0, minute ?? 0, second ?? 0));
 }

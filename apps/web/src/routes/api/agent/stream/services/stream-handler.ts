@@ -1084,8 +1084,9 @@ export class StreamHandler {
 		const toolName = toolCall?.function?.name;
 		if (!toolName) return;
 
-		const action = this.resolveOperationAction(toolName);
-		if (!action || !['create', 'update', 'delete'].includes(action)) return;
+		const rawAction = this.resolveOperationAction(toolName);
+		if (!rawAction || !['create', 'update', 'delete'].includes(rawAction)) return;
+		const action = rawAction as 'create' | 'update' | 'delete';
 
 		const entityType = this.resolveOperationEntityType(toolName);
 		if (!entityType) return;
@@ -1388,7 +1389,7 @@ export class StreamHandler {
 		if (!updated) return null;
 
 		return {
-			expectations,
+			expectations: expectations as AgentState['expectations'],
 			assumptions: newAssumptions.length > 0 ? newAssumptions : undefined
 		};
 	}

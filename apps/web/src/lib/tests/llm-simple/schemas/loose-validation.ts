@@ -24,10 +24,10 @@ export function validateBrainDumpResult(result: BrainDumpParseResult): void {
  * Validate project creation operations (flexible)
  */
 export function validateProjectCreation(operations: ParsedOperation[]): void {
-	expect(operations).toHaveLength.toBeGreaterThan(0);
+	expect(operations.length).toBeGreaterThan(0);
 
 	// First operation should be project creation
-	const projectOp = operations[0];
+	const projectOp = operations[0]!;
 	expect(projectOp.table).toBe('projects');
 	expect(projectOp.operation).toBe('create');
 	expect(projectOp.data.name).toBeTruthy();
@@ -51,8 +51,8 @@ export function validateProjectCreation(operations: ParsedOperation[]): void {
 export function validateSmallProject(result: BrainDumpParseResult): void {
 	validateBrainDumpResult(result);
 	validateProjectCreation(result.operations);
-	expect(result.operations).toHaveLength.toBeLessThanOrEqual(4);
-	expect(result.operations).toHaveLength.toBeGreaterThanOrEqual(2);
+	expect(result.operations.length).toBeLessThanOrEqual(4);
+	expect(result.operations.length).toBeGreaterThanOrEqual(2);
 }
 
 /**
@@ -61,10 +61,10 @@ export function validateSmallProject(result: BrainDumpParseResult): void {
 export function validateLargeProject(result: BrainDumpParseResult): void {
 	validateBrainDumpResult(result);
 	validateProjectCreation(result.operations);
-	expect(result.operations).toHaveLength.toBeGreaterThanOrEqual(8);
+	expect(result.operations.length).toBeGreaterThanOrEqual(8);
 
 	// Large projects should have structured context
-	const projectOp = result.operations[0];
+	const projectOp = result.operations[0]!;
 	expect(projectOp.data.context).toBeTruthy();
 	expect(projectOp.data.context.length).toBeGreaterThan(100);
 }
@@ -78,7 +78,7 @@ export function validateSingleTaskCreation(result: BrainDumpParseResult): void {
 	const taskOps = result.operations.filter((op) => op.table === 'tasks');
 	expect(taskOps).toHaveLength(1);
 
-	const taskOp = taskOps[0];
+	const taskOp = taskOps[0]!;
 	expect(taskOp.data.title).toBeTruthy();
 	expect(taskOp.data.details || taskOp.data.description).toBeTruthy();
 }
@@ -90,8 +90,8 @@ export function validateMultiTaskCreation(result: BrainDumpParseResult): void {
 	validateBrainDumpResult(result);
 
 	const taskOps = result.operations.filter((op) => op.table === 'tasks');
-	expect(taskOps).toHaveLength.toBeGreaterThanOrEqual(3);
-	expect(taskOps).toHaveLength.toBeLessThanOrEqual(4);
+	expect(taskOps.length).toBeGreaterThanOrEqual(3);
+	expect(taskOps.length).toBeLessThanOrEqual(4);
 
 	taskOps.forEach((task) => {
 		expect(task.data.title).toBeTruthy();
@@ -106,7 +106,7 @@ export function validateExistingProjectUpdate(
 	operations: ParsedOperation[],
 	projectId?: string
 ): void {
-	expect(operations).toHaveLength.toBeGreaterThan(0);
+	expect(operations.length).toBeGreaterThan(0);
 
 	operations.forEach((op) => {
 		if (op.table === 'projects' && op.operation === 'update') {

@@ -8,7 +8,7 @@ type FocusEntityType = 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'ri
 
 const ENTITY_CONFIG: Record<
 	FocusEntityType,
-	{ table: string; select: string; searchField: 'name' | 'title' }
+	{ table: string; select: string; searchField: string }
 > = {
 	task: {
 		table: 'onto_tasks',
@@ -76,7 +76,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		const { table, select, searchField } = ENTITY_CONFIG[typeParam];
 
 		let query = supabase
-			.from(table)
+			.from(table as 'onto_tasks')
 			.select(select)
 			.eq('project_id', projectId)
 			.is('deleted_at', null)

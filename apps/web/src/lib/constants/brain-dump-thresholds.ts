@@ -7,5 +7,6 @@
  */
 export const CONTENT_LENGTH = {
 	SHORT_MAX: 500, // Maximum for short brain dumps
+	LONG_MIN: 50, // Minimum for long brain dumps
 	MAX: 100000 // Absolute maximum to prevent abuse
 } as const;

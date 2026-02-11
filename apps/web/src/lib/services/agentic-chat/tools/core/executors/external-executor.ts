@@ -11,7 +11,6 @@
 
 import { createHash } from 'node:crypto';
 import { env } from '$env/dynamic/private';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { BaseExecutor } from './base-executor';
 import {
 	getBuildosOverviewDocument,
@@ -250,10 +249,10 @@ export class ExternalExecutor extends BaseExecutor {
 		maxChars: number,
 		mode?: WebVisitMode
 	): Promise<WebVisitResultPayload | null> {
-		const admin = this.getAdminSupabase() as unknown as SupabaseClient;
+		const admin = this.getAdminSupabase();
 		const normalizedUrl = this.normalizeUrlForStorage(url);
 
-		const { data, error } = await admin
+		const { data, error } = (await admin
 			.from('web_page_visits')
 			.select(
 				[
@@ -276,7 +275,7 @@ export class ExternalExecutor extends BaseExecutor {
 				].join(', ')
 			)
 			.eq('normalized_url', normalizedUrl)
-			.maybeSingle();
+			.maybeSingle()) as any;
 
 		if (error) {
 			logger.warn('Failed to load cached visit', {
@@ -346,7 +345,7 @@ export class ExternalExecutor extends BaseExecutor {
 			errorMessage?: string;
 		}
 	): Promise<{ id?: string; stored: boolean } | undefined> {
-		const admin = this.getAdminSupabase() as unknown as SupabaseClient;
+		const admin = this.getAdminSupabase();
 		const canonicalUrl = fetched.canonical_url ?? fetched.final_url;
 		const normalizedUrl = this.normalizeUrlForStorage(canonicalUrl);
 		const markdown = responseContent.markdown ?? fetched.text;

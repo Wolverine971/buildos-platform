@@ -114,7 +114,7 @@ export async function ensureTaskDocumentLink(
 		return { error: ApiResponse.notFound('Document link not found for this task') };
 	}
 
-	return { edge };
+	return { edge: { id: edge.id, props: edge.props as Record<string, unknown> | null } };
 }
 
 export function mergeEdgeProps(

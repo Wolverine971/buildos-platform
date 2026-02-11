@@ -168,7 +168,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { data: attachment, error: insertError } = await supabase
 			.from('email_attachments')
 			.insert({
-				email_id: email_id || null,
+				email_id: email_id || '',
 				filename: uniqueFilename,
 				original_filename: file.name,
 				file_size: file.size,

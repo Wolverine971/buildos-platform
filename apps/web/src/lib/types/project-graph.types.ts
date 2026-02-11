@@ -78,6 +78,7 @@ export interface EntityTypeMap {
 	requirement: OntoRequirement;
 	metric: OntoMetric;
 	source: OntoSource;
+	event: unknown;
 }
 
 /**
@@ -132,7 +133,7 @@ export interface ProjectGraph {
 
 	/** Entities grouped by kind */
 	entitiesByKind: {
-		[K in EntityKind]: Map<string, EntityTypeMap[K]>;
+		[K in EntityKind & keyof EntityTypeMap]: Map<string, EntityTypeMap[K]>;
 	};
 
 	/** Edge indexes for fast traversal */
@@ -149,10 +150,10 @@ export interface ProjectGraph {
 	getEntity(id: string): AnyEntity | undefined;
 
 	/** Get entity by kind and ID (type-safe) */
-	getEntityByKind<K extends EntityKind>(kind: K, id: string): EntityTypeMap[K] | undefined;
+	getEntityByKind<K extends EntityKind & keyof EntityTypeMap>(kind: K, id: string): EntityTypeMap[K] | undefined;
 
 	/** Get all entities of a specific kind */
-	getAllOfKind<K extends EntityKind>(kind: K): EntityTypeMap[K][];
+	getAllOfKind<K extends EntityKind & keyof EntityTypeMap>(kind: K): EntityTypeMap[K][];
 
 	/** Get outgoing edges from an entity */
 	getOutgoingEdges(entityId: string): OntoEdge[];
@@ -219,7 +220,7 @@ export interface ProjectGraph {
 	 * const milestones = graph.getEntitiesForProject('milestone');
 	 * ```
 	 */
-	getEntitiesForProject<K extends EntityKind>(kind: K): EntityTypeMap[K][];
+	getEntitiesForProject<K extends EntityKind & keyof EntityTypeMap>(kind: K): EntityTypeMap[K][];
 }
 
 /**

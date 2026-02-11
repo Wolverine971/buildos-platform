@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ locals: { safeGetSession, supabase 
 	// In dev, webhooks need a publicly accessible URL (e.g., ngrok)
 	// You can override this check with an environment variable if using a tunnel
 	if (dev) {
-		return;
+		return ApiResponse.error('Webhooks not available in development mode', 400);
 	}
 
 	const webhookService = new CalendarWebhookService(supabase);

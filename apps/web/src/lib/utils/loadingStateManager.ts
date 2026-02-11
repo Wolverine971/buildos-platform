@@ -71,7 +71,7 @@ export class LoadingStateManager {
 			},
 			{
 				tab: 'briefs',
-				componentName: null, // No lazy loading
+				componentName: undefined, // No lazy loading
 				dataTypes: ['briefs'],
 				showSkeleton: true
 			},

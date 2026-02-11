@@ -266,10 +266,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 		// Parse request body
 		const data: BetaSignupRequest = await request.json();
 
+		const clientIP = getClientIP(request);
 		const recaptchaEnabled = !!env.PRIVATE_RECAPTCHA_SECRET_KEY || dev;
 		if (recaptchaEnabled) {
-			// Get client IP for reCAPTCHA verification
-			const clientIP = getClientIP(request);
 
 			// Verify reCAPTCHA token (if provided)
 			const isRecaptchaValid = await verifyRecaptcha(data.recaptcha_token || '', clientIP);

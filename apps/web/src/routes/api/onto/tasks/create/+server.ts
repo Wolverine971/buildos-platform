@@ -66,6 +66,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const supabase = locals.supabase;
 	const chatSessionId = getChatSessionIdFromRequest(request);
+	let requestProjectId: string | undefined;
+	let requestTitle: string | undefined;
+	let requestStateKey: string | undefined;
+	let requestPlanId: string | undefined;
+	let requestGoalId: string | undefined;
+	let requestMilestoneId: string | undefined;
+	let requestConnections: ConnectionRef[] | undefined;
 
 	try {
 		// Parse request body
@@ -86,6 +93,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			connections
 		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
+		requestProjectId = project_id;
+		requestTitle = title;
+		requestStateKey = state_key;
+		requestPlanId = plan_id;
+		requestGoalId = goal_id;
+		requestMilestoneId = supporting_milestone_id;
 
 		// Validate required fields
 		if (!project_id || !title) {
@@ -211,6 +224,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const connectionList: ConnectionRef[] =
 			Array.isArray(connections) && connections.length > 0 ? connections : legacyConnections;
+		requestConnections = connectionList;
 
 		if (connectionList.length > 0) {
 			await assertEntityRefsInProject({
@@ -315,6 +329,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.created({ task });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error,
+				endpoint: '/api/onto/tasks/create',
+				method: 'POST',
+				userId: user.id,
+				projectId: requestProjectId,
+				entityType: 'task',
+				operation: 'task_auto_organize',
+				metadata: {
+					title: requestTitle,
+					state_key: requestStateKey,
+					plan_id: requestPlanId,
+					goal_id: requestGoalId,
+					supporting_milestone_id: requestMilestoneId,
+					connections: requestConnections?.map((connection) => ({
+						kind: connection.kind,
+						id: connection.id,
+						intent: connection.intent,
+						rel: connection.rel
+					}))
+				}
+			});
 			return ApiResponse.error(error.message, error.status);
 		}
 		console.error('Error in task create endpoint:', error);

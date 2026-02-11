@@ -19,6 +19,7 @@ import type {
 	GraphStats,
 	ViewMode
 } from '$lib/components/ontology/graph/lib/graph.types';
+import type { OntoProject } from '$lib/types/onto-api';
 import {
 	loadProjectGraphData,
 	loadMultipleProjectGraphs
@@ -125,7 +126,8 @@ async function handleSingleProjectGraph(
 			totalDocuments: data.documents.length,
 			totalPlans: data.plans.length,
 			totalGoals: data.goals.length,
-			totalMilestones: data.milestones.length
+			totalMilestones: data.milestones.length,
+			totalRisks: data.risks?.length ?? 0
 		};
 
 		return ApiResponse.success({
@@ -245,7 +247,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			const graph = graphs.get(project.id);
 			if (!graph) continue;
 
-			sourceData.projects.push(project);
+			sourceData.projects.push(project as unknown as OntoProject);
 			sourceData.tasks.push(...graph.tasks);
 			sourceData.documents.push(...graph.documents);
 			sourceData.plans.push(...graph.plans);

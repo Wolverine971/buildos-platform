@@ -15,7 +15,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 			.select('scheduled_for, created_at, status, job_type')
 			.eq('user_id', user.id)
 			.eq('job_type', 'generate_daily_brief')
-			.in('status', ['pending', 'scheduled'])
+			.in('status', ['pending'] as any)
 			.gte('scheduled_for', new Date().toISOString()) // Only future jobs
 			.order('scheduled_for', { ascending: true })
 			.limit(1)

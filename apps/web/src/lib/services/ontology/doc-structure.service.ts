@@ -481,16 +481,15 @@ export async function getDocTree(
 	}
 
 	// Build document lookup
+	const typedDocs = (docs || []) as unknown as OntoDocument[];
 	const documents: Record<string, OntoDocument> = {};
-	for (const doc of docs || []) {
-		documents[doc.id] = doc as OntoDocument;
+	for (const doc of typedDocs) {
+		documents[doc.id] = doc;
 	}
 
 	// Find unlinked documents (in DB but not in structure)
 	const structureDocIds = collectDocIds(structure.root);
-	const unlinked = (docs || [])
-		.filter((doc) => !structureDocIds.has(doc.id))
-		.map((doc) => doc as OntoDocument);
+	const unlinked = typedDocs.filter((doc) => !structureDocIds.has(doc.id));
 
 	return { structure, documents, unlinked };
 }

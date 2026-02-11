@@ -43,7 +43,7 @@ export class PhasesOnlyStrategy extends BaseSchedulingStrategy {
 					const taskDate = this.validateDate(task.start_date);
 
 					if (!taskDate) {
-						excludedTasks.push(task);
+						excludedTasks.push(task!);
 						exclusionReasons[task.id] = 'Invalid date format';
 						return null;
 					}
@@ -105,7 +105,7 @@ export class PhasesOnlyStrategy extends BaseSchedulingStrategy {
 		// Use phases_only specific prompts
 		const userPrompt = promptService.buildPhaseGenerationDataPrompt(
 			project,
-			tasks,
+			tasks as any,
 			'phases_only',
 			config.includeRecurringTasks || false,
 			config.allowRecurringReschedule || false,
@@ -192,7 +192,7 @@ export class PhasesOnlyStrategy extends BaseSchedulingStrategy {
 					const index = compatibleTasks.findIndex((t) => t.id === dependentId);
 					if (index !== -1) {
 						const [task] = compatibleTasks.splice(index, 1);
-						excludedTasks.push(task);
+						excludedTasks.push(task!);
 					}
 
 					// Recursively exclude dependents
@@ -203,7 +203,7 @@ export class PhasesOnlyStrategy extends BaseSchedulingStrategy {
 
 		// Apply cascading exclusions
 		for (const excludedTask of excludedTasks) {
-			excludeDependents(excludedTask.id, exclusionReasons[excludedTask.id]);
+			excludeDependents(excludedTask.id, exclusionReasons[excludedTask.id] ?? '');
 		}
 	}
 }

@@ -80,9 +80,9 @@ export class ProjectMigrationService {
 
 	constructor(
 		private readonly client: TypedSupabaseClient,
-		llmService: SmartLLMService
+		_llmService: SmartLLMService
 	) {
-		this.enhancedMigrator = new EnhancedProjectMigrator(client, llmService);
+		this.enhancedMigrator = new EnhancedProjectMigrator(client);
 	}
 
 	async fetchCandidates(options: {
@@ -243,7 +243,8 @@ export class ProjectMigrationService {
 		else if (analysis.taskCount > 5) facets.scale = 'medium';
 		else facets.scale = 'small';
 
-		switch (project.status) {
+		const status: string = project.status;
+		switch (status) {
 			case 'completed':
 				facets.stage = 'complete';
 				break;

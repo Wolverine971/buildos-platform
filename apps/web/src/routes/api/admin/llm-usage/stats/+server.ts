@@ -123,12 +123,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 			const fallbackByDate = (fallbackLogs ?? []).reduce(
 				(acc, row) => {
-					const date = row.created_at.split('T')[0];
+					const date = row.created_at.split('T')[0]!;
 					if (!acc[date]) {
 						acc[date] = {
 							summary_date: date,
 							total_requests: 0,
-							total_cost_usd: '0',
+							total_cost_usd: 0,
 							total_tokens: 0,
 							successful_requests: 0
 						};
@@ -136,9 +136,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 					acc[date].total_requests += 1;
 					acc[date].total_tokens += row.total_tokens || 0;
-					acc[date].total_cost_usd = (
-						Number(acc[date].total_cost_usd) + Number(row.total_cost_usd || 0)
-					).toString();
+					acc[date].total_cost_usd =
+						acc[date].total_cost_usd + Number(row.total_cost_usd || 0);
 					if (row.status === 'success') {
 						acc[date].successful_requests += 1;
 					}
@@ -150,7 +149,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					{
 						summary_date: string;
 						total_requests: number;
-						total_cost_usd: string;
+						total_cost_usd: number;
 						total_tokens: number;
 						successful_requests: number;
 					}

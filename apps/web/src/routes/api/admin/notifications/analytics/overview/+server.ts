@@ -61,28 +61,31 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			return Number((((current - previous) / previous) * 100).toFixed(2));
 		};
 
+		const currentRow = currentMetrics?.[0];
+		const previousRow = previousMetrics?.[0];
+
 		const result = {
-			total_sent: currentMetrics?.total_sent || 0,
-			delivery_success_rate: currentMetrics?.delivery_success_rate || 0,
-			avg_open_rate: currentMetrics?.avg_open_rate || 0,
-			avg_click_rate: currentMetrics?.avg_click_rate || 0,
-			trend_vs_previous_period: previousMetrics
+			total_sent: currentRow?.total_sent || 0,
+			delivery_success_rate: currentRow?.delivery_success_rate || 0,
+			avg_open_rate: currentRow?.avg_open_rate || 0,
+			avg_click_rate: currentRow?.avg_click_rate || 0,
+			trend_vs_previous_period: previousRow
 				? {
 						sent: calculateTrend(
-							currentMetrics?.total_sent || 0,
-							previousMetrics?.total_sent || 0
+							currentRow?.total_sent || 0,
+							previousRow?.total_sent || 0
 						),
 						success_rate: calculateTrend(
-							currentMetrics?.delivery_success_rate || 0,
-							previousMetrics?.delivery_success_rate || 0
+							currentRow?.delivery_success_rate || 0,
+							previousRow?.delivery_success_rate || 0
 						),
 						open_rate: calculateTrend(
-							currentMetrics?.avg_open_rate || 0,
-							previousMetrics?.avg_open_rate || 0
+							currentRow?.avg_open_rate || 0,
+							previousRow?.avg_open_rate || 0
 						),
 						click_rate: calculateTrend(
-							currentMetrics?.avg_click_rate || 0,
-							previousMetrics?.avg_click_rate || 0
+							currentRow?.avg_click_rate || 0,
+							previousRow?.avg_click_rate || 0
 						)
 					}
 				: {

@@ -500,8 +500,8 @@ function normalizePhaseTaskAssignments(
 	const targetPhase = normalizedPhases[targetPhaseIndex];
 
 	const updatedPhase: PhaseWithRoughGrouping = {
-		...targetPhase,
-		task_ids: [...(targetPhase.task_ids ?? []), ...unassignedTasks]
+		...targetPhase!,
+		task_ids: [...(targetPhase!.task_ids ?? []), ...unassignedTasks]
 	};
 
 	const updatedPhases = [...normalizedPhases];
@@ -626,7 +626,7 @@ async function persistPhasesToDatabase(
 		}> = [];
 
 		insertedPhaseList.forEach((phaseRow, idx) => {
-			const sourcePhase = phasesWithOrderedTasks[idx];
+			const sourcePhase = phasesWithOrderedTasks[idx]!;
 			sourcePhase.tasks.forEach((task) => {
 				phaseTasksPayload.push({
 					phase_id: phaseRow.id,
@@ -872,7 +872,10 @@ async function updateExistingCalendarEvents(
 				continue;
 			}
 
-			const hasAttendees = !!calEvent.attendees && calEvent.attendees.length > 0;
+			const hasAttendees =
+				!!calEvent.attendees &&
+				Array.isArray(calEvent.attendees) &&
+				calEvent.attendees.length > 0;
 
 			if (task.task_type === 'recurring' && hasAttendees) {
 				console.warn(

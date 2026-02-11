@@ -8,7 +8,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		return ApiResponse.unauthorized();
 	}
 
-	const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
+	const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0]!;
 	const userId = url.searchParams.get('userId') || user.id;
 
 	try {
@@ -36,12 +36,10 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.order('created_at', { ascending: false })
 			.limit(1);
 
-		const hasActiveJob =
-			activeJobs &&
-			activeJobs.filter((j) => j.status !== 'failed' && j.status !== 'completed').length > 0;
-		const activeJob = hasActiveJob
-			? activeJobs.filter((j) => j.status !== 'failed' && j.status !== 'completed')
-			: null;
+		const activeJobsList =
+			activeJobs?.filter((j) => j.status !== 'failed' && j.status !== 'completed') ?? [];
+		const hasActiveJob = activeJobsList.length > 0;
+		const activeJob = hasActiveJob ? (activeJobsList[0] as any) : null;
 		const isGenerating = brief?.generation_status === 'processing' || hasActiveJob;
 
 		// Extract progress information from job metadata if available
@@ -62,7 +60,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		return ApiResponse.success({
 			brief: brief || null,
-			generation_status: brief?.generation_status || (hasActiveJob ? activeJob.status : null),
+			generation_status: brief?.generation_status || (hasActiveJob ? activeJob?.status : null),
 			isGenerating,
 			activeJob: activeJob
 				? {

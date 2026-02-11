@@ -154,9 +154,9 @@ async function processBrainDumpWithStreaming({
 		await sendSSEMessage(writer, encoder, statusMessage);
 
 		// Set up progress tracking (reserved for future SSE progress events)
-		let _contextProgress = { status: 'pending', data: null };
-		let _tasksProgress = { status: 'pending', data: null };
-		let _analysisProgress = { status: 'pending', data: null };
+		let __contextProgress = { status: 'pending', data: null };
+		let __tasksProgress = { status: 'pending', data: null };
+		let __analysisProgress = { status: 'pending', data: null };
 
 		// Override runPreparatoryAnalysis to emit SSE events for analysis phase
 		const originalRunPreparatoryAnalysis = processor['runPreparatoryAnalysis']?.bind(processor);
@@ -172,8 +172,8 @@ async function processBrainDumpWithStreaming({
 				await sendSSEMessage(writer, encoder, analysisStartMessage);
 
 				try {
-					const result = await originalRunPreparatoryAnalysis(...(args as any));
-					analysisProgress = { status: 'completed', data: result };
+					const result = await originalRunPreparatoryAnalysis(...(args as [any]));
+					_analysisProgress = { status: 'completed', data: result };
 
 					if (result) {
 						// Send analysis complete with results
@@ -230,7 +230,7 @@ async function processBrainDumpWithStreaming({
 
 					return result;
 				} catch (error: any) {
-					analysisProgress = { status: 'failed', data: error };
+					_analysisProgress = { status: 'failed', data: error };
 
 					const errorMessage: SSEAnalysis = {
 						type: 'analysis',
@@ -261,8 +261,8 @@ async function processBrainDumpWithStreaming({
 			await sendSSEMessage(writer, encoder, processingMessage);
 
 			try {
-				const result = await originalExtractProjectContext(...(args as any));
-				contextProgress = { status: 'completed', data: result };
+				const result = await originalExtractProjectContext(...(args as [any]));
+				_contextProgress = { status: 'completed', data: result };
 
 				// Convert to ProjectContextResult format for preview
 				const contextPreview = convertToProjectContextResult(result);
@@ -280,7 +280,7 @@ async function processBrainDumpWithStreaming({
 
 				return result;
 			} catch (error: any) {
-				contextProgress = { status: 'failed', data: error };
+				_contextProgress = { status: 'failed', data: error };
 
 				const errorMessage: SSEContextProgress = {
 					type: 'contextProgress',
@@ -305,8 +305,8 @@ async function processBrainDumpWithStreaming({
 			await sendSSEMessage(writer, encoder, processingMessage);
 
 			try {
-				const result = await originalExtractTasks(...(args as any));
-				tasksProgress = { status: 'completed', data: result };
+				const result = await originalExtractTasks(...(args as [any]));
+				_tasksProgress = { status: 'completed', data: result };
 
 				// Convert to TaskNoteExtractionResult format for preview
 				const tasksPreview = convertToTaskNoteExtractionResult(result, selectedProjectId);
@@ -324,7 +324,7 @@ async function processBrainDumpWithStreaming({
 
 				return result;
 			} catch (error: any) {
-				tasksProgress = { status: 'failed', data: error };
+				_tasksProgress = { status: 'failed', data: error };
 
 				const errorMessage: SSETasksProgress = {
 					type: 'tasksProgress',

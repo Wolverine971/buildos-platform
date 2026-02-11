@@ -175,8 +175,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const legacyConnections: ConnectionRef[] = [
 			...explicitParents,
-			...(validatedGoalId ? [{ kind: 'goal', id: validatedGoalId }] : []),
-			...(validatedMilestoneId ? [{ kind: 'milestone', id: validatedMilestoneId }] : [])
+			...(validatedGoalId ? [{ kind: 'goal' as const, id: validatedGoalId }] : []),
+			...(validatedMilestoneId ? [{ kind: 'milestone' as const, id: validatedMilestoneId }] : [])
 		];
 
 		const connectionList: ConnectionRef[] =
@@ -225,7 +225,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				userId: user.id,
 				projectId: project_id,
 				entityType: 'plan',
-				entityId: createdPlan?.id,
+				entityId: (createdPlan as { id?: string } | null)?.id,
 				operation: 'plan_create',
 				tableName: 'onto_plans'
 			});

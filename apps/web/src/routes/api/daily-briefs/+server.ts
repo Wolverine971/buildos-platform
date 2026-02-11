@@ -9,7 +9,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	const userId = user.id;
-	const briefDate = url.searchParams.get('date') || new Date().toISOString().split('T')[0];
+	const briefDate = url.searchParams.get('date') || new Date().toISOString().split('T')[0]!;
 
 	try {
 		// Check if brief already exists for this date

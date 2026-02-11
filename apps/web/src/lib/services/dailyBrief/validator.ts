@@ -45,7 +45,7 @@ export class BriefGenerationValidator {
 		return {
 			canStart: true,
 			message: 'Generation can start',
-			briefId: generationResult.brief_id
+			briefId: generationResult.brief_id ?? undefined
 		};
 	}
 }

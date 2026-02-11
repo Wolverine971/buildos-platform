@@ -1,5 +1,6 @@
 // apps/web/src/lib/tests/llm/schemas/validators.ts
 // Flexible validation for LLM test outputs
+import { expect } from 'vitest';
 import type { BrainDumpParseResult, ParsedOperation } from '$lib/types';
 
 // Validate project operation structure
@@ -80,7 +81,7 @@ export function validateSmallProject(result: BrainDumpParseResult) {
 	expect(result.operations.length).toBeLessThanOrEqual(5);
 
 	// First operation should be project creation
-	validateProjectOperation(result.operations[0]);
+	validateProjectOperation(result.operations[0]!);
 
 	// Rest should be tasks
 	const taskOps = result.operations.slice(1);
@@ -95,10 +96,10 @@ export function validateLargeProject(result: BrainDumpParseResult) {
 	expect(result.operations.length).toBeGreaterThanOrEqual(8);
 
 	// First operation should be project creation
-	validateProjectOperation(result.operations[0]);
+	validateProjectOperation(result.operations[0]!);
 
 	// Should have substantial context
-	const projectOp = result.operations[0];
+	const projectOp = result.operations[0]!;
 	expect(projectOp.data.context).toBeDefined();
 	expect(projectOp.data.context?.length || 0).toBeGreaterThan(200);
 }
@@ -108,11 +109,11 @@ export function validateSingleTaskCreation(result: BrainDumpParseResult) {
 	validateBrainDumpResult(result);
 	expect(result.operations.length).toBe(2); // 1 project + 1 task
 
-	validateProjectOperation(result.operations[0]);
-	validateTaskOperation(result.operations[1]);
+	validateProjectOperation(result.operations[0]!);
+	validateTaskOperation(result.operations[1]!);
 
 	// Task should have details
-	const taskOp = result.operations[1];
+	const taskOp = result.operations[1]!;
 	expect(taskOp.data.details || taskOp.data.description).toBeDefined();
 }
 

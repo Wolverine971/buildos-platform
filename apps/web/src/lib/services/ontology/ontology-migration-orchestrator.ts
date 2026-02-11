@@ -601,13 +601,13 @@ export class OntologyMigrationOrchestrator {
 						planPreview: phaseResult.preview
 							? {
 									plans: phaseResult.preview.plans.map((plan) => ({
-										legacyPhaseId: plan.legacy_phase_id,
+										legacyPhaseId: plan.legacyPhaseId,
 										name: plan.name,
 										summary: plan.summary,
-										typeKey: plan.type_key,
-										stateKey: plan.state_key,
-										startDate: plan.start_date,
-										endDate: plan.end_date,
+										typeKey: plan.typeKey,
+										stateKey: plan.stateKey,
+										startDate: plan.startDate,
+										endDate: plan.endDate,
 										order: plan.order,
 										confidence: plan.confidence
 									})),
@@ -802,13 +802,13 @@ export class OntologyMigrationOrchestrator {
 							planPreview: phaseResult.preview
 								? {
 										plans: phaseResult.preview.plans.map((plan) => ({
-											legacyPhaseId: plan.legacy_phase_id,
+											legacyPhaseId: plan.legacyPhaseId,
 											name: plan.name,
 											summary: plan.summary,
-											typeKey: plan.type_key,
-											stateKey: plan.state_key,
-											startDate: plan.start_date,
-											endDate: plan.end_date,
+											typeKey: plan.typeKey,
+											stateKey: plan.stateKey,
+											startDate: plan.startDate,
+											endDate: plan.endDate,
 											order: plan.order,
 											confidence: plan.confidence
 										})),

@@ -200,7 +200,7 @@ export function formatQuestionsForStorage(
 		category: q.category,
 		priority: q.priority || 'medium',
 		context: q.context,
-		expected_outcome: q.expected_outcome || q.expectedOutcome,
+		expected_outcome: q.expectedOutcome,
 		source: 'braindump_analysis',
 		source_field: brainDumpId,
 		triggers: q.triggers,

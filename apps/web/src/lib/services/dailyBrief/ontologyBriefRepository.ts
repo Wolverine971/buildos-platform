@@ -7,7 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 
 // ============================================================================
 // TYPES
@@ -304,7 +304,7 @@ export class OntologyBriefRepository {
 				executive_summary: content.executiveSummary,
 				llm_analysis: content.llmAnalysis,
 				priority_actions: content.priorityActions,
-				metadata: content.metadata as unknown as Record<string, unknown>,
+				metadata: content.metadata as unknown as Json,
 				generation_status: 'completed',
 				generation_completed_at: new Date().toISOString()
 			})
@@ -351,7 +351,7 @@ export class OntologyBriefRepository {
 					daily_brief_id: dailyBriefId,
 					project_id: projectId,
 					brief_content: content,
-					metadata: metadata as unknown as Record<string, unknown>
+					metadata: metadata as unknown as Json
 				},
 				{
 					onConflict: 'daily_brief_id,project_id'
