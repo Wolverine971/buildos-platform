@@ -18,20 +18,13 @@
 		FolderOpen,
 		LoaderCircle,
 		AlertTriangle,
-		ChevronRight,
 		Sparkles,
-		ListChecks,
-		Target,
 		Calendar,
-		FileText,
-		RefreshCw
+		ArrowRight
 	} from 'lucide-svelte';
 	import { formatFullDate } from '$lib/utils/date-utils';
-	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
-	import ProjectCardSkeleton from './ProjectCardSkeleton.svelte';
-	import ProjectCardNextStep from '$lib/components/project/ProjectCardNextStep.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 
@@ -84,7 +77,7 @@
 		initialProjects = [],
 		isLoadingProjects = false,
 		projectCount = 0,
-		onrefresh
+		onrefresh: _onrefresh
 	}: Props = $props();
 
 	// State - simplified to avoid prop-to-state syncing anti-pattern
@@ -111,11 +104,82 @@
 	const hasProjects = $derived(projects.length > 0 || projectCount > 0);
 	const ownedProjects = $derived(projects.filter((project) => !project.is_shared));
 	const sharedProjects = $derived(projects.filter((project) => project.is_shared));
+	const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+
+	type ProjectRecencyGroups = {
+		recent: OntologyProjectSummary[];
+		olderThan7Days: OntologyProjectSummary[];
+		olderThan30Days: OntologyProjectSummary[];
+	};
+
+	function parseProjectUpdatedAt(project: OntologyProjectSummary): number {
+		const timestamp = Date.parse(project.updated_at);
+		return Number.isNaN(timestamp) ? 0 : timestamp;
+	}
+
+	function sortProjectsByUpdatedAt(
+		projectList: OntologyProjectSummary[]
+	): OntologyProjectSummary[] {
+		return [...projectList].sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
+	}
+
+	function groupProjectsByRecency(projectList: OntologyProjectSummary[]): ProjectRecencyGroups {
+		const now = Date.now();
+		const recent: OntologyProjectSummary[] = [];
+		const olderThan7Days: OntologyProjectSummary[] = [];
+		const olderThan30Days: OntologyProjectSummary[] = [];
+
+		for (const project of projectList) {
+			const updatedAtMs = parseProjectUpdatedAt(project);
+			const ageDays =
+				updatedAtMs > 0 ? (now - updatedAtMs) / MILLIS_PER_DAY : Number.POSITIVE_INFINITY;
+
+			if (ageDays >= 30) {
+				olderThan30Days.push(project);
+				continue;
+			}
+
+			if (ageDays >= 7) {
+				olderThan7Days.push(project);
+				continue;
+			}
+
+			recent.push(project);
+		}
+
+		return {
+			recent,
+			olderThan7Days,
+			olderThan30Days
+		};
+	}
+
+	const ownedProjectsSorted = $derived(sortProjectsByUpdatedAt(ownedProjects));
+	const sharedProjectsSorted = $derived(sortProjectsByUpdatedAt(sharedProjects));
+	const ownedProjectsByRecency = $derived(groupProjectsByRecency(ownedProjectsSorted));
+	const sharedProjectsByRecency = $derived(groupProjectsByRecency(sharedProjectsSorted));
 
 	// SKELETON LOADING: Calculate how many skeletons to show while loading
 	// Use projectCount for initial render, then actual projects once loaded
 	const skeletonCount = $derived(isLoading ? projectCount : 0);
 	const showSkeletons = $derived(isLoading && projectCount > 0);
+
+	function formatUpdatedAt(value: string): string {
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return 'Updated recently';
+
+		return date.toLocaleString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		});
+	}
+
+	function formatEntityCounts(project: OntologyProjectSummary): string {
+		return `Tasks ${project.task_count} · Goals ${project.goal_count} · Plans ${project.plan_count} · Docs ${project.document_count}`;
+	}
 
 	/**
 	 * Set navigation data before navigating to project detail.
@@ -275,56 +339,46 @@
 			</div>
 		{/if}
 
-		<!-- Projects Grid - Always render structure, use skeletons or real cards -->
+		<!-- Projects Dossier -->
 		<section class="space-y-2 sm:space-y-3">
-			<!-- Mobile Create Button (compact) -->
-			{#if hasProjects}
+			<div class="flex items-center justify-between gap-2">
+				<div class="flex items-center gap-2">
+					<div class="p-1 sm:p-1.5 bg-accent/10 rounded-md border border-accent/20">
+						<FolderOpen class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
+					</div>
+					<h2 class="text-sm sm:text-lg font-bold text-foreground">Projects</h2>
+					{#if isLoading}
+						<LoaderCircle
+							class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground animate-spin"
+						/>
+					{/if}
+				</div>
+
 				<button
 					onclick={handleCreateProject}
-					class="sm:hidden w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-accent/50 bg-accent/5 py-2 text-xs font-bold text-accent transition-all duration-200 hover:border-accent hover:bg-accent/10 pressable"
+					class="flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/5 px-2.5 py-1.5 text-[11px] sm:text-xs font-semibold text-accent transition-colors hover:border-accent hover:bg-accent/10 pressable"
 				>
-					<Plus class="h-3.5 w-3.5" />
+					<Plus class="h-3 w-3 sm:h-3.5 sm:w-3.5" />
 					New Project
 				</button>
-			{/if}
-
-			<!-- Section Header - Compact -->
-			<div class="flex items-center gap-2">
-				<div class="p-1 sm:p-1.5 bg-accent/10 rounded-md border border-accent/20">
-					<FolderOpen class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
-				</div>
-				<h2 class="text-sm sm:text-lg font-bold text-foreground">Projects</h2>
-				{#if isLoading}
-					<LoaderCircle
-						class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground animate-spin"
-					/>
-				{/if}
 			</div>
 
-			<!-- Loading State with Skeletons -->
+			<!-- Loading State -->
 			{#if showSkeletons}
-				<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
-					<!-- Create New Project Card (skeleton placeholder on desktop) - ghost weight -->
-					<div
-						class="hidden sm:flex group flex-col items-center justify-center wt-ghost border-dashed p-4 sm:p-6 sm:min-h-[200px] opacity-50"
-					>
-						<div
-							class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/20 bg-accent/10 text-accent"
-						>
-							<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
+				<div class="space-y-2 sm:space-y-3">
+					{#each Array(Math.max(skeletonCount, 3)) as _, i (i)}
+						<div class="wt-paper p-3 sm:p-4 animate-pulse">
+							<div class="flex items-center justify-between gap-3">
+								<div class="h-5 w-1/3 rounded-md bg-muted" />
+								<div class="h-4 w-28 rounded-md bg-muted" />
+							</div>
+							<div class="mt-2 h-4 w-4/5 rounded-md bg-muted" />
+							<div class="mt-2 h-3 w-full rounded-md bg-muted" />
 						</div>
-						<span class="text-xs sm:text-sm font-bold text-muted-foreground">
-							Create New Project
-						</span>
-					</div>
-
-					<!-- Skeleton Cards based on projectCount -->
-					{#each Array(skeletonCount) as _, i (i)}
-						<ProjectCardSkeleton />
 					{/each}
 				</div>
 			{:else if !hasProjects && !isLoading}
-				<!-- Empty State - Compact, paper weight with bloom texture -->
+				<!-- Empty State -->
 				<div class="wt-paper border-dashed p-4 sm:p-6 text-center tx tx-bloom tx-weak">
 					<div
 						class="mx-auto mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/20 bg-accent/10 text-accent"
@@ -350,188 +404,162 @@
 					</Button>
 				</div>
 			{:else}
-				<div class="space-y-3">
+				<div class="space-y-4 sm:space-y-5">
 					<div class="space-y-2">
-						<h3
-							class="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide"
-						>
-							My Projects
-						</h3>
-						<div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4">
-							<!-- Create New Project Card (hidden on mobile, shown on desktop) - ghost weight for CTA -->
-							<button
-								onclick={handleCreateProject}
-								class="hidden sm:flex group flex-col items-center justify-center wt-ghost border-dashed p-4 sm:p-6 hover:border-accent hover:bg-accent/5 pressable sm:min-h-[200px]"
+						<div class="flex items-center gap-1.5">
+							<h3
+								class="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide"
 							>
-								<div
-									class="mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg border border-accent/20 bg-accent/10 text-accent transition-all group-hover:bg-accent group-hover:text-accent-foreground"
-								>
-									<Plus class="h-5 w-5 sm:h-6 sm:w-6" />
-								</div>
-								<span
-									class="text-xs sm:text-sm font-bold text-muted-foreground group-hover:text-foreground"
-								>
-									Create New Project
-								</span>
-							</button>
+								My Projects
+							</h3>
+							<span class="text-[10px] sm:text-xs text-muted-foreground/70">
+								({ownedProjects.length})
+							</span>
+						</div>
 
-							<!-- Owned Project Cards - paper weight with frame texture -->
-							{#each ownedProjects as project (project.id)}
-								<a
-									href="/projects/{project.id}"
-									onclick={() => handleProjectClick(project)}
-									class="group relative flex flex-col wt-paper p-3 sm:p-4 hover:border-accent pressable tx tx-frame tx-weak"
-								>
-									<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
-									<div
-										class="mb-2 sm:mb-3 flex items-start justify-between gap-2 sm:gap-3"
+						{#if ownedProjectsSorted.length > 0}
+							<div class="space-y-2">
+								{#each ownedProjectsByRecency.recent as project (project.id)}
+									<a
+										href="/projects/{project.id}"
+										onclick={() => handleProjectClick(project)}
+										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
 									>
-										<div class="flex-1 min-w-0">
-											<h3
-												class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
+										<div class="flex items-start justify-between gap-3">
+											<h4
+												class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
 												style="view-transition-name: project-title-{project.id}"
 											>
 												{project.name}
-											</h3>
-											<!-- Mobile: Inline status under title -->
-											<span
-												class="sm:hidden inline-flex mt-1 items-center rounded-md px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
-													project.state_key
-												)}"
-											>
-												{project.state_key}
-											</span>
-										</div>
-										<!-- Desktop: Status badge -->
-										<span
-											class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
-												project.state_key
-											)}"
-										>
-											{project.state_key}
-										</span>
-									</div>
-
-									<!-- Description - Hidden on mobile -->
-									{#if project.description}
-										<p
-											class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
-										>
-											{project.description.length > 120
-												? project.description.slice(0, 120) + '...'
-												: project.description}
-										</p>
-									{:else}
-										<p
-											class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1"
-										>
-											No description
-										</p>
-									{/if}
-
-									<!-- Next Step - Hidden on mobile for density, shown on desktop -->
-									{#if project.next_step_short}
-										<div class="hidden sm:block">
-											<ProjectCardNextStep
-												nextStepShort={project.next_step_short}
-												nextStepLong={project.next_step_long}
-												class="mb-3"
-											/>
-										</div>
-									{/if}
-
-									<!-- Footer Stats - Show non-zero counts, limit on mobile -->
-									{#if true}
-										{@const stats = [
-											{
-												key: 'tasks',
-												count: project.task_count,
-												Icon: ListChecks
-											},
-											{
-												key: 'goals',
-												count: project.goal_count,
-												Icon: Target
-											},
-											{
-												key: 'plans',
-												count: project.plan_count,
-												Icon: Calendar
-											},
-											{
-												key: 'docs',
-												count: project.document_count,
-												Icon: FileText
-											}
-										].filter((s) => s.count > 0)}
-										{@const mobileStats = stats.slice(0, 3)}
-										<div
-											class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
-										>
-											<!-- Mobile: Show up to 3 non-zero stats -->
-											<div
-												class="flex sm:hidden items-center gap-2 overflow-hidden"
-											>
-												{#each mobileStats as stat (stat.key)}
-													{@const StatIcon = stat.Icon}
-													<span
-														class="flex items-center gap-0.5 shrink-0"
-														title={stat.key}
-													>
-														<StatIcon class="h-2.5 w-2.5" />
-														<span class="font-semibold text-[9px]"
-															>{stat.count}</span
-														>
-													</span>
-												{/each}
-												{#if stats.length > 3}
-													<span
-														class="text-[8px] text-muted-foreground/50"
-														>+{stats.length - 3}</span
-													>
-												{/if}
+											</h4>
+											<div class="shrink-0 flex items-center gap-1.5">
+												<time
+													datetime={project.updated_at}
+													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+												>
+													{formatUpdatedAt(project.updated_at)}
+												</time>
+												<ArrowRight
+													class="project-dossier-arrow h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+													aria-hidden="true"
+												/>
 											</div>
-											<ChevronRight
-												class="sm:hidden h-3 w-3 text-muted-foreground/40 shrink-0"
-											/>
+										</div>
 
-											<!-- Desktop: Full stats (non-zero only) -->
-											<div class="hidden sm:flex flex-col gap-2 w-full">
-												<div
-													class="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+										<p
+											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+										>
+											{project.description?.trim() ||
+												'No description provided.'}
+										</p>
+
+										<p
+											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+										>
+											{formatEntityCounts(project)}
+										</p>
+									</a>
+								{/each}
+
+								{#if ownedProjectsByRecency.olderThan7Days.length > 0}
+									<div class="project-recency-separator">
+										Not touched in last 7 days
+									</div>
+									{#each ownedProjectsByRecency.olderThan7Days as project (project.id)}
+										<a
+											href="/projects/{project.id}"
+											onclick={() => handleProjectClick(project)}
+											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
+										>
+											<div class="flex items-start justify-between gap-3">
+												<h4
+													class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+													style="view-transition-name: project-title-{project.id}"
 												>
-													{#each stats as stat (stat.key)}
-														{@const StatIcon = stat.Icon}
-														<span
-															class="flex items-center gap-1"
-															aria-label="{stat.key} count"
-															title={stat.key}
-														>
-															<StatIcon class="h-3.5 w-3.5" />
-															<span class="font-bold text-xs"
-																>{stat.count}</span
-															>
-														</span>
-													{/each}
-												</div>
-												<div
-													class="flex items-center justify-between text-xs text-muted-foreground/70"
-												>
-													<span
-														>Updated {new Date(
-															project.updated_at
-														).toLocaleDateString()}</span
+													{project.name}
+												</h4>
+												<div class="shrink-0 flex items-center gap-1.5">
+													<time
+														datetime={project.updated_at}
+														class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
 													>
-													<ChevronRight
-														class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
+														{formatUpdatedAt(project.updated_at)}
+													</time>
+													<ArrowRight
+														class="project-dossier-arrow h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+														aria-hidden="true"
 													/>
 												</div>
 											</div>
-										</div>
-									{/if}
-								</a>
-							{/each}
-						</div>
+
+											<p
+												class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+											>
+												{project.description?.trim() ||
+													'No description provided.'}
+											</p>
+
+											<p
+												class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+											>
+												{formatEntityCounts(project)}
+											</p>
+										</a>
+									{/each}
+								{/if}
+
+								{#if ownedProjectsByRecency.olderThan30Days.length > 0}
+									<div class="project-recency-separator">
+										Not touched in last 30 days
+									</div>
+									{#each ownedProjectsByRecency.olderThan30Days as project (project.id)}
+										<a
+											href="/projects/{project.id}"
+											onclick={() => handleProjectClick(project)}
+											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
+										>
+											<div class="flex items-start justify-between gap-3">
+												<h4
+													class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+													style="view-transition-name: project-title-{project.id}"
+												>
+													{project.name}
+												</h4>
+												<div class="shrink-0 flex items-center gap-1.5">
+													<time
+														datetime={project.updated_at}
+														class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+													>
+														{formatUpdatedAt(project.updated_at)}
+													</time>
+													<ArrowRight
+														class="project-dossier-arrow h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+														aria-hidden="true"
+													/>
+												</div>
+											</div>
+
+											<p
+												class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+											>
+												{project.description?.trim() ||
+													'No description provided.'}
+											</p>
+
+											<p
+												class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+											>
+												{formatEntityCounts(project)}
+											</p>
+										</a>
+									{/each}
+								{/if}
+							</div>
+						{:else}
+							<p class="text-xs sm:text-sm text-muted-foreground/70 italic">
+								No owned projects yet.
+							</p>
+						{/if}
 					</div>
 
 					{#if sharedProjects.length > 0}
@@ -546,172 +574,170 @@
 									({sharedProjects.length})
 								</span>
 							</div>
-							<div
-								class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-4"
-							>
-								{#each sharedProjects as project (project.id)}
+
+							<div class="space-y-2">
+								{#each sharedProjectsByRecency.recent as project (project.id)}
 									<a
 										href="/projects/{project.id}"
 										onclick={() => handleProjectClick(project)}
-										class="group relative flex flex-col wt-paper p-2 sm:p-4 hover:border-accent pressable tx tx-thread tx-weak"
+										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
 									>
-										<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
-										<div
-											class="mb-1 sm:mb-3 flex items-start justify-between gap-1 sm:gap-3"
-										>
-											<div class="flex-1 min-w-0">
-												<h3
-													class="text-xs sm:text-lg font-bold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-tight"
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0 flex items-center gap-2">
+												<h4
+													class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
 													style="view-transition-name: project-title-{project.id}"
 												>
 													{project.name}
-												</h3>
-												<div class="flex flex-wrap items-center gap-1 mt-1">
-													<span
-														class="sm:hidden inline-flex items-center rounded-md px-1 py-0.5 text-[9px] font-bold capitalize {getProjectStateBadgeClass(
-															project.state_key
-														)}"
+												</h4>
+												<span
+													class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
+												>
+													Shared{project.access_role
+														? `: ${project.access_role}`
+														: ''}
+												</span>
+											</div>
+											<div class="shrink-0 flex items-center gap-1.5">
+												<time
+													datetime={project.updated_at}
+													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+												>
+													{formatUpdatedAt(project.updated_at)}
+												</time>
+												<ArrowRight
+													class="project-dossier-arrow h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+													aria-hidden="true"
+												/>
+											</div>
+										</div>
+
+										<p
+											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+										>
+											{project.description?.trim() ||
+												'No description provided.'}
+										</p>
+
+										<p
+											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+										>
+											{formatEntityCounts(project)}
+										</p>
+									</a>
+								{/each}
+
+								{#if sharedProjectsByRecency.olderThan7Days.length > 0}
+									<div class="project-recency-separator">
+										Not touched in last 7 days
+									</div>
+									{#each sharedProjectsByRecency.olderThan7Days as project (project.id)}
+										<a
+											href="/projects/{project.id}"
+											onclick={() => handleProjectClick(project)}
+											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
+										>
+											<div class="flex items-start justify-between gap-3">
+												<div class="min-w-0 flex items-center gap-2">
+													<h4
+														class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+														style="view-transition-name: project-title-{project.id}"
 													>
-														{project.state_key}
-													</span>
+														{project.name}
+													</h4>
 													<span
-														class="inline-flex items-center rounded px-1 py-0.5 text-[9px] font-semibold text-accent-foreground bg-accent/80"
+														class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
 													>
 														Shared{project.access_role
-															? ` - ${project.access_role}`
+															? `: ${project.access_role}`
 															: ''}
 													</span>
 												</div>
-											</div>
-											<!-- Desktop: Status badge -->
-											<span
-												class="hidden sm:inline-flex flex-shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold capitalize {getProjectStateBadgeClass(
-													project.state_key
-												)}"
-											>
-												{project.state_key}
-											</span>
-										</div>
-
-										<!-- Description - Hidden on mobile -->
-										{#if project.description}
-											<p
-												class="hidden sm:block mb-3 line-clamp-2 text-sm text-muted-foreground flex-1"
-											>
-												{project.description.length > 120
-													? project.description.slice(0, 120) + '...'
-													: project.description}
-											</p>
-										{:else}
-											<p
-												class="hidden sm:block mb-3 text-sm text-muted-foreground/50 italic flex-1"
-											>
-												No description
-											</p>
-										{/if}
-
-										<!-- Next Step - Hidden on mobile for density, shown on desktop -->
-										{#if project.next_step_short}
-											<div class="hidden sm:block">
-												<ProjectCardNextStep
-													nextStepShort={project.next_step_short}
-													nextStepLong={project.next_step_long}
-													class="mb-3"
-												/>
-											</div>
-										{/if}
-
-										<!-- Footer Stats - Show non-zero counts, limit on mobile -->
-										{#if true}
-											{@const stats = [
-												{
-													key: 'tasks',
-													count: project.task_count,
-													Icon: ListChecks
-												},
-												{
-													key: 'goals',
-													count: project.goal_count,
-													Icon: Target
-												},
-												{
-													key: 'plans',
-													count: project.plan_count,
-													Icon: Calendar
-												},
-												{
-													key: 'docs',
-													count: project.document_count,
-													Icon: FileText
-												}
-											].filter((s) => s.count > 0)}
-											{@const mobileStats = stats.slice(0, 3)}
-											<div
-												class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-muted-foreground"
-											>
-												<!-- Mobile: Show up to 3 non-zero stats -->
-												<div
-													class="flex sm:hidden items-center gap-2 overflow-hidden"
-												>
-													{#each mobileStats as stat (stat.key)}
-														{@const StatIcon = stat.Icon}
-														<span
-															class="flex items-center gap-0.5 shrink-0"
-															title={stat.key}
-														>
-															<StatIcon class="h-2.5 w-2.5" />
-															<span class="font-semibold text-[9px]"
-																>{stat.count}</span
-															>
-														</span>
-													{/each}
-													{#if stats.length > 3}
-														<span
-															class="text-[8px] text-muted-foreground/50"
-															>+{stats.length - 3}</span
-														>
-													{/if}
-												</div>
-												<ChevronRight
-													class="sm:hidden h-3 w-3 text-muted-foreground/40 shrink-0"
-												/>
-
-												<!-- Desktop: Full stats (non-zero only) -->
-												<div class="hidden sm:flex flex-col gap-2 w-full">
-													<div
-														class="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+												<div class="shrink-0 flex items-center gap-1.5">
+													<time
+														datetime={project.updated_at}
+														class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
 													>
-														{#each stats as stat (stat.key)}
-															{@const StatIcon = stat.Icon}
-															<span
-																class="flex items-center gap-1"
-																aria-label="{stat.key} count"
-																title={stat.key}
-															>
-																<StatIcon class="h-3.5 w-3.5" />
-																<span class="font-bold text-xs"
-																	>{stat.count}</span
-																>
-															</span>
-														{/each}
-													</div>
-													<div
-														class="flex items-center justify-between text-xs text-muted-foreground/70"
-													>
-														<span
-															>Updated {new Date(
-																project.updated_at
-															).toLocaleDateString()}</span
-														>
-														<ChevronRight
-															class="h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100"
-														/>
-													</div>
+														{formatUpdatedAt(project.updated_at)}
+													</time>
+													<ArrowRight
+														class="project-dossier-arrow h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+														aria-hidden="true"
+													/>
 												</div>
 											</div>
-										{/if}
-									</a>
-								{/each}
+
+											<p
+												class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+											>
+												{project.description?.trim() ||
+													'No description provided.'}
+											</p>
+
+											<p
+												class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+											>
+												{formatEntityCounts(project)}
+											</p>
+										</a>
+									{/each}
+								{/if}
+
+								{#if sharedProjectsByRecency.olderThan30Days.length > 0}
+									<div class="project-recency-separator">
+										Not touched in last 30 days
+									</div>
+									{#each sharedProjectsByRecency.olderThan30Days as project (project.id)}
+										<a
+											href="/projects/{project.id}"
+											onclick={() => handleProjectClick(project)}
+											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
+										>
+											<div class="flex items-start justify-between gap-3">
+												<div class="min-w-0 flex items-center gap-2">
+													<h4
+														class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+														style="view-transition-name: project-title-{project.id}"
+													>
+														{project.name}
+													</h4>
+													<span
+														class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
+													>
+														Shared{project.access_role
+															? `: ${project.access_role}`
+															: ''}
+													</span>
+												</div>
+												<div class="shrink-0 flex items-center gap-1.5">
+													<time
+														datetime={project.updated_at}
+														class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+													>
+														{formatUpdatedAt(project.updated_at)}
+													</time>
+													<ArrowRight
+														class="project-dossier-arrow h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+														aria-hidden="true"
+													/>
+												</div>
+											</div>
+
+											<p
+												class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+											>
+												{project.description?.trim() ||
+													'No description provided.'}
+											</p>
+
+											<p
+												class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+											>
+												{formatEntityCounts(project)}
+											</p>
+										</a>
+									{/each}
+								{/if}
 							</div>
 						</div>
 					{/if}
@@ -735,3 +761,39 @@
 		onClose={handleBriefModalClose}
 	/>
 {/if}
+
+<style>
+	.project-dossier-row {
+		transition: box-shadow 180ms ease;
+	}
+
+	.project-dossier-row:hover,
+	.project-dossier-row:focus-visible {
+		box-shadow: inset 0 -1px 0 hsl(var(--accent) / 0.6);
+	}
+
+	.project-dossier-arrow {
+		opacity: 0;
+		transform: translateX(-2px);
+		transition:
+			opacity 180ms ease,
+			transform 180ms ease;
+	}
+
+	.project-dossier-row:hover .project-dossier-arrow,
+	.project-dossier-row:focus-visible .project-dossier-arrow {
+		opacity: 1;
+		transform: translateX(0);
+	}
+
+	.project-recency-separator {
+		margin-top: 0.5rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid hsl(var(--border));
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: hsl(var(--muted-foreground) / 0.85);
+	}
+</style>

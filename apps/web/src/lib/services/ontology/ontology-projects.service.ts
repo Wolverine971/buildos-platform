@@ -61,6 +61,25 @@ export async function fetchProjectSummaries(
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		timing ? timing.measure(name, fn) : fn();
 
+	const pickLatestTimestamp = (
+		...timestamps: Array<string | null | undefined>
+	): string | null => {
+		let latest: string | null = null;
+		let latestMs = Number.NEGATIVE_INFINITY;
+
+		for (const timestamp of timestamps) {
+			if (!timestamp) continue;
+			const parsed = Date.parse(timestamp);
+			if (Number.isNaN(parsed)) continue;
+			if (parsed > latestMs) {
+				latestMs = parsed;
+				latest = timestamp;
+			}
+		}
+
+		return latest;
+	};
+
 	const { data: memberRows, error: memberError } = await measure('db.project_members.list', () =>
 		client
 			.from('onto_project_members')
@@ -131,6 +150,71 @@ export async function fetchProjectSummaries(
 		throw new Error(error.message);
 	}
 
+	const projectIds = (data ?? []).map((project: any) => project.id).filter(Boolean) as string[];
+
+	type EntityTable = 'onto_tasks' | 'onto_goals' | 'onto_plans' | 'onto_documents';
+	const fetchLatestEntityUpdates = async (table: EntityTable): Promise<Map<string, string>> => {
+		if (projectIds.length === 0) return new Map();
+
+		const { data: rows, error: rowsError } = await measure(`db.${table}.latest_updates`, () =>
+			client
+				.from(table)
+				.select('project_id, updated_at, created_at')
+				.in('project_id', projectIds)
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.order('created_at', { ascending: false })
+		);
+
+		if (rowsError) {
+			throw new Error(rowsError.message);
+		}
+
+		const latestByProject = new Map<string, string>();
+		for (const row of rows ?? []) {
+			const projectId = (row as any)?.project_id as string | undefined;
+			const updatedAt = (row as any)?.updated_at as string | null | undefined;
+			const createdAt = (row as any)?.created_at as string | null | undefined;
+			const rowTimestamp = updatedAt ?? createdAt;
+			if (!projectId || !rowTimestamp || latestByProject.has(projectId)) continue;
+			latestByProject.set(projectId, rowTimestamp);
+		}
+
+		return latestByProject;
+	};
+
+	const [latestTaskUpdates, latestGoalUpdates, latestPlanUpdates, latestDocumentUpdates] =
+		await Promise.all([
+			fetchLatestEntityUpdates('onto_tasks').catch((queryError) => {
+				console.error(
+					'[Ontology Projects] Failed to compute latest task updates:',
+					queryError
+				);
+				return new Map<string, string>();
+			}),
+			fetchLatestEntityUpdates('onto_goals').catch((queryError) => {
+				console.error(
+					'[Ontology Projects] Failed to compute latest goal updates:',
+					queryError
+				);
+				return new Map<string, string>();
+			}),
+			fetchLatestEntityUpdates('onto_plans').catch((queryError) => {
+				console.error(
+					'[Ontology Projects] Failed to compute latest plan updates:',
+					queryError
+				);
+				return new Map<string, string>();
+			}),
+			fetchLatestEntityUpdates('onto_documents').catch((queryError) => {
+				console.error(
+					'[Ontology Projects] Failed to compute latest document updates:',
+					queryError
+				);
+				return new Map<string, string>();
+			})
+		]);
+
 	return (data ?? []).map((project: any) => ({
 		id: project.id,
 		name: project.name,
@@ -142,7 +226,16 @@ export async function fetchProjectSummaries(
 		facet_scale: project.facet_scale ?? null,
 		facet_stage: project.facet_stage ?? null,
 		created_at: project.created_at,
-		updated_at: project.updated_at,
+		// Dashboard "last updated" should reflect project work activity, not automation
+		// side effects (e.g. daily brief / next-step updates on onto_projects itself).
+		updated_at:
+			pickLatestTimestamp(
+				latestTaskUpdates.get(project.id),
+				latestGoalUpdates.get(project.id),
+				latestPlanUpdates.get(project.id),
+				latestDocumentUpdates.get(project.id),
+				project.created_at
+			) ?? project.created_at,
 		task_count: project.onto_tasks?.[0]?.count ?? 0,
 		goal_count: project.onto_goals?.[0]?.count ?? 0,
 		plan_count: project.onto_plans?.[0]?.count ?? 0,
