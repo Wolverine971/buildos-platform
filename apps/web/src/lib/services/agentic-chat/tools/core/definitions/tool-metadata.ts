@@ -167,7 +167,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	list_task_documents: {
 		summary: 'List documents linked to a task via task_has_document edges.',
-		capabilities: ['Returns documents plus edge metadata', 'Highlights scratch vs primary'],
+		capabilities: [
+			'Returns documents plus edge metadata',
+			'Highlights scratch vs primary',
+			'Best for task workspace/document questions; skip for plain task field updates'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},

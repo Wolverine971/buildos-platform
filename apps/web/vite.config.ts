@@ -96,8 +96,8 @@ export default defineConfig(({ mode }) => {
 				'@babel/types',
 				'sharp' // Binary dependency
 			],
-			// Force optimization in dev for consistency
-			force: isDev
+			// Don't force re-optimization - causes "Outdated Optimize Dep" errors
+			force: false
 		},
 
 		// Environment variable handling

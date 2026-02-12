@@ -15,12 +15,15 @@ import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import type {
 	ChatContextType,
 	ChatToolCall,
 	ChatToolDefinition,
 	ChatToolResult,
+	ContextShiftPayload,
 	ContextUsageSnapshot,
+	LastTurnContext,
 	OperationEventPayload
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
@@ -42,7 +45,8 @@ import {
 	normalizeFastContextType,
 	selectFastChatTools,
 	streamFastChat,
-	type FastAgentStreamRequest
+	type FastAgentStreamRequest,
+	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
 
 const logger = createLogger('API:AgentStreamV2');
@@ -208,6 +212,65 @@ function buildEmptyAgentState(sessionId: string): AgentState {
 		expectations: [],
 		tentative_hypotheses: [],
 		items: []
+	};
+}
+
+function isValidAgentStateEntityId(value: unknown): value is string {
+	if (typeof value !== 'string') return false;
+	const trimmed = value.trim();
+	return trimmed.length > 0 && !trimmed.includes('...') && isValidUUID(trimmed);
+}
+
+function sanitizeUuidStringArray(values: unknown): string[] | undefined {
+	if (!Array.isArray(values)) return undefined;
+	const unique = new Set<string>();
+	for (const value of values) {
+		if (!isValidAgentStateEntityId(value)) continue;
+		unique.add(value.trim());
+	}
+	return unique.size > 0 ? Array.from(unique) : undefined;
+}
+
+function sanitizeAgentStateForPrompt(agentState: AgentState): AgentState {
+	const entities = (agentState.current_understanding?.entities ?? [])
+		.filter((entity) => isValidAgentStateEntityId(entity?.id))
+		.map((entity) => ({
+			...entity,
+			id: entity.id.trim()
+		}));
+
+	const dependencies = (agentState.current_understanding?.dependencies ?? [])
+		.filter(
+			(dep) => isValidAgentStateEntityId(dep?.from) && isValidAgentStateEntityId(dep?.to)
+		)
+		.map((dep) => ({
+			...dep,
+			from: dep.from.trim(),
+			to: dep.to.trim()
+		}));
+
+	const items = (agentState.items ?? []).map((item) => {
+		const relatedEntityIds = sanitizeUuidStringArray(item.relatedEntityIds);
+		return relatedEntityIds
+			? { ...item, relatedEntityIds }
+			: { ...item, relatedEntityIds: undefined };
+	});
+
+	const expectations = (agentState.expectations ?? []).map((expectation) => {
+		const expectedIds = sanitizeUuidStringArray(expectation.expected_ids);
+		return expectedIds
+			? { ...expectation, expected_ids: expectedIds }
+			: { ...expectation, expected_ids: undefined };
+	});
+
+	return {
+		...agentState,
+		current_understanding: {
+			entities,
+			dependencies
+		},
+		items,
+		expectations
 	};
 }
 
@@ -404,6 +467,352 @@ function emitToolResult(
 	void agentStream
 		.sendMessage({ type: 'tool_result', result: payload })
 		.catch((error) => logger.warn('Failed to emit tool_result', { error, toolCall }));
+}
+
+const CONTEXT_SHIFT_ENTITY_TYPES: ContextShiftPayload['entity_type'][] = [
+	'project',
+	'task',
+	'plan',
+	'goal',
+	'document',
+	'milestone',
+	'risk',
+	'requirement'
+];
+
+const CONTEXT_SHIFT_NESTED_KEYS = ['result', 'data', 'payload'];
+
+function isContextShiftEntityType(
+	value: string | null | undefined
+): value is ContextShiftPayload['entity_type'] {
+	if (!value) return false;
+	return CONTEXT_SHIFT_ENTITY_TYPES.includes(value as ContextShiftPayload['entity_type']);
+}
+
+function extractContextShiftObject(
+	value: unknown,
+	depth = 0
+): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || depth > 4) return null;
+
+	const record = value as Record<string, unknown>;
+	if (record.context_shift && typeof record.context_shift === 'object') {
+		return record.context_shift as Record<string, unknown>;
+	}
+
+	for (const key of CONTEXT_SHIFT_NESTED_KEYS) {
+		const nested = record[key];
+		const extracted = extractContextShiftObject(nested, depth + 1);
+		if (extracted) {
+			return extracted;
+		}
+	}
+
+	return null;
+}
+
+function extractContextShiftPayload(result: ChatToolResult): ContextShiftPayload | null {
+	const contextShift = extractContextShiftObject(result);
+	if (!contextShift) return null;
+
+	const rawContext =
+		typeof contextShift.new_context === 'string' ? contextShift.new_context.trim() : '';
+	const rawEntityId =
+		typeof contextShift.entity_id === 'string' ? contextShift.entity_id.trim() : '';
+	if (!rawContext || !rawEntityId) return null;
+
+	const normalizedContext = normalizeFastContextType(rawContext as ChatContextType);
+	const entityName =
+		typeof contextShift.entity_name === 'string' && contextShift.entity_name.trim()
+			? contextShift.entity_name.trim()
+			: 'Project';
+	const entityType =
+		typeof contextShift.entity_type === 'string' && isContextShiftEntityType(contextShift.entity_type)
+			? contextShift.entity_type
+			: 'project';
+	const message =
+		typeof contextShift.message === 'string' && contextShift.message.trim()
+			? contextShift.message.trim()
+			: `Context updated to ${entityName}`;
+
+	return {
+		new_context: normalizedContext,
+		entity_id: rawEntityId,
+		entity_name: entityName,
+		entity_type: entityType,
+		message
+	};
+}
+
+async function emitContextShift(
+	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	contextShift: ContextShiftPayload
+): Promise<void> {
+	try {
+		await agentStream.sendMessage({ type: 'context_shift', context_shift: contextShift });
+	} catch (error) {
+		logger.warn('Failed to emit context_shift', { error, contextShift });
+	}
+}
+
+function normalizeTextValue(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function summarizeLastTurnText(text: string, maxLength = 180): string {
+	const normalized = text.replace(/\s+/g, ' ').trim();
+	if (!normalized) return '';
+	if (normalized.length <= maxLength) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function isProjectScopedContext(contextType: ChatContextType): boolean {
+	return (
+		contextType === 'project' ||
+		contextType === 'project_audit' ||
+		contextType === 'project_forecast'
+	);
+}
+
+function appendUniqueId(values: string[] | undefined, value: string): string[] {
+	const next = values ? [...values] : [];
+	if (!next.includes(value)) next.push(value);
+	return next;
+}
+
+function assignLastTurnEntity(
+	entities: LastTurnContext['entities'],
+	entityType: string | undefined,
+	entityId: string | undefined
+): void {
+	if (!entityType || !entityId) return;
+	const normalizedType = entityType.toLowerCase();
+	switch (normalizedType) {
+		case 'project':
+			entities.project_id = entities.project_id ?? entityId;
+			break;
+		case 'task':
+			entities.task_ids = appendUniqueId(entities.task_ids, entityId);
+			break;
+		case 'goal':
+			entities.goal_ids = appendUniqueId(entities.goal_ids, entityId);
+			break;
+		case 'plan':
+			entities.plan_id = entities.plan_id ?? entityId;
+			break;
+		case 'document':
+			entities.document_id = entities.document_id ?? entityId;
+			break;
+		default:
+			break;
+	}
+}
+
+function assignLastTurnEntityByPrefix(
+	entities: LastTurnContext['entities'],
+	entityId: string
+): void {
+	const normalized = entityId.toLowerCase();
+	if (normalized.startsWith('proj_')) {
+		assignLastTurnEntity(entities, 'project', entityId);
+	} else if (normalized.startsWith('task_')) {
+		assignLastTurnEntity(entities, 'task', entityId);
+	} else if (normalized.startsWith('goal_')) {
+		assignLastTurnEntity(entities, 'goal', entityId);
+	} else if (normalized.startsWith('plan_')) {
+		assignLastTurnEntity(entities, 'plan', entityId);
+	} else if (normalized.startsWith('doc_')) {
+		assignLastTurnEntity(entities, 'document', entityId);
+	}
+}
+
+function extractEntityIdFromRecord(value: unknown): string | undefined {
+	if (!value || typeof value !== 'object') return undefined;
+	const record = value as Record<string, unknown>;
+	return normalizeTextValue(record.id ?? record.entity_id ?? record.entityId);
+}
+
+function collectLastTurnEntitiesFromValue(
+	value: unknown,
+	entities: LastTurnContext['entities'],
+	depth = 0
+): void {
+	if (!value || depth > 6) return;
+
+	if (Array.isArray(value)) {
+		for (const item of value.slice(0, 25)) {
+			collectLastTurnEntitiesFromValue(item, entities, depth + 1);
+		}
+		return;
+	}
+
+	if (typeof value !== 'object') return;
+
+	const record = value as Record<string, unknown>;
+	assignLastTurnEntity(
+		entities,
+		normalizeTextValue(record.entity_type ?? record.entityType),
+		normalizeTextValue(record.entity_id ?? record.entityId)
+	);
+	assignLastTurnEntity(entities, 'project', normalizeTextValue(record.project_id));
+	assignLastTurnEntity(entities, 'task', normalizeTextValue(record.task_id));
+	assignLastTurnEntity(entities, 'goal', normalizeTextValue(record.goal_id));
+	assignLastTurnEntity(entities, 'plan', normalizeTextValue(record.plan_id));
+	assignLastTurnEntity(entities, 'document', normalizeTextValue(record.document_id));
+
+	const taskIds = Array.isArray(record.task_ids) ? record.task_ids : [];
+	for (const taskId of taskIds) {
+		assignLastTurnEntity(entities, 'task', normalizeTextValue(taskId));
+	}
+	const goalIds = Array.isArray(record.goal_ids) ? record.goal_ids : [];
+	for (const goalId of goalIds) {
+		assignLastTurnEntity(entities, 'goal', normalizeTextValue(goalId));
+	}
+
+	const entitiesAccessed = Array.isArray(record._entities_accessed)
+		? record._entities_accessed
+		: Array.isArray(record.entities_accessed)
+			? record.entities_accessed
+			: [];
+	for (const entityId of entitiesAccessed) {
+		const normalized = normalizeTextValue(entityId);
+		if (!normalized) continue;
+		assignLastTurnEntityByPrefix(entities, normalized);
+	}
+
+	const singularKeys: Array<'project' | 'task' | 'goal' | 'plan' | 'document'> = [
+		'project',
+		'task',
+		'goal',
+		'plan',
+		'document'
+	];
+	for (const key of singularKeys) {
+		assignLastTurnEntity(entities, key, extractEntityIdFromRecord(record[key]));
+	}
+
+	const pluralKeys: Array<{ key: string; entityType: string }> = [
+		{ key: 'projects', entityType: 'project' },
+		{ key: 'tasks', entityType: 'task' },
+		{ key: 'goals', entityType: 'goal' },
+		{ key: 'plans', entityType: 'plan' },
+		{ key: 'documents', entityType: 'document' }
+	];
+	for (const { key, entityType } of pluralKeys) {
+		if (!Array.isArray(record[key])) continue;
+		for (const item of record[key] as unknown[]) {
+			assignLastTurnEntity(entities, entityType, extractEntityIdFromRecord(item));
+		}
+	}
+
+	for (const nested of Object.values(record)) {
+		if (nested && typeof nested === 'object') {
+			collectLastTurnEntitiesFromValue(nested, entities, depth + 1);
+		}
+	}
+}
+
+function formatLastTurnEntityReferences(entities: LastTurnContext['entities']): string[] {
+	const refs: string[] = [];
+	if (entities.project_id) refs.push(`project:${entities.project_id}`);
+	if (entities.plan_id) refs.push(`plan:${entities.plan_id}`);
+	if (entities.document_id) refs.push(`document:${entities.document_id}`);
+	if (entities.task_ids?.length) refs.push(`tasks:${entities.task_ids.slice(0, 4).join(',')}`);
+	if (entities.goal_ids?.length) refs.push(`goals:${entities.goal_ids.slice(0, 4).join(',')}`);
+	return refs;
+}
+
+function buildLastTurnContinuityHint(lastTurnContext?: LastTurnContext | null): string | null {
+	if (!lastTurnContext) return null;
+
+	const lines: string[] = [];
+	const summary = summarizeLastTurnText(lastTurnContext.summary ?? '', 140);
+	if (summary) {
+		lines.push(`Last turn summary: ${summary}`);
+	}
+
+	const refs = formatLastTurnEntityReferences(lastTurnContext.entities ?? {});
+	if (refs.length > 0) {
+		lines.push(`Entities referenced: ${refs.join('; ')}`);
+	}
+
+	const dataAccessed = Array.isArray(lastTurnContext.data_accessed)
+		? lastTurnContext.data_accessed
+				.map((item) => normalizeTextValue(item))
+				.filter((item): item is string => Boolean(item))
+		: [];
+	if (dataAccessed.length > 0) {
+		lines.push(`Tools used: ${dataAccessed.slice(0, 6).join(', ')}`);
+	}
+
+	const priorContext =
+		typeof lastTurnContext.context_type === 'string'
+			? normalizeFastContextType(lastTurnContext.context_type as ChatContextType)
+			: 'global';
+	lines.push(`Prior context: ${priorContext}`);
+
+	if (lines.length === 0) return null;
+
+	return [
+		'Conversation continuity hint (lightweight):',
+		...lines,
+		'Use this only as context; prioritize the latest user message.'
+	].join('\n');
+}
+
+function buildLastTurnContext(params: {
+	assistantText: string;
+	userMessage: string;
+	contextType: ChatContextType;
+	entityId?: string | null;
+	contextShift?: ContextShiftPayload | null;
+	toolExecutions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
+	timestamp: string;
+}): LastTurnContext {
+	const entities: LastTurnContext['entities'] = {};
+	const toolsUsed = new Set<string>();
+
+	for (const execution of params.toolExecutions) {
+		const toolName = normalizeTextValue(execution.toolCall.function?.name);
+		if (toolName) {
+			toolsUsed.add(toolName);
+		}
+		collectLastTurnEntitiesFromValue(execution.result, entities);
+	}
+
+	if (params.contextShift) {
+		assignLastTurnEntity(
+			entities,
+			params.contextShift.entity_type,
+			normalizeTextValue(params.contextShift.entity_id)
+		);
+	}
+
+	const effectiveContextType = params.contextShift?.new_context ?? params.contextType;
+	if (isProjectScopedContext(effectiveContextType) && params.entityId && !entities.project_id) {
+		entities.project_id = params.entityId;
+	}
+
+	const summary =
+		summarizeLastTurnText(params.assistantText, 180) ||
+		(params.contextShift?.message ? summarizeLastTurnText(params.contextShift.message, 180) : '') ||
+		summarizeLastTurnText(params.userMessage, 120) ||
+		'Completed the latest turn.';
+
+	const dataAccessed = Array.from(toolsUsed);
+	if (params.contextShift && !dataAccessed.includes('context_shift')) {
+		dataAccessed.push('context_shift');
+	}
+
+	return {
+		summary,
+		entities,
+		context_type: effectiveContextType,
+		data_accessed: dataAccessed,
+		timestamp: params.timestamp
+	};
 }
 
 const TOOL_ENTITY_KEYS = [
@@ -656,7 +1065,16 @@ export const POST: RequestHandler = async ({
 
 			await agentStream.sendMessage({ type: 'session', session });
 
+			const requestLastTurnContext =
+				streamRequest.lastTurnContext ?? streamRequest.last_turn_context ?? null;
 			const history = await sessionService.loadRecentMessages(session.id, 10);
+			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
+			const continuityMessage: FastChatHistoryMessage | null = continuityHint
+				? { role: 'system', content: continuityHint }
+				: null;
+			const historyForModel = continuityMessage
+				? [...history, continuityMessage]
+				: history;
 			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
 			const cacheKey = buildContextCacheKey({ contextType, entityId, projectFocus });
 			const cachedContext = sessionMetadata.fastchat_context_cache as
@@ -679,7 +1097,10 @@ export const POST: RequestHandler = async ({
 			const gatewayEnabled = isToolGatewayEnabled();
 			const tools = selectFastChatTools({ contextType, message });
 			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
-			const projectIdForTools =
+			let effectiveContextType: ChatContextType = contextType;
+			let effectiveEntityId: string | null = entityId ?? null;
+			let latestContextShift: ContextShiftPayload | null = null;
+			let effectiveProjectIdForTools =
 				projectFocus?.projectId ??
 				((contextType === 'project' ||
 					contextType === 'project_audit' ||
@@ -745,7 +1166,7 @@ export const POST: RequestHandler = async ({
 
 				let resp = maybeInjectProjectId(
 					toolCall,
-					projectIdForTools,
+					effectiveProjectIdForTools,
 					toolsRequiringProjectId
 				);
 				return resp;
@@ -807,9 +1228,10 @@ export const POST: RequestHandler = async ({
 					);
 				}
 
-				const agentState =
+				const rawAgentState =
 					(sessionMetadata.agent_state as AgentState | undefined) ??
 					buildEmptyAgentState(session.id);
+				const agentState = sanitizeAgentStateForPrompt(rawAgentState);
 				const conversationSummary =
 					typeof session.summary === 'string' ? session.summary : null;
 
@@ -820,7 +1242,7 @@ export const POST: RequestHandler = async ({
 
 				const usageSnapshot = buildFastContextUsageSnapshot({
 					systemPrompt,
-					history,
+					history: historyForModel,
 					userMessage: message
 				});
 				emitContextUsage(agentStream, usageSnapshot);
@@ -845,24 +1267,24 @@ export const POST: RequestHandler = async ({
 				contextType,
 				entityId,
 				projectId: projectFocus?.projectId ?? (contextType === 'project' ? entityId : null),
-				history,
+				history: historyForModel,
 				message,
 				signal: request.signal,
 				systemPrompt,
 				tools,
 				toolExecutor: toolExecutionService
 					? async (toolCall) => {
-							const contextScope = projectIdForTools
+							const contextScope = effectiveProjectIdForTools
 								? {
-										projectId: projectIdForTools,
+										projectId: effectiveProjectIdForTools,
 										projectName: promptContext?.projectName ?? undefined
 									}
 								: undefined;
 							const serviceContext: ServiceContext = {
 								sessionId: session.id,
 								userId: user.id,
-								contextType,
-								entityId: entityId ?? undefined,
+								contextType: effectiveContextType,
+								entityId: effectiveEntityId ?? undefined,
 								conversationHistory: [],
 								contextScope
 							};
@@ -889,7 +1311,19 @@ export const POST: RequestHandler = async ({
 					emitToolCall(agentStream, patchToolCall(toolCall));
 				},
 				onToolResult: async ({ toolCall, result }) => {
-					emitToolResult(agentStream, patchToolCall(toolCall), result);
+					const patchedCall = patchToolCall(toolCall);
+					emitToolResult(agentStream, patchedCall, result);
+
+					const contextShift = extractContextShiftPayload(result);
+					if (contextShift) {
+						effectiveContextType = contextShift.new_context;
+						effectiveEntityId = contextShift.entity_id;
+						latestContextShift = contextShift;
+						if (isProjectScopedContext(contextShift.new_context)) {
+							effectiveProjectIdForTools = contextShift.entity_id;
+						}
+						await emitContextShift(agentStream, contextShift);
+					}
 				},
 				onDelta: async (delta) => {
 					await agentStream.sendMessage({ type: 'text_delta', content: delta });
@@ -939,9 +1373,27 @@ export const POST: RequestHandler = async ({
 				session,
 				messageCountDelta: 2,
 				totalTokensDelta: usage?.total_tokens ?? 0,
-				contextType,
-				entityId: entityId ?? null
+				contextType: effectiveContextType,
+				entityId: effectiveEntityId
 			});
+
+			const lastTurnContext = buildLastTurnContext({
+				assistantText: assistantText.trim(),
+				userMessage: message,
+				contextType: effectiveContextType,
+				entityId: effectiveEntityId,
+				contextShift: latestContextShift,
+				toolExecutions: toolExecutions ?? [],
+				timestamp: assistantMessage?.created_at ?? new Date().toISOString()
+			});
+			try {
+				await agentStream.sendMessage({
+					type: 'last_turn_context',
+					context: lastTurnContext
+				});
+			} catch (error) {
+				logger.warn('Failed to emit last_turn_context', { error, sessionId: session.id });
+			}
 
 			await agentStream.sendMessage({
 				type: 'done',
@@ -970,13 +1422,14 @@ export const POST: RequestHandler = async ({
 
 			void (async () => {
 				const reconciliation = new AgentStateReconciliationService(supabase, errorLogger);
-				const currentState =
+				const currentState = sanitizeAgentStateForPrompt(
 					(sessionMetadata.agent_state as AgentState | undefined) ??
-					buildEmptyAgentState(session.id);
+						buildEmptyAgentState(session.id)
+				);
 				const updated = await reconciliation.reconcile({
 					sessionId: session.id,
 					userId: user.id,
-					contextType,
+					contextType: effectiveContextType,
 					messages: summarizerMessages,
 					toolResults: toolSummaries,
 					agentState: currentState,
@@ -984,24 +1437,25 @@ export const POST: RequestHandler = async ({
 				});
 
 				if (updated) {
+					const sanitizedUpdated = sanitizeAgentStateForPrompt(updated);
 					await updateAgentMetadata(
 						supabase,
 						session.id,
 						{
-							agent_state: updated
+							agent_state: sanitizedUpdated
 						},
 						errorLogger
 					);
 				}
-			})().catch((error) => {
-				logger.warn('FastChat agent_state reconciliation failed', { error });
-				void errorLogger.logError(error, {
-					userId: user.id,
-					projectId: projectFocus?.projectId ?? undefined,
-					operationType: 'fastchat_agent_state_reconciliation',
-					metadata: { sessionId: session.id, contextType }
+				})().catch((error) => {
+					logger.warn('FastChat agent_state reconciliation failed', { error });
+					void errorLogger.logError(error, {
+						userId: user.id,
+						projectId: projectFocus?.projectId ?? undefined,
+						operationType: 'fastchat_agent_state_reconciliation',
+						metadata: { sessionId: session.id, contextType: effectiveContextType }
+					});
 				});
-			});
 		} catch (error) {
 			logger.error('Agent V2 stream error', { error });
 			void errorLogger.logError(error, {

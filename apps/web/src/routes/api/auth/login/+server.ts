@@ -25,6 +25,13 @@ function buildProfilePayload(authUser: User) {
 	};
 }
 
+function buildFallbackUser(authUser: User) {
+	return {
+		...buildProfilePayload(authUser),
+		timezone: 'UTC'
+	};
+}
+
 async function ensureUserProfile(
 	authUser: User,
 	locals: App.Locals,
@@ -199,6 +206,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		// Ensure this server-side client is hydrated with the signed-in session
+		// before attempting profile queries in the same request lifecycle.
+		const { error: setSessionError } = await supabase.auth.setSession({
+			access_token: data.session.access_token,
+			refresh_token: data.session.refresh_token
+		});
+
+		if (setSessionError) {
+			await errorLogger.logError(
+				setSessionError,
+				{
+					endpoint: '/api/auth/login',
+					httpMethod: 'POST',
+					operationType: 'auth_login_set_session',
+					metadata: {
+						emailDomain,
+						flow: 'password',
+						userId: data.user?.id
+					}
+				},
+				'warning'
+			);
+		}
+
 		// Update locals immediately for this request
 		locals.session = data.session;
 		locals.user = null;
@@ -206,43 +237,41 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		let profileUser = null;
 		if (data.user) {
 			profileUser = await ensureUserProfile(data.user, locals, errorLogger, emailDomain);
+
+			// If profile resolution failed in ensureUserProfile, retry through the
+			// normal session path once before downgrading to a fallback payload.
+			if (!profileUser) {
+				const { user: safeSessionUser } = await locals.safeGetSession();
+				if (safeSessionUser) {
+					profileUser = safeSessionUser;
+				}
+			}
+
 			if (profileUser) {
 				locals.user = profileUser;
 			}
 		}
 
 		if (data.user && !profileUser) {
-			await errorLogger.logError(new Error('Login failed - user profile unavailable'), {
-				endpoint: '/api/auth/login',
-				httpMethod: 'POST',
-				operationType: 'auth_login_profile_required',
-				metadata: {
-					emailDomain,
-					flow: 'password',
-					userId: data.user.id
-				}
-			});
-
-			try {
-				await supabase.auth.signOut({ scope: 'local' });
-			} catch (signOutError) {
-				await errorLogger.logError(signOutError, {
+			await errorLogger.logError(
+				new Error('Login succeeded but user profile remained unavailable'),
+				{
 					endpoint: '/api/auth/login',
 					httpMethod: 'POST',
-					operationType: 'auth_login_cleanup_signout',
+					operationType: 'auth_login_profile_required',
 					metadata: {
 						emailDomain,
 						flow: 'password',
 						userId: data.user.id
 					}
-				});
-			}
-
-			return ApiResponse.error(
-				'We could not load your account profile. Please try again.',
-				HttpStatus.SERVICE_UNAVAILABLE,
-				ErrorCode.SERVICE_UNAVAILABLE
+				},
+				'warning'
 			);
+
+			// Do not hard-fail authentication on profile read race conditions.
+			// A subsequent request can rehydrate from the canonical users row.
+			profileUser = buildFallbackUser(data.user);
+			locals.user = profileUser as any;
 		}
 
 		// Return success with user data

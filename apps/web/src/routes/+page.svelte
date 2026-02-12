@@ -1,20 +1,16 @@
 <!-- apps/web/src/routes/+page.svelte -->
 <!--
-  PERFORMANCE OPTIMIZATIONS (Dec 2024):
-  - Dashboard imported statically (eliminates "Preparing dashboard..." phase)
-  - projectCount available immediately for skeleton card rendering
-  - projects stream in background and hydrate skeletons
-  - Zero layout shift - exact number of cards rendered from start
+  Authenticated users: analytics dashboard
+  Unauthenticated users: landing page
 -->
 <script lang="ts">
 	import './dashboard.css';
-	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
-	// PERFORMANCE: Static import eliminates "Preparing dashboard..." loading phase
-	import Dashboard from '$lib/components/dashboard/Dashboard.svelte';
+	import AnalyticsDashboard from '$lib/components/dashboard/AnalyticsDashboard.svelte';
+	import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	// Canonical data model icons (consistent with InsightPanels on /projects/[id])
 	import {
 		FolderKanban,
@@ -29,61 +25,11 @@
 
 	let { data } = $props();
 
-	// Helper to detect streaming promises
-	function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
-		return !!value && typeof (value as PromiseLike<T>).then === 'function';
-	}
-
 	let ExampleProjectGraphComponent = $state<any>(null);
 	let exampleGraphTarget = $state<HTMLElement | null>(null);
 	let exampleGraphLoading = $state(false);
 
 	let isAuthenticated = $derived(!!data?.user);
-
-	// projectCount is available immediately for skeleton rendering
-	let projectCount = $derived(data?.projectCount ?? 0);
-
-	// Projects streaming state (loaded server-side)
-	let projectsStreamVersion = 0;
-	let projectsState = $state<OntologyProjectSummary[]>(
-		isPromiseLike<OntologyProjectSummary[]>(data.projects)
-			? []
-			: ((data.projects as OntologyProjectSummary[] | null) ?? [])
-	);
-	let projectsLoadingState = $state<boolean>(
-		isPromiseLike<OntologyProjectSummary[]>(data.projects)
-	);
-
-	// Stream projects from server-loaded promise
-	$effect(() => {
-		const incoming = data.projects;
-		const currentVersion = ++projectsStreamVersion;
-
-		if (isPromiseLike<OntologyProjectSummary[]>(incoming)) {
-			projectsLoadingState = true;
-
-			incoming
-				.then((result) => {
-					if (currentVersion !== projectsStreamVersion) return;
-					projectsState = result ?? [];
-					projectsLoadingState = false;
-				})
-				.catch((error) => {
-					if (currentVersion !== projectsStreamVersion) return;
-					console.error('[Dashboard] Failed to load projects:', error);
-					projectsState = [];
-					projectsLoadingState = false;
-				});
-
-			return;
-		}
-
-		projectsState = (incoming as OntologyProjectSummary[] | null) ?? [];
-		projectsLoadingState = false;
-	});
-
-	let projects = $derived(projectsState);
-	let isLoadingProjects = $derived(projectsLoadingState);
 
 	// Reload data when needed
 	async function handleDashboardRefresh() {
@@ -273,17 +219,14 @@
 </svelte:head>
 
 {#if isAuthenticated && data.user}
-	<!-- PERFORMANCE: Dashboard rendered immediately with skeleton cards -->
-	<Dashboard
+	<AnalyticsDashboard
 		user={{
 			id: data.user.id,
 			email: data.user.email,
 			name: data.user.name ?? undefined,
 			is_admin: data.user.is_admin
 		}}
-		initialProjects={projects}
-		{isLoadingProjects}
-		{projectCount}
+		analytics={data.dashboard ?? createEmptyUserDashboardAnalytics()}
 		onrefresh={handleDashboardRefresh}
 	/>
 {:else}

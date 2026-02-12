@@ -5,9 +5,6 @@
 	import { onMount } from 'svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { PUBLIC_GOOGLE_CLIENT_ID } from '$env/static/public';
-	import FormField from '$lib/components/ui/FormField.svelte';
-	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
@@ -125,17 +122,26 @@
 		const emailDomain = getEmailDomain(email);
 		let responseStatus: number | null = null;
 		let responseCode: string | undefined;
+		let requestTimedOut = false;
+		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		const controller = new AbortController();
 
 		loading = true;
 		error = '';
 		emailError = '';
 
 		try {
+			timeoutId = setTimeout(() => {
+				requestTimedOut = true;
+				controller.abort();
+			}, 15000);
+
 			const response = await fetch('/api/auth/login', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
+				signal: controller.signal,
 				body: JSON.stringify({
 					email: email.trim(),
 					password
@@ -174,6 +180,7 @@
 			});
 		} catch (err: any) {
 			console.error('Login error:', err);
+			const isTimeout = requestTimedOut || err?.name === 'AbortError';
 			void logAuthClientError(err, {
 				endpoint: '/api/auth/login',
 				method: 'POST',
@@ -182,11 +189,15 @@
 					status: responseStatus,
 					code: responseCode,
 					emailDomain,
-					flow: 'password'
+					flow: 'password',
+					timedOut: isTimeout
 				}
 			});
-			error = err.message || 'Login failed';
+			error = isTimeout ? 'Login request timed out. Please try again.' : err.message || 'Login failed';
 		} finally {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
 			loading = false;
 		}
 	}

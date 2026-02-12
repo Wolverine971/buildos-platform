@@ -1,18 +1,7 @@
 <!-- apps/web/src/lib/components/projects/ProjectListSkeleton.svelte -->
 <!--
-  Skeleton loading card for projects list page.
-  Matches exact dimensions and structure of real project cards to prevent layout shift.
-  Uses CSS animations instead of JS for smooth, performant animations.
-
-  INKPRINT DESIGN SYSTEM:
-  - Uses semantic tokens (bg-muted, border-border)
-  - Frame texture for structural elements (tx-frame)
-  - Paper weight for standard cards (wt-paper)
-  - Responsive grid matching project cards (2 cols mobile, 3 cols xl)
-
-  PERFORMANCE (Dec 2024):
-  - Matches exact card structure from /projects page
-  - count prop allows rendering exact number of skeletons
+  Skeleton loading rows for projects list page.
+  Matches the vertical dossier list layout used by dashboard/projects.
 -->
 <script lang="ts">
 	type Props = {
@@ -22,49 +11,15 @@
 	let { count = 3 }: Props = $props();
 </script>
 
-<!-- Responsive grid matching project cards layout -->
-<div class="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-	{#each Array(count) as _, i (i)}
-		<div
-			class="group relative flex h-full flex-col wt-paper p-3 sm:p-4 tx tx-frame tx-weak animate-pulse"
-			aria-hidden="true"
-		>
-			<!-- Header: Title + Badge -->
-			<div class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3">
-				<div class="min-w-0 flex-1">
-					<!-- Title skeleton - smaller on mobile -->
-					<div class="h-4 sm:h-6 bg-muted rounded w-3/4"></div>
-					<!-- Mobile inline status -->
-					<div class="sm:hidden h-3 w-12 bg-muted rounded mt-1.5"></div>
-				</div>
-				<!-- Desktop status badge skeleton -->
-				<div class="hidden sm:block h-6 w-16 bg-muted rounded-md flex-shrink-0"></div>
+<div class="space-y-2 sm:space-y-3">
+	{#each Array(Math.max(count, 3)) as _, i (i)}
+		<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak animate-pulse" aria-hidden="true">
+			<div class="flex items-center justify-between gap-3">
+				<div class="h-5 w-1/3 rounded-md bg-muted" />
+				<div class="h-4 w-28 rounded-md bg-muted" />
 			</div>
-
-			<!-- Description skeleton - hidden on mobile -->
-			<div class="hidden sm:block mb-3 space-y-2">
-				<div class="h-4 bg-muted rounded w-full"></div>
-				<div class="h-4 bg-muted rounded w-4/5"></div>
-			</div>
-
-			<!-- Next Step skeleton - hidden on mobile -->
-			<div class="hidden sm:block mb-3 p-2.5 rounded-lg border border-border bg-muted">
-				<div class="h-3.5 bg-muted rounded w-4/5"></div>
-			</div>
-
-			<!-- Footer Stats skeleton -->
-			<div class="mt-auto flex flex-col gap-1.5 border-t border-border pt-2 sm:pt-3">
-				<!-- Stats row -->
-				<div class="flex flex-wrap items-center gap-2 sm:gap-x-3 sm:gap-y-1.5">
-					<div class="h-3 sm:h-4 w-8 sm:w-10 bg-muted rounded"></div>
-					<div class="h-3 sm:h-4 w-8 sm:w-10 bg-muted rounded"></div>
-					<div class="hidden sm:block h-4 w-10 bg-muted rounded"></div>
-				</div>
-				<!-- Updated date skeleton - hidden on mobile -->
-				<div class="hidden sm:block h-3 w-28 bg-muted rounded"></div>
-			</div>
+			<div class="mt-2 h-4 w-4/5 rounded-md bg-muted" />
+			<div class="mt-2 h-3 w-full rounded-md bg-muted" />
 		</div>
 	{/each}
 </div>
-
-<!-- Animation provided by Tailwind's built-in animate-pulse class -->

@@ -4,7 +4,9 @@ import type {
 	ChatSession,
 	ChatToolCall,
 	ChatToolResult,
+	ContextShiftPayload,
 	ContextUsageSnapshot,
+	LastTurnContext,
 	OperationEventPayload
 } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -14,7 +16,10 @@ export type FastAgentStreamRequest = {
 	session_id?: string;
 	context_type?: ChatContextType;
 	entity_id?: string;
+	ontologyEntityType?: string;
 	projectFocus?: ProjectFocus | null;
+	lastTurnContext?: LastTurnContext | null;
+	last_turn_context?: LastTurnContext | null;
 	stream_run_id?: string | number;
 	voiceNoteGroupId?: string;
 	voice_note_group_id?: string;
@@ -29,6 +34,7 @@ export type FastAgentStreamUsage = {
 export type FastAgentStreamEvent =
 	| { type: 'context_usage'; usage: ContextUsageSnapshot }
 	| { type: 'session'; session: ChatSession }
+	| { type: 'last_turn_context'; context: LastTurnContext }
 	| { type: 'operation'; operation: OperationEventPayload }
 	| { type: 'tool_call'; tool_call: ChatToolCall }
 	| {
@@ -40,6 +46,7 @@ export type FastAgentStreamEvent =
 				data?: any;
 			};
 	  }
+	| { type: 'context_shift'; context_shift: ContextShiftPayload }
 	| {
 			type: 'agent_state';
 			state: 'thinking' | 'executing_plan' | 'waiting_on_user';

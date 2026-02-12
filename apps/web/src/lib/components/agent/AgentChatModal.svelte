@@ -117,6 +117,7 @@
 	let lastAutoInitProjectId = $state<string | null>(null);
 	let wasOpen = $state(false);
 	let lastPrewarmKey = $state<string | null>(null);
+	const ENABLE_V2_PREWARM = false;
 
 	const contextDescriptor = $derived(
 		selectedContextType ? CONTEXT_DESCRIPTORS[selectedContextType] : null
@@ -1072,6 +1073,7 @@
 	});
 
 	$effect(() => {
+		if (!ENABLE_V2_PREWARM) return;
 		if (!browser || !isOpen || !selectedContextType) return;
 		const prewarmSessionId = currentSession?.id ?? initialChatSessionId ?? null;
 		const prewarmEntityId = selectedEntityId ?? resolvedProjectFocus?.projectId;

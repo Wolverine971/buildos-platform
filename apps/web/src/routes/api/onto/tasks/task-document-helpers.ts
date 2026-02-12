@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/onto/tasks/task-document-helpers.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import type { Json } from '@buildos/shared-types';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 export const TASK_DOCUMENT_REL = 'task_has_document';
 
@@ -26,6 +27,10 @@ export async function ensureTaskAccess(
 	taskId: string,
 	userId: string
 ): Promise<TaskAccessResult> {
+	if (!isValidUUID(taskId)) {
+		return { error: ApiResponse.badRequest('Invalid task_id: expected UUID') };
+	}
+
 	const supabase = locals.supabase;
 
 	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {

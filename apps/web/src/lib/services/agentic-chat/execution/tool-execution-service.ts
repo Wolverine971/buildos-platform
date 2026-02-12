@@ -106,6 +106,53 @@ export class ToolExecutionService implements BaseService {
 		risk: 'risk_title',
 		requirement: 'requirement_text'
 	};
+	private static readonly UUID_VALIDATED_TOOL_NAMES = new Set([
+		'list_task_documents',
+		'create_task_document',
+		'get_entity_relationships',
+		'get_linked_entities',
+		'link_onto_entities',
+		'unlink_onto_edge',
+		'get_document_tree',
+		'get_document_path',
+		'move_document_in_tree',
+		'reorganize_onto_project_graph'
+	]);
+	private static readonly UUID_ARG_KEYS = new Set([
+		'project_id',
+		'task_id',
+		'goal_id',
+		'plan_id',
+		'document_id',
+		'milestone_id',
+		'risk_id',
+		'requirement_id',
+		'entity_id',
+		'src_id',
+		'dst_id',
+		'edge_id',
+		'parent_id',
+		'parent_document_id',
+		'new_parent_id',
+		'supporting_milestone_id'
+	]);
+	private static readonly STRICT_UUID_ARG_KEYS = new Set([
+		'task_id',
+		'goal_id',
+		'plan_id',
+		'document_id',
+		'milestone_id',
+		'risk_id',
+		'requirement_id',
+		'entity_id',
+		'src_id',
+		'dst_id',
+		'edge_id',
+		'parent_id',
+		'parent_document_id',
+		'new_parent_id',
+		'supporting_milestone_id'
+	]);
 
 	constructor(
 		private toolExecutor: ToolExecutorFunction,
@@ -981,6 +1028,8 @@ export class ToolExecutionService implements BaseService {
 					}
 				}
 			}
+
+			this.validateUuidIdArgs(toolName, args, paramSchema, errors, allowsNull);
 		}
 
 		this.applyCustomValidation(toolName, args, errors);
@@ -1051,6 +1100,54 @@ export class ToolExecutionService implements BaseService {
 			addErrorOnce(
 				`No update fields provided for ${toolName}. Include at least one field to change.`
 			);
+		}
+	}
+
+	private shouldValidateUuidArgs(toolName: string): boolean {
+		if (!toolName) return false;
+		return (
+			toolName.includes('_onto_') ||
+			ToolExecutionService.UUID_VALIDATED_TOOL_NAMES.has(toolName)
+		);
+	}
+
+	private validateUuidIdArgs(
+		toolName: string,
+		args: Record<string, any>,
+		paramSchema: Record<string, any> | undefined,
+		errors: string[],
+		allowsNull: (schema: Record<string, any> | undefined) => boolean
+	): void {
+		if (!this.shouldValidateUuidArgs(toolName)) return;
+
+		const addErrorOnce = (message: string): void => {
+			if (!errors.includes(message)) {
+				errors.push(message);
+			}
+		};
+
+		const properties =
+			paramSchema && typeof paramSchema === 'object' ? (paramSchema.properties ?? {}) : {};
+
+		for (const [key, value] of Object.entries(args)) {
+			if (!ToolExecutionService.UUID_ARG_KEYS.has(key)) continue;
+			const paramDef = properties[key] as Record<string, any> | undefined;
+			if (value === undefined) continue;
+			if (value === null) {
+				if (!allowsNull(paramDef)) {
+					addErrorOnce(`Invalid ${key}: expected UUID`);
+				}
+				continue;
+			}
+			if (typeof value !== 'string') continue;
+
+			const trimmed = value.trim();
+			if (!trimmed) continue;
+			const looksTruncated = trimmed.includes('...') || /^[0-9a-f]{8}$/i.test(trimmed);
+			const requiresStrictUuid = ToolExecutionService.STRICT_UUID_ARG_KEYS.has(key);
+			if (looksTruncated || (requiresStrictUuid && !isValidUUID(trimmed))) {
+				addErrorOnce(`Invalid ${key}: expected UUID`);
+			}
 		}
 	}
 

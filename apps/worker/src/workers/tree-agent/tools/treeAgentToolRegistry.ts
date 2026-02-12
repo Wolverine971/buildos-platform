@@ -94,7 +94,8 @@ export const TREE_AGENT_TOOL_METADATA: Record<string, ToolMeta> = {
 	},
 	list_task_documents: {
 		contexts: ['project'],
-		description: 'args: { task_id: string, limit? }'
+		description:
+			'args: { task_id: string, limit? } // task workspace docs; avoid for plain task field updates'
 	},
 	get_entity_relationships: {
 		contexts: ['base', 'global', 'project'],

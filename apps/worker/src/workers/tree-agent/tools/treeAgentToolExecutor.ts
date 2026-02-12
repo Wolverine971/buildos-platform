@@ -37,6 +37,7 @@ const DEFAULT_PROJECT_STATE: Database['public']['Enums']['project_state'] = 'act
 const TASK_DOCUMENT_REL = 'task_has_document';
 const MAX_TOOL_CALLS_PER_ITERATION = 8;
 const PROJECT_GRAPH_MAX_PER_TYPE = 200;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const DOCUMENT_STATES: Database['public']['Enums']['document_state'][] = [
 	'draft',
@@ -116,6 +117,10 @@ function isJsonObject(value: unknown): value is Record<string, Json> {
 function safeLimit(value: unknown, fallback: number, max: number): number {
 	if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
 	return Math.min(Math.max(Math.floor(value), 1), max);
+}
+
+function isUuid(value: string): boolean {
+	return UUID_REGEX.test(value);
 }
 
 function asDocumentState(
@@ -911,6 +916,8 @@ async function executeToolCall(
 			case 'get_onto_task_details': {
 				const taskId = typeof args.task_id === 'string' ? args.task_id : '';
 				if (!taskId) return { name: tool.name, ok: false, error: 'task_id is required' };
+				if (!isUuid(taskId))
+					return { name: tool.name, ok: false, error: 'Invalid task_id: expected UUID' };
 
 				const { data, error } = await ctx.supabase
 					.from('onto_tasks')
@@ -1129,6 +1136,8 @@ async function executeToolCall(
 			case 'list_task_documents': {
 				const taskId = typeof args.task_id === 'string' ? args.task_id : '';
 				if (!taskId) return { name: tool.name, ok: false, error: 'task_id is required' };
+				if (!isUuid(taskId))
+					return { name: tool.name, ok: false, error: 'Invalid task_id: expected UUID' };
 				const limit = safeLimit(args.limit, 20, 80);
 
 				const { data: task, error: taskError } = await ctx.supabase
@@ -1611,6 +1620,8 @@ async function executeToolCall(
 			case 'update_onto_task': {
 				const taskId = typeof args.task_id === 'string' ? args.task_id : '';
 				if (!taskId) return { name: tool.name, ok: false, error: 'task_id is required' };
+				if (!isUuid(taskId))
+					return { name: tool.name, ok: false, error: 'Invalid task_id: expected UUID' };
 
 				const { data: task } = await ctx.supabase
 					.from('onto_tasks')
@@ -2022,6 +2033,8 @@ async function executeToolCall(
 			case 'create_task_document': {
 				const taskId = typeof args.task_id === 'string' ? args.task_id : '';
 				if (!taskId) return { name: tool.name, ok: false, error: 'task_id is required' };
+				if (!isUuid(taskId))
+					return { name: tool.name, ok: false, error: 'Invalid task_id: expected UUID' };
 
 				const { data: task, error: taskError } = await ctx.supabase
 					.from('onto_tasks')
@@ -2035,6 +2048,13 @@ async function executeToolCall(
 
 				let documentId = typeof args.document_id === 'string' ? args.document_id : '';
 				if (documentId) {
+					if (!isUuid(documentId)) {
+						return {
+							name: tool.name,
+							ok: false,
+							error: 'Invalid document_id: expected UUID'
+						};
+					}
 					const { data: existingDoc } = await ctx.supabase
 						.from('onto_documents')
 						.select('id, project_id')

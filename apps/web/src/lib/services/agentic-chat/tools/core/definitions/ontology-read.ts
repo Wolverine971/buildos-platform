@@ -241,7 +241,8 @@ Use for discovering available projects or getting project overviews.`,
 		function: {
 			name: 'list_task_documents',
 			description: `List documents linked to a specific task via task_has_document edges.
-Use when you need to see the work artifacts, drafts, or scratch docs associated with a task.`,
+Use when you need to see the work artifacts, drafts, or scratch docs associated with a task.
+Do not call for plain task metadata updates (title/state/priority) unless document context is explicitly needed.`,
 			parameters: {
 				type: 'object',
 				properties: {

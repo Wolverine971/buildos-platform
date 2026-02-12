@@ -10,8 +10,6 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
 	import ProjectListSkeleton from '$lib/components/projects/ProjectListSkeleton.svelte';
 	import type {
@@ -22,9 +20,7 @@
 	} from '$lib/components/ontology/graph/lib/graph.types';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
-	import { getProjectStateBadgeClass } from '$lib/utils/ontology-badge-styles';
-	import { LoaderCircle, SlidersHorizontal, ChevronDown } from 'lucide-svelte';
-	import ProjectCard from '$lib/components/project/ProjectCard.svelte';
+	import { LoaderCircle, SlidersHorizontal, ChevronDown, ArrowRight } from 'lucide-svelte';
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 
@@ -226,6 +222,9 @@
 			selectedScales.length +
 			selectedStages.length
 	);
+	const activeSearchAndFilterCount = $derived(
+		activeFilterCount + (searchQuery.trim().length > 0 ? 1 : 0)
+	);
 
 	// Check if any filter options are available
 	const hasFilterOptions = $derived(
@@ -277,6 +276,64 @@
 	const sharedFilteredProjects = $derived.by(() =>
 		filteredProjects.filter((project) => project.is_shared)
 	);
+	const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
+
+	type ProjectRecencyGroups = {
+		recent: OntologyProjectSummary[];
+		olderThan7Days: OntologyProjectSummary[];
+		olderThan30Days: OntologyProjectSummary[];
+	};
+
+	function parseProjectUpdatedAt(project: OntologyProjectSummary): number {
+		const timestamp = Date.parse(project.updated_at);
+		return Number.isNaN(timestamp) ? 0 : timestamp;
+	}
+
+	function sortProjectsByUpdatedAt(
+		projectList: OntologyProjectSummary[]
+	): OntologyProjectSummary[] {
+		return [...projectList].sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
+	}
+
+	function groupProjectsByRecency(projectList: OntologyProjectSummary[]): ProjectRecencyGroups {
+		const now = Date.now();
+		const recent: OntologyProjectSummary[] = [];
+		const olderThan7Days: OntologyProjectSummary[] = [];
+		const olderThan30Days: OntologyProjectSummary[] = [];
+
+		for (const project of projectList) {
+			const updatedAtMs = parseProjectUpdatedAt(project);
+			const ageDays =
+				updatedAtMs > 0 ? (now - updatedAtMs) / MILLIS_PER_DAY : Number.POSITIVE_INFINITY;
+
+			if (ageDays >= 30) {
+				olderThan30Days.push(project);
+				continue;
+			}
+
+			if (ageDays >= 7) {
+				olderThan7Days.push(project);
+				continue;
+			}
+
+			recent.push(project);
+		}
+
+		return {
+			recent,
+			olderThan7Days,
+			olderThan30Days
+		};
+	}
+
+	const ownedFilteredProjectsSorted = $derived(sortProjectsByUpdatedAt(ownedFilteredProjects));
+	const sharedFilteredProjectsSorted = $derived(sortProjectsByUpdatedAt(sharedFilteredProjects));
+	const ownedFilteredProjectsByRecency = $derived(
+		groupProjectsByRecency(ownedFilteredProjectsSorted)
+	);
+	const sharedFilteredProjectsByRecency = $derived(
+		groupProjectsByRecency(sharedFilteredProjectsSorted)
+	);
 
 	const stats = $derived.by(() => {
 		const list = filteredProjects;
@@ -308,6 +365,23 @@
 		selectedContexts = [];
 		selectedScales = [];
 		selectedStages = [];
+	}
+
+	function formatUpdatedAt(value: string): string {
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return 'Updated recently';
+
+		return date.toLocaleString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		});
+	}
+
+	function formatEntityCounts(project: OntologyProjectSummary): string {
+		return `Tasks ${project.task_count} · Goals ${project.goal_count} · Plans ${project.plan_count} · Docs ${project.document_count}`;
 	}
 
 	async function ensureGraphComponents() {
@@ -485,53 +559,25 @@
 					</div>
 				</div>
 			{:else}
-				<Card variant="elevated" padding="none">
-					<CardBody
-						padding="md"
-						class="space-y-dense-4 lg:flex lg:items-start lg:justify-between lg:gap-dense-6 lg:space-y-0"
-					>
-						<div class="relative flex-1">
-							<input
-								type="search"
-								class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring shadow-ink-inner"
-								placeholder="Search projects by name or description..."
-								bind:value={searchQuery}
+				<div class="flex justify-end">
+					<Button variant="primary" size="sm" onclick={handleCreateProject}>
+						<svg
+							class="h-4 w-4 mr-2"
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M12 4v16m8-8H4"
 							/>
-							<svg
-								class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-								xmlns="http://www.w3.org/2000/svg"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
-								/>
-							</svg>
-						</div>
-
-						<Button variant="primary" size="sm" onclick={handleCreateProject}>
-							<svg
-								class="h-4 w-4 mr-2"
-								xmlns="http://www.w3.org/2000/svg"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M12 4v16m8-8H4"
-								/>
-							</svg>
-							<span>New Project</span>
-						</Button>
-					</CardBody>
-				</Card>
+						</svg>
+						<span>New Project</span>
+					</Button>
+				</div>
 
 				<!-- Stats Grid - Semantic textures per brand guidelines with weight -->
 				<div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
@@ -597,46 +643,68 @@
 					</div>
 				</div>
 
-				<!-- Collapsible Filter Panel - Admin Only, frame texture with paper weight -->
-				{#if isAdmin && hasFilterOptions}
-					<div class="wt-paper overflow-hidden tx tx-frame tx-weak">
-						<!-- Filter Panel Header (Always Visible) -->
-						<button
-							type="button"
-							class="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-muted/30 pressable"
-							onclick={() => (filtersExpanded = !filtersExpanded)}
-							aria-expanded={filtersExpanded}
-							aria-controls="filter-panel-content"
-						>
-							<div class="flex items-center gap-2">
-								<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
-								<span class="text-sm font-semibold text-foreground">Filters</span>
-								{#if activeFilterCount > 0}
-									<span
-										class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold"
-									>
-										{activeFilterCount}
-									</span>
-								{/if}
-							</div>
-							<ChevronDown
-								class="h-4 w-4 text-muted-foreground transition-transform duration-200 {filtersExpanded
-									? 'rotate-180'
-									: ''}"
-							/>
-						</button>
-
-						<!-- Filter Panel Content (Collapsible) -->
-						<div
-							id="filter-panel-content"
-							class="grid transition-all duration-200 ease-out {filtersExpanded
-								? 'grid-rows-[1fr] opacity-100'
-								: 'grid-rows-[0fr] opacity-0'}"
-						>
-							<div
-								class="px-3 pb-3 pt-1 space-y-3 border-t border-border overflow-hidden"
+				<!-- Search + Filters panel (collapsible) -->
+				<div class="wt-paper overflow-hidden tx tx-frame tx-weak">
+					<button
+						type="button"
+						class="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-muted/30 pressable"
+						onclick={() => (filtersExpanded = !filtersExpanded)}
+						aria-expanded={filtersExpanded}
+						aria-controls="filter-panel-content"
+					>
+						<div class="flex items-center gap-2">
+							<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
+							<span class="text-sm font-semibold text-foreground"
+								>Search & Filters</span
 							>
-								<!-- State Filters -->
+							{#if activeSearchAndFilterCount > 0}
+								<span
+									class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold"
+								>
+									{activeSearchAndFilterCount}
+								</span>
+							{/if}
+						</div>
+						<ChevronDown
+							class="h-4 w-4 text-muted-foreground transition-transform duration-200 {filtersExpanded
+								? 'rotate-180'
+								: ''}"
+						/>
+					</button>
+
+					<div
+						id="filter-panel-content"
+						class="grid transition-all duration-200 ease-out {filtersExpanded
+							? 'grid-rows-[1fr] opacity-100'
+							: 'grid-rows-[0fr] opacity-0'}"
+					>
+						<div
+							class="px-3 pb-3 pt-1 space-y-3 border-t border-border overflow-hidden"
+						>
+							<div class="relative">
+								<input
+									type="search"
+									class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring shadow-ink-inner"
+									placeholder="Search projects by name or description..."
+									bind:value={searchQuery}
+								/>
+								<svg
+									class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+									xmlns="http://www.w3.org/2000/svg"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M21 21l-4.35-4.35M17 10a7 7 0 11-14 0 7 7 0 0114 0z"
+									/>
+								</svg>
+							</div>
+
+							{#if isAdmin && hasFilterOptions}
 								<FilterGroup
 									label="State"
 									options={availableStates}
@@ -645,7 +713,6 @@
 										(selectedStates = toggleValue(selectedStates, state))}
 								/>
 
-								<!-- Context, Scale, Stage Filters -->
 								<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
 									<FilterGroup
 										label="Context"
@@ -669,23 +736,22 @@
 											(selectedStages = toggleValue(selectedStages, stage))}
 									/>
 								</div>
+							{/if}
 
-								<!-- Clear Filters Button (inside panel when expanded) -->
-								{#if activeFilterCount > 0}
-									<div class="pt-1">
-										<button
-											type="button"
-											class="text-xs font-bold text-accent hover:text-accent/80 transition pressable"
-											onclick={clearFilters}
-										>
-											Clear all filters
-										</button>
-									</div>
-								{/if}
-							</div>
+							{#if hasFilters}
+								<div class="pt-1">
+									<button
+										type="button"
+										class="text-xs font-bold text-accent hover:text-accent/80 transition pressable"
+										onclick={clearFilters}
+									>
+										Clear all filters
+									</button>
+								</div>
+							{/if}
 						</div>
 					</div>
-				{/if}
+				</div>
 			{/if}
 		</section>
 
@@ -735,7 +801,7 @@
 		{:else if filteredProjects.length > 0}
 			<div class="space-y-6">
 				{#if ownedFilteredProjects.length > 0}
-					<div class="space-y-4">
+					<div class="space-y-2">
 						<!-- Section Header - Inkprint micro-label pattern -->
 						<div class="flex items-baseline gap-2">
 							<p class="micro-label text-accent">MY PROJECTS</p>
@@ -743,21 +809,156 @@
 								{ownedFilteredProjects.length}
 							</span>
 						</div>
-						<!-- Project Cards Grid -->
-						<div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-							{#each ownedFilteredProjects as project (project.id)}
-								<ProjectCard
-									{project}
-									onProjectClick={handleProjectClick}
-									getStateBadgeClasses={getProjectStateBadgeClass}
-								/>
+						<div class="space-y-2">
+							{#each ownedFilteredProjectsByRecency.recent as project (project.id)}
+								<a
+									href="/projects/{project.id}"
+									onclick={() => handleProjectClick(project)}
+									class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<h4
+											class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+											style="view-transition-name: project-title-{project.id}"
+										>
+											{project.name}
+										</h4>
+										<div class="shrink-0 flex items-center gap-1.5">
+											<time
+												datetime={project.updated_at}
+												class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+											>
+												{formatUpdatedAt(project.updated_at)}
+											</time>
+											<span class="project-dossier-arrow" aria-hidden="true">
+												<ArrowRight
+													class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+												/>
+											</span>
+										</div>
+									</div>
+
+									<p
+										class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+									>
+										{project.description?.trim() || 'No description provided.'}
+									</p>
+
+									<p
+										class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+									>
+										{formatEntityCounts(project)}
+									</p>
+								</a>
 							{/each}
+
+							{#if ownedFilteredProjectsByRecency.olderThan7Days.length > 0}
+								<div class="project-recency-separator">
+									Not touched in last 7 days
+								</div>
+								{#each ownedFilteredProjectsByRecency.olderThan7Days as project (project.id)}
+									<a
+										href="/projects/{project.id}"
+										onclick={() => handleProjectClick(project)}
+										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
+									>
+										<div class="flex items-start justify-between gap-3">
+											<h4
+												class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+												style="view-transition-name: project-title-{project.id}"
+											>
+												{project.name}
+											</h4>
+											<div class="shrink-0 flex items-center gap-1.5">
+												<time
+													datetime={project.updated_at}
+													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+												>
+													{formatUpdatedAt(project.updated_at)}
+												</time>
+												<span
+													class="project-dossier-arrow"
+													aria-hidden="true"
+												>
+													<ArrowRight
+														class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+													/>
+												</span>
+											</div>
+										</div>
+
+										<p
+											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+										>
+											{project.description?.trim() ||
+												'No description provided.'}
+										</p>
+
+										<p
+											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+										>
+											{formatEntityCounts(project)}
+										</p>
+									</a>
+								{/each}
+							{/if}
+
+							{#if ownedFilteredProjectsByRecency.olderThan30Days.length > 0}
+								<div class="project-recency-separator">
+									Not touched in last 30 days
+								</div>
+								{#each ownedFilteredProjectsByRecency.olderThan30Days as project (project.id)}
+									<a
+										href="/projects/{project.id}"
+										onclick={() => handleProjectClick(project)}
+										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
+									>
+										<div class="flex items-start justify-between gap-3">
+											<h4
+												class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+												style="view-transition-name: project-title-{project.id}"
+											>
+												{project.name}
+											</h4>
+											<div class="shrink-0 flex items-center gap-1.5">
+												<time
+													datetime={project.updated_at}
+													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+												>
+													{formatUpdatedAt(project.updated_at)}
+												</time>
+												<span
+													class="project-dossier-arrow"
+													aria-hidden="true"
+												>
+													<ArrowRight
+														class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+													/>
+												</span>
+											</div>
+										</div>
+
+										<p
+											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+										>
+											{project.description?.trim() ||
+												'No description provided.'}
+										</p>
+
+										<p
+											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+										>
+											{formatEntityCounts(project)}
+										</p>
+									</a>
+								{/each}
+							{/if}
 						</div>
 					</div>
 				{/if}
 
 				{#if sharedFilteredProjects.length > 0}
-					<div class="space-y-4">
+					<div class="space-y-2">
 						<!-- Section Header - Inkprint micro-label pattern with Thread texture indicator -->
 						<div class="flex items-baseline gap-2">
 							<p class="micro-label text-muted-foreground">SHARED WITH ME</p>
@@ -765,16 +966,177 @@
 								{sharedFilteredProjects.length}
 							</span>
 						</div>
-						<!-- Shared Project Cards Grid - Thread texture to indicate collaboration -->
-						<div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-							{#each sharedFilteredProjects as project (project.id)}
-								<ProjectCard
-									{project}
-									isShared
-									onProjectClick={handleProjectClick}
-									getStateBadgeClasses={getProjectStateBadgeClass}
-								/>
+						<div class="space-y-2">
+							{#each sharedFilteredProjectsByRecency.recent as project (project.id)}
+								<a
+									href="/projects/{project.id}"
+									onclick={() => handleProjectClick(project)}
+									class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0 flex items-center gap-2">
+											<h4
+												class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+												style="view-transition-name: project-title-{project.id}"
+											>
+												{project.name}
+											</h4>
+											<span
+												class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
+											>
+												Shared{project.access_role
+													? `: ${project.access_role}`
+													: ''}
+											</span>
+										</div>
+										<div class="shrink-0 flex items-center gap-1.5">
+											<time
+												datetime={project.updated_at}
+												class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+											>
+												{formatUpdatedAt(project.updated_at)}
+											</time>
+											<span class="project-dossier-arrow" aria-hidden="true">
+												<ArrowRight
+													class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+												/>
+											</span>
+										</div>
+									</div>
+
+									<p
+										class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+									>
+										{project.description?.trim() || 'No description provided.'}
+									</p>
+
+									<p
+										class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+									>
+										{formatEntityCounts(project)}
+									</p>
+								</a>
 							{/each}
+
+							{#if sharedFilteredProjectsByRecency.olderThan7Days.length > 0}
+								<div class="project-recency-separator">
+									Not touched in last 7 days
+								</div>
+								{#each sharedFilteredProjectsByRecency.olderThan7Days as project (project.id)}
+									<a
+										href="/projects/{project.id}"
+										onclick={() => handleProjectClick(project)}
+										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
+									>
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0 flex items-center gap-2">
+												<h4
+													class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+													style="view-transition-name: project-title-{project.id}"
+												>
+													{project.name}
+												</h4>
+												<span
+													class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
+												>
+													Shared{project.access_role
+														? `: ${project.access_role}`
+														: ''}
+												</span>
+											</div>
+											<div class="shrink-0 flex items-center gap-1.5">
+												<time
+													datetime={project.updated_at}
+													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+												>
+													{formatUpdatedAt(project.updated_at)}
+												</time>
+												<span
+													class="project-dossier-arrow"
+													aria-hidden="true"
+												>
+													<ArrowRight
+														class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+													/>
+												</span>
+											</div>
+										</div>
+
+										<p
+											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+										>
+											{project.description?.trim() ||
+												'No description provided.'}
+										</p>
+
+										<p
+											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+										>
+											{formatEntityCounts(project)}
+										</p>
+									</a>
+								{/each}
+							{/if}
+
+							{#if sharedFilteredProjectsByRecency.olderThan30Days.length > 0}
+								<div class="project-recency-separator">
+									Not touched in last 30 days
+								</div>
+								{#each sharedFilteredProjectsByRecency.olderThan30Days as project (project.id)}
+									<a
+										href="/projects/{project.id}"
+										onclick={() => handleProjectClick(project)}
+										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
+									>
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0 flex items-center gap-2">
+												<h4
+													class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+													style="view-transition-name: project-title-{project.id}"
+												>
+													{project.name}
+												</h4>
+												<span
+													class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
+												>
+													Shared{project.access_role
+														? `: ${project.access_role}`
+														: ''}
+												</span>
+											</div>
+											<div class="shrink-0 flex items-center gap-1.5">
+												<time
+													datetime={project.updated_at}
+													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+												>
+													{formatUpdatedAt(project.updated_at)}
+												</time>
+												<span
+													class="project-dossier-arrow"
+													aria-hidden="true"
+												>
+													<ArrowRight
+														class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
+													/>
+												</span>
+											</div>
+										</div>
+
+										<p
+											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+										>
+											{project.description?.trim() ||
+												'No description provided.'}
+										</p>
+
+										<p
+											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
+										>
+											{formatEntityCounts(project)}
+										</p>
+									</a>
+								{/each}
+							{/if}
 						</div>
 					</div>
 				{/if}
@@ -892,3 +1254,39 @@
 {#if AgentChatModal && showChatModal}
 	<AgentChatModal isOpen={showChatModal} contextType="project_create" onClose={handleChatClose} />
 {/if}
+
+<style>
+	.project-dossier-row {
+		transition: box-shadow 180ms ease;
+	}
+
+	.project-dossier-row:hover,
+	.project-dossier-row:focus-visible {
+		box-shadow: inset 0 -1px 0 hsl(var(--accent) / 0.6);
+	}
+
+	.project-dossier-arrow {
+		opacity: 0;
+		transform: translateX(-2px);
+		transition:
+			opacity 180ms ease,
+			transform 180ms ease;
+	}
+
+	.project-dossier-row:hover .project-dossier-arrow,
+	.project-dossier-row:focus-visible .project-dossier-arrow {
+		opacity: 1;
+		transform: translateX(0);
+	}
+
+	.project-recency-separator {
+		margin-top: 0.5rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid hsl(var(--border));
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: hsl(var(--muted-foreground) / 0.85);
+	}
+</style>

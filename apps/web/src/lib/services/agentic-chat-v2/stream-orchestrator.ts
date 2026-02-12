@@ -330,6 +330,53 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 }
 
 const UPDATE_TOOL_PREFIX = 'update_onto_';
+const UUID_VALIDATED_TOOL_NAMES = new Set([
+	'list_task_documents',
+	'create_task_document',
+	'get_entity_relationships',
+	'get_linked_entities',
+	'link_onto_entities',
+	'unlink_onto_edge',
+	'get_document_tree',
+	'get_document_path',
+	'move_document_in_tree',
+	'reorganize_onto_project_graph'
+]);
+const UUID_ARG_KEYS = new Set([
+	'project_id',
+	'task_id',
+	'goal_id',
+	'plan_id',
+	'document_id',
+	'milestone_id',
+	'risk_id',
+	'requirement_id',
+	'entity_id',
+	'src_id',
+	'dst_id',
+	'edge_id',
+	'parent_id',
+	'parent_document_id',
+	'new_parent_id',
+	'supporting_milestone_id'
+]);
+const STRICT_UUID_ARG_KEYS = new Set([
+	'task_id',
+	'goal_id',
+	'plan_id',
+	'document_id',
+	'milestone_id',
+	'risk_id',
+	'requirement_id',
+	'entity_id',
+	'src_id',
+	'dst_id',
+	'edge_id',
+	'parent_id',
+	'parent_document_id',
+	'new_parent_id',
+	'supporting_milestone_id'
+]);
 
 function parseToolArguments(rawArgs: unknown): { args: Record<string, any>; error?: string } {
 	if (rawArgs === undefined || rawArgs === null) {
@@ -413,6 +460,35 @@ function validateUpdateToolArgs(
 	}
 }
 
+function shouldValidateUuidArgs(toolName: string): boolean {
+	if (!toolName) return false;
+	return toolName.includes('_onto_') || UUID_VALIDATED_TOOL_NAMES.has(toolName);
+}
+
+function validateUuidArgs(toolName: string, args: Record<string, any>, errors: string[]): void {
+	if (!shouldValidateUuidArgs(toolName)) return;
+
+	const addErrorOnce = (message: string) => {
+		if (!errors.includes(message)) {
+			errors.push(message);
+		}
+	};
+
+	for (const [key, value] of Object.entries(args)) {
+		if (!UUID_ARG_KEYS.has(key)) continue;
+		if (value === undefined || value === null) continue;
+		if (typeof value !== 'string') continue;
+
+		const trimmed = value.trim();
+		if (!trimmed) continue;
+		const looksTruncated = trimmed.includes('...') || /^[0-9a-f]{8}$/i.test(trimmed);
+		const requiresStrictUuid = STRICT_UUID_ARG_KEYS.has(key);
+		if (looksTruncated || (requiresStrictUuid && !isValidUUID(trimmed))) {
+			addErrorOnce(`Invalid ${key}: expected UUID`);
+		}
+	}
+}
+
 function validateToolCalls(
 	toolCalls: ChatToolCall[],
 	toolDefs: ChatToolDefinition[]
@@ -456,6 +532,8 @@ function validateToolCalls(
 			}
 		}
 
+		validateUuidArgs(toolName, args, errors);
+
 		if (toolName.startsWith(UPDATE_TOOL_PREFIX)) {
 			validateUpdateToolArgs(toolName, args, errors);
 		}
@@ -472,6 +550,7 @@ function buildToolValidationRepairInstruction(issues: ToolValidationIssue[]): st
 	const lines = [
 		'One or more tool calls failed validation.',
 		'Do not guess or fabricate IDs. Never use placeholders.',
+		'Never truncate, abbreviate, or elide IDs (no "...", prefixes, or short forms).',
 		'Return only corrected tool calls with arguments. Do not include prose.',
 		'If a required value is missing, ask a clarifying question instead of calling a tool.'
 	];
