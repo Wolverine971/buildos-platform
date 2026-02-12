@@ -204,7 +204,7 @@
 		})
 	);
 	const hasProjects = $derived(projects.length > 0);
-	const isNewUser = $derived(hasLoadedProjects && !hasProjects);
+	const isNewUser = $derived(hasLoadedProjects && !hasProjects && !projectsError);
 </script>
 
 <div class="flex h-full min-h-0 flex-col overflow-hidden bg-background">
