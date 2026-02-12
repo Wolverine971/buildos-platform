@@ -426,7 +426,9 @@ Also ensures the project has_document edge exists for discovery.`,
 			name: 'link_onto_entities',
 			description: `Create a relationship edge between two ontology entities.
 Use this to connect plans, goals, milestones, tasks, documents, risks, or requirements.
-Avoid creating project edges unless the entity is truly a root-level item.`,
+Avoid creating project edges unless the entity is truly a root-level item.
+
+If you provide a non-standard relationship type, the API will normalize it to a canonical relationship and preserve your original value in edge props.original_rel.`,
 			parameters: {
 				type: 'object',
 				properties: {

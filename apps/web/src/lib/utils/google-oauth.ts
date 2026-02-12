@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -58,7 +59,7 @@ function decodeOAuthRedirect(state: string | null): string | null {
 		if (parsed && typeof parsed.redirect === 'string') {
 			return normalizeRedirectPath(parsed.redirect);
 		}
-	} catch (error) {
+	} catch {
 		return null;
 	}
 
@@ -70,6 +71,137 @@ export class GoogleOAuthHandler {
 		private supabase: SupabaseClient<Database>,
 		private locals?: App.Locals
 	) {}
+
+	private async ensurePublicUserProfile(
+		authUser: any,
+		tokens: GoogleTokens
+	): Promise<{ dbUser: any; isNewUser: boolean }> {
+		const errorLogger = ErrorLoggerService.getInstance(this.supabase);
+
+		const fetchWithClient = async (
+			client: SupabaseClient<Database>,
+			source: 'session' | 'admin'
+		) => {
+			const { data, error } = await client
+				.from('users')
+				.select('*')
+				.eq('id', authUser.id)
+				.maybeSingle();
+
+			if (!error) {
+				return { user: data ?? null, missing: !data };
+			}
+
+			if (error.code === 'PGRST116') {
+				return { user: null, missing: true };
+			}
+
+			await errorLogger.logError(error, {
+				endpoint: '/auth/google/callback',
+				httpMethod: 'GET',
+				operationType: 'auth_google_profile_fetch',
+				metadata: {
+					source,
+					userId: authUser.id
+				}
+			});
+			return { user: null, missing: false };
+		};
+
+		const profile = await this.getUserProfile(tokens.access_token).catch(async (error) => {
+			await errorLogger.logError(error, {
+				endpoint: '/auth/google/callback',
+				httpMethod: 'GET',
+				operationType: 'auth_google_profile_fetch_google',
+				metadata: {
+					userId: authUser.id
+				}
+			});
+			return null;
+		});
+
+		const profilePayload = {
+			id: authUser.id,
+			email: authUser.email as string,
+			name: profile?.name || authUser.user_metadata?.name || 'User',
+			is_admin: false,
+			completed_onboarding: false,
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString()
+		};
+
+		const insertWithClient = async (
+			client: SupabaseClient<Database>,
+			source: 'session' | 'admin'
+		) => {
+			const { data, error } = await client
+				.from('users')
+				.insert(profilePayload)
+				.select()
+				.single();
+			if (!error) {
+				return { user: data, created: true };
+			}
+
+			if (error.code === '23505') {
+				const { user } = await fetchWithClient(client, source);
+				if (user) {
+					return { user, created: false };
+				}
+			}
+
+			await errorLogger.logError(error, {
+				endpoint: '/auth/google/callback',
+				httpMethod: 'GET',
+				operationType: 'auth_google_profile_insert',
+				metadata: {
+					source,
+					userId: authUser.id
+				}
+			});
+			return { user: null, created: false };
+		};
+
+		const existingSessionUser = await fetchWithClient(this.supabase, 'session');
+		if (existingSessionUser.user) {
+			return { dbUser: existingSessionUser.user, isNewUser: false };
+		}
+
+		if (existingSessionUser.missing) {
+			const insertedSessionUser = await insertWithClient(this.supabase, 'session');
+			if (insertedSessionUser.user) {
+				return { dbUser: insertedSessionUser.user, isNewUser: insertedSessionUser.created };
+			}
+		}
+
+		try {
+			const adminClient = createAdminSupabaseClient();
+			const existingAdminUser = await fetchWithClient(adminClient, 'admin');
+			if (existingAdminUser.user) {
+				return { dbUser: existingAdminUser.user, isNewUser: false };
+			}
+
+			const insertedAdminUser = await insertWithClient(adminClient, 'admin');
+			if (insertedAdminUser.user) {
+				return { dbUser: insertedAdminUser.user, isNewUser: insertedAdminUser.created };
+			}
+		} catch (error) {
+			await errorLogger.logError(error, {
+				endpoint: '/auth/google/callback',
+				httpMethod: 'GET',
+				operationType: 'auth_google_profile_admin_fallback',
+				metadata: {
+					userId: authUser.id
+				}
+			});
+		}
+
+		throw new GoogleOAuthError(
+			'Account setup failed. Please try signing in again.',
+			'profile_setup_failed',
+			'/auth/login'
+		);
+	}
 
 	/**
 	 * Handle OAuth callback errors
@@ -197,45 +329,7 @@ export class GoogleOAuthHandler {
 			}
 		}
 
-		// Check if user exists in users table
-		const { data: userData, error: fetchError } = await this.supabase
-			.from('users')
-			.select('*')
-			.eq('id', data.user.id)
-			.single();
-
-		let isNewUser = false;
-		let dbUser = userData;
-
-		if (fetchError && fetchError.code === 'PGRST116') {
-			// User doesn't exist, create them
-			isNewUser = true;
-			const profile = await this.getUserProfile(tokens.access_token);
-
-			const newUser = {
-				id: data.user.id,
-				email: data.user.email as string,
-				name: profile.name || data.user.user_metadata?.name || 'User',
-				is_admin: false,
-				completed_onboarding: false,
-				created_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
-			};
-
-			const { data: insertedUser, error: insertError } = await this.supabase
-				.from('users')
-				.insert(newUser)
-				.select()
-				.single();
-
-			if (insertError) {
-				console.error('Error creating user record:', insertError);
-				// Use the newUser object as fallback
-				dbUser = newUser as any;
-			} else {
-				dbUser = insertedUser;
-			}
-		}
+		const { dbUser, isNewUser } = await this.ensurePublicUserProfile(data.user, tokens);
 
 		// CRITICAL: Update server-side locals if available
 		// This ensures immediate recognition of the authenticated state

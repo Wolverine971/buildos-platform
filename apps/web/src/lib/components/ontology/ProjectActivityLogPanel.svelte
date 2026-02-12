@@ -48,17 +48,22 @@
 	let error = $state<string | null>(null);
 
 	const INITIAL_LIMIT = 10;
+	const BACKGROUND_REFRESH_MS = 15_000;
 
 	// ============================================================
 	// FUNCTIONS
 	// ============================================================
-	async function loadLogs(offset = 0, append = false) {
-		if (!append) {
-			isLoading = true;
-		} else {
+	async function loadLogs(options: { offset?: number; append?: boolean; silent?: boolean } = {}) {
+		const { offset = 0, append = false, silent = false } = options;
+
+		if (append) {
 			isLoadingMore = true;
+		} else if (!silent) {
+			isLoading = true;
 		}
-		error = null;
+		if (!silent) {
+			error = null;
+		}
 
 		try {
 			const response = await fetch(
@@ -81,11 +86,11 @@
 					(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
 				);
 
-			if (append) {
-				logs = sortByMostRecent([...logs, ...(data.logs ?? [])]);
-			} else {
-				logs = sortByMostRecent(data.logs ?? []);
-			}
+			const mergedLogs = append ? [...logs, ...(data.logs ?? [])] : [...(data.logs ?? [])];
+			const dedupedLogs = Array.from(
+				new Map(mergedLogs.map((entry) => [entry.id, entry])).values()
+			);
+			logs = sortByMostRecent(dedupedLogs);
 			total = data.total ?? 0;
 			hasMore = data.hasMore ?? false;
 			hasLoaded = true;
@@ -99,25 +104,46 @@
 				operation: 'project_logs_load',
 				metadata: { offset, limit: INITIAL_LIMIT }
 			});
-			error = err instanceof Error ? err.message : 'Failed to load activity log';
+			if (!silent) {
+				error = err instanceof Error ? err.message : 'Failed to load activity log';
+			}
 		} finally {
-			isLoading = false;
-			isLoadingMore = false;
+			if (!append && !silent) {
+				isLoading = false;
+			}
+			if (append) {
+				isLoadingMore = false;
+			}
 		}
 	}
 
 	function handleToggle() {
-		isExpanded = !isExpanded;
-		if (isExpanded && !hasLoaded) {
-			loadLogs();
+		const nextExpanded = !isExpanded;
+		isExpanded = nextExpanded;
+		if (nextExpanded) {
+			void loadLogs();
 		}
 	}
 
 	function handleLoadMore() {
 		if (!isLoadingMore && hasMore) {
-			loadLogs(logs.length, true);
+			void loadLogs({ offset: logs.length, append: true });
 		}
 	}
+
+	$effect(() => {
+		if (!isExpanded || typeof window === 'undefined') {
+			return;
+		}
+
+		const intervalId = window.setInterval(() => {
+			if (!isLoading && !isLoadingMore) {
+				void loadLogs({ silent: true });
+			}
+		}, BACKGROUND_REFRESH_MS);
+
+		return () => window.clearInterval(intervalId);
+	});
 
 	function handleEntityClick(log: EnrichedLogEntry) {
 		if (onEntityClick && log.entity_type !== 'edge') {

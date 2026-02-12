@@ -40,6 +40,12 @@
 		return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 	}
 
+	function persistOAuthState(state: string) {
+		sessionStorage.setItem('oauth_state', state);
+		const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+		document.cookie = `buildos_oauth_state=${state}; Max-Age=600; Path=/; SameSite=Lax${secure}`;
+	}
+
 	function getEmailDomain(value: string): string | null {
 		const trimmed = value.trim().toLowerCase();
 		const atIndex = trimmed.lastIndexOf('@');
@@ -207,7 +213,7 @@
 		});
 
 		// Store state for verification
-		sessionStorage.setItem('oauth_state', state);
+		persistOAuthState(state);
 
 		// Redirect to Google OAuth
 		window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;

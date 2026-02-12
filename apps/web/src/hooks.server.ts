@@ -257,6 +257,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	// PERFORMANCE: Only load session data for routes that need it
 	const needsAuth =
 		!pathname.startsWith('/auth/') &&
+		!pathname.startsWith('/api/auth/') &&
 		!pathname.startsWith('/api/public/') &&
 		pathname !== '/robots.txt' &&
 		pathname !== '/sitemap.xml';

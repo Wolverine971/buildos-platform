@@ -110,7 +110,16 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/resend', () => {
 		});
 
 		const updateInvites = vi.fn().mockReturnValue({
-			eq: vi.fn().mockResolvedValue({ error: null })
+			eq: vi.fn().mockReturnValue({
+				in: vi.fn().mockReturnValue({
+					select: vi.fn().mockReturnValue({
+						maybeSingle: vi.fn().mockResolvedValue({
+							data: { id: 'invite-1', status: 'pending' },
+							error: null
+						})
+					})
+				})
+			})
 		});
 
 		const selectProject = vi.fn().mockReturnValue({
@@ -151,5 +160,66 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/resend', () => {
 
 		const emailArgs = sendEmailMock.mock.calls[0][0];
 		expect(emailArgs.to).toBe('invitee@example.com');
+	});
+
+	it('returns accepted when invite is accepted during concurrent resend', async () => {
+		const event = createEvent();
+		const supabase = event.locals.supabase as any;
+
+		supabase.rpc.mockResolvedValue({ data: true, error: null });
+
+		const inviteSelectMaybeSingle = vi
+			.fn()
+			.mockResolvedValueOnce({
+				data: {
+					id: 'invite-1',
+					invitee_email: 'invitee@example.com',
+					role_key: 'editor',
+					access: 'write',
+					status: 'pending'
+				},
+				error: null
+			})
+			.mockResolvedValueOnce({
+				data: { status: 'accepted' },
+				error: null
+			});
+
+		const selectInvites = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: inviteSelectMaybeSingle
+				})
+			})
+		});
+
+		const updateInvites = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				in: vi.fn().mockReturnValue({
+					select: vi.fn().mockReturnValue({
+						maybeSingle: vi.fn().mockResolvedValue({
+							data: null,
+							error: null
+						})
+					})
+				})
+			})
+		});
+
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'onto_project_invites') {
+				return { select: selectInvites, update: updateInvites };
+			}
+			return {};
+		});
+
+		sendEmailMock.mockResolvedValue({ success: true });
+
+		const response = await POST(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(payload.error).toContain('already been accepted');
+		expect(sendEmailMock).not.toHaveBeenCalled();
 	});
 });

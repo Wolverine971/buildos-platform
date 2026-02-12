@@ -82,10 +82,13 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Only pending invites can be revoked');
 		}
 
-		const { error: updateError } = await supabase
+		const { data: revokedInvite, error: updateError } = await supabase
 			.from('onto_project_invites')
 			.update({ status: 'revoked' })
-			.eq('id', inviteId);
+			.eq('id', inviteId)
+			.eq('status', 'pending')
+			.select('id, status')
+			.maybeSingle();
 
 		if (updateError) {
 			await logOntologyApiError({
@@ -100,6 +103,33 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				tableName: 'onto_project_invites'
 			});
 			return ApiResponse.databaseError(updateError);
+		}
+
+		if (!revokedInvite) {
+			const { data: latestInvite } = await supabase
+				.from('onto_project_invites')
+				.select('status')
+				.eq('id', inviteId)
+				.eq('project_id', projectId)
+				.maybeSingle();
+
+			if (!latestInvite) {
+				return ApiResponse.notFound('Invite');
+			}
+
+			if (latestInvite.status === 'accepted') {
+				return ApiResponse.badRequest('Invite has already been accepted');
+			}
+
+			if (latestInvite.status === 'revoked') {
+				return ApiResponse.badRequest('Invite has already been revoked');
+			}
+
+			if (latestInvite.status === 'expired') {
+				return ApiResponse.badRequest('Invite has expired');
+			}
+
+			return ApiResponse.error('Invite is no longer pending and cannot be revoked', 409);
 		}
 
 		const { error: logError } = await supabase.from('onto_project_logs').insert({

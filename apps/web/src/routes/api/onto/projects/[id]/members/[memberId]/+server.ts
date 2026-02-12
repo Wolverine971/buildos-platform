@@ -104,10 +104,15 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.success({ memberId });
 		}
 
-		const { error: updateError } = await supabase
+		const { data: updatedMember, error: updateError } = await supabase
 			.from('onto_project_members')
 			.update({ role_key: roleKey, access })
-			.eq('id', memberId);
+			.eq('id', memberId)
+			.eq('project_id', projectId)
+			.is('removed_at', null)
+			.neq('role_key', 'owner')
+			.select('id, actor_id, role_key, access, removed_at')
+			.maybeSingle();
 
 		if (updateError) {
 			await logOntologyApiError({
@@ -124,6 +129,32 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
+		if (!updatedMember) {
+			const { data: latestMember } = await supabase
+				.from('onto_project_members')
+				.select('id, role_key, removed_at')
+				.eq('id', memberId)
+				.eq('project_id', projectId)
+				.maybeSingle();
+
+			if (!latestMember) {
+				return ApiResponse.notFound('Member');
+			}
+
+			if (latestMember.removed_at) {
+				return ApiResponse.badRequest('Member has already been removed');
+			}
+
+			if (latestMember.role_key === 'owner') {
+				return ApiResponse.badRequest('Owner role cannot be changed');
+			}
+
+			return ApiResponse.error(
+				'Member was updated by another collaborator. Please retry.',
+				409
+			);
+		}
+
 		await supabase.from('onto_project_logs').insert({
 			project_id: projectId,
 			entity_type: 'project',
@@ -135,7 +166,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			after_data: {
 				event: 'member_role_updated',
 				member_id: memberId,
-				actor_id: member.actor_id,
+				actor_id: updatedMember.actor_id,
 				role_key: roleKey,
 				access
 			}
@@ -225,10 +256,15 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const removedAt = new Date().toISOString();
-		const { error: updateError } = await supabase
+		const { data: removedMember, error: updateError } = await supabase
 			.from('onto_project_members')
 			.update({ removed_at: removedAt, removed_by_actor_id: actorId })
-			.eq('id', memberId);
+			.eq('id', memberId)
+			.eq('project_id', projectId)
+			.is('removed_at', null)
+			.neq('role_key', 'owner')
+			.select('id, actor_id, role_key, access, removed_at')
+			.maybeSingle();
 
 		if (updateError) {
 			await logOntologyApiError({
@@ -245,6 +281,32 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
+		if (!removedMember) {
+			const { data: latestMember } = await supabase
+				.from('onto_project_members')
+				.select('id, role_key, removed_at')
+				.eq('id', memberId)
+				.eq('project_id', projectId)
+				.maybeSingle();
+
+			if (!latestMember) {
+				return ApiResponse.notFound('Member');
+			}
+
+			if (latestMember.removed_at) {
+				return ApiResponse.badRequest('Member has already been removed');
+			}
+
+			if (latestMember.role_key === 'owner') {
+				return ApiResponse.badRequest('Owner role cannot be removed');
+			}
+
+			return ApiResponse.error(
+				'Member was updated by another collaborator. Please retry.',
+				409
+			);
+		}
+
 		await supabase.from('onto_project_logs').insert({
 			project_id: projectId,
 			entity_type: 'project',
@@ -256,9 +318,9 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			after_data: {
 				event: 'member_removed',
 				member_id: memberId,
-				actor_id: member.actor_id,
-				role_key: member.role_key,
-				access: member.access
+				actor_id: removedMember.actor_id,
+				role_key: removedMember.role_key,
+				access: removedMember.access
 			}
 		});
 

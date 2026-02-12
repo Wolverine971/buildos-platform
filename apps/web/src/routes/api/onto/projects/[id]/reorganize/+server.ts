@@ -20,13 +20,14 @@ import {
 	AutoOrganizeError
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
-import { VALID_RELS, type EntityKind } from '$lib/services/ontology/edge-direction';
+import { RELATIONSHIP_DIRECTIONS, type EntityKind } from '$lib/services/ontology/edge-direction';
+import { normalizeRelationshipToken } from '$lib/services/ontology/edge-relationship-resolver';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const VALID_MODES = new Set<GraphReorgMode>(['replace', 'merge']);
 const VALID_SEMANTIC_MODES = new Set<GraphReorgSemanticMode>(['replace_auto', 'merge', 'preserve']);
 const VALID_INTENTS = new Set<ConnectionRef['intent']>(['containment', 'semantic']);
-const VALID_RELATIONSHIPS = new Set<string>(VALID_RELS);
+const VALID_CANONICAL_RELATIONSHIPS = new Set<string>(Object.keys(RELATIONSHIP_DIRECTIONS));
 
 function parseMode(value: unknown): GraphReorgMode | undefined {
 	if (typeof value !== 'string') return undefined;
@@ -175,10 +176,11 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				if (connection.intent && !VALID_INTENTS.has(connection.intent)) {
 					return ApiResponse.badRequest(`Invalid connection intent for node ${nodeKey}`);
 				}
-				if (connection.rel && !VALID_RELATIONSHIPS.has(connection.rel)) {
-					return ApiResponse.badRequest(
-						`Invalid connection rel for node ${nodeKey}: ${connection.rel}`
-					);
+				if (connection.rel) {
+					const normalizedRel = normalizeRelationshipToken(connection.rel);
+					connection.rel = VALID_CANONICAL_RELATIONSHIPS.has(normalizedRel)
+						? (normalizedRel as any)
+						: undefined;
 				}
 				connectionRefs.push(connection);
 			}

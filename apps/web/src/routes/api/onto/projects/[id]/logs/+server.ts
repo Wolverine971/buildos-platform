@@ -22,8 +22,10 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		}
 
 		// Parse pagination params
-		const limit = Math.min(parseInt(url.searchParams.get('limit') || '10', 10), 50);
-		const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+		const parsedLimit = Number.parseInt(url.searchParams.get('limit') ?? '10', 10);
+		const parsedOffset = Number.parseInt(url.searchParams.get('offset') ?? '0', 10);
+		const limit = Number.isNaN(parsedLimit) ? 10 : Math.min(Math.max(parsedLimit, 1), 50);
+		const offset = Number.isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
 
 		const supabase = locals.supabase;
 
@@ -37,27 +39,40 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			return ApiResponse.notFound('Project not found');
 		}
 
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
-			{
+		const memberAccessResult = await supabase.rpc('current_actor_is_project_member', {
+			p_project_id: projectId
+		});
+		let hasAccess = Boolean(memberAccessResult.data);
+
+		if (memberAccessResult.error) {
+			console.warn(
+				'[Project Logs API] Member check failed, falling back to access check:',
+				memberAccessResult.error
+			);
+			const fallbackAccessResult = await supabase.rpc('current_actor_has_project_access', {
 				p_project_id: projectId,
 				p_required_access: 'read'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Project Logs API] Failed to check access:', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/projects/${projectId}/logs`,
-				method: 'GET',
-				userId: user.id,
-				projectId,
-				entityType: 'project',
-				operation: 'project_access_check'
 			});
-			return ApiResponse.error('Failed to check project access', 500);
+
+			if (fallbackAccessResult.error) {
+				console.error(
+					'[Project Logs API] Failed to check access:',
+					fallbackAccessResult.error
+				);
+				await logOntologyApiError({
+					supabase,
+					error: fallbackAccessResult.error,
+					endpoint: `/api/onto/projects/${projectId}/logs`,
+					method: 'GET',
+					userId: user.id,
+					projectId,
+					entityType: 'project',
+					operation: 'project_logs_access_check'
+				});
+				return ApiResponse.error('Failed to check project access', 500);
+			}
+
+			hasAccess = Boolean(fallbackAccessResult.data);
 		}
 
 		if (!hasAccess) {

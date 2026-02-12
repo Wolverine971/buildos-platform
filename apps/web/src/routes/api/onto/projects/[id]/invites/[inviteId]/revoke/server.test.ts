@@ -61,7 +61,16 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 		});
 
 		const update = vi.fn().mockReturnValue({
-			eq: vi.fn().mockResolvedValue({ error: null })
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					select: vi.fn().mockReturnValue({
+						maybeSingle: vi.fn().mockResolvedValue({
+							data: { id: 'invite-1', status: 'revoked' },
+							error: null
+						})
+					})
+				})
+			})
 		});
 
 		const insert = vi.fn().mockResolvedValue({ error: null });
@@ -82,5 +91,61 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(update).toHaveBeenCalledWith({ status: 'revoked' });
+	});
+
+	it('returns accepted when invite is accepted during concurrent revoke', async () => {
+		const event = createEvent();
+		const supabase = event.locals.supabase as any;
+
+		supabase.rpc.mockResolvedValue({ data: true, error: null });
+
+		const inviteSelectMaybeSingle = vi
+			.fn()
+			.mockResolvedValueOnce({
+				data: {
+					id: 'invite-1',
+					invitee_email: 'invitee@example.com',
+					status: 'pending'
+				},
+				error: null
+			})
+			.mockResolvedValueOnce({
+				data: { status: 'accepted' },
+				error: null
+			});
+
+		const select = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					maybeSingle: inviteSelectMaybeSingle
+				})
+			})
+		});
+
+		const update = vi.fn().mockReturnValue({
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					select: vi.fn().mockReturnValue({
+						maybeSingle: vi.fn().mockResolvedValue({
+							data: null,
+							error: null
+						})
+					})
+				})
+			})
+		});
+
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'onto_project_invites') {
+				return { select, update };
+			}
+			return {};
+		});
+
+		const response = await POST(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(payload.error).toContain('already been accepted');
 	});
 });

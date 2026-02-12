@@ -131,6 +131,7 @@ export const DEPRECATED_RELATIONSHIPS: Record<
 	belongs_to_plan: { canonical: 'has_task', swapDirection: true },
 	part_of: { canonical: 'contains', swapDirection: true },
 	referenced_by: { canonical: 'references', swapDirection: true },
+	blocked_by: { canonical: 'blocks', swapDirection: true },
 	mitigated_by: { canonical: 'mitigates', swapDirection: true },
 	achieved_by: { canonical: 'supports_goal', swapDirection: true },
 	supports: { canonical: 'supports_goal', swapDirection: false },

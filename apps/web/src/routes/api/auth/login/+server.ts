@@ -1,7 +1,9 @@
 // apps/web/src/routes/api/auth/login/+server.ts
 import type { RequestHandler } from './$types';
+import type { User } from '@supabase/supabase-js';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 function getEmailDomain(value: string): string | null {
 	const trimmed = value.trim().toLowerCase();
@@ -10,9 +12,129 @@ function getEmailDomain(value: string): string | null {
 	return trimmed.slice(atIndex + 1);
 }
 
+function buildProfilePayload(authUser: User) {
+	const now = new Date().toISOString();
+	return {
+		id: authUser.id,
+		email: authUser.email as string,
+		name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+		is_admin: false,
+		completed_onboarding: false,
+		created_at: now,
+		updated_at: now
+	};
+}
+
+async function ensureUserProfile(
+	authUser: User,
+	locals: App.Locals,
+	errorLogger: ErrorLoggerService,
+	emailDomain: string | null
+) {
+	const profilePayload = buildProfilePayload(authUser);
+	const sessionClient = locals.supabase;
+
+	const fetchWithClient = async (client: App.Locals['supabase'], source: 'session' | 'admin') => {
+		const { data, error } = await client
+			.from('users')
+			.select('*')
+			.eq('id', authUser.id)
+			.maybeSingle();
+
+		if (error && error.code !== 'PGRST116') {
+			await errorLogger.logError(error, {
+				endpoint: '/api/auth/login',
+				httpMethod: 'POST',
+				operationType: 'auth_login_profile_fetch',
+				metadata: {
+					emailDomain,
+					flow: 'password',
+					source,
+					userId: authUser.id
+				}
+			});
+			return null;
+		}
+
+		return data ?? null;
+	};
+
+	const insertWithClient = async (
+		client: App.Locals['supabase'],
+		source: 'session' | 'admin'
+	) => {
+		const { data, error } = await client.from('users').insert(profilePayload).select().single();
+
+		if (!error) {
+			return data;
+		}
+
+		if (error.code === '23505') {
+			return fetchWithClient(client, source);
+		}
+
+		await errorLogger.logError(error, {
+			endpoint: '/api/auth/login',
+			httpMethod: 'POST',
+			operationType: 'auth_login_profile_insert',
+			metadata: {
+				emailDomain,
+				flow: 'password',
+				source,
+				userId: authUser.id
+			}
+		});
+		return null;
+	};
+
+	const existing = await fetchWithClient(sessionClient, 'session');
+	if (existing) {
+		return existing;
+	}
+
+	const inserted = await insertWithClient(sessionClient, 'session');
+	if (inserted) {
+		return inserted;
+	}
+
+	try {
+		const adminClient = createAdminSupabaseClient();
+		const adminExisting = await fetchWithClient(adminClient, 'admin');
+		if (adminExisting) {
+			return adminExisting;
+		}
+
+		return await insertWithClient(adminClient, 'admin');
+	} catch (error) {
+		await errorLogger.logError(error, {
+			endpoint: '/api/auth/login',
+			httpMethod: 'POST',
+			operationType: 'auth_login_profile_admin_fallback',
+			metadata: {
+				emailDomain,
+				flow: 'password',
+				userId: authUser.id
+			}
+		});
+		return null;
+	}
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const { supabase, safeGetSession } = locals;
-	const { email, password } = await request.json();
+	const { supabase } = locals;
+	let payload: { email?: string; password?: string };
+
+	try {
+		payload = await request.json();
+	} catch {
+		return ApiResponse.error(
+			'Invalid request body',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_REQUEST
+		);
+	}
+
+	const { email, password } = payload ?? {};
 
 	if (!email || !password) {
 		return ApiResponse.error(
@@ -23,9 +145,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	}
 
+	if (typeof email !== 'string' || typeof password !== 'string') {
+		return ApiResponse.error(
+			'Email and password must be strings',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_FIELD,
+			{ fields: ['email', 'password'] }
+		);
+	}
+
 	const emailDomain = typeof email === 'string' ? getEmailDomain(email) : null;
 
 	try {
+		const errorLogger = ErrorLoggerService.getInstance(supabase);
+
 		// Sign in using the server-side client
 		const { data, error } = await supabase.auth.signInWithPassword({
 			email: email.trim(),
@@ -33,7 +166,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 
 		if (error) {
-			const errorLogger = ErrorLoggerService.getInstance(supabase);
 			await errorLogger.logError(
 				error,
 				{
@@ -51,7 +183,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (!data.session) {
-			const errorLogger = ErrorLoggerService.getInstance(supabase);
 			await errorLogger.logError(new Error('Login failed - no session created'), {
 				endpoint: '/api/auth/login',
 				httpMethod: 'POST',
@@ -70,63 +201,54 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Update locals immediately for this request
 		locals.session = data.session;
-		locals.user = null; // Will be loaded by safeGetSession
+		locals.user = null;
 
-		// Force load user data
-		let { user } = await safeGetSession();
-
-		// If user doesn't exist in public.users (edge case from old registration bug), create them now
-		if (!user && data.user) {
-			console.log(
-				'[Login] User missing from public.users, creating entry for:',
-				data.user.email
-			);
-
-			const { data: insertedUser, error: insertError } = await supabase
-				.from('users')
-				.insert({
-					id: data.user.id,
-					email: data.user.email as string,
-					name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-					is_admin: false,
-					completed_onboarding: false,
-					created_at: new Date().toISOString(),
-					updated_at: new Date().toISOString()
-				})
-				.select()
-				.single();
-
-			if (insertError) {
-				// Handle duplicate key error - user exists but RLS blocked the read
-				if (insertError.code === '23505') {
-					console.log(
-						'[Login] User exists but was not readable (RLS issue), fetching directly'
-					);
-					// Try fetching again - the session should now be properly set
-					const { data: existingUser } = await supabase
-						.from('users')
-						.select('*')
-						.eq('id', data.user.id)
-						.single();
-					if (existingUser) {
-						user = existingUser;
-						locals.user = existingUser;
-					}
-				} else {
-					console.error('[Login] Error creating public.users entry:', insertError);
-				}
-			} else {
-				console.log('[Login] Successfully created public.users entry');
-				// Use the inserted user directly (safeGetSession cache won't have it)
-				user = insertedUser;
-				locals.user = insertedUser;
+		let profileUser = null;
+		if (data.user) {
+			profileUser = await ensureUserProfile(data.user, locals, errorLogger, emailDomain);
+			if (profileUser) {
+				locals.user = profileUser;
 			}
+		}
+
+		if (data.user && !profileUser) {
+			await errorLogger.logError(new Error('Login failed - user profile unavailable'), {
+				endpoint: '/api/auth/login',
+				httpMethod: 'POST',
+				operationType: 'auth_login_profile_required',
+				metadata: {
+					emailDomain,
+					flow: 'password',
+					userId: data.user.id
+				}
+			});
+
+			try {
+				await supabase.auth.signOut({ scope: 'global' });
+			} catch (signOutError) {
+				await errorLogger.logError(signOutError, {
+					endpoint: '/api/auth/login',
+					httpMethod: 'POST',
+					operationType: 'auth_login_cleanup_signout',
+					metadata: {
+						emailDomain,
+						flow: 'password',
+						userId: data.user.id
+					}
+				});
+			}
+
+			return ApiResponse.error(
+				'We could not load your account profile. Please try again.',
+				HttpStatus.SERVICE_UNAVAILABLE,
+				ErrorCode.SERVICE_UNAVAILABLE
+			);
 		}
 
 		// Return success with user data
 		return ApiResponse.success(
 			{
-				user: user || data.user
+				user: profileUser
 			},
 			'Logged in successfully'
 		);

@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/auth/register/+server.ts
 import type { RequestHandler } from './$types';
+import type { User } from '@supabase/supabase-js';
 import { validateEmail } from '$lib/utils/email-validation';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
@@ -12,8 +13,162 @@ function getEmailDomain(value: string): string | null {
 	return trimmed.slice(atIndex + 1);
 }
 
+function buildProfilePayload(authUser: User, name?: string) {
+	const now = new Date().toISOString();
+	return {
+		id: authUser.id,
+		email: authUser.email as string,
+		name: name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+		is_admin: false,
+		completed_onboarding: false,
+		created_at: now,
+		updated_at: now
+	};
+}
+
+async function ensureUserProfileForRegistration({
+	authUser,
+	profileName,
+	supabase,
+	errorLogger,
+	emailDomain,
+	hasSession
+}: {
+	authUser: User;
+	profileName?: string;
+	supabase: App.Locals['supabase'];
+	errorLogger: ErrorLoggerService;
+	emailDomain: string | null;
+	hasSession: boolean;
+}) {
+	const payload = buildProfilePayload(authUser, profileName);
+	let primaryClient: App.Locals['supabase'] = supabase;
+
+	if (!hasSession) {
+		try {
+			primaryClient = createAdminSupabaseClient();
+		} catch (error) {
+			await errorLogger.logError(error, {
+				endpoint: '/api/auth/register',
+				httpMethod: 'POST',
+				operationType: 'auth_register_profile_admin_client_init',
+				metadata: {
+					emailDomain,
+					userId: authUser.id,
+					hasSession
+				}
+			});
+		}
+	}
+
+	const fetchWithClient = async (client: App.Locals['supabase'], source: 'session' | 'admin') => {
+		const { data, error } = await client
+			.from('users')
+			.select('*')
+			.eq('id', authUser.id)
+			.maybeSingle();
+
+		if (!error) {
+			return { user: data ?? null, error: null };
+		}
+
+		if (error.code === 'PGRST116') {
+			return { user: null, error: null };
+		}
+
+		await errorLogger.logError(error, {
+			endpoint: '/api/auth/register',
+			httpMethod: 'POST',
+			operationType: 'auth_register_profile_check',
+			metadata: {
+				emailDomain,
+				userId: authUser.id,
+				hasSession,
+				source
+			}
+		});
+
+		return { user: null, error };
+	};
+
+	const insertWithClient = async (
+		client: App.Locals['supabase'],
+		source: 'session' | 'admin'
+	) => {
+		const { data, error } = await client.from('users').insert(payload).select().single();
+
+		if (!error) {
+			return data;
+		}
+
+		if (error.code === '23505') {
+			const { user } = await fetchWithClient(client, source);
+			return user;
+		}
+
+		await errorLogger.logError(error, {
+			endpoint: '/api/auth/register',
+			httpMethod: 'POST',
+			operationType: 'auth_register_profile_insert',
+			metadata: {
+				emailDomain,
+				userId: authUser.id,
+				hasSession,
+				source
+			}
+		});
+		return null;
+	};
+
+	const { user: existingUser } = await fetchWithClient(
+		primaryClient,
+		hasSession ? 'session' : 'admin'
+	);
+	if (existingUser) {
+		return existingUser;
+	}
+
+	const insertedUser = await insertWithClient(primaryClient, hasSession ? 'session' : 'admin');
+	if (insertedUser || !hasSession) {
+		return insertedUser;
+	}
+
+	try {
+		const adminClient = createAdminSupabaseClient();
+		const { user: adminExisting } = await fetchWithClient(adminClient, 'admin');
+		if (adminExisting) {
+			return adminExisting;
+		}
+		return await insertWithClient(adminClient, 'admin');
+	} catch (error) {
+		await errorLogger.logError(error, {
+			endpoint: '/api/auth/register',
+			httpMethod: 'POST',
+			operationType: 'auth_register_profile_admin_fallback',
+			metadata: {
+				emailDomain,
+				userId: authUser.id,
+				hasSession
+			}
+		});
+		return null;
+	}
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const { email, password, name } = await request.json();
+	let payload: { email?: string; password?: string; name?: string };
+
+	try {
+		payload = await request.json();
+	} catch {
+		return ApiResponse.error(
+			'Invalid request body',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_REQUEST
+		);
+	}
+
+	const { email, password, name } = payload ?? {};
 	const { supabase, safeGetSession } = locals;
 	const errorLogger = ErrorLoggerService.getInstance(supabase);
 	const emailDomain = typeof email === 'string' ? getEmailDomain(email) : null;
@@ -25,6 +180,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			HttpStatus.BAD_REQUEST,
 			ErrorCode.MISSING_FIELD,
 			{ fields: ['email', 'password'] }
+		);
+	}
+
+	if (
+		typeof email !== 'string' ||
+		typeof password !== 'string' ||
+		(name !== undefined && name !== null && typeof name !== 'string')
+	) {
+		return ApiResponse.error(
+			'Invalid registration payload',
+			HttpStatus.BAD_REQUEST,
+			ErrorCode.INVALID_FIELD
 		);
 	}
 
@@ -136,83 +303,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
+		let profileUser: any = null;
+
 		// IMPORTANT: Create public.users entry since we can't use triggers on auth.users in Supabase
 		if (data.user) {
-			console.log('Creating public.users entry for:', data.user.email);
 			const hasSession = !!data.session;
-			const profileClient = hasSession ? supabase : createAdminSupabaseClient();
-
-			if (!hasSession) {
-				console.info(
-					'[Register] No session after signUp; using admin client for profile insert',
-					{
-						userId: data.user.id,
-						emailDomain
-					}
-				);
-			}
-
-			// First check if user already exists (shouldn't happen, but be safe)
-			const { data: existingUser, error: fetchError } = await profileClient
-				.from('users')
-				.select('id')
-				.eq('id', data.user.id)
-				.maybeSingle();
-
-			if (fetchError) {
-				// Unexpected error checking user existence
-				console.error('Error checking user existence:', fetchError);
-				await errorLogger.logError(fetchError, {
-					endpoint: '/api/auth/register',
-					httpMethod: 'POST',
-					operationType: 'auth_register_profile_check',
-					metadata: {
-						emailDomain,
-						userId: data.user.id,
-						hasSession,
-						usedAdminClient: !hasSession
-					}
-				});
-			} else if (existingUser) {
-				// User already exists in public.users
-				console.log('public.users entry already exists');
-			} else {
-				// User doesn't exist in public.users - create them
-				// Note: .maybeSingle() returns { data: null, error: null } when no rows found
-				const { error: insertError } = await profileClient.from('users').insert({
-					id: data.user.id,
-					email: data.user.email as string,
-					name:
-						name ||
-						data.user.user_metadata?.name ||
-						data.user.email?.split('@')[0] ||
-						'User',
-					is_admin: false,
-					completed_onboarding: false,
-					created_at: new Date().toISOString(),
-					updated_at: new Date().toISOString()
-					// Note: trial_ends_at and subscription_status will be set by the BEFORE INSERT trigger on public.users
-				});
-
-				if (insertError) {
-					console.error('Error creating public.users entry:', insertError);
-					await errorLogger.logError(insertError, {
-						endpoint: '/api/auth/register',
-						httpMethod: 'POST',
-						operationType: 'auth_register_profile_insert',
-						metadata: {
-							emailDomain,
-							userId: data.user.id,
-							hasSession,
-							usedAdminClient: !hasSession
-						}
-					});
-					// Don't fail registration, but log the error
-					// The user can still authenticate, and we can fix the profile later
-				} else {
-					console.log('Successfully created public.users entry');
-				}
-			}
+			const profileName = typeof name === 'string' ? name.trim() || undefined : undefined;
+			profileUser = await ensureUserProfileForRegistration({
+				authUser: data.user,
+				profileName,
+				supabase,
+				errorLogger,
+				emailDomain,
+				hasSession
+			});
 		}
 
 		// Check if email confirmation is required
@@ -227,16 +331,53 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// If we have a session (auto-login successful)
 		if (data.session) {
+			if (!profileUser && data.user) {
+				await errorLogger.logError(
+					new Error('Registration failed - user profile unavailable'),
+					{
+						endpoint: '/api/auth/register',
+						httpMethod: 'POST',
+						operationType: 'auth_register_profile_required',
+						metadata: {
+							emailDomain,
+							flow: 'password',
+							userId: data.user.id
+						}
+					}
+				);
+
+				try {
+					await supabase.auth.signOut({ scope: 'global' });
+				} catch (signOutError) {
+					await errorLogger.logError(signOutError, {
+						endpoint: '/api/auth/register',
+						httpMethod: 'POST',
+						operationType: 'auth_register_cleanup_signout',
+						metadata: {
+							emailDomain,
+							flow: 'password',
+							userId: data.user.id
+						}
+					});
+				}
+
+				return ApiResponse.error(
+					'We could not finish account setup. Please try again.',
+					HttpStatus.SERVICE_UNAVAILABLE,
+					ErrorCode.SERVICE_UNAVAILABLE
+				);
+			}
+
 			// Update locals for this request
 			locals.session = data.session;
-			locals.user = null; // Will be loaded by safeGetSession
+			locals.user = profileUser ?? null;
 
 			// Force load user data
 			const { user } = await safeGetSession();
 
 			return ApiResponse.success(
 				{
-					user: user || data.user,
+					user: user || profileUser,
 					requiresEmailConfirmation: false
 				},
 				'Registration successful'

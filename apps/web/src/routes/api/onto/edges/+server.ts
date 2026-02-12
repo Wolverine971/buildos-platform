@@ -43,8 +43,10 @@ import { ApiResponse } from '$lib/utils/api-response';
 import {
 	normalizeEdgeDirection,
 	VALID_RELS,
-	type EdgeInput
+	type EdgeInput,
+	type EntityKind
 } from '$lib/services/ontology/edge-direction';
+import { resolveEdgeRelationship } from '$lib/services/ontology/edge-relationship-resolver';
 import {
 	logActivitiesAsync,
 	getChangeSourceFromRequest
@@ -148,8 +150,63 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const edges: EdgeInput[] = body.edges;
 
+		// Normalize relationship strings to known rels (or inferred defaults) so we don't hard-fail
+		// when an agent invents a relationship label.
+		const resolvedEdges: EdgeInput[] = edges.map((edge) => {
+			const src_kind =
+				typeof edge.src_kind === 'string' ? edge.src_kind.trim() : edge.src_kind;
+			const dst_kind =
+				typeof edge.dst_kind === 'string' ? edge.dst_kind.trim() : edge.dst_kind;
+			const src_id = typeof edge.src_id === 'string' ? edge.src_id.trim() : edge.src_id;
+			const dst_id = typeof edge.dst_id === 'string' ? edge.dst_id.trim() : edge.dst_id;
+			const rel = typeof edge.rel === 'string' ? edge.rel.trim() : edge.rel;
+
+			if (
+				typeof src_kind === 'string' &&
+				typeof dst_kind === 'string' &&
+				typeof rel === 'string'
+			) {
+				if (VALID_KINDS.includes(src_kind) && VALID_KINDS.includes(dst_kind)) {
+					const resolution = resolveEdgeRelationship({
+						srcKind: src_kind as EntityKind,
+						dstKind: dst_kind as EntityKind,
+						rel
+					});
+
+					const props =
+						edge.props && typeof edge.props === 'object' && !Array.isArray(edge.props)
+							? { ...edge.props }
+							: {};
+					if (
+						resolution.original_rel &&
+						(props as { original_rel?: unknown }).original_rel === undefined
+					) {
+						(props as { original_rel?: string }).original_rel = resolution.original_rel;
+					}
+
+					return {
+						src_kind,
+						src_id,
+						dst_kind,
+						dst_id,
+						rel: resolution.rel,
+						props
+					};
+				}
+			}
+
+			return {
+				...edge,
+				src_kind,
+				dst_kind,
+				src_id,
+				dst_id,
+				rel
+			};
+		});
+
 		// Validate all edges
-		for (const edge of edges) {
+		for (const edge of resolvedEdges) {
 			const validationError = validateEdge(edge);
 			if (validationError) {
 				await logOntologyApiError({
@@ -181,7 +238,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Verify user has access to all referenced entities before creating edges
 		const idsByKind = new Map<string, Set<string>>();
-		for (const edge of edges) {
+		for (const edge of resolvedEdges) {
 			if (!idsByKind.has(edge.src_kind)) idsByKind.set(edge.src_kind, new Set());
 			if (!idsByKind.has(edge.dst_kind)) idsByKind.set(edge.dst_kind, new Set());
 			idsByKind.get(edge.src_kind)!.add(edge.src_id);
@@ -270,7 +327,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Normalize edges to canonical direction
 		// This handles deprecated rels (e.g., 'belongs_to_plan' → 'has_task' with swapped direction)
-		const normalizedEdges = edges.map((edge) => {
+		const normalizedEdges = resolvedEdges.map((edge) => {
 			const normalized = normalizeEdgeDirection(edge);
 			if (!normalized) {
 				// Should not happen if validation passed, but handle gracefully

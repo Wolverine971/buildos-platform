@@ -97,7 +97,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	let canViewLogs = false;
 
 	if (user && actorId) {
-		const [writeResult, adminResult, inviteResult, memberResult] = await Promise.all([
+		const [writeResult, adminResult, memberResult] = await Promise.all([
 			supabase.rpc('current_actor_has_project_access', {
 				p_project_id: id,
 				p_required_access: 'write'
@@ -105,10 +105,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			supabase.rpc('current_actor_has_project_access', {
 				p_project_id: id,
 				p_required_access: 'admin'
-			}),
-			supabase.rpc('current_actor_has_project_access', {
-				p_project_id: id,
-				p_required_access: 'invite'
 			}),
 			supabase
 				.from('onto_project_members')
@@ -124,16 +120,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		if (adminResult.error) {
 			console.warn('[Project Page] Failed to check admin access:', adminResult.error);
 		}
-		if (inviteResult.error) {
-			console.warn('[Project Page] Failed to check invite access:', inviteResult.error);
-		}
 		if (memberResult.error) {
 			console.warn('[Project Page] Failed to check membership:', memberResult.error);
 		}
 
 		canEdit = Boolean(writeResult.data);
 		canAdmin = Boolean(adminResult.data);
-		canInvite = Boolean(inviteResult.data);
+		canInvite = canAdmin;
 		canViewLogs = canAdmin || Boolean(memberResult.data);
 	}
 

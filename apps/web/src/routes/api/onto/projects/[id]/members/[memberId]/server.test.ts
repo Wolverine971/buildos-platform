@@ -56,7 +56,26 @@ describe('PATCH /api/onto/projects/[id]/members/[memberId]', () => {
 		});
 
 		const update = vi.fn().mockReturnValue({
-			eq: vi.fn().mockResolvedValue({ error: null })
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					is: vi.fn().mockReturnValue({
+						neq: vi.fn().mockReturnValue({
+							select: vi.fn().mockReturnValue({
+								maybeSingle: vi.fn().mockResolvedValue({
+									data: {
+										id: 'member-1',
+										actor_id: 'actor-2',
+										role_key: 'editor',
+										access: 'write',
+										removed_at: null
+									},
+									error: null
+								})
+							})
+						})
+					})
+				})
+			})
 		});
 
 		const insert = vi.fn().mockResolvedValue({ error: null });
@@ -147,7 +166,26 @@ describe('DELETE /api/onto/projects/[id]/members/[memberId]', () => {
 		});
 
 		const update = vi.fn().mockReturnValue({
-			eq: vi.fn().mockResolvedValue({ error: null })
+			eq: vi.fn().mockReturnValue({
+				eq: vi.fn().mockReturnValue({
+					is: vi.fn().mockReturnValue({
+						neq: vi.fn().mockReturnValue({
+							select: vi.fn().mockReturnValue({
+								maybeSingle: vi.fn().mockResolvedValue({
+									data: {
+										id: 'member-1',
+										actor_id: 'actor-2',
+										role_key: 'editor',
+										access: 'write',
+										removed_at: new Date().toISOString()
+									},
+									error: null
+								})
+							})
+						})
+					})
+				})
+			})
 		});
 
 		const insert = vi.fn().mockResolvedValue({ error: null });
