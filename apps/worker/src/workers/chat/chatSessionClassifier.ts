@@ -105,6 +105,36 @@ function buildUserPrompt(messages: ChatMessage[]): string {
 	return `Analyze this conversation and generate a title and topics:\n\n${conversationText}`;
 }
 
+function truncateForFallback(text: string, maxLength: number): string {
+	const normalized = text.replace(/\s+/g, ' ').trim();
+	if (!normalized) return '';
+	if (normalized.length <= maxLength) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function buildFallbackClassification(messages: ChatMessage[]): ChatClassificationResponse {
+	const userMessages = messages
+		.filter((message) => message.role === 'user')
+		.map((message) => message.content)
+		.filter((content) => typeof content === 'string' && content.trim().length > 0)
+		.map((content) => content.trim());
+
+	const firstUserMessage = userMessages[0] ?? '';
+	const title =
+		truncateForFallback(firstUserMessage, 50) ||
+		(userMessages.length > 0 ? 'Conversation recap' : 'Quick chat');
+	const summary =
+		userMessages.length > 0
+			? `Conversation about: ${truncateForFallback(userMessages.slice(0, 2).join(' '), 220)}`
+			: 'A brief conversation captured for reference.';
+
+	return {
+		title,
+		topics: ['general'],
+		summary
+	};
+}
+
 /**
  * Process a chat classification job
  */
@@ -127,12 +157,28 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			)
 			.eq('id', validatedData.sessionId)
 			.eq('user_id', validatedData.userId)
-			.single();
+			.maybeSingle();
 
-		if (sessionError || !session) {
-			throw new Error(
-				`Chat session not found: ${sessionError?.message || 'Session does not exist'}`
-			);
+		if (sessionError) {
+			throw new Error(`Failed to load chat session: ${sessionError.message}`);
+		}
+
+		if (!session) {
+			console.log(`⏭️  Session ${validatedData.sessionId} no longer exists, skipping`);
+			await updateJobStatus(job.id, 'completed', 'chat_classification');
+			return { success: true, skipped: true, reason: 'session_not_found' };
+		}
+
+		// Fetch chat messages for this session
+		const { data: messages, error: messagesError } = await supabase
+			.from('chat_messages')
+			.select('id, role, content, created_at')
+			.eq('session_id', validatedData.sessionId)
+			.order('created_at', { ascending: true })
+			.limit(50); // Limit messages to avoid excessive token usage
+
+		if (messagesError) {
+			throw new Error(`Failed to fetch messages: ${messagesError.message}`);
 		}
 
 		const hasPlaceholderTitle = isPlaceholderTitle(session.title);
@@ -141,17 +187,23 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			!!session.chat_topics &&
 			session.chat_topics.length > 0 &&
 			!!session.summary;
-		const lastMessageAt = session.last_message_at ? new Date(session.last_message_at) : null;
+		const latestMessageAtIso =
+			messages?.length && messages[messages.length - 1]?.created_at
+				? messages[messages.length - 1].created_at
+				: (session.last_message_at ?? null);
+		const lastMessageAt = latestMessageAtIso ? new Date(latestMessageAtIso) : null;
 		const lastClassifiedAt = session.last_classified_at
 			? new Date(session.last_classified_at)
 			: null;
 		const hasNewMessages =
-			lastMessageAt && lastClassifiedAt ? lastMessageAt > lastClassifiedAt : false;
+			lastClassifiedAt && lastMessageAt
+				? lastMessageAt > lastClassifiedAt
+				: !lastClassifiedAt || !lastMessageAt;
 
 		// Skip if already classified and no new messages since last classification
 		if (hasClassification && !hasNewMessages) {
 			if (!session.last_classified_at) {
-				const classificationTimestamp = session.last_message_at ?? new Date().toISOString();
+				const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();
 				const { error: stampError } = await supabase
 					.from('chat_sessions')
 					.update({ last_classified_at: classificationTimestamp })
@@ -172,18 +224,6 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			return { success: true, skipped: true, reason: 'already_classified' };
 		}
 
-		// Fetch chat messages for this session
-		const { data: messages, error: messagesError } = await supabase
-			.from('chat_messages')
-			.select('id, role, content, created_at')
-			.eq('session_id', validatedData.sessionId)
-			.order('created_at', { ascending: true })
-			.limit(50); // Limit messages to avoid excessive token usage
-
-		if (messagesError) {
-			throw new Error(`Failed to fetch messages: ${messagesError.message}`);
-		}
-
 		// If no messages or too few, use default classification
 		if (!messages || messages.length < 2) {
 			console.log(
@@ -193,7 +233,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			const defaultSummary = 'A brief conversation captured for reference.';
 
 			// Update with default values
-			const classificationTimestamp = session.last_message_at ?? new Date().toISOString();
+			const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();
 			const updatePayload: Record<string, any> = {
 				auto_title: 'Quick chat',
 				chat_topics: ['general'],
@@ -232,34 +272,48 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
 			appName: 'BuildOS Chat Classifier'
 		});
+		const typedMessages = messages as ChatMessage[];
 
 		// Build prompt with conversation
-		const userPrompt = buildUserPrompt(messages as ChatMessage[]);
+		const userPrompt = buildUserPrompt(typedMessages);
 
 		// Call LLM for classification
 		console.log(`🤖 Calling LLM to classify session ${validatedData.sessionId}...`);
-		const classification = await llmService.getJSONResponse<ChatClassificationResponse>({
-			systemPrompt: CLASSIFICATION_SYSTEM_PROMPT,
-			userPrompt,
-			userId: validatedData.userId,
-			profile: 'fast', // Use fast profile since this is a simple classification
-			temperature: 0.3,
-			validation: {
-				retryOnParseError: true,
-				maxRetries: 2
-			}
-		});
+		let usedFallbackClassification = false;
+		let classification: ChatClassificationResponse;
+		try {
+			classification = await llmService.getJSONResponse<ChatClassificationResponse>({
+				systemPrompt: CLASSIFICATION_SYSTEM_PROMPT,
+				userPrompt,
+				userId: validatedData.userId,
+				profile: 'fast', // Use fast profile since this is a simple classification
+				temperature: 0.3,
+				validation: {
+					retryOnParseError: true,
+					maxRetries: 2
+				}
+			});
+		} catch (llmError: any) {
+			usedFallbackClassification = true;
+			console.warn(
+				`⚠️  LLM classification failed for session ${validatedData.sessionId}, using fallback:`,
+				llmError?.message ?? llmError
+			);
+			classification = buildFallbackClassification(typedMessages);
+		}
 
 		// Validate and sanitize the response
 		const title = sanitizeTitle(classification.title);
 		const topics = sanitizeTopics(classification.topics);
 		const summary = sanitizeSummary(classification.summary);
 
-		console.log(`✅ Classification result: "${title}" with topics: [${topics.join(', ')}]`);
+		console.log(
+			`✅ Classification result${usedFallbackClassification ? ' (fallback)' : ''}: "${title}" with topics: [${topics.join(', ')}]`
+		);
 		console.log(`📝 Summary: ${summary.slice(0, 100)}${summary.length > 100 ? '...' : ''}`);
 
 		// Update the chat session with classification results
-		const classificationTimestamp = session.last_message_at ?? new Date().toISOString();
+		const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();
 		const updatePayload: Record<string, any> = {
 			// Preserve any user-provided title; only set the auto title
 			auto_title: title,
@@ -314,6 +368,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			topics,
 			summary,
 			messageCount: messages.length,
+			usedFallbackClassification,
 			activityLogsCreated: activityResult.activityLogsCreated,
 			nextStepUpdated: activityResult.nextStepUpdated,
 			projectId: activityResult.projectId

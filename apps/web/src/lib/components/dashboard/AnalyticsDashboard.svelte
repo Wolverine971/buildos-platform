@@ -4,19 +4,23 @@
 	import {
 		ArrowRight,
 		Calendar,
+		CircleCheck,
 		FileText,
-		FolderOpen,
+		FolderKanban,
+		ListChecks,
 		LoaderCircle,
 		MessageSquare,
 		RefreshCcw,
+		Share2,
 		Target,
-		ListChecks,
 		AlertTriangle
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { formatFullDate } from '$lib/utils/date-utils';
+	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
+	import { getTaskStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import type { UserDashboardAnalytics } from '$lib/types/dashboard-analytics';
+	import type { DailyBrief } from '$lib/types/daily-brief';
 
 	type User = {
 		id: string;
@@ -32,11 +36,137 @@
 		onrefresh?: () => void;
 	};
 
+	type ActivityItem =
+		| {
+				kind: 'task';
+				id: string;
+				title: string;
+				project_id: string;
+				project_name: string;
+				state_key: string;
+				due_at: string | null;
+				updated_at: string;
+				href: string;
+		  }
+		| {
+				kind: 'document';
+				id: string;
+				title: string;
+				project_id: string;
+				project_name: string;
+				state_key: string;
+				updated_at: string;
+				href: string;
+		  }
+		| {
+				kind: 'goal';
+				id: string;
+				title: string;
+				project_id: string;
+				project_name: string;
+				state_key: string;
+				target_date: string | null;
+				updated_at: string;
+				href: string;
+		  };
+
 	let { user, analytics, onrefresh: refreshHandler }: Props = $props();
 
 	let isRefreshing = $state(false);
+	let showBriefModal = $state(false);
+	let selectedBrief = $state<DailyBrief | null>(null);
+	let DailyBriefModal = $state<any>(null);
 
 	const displayName = $derived(user?.name ?? user?.email?.split('@')[0] ?? 'there');
+
+	const needsAttention = $derived(
+		analytics.attention.overdueTasks > 0 ||
+			analytics.attention.staleProjects7d > 0 ||
+			analytics.attention.staleProjects30d > 0
+	);
+
+	const attentionParts = $derived.by(() => {
+		const parts: string[] = [];
+		if (analytics.attention.overdueTasks > 0) {
+			parts.push(
+				`${analytics.attention.overdueTasks} overdue ${analytics.attention.overdueTasks === 1 ? 'task' : 'tasks'}`
+			);
+		}
+		if (analytics.attention.staleProjects7d > 0) {
+			parts.push(
+				`${analytics.attention.staleProjects7d} stale ${analytics.attention.staleProjects7d === 1 ? 'project' : 'projects'}`
+			);
+		}
+		return parts.join(' · ');
+	});
+
+	const ACTIVE_STATES = new Set(['active', 'in_progress', 'execution']);
+
+	const activeProjects = $derived(
+		analytics.recent.projects.filter((p) => ACTIVE_STATES.has(p.state_key))
+	);
+
+	const sharedProjects = $derived(analytics.recent.projects.filter((p) => p.is_shared));
+
+	// Shared projects not already visible in the active list
+	const activeProjectIds = $derived(new Set(activeProjects.map((p) => p.id)));
+	const sharedNotActive = $derived(sharedProjects.filter((p) => !activeProjectIds.has(p.id)));
+
+	// True when the user has absolutely nothing (brand new account)
+	const hasNoProjects = $derived(analytics.recent.projects.length === 0);
+	const hasOnlySharedProjects = $derived(
+		analytics.recent.projects.length > 0 && analytics.recent.projects.every((p) => p.is_shared)
+	);
+
+	const recentChats = $derived(analytics.recent.chatSessions.slice(0, 4));
+
+	const unifiedFeed: ActivityItem[] = $derived.by(() => {
+		const items: ActivityItem[] = [];
+
+		for (const t of analytics.recent.tasks) {
+			items.push({
+				kind: 'task',
+				id: t.id,
+				title: t.title,
+				project_id: t.project_id,
+				project_name: t.project_name,
+				state_key: t.state_key,
+				due_at: t.due_at,
+				updated_at: t.updated_at,
+				href: `/projects/${t.project_id}/tasks/${t.id}`
+			});
+		}
+
+		for (const d of analytics.recent.documents) {
+			items.push({
+				kind: 'document',
+				id: d.id,
+				title: d.title,
+				project_id: d.project_id,
+				project_name: d.project_name,
+				state_key: d.state_key,
+				updated_at: d.updated_at,
+				href: `/projects/${d.project_id}`
+			});
+		}
+
+		for (const g of analytics.recent.goals) {
+			items.push({
+				kind: 'goal',
+				id: g.id,
+				title: g.name,
+				project_id: g.project_id,
+				project_name: g.project_name,
+				state_key: g.state_key,
+				target_date: g.target_date,
+				updated_at: g.updated_at,
+				href: `/projects/${g.project_id}`
+			});
+		}
+
+		items.sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at));
+		return items.slice(0, 8);
+	});
 
 	function formatRelativeTime(timestamp: string): string {
 		const parsed = Date.parse(timestamp);
@@ -64,9 +194,11 @@
 		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	}
 
-	function withFallback(text: string | null | undefined, fallback: string): string {
-		const trimmed = text?.trim();
-		return trimmed && trimmed.length > 0 ? trimmed : fallback;
+	function formatStateLabel(state: string): string {
+		return state
+			.split('_')
+			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+			.join(' ');
 	}
 
 	function handleProjectClick(project: {
@@ -96,6 +228,25 @@
 		});
 	}
 
+	async function handleViewBrief(brief: DailyBrief) {
+		if (!DailyBriefModal) {
+			try {
+				const module = await import('$lib/components/briefs/DailyBriefModal.svelte');
+				DailyBriefModal = module.default;
+			} catch (err) {
+				console.error('Failed to load DailyBriefModal:', err);
+				return;
+			}
+		}
+		selectedBrief = brief;
+		showBriefModal = true;
+	}
+
+	function handleBriefModalClose() {
+		showBriefModal = false;
+		selectedBrief = null;
+	}
+
 	async function handleRefresh() {
 		if (!refreshHandler || isRefreshing) return;
 		isRefreshing = true;
@@ -111,371 +262,357 @@
 	<div
 		class="container mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 max-w-7xl space-y-3 sm:space-y-4"
 	>
-		<header class="space-y-2">
-			<div class="flex items-start justify-between gap-3">
-				<div>
-					<h1
-						class="text-lg sm:text-2xl lg:text-3xl font-bold text-foreground tracking-tight"
-					>
-						Hi, {displayName}
-					</h1>
-					<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-						Cross-project analytics snapshot
-					</p>
-				</div>
-
-				<div class="flex items-center gap-1.5 sm:gap-2">
-					<time
-						datetime={new Date().toISOString()}
-						class="text-[10px] sm:text-sm text-muted-foreground font-medium"
-					>
-						{formatFullDate(new Date())}
-					</time>
-					<Button
-						variant="outline"
-						size="sm"
-						onclick={handleRefresh}
-						disabled={isRefreshing}
-						class="px-2"
-					>
-						{#if isRefreshing}
-							<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-						{:else}
-							<RefreshCcw class="h-3.5 w-3.5" />
-						{/if}
-					</Button>
-					<Button variant="outline" size="sm" onclick={() => goto('/dashboard/calendar')}>
-						<Calendar class="h-3.5 w-3.5 mr-1.5" />
-						Calendar
-					</Button>
-					<Button variant="primary" size="sm" onclick={() => goto('/projects/create')}>
-						New Project
-					</Button>
-				</div>
+		<!-- Header -->
+		<header class="flex items-center justify-between gap-3">
+			<h1 class="text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">
+				Hi, {displayName}
+			</h1>
+			<div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={handleRefresh}
+					disabled={isRefreshing}
+					class="px-2"
+				>
+					{#if isRefreshing}
+						<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+					{:else}
+						<RefreshCcw class="h-3.5 w-3.5" />
+					{/if}
+				</Button>
+				<Button variant="outline" size="sm" onclick={() => goto('/dashboard/calendar')}>
+					<Calendar class="h-3.5 w-3.5 sm:mr-1.5" />
+					<span class="hidden sm:inline">Calendar</span>
+				</Button>
+				<Button variant="primary" size="sm" onclick={() => goto('/projects/create')}>
+					New Project
+				</Button>
 			</div>
 		</header>
 
-		<section class="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-3">
-			<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
-				<div class="flex items-center justify-between">
-					<p class="micro-label text-muted-foreground">PROJECTS</p>
-					<FolderOpen class="h-3.5 w-3.5 text-muted-foreground" />
-				</div>
-				<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-					{analytics.snapshot.totalProjects}
-				</p>
-				<p class="text-[11px] text-muted-foreground mt-1">
-					{analytics.snapshot.activeProjects} active
-				</p>
+		<!-- Attention Indicator (compact inline) -->
+		{#if needsAttention}
+			<div
+				class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-accent/20 bg-accent/5 text-xs"
+			>
+				<AlertTriangle class="h-3 w-3 text-accent shrink-0" />
+				<span class="text-muted-foreground">{attentionParts}</span>
+				<a
+					href="/projects"
+					class="ml-auto shrink-0 font-semibold text-accent hover:underline underline-offset-2"
+				>
+					View &rarr;
+				</a>
 			</div>
+		{:else}
+			<div
+				class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-xs"
+			>
+				<CircleCheck class="h-3 w-3 text-emerald-500 shrink-0" />
+				<span class="text-muted-foreground">All caught up</span>
+			</div>
+		{/if}
 
-			<div class="wt-paper p-3 sm:p-4 tx tx-grain tx-weak">
-				<div class="flex items-center justify-between">
-					<p class="micro-label text-muted-foreground">TASKS</p>
-					<ListChecks class="h-3.5 w-3.5 text-muted-foreground" />
-				</div>
-				<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-					{analytics.snapshot.totalTasks}
-				</p>
-				<p class="text-[11px] text-muted-foreground mt-1">
-					{analytics.snapshot.tasksUpdated7d} updated in 7d
-				</p>
-			</div>
-
-			<div class="wt-paper p-3 sm:p-4 tx tx-thread tx-weak">
-				<div class="flex items-center justify-between">
-					<p class="micro-label text-muted-foreground">DOCUMENTS</p>
-					<FileText class="h-3.5 w-3.5 text-muted-foreground" />
-				</div>
-				<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-					{analytics.snapshot.totalDocuments}
-				</p>
-				<p class="text-[11px] text-muted-foreground mt-1">
-					{analytics.snapshot.documentsUpdated7d} updated in 7d
-				</p>
-			</div>
-
-			<div class="wt-paper p-3 sm:p-4 tx tx-bloom tx-weak">
-				<div class="flex items-center justify-between">
-					<p class="micro-label text-muted-foreground">GOALS</p>
-					<Target class="h-3.5 w-3.5 text-muted-foreground" />
-				</div>
-				<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-					{analytics.snapshot.totalGoals}
-				</p>
-				<p class="text-[11px] text-muted-foreground mt-1">
-					{analytics.snapshot.goalsUpdated7d} updated in 7d
-				</p>
-			</div>
-
-			<div class="wt-paper p-3 sm:p-4 tx tx-pulse tx-weak border-accent/30 bg-accent/5">
-				<div class="flex items-center justify-between">
-					<p class="micro-label text-accent">CHATS</p>
-					<MessageSquare class="h-3.5 w-3.5 text-accent" />
-				</div>
-				<p class="text-xl sm:text-2xl font-semibold text-accent mt-1">
-					{analytics.snapshot.chatSessions7d}
-				</p>
-				<p class="text-[11px] text-accent/80 mt-1">
-					{analytics.snapshot.chatSessions24h} in last 24h
-				</p>
-			</div>
-
-			<div class="wt-paper p-3 sm:p-4 tx tx-static tx-weak">
-				<div class="flex items-center justify-between">
-					<p class="micro-label text-muted-foreground">UPDATES (24H)</p>
-				</div>
-				<p class="text-lg sm:text-xl font-semibold text-foreground mt-1">
-					{analytics.snapshot.tasksUpdated24h +
-						analytics.snapshot.documentsUpdated24h +
-						analytics.snapshot.goalsUpdated24h}
-				</p>
-				<p class="text-[11px] text-muted-foreground mt-1">Tasks + docs + goals</p>
-			</div>
+		<!-- Daily Brief -->
+		<section>
+			<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
 		</section>
 
-		<section class="wt-paper p-3 sm:p-4 tx tx-pulse tx-weak">
-			<div class="flex items-center gap-2 mb-2">
-				<AlertTriangle class="h-4 w-4 text-muted-foreground" />
-				<h2 class="text-sm sm:text-base font-semibold text-foreground">Needs attention</h2>
-			</div>
-			<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
-				<div class="rounded-md border border-border bg-card px-3 py-2">
-					<p class="micro-label text-muted-foreground">OVERDUE TASKS</p>
-					<p class="text-base font-semibold text-foreground mt-0.5">
-						{analytics.attention.overdueTasks}
-					</p>
-				</div>
-				<div class="rounded-md border border-border bg-card px-3 py-2">
-					<p class="micro-label text-muted-foreground">STALE PROJECTS (7D+)</p>
-					<p class="text-base font-semibold text-foreground mt-0.5">
-						{analytics.attention.staleProjects7d}
-					</p>
-				</div>
-				<div class="rounded-md border border-border bg-card px-3 py-2">
-					<p class="micro-label text-muted-foreground">STALE PROJECTS (30D+)</p>
-					<p class="text-base font-semibold text-foreground mt-0.5">
-						{analytics.attention.staleProjects30d}
-					</p>
-				</div>
-			</div>
-		</section>
-
-		<section class="grid gap-3 lg:grid-cols-2">
-			<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
-				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-sm sm:text-base font-semibold text-foreground">
-						Recently updated projects
-					</h2>
-					<span class="text-xs text-muted-foreground"
-						>{analytics.recent.projects.length}</span
+		<!-- Active Projects -->
+		<section>
+			<div class="flex items-center justify-between mb-2">
+				<h2 class="text-sm sm:text-base font-semibold text-foreground">Active projects</h2>
+				{#if !hasNoProjects}
+					<a
+						href="/projects"
+						class="text-xs text-muted-foreground hover:text-accent transition-colors"
 					>
+						All projects &rarr;
+					</a>
+				{/if}
+			</div>
+
+			{#if hasNoProjects}
+				<!-- Brand new user with nothing -->
+				<div
+					class="wt-paper p-5 sm:p-6 tx tx-bloom tx-weak rounded-lg border border-dashed border-accent/40 text-center space-y-3"
+				>
+					<div class="flex justify-center">
+						<img
+							src="/brain-bolt.png"
+							alt="BuildOS"
+							class="w-10 h-10 rounded-md object-cover opacity-80"
+						/>
+					</div>
+					<div>
+						<p class="text-sm font-semibold text-foreground">Welcome to BuildOS!</p>
+						<p class="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+							Tap the <strong>Brain Dump & Chat</strong> button in the top navigation to
+							start a conversation with BuildOS and create your first project.
+						</p>
+					</div>
+					<Button variant="primary" size="sm" onclick={() => goto('/projects/create')}>
+						Or create a project manually
+					</Button>
 				</div>
-				{#if analytics.recent.projects.length === 0}
-					<p class="text-xs sm:text-sm text-muted-foreground">
-						No recent project activity.
-					</p>
-				{:else}
-					<div class="space-y-1.5">
-						{#each analytics.recent.projects as project (project.id)}
-							<a
-								href="/projects/{project.id}"
-								onclick={() => handleProjectClick(project)}
-								class="group block rounded-md border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors pressable"
-							>
-								<div class="flex items-start justify-between gap-2">
+			{:else if activeProjects.length === 0}
+				<div
+					class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
+				>
+					<p class="text-sm text-muted-foreground">No active projects right now.</p>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={() => goto('/projects')}
+						class="mt-2"
+					>
+						View all projects
+					</Button>
+				</div>
+			{:else}
+				<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
+					{#each activeProjects as project (project.id)}
+						<a
+							href="/projects/{project.id}"
+							onclick={() => handleProjectClick(project)}
+							class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
+								hover:border-accent/40 transition-colors pressable {project.is_shared
+								? 'tx tx-thread tx-weak'
+								: 'tx tx-grain tx-weak'}"
+						>
+							<div class="flex items-center justify-between gap-2">
+								<div class="flex items-center gap-2 min-w-0">
+									<FolderKanban
+										class="h-3.5 w-3.5 shrink-0 {project.is_shared
+											? 'text-accent'
+											: 'text-emerald-500'}"
+									/>
 									<p class="text-sm font-semibold text-foreground truncate">
 										{project.name}
 									</p>
-									<div class="flex items-center gap-1">
+									{#if project.is_shared}
 										<span
-											class="text-[11px] text-muted-foreground whitespace-nowrap"
+											class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent/15 text-accent border border-accent/20"
 										>
-											{formatRelativeTime(project.updated_at)}
+											<Share2 class="h-2.5 w-2.5" />
+											Shared
 										</span>
-										<ArrowRight
-											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-										/>
-									</div>
+									{/if}
 								</div>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
-									docs
-								</p>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{withFallback(
-										project.description,
-										project.is_shared ? 'Shared project' : 'No description'
-									)}
-								</p>
-							</a>
-						{/each}
-					</div>
-				{/if}
-			</div>
+								<div class="flex items-center gap-1 shrink-0">
+									<span
+										class="text-[11px] text-muted-foreground whitespace-nowrap"
+									>
+										{formatRelativeTime(project.updated_at)}
+									</span>
+									<ArrowRight
+										class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+									/>
+								</div>
+							</div>
+							<p class="mt-0.5 text-[11px] text-muted-foreground pl-[22px]">
+								{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
+								docs
+							</p>
+						</a>
+					{/each}
+				</div>
+			{/if}
+		</section>
 
-			<div class="wt-paper p-3 sm:p-4 tx tx-grain tx-weak">
+		<!-- Shared With Me (projects not already in active list) -->
+		{#if sharedNotActive.length > 0}
+			<section>
 				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-sm sm:text-base font-semibold text-foreground">
-						Recently updated tasks
-					</h2>
-					<span class="text-xs text-muted-foreground"
-						>{analytics.recent.tasks.length}</span
+					<div class="flex items-center gap-2">
+						<h2 class="text-sm sm:text-base font-semibold text-foreground">
+							Shared with me
+						</h2>
+						<span
+							class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent/15 text-accent border border-accent/20"
+						>
+							{sharedNotActive.length}
+						</span>
+					</div>
+					<a
+						href="/projects"
+						class="text-xs text-muted-foreground hover:text-accent transition-colors"
 					>
+						View all &rarr;
+					</a>
 				</div>
-				{#if analytics.recent.tasks.length === 0}
-					<p class="text-xs sm:text-sm text-muted-foreground">No recent task updates.</p>
-				{:else}
-					<div class="space-y-1.5">
-						{#each analytics.recent.tasks as task (task.id)}
-							<a
-								href="/projects/{task.project_id}/tasks/{task.id}"
-								class="group block rounded-md border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors pressable"
-							>
-								<div class="flex items-start justify-between gap-2">
-									<p class="text-sm font-semibold text-foreground truncate">
-										{task.title}
-									</p>
-									<div class="flex items-center gap-1">
-										<span
-											class="text-[11px] text-muted-foreground whitespace-nowrap"
-										>
-											{formatRelativeTime(task.updated_at)}
-										</span>
-										<ArrowRight
-											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-										/>
-									</div>
-								</div>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{task.project_name} · due {formatDueDate(task.due_at)}
-								</p>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{withFallback(task.description, 'No description')}
-								</p>
-							</a>
-						{/each}
-					</div>
-				{/if}
-			</div>
 
-			<div class="wt-paper p-3 sm:p-4 tx tx-thread tx-weak">
-				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-sm sm:text-base font-semibold text-foreground">
-						Recently updated documents
-					</h2>
-					<span class="text-xs text-muted-foreground"
-						>{analytics.recent.documents.length}</span
+				<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
+					{#each sharedNotActive as project (project.id)}
+						<a
+							href="/projects/{project.id}"
+							onclick={() => handleProjectClick(project)}
+							class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
+								hover:border-accent/40 transition-colors pressable tx tx-thread tx-weak"
+						>
+							<div class="flex items-center justify-between gap-2">
+								<div class="flex items-center gap-2 min-w-0">
+									<FolderKanban class="h-3.5 w-3.5 text-accent shrink-0" />
+									<p class="text-sm font-semibold text-foreground truncate">
+										{project.name}
+									</p>
+									<span
+										class="shrink-0 text-[10px] font-medium text-muted-foreground"
+									>
+										{formatStateLabel(project.state_key)}
+									</span>
+								</div>
+								<div class="flex items-center gap-1 shrink-0">
+									<span
+										class="text-[11px] text-muted-foreground whitespace-nowrap"
+									>
+										{formatRelativeTime(project.updated_at)}
+									</span>
+									<ArrowRight
+										class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+									/>
+								</div>
+							</div>
+							<p class="mt-0.5 text-[11px] text-muted-foreground pl-[22px]">
+								{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
+								docs
+							</p>
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		<!-- Recent Activity + Recent Chats side by side on desktop -->
+		<div class="grid gap-3 lg:grid-cols-3">
+			<!-- Unified Activity Feed (2/3 width on desktop) -->
+			<section class="lg:col-span-2">
+				<h2 class="text-sm sm:text-base font-semibold text-foreground mb-2">
+					Recent activity
+				</h2>
+
+				{#if unifiedFeed.length === 0}
+					<div
+						class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
 					>
-				</div>
-				{#if analytics.recent.documents.length === 0}
-					<p class="text-xs sm:text-sm text-muted-foreground">
-						No recent document updates.
-					</p>
-				{:else}
-					<div class="space-y-1.5">
-						{#each analytics.recent.documents as document (document.id)}
-							<a
-								href="/projects/{document.project_id}"
-								class="group block rounded-md border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors pressable"
-							>
-								<div class="flex items-start justify-between gap-2">
-									<p class="text-sm font-semibold text-foreground truncate">
-										{document.title}
-									</p>
-									<div class="flex items-center gap-1">
-										<span
-											class="text-[11px] text-muted-foreground whitespace-nowrap"
-										>
-											{formatRelativeTime(document.updated_at)}
-										</span>
-										<ArrowRight
-											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-										/>
-									</div>
-								</div>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{document.project_name} · {document.state_key}
-								</p>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{withFallback(document.description, 'No description')}
-								</p>
-							</a>
-						{/each}
+						<p class="text-sm text-muted-foreground">No recent activity yet.</p>
 					</div>
-				{/if}
-			</div>
-
-			<div class="wt-paper p-3 sm:p-4 tx tx-bloom tx-weak">
-				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-sm sm:text-base font-semibold text-foreground">
-						Recently updated goals
-					</h2>
-					<span class="text-xs text-muted-foreground"
-						>{analytics.recent.goals.length}</span
+				{:else}
+					<div
+						class="wt-paper tx tx-frame tx-weak rounded-lg border border-border divide-y divide-border"
 					>
-				</div>
-				{#if analytics.recent.goals.length === 0}
-					<p class="text-xs sm:text-sm text-muted-foreground">No recent goal updates.</p>
-				{:else}
-					<div class="space-y-1.5">
-						{#each analytics.recent.goals as goal (goal.id)}
+						{#each unifiedFeed as item (item.kind + '-' + item.id)}
 							<a
-								href="/projects/{goal.project_id}"
-								class="group block rounded-md border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors pressable"
+								href={item.href}
+								class="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
 							>
-								<div class="flex items-start justify-between gap-2">
-									<p class="text-sm font-semibold text-foreground truncate">
-										{goal.name}
-									</p>
-									<div class="flex items-center gap-1">
-										<span
-											class="text-[11px] text-muted-foreground whitespace-nowrap"
+								<div class="shrink-0 mt-0.5">
+									{#if item.kind === 'task'}
+										<ListChecks class="h-3.5 w-3.5 text-muted-foreground" />
+									{:else if item.kind === 'document'}
+										<FileText class="h-3.5 w-3.5 text-sky-500" />
+									{:else}
+										<Target class="h-3.5 w-3.5 text-amber-500" />
+									{/if}
+								</div>
+
+								<div class="min-w-0 flex-1">
+									<div class="flex items-center gap-2">
+										<p class="text-sm font-medium text-foreground truncate">
+											{item.title}
+										</p>
+										{#if item.kind === 'task'}
+											<span
+												class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border {getTaskStateBadgeClass(
+													item.state_key
+												)}"
+											>
+												{formatStateLabel(item.state_key)}
+											</span>
+										{/if}
+									</div>
+									<div class="flex items-center gap-1.5 mt-0.5">
+										<span class="text-[11px] text-muted-foreground truncate"
+											>{item.project_name}</span
 										>
-											{formatRelativeTime(goal.updated_at)}
-										</span>
-										<ArrowRight
-											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-										/>
+										{#if item.kind === 'task' && item.due_at}
+											<span class="text-[11px] text-muted-foreground"
+												>· due {formatDueDate(item.due_at)}</span
+											>
+										{/if}
+										{#if item.kind === 'goal' && item.target_date}
+											<span class="text-[11px] text-muted-foreground"
+												>· target {formatDueDate(item.target_date)}</span
+											>
+										{/if}
 									</div>
 								</div>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{goal.project_name} · target {formatDueDate(goal.target_date)}
-								</p>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{withFallback(goal.description, 'No description')}
-								</p>
+
+								<div class="flex items-center gap-1 shrink-0">
+									<span
+										class="text-[11px] text-muted-foreground whitespace-nowrap"
+									>
+										{formatRelativeTime(item.updated_at)}
+									</span>
+									<ArrowRight
+										class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+									/>
+								</div>
 							</a>
 						{/each}
 					</div>
 				{/if}
-			</div>
+			</section>
 
-			<div class="wt-paper p-3 sm:p-4 tx tx-pulse tx-weak lg:col-span-2">
+			<!-- Recent Chats (1/3 width on desktop) -->
+			<section>
 				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-sm sm:text-base font-semibold text-foreground">
-						Recent chat sessions
-					</h2>
-					<span class="text-xs text-muted-foreground">
-						{analytics.recent.chatSessions.length}
-					</span>
+					<h2 class="text-sm sm:text-base font-semibold text-foreground">Recent chats</h2>
+					<a
+						href="/history?type=chats"
+						class="text-xs text-muted-foreground hover:text-accent transition-colors"
+					>
+						All chats &rarr;
+					</a>
 				</div>
-				{#if analytics.recent.chatSessions.length === 0}
-					<p class="text-xs sm:text-sm text-muted-foreground">
-						No recent chat sessions yet.
-					</p>
+
+				{#if recentChats.length === 0}
+					<div
+						class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
+					>
+						<p class="text-sm text-muted-foreground">No recent chats.</p>
+					</div>
 				{:else}
-					<div class="grid gap-1.5 sm:grid-cols-2">
-						{#each analytics.recent.chatSessions as session (session.id)}
+					<div
+						class="wt-paper tx tx-frame tx-weak rounded-lg border border-border divide-y divide-border"
+					>
+						{#each recentChats as session (session.id)}
 							<a
 								href="/history?type=chats&id={session.id}&itemType=chat_session"
-								class="group block rounded-md border border-border bg-card px-3 py-2.5 hover:border-accent/40 transition-colors pressable"
+								class="group block px-3 py-2.5 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
 							>
 								<div class="flex items-start justify-between gap-2">
-									<p class="text-sm font-semibold text-foreground truncate">
-										{session.title}
-									</p>
-									<div class="flex items-center gap-1">
+									<div class="flex items-start gap-2 min-w-0">
+										<MessageSquare
+											class="h-3.5 w-3.5 text-accent shrink-0 mt-0.5"
+										/>
+										<div class="min-w-0">
+											<p class="text-sm font-medium text-foreground truncate">
+												{session.title}
+											</p>
+											<p
+												class="text-[11px] text-muted-foreground truncate mt-0.5"
+											>
+												{#if session.project_name}
+													{session.project_name}
+												{:else}
+													{session.context_label}
+												{/if}
+											</p>
+										</div>
+									</div>
+									<div class="flex items-center gap-1 shrink-0">
 										<span
 											class="text-[11px] text-muted-foreground whitespace-nowrap"
 										>
@@ -486,17 +623,34 @@
 										/>
 									</div>
 								</div>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{session.context_label}
-								</p>
-								<p class="mt-0.5 text-[11px] text-muted-foreground truncate">
-									{session.message_count} messages · {session.status}
-								</p>
 							</a>
 						{/each}
 					</div>
 				{/if}
-			</div>
-		</section>
+			</section>
+		</div>
+
+		<!-- Compact Stats -->
+		<footer
+			class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground px-1"
+		>
+			<span>{analytics.snapshot.totalProjects} projects</span>
+			<span class="text-border">&middot;</span>
+			<span>{analytics.snapshot.totalTasks} tasks</span>
+			<span class="text-border">&middot;</span>
+			<span>{analytics.snapshot.totalGoals} goals</span>
+			<span class="text-border">&middot;</span>
+			<span>{analytics.snapshot.totalDocuments} docs</span>
+		</footer>
 	</div>
 </main>
+
+<!-- Daily Brief Modal (lazy loaded) -->
+{#if DailyBriefModal && showBriefModal}
+	<DailyBriefModal
+		isOpen={showBriefModal}
+		brief={selectedBrief}
+		briefDate={selectedBrief?.brief_date}
+		onClose={handleBriefModalClose}
+	/>
+{/if}

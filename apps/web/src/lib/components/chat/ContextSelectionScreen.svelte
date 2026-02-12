@@ -204,6 +204,7 @@
 		})
 	);
 	const hasProjects = $derived(projects.length > 0);
+	const isNewUser = $derived(hasLoadedProjects && !hasProjects);
 </script>
 
 <div class="flex h-full min-h-0 flex-col overflow-hidden bg-background">
@@ -212,18 +213,89 @@
 		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-5">
 			<!-- Header - compact on mobile -->
 			<div class="mb-4 text-center sm:mb-6">
-				<h2
-					class="mb-1 text-lg font-semibold tracking-tight text-foreground sm:text-2xl sm:mb-1.5"
-				>
-					How would you like to work today?
-				</h2>
-				<p class="text-xs text-muted-foreground sm:text-sm">
-					Pick a focus and we'll tailor the assistant around it.
-				</p>
+				{#if isNewUser}
+					<h2
+						class="mb-1 text-lg font-semibold tracking-tight text-foreground sm:text-2xl sm:mb-1.5"
+					>
+						Welcome to BuildOS
+					</h2>
+					<p class="text-xs text-muted-foreground sm:text-sm">
+						Create your first project to unlock the full assistant.
+					</p>
+				{:else}
+					<h2
+						class="mb-1 text-lg font-semibold tracking-tight text-foreground sm:text-2xl sm:mb-1.5"
+					>
+						How would you like to work today?
+					</h2>
+					<p class="text-xs text-muted-foreground sm:text-sm">
+						Pick a focus and we'll tailor the assistant around it.
+					</p>
+				{/if}
 			</div>
 
-			<!-- Mobile: compact stacked list | Desktop: grid -->
-			<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+			{#if isNewUser}
+				<!-- NEW USER: No projects yet — guide to first project creation -->
+				<div class="flex flex-col items-center gap-5 sm:gap-6">
+					<!-- Primary CTA: Create first project -->
+					<button
+						onclick={selectProjectCreate}
+						class="group w-full max-w-md flex flex-col rounded-xl border-2 border-purple-400/40 bg-card p-4 text-left shadow-ink-strong transition-all duration-200 hover:border-purple-500 hover:shadow-ink-strong active:scale-[0.99] dark:border-purple-500/30 sm:p-5 sm:hover:-translate-y-0.5"
+					>
+						<div class="flex items-center gap-3">
+							<div
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400"
+							>
+								<Plus class="h-5 w-5" />
+							</div>
+							<div class="min-w-0 flex-1">
+								<h3 class="text-base font-semibold text-foreground">
+									Create your first project
+								</h3>
+								<p class="mt-0.5 text-xs text-muted-foreground">
+									Guided discovery to capture goals, milestones, and structure.
+								</p>
+							</div>
+							<ChevronRight
+								class="h-5 w-5 shrink-0 text-purple-500 transition-transform group-hover:translate-x-1"
+							/>
+						</div>
+					</button>
+
+					<!-- Disabled options with explanation -->
+					<div class="w-full max-w-md">
+						<p
+							class="mb-2.5 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+						>
+							Available after your first project
+						</p>
+						<div class="flex flex-col gap-1.5 pointer-events-none opacity-40">
+							<div
+								class="flex items-center gap-2.5 rounded-lg border border-border bg-card p-2.5"
+							>
+								<div
+									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent"
+								>
+									<Globe class="h-3.5 w-3.5" />
+								</div>
+								<span class="text-sm text-foreground">Global conversation</span>
+							</div>
+							<div
+								class="flex items-center gap-2.5 rounded-lg border border-border bg-card p-2.5"
+							>
+								<div
+									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400"
+								>
+									<Lightbulb class="h-3.5 w-3.5" />
+								</div>
+								<span class="text-sm text-foreground">Braindump</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			{:else}
+				<!-- Mobile: compact stacked list | Desktop: grid -->
+				<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
 				<!-- Global conversation -->
 				<button
 					onclick={selectGlobal}
@@ -370,6 +442,7 @@
 						<span>{activeProjects.length} projects ready for deep work</span>
 					</div>
 				</div>
+			{/if}
 			{/if}
 		</div>
 	{/if}

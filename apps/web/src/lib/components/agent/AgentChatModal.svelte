@@ -2497,27 +2497,53 @@
 
 	function finalizeSession(reason: 'close' | 'destroy') {
 		if (hasFinalizedSession) return;
-		if (!currentSession?.id) return;
+		const session = currentSession;
+		if (!session?.id) return;
+		const sessionId = session.id;
 
 		const contextType =
 			selectedContextType ??
-			(currentSession.context_type as ChatContextType | undefined) ??
+			(session.context_type as ChatContextType | undefined) ??
 			'global';
-		const entityId = selectedEntityId ?? currentSession.entity_id ?? null;
+		const entityId = selectedEntityId ?? session.entity_id ?? null;
 
 		hasFinalizedSession = true;
 
-		fetch(`/api/chat/sessions/${currentSession.id}/close`, {
+		const fallbackQueueClassification = () => {
+			if (!hasSentMessage) return;
+			fetch(`/api/chat/sessions/${sessionId}/classify`, {
+				method: 'POST',
+				keepalive: true
+			}).catch((err) => {
+				if (dev) console.warn('[AgentChat] Session classify fallback failed:', err);
+			});
+		};
+
+		fetch(`/api/chat/sessions/${sessionId}/close`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
+			keepalive: true,
 			body: JSON.stringify({
 				context_type: contextType,
 				entity_id: entityId,
-				reason
+				reason,
+				has_messages_sent: hasSentMessage
 			})
-		}).catch((err) => {
-			if (dev) console.warn('[AgentChat] Session finalize failed:', err);
-		});
+		})
+			.then((response) => {
+				if (!response.ok) {
+					if (dev) {
+						console.warn(
+							`[AgentChat] Session finalize returned ${response.status} for ${sessionId}`
+						);
+					}
+					fallbackQueueClassification();
+				}
+			})
+			.catch((err) => {
+				if (dev) console.warn('[AgentChat] Session finalize failed:', err);
+				fallbackQueueClassification();
+			});
 	}
 
 	function handleClose() {

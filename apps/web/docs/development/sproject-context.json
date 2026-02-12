@@ -21,6 +21,11 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
+			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
+			"type": "component",
+			"components": ["DailyBriefModal"]
+		},
+		{
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
 			"type": "component",
 			"components": ["AgentChatModal", "DailyBriefModal"]
@@ -979,6 +984,7 @@
 		]
 	},
 	"unusedComponents": [
+		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
 		"src/lib/components/dashboard/Dashboard.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",

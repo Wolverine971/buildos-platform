@@ -193,7 +193,9 @@
 					timedOut: isTimeout
 				}
 			});
-			error = isTimeout ? 'Login request timed out. Please try again.' : err.message || 'Login failed';
+			error = isTimeout
+				? 'Login request timed out. Please try again.'
+				: err.message || 'Login failed';
 		} finally {
 			if (timeoutId) {
 				clearTimeout(timeoutId);

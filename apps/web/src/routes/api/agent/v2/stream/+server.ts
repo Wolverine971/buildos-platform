@@ -240,9 +240,7 @@ function sanitizeAgentStateForPrompt(agentState: AgentState): AgentState {
 		}));
 
 	const dependencies = (agentState.current_understanding?.dependencies ?? [])
-		.filter(
-			(dep) => isValidAgentStateEntityId(dep?.from) && isValidAgentStateEntityId(dep?.to)
-		)
+		.filter((dep) => isValidAgentStateEntityId(dep?.from) && isValidAgentStateEntityId(dep?.to))
 		.map((dep) => ({
 			...dep,
 			from: dep.from.trim(),
@@ -489,10 +487,7 @@ function isContextShiftEntityType(
 	return CONTEXT_SHIFT_ENTITY_TYPES.includes(value as ContextShiftPayload['entity_type']);
 }
 
-function extractContextShiftObject(
-	value: unknown,
-	depth = 0
-): Record<string, unknown> | null {
+function extractContextShiftObject(value: unknown, depth = 0): Record<string, unknown> | null {
 	if (!value || typeof value !== 'object' || depth > 4) return null;
 
 	const record = value as Record<string, unknown>;
@@ -527,7 +522,8 @@ function extractContextShiftPayload(result: ChatToolResult): ContextShiftPayload
 			? contextShift.entity_name.trim()
 			: 'Project';
 	const entityType =
-		typeof contextShift.entity_type === 'string' && isContextShiftEntityType(contextShift.entity_type)
+		typeof contextShift.entity_type === 'string' &&
+		isContextShiftEntityType(contextShift.entity_type)
 			? contextShift.entity_type
 			: 'project';
 	const message =
@@ -797,7 +793,9 @@ function buildLastTurnContext(params: {
 
 	const summary =
 		summarizeLastTurnText(params.assistantText, 180) ||
-		(params.contextShift?.message ? summarizeLastTurnText(params.contextShift.message, 180) : '') ||
+		(params.contextShift?.message
+			? summarizeLastTurnText(params.contextShift.message, 180)
+			: '') ||
 		summarizeLastTurnText(params.userMessage, 120) ||
 		'Completed the latest turn.';
 
@@ -1072,9 +1070,7 @@ export const POST: RequestHandler = async ({
 			const continuityMessage: FastChatHistoryMessage | null = continuityHint
 				? { role: 'system', content: continuityHint }
 				: null;
-			const historyForModel = continuityMessage
-				? [...history, continuityMessage]
-				: history;
+			const historyForModel = continuityMessage ? [...history, continuityMessage] : history;
 			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
 			const cacheKey = buildContextCacheKey({ contextType, entityId, projectFocus });
 			const cachedContext = sessionMetadata.fastchat_context_cache as
@@ -1447,15 +1443,15 @@ export const POST: RequestHandler = async ({
 						errorLogger
 					);
 				}
-				})().catch((error) => {
-					logger.warn('FastChat agent_state reconciliation failed', { error });
-					void errorLogger.logError(error, {
-						userId: user.id,
-						projectId: projectFocus?.projectId ?? undefined,
-						operationType: 'fastchat_agent_state_reconciliation',
-						metadata: { sessionId: session.id, contextType: effectiveContextType }
-					});
+			})().catch((error) => {
+				logger.warn('FastChat agent_state reconciliation failed', { error });
+				void errorLogger.logError(error, {
+					userId: user.id,
+					projectId: projectFocus?.projectId ?? undefined,
+					operationType: 'fastchat_agent_state_reconciliation',
+					metadata: { sessionId: session.id, contextType: effectiveContextType }
 				});
+			});
 		} catch (error) {
 			logger.error('Agent V2 stream error', { error });
 			void errorLogger.logError(error, {

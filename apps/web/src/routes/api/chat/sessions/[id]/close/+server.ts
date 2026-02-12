@@ -21,7 +21,13 @@ export const POST: RequestHandler = async ({
 		return ApiResponse.badRequest('Session id is required');
 	}
 
-	let payload: { context_type?: string; entity_id?: string | null; reason?: string } = {};
+	let payload: {
+		context_type?: string;
+		entity_id?: string | null;
+		reason?: string;
+		has_messages_sent?: boolean;
+		hasMessagesSent?: boolean;
+	} = {};
 	try {
 		payload = (await request.json()) as typeof payload;
 	} catch {
@@ -66,8 +72,28 @@ export const POST: RequestHandler = async ({
 		}
 	}
 
+	const { data: recentMessages, error: recentMessagesError } = await supabase
+		.from('chat_messages')
+		.select('id, created_at')
+		.eq('session_id', sessionId)
+		.eq('user_id', user.id)
+		.order('created_at', { ascending: false })
+		.limit(2);
+
+	if (recentMessagesError) {
+		console.warn(
+			`[Chat Close] Failed to inspect recent messages for session ${sessionId}:`,
+			recentMessagesError.message
+		);
+	}
+
 	const messageCount = session.message_count ?? 0;
-	const lastMessageAt = session.last_message_at ? new Date(session.last_message_at) : null;
+	const recentMessageCount = recentMessages?.length ?? 0;
+	const hasClientMessageHint =
+		payload.has_messages_sent === true || payload.hasMessagesSent === true;
+	const inferredLastMessageAt =
+		recentMessages?.[0]?.created_at ?? session.last_message_at ?? null;
+	const lastMessageAt = inferredLastMessageAt ? new Date(inferredLastMessageAt) : null;
 	const lastClassifiedAt = session.last_classified_at
 		? new Date(session.last_classified_at)
 		: null;
@@ -76,16 +102,17 @@ export const POST: RequestHandler = async ({
 		!!session.summary &&
 		Array.isArray(session.chat_topics) &&
 		session.chat_topics.length > 0;
+	const hasMessageActivity =
+		messageCount > 0 ||
+		recentMessageCount > 0 ||
+		!!session.last_message_at ||
+		hasClientMessageHint;
 
 	let shouldQueueClassification = false;
 
-	if (messageCount > 1) {
-		if (lastClassifiedAt && lastMessageAt) {
-			shouldQueueClassification = lastMessageAt > lastClassifiedAt;
-		} else if (!lastClassifiedAt && !hasClassification) {
-			shouldQueueClassification = true;
-		} else if (!lastClassifiedAt && hasClassification) {
-			const classificationTimestamp = session.last_message_at ?? new Date().toISOString();
+	if (hasMessageActivity) {
+		if (!lastClassifiedAt && hasClassification) {
+			const classificationTimestamp = inferredLastMessageAt ?? new Date().toISOString();
 			const { error: stampError } = await supabase
 				.from('chat_sessions')
 				.update({ last_classified_at: classificationTimestamp })
@@ -98,19 +125,39 @@ export const POST: RequestHandler = async ({
 					stampError.message
 				);
 			}
+		} else if (!lastClassifiedAt) {
+			shouldQueueClassification = true;
+		} else if (!lastMessageAt) {
+			// If timestamps are inconsistent, force a re-classification attempt to self-heal.
+			shouldQueueClassification = true;
+		} else {
+			shouldQueueClassification = lastMessageAt > lastClassifiedAt;
 		}
 	}
 
+	let classificationQueued = false;
+	let classificationQueueReason: string | undefined;
 	if (shouldQueueClassification) {
 		try {
-			await queueChatSessionClassification({ sessionId, userId: user.id });
+			const result = await queueChatSessionClassification({ sessionId, userId: user.id });
+			classificationQueued = result.queued;
+			classificationQueueReason = result.reason;
+			if (!result.queued) {
+				console.warn(
+					`[Chat Close] Classification queue attempt did not enqueue for session ${sessionId}:`,
+					result.reason
+				);
+			}
 		} catch (err) {
+			classificationQueueReason = err instanceof Error ? err.message : 'unknown_error';
 			console.warn('[Chat Close] Failed to queue classification:', err);
 		}
 	}
 
 	return ApiResponse.success({
 		updated: Object.keys(updates).length > 0,
-		classificationQueued: shouldQueueClassification
+		classificationQueued,
+		classificationQueueAttempted: shouldQueueClassification,
+		classificationQueueReason
 	});
 };
