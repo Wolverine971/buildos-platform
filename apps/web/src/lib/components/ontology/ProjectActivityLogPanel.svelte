@@ -53,8 +53,10 @@
 	// ============================================================
 	// FUNCTIONS
 	// ============================================================
-	async function loadLogs(options: { offset?: number; append?: boolean; silent?: boolean } = {}) {
-		const { offset = 0, append = false, silent = false } = options;
+	async function loadLogs(
+		options: { offset?: number; append?: boolean; silent?: boolean; limit?: number } = {}
+	) {
+		const { offset = 0, append = false, silent = false, limit = INITIAL_LIMIT } = options;
 
 		if (append) {
 			isLoadingMore = true;
@@ -67,7 +69,7 @@
 
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/logs?limit=${INITIAL_LIMIT}&offset=${offset}`
+				`/api/onto/projects/${projectId}/logs?limit=${limit}&offset=${offset}`
 			);
 			const payload = await response.json();
 
@@ -86,13 +88,23 @@
 					(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
 				);
 
-			const mergedLogs = append ? [...logs, ...(data.logs ?? [])] : [...(data.logs ?? [])];
+			const incomingLogs = data.logs ?? [];
+			const mergedLogs = append
+				? [...logs, ...incomingLogs]
+				: silent
+					? [...incomingLogs, ...logs]
+					: [...incomingLogs];
 			const dedupedLogs = Array.from(
 				new Map(mergedLogs.map((entry) => [entry.id, entry])).values()
 			);
 			logs = sortByMostRecent(dedupedLogs);
-			total = data.total ?? 0;
-			hasMore = data.hasMore ?? false;
+			const nextTotal = data.total ?? total;
+			total = nextTotal;
+			hasMore = append
+				? (data.hasMore ?? offset + incomingLogs.length < nextTotal)
+				: silent
+					? dedupedLogs.length < nextTotal
+					: (data.hasMore ?? false);
 			hasLoaded = true;
 		} catch (err) {
 			console.error('[ActivityLog] Failed to load:', err);
@@ -138,7 +150,10 @@
 
 		const intervalId = window.setInterval(() => {
 			if (!isLoading && !isLoadingMore) {
-				void loadLogs({ silent: true });
+				void loadLogs({
+					silent: true,
+					limit: Math.min(Math.max(logs.length, INITIAL_LIMIT), 50)
+				});
 			}
 		}, BACKGROUND_REFRESH_MS);
 

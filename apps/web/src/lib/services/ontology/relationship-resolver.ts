@@ -3,8 +3,9 @@
  * Resolves connections into containment and semantic edge plans.
  */
 
-import type { EntityKind, RelationshipType } from './edge-direction';
-import { createCanonicalEdge } from './edge-direction';
+import type { EntityKind, RelationshipToken, RelationshipType } from './edge-direction';
+import { normalizeEdgeDirection, VALID_RELS } from './edge-direction';
+import { normalizeRelationshipToken } from './edge-relationship-resolver';
 import type { ParentRef } from './containment-organizer';
 import {
 	REFERENCE_TARGET_KINDS,
@@ -20,7 +21,7 @@ export type ConnectionRef = {
 	kind: EntityKind;
 	id: string;
 	intent?: 'containment' | 'semantic';
-	rel?: RelationshipType;
+	rel?: RelationshipToken;
 };
 
 export type ConnectionOptions = {
@@ -139,32 +140,58 @@ function inferReferenceDirection(
 	};
 }
 
+function resolveExplicitSemanticEdge(
+	entity: { kind: EntityKind; id: string },
+	connection: ConnectionRef
+): {
+	normalizedEdge: NonNullable<ReturnType<typeof normalizeEdgeDirection>>;
+	rawRelToken: string;
+} | null {
+	if (!connection.rel) return null;
+
+	const rawRelToken = normalizeRelationshipToken(connection.rel);
+	if (!rawRelToken || !VALID_RELS.includes(rawRelToken)) {
+		return null;
+	}
+
+	const normalizedEdge = normalizeEdgeDirection({
+		src_kind: entity.kind,
+		src_id: entity.id,
+		dst_kind: connection.kind,
+		dst_id: connection.id,
+		rel: rawRelToken
+	});
+
+	if (!normalizedEdge) {
+		return null;
+	}
+
+	return { normalizedEdge, rawRelToken };
+}
+
 function addExplicitSemantic(
 	entity: { kind: EntityKind; id: string },
 	connection: ConnectionRef,
 	semantic: Map<string, ResolvedSemanticEdge>
 ): void {
-	if (!connection.rel) return;
+	const resolved = resolveExplicitSemanticEdge(entity, connection);
+	if (!resolved) return;
 
-	if (connection.rel === 'references') {
+	const { normalizedEdge, rawRelToken } = resolved;
+
+	if (normalizedEdge.rel === 'references' && rawRelToken === 'references') {
 		const { direction, target } = inferReferenceDirection(entity, connection);
-		addSemanticEdge(semantic, connection.rel, direction, target);
+		addSemanticEdge(semantic, normalizedEdge.rel, direction, target);
 		return;
 	}
 
-	const normalized = createCanonicalEdge(connection.rel, entity, {
-		kind: connection.kind,
-		id: connection.id
-	});
-	if (!normalized) return;
-
-	const direction = normalized.src_id === entity.id ? 'outgoing' : 'incoming';
+	const direction = normalizedEdge.src_id === entity.id ? 'outgoing' : 'incoming';
 	const target =
 		direction === 'outgoing'
-			? { kind: normalized.dst_kind, id: normalized.dst_id }
-			: { kind: normalized.src_kind, id: normalized.src_id };
+			? { kind: normalizedEdge.dst_kind, id: normalizedEdge.dst_id }
+			: { kind: normalizedEdge.src_kind, id: normalizedEdge.src_id };
 
-	addSemanticEdge(semantic, normalized.rel, direction, target);
+	addSemanticEdge(semantic, normalizedEdge.rel, direction, target);
 }
 
 export function resolveConnections(params: {

@@ -1,8 +1,8 @@
 // apps/web/src/routes/api/onto/projects/[id]/invites/+server.ts
 /**
  * Project invite endpoints
- * - GET: list pending invites (admin only)
- * - POST: create invite + send email (admin only)
+ * - GET: list pending invites (collaborators with write access)
+ * - POST: create invite + send email (collaborators with write access)
  */
 
 import type { RequestHandler } from './$types';
@@ -54,7 +54,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			'current_actor_has_project_access',
 			{
 				p_project_id: projectId,
-				p_required_access: 'admin'
+				p_required_access: 'write'
 			}
 		);
 
@@ -157,7 +157,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			'current_actor_has_project_access',
 			{
 				p_project_id: projectId,
-				p_required_access: 'admin'
+				p_required_access: 'write'
 			}
 		);
 

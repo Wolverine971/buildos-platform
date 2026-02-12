@@ -76,7 +76,6 @@ const DEFAULT_REL_BY_KIND_PAIR: Record<string, RelationshipType> = {
 	'milestone-requirement': 'has_requirement',
 	'milestone-metric': 'has_metric',
 	'milestone-source': 'references',
-	'milestone-project': 'contains',
 	'project-milestone': 'contains',
 
 	// Document relationships

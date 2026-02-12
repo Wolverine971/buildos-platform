@@ -19,8 +19,8 @@ export const TASK_DISALLOWS_PROJECT_FALLBACK_KINDS = new Set<EntityKind>([
 
 export const REFERENCE_TARGET_KINDS = new Set<EntityKind>(['document', 'source']);
 
-export function isContainmentRel(rel: RelationshipType): boolean {
-	return CONTAINMENT_RELS.includes(rel);
+export function isContainmentRel(rel: string): boolean {
+	return CONTAINMENT_RELS.includes(rel as RelationshipType);
 }
 
 export function getAllowedParents(kind: EntityKind): EntityKind[] {

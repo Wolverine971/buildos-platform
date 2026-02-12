@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/invites/[inviteId]/resend/+server.ts
 /**
- * Resend a project invite (admin only).
+ * Resend a project invite (collaborators with write access).
  */
 
 import type { RequestHandler } from './$types';
@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			'current_actor_has_project_access',
 			{
 				p_project_id: projectId,
-				p_required_access: 'admin'
+				p_required_access: 'write'
 			}
 		);
 

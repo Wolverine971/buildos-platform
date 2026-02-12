@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/onto/projects/[id]/invites/[inviteId]/revoke/+server.ts
 /**
- * Revoke a pending project invite (admin only).
+ * Revoke a pending project invite (collaborators with write access).
  */
 
 import type { RequestHandler } from './$types';
@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			'current_actor_has_project_access',
 			{
 				p_project_id: projectId,
-				p_required_access: 'admin'
+				p_required_access: 'write'
 			}
 		);
 

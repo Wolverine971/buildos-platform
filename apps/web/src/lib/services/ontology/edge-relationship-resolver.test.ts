@@ -44,5 +44,15 @@ describe('edge-relationship-resolver', () => {
 			expect(res.rel).toBe('documented_in');
 			expect(res.original_rel).toBe('related');
 		});
+
+		it('falls back to references for milestone-project unknown relationships', () => {
+			const res = resolveEdgeRelationship({
+				srcKind: 'milestone',
+				dstKind: 'project',
+				rel: 'related'
+			});
+			expect(res.rel).toBe('references');
+			expect(res.original_rel).toBe('related');
+		});
 	});
 });

@@ -67,3 +67,35 @@ describe('resolveConnections project reference safeguards', () => {
 		expect(plan.entityProjectEdge).toEqual({ rel: 'has_source', mode: 'ensure' });
 	});
 });
+
+describe('resolveConnections deprecated relationship aliases', () => {
+	it('preserves blocked_by semantics as incoming blocks', () => {
+		const plan = resolveConnections({
+			entity: { kind: 'task' as const, id: 'task-1' },
+			connections: [{ kind: 'task', id: 'task-2', rel: 'blocked_by' }]
+		});
+
+		expect(plan.entitySemantic).toContainEqual(
+			expect.objectContaining({
+				rel: 'blocks',
+				direction: 'incoming',
+				targets: [{ kind: 'task', id: 'task-2' }]
+			})
+		);
+	});
+
+	it('preserves referenced_by semantics as incoming references', () => {
+		const plan = resolveConnections({
+			entity: { kind: 'task' as const, id: 'task-1' },
+			connections: [{ kind: 'document', id: 'doc-1', rel: 'referenced_by' }]
+		});
+
+		expect(plan.entitySemantic).toContainEqual(
+			expect.objectContaining({
+				rel: 'references',
+				direction: 'incoming',
+				targets: [{ kind: 'document', id: 'doc-1' }]
+			})
+		);
+	});
+});

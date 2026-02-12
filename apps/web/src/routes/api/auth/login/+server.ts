@@ -224,7 +224,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 
 			try {
-				await supabase.auth.signOut({ scope: 'global' });
+				await supabase.auth.signOut({ scope: 'local' });
 			} catch (signOutError) {
 				await errorLogger.logError(signOutError, {
 					endpoint: '/api/auth/login',

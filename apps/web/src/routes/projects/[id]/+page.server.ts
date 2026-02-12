@@ -126,7 +126,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 		canEdit = Boolean(writeResult.data);
 		canAdmin = Boolean(adminResult.data);
-		canInvite = canAdmin;
+		canInvite = canEdit;
 		canViewLogs = canAdmin || Boolean(memberResult.data);
 	}
 

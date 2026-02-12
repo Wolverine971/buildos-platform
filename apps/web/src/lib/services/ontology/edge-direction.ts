@@ -138,6 +138,9 @@ export const DEPRECATED_RELATIONSHIPS: Record<
 	builds_on: { canonical: 'depends_on', swapDirection: false }
 };
 
+export type DeprecatedRelationshipType = keyof typeof DEPRECATED_RELATIONSHIPS;
+export type RelationshipToken = RelationshipType | DeprecatedRelationshipType;
+
 /**
  * All valid relationship types (including deprecated for backwards compatibility)
  */
