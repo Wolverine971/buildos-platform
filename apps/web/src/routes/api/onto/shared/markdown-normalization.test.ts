@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/onto/shared/markdown-normalization.test.ts
 import { describe, expect, it } from 'vitest';
 import { normalizeMarkdownInput } from './markdown-normalization';
 
@@ -10,10 +11,13 @@ describe('normalizeMarkdownInput', () => {
 	});
 
 	it('converts escaped line breaks in mixed payloads with real newlines', () => {
-		const input = 'Intro line\n\n## New Family News: Baby Hallie\\n\\nKaitlyn and Nick had a baby.';
+		const input =
+			'Intro line\n\n## New Family News: Baby Hallie\\n\\nKaitlyn and Nick had a baby.';
 		const result = normalizeMarkdownInput(input);
 
-		expect(result).toBe('Intro line\n\n## New Family News: Baby Hallie\n\nKaitlyn and Nick had a baby.');
+		expect(result).toBe(
+			'Intro line\n\n## New Family News: Baby Hallie\n\nKaitlyn and Nick had a baby.'
+		);
 	});
 
 	it('preserves escaped line breaks inside fenced code blocks', () => {
@@ -26,13 +30,9 @@ describe('normalizeMarkdownInput', () => {
 		].join('\n');
 		const result = normalizeMarkdownInput(input);
 
-		expect(result).toBe([
-			'Intro\n',
-			'```ts',
-			'const text = "line1\\\\nline2";',
-			'```',
-			'Outro\n'
-		].join('\n'));
+		expect(result).toBe(
+			['Intro\n', '```ts', 'const text = "line1\\\\nline2";', '```', 'Outro\n'].join('\n')
+		);
 	});
 
 	it('converts standalone /n markers outside fenced code blocks', () => {

@@ -46,7 +46,12 @@ export function normalizeMarkdownInput(value: unknown): string | null {
 			continue;
 		}
 
-		if (inFence && fenceInfo && fenceInfo.char === fenceChar && fenceInfo.length >= fenceLength) {
+		if (
+			inFence &&
+			fenceInfo &&
+			fenceInfo.char === fenceChar &&
+			fenceInfo.length >= fenceLength
+		) {
 			inFence = false;
 			fenceChar = null;
 			fenceLength = 0;
