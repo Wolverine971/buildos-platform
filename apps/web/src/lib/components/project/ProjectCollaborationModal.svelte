@@ -1,13 +1,15 @@
-<!-- apps/web/src/lib/components/project/ProjectShareModal.svelte -->
+<!-- apps/web/src/lib/components/project/ProjectCollaborationModal.svelte -->
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import TabNav from '$lib/components/ui/TabNav.svelte';
+	import type { Tab } from '$lib/components/ui/TabNav.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
-	import { Bell, Mail, Users } from 'lucide-svelte';
+	import { Bell, Mail, Users, UserCog } from 'lucide-svelte';
 
 	type MemberRole = 'owner' | 'editor' | 'viewer';
 	type InviteRole = 'editor' | 'viewer';
@@ -93,6 +95,16 @@
 	let settingsError = $state<string | null>(null);
 	let settingsActionType = $state<'member' | 'project' | null>(null);
 	let isLeavingProject = $state(false);
+	let activeTab = $state<'sharing' | 'my-role'>('sharing');
+
+	const tabs: Tab[] = [
+		{ id: 'sharing', label: 'Sharing', icon: Users },
+		{ id: 'my-role', label: 'My Role', icon: UserCog }
+	];
+
+	function handleTabChange(event: { detail: string }) {
+		activeTab = event.detail as 'sharing' | 'my-role';
+	}
 
 	$effect(() => {
 		if (!isOpen) {
@@ -118,6 +130,7 @@
 			settingsError = null;
 			settingsActionType = null;
 			isLeavingProject = false;
+			activeTab = 'sharing';
 			return;
 		}
 		void loadShareData();
@@ -173,7 +186,7 @@
 						entityType: 'project_member',
 						operation: 'project_members_fetch',
 						metadata: {
-							source: 'project_share_modal',
+							source: 'project_collaboration_modal',
 							status: membersStatus
 						}
 					}
@@ -196,7 +209,7 @@
 						entityType: 'project_invite',
 						operation: 'project_invites_fetch',
 						metadata: {
-							source: 'project_share_modal',
+							source: 'project_collaboration_modal',
 							status: invitesStatus
 						}
 					}
@@ -217,13 +230,13 @@
 					entityType: 'project',
 					operation: 'project_notification_settings_get',
 					metadata: {
-						source: 'project_share_modal',
+						source: 'project_collaboration_modal',
 						status: settingsStatus
 					}
 				});
 			}
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to load share data:', err);
+			console.error('[ProjectCollaborationModal] Failed to load share data:', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/projects/${projectId}/invites`,
 				method: 'GET',
@@ -231,7 +244,7 @@
 				entityType: 'project_invite',
 				operation: 'project_share_load',
 				metadata: {
-					source: 'project_share_modal',
+					source: 'project_collaboration_modal',
 					membersStatus,
 					invitesStatus,
 					settingsStatus
@@ -328,7 +341,7 @@
 			isEditingRoleProfile = false;
 			await loadShareData();
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to update role profile:', err);
+			console.error('[ProjectCollaborationModal] Failed to update role profile:', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/projects/${projectId}/members/me/role-profile`,
 				method: 'PATCH',
@@ -336,7 +349,7 @@
 				entityType: 'project_member',
 				operation: 'project_member_role_profile_update',
 				metadata: {
-					source: 'project_share_modal',
+					source: 'project_collaboration_modal',
 					status: responseStatus
 				}
 			});
@@ -385,7 +398,7 @@
 			roleContextInput = '';
 			await loadShareData();
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to generate role profile:', err);
+			console.error('[ProjectCollaborationModal] Failed to generate role profile:', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/projects/${projectId}/members/me/role-profile`,
 				method: 'POST',
@@ -393,7 +406,7 @@
 				entityType: 'project_member',
 				operation: 'project_member_role_profile_generate',
 				metadata: {
-					source: 'project_share_modal',
+					source: 'project_collaboration_modal',
 					status: responseStatus
 				}
 			});
@@ -452,7 +465,10 @@
 				);
 			}
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to update notification settings:', err);
+			console.error(
+				'[ProjectCollaborationModal] Failed to update notification settings:',
+				err
+			);
 			settingsError =
 				err instanceof Error ? err.message : 'Failed to update notification settings';
 			void logOntologyClientError(err, {
@@ -462,7 +478,7 @@
 				entityType: 'project',
 				operation: 'project_notification_settings_update',
 				metadata: {
-					source: 'project_share_modal',
+					source: 'project_collaboration_modal',
 					status: responseStatus,
 					actionType
 				}
@@ -518,7 +534,7 @@
 			email = '';
 			await loadShareData();
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to invite:', err);
+			console.error('[ProjectCollaborationModal] Failed to invite:', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/projects/${projectId}/invites`,
 				method: 'POST',
@@ -526,7 +542,7 @@
 				entityType: 'project_invite',
 				operation: 'project_invite_create',
 				metadata: {
-					source: 'project_share_modal',
+					source: 'project_collaboration_modal',
 					status: responseStatus
 				}
 			});
@@ -564,7 +580,7 @@
 			toastService.success(`Invite resent to ${invite.invitee_email}`);
 			await loadShareData();
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to resend invite:', err);
+			console.error('[ProjectCollaborationModal] Failed to resend invite:', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/projects/${projectId}/invites/${invite.id}/resend`,
 				method: 'POST',
@@ -573,7 +589,7 @@
 				entityId: invite.id,
 				operation: 'project_invite_resend',
 				metadata: {
-					source: 'project_share_modal',
+					source: 'project_collaboration_modal',
 					status: responseStatus
 				}
 			});
@@ -618,7 +634,7 @@
 			toastService.success(`Invite revoked for ${invite.invitee_email}`);
 			await loadShareData();
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to revoke invite:', err);
+			console.error('[ProjectCollaborationModal] Failed to revoke invite:', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/projects/${projectId}/invites/${invite.id}/revoke`,
 				method: 'POST',
@@ -627,7 +643,7 @@
 				entityId: invite.id,
 				operation: 'project_invite_revoke',
 				metadata: {
-					source: 'project_share_modal',
+					source: 'project_collaboration_modal',
 					status: responseStatus
 				}
 			});
@@ -677,7 +693,7 @@
 			toastService.success(`Updated ${label} to ${formatRole(nextRole)}`);
 			await loadShareData();
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to update member role:', err);
+			console.error('[ProjectCollaborationModal] Failed to update member role:', err);
 			const message = err instanceof Error ? err.message : 'Failed to update member';
 			toastService.error(message);
 			await loadShareData();
@@ -719,7 +735,7 @@
 			toastService.success(`Removed ${label}`);
 			await loadShareData();
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to remove member:', err);
+			console.error('[ProjectCollaborationModal] Failed to remove member:', err);
 			const message = err instanceof Error ? err.message : 'Failed to remove member';
 			toastService.error(message);
 			await loadShareData();
@@ -761,7 +777,7 @@
 			onClose?.();
 			onLeftProject?.();
 		} catch (err) {
-			console.error('[ProjectShareModal] Failed to leave project:', err);
+			console.error('[ProjectCollaborationModal] Failed to leave project:', err);
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/projects/${projectId}/members/me`,
 				method: 'DELETE',
@@ -769,7 +785,7 @@
 				entityType: 'project_member',
 				operation: 'project_member_leave',
 				metadata: {
-					source: 'project_share_modal',
+					source: 'project_collaboration_modal',
 					status: responseStatus
 				}
 			});
@@ -794,139 +810,334 @@
 	}
 </script>
 
-<Modal {isOpen} {onClose} title="Share Project" size="md">
+<Modal {isOpen} {onClose} title="Collaboration Settings" size="md">
+	<!-- Tab Navigation -->
+	<div class="px-3 sm:px-4 pt-2 border-b border-border">
+		<TabNav
+			{tabs}
+			{activeTab}
+			onchange={handleTabChange}
+			ariaLabel="Collaboration settings tabs"
+		/>
+	</div>
+
+	<!-- Tab Content -->
 	<div class="p-3 sm:p-4 space-y-4">
-		<!-- Invite Form Section -->
-		<div class="space-y-3">
-			<div>
-				<h3 class="text-sm font-semibold text-foreground">Invite collaborators</h3>
-				<p class="text-xs text-muted-foreground mt-0.5">
-					Invite someone to work on
-					<span class="font-medium">{projectName || 'this project'}</span>.
-				</p>
+		{#if activeTab === 'sharing'}
+			<!-- Invite Form Section -->
+			<div class="space-y-3">
+				<div>
+					<h3 class="text-sm font-semibold text-foreground">Invite collaborators</h3>
+					<p class="text-xs text-muted-foreground mt-0.5">
+						Invite someone to work on
+						<span class="font-medium">{projectName || 'this project'}</span>.
+					</p>
+				</div>
+
+				<form class="space-y-2.5" onsubmit={handleInvite}>
+					<div class="space-y-1">
+						<label for="invite-email" class="text-xs font-medium text-muted-foreground"
+							>Email</label
+						>
+						<TextInput
+							id="invite-email"
+							bind:value={email}
+							type="email"
+							placeholder="name@example.com"
+							icon={Mail}
+							disabled={!canManageInvites}
+						/>
+					</div>
+
+					<div class="space-y-1">
+						<label for="invite-role" class="text-xs font-medium text-muted-foreground"
+							>Role</label
+						>
+						<Select
+							id="invite-role"
+							bind:value={role}
+							size="md"
+							disabled={!canManageInvites}
+						>
+							<option value="editor">Editor (can edit)</option>
+							<option value="viewer">Viewer (read-only)</option>
+						</Select>
+					</div>
+
+					{#if !canManageInvites}
+						<p class="text-xs text-muted-foreground">
+							You need editor access to invite collaborators.
+						</p>
+					{:else if error}
+						<p class="text-xs text-destructive">{error}</p>
+					{/if}
+
+					<Button
+						type="submit"
+						variant="primary"
+						size="sm"
+						disabled={isSending || !canManageInvites}
+					>
+						{isSending ? 'Sending...' : 'Send Invite'}
+					</Button>
+				</form>
 			</div>
 
-			<form class="space-y-2.5" onsubmit={handleInvite}>
-				<div class="space-y-1">
-					<label for="invite-email" class="text-xs font-medium text-muted-foreground"
-						>Email</label
-					>
-					<TextInput
-						id="invite-email"
-						bind:value={email}
-						type="email"
-						placeholder="name@example.com"
-						icon={Mail}
-						disabled={!canManageInvites}
-					/>
+			<!-- Members Section -->
+			<div class="border-t border-border pt-3 space-y-2">
+				<div class="flex items-center gap-2 text-foreground">
+					<Users class="h-4 w-4 text-muted-foreground" />
+					<h3 class="text-sm font-semibold">Members</h3>
 				</div>
 
-				<div class="space-y-1">
-					<label for="invite-role" class="text-xs font-medium text-muted-foreground"
-						>Role</label
-					>
-					<Select
-						id="invite-role"
-						bind:value={role}
-						size="md"
-						disabled={!canManageInvites}
-					>
-						<option value="editor">Editor (can edit)</option>
-						<option value="viewer">Viewer (read-only)</option>
-					</Select>
-				</div>
-
-				{#if !canManageInvites}
+				{#if !canManageMembers}
 					<p class="text-xs text-muted-foreground">
-						You need editor access to invite collaborators.
+						Admin access is required to manage members.
 					</p>
-				{:else if error}
-					<p class="text-xs text-destructive">{error}</p>
 				{/if}
 
-				<Button
-					type="submit"
-					variant="primary"
-					size="sm"
-					disabled={isSending || !canManageInvites}
-				>
-					{isSending ? 'Sending...' : 'Send Invite'}
-				</Button>
-			</form>
-		</div>
+				{#if isLoading}
+					<p class="text-xs text-muted-foreground">Loading members...</p>
+				{:else if members.length === 0}
+					<p class="text-xs text-muted-foreground">No members yet.</p>
+				{:else}
+					<div class="space-y-1">
+						{#each members as member (member.id)}
+							<div
+								class="flex items-center justify-between gap-2 px-2 py-1.5 -mx-2 rounded-md
+									hover:bg-muted transition-colors"
+							>
+								<div class="min-w-0 flex-1">
+									<p class="text-sm text-foreground truncate">
+										{member.actor?.name ||
+											member.actor?.email ||
+											member.actor_id}
+									</p>
+									{#if member.actor?.email && member.actor?.name}
+										<p class="text-xs text-muted-foreground truncate">
+											{member.actor.email}
+										</p>
+									{/if}
+									{#if member.role_name || member.role_description}
+										<p class="text-xs text-muted-foreground truncate">
+											{member.role_name || formatRole(member.role_key)}
+											{member.role_description
+												? ` - ${member.role_description}`
+												: ''}
+										</p>
+									{/if}
+								</div>
+								<div class="flex items-center gap-1.5 shrink-0">
+									{#if member.role_key === 'owner' || !canManageMembers}
+										<span
+											class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
+										>
+											{formatRole(member.role_key)}
+										</span>
+									{:else}
+										<Select
+											value={member.role_key}
+											size="sm"
+											class="min-w-[110px]"
+											placeholder=""
+											disabled={memberActionId !== null}
+											onchange={(value) =>
+												handleMemberRoleChange(member, value as MemberRole)}
+										>
+											<option value="editor">Editor</option>
+											<option value="viewer">Viewer</option>
+										</Select>
+										<Button
+											variant="ghost"
+											size="sm"
+											class="text-destructive hover:bg-destructive/10"
+											loading={memberActionId === member.id &&
+												memberActionType === 'remove'}
+											disabled={memberActionId !== null}
+											onclick={() => handleMemberRemove(member)}
+										>
+											Remove
+										</Button>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
 
-		<!-- Role Profile Section -->
-		<div class="border-t border-border pt-3 space-y-2">
-			<div>
-				<h3 class="text-sm font-semibold text-foreground">Describe your role</h3>
-				<p class="text-xs text-muted-foreground mt-0.5">
-					Share what you do in this project and AI will generate a role title and
-					description for team context.
-				</p>
-			</div>
-
-			{#if currentMember}
-				<div class="rounded-md border border-border bg-muted/20 p-3 space-y-1">
-					<div class="flex items-center justify-between gap-2">
-						<p class="text-xs uppercase tracking-wide text-muted-foreground">
-							Current role profile
-						</p>
+				{#if canLeaveProject}
+					<div class="mt-3 border-t border-border pt-3">
 						<Button
 							variant="ghost"
 							size="sm"
-							disabled={roleProfileActionType !== null}
-							onclick={isEditingRoleProfile
-								? handleCancelRoleProfileEdit
-								: handleStartRoleProfileEdit}
+							class="text-destructive hover:bg-destructive/10"
+							loading={isLeavingProject}
+							disabled={isLeavingProject || memberActionId !== null}
+							onclick={handleLeaveProject}
 						>
-							{isEditingRoleProfile ? 'Cancel' : 'Edit manually'}
+							Leave project
 						</Button>
-					</div>
-					<p class="text-sm text-foreground">
-						{currentMember.role_name || formatRole(currentMember.role_key)}
-					</p>
-					{#if currentMember.role_description}
-						<p class="text-xs text-muted-foreground">
-							{currentMember.role_description}
+						<p class="mt-1 text-xs text-muted-foreground">
+							You can rejoin only if someone invites you again.
 						</p>
-					{/if}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Pending Invites Section -->
+			{#if invites.length > 0}
+				<div class="border-t border-border pt-3 space-y-2">
+					<h3 class="text-sm font-semibold text-foreground">Pending invites</h3>
+					<div class="space-y-1">
+						{#each invites as invite (invite.id)}
+							<div
+								class="flex items-center justify-between gap-2 px-2 py-1.5 -mx-2 rounded-md
+									hover:bg-muted transition-colors"
+							>
+								<div class="min-w-0 flex-1">
+									<p class="text-sm text-foreground truncate">
+										{invite.invitee_email}
+									</p>
+									<p class="text-xs text-muted-foreground">
+										Expires {invite.expires_at
+											? new Date(invite.expires_at).toLocaleDateString()
+											: 'soon'}
+									</p>
+								</div>
+								<div class="flex items-center gap-1.5 shrink-0">
+									<span
+										class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
+									>
+										{formatRole(invite.role_key)}
+									</span>
+									{#if canManageInvites}
+										<Button
+											variant="ghost"
+											size="sm"
+											loading={inviteActionId === invite.id &&
+												inviteActionType === 'resend'}
+											disabled={inviteActionId !== null}
+											onclick={() => handleInviteResend(invite)}
+										>
+											Resend
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											class="text-destructive hover:bg-destructive/10"
+											loading={inviteActionId === invite.id &&
+												inviteActionType === 'revoke'}
+											disabled={inviteActionId !== null}
+											onclick={() => handleInviteRevoke(invite)}
+										>
+											Revoke
+										</Button>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
 				</div>
 			{/if}
+		{/if}
 
-			{#if isEditingRoleProfile}
-				<form class="space-y-2" onsubmit={handleSaveRoleProfile}>
-					<div class="space-y-1">
-						<label
-							for="role-title-input"
-							class="text-xs font-medium text-muted-foreground">Role title</label
-						>
-						<TextInput
-							id="role-title-input"
-							bind:value={roleNameInput}
-							placeholder="Content Lead"
-							maxlength={ROLE_NAME_MAX}
-							disabled={roleProfileActionType !== null}
-						/>
-					</div>
+		{#if activeTab === 'my-role'}
+			<!-- Role Profile Section -->
+			<div class="space-y-2">
+				<div>
+					<h3 class="text-sm font-semibold text-foreground">Describe your role</h3>
+					<p class="text-xs text-muted-foreground mt-0.5">
+						Share what you do in this project and AI will generate a role title and
+						description for team context.
+					</p>
+				</div>
 
-					<div class="space-y-1">
-						<label
-							for="role-description-input"
-							class="text-xs font-medium text-muted-foreground"
-						>
-							Role description
-						</label>
-						<Textarea
-							id="role-description-input"
-							bind:value={roleDescriptionInput}
-							rows={3}
-							autoResize
-							maxRows={8}
-							placeholder="What outcomes and responsibilities do you own?"
-							maxlength={ROLE_DESCRIPTION_MAX}
-							disabled={roleProfileActionType !== null}
-						/>
+				{#if currentMember}
+					<div class="rounded-md border border-border bg-muted/20 p-3 space-y-1">
+						<div class="flex items-center justify-between gap-2">
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Current role profile
+							</p>
+							<Button
+								variant="ghost"
+								size="sm"
+								disabled={roleProfileActionType !== null}
+								onclick={isEditingRoleProfile
+									? handleCancelRoleProfileEdit
+									: handleStartRoleProfileEdit}
+							>
+								{isEditingRoleProfile ? 'Cancel' : 'Edit manually'}
+							</Button>
+						</div>
+						<p class="text-sm text-foreground">
+							{currentMember.role_name || formatRole(currentMember.role_key)}
+						</p>
+						{#if currentMember.role_description}
+							<p class="text-xs text-muted-foreground">
+								{currentMember.role_description}
+							</p>
+						{/if}
 					</div>
+				{/if}
+
+				{#if isEditingRoleProfile}
+					<form class="space-y-2" onsubmit={handleSaveRoleProfile}>
+						<div class="space-y-1">
+							<label
+								for="role-title-input"
+								class="text-xs font-medium text-muted-foreground">Role title</label
+							>
+							<TextInput
+								id="role-title-input"
+								bind:value={roleNameInput}
+								placeholder="Content Lead"
+								maxlength={ROLE_NAME_MAX}
+								disabled={roleProfileActionType !== null}
+							/>
+						</div>
+
+						<div class="space-y-1">
+							<label
+								for="role-description-input"
+								class="text-xs font-medium text-muted-foreground"
+							>
+								Role description
+							</label>
+							<Textarea
+								id="role-description-input"
+								bind:value={roleDescriptionInput}
+								rows={3}
+								autoResize
+								maxRows={8}
+								placeholder="What outcomes and responsibilities do you own?"
+								maxlength={ROLE_DESCRIPTION_MAX}
+								disabled={roleProfileActionType !== null}
+							/>
+						</div>
+
+						{#if roleProfileError}
+							<p class="text-xs text-destructive">{roleProfileError}</p>
+						{/if}
+
+						<Button
+							type="submit"
+							variant="secondary"
+							size="sm"
+							disabled={roleProfileActionType !== null}
+						>
+							{roleProfileActionType === 'save' ? 'Saving...' : 'Save Role Profile'}
+						</Button>
+					</form>
+				{/if}
+
+				<form class="space-y-2" onsubmit={handleGenerateRoleProfile}>
+					<Textarea
+						bind:value={roleContextInput}
+						rows={3}
+						autoResize
+						maxRows={8}
+						placeholder="Example: I run content strategy, define weekly priorities, and coordinate publishing across channels."
+					/>
 
 					{#if roleProfileError}
 						<p class="text-xs text-destructive">{roleProfileError}</p>
@@ -936,273 +1147,95 @@
 						type="submit"
 						variant="secondary"
 						size="sm"
-						disabled={roleProfileActionType !== null}
+						disabled={roleProfileActionType !== null ||
+							isEditingRoleProfile ||
+							roleContextInput.trim().length === 0}
 					>
-						{roleProfileActionType === 'save' ? 'Saving...' : 'Save Role Profile'}
+						{roleProfileActionType === 'generate'
+							? 'Generating...'
+							: 'Generate Role Profile'}
 					</Button>
 				</form>
-			{/if}
+			</div>
 
-			<form class="space-y-2" onsubmit={handleGenerateRoleProfile}>
-				<Textarea
-					bind:value={roleContextInput}
-					rows={3}
-					autoResize
-					maxRows={8}
-					placeholder="Example: I run content strategy, define weekly priorities, and coordinate publishing across channels."
-				/>
+			<!-- Notification Settings Section -->
+			<div class="border-t border-border pt-3 space-y-2">
+				<div class="flex items-center gap-2 text-foreground">
+					<Bell class="h-4 w-4 text-muted-foreground" />
+					<h3 class="text-sm font-semibold">Notification preferences</h3>
+				</div>
 
-				{#if roleProfileError}
-					<p class="text-xs text-destructive">{roleProfileError}</p>
+				{#if isLoading && !notificationSettings}
+					<p class="text-xs text-muted-foreground">Loading notification settings...</p>
+				{:else if notificationSettings}
+					<div class="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+						<label class="flex items-start gap-2.5 cursor-pointer">
+							<input
+								type="checkbox"
+								class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+								checked={notificationSettings.member_enabled}
+								disabled={settingsActionType !== null}
+								onchange={(event) =>
+									handleMemberNotificationsToggle(
+										(event.currentTarget as HTMLInputElement).checked
+									)}
+							/>
+							<span class="space-y-0.5">
+								<span class="block text-sm font-medium text-foreground">
+									Notify me about project activity
+								</span>
+								<span class="block text-xs text-muted-foreground">
+									Uses your existing push and in-app channel preferences.
+								</span>
+							</span>
+						</label>
+
+						{#if notificationSettings.can_manage_default}
+							<div class="border-t border-border pt-3">
+								<label class="flex items-start gap-2.5 cursor-pointer">
+									<input
+										type="checkbox"
+										class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+										checked={notificationSettings.project_default_enabled}
+										disabled={settingsActionType !== null}
+										onchange={(event) =>
+											handleProjectDefaultNotificationsToggle(
+												(event.currentTarget as HTMLInputElement).checked
+											)}
+									/>
+									<span class="space-y-0.5">
+										<span class="block text-sm font-medium text-foreground">
+											Default notifications for collaborators
+										</span>
+										<span class="block text-xs text-muted-foreground">
+											New and existing members inherit this unless they set
+											their own preference.
+										</span>
+									</span>
+								</label>
+							</div>
+						{:else}
+							<p class="text-xs text-muted-foreground">
+								Project defaults can only be changed by project admins.
+							</p>
+						{/if}
+
+						{#if !notificationSettings.is_shared_project}
+							<p class="text-xs text-muted-foreground">
+								This project is currently solo. Default notifications automatically
+								turn on when a second member joins.
+							</p>
+						{/if}
+					</div>
+				{:else}
+					<p class="text-xs text-muted-foreground">
+						Notification settings are unavailable right now.
+					</p>
 				{/if}
 
-				<Button
-					type="submit"
-					variant="secondary"
-					size="sm"
-					disabled={roleProfileActionType !== null ||
-						isEditingRoleProfile ||
-						roleContextInput.trim().length === 0}
-				>
-					{roleProfileActionType === 'generate'
-						? 'Generating...'
-						: 'Generate Role Profile'}
-				</Button>
-			</form>
-		</div>
-
-		<!-- Notification Settings Section -->
-		<div class="border-t border-border pt-3 space-y-2">
-			<div class="flex items-center gap-2 text-foreground">
-				<Bell class="h-4 w-4 text-muted-foreground" />
-				<h3 class="text-sm font-semibold">Notification settings</h3>
-			</div>
-
-			{#if isLoading && !notificationSettings}
-				<p class="text-xs text-muted-foreground">Loading notification settings...</p>
-			{:else if notificationSettings}
-				<div class="rounded-md border border-border bg-muted/20 p-3 space-y-3">
-					<label class="flex items-start gap-2.5 cursor-pointer">
-						<input
-							type="checkbox"
-							class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
-							checked={notificationSettings.member_enabled}
-							disabled={settingsActionType !== null}
-							onchange={(event) =>
-								handleMemberNotificationsToggle(
-									(event.currentTarget as HTMLInputElement).checked
-								)}
-						/>
-						<span class="space-y-0.5">
-							<span class="block text-sm font-medium text-foreground">
-								Notify me about project activity
-							</span>
-							<span class="block text-xs text-muted-foreground">
-								Uses your existing push and in-app channel preferences.
-							</span>
-						</span>
-					</label>
-
-					{#if notificationSettings.can_manage_default}
-						<div class="border-t border-border pt-3">
-							<label class="flex items-start gap-2.5 cursor-pointer">
-								<input
-									type="checkbox"
-									class="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent"
-									checked={notificationSettings.project_default_enabled}
-									disabled={settingsActionType !== null}
-									onchange={(event) =>
-										handleProjectDefaultNotificationsToggle(
-											(event.currentTarget as HTMLInputElement).checked
-										)}
-								/>
-								<span class="space-y-0.5">
-									<span class="block text-sm font-medium text-foreground">
-										Default notifications for collaborators
-									</span>
-									<span class="block text-xs text-muted-foreground">
-										New and existing members inherit this unless they set their
-										own preference.
-									</span>
-								</span>
-							</label>
-						</div>
-					{:else}
-						<p class="text-xs text-muted-foreground">
-							Project defaults can only be changed by project admins.
-						</p>
-					{/if}
-
-					{#if !notificationSettings.is_shared_project}
-						<p class="text-xs text-muted-foreground">
-							This project is currently solo. Default notifications automatically turn
-							on when a second member joins.
-						</p>
-					{/if}
-				</div>
-			{:else}
-				<p class="text-xs text-muted-foreground">
-					Notification settings are unavailable right now.
-				</p>
-			{/if}
-
-			{#if settingsError}
-				<p class="text-xs text-destructive">{settingsError}</p>
-			{/if}
-		</div>
-
-		<!-- Members Section -->
-		<div class="border-t border-border pt-3 space-y-2">
-			<div class="flex items-center gap-2 text-foreground">
-				<Users class="h-4 w-4 text-muted-foreground" />
-				<h3 class="text-sm font-semibold">Members</h3>
-			</div>
-
-			{#if !canManageMembers}
-				<p class="text-xs text-muted-foreground">
-					Admin access is required to manage members.
-				</p>
-			{/if}
-
-			{#if isLoading}
-				<p class="text-xs text-muted-foreground">Loading members...</p>
-			{:else if members.length === 0}
-				<p class="text-xs text-muted-foreground">No members yet.</p>
-			{:else}
-				<div class="space-y-1">
-					{#each members as member (member.id)}
-						<div
-							class="flex items-center justify-between gap-2 px-2 py-1.5 -mx-2 rounded-md
-								hover:bg-muted transition-colors"
-						>
-							<div class="min-w-0 flex-1">
-								<p class="text-sm text-foreground truncate">
-									{member.actor?.name || member.actor?.email || member.actor_id}
-								</p>
-								{#if member.actor?.email && member.actor?.name}
-									<p class="text-xs text-muted-foreground truncate">
-										{member.actor.email}
-									</p>
-								{/if}
-								{#if member.role_name || member.role_description}
-									<p class="text-xs text-muted-foreground truncate">
-										{member.role_name || formatRole(member.role_key)}
-										{member.role_description
-											? ` - ${member.role_description}`
-											: ''}
-									</p>
-								{/if}
-							</div>
-							<div class="flex items-center gap-1.5 shrink-0">
-								{#if member.role_key === 'owner' || !canManageMembers}
-									<span
-										class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
-									>
-										{formatRole(member.role_key)}
-									</span>
-								{:else}
-									<Select
-										value={member.role_key}
-										size="sm"
-										class="min-w-[110px]"
-										placeholder=""
-										disabled={memberActionId !== null}
-										onchange={(value) =>
-											handleMemberRoleChange(member, value as MemberRole)}
-									>
-										<option value="editor">Editor</option>
-										<option value="viewer">Viewer</option>
-									</Select>
-									<Button
-										variant="ghost"
-										size="sm"
-										class="text-destructive hover:bg-destructive/10"
-										loading={memberActionId === member.id &&
-											memberActionType === 'remove'}
-										disabled={memberActionId !== null}
-										onclick={() => handleMemberRemove(member)}
-									>
-										Remove
-									</Button>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-
-			{#if canLeaveProject}
-				<div class="mt-3 border-t border-border pt-3">
-					<Button
-						variant="ghost"
-						size="sm"
-						class="text-destructive hover:bg-destructive/10"
-						loading={isLeavingProject}
-						disabled={isLeavingProject || memberActionId !== null}
-						onclick={handleLeaveProject}
-					>
-						Leave project
-					</Button>
-					<p class="mt-1 text-xs text-muted-foreground">
-						You can rejoin only if someone invites you again.
-					</p>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Pending Invites Section -->
-		{#if invites.length > 0}
-			<div class="border-t border-border pt-3 space-y-2">
-				<h3 class="text-sm font-semibold text-foreground">Pending invites</h3>
-				<div class="space-y-1">
-					{#each invites as invite (invite.id)}
-						<div
-							class="flex items-center justify-between gap-2 px-2 py-1.5 -mx-2 rounded-md
-								hover:bg-muted transition-colors"
-						>
-							<div class="min-w-0 flex-1">
-								<p class="text-sm text-foreground truncate">
-									{invite.invitee_email}
-								</p>
-								<p class="text-xs text-muted-foreground">
-									Expires {invite.expires_at
-										? new Date(invite.expires_at).toLocaleDateString()
-										: 'soon'}
-								</p>
-							</div>
-							<div class="flex items-center gap-1.5 shrink-0">
-								<span
-									class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
-								>
-									{formatRole(invite.role_key)}
-								</span>
-								{#if canManageInvites}
-									<Button
-										variant="ghost"
-										size="sm"
-										loading={inviteActionId === invite.id &&
-											inviteActionType === 'resend'}
-										disabled={inviteActionId !== null}
-										onclick={() => handleInviteResend(invite)}
-									>
-										Resend
-									</Button>
-									<Button
-										variant="ghost"
-										size="sm"
-										class="text-destructive hover:bg-destructive/10"
-										loading={inviteActionId === invite.id &&
-											inviteActionType === 'revoke'}
-										disabled={inviteActionId !== null}
-										onclick={() => handleInviteRevoke(invite)}
-									>
-										Revoke
-									</Button>
-								{/if}
-							</div>
-						</div>
-					{/each}
-				</div>
+				{#if settingsError}
+					<p class="text-xs text-destructive">{settingsError}</p>
+				{/if}
 			</div>
 		{/if}
 	</div>

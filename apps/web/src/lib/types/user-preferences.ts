@@ -2,9 +2,9 @@
 /**
  * User Preferences Type Definitions
  *
- * Two-tier preference system:
- * - UserPreferences: Global preferences stored in users.preferences JSONB
- * - ProjectPreferences: Project-specific overrides stored in onto_projects.props.preferences
+ * Preference system:
+ * - UserPreferences: Explicit user-level preferences stored in users.preferences JSONB
+ * - ProjectPreferences: Legacy project preference shape (system-managed only; not user-editable UI)
  *
  * @see /apps/web/docs/features/preferences/README.md - Full preferences system documentation
  * @see /apps/web/src/lib/services/agent-context-service.ts - Prompt injection (lines 567-684)
@@ -33,6 +33,10 @@ export interface UserPreferences {
 	domain_context?: string;
 }
 
+/**
+ * @deprecated Project-scoped AI behavior should come from behavioral profile layers,
+ * not direct user-editable project props.
+ */
 export interface ProjectPreferences {
 	planning_depth?: PlanningDepth;
 	update_frequency?: 'daily' | 'weekly' | 'as_needed';

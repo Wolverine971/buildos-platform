@@ -11,8 +11,8 @@
  *
  * User Preferences Integration:
  * - loadUserProfileWithPreferences() (lines 567-684) handles preference injection
- * - Merges global user preferences with project-specific preferences
- * - Converts preferences to natural language prompt injections
+ * - Uses explicit user-level preferences only (no user-editable project AI knobs)
+ * - Behavioral profile overlays are loaded separately with strict latency caps
  *
  * @see /apps/web/docs/features/preferences/README.md - User preferences system documentation
  * @see ./context/types.ts - Shared types
@@ -43,7 +43,7 @@ import type {
 	ProjectFocus
 } from '$lib/types/agent-chat-enhancement';
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
-import type { UserPreferences, ProjectPreferences } from '$lib/types/user-preferences';
+import type { UserPreferences } from '$lib/types/user-preferences';
 import { OntologyContextLoader } from './ontology-context-loader';
 import { ensureActorId } from './ontology/ontology-projects.service';
 import { normalizeContextType } from '../../routes/api/agent/stream/utils/context-utils';
@@ -63,6 +63,12 @@ import {
 } from './context';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
+import {
+	type BehavioralProfileMode,
+	clampBehavioralInstruction,
+	mergeBehavioralInstructions,
+	parseBehavioralProfileMode
+} from '$lib/services/agentic-chat-v2/behavioral-profile-merge';
 
 const logger = createLogger('AgentContextService');
 
@@ -89,6 +95,16 @@ const debugLog = (...args: unknown[]) => {
 	}
 	logger.debug('AgentContext debug', { args: sanitizeLogData(args) });
 };
+
+const BEHAVIORAL_PROFILE_CACHE_TTL_MS = 30_000;
+const DEFAULT_BEHAVIORAL_PROFILE_TIMEOUT_MS = 25;
+const behavioralProfileCache = new Map<
+	string,
+	{
+		expiresAt: number;
+		data: BehavioralPromptLayer | undefined;
+	}
+>();
 
 // ============================================
 // TYPES
@@ -117,12 +133,19 @@ import type {
 type UserProfileWithPreferences = {
 	summary: string;
 	preferences: {
-		raw: UserPreferences & ProjectPreferences;
+		raw: UserPreferences;
 		promptInjection: string;
 	};
 	metadata: {
 		userName?: string;
 	};
+};
+
+type BehavioralPromptLayer = {
+	mode: BehavioralProfileMode;
+	injectableInstruction: string;
+	globalConfidence: number;
+	projectConfidence: number;
 };
 
 // ============================================
@@ -190,7 +213,7 @@ export class AgentContextService {
 		});
 
 		const resolvedEntityId = entityId ?? projectFocus?.projectId;
-		const projectIdForPreferences =
+		const projectIdForBehavioralContext =
 			normalizedContext === 'project' ||
 			normalizedContext === 'project_audit' ||
 			normalizedContext === 'project_forecast'
@@ -319,18 +342,25 @@ export class AgentContextService {
 			return { content: standardContext.content, metadata: standardContext.metadata };
 		})();
 
-		const userProfilePromise = this.loadUserProfileWithPreferences(
+		const userProfilePromise = this.loadUserProfileWithPreferences(userId);
+		const behavioralPromptLayerPromise = this.loadBehavioralPromptLayer(
 			userId,
-			projectIdForPreferences
+			projectIdForBehavioralContext
 		);
 
-		const [linkedEntitiesContext, historyResult, locationResult, userProfileData] =
-			await Promise.all([
-				linkedEntitiesPromise,
-				historyPromise,
-				locationPromise,
-				userProfilePromise
-			]);
+		const [
+			linkedEntitiesContext,
+			historyResult,
+			locationResult,
+			userProfileData,
+			behavioralLayer
+		] = await Promise.all([
+			linkedEntitiesPromise,
+			historyPromise,
+			locationPromise,
+			userProfilePromise,
+			behavioralPromptLayerPromise
+		]);
 
 		// Step 1: Build system prompt with ontology awareness (delegated to PromptGenerationService)
 		const systemPrompt = await this.promptService.buildPlannerSystemPrompt({
@@ -371,11 +401,12 @@ export class AgentContextService {
 				TOKEN_BUDGETS.PLANNER.LOCATION_CONTEXT
 		});
 
-		const userProfileStr = userProfileData
-			? [userProfileData.summary, userProfileData.preferences.promptInjection.trim()]
-					.filter((value) => value)
-					.join('\n')
-			: undefined;
+		const userProfilePromptParts = [
+			userProfileData?.summary,
+			userProfileData?.preferences.promptInjection.trim(),
+			behavioralLayer?.injectableInstruction
+		];
+		const userProfileStr = userProfilePromptParts.filter((value) => Boolean(value)).join('\n');
 		const contextScope =
 			ontologyContext?.scope ??
 			(resolvedEntityId ? { projectId: resolvedEntityId } : undefined);
@@ -387,7 +418,7 @@ export class AgentContextService {
 			locationMetadata,
 			ontologyContext,
 			lastTurnContext,
-			userProfile: userProfileStr,
+			userProfile: userProfileStr || undefined,
 			availableTools,
 			metadata: {
 				sessionId,
@@ -709,8 +740,7 @@ export class AgentContextService {
 	 * Load user profile for planner
 	 */
 	private async loadUserProfileWithPreferences(
-		userId: string,
-		projectId?: string
+		userId: string
 	): Promise<UserProfileWithPreferences | undefined> {
 		const { data: user } = await this.supabase
 			.from('users')
@@ -721,25 +751,7 @@ export class AgentContextService {
 		if (!user) return undefined;
 
 		const userPreferences = this.coercePreferences(user.preferences) as UserPreferences;
-		let projectPreferences: ProjectPreferences = {};
-
-		if (projectId) {
-			const { data: project } = await this.supabase
-				.from('onto_projects')
-				.select('props')
-				.eq('id', projectId)
-				.single();
-
-			const projectProps = this.coercePreferences(project?.props);
-			projectPreferences = this.coercePreferences(
-				(projectProps as { preferences?: unknown }).preferences
-			) as ProjectPreferences;
-		}
-
-		const preferences = {
-			...userPreferences,
-			...projectPreferences
-		};
+		const preferences = { ...userPreferences };
 
 		const prefParts: string[] = [];
 
@@ -774,44 +786,6 @@ export class AgentContextService {
 			prefParts.push(`Domain context: ${preferences.domain_context}`);
 		}
 
-		if (projectPreferences.deadline_flexibility === 'strict') {
-			prefParts.push('This project has strict deadlines - emphasize timeline adherence.');
-		} else if (projectPreferences.deadline_flexibility === 'flexible') {
-			prefParts.push('Deadlines are flexible for this project - prioritize quality.');
-		} else if (projectPreferences.deadline_flexibility === 'aspirational') {
-			prefParts.push('Deadlines are aspirational targets that can shift as needed.');
-		}
-
-		if (projectPreferences.planning_depth === 'rigorous') {
-			prefParts.push('User wants rigorous, detailed planning for this project.');
-		} else if (projectPreferences.planning_depth === 'detailed') {
-			prefParts.push('User wants detailed planning for this project.');
-		} else if (projectPreferences.planning_depth === 'lightweight') {
-			prefParts.push('Keep planning lightweight with minimal overhead.');
-		}
-
-		if (projectPreferences.update_frequency === 'daily') {
-			prefParts.push('Preferred update cadence: daily.');
-		} else if (projectPreferences.update_frequency === 'weekly') {
-			prefParts.push('Preferred update cadence: weekly.');
-		} else if (projectPreferences.update_frequency === 'as_needed') {
-			prefParts.push('Preferred update cadence: as needed.');
-		}
-
-		if (projectPreferences.collaboration_mode === 'solo') {
-			prefParts.push('Collaboration mode: solo.');
-		} else if (projectPreferences.collaboration_mode === 'async_team') {
-			prefParts.push('Collaboration mode: async team.');
-		} else if (projectPreferences.collaboration_mode === 'realtime') {
-			prefParts.push('Collaboration mode: real-time.');
-		}
-
-		if (projectPreferences.risk_tolerance === 'cautious') {
-			prefParts.push('Risk tolerance: cautious - avoid high-risk moves.');
-		} else if (projectPreferences.risk_tolerance === 'aggressive') {
-			prefParts.push('Risk tolerance: aggressive - prioritize speed and bold moves.');
-		}
-
 		const displayName = user.name || user.email;
 		const summary = `User: ${displayName}`;
 
@@ -825,6 +799,143 @@ export class AgentContextService {
 				userName: user.name || undefined
 			}
 		};
+	}
+
+	private getBehavioralProfileMode(): BehavioralProfileMode {
+		const envMode = process.env.AGENTIC_CHAT_BEHAVIORAL_PROFILE_MODE;
+		return parseBehavioralProfileMode(envMode);
+	}
+
+	private getBehavioralProfileTimeoutMs(): number {
+		const raw = process.env.AGENTIC_CHAT_BEHAVIORAL_PROFILE_TIMEOUT_MS;
+		const parsed = Number.parseInt(String(raw ?? DEFAULT_BEHAVIORAL_PROFILE_TIMEOUT_MS), 10);
+		if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_BEHAVIORAL_PROFILE_TIMEOUT_MS;
+		return parsed;
+	}
+
+	private buildBehavioralCacheKey(userId: string, projectId?: string): string {
+		return `${userId}:${projectId ?? 'global'}`;
+	}
+
+	private isMissingRelationError(error: unknown): boolean {
+		const err = error as { code?: string; message?: string; details?: string } | undefined;
+		const message = `${err?.message ?? ''} ${err?.details ?? ''}`.toLowerCase();
+		return err?.code === '42P01' || message.includes('does not exist');
+	}
+
+	private async withTimeout<T>(
+		promise: Promise<T>,
+		timeoutMs: number,
+		label: string
+	): Promise<T | undefined> {
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		try {
+			const safePromise = promise.catch((error) => {
+				logger.warn(`[AgentContext] ${label} failed`, {
+					error: error instanceof Error ? error.message : String(error)
+				});
+				return undefined as T | undefined;
+			});
+			const timeoutPromise = new Promise<undefined>((resolve) => {
+				timeoutId = setTimeout(() => resolve(undefined), timeoutMs);
+			});
+			const result = await Promise.race([safePromise, timeoutPromise]);
+			return result as T | undefined;
+		} finally {
+			if (timeoutId) clearTimeout(timeoutId);
+		}
+	}
+
+	private async loadBehavioralPromptLayer(
+		userId: string,
+		projectId?: string
+	): Promise<BehavioralPromptLayer | undefined> {
+		const mode = this.getBehavioralProfileMode();
+		if (mode === 'off') return undefined;
+
+		const cacheKey = this.buildBehavioralCacheKey(userId, projectId);
+		const cached = behavioralProfileCache.get(cacheKey);
+		if (cached && cached.expiresAt > Date.now()) {
+			return cached.data;
+		}
+
+		const lookupPromise = (async (): Promise<BehavioralPromptLayer | undefined> => {
+			const db = this.supabase as unknown as SupabaseClient<any>;
+
+			const globalQuery = db
+				.from('user_behavioral_profiles')
+				.select('agent_instructions, confidence')
+				.eq('user_id', userId)
+				.maybeSingle();
+
+			const projectQuery = projectId
+				? db
+						.from('user_project_behavioral_profiles')
+						.select('agent_instructions, confidence')
+						.eq('user_id', userId)
+						.eq('project_id', projectId)
+						.maybeSingle()
+				: Promise.resolve({ data: null, error: null });
+
+			const [globalResult, projectResult] = await Promise.all([globalQuery, projectQuery]);
+
+			if (globalResult.error) {
+				if (!this.isMissingRelationError(globalResult.error)) {
+					logger.warn('[AgentContext] Failed to load global behavioral profile', {
+						userId,
+						error: globalResult.error.message
+					});
+				}
+				return undefined;
+			}
+
+			if (projectResult.error && !this.isMissingRelationError(projectResult.error)) {
+				logger.warn('[AgentContext] Failed to load project behavioral profile', {
+					userId,
+					projectId,
+					error: projectResult.error.message
+				});
+			}
+
+			const globalInstruction = clampBehavioralInstruction(
+				globalResult.data?.agent_instructions
+			);
+			const projectInstruction = clampBehavioralInstruction(
+				projectResult.data?.agent_instructions
+			);
+			const merged = mergeBehavioralInstructions({
+				globalInstruction,
+				projectInstruction,
+				projectConfidence: projectResult.data?.confidence ?? 0
+			});
+
+			if (!merged) return undefined;
+
+			const injectableInstruction =
+				mode === 'inject'
+					? ['Behavioral guidance (system-managed):', merged].join('\n')
+					: '';
+
+			return {
+				mode,
+				injectableInstruction,
+				globalConfidence: globalResult.data?.confidence ?? 0,
+				projectConfidence: projectResult.data?.confidence ?? 0
+			};
+		})();
+
+		const result = await this.withTimeout(
+			lookupPromise,
+			this.getBehavioralProfileTimeoutMs(),
+			'behavioral profile lookup'
+		);
+
+		behavioralProfileCache.set(cacheKey, {
+			expiresAt: Date.now() + BEHAVIORAL_PROFILE_CACHE_TTL_MS,
+			data: result
+		});
+
+		return result;
 	}
 
 	private coercePreferences(value: unknown): Record<string, unknown> {

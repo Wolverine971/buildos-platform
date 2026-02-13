@@ -76,7 +76,7 @@
 		LoaderCircle
 	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-	import type { Component } from 'svelte';
+	import { untrack, type Component } from 'svelte';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
@@ -308,6 +308,7 @@
 	let docTreeDocuments = $state<Record<string, OntoDocument>>({});
 	let showMoveModal = $state(false);
 	let treeLoading = $state(false);
+	let lastDocTreeLoadKey = $state<string | null>(null);
 	type VoiceNotesPanelRef = {
 		refresh: () => void;
 		upsertVoiceNote: (note: VoiceNote) => void;
@@ -813,9 +814,19 @@
 
 	// Load tree when editing an existing document
 	$effect(() => {
-		if (isOpen && activeDocumentId && projectId) {
-			loadDocTree();
+		if (!isOpen || !activeDocumentId || !projectId) {
+			lastDocTreeLoadKey = null;
+			return;
 		}
+
+		const loadKey = `${projectId}:${activeDocumentId}`;
+		if (lastDocTreeLoadKey === loadKey) return;
+		lastDocTreeLoadKey = loadKey;
+
+		// Avoid tracking treeLoading reads inside loadDocTree, which can cause effect churn.
+		untrack(() => {
+			void loadDocTree();
+		});
 	});
 
 	// Compute breadcrumb path from document tree

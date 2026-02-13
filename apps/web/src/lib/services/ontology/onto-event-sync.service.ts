@@ -103,6 +103,42 @@ function isProbablyGoogleCalendarLink(text: string): boolean {
 	);
 }
 
+function parseGoogleEventMappingFromExternalLink(link: string | null | undefined): {
+	externalEventId: string;
+	calendarId: string;
+} | null {
+	if (!link) return null;
+
+	try {
+		const url = new URL(link);
+		const encoded = url.searchParams.get('eid');
+		if (!encoded) return null;
+
+		const normalized = encoded.replace(/-/g, '+').replace(/_/g, '/');
+		const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+		const decoded = Buffer.from(padded, 'base64').toString('utf8');
+		const separatorIndex = decoded.lastIndexOf(' ');
+
+		if (separatorIndex <= 0 || separatorIndex >= decoded.length - 1) {
+			return null;
+		}
+
+		const externalEventId = decoded.slice(0, separatorIndex).trim();
+		const calendarId = decoded.slice(separatorIndex + 1).trim();
+
+		if (!externalEventId || !calendarId) {
+			return null;
+		}
+
+		return {
+			externalEventId,
+			calendarId
+		};
+	} catch {
+		return null;
+	}
+}
+
 export class OntoEventSyncService {
 	private readonly calendarService: CalendarService;
 	private readonly projectCalendarService: ProjectCalendarService;
@@ -554,9 +590,17 @@ export class OntoEventSyncService {
 					.select('*')
 					.single();
 
+				const nextProps = {
+					...(event.props as Record<string, unknown>),
+					external_event_id: calendarEvent.eventId,
+					external_calendar_id: projectCalendar.calendar_id,
+					provider: 'google'
+				};
+
 				const { data: updated } = await this.supabase
 					.from('onto_events')
 					.update({
+						props: nextProps,
 						external_link: calendarEvent.eventLink ?? null,
 						last_synced_at: nowIso,
 						sync_status: 'synced',
@@ -729,6 +773,11 @@ export class OntoEventSyncService {
 				externalEventId,
 				calendarId: externalCalendarId
 			};
+		}
+
+		const linkMapping = parseGoogleEventMappingFromExternalLink(event.external_link);
+		if (linkMapping) {
+			return linkMapping;
 		}
 
 		return null;

@@ -8560,6 +8560,65 @@ export type Database = {
           },
         ]
       }
+      user_behavioral_profiles: {
+        Row: {
+          agent_instructions: string
+          analysis_version: number
+          computed_at: string
+          confidence: number
+          created_at: string
+          dimensions: Json
+          id: string
+          next_analysis_trigger: Json
+          patterns: Json
+          project_summary: Json
+          session_count: number
+          updated_at: string
+          user_context: Json
+          user_id: string
+        }
+        Insert: {
+          agent_instructions?: string
+          analysis_version?: number
+          computed_at?: string
+          confidence?: number
+          created_at?: string
+          dimensions?: Json
+          id?: string
+          next_analysis_trigger?: Json
+          patterns?: Json
+          project_summary?: Json
+          session_count?: number
+          updated_at?: string
+          user_context?: Json
+          user_id: string
+        }
+        Update: {
+          agent_instructions?: string
+          analysis_version?: number
+          computed_at?: string
+          confidence?: number
+          created_at?: string
+          dimensions?: Json
+          id?: string
+          next_analysis_trigger?: Json
+          patterns?: Json
+          project_summary?: Json
+          session_count?: number
+          updated_at?: string
+          user_context?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_behavioral_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_brief_preferences: {
         Row: {
           created_at: string
@@ -9080,6 +9139,63 @@ export type Database = {
           },
           {
             foreignKeyName: "user_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_project_behavioral_profiles: {
+        Row: {
+          agent_instructions: string
+          computed_at: string
+          confidence: number
+          created_at: string
+          dimensions: Json
+          id: string
+          patterns: Json
+          project_id: string
+          session_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_instructions?: string
+          computed_at?: string
+          confidence?: number
+          created_at?: string
+          dimensions?: Json
+          id?: string
+          patterns?: Json
+          project_id: string
+          session_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_instructions?: string
+          computed_at?: string
+          confidence?: number
+          created_at?: string
+          dimensions?: Json
+          id?: string
+          patterns?: Json
+          project_id?: string
+          session_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_project_behavioral_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_project_behavioral_profiles_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"

@@ -162,6 +162,8 @@ PRIVATE_CRON_SECRET=your_random_secret
 ### Feature Flags
 
 - `ENABLE_STRIPE=false` - Safely deploy without payment processing
+- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_MODE=off|shadow|inject` - Behavioral profile rollout mode (`shadow` is recommended first to run in background without prompt injection)
+- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_TIMEOUT_MS=25` - Max lookup time budget (ms) before behavioral profile loading fails open
 - Graceful degradation when services are unavailable
 - Trial system works independently of payment integration
 

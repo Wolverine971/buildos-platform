@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-13T18:22:06.481Z
+// Generated on: 2026-02-13T20:06:07.207Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2056,6 +2056,22 @@ export type DatabaseSchema = {
 		user_agent: string | null;
 		user_id: string | null;
 	};
+	user_behavioral_profiles: {
+		agent_instructions: string;
+		analysis_version: number;
+		computed_at: string;
+		confidence: number;
+		created_at: string;
+		dimensions: Json;
+		id: string;
+		next_analysis_trigger: Json;
+		patterns: Json;
+		project_summary: Json;
+		session_count: number;
+		updated_at: string;
+		user_context: Json;
+		user_id: string;
+	};
 	user_brief_preferences: {
 		created_at: string;
 		day_of_week: number | null;
@@ -2196,6 +2212,19 @@ export type DatabaseSchema = {
 		read_at: string | null;
 		title: string;
 		type: string;
+		user_id: string;
+	};
+	user_project_behavioral_profiles: {
+		agent_instructions: string;
+		computed_at: string;
+		confidence: number;
+		created_at: string;
+		dimensions: Json;
+		id: string;
+		patterns: Json;
+		project_id: string;
+		session_count: number;
+		updated_at: string;
 		user_id: string;
 	};
 	user_sms_preferences: {
@@ -2466,6 +2495,7 @@ export const tableNames = [
 	'tree_agent_runs',
 	'trial_reminders',
 	'user_activity_logs',
+	'user_behavioral_profiles',
 	'user_brief_preferences',
 	'user_calendar_preferences',
 	'user_calendar_tokens',
@@ -2474,6 +2504,7 @@ export const tableNames = [
 	'user_notification_preferences',
 	'user_notification_preferences_backup',
 	'user_notifications',
+	'user_project_behavioral_profiles',
 	'user_sms_preferences',
 	'users',
 	'visitors',

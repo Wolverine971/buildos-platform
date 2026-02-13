@@ -72,7 +72,7 @@
 		ListChecks,
 		MoreHorizontal,
 		GitBranch,
-		UserPlus
+		Users
 	} from 'lucide-svelte';
 	import type {
 		Project,
@@ -88,12 +88,11 @@
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
-	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
 	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
 	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
 	import ProjectActivityLogPanel from '$lib/components/ontology/ProjectActivityLogPanel.svelte';
 	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
-	import ProjectShareModal from '$lib/components/project/ProjectShareModal.svelte';
+	import ProjectCollaborationModal from '$lib/components/project/ProjectCollaborationModal.svelte';
 	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
 	import {
 		DocTreeView,
@@ -168,7 +167,7 @@
 	const canEdit = $derived(access.canEdit);
 	const canAdmin = $derived(access.canAdmin);
 	const canViewLogs = $derived(access.canViewLogs);
-	const canOpenShareModal = $derived(canViewLogs);
+	const canOpenCollabModal = $derived(canViewLogs);
 	const canDeleteProject = $derived(access.isOwner);
 
 	// Skeleton loading state
@@ -233,7 +232,7 @@
 	let showPlanCreateModal = $state(false);
 	let showGoalCreateModal = $state(false);
 	let showProjectEditModal = $state(false);
-	let showShareModal = $state(false);
+	let showCollabModal = $state(false);
 	let showDeleteProjectModal = $state(false);
 	let showProjectCalendarSettingsModal = $state(false);
 	let isDeletingProject = $state(false);
@@ -353,7 +352,7 @@
 			graphHidden = stored === 'true';
 		}
 
-		if (canOpenShareModal) {
+		if (canOpenCollabModal) {
 			void loadProjectNotificationSettings();
 		}
 
@@ -935,7 +934,7 @@
 	}
 
 	async function loadProjectNotificationSettings(showToast = false) {
-		if (!project?.id || !canOpenShareModal) return;
+		if (!project?.id || !canOpenCollabModal) return;
 
 		isNotificationSettingsLoading = true;
 		try {
@@ -1616,87 +1615,8 @@
 					</div>
 				</div>
 
-				<!-- Desktop: Show all buttons -->
-				<div class="hidden sm:flex items-center gap-1.5 shrink-0">
-					{#if project}
-						<StateDisplay state={project.state_key} entityKind="project" />
-					{/if}
-					{#if graphHidden}
-						<button
-							onclick={handleGraphShow}
-							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-							aria-label="Show project relationship graph"
-							title="Show project relationship graph"
-						>
-							<GitBranch class="w-5 h-5 text-muted-foreground" />
-						</button>
-					{/if}
-					{#if canOpenShareModal}
-						<button
-							onclick={handleProjectNotificationQuickToggle}
-							class="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-border hover:bg-muted transition-colors pressable disabled:opacity-60 disabled:cursor-not-allowed"
-							aria-label="Toggle project activity notifications"
-							title={projectNotificationSettings?.member_enabled
-								? 'Turn off project activity notifications'
-								: 'Turn on project activity notifications'}
-							disabled={isNotificationSettingsSaving ||
-								isNotificationSettingsLoading ||
-								!projectNotificationSettings}
-						>
-							{#if projectNotificationSettings?.member_enabled}
-								<Bell class="w-4 h-4 text-muted-foreground" />
-							{:else}
-								<BellOff class="w-4 h-4 text-muted-foreground" />
-							{/if}
-							<span class="text-xs font-medium text-foreground">
-								{isNotificationSettingsSaving
-									? 'Saving...'
-									: projectNotificationSettings?.member_enabled
-										? 'Notifications on'
-										: 'Notifications off'}
-							</span>
-						</button>
-					{/if}
-					{#if canOpenShareModal}
-						<button
-							onclick={() => (showShareModal = true)}
-							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-							aria-label="Project sharing"
-							title="Project sharing"
-						>
-							<UserPlus class="w-5 h-5 text-muted-foreground" />
-						</button>
-					{/if}
-					{#if canEdit}
-						<button
-							onclick={() => (showProjectCalendarSettingsModal = true)}
-							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-							aria-label="Project calendar settings"
-							title="Project calendar settings"
-						>
-							<Calendar class="w-5 h-5 text-muted-foreground" />
-						</button>
-						<button
-							onclick={() => (showProjectEditModal = true)}
-							class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-							aria-label="Edit project"
-						>
-							<Pencil class="w-5 h-5 text-muted-foreground" />
-						</button>
-					{/if}
-					{#if canDeleteProject}
-						<button
-							onclick={() => (showDeleteProjectModal = true)}
-							class="p-2 rounded-lg hover:bg-destructive/10 transition-colors pressable"
-							aria-label="Delete project"
-						>
-							<Trash2 class="w-5 h-5 text-destructive" />
-						</button>
-					{/if}
-				</div>
-
-				<!-- Mobile: 3-dot menu -->
-				<div class="flex items-center gap-1.5 sm:hidden">
+				<!-- Settings dropdown menu -->
+				<div class="flex items-center gap-1.5 shrink-0">
 					<button
 						bind:this={mobileMenuButtonEl}
 						onclick={openMobileMenu}
@@ -2599,15 +2519,15 @@
 	{/await}
 {/if}
 
-<!-- Project Share Modal -->
-{#if showShareModal && canOpenShareModal}
-	<ProjectShareModal
-		bind:isOpen={showShareModal}
+<!-- Project Collaboration Settings Modal -->
+{#if showCollabModal && canOpenCollabModal}
+	<ProjectCollaborationModal
+		bind:isOpen={showCollabModal}
 		projectId={project.id}
 		projectName={project.name || 'Project'}
 		canManageMembers={canAdmin}
 		onLeftProject={() => goto('/projects')}
-		onClose={() => (showShareModal = false)}
+		onClose={() => (showCollabModal = false)}
 	/>
 {/if}
 
@@ -2640,7 +2560,7 @@
 	</ConfirmationModal>
 {/if}
 
-<!-- Mobile Menu Portal - Rendered outside all containers to avoid z-index issues -->
+<!-- Settings Menu Portal - Rendered outside all containers to avoid z-index issues -->
 {#if showMobileMenu}
 	<button
 		type="button"
@@ -2649,7 +2569,7 @@
 		aria-label="Close menu"
 	></button>
 	<div
-		class="fixed z-[9999] w-44 rounded-lg border border-border bg-card shadow-ink-strong py-1"
+		class="fixed z-[9999] w-56 rounded-lg border border-border bg-card shadow-ink-strong py-1"
 		style="top: {mobileMenuPos.top}px; right: {mobileMenuPos.right}px;"
 	>
 		{#if graphHidden}
@@ -2658,19 +2578,19 @@
 					showMobileMenu = false;
 					handleGraphShow();
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
 			>
 				<GitBranch class="w-4 h-4 text-muted-foreground" />
 				Show graph
 			</button>
 		{/if}
-		{#if canOpenShareModal}
+		{#if canOpenCollabModal}
 			<button
 				onclick={() => {
 					showMobileMenu = false;
 					void handleProjectNotificationQuickToggle();
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable disabled:opacity-60 disabled:cursor-not-allowed"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable disabled:opacity-60 disabled:cursor-not-allowed"
 				disabled={isNotificationSettingsSaving ||
 					isNotificationSettingsLoading ||
 					!projectNotificationSettings}
@@ -2687,16 +2607,16 @@
 						: 'Turn notifications on'}
 			</button>
 		{/if}
-		{#if canOpenShareModal}
+		{#if canOpenCollabModal}
 			<button
 				onclick={() => {
 					showMobileMenu = false;
-					showShareModal = true;
+					showCollabModal = true;
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
 			>
-				<UserPlus class="w-4 h-4 text-muted-foreground" />
-				Project sharing
+				<Users class="w-4 h-4 text-muted-foreground" />
+				Collaboration settings
 			</button>
 		{/if}
 		{#if canEdit}
@@ -2705,7 +2625,7 @@
 					showMobileMenu = false;
 					showProjectEditModal = true;
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
 			>
 				<Pencil class="w-4 h-4 text-muted-foreground" />
 				Edit project
@@ -2715,7 +2635,7 @@
 					showMobileMenu = false;
 					showProjectCalendarSettingsModal = true;
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
 			>
 				<Calendar class="w-4 h-4 text-muted-foreground" />
 				Calendar settings
@@ -2728,7 +2648,7 @@
 					showMobileMenu = false;
 					showDeleteProjectModal = true;
 				}}
-				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors pressable"
+				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-destructive hover:bg-destructive/10 transition-colors pressable"
 			>
 				<Trash2 class="w-4 h-4" />
 				Delete project
