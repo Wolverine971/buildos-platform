@@ -474,6 +474,7 @@
 
 			case 'SIGNED_IN':
 			case 'USER_UPDATED':
+			case 'PASSWORD_RECOVERY':
 				await handleAuthSignedIn(currentUserId);
 				break;
 

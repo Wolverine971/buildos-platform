@@ -1,8 +1,8 @@
 // apps/web/src/routes/api/onto/shared/markdown-normalization.ts
 /**
  * Normalize markdown content when it arrives with escaped line breaks.
- * Only normalizes when the input has no real line breaks, to avoid
- * altering intentional escape sequences in code blocks.
+ * Converts escaped line breaks outside fenced code blocks so mixed payloads
+ * (real newlines + literal "\n") still render correctly.
  */
 export function normalizeMarkdownInput(value: unknown): string | null {
 	if (typeof value !== 'string') {
@@ -13,29 +13,75 @@ export function normalizeMarkdownInput(value: unknown): string | null {
 		return value;
 	}
 
-	if (/[\r\n]/.test(value)) {
+	// Fast path: nothing to normalize.
+	if (!/\\r\\n|\\n|\\r|(?<!\w)\/n(?=$|[^\w])/.test(value)) {
 		return value;
 	}
 
-	const escapedMatches = value.match(/\\r\\n|\\n|\\r/g) ?? [];
-	const slashMatches = value.match(/(?<!\w)\/n(?=$|[^\w])/g) ?? [];
-
-	if (escapedMatches.length === 0 && slashMatches.length === 0) {
-		return value;
+	if (!/[\r\n]/.test(value)) {
+		return normalizeEscapedLineBreaks(value);
 	}
 
-	let normalized = value;
+	// For multi-line markdown, normalize per line while preserving fenced
+	// code blocks where escaped sequences are often intentional.
+	const segments = value.match(/[^\r\n]*\r?\n|[^\r\n]+$/g);
+	if (!segments || segments.length === 0) return value;
 
-	if (escapedMatches.length > 0) {
-		normalized = normalized
-			.replace(/\\r\\n/g, '\n')
-			.replace(/\\n/g, '\n')
-			.replace(/\\r/g, '\n');
+	let inFence = false;
+	let fenceChar: '`' | '~' | null = null;
+	let fenceLength = 0;
+	let changed = false;
+	let normalized = '';
+
+	for (const segment of segments) {
+		const line = segment.replace(/\r?\n$/, '');
+		const newline = segment.slice(line.length);
+		const fenceInfo = getFenceDelimiter(line);
+
+		if (!inFence && fenceInfo) {
+			inFence = true;
+			fenceChar = fenceInfo.char;
+			fenceLength = fenceInfo.length;
+			normalized += line + newline;
+			continue;
+		}
+
+		if (inFence && fenceInfo && fenceInfo.char === fenceChar && fenceInfo.length >= fenceLength) {
+			inFence = false;
+			fenceChar = null;
+			fenceLength = 0;
+			normalized += line + newline;
+			continue;
+		}
+
+		if (inFence) {
+			normalized += line + newline;
+			continue;
+		}
+
+		const normalizedLine = normalizeEscapedLineBreaks(line);
+		if (normalizedLine !== line) changed = true;
+		normalized += normalizedLine + newline;
 	}
 
-	if (slashMatches.length > 0) {
-		normalized = normalized.replace(/(?<!\w)\/n(?=$|[^\w])/g, '\n');
-	}
+	return changed ? normalized : value;
+}
 
-	return normalized;
+function normalizeEscapedLineBreaks(value: string): string {
+	return value
+		.replace(/\\r\\n/g, '\n')
+		.replace(/\\n/g, '\n')
+		.replace(/\\r/g, '\n')
+		.replace(/(?<!\w)\/n(?=$|[^\w])/g, '\n');
+}
+
+function getFenceDelimiter(line: string): { char: '`' | '~'; length: number } | null {
+	const match = line.match(/^\s*(`{3,}|~{3,})/);
+	if (!match) return null;
+
+	const marker = match[1];
+	return {
+		char: marker[0] as '`' | '~',
+		length: marker.length
+	};
 }

@@ -1190,8 +1190,7 @@
 							>
 						</div>
 					{:else if $graphStore.data}
-						<svelte:component
-							this={OntologyGraphComponent}
+						<OntologyGraphComponent
 							data={$graphStore.data}
 							viewMode={graphViewMode}
 							bind:selectedNode={selectedGraphNode}
@@ -1219,8 +1218,7 @@
 			<div class="grid gap-4 lg:grid-cols-2">
 				<section class="wt-paper overflow-hidden tx tx-frame tx-weak">
 					{#if GraphControlsComponent}
-						<svelte:component
-							this={GraphControlsComponent}
+						<GraphControlsComponent
 							bind:viewMode={graphViewMode}
 							{graphInstance}
 							stats={$graphStore.stats ?? emptyGraphStats}
@@ -1234,8 +1232,7 @@
 
 				<section class="wt-paper overflow-hidden tx tx-frame tx-weak">
 					{#if selectedGraphNode && $graphStore.status === 'ready' && NodeDetailsPanelComponent}
-						<svelte:component
-							this={NodeDetailsPanelComponent}
+						<NodeDetailsPanelComponent
 							node={selectedGraphNode}
 							onClose={() => (selectedGraphNode = null)}
 						/>

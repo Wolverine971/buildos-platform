@@ -1,14 +1,15 @@
 <!-- apps/web/src/routes/auth/reset-password/+page.svelte -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import type { ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	let { form }: { form?: ActionData } = $props();
+	let { data, form }: { data: PageData; form?: ActionData } = $props();
 
 	let loading = $state(false);
+	let canSubmit = $derived(data.hasRecoverySession);
 </script>
 
 <svelte:head>
@@ -52,6 +53,22 @@
 					};
 				}}
 			>
+				{#if data.recoveryError}
+					<div
+						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
+					>
+						{data.recoveryError}
+					</div>
+				{/if}
+
+				{#if !canSubmit}
+					<div
+						class="rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-4 py-3"
+					>
+						Open the password reset link from your email to continue.
+					</div>
+				{/if}
+
 				{#if form?.error}
 					<div
 						class="rounded-lg border border-destructive/50 bg-destructive/10 text-destructive px-4 py-3"
@@ -69,6 +86,7 @@
 							autocomplete="new-password"
 							enterkeyhint="next"
 							required
+							disabled={!canSubmit || loading}
 							placeholder="Enter your new password"
 							size="lg"
 						/>
@@ -82,6 +100,7 @@
 							autocomplete="new-password"
 							enterkeyhint="done"
 							required
+							disabled={!canSubmit || loading}
 							placeholder="Confirm your new password"
 							size="lg"
 						/>
@@ -91,13 +110,17 @@
 				<div>
 					<Button
 						type="submit"
-						disabled={loading}
+						disabled={!canSubmit || loading}
 						{loading}
 						fullWidth={true}
 						variant="primary"
 						size="lg"
 					>
-						{loading ? 'Updating password...' : 'Update password'}
+						{loading
+							? 'Updating password...'
+							: canSubmit
+								? 'Update password'
+								: 'Open reset link from email'}
 					</Button>
 				</div>
 			</form>

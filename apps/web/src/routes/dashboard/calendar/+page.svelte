@@ -1073,8 +1073,7 @@
 
 {#if showTaskModal && editTaskId && editProjectId}
 	{#await loadTaskEditModal() then TaskModal}
-		<svelte:component
-			this={TaskModal}
+		<TaskModal
 			taskId={editTaskId}
 			projectId={editProjectId}
 			onClose={handleEditorClosed}
@@ -1086,8 +1085,7 @@
 
 {#if showEventModal && editEventId && editProjectId}
 	{#await loadEventEditModal() then EventModal}
-		<svelte:component
-			this={EventModal}
+		<EventModal
 			eventId={editEventId}
 			projectId={editProjectId}
 			onClose={handleEditorClosed}

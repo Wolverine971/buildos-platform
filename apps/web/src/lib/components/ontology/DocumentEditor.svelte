@@ -1128,7 +1128,7 @@
 							<MicOff class="relative h-5 w-5" />
 						</span>
 					{:else}
-						<svelte:component this={voiceButtonState.icon} class="h-5 w-5" />
+						<voiceButtonState.icon class="h-5 w-5" />
 					{/if}
 				</button>
 				<!-- Keyboard hint when recording -->
